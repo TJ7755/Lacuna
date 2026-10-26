@@ -77,6 +77,21 @@ export function usePathReorder({
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [pending, setPending] = useState(false);
   const [announcement, setAnnouncement] = useState('');
+  const draggingId = dragState?.lessonId;
+  const dragBounds = useMemo(() => {
+    if (!draggingId) return undefined;
+    const slots = items.flatMap((item) => {
+      if ((item.dragId ?? item.id) !== draggingId) return [];
+      const slot = sessionRef.current?.slots.get(item.id);
+      return slot ? [slot] : [];
+    });
+    return slots.length
+      ? {
+          top: Math.min(...slots.map((slot) => slot.top)),
+          bottom: Math.max(...slots.map((slot) => slot.bottom)),
+        }
+      : undefined;
+  }, [draggingId, items]);
 
   const clearSession = useCallback((releaseCapture: boolean) => {
     const session = sessionRef.current;
@@ -137,14 +152,28 @@ export function usePathReorder({
     const bounds = session.scroller.getBoundingClientRect();
     const top = Math.max(0, bounds.top);
     const bottom = Math.min(window.innerHeight, bounds.bottom || window.innerHeight);
-    const step =
-      session.clientY < top + edge
-        ? -Math.min(14, (top + edge - session.clientY) / 4)
-        : session.clientY > bottom - edge
-          ? Math.min(14, (session.clientY - bottom + edge) / 4)
-          : 0;
+    // Scroll compensation keeps the held rows at this viewport displacement.
+    const displacement = session.clientY - session.startY;
+    const topDistance =
+      Math.min(session.clientY, (dragBounds?.top ?? session.startY) + displacement) - top;
+    const bottomDistance =
+      bottom - Math.max(session.clientY, (dragBounds?.bottom ?? session.startY) + displacement);
+    const down =
+      bottomDistance <= edge && (topDistance > edge || session.clientY >= (top + bottom) / 2);
+    const direction = down ? 1 : topDistance <= edge ? -1 : 0;
+    const distance = down ? bottomDistance : topDistance;
+    const step = direction * Math.min(14, Math.max(1, (edge - distance) / 4));
     if (!step) return;
-    session.scroller.scrollTop += step;
+    const before = session.scroller.scrollTop;
+    // Transformed rows can extend scrollHeight beyond the course's real end.
+    session.scroller.scrollTop = Math.max(
+      0,
+      Math.min(
+        session.scrollMax ?? session.scroller.scrollHeight - session.scroller.clientHeight,
+        before + step,
+      ),
+    );
+    if (session.scroller.scrollTop === before) return;
     session.targetIndex = targetIndexForY(session.lessonId, session.clientY);
     setDragState({
       lessonId: session.lessonId,
@@ -153,7 +182,6 @@ export function usePathReorder({
       y: session.clientY - session.startY + session.scroller.scrollTop - (session.scrollTop ?? 0),
     });
   };
-  const draggingId = dragState?.lessonId;
   useEffect(() => {
     if (!draggingId) return;
     let frame: number;
@@ -344,13 +372,15 @@ export function usePathReorder({
               }, holdDelay)
             : 0;
           element.setPointerCapture?.(inputId);
+          const scroller = element.closest('main') ?? document.documentElement;
           sessionRef.current = {
             lessonId,
             inputId,
             inputType: 'pointer',
             clientY: startY,
-            scroller: element.closest('main') ?? document.documentElement,
-            scrollTop: (element.closest('main') ?? document.documentElement).scrollTop,
+            scroller,
+            scrollTop: scroller.scrollTop,
+            scrollMax: scroller.scrollHeight - scroller.clientHeight,
             startX,
             startY,
             slots: capturePathSlots(elementsRef.current),

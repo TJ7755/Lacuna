@@ -19,6 +19,7 @@ export interface DragSession {
   lastMoveTime?: number;
   velocity?: number;
   scrollTop?: number;
+  scrollMax?: number;
   scroller?: HTMLElement;
 }
 
@@ -94,13 +95,15 @@ export function bindPathTouchReorder(
       );
       hapticStrong();
     }, 350);
+    const scroller = element.closest('main') ?? document.documentElement;
     sessionRef.current = {
       lessonId,
       inputId,
       inputType: 'touch',
       clientY: touch.clientY,
-      scroller: element.closest('main') ?? document.documentElement,
-      scrollTop: (element.closest('main') ?? document.documentElement).scrollTop,
+      scroller,
+      scrollTop: scroller.scrollTop,
+      scrollMax: scroller.scrollHeight - scroller.clientHeight,
       startX: touch.clientX,
       startY: touch.clientY,
       slots: capturePathSlots(elementsRef.current),

@@ -6,6 +6,7 @@ async function importSchoolScience(
   unlockMode: 'open' | 'semi-linear' = 'open',
   publishedCheckpoint = true,
   practiceAfterEveryLesson = false,
+  lessonIds = ['A', 'B', 'C'],
 ) {
   await enterFreshLacuna(page);
   await openImport(page);
@@ -17,7 +18,7 @@ async function importSchoolScience(
     li: 'local-order-science',
     rv: 1,
     course: { n: 'School science', o: 0, c: 1000, e: examDate, um: unlockMode },
-    lessons: ['A', 'B', 'C'].map((id) => ({
+    lessons: lessonIds.map((id) => ({
       i: id,
       n: `Topic ${id}`,
       notes: [],
@@ -37,7 +38,7 @@ async function importSchoolScience(
       },
       { id: 'final', n: 'Final exam', e: examDate, k: 'f', a: null, m: 'p', c: 1000 },
     ],
-    concepts: ['A', 'B', 'C'].map((id) => ({ id: `concept-${id}`, n: `Concept ${id}` })),
+    concepts: lessonIds.map((id) => ({ id: `concept-${id}`, n: `Concept ${id}` })),
     questions: [],
     questionSets: [
       {
@@ -89,14 +90,14 @@ async function importSchoolScience(
   if (practiceAfterEveryLesson) {
     const questionSet = payload.questionSets[0];
     const practice = payload.questionSetPracticeNodes[0];
-    payload.questionSets = ['A', 'B', 'C'].map((id) => ({
+    payload.questionSets = lessonIds.map((id) => ({
       ...questionSet,
       id: `set-${id}`,
       title: `Topic ${id} questions`,
       lessonIds: [id],
       questions: questionSet.questions.map((question) => ({ ...question, id: `written-${id}` })),
     }));
-    payload.questionSetPracticeNodes = ['A', 'B', 'C'].map((id) => ({
+    payload.questionSetPracticeNodes = lessonIds.map((id) => ({
       ...practice,
       id: `activity-${id}`,
       name: `Topic ${id} questions`,
@@ -634,14 +635,24 @@ for (const input of [
   { name: 'touch lesson', width: 390, touch: true, checkpoint: false },
   { name: 'mouse checkpoint', width: 1440, touch: false, checkpoint: true },
   { name: 'touch checkpoint', width: 390, touch: true, checkpoint: true },
-]) {
+].flatMap((input) => [
+  { ...input, near: false },
+  { ...input, name: `${input.name} near edge`, near: true },
+])) {
   test.describe(`path drag edge scrolling with ${input.name}`, () => {
-    test.use({ viewport: { width: input.width, height: 650 }, hasTouch: input.touch });
+    const height = input.near ? 1000 : 650;
+    test.use({ viewport: { width: input.width, height }, hasTouch: input.touch });
     test('scrolls continuously at either edge while the held pointer is stationary', async ({
       page,
     }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      await importSchoolScience(page, 'open', false, true);
+      await importSchoolScience(
+        page,
+        'open',
+        false,
+        true,
+        input.near ? ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] : undefined,
+      );
       const path = page.getByRole('list', { name: 'Course path' });
       let row = path.locator('[data-path-lesson="A"] [data-path-row]');
       if (input.checkpoint) {
@@ -658,7 +669,7 @@ for (const input of [
           name: 'Edit checkpoint: Edge scrolling test',
           exact: true,
         });
-        for (const anchor of ['B', 'A']) {
+        for (const anchor of input.near ? ['G', 'F', 'E', 'D', 'C', 'B', 'A'] : ['B', 'A']) {
           await row.press('Alt+ArrowUp');
           await expect
             .poll(async () => {
@@ -677,10 +688,15 @@ for (const input of [
       const viewport = (await scroller.boundingBox())!;
       const scrollTop = () => scroller.evaluate((element) => element.scrollTop);
       const before = await scrollTop();
+      const maximum = await scroller.evaluate(
+        (element) => element.scrollHeight - element.clientHeight,
+      );
       const x = Math.round(start.x + (input.checkpoint ? start.width - 20 : start.width / 2));
       const y = Math.round(start.y + start.height / 2);
-      const bottomY = Math.round(Math.min(650, viewport.y + viewport.height) - 8);
-      const topY = Math.round(Math.max(0, viewport.y) + 8);
+      const bottomEdge = Math.min(height, viewport.y + viewport.height);
+      const distance = input.near ? (input.checkpoint ? 80 : 96) : 8;
+      const bottomY = Math.round(bottomEdge - distance);
+      const topY = Math.round(Math.max(0, viewport.y) + (input.near ? 80 : 8));
       const session = input.touch ? await page.context().newCDPSession(page) : undefined;
       const move = async (clientY: number) => {
         if (session) {
@@ -703,10 +719,37 @@ for (const input of [
       }
       await expect(row).toHaveAttribute('data-drag-lifted', 'true');
       await move(bottomY);
+      if (input.near) {
+        await expect
+          .poll(() =>
+            path
+              .locator('[data-path-source]')
+              .evaluateAll((rows) =>
+                Math.max(
+                  ...rows
+                    .filter((row) => row.querySelector('[data-drag-lifted="true"]'))
+                    .map((row) => row.getBoundingClientRect().bottom),
+                ),
+              ),
+          )
+          .toBeGreaterThan(bottomEdge - 64);
+      }
       await expect.poll(scrollTop).toBeGreaterThan(before + 60);
       const firstAdvance = await scrollTop();
       await expect.poll(scrollTop).toBeGreaterThan(firstAdvance + 40);
       await expect(row).toHaveAttribute('data-drag-lifted', 'true');
+      if (input.near && !input.checkpoint) {
+        await expect.poll(scrollTop, { timeout: 10000 }).toBeGreaterThanOrEqual(maximum);
+        await page.waitForTimeout(180);
+        expect(await scrollTop()).toBe(maximum);
+      }
+      if (input.near)
+        await page.screenshot({
+          path: test
+            .info()
+            .outputPath(`near-edge-${input.checkpoint ? 'checkpoint' : 'lesson'}-scroll.png`),
+          animations: 'allow',
+        });
       const bottomScroll = await scrollTop();
       await move(topY);
       await expect.poll(scrollTop).toBeLessThan(bottomScroll - 60);
@@ -722,7 +765,7 @@ for (const input of [
       await expect(row).not.toHaveAttribute('data-drag-lifted', 'true');
       await expect(path.locator('[data-drop-active]')).toHaveCount(0);
       await page.reload();
-      await expect(path.locator('[data-path-lesson]')).toHaveCount(3);
+      await expect(path.locator('[data-path-lesson]')).toHaveCount(input.near ? 8 : 3);
     });
   });
 }
