@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { DelayedFallback } from '../ui/DelayedFallback';
+import { lazy } from 'react';
+import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 import type { CardImportDialogProps } from './CardImportDialog';
 
 const Dialog = lazy(() =>
@@ -9,14 +9,8 @@ const Dialog = lazy(() =>
 /** Keep file parsers and card previews off the dashboard's initial loading path. */
 export function LazyCardImportDialog(props: CardImportDialogProps) {
   return (
-    <Suspense
-      fallback={
-        <DelayedFallback>
-          <p role="status">Loading importer…</p>
-        </DelayedFallback>
-      }
-    >
+    <PageLoadingBoundary>
       <Dialog {...props} />
-    </Suspense>
+    </PageLoadingBoundary>
   );
 }

@@ -9,62 +9,104 @@ export function retainedLiveQuery<T>(read: (key: string) => Promise<T>) {
     let error: { cause: unknown } | undefined;
     let subscription: { unsubscribe(): void } | undefined;
     let expiry: ReturnType<typeof setTimeout> | undefined;
+    let version = 0;
+    let pending:
+      { promise: Promise<void>; resolve(): void; reject(cause: unknown): void } | undefined;
     const listeners = new Set<() => void>();
+    function stop() {
+      version++;
+      subscription?.unsubscribe();
+      subscription = undefined;
+    }
+    function idle() {
+      if (listeners.size) return;
+      stop();
+      error = undefined;
+      clearTimeout(expiry);
+      expiry = setTimeout(() => entry.dispose(), 5 * 60_000);
+    }
+    function start() {
+      clearTimeout(expiry);
+      if (subscription) return;
+      const current = ++version;
+      subscription = liveQuery(() => read(key)).subscribe({
+        next(result) {
+          if (current !== version) return;
+          value = result;
+          error = undefined;
+          const waiting = pending;
+          pending = undefined;
+          listeners.forEach((notify) => notify());
+          waiting?.resolve();
+          idle();
+        },
+        error(cause: unknown) {
+          if (current !== version) return;
+          error = { cause };
+          const waiting = pending;
+          pending = undefined;
+          stop();
+          listeners.forEach((notify) => notify());
+          waiting?.reject(cause);
+          idle();
+        },
+      });
+    }
     const entry = {
       idle: () => listeners.size === 0,
       dispose() {
         clearTimeout(expiry);
-        subscription?.unsubscribe();
-        entries.delete(key);
+        stop();
+        pending?.resolve();
+        pending = undefined;
+        if (entries.get(key) === entry) entries.delete(key);
       },
       snapshot() {
         if (error) throw error.cause;
         return value;
       },
+      preload() {
+        if (pending) return pending.promise;
+        if (subscription && value !== undefined) return Promise.resolve();
+        let resolve!: () => void;
+        let reject!: (cause: unknown) => void;
+        const promise = new Promise<void>((done, fail) => {
+          resolve = done;
+          reject = fail;
+        });
+        pending = { promise, resolve, reject };
+        start();
+        return promise;
+      },
       subscribe(listener: () => void) {
-        clearTimeout(expiry);
         listeners.add(listener);
-        if (!subscription) {
-          subscription = liveQuery(() => read(key)).subscribe({
-            next(result) {
-              value = result;
-              error = undefined;
-              listeners.forEach((notify) => notify());
-            },
-            error(cause: unknown) {
-              error = { cause };
-              listeners.forEach((notify) => notify());
-            },
-          });
-        }
+        start();
         return () => {
           listeners.delete(listener);
-          if (listeners.size === 0) {
-            subscription?.unsubscribe();
-            subscription = undefined;
-            error = undefined;
-            expiry = setTimeout(() => entry.dispose(), 5 * 60_000);
-          }
+          if (!pending) idle();
         };
       },
     };
     return entry;
   }
-  return function useRetainedQuery(key: string | undefined) {
-    const entry = useMemo(() => {
-      const id = key ?? '';
-      let cached = entries.get(id);
-      if (!cached) {
-        // Active readers are never evicted. Idle snapshots expire even if no new course opens.
-        for (const candidate of entries.values()) {
-          if (entries.size < 5) break;
-          if (candidate.idle()) candidate.dispose();
-        }
-        cached = createEntry(id);
-        entries.set(id, cached);
+  function getEntry(key: string | undefined) {
+    const id = key ?? '';
+    let cached = entries.get(id);
+    if (!cached) {
+      // Active readers are never evicted. Idle snapshots expire even if no new course opens.
+      for (const candidate of entries.values()) {
+        if (entries.size < 5) break;
+        if (candidate.idle()) candidate.dispose();
       }
-      return cached;
-    }, [key]);
+      cached = createEntry(id);
+      entries.set(id, cached);
+    }
+    return cached;
+  }
+  function useRetainedQuery(key: string | undefined) {
+    const entry = useMemo(() => getEntry(key), [key]);
     return useSyncExternalStore(entry.subscribe, entry.snapshot, entry.snapshot);
-  };
+  }
+  useRetainedQuery.preload = (key: string) => getEntry(key).preload();
+  return useRetainedQuery;
 }

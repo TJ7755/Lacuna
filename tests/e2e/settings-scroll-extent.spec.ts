@@ -45,7 +45,9 @@ for (const viewport of VIEWPORTS) {
       const groups = page.locator('section[id^="settings-group-"]');
       await expect(groups).toHaveCount(5);
       const lastRow = page.locator('#settings-group-integrations h2');
-      const frame = page.locator('main header').locator('..');
+      const frame = page
+        .getByRole('heading', { level: 1, name: 'Settings', exact: true })
+        .locator('../..');
 
       async function expectCollapsed() {
         for (const group of await groups.all()) {
@@ -85,7 +87,7 @@ for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
     await page.goto('/#/help');
     await expect(page.getByRole('heading', { level: 1, name: 'Help' })).toBeVisible();
-    let frame = page.locator('main header').locator('..');
+    let frame = page.getByRole('heading', { level: 1, name: 'Help', exact: true }).locator('../..');
     await expectNaturalScrollExtent(page, frame.locator(':scope > div').last(), frame);
 
     await page.goto(`${courseUrl}/settings`);

@@ -44,7 +44,7 @@ it('reads only after an explicit unlock and preserves unknown, self-marked and d
 it('explains an empty day without claiming no study and leads to the class code', async () => {
   render(<Harness />);
   await unlock();
-  expect(await screen.findByText(/No report does not mean no study/)).toBeVisible();
+  await waitFor(() => expect(screen.getByText(/No report does not mean no study/)).toBeVisible());
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Share class code' }));
   fireEvent.click(screen.getByRole('button', { name: 'Publish class code' }));
@@ -251,7 +251,12 @@ it('restores an earlier day’s read evidence after navigation without another f
   const page = render(<Harness cache={cache} />);
   await unlock();
   await screen.findByRole('table');
-  fireEvent.click(screen.getByRole('button', { name: 'Previous day' }));
+  const pupil = screen.getByRole('button', { name: 'Retained pupil' });
+  pupil.focus();
+  fireEvent.keyDown(pupil, { key: '[' });
+  // Stepping starts a read without tearing down the evidence or its keyboard focus.
+  expect(pupil).toBeInTheDocument();
+  expect(pupil).toHaveFocus();
   await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(2));
   await screen.findByRole('table');
   page.unmount();

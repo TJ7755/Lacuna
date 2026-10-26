@@ -20,7 +20,6 @@ import {
 } from '../../db/importEngine';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { Button } from '../ui/Button';
-import { Skeleton } from '../ui/Skeleton';
 import { cn } from '../ui/cn';
 import { DownloadIcon, UploadIcon } from '../ui/icons';
 
@@ -490,10 +489,7 @@ export function UnifiedImportPanel({
                 transition={{ duration: 0.15 * m }}
                 className="flex items-center gap-2.5 rounded-2xl bg-accent-soft/60 px-3.5 py-2 text-xs text-accent-ink"
               >
-                <Skeleton
-                  as="span"
-                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
-                />
+                <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
                 {pasteNotification}
               </motion.div>
             )}

@@ -8,50 +8,52 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useLoadingVisibility } from '../../hooks/useLoadingVisibility';
-import { DelayedFallback } from './DelayedFallback';
+import { PageArrival, PageArrivalReady } from './PageArrival';
 
 const LoadingContext = createContext<((token: object, pending: boolean) => void) | null>(null);
 
-/** One clock spans archive checks, chunk loading and page data. Chrome remains outside it. */
+/** Readiness coordinates real content entrances; loading never draws a substitute page. */
 export function PageLoadingBoundary({
   children,
-  fallback,
+  pending = false,
+  className,
+  animateArrival = true,
 }: {
   children: ReactNode;
-  fallback: ReactNode;
+  pending?: boolean;
+  className?: string;
+  animateArrival?: boolean;
 }) {
   const [tokens, setTokens] = useState<ReadonlySet<object>>(() => new Set());
   const report = useCallback((token: object, pending: boolean) => {
     setTokens((current) => {
+      if (current.has(token) === pending) return current;
       const next = new Set(current);
       if (pending) next.add(token);
       else next.delete(token);
       return next;
     });
   }, []);
-  const visible = useLoadingVisibility(tokens.size > 0);
+  const waiting = pending || tokens.size > 0;
+  const content = <Suspense fallback={<PageLoading />}>{children}</Suspense>;
   return (
     <LoadingContext.Provider value={report}>
-      {visible && (
-        <div role="status" aria-label="Loading page">
-          {fallback}
-        </div>
-      )}
-      <div hidden={visible}>
-        <Suspense fallback={<PageLoading />}>{children}</Suspense>
+      <div className={className} aria-busy={waiting || undefined}>
+        <PageArrivalReady value={!waiting}>
+          {animateArrival ? <PageArrival>{content}</PageArrival> : content}
+        </PageArrivalReady>
       </div>
     </LoadingContext.Provider>
   );
 }
 
-/** Page data branches report to the same boundary as the route's Suspense fallback. */
-export function PageLoading({ fallback }: { fallback?: ReactNode }) {
+/** Report a local data dependency without replacing the surrounding live controls. */
+export function PageLoading() {
   const report = useContext(LoadingContext);
   const token = useMemo(() => ({}), []);
   useLayoutEffect(() => {
     report?.(token, true);
     return () => report?.(token, false);
   }, [report, token]);
-  return report ? null : <DelayedFallback>{fallback}</DelayedFallback>;
+  return null;
 }

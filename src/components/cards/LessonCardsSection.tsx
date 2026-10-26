@@ -1,5 +1,5 @@
 // Card-management section for LessonView's Edit mode, shown beneath the compact
-// LessonCardsList — heading, answer mode, the card list and the resolving-deck skeleton.
+// LessonCardsList — heading, answer mode, the card list and membership readiness.
 // Adding cards of every kind starts from the panel's New card (see CardTypePicker), so
 // an empty lesson has nothing to manage here. Extracted from LessonView.tsx alongside
 // LessonNotesSection so the page component stays a thin layout/data shell.
@@ -14,7 +14,7 @@ import { useLessonCardLinks, useOcclusions, useSequences } from '../../state/use
 import { db } from '../../db/schema';
 import { unlinkCardFromLesson } from '../../db/lessonRepository';
 import type { Card, SchedulerConfig } from '../../db/types';
-import { Skeleton } from '../ui/Skeleton';
+import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 
 interface LessonCardsSectionProps {
   courseId: string;
@@ -91,61 +91,60 @@ export function LessonCardsSection({
     </>
   );
 
+  const pending = links === undefined || !lessonSchedulingConfig;
+
   return (
-    <section className={className}>
-      {links === undefined || !lessonSchedulingConfig ? (
-        // Membership determines whether a row may delete the underlying card. Never
-        // render destructive controls until that membership query has resolved.
+    <section className={className} aria-label={pending ? 'Loading lesson cards' : undefined}>
+      {pending && (
         <>
           <div className="mb-2">{heading}</div>
           {controls}
-          <div className="space-y-3" aria-label="Loading lesson cards">
-            {Array.from({ length: Math.min(lessonCards.length, 3) }).map((_, i) => (
-              <Skeleton key={i} className="h-14 rounded-xl border border-line bg-ink/5" />
-            ))}
-          </div>
         </>
-      ) : (
-        <CardList
-          courseId={courseId}
-          cards={lessonCards}
-          context={courseCardListContext({
-            schedulingConfig: lessonSchedulingConfig,
-            courseId,
-            primaryLessonId: lessonId,
-            importTargetName: lessonName,
-          })}
-          heading={heading}
-          beforeCards={controls}
-          compactMetadata
-          onEditCard={(card) =>
-            onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)
-          }
-          linkedCardIds={linkedCardIds}
-          onUnlinkCard={(card) => void handleUnlink(card)}
-          sequences={sequences}
-          onEditSequence={(sequenceId) =>
-            // Sequence editing has no lesson-scoped edit route, so without an
-            // explicit origin the editor would default to Cards —
-            // override it to return here instead.
-            onNavigate(`/course/${courseId}/sequence/${sequenceId}/edit`, {
-              state: {
-                origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName },
-              },
-            })
-          }
-          occlusions={occlusions}
-          onEditOcclusion={(occlusionId) =>
-            // Mirrors onEditSequence above: occlusion editing has no lesson-scoped edit
-            // route either, so override the origin to return here instead.
-            onNavigate(`/course/${courseId}/occlusion/${occlusionId}/edit`, {
-              state: {
-                origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName },
-              },
-            })
-          }
-        />
       )}
+      <PageLoadingBoundary pending={pending}>
+        {/* Membership decides whether a row may delete the underlying card. */}
+        {pending ? null : (
+          <CardList
+            courseId={courseId}
+            cards={lessonCards}
+            context={courseCardListContext({
+              schedulingConfig: lessonSchedulingConfig,
+              courseId,
+              primaryLessonId: lessonId,
+              importTargetName: lessonName,
+            })}
+            heading={heading}
+            beforeCards={controls}
+            compactMetadata
+            onEditCard={(card) =>
+              onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)
+            }
+            linkedCardIds={linkedCardIds}
+            onUnlinkCard={(card) => void handleUnlink(card)}
+            sequences={sequences}
+            onEditSequence={(sequenceId) =>
+              // Sequence editing has no lesson-scoped edit route, so without an
+              // explicit origin the editor would default to Cards —
+              // override it to return here instead.
+              onNavigate(`/course/${courseId}/sequence/${sequenceId}/edit`, {
+                state: {
+                  origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName },
+                },
+              })
+            }
+            occlusions={occlusions}
+            onEditOcclusion={(occlusionId) =>
+              // Mirrors onEditSequence above: occlusion editing has no lesson-scoped edit
+              // route either, so override the origin to return here instead.
+              onNavigate(`/course/${courseId}/occlusion/${occlusionId}/edit`, {
+                state: {
+                  origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName },
+                },
+              })
+            }
+          />
+        )}
+      </PageLoadingBoundary>
     </section>
   );
 }

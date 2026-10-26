@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { loadRouteModule } from '../routes/routeModule';
 import { installStaleChunkRecovery, recoverFromChunkFailure } from './staleChunkRecovery';
 
 function memoryStorage(): Storage {
@@ -95,6 +96,44 @@ describe('stale chunk recovery', () => {
     expect(second.defaultPrevented).toBe(false);
     expect(reload).toHaveBeenCalledOnce();
     remove();
+  });
+
+  it('lets the route import owner handle its Vite error without a global reload', async () => {
+    vi.useFakeTimers();
+    const events = new EventTarget();
+    const clearPwaState = vi.fn().mockResolvedValue(undefined);
+    const reload = vi.fn();
+    const confirmOnline = vi.fn().mockResolvedValue(true);
+    const remove = installStaleChunkRecovery({
+      events,
+      storage: memoryStorage(),
+      clearPwaState,
+      reload,
+      now: () => 1_000,
+      online: () => true,
+      confirmOnline,
+    });
+    const failure = new TypeError('Failed to fetch dynamically imported module: /help.js');
+    try {
+      await expect(
+        loadRouteModule(async () => {
+          // Vite dispatches before rejecting the import promise with this same cause.
+          events.dispatchEvent(
+            Object.assign(new Event('vite:preloadError', { cancelable: true }), {
+              payload: failure,
+            }),
+          );
+          throw failure;
+        }),
+      ).rejects.toBe(failure);
+      await vi.runAllTimersAsync();
+      expect(confirmOnline).not.toHaveBeenCalled();
+      expect(clearPwaState).not.toHaveBeenCalled();
+      expect(reload).not.toHaveBeenCalled();
+    } finally {
+      remove();
+      vi.useRealTimers();
+    }
   });
 
   it('does not risk a reload loop when session storage is unavailable', async () => {

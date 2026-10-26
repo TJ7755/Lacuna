@@ -1,6 +1,5 @@
 import { COURSE_PAGE_FRAME, COURSE_PAGE_TITLE } from '../course/coursePageLayout';
-import { Skeleton } from '../ui/Skeleton';
-import { DelayedFallback } from '../ui/DelayedFallback';
+import { PageLoading } from '../ui/PageLoadingBoundary';
 // Merge review surface (Arc 7 §7.5, Task 7). A course-scoped route reached from the
 // "Update available" entry point on the course card and CoursePath header. It reads the
 // course's `pendingMergeReviews` row and lets the student resolve each queued update,
@@ -149,23 +148,7 @@ export function MergeReviewPanel() {
   );
 
   // Loading.
-  if (review === undefined || course === undefined)
-    return (
-      <DelayedFallback>
-        <div className={`${COURSE_PAGE_FRAME} py-6 md:py-8`}>
-          <Skeleton className="mb-6 h-11 w-32 rounded-full" />
-          <Skeleton className="mb-8 h-11 w-64 max-w-full" />
-          <div className="space-y-3">
-            {[0, 1, 2].map((key) => (
-              <div key={key} className="rounded-3xl bg-surface p-6 card-surface">
-                <Skeleton className="mb-4 h-5 w-1/2" />
-                <Skeleton className="h-11 w-28 rounded-full" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </DelayedFallback>
-    );
+  if (review === undefined || course === undefined) return <PageLoading />;
 
   // Empty state: navigated here with nothing outstanding, or completed this review.
   if (review === null)

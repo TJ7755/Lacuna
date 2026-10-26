@@ -13,9 +13,8 @@ import { useCourseQuestionData, useQuestionRecord } from '../components/question
 import { AppLink as Link } from '../components/ui/AppLink';
 import { Button } from '../components/ui/Button';
 import { ConfirmInlineSwap } from '../components/ui/ConfirmInline';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { NavigationGuard } from '../components/ui/NavigationGuard';
-import { Skeleton } from '../components/ui/Skeleton';
 import { StepSwap } from '../components/ui/StepSwap';
 import { TagInput } from '../components/ui/TagInput';
 import { useToast } from '../components/ui/Toast';
@@ -266,13 +265,7 @@ export function QuestionEditor() {
     (editing && record === undefined) ||
     !draft.loaded
   ) {
-    return (
-      <DelayedFallback>
-        <div className={`${COURSE_PAGE_FRAME} py-8`}>
-          <Skeleton className="h-12 w-72 rounded-xl bg-ink/10" />
-        </div>
-      </DelayedFallback>
-    );
+    return <PageLoading />;
   }
   if (course === null || (editing && record === null)) {
     return (

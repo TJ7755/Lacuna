@@ -4,7 +4,6 @@ import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { ConceptPracticePanel } from '../components/question-sets/ConceptPracticePanel';
 import { QuestionBankControls } from '../components/question-sets/QuestionBankControls';
 import { listConceptPractice } from '../questions/conceptPractice';
-import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
 import {
   COURSE_PAGE_FRAME,
   COURSE_PAGE_HEADER,
@@ -109,8 +108,7 @@ export function QuestionsPage() {
     !!course && !!data,
     `question-set-library:${courseId}`,
   );
-  if (course === undefined || data === undefined)
-    return <PageLoading fallback={<CoursePathSkeleton />} />;
+  if (course === undefined || data === undefined) return <PageLoading />;
   if (!course || !data) return <p className="p-8 text-ink-soft">This course could not be found.</p>;
   const author = resolveLessonViewMode(course) === 'edit' && !course.archived;
   const showBankControls = !course.archived && (author || course.distributedCopy?.locked === true);

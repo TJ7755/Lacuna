@@ -1,31 +1,11 @@
-import { lazy, Suspense } from 'react';
+import { lazy } from 'react';
 import { useCard } from '../../state/useData';
 import type { Card, SchedulerConfig } from '../../db/types';
-import { Skeleton } from '../ui/Skeleton';
+import { PageLoading, PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 
 const CardAnalytics = lazy(() =>
   import('./CardAnalytics').then((module) => ({ default: module.CardAnalytics })),
 );
-
-function Analytics({
-  card,
-  schedulingConfig,
-  motionMultiplier,
-}: {
-  card: Card;
-  schedulingConfig: SchedulerConfig;
-  motionMultiplier: number;
-}) {
-  return (
-    <Suspense fallback={<Skeleton className="h-32 rounded-xl bg-ink/[0.03]" />}>
-      <CardAnalytics
-        card={card}
-        schedulingConfig={schedulingConfig}
-        motionMultiplier={motionMultiplier}
-      />
-    </Suspense>
-  );
-}
 
 function HydratedAnalytics({
   cardId,
@@ -37,14 +17,15 @@ function HydratedAnalytics({
   motionMultiplier: number;
 }) {
   const card = useCard(cardId);
+  if (card === undefined) return <PageLoading />;
   return card ? (
-    <Analytics
+    <CardAnalytics
       card={card}
       schedulingConfig={schedulingConfig}
       motionMultiplier={motionMultiplier}
     />
   ) : (
-    <Skeleton className="h-32 rounded-xl bg-ink/[0.03]" />
+    <p className="text-sm text-ink-soft">This card is no longer available.</p>
   );
 }
 
@@ -58,17 +39,21 @@ export function ExpandedCardAnalytics({
   schedulingConfig: SchedulerConfig;
   motionMultiplier: number;
 }) {
-  return card.history.length > 0 ? (
-    <Analytics
-      card={card}
-      schedulingConfig={schedulingConfig}
-      motionMultiplier={motionMultiplier}
-    />
-  ) : (
-    <HydratedAnalytics
-      cardId={card.id}
-      schedulingConfig={schedulingConfig}
-      motionMultiplier={motionMultiplier}
-    />
+  return (
+    <PageLoadingBoundary>
+      {card.history.length > 0 ? (
+        <CardAnalytics
+          card={card}
+          schedulingConfig={schedulingConfig}
+          motionMultiplier={motionMultiplier}
+        />
+      ) : (
+        <HydratedAnalytics
+          cardId={card.id}
+          schedulingConfig={schedulingConfig}
+          motionMultiplier={motionMultiplier}
+        />
+      )}
+    </PageLoadingBoundary>
   );
 }

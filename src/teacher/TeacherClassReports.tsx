@@ -14,7 +14,8 @@ import { forgetRememberedClass } from './rememberedClass';
 import { readClassReports } from './readReports';
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
 import { createDemoReports } from './demoClass';
-import { ResultsSkeleton, Results } from './ClassResults';
+import { Results } from './ClassResults';
+import { GapsLoadingBoundary } from './GapsLoadingBoundary';
 import { Pupils } from './ClassPupils';
 import { LockedClass } from './ClassAccess';
 import { Invite } from './ClassInvite';
@@ -164,7 +165,7 @@ export function ClassPage({
     : null;
   if (view) shown.current = view;
   if (!session) shown.current = null;
-  const stale = !view && loading ? shown.current : null;
+  const stale = !view && !error ? shown.current : null;
 
   useEffect(() => {
     if (!session || tab === 'invite') return;
@@ -332,65 +333,65 @@ export function ClassPage({
             </p>
           )}
 
-          {tab === 'invite' ? (
-            <Invite course={course} session={session} onChanged={onChanged} />
-          ) : error ? (
-            <SectionCard className="gaps-rise flex flex-col items-start gap-4 p-8">
-              <p role="alert" className="text-negative">
-                {error}
-              </p>
-              <button
-                type="button"
-                className={buttonClassName('secondary')}
-                onClick={() => setAttempt((value) => value + 1)}
+          <GapsLoadingBoundary pending={tab !== 'invite' && !error && !data}>
+            {tab === 'invite' ? (
+              <Invite course={course} session={session} onChanged={onChanged} />
+            ) : error ? (
+              <SectionCard className="gaps-rise flex flex-col items-start gap-4 p-8">
+                <p role="alert" className="text-negative">
+                  {error}
+                </p>
+                <button
+                  type="button"
+                  className={buttonClassName('secondary')}
+                  onClick={() => setAttempt((value) => value + 1)}
+                >
+                  Try again
+                </button>
+              </SectionCard>
+            ) : !data ? null : data.reports.length === 0 ? (
+              <SectionCard
+                key={data.day}
+                className={cn(
+                  'gaps-rise flex flex-col items-center px-6 py-16 text-center transition-opacity duration-300',
+                  stale && 'opacity-50',
+                )}
               >
-                Try again
-              </button>
-            </SectionCard>
-          ) : !data ? (
-            <ResultsSkeleton />
-          ) : data.reports.length === 0 ? (
-            <SectionCard
-              key={data.day}
-              className={cn(
-                'gaps-rise flex flex-col items-center px-6 py-16 text-center transition-opacity duration-300',
-                stale && 'opacity-50',
-              )}
-            >
-              <StudyDrawing kind="time" className="mb-6 h-24 w-24" />
-              <h2 className="font-display text-2xl font-semibold tracking-tight">
-                {data.unreadable > 0 ? 'No readable reports' : 'No reports'} for{' '}
-                {dayLabel(data.day)}
-              </h2>
-              <p role="status" className="mt-3 max-w-sm text-ink-soft">
-                {data.unreadable > 0
-                  ? 'Reports arrived but could not be decrypted with this key. Check the class recovery key and try again.'
-                  : 'No report does not mean no study.'}
-              </p>
-              <button
-                type="button"
-                className={`${buttonClassName('secondary')} gaps-press mt-8`}
-                onClick={() => setTab('invite')}
+                <StudyDrawing kind="time" className="mb-6 h-24 w-24" />
+                <h2 className="font-display text-2xl font-semibold tracking-tight">
+                  {data.unreadable > 0 ? 'No readable reports' : 'No reports'} for{' '}
+                  {dayLabel(data.day)}
+                </h2>
+                <p role="status" className="mt-3 max-w-sm text-ink-soft">
+                  {data.unreadable > 0
+                    ? 'Reports arrived but could not be decrypted with this key. Check the class recovery key and try again.'
+                    : 'No report does not mean no study.'}
+                </p>
+                <button
+                  type="button"
+                  className={`${buttonClassName('secondary')} gaps-press mt-8`}
+                  onClick={() => setTab('invite')}
+                >
+                  Share class code
+                </button>
+              </SectionCard>
+            ) : (
+              <div
+                key={data.day}
+                aria-busy={Boolean(stale)}
+                className={cn(
+                  'transition-opacity duration-300',
+                  stale && 'pointer-events-none opacity-50',
+                )}
               >
-                Share class code
-              </button>
-            </SectionCard>
-          ) : (
-            <div
-              key={data.day}
-              aria-busy={Boolean(stale)}
-              className={cn(
-                'transition-opacity duration-300',
-                stale && 'pointer-events-none opacity-50',
-              )}
-            >
-              {tab === 'results' ? (
-                <Results reports={data.reports} />
-              ) : (
-                <Pupils reports={data.reports} />
-              )}
-            </div>
-          )}
+                {tab === 'results' ? (
+                  <Results reports={data.reports} />
+                ) : (
+                  <Pupils reports={data.reports} />
+                )}
+              </div>
+            )}
+          </GapsLoadingBoundary>
         </>
       )}
 

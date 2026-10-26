@@ -1,5 +1,4 @@
 import { CreateButton } from '../components/ui/CreateButton';
-import { Skeleton } from '../components/ui/Skeleton';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -9,7 +8,7 @@ import { BatchAuthoringPromptDialog } from '../components/items/BatchAuthoringPr
 import { QuestionBankCard } from '../components/questions/QuestionBankCard';
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { Button } from '../components/ui/Button';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, SparklesIcon } from '../components/ui/icons';
 import { MOTION_EASING } from '../components/ui/motion';
 import { summariseQuestion } from '../questions/bankSummary';
@@ -83,11 +82,7 @@ export function LegacyQuestionsPage() {
   );
 
   if (course === undefined || lessons === undefined || data === undefined) {
-    return (
-      <DelayedFallback>
-        <QuestionsPageSkeleton />
-      </DelayedFallback>
-    );
+    return <PageLoading />;
   }
   if (course === null) {
     return (
@@ -214,18 +209,6 @@ export function LegacyQuestionsPage() {
           />
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-function QuestionsPageSkeleton() {
-  return (
-    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-6 md:pt-8`}>
-      <Skeleton className="mb-6 h-11 w-56 rounded-xl bg-ink/10" />
-      <div className="grid gap-4 md:grid-cols-2">
-        <Skeleton className="h-40 rounded-3xl bg-ink/10" />
-        <Skeleton className="h-40 rounded-3xl bg-ink/10" />
-      </div>
     </div>
   );
 }

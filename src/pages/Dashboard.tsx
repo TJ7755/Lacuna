@@ -2,11 +2,10 @@ import { AppLink } from '../components/ui/AppLink';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
-import { Skeleton } from '../components/ui/Skeleton';
 import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useDelayedPending } from '../hooks/useDelayedPending';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useNavigation } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
 import { SyncStatus } from '../components/dashboard/SyncStatus';
@@ -38,7 +37,7 @@ import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/Cou
 
 /**
  * The forecast leads Today, so the queue waits for it to arrive as one piece. A forecast
- * still pending after this long gives way: the queue appears beneath a placeholder.
+ * still pending after this long gives way so the queue remains available.
  */
 const FORECAST_WAIT_MS = 600;
 
@@ -66,6 +65,8 @@ export function Dashboard() {
   const navigate = useNavigate();
   const { openStudySheet } = useStudySheet();
   const location = useLocation();
+  const navigation = useNavigation();
+  const destination = navigation.location?.pathname ?? location.pathname;
   const importing = new URLSearchParams(location.search).has('import');
   const [creatingCourse, setCreatingCourse] = useState(false);
   useEffect(() => {
@@ -74,11 +75,13 @@ export function Dashboard() {
       void navigate('/', { replace: true, state: null });
     }
   }, [location.state, navigate]);
-  // Reaching Today ends onboarding, however the learner left it, so a later course never
-  // detours through its last step.
+  // A retained source or exiting Today is not an arrival: first-run navigation may
+  // still be opening onboarding, whose chosen target must survive that hand-off.
   useEffect(() => {
-    if (onboardingPending()) finishOnboarding();
-  }, []);
+    if (location.pathname === '/' && destination === '/' && onboardingPending()) {
+      finishOnboarding();
+    }
+  }, [location.pathname, destination]);
   const { notify } = useToast();
   const [courseMenu, setCourseMenu] = useState<CourseMenuState | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null);
@@ -178,7 +181,7 @@ export function Dashboard() {
     rows !== undefined && !forecastSettled,
     FORECAST_WAIT_MS,
   );
-  // Once Today has arrived it stays: live updates never send it back to the skeleton.
+  // Once Today has arrived it stays through live updates.
   const [arrived, setArrived] = useState(false);
   const ready = arrived || (rows !== undefined && (forecastSettled || forecastOverdue));
   useEffect(() => {
@@ -267,7 +270,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <PageLoadingBoundary fallback={<CourseSkeleton />}>
+      <PageLoadingBoundary>
         {!rows || !ready ? (
           <PageLoading />
         ) : rows.length === 0 ? (
@@ -277,11 +280,9 @@ export function Dashboard() {
           />
         ) : (
           <div className="flex flex-col gap-6">
-            {/* The forecast arrives whole, fading in place, and holds its room while late. */}
-            {!forecastSettled ? (
-              <ForecastPlaceholder />
-            ) : (
-              showForecast && (
+            {/* The forecast arrives whole before the queue. */}
+            <PageLoadingBoundary pending={!forecastSettled} animateArrival={false}>
+              {forecastSettled && showForecast && (
                 <motion.section
                   aria-label="Forecast and this week"
                   className="flex flex-col gap-5 rounded-3xl bg-surface p-5 card-surface md:p-6"
@@ -303,8 +304,8 @@ export function Dashboard() {
                   )}
                   {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
                 </motion.section>
-              )
-            )}
+              )}
+            </PageLoadingBoundary>
             {/* The queue follows the forecast that explains it, starting as the forecast settles. */}
             <TodayQueue
               rows={rows}
@@ -375,25 +376,6 @@ export function Dashboard() {
           </Suspense>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-/** Holds about the room the forecast surface takes, so its arrival barely moves the queue. */
-function ForecastPlaceholder() {
-  return <Skeleton className="h-[540px] rounded-3xl bg-surface sm:h-[520px] lg:h-[480px]" />;
-}
-
-function CourseSkeleton() {
-  return (
-    <div className="flex flex-col gap-6">
-      <ForecastPlaceholder />
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="flex h-[68px] items-center gap-4 rounded-[18px] bg-surface px-5">
-          <div className="h-2.5 w-2.5 rounded-full bg-ink/10" />
-          <Skeleton className="h-5 w-40 rounded bg-ink/10" />
-        </div>
-      ))}
     </div>
   );
 }

@@ -1,4 +1,19 @@
 import {
+  loadCardEditor,
+  loadSequenceEditor,
+  loadOcclusionEditor,
+  loadQuestionEditor,
+  loadQuestionSetEditor,
+  loadQuestionSetOverview,
+  loadQuestionSetPractice,
+  loadQuestionLearnMode,
+  loadLearnMode,
+  loadMergeReviewPanel,
+  loadTeacherHome,
+  loadShareLinkPage,
+  loadLanding,
+  loadDownload,
+  loadMethod,
   loadAnalytics,
   loadArchivedCourses,
   loadCardsPage,
@@ -16,10 +31,16 @@ import {
   loadPupilClassPage,
 } from './loaders';
 
-import { loadRouteModule, type RouteLoader } from './routeModule';
+import { loadRouteModule, loadRouteModuleForNavigation, type RouteLoader } from './routeModule';
 
 const PREFETCH_LOADERS: Partial<Record<string, RouteLoader>> = {
   '/analytics': loadAnalytics,
+  '/teach': loadTeacherHome,
+  '/learn': loadLearnMode,
+  '/welcome': loadLanding,
+  '/landing': loadLanding,
+  '/download': loadDownload,
+  '/method': loadMethod,
   '/archived': loadArchivedCourses,
   '/help': loadHelpPage,
   '/import': loadImportPanel,
@@ -29,59 +50,97 @@ const PREFETCH_LOADERS: Partial<Record<string, RouteLoader>> = {
 };
 
 const COURSE_PREFETCH_LOADERS: Array<{
-  key: string;
   pattern: RegExp;
   loader: RouteLoader;
 }> = [
-  { key: 'course-study', pattern: /^\/course\/[^/]+\/study\/?$/, loader: loadCourseStudyFlow },
-  { key: 'course-path', pattern: /^\/course\/[^/]+\/?$/, loader: loadCoursePath },
+  { pattern: /^\/course\/[^/]+\/questions\/learn\/?$/, loader: loadQuestionLearnMode },
+  { pattern: /^\/course\/[^/]+\/learn\/?$/, loader: loadLearnMode },
+  { pattern: /^\/course\/[^/]+\/question-sets\/[^/]+\/edit\/?$/, loader: loadQuestionSetEditor },
   {
-    key: 'course-lesson',
+    pattern: /^\/course\/[^/]+\/question-sets\/[^/]+\/attempts\/[^/]+\/?$/,
+    loader: loadQuestionSetPractice,
+  },
+  { pattern: /^\/course\/[^/]+\/question-sets\/[^/]+\/?$/, loader: loadQuestionSetOverview },
+  { pattern: /^\/course\/[^/]+\/questions\/(?:new|[^/]+\/edit)\/?$/, loader: loadQuestionEditor },
+  {
+    pattern: /^\/course\/[^/]+(?:\/lesson\/[^/]+)?\/cards\/(?:new|[^/]+\/edit)\/?$/,
+    loader: loadCardEditor,
+  },
+  {
+    pattern: /^\/course\/[^/]+(?:\/lesson\/[^/]+)?\/sequence\/(?:new|[^/]+\/edit)\/?$/,
+    loader: loadSequenceEditor,
+  },
+  {
+    pattern: /^\/course\/[^/]+(?:\/lesson\/[^/]+)?\/occlusion\/(?:new|[^/]+\/edit)\/?$/,
+    loader: loadOcclusionEditor,
+  },
+  { pattern: /^\/course\/[^/]+\/updates\/?$/, loader: loadMergeReviewPanel },
+  { pattern: /^\/course\/[^/]+\/study\/?$/, loader: loadCourseStudyFlow },
+  { pattern: /^\/course\/[^/]+\/?$/, loader: loadCoursePath },
+  {
     pattern: /^\/course\/[^/]+\/lesson\/[^/]+\/?$/,
     loader: loadLessonView,
   },
-  { key: 'course-cards', pattern: /^\/course\/[^/]+\/cards\/?$/, loader: loadCardsPage },
+  { pattern: /^\/course\/[^/]+\/cards\/?$/, loader: loadCardsPage },
   {
-    key: 'course-questions',
     pattern: /^\/course\/[^/]+\/questions\/?$/,
     loader: loadQuestionsPage,
   },
   {
-    key: 'course-analytics',
     pattern: /^\/course\/[^/]+\/analytics\/?$/,
     loader: loadCourseAnalytics,
   },
   {
-    key: 'course-settings',
     pattern: /^\/course\/[^/]+\/settings\/?$/,
     loader: loadCourseSettings,
   },
 ];
 
-const prefetchedRoutes = new Set<string>();
-
-function prefetchTarget(path: string): { key: string; loader: RouteLoader } | undefined {
-  const normalised = path.split('?')[0].split('#')[0];
-  if (/^\/gaps\/[^/]+\/?$/.test(normalised))
-    return { key: 'pupil-class', loader: loadPupilClassPage };
+function prefetchTarget(path: string): { loader: RouteLoader; dataKey?: string } | undefined {
+  const normalised = path.split('?')[0].split('#')[0].replace(/\/$/, '') || '/';
+  if (/^\/gaps\/[^/]+$/.test(normalised)) return { loader: loadPupilClassPage };
+  if (/^\/s\/[^/]+$/.test(normalised)) return { loader: loadShareLinkPage };
+  if (/^\/lesson\/[^/]+\/learn$/.test(normalised)) return { loader: loadLearnMode };
   if (normalised.startsWith('/course/')) {
     const match = COURSE_PREFETCH_LOADERS.find(({ pattern }) => pattern.test(normalised));
-    return match ? { key: match.key, loader: match.loader } : undefined;
+    if (!match) return;
+    return {
+      loader: match.loader,
+      dataKey:
+        match.loader === loadCoursePath ? decodeURIComponent(normalised.split('/')[2]) : undefined,
+    };
   }
   const loader = Object.hasOwn(PREFETCH_LOADERS, normalised)
     ? PREFETCH_LOADERS[normalised]
     : undefined;
-  return loader ? { key: normalised, loader } : undefined;
+  return loader ? { loader } : undefined;
 }
 
-/** Start loading a route chunk while the user is hovering, focusing or pressing its link. */
+/** Keep the existing outlet until its destination chunk and supported local reads are ready. */
+async function prepareTarget(
+  path: string,
+  source: 'intent' | 'navigation',
+  signal?: AbortSignal,
+): Promise<null> {
+  try {
+    const target = prefetchTarget(path);
+    if (!target || signal?.aborted) return null;
+    const module = await (source === 'navigation'
+      ? loadRouteModuleForNavigation(target.loader, signal)
+      : loadRouteModule(target.loader));
+    if (!signal?.aborted && target.dataKey) await module.preload?.(target.dataKey);
+  } catch {
+    // Speculation must be retryable. Navigation leaves import recovery and query
+    // errors with their existing React owners rather than the router error page.
+  }
+  return null;
+}
+
+export function prepareRoute(path: string, signal?: AbortSignal): Promise<null> {
+  return prepareTarget(path, 'navigation', signal);
+}
+
+/** Start bounded route work while the user is hovering, focusing or pressing its link. */
 export function prefetchRoute(path: string): void {
-  const target = prefetchTarget(path);
-  if (!target || prefetchedRoutes.has(target.key)) return;
-  const { key, loader } = target;
-  prefetchedRoutes.add(key);
-  void loadRouteModule(loader).catch(() => {
-    // A later navigation should be allowed to retry a failed prefetch.
-    prefetchedRoutes.delete(key);
-  });
+  void prepareTarget(path, 'intent');
 }

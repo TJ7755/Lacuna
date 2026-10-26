@@ -18,14 +18,29 @@ export function sessionPreloadCards(
   now = Date.now(),
 ): Card[] {
   let remaining = cards.filter((card) => card.id !== currentId);
+  // Objective scoring is expensive. Skip speculation when there are no assets to warm.
+  if (
+    !remaining.some(
+      (card) =>
+        card.occlusionRegionId !== undefined ||
+        referencedAssetHashesInValues(card.front, card.back, card.payload).length > 0,
+    )
+  )
+    return [];
   if (!context) return remaining.slice(0, LOOKAHEAD);
   // Scoring changes the FSRS engine's fuzz seed, even during selection. Speculation
   // needs its own engines so it cannot affect a later real review.
   const lookaheadContext: SessionContext = {
     ...context,
-    decks: new Map([...context.decks].map(([id, unit]) => [id, {
-      ...unit, oc: makeObjectiveContext(unit.deck, unit.oc.examDateContext),
-    }])),
+    decks: new Map(
+      [...context.decks].map(([id, unit]) => [
+        id,
+        {
+          ...unit,
+          oc: makeObjectiveContext(unit.deck, unit.oc.examDateContext),
+        },
+      ]),
+    ),
   };
   const upcoming: Card[] = [];
   while (upcoming.length < LOOKAHEAD) {
@@ -53,17 +68,19 @@ export function preloadSessionImages(
   let cancelled = false;
   const images: HTMLImageElement[] = [];
   for (const hash of [...hashes].slice(0, MAX_IMAGES)) {
-    void resolveAssetUrl(hash).then(async (url) => {
-      if (cancelled || !url) return;
-      const image = new Image();
-      images.push(image);
-      image.decoding = 'async';
-      image.src = url;
-      await image.decode();
-      rememberAssetImageSize(url, image.naturalWidth, image.naturalHeight);
-    }).catch(() => {
-      // Missing or undecodable images must never interrupt study.
-    });
+    void resolveAssetUrl(hash)
+      .then(async (url) => {
+        if (cancelled || !url) return;
+        const image = new Image();
+        images.push(image);
+        image.decoding = 'async';
+        image.src = url;
+        await image.decode();
+        rememberAssetImageSize(url, image.naturalWidth, image.naturalHeight);
+      })
+      .catch(() => {
+        // Missing or undecodable images must never interrupt study.
+      });
   }
   return () => {
     cancelled = true;

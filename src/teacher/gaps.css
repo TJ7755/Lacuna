@@ -57,14 +57,6 @@
     stroke-dashoffset: 1;
   }
 }
-@keyframes gaps-shimmer {
-  from {
-    background-position: 150% 0;
-  }
-  to {
-    background-position: -50% 0;
-  }
-}
 @keyframes gaps-shake {
   20%,
   60% {
@@ -111,13 +103,6 @@
 .gaps-spinner {
   animation: gaps-spin 800ms linear infinite;
 }
-.gaps-skeleton {
-  background: linear-gradient(100deg, transparent 30%, hsl(var(--ink) / 0.07) 50%, transparent 70%)
-    hsl(var(--ink) / 0.05);
-  background-size: 200% 100%;
-  animation: gaps-shimmer 1.6s linear infinite;
-}
-
 /* Rows lift a touch under the pointer, as the study app's Today rows do. */
 .gaps-lift {
   transition:
@@ -252,8 +237,7 @@ svg.gaps-turn[data-open] {
   .gaps-bar,
   .gaps-ring,
   .gaps-backdrop,
-  .gaps-drawer,
-  .gaps-skeleton {
+  .gaps-drawer {
     animation: none;
   }
   .gaps-lift:hover,

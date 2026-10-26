@@ -1,5 +1,5 @@
 import { searchHelp } from './help/searchHelp';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useNavigationType, useSearchParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
@@ -13,7 +13,6 @@ import {
 import { cn } from '../components/ui/cn';
 import { SearchIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { Skeleton } from '../components/ui/Skeleton';
 import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { SearchResultOption } from '../components/search/SearchResultOption';
@@ -243,75 +242,59 @@ export function SearchPage() {
             </motion.button>
           )}
         </div>
-        {!searchData ? (
-          <DelayedFallback>
-            <SearchSkeleton />
-          </DelayedFallback>
-        ) : !searching ? (
-          <div className="flex justify-center py-8">
-            <StudyDrawing kind="search" className="h-20 w-20 opacity-60" />
-          </div>
-        ) : results.length === 0 ? (
-          <div
-            className={`${SECTION_CARD_SURFACE_CLASS} flex flex-col items-center justify-center py-16 text-center`}
-          >
-            <StudyDrawing kind="search" className="mb-4 h-14 w-14 opacity-60" />
-            <p className="text-sm text-ink-faint">
-              {searchQuery.trim() ? (
-                <>Nothing matches &ldquo;{searchQuery}&rdquo;.</>
-              ) : (
-                'Nothing matches these filters.'
-              )}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div
-              ref={resultList}
-              id="search-listbox"
-              role="listbox"
-              aria-label="Search results"
-              className={`${SECTION_CARD_SURFACE_CLASS} p-1.5`}
-            >
-              {visible.map((hit, index) => (
-                <SearchResultOption
-                  key={hitKey(hit)}
-                  index={index}
-                  hit={hit}
-                  query={searchQuery}
-                  id={`search-option-${index}`}
-                  selected={index === active}
-                  onSelect={() => setActive(index)}
-                  onOpen={() => void navigate(hitPath(hit))}
-                />
-              ))}
+        <PageLoadingBoundary pending={!searchData}>
+          {!searchData ? null : !searching ? (
+            <div className="flex justify-center py-8">
+              <StudyDrawing kind="search" className="h-20 w-20 opacity-60" />
             </div>
-            {visible.length < results.length && (
-              <button
-                type="button"
-                onClick={() => setLimit(limit + PAGE_SIZE)}
-                className="mt-4 min-h-11 rounded-full px-4 text-sm text-accent-ink"
+          ) : results.length === 0 ? (
+            <div
+              className={`${SECTION_CARD_SURFACE_CLASS} flex flex-col items-center justify-center py-16 text-center`}
+            >
+              <StudyDrawing kind="search" className="mb-4 h-14 w-14 opacity-60" />
+              <p className="text-sm text-ink-faint">
+                {searchQuery.trim() ? (
+                  <>Nothing matches &ldquo;{searchQuery}&rdquo;.</>
+                ) : (
+                  'Nothing matches these filters.'
+                )}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div
+                ref={resultList}
+                id="search-listbox"
+                role="listbox"
+                aria-label="Search results"
+                className={`${SECTION_CARD_SURFACE_CLASS} p-1.5`}
               >
-                Show more results
-              </button>
-            )}
-          </>
-        )}
+                {visible.map((hit, index) => (
+                  <SearchResultOption
+                    key={hitKey(hit)}
+                    index={index}
+                    hit={hit}
+                    query={searchQuery}
+                    id={`search-option-${index}`}
+                    selected={index === active}
+                    onSelect={() => setActive(index)}
+                    onOpen={() => void navigate(hitPath(hit))}
+                  />
+                ))}
+              </div>
+              {visible.length < results.length && (
+                <button
+                  type="button"
+                  onClick={() => setLimit(limit + PAGE_SIZE)}
+                  className="mt-4 min-h-11 rounded-full px-4 text-sm text-accent-ink"
+                >
+                  Show more results
+                </button>
+              )}
+            </>
+          )}
+        </PageLoadingBoundary>
       </div>
-    </div>
-  );
-}
-
-function SearchSkeleton() {
-  return (
-    <div className={`${SECTION_CARD_SURFACE_CLASS} space-y-2 p-1.5`}>
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex flex-col gap-1 px-2.5 py-2.5">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="mt-1 h-3 w-24" />
-        </div>
-      ))}
     </div>
   );
 }

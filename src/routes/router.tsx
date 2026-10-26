@@ -1,5 +1,7 @@
 import { type ComponentType, type ReactNode } from 'react';
-import { lazyRouteModule as lazy } from './routeModule';
+import { lazyRouteModule as lazy, loadRouteModuleForNavigation } from './routeModule';
+import { prefetchRoute, prepareRoute } from './prefetch';
+import { RoutePrefetchContext } from './RoutePrefetchContext';
 import { createHashRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '../components/layout/AppShell';
 import { ErrorBoundary } from '../components/layout/ErrorBoundary';
@@ -8,8 +10,6 @@ import { Dashboard } from '../pages/Dashboard';
 import { NotFound } from '../pages/NotFound';
 import { LazyRoute } from './LazyRoute';
 import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
-import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
-import { LessonViewSkeleton } from '../components/course/LessonViewSkeleton';
 import { LegacyBankRedirect } from './LegacyBankRedirect';
 import { ArchivedCourseAccessGuard } from './ArchivedCourseAccessGuard';
 import {
@@ -75,15 +75,15 @@ const QuestionLearnMode = lazy(loadQuestionLearnMode);
 const MergeReviewPanel = lazy(loadMergeReviewPanel);
 const Landing = lazy(loadLanding);
 // Not in loaders: onboarding reaches the route prefetcher, which imports the loaders.
-const Onboarding = lazy(() =>
-  import('../pages/onboarding/Onboarding').then((module) => ({ default: module.Onboarding })),
-);
+const loadOnboarding = () =>
+  import('../pages/onboarding/Onboarding').then((module) => ({ default: module.Onboarding }));
+const Onboarding = lazy(loadOnboarding);
 const Download = lazy(loadDownload);
 const Method = lazy(loadMethod);
 
-function lazyRoute(Component: ComponentType) {
+function lazyRoute(Component: ComponentType, study = false) {
   return (
-    <LazyRoute>
+    <LazyRoute animateArrival={!study}>
       <Component />
     </LazyRoute>
   );
@@ -93,9 +93,9 @@ function isolatedRoute(label: string, child: ReactNode) {
   return <ErrorBoundary label={label}>{child}</ErrorBoundary>;
 }
 
-function workspaceRoute(Component: ComponentType, lesson = false) {
+function workspaceRoute(Component: ComponentType) {
   return (
-    <PageLoadingBoundary fallback={lesson ? <LessonViewSkeleton /> : <CoursePathSkeleton />}>
+    <PageLoadingBoundary>
       <ArchivedCourseAccessGuard>
         <Component />
       </ArchivedCourseAccessGuard>
@@ -103,14 +103,33 @@ function workspaceRoute(Component: ComponentType, lesson = false) {
   );
 }
 
-function courseAccessRoute(child: ReactNode) {
-  return <ArchivedCourseAccessGuard>{child}</ArchivedCourseAccessGuard>;
+function courseAccessRoute(child: ReactNode, study = false) {
+  return (
+    <LazyRoute animateArrival={!study}>
+      <ArchivedCourseAccessGuard>{child}</ArchivedCourseAccessGuard>
+    </LazyRoute>
+  );
 }
 
 // Hash routing keeps the app deployable as plain static files with no server rewrites.
 export const router = createHashRouter([
   {
-    element: <RouteTransition />,
+    loader: async ({ request }) => {
+      const path = new URL(request.url).pathname;
+      if (path === '/start') {
+        await loadRouteModuleForNavigation(loadOnboarding, request.signal).catch(() => undefined);
+        return null;
+      }
+      return prepareRoute(path, request.signal);
+    },
+    // Query changes belong to the mounted controls; awaiting the same module rolls back typing.
+    shouldRevalidate: ({ currentUrl, nextUrl }) => currentUrl.pathname !== nextUrl.pathname,
+    hydrateFallbackElement: null,
+    element: (
+      <RoutePrefetchContext value={prefetchRoute}>
+        <RouteTransition />
+      </RoutePrefetchContext>
+    ),
     children: [
       {
         path: '/teach',
@@ -135,7 +154,7 @@ export const router = createHashRouter([
           { path: 'course/:courseId', element: workspaceRoute(CoursePath) },
           {
             path: 'course/:courseId/lesson/:lessonId',
-            element: workspaceRoute(LessonView, true),
+            element: workspaceRoute(LessonView),
           },
           {
             path: 'course/:courseId/bank',
@@ -148,31 +167,31 @@ export const router = createHashRouter([
           },
           {
             path: 'course/:courseId/question-sets/:setId/edit',
-            element: courseAccessRoute(lazyRoute(QuestionSetEditor)),
+            element: courseAccessRoute(<QuestionSetEditor />),
           },
           {
             path: 'course/:courseId/question-sets/:setId/attempts/:attemptId',
-            element: courseAccessRoute(lazyRoute(QuestionSetPractice)),
+            element: courseAccessRoute(<QuestionSetPractice />),
           },
           {
             path: 'course/:courseId/question-sets/:setId',
-            element: courseAccessRoute(lazyRoute(QuestionSetOverview)),
+            element: courseAccessRoute(<QuestionSetOverview />),
           },
           {
             path: 'course/:courseId/questions/new',
-            element: courseAccessRoute(lazyRoute(QuestionEditor)),
+            element: courseAccessRoute(<QuestionEditor />),
           },
           {
             path: 'course/:courseId/questions/:questionId/edit',
-            element: courseAccessRoute(lazyRoute(QuestionEditor)),
+            element: courseAccessRoute(<QuestionEditor />),
           },
           {
             path: 'course/:courseId/cards/new',
-            element: courseAccessRoute(lazyRoute(CardEditor)),
+            element: courseAccessRoute(<CardEditor />),
           },
           {
             path: 'course/:courseId/cards/:cardId/edit',
-            element: courseAccessRoute(lazyRoute(CardEditor)),
+            element: courseAccessRoute(<CardEditor />),
           },
           {
             path: 'course/:courseId/settings',
@@ -184,39 +203,39 @@ export const router = createHashRouter([
           },
           {
             path: 'course/:courseId/updates',
-            element: courseAccessRoute(lazyRoute(MergeReviewPanel)),
+            element: courseAccessRoute(<MergeReviewPanel />),
           },
           {
             path: 'course/:courseId/lesson/:lessonId/cards/new',
-            element: courseAccessRoute(lazyRoute(CardEditor)),
+            element: courseAccessRoute(<CardEditor />),
           },
           {
             path: 'course/:courseId/lesson/:lessonId/cards/:cardId/edit',
-            element: courseAccessRoute(lazyRoute(CardEditor)),
+            element: courseAccessRoute(<CardEditor />),
           },
           {
             path: 'course/:courseId/sequence/new',
-            element: courseAccessRoute(lazyRoute(SequenceEditor)),
+            element: courseAccessRoute(<SequenceEditor />),
           },
           {
             path: 'course/:courseId/sequence/:sequenceId/edit',
-            element: courseAccessRoute(lazyRoute(SequenceEditor)),
+            element: courseAccessRoute(<SequenceEditor />),
           },
           {
             path: 'course/:courseId/lesson/:lessonId/sequence/new',
-            element: courseAccessRoute(lazyRoute(SequenceEditor)),
+            element: courseAccessRoute(<SequenceEditor />),
           },
           {
             path: 'course/:courseId/occlusion/new',
-            element: courseAccessRoute(lazyRoute(OcclusionEditor)),
+            element: courseAccessRoute(<OcclusionEditor />),
           },
           {
             path: 'course/:courseId/occlusion/:occlusionId/edit',
-            element: courseAccessRoute(lazyRoute(OcclusionEditor)),
+            element: courseAccessRoute(<OcclusionEditor />),
           },
           {
             path: 'course/:courseId/lesson/:lessonId/occlusion/new',
-            element: courseAccessRoute(lazyRoute(OcclusionEditor)),
+            element: courseAccessRoute(<OcclusionEditor />),
           },
           { path: '*', element: <NotFound /> },
         ],
@@ -251,7 +270,8 @@ export const router = createHashRouter([
         // the Card-based course conductor or Path yet.
         path: '/course/:courseId/questions/learn',
         element: courseAccessRoute(
-          isolatedRoute('the Question session', lazyRoute(QuestionLearnMode)),
+          isolatedRoute('the Question session', <QuestionLearnMode />),
+          true,
         ),
       },
       {
@@ -259,24 +279,25 @@ export const router = createHashRouter([
         // remains mounted until the learner explicitly finishes the study period.
         path: '/course/:courseId/study',
         element: courseAccessRoute(
-          isolatedRoute('the course study flow', lazyRoute(CourseStudyFlow)),
+          isolatedRoute('the course study flow', <CourseStudyFlow />),
+          true,
         ),
       },
       {
         // Learn mode is a full-screen, focused experience outside the shell. The
         // global, cross-course "Today" session (no deckId param).
         path: '/learn',
-        element: isolatedRoute('the Learn session', lazyRoute(LearnMode)),
+        element: isolatedRoute('the Learn session', lazyRoute(LearnMode, true)),
       },
       {
         // A course Practice session selected by the curricular objective engine.
         path: '/course/:courseId/learn',
-        element: courseAccessRoute(isolatedRoute('the Learn session', lazyRoute(LearnMode))),
+        element: courseAccessRoute(isolatedRoute('the Learn session', <LearnMode />), true),
       },
       {
         // A Simple lesson session for cards not yet exposed in that lesson.
         path: '/lesson/:lessonId/learn',
-        element: courseAccessRoute(isolatedRoute('the Learn session', lazyRoute(LearnMode))),
+        element: courseAccessRoute(isolatedRoute('the Learn session', <LearnMode />), true),
       },
     ],
   },

@@ -3,24 +3,9 @@ import { AppLink as Link } from '../ui/AppLink';
 import { Button, buttonClassName } from '../ui/Button';
 import { PageLoading } from '../ui/PageLoadingBoundary';
 import { SectionCard } from '../ui/SectionCard';
-import { Skeleton } from '../ui/Skeleton';
 
-export function QuestionSetLoading({ label = 'Loading question set' }: { label?: string }) {
-  return (
-    <PageLoading
-      fallback={
-        <div className="qs-editor qs-composer" role="status" aria-label={label}>
-          <Skeleton className="mb-6 h-5 w-32" />
-          <Skeleton className="mb-8 h-12 w-2/3" />
-          <SectionCard className="space-y-5">
-            <Skeleton className="h-8 w-1/2" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </SectionCard>
-        </div>
-      }
-    />
-  );
+export function QuestionSetLoading() {
+  return <PageLoading />;
 }
 
 export function QuestionSetUnavailable({

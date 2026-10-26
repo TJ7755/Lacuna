@@ -19,26 +19,30 @@ test('keeps the library coherent through a cold download and backtracking', asyn
     const library = page.getByRole('button', { name: 'Course library', exact: true });
     await name.fill('Unfinished chemistry');
     await library.click();
-    const loading = page.getByLabel('Loading the course library', { exact: true });
-    await expect(loading).toBeVisible();
-    const loadingHeight = (await loading.boundingBox())!.height;
+    const back = page.getByRole('button', { name: 'Back to New course' });
+    await expect(back).toBeEnabled();
+    await expect(page.getByLabel('Loading the course library', { exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Back to New course' }).press('Escape');
     await expect(library).toBeFocused();
     await expect(name).toHaveValue('Unfinished chemistry');
 
     await library.press('Enter');
-    await expect(loading).toBeVisible();
+    await expect(back).toBeFocused();
     release();
     const search = page.getByRole('searchbox', { name: 'Search the course library' });
     await expect(search).toBeFocused();
     const subjects = page.getByRole('list', { name: 'Library subjects', exact: true });
     await expect(subjects).toBeVisible();
-    const searchBounds = (await search.boundingBox())!;
-    const subjectsBounds = (await subjects.boundingBox())!;
-    const loadedHeight = (await page.locator('.import-library').boundingBox())!.height;
+    // Sample both edges in one frame while their shared parent is still moving.
+    const [searchBounds, subjectsBounds] = await search.evaluate((input) => {
+      const subjects = input.parentElement!.querySelector('[aria-label="Library subjects"]')!;
+      return [input, subjects].map((element) => {
+        const { x, width } = element.getBoundingClientRect();
+        return { x, width };
+      });
+    });
     expect(Math.abs(searchBounds.x - subjectsBounds.x)).toBeLessThan(1);
     expect(Math.abs(searchBounds.width - subjectsBounds.width)).toBeLessThan(1);
-    expect(Math.abs(loadedHeight - loadingHeight)).toBeLessThan(2);
     await search.fill('8461');
     await page.getByRole('button', { name: 'Biology AQA GCSE · 8461', exact: true }).click();
     await page.getByRole('button', { name: 'Back to the course library' }).press('Escape');

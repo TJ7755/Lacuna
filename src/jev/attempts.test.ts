@@ -490,14 +490,35 @@ it('does not mark criteria when an attempt is submitted', async () => {
 
 it('holds a quick verdict on an opened criterion until it has visibly been judged', async () => {
   const { attempt } = await fixture();
-  const { engine } = engineWith(async (request) => result(request.maxMarks!));
-  const started = Date.now();
-  const marking = markJevAttempt(attempt.id, engine, 'a1', 80);
-  await new Promise((resolve) => setTimeout(resolve, 40));
-  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
-  await marking;
-  expect(Date.now() - started).toBeGreaterThanOrEqual(80);
-  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toHaveLength(1);
+  let requested!: () => void;
+  const deciding = new Promise<void>((resolve) => {
+    requested = resolve;
+  });
+  let deliver!: (response: Response) => void;
+  const verdict = new Promise<Response>((resolve) => {
+    deliver = resolve;
+  });
+  const { engine } = engineWith(() => {
+    requested();
+    return verdict;
+  });
+  // Keep IndexedDB's native task scheduling; control only the judging clock.
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+  try {
+    const started = Date.now();
+    const marking = markJevAttempt(attempt.id, engine, 'a1', 80);
+    await deciding;
+    deliver(result(1));
+    await vi.advanceTimersByTimeAsync(79);
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    await marking;
+    expect(Date.now() - started).toBeGreaterThanOrEqual(80);
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions).toHaveLength(1);
+  } finally {
+    engine.disable();
+    vi.useRealTimers();
+  }
 });
 
 it('persists all six criterion verdicts arriving together while requests stay independent', async () => {

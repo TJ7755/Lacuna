@@ -77,7 +77,7 @@ export function QuestionSetPractice() {
         The saved attempt could not be read. Try again; your saved answers have not been removed.
       </QuestionSetUnavailable>
     );
-  if (!session) return <QuestionSetLoading label="Loading attempt" />;
+  if (!session) return <QuestionSetLoading />;
   return (
     <PracticeWorkspace
       key={attemptId}

@@ -1,7 +1,8 @@
+import { StudyExitHeader } from '../components/learn/StudyExitHeader';
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import './learn/studyLayout.css';
 import { typedAnswerJudgement, useTypedAutoMark } from './learn/useTypedAutoMark';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -26,14 +27,12 @@ import { LearnSessionReport } from './learn/LearnSessionReport';
 import { LearnStudyPhase } from './learn/LearnStudyPhase';
 import { useLearnKeyboardShortcuts } from './learn/useLearnKeyboardShortcuts';
 import { useStudyFocus } from './learn/useStudyFocus';
-import { LearnSkeleton } from './learn/LearnSkeleton';
 import type { ReviewSessionKind } from '../db/types';
 import type { LearnModeType, LearnSessionRequest } from './learn/types';
 import { SessionExitGuard } from '../components/learn/SessionExitGuard';
 import type { NavigationGuardHandle } from '../components/ui/NavigationGuard';
 
 export type { LearnSessionRequest } from './learn/types';
-export { LearnSkeleton } from './learn/LearnSkeleton';
 
 interface LearnModeProps {
   /** Supplied by CourseStudyFlow; omitted for the existing route-driven sessions. */
@@ -46,7 +45,15 @@ interface LearnModeProps {
   sessionId?: string;
 }
 
-export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps = {}) {
+export function LearnMode(props: LearnModeProps = {}) {
+  return (
+    <PageLoadingBoundary animateArrival={false}>
+      <LearnSession {...props} />
+    </PageLoadingBoundary>
+  );
+}
+
+function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps) {
   const [leaveConfirmationOpen, setLeaveConfirmationOpen] = useState(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
@@ -309,9 +316,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
 
   if (!sessionReady || phase === 'loading') {
     return (
-      <DelayedFallback>
-        <LearnSkeleton mode={mode} />
-      </DelayedFallback>
+      <div className="min-h-dvh bg-paper">
+        <StudyExitHeader onExit={backOut} />
+        <PageLoading />
+      </div>
     );
   }
 

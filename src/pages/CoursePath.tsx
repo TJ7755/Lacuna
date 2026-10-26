@@ -23,7 +23,6 @@ import { AssessmentDetailSheet } from '../components/course/AssessmentDetailShee
 import { lockHintFor } from '../components/course/lockHint';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { useStudySheet } from '../components/learn/StudySheetContext';
-import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
 import { CourseOverview } from '../components/course/CourseOverview';
 import { useCoursePathData } from '../components/course/useCoursePathData';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
@@ -37,7 +36,6 @@ import { useCoursePathReorder } from '../components/course/useCoursePathReorder'
 import { useToast } from '../components/ui/Toast';
 import type { CourseAssessment, PracticeNode } from '../db/types';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
-import { CoursePageArrival } from '../components/course/CoursePageArrival';
 import { loadLessonView } from '../routes/lessonRoute';
 import { loadRouteModule } from '../routes/routeModule';
 import { scheduleIdlePrefetch } from '../routes/idlePrefetch';
@@ -50,6 +48,8 @@ function prefetchLessonView(): void {
 
 // The course page's Other ways menu sits beside Study, so its session plan leaves them out.
 const PAGE_OFFERS_OTHER_WAYS = { otherWays: false };
+
+export const preloadCoursePath = useCoursePathRecords.preload;
 
 export function CoursePath() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -129,9 +129,9 @@ export function CoursePath() {
         : undefined,
   });
 
-  // Loading state — a skeleton while course/lesson data resolves.
+  // Wait for course and lesson data before showing access-dependent actions.
   if (!dataLoaded) {
-    return <PageLoading fallback={<CoursePathSkeleton />} />;
+    return <PageLoading />;
   }
 
   // Course not found.
@@ -265,9 +265,12 @@ export function CoursePath() {
   const status = forecast ? forecastStatus(forecast) : undefined;
   const forecastPct = Math.round((forecast?.ifStopped ?? mastery) * 100);
   return (
-    <CoursePageArrival key={course.id} className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
+    <div key={course.id} className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
       {orderNotice}
-      <div className="flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
+      <header
+        data-page-part=""
+        className="flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8"
+      >
         <CourseHeader
           className="min-w-0 flex-[1_1_320px]"
           title={course.name}
@@ -289,7 +292,7 @@ export function CoursePath() {
           renameLabel="course"
         />
         {!archived && hasStudyContent && studyActions()}
-      </div>
+      </header>
       {!archived && pendingUpdate && (
         <Link
           to={`/course/${courseId}/updates`}
@@ -357,6 +360,6 @@ export function CoursePath() {
           onClose={() => setAddingQuestionSet(false)}
         />
       )}
-    </CoursePageArrival>
+    </div>
   );
 }

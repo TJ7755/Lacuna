@@ -5,10 +5,9 @@ import { AppLink as Link } from '../components/ui/AppLink';
 import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
 import { ShareCourseContent } from '../components/share/ShareCourseContent';
 import { gapsClassUrl, shareIdForCourse } from '../components/share/gapsClassUrl';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { Menu } from '../components/ui/Menu';
 import { SectionCard } from '../components/ui/SectionCard';
-import { Skeleton } from '../components/ui/Skeleton';
 import type { Course } from '../db/types';
 import { useCourses, useCourseSummaries } from '../state/useCourseData';
 import { countOf } from '../utils/plural';
@@ -80,32 +79,21 @@ export function SharePage() {
         )}
       </header>
 
-      {!courses ? (
-        <DelayedFallback>
-          <ShareSkeleton />
-        </DelayedFallback>
-      ) : !course ? (
-        <SectionCard className="flex flex-col items-start gap-4">
-          <h2 className="font-display text-2xl tracking-tight">Nothing to share yet</h2>
-          <Link to="/" className={buttonClassName('primary')}>
-            Create a course on Today
-          </Link>
-        </SectionCard>
-      ) : (
-        <ShareCourseContent
-          course={course}
-          highlight={searchParams.get('highlight') === 'share-link'}
-        />
-      )}
+      <PageLoadingBoundary pending={!courses}>
+        {!courses ? null : !course ? (
+          <SectionCard className="flex flex-col items-start gap-4">
+            <h2 className="font-display text-2xl tracking-tight">Nothing to share yet</h2>
+            <Link to="/" className={buttonClassName('primary')}>
+              Create a course on Today
+            </Link>
+          </SectionCard>
+        ) : (
+          <ShareCourseContent
+            course={course}
+            highlight={searchParams.get('highlight') === 'share-link'}
+          />
+        )}
+      </PageLoadingBoundary>
     </div>
-  );
-}
-
-function ShareSkeleton() {
-  return (
-    <SectionCard className="space-y-4" aria-hidden>
-      <Skeleton className="h-7 w-40 rounded bg-ink/10" />
-      <Skeleton className="h-12 w-56 rounded-full bg-ink/10" />
-    </SectionCard>
   );
 }

@@ -12,6 +12,12 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/react';
 import { Dashboard } from './Dashboard';
+import {
+  chooseStudyTarget,
+  chosenStudyTarget,
+  markOnboardingPending,
+  onboardingPending,
+} from '../onboarding/onboardingState';
 
 describe('Dashboard Today queue', () => {
   it('ends a pending onboarding once the learner reaches Today', () => {
@@ -20,6 +26,26 @@ describe('Dashboard Today queue', () => {
     render(<Dashboard />);
     expect(localStorage.getItem('lacuna-onboarding')).toBe('done');
     localStorage.removeItem('lacuna-onboarding');
+  });
+
+  it('keeps the chosen study target while Today is retained behind onboarding navigation', () => {
+    markOnboardingPending();
+    chooseStudyTarget({ mode: 'exam', examDate: 1_000 });
+    dashboardState.mockNavigationPathname = '/start';
+    setCourseData();
+    const view = render(<Dashboard />);
+    expect(onboardingPending()).toBe(true);
+    expect(chosenStudyTarget()).toEqual({ mode: 'exam', examDate: 1_000 });
+
+    // The outgoing page can remain mounted after its destination has committed.
+    dashboardState.mockPathname = '/start';
+    dashboardState.mockNavigationPathname = undefined;
+    view.rerender(<Dashboard />);
+    expect(onboardingPending()).toBe(true);
+    expect(chosenStudyTarget()).toEqual({ mode: 'exam', examDate: 1_000 });
+    view.unmount();
+    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('opens class-code entry from Today', () => {
@@ -58,25 +84,6 @@ describe('Dashboard Today queue', () => {
     expect(screen.getByRole('region', { name: 'Today, most urgent first' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'New sharing features' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Explore sharing/ })).not.toBeInTheDocument();
-  });
-
-  it('renders skeleton when data is loading', async () => {
-    vi.useFakeTimers();
-    try {
-      render(<Dashboard />);
-      // Verify the actual delay, independently of load on the machine running the suite.
-      await act(() => vi.advanceTimersByTime(199));
-      expect(document.querySelector('.animate-pulse')).not.toBeInTheDocument();
-      await act(() => vi.advanceTimersByTime(1));
-      expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('withholds the loading skeleton while a load could still finish instantly', () => {
-    render(<Dashboard />);
-    expect(document.querySelector('.animate-pulse')).not.toBeInTheDocument();
   });
 
   it('renders empty state when no courses exist', () => {

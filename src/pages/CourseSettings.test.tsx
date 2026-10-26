@@ -24,9 +24,8 @@ let mockCards: Card[] | undefined;
 let mockAssessmentsPending = false;
 
 vi.mock('../state/useLessonOrderData', () => ({
-  useLessonOrderData: () => mockCourse
-    ? { course: mockCourse, lessons: [], unavailableReason: undefined }
-    : undefined,
+  useLessonOrderData: () =>
+    mockCourse ? { course: mockCourse, lessons: [], unavailableReason: undefined } : undefined,
 }));
 
 vi.mock('react-router-dom', async () => {
@@ -48,22 +47,24 @@ vi.mock('../state/useCourseData', () => ({
   useCourseCards: () => mockCards,
   useCourseReviewHistory: () => [],
   useCourseAssessments: () =>
-    mockAssessmentsPending ? undefined : mockCourse
-      ? [
-          {
-            id: 'final-1',
-            courseId: mockCourse.id,
-            name: 'Final exam',
-            kind: 'final',
-            examDate: mockCourse.examDate,
-            afterLessonId: null,
-            coverageMode: 'prefix',
-            excludedCardIds: [],
-            createdAt: mockCourse.createdAt,
-            updatedAt: mockCourse.createdAt,
-          },
-        ]
-      : [],
+    mockAssessmentsPending
+      ? undefined
+      : mockCourse
+        ? [
+            {
+              id: 'final-1',
+              courseId: mockCourse.id,
+              name: 'Final exam',
+              kind: 'final',
+              examDate: mockCourse.examDate,
+              afterLessonId: null,
+              coverageMode: 'prefix',
+              excludedCardIds: [],
+              createdAt: mockCourse.createdAt,
+              updatedAt: mockCourse.createdAt,
+            },
+          ]
+        : [],
   useLessons: () => [],
   usePracticeNodes: () => [],
 }));
@@ -188,12 +189,20 @@ describe('CourseSettings', () => {
     expect(screen.queryByLabelText('Course name')).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Learning steps/)).not.toBeInTheDocument();
     for (const title of ['Course details', 'Lessons', 'Auto-practice', 'Advanced scheduling']) {
-      expect(screen.getByRole('button', { name: new RegExp(`^${title}`) })).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getByRole('button', { name: new RegExp(`^${title}`) })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
     }
     openSettings('Course details');
     expect(screen.getByLabelText('Course name')).toHaveValue('Original course');
-    expect(screen.getByRole('button', { name: /^Course details/ })).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.change(screen.getByLabelText('Course name'), { target: { value: 'Draft course name' } });
+    expect(screen.getByRole('button', { name: /^Course details/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    fireEvent.change(screen.getByLabelText('Course name'), {
+      target: { value: 'Draft course name' },
+    });
     openSettings('Course details');
     expect(screen.queryByLabelText('Course name')).not.toBeInTheDocument();
     openSettings('Course details');
@@ -211,7 +220,9 @@ describe('CourseSettings', () => {
     expect(mockUpdateCourse).not.toHaveBeenCalled();
     const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Archive course' }));
-    await vi.waitFor(() => expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: true }));
+    await vi.waitFor(() =>
+      expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: true }),
+    );
     await vi.waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'));
   });
 
@@ -224,7 +235,7 @@ describe('CourseSettings', () => {
     expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { newCardsPerDay: 20 });
   });
 
-  it('shows a skeleton while loading', () => {
+  it('waits for the course before rendering its controls', () => {
     mockCourse = undefined;
     renderPage();
     expect(screen.queryByDisplayValue('Original course')).not.toBeInTheDocument();

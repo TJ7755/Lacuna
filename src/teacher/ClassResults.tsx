@@ -20,28 +20,6 @@ type Open = { kind: 'pupil'; id: string; focus?: string } | { kind: 'item'; item
 /** Columns shown before the grid asks to show every item. */
 const GRID_ITEMS = 12;
 
-export function ResultsSkeleton() {
-  return (
-    <SectionCard aria-busy="true" className="gaps-fade p-6 md:p-8">
-      <span role="status" className="sr-only">
-        Reading reports…
-      </span>
-      <div className="gaps-skeleton h-7 w-48 rounded-lg" />
-      <div className="mt-8 grid grid-cols-[8rem_repeat(5,1fr)] gap-2">
-        {Array.from({ length: 36 }, (_, index) => (
-          <div
-            key={index}
-            className={cn(
-              'gaps-skeleton h-9 rounded-[10px]',
-              index % 6 === 0 && 'mr-4 h-5 self-center',
-            )}
-          />
-        ))}
-      </div>
-    </SectionCard>
-  );
-}
-
 export function Results({ reports }: { reports: DailyEvidence[] }) {
   const items = useMemo(() => summariseItems(reports), [reports]);
   const [all, setAll] = useState(false);

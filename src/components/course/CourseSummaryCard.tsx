@@ -33,6 +33,7 @@ export function CourseSummaryCard({
   return (
     <section
       aria-label="Course summary"
+      data-page-part=""
       className={cn(className, 'flex gap-8 px-5 py-5 md:gap-12 md:px-7')}
     >
       {figures.map((figure) => (

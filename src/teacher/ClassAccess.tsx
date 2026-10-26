@@ -11,7 +11,7 @@ import { normaliseRecoveryCode } from './recoveryCode';
 import { forgetRememberedClass, readRememberedClass, rememberClass } from './rememberedClass';
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
 import type * as KeysExports from './TeacherKeySetup';
-import { ResultsSkeleton } from './ClassResults';
+import { GapsLoadingBoundary } from './GapsLoadingBoundary';
 
 /** Loads the key set-up form when it is first needed, as the shell loads each screen. */
 export function useKeySetup(needed: boolean) {
@@ -30,15 +30,16 @@ export function KeySetupSlot({
   keys: ReturnType<typeof useKeySetup>;
   children(Keys: typeof KeysExports): ReactNode;
 }) {
-  if (keys.Keys) return children(keys.Keys);
-  return keys.failed ? (
-    <p role="alert" className="text-sm text-negative">
-      Could not open key set-up. Reload Gaps to try again.
-    </p>
-  ) : (
-    <p role="status" className="flex items-center gap-3 py-6 text-ink-soft">
-      <Spinner /> Opening key set-up…
-    </p>
+  return (
+    <GapsLoadingBoundary pending={!keys.Keys && !keys.failed}>
+      {keys.Keys ? (
+        children(keys.Keys)
+      ) : keys.failed ? (
+        <p role="alert" className="text-sm text-negative">
+          Could not open key set-up. Reload Gaps to try again.
+        </p>
+      ) : null}
+    </GapsLoadingBoundary>
   );
 }
 
@@ -96,54 +97,56 @@ export function LockedClass({
     focusNext.current = next;
   }
 
-  if (checking) return <ResultsSkeleton />;
-
   return (
-    <SectionCard className="gaps-rise flex flex-col items-center px-6 py-14 text-center md:py-16">
-      <ClassGlyph locked size={64} />
-      <div ref={card} key={step} className="gaps-fade flex w-full flex-col items-center">
-        <h2 className="mt-6 font-display text-3xl font-semibold tracking-tight">
-          {step === 'unlock' ? 'Unlock to see results' : 'Protect this class'}
-        </h2>
-        <p className="mt-3 max-w-sm text-ink-soft">
-          {step === 'unlock'
-            ? 'Results are decrypted only on this device.'
-            : 'Only this key can read your pupils’ reports.'}
-        </p>
-        <div className="mt-10 w-full max-w-sm text-left">
-          {step === 'unlock' ? (
-            <UnlockForm
-              course={course}
-              onUnlocked={onUnlocked}
-              beginUnlock={beginUnlock}
-              onSetup={() => show('setup')}
-            />
-          ) : (
-            <KeySetupSlot keys={keys}>
-              {(Keys) => (
-                <Keys.TeacherKeySetup
-                  initialCourse={course.shareId}
-                  initialMode="create"
-                  onOpened={(session) => {
-                    if (!beginUnlock || beginUnlock()(session)) onUnlocked(session);
-                  }}
-                  onContinue={() => show('unlock')}
+    <GapsLoadingBoundary pending={checking}>
+      {!checking && (
+        <SectionCard className="gaps-rise flex flex-col items-center px-6 py-14 text-center md:py-16">
+          <ClassGlyph locked size={64} />
+          <div ref={card} key={step} className="gaps-fade flex w-full flex-col items-center">
+            <h2 className="mt-6 font-display text-3xl font-semibold tracking-tight">
+              {step === 'unlock' ? 'Unlock to see results' : 'Protect this class'}
+            </h2>
+            <p className="mt-3 max-w-sm text-ink-soft">
+              {step === 'unlock'
+                ? 'Results are decrypted only on this device.'
+                : 'Only this key can read your pupils’ reports.'}
+            </p>
+            <div className="mt-10 w-full max-w-sm text-left">
+              {step === 'unlock' ? (
+                <UnlockForm
+                  course={course}
+                  onUnlocked={onUnlocked}
+                  beginUnlock={beginUnlock}
+                  onSetup={() => show('setup')}
                 />
+              ) : (
+                <KeySetupSlot keys={keys}>
+                  {(Keys) => (
+                    <Keys.TeacherKeySetup
+                      initialCourse={course.shareId}
+                      initialMode="create"
+                      onOpened={(session) => {
+                        if (!beginUnlock || beginUnlock()(session)) onUnlocked(session);
+                      }}
+                      onContinue={() => show('unlock')}
+                    />
+                  )}
+                </KeySetupSlot>
               )}
-            </KeySetupSlot>
-          )}
-        </div>
-        {!course.secret && (
-          <button
-            type="button"
-            onClick={() => show(step === 'unlock' ? 'setup' : 'unlock')}
-            className={`${buttonClassName('ghost')} mt-4`}
-          >
-            {step === 'unlock' ? 'First time? Set up' : 'Back to unlock'}
-          </button>
-        )}
-      </div>
-    </SectionCard>
+            </div>
+            {!course.secret && (
+              <button
+                type="button"
+                onClick={() => show(step === 'unlock' ? 'setup' : 'unlock')}
+                className={`${buttonClassName('ghost')} mt-4`}
+              >
+                {step === 'unlock' ? 'First time? Set up' : 'Back to unlock'}
+              </button>
+            )}
+          </div>
+        </SectionCard>
+      )}
+    </GapsLoadingBoundary>
   );
 }
 

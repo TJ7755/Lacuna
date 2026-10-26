@@ -190,7 +190,7 @@ describe('OcclusionEditor', () => {
     fireEvent(name, event);
     expect(event.defaultPrevented).toBe(false);
   });
-  it('shows a skeleton while loading', () => {
+  it('waits for the course before rendering its controls', () => {
     renderNew();
     expect(screen.queryByText('New occlusion')).not.toBeInTheDocument();
   });

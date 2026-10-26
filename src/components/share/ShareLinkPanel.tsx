@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { forwardRef, lazy, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import QRCode from 'react-qr-code';
 import { HOSTED_SERVICE_ORIGIN } from '../../ai/session/hostedTransport';
@@ -14,11 +14,10 @@ import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatRelativeTime } from '../../utils/datetime';
 import { Button } from '../ui/Button';
 import { buttonClassName } from '../ui/buttonStyles';
-import { DelayedFallback } from '../ui/DelayedFallback';
-import { Skeleton } from '../ui/Skeleton';
+import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 import { ConfirmInlineSwap } from '../ui/ConfirmInline';
 import { ShareIcon } from '../ui/icons';
-import { expandingActionSpring, motionTransition, scaledSpring } from '../ui/motion';
+import { expandingActionSpring, liquidSpring, scaledSpring } from '../ui/motion';
 import { SectionCard } from '../ui/SectionCard';
 import { useToast } from '../ui/Toast';
 import { CopyButton } from './CopyButton';
@@ -32,10 +31,12 @@ const GapsConnectionExport = lazy(() =>
   })),
 );
 
-function ShareLinkSurface(props: HTMLMotionProps<'div'>) {
-  const present = useIsPresent();
-  return <motion.div {...props} inert={!present} aria-hidden={!present || undefined} />;
-}
+const ShareLinkSurface = forwardRef<HTMLDivElement, HTMLMotionProps<'div'>>(
+  function ShareLinkSurface(props, ref) {
+    const present = useIsPresent();
+    return <motion.div {...props} ref={ref} inert={!present} aria-hidden={!present || undefined} />;
+  },
+);
 
 function linkFromCourse(course: Course): LinkState | null {
   const distribution = course.distribution;
@@ -236,25 +237,20 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
       role="region"
       aria-labelledby={titleId}
       aria-busy={pending || undefined}
-      className="overflow-hidden"
+      className="relative overflow-hidden"
     >
       <h2 id={titleId} className="font-display text-2xl tracking-tight">
         Share link
       </h2>
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence mode="popLayout" initial={false}>
         <ShareLinkSurface
           key={state}
           data-share-pending={pending || undefined}
           initial={m > 0 ? { opacity: 0, y: 8 } : false}
           animate={{ opacity: 1, y: 0 }}
-          exit={m > 0 && state !== 'pending' ? { opacity: 0, y: -6 } : undefined}
-          transition={motionTransition('local', m)}
+          exit={m > 0 ? { opacity: 0 } : undefined}
+          transition={liquidSpring(m)}
         >
-          {state === 'pending' && (
-            <DelayedFallback>
-              <Skeleton className="mt-4 h-12 w-48 rounded-full bg-ink/10" />
-            </DelayedFallback>
-          )}
           {state === 'none' && (
             <Button
               ref={actionFocus.restore}
@@ -386,15 +382,13 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
                 </div>
                 {state === 'live' && (
                   <div className="mt-4">
-                    <Suspense
-                      fallback={<p className="text-sm text-ink-soft">Opening Gaps connection…</p>}
-                    >
+                    <PageLoadingBoundary>
                       <GapsConnectionExport
                         key={link.shareId}
                         shareId={link.shareId}
                         courseName={course.name}
                       />
-                    </Suspense>
+                    </PageLoadingBoundary>
                   </div>
                 )}
               </div>

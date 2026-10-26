@@ -1,4 +1,5 @@
-import { forwardRef } from 'react';
+import { forwardRef, useContext } from 'react';
+import { RoutePrefetchContext } from '../../routes/RoutePrefetchContext';
 import {
   Link,
   useHref,
@@ -25,12 +26,17 @@ export const AppLink = forwardRef<HTMLAnchorElement, LinkProps>(function AppLink
     onClick,
     onAuxClick,
     onKeyDown,
+    onFocus,
+    onPointerEnter,
+    onPointerDown,
     tabIndex = 0,
     ...props
   },
   ref,
 ) {
+  const prefetchRoute = useContext(RoutePrefetchContext);
   const href = useHref(to, { relative });
+  const resolved = useResolvedPath(to, { relative });
   const navigate = useLinkClickHandler(to, {
     replace,
     state,
@@ -62,6 +68,9 @@ export const AppLink = forwardRef<HTMLAnchorElement, LinkProps>(function AppLink
         onClick={onClick}
         onAuxClick={onAuxClick}
         onKeyDown={onKeyDown}
+        onFocus={onFocus}
+        onPointerEnter={onPointerEnter}
+        onPointerDown={onPointerDown}
         tabIndex={tabIndex}
       />
     );
@@ -73,6 +82,18 @@ export const AppLink = forwardRef<HTMLAnchorElement, LinkProps>(function AppLink
       ref={ref}
       role="link"
       tabIndex={tabIndex}
+      onFocus={(event) => {
+        onFocus?.(event);
+        if (!event.defaultPrevented) prefetchRoute(resolved.pathname);
+      }}
+      onPointerEnter={(event) => {
+        onPointerEnter?.(event);
+        if (!event.defaultPrevented) prefetchRoute(resolved.pathname);
+      }}
+      onPointerDown={(event) => {
+        onPointerDown?.(event);
+        if (!event.defaultPrevented && event.button === 0) prefetchRoute(resolved.pathname);
+      }}
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;

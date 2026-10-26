@@ -33,6 +33,7 @@ test('editor presentation follows explicit modes and Auto follows physical activ
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
+  await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   const course = new URL(page.url()).hash;
   const editor = `/${course}/cards/new`;
   const actions = page.getByRole('region', { name: 'Card editor actions' });

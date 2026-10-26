@@ -1,11 +1,13 @@
 import { lazy, useState, type ComponentType } from 'react';
 import { recoverFromChunkFailure } from '../pwa/staleChunkRecovery';
+import { claimRouteImportFailure } from '../pwa/routeImportFailures';
 
-type RouteModule = { default: ComponentType };
+type RouteModule = { default: ComponentType; preload?: (key: string) => Promise<void> };
 export type RouteLoader = () => Promise<RouteModule>;
 
 const pendingModules = new WeakMap<RouteLoader, Promise<RouteModule>>();
 const loadedModules = new WeakMap<RouteLoader, RouteModule>();
+const failedNavigations = new WeakMap<RouteLoader, { cause: unknown }>();
 
 /** Read completed prefetches without introducing a first-render suspense delay. */
 export function getLoadedRouteModule<T extends RouteLoader>(
@@ -22,15 +24,27 @@ export function loadRouteModule(loader: RouteLoader): Promise<RouteModule> {
   const request = loader().then(
     (module) => {
       loadedModules.set(loader, module);
+      failedNavigations.delete(loader);
       return module;
     },
     (error: unknown) => {
+      claimRouteImportFailure(error);
       pendingModules.delete(loader);
       throw error;
     },
   );
   pendingModules.set(loader, request);
   return request;
+}
+
+/** Preserve a navigation failure for its React owner after the destination URL commits. */
+export async function loadRouteModuleForNavigation(loader: RouteLoader, signal?: AbortSignal) {
+  try {
+    return await loadRouteModule(loader);
+  } catch (cause) {
+    if (!signal?.aborted) failedNavigations.set(loader, { cause });
+    throw cause;
+  }
 }
 
 function recoverRouteImport(error: unknown): Promise<never> {
@@ -51,7 +65,14 @@ function recoverRouteImport(error: unknown): Promise<never> {
 export function lazyRouteModule(loader: RouteLoader): ComponentType {
   // Recover on navigation, never on speculative hover/focus prefetches. Catching
   // here covers Vite's production preload rejection as well as dev imports.
-  const LazyComponent = lazy(() => loadRouteModule(loader).catch(recoverRouteImport));
+  const LazyComponent = lazy(() => {
+    const failed = failedNavigations.get(loader);
+    if (failed) {
+      failedNavigations.delete(loader);
+      return recoverRouteImport(failed.cause);
+    }
+    return loadRouteModule(loader).catch(recoverRouteImport);
+  });
   return function RouteModuleComponent() {
     // A fulfilled import alone still suspends React.lazy on its first render.
     // Render an already-prefetched module directly, avoiding React 19's fallback

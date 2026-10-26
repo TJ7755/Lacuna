@@ -1,6 +1,6 @@
-import { StudyEntrance } from '../components/learn/StudyEntrance';
+import { StudyExitHeader } from '../components/learn/StudyExitHeader';
 import { useLeaveFlow } from '../utils/editorOrigin';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { PomodoroProvider, usePomodoroFlowContext } from '../hooks/PomodoroContext';
@@ -25,7 +25,6 @@ import { RevisionPlanSetup } from '../components/learn/RevisionPlanSetup';
 import { StepSwap } from '../components/ui/StepSwap';
 import { continuesWithoutPause, mayContinueWithoutPause } from '../course/studyFlowContinuation';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
-import { Skeleton } from '../components/ui/Skeleton';
 
 interface TransitionState {
   summary: SessionSummary;
@@ -85,9 +84,10 @@ function CourseStudyFlowInner() {
   );
   // Reaching a session objective need not empty the broader catch-up pool.
   const flow = useMemo(
-    () => plannedFlow && catchUpFinished
-      ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false) }
-      : plannedFlow,
+    () =>
+      plannedFlow && catchUpFinished
+        ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false) }
+        : plannedFlow,
     [catchUpFinished, plannedFlow],
   );
   const pomodoro = usePomodoroFlowContext();
@@ -296,25 +296,21 @@ function CourseStudyFlowInner() {
 
   if (!transition && flow === undefined) {
     return (
-      <DelayedFallback>
-        <CourseStudyFlowSkeleton />
-      </DelayedFallback>
+      <div className="min-h-dvh bg-paper">
+        <StudyExitHeader onExit={finishFlow} />
+        <PageLoading />
+      </div>
     );
   }
 
   let scene: string;
   let body: ReactNode;
-  if (awaitingContinuation) {
-    scene = 'transition';
-    body = (
-      <DelayedFallback>
-        <CourseStudyFlowSkeleton />
-      </DelayedFallback>
-    );
-  } else if (transition) {
+  if (transition && !awaitingContinuation) {
     const planningNextStep = transition.summary.reachedGoal && flow?.generation !== refreshKey;
-    const catchUpIsNext = flow?.decision.kind === 'step' &&
-      flow.decision.step.kind === 'practice' && flow.decision.step.mode === 'catch-up';
+    const catchUpIsNext =
+      flow?.decision.kind === 'step' &&
+      flow.decision.step.kind === 'practice' &&
+      flow.decision.step.mode === 'catch-up';
     const nextLabel =
       !planningNextStep && (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice')
         ? flow.decision.step.label
@@ -355,13 +351,11 @@ function CourseStudyFlowInner() {
   ) {
     scene = 'revision';
     body = (
-      <StudyEntrance>
-        <RevisionPlanSetup
-          assessmentId={displayStep.assessmentId}
-          onStart={(planId, windowId) => setRevisionSession({ planId, windowId })}
-          onExit={finishFlow}
-        />
-      </StudyEntrance>
+      <RevisionPlanSetup
+        assessmentId={displayStep.assessmentId}
+        onStart={(planId, windowId) => setRevisionSession({ planId, windowId })}
+        onExit={finishFlow}
+      />
     );
   } else if (request && displayStep && flowIdentity) {
     // One scene per committed step. A finished session never serves another card,
@@ -408,24 +402,5 @@ function CourseStudyFlowInner() {
     <StepSwap stepKey={scene} className="min-h-screen">
       {body}
     </StepSwap>
-  );
-}
-
-function CourseStudyFlowSkeleton() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
-      aria-label="Loading course study flow"
-    >
-      <div className="w-full max-w-xl space-y-4">
-        <Skeleton className="h-4 w-32 bg-ink/5" />
-        <Skeleton className="h-12 w-3/4 rounded-xl bg-ink/5" />
-        <Skeleton className="h-5 w-full bg-ink/5" />
-        <div className="mt-8 flex gap-3">
-          <Skeleton as="span" className="h-11 w-32 rounded-xl bg-ink/5" />
-          <Skeleton as="span" className="h-11 w-24 rounded-xl bg-ink/5" />
-        </div>
-      </div>
-    </div>
   );
 }

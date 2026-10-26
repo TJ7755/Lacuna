@@ -16,6 +16,7 @@ async function openNewOcclusion(page: Page, width: number) {
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
+  await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   await page.goto(`${page.url()}/cards`);
   await page.getByRole('button', { name: 'New card', exact: true }).click();
   await page.getByRole('button', { name: 'More card types', exact: true }).click();

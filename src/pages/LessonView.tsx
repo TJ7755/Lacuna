@@ -1,6 +1,5 @@
 import { DeckFind } from '../components/search/DeckFind';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
-import { LessonViewSkeleton } from '../components/course/LessonViewSkeleton';
 import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestionSets';
 // Lesson view page — a study destination first, notes/cards second. A header
 // (title, one meta line, a Study/Edit pill and the study action) sits above a large
@@ -17,7 +16,6 @@ import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { useLessonViewData } from '../state/useLessonViewData';
-import { CoursePageArrival } from '../components/course/CoursePageArrival';
 import { LessonNotesCard } from '../components/notes/LessonNotesCard';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { LessonCardsList } from '../components/cards/LessonCardsList';
@@ -97,7 +95,7 @@ export function LessonView() {
     lessonCards === undefined ||
     !studyReady
   ) {
-    return <PageLoading fallback={<LessonViewSkeleton />} />;
+    return <PageLoading />;
   }
 
   // Not found.
@@ -153,9 +151,9 @@ export function LessonView() {
   const lessonStudyPath = `/lesson/${encodeURIComponent(lesson.id)}/learn`;
 
   return (
-    <CoursePageArrival key={lesson.id} className={`${COURSE_PAGE_FRAME} py-8`}>
+    <div key={lesson.id} className={`${COURSE_PAGE_FRAME} py-8`}>
       <div className="flex flex-col gap-6">
-        <div>
+        <div data-page-part="">
           <LessonHeader
             title={lesson.name}
             description={lesson.description || undefined}
@@ -225,7 +223,11 @@ export function LessonView() {
         </div>
 
         {/* Empty notes stay below the cards; existing notes retain the reading layout. */}
-        <div data-lesson-workspace-mode={viewMode} className="flex flex-col gap-6">
+        <div
+          data-page-part=""
+          data-lesson-workspace-mode={viewMode}
+          className="flex flex-col gap-6"
+        >
           <div
             className={`flex items-start gap-6 ${notes.length === 0 ? 'flex-col' : 'flex-wrap'}`}
           >
@@ -283,6 +285,6 @@ export function LessonView() {
           {courseId && lessonId && <RelatedQuestionSets courseId={courseId} lessonId={lessonId} />}
         </div>
       </div>
-    </CoursePageArrival>
+    </div>
   );
 }

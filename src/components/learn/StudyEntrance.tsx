@@ -1,9 +1,9 @@
-import { useLayoutEffect, useRef, type ReactNode } from 'react';
-import { getMotionMultiplier } from '../../state/motionSpeed';
+import { useContext, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { releaseStudyCover } from '../layout/LandingTransition';
-import { motionDuration, MOTION_EASING } from '../ui/motion';
+import { PageArrivalReady, revealPageParts } from '../ui/PageArrival';
 
-/** Reveal ready session content together, without a transform containing block. */
+/** Keep the launch cover until the reading surface is both ready and visible. */
 export function StudyEntrance({
   children,
   className,
@@ -12,44 +12,36 @@ export function StudyEntrance({
   className?: string;
 }) {
   const root = useRef<HTMLDivElement>(null);
+  const arrived = useRef(false);
+  const ready = useContext(PageArrivalReady);
+  const [speed] = useMotionSpeed();
+  const multiplier = speedMultiplier(speed);
   useLayoutEffect(() => {
+    if (!ready) {
+      arrived.current = false;
+      return;
+    }
     const element = root.current;
-    if (!element) return;
-    let animations: Animation[] = [];
+    if (!element || arrived.current) return;
+    let stop: (() => void) | undefined;
     const reveal = () => {
-      const main = element.querySelector('main');
-      if (!main) return false;
-      const multiplier = getMotionMultiplier();
-      if (multiplier > 0) {
-        const header = element.querySelector('header');
-        animations = [header, main].flatMap((block) =>
-          block
-            ? [
-                block.animate([{ opacity: 0 }, { opacity: 1 }], {
-                  duration: motionDuration('feedback', multiplier) * 1000,
-                  easing: `cubic-bezier(${MOTION_EASING.standard.join(',')})`,
-                }),
-              ]
-            : [],
-        );
-      }
-      animations.forEach((animation) => void animation.finished.catch(() => {}));
+      if (!element.querySelector('main')) return false;
+      arrived.current = true;
+      stop = revealPageParts(element, multiplier);
       releaseStudyCover();
       return true;
     };
-    // Revision setup loads inside this boundary. Keep the launch cover until its
-    // reading surface exists, rather than spending the entrance on a placeholder.
     const observer = new MutationObserver(() => {
       if (reveal()) observer.disconnect();
     });
     if (!reveal()) observer.observe(element, { childList: true, subtree: true });
     return () => {
       observer.disconnect();
-      animations.forEach((animation) => animation.cancel());
+      stop?.();
     };
-  }, []);
+  }, [ready, multiplier]);
   return (
-    <div ref={root} className={className} data-study-entrance>
+    <div ref={root} className={className} data-study-entrance data-page-arrival="">
       {children}
     </div>
   );

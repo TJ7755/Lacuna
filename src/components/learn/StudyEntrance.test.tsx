@@ -5,7 +5,10 @@ import { StudyEntrance } from './StudyEntrance';
 
 const preference = vi.hoisted(() => ({ multiplier: 1 }));
 const release = vi.hoisted(() => vi.fn());
-vi.mock('../../state/motionSpeed', () => ({ getMotionMultiplier: () => preference.multiplier }));
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['normal'],
+  speedMultiplier: () => preference.multiplier,
+}));
 vi.mock('../layout/LandingTransition', () => ({ releaseStudyCover: release }));
 
 beforeEach(() => {
