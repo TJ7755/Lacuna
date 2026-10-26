@@ -47,6 +47,7 @@ export function ExpandingCreateControl({
   const [offset, setOffset] = useState(0);
   const [verticalOffset, setVerticalOffset] = useState(0);
   const [availableHeight, setAvailableHeight] = useState<number>();
+  const [formWidth, setFormWidth] = useState<number>();
   const [retainForm, setRetainForm] = useState(open);
   const form = useRef<HTMLDivElement>(null);
   const surface = useRef<HTMLDivElement>(null);
@@ -58,7 +59,7 @@ export function ExpandingCreateControl({
     const measure = (height = element.offsetHeight) => {
       const shell = surface.current;
       const borderHeight = shell ? shell.offsetHeight - shell.clientHeight : 0;
-      setFormHeight(height + borderHeight);
+      setFormHeight(triggerHeight + height + borderHeight);
     };
     measure();
     const observer = new ResizeObserver((entries) => {
@@ -66,7 +67,7 @@ export function ExpandingCreateControl({
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [open]);
+  }, [open, triggerHeight]);
   // Keep a useful form area in short windows, allowing the header to rise with its surface.
   useLayoutEffect(() => {
     if (!open) return;
@@ -74,6 +75,9 @@ export function ExpandingCreateControl({
       const bounds = root.current?.getBoundingClientRect();
       if (!bounds) return;
       const width = Math.min(448, window.innerWidth - 36);
+      const shell = surface.current;
+      const borderWidth = shell ? shell.offsetWidth - shell.clientWidth : 0;
+      setFormWidth(width - borderWidth);
       const originLeft = align === 'end' ? bounds.right - width : bounds.left;
       const left = align === 'centre' ? bounds.left + (bounds.width - width) / 2 : originLeft;
       setOffset(Math.min(Math.max(18, left), window.innerWidth - 18 - width) - originLeft);
@@ -166,7 +170,9 @@ export function ExpandingCreateControl({
               key="form"
               ref={form}
               id={formId}
-              style={{ paddingTop: triggerHeight }}
+              // Measure and reveal the resting layout rather than reflowing it with the shell.
+              className={`absolute ${anchor}`}
+              style={{ top: triggerHeight, width: formWidth }}
               initial={{ opacity: 0 }}
               animate={{ opacity: open ? 1 : 0 }}
               transition={{ duration: 0.12 * multiplier }}
