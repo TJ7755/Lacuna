@@ -54,7 +54,9 @@ export async function importWelcomeCourse(page: Page) {
     buffer: Buffer.from(JSON.stringify(file)),
   });
   await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
-  await page.getByRole('radio', { name: /Exam date/ }).press('Space');
+  const examDate = page.getByRole('radio', { name: /Exam date/ });
+  await examDate.locator('..').click();
+  await expect(examDate).toBeChecked();
   await page.getByRole('button', { name: 'Add to my courses' }).click();
   await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeHidden();
   // Let the import's toast expire so it cannot cover or stack with the spec's own. Hovering
