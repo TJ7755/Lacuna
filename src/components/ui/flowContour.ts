@@ -1,3 +1,5 @@
+export const FLOW_CORNER_EXPONENT = 2 ** 1.5;
+
 export interface FlowPoint {
   x: number;
   y: number;
@@ -16,7 +18,7 @@ export function flowOutline(
   width: number,
   height: number,
   radius: number,
-  exponent = 4,
+  exponent = FLOW_CORNER_EXPONENT,
 ): FlowPoint[] {
   const r = Math.min(radius, width / 2, height / 2);
   const points: FlowPoint[] = [{ x: r, y: 0 }];
@@ -109,8 +111,8 @@ export function expansionOutline(
   align: 'start' | 'end',
 ): FlowPoint[] {
   const expanded = clamp((height - triggerHeight) / 120, 0, 1);
-  const radius = triggerHeight / 2 + (24 - triggerHeight / 2) * expanded;
-  const points = flowOutline(width, height, radius, 2 + 2 * expanded);
+  const radius = triggerHeight / 2 + (36 - triggerHeight / 2) * expanded;
+  const points = flowOutline(width, height, radius, 2 + (FLOW_CORNER_EXPONENT - 2) * expanded);
   const neck =
     clamp((width - triggerWidth) / 70, 0, 1) * clamp(1 - (height - triggerHeight) / 160, 0, 1);
   return points.map(({ x, y }) => {

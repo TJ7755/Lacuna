@@ -68,10 +68,26 @@ for (const theme of ['light', 'dark']) {
 
     const row = study.locator('..');
     const title = row.getByRole('button', { name: 'Welcome to Lacuna', exact: true });
+    await page.waitForTimeout(700);
+    const restingRow = await row.screenshot();
     await title.hover();
     await page.waitForTimeout(350);
     const dot = row.locator(':scope > span').first();
     const learning = row.getByText('New learning', { exact: true });
+    const rowBounds = (await row.boundingBox())!,
+      titleBounds = (await title.boundingBox())!;
+    const hoverRow = await row.screenshot();
+    const textBackground = await opaquePixel(
+      hoverRow,
+      titleBounds.x - rowBounds.x + 32,
+      titleBounds.y - rowBounds.y + 5,
+    );
+    const clearBackground = await opaquePixel(
+      hoverRow,
+      titleBounds.x - rowBounds.x + titleBounds.width - 32,
+      titleBounds.y - rowBounds.y + 5,
+    );
+    expect(textBackground).toEqual(clearBackground);
     const dotBefore = await dot.screenshot(),
       learningBefore = await learning.screenshot();
     await page.mouse.down();
@@ -81,6 +97,8 @@ for (const theme of ['light', 'dark']) {
     await page.screenshot({ path: `${evidence}/title-held-${theme}.png` });
     await page.mouse.move(0, 0);
     await page.mouse.up();
+    await expect.poll(async () => Buffer.compare(await row.screenshot(), restingRow)).toBe(0);
+    await page.screenshot({ path: `${evidence}/title-exited-${theme}.png` });
 
     await page.locator('main').getByRole('button', { name: 'New course', exact: true }).click();
     const form = page.getByRole('form', { name: 'New course' });

@@ -107,7 +107,7 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
           y: expanded ? offsetY : 0,
           width: expanded ? panelWidth : 100,
           height: expanded ? 'auto' : triggerHeight,
-          borderRadius: expanded ? 24 : triggerHeight / 2,
+          borderRadius: expanded ? 36 : triggerHeight / 2,
         }}
         transition={transition}
         className={`absolute right-0 top-0 flow-expansion overflow-hidden bg-surface-raised ring-1 ring-inset ${expanded ? 'ring-transparent card-surface' : 'ring-line-strong'}`}

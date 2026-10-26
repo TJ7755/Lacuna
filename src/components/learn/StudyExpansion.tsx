@@ -151,7 +151,7 @@ export function StudyExpansion({
       }
       animate={{
         ...bounds,
-        borderRadius: 24,
+        borderRadius: 36,
         opacity: launching ? 0 : 1,
       }}
       exit={{
@@ -251,7 +251,8 @@ export function StudyExpansion({
                   element.getBoundingClientRect(),
                   {
                     colour: flowSurfaceColour(element),
-                    radius: style.borderRadius,
+                    radius:
+                      style.getPropertyValue('--flow-surface-radius').trim() || style.borderRadius,
                     paper: `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--paper').trim()})`,
                   },
                   navigate,

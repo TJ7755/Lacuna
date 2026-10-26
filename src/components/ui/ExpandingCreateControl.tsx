@@ -122,7 +122,7 @@ export function ExpandingCreateControl({
           y: open ? verticalOffset : 0,
           width: open ? 'min(448px, calc(100vw - 36px))' : closedWidth,
           height: open ? (formHeight ?? 'auto') : triggerHeight,
-          borderRadius: open ? 24 : triggerHeight / 2,
+          borderRadius: open ? 36 : triggerHeight / 2,
         }}
         transition={transition}
         // Keep drafts and selection alive until the shape has actually closed.

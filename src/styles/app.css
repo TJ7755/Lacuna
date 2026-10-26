@@ -349,9 +349,10 @@
 }
 
 :root {
-  --flow-surface-radius: 24px;
-  --flow-control-radius: 18px;
+  --flow-surface-radius: 28px;
+  --flow-control-radius: 20px;
 }
+.flow-surface,
 .today-forecast {
   border-radius: var(--flow-surface-radius);
 }
@@ -391,13 +392,20 @@
 .study-target-tiles {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
 }
-@supports (corner-shape: squircle) {
+@supports (corner-shape: superellipse(1.5)) {
+  :root {
+    --flow-surface-radius: 36px;
+    --flow-control-radius: 28px;
+  }
   .today-forecast,
   .today-course-row,
   .flow-surface,
   [data-expanding-action],
-  .study-target-tiles > label {
-    corner-shape: squircle;
+  .study-target-tiles > label,
+  .import-sources button,
+  .import-drop {
+    border-radius: var(--flow-control-radius);
+    corner-shape: superellipse(1.5);
   }
 }
 

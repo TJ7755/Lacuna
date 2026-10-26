@@ -15,6 +15,9 @@ export function intendedFlowPaint(element: HTMLElement) {
   const border = style.borderColor;
   const borderWidth = parseFloat(style.borderTopWidth) || 0;
   const radius = parseFloat(style.borderTopLeftRadius) || 0;
+  const corner = style.getPropertyValue('corner-shape');
+  const power = Number.parseFloat(corner.match(/superellipse\(([-.\d]+)\)/)?.[1] ?? 'NaN');
+  const exponent = Number.isFinite(power) ? 2 ** power : corner === 'squircle' ? 4 : 2;
   probe.remove();
 
   const transparent = background === 'transparent' || /rgba\([^)]*,\s*0\s*\)/.test(background);
@@ -38,7 +41,7 @@ export function intendedFlowPaint(element: HTMLElement) {
     const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
     fill = `rgb(${r}, ${g}, ${b})`;
   }
-  return { fill, border, borderWidth, radius, transparent };
+  return { fill, border, borderWidth, radius, exponent, transparent };
 }
 
 /** Give native paint back without animating through a transparent intermediate frame. */
