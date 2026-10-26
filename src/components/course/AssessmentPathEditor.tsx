@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
+import { resolveLessonOrder } from '../../course/lessonOrder';
 import {
   createCourseAssessment,
   deleteCourseAssessment,
@@ -28,6 +29,8 @@ export function AssessmentPathEditor({
   cards,
   links,
   timeZone,
+  preferredLessonIds,
+  learnerOwnedOnly = false,
   onSaved,
 }: {
   courseId: string;
@@ -37,14 +40,20 @@ export function AssessmentPathEditor({
   cards: Card[];
   links: LessonCardLink[];
   timeZone?: string;
+  preferredLessonIds?: readonly string[];
+  learnerOwnedOnly?: boolean;
   onSaved: () => void;
 }) {
+  const orderedLessons = useMemo(
+    () => resolveLessonOrder(lessons, preferredLessonIds),
+    [lessons, preferredLessonIds],
+  );
   const kind = assessment?.kind ?? 'checkpoint';
   const [draft, setDraft] = useState<AssessmentDraft>(() =>
     assessment
       ? draftFromAssessment(assessment)
       : {
-          ...emptyAssessmentDraft(lessons, timeZone),
+          ...emptyAssessmentDraft(orderedLessons, timeZone),
           ...(defaultAfterLessonId !== undefined ? { afterLessonId: defaultAfterLessonId } : {}),
         },
   );
@@ -68,20 +77,28 @@ export function AssessmentPathEditor({
     [courseId, draft, kind],
   );
   const resolved = useMemo(
-    () => resolveAssessmentCoverage(record, lessons, cards, links),
-    [record, lessons, cards, links],
+    () => resolveAssessmentCoverage(record, orderedLessons, cards, links, preferredLessonIds),
+    [record, orderedLessons, cards, links, preferredLessonIds],
   );
   const candidates = useMemo(
-    () => resolveAssessmentCoverage({ ...record, excludedCardIds: [] }, lessons, cards, links),
-    [record, lessons, cards, links],
+    () =>
+      resolveAssessmentCoverage(
+        { ...record, excludedCardIds: [] },
+        orderedLessons,
+        cards,
+        links,
+        preferredLessonIds,
+      ),
+    [record, orderedLessons, cards, links, preferredLessonIds],
   );
 
   function changeCoverage(next: AssessmentDraft) {
     const scope = resolveAssessmentCoverage(
       { ...record, ...assessmentChanges(next), excludedCardIds: [] } as CourseAssessment,
-      lessons,
+      orderedLessons,
       cards,
       links,
+      preferredLessonIds,
     );
     const ids = new Set(scope.cards.map((card) => card.id));
     setDraft({ ...next, excludedCardIds: next.excludedCardIds.filter((id) => ids.has(id)) });
@@ -107,8 +124,11 @@ export function AssessmentPathEditor({
     }
     try {
       const changes = assessmentChanges(draft);
-      if (assessment) await updateCourseAssessment(assessment.id, changes);
-      else {
+      if (assessment) {
+        if (learnerOwnedOnly)
+          await updateCourseAssessment(assessment.id, changes, { learnerOwnedOnly: true });
+        else await updateCourseAssessment(assessment.id, changes);
+      } else {
         const { name, examDate, ...options } = changes;
         await createCourseAssessment(courseId, name!, examDate ?? draft.examDate, options);
       }
@@ -121,7 +141,8 @@ export function AssessmentPathEditor({
   async function remove() {
     if (!assessment || kind === 'final') return false;
     try {
-      await deleteCourseAssessment(assessment.id);
+      if (learnerOwnedOnly) await deleteCourseAssessment(assessment.id, { learnerOwnedOnly: true });
+      else await deleteCourseAssessment(assessment.id);
       return true;
     } catch (cause) {
       notify(
@@ -232,7 +253,7 @@ export function AssessmentPathEditor({
       )}
       <AnimatedDisclosure open={draft.coverageMode === 'custom'}>
         <div className="mt-3 flex flex-wrap gap-2" aria-label="Covered lessons">
-          {lessons.map((lesson, index) => (
+          {orderedLessons.map((lesson, index) => (
             <button
               key={lesson.id}
               type="button"

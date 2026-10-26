@@ -1,7 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 
-async function importSchoolScience(page: Page, unlockMode: 'open' | 'semi-linear' = 'open') {
+async function importSchoolScience(
+  page: Page,
+  unlockMode: 'open' | 'semi-linear' = 'open',
+  publishedCheckpoint = true,
+) {
   await enterFreshLacuna(page);
   await openImport(page);
   const examDate = Date.now() + 90 * 86_400_000;
@@ -81,6 +85,7 @@ async function importSchoolScience(page: Page, unlockMode: 'open' | 'semi-linear
       },
     ],
   };
+  if (!publishedCheckpoint) payload.exams = payload.exams.filter((exam) => exam.k === 'f');
   await page.getByLabel('Import file').setInputFiles({
     name: 'School science.lacuna',
     mimeType: 'application/json',
@@ -277,6 +282,158 @@ for (const input of [
         path: test.info().outputPath(`local-order-${input.name}-saved.png`),
         animations: 'disabled',
       });
+    });
+  });
+}
+
+for (const input of [
+  { name: 'mouse', width: 1440, touch: false },
+  { name: 'touch', width: 390, touch: true },
+]) {
+  test.describe(`learner checkpoints with ${input.name}`, () => {
+    test.use({ viewport: { width: input.width, height: 1100 }, hasTouch: input.touch });
+    test('adds a personal test, edits its date and drags its coverage without changing library content', async ({
+      page,
+    }) => {
+      await page.emulateMedia({ reducedMotion: input.touch ? 'reduce' : 'no-preference' });
+      await importSchoolScience(page, 'open', false);
+      const path = page.getByRole('list', { name: 'Course path' });
+      const before = await publisherRecords(page);
+      expect(
+        (before.courseAssessments as { kind: string }[]).filter((row) => row.kind === 'checkpoint'),
+      ).toHaveLength(0);
+      const lesson = (id: string) => path.locator(`[data-path-lesson="${id}"] [data-path-row]`);
+      await lesson('C').press('Alt+ArrowUp');
+      await expect(path.locator('[data-path-lesson]').nth(1)).toHaveAttribute(
+        'data-path-lesson',
+        'C',
+      );
+      await lesson('C').press('Alt+ArrowUp');
+      await expect(path.locator('[data-path-lesson]').first()).toHaveAttribute(
+        'data-path-lesson',
+        'C',
+      );
+      await page
+        .locator('[data-path-card]')
+        .getByRole('button', { name: 'Add', exact: true })
+        .click();
+      await expect(page.getByRole('menuitem')).toHaveCount(1);
+      await page.getByRole('menuitem', { name: 'Checkpoint', exact: true }).click();
+      const add = page.getByRole('dialog', { name: 'Add checkpoint', exact: true });
+      await add.getByRole('textbox', { name: 'Name', exact: true }).fill('My mock');
+      await add.getByRole('button', { name: 'Done', exact: true }).click();
+      await expect(add).toBeHidden();
+      const created = (await publisherRecords(page)).courseAssessments as {
+        id: string;
+        kind: string;
+        examDate: number;
+      }[];
+      const own = created.find((row) => row.kind === 'checkpoint')!;
+      expect(own).toBeTruthy();
+      await path.getByRole('button', { name: 'Edit checkpoint: My mock', exact: true }).click();
+      const edit = page.getByRole('dialog', { name: 'Edit checkpoint', exact: true });
+      await edit.getByRole('textbox', { name: 'Name', exact: true }).fill('My mock - updated');
+      await edit.getByRole('button', { name: 'Choose date and time', exact: true }).click();
+      const calendar = page.getByRole('dialog', { name: 'Choose date and time', exact: true });
+      await calendar.getByRole('button', { name: 'Next month', exact: true }).click();
+      const nextMonth = new Date();
+      nextMonth.setMonth(nextMonth.getMonth() + 1, 15);
+      const chosenDate = nextMonth.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      await calendar.getByRole('button', { name: chosenDate, exact: true }).click();
+      await calendar.getByRole('textbox', { name: 'Hour', exact: true }).fill('10');
+      await calendar.getByRole('textbox', { name: 'Minute', exact: true }).fill('30');
+      await calendar.getByRole('button', { name: 'Done', exact: true }).click();
+      await edit.getByRole('button', { name: 'Done', exact: true }).click();
+      await expect(edit).toBeHidden();
+      type TestRecord = {
+        id: string;
+        examDate: number;
+        timeZone?: string;
+        afterLessonId: string | null;
+      };
+      const changed = ((await publisherRecords(page)).courseAssessments as TestRecord[]).find(
+        (row) => row.id === own.id,
+      )!;
+      expect(changed.examDate).not.toBe(own.examDate);
+      expect(
+        new Intl.DateTimeFormat('en-GB', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+          timeZone: changed.timeZone,
+        }).format(changed.examDate),
+      ).toBe(chosenDate);
+      const row = path.getByRole('button', {
+        name: 'Edit checkpoint: My mock - updated',
+        exact: true,
+      });
+      await expect(row).toHaveAttribute('aria-roledescription', 'sortable path row');
+      await row.scrollIntoViewIfNeeded();
+      const start = (await row.boundingBox())!;
+      const target = (await lesson('A').boundingBox())!;
+      const x = Math.round(start.x + 12);
+      const y = Math.round(start.y + start.height / 2);
+      const targetY = Math.round(target.y + 4);
+      if (input.touch) {
+        const session = await page.context().newCDPSession(page);
+        await session.send('Input.dispatchTouchEvent', {
+          type: 'touchStart',
+          touchPoints: [{ x, y }],
+        });
+        await expect(row).toHaveAttribute('data-drag-lifted', 'true');
+        await session.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [{ x, y: targetY }],
+        });
+        await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await session.detach();
+      } else {
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await expect(row).toHaveAttribute('data-drag-lifted', 'true');
+        await page.mouse.move(x, targetY, { steps: 20 });
+        await page.screenshot({
+          path: test.info().outputPath('learner-checkpoint-held.png'),
+          animations: 'allow',
+        });
+        await page.mouse.up();
+      }
+      await expect
+        .poll(
+          async () =>
+            ((await publisherRecords(page)).courseAssessments as TestRecord[]).find(
+              (item) => item.id === own.id,
+            )?.afterLessonId,
+        )
+        .toBe('C');
+      await page.reload();
+      await path
+        .getByRole('button', { name: 'Edit checkpoint: My mock - updated', exact: true })
+        .click();
+      await expect(edit.getByText('1 lesson · 1 card', { exact: true })).toBeVisible();
+      await page.screenshot({
+        path: test.info().outputPath(`learner-checkpoint-${input.name}-editor.png`),
+        animations: 'disabled',
+      });
+      const retained = ((await publisherRecords(page)).courseAssessments as TestRecord[]).find(
+        (item) => item.id === own.id,
+      )!;
+      expect(retained.examDate).toBe(changed.examDate);
+      await edit.getByRole('button', { name: 'Delete', exact: true }).click();
+      await page
+        .getByText('Delete this checkpoint?', { exact: true })
+        .locator('..')
+        .getByRole('button', { name: 'Delete', exact: true })
+        .click();
+      await expect(edit).toBeHidden();
+      await expect(
+        path.getByRole('button', { name: 'Edit checkpoint: My mock - updated', exact: true }),
+      ).toHaveCount(0);
+      expect(await publisherRecords(page)).toEqual(before);
     });
   });
 }

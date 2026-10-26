@@ -1,3 +1,5 @@
+import { isLearnerOwnedCheckpoint } from '../course/assessmentOwnership';
+import { courseLessonOrderPreference, resolveLessonOrder } from '../course/lessonOrder';
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 import { finalAssessmentForCourse } from './assessmentMigration';
 import { syncCourseSchedulingUnits } from './backingDecks';
@@ -71,12 +73,19 @@ export function validateAssessmentStructure(assessment: CourseAssessment): void 
 }
 
 async function validateAssessmentReferences(assessment: CourseAssessment): Promise<void> {
-  const [lessons, cards, links] = await Promise.all([
+  const [lessons, cards, links, course] = await Promise.all([
     db.lessons.toArray(),
     db.cards.toArray(),
     db.lessonCards.toArray(),
+    db.courses.get(assessment.courseId),
   ]);
-  const issue = resolveAssessmentCoverage(assessment, lessons, cards, links).validation.issues[0];
+  const issue = resolveAssessmentCoverage(
+    assessment,
+    lessons,
+    cards,
+    links,
+    course && courseLessonOrderPreference(course),
+  ).validation.issues[0];
   if (issue) throw new Error(issue.message);
 }
 
@@ -101,10 +110,14 @@ export async function createCourseAssessment(
         db.schedulingPerformance,
       ],
       async () => {
-        if (!(await db.courses.get(courseId))) throw new Error('The course could not be found.');
+        const course = await db.courses.get(courseId);
+        if (!course) throw new Error('The course could not be found.');
         const existing = await db.courseAssessments.where('courseId').equals(courseId).toArray();
         finalAssessmentForCourse(courseId, existing);
-        const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
+        const lessons = resolveLessonOrder(
+          await db.lessons.where('courseId').equals(courseId).toArray(),
+          courseLessonOrderPreference(course),
+        );
         const coverageMode =
           opts?.coverageMode ??
           (Array.isArray(opts?.lessonIds) && opts.lessonIds.length > 0 ? 'custom' : 'prefix');
@@ -148,15 +161,30 @@ export async function createCourseAssessment(
   }
 }
 
+interface AssessmentMutationOptions {
+  learnerOwnedOnly?: boolean;
+}
+
+async function requireLearnerOwnedCheckpoint(assessment: CourseAssessment): Promise<void> {
+  const course = await db.courses.get(assessment.courseId);
+  const lineageId = course?.distributedCopy?.lineageId;
+  const mapping = lineageId ? await db.lineageIdMappings.get(lineageId) : undefined;
+  if (!isLearnerOwnedCheckpoint(course, assessment, mapping)) {
+    throw new Error('Only your own checkpoints can be changed here.');
+  }
+}
+
 export async function updateCourseAssessment(
   id: string,
   changes: Partial<CourseAssessment>,
+  options?: AssessmentMutationOptions,
 ): Promise<void> {
   try {
     await db.transaction(
       'rw',
       [
         db.courses,
+        ...(options?.learnerOwnedOnly ? [db.lineageIdMappings] : []),
         db.lessons,
         db.cards,
         db.lessonCards,
@@ -168,6 +196,7 @@ export async function updateCourseAssessment(
       async () => {
         const existing = await db.courseAssessments.get(id);
         if (!existing) throw new Error('The assessment could not be found.');
+        if (options?.learnerOwnedOnly) await requireLearnerOwnedCheckpoint(existing);
         if (changes.courseId !== undefined && changes.courseId !== existing.courseId)
           throw new Error('An assessment cannot move to another course.');
         const updated = stampUpdatedAt({
@@ -201,7 +230,10 @@ export async function updateCourseAssessment(
   }
 }
 
-export async function deleteCourseAssessment(id: string): Promise<void> {
+export async function deleteCourseAssessment(
+  id: string,
+  options?: AssessmentMutationOptions,
+): Promise<void> {
   try {
     // Loaded on demand, before the transaction opens, to keep question sets out of the first load.
     const { removeQuestionSetAssessmentReference } =
@@ -210,6 +242,7 @@ export async function deleteCourseAssessment(id: string): Promise<void> {
       'rw',
       [
         db.courses,
+        ...(options?.learnerOwnedOnly ? [db.lineageIdMappings] : []),
         db.lessons,
         db.courseAssessments,
         db.questionSets,
@@ -222,6 +255,7 @@ export async function deleteCourseAssessment(id: string): Promise<void> {
       async (tx) => {
         const assessment = await db.courseAssessments.get(id);
         if (!assessment) return;
+        if (options?.learnerOwnedOnly) await requireLearnerOwnedCheckpoint(assessment);
         if (assessment.kind === 'final')
           throw new Error('The sole final assessment cannot be deleted.');
         const revisionPlanIds = (

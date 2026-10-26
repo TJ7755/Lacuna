@@ -22,6 +22,7 @@ const CARD = 'rounded-3xl bg-surface card-surface';
  */
 export function CourseOverview(props: CourseOverviewProps) {
   const { nodes, authoring, archived } = props;
+  const localOrder = props.localOrder && !archived;
   const [addingLesson, setAddingLesson] = useState(false);
   const [creationAtEmpty, setCreationAtEmpty] = useState(nodes.length === 0);
   useLayoutEffect(() => {
@@ -55,10 +56,16 @@ export function CourseOverview(props: CourseOverviewProps) {
             <h2 id="course-path-heading" className="font-display text-[22px]">
               Lessons
             </h2>
-            {authoring && (
+            {(authoring || localOrder) && (
               <div ref={addRef}>
                 <AddCourseControl
-                  kinds={props.lessonCount > 0 ? undefined : ['lesson', 'practice', 'checkpoint']}
+                  kinds={
+                    localOrder
+                      ? ['checkpoint']
+                      : props.lessonCount > 0
+                        ? undefined
+                        : ['lesson', 'practice', 'checkpoint']
+                  }
                   onAdd={(kind) => {
                     if (kind === 'lesson') startAddingLesson();
                     else props.onAdd(kind);
@@ -79,8 +86,8 @@ export function CourseOverview(props: CourseOverviewProps) {
             </AnimatedDisclosure>
           )}
           <p id="lesson-path-reorder-instructions" className="sr-only">
-            {props.localOrder ? 'Hold a lesson' : 'In Edit mode, hold a row'} to lift it, then drag
-            to reorder. Alternatively, press Alt and the up or down arrow key.
+            {localOrder ? 'Hold a lesson or your checkpoint' : 'In Edit mode, hold a row'} to lift
+            it, then drag to reorder. Alternatively, press Alt and the up or down arrow key.
           </p>
           <div aria-live="polite" aria-atomic="true" className="sr-only">
             {props.announcement}
@@ -138,6 +145,8 @@ export function CourseOverview(props: CourseOverviewProps) {
               Assessments
             </h2>
             {props.assessments.map((assessment) => {
+              const editable =
+                authoring || (localOrder && props.learnerCheckpointIds?.includes(assessment.id));
               const date = assessment.examDate;
               const zone = assessment.timeZone ?? props.timeZone;
               return (
@@ -148,13 +157,13 @@ export function CourseOverview(props: CourseOverviewProps) {
                 >
                   <button
                     data-path-row=""
-                    data-press={authoring ? 'none' : undefined}
+                    data-press={editable ? 'none' : undefined}
                     type="button"
                     disabled={archived}
                     onClick={() => props.onAssessmentOpen(assessment.id)}
                     className={cn(
                       '-mx-2 flex min-h-11 min-w-0 flex-1 items-center gap-3.5 rounded-xl px-2 py-1 text-left transition-colors hover:bg-ink/[0.03]',
-                      authoring && 'pr-[60px]',
+                      editable && 'pr-[60px]',
                     )}
                   >
                     <span className="w-11 shrink-0 text-center leading-tight">
@@ -184,9 +193,10 @@ export function CourseOverview(props: CourseOverviewProps) {
                       </span>
                     </span>
                   </button>
-                  {authoring && !archived && (
+                  {editable && !archived && (
                     <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
                       <PathNodeActionsMenu
+                        learnerCheckpoint={!authoring && !!localOrder}
                         node={{
                           id: assessment.id,
                           nodeType: 'checkpoint',

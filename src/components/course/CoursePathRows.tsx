@@ -39,7 +39,9 @@ export function renderCoursePathRows(
     } as const;
 
     if (node.nodeType === 'checkpoint') {
-      const reorder = authoring ? props.reorderFor(node.id) : undefined;
+      const learnerCheckpoint = !!localOrder && !!props.learnerCheckpointIds?.includes(node.id);
+      const editable = authoring || learnerCheckpoint;
+      const reorder = editable ? props.reorderFor(node.id) : undefined;
       const date = node.assessment.examDate;
       return (
         <motion.li
@@ -66,12 +68,11 @@ export function renderCoursePathRows(
               'flex items-center gap-3 rounded-2xl bg-ink/[0.05] px-3.5 py-2.5 text-sm',
               reorder?.lifted && 'bg-surface path-editor-shadow',
               reorder?.refused && 'ring-1 ring-negative/40',
-              authoring && 'pr-[60px]',
+              editable && 'pr-[60px]',
             )}
           >
-            <FlagIcon width={16} height={16} className="shrink-0 text-ink-soft" />
-            <button
-              ref={reorder?.registerElement}
+            <PathRowButton
+              registerElement={reorder?.registerElement}
               onPointerDown={reorder?.onPointerDown}
               onPointerMove={reorder?.onPointerMove}
               onPointerUp={reorder?.onPointerUp}
@@ -84,21 +85,24 @@ export function renderCoursePathRows(
               data-drag-lifted={reorder?.lifted || undefined}
               data-drag-refused={reorder?.refused || undefined}
               data-path-row=""
-              data-press={authoring ? 'none' : undefined}
+              data-press={editable ? 'none' : undefined}
               type="button"
               disabled={archived}
               onClick={() => props.onAssessmentOpen(node.assessment.id)}
-              aria-label={`${archived ? 'Archived' : authoring ? 'Edit' : 'Open'} checkpoint: ${node.assessment.name}`}
-              className="min-h-11 min-w-0 flex-1 break-words text-left"
+              aria-label={`${archived ? 'Archived' : editable ? 'Edit' : 'Open'} checkpoint: ${node.assessment.name}`}
+              className="flex min-h-11 min-w-0 flex-1 items-center gap-3 break-words text-left"
             >
-              <strong className="font-bold">{node.assessment.name}</strong>
-              {date !== undefined && (
-                <span className="text-ink-faint">
-                  {' · '}
-                  {formatShortDate(date, node.assessment.timeZone ?? props.timeZone)}
-                </span>
-              )}
-            </button>
+              <FlagIcon width={16} height={16} className="shrink-0 text-ink-soft" />
+              <span className="min-w-0">
+                <strong className="font-bold">{node.assessment.name}</strong>
+                {date !== undefined && (
+                  <span className="text-ink-faint">
+                    {' · '}
+                    {formatShortDate(date, node.assessment.timeZone ?? props.timeZone)}
+                  </span>
+                )}
+              </span>
+            </PathRowButton>
             {!archived && (
               <button
                 type="button"
@@ -109,14 +113,24 @@ export function renderCoursePathRows(
               </button>
             )}
           </div>
-          {authoring && !archived && (
+          {editable && !archived && (
             <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
               <PathNodeActionsMenu
+                learnerCheckpoint={learnerCheckpoint}
                 node={node}
                 lessons={lessons}
                 onEdit={() => props.onAssessmentOpen(node.assessment.id)}
               />
             </div>
+          )}
+          {reorder?.dropMarker && (
+            <div
+              aria-hidden="true"
+              className={cn(
+                'pointer-events-none absolute inset-x-3 h-0.5 rounded-full bg-accent',
+                reorder.dropMarker === 'before' ? '-top-px' : '-bottom-px',
+              )}
+            />
           )}
         </motion.li>
       );
