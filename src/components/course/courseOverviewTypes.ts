@@ -18,6 +18,7 @@ export interface CourseOverviewProps {
   assessments: CourseAssessment[];
   timeZone?: string;
   authoring: boolean;
+  localOrder?: boolean;
   archived: boolean;
   announcement: string;
   detailForLesson: (id: string) => LessonNodeDetail;
