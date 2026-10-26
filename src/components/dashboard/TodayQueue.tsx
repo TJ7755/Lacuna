@@ -101,7 +101,7 @@ export function TodayQueue({
             key={row.id}
             {...contextMenuHandlers(() => openActions(row.id))}
             layout={multiplier > 0 ? 'position' : false}
-            initial={multiplier > 0 ? { opacity: 0 } : false}
+            initial={false}
             animate={{
               opacity: 1,
               // A transition on the target replaces the prop below, so the fade names its own.

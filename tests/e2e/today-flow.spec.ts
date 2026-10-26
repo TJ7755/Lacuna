@@ -144,9 +144,14 @@ test('Today surfaces keep labels pinned through hover, press, reversal and reduc
     document.documentElement.style.fontSize = '200%';
   });
   await page.waitForTimeout(150);
-  const tiles = page.locator('.study-target-tiles > label');
-  const first = await tiles.first().boundingBox();
-  const second = await tiles.last().boundingBox();
+  const first = await form
+    .getByRole('radio', { name: /Exam date/ })
+    .locator('..')
+    .boundingBox();
+  const second = await form
+    .getByRole('radio', { name: /Steady retention/ })
+    .locator('..')
+    .boundingBox();
   expect(second!.y).toBeGreaterThan(first!.y);
   await page.screenshot({ path: `${evidence}/new-course-enlarged-reduced.png` });
   await page.keyboard.press('Escape');
@@ -219,4 +224,53 @@ test('mixed forecast horizons and legend selection have native keyboard parity',
   await course.focus();
   await page.keyboard.press('Space');
   await expect(course).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('cold reload shows actionable rows before optional motion features arrive', async ({
+  page,
+}) => {
+  await enterFreshLacuna(page);
+  await importWelcomeCourse(page);
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let held = false;
+  await page.route('**/assets/motionFeatures-*.js', async (route) => {
+    held = true;
+    await gate;
+    await route.continue();
+  });
+  try {
+    await page.reload();
+    const study = page.getByRole('button', { name: 'Study Welcome to Lacuna' });
+    await expect(study).toBeEnabled();
+    await expect.poll(() => held).toBe(true);
+    await expect
+      .poll(() =>
+        study.evaluate((element) => {
+          let opacity = 1;
+          for (let node: Element | null = element; node; node = node.parentElement)
+            opacity *= Number(getComputedStyle(node).opacity);
+          return opacity;
+        }),
+      )
+      .toBe(1);
+    const course = page
+      .getByRole('navigation', { name: 'Courses', exact: true })
+      .getByRole('link', { name: 'Welcome to Lacuna', exact: true });
+    await expect
+      .poll(() =>
+        course.evaluate((element) => {
+          let opacity = 1;
+          for (let node: Element | null = element; node; node = node.parentElement)
+            opacity *= Number(getComputedStyle(node).opacity);
+          return opacity;
+        }),
+      )
+      .toBe(1);
+    await page.screenshot({ path: `${evidence}/cold-reload-motion-pending.png` });
+  } finally {
+    release();
+  }
 });
