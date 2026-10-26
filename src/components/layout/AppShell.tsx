@@ -1,5 +1,14 @@
 import { ModalBackdrop } from '../ui/ModalBackdrop';
-import { lazy, Suspense, useEffect, useRef, useState, type ComponentProps } from 'react';
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { ShellCourseDataProvider } from '../../state/ShellCourseData';
@@ -421,7 +430,9 @@ function MobileDrawerPresence(props: ComponentProps<typeof motion.div>) {
 }
 
 function StudyPending({ anchor, onClose }: { anchor: HTMLElement; onClose: () => void }) {
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const position = anchor.style.position;
+    if (getComputedStyle(anchor).position === 'static') anchor.style.position = 'relative';
     anchor.setAttribute('aria-busy', 'true');
     const outside = (event: PointerEvent) => {
       if (!anchor.contains(event.target as Node)) onClose();
@@ -429,12 +440,18 @@ function StudyPending({ anchor, onClose }: { anchor: HTMLElement; onClose: () =>
     document.addEventListener('pointerdown', outside);
     return () => {
       anchor.removeAttribute('aria-busy');
+      anchor.style.position = position;
       document.removeEventListener('pointerdown', outside);
     };
   }, [anchor, onClose]);
-  return (
-    <span role="status" className="sr-only">
-      Loading study options…
-    </span>
+  return createPortal(
+    <span
+      role="status"
+      aria-label="Loading study options"
+      className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[inherit] bg-inherit text-sm"
+    >
+      Loading…
+    </span>,
+    anchor,
   );
 }

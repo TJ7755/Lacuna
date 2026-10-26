@@ -51,10 +51,11 @@ export function ExpandingCreateControl({
   const [formWidth, setFormWidth] = useState<number>();
   const [retainForm, setRetainForm] = useState(open);
   const form = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
   const surface = useRef<HTMLDivElement>(null);
   const [formHeight, setFormHeight] = useState<number>();
   useLayoutEffect(() => {
-    const element = form.current;
+    const element = body.current;
     if (!element || !open) return;
     setRetainForm(true);
     const measure = (height = element.offsetHeight) => {
@@ -82,7 +83,8 @@ export function ExpandingCreateControl({
       const originLeft = align === 'end' ? bounds.right - width : bounds.left;
       const left = align === 'centre' ? bounds.left + (bounds.width - width) / 2 : originLeft;
       setOffset(Math.min(Math.max(18, left), window.innerWidth - 18 - width) - originLeft);
-      const top = Math.max(18, Math.min(bounds.top, window.innerHeight - 18 - triggerHeight - 240));
+      const height = Math.min(formHeight ?? triggerHeight + 240, window.innerHeight - 36);
+      const top = Math.max(18, Math.min(bounds.top, window.innerHeight - 18 - height));
       setVerticalOffset(top - bounds.top);
       setAvailableHeight(Math.max(triggerHeight, window.innerHeight - top - 18));
     };
@@ -93,7 +95,7 @@ export function ExpandingCreateControl({
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
-  }, [open, align, triggerHeight]);
+  }, [open, align, triggerHeight, formHeight]);
 
   const previouslyOpen = useRef(open);
   useEffect(() => {
@@ -121,7 +123,11 @@ export function ExpandingCreateControl({
           x: open ? offset : 0,
           y: open ? verticalOffset : 0,
           width: open ? 'min(448px, calc(100vw - 36px))' : closedWidth,
-          height: open ? (formHeight ?? 'auto') : triggerHeight,
+          height: open
+            ? formHeight === undefined
+              ? 'auto'
+              : Math.min(formHeight, availableHeight ?? formHeight)
+            : triggerHeight,
           borderRadius: open ? 36 : triggerHeight / 2,
         }}
         transition={transition}
@@ -188,13 +194,13 @@ export function ExpandingCreateControl({
               transition={{ duration: 0.12 * multiplier }}
             >
               <div
-                className="overflow-y-auto overscroll-contain text-left"
+                className="scroll-edge-fade overflow-y-auto overscroll-contain text-left"
                 style={{
                   maxHeight:
                     availableHeight === undefined ? undefined : availableHeight - triggerHeight,
                 }}
               >
-                {typeof children === 'function' ? children(close) : children}
+                <div ref={body}>{typeof children === 'function' ? children(close) : children}</div>
               </div>
             </motion.div>
           )}

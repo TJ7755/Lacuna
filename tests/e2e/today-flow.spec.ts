@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Locator } from '@playwright/test';
 import { enterFreshLacuna, importWelcomeCourse, openImport } from './fixtures/lacunaApp';
 
-const evidence = '/tmp/lacuna-today-candidate2';
+const evidence = process.env.LACUNA_TODAY_EVIDENCE ?? '/tmp/lacuna-today-candidate2';
 test.use({
   serviceWorkers: 'block',
   viewport: { width: 1470, height: 956 },
@@ -50,6 +50,9 @@ test('cold Study acknowledges input and Escape cancels before the chunk arrives'
     await study.click();
     await expect.poll(() => requested).toBe(true);
     await expect(study).toHaveAttribute('aria-busy', 'true');
+    const pending = page.getByRole('status', { name: 'Loading study options' });
+    await expect(pending).toBeVisible();
+    expect((await pending.boundingBox())!.height).toBeGreaterThanOrEqual(16);
     await page.screenshot({ path: `${evidence}/study-pending.png` });
     await page.keyboard.press('Escape');
     await expect(study).not.toHaveAttribute('aria-busy');

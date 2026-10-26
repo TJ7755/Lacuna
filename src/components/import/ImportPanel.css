@@ -1,6 +1,22 @@
 .import-panel {
   padding: 8px 20px 20px;
 }
+.import-control-title {
+  visibility: hidden;
+}
+@container import-surface (min-width: 240px) {
+  .import-control-title {
+    visibility: visible;
+  }
+}
+@media (max-height: 700px) {
+  .import-panel .import-sources button {
+    padding-block: 8px;
+  }
+  .import-panel .import-drop {
+    padding-block: 12px;
+  }
+}
 .import-step-height {
   overflow: clip;
   overflow-clip-margin: 4px;

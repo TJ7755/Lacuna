@@ -1,7 +1,7 @@
 import sharp from 'sharp';
 import { expect, type Locator, type Page } from '@playwright/test';
 
-export const FLOW_EVIDENCE = '/tmp/lacuna-today-candidate2';
+export const FLOW_EVIDENCE = process.env.LACUNA_TODAY_EVIDENCE ?? '/tmp/lacuna-today-candidate2';
 
 /** Wait for presented geometry and colour, not just a non-empty DOM rectangle. */
 export async function settle(element: Locator) {
