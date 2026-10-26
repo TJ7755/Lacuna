@@ -149,7 +149,7 @@ describe('CoursePath overview', () => {
     pathState.mockCourse = {
       ...course,
       localLessonOrder: [lesson2.id, lesson1.id],
-      autoPractice: true,
+      archived: true,
       distributedCopy: {
         lineageId: 'science',
         revision: 1,
@@ -159,7 +159,7 @@ describe('CoursePath overview', () => {
     };
     renderPage();
     expect(screen.getByText(/Saved lesson order is suspended/)).toHaveTextContent(
-      'Turn off automatic Card practice',
+      'Local lesson order is unavailable while this course is archived.',
     );
     expect(screen.queryByRole('button', { name: /Add lesson/i })).not.toBeInTheDocument();
   });

@@ -92,7 +92,7 @@ describe('LessonManagementSection', () => {
   it('explains suspended ordering, disables moves and still allows reset', async () => {
     mockCourse.distributedCopy = { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false };
     mockCourse.localLessonOrder = ['lesson-2', 'lesson-1'];
-    unavailableReason = 'Turn off automatic Card practice to use local lesson order.';
+    unavailableReason = 'Local lesson order is unavailable while this course is archived.';
     render(<LessonManagementSection courseId="course-1" />);
     expect(screen.getByRole('status')).toHaveTextContent('Saved lesson order is suspended.');
     expect(screen.getByRole('status')).toHaveTextContent(unavailableReason);
