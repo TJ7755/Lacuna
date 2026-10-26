@@ -6,7 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { createHandler } from '../../relay/src/relay';
 import { MemoryStore } from '../../relay/src/store';
 import { DAY_MS, completedIsoDayLabel } from '../../relay/shared/insights/index';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { createCourse, enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 import { parseClassCode } from '../../src/insights/classCode';
 import { addLessonCard, reviewOnlyCard, readAll } from './fixtures/syncConvergence';
 
@@ -166,7 +166,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     );
     await expect(teacher.getByRole('button', { name: 'Copy code', exact: true })).toBeVisible();
     await expect(
-      teacher.getByText(/Pupils open getlacuna.app, choose Join a class on Today/),
+      teacher.getByText(/Pupils open getlacuna.app, choose Import, then Join a class/),
     ).toBeVisible();
     const code = await teacher.getByLabel('Class code', { exact: true }).inputValue();
     expect(code).toMatch(/^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{4}-[0-9ABCDEFGHJKMNPQRSTVWXYZ]{4}$/);
@@ -199,7 +199,8 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await pupil.clock.setFixedTime(clock - DAY_MS);
     await enterFreshLacuna(pupil);
     await expect(pupil.getByRole('navigation', { name: 'Gaps' })).toHaveCount(0);
-    await pupil.getByRole('link', { name: 'Join a class', exact: true }).click();
+    await openImport(pupil);
+    await pupil.getByRole('button', { name: /Join a class Enter your teacher/ }).click();
     await pupil
       .getByLabel('Class code', { exact: true })
       .fill(` ${code.toLowerCase().replace('-', ' - ')} `);
@@ -255,7 +256,8 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     const beforeCards = await readAll(returning, 'cards');
     const beforeHistory = await readAll(returning, 'reviewHistory');
     await returning.goto('/#/');
-    await returning.getByRole('link', { name: 'Join a class', exact: true }).click();
+    await openImport(returning);
+    await returning.getByRole('button', { name: /Join a class Enter your teacher/ }).click();
     await returning.getByLabel('Class code', { exact: true }).fill(code);
     await returning.getByRole('button', { name: 'Join class', exact: true }).click();
     await expect(

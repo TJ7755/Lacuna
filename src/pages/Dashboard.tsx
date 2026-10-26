@@ -1,5 +1,3 @@
-import { AppLink } from '../components/ui/AppLink';
-import { buttonClassName } from '../components/ui/buttonStyles';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
@@ -249,16 +247,6 @@ export function Dashboard() {
           </p>
         )}
         <SyncStatus />
-        {/* A bordered action beside the statistics keeps Study on a phone's first screen. */}
-        <div inert={importing}>
-          <AppLink
-            to="/?import=1&join=1"
-            onClick={() => setCreatingCourse(false)}
-            className={buttonClassName('secondary', 'sm')}
-          >
-            Join a class
-          </AppLink>
-        </div>
         <div className="ml-auto flex max-w-full shrink-0 flex-wrap justify-end gap-2">
           <div inert={importing}>
             <NewCourseControl

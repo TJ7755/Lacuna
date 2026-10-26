@@ -48,13 +48,6 @@ describe('Dashboard Today queue', () => {
     sessionStorage.clear();
   });
 
-  it('opens class-code entry from Today', () => {
-    setCourseData();
-    render(<Dashboard />);
-    fireEvent.click(screen.getByRole('link', { name: 'Join a class' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/?import=1&join=1');
-  });
-
   it('keeps new lessons available without marking their cards as due', () => {
     setCourseData([course('poems', 'Poems', { examDate: undefined })], {
       summaries: { poems: summary(0, { completedLessonCount: 0 }) },

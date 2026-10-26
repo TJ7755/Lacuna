@@ -2,37 +2,17 @@ import { expect, test } from '@playwright/test';
 import { enterFreshLacuna, enterWithWelcomeCourse, openImport } from './fixtures/lacunaApp';
 
 for (const width of [1280, 390]) {
-  test(`dashboard class action is separate from statistics and keyboard accessible at ${width}px`, async ({
-    page,
-  }, testInfo) => {
+  test(`Today keeps class joining under Import at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
     await enterWithWelcomeCourse(page);
-    const join = page.getByRole('link', { name: 'Join a class', exact: true });
-    await expect(join).toBeVisible();
     await expect(page.getByRole('region', { name: 'Today, most urgent first' })).toBeVisible();
-    await join.click({ trial: true });
-    const statistics = page.getByLabel(/^Today: \d+ cards?, about/);
-    await expect(statistics).toBeVisible();
-    expect(
-      await statistics.evaluate((stats, link) => stats.contains(link), await join.elementHandle()),
-    ).toBe(false);
-    const actionBox = await join.boundingBox();
-    await page.screenshot({ path: testInfo.outputPath(`dashboard-join-${width}.png`) });
-    // A bordered control, unlike the plain statistics beside it.
-    expect(await join.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(
-      'rgba(0, 0, 0, 0)',
-    );
-    expect(actionBox!.height).toBeGreaterThanOrEqual(44);
-    expect(actionBox!.x + actionBox!.width).toBeLessThanOrEqual(width);
-    expect(await join.evaluate((element) => element.closest('ul, ol, [role="list"]'))).toBeNull();
-
+    await expect(page.getByRole('link', { name: 'Join a class', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Join a class', exact: true })).toHaveCount(0);
+    await expect(page.getByLabel(/^Today: \d+ cards?, about/)).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath(`dashboard-${width}.png`) });
+    await openImport(page);
+    const join = page.getByRole('button', { name: /Join a class Enter your teacher/ });
     await join.focus();
-    await page.keyboard.press('Shift+Tab');
-    await page.keyboard.press('Tab');
-    await expect(join).toBeFocused();
-    expect(await join.evaluate((element) => element.matches(':focus-visible'))).toBe(true);
-    expect(await join.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe('none');
-    await page.screenshot({ path: testInfo.outputPath(`dashboard-join-focus-${width}.png`) });
     await page.keyboard.press('Enter');
     await expect(page.getByRole('textbox', { name: /^Class code/ })).toBeFocused();
   });
@@ -42,7 +22,8 @@ for (const width of [1280, 390]) {
   }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
     await enterFreshLacuna(page);
-    await page.getByRole('link', { name: 'Join a class', exact: true }).click();
+    await openImport(page);
+    await page.getByRole('button', { name: /Join a class Enter your teacher/ }).click();
     const code = page.getByRole('textbox', { name: /^Class code/ });
     await expect(code).toBeFocused();
     await code.fill('short');
