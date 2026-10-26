@@ -141,10 +141,15 @@ export function localPathMoveOrder(
   const checkpoints = nodes
     .filter((node) => node.nodeType === 'checkpoint')
     .sort((left, right) => (left.assessment.examDate ?? 0) - (right.assessment.examDate ?? 0));
-  const at = (lessonId: string | null) =>
-    checkpoints
+  const practice = nodes.filter(
+    (node) => node.nodeType !== 'lesson' && node.nodeType !== 'checkpoint',
+  );
+  const at = (lessonId: string | null) => [
+    ...checkpoints
       .filter((node) => (node.id === id ? anchor : node.afterLessonId) === lessonId)
-      .map((node) => node.id);
+      .map((node) => node.id),
+    ...practice.filter((node) => node.afterLessonId === lessonId).map((node) => node.id),
+  ];
   return [...at(null), ...lessons.flatMap((lesson) => [lesson.id, ...at(lesson.id)])];
 }
 

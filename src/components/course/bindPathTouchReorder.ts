@@ -1,3 +1,4 @@
+import { capturePathSlots, type PathRowSlot } from './pathReorderLayout';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { hapticStrong } from '../../utils/haptic';
 import type { usePathDropTransition } from './usePathDropTransition';
@@ -8,7 +9,8 @@ export interface DragSession {
   inputType: 'pointer' | 'touch';
   startX: number;
   startY: number;
-  slots: Map<string, DOMRect>;
+  slots: Map<string, PathRowSlot>;
+  targetOffsetY?: number;
   element: HTMLButtonElement;
   timer: number;
   active: boolean;
@@ -17,6 +19,7 @@ export interface DragSession {
   lastMoveTime?: number;
   velocity?: number;
   scrollTop?: number;
+  scrollMax?: number;
   scroller?: HTMLElement;
 }
 
@@ -51,6 +54,9 @@ export function bindPathTouchReorder(
   lessonId: string,
   context: RefObject<TouchReorderContext>,
 ) {
+  const row = element.closest('li');
+  const touchTarget: HTMLElement =
+    row && row.querySelectorAll('[data-path-row]').length > 1 ? row : element;
   const touchFor = (touches: TouchList, inputId: number): Touch | undefined => {
     for (let index = 0; index < touches.length; index++) {
       const touch = touches[index];
@@ -59,6 +65,7 @@ export function bindPathTouchReorder(
     return undefined;
   };
   const startTouch = (event: TouchEvent) => {
+    if (touchTarget !== element && !(event.target as Element).closest('[data-path-row]')) return;
     const {
       enabled: interactionEnabled,
       sessionRef,
@@ -88,18 +95,24 @@ export function bindPathTouchReorder(
       );
       hapticStrong();
     }, 350);
+    const scroller = element.closest('main') ?? document.documentElement;
     sessionRef.current = {
       lessonId,
       inputId,
       inputType: 'touch',
       clientY: touch.clientY,
-      scroller: element.closest('main') ?? document.documentElement,
-      scrollTop: (element.closest('main') ?? document.documentElement).scrollTop,
+      scroller,
+      scrollTop: scroller.scrollTop,
+      scrollMax: scroller.scrollHeight - scroller.clientHeight,
       startX: touch.clientX,
       startY: touch.clientY,
-      slots: new Map(
-        [...elementsRef.current].map(([id, node]) => [id, node.getBoundingClientRect()]),
-      ),
+      slots: capturePathSlots(elementsRef.current),
+      targetOffsetY:
+        element !== elementsRef.current.get(lessonId)
+          ? touch.clientY -
+            (elementsRef.current.get(lessonId)?.getBoundingClientRect().top ?? touch.clientY) -
+            (elementsRef.current.get(lessonId)?.getBoundingClientRect().height ?? 0) / 2
+          : 0,
       element,
       timer,
       active: false,
@@ -185,15 +198,15 @@ export function bindPathTouchReorder(
       setAnnouncement(`${lessonNames.get(lessonId) ?? 'Lesson'} move cancelled.`);
     }
   };
-  element.addEventListener('touchstart', startTouch, { passive: true });
-  element.addEventListener('touchmove', moveTouch, { passive: false });
-  element.addEventListener('touchend', endTouch, { passive: false });
-  element.addEventListener('touchcancel', cancelTouch, { passive: true });
+  touchTarget.addEventListener('touchstart', startTouch, { passive: true });
+  touchTarget.addEventListener('touchmove', moveTouch, { passive: false });
+  touchTarget.addEventListener('touchend', endTouch, { passive: false });
+  touchTarget.addEventListener('touchcancel', cancelTouch, { passive: true });
   const cleanup = () => {
-    element.removeEventListener('touchstart', startTouch);
-    element.removeEventListener('touchmove', moveTouch);
-    element.removeEventListener('touchend', endTouch);
-    element.removeEventListener('touchcancel', cancelTouch);
+    touchTarget.removeEventListener('touchstart', startTouch);
+    touchTarget.removeEventListener('touchmove', moveTouch);
+    touchTarget.removeEventListener('touchend', endTouch);
+    touchTarget.removeEventListener('touchcancel', cancelTouch);
   };
 
   return cleanup;

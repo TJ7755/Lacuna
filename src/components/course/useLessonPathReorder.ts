@@ -1,3 +1,4 @@
+import { capturePathSlots, projectPathSlots } from './pathReorderLayout';
 import {
   bindPathTouchReorder,
   type DragSession,
@@ -58,7 +59,7 @@ export function usePathReorder({
   enabled,
   onError,
 }: {
-  items: { id: string; name: string }[];
+  items: { id: string; name: string; draggable?: boolean; dragId?: string }[];
   onReorder: (ids: string[], id: string) => Promise<void>;
   orderForMove?: (ids: string[], id: string, index: number) => string[] | null;
   keyboardTarget?: (id: string, delta: -1 | 1) => number;
@@ -67,6 +68,7 @@ export function usePathReorder({
   onError: (message: string) => void;
 }) {
   const orderedIds = useMemo(() => items.map((item) => item.id), [items]);
+  const itemById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
   const lessonNames = useMemo(() => new Map(items.map((item) => [item.id, item.name])), [items]);
   const elementsRef = useRef(new Map<string, HTMLButtonElement>());
   const touchCleanupRef = useRef(new Map<string, () => void>());
@@ -75,6 +77,21 @@ export function usePathReorder({
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [pending, setPending] = useState(false);
   const [announcement, setAnnouncement] = useState('');
+  const draggingId = dragState?.lessonId;
+  const dragBounds = useMemo(() => {
+    if (!draggingId) return undefined;
+    const slots = items.flatMap((item) => {
+      if ((item.dragId ?? item.id) !== draggingId) return [];
+      const slot = sessionRef.current?.slots.get(item.id);
+      return slot ? [slot] : [];
+    });
+    return slots.length
+      ? {
+          top: Math.min(...slots.map((slot) => slot.top)),
+          bottom: Math.max(...slots.map((slot) => slot.bottom)),
+        }
+      : undefined;
+  }, [draggingId, items]);
 
   const clearSession = useCallback((releaseCapture: boolean) => {
     const session = sessionRef.current;
@@ -106,6 +123,7 @@ export function usePathReorder({
 
   const targetIndexForY = useCallback(
     (lessonId: string, clientY: number) => {
+      clientY -= sessionRef.current?.targetOffsetY ?? 0;
       const remainingIds = orderedIds.filter((id) => id !== lessonId);
       let targetIndex = 0;
       for (const id of remainingIds) {
@@ -134,14 +152,28 @@ export function usePathReorder({
     const bounds = session.scroller.getBoundingClientRect();
     const top = Math.max(0, bounds.top);
     const bottom = Math.min(window.innerHeight, bounds.bottom || window.innerHeight);
-    const step =
-      session.clientY < top + edge
-        ? -Math.min(14, (top + edge - session.clientY) / 4)
-        : session.clientY > bottom - edge
-          ? Math.min(14, (session.clientY - bottom + edge) / 4)
-          : 0;
+    // Scroll compensation keeps the held rows at this viewport displacement.
+    const displacement = session.clientY - session.startY;
+    const topDistance =
+      Math.min(session.clientY, (dragBounds?.top ?? session.startY) + displacement) - top;
+    const bottomDistance =
+      bottom - Math.max(session.clientY, (dragBounds?.bottom ?? session.startY) + displacement);
+    const down =
+      bottomDistance <= edge && (topDistance > edge || session.clientY >= (top + bottom) / 2);
+    const direction = down ? 1 : topDistance <= edge ? -1 : 0;
+    const distance = down ? bottomDistance : topDistance;
+    const step = direction * Math.min(14, Math.max(1, (edge - distance) / 4));
     if (!step) return;
-    session.scroller.scrollTop += step;
+    const before = session.scroller.scrollTop;
+    // Transformed rows can extend scrollHeight beyond the course's real end.
+    session.scroller.scrollTop = Math.max(
+      0,
+      Math.min(
+        session.scrollMax ?? session.scroller.scrollHeight - session.scroller.clientHeight,
+        before + step,
+      ),
+    );
+    if (session.scroller.scrollTop === before) return;
     session.targetIndex = targetIndexForY(session.lessonId, session.clientY);
     setDragState({
       lessonId: session.lessonId,
@@ -150,7 +182,6 @@ export function usePathReorder({
       y: session.clientY - session.startY + session.scroller.scrollTop - (session.scrollTop ?? 0),
     });
   };
-  const draggingId = dragState?.lessonId;
   useEffect(() => {
     if (!draggingId) return;
     let frame: number;
@@ -210,29 +241,43 @@ export function usePathReorder({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [clearSession, dragState, lessonNames]);
 
+  const projectedIds = useMemo(
+    () =>
+      dragState ? orderForMove(orderedIds, dragState.lessonId, dragState.targetIndex) : orderedIds,
+    [dragState, orderedIds, orderForMove],
+  );
+  const projectedTops = useMemo(
+    () =>
+      dragState && sessionRef.current
+        ? projectPathSlots(orderedIds, projectedIds ?? orderedIds, sessionRef.current.slots)
+        : new Map<string, number>(),
+    [dragState, orderedIds, projectedIds],
+  );
+
   const dropMarkerByLessonId = useMemo(() => {
     const result = new Map<string, { edge: NonNullable<LessonDropMarker>; active: boolean }>();
     if (!dragState || dragState.dropping) return result;
-    const nextIds = orderForMove(orderedIds, dragState.lessonId, dragState.targetIndex);
+    const nextIds = projectedIds;
     if (!nextIds) return result;
     const index = nextIds.indexOf(dragState.lessonId);
     if (index < 0) return result;
-    const next = nextIds[index + 1];
-    const neighbour = next ?? nextIds[index - 1];
+    const isCompanion = (id: string) => (itemById.get(id)?.dragId ?? id) === dragState.lessonId;
+    const next = nextIds.slice(index + 1).find((id) => !isCompanion(id));
+    const neighbour = next ?? nextIds.slice(0, index).findLast((id) => !isCompanion(id));
     if (!neighbour) return result;
     const source = sessionRef.current?.slots.get(dragState.lessonId);
-    const destination = sessionRef.current?.slots.get(orderedIds[index]);
+    const destination = projectedTops.get(dragState.lessonId);
     const aligned =
       !!source &&
-      !!destination &&
-      Math.abs(source.top + (dragState.y ?? 0) - destination.top) <=
+      destination !== undefined &&
+      Math.abs(source.top + (dragState.y ?? 0) - destination) <=
         Math.min(32, Math.max(12, source.height / 3));
     result.set(neighbour, {
       edge: next ? 'before' : 'after',
       active: !sameOrder(nextIds, orderedIds) && aligned,
     });
     return result;
-  }, [dragState, orderedIds, orderForMove]);
+  }, [dragState, orderedIds, projectedIds, projectedTops, itemById]);
 
   const touchContext = useRef<TouchReorderContext>(null!);
   touchContext.current = {
@@ -253,48 +298,46 @@ export function usePathReorder({
   };
 
   const interactionFor = useCallback(
-    (lessonId: string): LessonReorderInteraction => {
+    (rowId: string): LessonReorderInteraction => {
+      const item = itemById.get(rowId);
+      const lessonId = item?.dragId ?? rowId;
       let offset = { x: 0, y: 0 };
       const slots = sessionRef.current?.slots;
       if (dragState && slots) {
         if (dragState.lessonId === lessonId) {
           offset = { x: dragState.x ?? 0, y: dragState.y ?? 0 };
         } else {
-          const nextIds =
-            orderForMove(orderedIds, dragState.lessonId, dragState.targetIndex) ?? orderedIds;
-          const from = slots.get(lessonId);
-          const to = slots.get(orderedIds[nextIds.indexOf(lessonId)]);
-          if (from && to) offset = { x: to.left - from.left, y: to.top - from.top };
+          const from = slots.get(rowId);
+          const top = projectedTops.get(rowId);
+          if (from && top !== undefined) offset = { x: 0, y: top - from.top };
         }
       }
-      if (dropTransition.offsets?.has(lessonId))
-        offset = { x: 0, y: dropTransition.offsets.get(lessonId)! };
-      const interactionEnabled = enabled && !pending;
+      if (dropTransition.offsets?.has(rowId))
+        offset = { x: 0, y: dropTransition.offsets.get(rowId)! };
+      const interactionEnabled = enabled && !pending && item?.draggable !== false;
       return {
         enabled: interactionEnabled,
-        refused:
-          !!dragState &&
-          dragState.lessonId === lessonId &&
-          !orderForMove(orderedIds, lessonId, dragState.targetIndex),
+        refused: !!dragState && dragState.lessonId === lessonId && !projectedIds,
         offset,
         lifted: dragState?.lessonId === lessonId && !dragState.dropping,
         settleVelocity: dropTransition.velocityFor(lessonId),
         direct: (dragState?.lessonId === lessonId && !dragState.dropping) || dropTransition.instant,
-        dropMarker: dropMarkerByLessonId.get(lessonId)?.edge,
-        dropMarkerActive: dropMarkerByLessonId.get(lessonId)?.active ?? false,
+        dropMarker: dropMarkerByLessonId.get(rowId)?.edge,
+        dropMarkerActive: dropMarkerByLessonId.get(rowId)?.active ?? false,
         registerElement: (element) => {
-          touchCleanupRef.current.get(lessonId)?.();
-          touchCleanupRef.current.delete(lessonId);
+          touchCleanupRef.current.get(rowId)?.();
+          touchCleanupRef.current.delete(rowId);
           if (!element) {
-            elementsRef.current.delete(lessonId);
+            elementsRef.current.delete(rowId);
             return;
           }
-          elementsRef.current.set(lessonId, element);
+          elementsRef.current.set(rowId, element);
 
-          touchCleanupRef.current.set(
-            lessonId,
-            bindPathTouchReorder(element, lessonId, touchContext),
-          );
+          if (item?.draggable !== false)
+            touchCleanupRef.current.set(
+              rowId,
+              bindPathTouchReorder(element, lessonId, touchContext),
+            );
         },
         onPointerDown: (event) => {
           if (
@@ -329,18 +372,24 @@ export function usePathReorder({
               }, holdDelay)
             : 0;
           element.setPointerCapture?.(inputId);
+          const scroller = element.closest('main') ?? document.documentElement;
           sessionRef.current = {
             lessonId,
             inputId,
             inputType: 'pointer',
             clientY: startY,
-            scroller: element.closest('main') ?? document.documentElement,
-            scrollTop: (element.closest('main') ?? document.documentElement).scrollTop,
+            scroller,
+            scrollTop: scroller.scrollTop,
+            scrollMax: scroller.scrollHeight - scroller.clientHeight,
             startX,
             startY,
-            slots: new Map(
-              [...elementsRef.current].map(([id, node]) => [id, node.getBoundingClientRect()]),
-            ),
+            slots: capturePathSlots(elementsRef.current),
+            targetOffsetY:
+              rowId !== lessonId
+                ? startY -
+                  (elementsRef.current.get(lessonId)?.getBoundingClientRect().top ?? startY) -
+                  (elementsRef.current.get(lessonId)?.getBoundingClientRect().height ?? 0) / 2
+                : 0,
             element,
             timer,
             active: false,
@@ -459,6 +508,9 @@ export function usePathReorder({
     },
     [
       clearSession,
+      itemById,
+      projectedIds,
+      projectedTops,
       dragState,
       dropMarkerByLessonId,
       enabled,
