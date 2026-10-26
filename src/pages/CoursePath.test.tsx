@@ -331,7 +331,7 @@ describe('CoursePath View mode', () => {
     expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
   });
 
-  it('keeps a locked distributed copy in View mode across every path authoring gate', () => {
+  it('keeps published content read-only while offering personal checkpoints', () => {
     pathState.mockCourse = {
       ...course,
       lessonViewMode: 'edit',
@@ -362,11 +362,13 @@ describe('CoursePath View mode', () => {
     expect(screen.getByText('Authoring is locked for shared courses')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open checkpoint: Paper 1' })).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Edit checkpoint: Paper 1' }),
     ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add', exact: true }));
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: 'Checkpoint', exact: true })).toBeInTheDocument();
   });
 });
