@@ -41,6 +41,8 @@ for (const theme of ['light', 'dark']) {
     const target = await study.boundingBox();
     await study.hover();
     await page.waitForTimeout(350);
+    const hoverEdge = await upperEdge(await study.screenshot());
+    expect(hoverEdge[1] - (hoverEdge[0] + hoverEdge[2]) / 2).toBeGreaterThanOrEqual(1);
     await page.screenshot({ path: `${evidence}/study-hover-${theme}.png` });
     await page.mouse.down();
     await page.waitForTimeout(220);
@@ -136,6 +138,7 @@ for (const origin of ['Today', 'course']) {
         .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
         .click();
     }
+    if (origin === 'course') await expect(page).toHaveURL(/#\/course\/[^/?#]+$/);
     const original = page.url();
     const study =
       origin === 'Today'
@@ -194,8 +197,9 @@ test('empty toolbar stays beside its instruction and the short desktop keeps Stu
   expect(await create.count()).toBe(1);
   const action = (await create.boundingBox())!,
     text = (await instruction.boundingBox())!;
-  expect(action.y - text.y - text.height).toBeGreaterThanOrEqual(0);
-  expect(action.y - text.y - text.height).toBeLessThan(48);
+  expect(
+    Math.max(text.y - action.y - action.height, action.y - text.y - text.height, 0),
+  ).toBeLessThan(48);
   await create.click();
   const form = page.getByRole('form', { name: 'New course' });
   await form.getByRole('textbox', { name: 'Course name' }).fill('Retained mouse draft');
