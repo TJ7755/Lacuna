@@ -11,6 +11,7 @@ export function intendedFlowPaint(element: HTMLElement) {
   element.parentElement?.append(probe);
   const style = getComputedStyle(probe);
   const background = style.backgroundColor;
+  const ink = style.color;
   const border = style.borderColor;
   const borderWidth = parseFloat(style.borderTopWidth) || 0;
   const radius = parseFloat(style.borderTopLeftRadius) || 0;
@@ -31,7 +32,7 @@ export function intendedFlowPaint(element: HTMLElement) {
       context.fillStyle = getComputedStyle(ancestor).backgroundColor;
       context.fillRect(0, 0, 1, 1);
     }
-    context.fillStyle = transparent ? getComputedStyle(element).color : background;
+    context.fillStyle = transparent ? ink : background;
     context.globalAlpha = transparent ? 0.055 : 1;
     context.fillRect(0, 0, 1, 1);
     const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
