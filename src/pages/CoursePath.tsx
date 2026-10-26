@@ -93,7 +93,6 @@ export function CoursePath() {
     dataLoaded,
     lessonCardsById,
     now,
-    nodes,
     examDateContext,
     studyFlowSnapshot,
     practiceProgressByKey,
@@ -131,7 +130,7 @@ export function CoursePath() {
   const localOrder = !!course?.distributedCopy?.locked && !archived;
   const lessonReorder = useCoursePathReorder(
     courseId ?? '',
-    nodes,
+    visibleNodes,
     lessons ?? [],
     courseCards ?? [],
     lessonLinks ?? [],

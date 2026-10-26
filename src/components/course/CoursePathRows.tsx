@@ -7,6 +7,7 @@ import { cn } from '../ui/cn';
 import { CardsIcon, CheckIcon, ChevronRightIcon, FlagIcon } from '../ui/icons';
 import { PathNodeActionsMenu } from './PathNodeActionsMenu';
 import { QuestionSetCourseRow } from './QuestionSetCourseRow';
+import type { LessonReorderInteraction } from './useLessonPathReorder';
 import {
   focusAfterLessonDeletion,
   LessonActionsMenu,
@@ -41,7 +42,7 @@ export function renderCoursePathRows(
     if (node.nodeType === 'checkpoint') {
       const learnerCheckpoint = !!localOrder && !!props.learnerCheckpointIds?.includes(node.id);
       const editable = authoring || learnerCheckpoint;
-      const reorder = editable ? props.reorderFor(node.id) : undefined;
+      const reorder = editable || localOrder ? props.reorderFor(node.id) : undefined;
       const date = node.assessment.examDate;
       return (
         <motion.li
@@ -123,28 +124,13 @@ export function renderCoursePathRows(
               />
             </div>
           )}
-          {reorder?.dropMarker && (
-            <motion.div
-              aria-hidden="true"
-              data-drop-active={reorder.dropMarkerActive ? 'true' : 'false'}
-              initial={m ? { opacity: 0, scaleX: 0.94 } : false}
-              animate={{
-                opacity: reorder.dropMarkerActive ? 1 : 0.65,
-                scaleX: reorder.dropMarkerActive ? 1 : 0.94,
-              }}
-              transition={scaledSpring(m, 520, 34)}
-              className={cn(
-                'pointer-events-none absolute inset-x-3 h-0.5 rounded-full bg-ink/30 transition-colors duration-150 data-[drop-active=true]:bg-accent',
-                reorder.dropMarker === 'before' ? '-top-px' : '-bottom-px',
-              )}
-            />
-          )}
+          <PathDropMarker reorder={reorder} m={m} />
         </motion.li>
       );
     }
 
     if (node.nodeType === 'practice-question-set') {
-      const reorder = authoring ? props.reorderFor(node.id) : undefined;
+      const reorder = authoring || localOrder ? props.reorderFor(node.id) : undefined;
       return (
         <motion.li
           key={node.id}
@@ -170,8 +156,9 @@ export function renderCoursePathRows(
             index={index}
             lessons={lessons}
             authoring={authoring && !archived}
-            reorder={authoring ? props.reorderFor(node.id) : undefined}
+            reorder={reorder}
           />
+          <PathDropMarker reorder={reorder} m={m} />
         </motion.li>
       );
     }
@@ -183,7 +170,7 @@ export function renderCoursePathRows(
     const detail = lesson ? props.detailForLesson(lesson.lesson.id) : undefined;
     const status = lesson?.status ?? (progress?.completed ? 'completed' : 'available');
     const reorder =
-      (authoring && node.nodeType !== 'practice-auto') || (localOrder && lesson)
+      (authoring && node.nodeType !== 'practice-auto') || localOrder
         ? props.reorderFor(node.id)
         : undefined;
     if (lesson) lessonNumber += 1;
@@ -352,22 +339,7 @@ export function renderCoursePathRows(
             />
           </div>
         )}
-        {reorder?.dropMarker && (
-          <motion.div
-            aria-hidden="true"
-            data-drop-active={reorder.dropMarkerActive ? 'true' : 'false'}
-            initial={m ? { opacity: 0, scaleX: 0.94 } : false}
-            animate={{
-              opacity: reorder.dropMarkerActive ? 1 : 0.65,
-              scaleX: reorder.dropMarkerActive ? 1 : 0.94,
-            }}
-            transition={scaledSpring(m, 520, 34)}
-            className={cn(
-              'pointer-events-none absolute inset-x-3 h-0.5 rounded-full bg-ink/30 transition-colors duration-150 data-[drop-active=true]:bg-accent',
-              reorder.dropMarker === 'before' ? '-top-px' : '-bottom-px',
-            )}
-          />
-        )}
+        <PathDropMarker reorder={reorder} m={m} />
       </motion.li>
     );
   });
@@ -386,4 +358,24 @@ function PathRowButton({
     return () => registerElement?.(null);
   }, [registerElement]);
   return <motion.button {...props} ref={element} />;
+}
+
+function PathDropMarker({ reorder, m }: { reorder?: LessonReorderInteraction; m: number }) {
+  if (!reorder?.dropMarker) return null;
+  return (
+    <motion.div
+      aria-hidden="true"
+      data-drop-active={reorder.dropMarkerActive ? 'true' : 'false'}
+      initial={m ? { opacity: 0, scaleX: 0.94 } : false}
+      animate={{
+        opacity: reorder.dropMarkerActive ? 1 : 0.65,
+        scaleX: reorder.dropMarkerActive ? 1 : 0.94,
+      }}
+      transition={scaledSpring(m, 520, 34)}
+      className={cn(
+        'pointer-events-none absolute inset-x-3 h-0.5 rounded-full bg-ink/30 transition-colors duration-150 data-[drop-active=true]:bg-accent',
+        reorder.dropMarker === 'before' ? '-top-px' : '-bottom-px',
+      )}
+    />
+  );
 }

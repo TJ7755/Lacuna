@@ -25,19 +25,20 @@ export function useCoursePathReorder(
   learnerCheckpointIds: readonly string[] = [],
 ) {
   const reorderNodes = useMemo(
-    () =>
-      nodes.filter((node) =>
-        localOrder
-          ? node.nodeType === 'lesson' ||
-            (node.nodeType === 'checkpoint' && learnerCheckpointIds.includes(node.id))
-          : node.nodeType !== 'practice-auto',
-      ),
-    [nodes, localOrder, learnerCheckpointIds],
+    () => (localOrder ? nodes : nodes.filter((node) => node.nodeType !== 'practice-auto')),
+    [nodes, localOrder],
   );
   const reorderItems = useMemo(
     () =>
       reorderNodes.map((node) => ({
         id: node.id,
+        draggable:
+          !localOrder ||
+          node.nodeType === 'lesson' ||
+          node.nodeType === 'practice-question-set' ||
+          (node.nodeType === 'checkpoint' && learnerCheckpointIds.includes(node.id)),
+        dragId:
+          localOrder && node.nodeType === 'practice-question-set' ? node.afterLessonId : undefined,
         name:
           node.nodeType === 'lesson'
             ? node.lesson.name
@@ -45,7 +46,7 @@ export function useCoursePathReorder(
               ? node.assessment.name
               : (node.practiceNode?.name ?? 'Practice'),
       })),
-    [reorderNodes],
+    [reorderNodes, localOrder, learnerCheckpointIds],
   );
   const orderForMove = useCallback(
     (_ids: string[], id: string, index: number) =>

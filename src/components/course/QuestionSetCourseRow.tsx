@@ -72,6 +72,8 @@ export function QuestionSetCourseRow({
           <motion.button
             key={`${entry?.id ?? 'loading'}:${authoring ? 'author' : 'study'}`}
             data-path-row=""
+            data-drag-lifted={reorder?.lifted || undefined}
+            data-drag-refused={reorder?.refused || undefined}
             ref={reorder?.registerElement}
             onPointerDown={reorder?.onPointerDown}
             onPointerMove={reorder?.onPointerMove}

@@ -5,6 +5,7 @@ async function importSchoolScience(
   page: Page,
   unlockMode: 'open' | 'semi-linear' = 'open',
   publishedCheckpoint = true,
+  practiceAfterEveryLesson = false,
 ) {
   await enterFreshLacuna(page);
   await openImport(page);
@@ -85,6 +86,34 @@ async function importSchoolScience(
       },
     ],
   };
+  if (practiceAfterEveryLesson) {
+    const questionSet = payload.questionSets[0];
+    const practice = payload.questionSetPracticeNodes[0];
+    payload.questionSets = ['A', 'B', 'C'].map((id) => ({
+      ...questionSet,
+      id: `set-${id}`,
+      title: `Topic ${id} questions`,
+      lessonIds: [id],
+      questions: questionSet.questions.map((question) => ({ ...question, id: `written-${id}` })),
+    }));
+    payload.questionSetPracticeNodes = ['A', 'B', 'C'].map((id) => ({
+      ...practice,
+      id: `activity-${id}`,
+      name: `Topic ${id} questions`,
+      questionSetIds: [`set-${id}`],
+      afterLessonId: id,
+    }));
+  }
+  if (practiceAfterEveryLesson) {
+    const extra = payload.questionSets[2];
+    payload.questionSets.push({
+      ...extra,
+      id: 'set-C-extra',
+      title: 'Topic C extra questions',
+      questions: extra.questions.map((question) => ({ ...question, id: 'written-C-extra' })),
+    });
+    payload.questionSetPracticeNodes[2].questionSetIds.push('set-C-extra');
+  }
   if (!publishedCheckpoint) payload.exams = payload.exams.filter((exam) => exam.k === 'f');
   await page.getByLabel('Import file').setInputFiles({
     name: 'School science.lacuna',
@@ -265,7 +294,7 @@ for (const input of [
         .toEqual(['C', 'activity', 'A', 'checkpoint', 'B']);
       await expect(
         path.locator('[data-path-source="activity"] [aria-roledescription="sortable path row"]'),
-      ).toHaveCount(0);
+      ).toHaveCount(1);
       await expect(path.getByRole('button', { name: /^Edit checkpoint/ })).toHaveCount(0);
       await expect(path.getByRole('button', { name: /Delete lesson|Rename lesson/ })).toHaveCount(
         0,
@@ -374,10 +403,11 @@ for (const input of [
       await expect(row).toHaveAttribute('aria-roledescription', 'sortable path row');
       await row.scrollIntoViewIfNeeded();
       const start = (await row.boundingBox())!;
-      const target = (await lesson('A').boundingBox())!;
+      const target = (await path.locator('[data-path-source="activity"]').boundingBox())!;
+      const startRow = (await row.locator('xpath=ancestor::li').boundingBox())!;
       const x = Math.round(start.x + 12);
       const y = Math.round(start.y + start.height / 2);
-      const targetY = Math.round(target.y + start.height / 2);
+      const targetY = Math.round(target.y + y - startRow.y);
       if (input.touch) {
         const session = await page.context().newCDPSession(page);
         await session.send('Input.dispatchTouchEvent', {
@@ -464,6 +494,235 @@ for (const input of [
         path.getByRole('button', { name: 'Edit checkpoint: My mock - updated', exact: true }),
       ).toHaveCount(0);
       expect(await publisherRecords(page)).toEqual(before);
+    });
+  });
+}
+
+async function expectSeparatedPathRows(page: Page) {
+  const path = page.getByRole('list', { name: 'Course path' });
+  await expect
+    .poll(async () => {
+      return path.locator('[data-path-source]').evaluateAll((rows) => {
+        const bounds = rows
+          .filter((row) => !row.querySelector('[data-drag-lifted="true"]'))
+          .map((row) => {
+            const box = row.getBoundingClientRect();
+            return { id: row.getAttribute('data-path-source'), top: box.top, bottom: box.bottom };
+          })
+          .sort((a, b) => a.top - b.top);
+        return bounds.flatMap((row, index) => {
+          const next = bounds[index + 1];
+          return next && row.bottom > next.top + 1
+            ? [{ first: row.id, second: next.id, overlap: row.bottom - next.top }]
+            : [];
+        });
+      });
+    })
+    .toEqual([]);
+}
+
+test('keeps lessons and anchored practice rows apart during a checkpoint drag preview', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1200 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await importSchoolScience(page, 'open', false, true);
+  const path = page.getByRole('list', { name: 'Course path' });
+  await page.locator('[data-path-card]').getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Checkpoint', exact: true }).click();
+  const add = page.getByRole('dialog', { name: 'Add checkpoint', exact: true });
+  await add.getByRole('textbox', { name: 'Name', exact: true }).fill('My test');
+  await add.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(add).toBeHidden();
+  const checkpoint = path.getByRole('button', { name: 'Edit checkpoint: My test', exact: true });
+  const start = (await checkpoint.boundingBox())!;
+  const target = (await path.locator('[data-path-lesson="A"] [data-path-row]').boundingBox())!;
+  const x = start.x + 12;
+  await page.mouse.move(x, start.y + start.height / 2);
+  await page.mouse.down();
+  await expect(checkpoint).toHaveAttribute('data-drag-lifted', 'true');
+  await page.mouse.move(x, target.y + start.height / 2, { steps: 20 });
+  await expect(path.locator('[data-drop-active]')).toHaveAttribute('data-drop-active', 'true');
+  await expectSeparatedPathRows(page);
+  await page.mouse.up();
+});
+
+for (const input of [
+  { name: 'mouse', width: 1440, touch: false },
+  { name: 'touch', width: 390, touch: true },
+]) {
+  test.describe(`attached Question Set drag with ${input.name}`, () => {
+    test.use({ viewport: { width: input.width, height: 1200 }, hasTouch: input.touch });
+    test('moves the parent lesson and attached questions together without editing publisher anchors', async ({
+      page,
+    }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await importSchoolScience(page, 'open', false, true);
+      const path = page.getByRole('list', { name: 'Course path' });
+      const before = await publisherRecords(page);
+      const parent = path.locator('[data-path-source="C"] [data-path-row]');
+      const questions = path.locator('[data-path-source="activity-C"] [data-path-row]').first();
+      const parentRow = path.locator('[data-path-source="C"]');
+      const questionsRow = path.locator('[data-path-source="activity-C"]');
+      await expect(questions).toHaveAttribute('aria-roledescription', 'sortable path row');
+      await questions.scrollIntoViewIfNeeded();
+      const start = (await questions.boundingBox())!;
+      const target = (await path.locator('[data-path-lesson="A"] [data-path-row]').boundingBox())!;
+      const x = Math.round(start.x + start.width / 2);
+      const y = Math.round(start.y + start.height / 2);
+      const targetY = Math.round(target.y + 4);
+      const session = input.touch ? await page.context().newCDPSession(page) : undefined;
+      if (session) {
+        await session.send('Input.dispatchTouchEvent', {
+          type: 'touchStart',
+          touchPoints: [{ x, y }],
+        });
+      } else {
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+      }
+      await expect(questions).toHaveAttribute('data-drag-lifted', 'true');
+      await expect(parent).toHaveAttribute('data-drag-lifted', 'true');
+      const parentStart = (await parentRow.boundingBox())!;
+      const questionsStart = (await questionsRow.boundingBox())!;
+      if (session) {
+        await session.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [{ x, y: targetY }],
+        });
+      } else {
+        await page.mouse.move(x, targetY, { steps: 20 });
+      }
+      await expect
+        .poll(async () => {
+          const parentNow = (await parentRow.boundingBox())!;
+          const questionsNow = (await questionsRow.boundingBox())!;
+          const centre = (box: { y: number; height: number }) => box.y + box.height / 2;
+          return Math.abs(
+            centre(parentNow) -
+              centre(parentStart) -
+              (centre(questionsNow) - centre(questionsStart)),
+          );
+        })
+        .toBeLessThan(1);
+      await expectSeparatedPathRows(page);
+      await page.screenshot({
+        path: test.info().outputPath(`attached-question-set-${input.name}-held.png`),
+        animations: 'allow',
+      });
+      if (session) {
+        await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await session.detach();
+      } else {
+        await page.mouse.up();
+      }
+      const order = () =>
+        path
+          .locator('[data-path-source]')
+          .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-path-source')));
+      const expected = ['C', 'activity-C', 'A', 'activity-A', 'B', 'activity-B'];
+      await expect.poll(order).toEqual(expected);
+      await page.reload();
+      await expect.poll(order).toEqual(expected);
+      expect(await publisherRecords(page)).toEqual(before);
+    });
+  });
+}
+
+for (const input of [
+  { name: 'mouse lesson', width: 1440, touch: false, checkpoint: false },
+  { name: 'touch lesson', width: 390, touch: true, checkpoint: false },
+  { name: 'mouse checkpoint', width: 1440, touch: false, checkpoint: true },
+  { name: 'touch checkpoint', width: 390, touch: true, checkpoint: true },
+]) {
+  test.describe(`path drag edge scrolling with ${input.name}`, () => {
+    test.use({ viewport: { width: input.width, height: 650 }, hasTouch: input.touch });
+    test('scrolls continuously at either edge while the held pointer is stationary', async ({
+      page,
+    }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await importSchoolScience(page, 'open', false, true);
+      const path = page.getByRole('list', { name: 'Course path' });
+      let row = path.locator('[data-path-lesson="A"] [data-path-row]');
+      if (input.checkpoint) {
+        await page
+          .locator('[data-path-card]')
+          .getByRole('button', { name: 'Add', exact: true })
+          .click();
+        await page.getByRole('menuitem', { name: 'Checkpoint', exact: true }).click();
+        const add = page.getByRole('dialog', { name: 'Add checkpoint', exact: true });
+        await add.getByRole('textbox', { name: 'Name', exact: true }).fill('Edge scrolling test');
+        await add.getByRole('button', { name: 'Done', exact: true }).click();
+        await expect(add).toBeHidden();
+        row = path.getByRole('button', {
+          name: 'Edit checkpoint: Edge scrolling test',
+          exact: true,
+        });
+        for (const anchor of ['B', 'A']) {
+          await row.press('Alt+ArrowUp');
+          await expect
+            .poll(async () => {
+              const records = (await publisherRecords(page)).courseAssessments as {
+                kind: string;
+                afterLessonId: string | null;
+              }[];
+              return records.find((assessment) => assessment.kind === 'checkpoint')?.afterLessonId;
+            })
+            .toBe(anchor);
+        }
+      }
+      const scroller = page.getByRole('main');
+      await row.scrollIntoViewIfNeeded();
+      const start = (await row.boundingBox())!;
+      const viewport = (await scroller.boundingBox())!;
+      const scrollTop = () => scroller.evaluate((element) => element.scrollTop);
+      const before = await scrollTop();
+      const x = Math.round(start.x + (input.checkpoint ? start.width - 20 : start.width / 2));
+      const y = Math.round(start.y + start.height / 2);
+      const bottomY = Math.round(Math.min(650, viewport.y + viewport.height) - 8);
+      const topY = Math.round(Math.max(0, viewport.y) + 8);
+      const session = input.touch ? await page.context().newCDPSession(page) : undefined;
+      const move = async (clientY: number) => {
+        if (session) {
+          await session.send('Input.dispatchTouchEvent', {
+            type: 'touchMove',
+            touchPoints: [{ x, y: clientY }],
+          });
+        } else {
+          await page.mouse.move(x, clientY);
+        }
+      };
+      if (session) {
+        await session.send('Input.dispatchTouchEvent', {
+          type: 'touchStart',
+          touchPoints: [{ x, y }],
+        });
+      } else {
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+      }
+      await expect(row).toHaveAttribute('data-drag-lifted', 'true');
+      await move(bottomY);
+      await expect.poll(scrollTop).toBeGreaterThan(before + 60);
+      const firstAdvance = await scrollTop();
+      await expect.poll(scrollTop).toBeGreaterThan(firstAdvance + 40);
+      await expect(row).toHaveAttribute('data-drag-lifted', 'true');
+      const bottomScroll = await scrollTop();
+      await move(topY);
+      await expect.poll(scrollTop).toBeLessThan(bottomScroll - 60);
+      const firstRetreat = await scrollTop();
+      await expect.poll(scrollTop).toBeLessThan(firstRetreat - 40);
+      await expect(row).toHaveAttribute('data-drag-lifted', 'true');
+      if (session) {
+        await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await session.detach();
+      } else {
+        await page.mouse.up();
+      }
+      await expect(row).not.toHaveAttribute('data-drag-lifted', 'true');
+      await expect(path.locator('[data-drop-active]')).toHaveCount(0);
+      await page.reload();
+      await expect(path.locator('[data-path-lesson]')).toHaveCount(3);
     });
   });
 }
