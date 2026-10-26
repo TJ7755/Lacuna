@@ -55,7 +55,7 @@ test('Search names its field, provides full-size keyboard filters and keeps Clea
   await expect(due).toBeFocused();
   await due.press('Space');
   await expect(due).toHaveAttribute('aria-pressed', 'true');
-  for (const label of ['Due now', 'New', 'Leeches', 'Flagged', 'Suspended']) {
+  for (const label of ['Due now', 'New', 'Often missed', 'Flagged', 'Suspended']) {
     const filter = page.getByRole('button', { name: label, exact: true });
     await expect
       .poll(async () => Math.round((await filter.boundingBox())!.height), { message: label })

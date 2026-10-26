@@ -1,8 +1,9 @@
 import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Analytics } from './Analytics';
+import { writeAdvancedDetails } from '../state/advancedDetails';
 
 const live = vi.hoisted(() => ({
   history: [] as {
@@ -80,6 +81,22 @@ vi.mock('recharts', () => ({
 }));
 
 describe('Analytics', () => {
+  beforeEach(() => localStorage.removeItem('lacuna.advancedDetails'));
+
+  it('keeps study evidence while hiding scheduler diagnostics with advanced details off', () => {
+    localStorage.setItem('lacuna.advancedDetails', 'false');
+    render(<Analytics />, { wrapper: MemoryRouter });
+
+    expect(screen.queryByRole('region', { name: 'Stability profile' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Prediction accuracy' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Summary' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Observed recall by card age' })).toBeInTheDocument();
+
+    act(() => writeAdvancedDetails(true));
+    expect(screen.getByRole('region', { name: 'Stability profile' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Prediction accuracy' })).toBeInTheDocument();
+  });
+
   it('limits the exam-day score trajectory to the selected period', () => {
     const DAY = 86_400_000;
     live.courses = [{ id: 'c', name: 'Course' }];
@@ -91,7 +108,7 @@ describe('Analytics', () => {
     }));
     try {
       render(<Analytics />);
-      const chart = screen.getByRole('region', { name: 'Predicted exam-day score' });
+      const chart = screen.getByRole('region', { name: 'Predicted exam-day recall' });
       expect(chart).toHaveAttribute('data-rows', '30');
       // A grid cell that may not shrink lets a chart's first measurement overflow a phone.
       expect(chart.parentElement).toHaveClass('min-w-0');
@@ -110,7 +127,7 @@ describe('Analytics', () => {
     ];
     try {
       render(<Analytics />);
-      const chart = screen.getByRole('region', { name: 'Predicted exam-day score' });
+      const chart = screen.getByRole('region', { name: 'Predicted exam-day recall' });
       expect(chart).toHaveTextContent(
         /Predicted 73% on .+\. Study on another day to see a trend\./,
       );

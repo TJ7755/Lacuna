@@ -7,6 +7,7 @@ import {
   COURSE_PAGE_TITLE,
 } from '../components/course/coursePageLayout';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
+import { useAdvancedDetails } from '../state/advancedDetails';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCourse, useCourseCards, useCourseReviewHistory } from '../state/useCourseData';
 import {
@@ -47,6 +48,7 @@ export function CourseSettings() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [showAdvancedDetails] = useAdvancedDetails();
   const course = useCourse(courseId);
   const cards = useCourseCards(courseId);
   const reviewHistory = useCourseReviewHistory(courseId);
@@ -106,7 +108,10 @@ export function CourseSettings() {
       </header>
       <SettingsArrivalProvider>
         <div className="grid items-stretch gap-5 min-[1100px]:grid-cols-[1.15fr_1fr] [&>section]:mb-0">
-          <SettingsCard id="course-settings-goal" className="min-w-0 min-[1100px]:row-span-2">
+          <SettingsCard
+            id="course-settings-goal"
+            className={showAdvancedDetails ? 'min-w-0 min-[1100px]:row-span-2' : 'min-w-0'}
+          >
             <h2 className="mb-6 font-display text-2xl font-semibold tracking-tight">
               Study goal and dates
             </h2>
@@ -158,18 +163,20 @@ export function CourseSettings() {
             </h2>
             <SchedulingFieldsSection {...schedulingFields} section="workload" />
           </SettingsCard>
-          <SettingsCard className="min-w-0">
-            <TargetRecallCard
-              compact
-              headingLevel={2}
-              retention={retention}
-              onChange={setRetention}
-              onCommit={(value) => {
-                setRetention(value);
-                commitFsrsParameters({ requestRetention: clampRequestRetention(value) });
-              }}
-            />
-          </SettingsCard>
+          {showAdvancedDetails && (
+            <SettingsCard className="min-w-0">
+              <TargetRecallCard
+                compact
+                headingLevel={2}
+                retention={retention}
+                onChange={setRetention}
+                onCommit={(value) => {
+                  setRetention(value);
+                  commitFsrsParameters({ requestRetention: clampRequestRetention(value) });
+                }}
+              />
+            </SettingsCard>
+          )}
         </div>
         <div className="mt-7 flex flex-col gap-2">
           <CourseSettingsDisclosure
@@ -293,32 +300,34 @@ export function CourseSettings() {
               }
             />
           </CourseSettingsDisclosure>
-          <CourseSettingsDisclosure
-            title="Advanced scheduling"
-            summary="Learning, intervals and optimisation"
-          >
-            <div className="mb-5">
-              <SettingRow label="Learn first">
-                <PillSwitch
-                  checked={learnFirst}
-                  onChange={(checked) => {
-                    setLearnFirst(checked);
-                    commitCourse({ learnFirst: checked });
-                  }}
-                  ariaLabel="Learn first"
-                />
-              </SettingRow>
-            </div>
-            <SchedulingFieldsSection {...schedulingFields} section="advanced" />{' '}
-            <OptimisationPanel
-              entity={course}
-              cards={cards ?? []}
-              reviewHistory={reviewHistory}
-              onUpdate={(changes) => updateCourse(course.id, changes)}
-              entityLabel="course"
-              headingLevel={2}
-            />
-          </CourseSettingsDisclosure>
+          {showAdvancedDetails && (
+            <CourseSettingsDisclosure
+              title="Advanced scheduling"
+              summary="Learning, intervals and optimisation"
+            >
+              <div className="mb-5">
+                <SettingRow label="Learn first">
+                  <PillSwitch
+                    checked={learnFirst}
+                    onChange={(checked) => {
+                      setLearnFirst(checked);
+                      commitCourse({ learnFirst: checked });
+                    }}
+                    ariaLabel="Learn first"
+                  />
+                </SettingRow>
+              </div>
+              <SchedulingFieldsSection {...schedulingFields} section="advanced" />{' '}
+              <OptimisationPanel
+                entity={course}
+                cards={cards ?? []}
+                reviewHistory={reviewHistory}
+                onUpdate={(changes) => updateCourse(course.id, changes)}
+                entityLabel="course"
+                headingLevel={2}
+              />
+            </CourseSettingsDisclosure>
+          )}
         </div>
         <div className="mt-8">
           {course.distributedCopy?.locked === true && (

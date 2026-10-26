@@ -5,6 +5,7 @@ import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
 import { useAnswerInput } from '../../state/answerInput';
 import { useAnswerStrictness, type AnswerStrictness } from '../../state/answerStrictness';
+import { useAdvancedDetails } from '../../state/advancedDetails';
 import { useStartInFocusMode } from '../../state/focusModePreference';
 import { useGradingMode } from '../../state/gradingMode';
 import { useRecitationInput } from '../../state/recitationInput';
@@ -30,6 +31,7 @@ const FINAL_EXAM_POLICIES: Array<{
 ];
 
 export function StudySection() {
+  const [showAdvancedDetails, setShowAdvancedDetails] = useAdvancedDetails();
   const [answerInput, setAnswerInput] = useAnswerInput();
   const [gradingMode, setGradingMode] = useGradingMode();
   const [answerStrictness, setAnswerStrictness] = useAnswerStrictness();
@@ -47,6 +49,14 @@ export function StudySection() {
       </div>
 
       <SettingToggle
+        title="Show advanced details"
+        description="Show scheduler settings and technical statistics. Your study schedule stays the same."
+        checked={showAdvancedDetails}
+        onChange={setShowAdvancedDetails}
+      />
+
+      <SettingToggle
+        bordered
         title="Manual four-point grading"
         description="Off: Lacuna infers a grade from correctness and response time. On: choose Again, Hard, Good or Easy."
         checked={gradingMode === 'manual'}
@@ -147,6 +157,7 @@ export function StudySection() {
 }
 
 export function CourseDefaultsSection() {
+  const [showAdvancedDetails] = useAdvancedDetails();
   const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
   const [afterFinalExam, setAfterFinalExam] = useAfterFinalExamPolicy();
@@ -160,7 +171,7 @@ export function CourseDefaultsSection() {
         </SettingsSectionHeading>
       </div>
       <SettingToggle
-        title="Auto-insert practice nodes"
+        title={showAdvancedDetails ? 'Auto-insert practice nodes' : 'Add practice between lessons'}
         checked={practiceDefaults.autoPractice}
         onChange={(checked) => setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })}
       />
@@ -189,103 +200,107 @@ export function CourseDefaultsSection() {
         </div>
       </div>
 
-      <InlineSettingsDisclosure
-        className="group mt-6 pt-0"
-        headerClassName="flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-        header={
-          <>
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
-              <span className="mt-1 block text-sm text-ink-soft">
-                Fit default scheduling to your review history.
+      {showAdvancedDetails && (
+        <InlineSettingsDisclosure
+          className="group mt-6 pt-0"
+          headerClassName="flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+          header={
+            <>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
+                <span className="mt-1 block text-sm text-ink-soft">
+                  Fit default scheduling to your review history.
+                </span>
               </span>
-            </span>
-          </>
-        }
-      >
-        <div className="mt-5 rounded-2xl bg-ink/[0.04] p-4">
-          <SettingToggle
-            title="Optimise scheduling"
-            description={`Fits FSRS weights after ${MIN_OPTIMISE_REVIEWS} reviews. Changes require confirmation and can be overridden per course.`}
-            checked={autoOptimise}
-            onChange={setAutoOptimise}
-          />
-        </div>
-      </InlineSettingsDisclosure>
+            </>
+          }
+        >
+          <div className="mt-5 rounded-2xl bg-ink/[0.04] p-4">
+            <SettingToggle
+              title="Optimise scheduling"
+              description={`Fits FSRS weights after ${MIN_OPTIMISE_REVIEWS} reviews. Changes require confirmation and can be overridden per course.`}
+              checked={autoOptimise}
+              onChange={setAutoOptimise}
+            />
+          </div>
+        </InlineSettingsDisclosure>
+      )}
 
-      <InlineSettingsDisclosure
-        className="group mt-6 pt-0"
-        headerClassName="flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-        header={
-          <>
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
-              <span className="mt-1 block text-sm text-ink-soft">
-                Adjust when practice nodes appear on course paths.
+      {showAdvancedDetails && (
+        <InlineSettingsDisclosure
+          className="group mt-6 pt-0"
+          headerClassName="flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+          header={
+            <>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
+                <span className="mt-1 block text-sm text-ink-soft">
+                  Adjust when practice nodes appear on course paths.
+                </span>
               </span>
-            </span>
-          </>
-        }
-      >
-        <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <NumberField
-            label="Threshold (far)"
-            value={practiceDefaults.practiceThresholdMinutesFar}
-            suffix="min"
-            min={1}
-            max={999}
-            onCommit={(value) =>
-              setPracticeDefaults({
-                ...practiceDefaults,
-                practiceThresholdMinutesFar: value,
-              })
-            }
-          />
-          <NumberField
-            label="Threshold (near)"
-            value={practiceDefaults.practiceThresholdMinutesNear}
-            suffix="min"
-            min={1}
-            max={999}
-            onCommit={(value) =>
-              setPracticeDefaults({
-                ...practiceDefaults,
-                practiceThresholdMinutesNear: value,
-              })
-            }
-          />
-          <NumberField
-            label="Revision period"
-            value={practiceDefaults.practiceUrgentWindowDays}
-            suffix="days"
-            min={0}
-            max={365}
-            onCommit={(value) =>
-              setPracticeDefaults({
-                ...practiceDefaults,
-                practiceUrgentWindowDays: value,
-              })
-            }
-          />
-          <NumberField
-            label="Max gap"
-            value={practiceDefaults.practiceMaxGap}
-            suffix="lessons"
-            min={1}
-            max={99}
-            onCommit={(value) =>
-              setPracticeDefaults({
-                ...practiceDefaults,
-                practiceMaxGap: value,
-              })
-            }
-          />
-        </div>
-        <p className="mt-3 text-xs text-ink-faint">
-          The near threshold applies once an exam is within the revision period; the far threshold
-          applies otherwise. Max gap forces a practice node after this many lessons without one.
-        </p>
-      </InlineSettingsDisclosure>
+            </>
+          }
+        >
+          <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <NumberField
+              label="Threshold (far)"
+              value={practiceDefaults.practiceThresholdMinutesFar}
+              suffix="min"
+              min={1}
+              max={999}
+              onCommit={(value) =>
+                setPracticeDefaults({
+                  ...practiceDefaults,
+                  practiceThresholdMinutesFar: value,
+                })
+              }
+            />
+            <NumberField
+              label="Threshold (near)"
+              value={practiceDefaults.practiceThresholdMinutesNear}
+              suffix="min"
+              min={1}
+              max={999}
+              onCommit={(value) =>
+                setPracticeDefaults({
+                  ...practiceDefaults,
+                  practiceThresholdMinutesNear: value,
+                })
+              }
+            />
+            <NumberField
+              label="Revision period"
+              value={practiceDefaults.practiceUrgentWindowDays}
+              suffix="days"
+              min={0}
+              max={365}
+              onCommit={(value) =>
+                setPracticeDefaults({
+                  ...practiceDefaults,
+                  practiceUrgentWindowDays: value,
+                })
+              }
+            />
+            <NumberField
+              label="Max gap"
+              value={practiceDefaults.practiceMaxGap}
+              suffix="lessons"
+              min={1}
+              max={99}
+              onCommit={(value) =>
+                setPracticeDefaults({
+                  ...practiceDefaults,
+                  practiceMaxGap: value,
+                })
+              }
+            />
+          </div>
+          <p className="mt-3 text-xs text-ink-faint">
+            The near threshold applies once an exam is within the revision period; the far threshold
+            applies otherwise. Max gap forces a practice node after this many lessons without one.
+          </p>
+        </InlineSettingsDisclosure>
+      )}
     </SettingsCard>
   );
 }

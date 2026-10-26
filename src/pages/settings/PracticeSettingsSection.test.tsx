@@ -1,9 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { PracticeSettingsSection } from './PracticeSettingsSection';
+import { writeAdvancedDetails } from '../../state/advancedDetails';
+
+afterEach(() => localStorage.removeItem('lacuna.advancedDetails'));
 
 describe('PracticeSettingsSection', () => {
   it('keeps automatic placement simple and discloses timing controls on demand', () => {
+    writeAdvancedDetails(false);
     render(
       <PracticeSettingsSection
         autoPractice={true}
@@ -23,13 +27,22 @@ describe('PracticeSettingsSection', () => {
       />,
     );
     expect(screen.getByText('Auto-practice')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Advanced practice timing/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Maximum lesson gap for automatic practice'),
+    ).not.toBeInTheDocument();
+    act(() => writeAdvancedDetails(true));
     expect(screen.getByText('Threshold (exam not near)')).toBeInTheDocument();
     expect(screen.getByText('Threshold (exam near)')).toBeInTheDocument();
     expect(screen.getByText('Urgent window')).toBeInTheDocument();
     expect(screen.getByText('Maximum lesson gap')).toBeInTheDocument();
     const summary = screen.getByRole('button', { name: /Advanced practice timing/ });
     expect(summary).toHaveAttribute('aria-expanded', 'false');
-    expect(document.getElementById(summary.getAttribute('aria-controls')!)).not.toContainElement(screen.getByLabelText('Auto-practice'));
+    expect(document.getElementById(summary.getAttribute('aria-controls')!)).not.toContainElement(
+      screen.getByLabelText('Auto-practice'),
+    );
     expect(
       screen.getByRole('spinbutton', {
         name: 'Practice threshold when the exam is not near, in minutes',

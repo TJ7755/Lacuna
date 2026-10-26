@@ -5,6 +5,7 @@ import { SearchPage } from './SearchPage';
 import { useRef } from 'react';
 import type * as React from 'react';
 import { useScrollMemory } from '../components/layout/scrollMemory';
+import { writeAdvancedDetails } from '../state/advancedDetails';
 import { Outlet } from 'react-router-dom';
 import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '../db/types';
 import type { FixedQuestionDefinition, QuestionDefinition } from '../questions/types';
@@ -140,6 +141,34 @@ vi.mock('../state/useSearchData', () => ({
 }));
 
 describe('SearchPage', () => {
+  it('keeps the often-missed filter and its results when advanced terminology is restored', () => {
+    localStorage.setItem('lacuna.advancedDetails', 'false');
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [
+        { ...mockCard, lapses: 8 },
+        { ...mockCard, id: 'steady', front: 'Steady card', lapses: 0 },
+      ],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    try {
+      render(<SearchPage />, { wrapper: MemoryRouter });
+      fireEvent.click(screen.getByRole('button', { name: 'Often missed' }));
+      expect(screen.getAllByRole('option')).toHaveLength(1);
+      expect(screen.getByRole('option')).toHaveTextContent('Palatine hill fortifications');
+      act(() => writeAdvancedDetails(true));
+      expect(screen.getByRole('button', { name: 'Leeches' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      expect(screen.getAllByRole('option')).toHaveLength(1);
+    } finally {
+      localStorage.removeItem('lacuna.advancedDetails');
+    }
+  });
+
   it('uses the restored query before a deferred update can insert unrelated rows on Back', async () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [

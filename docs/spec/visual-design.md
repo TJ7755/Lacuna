@@ -8,6 +8,17 @@ The intended character is quiet paper-and-ink study: one clear task, readable co
 supporting text and deliberate feedback. Keep original authoring and repeat-entry workflows fluent.
 Reducing visible chrome does not justify hiding validation, unfinished work or available actions.
 
+Learner-facing language describes the task and the evidence in plain words. Use “skill” in practice
+views; keep precise authoring terms in editors and the domain model. Recall forecasts describe
+predicted recall, not exam marks. Simpler wording must preserve the meaning of the measure.
+
+The device-local **Show advanced details** preference is available in Settings and onboarding.
+New learners start with it off; existing learners retain their detailed views until they choose
+otherwise. With it off, scheduler internals and tuning controls are absent from the page and
+accessibility tree. Useful study history, due dates and recall forecasts remain available. The
+preference changes presentation only; it never changes scheduling or study evidence. The Method
+page retains its full technical explanation.
+
 ## Lacuna Flow
 
 Lacuna Flow (Flow for short) is Lacuna's interaction language: an interface that moves with your

@@ -149,6 +149,7 @@ function renderPage(path = '/course/course-1/settings') {
 }
 
 beforeEach(() => {
+  localStorage.clear();
   mockAssessmentsPending = false;
   mockMotion.multiplier = 1;
   mockCourse = course;
@@ -169,6 +170,24 @@ function openSettings(title: string) {
 }
 
 describe('CourseSettings', () => {
+  it('hides scheduler internals in the plain view without changing course settings', () => {
+    localStorage.setItem('lacuna.advancedDetails', 'false');
+    const plain = renderPage();
+    expect(screen.queryByLabelText('Target retention')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Advanced scheduling/ })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/New cards per day/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Assessments' })).toBeInTheDocument();
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    plain.unmount();
+    localStorage.setItem('lacuna.advancedDetails', 'true');
+    renderPage();
+    expect(screen.getByLabelText('Target retention')).toHaveValue('0.9');
+    openSettings('Advanced scheduling');
+    expect(screen.getByLabelText(/Learning steps/)).toHaveValue('1m, 10m');
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+  });
+
   it('describes securing as many topics as possible rather than guaranteeing every card', () => {
     mockMotion.multiplier = 0;
     mockCourse = { ...mockCourse!, examObjective: 'securedTopics' };

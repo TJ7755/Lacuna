@@ -16,6 +16,7 @@ import { forgettingCurve } from '../../fsrs/forwardSim';
 import { decayOf } from '../../fsrs/fsrs';
 import { MS_PER_DAY } from '../../fsrs/params';
 import { schedulingHorizon } from '../../fsrs/horizon';
+import { useAdvancedDetails } from '../../state/advancedDetails';
 import type { Card, Grade, SchedulerConfig } from '../../db/types';
 
 interface CardAnalyticsProps {
@@ -25,6 +26,7 @@ interface CardAnalyticsProps {
 }
 
 export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: CardAnalyticsProps) {
+  const [advancedDetails] = useAdvancedDetails();
   const m = motionMultiplier ?? 1;
   const c = useChartColours();
   const now = Date.now();
@@ -64,27 +66,39 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
 
   const vitalStats = (() => {
     const stats: { label: string; value: string }[] = [];
-    if (card.stability !== null) {
+    if (advancedDetails && card.stability !== null) {
       stats.push({ label: 'Stability', value: `${card.stability.toFixed(1)}d` });
     }
-    if (card.difficulty !== null) {
+    if (advancedDetails && card.difficulty !== null) {
       stats.push({ label: 'Difficulty', value: card.difficulty.toFixed(1) });
     }
     if (card.stability !== null && card.lastReviewed !== null) {
       const days = (now - card.lastReviewed) / MS_PER_DAY;
       const r = forgettingCurve(days, card.stability, decay);
-      stats.push({ label: 'Current R', value: `${(r * 100).toFixed(0)}%` });
+      stats.push({
+        label: advancedDetails ? 'Current R' : 'Predicted recall now',
+        value: `${(r * 100).toFixed(0)}%`,
+      });
     }
     if (card.stability !== null && card.lastReviewed !== null) {
       const days = Math.max(targetDate - card.lastReviewed, 0) / MS_PER_DAY;
       const r = forgettingCurve(days, card.stability, decay);
       stats.push({
-        label: hasActiveExam ? 'Predicted exam R' : 'Predicted target R',
+        label: advancedDetails
+          ? hasActiveExam
+            ? 'Predicted exam R'
+            : 'Predicted target R'
+          : hasActiveExam
+            ? 'Predicted exam-day recall'
+            : 'Predicted target-day recall',
         value: `${(r * 100).toFixed(0)}%`,
       });
     }
     stats.push({ label: 'Total reviews', value: String(card.reps) });
-    stats.push({ label: 'Lapses', value: String(card.lapses) });
+    stats.push({
+      label: advancedDetails ? 'Lapses' : 'Times forgotten in review',
+      value: String(card.lapses),
+    });
     if (card.due !== null) {
       const dueStr = new Date(card.due).toLocaleDateString('en-GB', {
         day: 'numeric',
@@ -99,7 +113,10 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
     if (card.history.length > 0) {
       const meanTime =
         card.history.reduce((sum, log) => sum + log.responseTimeSec, 0) / card.history.length;
-      stats.push({ label: 'Mean response time', value: `${meanTime.toFixed(1)}s` });
+      stats.push({
+        label: advancedDetails ? 'Mean response time' : 'Average answer time',
+        value: `${meanTime.toFixed(1)}s`,
+      });
       const correct = card.history.filter((log) => log.grade > 1).length;
       stats.push({
         label: 'Accuracy',
@@ -136,7 +153,14 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
   return (
     <div>
       <div className="mb-6">
-        <h4 className="mb-2 font-display text-lg tracking-tight">Forgetting curve</h4>
+        <h4 className="mb-2 font-display text-lg tracking-tight">
+          {advancedDetails ? 'Forgetting curve' : 'Predicted recall over time'}
+        </h4>
+        {!advancedDetails && (
+          <p className="mb-3 text-sm text-ink-soft">
+            Estimated chance of remembering this card, based on your reviews.
+          </p>
+        )}
         {hasData ? (
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
@@ -207,7 +231,9 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
           </div>
         ) : (
           <p className="text-sm text-ink-faint">
-            This card has not been reviewed yet. Study it to see a forgetting curve.
+            {advancedDetails
+              ? 'This card has not been reviewed yet. Study it to see a forgetting curve.'
+              : 'This card has not been reviewed yet. Study it to see a recall estimate.'}
           </p>
         )}
       </div>
@@ -229,7 +255,9 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
 
       {card.history.length > 0 && (
         <div>
-          <h4 className="mb-2 font-display text-lg tracking-tight">Grade distribution</h4>
+          <h4 className="mb-2 font-display text-lg tracking-tight">
+            {advancedDetails ? 'Grade distribution' : 'Review ratings'}
+          </h4>
           <div className="flex items-end gap-3">
             {([1, 2, 3, 4] as Grade[]).map((g) => {
               const count = gradeCounts[g];

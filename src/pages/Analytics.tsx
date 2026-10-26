@@ -5,6 +5,7 @@ import { AppLink as Link } from '../components/ui/AppLink';
 import { useAllCards, useAllReviewHistory, useAllSessionHistory } from '../state/useData';
 import { useCourses } from '../state/useCourseData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+import { useAdvancedDetails } from '../state/advancedDetails';
 import { ChartCard } from '../components/analytics/ChartCard';
 import { Rise } from '../components/analytics/Arrival';
 import { KpiRow } from '../components/analytics/KpiRow';
@@ -47,6 +48,7 @@ const X_INTERVAL: Record<Period, number> = { '7': 0, '30': 6, '90': 14 };
 
 export function Analytics() {
   const [motionSpeed] = useMotionSpeed();
+  const [advancedDetails] = useAdvancedDetails();
   const m = speedMultiplier(motionSpeed);
   const courses = useCourses();
   const allCards = useAllCards();
@@ -182,10 +184,10 @@ export function Analytics() {
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <FadeInView y={12} className={CELL}>
           <ChartCard
-            title="Predicted exam-day score"
+            title="Predicted exam-day recall"
             description="Each point is a day you studied, averaging the courses studied that day."
             data={{
-              columns: ['Date', 'Predicted score (%)', 'Courses'],
+              columns: ['Date', 'Predicted recall (%)', 'Courses'],
               rows: trajectory.map((point) => [
                 point.label,
                 point.retrievability,
@@ -288,59 +290,63 @@ export function Analytics() {
           </ChartCard>
         </FadeInView>
 
-        <FadeInView y={12} className={CELL}>
-          <PredictionAccuracyCard prediction={prediction} />
-        </FadeInView>
+        {advancedDetails && (
+          <FadeInView y={12} className={CELL}>
+            <PredictionAccuracyCard prediction={prediction} />
+          </FadeInView>
+        )}
+
+        {advancedDetails && (
+          <FadeInView y={12} className={CELL}>
+            <ChartCard
+              title="Stability profile"
+              description="Days until each card's recall is likely to fall to 90%. Longer means more durable; new cards have no estimate yet."
+              data={{
+                columns: ['Stability', 'Cards'],
+                rows: profile.map((point) => [point.range, point.count]),
+              }}
+              emptyDrawing="stability"
+              empty={cards.length === 0}
+              emptyMessage="Add cards to see stability."
+            >
+              <Columns
+                data={profile}
+                xKey="range"
+                yKey="count"
+                name="Cards"
+                colour={c.accent}
+                xInterval={0}
+                muted={(row) => row.range === 'New'}
+              />
+            </ChartCard>
+          </FadeInView>
+        )}
 
         <FadeInView y={12} className={CELL}>
           <ChartCard
-            title="Stability profile"
-            description="Days until each card's recall is likely to fall to 90%. Longer means more durable; new cards have no estimate yet."
-            data={{
-              columns: ['Stability', 'Cards'],
-              rows: profile.map((point) => [point.range, point.count]),
-            }}
-            emptyDrawing="stability"
-            empty={cards.length === 0}
-            emptyMessage="Add cards to see stability."
-          >
-            <Columns
-              data={profile}
-              xKey="range"
-              yKey="count"
-              name="Cards"
-              colour={c.accent}
-              xInterval={0}
-              muted={(row) => row.range === 'New'}
-            />
-          </ChartCard>
-        </FadeInView>
-
-        <FadeInView y={12} className={CELL}>
-          <ChartCard
-            title="Leech count by course"
+            title={advancedDetails ? 'Leech count by course' : 'Cards you often miss by course'}
             description="Cards you keep forgetting. Rewording or splitting them usually helps more than reviewing again."
             action={
               <Link
                 to="/search?filter=leech"
                 className="-ml-3 inline-flex min-h-11 items-center rounded-full px-3 text-ink-soft hover:bg-ink/[0.05] hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
               >
-                Show leech cards
+                {advancedDetails ? 'Show leech cards' : 'Show cards you often miss'}
               </Link>
             }
             data={{
-              columns: ['Course', 'Leeches'],
+              columns: ['Course', advancedDetails ? 'Leeches' : 'Cards you often miss'],
               rows: leeches.map((point) => [point.name, point.count]),
             }}
             emptyDrawing="leech"
             empty={leeches.length === 0}
-            emptyMessage="No leech cards."
+            emptyMessage={advancedDetails ? 'No leech cards.' : 'No cards you often miss.'}
           >
             <HorizontalBars
               data={leeches}
               nameKey="name"
               valueKey="count"
-              name="Leeches"
+              name={advancedDetails ? 'Leeches' : 'Cards you often miss'}
               colour={c.accent}
             />
           </ChartCard>

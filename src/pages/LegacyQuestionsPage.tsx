@@ -182,7 +182,7 @@ export function LegacyQuestionsPage() {
                 name={question.name}
                 topic={lessonName ?? targetName ?? 'No lesson'}
                 description={
-                  targetName ? (promptSnippet(question) ?? targetName) : 'Target Concept missing'
+                  targetName ? (promptSnippet(question) ?? targetName) : 'Linked skill missing'
                 }
                 descriptionWarning={!targetName}
                 due={due}
