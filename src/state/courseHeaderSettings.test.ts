@@ -47,6 +47,16 @@ describe('courseHeaderSettings', () => {
     );
   });
 
+  it('takes the current label for a stored pill, so renames reach every reader', () => {
+    localStorage.setItem(
+      'lacuna.courseHeaderSettings',
+      JSON.stringify({ statPills: [{ id: 'mastery', label: 'Mastery', visible: false }] }),
+    );
+    const pill = readStored().statPills.find((entry) => entry.id === 'mastery');
+    expect(pill).toMatchObject({ visible: false });
+    expect(pill?.label).toBe(DEFAULT_STAT_PILLS.find((def) => def.id === 'mastery')?.label);
+  });
+
   it('falls back to defaults on unparseable storage', () => {
     localStorage.setItem('lacuna.courseHeaderSettings', 'not json');
     expect(readStored().statPills).toHaveLength(DEFAULT_STAT_PILLS.length);

@@ -45,9 +45,15 @@ const setting = createLocalSetting<CourseHeaderSettings>({
         const stored = parsed.statPills ?? DEFAULTS.statPills;
         // Drop stored pills that no longer exist, then append any newly added defaults,
         // preserving the stored order and visibility of everything that survives.
-        const merged = stored.filter((pill) =>
-          DEFAULT_STAT_PILLS.some((def) => def.id === pill.id),
-        );
+        const merged = stored
+          .filter((pill) => DEFAULT_STAT_PILLS.some((def) => def.id === pill.id))
+          // Labels are display copy owned by the defaults, so a rename reaches
+          // every learner: stored pills keep only their id and visibility.
+          .map((pill) => ({
+            id: pill.id,
+            label: DEFAULT_STAT_PILLS.find((def) => def.id === pill.id)?.label ?? pill.label,
+            visible: pill.visible,
+          }));
         for (const def of DEFAULT_STAT_PILLS) {
           if (!merged.find((pill) => pill.id === def.id)) merged.push(def);
         }

@@ -38,7 +38,7 @@ export function localLessonOrderUnavailableReason(
   if (
     practiceNodes.some((node) => !node.questionSetIds?.length || !lessonIds.has(node.afterLessonId ?? ''))
   ) {
-    return 'Local lesson order requires every Question Set to be attached to a single lesson.';
+    return 'Local lesson order requires every practice activity to be a Question Set attached to a single lesson.';
   }
   if (
     assessments.length !== 1 ||
