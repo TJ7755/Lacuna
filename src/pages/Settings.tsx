@@ -1,5 +1,6 @@
 import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
 import { useSectionDeepLink } from '../hooks/useSectionDeepLink';
+import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { AppearanceSection } from './settings/AppearanceSection';
 import { BackupsSection } from './settings/BackupsSection';
@@ -43,6 +44,7 @@ const INTEGRATION_ANCHORS = ['settings-install', 'settings-jev', 'settings-mcp']
 const COMMON_ANCHORS = new Set(['settings-appearance', 'settings-input', 'settings-pomodoro']);
 
 export function Settings() {
+  const install = useInstallPrompt();
   const [motionSpeed] = useMotionSpeed();
   const motionMultiplier = speedMultiplier(motionSpeed);
 
@@ -116,7 +118,7 @@ export function Settings() {
             summary="Install, automatic marking and MCP"
             anchors={INTEGRATION_ANCHORS}
           >
-            <InstallSection />
+            <InstallSection install={install} />
             <JevSection />
             {window.electronAPI?.isElectron && <McpSection />}
           </SettingsDisclosure>

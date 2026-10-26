@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Settings } from './Settings';
 import { SettingsDisclosure } from './settings/SettingsDisclosure';
@@ -82,9 +82,6 @@ vi.mock('../state/shortcutBindings', () => ({
   ACTION_LABELS: {},
   formatBinding: vi.fn(),
   useShortcutBindings: () => ({ bindings: {}, setBinding: vi.fn(), reset: vi.fn() }),
-}));
-vi.mock('../hooks/useInstallPrompt', () => ({
-  useInstallPrompt: () => ({ isInstallable: false, isInstalled: false, promptInstall: vi.fn() }),
 }));
 vi.mock('../db/backups', () => ({
   deleteBackup: vi.fn(),
@@ -317,6 +314,26 @@ describe('Settings', () => {
     fireEvent.click(toggle);
     fireEvent.click(toggle);
     expect(backupFolderName).toHaveBeenCalledTimes(1);
+  });
+
+  it('captures an install prompt before Integrations is first opened', async () => {
+    render(<Settings />);
+    const prompt = vi.fn().mockResolvedValue(undefined);
+    fireEvent(
+      window,
+      Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+        prompt,
+        userChoice: Promise.resolve({ outcome: 'accepted', platform: 'web' }),
+      }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^Integrations/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Install' }));
+    });
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByText('Lacuna is installed on this device and can be used offline.'),
+    ).toBeInTheDocument();
   });
 
   it('keeps an unfinished form mounted and inaccessible while its group is closed', () => {
