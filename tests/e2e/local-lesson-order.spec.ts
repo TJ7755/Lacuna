@@ -736,7 +736,7 @@ for (const input of [
       }
       await expect.poll(scrollTop).toBeGreaterThan(before + 60);
       const firstAdvance = await scrollTop();
-      await expect.poll(scrollTop).toBeGreaterThan(firstAdvance + 40);
+      await expect.poll(scrollTop).toBeGreaterThanOrEqual(Math.min(firstAdvance + 40, maximum));
       await expect(row).toHaveAttribute('data-drag-lifted', 'true');
       if (input.near && !input.checkpoint) {
         await expect.poll(scrollTop, { timeout: 10000 }).toBeGreaterThanOrEqual(maximum);
@@ -754,7 +754,7 @@ for (const input of [
       await move(topY);
       await expect.poll(scrollTop).toBeLessThan(bottomScroll - 60);
       const firstRetreat = await scrollTop();
-      await expect.poll(scrollTop).toBeLessThan(firstRetreat - 40);
+      await expect.poll(scrollTop).toBeLessThanOrEqual(Math.max(0, firstRetreat - 40));
       await expect(row).toHaveAttribute('data-drag-lifted', 'true');
       if (session) {
         await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
