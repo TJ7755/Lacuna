@@ -1,50 +1,63 @@
 import { useEffect, useState } from 'react';
+import { claimRouteImportFailure } from '../../pwa/routeImportFailures';
 import type { ForecastChart } from './ForecastChart';
 
 type Chart = typeof ForecastChart;
-
-// Kept for the session once fetched, so a return to Today renders the chart in its first frame.
 let loaded: Chart | null = null;
 let loading: Promise<Chart> | null = null;
+let failedAttempts = 0;
+
+// Keep these as separate callbacks: bundlers otherwise combine conditional import
+// preload lists and fetch the recovery entry during the failing first attempt.
+const chartLoaders = [() => import('./ForecastChart'), () => import('./ForecastChartRecovery')];
 
 function loadForecastChart(): Promise<Chart> {
-  loading ??= import('./ForecastChart').then(
+  // A rejected module URL can remain cached by the browser. The recovery entry has
+  // its own URL; resetting React state against the original URL is not a retry.
+  loading ??= chartLoaders[Math.min(failedAttempts, 1)]().then(
     (module) => (loaded = module.ForecastChart),
     (error: unknown) => {
-      // A failed chunk retries on the next visit rather than staying broken.
+      // Today owns this optional failure; preserve the queue instead of reloading the app.
+      claimRouteImportFailure(error);
       loading = null;
+      failedAttempts++;
       throw error;
     },
   );
   return loading;
 }
 
-/**
- * The forecast chart, loaded on demand so it stays out of the first-load bundle. `settled`
- * turns true once the chart is ready or has failed to load, so callers can wait on it
- * without waiting forever; a failed load leaves `Chart` null.
- */
-export function useForecastChart(wanted: boolean): { Chart: Chart | null; settled: boolean } {
-  const [state, setState] = useState<{ Chart: Chart | null; failed: boolean }>(() => ({
-    Chart: loaded,
-    failed: false,
-  }));
-
+export function useForecastChart(wanted: boolean) {
+  const [Chart, setChart] = useState<Chart | null>(() => loaded);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    if (!wanted || state.Chart || state.failed) return;
+    if (!wanted || Chart) return;
     let cancelled = false;
     loadForecastChart().then(
-      (Chart) => {
-        if (!cancelled) setState({ Chart, failed: false });
+      (chart) => {
+        if (!cancelled) setChart(() => chart);
       },
       () => {
-        if (!cancelled) setState({ Chart: null, failed: true });
+        if (!cancelled) setFailed(true);
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [wanted, state.Chart, state.failed]);
-
-  return { Chart: state.Chart, settled: state.Chart !== null || state.failed };
+  }, [wanted, Chart, attempt]);
+  return {
+    Chart,
+    failed,
+    settled: Chart !== null || failed,
+    reloadRequired: failedAttempts > 1,
+    retry: () => {
+      if (failedAttempts > 1) {
+        window.location.reload();
+        return;
+      }
+      setFailed(false);
+      setAttempt((value) => value + 1);
+    },
+  };
 }

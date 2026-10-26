@@ -347,3 +347,76 @@
     }
   }
 }
+
+:root {
+  --flow-surface-radius: 24px;
+  --flow-control-radius: 18px;
+}
+.today-forecast {
+  border-radius: var(--flow-surface-radius);
+}
+.today-course-row,
+.study-target-tiles > label {
+  border-radius: var(--flow-control-radius);
+}
+
+/* Flow owns paint independently of readable content and native hit areas. */
+.flow-feedback {
+  isolation: isolate;
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+.flow-feedback::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(var(--flow-fill), var(--flow-fill)), hsl(var(--surface-raised));
+  border: var(--flow-border-width) solid var(--flow-border);
+  border-radius: inherit;
+  transform: translateX(var(--flow-pull, 0px)) scaleX(calc(1 + var(--flow-pressure, 0) * 0.055))
+    scaleY(calc(1 - var(--flow-pressure, 0) * 0.095)) skewX(calc(var(--flow-pressure, 0) * -3deg));
+}
+[data-study-trigger][aria-busy='true']::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid currentColor;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.today-forecast-chart {
+  height: 22rem;
+  min-height: 0;
+  overflow: auto;
+}
+.today-forecast {
+  min-height: 31rem;
+}
+.study-target-tiles {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+}
+@supports (corner-shape: squircle) {
+  .today-forecast,
+  .today-course-row,
+  [data-expanding-action],
+  .study-target-tiles > label {
+    corner-shape: squircle;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-feedback::before {
+    transform: none;
+  }
+}
+
+.flow-expansion {
+  background-color: transparent !important;
+  border-color: transparent;
+  isolation: isolate;
+}
+.flow-expansion-paint {
+  z-index: -1;
+  filter: drop-shadow(0 1px 1px hsl(var(--line-strong)));
+}

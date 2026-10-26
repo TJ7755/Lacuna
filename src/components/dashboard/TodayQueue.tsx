@@ -1,6 +1,6 @@
 import { scaledSpring } from '../ui/motion';
 import { m as motion } from 'motion/react';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRightIcon, CardsIcon, CheckIcon, ClockIcon, MoreIcon } from '../ui/icons';
 import { Button } from '../ui/Button';
@@ -51,6 +51,7 @@ export interface QueueRow {
   status: ForecastStatus;
   state: QueueState;
   due: number;
+  learning?: string;
   minutes: number;
   href: string;
   hasPendingUpdate: boolean;
@@ -81,7 +82,6 @@ export function TodayQueue({
 }) {
   const colours = useCourseColours();
   const navigate = useNavigate();
-  const [focusedId, setFocusedId] = useState<string | null>(null);
   const menuButtons = useRef(new Map<string, HTMLButtonElement>());
   const openActions = (rowId: string) => {
     const trigger = menuButtons.current.get(rowId);
@@ -91,7 +91,6 @@ export function TodayQueue({
       onMenu(rowId, { x: box.right - 160, y: box.bottom + 6 }, trigger);
     };
   };
-  const liftTransition = { duration: 0.16 * multiplier, delay: 0, ease: MOTION_EASING.emphasised };
   const lead = leadStudyRow(rows);
   return (
     <section aria-label="Today, most urgent first" className="flex flex-col gap-2">
@@ -105,10 +104,8 @@ export function TodayQueue({
             initial={multiplier > 0 ? { opacity: 0 } : false}
             animate={{
               opacity: 1,
-              y: multiplier > 0 && focusedId === row.id ? -2 : 0,
               // A transition on the target replaces the prop below, so the fade names its own.
               transition: {
-                y: liftTransition,
                 opacity: {
                   duration: MOTION_DURATION.local * multiplier,
                   delay: arrival * multiplier,
@@ -119,12 +116,6 @@ export function TodayQueue({
             transition={{
               duration: MOTION_DURATION.local * multiplier,
               ease: MOTION_EASING.emphasised,
-            }}
-            whileHover={multiplier > 0 ? { y: -2, transition: liftTransition } : undefined}
-            onFocusCapture={() => setFocusedId(row.id)}
-            onBlurCapture={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node | null))
-                setFocusedId(null);
             }}
             className="today-course-row group flex items-center gap-3 rounded-[18px] bg-surface py-3 pl-4 pr-2 sm:gap-4 sm:pl-5 sm:pr-3 card-surface card-surface-control transition-colors hover:bg-surface-raised"
           >
@@ -166,7 +157,7 @@ export function TodayQueue({
               </span>
             ) : row.state === 'clear' || row.state === 'empty' ? (
               <span className="text-sm text-ink-faint">
-                {row.state === 'empty' ? 'No cards yet' : 'Nothing due'}
+                {row.state === 'empty' ? 'No cards yet' : 'No reviews due'}
               </span>
             ) : row.state === 'study' ? (
               <>
@@ -183,13 +174,13 @@ export function TodayQueue({
                     </span>
                   </>
                 ) : (
-                  <span className="text-sm text-ink-faint max-sm:sr-only">Nothing due</span>
+                  <span className="text-sm text-ink-faint max-sm:sr-only">
+                    {row.learning ?? 'Practice available'}
+                  </span>
                 )}
                 {/* Study opens the course's session plan, as Study does on the course page. */}
                 <Button
                   data-study-trigger={row.id}
-                  hoverScale={false}
-                  pressScale={false}
                   variant={row === lead ? 'primary' : 'secondary'}
                   onClick={() => onStudy(row.id)}
                   aria-label={`Study ${row.name}`}

@@ -1,97 +1,40 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installPressFeedback, pressDepth } from './pressFeedback';
+import { afterEach, describe, expect, it } from 'vitest';
+import { installPressFeedback } from './pressFeedback';
 
-function sized<T extends HTMLElement>(element: T, width: number, height: number): T {
-  element.getBoundingClientRect = () => ({ width, height }) as DOMRect;
-  return element;
-}
-
-describe('installPressFeedback', () => {
-  let uninstall: () => void;
-  let animate: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    animate = vi.fn(() => ({ cancel: vi.fn() }));
-    HTMLElement.prototype.animate = animate as unknown as HTMLElement['animate'];
-    uninstall = installPressFeedback();
-  });
-
+// Native activation and stable content are proved in the browser. This boundary
+// protects delegation ownership and cleanup without asserting animation keyframes.
+describe('press feedback ownership', () => {
+  let uninstall: (() => void) | undefined;
   afterEach(() => {
-    uninstall();
+    uninstall?.();
     document.body.innerHTML = '';
   });
 
-  it('sinks a plain button on press and springs it back on release', () => {
-    const button = sized(document.createElement('button'), 44, 44);
-    button.innerHTML = '<span>Go</span>';
+  it('decorates a plain control without altering its content or transform', () => {
+    const button = document.createElement('button');
+    button.innerHTML = '<span>Study</span>';
+    button.style.transform = 'translateX(10px)';
     document.body.append(button);
-
-    button.firstElementChild!.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, button: 0 }),
-    );
-    expect(animate.mock.instances[0]).toBe(button);
-    expect(animate.mock.calls[0][0]).toEqual([{ scale: '1' }, { scale: '0.96' }]);
-
-    document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-    expect(animate).toHaveBeenCalledTimes(2);
-    expect(animate.mock.calls[1][0][0]).toEqual({ scale: '0.96' });
+    const label = button.firstChild;
+    uninstall = installPressFeedback();
+    button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+    expect(button).toHaveClass('flow-feedback');
+    expect(button.firstChild).toBe(label);
+    expect(button.style.transform).toBe('translateX(10px)');
+    uninstall();
+    expect(button).not.toHaveClass('flow-feedback');
   });
 
-  it('leaves controls that animate themselves, and disabled ones, alone', () => {
-    const own = sized(document.createElement('button'), 44, 44);
-    own.dataset.press = '';
-    const disabled = sized(document.createElement('button'), 44, 44);
+  it('respects disabled controls and an explicitly owned surface', () => {
+    const own = document.createElement('button');
+    own.dataset.press = 'none';
+    const disabled = document.createElement('button');
     disabled.disabled = true;
     document.body.append(own, disabled);
-
-    own.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
-    disabled.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
-
-    expect(animate).not.toHaveBeenCalled();
-  });
-
-  it.each(['button', 'a', 'summary'])('acknowledges keyboard activation of a %s', (tag) => {
-    const control = sized(document.createElement(tag), 100, 44);
-    if (tag === 'a') control.setAttribute('href', '#/share');
-    document.body.append(control);
-    control.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
-    expect(animate).toHaveBeenCalledTimes(1);
-    expect(animate.mock.instances[0]).toBe(control);
-    expect(animate.mock.calls[0][0].at(-1)).toEqual({ scale: '1' });
-  });
-
-  it('acknowledges keyboard activation of the shared Button without duplicating pointer feedback', () => {
-    const button = document.createElement('button');
-    button.dataset.press = '';
-    document.body.append(button);
-    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
-    expect(animate).not.toHaveBeenCalled();
-    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
-    expect(animate).toHaveBeenCalledTimes(1);
-  });
-
-  it('leaves morphing triggers at rest for pointer and keyboard activation', () => {
-    const trigger = sized(document.createElement('button'), 120, 48);
-    trigger.dataset.press = 'none';
-    document.body.append(trigger);
-    trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
-    trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
-    expect(animate).not.toHaveBeenCalled();
-  });
-
-  it('cancels a held press when uninstalled', () => {
-    const button = document.createElement('button');
-    document.body.append(button);
-    button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
-    const animation = animate.mock.results[0].value;
-    uninstall();
-    expect(animation.cancel).toHaveBeenCalled();
-  });
-});
-
-describe('pressDepth', () => {
-  it('sinks large surfaces less than small controls', () => {
-    expect(pressDepth(sized(document.createElement('div'), 44, 44))).toBe(0.96);
-    expect(pressDepth(sized(document.createElement('div'), 500, 300))).toBe(0.99);
+    uninstall = installPressFeedback();
+    for (const button of [own, disabled]) {
+      button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+      expect(button).not.toHaveClass('flow-feedback');
+    }
   });
 });

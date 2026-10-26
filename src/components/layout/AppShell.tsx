@@ -374,7 +374,9 @@ function AppShellLayout() {
         <AnimatePresence>
           {studySheet.open && studySheet.anchor && (
             <OverlayLoadBoundary label="Study options" onClose={studySheet.close}>
-              <Suspense fallback={null}>
+              <Suspense
+                fallback={<StudyPending anchor={studySheet.anchor} onClose={studySheet.close} />}
+              >
                 <StudySheet
                   anchor={studySheet.anchor}
                   courseId={studySheet.courseId}
@@ -416,4 +418,23 @@ function AppShellLayout() {
 function MobileDrawerPresence(props: ComponentProps<typeof motion.div>) {
   const present = useIsPresent();
   return <motion.div {...props} inert={!present} aria-hidden={!present || undefined} />;
+}
+
+function StudyPending({ anchor, onClose }: { anchor: HTMLElement; onClose: () => void }) {
+  useEffect(() => {
+    anchor.setAttribute('aria-busy', 'true');
+    const outside = (event: PointerEvent) => {
+      if (!anchor.contains(event.target as Node)) onClose();
+    };
+    document.addEventListener('pointerdown', outside);
+    return () => {
+      anchor.removeAttribute('aria-busy');
+      document.removeEventListener('pointerdown', outside);
+    };
+  }, [anchor, onClose]);
+  return (
+    <span role="status" className="sr-only">
+      Loading study options…
+    </span>
+  );
 }

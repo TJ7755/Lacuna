@@ -18,7 +18,7 @@ export function ModalBackdrop({ shade = 50, className, ...props }: Props) {
       {...props}
       data-modal-backdrop=""
       aria-hidden="true"
-      className={cn('absolute inset-0 backdrop-blur-sm', SHADES[shade], className)}
+      className={cn('absolute inset-0', SHADES[shade], className)}
     />
   );
 }

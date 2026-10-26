@@ -10,6 +10,7 @@ import { m as motion, useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { expandingActionSpring } from '../ui/motion';
+import { FlowExpansionSurface } from '../ui/FlowExpansionSurface';
 import { StudyActionIcon } from './StudyActionIcon';
 
 import { beginStudyTransition } from '../layout/LandingTransition';
@@ -35,7 +36,7 @@ export function StudyExpansion({
   const present = useIsPresent();
   const surface = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
-  const [origin] = useState(() => anchor.getBoundingClientRect());
+  const [origin, setOrigin] = useState(() => anchor.getBoundingClientRect());
   const [originColours] = useState(() => {
     const style = getComputedStyle(anchor);
     return { backgroundColor: style.backgroundColor, color: style.color };
@@ -60,6 +61,7 @@ export function StudyExpansion({
     if (!element) return;
     const measure = () => {
       const rect = anchor.getBoundingClientRect();
+      setOrigin(rect);
       const panelWidth = Math.min(448, window.innerWidth - 32);
       const height = Math.min(element.scrollHeight + 44, window.innerHeight - 32);
       setBounds({
@@ -173,8 +175,16 @@ export function StudyExpansion({
             }
           : { zIndex: present ? 50 : 20 }
       }
-      className="fixed z-50 overflow-hidden bg-surface-raised text-ink card-surface"
+      className="flow-expansion fixed z-50 overflow-hidden bg-surface-raised text-ink card-surface"
     >
+      {!launching && (
+        <FlowExpansionSurface
+          open={present}
+          triggerWidth={origin.width}
+          triggerHeight={origin.height}
+          multiplier={multiplier}
+        />
+      )}
       <motion.button
         type="button"
         aria-label="Close session preview"
@@ -183,6 +193,8 @@ export function StudyExpansion({
           returnFocus.current = false;
         }}
         data-press="none"
+        data-flow-feedback
+        data-flow-trigger
         initial={multiplier > 0 ? originColours : false}
         animate={{
           backgroundColor: 'rgba(0, 0, 0, 0)',

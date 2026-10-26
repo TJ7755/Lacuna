@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState, useId, useRef, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
+import { FlowExpansionSurface } from './FlowExpansionSurface';
 import { PlusIcon } from './icons';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { expandingActionSpring } from './motion';
@@ -130,8 +131,16 @@ export function ExpandingCreateControl({
         }}
         // The closed button uses an inset ring; the open form is a flat card.
         // Only the inner form scrolls: autofocus must not scroll the growing shell and its label.
-        className={`absolute ${anchor} top-0 overflow-clip ring-1 ring-inset ${open ? 'bg-surface-raised ring-transparent card-surface' : prominent ? 'bg-accent ring-transparent' : 'bg-surface-raised ring-line-strong'}`}
+        className={`absolute ${anchor} top-0 flow-expansion overflow-clip ring-1 ring-inset ${open ? 'bg-surface-raised ring-transparent card-surface' : prominent ? 'bg-accent ring-transparent' : 'bg-surface-raised ring-line-strong'}`}
       >
+        <FlowExpansionSurface
+          open={open}
+          triggerWidth={closedWidth}
+          triggerHeight={triggerHeight}
+          multiplier={multiplier}
+          prominent={prominent}
+          align={align === 'end' ? 'end' : 'start'}
+        />
         <motion.button
           ref={trigger}
           type="button"
@@ -143,6 +152,8 @@ export function ExpandingCreateControl({
           }}
           animate={{ x: open ? -offset : 0 }}
           data-press="none"
+          data-flow-feedback
+          data-flow-trigger
           transition={transition}
           style={{ width: closedWidth }}
           className={`absolute ${anchor} top-0 flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold ${prominent && !open ? 'text-accent-fg' : 'text-ink'} focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink`}

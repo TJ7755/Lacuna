@@ -53,7 +53,7 @@ describe('Dashboard Today queue', () => {
       summaries: { poems: summary(0, { completedLessonCount: 0 }) },
     });
     render(<Dashboard />);
-    expect(screen.getByLabelText('Today: 0 cards, about 0 minutes')).toBeInTheDocument();
+    expect(screen.getByLabelText('Today: 0 reviews due, about 0 minutes')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Study Poems' }));
     expect(mockOpenStudySheet).toHaveBeenCalledWith('poems');
   });
@@ -65,7 +65,7 @@ describe('Dashboard Today queue', () => {
       forecastCardCounts: { [mockCourse.id]: 10 },
     });
     render(<Dashboard />);
-    expect(screen.getByLabelText('Today: 2 cards, about 6 minutes')).toBeInTheDocument();
+    expect(screen.getByLabelText('Today: 2 reviews due, about 6 minutes')).toBeInTheDocument();
   });
 
   it('does not render a sharing announcement on Today', async () => {
@@ -136,7 +136,7 @@ describe('Dashboard Today queue', () => {
     render(<Dashboard />);
 
     expect(screen.queryByText('Archived Course')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Today: 4 cards, about 6 minutes')).toBeInTheDocument();
+    expect(screen.getByLabelText('Today: 4 reviews due, about 6 minutes')).toBeInTheDocument();
   });
 
   it('has a visually hidden Today heading', () => {
@@ -152,7 +152,7 @@ describe('Dashboard Today queue', () => {
       minutes: { 'course-1': 0.2 },
     });
     render(<Dashboard />);
-    expect(screen.getByLabelText('Today: 2 cards, about 1 minute')).toBeInTheDocument();
+    expect(screen.getByLabelText('Today: 2 reviews due, about 1 minute')).toBeInTheDocument();
   });
 
   it('totals the cards and minutes due across active courses', () => {
@@ -161,7 +161,7 @@ describe('Dashboard Today queue', () => {
       minutes: { 'course-1': 10.4, 'course-2': 4 },
     });
     render(<Dashboard />);
-    expect(screen.getByLabelText('Today: 12 cards, about 14 minutes')).toBeInTheDocument();
+    expect(screen.getByLabelText('Today: 12 reviews due, about 14 minutes')).toBeInTheDocument();
   });
 
   it('opens each course row without a native link', () => {
@@ -227,7 +227,7 @@ describe('Dashboard Today queue', () => {
 
     expect(screen.queryByText('Done for today')).not.toBeInTheDocument();
     expect(screen.getByText('No cards yet')).toBeInTheDocument();
-    expect(screen.getByText('Nothing due')).toBeInTheDocument();
+    expect(screen.getByText('No reviews due')).toBeInTheDocument();
     for (const name of ['Empty Course', 'Quiet Course', 'Loading Course']) {
       expect(screen.queryByRole('button', { name: `Study ${name}` })).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name })).toBeInTheDocument();

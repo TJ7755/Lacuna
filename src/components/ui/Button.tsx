@@ -1,18 +1,11 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
-import { m as motion } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
 import { buttonClassName, type ButtonSize, type ButtonVariant } from './buttonStyles';
-import { scaledSpring } from './motion';
 
 export { buttonClassName } from './buttonStyles';
 
-// Framer's motion.button defines its own gesture/animation handlers, so drop the DOM
-// versions that would otherwise clash with the typed props.
-interface ButtonProps extends Omit<
-  ButtonHTMLAttributes<HTMLButtonElement>,
-  'onAnimationStart' | 'onAnimationEnd' | 'onDrag' | 'onDragStart' | 'onDragEnd'
-> {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   hoverScale?: boolean;
@@ -35,12 +28,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   const multiplier = speedMultiplier(motionSpeed);
 
   return (
-    <motion.button
+    <button
       ref={ref}
-      data-press={pressScale ? '' : 'none'}
-      whileTap={pressScale && multiplier > 0 ? { scale: 0.96 } : undefined}
-      whileHover={hoverScale && multiplier > 0 ? { scale: 1.02 } : undefined}
-      transition={scaledSpring(multiplier, 600, 28)}
+      data-press={hoverScale || pressScale ? undefined : 'none'}
+      data-flow-feedback={
+        hoverScale && pressScale ? 'all' : hoverScale ? 'hover' : pressScale ? 'press' : undefined
+      }
       style={{ ...style, transitionDuration: `${150 * multiplier}ms` }}
       className={cn(buttonClassName(variant, size), className)}
       {...rest}

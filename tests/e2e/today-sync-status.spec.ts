@@ -43,7 +43,7 @@ for (const width of [1280, 390]) {
         const link = page.getByRole('link', { name: /Open sync$/ });
         await expect(link).toBeVisible();
         await expect(link).toHaveAttribute('href', '#/settings');
-        const stats = await page.getByLabel(/^Today: \d+ cards/).boundingBox();
+        const stats = await page.getByLabel(/^Today: \d+ reviews due/).boundingBox();
         const bounds = await link.boundingBox();
         expect(
           Math.abs(bounds!.y + bounds!.height / 2 - stats!.y - stats!.height / 2),

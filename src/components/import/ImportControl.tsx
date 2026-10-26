@@ -5,6 +5,7 @@ import { loadImportPanel } from '../../routes/loaders';
 import { prefetchRoute } from '../../routes/prefetch';
 import { getLoadedRouteModule, loadRouteModule } from '../../routes/routeModule';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { FlowExpansionSurface } from '../ui/FlowExpansionSurface';
 import { expandingActionSpring } from '../ui/motion';
 
 const panelWidth = 'min(448px, calc(100vw - 48px))';
@@ -88,8 +89,14 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
           borderRadius: expanded ? 24 : triggerHeight / 2,
         }}
         transition={transition}
-        className={`absolute right-0 top-0 overflow-hidden bg-surface-raised ring-1 ring-inset ${expanded ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
+        className={`absolute right-0 top-0 flow-expansion overflow-hidden bg-surface-raised ring-1 ring-inset ${expanded ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
       >
+        <FlowExpansionSurface
+          open={expanded}
+          triggerWidth={100}
+          triggerHeight={triggerHeight}
+          multiplier={multiplier}
+        />
         {expanded && (
           <span
             aria-hidden="true"
@@ -109,6 +116,8 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
           onFocus={prefetch}
           onClick={() => changeOpen(!open)}
           data-press="none"
+          data-flow-feedback
+          data-flow-trigger
           transition={transition}
           className="absolute right-0 top-0 flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink disabled:opacity-40"
         >
@@ -127,7 +136,7 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.12 * multiplier }}
               >
-                <div>
+                <div className="max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain">
                   <ImportPanel
                     key={params.has('join') ? 'class' : 'sources'}
                     onClose={() => changeOpen(false)}
