@@ -66,8 +66,14 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
       const rect = root.current?.getBoundingClientRect();
       if (!rect) return;
       const height = Math.min(body.offsetHeight + triggerHeight, window.innerHeight - 36);
-      const top =
-        anchoredTop.current ?? Math.max(18, Math.min(rect.top, window.innerHeight - height - 18));
+      const minimumTop = Math.max(
+        18,
+        (root.current?.closest('main')?.getBoundingClientRect().top ?? 0) + 8,
+      );
+      const top = Math.max(
+        minimumTop,
+        anchoredTop.current ?? Math.min(rect.top, window.innerHeight - height - 18),
+      );
       anchoredTop.current = top;
       const width = Math.min(448, window.innerWidth - 48);
       const left = Math.max(24, Math.min(rect.right - width, window.innerWidth - width - 24));
