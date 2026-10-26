@@ -24,7 +24,8 @@ const BOTTOM = 34;
 
 /**
  * The chart is drawn at its rendered width so text keeps its real pixel size on a phone
- * instead of shrinking with the viewBox. Height follows the width, within sensible limits.
+ * instead of shrinking with the viewBox. Plot height follows the viewport; the surrounding
+ * surface grows with its legend.
  * The first measurement lands before paint, so the chart never shows at a guessed size
  * and then resizes, shifting everything below it.
  */
@@ -34,19 +35,13 @@ function useChartSize() {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const slot = el.closest<HTMLElement>('.today-forecast-chart');
-    const header = el.parentElement?.children[0] as HTMLElement | undefined;
-    const description = el.previousElementSibling as HTMLElement | null;
     const measure = (entries?: ResizeObserverEntry[]) => {
       const svgEntry = entries?.find((entry) => !entry.target || entry.target === el);
       const width = Math.round(
         el.getBoundingClientRect().width || svgEntry?.contentRect.width || WIDE_WIDTH,
       );
-      const available =
-        slot && header && description
-          ? slot.clientHeight - header.offsetHeight - description.offsetHeight - 24
-          : Math.max(190, width * 0.5);
-      const height = Math.round(Math.max(140, Math.min(260, available)));
+      // Legend rows grow the page instead of taking space away from the plot.
+      const height = Math.round(Math.max(140, Math.min(260, window.innerHeight - 460)));
       setSize((current) =>
         current.width === width && current.height === height ? current : { width, height },
       );
@@ -54,10 +49,13 @@ function useChartSize() {
     measure();
     if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(measure);
-    [el, slot, header, description].forEach((element) => {
-      if (element) observer.observe(element);
-    });
-    return () => observer.disconnect();
+    const onResize = () => measure();
+    observer.observe(el);
+    window.addEventListener('resize', onResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', onResize);
+    };
   }, []);
   return { ref, W: size.width, H: size.height, narrow: size.width < 480 };
 }

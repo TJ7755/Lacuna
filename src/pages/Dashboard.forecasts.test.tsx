@@ -49,13 +49,13 @@ describe('Dashboard forecasts', () => {
     render(<Dashboard />);
 
     expect(await screen.findByText('days in a row')).toBeInTheDocument();
-    expect(screen.getByText('cards in the last 7 days')).toBeInTheDocument();
+    expect(screen.getByText('reviews in the last 7 days')).toBeInTheDocument();
     expect(screen.getByText('studied this week')).toBeInTheDocument();
     expect(screen.getByLabelText(/^Studied on \d of \d days this week/)).toBeInTheDocument();
     const streak = screen.getByText('days in a row').parentElement as HTMLElement;
     expect(streak).toHaveTextContent('5');
-    const cards = screen.getByText('cards in the last 7 days').parentElement as HTMLElement;
-    expect(cards).toHaveTextContent('2');
+    const reviews = screen.getByText('reviews in the last 7 days').parentElement as HTMLElement;
+    expect(reviews).toHaveTextContent('2');
   });
 
   it('leads with the forecast, above what to study', async () => {

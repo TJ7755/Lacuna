@@ -2,7 +2,7 @@ import { Button } from '../components/ui/Button';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useNavigation } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
@@ -31,19 +31,12 @@ import { useAllReviewHistory } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
 import { useToast } from '../components/ui/Toast';
 import { finishOnboarding, onboardingPending } from '../onboarding/onboardingState';
-import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/CourseActions';
-
-// The course actions open on demand, so they stay out of the first-load bundle.
-const CourseContextMenu = lazy(() =>
-  import('../components/dashboard/CourseActions').then((module) => ({
-    default: module.CourseContextMenu,
-  })),
-);
-const ArchiveCourseDialog = lazy(() =>
-  import('../components/dashboard/CourseActions').then((module) => ({
-    default: module.ArchiveCourseDialog,
-  })),
-);
+import {
+  CourseContextMenu,
+  ArchiveCourseDialog,
+  type ArchiveTarget,
+  type CourseMenuState,
+} from '../components/dashboard/CourseActions';
 
 export function Dashboard() {
   const frame = useRef<HTMLDivElement>(null);
@@ -322,55 +315,52 @@ export function Dashboard() {
       </PageLoadingBoundary>
 
       {courseMenu && (
-        <Suspense fallback={null}>
-          <CourseContextMenu
-            {...courseMenu}
-            onClose={(restoreFocus = true) => {
-              setCourseMenu(null);
-              if (restoreFocus) courseMenu.trigger.focus();
-            }}
-            onArchive={() => {
-              setCourseMenu(null);
-              setArchiveTarget({ course: courseMenu.course, trigger: courseMenu.trigger });
-            }}
-          />
-        </Suspense>
+        <CourseContextMenu
+          {...courseMenu}
+          onClose={(restoreFocus = true) => {
+            setCourseMenu(null);
+            if (restoreFocus) courseMenu.trigger.focus();
+          }}
+          onArchive={() => {
+            setCourseMenu(null);
+            setArchiveTarget({ course: courseMenu.course, trigger: courseMenu.trigger });
+          }}
+        />
       )}
 
       <AnimatePresence>
         {archiveTarget && (
-          <Suspense key="archive" fallback={null}>
-            <ArchiveCourseDialog
-              course={archiveTarget.course}
-              onClose={() => {
-                setArchiveTarget(null);
-                archiveTarget.trigger.focus();
-              }}
-              onArchived={() => {
-                archiveFocus.current = {
-                  courseId: archiveTarget.course.id,
-                  index: Math.max(
-                    0,
-                    rows?.findIndex((row) => row.id === archiveTarget.course.id) ?? 0,
-                  ),
-                };
-                setArchiveTarget(null);
-                notify(`${archiveTarget.course.name} archived`, 'positive', {
-                  actionLabel: 'Undo',
-                  onAction: () => {
-                    void import('../db/courseRepository')
-                      .then(({ updateCourse }) =>
-                        updateCourse(archiveTarget.course.id, { archived: false }),
-                      )
-                      .then(() => notify(`${archiveTarget.course.name} restored`, 'positive'))
-                      .catch(() =>
-                        notify(`Could not restore ${archiveTarget.course.name}`, 'negative'),
-                      );
-                  },
-                });
-              }}
-            />
-          </Suspense>
+          <ArchiveCourseDialog
+            key="archive"
+            course={archiveTarget.course}
+            onClose={() => {
+              setArchiveTarget(null);
+              archiveTarget.trigger.focus();
+            }}
+            onArchived={() => {
+              archiveFocus.current = {
+                courseId: archiveTarget.course.id,
+                index: Math.max(
+                  0,
+                  rows?.findIndex((row) => row.id === archiveTarget.course.id) ?? 0,
+                ),
+              };
+              setArchiveTarget(null);
+              notify(`${archiveTarget.course.name} archived`, 'positive', {
+                actionLabel: 'Undo',
+                onAction: () => {
+                  void import('../db/courseRepository')
+                    .then(({ updateCourse }) =>
+                      updateCourse(archiveTarget.course.id, { archived: false }),
+                    )
+                    .then(() => notify(`${archiveTarget.course.name} restored`, 'positive'))
+                    .catch(() =>
+                      notify(`Could not restore ${archiveTarget.course.name}`, 'negative'),
+                    );
+                },
+              });
+            }}
+          />
         )}
       </AnimatePresence>
     </div>
