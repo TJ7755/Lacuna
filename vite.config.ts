@@ -195,6 +195,10 @@ export default defineConfig({
           // catalogue download motion/router code, or the landing page download the app.
           groups: [
             {
+              name: 'course-sequencing',
+              test: /[\\/]src[\\/]course[\\/](?:lessonOrder|assessmentCoverage)\.ts$/,
+            },
+            {
               name: 'web-runtime',
               test(id) {
                 const path = id.replaceAll('\\', '/');

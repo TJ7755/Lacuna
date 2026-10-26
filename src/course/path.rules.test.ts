@@ -33,6 +33,34 @@ describe('lessonEffectiveReleaseDates', () => {
     expect(dates.get('l3')).toBe(anchor + 14 * MS_PER_DAY);
   });
 
+  it('releases a locked import in learner order without consuming extension slots', () => {
+    const anchor = 1_000_000;
+    const lessons = [
+      makeLesson({ id: 'first', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'extension', courseId: 'c1', orderIndex: 1, isExtension: true }),
+      makeLesson({ id: 'last', courseId: 'c1', orderIndex: 2 }),
+    ];
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'linear',
+      linearCadence: { anchorDate: anchor, intervalDays: 1 },
+      distributedCopy: {
+        lineageId: 'science',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+      localLessonOrder: ['last', 'extension', 'first'],
+    });
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    expect(dates.get('last')).toBe(anchor);
+    expect(dates.get('first')).toBe(anchor + MS_PER_DAY);
+    expect(dates.get('extension')).toBeUndefined();
+    expect(lessonEffectiveReleaseDates({ ...course, archived: true }, lessons).get('first')).toBe(
+      anchor,
+    );
+  });
+
   it('cascades a releaseDate override forward to later lessons', () => {
     const anchor = 1_000_000;
     const override = 50_000_000;

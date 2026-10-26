@@ -121,7 +121,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
           {locked && (
             <p className="mt-1 text-sm text-ink-soft">
               Reorder lessons for your copy. Updates from the author and your progress are kept, and
-              new lessons appear at the end.
+              new lessons follow their place in the publisher’s order.
             </p>
           )}
         </div>

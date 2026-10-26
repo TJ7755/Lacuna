@@ -1,12 +1,12 @@
 import type { Course, Lesson } from '../db/types';
 import { MS_PER_DAY } from '../fsrs/params';
-import { lessonOrder } from './assessmentCoverage';
+import { courseLessonOrderPreference, resolveLessonOrder } from './lessonOrder';
 import { earlierLessonIds } from './courseEntry';
 
 /**
  * Computes the effective release date for every lesson under `linear` unlock mode.
  *
- * Walks core (non-extension) lessons in ascending `orderIndex` order:
+ * Walks core (non-extension) lessons in the effective course order:
  *   - Cursor starts at `course.linearCadence.anchorDate`.
  *   - If a lesson carries an explicit `releaseDate` override, the cursor is moved
  *     to it — cascading the change forward to every subsequent lesson.
@@ -27,7 +27,7 @@ export function lessonEffectiveReleaseDates(
   lessons: Lesson[],
 ): Map<string, number | undefined> {
   const result = new Map<string, number | undefined>();
-  const sorted = [...lessons].sort(lessonOrder);
+  const sorted = resolveLessonOrder(lessons, courseLessonOrderPreference(course));
 
   if (!course.linearCadence) {
     // No cadence defined: mark all lessons as unlocked (undefined = no gate).
@@ -72,7 +72,7 @@ export function lessonEffectiveReleaseDates(
  *    or when `effectiveDate <= now`.
  *  - `semi-linear`: unlocked when `lesson.unlockedAt` is set (the one-way
  *    ratchet stored in Phase 6), OR when the lesson is the first core
- *    (non-extension) lesson by `orderIndex`, or within the chosen entry prefix.
+ *    (non-extension) lesson in the effective course order, or within the chosen entry prefix.
  *    Later lessons remain locked until their ratchet is triggered.
  *
  * `effectiveDates` is the map returned by `lessonEffectiveReleaseDates`; it is
@@ -96,16 +96,16 @@ export function isLessonUnlocked(
 }
 
 export function initiallyUnlockedLessonIds(course: Course, lessons: Lesson[]): ReadonlySet<string> {
-  const ids = earlierLessonIds(course.studyStartLessonId, lessons);
-  let start = lessons.find(
-    (candidate) => candidate.id === course.studyStartLessonId && !candidate.isExtension,
+  const sorted = resolveLessonOrder(lessons, courseLessonOrderPreference(course));
+  const ids = earlierLessonIds(
+    course.studyStartLessonId,
+    lessons,
+    sorted.map((lesson) => lesson.id),
   );
-  if (!start) {
-    for (const candidate of lessons) {
-      if (!candidate.isExtension && (!start || lessonOrder(candidate, start) < 0))
-        start = candidate;
-    }
-  }
+  const start =
+    sorted.find(
+      (candidate) => candidate.id === course.studyStartLessonId && !candidate.isExtension,
+    ) ?? sorted.find((candidate) => !candidate.isExtension);
   if (start) ids.add(start.id);
   return ids;
 }

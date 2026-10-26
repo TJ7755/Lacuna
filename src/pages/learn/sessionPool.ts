@@ -1,3 +1,4 @@
+import { courseLessonOrderPreference } from '../../course/lessonOrder';
 import { loadSimpleSession, type SimpleSessionScope } from './simpleSessionPersistence';
 import { lessonCardMembership } from '../../course/lessonMembership';
 import { db } from '../../db/schema';
@@ -106,7 +107,13 @@ export function prepareCourseSessionPool(
     standaloneSimple || dueReview || examPractice
       ? allCards
       : selectedAssessment
-        ? resolveAssessmentCoverage(selectedAssessment, courseLessons, allCards, courseLinks).cards
+        ? resolveAssessmentCoverage(
+            selectedAssessment,
+            courseLessons,
+            allCards,
+            courseLinks,
+            courseLessonOrderPreference(course),
+          ).cards
         : practiceCardScope(
             allCards,
             courseLinks,

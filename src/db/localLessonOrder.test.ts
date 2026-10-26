@@ -17,6 +17,8 @@ import { buildCourseSharePayload, importSharePayload, type SharePayloadV5 } from
 import { buildCourseFile, decodeCourseFile } from './courseFile';
 import { mergeSnapshots } from '../sync/mergeSnapshots';
 import { resolveCourseLessonOrder } from '../course/lessonOrder';
+import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import { buildPath } from '../course/path';
 import { answerQuestionAttempt, startQuestionAttempt } from '../questions/repository';
 import {
   saveQuestionSetResponseDraft,
@@ -53,7 +55,18 @@ function payload(revision = 1): SharePayloadV5 {
         },
       ],
     })),
-    exams: [{ id: 'final', n: 'Steady retention', sm: 1, k: 'f', a: null, m: 'p', c: 1000 }],
+    exams: [
+      {
+        id: 'checkpoint',
+        n: 'Topic test',
+        e: 2_000_000_000_000,
+        k: 'c',
+        a: revision === 1 ? 0 : 1,
+        m: 'p',
+        c: 1000,
+      },
+      { id: 'final', n: 'Steady retention', sm: 1, k: 'f', a: null, m: 'p', c: 1000 },
+    ],
     concepts: [{ id: 'concept', n: 'Science concept' }],
     questions: [
       {
@@ -128,10 +141,9 @@ async function imported(autoAcceptUpdates = false) {
   // The share format has no autoPractice field: imports inherit global defaults.
   expect(course.autoPractice).toBe(true);
   await db.courses.update(course.id, {
-    autoPractice: false,
     'distributedCopy.autoAcceptUpdates': autoAcceptUpdates,
   });
-  return { ...course, autoPractice: false };
+  return course;
 }
 
 async function displayed(courseId: string) {
@@ -209,7 +221,7 @@ it.each([true, false])(
     const question = await db.questions.get('numeric');
     await setLocalLessonOrder(course.id, ['B', 'A']);
     await mergeLineageUpdate(course.id, payload(2));
-    expect(await displayed(course.id)).toEqual(['B', 'A', 'C']);
+    expect(await displayed(course.id)).toEqual(autoAccept ? ['C', 'B', 'A'] : ['B', 'A', 'C']);
     if (!autoAccept) {
       const review = (await db.pendingMergeReviews.where('courseId').equals(course.id).first())!;
       expect(review.diff.conflicts).toEqual([]);
@@ -251,7 +263,26 @@ it.each([true, false])(
     expect(await db.lessons.count()).toBe(3);
     expect((await db.pendingMergeReviews.toArray()).map((review) => review.diff)).toEqual([]);
     expect(await evidence()).toEqual(before);
-    expect(await displayed(course.id)).toEqual(['B', 'A', 'C']);
+    expect(await displayed(course.id)).toEqual(['C', 'B', 'A']);
+    const updatedCourse = (await db.courses.get(course.id))!;
+    const assessments = await db.courseAssessments.where('courseId').equals(course.id).toArray();
+    const practiceNodes = await db.practiceNodes.where('courseId').equals(course.id).toArray();
+    const checkpoint = assessments.find((assessment) => assessment.kind === 'checkpoint')!;
+    expect(updatedCourse.autoPractice).toBe(true);
+    expect(
+      resolveAssessmentCoverage(
+        checkpoint,
+        source,
+        [],
+        [],
+        updatedCourse.localLessonOrder,
+      ).coveredLessons.map((lesson) => lesson.id),
+    ).toEqual(['C', 'B', 'A']);
+    expect(
+      buildPath(updatedCourse, source, assessments, new Map(), practiceNodes)
+        .filter((node) => node.nodeType !== 'practice-auto')
+        .map((node) => node.id),
+    ).toEqual(['C', 'B', 'activity', 'A', checkpoint.id]);
     const backup = await storedSnapshot();
     await importBackup(backup, 'replace');
     db.close();
@@ -275,10 +306,40 @@ it.each([true, false])(
         schedulingUnitId: row.deckId,
       })),
     );
-    expect(await displayed(course.id)).toEqual(['B', 'A', 'C']);
+    expect(await displayed(course.id)).toEqual(['C', 'B', 'A']);
     await setLocalLessonOrder(course.id);
     expect(await displayed(course.id)).toEqual(['C', 'A', 'B']);
     expect((await db.courses.get(course.id))?.localLessonOrder).toBeUndefined();
+  },
+);
+
+it.each([true, false])(
+  'places new publisher lesson chains after their predecessor in local order (auto-accept %s)',
+  async (autoAccept) => {
+    const course = await imported(autoAccept);
+    await setLocalLessonOrder(course.id, ['B', 'A']);
+    const update = payload(2);
+    const [leading, a, b] = update.lessons;
+    update.lessons = [
+      leading,
+      a,
+      b,
+      { i: 'D', n: 'New topic', notes: [], cards: [] },
+      { i: 'E', n: 'New follow-up', notes: [], cards: [] },
+    ];
+    await mergeLineageUpdate(course.id, update);
+    if (!autoAccept) {
+      const review = (await db.pendingMergeReviews.where('courseId').equals(course.id).first())!;
+      await acceptAllMergeReview(review.id);
+    }
+    expect(await displayed(course.id)).toEqual(['C', 'B', 'D', 'E', 'A']);
+    expect((await db.courses.get(course.id))?.localLessonOrder).toEqual(['B', 'A']);
+    expect((await db.lessons.get('A'))?.name).toBe('A corrected');
+    expect(
+      (await db.lessons.where('courseId').equals(course.id).sortBy('orderIndex')).map(
+        (lesson) => lesson.id,
+      ),
+    ).toEqual(['C', 'A', 'B', 'D', 'E']);
   },
 );
 
@@ -330,7 +391,7 @@ it('ignores a removed preference ID only after the publisher removal is accepted
   expect(await db.pendingMergeReviews.get(review.id)).toEqual(review);
   expect(await displayed(course.id)).toEqual(['B', 'A', 'C']);
   await acceptAllMergeReview(review.id);
-  expect(await displayed(course.id)).toEqual(['B', 'C']);
+  expect(await displayed(course.id)).toEqual(['C', 'B']);
   expect((await db.courses.get(course.id))?.localLessonOrder).toEqual(['B', 'A']);
 });
 
@@ -387,11 +448,7 @@ it('retains the preference in recovery and peer sync, and excludes it from share
 it('rejects saves when a retained preference is suspended and permits clearing it', async () => {
   const course = await imported();
   await setLocalLessonOrder(course.id, ['B', 'A']);
-  for (const changes of [
-    { archived: true },
-    { unlockMode: 'linear' as const },
-    { unlockMode: 'semi-linear' as const },
-  ]) {
+  for (const changes of [{ archived: true }]) {
     await db.courses.update(course.id, changes);
     const before = await storedSnapshot();
     await expect(setLocalLessonOrder(course.id, ['A', 'B'])).rejects.toThrow();

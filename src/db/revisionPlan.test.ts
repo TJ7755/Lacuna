@@ -1,4 +1,7 @@
 import 'fake-indexeddb/auto';
+import { getCourse, getCourseAssessmentDetails } from './read';
+import { makeExamDateContext, resolveCardExamDate } from '../fsrs/examDate';
+import { assessmentPracticePool } from '../course/assessmentPractice';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RevisionPlanInputSnapshot, RevisionProjection } from './types';
 import { db } from './schema';
@@ -86,6 +89,49 @@ describe('revision plan lifecycle', () => {
     expect(plan.scope.eligibleCardIds).toEqual([f.firstCard.id]);
     expect(plan.scope.untaughtLessonIds).toContain(f.second.id);
     expect(plan.input.projection).toEqual(fallback);
+  });
+
+  it('reconciles learner checkpoint coverage across revision, practice and exam targets', async () => {
+    const f = await fixture();
+    await upsertLessonCardExposure(f.second.id, f.secondCard.id, f.now - 500);
+    const plan = await createOrResumeRevisionPlan(f.assessment.id, 20, fallback, f.now);
+    const cardsBefore = await db.cards.toArray();
+    const exposuresBefore = await db.lessonCardExposures.toArray();
+    await db.courses.update(f.course.id, {
+      distributedCopy: {
+        lineageId: 'science',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+      localLessonOrder: [f.second.id, f.first.id],
+    });
+    const updated = await refreshRevisionPlan(plan.id, fallback, f.now + 1);
+    expect(updated.scope.coveredLessonIds).toEqual([f.second.id]);
+    expect(updated.scope.eligibleCardIds).toEqual([f.secondCard.id]);
+    expect(updated.replans.at(-1)?.reasons).toContain('assessment-coverage-changed');
+    const details = await getCourseAssessmentDetails(f.assessment.id);
+    expect(details?.placementIndex).toBe(0);
+    expect(details?.cardIds).toEqual([f.secondCard.id]);
+
+    const course = (await getCourse(f.course.id))!;
+    const lessons = [f.first, f.second];
+    const cards = [f.firstCard, f.secondCard];
+    const context = makeExamDateContext(course, lessons, [f.assessment]);
+    expect(resolveCardExamDate(f.firstCard, context, f.now)).toBe(course.examDate);
+    expect(resolveCardExamDate(f.secondCard, context, f.now)).toBe(f.assessment.examDate);
+    const practice = assessmentPracticePool(f.assessment, {
+      course,
+      lessons,
+      cards,
+      links: [],
+      exposures: exposuresBefore,
+      reachedLessonIds: new Set(lessons.map((lesson) => lesson.id)),
+      now: f.now,
+    });
+    expect(practice.map((card) => card.id)).toEqual([f.secondCard.id]);
+    expect(await db.cards.toArray()).toEqual(cardsBefore);
+    expect(await db.lessonCardExposures.toArray()).toEqual(exposuresBefore);
   });
 
   it('edits and removes individual scheduled days idempotently', async () => {

@@ -1,3 +1,4 @@
+import { courseLessonOrderPreference } from '../../course/lessonOrder';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -38,13 +39,11 @@ function focusCurrentAssessmentEditor(
   panels: ReadonlyMap<string, HTMLElement>,
   editingId: string,
 ): void {
-  panels
-    .get(editingId)
-    ?.querySelector<HTMLElement>('[data-assessment-name]')
-    ?.focus();
+  panels.get(editingId)?.querySelector<HTMLElement>('[data-assessment-name]')?.focus();
 }
 
 export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamDatesSectionProps) {
+  const course = useLiveQuery(() => db.courses.get(courseId), [courseId]);
   const assessments = useCourseAssessments(courseId);
   const lessons = useLessons(courseId);
   const cards = useCourseCards(courseId);
@@ -144,7 +143,13 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
       <AnimatePresence initial={false} mode="popLayout">
         {loaded &&
           assessments.map((assessment) => {
-            const resolved = resolveAssessmentCoverage(assessment, lessons, cards, links);
+            const resolved = resolveAssessmentCoverage(
+              assessment,
+              lessons,
+              cards,
+              links,
+              course && courseLessonOrderPreference(course),
+            );
             return (
               <motion.div
                 key={assessment.id}

@@ -15,6 +15,7 @@ interface AssessmentDetailSheetProps {
   lessons: Lesson[];
   cards: Card[];
   links: LessonCardLink[];
+  preferredLessonIds?: readonly string[];
   onClose: () => void;
   onRevise: () => void;
 }
@@ -32,6 +33,7 @@ export function AssessmentDetailSheet({
   lessons,
   cards,
   links,
+  preferredLessonIds,
   onClose,
   onRevise,
 }: AssessmentDetailSheetProps) {
@@ -40,7 +42,7 @@ export function AssessmentDetailSheet({
   const transition = assessmentSheetTiming(multiplier);
   const present = useIsPresent();
   const trapRef = useFocusTrap(present);
-  const resolved = resolveAssessmentCoverage(assessment, lessons, cards, links);
+  const resolved = resolveAssessmentCoverage(assessment, lessons, cards, links, preferredLessonIds);
   const excludedNames = assessment.excludedCardIds.map(
     (id) => cards.find((card) => card.id === id)?.front ?? `Missing card: ${id}`,
   );

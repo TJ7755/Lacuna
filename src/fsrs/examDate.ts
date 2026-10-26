@@ -1,3 +1,4 @@
+import { courseLessonOrderPreference } from '../course/lessonOrder';
 // Per-card exam-date resolution for the Course model.
 //
 // In the Course model a single card can be aimed at several possible exam dates:
@@ -24,6 +25,7 @@ import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '../
 export interface ExamDateContext {
   /** The Course.examDate default, used when nothing nearer applies. */
   courseExamDate?: number;
+  preferredLessonIds?: readonly string[];
   /** Lessons keyed by id, for the lesson-level examDate override lookup. */
   lessonsById: Map<string, Lesson>;
   /** Checkpoints / extra exam dates for the course. */
@@ -44,6 +46,7 @@ export function makeExamDateContext(
     lessonsById: new Map(lessons.map((l) => [l.id, l])),
     courseAssessments: assessments,
     lessonCardLinks,
+    preferredLessonIds: courseLessonOrderPreference(course),
   };
 }
 
@@ -58,6 +61,7 @@ function checkpointApplies(
     [...ctx.lessonsById.values()],
     [card],
     ctx.lessonCardLinks ?? [],
+    ctx.preferredLessonIds,
   ).cards.some((coveredCard) => coveredCard.id === card.id);
 }
 

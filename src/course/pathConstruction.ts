@@ -9,6 +9,7 @@ import type {
 import { shouldInsertPractice } from '../fsrs/practice';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { resolveCourseLessonOrder } from './lessonOrder';
+import { courseLessonOrderPreference } from './lessonOrder';
 import { lessonIndexAtOrBeforePosition } from './pathPlacement';
 import {
   initiallyUnlockedLessonIds,
@@ -40,10 +41,9 @@ const EMPTY_PATH_PROGRESS: PathProgress = {
  * computed correctly (always unlocked per addendum B), but excluded from
  * `pathPosition` totals.
  *
- * **Checkpoint placement (addendum G):** each checkpoint assessment renders
- * immediately after the lesson with the highest `orderIndex` among its
- * `lessonIds`. When `lessonIds` is absent or empty, the checkpoint follows the
- * last lesson. Checkpoints never gate progression under any unlock mode.
+ * **Checkpoint placement:** each checkpoint follows its anchor lesson in the
+ * effective course order. Unanchored checkpoints precede all lessons.
+ * Checkpoints never gate progression under any unlock mode.
  *
  * `lessonCardsById` is `Map<lessonId, Card[]>` supplied by the caller so this
  * function remains pure and database-free.
@@ -141,7 +141,13 @@ export function buildPath(
   const checkpointPlacements: Placement[] = assessments
     .filter((assessment) => assessment.kind === 'checkpoint')
     .map((assessment) => {
-      const afterIndex = resolveAssessmentCoverage(assessment, lessons, [], []).placementIndex;
+      const afterIndex = resolveAssessmentCoverage(
+        assessment,
+        lessons,
+        [],
+        [],
+        courseLessonOrderPreference(course),
+      ).placementIndex;
       return {
         afterIndex,
         node: {

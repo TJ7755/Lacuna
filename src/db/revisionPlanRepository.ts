@@ -1,3 +1,4 @@
+import { courseLessonOrderPreference } from '../course/lessonOrder';
 import { earlierCourseLessonIds } from '../course/courseEntry';
 import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
 import {
@@ -76,6 +77,7 @@ async function resolveCurrentRevisionInput(
     assessment: datedAssessment,
     resolved: resolveRevisionPlanInput({
       assessment: datedAssessment,
+      preferredLessonIds: courseLessonOrderPreference(course),
       lessons,
       cards: hydratedCards,
       links,

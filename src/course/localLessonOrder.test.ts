@@ -89,14 +89,14 @@ it('uses the supported local entry prefix consistently without changing exam cov
     memoryModelVersion: 'fsrs-6',
     fallbackReason: 'missing',
   });
-  expect(plan.scope.coveredLessonIds).toEqual([a.id, b.id, c.id]);
+  expect(plan.scope.coveredLessonIds).toEqual([b.id, a.id, c.id]);
   expect(plan.scope.eligibleCardIds).toEqual([cards[1].id]);
   expect(lessons.map((lesson) => lesson.orderIndex)).toEqual([0, 1, 2]);
   expect(await db.lessonCardExposures.count()).toBe(0);
   expect(await db.lessonCompletions.count()).toBe(0);
   expect(
     earlierCourseLessonIds({ ...local, unlockMode: 'semi-linear' }, lessons, assessments, []),
-  ).toEqual(new Set());
+  ).toEqual(new Set([b.id]));
 });
 
 it('rejects stored-content reordering on a locked distributed copy', async () => {
@@ -121,9 +121,10 @@ it('resolves tolerant stored preferences using canonical ties and original objec
   const before = structuredClone(source);
   expect(resolveLessonOrder(source).map((lesson) => lesson.id)).toEqual(['C', 'A', 'B']);
   const result = resolveLessonOrder(source, ['B', 'removed', 'B', 'foreign']);
-  expect(result.map((lesson) => lesson.id)).toEqual(['B', 'C', 'A']);
-  expect(result[0]).toBe(b);
-  expect(result[1]).toBe(c);
+  expect(result.map((lesson) => lesson.id)).toEqual(['C', 'A', 'B']);
+  expect(result[0]).toBe(c);
+  expect(result[1]).toBe(a);
+  expect(result[2]).toBe(b);
   expect(source).toEqual(before);
 });
 
@@ -166,84 +167,22 @@ it('keeps full-course coverage, exam targeting and lesson-anchored Question Sets
   ]);
 });
 
-it('suspends unsupported shapes without changing their unlock or practice obligations', async () => {
+it('suspends local ordering only for archived or unlocked courses', async () => {
   const { localLessonOrderUnavailableReason } = await import('./lessonOrder');
   const course = await createCourse('Science', {
-    autoPractice: false,
     distributedCopy: { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false },
   });
   const a = await createLesson(course.id, 'A');
   const b = await createLesson(course.id, 'B');
   const lessons = [a, b];
   const assessments = await db.courseAssessments.toArray();
-  const manual = {
-    id: 'practice',
-    courseId: course.id,
-    type: 'manual' as const,
-    position: 0,
-    name: 'Cards',
-    createdAt: 1,
-    updatedAt: 1,
-  };
-  const variants = [
-    { course: { ...course, archived: true }, assessments, practice: [] },
-    {
-      course: {
-        ...course,
-        unlockMode: 'linear' as const,
-        linearCadence: { anchorDate: Date.now() + 86_400_000, intervalDays: 1 },
-      },
-      assessments,
-      practice: [],
-    },
-    { course: { ...course, unlockMode: 'semi-linear' as const }, assessments, practice: [] },
-    {
-      course,
-      assessments: [
-        ...assessments,
-        { ...assessments[0], id: 'checkpoint', kind: 'checkpoint' as const, afterLessonId: a.id },
-      ],
-      practice: [],
-    },
-    { course, assessments: [{ ...assessments[0], afterLessonId: a.id }], practice: [] },
-    {
-      course,
-      assessments: [{ ...assessments[0], coverageMode: 'custom' as const, lessonIds: [a.id] }],
-      practice: [],
-    },
-    { course, assessments: [{ ...assessments[0], excludedCardIds: ['excluded'] }], practice: [] },
-    { course, assessments: [{ ...assessments[0], needsAuthorConfirmation: true }], practice: [] },
-    {
-      course,
-      assessments,
-      practice: [
-        {
-          ...manual,
-          type: 'question-set' as const,
-          questionSetIds: ['set'],
-          afterLessonId: 'missing',
-        },
-      ],
-    },
-    { course, assessments: [], practice: [] },
-  ];
-  for (const variant of variants) {
+  for (const changes of [{ archived: true }, { distributedCopy: undefined }]) {
+    const suspended = { ...course, ...changes, localLessonOrder: [b.id, a.id] };
+    expect(localLessonOrderUnavailableReason(suspended, lessons, assessments, [])).toBeTruthy();
     expect(
-      localLessonOrderUnavailableReason(
-        variant.course,
-        lessons,
-        variant.assessments,
-        variant.practice,
-      ),
-    ).toBeTruthy();
-    expect(
-      buildPath(
-        { ...variant.course, localLessonOrder: [b.id, a.id] },
-        lessons,
-        variant.assessments,
-        new Map(),
-        variant.practice,
-      ),
-    ).toEqual(buildPath(variant.course, lessons, variant.assessments, new Map(), variant.practice));
+      buildPath(suspended, lessons, assessments, new Map())
+        .filter((node) => node.nodeType === 'lesson')
+        .map((node) => node.id),
+    ).toEqual([a.id, b.id]);
   }
 });
