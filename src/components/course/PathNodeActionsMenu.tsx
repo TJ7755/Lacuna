@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { PathNode } from '../../course/path';
 import type { CourseAssessment, Lesson } from '../../db/types';
-import { deleteCourseAssessment } from '../../db/assessmentRepository';
+import { deleteCourseAssessment, updateCourseAssessment } from '../../db/assessmentRepository';
 import { deletePracticeNode, deleteQuestionSetPracticeNode } from '../../db/practiceNodeRepository';
 import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -21,10 +21,12 @@ export function PathNodeActionsMenu({
   node,
   lessons,
   onEdit,
+  learnerCheckpoint = false,
 }: {
   node: EditablePathNode;
   lessons: Lesson[];
   onEdit: () => void;
+  learnerCheckpoint?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -72,12 +74,24 @@ export function PathNodeActionsMenu({
   }
 
   function move(delta: -1 | 1) {
-    void run(() => moveAuthoredPathNode(node, lessons, position + delta));
+    void run(() =>
+      learnerCheckpoint && assessment
+        ? updateCourseAssessment(
+            assessment.id,
+            { afterLessonId: lessons[position + delta]?.id ?? null },
+            { learnerOwnedOnly: true },
+          )
+        : moveAuthoredPathNode(node, lessons, position + delta),
+    );
   }
 
   function remove() {
     void run(() => {
-      if (assessment) return deleteCourseAssessment(assessment.id);
+      if (assessment)
+        return deleteCourseAssessment(
+          assessment.id,
+          learnerCheckpoint ? { learnerOwnedOnly: true } : undefined,
+        );
       if (node.nodeType === 'practice-question-set')
         return deleteQuestionSetPracticeNode(node.practiceNode.id);
       return deletePracticeNode(practice!.id);

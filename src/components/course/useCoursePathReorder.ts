@@ -2,9 +2,16 @@ import { useCallback, useMemo } from 'react';
 import type { PathNode } from '../../course/path';
 import type { Card, Lesson, LessonCardLink } from '../../db/types';
 import { reorderLessons } from '../../db/lessonRepository';
+import { updateCourseAssessment } from '../../db/assessmentRepository';
 import { setLocalLessonOrder } from '../../db/lessonOrder';
-import { moveAuthoredPathNode, pathMoveOrder, pathKeyboardTarget } from './pathNodeReorder';
-import { moveLessonIds, usePathReorder } from './useLessonPathReorder';
+import {
+  localPathMoveOrder,
+  localPathKeyboardTarget,
+  moveAuthoredPathNode,
+  pathMoveOrder,
+  pathKeyboardTarget,
+} from './pathNodeReorder';
+import { usePathReorder } from './useLessonPathReorder';
 
 export function useCoursePathReorder(
   courseId: string,
@@ -15,13 +22,17 @@ export function useCoursePathReorder(
   enabled: boolean,
   onError: (message: string) => void,
   localOrder = false,
+  learnerCheckpointIds: readonly string[] = [],
 ) {
   const reorderNodes = useMemo(
     () =>
       nodes.filter((node) =>
-        localOrder ? node.nodeType === 'lesson' : node.nodeType !== 'practice-auto',
+        localOrder
+          ? node.nodeType === 'lesson' ||
+            (node.nodeType === 'checkpoint' && learnerCheckpointIds.includes(node.id))
+          : node.nodeType !== 'practice-auto',
       ),
-    [nodes, localOrder],
+    [nodes, localOrder, learnerCheckpointIds],
   );
   const reorderItems = useMemo(
     () =>
@@ -37,24 +48,46 @@ export function useCoursePathReorder(
     [reorderNodes],
   );
   const orderForMove = useCallback(
-    (ids: string[], id: string, index: number) =>
+    (_ids: string[], id: string, index: number) =>
       localOrder
-        ? moveLessonIds(ids, id, index)
+        ? localPathMoveOrder(reorderNodes, id, index, cards, links)
         : pathMoveOrder(reorderNodes, id, index, cards, links),
     [reorderNodes, cards, links, localOrder],
   );
   const keyboardTarget = useCallback(
-    (id: string, delta: -1 | 1) => pathKeyboardTarget(reorderNodes, id, delta, cards, links),
-    [reorderNodes, cards, links],
+    (id: string, delta: -1 | 1) =>
+      localOrder
+        ? localPathKeyboardTarget(reorderNodes, id, delta)
+        : pathKeyboardTarget(reorderNodes, id, delta, cards, links),
+    [reorderNodes, cards, links, localOrder],
   );
   const persistPathOrder = useCallback(
     async (ids: string[], id: string) => {
-      if (localOrder) {
-        await setLocalLessonOrder(courseId, ids);
-        return;
-      }
       const node = reorderNodes.find((item) => item.id === id);
       if (!node) return;
+      if (localOrder) {
+        if (node.nodeType === 'lesson') {
+          await setLocalLessonOrder(
+            courseId,
+            ids.filter((candidate) =>
+              reorderNodes.some((item) => item.id === candidate && item.nodeType === 'lesson'),
+            ),
+          );
+        } else if (node.nodeType === 'checkpoint') {
+          const anchor = ids
+            .slice(0, ids.indexOf(id))
+            .reverse()
+            .find((candidate) =>
+              reorderNodes.some((item) => item.id === candidate && item.nodeType === 'lesson'),
+            );
+          await updateCourseAssessment(
+            id,
+            { afterLessonId: anchor ?? null },
+            { learnerOwnedOnly: true },
+          );
+        }
+        return;
+      }
       if (node.nodeType === 'lesson')
         await reorderLessons(
           courseId,
@@ -84,7 +117,7 @@ export function useCoursePathReorder(
     enabled,
     onError,
     orderForMove,
-    keyboardTarget: localOrder ? undefined : keyboardTarget,
+    keyboardTarget,
     onReorder: persistPathOrder,
   });
 }

@@ -1,4 +1,7 @@
-import { courseLessonOrderPreference } from '../course/lessonOrder';
+import { courseLessonOrderPreference, resolveCourseLessonOrder } from '../course/lessonOrder';
+import { isLearnerOwnedCheckpoint } from '../course/assessmentOwnership';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/schema';
 import { MissingRecord } from '../components/course/MissingRecord';
 import { localLessonOrderUnavailableReason } from '../course/lessonOrder';
 // Course path page — renders the ordered sequence of lessons for a course.
@@ -7,7 +10,7 @@ import { localLessonOrderUnavailableReason } from '../course/lessonOrder';
 
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { AnimatePresence } from 'motion/react';
@@ -96,6 +99,18 @@ export function CoursePath() {
     practiceProgressByKey,
     visibleNodes,
   } = useCoursePathData(records);
+  const lineageId = course?.distributedCopy?.lineageId;
+  const lineageMapping = useLiveQuery(
+    () => (lineageId ? db.lineageIdMappings.get(lineageId) : undefined),
+    [lineageId],
+  );
+  const learnerCheckpointIds = useMemo(
+    () =>
+      (assessments ?? [])
+        .filter((assessment) => isLearnerOwnedCheckpoint(course, assessment, lineageMapping))
+        .map((assessment) => assessment.id),
+    [course, assessments, lineageMapping],
+  );
   const lessonPrefetchKey =
     lessons
       ?.slice(0, 1)
@@ -123,6 +138,7 @@ export function CoursePath() {
     authoring || localOrder,
     notifyReorderError,
     localOrder,
+    learnerCheckpointIds,
   );
 
   usePageShortcuts({
@@ -146,7 +162,7 @@ export function CoursePath() {
     );
   }
 
-  const lastLesson = lessons[lessons.length - 1];
+  const lastLesson = resolveCourseLessonOrder(course, lessons, assessments, practiceNodes).at(-1);
   const orderReason = course.localLessonOrder
     ? localLessonOrderUnavailableReason(course, lessons, assessments, practiceNodes)
     : undefined;
@@ -195,6 +211,8 @@ export function CoursePath() {
           cards={courseCards}
           links={lessonLinks}
           timeZone={course.timeZone}
+          preferredLessonIds={courseLessonOrderPreference(course)}
+          learnerOwnedOnly={localOrder}
           onSaved={() => setAssessmentEditor(null)}
         />
       )}
@@ -325,6 +343,7 @@ export function CoursePath() {
         timeZone={course.timeZone}
         authoring={authoring}
         localOrder={localOrder}
+        learnerCheckpointIds={learnerCheckpointIds}
         archived={archived}
         announcement={lessonReorder.announcement}
         reorderFor={lessonReorder.interactionFor}
@@ -348,10 +367,11 @@ export function CoursePath() {
         onAssessmentOpen={(id) => {
           const assessment = assessments.find((item) => item.id === id);
           if (!assessment || archived) return;
-          if (authoring) setAssessmentEditor({ assessment });
+          if (authoring || learnerCheckpointIds.includes(id)) setAssessmentEditor({ assessment });
           else setSelectedAssessmentId(id);
         }}
         onAdd={(kind) => {
+          if (localOrder && kind !== 'checkpoint') return;
           if (kind === 'practice') setPracticeEditor({ defaultPosition: lastLesson?.orderIndex });
           else if (kind === 'question-set') setAddingQuestionSet(true);
           else setAssessmentEditor({ defaultAfterLessonId: lastLesson?.id ?? null });

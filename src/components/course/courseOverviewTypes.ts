@@ -19,6 +19,7 @@ export interface CourseOverviewProps {
   timeZone?: string;
   authoring: boolean;
   localOrder?: boolean;
+  learnerCheckpointIds?: readonly string[];
   archived: boolean;
   announcement: string;
   detailForLesson: (id: string) => LessonNodeDetail;
