@@ -5,9 +5,7 @@ on:
   push:
     branches: [master, main]
   pull_request:
-    # Long-lived redesign branches collect stacked work before it reaches master; their
-    # pull requests need the same gates or regressions surface only on the final merge.
-    branches: [master, main, 'redesign/**']
+    # Validate every stack layer, including PRs based on ordinary topic branches.
     # Retargets validate the new merge commit. Metadata edits reuse successful
     # validation of that exact merge commit without cancelling it.
     types: [opened, synchronize, reopened, ready_for_review, edited]
