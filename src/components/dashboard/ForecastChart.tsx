@@ -229,6 +229,28 @@ export function ForecastChart({
   }, [lines, now, past, future, target, W, H, narrow]);
 
   const { x, y, ticks, marks, inside, beyond } = geometry;
+  useLayoutEffect(() => {
+    const svg = ref.current;
+    if (!svg) return;
+    const placeLabels = () => {
+      const labels = [...svg.querySelectorAll<SVGTextElement>('[data-date-priority]')].sort(
+        (a, b) => Number(a.dataset.datePriority) - Number(b.dataset.datePriority),
+      );
+      const occupied: DOMRect[] = [];
+      for (const label of labels) {
+        const bounds = label.getBoundingClientRect();
+        const overlaps = occupied.some(
+          (other) => bounds.left < other.right + 8 && bounds.right + 8 > other.left,
+        );
+        label.style.visibility = overlaps ? 'hidden' : 'visible';
+        if (!overlaps) occupied.push(bounds);
+      }
+    };
+    placeLabels();
+    document.fonts?.addEventListener('loadingdone', placeLabels);
+    return () => document.fonts?.removeEventListener('loadingdone', placeLabels);
+  }, [marks, beyond, W, H, ref]);
+
   const draw = multiplier > 0;
   const plotTop = y(ticks[0]);
   const plotBottom = y(ticks[ticks.length - 1]);
@@ -359,6 +381,7 @@ export function ForecastChart({
           {marks.map((mark) => (
             <text
               key={mark.at}
+              data-date-priority={mark.at === now ? 0 : mark.strong ? 3 : 2}
               x={x(mark.at)}
               y={H - 10}
               textAnchor={mark.anchor}
@@ -368,7 +391,13 @@ export function ForecastChart({
             </text>
           ))}
           {beyond !== undefined && (
-            <text x={W - RIGHT} y={H - 10} textAnchor="end" className="fill-ink">
+            <text
+              data-date-priority={1}
+              x={W - RIGHT}
+              y={H - 10}
+              textAnchor="end"
+              className="fill-ink"
+            >
               Exam {formatShortDate(beyond)} →
             </text>
           )}

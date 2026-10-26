@@ -108,3 +108,53 @@ test('an expanded multi-course forecast fits its surface in a short desktop wind
   expect(bounds!.y).toBeGreaterThanOrEqual(surface!.y);
   expect(bounds!.y + bounds!.height).toBeLessThan(surface!.y + surface!.height);
 });
+
+test('nearby exam dates do not paint overlapping captions', async ({ page }) => {
+  const now = Date.UTC(2026, 9, 26, 12);
+  await page.clock.setFixedTime(new Date(now));
+  await enterFreshLacuna(page);
+  const template = readFileSync(
+    new URL('./fixtures/welcome-course.lacuna', import.meta.url),
+    'utf8',
+  );
+  for (const days of [11, 14]) {
+    const file = JSON.parse(template);
+    file.payload.course.n = `Exam course ${days}`;
+    file.payload.course.e = now + days * 86400000;
+    for (const exam of file.payload.exams) exam.e = file.payload.course.e;
+    await openImport(page);
+    await page.getByLabel('Import file', { exact: true }).setInputFiles({
+      name: 'Synthetic.lacuna',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(file)),
+    });
+    await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+    await page
+      .getByRole('radio', { name: /Exam date/ })
+      .locator('..')
+      .click();
+    await page.getByRole('button', { name: 'Add to my courses' }).click();
+    await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeHidden();
+    await page.evaluate(() => {
+      location.hash = '#/';
+    });
+  }
+  const plot = page.getByRole('img', { name: 'Exam-day forecast', exact: true });
+  await expect(plot.getByText('Today', { exact: true })).toBeVisible();
+  await expect(plot.getByText('Exam 9 Nov →', { exact: true })).toBeVisible();
+  const captions = await plot.locator('text').evaluateAll((labels) =>
+    labels
+      .filter(
+        (label) =>
+          getComputedStyle(label).visibility !== 'hidden' &&
+          /Today|Nov|Oct/.test(label.textContent ?? ''),
+      )
+      .map((label) => {
+        const r = label.getBoundingClientRect();
+        return { left: r.left, right: r.right };
+      })
+      .sort((a, b) => a.left - b.left),
+  );
+  for (let index = 1; index < captions.length; index++)
+    expect(captions[index].left - captions[index - 1].right).toBeGreaterThanOrEqual(7);
+});
