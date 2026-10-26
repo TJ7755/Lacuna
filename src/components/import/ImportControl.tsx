@@ -37,6 +37,9 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
       cancelled = true;
     };
   }, [open, panelModule, attempt]);
+  const root = useRef<HTMLDivElement>(null);
+  const [offsetY, setOffsetY] = useState(0);
+  const [bodyHeight, setBodyHeight] = useState<number>();
   const trigger = useRef<HTMLButtonElement>(null);
   const [triggerHeight, setTriggerHeight] = useState(44);
   useLayoutEffect(() => {
@@ -50,6 +53,23 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
     observer.observe(button);
     return () => observer.disconnect();
   }, []);
+  useLayoutEffect(() => {
+    if (!expanded) return;
+    const measure = () => {
+      const rect = root.current?.getBoundingClientRect();
+      if (!rect) return;
+      const top = Math.max(18, Math.min(rect.top, window.innerHeight - triggerHeight - 258));
+      setOffsetY(top - rect.top);
+      setBodyHeight(Math.max(0, window.innerHeight - top - triggerHeight - 18));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, true);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, true);
+    };
+  }, [expanded, triggerHeight]);
   const panelId = useId();
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
@@ -80,10 +100,11 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
   }
 
   return (
-    <div className="relative z-[6] w-[100px] shrink-0" style={{ height: triggerHeight }}>
+    <div ref={root} className="relative z-[6] w-[100px] shrink-0" style={{ height: triggerHeight }}>
       <motion.div
         initial={false}
         animate={{
+          y: expanded ? offsetY : 0,
           width: expanded ? panelWidth : 100,
           height: expanded ? 'auto' : triggerHeight,
           borderRadius: expanded ? 24 : triggerHeight / 2,
@@ -119,11 +140,11 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
           data-flow-feedback
           data-flow-trigger
           transition={transition}
-          className="absolute right-0 top-0 flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink disabled:opacity-40"
+          className="absolute right-0 top-0 z-10 flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink disabled:opacity-40"
         >
           {pending ? 'Loading…' : open ? 'Close' : 'Import'}
         </motion.button>
-        <div inert={!expanded} aria-hidden={!expanded || undefined}>
+        <div data-flow-expansion-content inert={!expanded} aria-hidden={!expanded || undefined}>
           <AnimatePresence initial={false}>
             {expanded && ImportPanel && (
               <motion.div
@@ -136,7 +157,10 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.12 * multiplier }}
               >
-                <div className="max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain">
+                <div
+                  className="overflow-y-auto overscroll-contain"
+                  style={{ maxHeight: bodyHeight }}
+                >
                   <ImportPanel
                     key={params.has('join') ? 'class' : 'sources'}
                     onClose={() => changeOpen(false)}

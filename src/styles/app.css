@@ -366,17 +366,11 @@
   background-color: transparent !important;
   border-color: transparent !important;
 }
-.flow-feedback::before {
-  content: '';
+.flow-feedback-layer {
   position: absolute;
-  inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(var(--flow-fill), var(--flow-fill)), hsl(var(--surface-raised));
-  border: var(--flow-border-width) solid var(--flow-border);
-  border-radius: inherit;
-  transform: translateX(var(--flow-pull, 0px)) scaleX(calc(1 + var(--flow-pressure, 0) * 0.055))
-    scaleY(calc(1 - var(--flow-pressure, 0) * 0.095)) skewX(calc(var(--flow-pressure, 0) * -3deg));
+  overflow: visible;
 }
 [data-study-trigger][aria-busy='true']::after {
   content: '';
@@ -387,12 +381,12 @@
   pointer-events: none;
 }
 .today-forecast-chart {
-  height: 22rem;
+  flex: 1;
   min-height: 0;
   overflow: auto;
 }
 .today-forecast {
-  min-height: 31rem;
+  height: clamp(340px, calc(100dvh - 220px), 496px);
 }
 .study-target-tiles {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
@@ -400,23 +394,28 @@
 @supports (corner-shape: squircle) {
   .today-forecast,
   .today-course-row,
+  .flow-surface,
   [data-expanding-action],
   .study-target-tiles > label {
     corner-shape: squircle;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .flow-feedback::before {
-    transform: none;
-  }
+
+.today-empty-state {
+  padding-top: clamp(24px, 5dvh, 64px);
 }
 
 .flow-expansion {
   background-color: transparent !important;
   border-color: transparent;
+  --tw-ring-color: transparent !important;
+  overflow: visible !important;
   isolation: isolate;
 }
 .flow-expansion-paint {
+  position: absolute;
   z-index: -1;
+  pointer-events: none;
+  overflow: visible;
   filter: drop-shadow(0 1px 1px hsl(var(--line-strong)));
 }

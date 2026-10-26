@@ -10,7 +10,7 @@ import { m as motion, useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { expandingActionSpring } from '../ui/motion';
-import { FlowExpansionSurface } from '../ui/FlowExpansionSurface';
+import { FlowExpansionSurface, flowSurfaceColour } from '../ui/FlowExpansionSurface';
 import { StudyActionIcon } from './StudyActionIcon';
 
 import { beginStudyTransition } from '../layout/LandingTransition';
@@ -222,7 +222,11 @@ export function StudyExpansion({
         </span>
       </motion.button>
       {/* Keep the final-width body still while the shell reveals it towards the left. */}
-      <div className="absolute right-0 top-0 pt-11 text-ink" style={{ width }}>
+      <div
+        data-flow-expansion-content
+        className="absolute right-0 top-0 pt-11 text-ink"
+        style={{ width }}
+      >
         <div className="max-h-[calc(100dvh-76px)] overflow-y-auto">
           <motion.div
             ref={content}
@@ -246,7 +250,7 @@ export function StudyExpansion({
                 beginStudyTransition(
                   element.getBoundingClientRect(),
                   {
-                    colour: style.backgroundColor,
+                    colour: flowSurfaceColour(element),
                     radius: style.borderRadius,
                     paper: `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--paper').trim()})`,
                   },

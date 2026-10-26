@@ -19,7 +19,7 @@ describe('press feedback ownership', () => {
     uninstall = installPressFeedback();
     button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
     expect(button).toHaveClass('flow-feedback');
-    expect(button.firstChild).toBe(label);
+    expect(button.querySelector('span')).toBe(label);
     expect(button.style.transform).toBe('translateX(10px)');
     uninstall();
     expect(button).not.toHaveClass('flow-feedback');

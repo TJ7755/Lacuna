@@ -53,7 +53,7 @@ describe('Dashboard Today queue', () => {
       summaries: { poems: summary(0, { completedLessonCount: 0 }) },
     });
     render(<Dashboard />);
-    expect(screen.getByLabelText('Today: 0 reviews due, about 0 minutes')).toBeInTheDocument();
+    expect(screen.getByLabelText('Today: 0 reviews due')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Study Poems' }));
     expect(mockOpenStudySheet).toHaveBeenCalledWith('poems');
   });

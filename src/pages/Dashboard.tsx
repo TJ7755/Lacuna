@@ -210,16 +210,20 @@ export function Dashboard() {
     Math.round(rows?.reduce((sum, row) => sum + row.minutes, 0) ?? 0),
   );
 
+  const emptyToday = rows?.length === 0;
+
   return (
-    <div ref={frame} className={`${PAGE_FRAME} py-6 sm:py-10`}>
+    <div ref={frame} className={`${PAGE_FRAME} flex flex-col py-6 sm:py-10`}>
       <h1 ref={heading} tabIndex={-1} className="sr-only focus-visible:shadow-none">
         Today
       </h1>
-      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-3 text-ink-soft sm:mb-6 sm:gap-x-6">
+      <div
+        className={`flex flex-wrap items-center gap-x-4 gap-y-3 text-ink-soft sm:gap-x-6 ${emptyToday ? 'order-2 mx-auto' : 'mb-5 sm:mb-6'}`}
+      >
         {rows && rows.length > 0 && (
           <p
             className="flex items-center gap-4 sm:gap-6"
-            aria-label={`Today: ${totalCards} ${totalCards === 1 ? 'review' : 'reviews'} due, about ${totalMinutes} ${totalMinutes === 1 ? 'minute' : 'minutes'}`}
+            aria-label={`Today: ${totalCards} ${totalCards === 1 ? 'review' : 'reviews'} due${totalCards > 0 ? `, about ${totalMinutes} ${totalMinutes === 1 ? 'minute' : 'minutes'}` : ''}`}
           >
             <span className="inline-flex items-center gap-2" aria-hidden="true">
               <CardsIcon width={20} height={20} className="max-sm:hidden" />
@@ -228,17 +232,21 @@ export function Dashboard() {
               </strong>
               {totalCards === 1 ? 'review' : 'reviews'} due
             </span>
-            <span className="inline-flex items-center gap-2" aria-hidden="true">
-              <ClockIcon width={20} height={20} className="max-sm:hidden" />
-              <strong className="font-display text-xl font-semibold tracking-tight text-ink tabular-nums sm:text-2xl">
-                <CountUp value={totalMinutes} multiplier={m} />
-              </strong>
-              min
-            </span>
+            {totalCards > 0 && (
+              <span className="inline-flex items-center gap-2" aria-hidden="true">
+                <ClockIcon width={20} height={20} className="max-sm:hidden" />
+                <strong className="font-display text-xl font-semibold tracking-tight text-ink tabular-nums sm:text-2xl">
+                  <CountUp value={totalMinutes} multiplier={m} />
+                </strong>
+                min
+              </span>
+            )}
           </p>
         )}
         <SyncStatus />
-        <div className="ml-auto flex max-w-full shrink-0 flex-wrap justify-end gap-2">
+        <div
+          className={`${emptyToday ? '' : 'ml-auto'} flex max-w-full shrink-0 flex-wrap justify-end gap-2`}
+        >
           <div inert={importing} style={{ visibility: importing ? 'hidden' : undefined }}>
             <NewCourseControl
               prominent={rows?.length === 0}
@@ -250,7 +258,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <PageLoadingBoundary>
+      <PageLoadingBoundary className={emptyToday ? 'order-1' : undefined}>
         {!rows ? (
           <p role="status" className="text-sm text-ink-soft">
             Loading Today…
@@ -378,10 +386,10 @@ function EmptyState({
 }) {
   return (
     <motion.div
-      initial={multiplier > 0 ? { opacity: 0 } : false}
+      initial={false}
       animate={{ opacity: 1 }}
       transition={{ duration: MOTION_DURATION.local * multiplier, ease: MOTION_EASING.standard }}
-      className="relative flex flex-col items-center justify-center px-4 py-12 text-center sm:py-20"
+      className="today-empty-state relative flex flex-col items-center justify-center px-4 text-center"
     >
       <div className="relative flex flex-col items-center">
         <StudyDrawing kind="course" className="mb-7 h-28 w-28" />

@@ -155,8 +155,8 @@ export function ExpandingCreateControl({
           data-flow-feedback
           data-flow-trigger
           transition={transition}
-          style={{ width: closedWidth }}
-          className={`absolute ${anchor} top-0 flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold ${prominent && !open ? 'text-accent-fg' : 'text-ink'} focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink`}
+          style={{ width: closedWidth, color: prominent ? 'var(--flow-expansion-ink)' : undefined }}
+          className={`absolute ${anchor} top-0 z-10 flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold ${prominent && !open ? 'text-accent-fg' : 'text-ink'} focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink`}
         >
           <motion.span
             aria-hidden="true"
@@ -168,6 +168,8 @@ export function ExpandingCreateControl({
           <span>{label}</span>
         </motion.button>
         <div
+          data-flow-expansion-content
+          className="pointer-events-none absolute inset-0"
           inert={!open}
           aria-hidden={!open || undefined}
           onKeyDown={(event) => {
@@ -183,7 +185,7 @@ export function ExpandingCreateControl({
               ref={form}
               id={formId}
               // Measure and reveal the resting layout rather than reflowing it with the shell.
-              className={`absolute ${anchor}`}
+              className={`pointer-events-auto absolute ${anchor}`}
               style={{ top: triggerHeight, width: formWidth }}
               initial={{ opacity: 0 }}
               animate={{ opacity: open ? 1 : 0 }}

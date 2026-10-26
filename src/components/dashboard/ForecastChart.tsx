@@ -30,22 +30,36 @@ const BOTTOM = 34;
  */
 function useChartSize() {
   const ref = useRef<SVGSVGElement>(null);
-  const [width, setWidth] = useState(WIDE_WIDTH);
+  const [size, setSize] = useState({ width: WIDE_WIDTH, height: 260 });
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const first = Math.round(el.getBoundingClientRect().width);
-    if (first > 0) setWidth(first);
+    const slot = el.closest<HTMLElement>('.today-forecast-chart');
+    const header = el.parentElement?.children[0] as HTMLElement | undefined;
+    const description = el.previousElementSibling as HTMLElement | null;
+    const measure = (entries?: ResizeObserverEntry[]) => {
+      const svgEntry = entries?.find((entry) => !entry.target || entry.target === el);
+      const width = Math.round(
+        el.getBoundingClientRect().width || svgEntry?.contentRect.width || WIDE_WIDTH,
+      );
+      const available =
+        slot && header && description
+          ? slot.clientHeight - header.offsetHeight - description.offsetHeight - 24
+          : Math.max(190, width * 0.5);
+      const height = Math.round(Math.max(140, Math.min(260, available)));
+      setSize((current) =>
+        current.width === width && current.height === height ? current : { width, height },
+      );
+    };
+    measure();
     if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(([entry]) => {
-      const next = Math.round(entry.contentRect.width);
-      if (next > 0) setWidth(next);
+    const observer = new ResizeObserver(measure);
+    [el, slot, header, description].forEach((element) => {
+      if (element) observer.observe(element);
     });
-    observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  const height = Math.round(Math.max(190, Math.min(260, width * 0.5)));
-  return { ref, W: width, H: height, narrow: width < 480 };
+  return { ref, W: size.width, H: size.height, narrow: size.width < 480 };
 }
 
 /**
@@ -267,7 +281,7 @@ export function ForecastChart({
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-3">
       {/* The title keeps to the top edge, level with the legend's first 44px row, however
           many rows the legend wraps to. */}
       <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-6">
@@ -304,7 +318,7 @@ export function ForecastChart({
           )}
         </ul>
       </div>
-      <p className="-mt-3 text-sm text-ink-soft">
+      <p className="text-sm text-ink-soft">
         If you stop studying now{!allExam && !noExam ? ' · Exam dates or four weeks ahead' : ''}
       </p>
       <svg

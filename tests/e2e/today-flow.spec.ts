@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Locator } from '@playwright/test';
 import { enterFreshLacuna, importWelcomeCourse, openImport } from './fixtures/lacunaApp';
 
-const evidence = '/tmp/lacuna-today-candidate';
+const evidence = '/tmp/lacuna-today-candidate2';
 test.use({
   serviceWorkers: 'block',
   viewport: { width: 1470, height: 956 },
@@ -69,6 +69,7 @@ test('cold Study acknowledges input and Escape cancels before the chunk arrives'
 test('forecast arrival keeps actionable queue coordinates and failed chunks recover', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 600 });
   let release = () => {};
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -86,6 +87,7 @@ test('forecast arrival keeps actionable queue coordinates and failed chunks reco
     await expect(study).toBeEnabled();
     await page.waitForTimeout(750);
     const before = await study.boundingBox();
+    expect(before!.y + before!.height).toBeLessThanOrEqual(600);
     await page.screenshot({ path: `${evidence}/forecast-pending.png` });
     release();
     await expect(
