@@ -13,6 +13,7 @@ import {
 import { cn } from '../components/ui/cn';
 import { SearchIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+import { useAdvancedDetails } from '../state/advancedDetails';
 import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { SearchResultOption } from '../components/search/SearchResultOption';
@@ -31,6 +32,7 @@ const PAGE_SIZE = 80;
 
 /** Full-page content search with Card filters. Quick search remains the shortcut-led overlay. */
 export function SearchPage() {
+  const [advancedDetails] = useAdvancedDetails();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const searchData = useSearchData();
@@ -205,7 +207,7 @@ export function SearchPage() {
                     : 'border-line text-ink-soft hover:border-line-strong',
                 )}
               >
-                {chip.label}
+                {chip.value === 'leech' && !advancedDetails ? 'Often missed' : chip.label}
               </motion.button>
             );
           })}

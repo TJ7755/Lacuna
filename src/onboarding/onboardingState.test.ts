@@ -19,6 +19,19 @@ describe('onboarding state', () => {
     expect(onboardingDestination('/course/a')).toBe('/course/a');
   });
 
+  it('starts a fresh learner with plain details and keeps that choice after onboarding', () => {
+    markOnboardingPending();
+    expect(localStorage.getItem('lacuna.advancedDetails')).toBe('false');
+    finishOnboarding();
+    expect(localStorage.getItem('lacuna.advancedDetails')).toBe('false');
+  });
+
+  it('preserves an explicit details choice when first-run initialisation repeats', () => {
+    localStorage.setItem('lacuna.advancedDetails', 'true');
+    markOnboardingPending();
+    expect(localStorage.getItem('lacuna.advancedDetails')).toBe('true');
+  });
+
   it('routes a new learner’s first course through the last step', () => {
     markOnboardingPending();
     expect(onboardingDestination('/course/a b')).toBe('/start?then=%2Fcourse%2Fa%20b');

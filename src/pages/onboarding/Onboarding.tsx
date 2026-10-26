@@ -9,6 +9,8 @@ import { AnimatedDisclosure } from '../../components/ui/AnimatedDisclosure';
 import { Button } from '../../components/ui/Button';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { useAdvancedDetails } from '../../state/advancedDetails';
+import { PillSwitch, SettingsCard } from '../settings/SettingsUi';
 import { useAnswerStrictness } from '../../state/answerStrictness';
 import { useIsTouchMode } from '../../state/inputMode';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
@@ -338,12 +340,31 @@ function ContentStep({ onBusyChange }: { onBusyChange: (busy: boolean) => void }
 
 /** Step 4: the real Appearance settings, so Lacuna looks right before the first session. */
 function FeaturesStep({ onDone }: { onDone: () => void }) {
+  const [showAdvancedDetails, setShowAdvancedDetails] = useAdvancedDetails();
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="mx-auto my-auto w-full max-w-xl py-2">
           <StepHeading>How should Lacuna look?</StepHeading>
           <AppearanceSection />
+          <SettingsCard>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <label htmlFor="onboarding-advanced-details" className="font-semibold text-ink">
+                  Show advanced details
+                </label>
+                <p className="mt-1 text-sm text-ink-soft">
+                  Show scheduler settings and technical statistics. You can change this in Settings.
+                </p>
+              </div>
+              <PillSwitch
+                id="onboarding-advanced-details"
+                checked={showAdvancedDetails}
+                onChange={setShowAdvancedDetails}
+                ariaLabel="Show advanced details"
+              />
+            </div>
+          </SettingsCard>
         </div>
       </div>
       <div className="study-controls mt-6 w-full shrink-0">

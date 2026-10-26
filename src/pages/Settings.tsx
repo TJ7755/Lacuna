@@ -82,7 +82,7 @@ export function Settings() {
           <SettingsDisclosure
             id="settings-group-study"
             title="Study behaviour"
-            summary="Grading, audio and focus mode"
+            summary="Grading, audio, focus and advanced details"
             anchors={STUDY_ANCHORS}
           >
             <StudySection />

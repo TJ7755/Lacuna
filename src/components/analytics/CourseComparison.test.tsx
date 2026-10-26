@@ -1,10 +1,11 @@
 import { expectAppDestination } from '../../../tests/helpers/expectAppDestination';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CourseComparison } from './CourseComparison';
 import type { Course, Card } from '../../db/types';
 import { defaultFsrsParameters } from '../../fsrs/params';
+import { writeAdvancedDetails } from '../../state/advancedDetails';
 
 vi.mock('./useChartColours', () => ({
   useChartColours: () => ({
@@ -26,6 +27,25 @@ const courses = [
 const cards: Card[] = [];
 
 describe('CourseComparison', () => {
+  beforeEach(() => localStorage.removeItem('lacuna.advancedDetails'));
+
+  it('compares useful study results without scheduler internals when advanced details are off', () => {
+    localStorage.setItem('lacuna.advancedDetails', 'false');
+    render(<CourseComparison courses={courses} cards={cards} />, { wrapper: MemoryRouter });
+
+    fireEvent.change(screen.getByLabelText('First course'), { target: { value: 'course-a' } });
+    fireEvent.change(screen.getByLabelText('Second course'), { target: { value: 'course-b' } });
+
+    expect(screen.queryByText('Mean stability')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mean difficulty')).not.toBeInTheDocument();
+    expect(screen.getByText('Total reviews')).toBeInTheDocument();
+    expect(screen.getByText('Cards reviewed')).toBeInTheDocument();
+
+    act(() => writeAdvancedDetails(true));
+    expect(screen.getByText('Mean stability')).toBeInTheDocument();
+    expect(screen.getByText('Mean difficulty')).toBeInTheDocument();
+  });
+
   it('links each compared course name to its own analytics page', () => {
     render(<CourseComparison courses={courses} cards={cards} />, { wrapper: MemoryRouter });
 

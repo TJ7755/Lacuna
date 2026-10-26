@@ -11,6 +11,7 @@ import { averagePredictedRetrievability, masteryFraction } from '../../fsrs/prog
 import { isLeech } from '../../fsrs/leech';
 import { startOfDay } from '../../utils/datetime';
 import { scaledSpring } from '../ui/motion';
+import { useAdvancedDetails } from '../../state/advancedDetails';
 
 interface ComparisonMetric {
   label: string;
@@ -18,6 +19,7 @@ interface ComparisonMetric {
   courseB: number;
   unit?: string;
   higherIsBetter?: boolean;
+  advanced?: boolean;
 }
 
 function computeMetrics(
@@ -25,6 +27,7 @@ function computeMetrics(
   cardsA: Card[],
   courseB: Course,
   cardsB: Card[],
+  advancedDetails: boolean,
   reviewHistory?: readonly ReviewHistoryEntry[],
 ): ComparisonMetric[] {
   const avgRetA = averagePredictedRetrievability(cardsA, courseA);
@@ -67,14 +70,14 @@ function computeMetrics(
   return [
     { label: 'Cards', courseA: cardsA.length, courseB: cardsB.length, higherIsBetter: true },
     {
-      label: 'Predicted exam score',
+      label: 'Predicted recall',
       courseA: Math.round(avgRetA * 100),
       courseB: Math.round(avgRetB * 100),
       unit: '%',
       higherIsBetter: true,
     },
     {
-      label: 'Mastery fraction',
+      label: advancedDetails ? 'Mastery fraction' : 'Cards at 90% predicted recall',
       courseA: Math.round(masteryA * 100),
       courseB: Math.round(masteryB * 100),
       unit: '%',
@@ -93,9 +96,15 @@ function computeMetrics(
       courseB: reviewsTodayB,
       higherIsBetter: true,
     },
-    { label: 'Leech cards', courseA: leechesA, courseB: leechesB, higherIsBetter: false },
+    {
+      label: advancedDetails ? 'Leech cards' : 'Cards you often miss',
+      courseA: leechesA,
+      courseB: leechesB,
+      higherIsBetter: false,
+    },
     {
       label: 'Mean stability',
+      advanced: true,
       courseA: Number(avgStabilityA.toFixed(1)),
       courseB: Number(avgStabilityB.toFixed(1)),
       unit: ' days',
@@ -103,6 +112,7 @@ function computeMetrics(
     },
     {
       label: 'Mean difficulty',
+      advanced: true,
       courseA: Number(avgDifficultyA.toFixed(1)),
       courseB: Number(avgDifficultyB.toFixed(1)),
       higherIsBetter: false,
@@ -215,6 +225,7 @@ export function CourseComparison({ courses, cards, reviewHistory }: CourseCompar
   const [courseAId, setCourseAId] = useState<string>('');
   const [courseBId, setCourseBId] = useState<string>('');
   const [motionSpeed] = useMotionSpeed();
+  const [advancedDetails] = useAdvancedDetails();
   const m = speedMultiplier(motionSpeed);
   const c = useChartColours();
 
@@ -236,8 +247,10 @@ export function CourseComparison({ courses, cards, reviewHistory }: CourseCompar
 
   const metrics = useMemo(() => {
     if (!courseA || !courseB) return [];
-    return computeMetrics(courseA, cardsA, courseB, cardsB, reviewHistory);
-  }, [courseA, courseB, cardsA, cardsB, reviewHistory]);
+    return computeMetrics(courseA, cardsA, courseB, cardsB, advancedDetails, reviewHistory).filter(
+      (metric) => advancedDetails || !metric.advanced,
+    );
+  }, [courseA, courseB, cardsA, cardsB, reviewHistory, advancedDetails]);
 
   const maxByMetric = useMemo(() => {
     const map = new Map<string, number>();

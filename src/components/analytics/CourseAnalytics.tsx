@@ -7,6 +7,7 @@ import { FadeInView } from '../ui/FadeInView';
 import { lessonBreakdown, reviewVolume, stabilityProfile } from './prepare';
 import type { Card, Course, Lesson } from '../../db/types';
 import type { ReviewHistoryEntry } from '../../db/reviewHistory';
+import { useAdvancedDetails } from '../../state/advancedDetails';
 
 interface CourseAnalyticsProps {
   course: Course;
@@ -24,13 +25,9 @@ const CELL = 'min-w-0 [&>section]:h-full';
  * per-lesson breakdown of card count, mastery and completion. The exam-day trend is the
  * forecast card's, above these.
  */
-export function CourseAnalytics({
-  course,
-  lessons,
-  cards,
-  reviewHistory,
-}: CourseAnalyticsProps) {
+export function CourseAnalytics({ course, lessons, cards, reviewHistory }: CourseAnalyticsProps) {
   const c = useChartColours();
+  const [advancedDetails] = useAdvancedDetails();
 
   const profile = useMemo(() => stabilityProfile(cards), [cards]);
   const volume = useMemo(
@@ -49,28 +46,30 @@ export function CourseAnalytics({
         <LessonBreakdownCard breakdown={breakdown} />
       </FadeInView>
 
-      <FadeInView className={CELL} y={12}>
-        <ChartCard
-          title="Card stability profile"
-          data={{
-            columns: ['Stability', 'Cards'],
-            rows: profile.map((point) => [point.range, point.count]),
-          }}
-          emptyDrawing="stability"
-          empty={cards.length === 0}
-          emptyMessage="Add cards to see their stability profile."
-        >
-          <Columns
-            data={profile}
-            xKey="range"
-            yKey="count"
-            name="Cards"
-            colour={c.accent}
-            xInterval={0}
-            muted={(row) => row.range === 'New'}
-          />
-        </ChartCard>
-      </FadeInView>
+      {advancedDetails && (
+        <FadeInView className={CELL} y={12}>
+          <ChartCard
+            title="Card stability profile"
+            data={{
+              columns: ['Stability', 'Cards'],
+              rows: profile.map((point) => [point.range, point.count]),
+            }}
+            emptyDrawing="stability"
+            empty={cards.length === 0}
+            emptyMessage="Add cards to see their stability profile."
+          >
+            <Columns
+              data={profile}
+              xKey="range"
+              yKey="count"
+              name="Cards"
+              colour={c.accent}
+              xInterval={0}
+              muted={(row) => row.range === 'New'}
+            />
+          </ChartCard>
+        </FadeInView>
+      )}
 
       <FadeInView className={CELL} y={12}>
         <ChartCard

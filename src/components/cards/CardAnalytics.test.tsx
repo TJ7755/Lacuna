@@ -68,11 +68,43 @@ function makeSchedulingConfig(examDate: number): LegacyDeckRecord {
 }
 
 afterEach(() => {
+  localStorage.removeItem('lacuna.advancedDetails');
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
 describe('CardAnalytics', () => {
+  it('keeps recall and review evidence readable without exposing scheduler internals', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(NOW);
+    localStorage.setItem('lacuna.advancedDetails', 'false');
+    const card = makeCard();
+    const { container } = render(
+      <CardAnalytics
+        card={card}
+        schedulingConfig={makeSchedulingConfig(NOW + 6 * MS_PER_DAY)}
+        motionMultiplier={0}
+      />,
+    );
+
+    expect(screen.queryByText('Stability')).not.toBeInTheDocument();
+    expect(screen.queryByText('Difficulty')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Predicted recall over time' })).toBeInTheDocument();
+    const recallNow = screen.getByText('Predicted recall now').parentElement!;
+    expect(recallNow).toHaveTextContent('97%');
+    expect(screen.getByText('Predicted exam-day recall')).toBeInTheDocument();
+    expect(screen.getByText('Total reviews').parentElement).toHaveTextContent('1');
+    expect(screen.getByText('Times forgotten in review').parentElement).toHaveTextContent('0');
+    expect(screen.getByText('Due').parentElement).toHaveTextContent('1 Sept');
+
+    localStorage.setItem('lacuna.advancedDetails', 'true');
+    fireEvent(window, new StorageEvent('storage', { key: 'lacuna.advancedDetails' }));
+    expect(screen.getByText('Stability').parentElement).toHaveTextContent('4.0d');
+    expect(screen.getByText('Difficulty').parentElement).toHaveTextContent('5.0');
+    expect(screen.getByText('Current R').parentElement).toHaveTextContent('97%');
+    expect(screen.getByRole('heading', { name: 'Forgetting curve' })).toBeInTheDocument();
+    expect(container).not.toHaveTextContent('Predicted recall now');
+  });
+
   it('keeps the exam label above the plot with readable text', () => {
     vi.spyOn(Date, 'now').mockReturnValue(NOW);
     render(

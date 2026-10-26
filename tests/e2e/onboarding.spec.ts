@@ -27,12 +27,18 @@ test('a new learner finishes onboarding inside their first course', async ({ pag
   await form.getByRole('button', { name: 'Create', exact: true }).click();
 
   await expect(page.getByRole('heading', { name: 'How should Lacuna look?' })).toBeVisible();
+  const advanced = page.getByRole('switch', { name: 'Show advanced details' });
+  await expect(advanced).not.toBeChecked();
+  await advanced.press('Space');
+  await expect(advanced).toBeChecked();
   await page.getByRole('radio', { name: 'Light' }).click();
   await page.getByRole('button', { name: 'Open course' }).click();
 
   await expect(page).toHaveURL(/#\/course\/[^/?]+$/);
   await expect(page.getByRole('button', { name: 'Lesson 1', exact: true })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('lacuna-onboarding'))).toBe('done');
+  await page.goto('/#/settings#settings-study');
+  await expect(page.getByRole('switch', { name: 'Show advanced details' })).toBeChecked();
   const assessment = await page.evaluate(
     () =>
       new Promise<{ schedulingMode?: string; examDate?: number }>((resolve, reject) => {
