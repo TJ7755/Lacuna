@@ -6,17 +6,20 @@ import { MOTION_EASING } from '../ui/motion';
 /** Page arrival: each section fades in on a short stagger (about 40 ms a step), without moving. */
 export function Rise({
   index = 0,
+  as = 'div',
   className,
   children,
 }: {
   index?: number;
+  as?: 'div' | 'header';
   className?: string;
   children: ReactNode;
 }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const Surface = as === 'header' ? motion.header : motion.div;
   return (
-    <motion.div
+    <Surface
       className={className}
       initial={m > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
@@ -27,6 +30,6 @@ export function Rise({
       }}
     >
       {children}
-    </motion.div>
+    </Surface>
   );
 }

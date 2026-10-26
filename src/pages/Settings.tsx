@@ -17,7 +17,7 @@ import { CourseDefaultsSection, StudySection } from './settings/StudySection';
 import { SyncSection } from './settings/SyncSection';
 import { JevSection } from './settings/JevSection';
 import { SettingsDisclosure } from './settings/SettingsDisclosure';
-import { SettingsArrivalProvider } from './settings/SettingsUi';
+import { Rise } from '../components/analytics/Arrival';
 
 declare const __APP_VERSION__: string;
 
@@ -50,17 +50,20 @@ export function Settings() {
 
   return (
     <div className={`${PAGE_FRAME} pb-12`}>
-      <header className={PAGE_HEADER}>
+      <Rise as="header" className={PAGE_HEADER}>
         <h1 className={PAGE_TITLE}>Settings</h1>
         <p className="text-sm tabular text-ink-faint">Version {appVersion()}</p>
-      </header>
-      <SettingsArrivalProvider>
-        <div className="grid items-stretch gap-5 min-[1100px]:grid-cols-[1.15fr_1fr] [&>section]:mb-0 [&>section]:min-w-0 min-[1100px]:[&>section:first-child]:row-span-2">
-          <AppearanceSection />
-          <InputModeSection />
-          <PomodoroSection />
-        </div>
-        <div className="mt-7 divide-y divide-ink/10">
+      </Rise>
+      <Rise
+        index={1}
+        className="grid items-stretch gap-5 min-[1100px]:grid-cols-[1.15fr_1fr] [&>section]:mb-0 [&>section]:min-w-0 min-[1100px]:[&>section:first-child]:row-span-2"
+      >
+        <AppearanceSection />
+        <InputModeSection />
+        <PomodoroSection />
+      </Rise>
+      <div className="mt-7 divide-y divide-ink/10">
+        <Rise index={2}>
           <SettingsDisclosure
             id="settings-group-appearance"
             title="Appearance & access"
@@ -72,6 +75,8 @@ export function Settings() {
             <CourseHeaderSection />
             <ShortcutsSection />
           </SettingsDisclosure>
+        </Rise>
+        <Rise index={3}>
           <SettingsDisclosure
             id="settings-group-study"
             title="Study behaviour"
@@ -80,6 +85,8 @@ export function Settings() {
           >
             <StudySection />
           </SettingsDisclosure>
+        </Rise>
+        <Rise index={4}>
           <SettingsDisclosure
             id="settings-group-course-defaults"
             title="Course defaults"
@@ -88,6 +95,8 @@ export function Settings() {
           >
             <CourseDefaultsSection />
           </SettingsDisclosure>
+        </Rise>
+        <Rise index={5}>
           <SettingsDisclosure
             id="settings-group-data"
             title="Your data"
@@ -99,6 +108,8 @@ export function Settings() {
             <SyncSection />
             <DataPortabilitySection motionMultiplier={motionMultiplier} />
           </SettingsDisclosure>
+        </Rise>
+        <Rise index={6}>
           <SettingsDisclosure
             id="settings-group-integrations"
             title="Integrations"
@@ -109,8 +120,8 @@ export function Settings() {
             <JevSection />
             {window.electronAPI?.isElectron && <McpSection />}
           </SettingsDisclosure>
-        </div>
-      </SettingsArrivalProvider>
+        </Rise>
+      </div>
     </div>
   );
 }

@@ -14,7 +14,7 @@ function fragment() {
   }
 }
 
-/** Course-settings row treatment, retaining mounted forms and pending operations. */
+/** Mount on first opening, then retain forms and pending operations when closed. */
 export function SettingsDisclosure({
   id,
   title,
@@ -30,6 +30,7 @@ export function SettingsDisclosure({
 }) {
   const matches = (target: string) => target === id || anchors.includes(target);
   const [open, setOpen] = useState(() => matches(fragment()));
+  const [hasOpened, setHasOpened] = useState(open);
   const panelId = useId();
   const headingId = useId();
   const pendingTarget = useRef<string | null>(matches(fragment()) ? fragment() : null);
@@ -55,6 +56,7 @@ export function SettingsDisclosure({
       const target = fragment();
       if (target !== id && !anchors.includes(target)) return;
       pendingTarget.current = target;
+      setHasOpened(true);
       if (open) scrollToTarget();
       else setOpen(true);
     }
@@ -70,7 +72,10 @@ export function SettingsDisclosure({
           data-press
           aria-expanded={open}
           aria-controls={panelId}
-          onClick={() => setOpen(!open)}
+          onClick={() => {
+            setHasOpened(true);
+            setOpen(!open);
+          }}
           className="flex min-h-11 w-full scale-100! items-center gap-4 rounded-2xl px-2 py-5 text-left transition-colors hover:bg-ink/[0.03] active:bg-ink/[0.06]"
         >
           <span className="min-w-0 flex-1 font-semibold text-ink">{title}</span>
@@ -103,7 +108,9 @@ export function SettingsDisclosure({
         className="relative overflow-hidden"
       >
         <div className="px-2 pb-6 pt-2 [&_section[id]]:scroll-mt-20">
-          <SettingsHeadingLevelProvider level={3}>{children}</SettingsHeadingLevelProvider>
+          {hasOpened && (
+            <SettingsHeadingLevelProvider level={3}>{children}</SettingsHeadingLevelProvider>
+          )}
         </div>
       </motion.div>
     </section>
