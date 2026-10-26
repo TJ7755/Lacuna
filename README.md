@@ -6,6 +6,31 @@ Lacuna is a local-first revision app built around FSRS-6. Organise material into
 lessons and notes, then practise recall Cards towards an exam date. A separate Questions
 mode supports automatically marked application problems with independent evidence and scheduling.
 
+## Product direction
+
+Our aim is to be the best in the world at personalised GCSE science revision: choosing
+what each student needs to practise next to improve their exam performance.
+
+**GCSE science revision that adapts to what you know, how you answer and when your exams are.**
+
+That ambition covers the complete revision process across biology, chemistry and physics,
+boards and tiers:
+
+- **Knowledge:** learn missing material and remember it until the exam.
+- **Application:** use that knowledge in unfamiliar situations.
+- **Exam technique:** interpret questions, construct explanations, use evidence and show working.
+- **Preparation:** allocate practice across papers, deadlines, school teaching order and available time.
+
+Every feature should help choose, deliver or assess the next useful practice. Diagnosing lost
+marks is one part of this direction; the broader goal is to answer: **what should I practise
+next for my GCSE science exams?**
+
+This is our direction, not a claim that every capability has shipped or that superiority has
+been demonstrated. The [focus tracker](https://github.com/TJ7755/Lacuna/issues/902) owns the
+delivery plan and evidence needed to assess progress.
+
+## Using Lacuna
+
 Use Lacuna at [getlacuna.app](https://getlacuna.app). Browser study data is local to each
 origin: moving from the previous Vercel address requires exporting a full backup there
 and importing it at the new address. The previous address remains available.
