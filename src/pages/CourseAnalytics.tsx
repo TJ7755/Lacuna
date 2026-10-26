@@ -87,7 +87,7 @@ export function CourseAnalytics() {
             label="Summary"
             multiplier={m}
             items={[
-              { label: 'Mastery', value: figures.mastery, unit: '%' },
+              { label: 'Cards at 90% predicted recall', value: figures.mastery, unit: '%' },
               { label: 'Cards', value: cards.length },
               { label: 'Reviews, 30 days', value: figures.reviews },
               { label: 'Study time, 30 days', value: figures.minutes, unit: 'min' },

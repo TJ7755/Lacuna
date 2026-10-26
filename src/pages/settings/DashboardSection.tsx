@@ -10,7 +10,7 @@ import { SegmentedPills, PillSwitch, SETTINGS_HEADING_ROW_CLASS, SettingsCard } 
 const SORT_OPTIONS: { value: DashboardSort; label: string }[] = [
   { value: 'recent', label: 'Recently studied' },
   { value: 'ready', label: 'Ready for review' },
-  { value: 'mastery', label: 'Lowest mastery' },
+  { value: 'mastery', label: 'Lowest exam readiness' },
   { value: 'exam', label: 'Soonest exam' },
   { value: 'name', label: 'Name A–Z' },
   { value: 'created', label: 'Created recently' },

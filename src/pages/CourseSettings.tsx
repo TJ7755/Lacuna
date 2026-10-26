@@ -135,7 +135,7 @@ export function CourseSettings() {
                       commitCourse({ examObjective: next });
                     }}
                     options={[
-                      { value: 'expectedMarks', label: 'Most marks' },
+                      { value: 'expectedMarks', label: 'Best overall recall' },
                       { value: 'securedTopics', label: 'Secure topics' },
                     ]}
                   />

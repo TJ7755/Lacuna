@@ -38,7 +38,7 @@ export function localLessonOrderUnavailableReason(
   if (
     practiceNodes.some((node) => !node.questionSetIds?.length || !lessonIds.has(node.afterLessonId ?? ''))
   ) {
-    return 'Local lesson order requires lesson-anchored Question Set activities.';
+    return 'Local lesson order requires every practice activity to be a Question Set attached to a single lesson.';
   }
   if (
     assessments.length !== 1 ||
@@ -48,7 +48,7 @@ export function localLessonOrderUnavailableReason(
     assessments[0].excludedCardIds.length > 0 ||
     assessments[0].needsAuthorConfirmation
   ) {
-    return 'Local lesson order requires one unanchored full-course final assessment and no checkpoints.';
+    return 'Local lesson order requires one final assessment covering the whole course and no checkpoints.';
   }
   return undefined;
 }

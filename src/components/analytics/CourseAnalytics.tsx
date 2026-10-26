@@ -5,6 +5,7 @@ import { LessonBreakdownCard } from './SeriesCards';
 import { useChartColours } from './useChartColours';
 import { FadeInView } from '../ui/FadeInView';
 import { lessonBreakdown, reviewVolume, stabilityProfile } from './prepare';
+import { progressHeading } from '../../fsrs/objective';
 import type { Card, Course, Lesson } from '../../db/types';
 import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 import { useAdvancedDetails } from '../../state/advancedDetails';
@@ -43,7 +44,7 @@ export function CourseAnalytics({ course, lessons, cards, reviewHistory }: Cours
   return (
     <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
       <FadeInView className={`${CELL} lg:col-span-2`} y={12}>
-        <LessonBreakdownCard breakdown={breakdown} />
+        <LessonBreakdownCard breakdown={breakdown} objectiveLabel={progressHeading(course)} />
       </FadeInView>
 
       {advancedDetails && (

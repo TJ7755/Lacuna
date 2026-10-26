@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type {
   QuestionAnalytics,
@@ -153,7 +153,9 @@ describe('QuestionAnalyticsSection', () => {
     expect(screen.getByText('Repeated presentations').nextElementSibling).toHaveTextContent(
       '1 / 3',
     );
-    expect(screen.getByText('Fixed questions seen').nextElementSibling).toHaveTextContent('2 / 2');
+    expect(
+      within(panel as HTMLElement).getByText('Fixed questions seen').nextElementSibling,
+    ).toHaveTextContent('2 / 2');
     expect(screen.getByText('3 / 6')).toBeInTheDocument();
     expect(screen.getByText(/Excluded attempts/)).toBeInTheDocument();
     expect(screen.getByText('Checker withheld')).toBeInTheDocument();
