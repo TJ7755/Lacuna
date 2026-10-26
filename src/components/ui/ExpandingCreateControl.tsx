@@ -129,7 +129,8 @@ export function ExpandingCreateControl({
           if (!open) setRetainForm(false);
         }}
         // The closed button uses an inset ring; the open form is a flat card.
-        className={`absolute ${anchor} top-0 overflow-hidden ring-1 ring-inset ${open ? 'bg-surface-raised ring-transparent card-surface' : prominent ? 'bg-accent ring-transparent' : 'bg-surface-raised ring-line-strong'}`}
+        // Only the inner form scrolls: autofocus must not scroll the growing shell and its label.
+        className={`absolute ${anchor} top-0 overflow-clip ring-1 ring-inset ${open ? 'bg-surface-raised ring-transparent card-surface' : prominent ? 'bg-accent ring-transparent' : 'bg-surface-raised ring-line-strong'}`}
       >
         <motion.button
           ref={trigger}
