@@ -121,6 +121,10 @@ movement can justify more. More than about 1,000 handwritten changed lines requi
 and normally belongs in a split. Do not combine unrelated dependency majors or a visual redesign with
 a security or data-safety change.
 
+Prefer source files below 500 lines, excluding generated files and lockfiles. Exceeding this soft
+limit triggers a review of cohesive responsibilities and meaningful extraction opportunities, not
+an automatic split. Keep cohesive modules together when splitting would reduce clarity.
+
 ## Stacked pull requests
 
 Use a stack when a change has genuinely independent layers. Each pull request must have one parent
