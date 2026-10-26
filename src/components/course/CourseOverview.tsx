@@ -18,7 +18,7 @@ const CARD = 'rounded-3xl bg-surface card-surface';
 /**
  * The course as a list of lessons in order, with checkpoints and practice stops where
  * they fall, beside the course's assessments. Each lesson shows its number, state and a
- * progress bar; in Edit mode lessons can be dragged or moved with Alt and the arrows.
+ * progress bar. Authors and learners with locked imports can reorder lessons.
  */
 export function CourseOverview(props: CourseOverviewProps) {
   const { nodes, authoring, archived } = props;
@@ -79,8 +79,8 @@ export function CourseOverview(props: CourseOverviewProps) {
             </AnimatedDisclosure>
           )}
           <p id="lesson-path-reorder-instructions" className="sr-only">
-            In Edit mode, hold a row to lift it, then drag to reorder. Alternatively, press Alt and
-            the up or down arrow key.
+            {props.localOrder ? 'Hold a lesson' : 'In Edit mode, hold a row'} to lift it, then drag
+            to reorder. Alternatively, press Alt and the up or down arrow key.
           </p>
           <div aria-live="polite" aria-atomic="true" className="sr-only">
             {props.announcement}

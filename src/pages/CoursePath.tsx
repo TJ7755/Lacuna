@@ -113,14 +113,16 @@ export function CoursePath() {
     [notify],
   );
 
+  const localOrder = !!course?.distributedCopy?.locked && !archived;
   const lessonReorder = useCoursePathReorder(
     courseId ?? '',
     nodes,
     lessons ?? [],
     courseCards ?? [],
     lessonLinks ?? [],
-    authoring,
+    authoring || localOrder,
     notifyReorderError,
+    localOrder,
   );
 
   usePageShortcuts({
@@ -322,6 +324,7 @@ export function CoursePath() {
         assessments={assessments}
         timeZone={course.timeZone}
         authoring={authoring}
+        localOrder={localOrder}
         archived={archived}
         announcement={lessonReorder.announcement}
         reorderFor={lessonReorder.interactionFor}

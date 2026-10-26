@@ -25,6 +25,7 @@ export function renderCoursePathRows(
   lessons: Lesson[],
 ) {
   const { nodes, authoring, archived, practiceProgress } = props;
+  const localOrder = props.localOrder && !archived;
   let lessonNumber = 0;
   return nodes.map((node, index) => {
     const arrive = {
@@ -161,7 +162,9 @@ export function renderCoursePathRows(
     const detail = lesson ? props.detailForLesson(lesson.lesson.id) : undefined;
     const status = lesson?.status ?? (progress?.completed ? 'completed' : 'available');
     const reorder =
-      authoring && node.nodeType !== 'practice-auto' ? props.reorderFor(node.id) : undefined;
+      (authoring && node.nodeType !== 'practice-auto') || (localOrder && lesson)
+        ? props.reorderFor(node.id)
+        : undefined;
     if (lesson) lessonNumber += 1;
     const name = lesson ? lesson.lesson.name : (practice?.practiceNode?.name ?? 'Card practice');
     const pct = lesson ? (detail?.masteryPct ?? 0) : Math.round((progress?.fraction ?? 0) * 100);
@@ -176,11 +179,12 @@ export function renderCoursePathRows(
       : `${pct}% secured`;
     const label = practice
       ? `Card practice: ${name}, ${pct}% secured`
-      : locked && authoring
+      : locked && (authoring || localOrder)
         ? `${name}, locked for study`
         : name;
     const morphsToEditor = authoring && !!practice?.practiceNode;
     const open = () => {
+      if (locked && !authoring && !archived) return;
       if (lesson) props.onLessonOpen(lesson.lesson.id);
       else if (practice) props.onPracticeOpen(practice);
     };
@@ -222,7 +226,8 @@ export function renderCoursePathRows(
           aria-keyshortcuts={reorder?.enabled ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
           aria-roledescription={reorder?.enabled ? 'sortable path row' : undefined}
           title={locked && lesson ? props.lockHint(lesson.lesson.id) : undefined}
-          disabled={locked && !authoring && !archived}
+          disabled={locked && !authoring && !archived && !localOrder}
+          aria-disabled={(locked && !authoring && !archived) || undefined}
           onPointerDown={reorder?.onPointerDown}
           onPointerMove={reorder?.onPointerMove}
           onPointerUp={reorder?.onPointerUp}
