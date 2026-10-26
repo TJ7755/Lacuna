@@ -124,14 +124,19 @@ export function LandingTransition() {
       role="presentation"
     >
       {paper && transition.cancel && (
-        <header className="absolute inset-x-0 top-0 z-10 bg-paper pt-[env(safe-area-inset-top)]">
+        <motion.header
+          className="absolute inset-x-0 top-0 z-10 bg-paper pt-[env(safe-area-inset-top)]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.18 * multiplier, ease: SWEEP_EASE }}
+        >
           <div className={STUDY_HEADER_ROW}>
             <Button variant="secondary" size="sm" onClick={cancel} className="h-11 shrink-0 px-4">
               <CloseIcon width={16} height={16} aria-hidden="true" />
               Exit
             </Button>
           </div>
-        </header>
+        </motion.header>
       )}
       {paper && (
         <motion.div
