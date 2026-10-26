@@ -74,16 +74,19 @@ export function progressValue(
     : averagePredictedRetrievability(available, deck, now, examDateContext);
 }
 
-/** A short noun for compact headers, e.g. "62% predicted score" / "62% secured". */
+/** A short noun for compact headers, e.g. "62% predicted recall" / "62% secured". */
 export function progressNoun(deck: SchedulerConfig): string {
-  return deck.examObjective === 'securedTopics' ? 'secured' : 'predicted score';
+  return deck.examObjective === 'securedTopics' ? 'secured' : 'predicted recall';
 }
 
-/** A heading for the deck/summary panels. */
+/**
+ * A heading for the deck/summary panels. Names what `progressValue` computes for
+ * the deck's objective: mean predicted recall, or the share of Cards at 90%.
+ */
 export function progressHeading(deck: SchedulerConfig): string {
   return deck.examObjective === 'securedTopics'
-    ? 'Predicted mastery on exam day'
-    : 'Predicted exam score';
+    ? 'Cards at 90% predicted recall'
+    : 'Predicted recall';
 }
 
 /**

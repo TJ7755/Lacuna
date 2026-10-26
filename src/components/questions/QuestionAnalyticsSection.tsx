@@ -101,7 +101,7 @@ export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAna
 
           <div className="grid grid-cols-2 gap-6 border-t border-line p-5 xl:grid-cols-4 md:p-6">
             <div>
-              <p className="text-xs text-ink-soft">Fixed coverage</p>
+              <p className="text-xs text-ink-soft">Fixed questions seen</p>
               <p className="mt-2 font-display text-2xl text-ink">
                 {percent(analytics.fixed.exposureCoverage)}
               </p>

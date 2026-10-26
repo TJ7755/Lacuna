@@ -185,7 +185,7 @@ export const helpTopics: readonly HelpTopic[] = [
     group: 'Progress',
     question: 'What does the progress bar mean?',
     answer:
-      'It estimates exam-day readiness for your chosen objective. Secure topics shows the fraction of cards with at least a 90% predicted chance of recall; Maximise expected marks shows the average predicted chance across all cards.',
+      'It estimates exam-day readiness for your chosen objective. Secure topics shows the fraction of cards with at least a 90% predicted chance of recall; Best overall recall shows the average predicted chance across all cards.',
     keywords: ['progress', 'readiness', 'secured', 'marks', 'percentage'],
     action: { label: 'View progress', to: '/analytics' },
   },

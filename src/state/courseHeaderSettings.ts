@@ -25,7 +25,7 @@ export interface CourseHeaderSettings {
 // heading, and most of them are not acted on before pressing Study.
 export const DEFAULT_STAT_PILLS: CourseStatPill[] = [
   { id: 'due', label: 'Cards due now', visible: true },
-  { id: 'mastery', label: 'Mastery', visible: true },
+  { id: 'mastery', label: 'Exam readiness', visible: true },
   { id: 'exam', label: 'Days until the exam', visible: false },
   { id: 'unmapped', label: 'Unmapped cards', visible: false },
   { id: 'lessons', label: 'Lessons reached', visible: false },

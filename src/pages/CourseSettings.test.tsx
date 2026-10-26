@@ -441,7 +441,7 @@ describe('CourseSettings', () => {
   it('commits the exam objective immediately on change', () => {
     renderPage();
     const objective = screen.getByRole('group', { name: 'Exam objective' });
-    expect(within(objective).getByRole('button', { name: 'Most marks' })).toHaveAttribute(
+    expect(within(objective).getByRole('button', { name: 'Best overall recall' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );

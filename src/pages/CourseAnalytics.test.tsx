@@ -161,7 +161,7 @@ describe('CourseAnalytics', () => {
     );
 
     const summary = screen.getByRole('region', { name: 'Summary' });
-    for (const label of ['Mastery', 'Cards', 'Reviews, 30 days', 'Study time, 30 days']) {
+    for (const label of ['Cards at 90% predicted recall', 'Cards', 'Reviews, 30 days', 'Study time, 30 days']) {
       expect(summary).toHaveTextContent(label);
     }
     const forecast = screen.getByText('Exam-day forecast');

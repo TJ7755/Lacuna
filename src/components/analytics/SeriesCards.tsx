@@ -187,10 +187,17 @@ export function PredictionAccuracyCard({ prediction }: { prediction: PredictionA
 }
 
 /**
- * Mastery and completion for each lesson. Card counts stay in the tooltip and data table:
+ * Per-lesson recall (the course's objective figure scoped to each lesson) and
+ * completion for each lesson. Card counts stay in the tooltip and data table:
  * plotted on a hidden second axis, a count read against the percentage scale.
  */
-export function LessonBreakdownCard({ breakdown }: { breakdown: LessonBreakdownPoint[] }) {
+export function LessonBreakdownCard({
+  breakdown,
+  objectiveLabel,
+}: {
+  breakdown: LessonBreakdownPoint[];
+  objectiveLabel: string;
+}) {
   const s = useChartStyle();
   const mean = (pick: (point: LessonBreakdownPoint) => number) =>
     breakdown.length > 0
@@ -200,7 +207,7 @@ export function LessonBreakdownCard({ breakdown }: { breakdown: LessonBreakdownP
     <ChartCard
       title="Lesson breakdown"
       data={{
-        columns: ['Lesson', 'Cards', 'Mastery (%)', 'Completion (%)'],
+        columns: ['Lesson', 'Cards', `${objectiveLabel} (%)`, 'Completion (%)'],
         rows: breakdown.map((point) => [
           point.name,
           point.cardCount,
@@ -209,7 +216,7 @@ export function LessonBreakdownCard({ breakdown }: { breakdown: LessonBreakdownP
         ]),
       }}
       legend={[
-        { label: 'Mastery', colour: s.c.accent, value: `${mean((p) => p.masteryPct)}%` },
+        { label: objectiveLabel, colour: s.c.accent, value: `${mean((p) => p.masteryPct)}%` },
         { label: 'Completion', colour: s.c.positive, value: `${mean((p) => p.completionPct)}%` },
       ]}
       emptyDrawing="course"
@@ -236,7 +243,7 @@ export function LessonBreakdownCard({ breakdown }: { breakdown: LessonBreakdownP
               const cards = (payload[0]?.payload as LessonBreakdownPoint | undefined)?.cardCount;
               return cards === undefined ? name : `${name} · ${countOf(cards, 'card')}`;
             }}
-            formatter={(v, name) => [`${v}%`, name === 'masteryPct' ? 'Mastery' : 'Completion']}
+            formatter={(v, name) => [`${v}%`, name === 'masteryPct' ? objectiveLabel : 'Completion']}
           />
           <Bar
             dataKey="masteryPct"

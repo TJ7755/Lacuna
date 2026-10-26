@@ -279,7 +279,7 @@ export function ForecastChart({
           {sharedTarget && (
             <li className="inline-flex min-h-11 items-center gap-2 px-2 text-ink">
               <span aria-hidden="true" className="w-[18px] border-t-[1.5px] border-dashed border-ink" />
-              Target <strong className="font-bold tabular-nums">{Math.round(target * 100)}%</strong>
+              Target recall <strong className="font-bold tabular-nums">{Math.round(target * 100)}%</strong>
             </li>
           )}
         </ul>

@@ -41,7 +41,7 @@ test('Lesson breakdown keeps card counts off the percentage axis', async ({ page
   await expect(tooltip).toContainText(/ · \d+ cards?/);
   // Rows follow the legend's order rather than the alphabet.
   const text = (await tooltip.textContent()) ?? '';
-  expect(text.indexOf('Mastery')).toBeLessThan(text.indexOf('Completion'));
+  expect(text.indexOf('Predicted recall')).toBeLessThan(text.indexOf('Completion'));
 });
 
 test('Progress reading surfaces remain visible after their entrance settles', async ({ page }) => {
