@@ -4,7 +4,7 @@ import { scaledSpring } from './motion';
 
 /** A quiet inset shadow leaves native paint, content and hit areas in their owner's hands. */
 export function createFeedbackSurface(element: HTMLElement, onDispose: () => void) {
-  const layer = document.createElement('span');
+  const layer = document.createElement('i');
   layer.setAttribute('aria-hidden', 'true');
   layer.className = 'flow-feedback-layer';
   const depth = motionValue(0);
@@ -29,7 +29,7 @@ export function createFeedbackSurface(element: HTMLElement, onDispose: () => voi
     onDispose();
   };
   if (getComputedStyle(element).position === 'static') element.style.position = 'relative';
-  element.append(layer);
+  element.prepend(layer);
   draw();
   return {
     element,
