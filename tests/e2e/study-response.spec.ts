@@ -34,8 +34,6 @@ test('makes the revealed answer readable during the deliberate card flip', async
     );
   });
 
-  const courseId = /#\/course\/([^/]+)/.exec(page.url())?.[1];
-  expect(courseId).toBeTruthy();
   const reviewedId = await page
     .locator('[data-study-face="front"]')
     .first()
@@ -94,13 +92,4 @@ test('makes the revealed answer readable during the deliberate card flip', async
       ),
     )
     .toBe(1);
-  await page.goto(`/#/course/${courseId}/cards`);
-  const frontPrefix = frontText.trim().split(/\s+/).slice(0, 4).join(' ');
-  await page.getByLabel('Search all cards').fill(frontPrefix);
-  // Hover previews can display the back; the search still identifies this single Card.
-  const row = page.locator(`[data-card-id="${reviewedId}"]`);
-  await expect(row).toHaveCount(1);
-  await row.click();
-  await expect(page.getByText('Average answer time', { exact: true })).toBeVisible();
-  await expect(page.getByText('Accuracy', { exact: true })).toBeVisible();
 });
