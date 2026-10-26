@@ -178,12 +178,7 @@ export function StudyExpansion({
       className="flow-expansion fixed z-50 overflow-hidden bg-surface-raised text-ink card-surface"
     >
       {!launching && (
-        <FlowExpansionSurface
-          open={present}
-          triggerWidth={origin.width}
-          triggerHeight={origin.height}
-          multiplier={multiplier}
-        />
+        <FlowExpansionSurface triggerWidth={origin.width} triggerHeight={origin.height} />
       )}
       <motion.button
         type="button"
@@ -194,7 +189,6 @@ export function StudyExpansion({
         }}
         data-press="none"
         data-flow-feedback
-        data-flow-trigger
         initial={multiplier > 0 ? originColours : false}
         animate={{
           backgroundColor: 'rgba(0, 0, 0, 0)',

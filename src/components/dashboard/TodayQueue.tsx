@@ -126,7 +126,7 @@ export function TodayQueue({
             />
             <button
               type="button"
-              data-flow-row-trigger
+              data-press="none"
               onClick={() => navigate(row.href)}
               onPointerEnter={() => prefetchRoute(row.href)}
               onFocus={() => prefetchRoute(row.href)}

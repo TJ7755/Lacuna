@@ -134,12 +134,9 @@ export function ExpandingCreateControl({
         className={`absolute ${anchor} top-0 flow-expansion overflow-clip ring-1 ring-inset ${open ? 'bg-surface-raised ring-transparent card-surface' : prominent ? 'bg-accent ring-transparent' : 'bg-surface-raised ring-line-strong'}`}
       >
         <FlowExpansionSurface
-          open={open}
           triggerWidth={closedWidth}
           triggerHeight={triggerHeight}
-          multiplier={multiplier}
           prominent={prominent}
-          align={align === 'end' ? 'end' : 'start'}
         />
         <motion.button
           ref={trigger}
@@ -153,7 +150,6 @@ export function ExpandingCreateControl({
           animate={{ x: open ? -offset : 0 }}
           data-press="none"
           data-flow-feedback
-          data-flow-trigger
           transition={transition}
           style={{ width: closedWidth, color: prominent ? 'var(--flow-expansion-ink)' : undefined }}
           className={`absolute ${anchor} top-0 z-10 flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold ${prominent && !open ? 'text-accent-fg' : 'text-ink'} focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink`}

@@ -29,7 +29,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 for (const theme of ['light', 'dark']) {
-  test(`mouse feedback bends a local edge and preserves paint/content in ${theme}`, async ({
+  test(`mouse feedback keeps clean contours and preserves paint/content in ${theme}`, async ({
     page,
   }, info) => {
     await enterFreshLacuna(page);
@@ -41,16 +41,19 @@ for (const theme of ['light', 'dark']) {
     const target = await study.boundingBox();
     await study.hover();
     await page.waitForTimeout(350);
-    const hoverEdge = await upperEdge(await study.screenshot());
-    expect(hoverEdge[1] - (hoverEdge[0] + hoverEdge[2]) / 2).toBeGreaterThanOrEqual(1);
+    const hoverPaint = await study.screenshot();
+    const restingPaint = await opaquePixel(hoverPaint, 16, 22);
+    const hoverEdge = await upperEdge(hoverPaint);
+    expect(Math.max(...hoverEdge) - Math.min(...hoverEdge)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: `${evidence}/study-hover-${theme}.png` });
     await page.mouse.down();
     await page.waitForTimeout(220);
     expect(await contentRect(study)).toEqual(label);
     expect(await study.boundingBox()).toEqual(target);
     const pressed = await study.screenshot();
+    expect(await opaquePixel(pressed, 16, 22)).toEqual(restingPaint);
     const edge = await upperEdge(pressed);
-    expect(edge[1] - (edge[0] + edge[2]) / 2).toBeGreaterThanOrEqual(2);
+    expect(Math.max(...edge) - Math.min(...edge)).toBeLessThanOrEqual(1);
     await info.attach('painted-edge', {
       body: JSON.stringify(edge),
       contentType: 'application/json',

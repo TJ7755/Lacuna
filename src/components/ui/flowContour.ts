@@ -4,16 +4,9 @@ export interface FlowPoint {
   x: number;
   y: number;
 }
-export interface FlowFeedback {
-  pressure: number;
-  x: number;
-}
-
-const bell = (value: number, centre: number, width: number) =>
-  Math.exp(-(((value - centre) / width) ** 2));
 const clamp = (value: number, low: number, high: number) => Math.max(low, Math.min(high, value));
 
-/** Sample superelliptic corners, including straight-edge points for local deformation. */
+/** Sample the continuous corners of the measured expanding shell. */
 export function flowOutline(
   width: number,
   height: number,
@@ -50,43 +43,7 @@ export function flowOutline(
   return points;
 }
 
-/** Local edge displacement is bounded in pixels, independent of the control's length. */
-export function deformFlow(
-  points: FlowPoint[],
-  width: number,
-  height: number,
-  feedback: FlowFeedback,
-  feedbackHeight = height,
-): FlowPoint[] {
-  const centre = clamp(feedback.x, 12, Math.max(12, width - 12));
-  return points.map((point, i) => {
-    const before = points[(i + points.length - 1) % points.length];
-    const after = points[(i + 1) % points.length];
-    const dx = after.x - before.x,
-      dy = after.y - before.y;
-    const length = Math.hypot(dx, dy) || 1;
-    const nx = dy / length,
-      ny = -dx / length;
-    // Two shoulders gather around a pressed-in waist, rather than scaling a slab.
-    const top =
-      2.8 * bell(point.x, centre - 16, 11) +
-      3.2 * bell(point.x, centre + 16, 11) -
-      4.1 * bell(point.x, centre, 9);
-    const bottom = 2.5 * bell(point.x, centre + 5, 18) - 1.8 * bell(point.x, centre - 23, 12);
-    const side = 1.8 * bell(point.y, feedbackHeight / 2, 12);
-    const displacement = clamp(
-      feedback.pressure *
-        (Math.max(0, -ny) * top * bell(point.y, 0, 14) +
-          Math.max(0, ny) * bottom * bell(point.y, feedbackHeight, 14) +
-          Math.abs(nx) * side),
-      -3.5,
-      3.5,
-    );
-    return { x: point.x + nx * displacement, y: point.y + ny * displacement };
-  });
-}
-
-/** Closed interpolating contour: shared by local feedback and expanding surfaces. */
+/** Closed interpolating contour for expanding surfaces. */
 export function flowPath(points: FlowPoint[]): string {
   if (!points.length) return '';
   const n = points.length,
@@ -102,25 +59,13 @@ export function flowPath(points: FlowPoint[]): string {
   return `${path}Z`;
 }
 
-/** Keep source and body joined while the measured shell grows or contracts. */
+/** The source pill grows into a clean continuous-corner surface without decorative lobes. */
 export function expansionOutline(
   width: number,
   height: number,
-  triggerWidth: number,
   triggerHeight: number,
-  align: 'start' | 'end',
 ): FlowPoint[] {
   const expanded = clamp((height - triggerHeight) / 120, 0, 1);
   const radius = triggerHeight / 2 + (36 - triggerHeight / 2) * expanded;
-  const points = flowOutline(width, height, radius, 2 + (FLOW_CORNER_EXPONENT - 2) * expanded);
-  const neck =
-    clamp((width - triggerWidth) / 70, 0, 1) * clamp(1 - (height - triggerHeight) / 160, 0, 1);
-  return points.map(({ x, y }) => {
-    const fromSource = align === 'end' ? width - triggerWidth - x : x - triggerWidth;
-    const body = clamp((fromSource + 20) / 44, 0, 1);
-    const top = 16 * neck * body * bell(y, 0, triggerHeight * 0.6);
-    const sourceSide = align === 'end' ? bell(x, width, 10) : bell(x, 0, 10);
-    const waist = 8 * neck * sourceSide * bell(y, triggerHeight + 6, 15);
-    return { x: x + (align === 'end' ? -waist : waist), y: y + top };
-  });
+  return flowOutline(width, height, radius, 2 + (FLOW_CORNER_EXPONENT - 2) * expanded);
 }

@@ -18,11 +18,11 @@ describe('press feedback ownership', () => {
     const label = button.firstChild;
     uninstall = installPressFeedback();
     button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
-    expect(button).toHaveClass('flow-feedback');
+    expect(button.querySelector('[aria-hidden]')).not.toBeNull();
     expect(button.querySelector('span')).toBe(label);
     expect(button.style.transform).toBe('translateX(10px)');
     uninstall();
-    expect(button).not.toHaveClass('flow-feedback');
+    expect(button.querySelector('[aria-hidden]')).toBeNull();
   });
 
   it('respects disabled controls and an explicitly owned surface', () => {
@@ -34,7 +34,7 @@ describe('press feedback ownership', () => {
     uninstall = installPressFeedback();
     for (const button of [own, disabled]) {
       button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
-      expect(button).not.toHaveClass('flow-feedback');
+      expect(button.querySelector('[aria-hidden]')).toBeNull();
     }
   });
 });

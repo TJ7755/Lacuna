@@ -361,17 +361,16 @@
   border-radius: var(--flow-control-radius);
 }
 
-/* Flow owns paint independently of readable content and native hit areas. */
-.flow-feedback {
-  isolation: isolate;
-  background-color: transparent !important;
-  border-color: transparent !important;
-}
+/* Feedback never replaces native paint or the control's existing pseudo-elements. */
 .flow-feedback-layer {
   position: absolute;
-  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  corner-shape: inherit;
   pointer-events: none;
-  overflow: visible;
+  box-shadow:
+    inset 0 0 0 1px currentColor,
+    inset 0 2px 4px -2px currentColor;
 }
 [data-study-trigger][aria-busy='true']::after {
   content: '';
@@ -404,9 +403,13 @@
   .study-target-tiles > label,
   .import-sources button,
   .import-drop {
-    border-radius: var(--flow-control-radius);
     corner-shape: superellipse(1.5);
   }
+}
+
+.import-sources button,
+.import-drop {
+  border-radius: var(--flow-control-radius);
 }
 
 .today-empty-state {

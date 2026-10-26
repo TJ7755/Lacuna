@@ -5,7 +5,7 @@ const PRESSABLE =
   'button:not(:disabled), a[href], [role="button"], [role="link"], ' +
   '[role="menuitem"], [role="tab"], [role="option"], [role="switch"], summary, label:has(input[type="radio"]:not(:disabled))';
 
-/** One input owner; surface owners deform paint independently of content and native targets. */
+/** One input owner; feedback leaves content, paint and native targets intact. */
 export function installPressFeedback(root: Document = document): () => void {
   type Surface = ReturnType<typeof createFeedbackSurface>;
   const surfaces = new Map<HTMLElement, Surface>();
@@ -15,31 +15,31 @@ export function installPressFeedback(root: Document = document): () => void {
     const element =
       event.target instanceof Element ? event.target.closest<HTMLElement>(PRESSABLE) : null;
     return element &&
-      !element.closest('[inert], [data-flow-paint-probe]') &&
+      !element.closest('[inert]') &&
       element.getAttribute('aria-disabled') !== 'true' &&
       (element.getAttribute('data-press') !== 'none' || element.hasAttribute('data-flow-feedback'))
       ? element
       : null;
   };
-  const feedback = (element: HTMLElement, pressed: boolean, over: boolean, x?: number) => {
+  const feedback = (element: HTMLElement, pressed: boolean, over: boolean) => {
     if (!element.isConnected) return;
     let surface = surfaces.get(element);
     if (!surface) {
       surface = createFeedbackSurface(element, () => surfaces.delete(element));
       surfaces.set(element, surface);
     }
-    surface.retarget(pressed, over, x);
+    surface.retarget(pressed, over);
   };
   const over = (event: PointerEvent) => {
     const element = target(event);
     if (hovered === element) return;
     if (hovered) feedback(hovered, held === hovered, false);
     hovered = element;
-    if (element) feedback(element, held === element, true, event.clientX);
+    if (element) feedback(element, held === element, true);
   };
   const leave = (event: PointerEvent) => {
     if (hovered && !hovered.contains(event.relatedTarget as Node | null)) {
-      feedback(hovered, held === hovered, false, event.clientX);
+      feedback(hovered, held === hovered, false);
       hovered = null;
     }
   };
@@ -47,7 +47,7 @@ export function installPressFeedback(root: Document = document): () => void {
     if (event.button !== 0) return;
     if (held) feedback(held, false, false);
     held = target(event);
-    if (held) feedback(held, true, true, event.clientX);
+    if (held) feedback(held, true, true);
   };
   const release = () => {
     if (held) feedback(held, false, hovered === held);
@@ -81,21 +81,13 @@ export function installPressFeedback(root: Document = document): () => void {
     if (speedMultiplier() === 0) surfaces.forEach((surface) => surface.reset());
   };
   // Detached surfaces are disposed without waiting for another pointer event.
-  const observer = new MutationObserver((records) => {
+  const observer = new MutationObserver(() => {
     for (const [element, surface] of surfaces) {
       if (!element.isConnected || element.matches(':disabled') || element.closest('[inert]')) {
         surface.dispose();
         if (held === element) held = null;
         if (hovered === element) hovered = null;
-      } else if (
-        records.some(
-          (record) =>
-            record.type === 'attributes' &&
-            (record.target === element ||
-              (record.target instanceof Element && record.target.contains(element))),
-        )
-      )
-        surface.refresh();
+      }
     }
   });
   observer.observe(root.documentElement, {

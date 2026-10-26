@@ -112,12 +112,7 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
         transition={transition}
         className={`absolute right-0 top-0 flow-expansion overflow-hidden bg-surface-raised ring-1 ring-inset ${expanded ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
       >
-        <FlowExpansionSurface
-          open={expanded}
-          triggerWidth={100}
-          triggerHeight={triggerHeight}
-          multiplier={multiplier}
-        />
+        <FlowExpansionSurface triggerWidth={100} triggerHeight={triggerHeight} />
         {expanded && (
           <span
             aria-hidden="true"
@@ -138,7 +133,6 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
           onClick={() => changeOpen(!open)}
           data-press="none"
           data-flow-feedback
-          data-flow-trigger
           transition={transition}
           className="absolute right-0 top-0 z-10 flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink disabled:opacity-40"
         >

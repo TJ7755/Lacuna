@@ -56,7 +56,7 @@ export async function opaquePixel(buffer: Buffer, x: number, y: number) {
   return [...data.subarray(offset, offset + 4)];
 }
 
-/** Read the painted edge from pixels. An affine flat edge cannot form a local waist. */
+/** Read the primary painted edge from pixels to reject wavy desktop feedback. */
 export async function upperEdge(buffer: Buffer) {
   const { data, info } = await sharp(buffer)
     .ensureAlpha()
