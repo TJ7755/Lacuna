@@ -157,4 +157,8 @@ test('nearby exam dates do not paint overlapping captions', async ({ page }) => 
   );
   for (let index = 1; index < captions.length; index++)
     expect(captions[index].left - captions[index - 1].right).toBeGreaterThanOrEqual(7);
+  await test.info().attach('forecast-date-captions', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
 });
