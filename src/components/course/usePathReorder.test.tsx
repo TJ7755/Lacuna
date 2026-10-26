@@ -4,6 +4,9 @@ import type * as React from 'react';
 import { domMax, LazyMotion, m } from 'motion/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { usePathReorder } from './useLessonPathReorder';
+import type { PathNode } from '../../course/path';
+import { makeExamDate, makeLesson } from '../../course/path.testFixtures';
+import { localPathMoveOrder } from './pathNodeReorder';
 const passiveEffects = vi.hoisted(
   () => new Set<{ setup: () => void | (() => void); cleanup: void | (() => void) }>(),
 );
@@ -29,9 +32,16 @@ const items = [
   { id: 'one', name: 'One' },
   { id: 'two', name: 'Two' },
 ];
-function Harness() {
+function Harness({
+  rows = items,
+  orderForMove,
+}: {
+  rows?: typeof items;
+  orderForMove?: (ids: string[], id: string, index: number) => string[] | null;
+} = {}) {
   const reorder = usePathReorder({
-    items,
+    items: rows,
+    orderForMove,
     enabled: true,
     onError: vi.fn(),
     onReorder: persist,
@@ -39,7 +49,7 @@ function Harness() {
   });
   return (
     <>
-      {items.map((item) => {
+      {rows.map((item) => {
         const row = reorder.interactionFor(item.id);
         return (
           <button
@@ -49,6 +59,8 @@ function Harness() {
             onPointerMove={row.onPointerMove}
             onPointerUp={row.onPointerUp}
             data-lifted={row.lifted || undefined}
+            data-marker={row.dropMarker}
+            data-marker-active={row.dropMarker ? String(row.dropMarkerActive ?? false) : undefined}
           >
             {item.name}
           </button>
@@ -219,4 +231,63 @@ it('retains Motion row touch listeners through effect replay and a saved-data re
   expect(remove.mock.calls.filter(([name]) => name.startsWith('touch'))).toHaveLength(0);
   unmount();
   expect(remove.mock.calls.filter(([name]) => name.startsWith('touch'))).toHaveLength(4);
+});
+
+it('keeps the projected checkpoint gap muted until aligned and clears it on release', async () => {
+  vi.useFakeTimers();
+  const lesson = (id: string, orderIndex: number): PathNode => ({
+    id,
+    nodeType: 'lesson',
+    status: 'available',
+    lesson: makeLesson({ id, courseId: 'course', orderIndex }),
+  });
+  const checkpoint = (id: string, afterLessonId: string, examDate: number): PathNode => ({
+    id,
+    nodeType: 'checkpoint',
+    afterLessonId,
+    assessment: makeExamDate({ id, courseId: 'course', afterLessonId, examDate }),
+  });
+  const nodes = [
+    lesson('A', 0),
+    checkpoint('early', 'A', 100),
+    lesson('B', 1),
+    checkpoint('late', 'B', 200),
+    lesson('C', 2),
+  ];
+  render(
+    <Harness
+      rows={nodes.map((node) => ({ id: node.id, name: node.id }))}
+      orderForMove={(_ids, id, index) => localPathMoveOrder(nodes, id, index, [], [])}
+    />,
+  );
+  const buttons = screen.getAllByRole('button');
+  for (const [index, button] of buttons.entries()) {
+    vi.spyOn(button, 'getBoundingClientRect').mockReturnValue({
+      top: index * 100,
+      bottom: index * 100 + 60,
+      left: 0,
+      right: 400,
+      width: 400,
+      height: 60,
+    } as DOMRect);
+  }
+  const row = screen.getByRole('button', { name: 'late' });
+  fireEvent.pointerDown(row, { button: 0, pointerId: 9, clientX: 10, clientY: 330 });
+  await act(async () => vi.advanceTimersByTime(350));
+  expect(screen.getByRole('button', { name: 'C' })).toHaveAttribute('data-marker-active', 'false');
+  fireEvent.pointerMove(row, { pointerId: 9, clientX: 10, clientY: 40 });
+  const landing = screen.getByRole('button', { name: 'B' });
+  expect(landing).toHaveAttribute('data-marker', 'before');
+  expect(landing).toHaveAttribute('data-marker-active', 'false');
+  expect(screen.getByRole('button', { name: 'early' })).not.toHaveAttribute('data-marker');
+  fireEvent.pointerMove(row, { pointerId: 9, clientX: 10, clientY: 225 });
+  expect(landing).toHaveAttribute('data-marker-active', 'true');
+  fireEvent.pointerMove(row, { pointerId: 9, clientX: 10, clientY: 190 });
+  expect(landing).toHaveAttribute('data-marker-active', 'false');
+  fireEvent.pointerMove(row, { pointerId: 9, clientX: 10, clientY: 225 });
+  await act(async () => {
+    fireEvent.pointerUp(row, { pointerId: 9, clientX: 10, clientY: 225 });
+  });
+  expect(buttons.every((button) => !button.hasAttribute('data-marker'))).toBe(true);
+  expect(persist).toHaveBeenCalledWith(['A', 'early', 'late', 'B', 'C'], 'late');
 });

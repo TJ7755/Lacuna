@@ -124,10 +124,17 @@ export function renderCoursePathRows(
             </div>
           )}
           {reorder?.dropMarker && (
-            <div
+            <motion.div
               aria-hidden="true"
+              data-drop-active={reorder.dropMarkerActive ? 'true' : 'false'}
+              initial={m ? { opacity: 0, scaleX: 0.94 } : false}
+              animate={{
+                opacity: reorder.dropMarkerActive ? 1 : 0.65,
+                scaleX: reorder.dropMarkerActive ? 1 : 0.94,
+              }}
+              transition={scaledSpring(m, 520, 34)}
               className={cn(
-                'pointer-events-none absolute inset-x-3 h-0.5 rounded-full bg-accent',
+                'pointer-events-none absolute inset-x-3 h-0.5 rounded-full bg-ink/30 transition-colors duration-150 data-[drop-active=true]:bg-accent',
                 reorder.dropMarker === 'before' ? '-top-px' : '-bottom-px',
               )}
             />
@@ -346,10 +353,17 @@ export function renderCoursePathRows(
           </div>
         )}
         {reorder?.dropMarker && (
-          <div
+          <motion.div
             aria-hidden="true"
+            data-drop-active={reorder.dropMarkerActive ? 'true' : 'false'}
+            initial={m ? { opacity: 0, scaleX: 0.94 } : false}
+            animate={{
+              opacity: reorder.dropMarkerActive ? 1 : 0.65,
+              scaleX: reorder.dropMarkerActive ? 1 : 0.94,
+            }}
+            transition={scaledSpring(m, 520, 34)}
             className={cn(
-              'pointer-events-none absolute inset-x-3 h-0.5 rounded-full bg-accent',
+              'pointer-events-none absolute inset-x-3 h-0.5 rounded-full bg-ink/30 transition-colors duration-150 data-[drop-active=true]:bg-accent',
               reorder.dropMarker === 'before' ? '-top-px' : '-bottom-px',
             )}
           />

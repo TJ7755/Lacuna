@@ -377,7 +377,7 @@ for (const input of [
       const target = (await lesson('A').boundingBox())!;
       const x = Math.round(start.x + 12);
       const y = Math.round(start.y + start.height / 2);
-      const targetY = Math.round(target.y + 4);
+      const targetY = Math.round(target.y + start.height / 2);
       if (input.touch) {
         const session = await page.context().newCDPSession(page);
         await session.send('Input.dispatchTouchEvent', {
@@ -385,23 +385,53 @@ for (const input of [
           touchPoints: [{ x, y }],
         });
         await expect(row).toHaveAttribute('data-drag-lifted', 'true');
+        await expect(path.locator('[data-drop-active]')).toHaveAttribute(
+          'data-drop-active',
+          'false',
+        );
         await session.send('Input.dispatchTouchEvent', {
           type: 'touchMove',
           touchPoints: [{ x, y: targetY }],
         });
+        await expect(path.locator('[data-drop-active]')).toHaveAttribute(
+          'data-drop-active',
+          'true',
+        );
         await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
         await session.detach();
       } else {
         await page.mouse.move(x, y);
         await page.mouse.down();
         await expect(row).toHaveAttribute('data-drag-lifted', 'true');
+        await expect(path.locator('[data-drop-active]')).toHaveAttribute(
+          'data-drop-active',
+          'false',
+        );
+        await expect
+          .poll(async () =>
+            Number(
+              await path
+                .locator('[data-drop-active]')
+                .evaluate((element) => getComputedStyle(element).opacity),
+            ),
+          )
+          .toBeGreaterThan(0.5);
+        await page.screenshot({
+          path: test.info().outputPath('learner-checkpoint-muted-guide.png'),
+          animations: 'allow',
+        });
         await page.mouse.move(x, targetY, { steps: 20 });
+        await expect(path.locator('[data-drop-active]')).toHaveAttribute(
+          'data-drop-active',
+          'true',
+        );
         await page.screenshot({
           path: test.info().outputPath('learner-checkpoint-held.png'),
           animations: 'allow',
         });
         await page.mouse.up();
       }
+      await expect(path.locator('[data-drop-active]')).toHaveCount(0);
       await expect
         .poll(
           async () =>

@@ -20,6 +20,7 @@ export interface LessonReorderInteraction {
   lifted: boolean;
   offset?: { x: number; y: number };
   dropMarker: LessonDropMarker;
+  dropMarkerActive?: boolean;
   refused?: boolean;
   direct?: boolean;
   settleVelocity?: number;
@@ -210,17 +211,28 @@ export function usePathReorder({
   }, [clearSession, dragState, lessonNames]);
 
   const dropMarkerByLessonId = useMemo(() => {
-    const result = new Map<string, LessonDropMarker>();
-    if (!dragState) return result;
-    const remainingIds = orderedIds.filter((id) => id !== dragState.lessonId);
-    if (remainingIds.length === 0) return result;
-    if (dragState.targetIndex >= remainingIds.length) {
-      result.set(remainingIds[remainingIds.length - 1], 'after');
-    } else {
-      result.set(remainingIds[dragState.targetIndex], 'before');
-    }
+    const result = new Map<string, { edge: NonNullable<LessonDropMarker>; active: boolean }>();
+    if (!dragState || dragState.dropping) return result;
+    const nextIds = orderForMove(orderedIds, dragState.lessonId, dragState.targetIndex);
+    if (!nextIds) return result;
+    const index = nextIds.indexOf(dragState.lessonId);
+    if (index < 0) return result;
+    const next = nextIds[index + 1];
+    const neighbour = next ?? nextIds[index - 1];
+    if (!neighbour) return result;
+    const source = sessionRef.current?.slots.get(dragState.lessonId);
+    const destination = sessionRef.current?.slots.get(orderedIds[index]);
+    const aligned =
+      !!source &&
+      !!destination &&
+      Math.abs(source.top + (dragState.y ?? 0) - destination.top) <=
+        Math.min(32, Math.max(12, source.height / 3));
+    result.set(neighbour, {
+      edge: next ? 'before' : 'after',
+      active: !sameOrder(nextIds, orderedIds) && aligned,
+    });
     return result;
-  }, [dragState, orderedIds]);
+  }, [dragState, orderedIds, orderForMove]);
 
   const touchContext = useRef<TouchReorderContext>(null!);
   touchContext.current = {
@@ -268,7 +280,8 @@ export function usePathReorder({
         lifted: dragState?.lessonId === lessonId && !dragState.dropping,
         settleVelocity: dropTransition.velocityFor(lessonId),
         direct: (dragState?.lessonId === lessonId && !dragState.dropping) || dropTransition.instant,
-        dropMarker: dropMarkerByLessonId.get(lessonId),
+        dropMarker: dropMarkerByLessonId.get(lessonId)?.edge,
+        dropMarkerActive: dropMarkerByLessonId.get(lessonId)?.active ?? false,
         registerElement: (element) => {
           touchCleanupRef.current.get(lessonId)?.();
           touchCleanupRef.current.delete(lessonId);
