@@ -101,6 +101,6 @@ test('makes the revealed answer readable during the deliberate card flip', async
   const row = page.locator(`[data-card-id="${reviewedId}"]`);
   await expect(row).toHaveCount(1);
   await row.click();
-  await expect(page.getByText('Mean response time', { exact: true })).toBeVisible();
+  await expect(page.getByText('Average answer time', { exact: true })).toBeVisible();
   await expect(page.getByText('Accuracy', { exact: true })).toBeVisible();
 });
