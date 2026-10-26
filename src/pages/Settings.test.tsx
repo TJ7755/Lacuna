@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Settings } from './Settings';
 import { SettingsDisclosure } from './settings/SettingsDisclosure';
+import { backupFolderName } from '../db/backupFolder';
 
 const setStartInFocusMode = vi.fn();
 const setCourseCardMetric = vi.fn();
@@ -82,16 +83,13 @@ vi.mock('../state/shortcutBindings', () => ({
   formatBinding: vi.fn(),
   useShortcutBindings: () => ({ bindings: {}, setBinding: vi.fn(), reset: vi.fn() }),
 }));
-vi.mock('../hooks/useInstallPrompt', () => ({
-  useInstallPrompt: () => ({ isInstallable: false, isInstalled: false, promptInstall: vi.fn() }),
-}));
 vi.mock('../db/backups', () => ({
   deleteBackup: vi.fn(),
   restoreBackup: vi.fn(),
   takeAutoBackup: vi.fn(),
 }));
 vi.mock('../db/backupFolder', () => ({
-  backupFolderName: () => new Promise(() => {}),
+  backupFolderName: vi.fn(() => new Promise(() => {})),
   chooseBackupFolder: vi.fn(),
   clearBackupFolder: vi.fn(),
   folderMirrorSupported: () => false,
@@ -123,6 +121,7 @@ describe('Settings', () => {
     setCourseCardMetric.mockClear();
     setMotionSpeed.mockClear();
     scrollIntoView.mockClear();
+    vi.mocked(backupFolderName).mockClear();
     window.location.hash = '';
     localStorage.clear();
   });
@@ -279,6 +278,7 @@ describe('Settings', () => {
 
     Object.entries(membership).forEach(([groupId, childIds]) => {
       const group = document.getElementById(groupId);
+      fireEvent.click(group!.querySelector('button')!);
       childIds.forEach((childId) =>
         expect(group).toContainElement(document.getElementById(childId)),
       );
@@ -302,6 +302,38 @@ describe('Settings', () => {
     expect(document.getElementById('settings-sync')).toBe(sync);
     expect(document.getElementById(toggle.getAttribute('aria-controls')!)).toHaveAttribute('inert');
     expect(document.querySelectorAll('#settings-sync')).toHaveLength(1);
+  });
+
+  it('defers backup reads until Your data is opened and retains them on closing', () => {
+    render(<Settings />);
+    expect(backupFolderName).not.toHaveBeenCalled();
+
+    const toggle = screen.getByRole('button', { name: /^Your data/ });
+    fireEvent.click(toggle);
+    expect(backupFolderName).toHaveBeenCalledTimes(1);
+    fireEvent.click(toggle);
+    fireEvent.click(toggle);
+    expect(backupFolderName).toHaveBeenCalledTimes(1);
+  });
+
+  it('captures an install prompt before Integrations is first opened', async () => {
+    render(<Settings />);
+    const prompt = vi.fn().mockResolvedValue(undefined);
+    fireEvent(
+      window,
+      Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+        prompt,
+        userChoice: Promise.resolve({ outcome: 'accepted', platform: 'web' }),
+      }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^Integrations/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Install' }));
+    });
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByText('Lacuna is installed on this device and can be used offline.'),
+    ).toBeInTheDocument();
   });
 
   it('keeps an unfinished form mounted and inaccessible while its group is closed', () => {
@@ -370,6 +402,7 @@ describe('Settings', () => {
 
   it('keeps global scheduler internals closed behind deliberate disclosures', () => {
     render(<Settings />);
+    fireEvent.click(screen.getByRole('button', { name: /^Course defaults/ }));
 
     const scheduling = screen.getByText('Advanced scheduling').closest('button');
     const practiceTiming = screen.getByText('Advanced practice timing').closest('button');

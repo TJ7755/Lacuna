@@ -3,24 +3,18 @@ import { SECTION_CARD_SURFACE_CLASS } from '../../components/ui/SectionCard';
 // surface with its staggered arrival, the segmented pill control and the pill
 // switch. Every animation is scaled by the motion multiplier and switches off at 0.
 
-import {
-  createContext,
-  useContext,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
 import { cn } from '../../components/ui/cn';
 import { MOTION_EASING } from '../../components/ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 /** Card surface shared by every settings section: a flat surface with a hairline border. */
-export const SETTINGS_CARD_CLASS =
-  `${SECTION_CARD_SURFACE_CLASS} mb-5 p-6 md:p-7`;
+export const SETTINGS_CARD_CLASS = `${SECTION_CARD_SURFACE_CLASS} mb-5 p-6 md:p-7`;
 
 /** Section headings sit in ink with only the icon tinted, so cards read calmly. */
-export const SETTINGS_HEADING_ROW_CLASS = 'flex items-center gap-2.5 text-ink [&>svg]:text-accent-ink';
+export const SETTINGS_HEADING_ROW_CLASS =
+  'flex items-center gap-2.5 text-ink [&>svg]:text-accent-ink';
 
 /** Longest stagger, so a long page never leaves later cards waiting. */
 const MAX_STAGGER_STEPS = 8;
@@ -34,7 +28,7 @@ export function arrivalDelay(index: number, multiplier: number): number {
 
 const ArrivalContext = createContext<{ take: () => number } | null>(null);
 
-/** Hands each card beneath it the next place in the arrival order. */
+/** Opts cards into staggered arrival; page-level arrivals leave this provider out. */
 export function SettingsArrivalProvider({ children }: { children: ReactNode }) {
   const counter = useRef(0);
   const [value] = useState(() => ({ take: () => counter.current++ }));
@@ -58,7 +52,7 @@ export function SettingsCard({
   return (
     <motion.section
       id={id}
-      initial={multiplier > 0 ? { opacity: 0 } : false}
+      initial={arrival && multiplier > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
       transition={{
         duration: 0.3 * multiplier,

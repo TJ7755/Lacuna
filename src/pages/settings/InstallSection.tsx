@@ -1,12 +1,14 @@
 import { Button } from '../../components/ui/Button';
 import { DownloadIcon, IosShareIcon } from '../../components/ui/icons';
-import { useInstallPrompt } from '../../hooks/useInstallPrompt';
+import type { useInstallPrompt } from '../../hooks/useInstallPrompt';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { DesktopUpdatePanel } from './DesktopUpdatePanel';
 import { SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
 import { cn } from '../../components/ui/cn';
 
-export function InstallSection() {
+type InstallState = ReturnType<typeof useInstallPrompt>;
+
+export function InstallSection({ install }: { install: InstallState }) {
   return (
     <SettingsCard id="settings-install">
       <div className={cn('mb-5', SETTINGS_HEADING_ROW_CLASS)}>
@@ -15,13 +17,13 @@ export function InstallSection() {
           {window.electronAPI?.isElectron ? 'Install & updates' : 'Install'}
         </SettingsSectionHeading>
       </div>
-      <InstallPanel />
+      <InstallPanel install={install} />
     </SettingsCard>
   );
 }
 
-function InstallPanel() {
-  const { isInstalled, method, promptInstall } = useInstallPrompt();
+function InstallPanel({ install }: { install: InstallState }) {
+  const { isInstalled, method, promptInstall } = install;
   const isWindows = typeof navigator !== 'undefined' && navigator.platform?.startsWith('Win');
 
   if (window.electronAPI?.isElectron) return <DesktopUpdatePanel />;
@@ -64,9 +66,7 @@ function InstallPanel() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-ink-soft">
-          Works offline once installed.
-        </p>
+        <p className="text-sm text-ink-soft">Works offline once installed.</p>
         <Button variant="secondary" onClick={promptInstall}>
           <DownloadIcon width={18} height={18} />
           Install
