@@ -29,14 +29,13 @@ export function localLessonOrderUnavailableReason(
     return 'Local lesson order requires a locked imported course.';
   if (course.archived) return 'Local lesson order is unavailable while this course is archived.';
   if (course.unlockMode !== 'open') return 'Local lesson order requires free progression.';
-  if (course.autoPractice !== false)
-    return 'Turn off automatic Card practice to use local lesson order.';
-  if (practiceNodes.some((node) => node.type !== 'question-set')) {
-    return 'Local lesson order is unavailable with Card practice nodes.';
-  }
   const lessonIds = new Set(lessons.map((lesson) => lesson.id));
   if (
-    practiceNodes.some((node) => !node.questionSetIds?.length || !lessonIds.has(node.afterLessonId ?? ''))
+    practiceNodes.some(
+      (node) =>
+        node.type === 'question-set' &&
+        (!node.questionSetIds?.length || !lessonIds.has(node.afterLessonId ?? '')),
+    )
   ) {
     return 'Local lesson order requires every practice activity to be a Question Set attached to a single lesson.';
   }

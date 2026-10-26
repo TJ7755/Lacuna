@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildPath, type PracticePathNode } from './path';
 import { MS_PER_DAY } from '../fsrs/params';
-import { makeCourse, makeLesson, makePracticeNode } from './path.testFixtures';
+import { makeCourse, makeLesson, makePracticeNode, makeExamDate } from './path.testFixtures';
 
 describe('buildPath — practice nodes', () => {
   const lessons = [
@@ -281,4 +281,75 @@ describe('buildPath — practice nodes', () => {
       ]);
     });
   });
+});
+
+it('keeps manual anchors and practice milestones while automatic practice follows local order', () => {
+  const course = makeCourse({
+    id: 'c1',
+    autoPractice: true,
+    practiceMaxGap: 1,
+    localLessonOrder: ['b', 'c', 'a'],
+    distributedCopy: { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false },
+  });
+  const lessons = ['a', 'b', 'c'].map((id, orderIndex) =>
+    makeLesson({ id, courseId: course.id, orderIndex }),
+  );
+  const final = makeExamDate({ id: 'final', courseId: course.id, kind: 'final' });
+  const manual = makePracticeNode({
+    id: 'manual',
+    courseId: course.id,
+    type: 'manual',
+    position: 1,
+  });
+  const before = makePracticeNode({ id: 'before', courseId: course.id, type: 'manual' });
+  const questionSet = makePracticeNode({
+    id: 'questions',
+    courseId: course.id,
+    type: 'question-set',
+    afterLessonId: 'c',
+    questionSetIds: ['set'],
+  });
+  const milestones = ['manual', 'practice-auto-c1-c'].map((nodeKey) => ({
+    nodeKey,
+    courseId: course.id,
+    scopeVersion: 'v1',
+    securedCardCount: 1,
+    totalCardCount: 1,
+    updatedAt: 1,
+    completedAt: 1,
+  }));
+  const nodes = buildPath(
+    course,
+    lessons,
+    [final],
+    new Map(),
+    [manual, before, questionSet],
+    0,
+    0,
+    0,
+    {
+      exposures: [],
+      lessonCompletions: [],
+      practiceMilestones: milestones,
+    },
+  );
+  expect(nodes.map((node) => node.id)).toEqual([
+    'before',
+    'b',
+    'manual',
+    'c',
+    'questions',
+    'practice-auto-c1-c',
+    'a',
+    'practice-auto-c1-a',
+  ]);
+  expect(nodes.find((node) => node.id === 'manual')).toMatchObject({
+    afterLessonId: 'b',
+    milestone: milestones[0],
+  });
+  expect(nodes.find((node) => node.id === 'practice-auto-c1-c')).toMatchObject({
+    afterLessonId: 'c',
+    milestone: milestones[1],
+  });
+  expect(lessons.map((lesson) => lesson.orderIndex)).toEqual([0, 1, 2]);
 });
