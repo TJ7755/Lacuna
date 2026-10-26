@@ -23,6 +23,7 @@ import { lessonTaught } from './unlock';
 
 export interface RevisionPlanContext {
   assessment: CourseAssessment;
+  preferredLessonIds?: readonly string[];
   lessons: Lesson[];
   cards: Card[];
   links: LessonCardLink[];
@@ -82,6 +83,7 @@ export function resolveRevisionPlanInput(context: RevisionPlanContext): Resolved
     context.lessons,
     context.cards,
     context.links,
+    context.preferredLessonIds,
   );
   if (!resolved.validation.valid) {
     throw new Error(resolved.validation.issues[0]?.message ?? 'Assessment coverage is invalid.');
@@ -94,7 +96,8 @@ export function resolveRevisionPlanInput(context: RevisionPlanContext): Resolved
   const exposedCardIds = new Set(context.exposures.map((exposure) => exposure.cardId));
   const priorKnowledgeCardIds = new Set(
     [...(context.priorKnowledgeLessonIds ?? [])].flatMap((id) =>
-      lessonCardMembership(id, context.cards, context.links).map((card) => card.id)),
+      lessonCardMembership(id, context.cards, context.links).map((card) => card.id),
+    ),
   );
   const eligibleOrUnavailable = resolved.cards.filter((card) => {
     if (!exposedCardIds.has(card.id) && !priorKnowledgeCardIds.has(card.id)) return false;

@@ -1,3 +1,4 @@
+import { courseLessonOrderPreference, resolveLessonOrder } from '../../course/lessonOrder';
 import { db } from '../../db/schema';
 import { getCourse, listCourseAssessments } from '../../db/read';
 import { hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
@@ -35,7 +36,9 @@ export async function ratchetSessionUnlocks(
   const course = await getCourse(cId);
   if (!course || course.unlockMode !== 'semi-linear') return;
   const lessons = await db.lessons.where('courseId').equals(cId).sortBy('orderIndex');
-  const coreLessons = lessons.filter((lesson) => !lesson.isExtension);
+  const coreLessons = resolveLessonOrder(lessons, courseLessonOrderPreference(course)).filter(
+    (lesson) => !lesson.isExtension,
+  );
   const lId = getLessonId();
   const now = Date.now();
   const lessonIds = coreLessons.map((lesson) => lesson.id);
@@ -46,9 +49,7 @@ export async function ratchetSessionUnlocks(
       lessonIds.length > 0
         ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
         : [],
-      lessonIds.length > 0
-        ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray()
-        : [],
+      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
       db.practiceNodes.where('courseId').equals(cId).toArray(),
       listCourseAssessments(cId),
       db.practiceMilestones.where('courseId').equals(cId).toArray(),
@@ -58,10 +59,7 @@ export async function ratchetSessionUnlocks(
   const lessonCardsById = new Map(
     lessons.map((lesson) => [lesson.id, lessonCardMembership(lesson.id, courseCards, links)]),
   );
-  const meanReviewSeconds = courseMeanReviewSeconds(
-    courseCards,
-    buildDeckSecondsMap(performance),
-  );
+  const meanReviewSeconds = courseMeanReviewSeconds(courseCards, buildDeckSecondsMap(performance));
   const currentPractice = currentAssessmentPracticeContext({
     course,
     practiceNodes,

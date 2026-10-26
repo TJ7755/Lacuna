@@ -51,6 +51,18 @@ function render(value, action, changes = {}, cancelled = false, attempt = 1) {
   );
 }
 
+test('stacked pull requests receive validation on any base branch', () => {
+  const security = parse(
+    readFileSync(new URL('../.github/workflows/security.yml', import.meta.url), 'utf8'),
+  );
+  for (const configuration of [workflow, security]) {
+    assert.ok(Object.hasOwn(configuration.on, 'pull_request'));
+    const trigger = configuration.on.pull_request;
+    assert.equal(trigger?.branches, undefined);
+    assert.equal(trigger?.['branches-ignore'], undefined);
+  }
+});
+
 test('metadata edits reuse validation without cancelling CI or bypassing required contexts', () => {
   for (const changes of [
     { title: { from: 'Old title' } },

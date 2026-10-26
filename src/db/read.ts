@@ -1,3 +1,4 @@
+import { courseLessonOrderPreference } from '../course/lessonOrder';
 // Plain, React-free read-side query module over Dexie.
 //
 // This is the non-React counterpart to src/state/useData.ts / useCourseData.ts: the
@@ -321,8 +322,9 @@ function assessmentDetails(
   lessons: Lesson[],
   cards: Card[],
   links: LessonCardLink[],
+  preferredLessonIds?: readonly string[],
 ): CourseAssessmentDetails {
-  const resolved = resolveAssessmentCoverage(assessment, lessons, cards, links);
+  const resolved = resolveAssessmentCoverage(assessment, lessons, cards, links, preferredLessonIds);
   return {
     assessment,
     placementIndex: resolved.placementIndex,
@@ -335,9 +337,10 @@ function assessmentDetails(
 async function assessmentScope(courseId: string) {
   // Coverage uses card membership, never review history. Keep the persisted cards
   // unhydrated so listing assessments does not allocate an entire review log.
-  const [lessons, cards] = await Promise.all([
+  const [lessons, cards, course] = await Promise.all([
     listLessons(courseId),
     db.cards.where('courseId').equals(courseId).toArray(),
+    db.courses.get(courseId),
   ]);
   const links = lessons.length
     ? await db.lessonCards
@@ -345,7 +348,12 @@ async function assessmentScope(courseId: string) {
         .anyOf(lessons.map((lesson) => lesson.id))
         .toArray()
     : [];
-  return { lessons, cards, links };
+  return {
+    lessons,
+    cards,
+    links,
+    preferredLessonIds: course && courseLessonOrderPreference(course),
+  };
 }
 
 /** Full persisted semantics plus authoritative resolved scope for one assessment. */
@@ -354,12 +362,14 @@ export async function getCourseAssessmentDetails(
 ): Promise<CourseAssessmentDetails | null> {
   return db.transaction(
     'r',
-    [db.courseAssessments, db.lessons, db.cards, db.lessonCards],
+    [db.courseAssessments, db.lessons, db.cards, db.lessonCards, db.courses],
     async () => {
       const assessment = await db.courseAssessments.get(assessmentId);
       if (!assessment) return null;
-      const { lessons, cards, links } = await assessmentScope(assessment.courseId);
-      return assessmentDetails(assessment, lessons, cards, links);
+      const { lessons, cards, links, preferredLessonIds } = await assessmentScope(
+        assessment.courseId,
+      );
+      return assessmentDetails(assessment, lessons, cards, links, preferredLessonIds);
     },
   );
 }
@@ -370,12 +380,14 @@ export async function listCourseAssessmentDetails(
 ): Promise<CourseAssessmentDetails[]> {
   return db.transaction(
     'r',
-    [db.courseAssessments, db.lessons, db.cards, db.lessonCards],
+    [db.courseAssessments, db.lessons, db.cards, db.lessonCards, db.courses],
     async () => {
       const assessments = await listCourseAssessments(courseId);
       if (assessments.length === 0) return [];
-      const { lessons, cards, links } = await assessmentScope(courseId);
-      return assessments.map((assessment) => assessmentDetails(assessment, lessons, cards, links));
+      const { lessons, cards, links, preferredLessonIds } = await assessmentScope(courseId);
+      return assessments.map((assessment) =>
+        assessmentDetails(assessment, lessons, cards, links, preferredLessonIds),
+      );
     },
   );
 }

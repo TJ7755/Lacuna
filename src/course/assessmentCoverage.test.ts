@@ -62,6 +62,32 @@ describe('resolveAssessmentCoverage', () => {
     expect(result.coveredLessons.map((lesson) => lesson.id)).toEqual(['one', 'two']);
   });
 
+  it('uses learner prefixes while keeping custom membership and harmless exclusions', () => {
+    const cards = [card('first', 'one'), card('second', 'two'), card('third', 'three')];
+    const order = ['three', 'one', 'two'];
+    const prefix = resolveAssessmentCoverage(
+      assessment({ afterLessonId: 'one', excludedCardIds: ['second'] }),
+      lessons,
+      cards,
+      [],
+      order,
+    );
+    expect(prefix.placementIndex).toBe(1);
+    expect(prefix.coveredLessons.map((lesson) => lesson.id)).toEqual(['three', 'one']);
+    expect(prefix.cards.map((value) => value.id)).toEqual(['first', 'third']);
+    expect(prefix.validation.valid).toBe(true);
+
+    const custom = resolveAssessmentCoverage(
+      assessment({ afterLessonId: 'one', coverageMode: 'custom', lessonIds: ['one', 'two'] }),
+      lessons,
+      cards,
+      [],
+      order,
+    );
+    expect(custom.coveredLessons.map((lesson) => lesson.id)).toEqual(['one', 'two']);
+    expect(custom.validation.valid).toBe(true);
+  });
+
   it('resolves non-contiguous custom coverage independently of placement', () => {
     const result = resolveAssessmentCoverage(
       assessment({ coverageMode: 'custom', lessonIds: ['one', 'three'], afterLessonId: 'three' }),

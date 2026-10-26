@@ -1,3 +1,4 @@
+import { courseLessonOrderPreference } from './lessonOrder';
 import { lessonCardMembershipForLessons } from './lessonMembership';
 import type {
   Card,
@@ -84,12 +85,13 @@ export function assessmentPracticePool(
   const knownCardIds = new Set([
     ...context.exposures.map((exposure) => exposure.cardId),
     ...lessonCardMembershipForLessons(
-      context.priorKnowledgeLessonIds ?? earlierCourseLessonIds(
-        context.course,
-        context.lessons,
-        context.assessments ?? [assessment],
-        context.practiceNodes ?? [],
-      ),
+      context.priorKnowledgeLessonIds ??
+        earlierCourseLessonIds(
+          context.course,
+          context.lessons,
+          context.assessments ?? [assessment],
+          context.practiceNodes ?? [],
+        ),
       context.cards,
       context.links,
     ).map((card) => card.id),
@@ -109,6 +111,7 @@ export function assessmentPracticePool(
     context.lessons,
     context.cards,
     context.links,
+    courseLessonOrderPreference(context.course),
   );
   const reachedCoveredLessonIds = new Set(
     resolved.coveredLessons
@@ -160,6 +163,7 @@ export function assessmentPracticeOptions(
         context.lessons,
         context.cards,
         context.links,
+        courseLessonOrderPreference(context.course),
       );
       if (!resolved.cards.some((card) => triggerCardIds.has(card.id))) return [];
       const eligibleCount = assessmentPracticePool(assessment, context).length;

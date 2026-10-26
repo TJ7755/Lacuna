@@ -1,5 +1,7 @@
 import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../db/types';
 import { lessonCardMembershipForLessons } from './lessonMembership';
+import { resolveLessonOrder } from './lessonOrder';
+export { lessonOrder } from './lessonOrder';
 
 export type AssessmentValidationCode =
   | 'missing-placement-lesson'
@@ -30,26 +32,23 @@ export interface ResolvedAssessmentCoverage {
   };
 }
 
-/** Canonical lesson order: orderIndex, then createdAt, then id, so ties resolve identically everywhere. */
-export function lessonOrder(left: Lesson, right: Lesson): number {
-  return (
-    left.orderIndex - right.orderIndex ||
-    left.createdAt - right.createdAt ||
-    left.id.localeCompare(right.id)
-  );
-}
-
-/** Pure, authoritative resolution of an assessment's placement, lessons and cards. */
+/**
+ * Resolve placement and coverage. A learner preference changes prefixes, while
+ * published custom membership and exclusions stay intact. Without a preference,
+ * authoring validation also enforces placement and exclusion consistency.
+ */
 export function resolveAssessmentCoverage(
   assessment: CourseAssessment,
   lessons: Lesson[],
   cards: Card[],
   links: LessonCardLink[],
+  preferredLessonIds?: readonly string[],
 ): ResolvedAssessmentCoverage {
   const issues: AssessmentValidationIssue[] = [];
-  const orderedLessons = lessons
-    .filter((lesson) => lesson.courseId === assessment.courseId)
-    .sort(lessonOrder);
+  const orderedLessons = resolveLessonOrder(
+    lessons.filter((lesson) => lesson.courseId === assessment.courseId),
+    preferredLessonIds,
+  );
   const lessonsById = new Map(lessons.map((lesson) => [lesson.id, lesson]));
   const cardsById = new Map(cards.map((card) => [card.id, card]));
 
@@ -118,7 +117,7 @@ export function resolveAssessmentCoverage(
         });
       } else {
         const lessonIndex = orderedLessons.findIndex((candidate) => candidate.id === lessonId);
-        if (lessonIndex > placementIndex) {
+        if (preferredLessonIds === undefined && lessonIndex > placementIndex) {
           issues.push({
             code: 'custom-lesson-after-assessment',
             referenceId: lessonId,
@@ -131,7 +130,8 @@ export function resolveAssessmentCoverage(
         coveredLessons.push(lesson);
       }
     }
-    coveredLessons.sort(lessonOrder);
+    const indices = new Map(orderedLessons.map((lesson, index) => [lesson.id, index]));
+    coveredLessons.sort((left, right) => indices.get(left.id)! - indices.get(right.id)!);
   }
 
   const coveredLessonIds = new Set(coveredLessons.map((lesson) => lesson.id));
@@ -153,7 +153,7 @@ export function resolveAssessmentCoverage(
         referenceId: cardId,
         message: `Excluded card ${cardId} belongs to another course.`,
       });
-    } else if (!coveredCardIds.has(cardId)) {
+    } else if (preferredLessonIds === undefined && !coveredCardIds.has(cardId)) {
       issues.push({
         code: 'excluded-card-not-covered',
         referenceId: cardId,

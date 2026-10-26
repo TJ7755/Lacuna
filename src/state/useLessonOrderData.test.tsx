@@ -67,7 +67,7 @@ it('keeps Settings, Sidebar and guided Study in agreement while source hooks rem
     }),
   );
   expect((await db.courses.get(course.id))?.localLessonOrder).toEqual([b.id, a.id]);
-  // A new checkpoint also suspends both readers, even with Course unchanged.
+  // Checkpoints keep the same local order across readers.
   const final = (await db.courseAssessments.toArray())[0];
   await act(async () => {
     await db.courseAssessments.add({
@@ -77,9 +77,9 @@ it('keeps Settings, Sidebar and guided Study in agreement while source hooks rem
       afterLessonId: a.id,
     });
   });
-  await waitFor(() => expect(result.current.display?.unavailableReason).toMatch(/checkpoints/));
+  await waitFor(() => expect(result.current.display?.unavailableReason).toBeUndefined());
   await waitFor(() =>
-    expect(result.current.sidebar?.lessons.map((lesson) => lesson.id)).toEqual([a.id, b.id]),
+    expect(result.current.sidebar?.lessons.map((lesson) => lesson.id)).toEqual([b.id, a.id]),
   );
   await act(async () => {
     await setLocalLessonOrder(course.id);

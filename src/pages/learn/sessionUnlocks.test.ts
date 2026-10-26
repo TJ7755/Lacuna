@@ -23,7 +23,10 @@ async function taughtLesson(courseId: string, name: string) {
 
 describe('session completion unlocks', () => {
   it('only ratchets the scoped successor and preserves an existing unlock timestamp', async () => {
-    const course = await createCourse('Science', { unlockMode: 'semi-linear', autoPractice: false });
+    const course = await createCourse('Science', {
+      unlockMode: 'semi-linear',
+      autoPractice: false,
+    });
     const first = await taughtLesson(course.id, 'First');
     const second = await taughtLesson(course.id, 'Second');
     const third = await createLesson(course.id, 'Third');
@@ -40,8 +43,36 @@ describe('session completion unlocks', () => {
     expect(await db.reviewHistory.count()).toBe(0);
   });
 
+  it('ratchets the learner successor and retains previous unlock evidence', async () => {
+    const course = await createCourse('Science', {
+      unlockMode: 'semi-linear',
+      autoPractice: false,
+    });
+    const first = await taughtLesson(course.id, 'First');
+    const second = await createLesson(course.id, 'Second');
+    const last = await taughtLesson(course.id, 'Last');
+    await db.courses.update(course.id, {
+      distributedCopy: {
+        lineageId: 'science',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+      localLessonOrder: [last.lesson.id, first.lesson.id, second.id],
+    });
+    await db.lessons.update(last.lesson.id, { unlockedAt: 123 });
+    await ratchetSessionUnlocks(true, course.id, () => last.lesson.id);
+    expect((await db.lessons.get(first.lesson.id))?.unlockedAt).toEqual(expect.any(Number));
+    expect((await db.lessons.get(second.id))?.unlockedAt).toBeUndefined();
+    expect((await db.lessons.get(last.lesson.id))?.unlockedAt).toBe(123);
+    expect(await db.reviewHistory.count()).toBe(0);
+  });
+
   it('keeps a manual checkpoint gating the just-taught lesson', async () => {
-    const course = await createCourse('Science', { unlockMode: 'semi-linear', autoPractice: false });
+    const course = await createCourse('Science', {
+      unlockMode: 'semi-linear',
+      autoPractice: false,
+    });
     const first = await taughtLesson(course.id, 'First');
     const second = await createLesson(course.id, 'Second');
     await createPracticeNode(course.id, { type: 'manual', name: 'Checkpoint', position: 0 });
@@ -50,21 +81,28 @@ describe('session completion unlocks', () => {
     expect((await db.lessons.get(second.id))?.unlockedAt).toBeUndefined();
   });
 
-  it.each([false, true])('requires scheduled knowledge when introductions are disabled (scheduled %s)', async (scheduled) => {
-    const course = await createCourse('Science', {
-      unlockMode: 'semi-linear', autoPractice: false, learnFirst: false,
-    });
-    const first = await taughtLesson(course.id, 'First');
-    const second = await createLesson(course.id, 'Second');
-    if (scheduled) await db.cards.update(first.card.id, { state: 2 });
+  it.each([false, true])(
+    'requires scheduled knowledge when introductions are disabled (scheduled %s)',
+    async (scheduled) => {
+      const course = await createCourse('Science', {
+        unlockMode: 'semi-linear',
+        autoPractice: false,
+        learnFirst: false,
+      });
+      const first = await taughtLesson(course.id, 'First');
+      const second = await createLesson(course.id, 'Second');
+      if (scheduled) await db.cards.update(first.card.id, { state: 2 });
 
-    await ratchetSessionUnlocks(true, course.id, () => null);
-    expect((await db.lessons.get(second.id))?.unlockedAt !== undefined).toBe(scheduled);
-  });
+      await ratchetSessionUnlocks(true, course.id, () => null);
+      expect((await db.lessons.get(second.id))?.unlockedAt !== undefined).toBe(scheduled);
+    },
+  );
 
   it('uses explicit completion for cardless lessons and skips extension lessons', async () => {
     const course = await createCourse('Science', {
-      unlockMode: 'semi-linear', autoPractice: false, learnFirst: false,
+      unlockMode: 'semi-linear',
+      autoPractice: false,
+      learnFirst: false,
     });
     const first = await createLesson(course.id, 'Cardless');
     const extension = await createLesson(course.id, 'Extension');
@@ -72,7 +110,11 @@ describe('session completion unlocks', () => {
     const next = await createLesson(course.id, 'Next');
     await ratchetSessionUnlocks(true, course.id, () => null);
     expect((await db.lessons.get(next.id))?.unlockedAt).toBeUndefined();
-    await db.lessonCompletions.put({ lessonId: first.id, completedAt: Date.now(), updatedAt: Date.now() });
+    await db.lessonCompletions.put({
+      lessonId: first.id,
+      completedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
     await ratchetSessionUnlocks(true, course.id, () => null);
     expect((await db.lessons.get(next.id))?.unlockedAt).toEqual(expect.any(Number));
     expect((await db.lessons.get(extension.id))?.unlockedAt).toBeUndefined();
@@ -95,14 +137,19 @@ describe('session completion unlocks', () => {
   });
 
   it('participates in the caller transaction rather than committing unlocks separately', async () => {
-    const course = await createCourse('Science', { unlockMode: 'semi-linear', autoPractice: false });
+    const course = await createCourse('Science', {
+      unlockMode: 'semi-linear',
+      autoPractice: false,
+    });
     await taughtLesson(course.id, 'First');
     const second = await createLesson(course.id, 'Second');
-    await expect(db.transaction('rw', db.tables, async () => {
-      await ratchetSessionUnlocks(true, course.id, () => null);
-      expect((await db.lessons.get(second.id))?.unlockedAt).toEqual(expect.any(Number));
-      throw new Error('Completion failed');
-    })).rejects.toThrow('Completion failed');
+    await expect(
+      db.transaction('rw', db.tables, async () => {
+        await ratchetSessionUnlocks(true, course.id, () => null);
+        expect((await db.lessons.get(second.id))?.unlockedAt).toEqual(expect.any(Number));
+        throw new Error('Completion failed');
+      }),
+    ).rejects.toThrow('Completion failed');
     expect((await db.lessons.get(second.id))?.unlockedAt).toBeUndefined();
   });
 });

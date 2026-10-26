@@ -1,3 +1,4 @@
+import { courseLessonOrderPreference } from '../course/lessonOrder';
 import { MissingRecord } from '../components/course/MissingRecord';
 import { localLessonOrderUnavailableReason } from '../course/lessonOrder';
 // Course path page — renders the ordered sequence of lessons for a course.
@@ -161,6 +162,7 @@ export function CoursePath() {
             lessons={lessons}
             cards={courseCards}
             links={lessonLinks}
+            preferredLessonIds={courseLessonOrderPreference(course)}
             onClose={() => {
               setSelectedAssessmentId(null);
             }}
