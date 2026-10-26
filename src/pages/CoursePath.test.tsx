@@ -367,8 +367,8 @@ describe('CoursePath View mode', () => {
     expect(
       screen.queryByRole('button', { name: 'Edit checkpoint: Paper 1' }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Add', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     expect(screen.getAllByRole('menuitem')).toHaveLength(1);
-    expect(screen.getByRole('menuitem', { name: 'Checkpoint', exact: true })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Checkpoint' })).toBeInTheDocument();
   });
 });
