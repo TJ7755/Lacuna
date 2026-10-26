@@ -115,7 +115,7 @@ for (const exam of [false, true]) {
 
     await page.goto('/#/');
     await page.reload();
-    await expect(page.getByLabel('Today: 1 card, about 1 minute')).toBeVisible();
+    await expect(page.getByLabel('Today: 1 review due, about 1 minute')).toBeVisible();
     await page.getByRole('button', { name: 'Study Biology' }).click();
     const preview = page.getByRole('region', { name: 'Session preview' });
     await expect(preview.getByRole('list', { name: "Today's session" })).toHaveText(
@@ -127,7 +127,7 @@ for (const exam of [false, true]) {
     await page.getByRole('button', { name: 'Yes', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Finish for now' })).toBeVisible();
     await page.getByRole('button', { name: 'Finish for now' }).click();
-    await expect(page.getByLabel('Today: 0 cards, about 0 minutes')).toBeVisible();
+    await expect(page.getByLabel('Today: 0 reviews due')).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('dashboard-nothing-due.png') });
 
     if (exam) {

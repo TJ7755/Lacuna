@@ -41,7 +41,9 @@ function useChartSize() {
         el.getBoundingClientRect().width || svgEntry?.contentRect.width || WIDE_WIDTH,
       );
       // Legend rows grow the page instead of taking space away from the plot.
-      const height = Math.round(Math.max(140, Math.min(260, window.innerHeight - 460)));
+      const height = Math.round(
+        Math.max(140, Math.min(260, window.innerHeight - 460, width * 0.5)),
+      );
       setSize((current) =>
         current.width === width && current.height === height ? current : { width, height },
       );

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { enterFreshLacuna, importWelcomeCourse, openImport } from './fixtures/lacunaApp';
+import { contentRect as labelGeometry } from './fixtures/flowEvidence';
 
 const evidence = process.env.LACUNA_TODAY_EVIDENCE ?? '/tmp/lacuna-today-candidate2';
 test.use({
@@ -20,15 +21,6 @@ test.beforeEach(async ({ page }) => {
       : route.fulfill({ status: 204, body: '' });
   });
 });
-
-async function labelGeometry(control: Locator) {
-  return control.evaluate((element) => {
-    const range = document.createRange();
-    range.selectNodeContents(element.querySelector('span') ?? element);
-    const rect = range.getBoundingClientRect();
-    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-  });
-}
 
 test('cold Study acknowledges input and Escape cancels before the chunk arrives', async ({
   page,

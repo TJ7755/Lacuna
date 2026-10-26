@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { settle } from './fixtures/flowEvidence';
 
 test('inline Import autofocus preserves the expanding surface scroll position', async ({
   page,
@@ -16,6 +17,7 @@ test('inline Import autofocus preserves the expanding surface scroll position', 
     content:
       '[data-import-scroll-regression] { height: 240px !important; overflow: hidden !important; }',
   });
+  await settle(surface);
   await source.evaluate((element) => element.focus({ preventScroll: true }));
   await surface.evaluate((element) => {
     element.scrollTop = 0;

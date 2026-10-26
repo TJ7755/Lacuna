@@ -121,7 +121,8 @@ for (const width of [1440, 390, 320]) {
           .soft(
             await confirm.evaluate((button) => {
               const range = document.createRange();
-              range.selectNodeContents(button);
+              const text = [...button.childNodes].find((node) => node.textContent?.trim());
+              range.selectNodeContents(text ?? button);
               return range.getBoundingClientRect().height;
             }),
           )

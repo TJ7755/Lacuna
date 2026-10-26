@@ -40,6 +40,8 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
   const root = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const [offsetY, setOffsetY] = useState(0);
+  const [offsetX, setOffsetX] = useState(0);
+  const anchoredTop = useRef<number | null>(null);
   const [bodyHeight, setBodyHeight] = useState<number>();
   const trigger = useRef<HTMLButtonElement>(null);
   const [triggerHeight, setTriggerHeight] = useState(44);
@@ -56,23 +58,35 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
   }, []);
   useLayoutEffect(() => {
     const body = content.current;
-    if (!expanded || !body) return;
+    if (!expanded || !body) {
+      anchoredTop.current = null;
+      return;
+    }
     const measure = () => {
       const rect = root.current?.getBoundingClientRect();
       if (!rect) return;
       const height = Math.min(body.offsetHeight + triggerHeight, window.innerHeight - 36);
-      const top = Math.max(18, Math.min(rect.top, window.innerHeight - height - 18));
+      const top =
+        anchoredTop.current ?? Math.max(18, Math.min(rect.top, window.innerHeight - height - 18));
+      anchoredTop.current = top;
+      const width = Math.min(448, window.innerWidth - 48);
+      const left = Math.max(24, Math.min(rect.right - width, window.innerWidth - width - 24));
+      setOffsetX(left + width - rect.right);
       setOffsetY(top - rect.top);
       setBodyHeight(Math.max(0, window.innerHeight - top - triggerHeight - 18));
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(body);
-    window.addEventListener('resize', measure);
+    const resize = () => {
+      anchoredTop.current = null;
+      measure();
+    };
+    window.addEventListener('resize', resize);
     window.addEventListener('scroll', measure, true);
     return () => {
       observer.disconnect();
-      window.removeEventListener('resize', measure);
+      window.removeEventListener('resize', resize);
       window.removeEventListener('scroll', measure, true);
     };
   }, [expanded, triggerHeight]);
@@ -110,6 +124,7 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
       <motion.div
         initial={false}
         animate={{
+          x: expanded ? offsetX : 0,
           y: expanded ? offsetY : 0,
           width: expanded ? panelWidth : 100,
           height: expanded ? 'auto' : triggerHeight,
