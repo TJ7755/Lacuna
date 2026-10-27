@@ -74,7 +74,6 @@ function Harness({
           onPracticeOpen={vi.fn()}
           onPracticeEdit={vi.fn()}
           onAssessmentOpen={onAssessmentOpen}
-          onAssessmentPractise={vi.fn()}
           onAdd={onAdd}
         />
       </ToastProvider>

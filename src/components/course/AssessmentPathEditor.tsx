@@ -21,6 +21,7 @@ import { PathEditorSurface } from './PathEditorSurface';
 import { PathEditorPopover } from './PathEditorPopover';
 import { AssessmentExclusions } from './AssessmentExclusions';
 import { useAssessmentSpecification } from '../../state/useAssessmentSpecification';
+import { defaultExamDate } from '../../utils/datetime';
 
 export function AssessmentPathEditor({
   courseId,
@@ -32,6 +33,7 @@ export function AssessmentPathEditor({
   timeZone,
   preferredLessonIds,
   learnerOwnedOnly = false,
+  schoolTest = false,
   onSaved,
 }: {
   courseId: string;
@@ -43,6 +45,7 @@ export function AssessmentPathEditor({
   timeZone?: string;
   preferredLessonIds?: readonly string[];
   learnerOwnedOnly?: boolean;
+  schoolTest?: boolean;
   onSaved: () => void;
 }) {
   const specificationContext = useAssessmentSpecification(courseId);
@@ -57,6 +60,9 @@ export function AssessmentPathEditor({
       : {
           ...emptyAssessmentDraft(orderedLessons, timeZone),
           ...(defaultAfterLessonId !== undefined ? { afterLessonId: defaultAfterLessonId } : {}),
+          ...(schoolTest
+            ? { coverageMode: 'custom', lessonIds: [], examDate: defaultExamDate() }
+            : {}),
         },
   );
   const [error, setError] = useState('');
@@ -129,13 +135,26 @@ export function AssessmentPathEditor({
         ?.focus();
       return false;
     }
-    if (!resolved.validation.valid || resolved.validation.needsAuthorConfirmation) {
-      setError(resolved.validation.issues[0]?.message ?? 'Confirm the assessment’s scope.');
+    if (
+      !resolved.validation.valid ||
+      resolved.validation.needsAuthorConfirmation ||
+      (schoolTest && resolved.coveredLessons.length === 0)
+    ) {
+      setError(
+        resolved.validation.issues[0]?.message ??
+          (schoolTest && resolved.coveredLessons.length === 0
+            ? 'Choose at least one lesson for this test.'
+            : 'Confirm the assessment’s scope.'),
+      );
       coverage.current?.querySelector('button')?.focus();
       return false;
     }
     try {
       const changes = assessmentChanges(draft);
+      if (schoolTest && draft.coverageMode === 'prefix') {
+        changes.coverageMode = 'custom';
+        changes.lessonIds = resolved.coveredLessons.map((lesson) => lesson.id);
+      }
       if (assessment) {
         if (learnerOwnedOnly)
           await updateCourseAssessment(assessment.id, changes, { learnerOwnedOnly: true });
@@ -184,7 +203,9 @@ export function AssessmentPathEditor({
       label={
         assessment
           ? `Edit ${kind === 'final' ? 'final assessment' : 'checkpoint'}`
-          : 'Add checkpoint'
+          : schoolTest
+            ? 'Add test'
+            : 'Add checkpoint'
       }
       onSave={save}
       onClosed={onSaved}
@@ -200,7 +221,9 @@ export function AssessmentPathEditor({
           data-path-editor-focus
           className="path-editor-name"
           value={draft.name}
-          placeholder={kind === 'final' ? 'Final exam' : 'Checkpoint name'}
+          placeholder={
+            kind === 'final' ? 'Final exam' : schoolTest ? 'Test name' : 'Checkpoint name'
+          }
           onChange={(event) => {
             setDraft({ ...draft, name: event.target.value });
             setError('');

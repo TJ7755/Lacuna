@@ -33,7 +33,7 @@ import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourse
 import { CourseStudyActions } from '../components/course/CourseStudyActions';
 import { CourseSummaryCard } from '../components/course/CourseSummaryCard';
 import { forecastStatus } from '../components/dashboard/forecastStatus';
-import { formatShortDate, startOfDay } from '../utils/datetime';
+import { startOfDay } from '../utils/datetime';
 
 import { updateCourse } from '../db/courseRepository';
 import { useCoursePathReorder } from '../components/course/useCoursePathReorder';
@@ -49,9 +49,6 @@ function prefetchLessonView(): void {
     // Speculative failures must leave navigation free to retry.
   });
 }
-
-// The course page's Other ways menu sits beside Study, so its session plan leaves them out.
-const PAGE_OFFERS_OTHER_WAYS = { otherWays: false };
 
 export const preloadCoursePath = useCoursePathRecords.preload;
 
@@ -69,6 +66,7 @@ export function CoursePath() {
   const [assessmentEditor, setAssessmentEditor] = useState<{
     assessment?: CourseAssessment;
     defaultAfterLessonId?: string | null;
+    schoolTest?: boolean;
   } | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedAssessmentId = searchParams.get('exam');
@@ -142,10 +140,7 @@ export function CoursePath() {
   );
 
   usePageShortcuts({
-    s:
-      dataLoaded && course && !archived
-        ? () => openStudySheet(courseId, PAGE_OFFERS_OTHER_WAYS)
-        : undefined,
+    s: dataLoaded && course && !archived ? () => openStudySheet(courseId) : undefined,
   });
 
   // Wait for course and lesson data before showing access-dependent actions.
@@ -184,11 +179,6 @@ export function CoursePath() {
             onClose={() => {
               setSelectedAssessmentId(null);
             }}
-            onRevise={() =>
-              navigate(
-                `/course/${courseId}/study?assessmentId=${encodeURIComponent(selectedAssessmentId)}`,
-              )
-            }
           />
         )}
       {practiceEditor && (
@@ -213,6 +203,7 @@ export function CoursePath() {
           timeZone={course.timeZone}
           preferredLessonIds={courseLessonOrderPreference(course)}
           learnerOwnedOnly={localOrder}
+          schoolTest={assessmentEditor.schoolTest}
           onSaved={() => setAssessmentEditor(null)}
         />
       )}
@@ -221,32 +212,6 @@ export function CoursePath() {
 
   const dueReviewCardIds = studyFlowSnapshot?.dueReviewCardIds;
   const dueCardCount = dueReviewCardIds?.size ?? 0;
-  const otherWays = [
-    ...((studyFlowSnapshot?.examPracticeEligibleCount ?? 0) > 0
-      ? [
-          {
-            label: 'Practise for exam',
-            description: 'Cards below the exam target, including cards not yet due',
-            onSelect: () => navigate(`/course/${courseId}/study?review=exam`),
-          },
-        ]
-      : []),
-    {
-      // Named as in the session plan's Other ways, which offers the same session.
-      label: 'Only review due cards',
-      description: 'Skip new cards and lessons',
-      disabled: dueCardCount === 0,
-      onSelect: () => navigate(`/course/${courseId}/study?review=due`),
-    },
-    ...assessments
-      .filter((assessment) => assessment.examDate !== undefined && assessment.examDate > now)
-      .map((assessment) => ({
-        label: `Revise for ${assessment.name}`,
-        description: `Ready by ${formatShortDate(assessment.examDate as number, assessment.timeZone ?? course.timeZone)}`,
-        onSelect: () =>
-          navigate(`/course/${courseId}/study?assessmentId=${encodeURIComponent(assessment.id)}`),
-      })),
-  ];
   // Course cards reviewed since the start of today fill the ring beside Study.
   const todayStart = startOfDay(now, course.timeZone);
   const doneToday = (courseCards ?? []).filter(
@@ -258,8 +223,7 @@ export function CoursePath() {
       dueCount={dueCardCount}
       doneToday={doneToday}
       disabled={disabled}
-      onStudy={() => openStudySheet(courseId, PAGE_OFFERS_OTHER_WAYS)}
-      otherWays={otherWays}
+      onStudy={() => openStudySheet(courseId)}
     />
   );
 
@@ -281,7 +245,10 @@ export function CoursePath() {
       masteryPct: Math.round(progressValue(cards, course, now, examDateContext) * 100),
     };
   };
-  const hasStudyContent = lessons.length > 0 || courseCards.length > 0;
+  const hasStudyContent =
+    lessons.length > 0 ||
+    courseCards.length > 0 ||
+    Boolean(records?.questionPractice?.some((item) => item.availableCount > 0));
   const cardTotal = courseCards.length;
   const lessonTotal = lessons.filter((lesson) => !lesson.isExtension).length;
   const status = forecast ? forecastStatus(forecast) : undefined;
@@ -368,9 +335,10 @@ export function CoursePath() {
         onPracticeEdit={(node) =>
           node.practiceNode && setPracticeEditor({ node: node.practiceNode })
         }
-        onAssessmentPractise={(id) =>
-          navigate(`/course/${courseId}/study?assessmentId=${encodeURIComponent(id)}`)
-        }
+        onAddTest={() => {
+          if (!archived)
+            setAssessmentEditor({ defaultAfterLessonId: lastLesson?.id ?? null, schoolTest: true });
+        }}
         onAssessmentOpen={(id) => {
           const assessment = assessments.find((item) => item.id === id);
           if (!assessment || archived) return;

@@ -51,7 +51,7 @@ export function StudyStepTransition({
 }: StudyStepTransitionProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const incomplete = !summary.reachedGoal;
+  const incomplete = !summary.reachedGoal && !summary.blockComplete;
   // The finished step's controls are gone; hand the keyboard to the primary action.
   const actionsRef = useRef<HTMLDivElement>(null);
   useUnclaimedFocus(actionsRef, !planningNextStep);

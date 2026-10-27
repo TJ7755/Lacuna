@@ -15,11 +15,9 @@ for (const width of [1280, 390]) {
     const preview = page.getByRole('region', { name: 'Session preview' });
     await expect(preview).toBeVisible();
     await expect(preview.getByText('Practise until all correct')).toBeHidden();
-    await page.keyboard.press('Escape');
-    await expect(preview).toBeHidden();
-    await page.getByRole('button', { name: 'Other ways to study' }).click();
-    await page.getByRole('menuitem', { name: 'Practise until all correct' }).click();
-    const practice = page.getByRole('group', { name: 'Other ways to study' });
+    await preview.getByRole('button', { name: 'Other ways', exact: true }).click();
+    const practice = preview.getByRole('region', { name: 'Other ways', exact: true });
+    await practice.getByText('Practise until all correct', { exact: true }).click();
     const scope = practice.getByLabel('What to practise');
     await expect(scope).toHaveCSS('appearance', 'base-select');
     await expect(scope).toHaveValue('');

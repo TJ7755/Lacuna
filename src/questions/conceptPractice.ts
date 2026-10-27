@@ -149,6 +149,22 @@ function candidates(sets: QuestionSetRecord[]): Candidate[] {
   );
 }
 
+function withinConceptScope(
+  question: QuestionSetQuestion,
+  ids: ReadonlySet<string> | undefined,
+): boolean {
+  return (
+    !ids ||
+    answers(question).every(({ answer }) =>
+      answer.allocations.every((allocation) =>
+        [...allocation.targetConceptIds, ...answer.prerequisiteConceptIds].every((id) =>
+          ids.has(id),
+        ),
+      ),
+    )
+  );
+}
+
 export interface ConceptPracticeItem {
   conceptId: string;
   name: string;
@@ -158,6 +174,7 @@ export interface ConceptPracticeItem {
   familiarCount: number;
   availableCount: number;
   needs?: ConceptPracticeNeeds;
+  unfinished?: boolean;
 }
 
 function familyKey(set: QuestionSetRecord, questionId: string): string {
@@ -209,15 +226,39 @@ function unseenCapacity(candidate: Candidate, data: Awaited<ReturnType<typeof co
   );
 }
 
+function unfinishedPractice(
+  data: Awaited<ReturnType<typeof context>>,
+  conceptId: string | undefined,
+  scope: ReadonlySet<string> | undefined,
+) {
+  return data.attempts
+    .filter(
+      (attempt) =>
+        attempt.conceptPractice &&
+        attempt.status !== 'complete' &&
+        attempt.undoneAt === undefined &&
+        (!conceptId || attempt.conceptPractice.conceptId === conceptId) &&
+        (!scope || scope.has(attempt.conceptPractice.conceptId)) &&
+        attempt.receipt.questions.every((question) => withinConceptScope(question, scope)) &&
+        data.candidates.some((candidate) => candidate.set.id === attempt.questionSetId),
+    )
+    .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))[0];
+}
+
 export async function listConceptPractice(
   courseId: string,
   now = Date.now(),
+  scopeConceptIds?: readonly string[],
 ): Promise<ConceptPracticeItem[]> {
   const data = await context(courseId);
+  const scope = scopeConceptIds ? new Set(scopeConceptIds) : undefined;
   return data.concepts
+    .filter((concept) => !scope || scope.has(concept.id))
     .map((concept) => {
       const schedule = data.schedules.get(concept.id) ?? emptyQuestionSchedule();
-      const available = data.candidates.filter((row) => row.conceptIds.includes(concept.id));
+      const available = data.candidates.filter(
+        (row) => row.conceptIds.includes(concept.id) && withinConceptScope(row.question, scope),
+      );
       const unseenCount = available.reduce((total, row) => total + unseenCapacity(row, data), 0);
       const availableCount = available.reduce((total, row) => total + row.capacity, 0);
       return {
@@ -236,6 +277,7 @@ export async function listConceptPractice(
         familiarCount: availableCount - unseenCount,
         availableCount,
         needs: data.needs.get(concept.id),
+        unfinished: Boolean(unfinishedPractice(data, concept.id, scope)),
       };
     })
     .sort(
@@ -266,6 +308,8 @@ export async function startConceptPractice(
     allowFamiliar?: boolean;
     now?: number;
     mode?: 'due' | 'mixed';
+    scopeConceptIds?: readonly string[];
+    resume?: boolean;
     blueprint?: Partial<{ type: string; difficulty: string; context: string }>;
   } = {},
 ): Promise<{ attempt: QuestionSetAttemptRecord; selection: ConceptPracticeSelection }> {
@@ -275,6 +319,13 @@ export async function startConceptPractice(
     [db.courses, db.concepts, db.questionSets, db.questionSetAttempts],
     async () => {
       const data = await context(courseId);
+      const course = await db.courses.get(courseId);
+      if (!course || course.archived) throw new Error('This course is unavailable for practice.');
+      const scope = options.scopeConceptIds ? new Set(options.scopeConceptIds) : undefined;
+      if (options.resume) {
+        const unfinished = unfinishedPractice(data, conceptId, scope);
+        if (unfinished) return { attempt: unfinished, selection: unfinished.conceptPractice! };
+      }
       const due = data.concepts.filter((concept) => {
         const schedule = data.schedules.get(concept.id);
         const needs = data.needs.get(concept.id);
@@ -285,16 +336,19 @@ export async function startConceptPractice(
           Boolean(needs?.knowledge || needs?.application || needs?.techniques.length)
         );
       });
-      const eligible = conceptId
-        ? data.concepts.filter((concept) => concept.id === conceptId)
-        : options.mode === 'mixed'
-          ? data.concepts
-          : due;
+      const eligible = (
+        conceptId
+          ? data.concepts.filter((concept) => concept.id === conceptId)
+          : options.mode === 'mixed'
+            ? data.concepts
+            : due
+      ).filter((concept) => !scope || scope.has(concept.id));
       if (!eligible.length) throw new ConceptPracticeExhaustedError('no-due-concepts');
       const ids = new Set(eligible.map((concept) => concept.id));
       const available = data.candidates.filter(
         (candidate) =>
           candidate.conceptIds.some((id) => ids.has(id)) &&
+          withinConceptScope(candidate.question, scope) &&
           Object.entries(options.blueprint ?? {}).every(
             ([key, value]) =>
               candidate.set.bank?.blueprint[key as 'type' | 'difficulty' | 'context'] === value,

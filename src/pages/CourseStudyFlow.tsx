@@ -13,6 +13,7 @@ import {
 } from '../state/activeStudyFlow';
 import {
   DUE_REVIEW_STEP,
+  STUDY_REVIEW_BLOCK_SIZE,
   CATCH_UP_STEP,
   EXAM_PRACTICE_STEP,
   planNextStudyStep,
@@ -21,7 +22,7 @@ import {
 import type { SessionSummary } from '../components/learn/types';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
-import { RevisionPlanSetup } from '../components/learn/RevisionPlanSetup';
+import { StudyQuestionStep } from '../components/learn/StudyQuestionStep';
 import { StepSwap } from '../components/ui/StepSwap';
 import { continuesWithoutPause, mayContinueWithoutPause } from '../course/studyFlowContinuation';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
@@ -53,6 +54,8 @@ function CourseStudyFlowInner() {
     courseId ? identityFor(courseId) : null,
   );
   const [refreshKey, setRefreshKey] = useState(0);
+  const [previousStep, setPreviousStep] = useState<StudyFlowStep | null>(null);
+  const [questionFinished, setQuestionFinished] = useState(false);
   const [catchUpFinished, setCatchUpFinished] = useState(false);
   const entryAssessmentId = searchParams.get('assessmentId');
   const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
@@ -73,22 +76,19 @@ function CourseStudyFlowInner() {
   // The choice is made in the study sheet before this route is entered and arrives as a
   // query parameter, so the flow no longer presents an entry screen of its own.
   const [transition, setTransition] = useState<TransitionState | null>(null);
-  const [revisionSession, setRevisionSession] = useState<{
-    planId: string;
-    windowId: string;
-  } | null>(null);
   const plannedFlow = useCourseStudyFlow(
     courseId,
     refreshKey,
     currentStep === null || transition !== null,
+    previousStep,
   );
   // Reaching a session objective need not empty the broader catch-up pool.
   const flow = useMemo(
     () =>
       plannedFlow && catchUpFinished
-        ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false) }
+        ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false, previousStep) }
         : plannedFlow,
-    [catchUpFinished, plannedFlow],
+    [catchUpFinished, plannedFlow, previousStep],
   );
   const pomodoro = usePomodoroFlowContext();
 
@@ -111,6 +111,7 @@ function CourseStudyFlowInner() {
   const displayStep = useMemo<StudyFlowStep | null>(() => {
     if (currentStep) return currentStep;
     if (transition || !flow) return null;
+    if (questionFinished && flow.generation !== refreshKey) return null;
     // A deep link may name the practice node to run; honour it while it is still active,
     // and otherwise fall through to whatever the planner says comes next.
     if (entryPracticeNodeKey) {
@@ -131,13 +132,14 @@ function CourseStudyFlowInner() {
       return flow.decision.step;
     }
     return null;
-  }, [currentStep, entryPracticeNodeKey, flow, transition]);
+  }, [currentStep, entryPracticeNodeKey, flow, transition, questionFinished, refreshKey]);
 
   useEffect(() => {
     if (currentStep || transition || !displayStep) return;
     // Reuse the render-derived object. Building a second practice-node step here
     // used to change `displayStep`'s identity, rebuild `request`, and restart Learn.
     setCurrentStep(displayStep);
+    setQuestionFinished(false);
   }, [currentStep, displayStep, transition]);
 
   // Freeze curricular scope ids with the committed step. An in-flight Learn
@@ -181,14 +183,13 @@ function CourseStudyFlowInner() {
     }
     if (displayStep.kind === 'practice') {
       if (displayStep.mode === 'assessment') {
-        if (!displayStep.assessmentId || !revisionSession) return null;
+        if (!displayStep.assessmentId) return null;
         return {
           kind: 'practice',
           courseId: courseId ?? '',
           mode: 'assessment',
           assessmentId: displayStep.assessmentId,
-          planId: revisionSession.planId,
-          windowId: revisionSession.windowId,
+          reviewLimit: STUDY_REVIEW_BLOCK_SIZE,
         };
       }
       return {
@@ -198,16 +199,11 @@ function CourseStudyFlowInner() {
         scopeLessonIds: committedScopeLessonIds,
         milestoneLessonIds: committedMilestoneLessonIds,
         mode: displayStep.mode,
+        reviewLimit: STUDY_REVIEW_BLOCK_SIZE,
       };
     }
     return null;
-  }, [
-    committedMilestoneLessonIds,
-    committedScopeLessonIds,
-    courseId,
-    displayStep,
-    revisionSession,
-  ]);
+  }, [committedMilestoneLessonIds, committedScopeLessonIds, courseId, displayStep]);
 
   const handleStepFinished = useCallback(
     (summary: SessionSummary) => {
@@ -218,22 +214,32 @@ function CourseStudyFlowInner() {
       if (refreshKey <= completedGenerationRef.current) return;
       completedGenerationRef.current = refreshKey;
       touchActiveStudyFlow(courseId);
-      if (completed.kind === 'practice' && completed.mode === 'assessment') {
-        setRevisionSession(null);
-      }
-      if (completed.kind === 'practice' && completed.mode === 'catch-up') setCatchUpFinished(true);
+      setPreviousStep(completed);
+      if (completed.kind === 'practice' && completed.mode === 'catch-up' && summary.reachedGoal)
+        setCatchUpFinished(true);
       setTransition({ summary, completedStep: completed });
       setRefreshKey((value) => value + 1);
     },
     [courseId, currentStep, displayStep, refreshKey],
   );
 
+  const handleQuestionFinished = useCallback(() => {
+    const completed = currentStep ?? displayStep;
+    if (!completed || !courseId || refreshKey <= completedGenerationRef.current) return;
+    completedGenerationRef.current = refreshKey;
+    touchActiveStudyFlow(courseId);
+    setPreviousStep(completed);
+    setCurrentStep(null);
+    setQuestionFinished(true);
+    setRefreshKey((value) => value + 1);
+  }, [courseId, currentStep, displayStep, refreshKey]);
+
   const continueFlow = useCallback(() => {
     if (!transition) return;
     const readyFlow = flow?.generation === refreshKey ? flow : null;
-    if (transition.summary.reachedGoal && !readyFlow) return;
+    if ((transition.summary.reachedGoal || transition.summary.blockComplete) && !readyFlow) return;
     if (pomodoro.breakPending) pomodoro.deferBreak();
-    if (!transition.summary.reachedGoal) {
+    if (!transition.summary.reachedGoal && !transition.summary.blockComplete) {
       setTransition(null);
       return;
     }
@@ -294,7 +300,7 @@ function CourseStudyFlowInner() {
     );
   }
 
-  if (!transition && flow === undefined) {
+  if (!transition && (flow === undefined || (questionFinished && flow.generation !== refreshKey))) {
     return (
       <div className="min-h-dvh bg-paper">
         <StudyExitHeader onExit={finishFlow} />
@@ -306,7 +312,9 @@ function CourseStudyFlowInner() {
   let scene: string;
   let body: ReactNode;
   if (transition && !awaitingContinuation) {
-    const planningNextStep = transition.summary.reachedGoal && flow?.generation !== refreshKey;
+    const planningNextStep =
+      (transition.summary.reachedGoal || transition.summary.blockComplete) === true &&
+      flow?.generation !== refreshKey;
     const catchUpIsNext =
       flow?.decision.kind === 'step' &&
       flow.decision.step.kind === 'practice' &&
@@ -343,17 +351,16 @@ function CourseStudyFlowInner() {
         onFinish={finishFlow}
       />
     );
-  } else if (
-    displayStep?.kind === 'practice' &&
-    displayStep.mode === 'assessment' &&
-    displayStep.assessmentId &&
-    !revisionSession
-  ) {
-    scene = 'revision';
+  } else if (displayStep?.kind === 'exam-questions') {
+    scene = `questions-${frozenScopeRef.current.serial}`;
     body = (
-      <RevisionPlanSetup
-        assessmentId={displayStep.assessmentId}
-        onStart={(planId, windowId) => setRevisionSession({ planId, windowId })}
+      <StudyQuestionStep
+        key={scene}
+        courseId={courseId}
+        conceptId={displayStep.conceptId}
+        scopeConceptIds={displayStep.scopeConceptIds}
+        allowFamiliar={displayStep.allowFamiliar}
+        onComplete={handleQuestionFinished}
         onExit={finishFlow}
       />
     );

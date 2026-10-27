@@ -1,4 +1,3 @@
-import { RelatedQuestionSets } from '../question-sets/RelatedQuestionSets';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { m as motion, useIsPresent } from 'motion/react';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
@@ -7,7 +6,6 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatDateTime } from '../../utils/datetime';
 import { expandingActionSpring } from '../ui/motion';
-import { Button } from '../ui/Button';
 import { CloseIcon } from '../ui/icons';
 import { useAssessmentSpecification } from '../../state/useAssessmentSpecification';
 
@@ -18,7 +16,6 @@ interface AssessmentDetailSheetProps {
   links: LessonCardLink[];
   preferredLessonIds?: readonly string[];
   onClose: () => void;
-  onRevise: () => void;
 }
 
 export function assessmentSheetTiming(multiplier: number) {
@@ -36,7 +33,6 @@ export function AssessmentDetailSheet({
   links,
   preferredLessonIds,
   onClose,
-  onRevise,
 }: AssessmentDetailSheetProps) {
   const specificationContext = useAssessmentSpecification(assessment.courseId);
   const [motionSpeed] = useMotionSpeed();
@@ -118,12 +114,6 @@ export function AssessmentDetailSheet({
             </ul>
           </section>
 
-          <RelatedQuestionSets
-            courseId={assessment.courseId}
-            assessmentId={assessment.id}
-            onNavigate={onClose}
-          />
-
           {excludedNames.length > 0 && (
             <section>
               <h3 className="text-sm font-medium text-ink">Exclusions</h3>
@@ -149,17 +139,6 @@ export function AssessmentDetailSheet({
             </section>
           )}
         </div>
-
-        <footer className="border-t border-line px-6 py-4">
-          <Button
-            variant="primary"
-            onClick={onRevise}
-            aria-label={`Revise for ${assessment.name}`}
-            className="w-full"
-          >
-            Revise
-          </Button>
-        </footer>
       </motion.aside>
     </motion.div>
   );

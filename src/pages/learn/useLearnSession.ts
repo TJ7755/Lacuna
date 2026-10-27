@@ -133,6 +133,7 @@ export interface UseLearnSessionParams {
   requestScopeLessonIds: string[] | undefined;
   /** Fixed lesson prefix of a curricular node's milestone; undefined records no milestone. */
   requestMilestoneLessonIds?: string[];
+  requestReviewLimit?: number;
   practiceNodeKeyParam: string | null;
   requestAssessmentId: string | undefined;
   requestPlanId: string | undefined;
@@ -171,6 +172,7 @@ export function useLearnSession({
   filterParams,
   requestScopeLessonIds,
   requestMilestoneLessonIds,
+  requestReviewLimit,
   practiceNodeKeyParam,
   requestAssessmentId,
   requestPlanId,
@@ -599,6 +601,7 @@ export function useLearnSession({
       limitReached = false,
       timeLimitReached = false,
       dailyGoalReached = false,
+      blockComplete = false,
     ) => {
       if (!mountedRef.current) return;
       const ctx = ctxRef.current;
@@ -623,6 +626,7 @@ export function useLearnSession({
         limitReached,
         timeLimitReached,
         ...(dailyGoalReached ? { dailyGoalReached } : {}),
+        ...(blockComplete ? { blockComplete } : {}),
         simpleMode: isSimpleMode,
         mode,
       });
@@ -646,6 +650,23 @@ export function useLearnSession({
   const serveNext = useCallback(() => {
     if (!mountedRef.current) return;
     presentedAnswerInput.current = undefined;
+
+    if (
+      !isSimpleMode &&
+      requestReviewLimit !== undefined &&
+      requestReviewLimit > 0 &&
+      events.current.length >= requestReviewLimit
+    ) {
+      const context = ctxRef.current;
+      finish(
+        context ? sessionComplete(cardsRef.current, context) : false,
+        false,
+        false,
+        false,
+        true,
+      );
+      return;
+    }
 
     if (isSimpleMode) {
       persistSimpleResume();
@@ -748,7 +769,7 @@ export function useLearnSession({
     distraction.setAnswerVisible(false);
     // Invalidate progress cache when moving to a new card.
     progressCacheRef.current.dirty = true;
-  }, [finish, distraction, isSimpleMode, persistSimpleResume, requestWindowId]);
+  }, [finish, distraction, isSimpleMode, persistSimpleResume, requestWindowId, requestReviewLimit]);
 
   const preloadEnabled = enabled && (phase === 'question' || phase === 'answer');
   useEffect(() => {

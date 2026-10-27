@@ -10,6 +10,7 @@ import { PathNodeActionsMenu } from './PathNodeActionsMenu';
 import type { MenuHandle } from '../ui/Menu';
 import type { CourseOverviewProps } from './courseOverviewTypes';
 import { renderCoursePathRows } from './CoursePathRows';
+import { Button } from '../ui/Button';
 
 export type { LessonNodeDetail } from './courseOverviewTypes';
 
@@ -141,9 +142,16 @@ export function CourseOverview(props: CourseOverviewProps) {
             aria-labelledby="course-assessments-heading"
           >
             {/* Matches the Lessons card beside it, so the two headings share a line. */}
-            <h2 id="course-assessments-heading" className="font-display text-[22px]">
-              Assessments
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="course-assessments-heading" className="font-display text-[22px]">
+                Assessments
+              </h2>
+              {!archived && props.lessonCount > 0 && props.onAddTest && (
+                <Button variant="ghost" size="sm" onClick={props.onAddTest}>
+                  Add test
+                </Button>
+              )}
+            </div>
             {props.assessments.map((assessment) => {
               const editable =
                 authoring || (localOrder && props.learnerCheckpointIds?.includes(assessment.id));

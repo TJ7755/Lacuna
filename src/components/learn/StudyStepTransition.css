@@ -85,7 +85,7 @@
   overflow-wrap: anywhere;
 }
 .study-transition-destination.has-next h2 {
-  /* The study heading scale (StudyFlowMessage and RevisionPlanSetup): text-4xl to md:text-5xl. */
+  /* The study heading scale (StudyFlowMessage): text-4xl to md:text-5xl. */
   font-size: 36px;
   letter-spacing: -0.025em;
   animation: study-content-arrive calc(600ms * var(--step-motion)) calc(720ms * var(--step-motion))

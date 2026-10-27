@@ -17,8 +17,9 @@ test('shows a clear completed Simple Learn report on desktop and mobile', async 
     .getByRole('navigation', { name: 'Course sections' })
     .getByRole('link', { name: 'Path', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Other ways to study' }).click();
-  await page.getByRole('menuitem', { name: 'Practise until all correct' }).click();
+  await page.getByRole('button', { name: 'Study', exact: true }).click();
+  await page.getByRole('button', { name: 'Other ways', exact: true }).click();
+  await page.getByText('Practise until all correct', { exact: true }).click();
   await page.getByRole('button', { name: 'Start practising' }).click();
   await page
     .getByRole('button', { name: /Show answer/i })

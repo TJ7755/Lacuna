@@ -6,6 +6,8 @@ import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { performanceForCourseBackingDecks } from '../db/backingDecks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { retainedLiveQuery } from './retainedLiveQuery';
+import type { ConceptPracticeItem } from '../questions/conceptPractice';
+import { questionStudyScope } from '../course/questionStudyScope';
 import type {
   Course,
   Lesson,
@@ -24,6 +26,8 @@ interface CourseStudyFlowRecords {
   lessons: Lesson[];
   cards: Card[];
   concepts?: Concept[];
+  questionPractice?: ConceptPracticeItem[];
+  questionScopeConceptIds?: string[];
   assessments: CourseAssessment[];
   links: LessonCardLink[];
   exposures: LessonCardExposure[];
@@ -117,13 +121,15 @@ async function readCourseStudyFlowRecords(
     };
   }
   const course = hydrateCourse(courseRecord, finalAssessmentForCourse(courseId, assessments));
-  const [lessons, rawCards, practiceNodes, milestones, concepts] = await Promise.all([
-    db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
-    db.cards.where('courseId').equals(courseId).toArray(),
-    db.practiceNodes.where('courseId').equals(courseId).toArray(),
-    db.practiceMilestones.where('courseId').equals(courseId).toArray(),
-    course.specificationData ? db.concepts.where('courseId').equals(courseId).toArray() : [],
-  ]);
+  const [lessons, rawCards, practiceNodes, milestones, concepts, questionSetCount] =
+    await Promise.all([
+      db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
+      db.cards.where('courseId').equals(courseId).toArray(),
+      db.practiceNodes.where('courseId').equals(courseId).toArray(),
+      db.practiceMilestones.where('courseId').equals(courseId).toArray(),
+      db.concepts.where('courseId').equals(courseId).toArray(),
+      db.questionSets.where('courseId').equals(courseId).count(),
+    ]);
   const cards = await hydrateCardsWithHistory(rawCards);
   const lessonIds = lessons.map((lesson) => lesson.id);
   const [links, exposures, completions, performance] = await Promise.all([
@@ -132,11 +138,29 @@ async function readCourseStudyFlowRecords(
     lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
     performanceForCourseBackingDecks(courseId, cards),
   ]);
+  const questionScopeConceptIds = questionStudyScope({
+    course,
+    lessons,
+    cards,
+    links,
+    exposures,
+    assessments,
+    practiceNodes,
+    concepts,
+  });
+  const questionPractice =
+    questionScopeConceptIds.length && questionSetCount > 0
+      ? await import('../questions/conceptPractice').then(({ listConceptPractice }) =>
+          listConceptPractice(courseId, Date.now(), questionScopeConceptIds),
+        )
+      : [];
   return {
     course,
     lessons,
     cards,
     concepts,
+    questionPractice,
+    questionScopeConceptIds,
     assessments,
     links,
     exposures,
