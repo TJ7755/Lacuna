@@ -122,7 +122,7 @@ async function readCourseStudyFlowRecords(
     db.cards.where('courseId').equals(courseId).toArray(),
     db.practiceNodes.where('courseId').equals(courseId).toArray(),
     db.practiceMilestones.where('courseId').equals(courseId).toArray(),
-    db.concepts.where('courseId').equals(courseId).toArray(),
+    course.specificationData ? db.concepts.where('courseId').equals(courseId).toArray() : [],
   ]);
   const cards = await hydrateCardsWithHistory(rawCards);
   const lessonIds = lessons.map((lesson) => lesson.id);
