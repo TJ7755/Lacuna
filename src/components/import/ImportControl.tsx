@@ -84,6 +84,15 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(body);
+    // Today can finish loading after Import opens, moving its trigger without resizing the panel.
+    for (
+      let container: HTMLElement | null = root.current;
+      container;
+      container = container.parentElement
+    ) {
+      observer.observe(container);
+      if (container.tagName === 'MAIN') break;
+    }
     const resize = () => {
       anchoredTop.current = null;
       measure();
