@@ -57,6 +57,7 @@ export function StudySheet({
           <CourseStudyOptions
             courseId={scopedCourseId}
             otherWays={otherWays}
+            onClose={onClose}
             onBack={
               courseId === null
                 ? () => {
@@ -112,10 +113,12 @@ function CoursePicker({ onPick }: { onPick: (courseId: string) => void }) {
 function CourseStudyOptions({
   courseId,
   otherWays,
+  onClose,
   onBack,
 }: {
   courseId: string;
   otherWays: boolean;
+  onClose: () => void;
   onBack?: () => void;
 }) {
   const navigate = useNavigate();
@@ -252,7 +255,10 @@ function CourseStudyOptions({
             <Button
               variant="ghost"
               className="justify-start"
-              onClick={() => launch(() => navigate(`/course/${courseId}/questions`))}
+              onClick={() => {
+                onClose();
+                void navigate(`/course/${courseId}/questions`);
+              }}
             >
               Choose exam questions
             </Button>

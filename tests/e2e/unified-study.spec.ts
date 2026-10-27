@@ -155,7 +155,22 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       await expect(
         preview.getByRole('button', { name: 'Choose exam questions', exact: true }),
       ).toBeVisible();
-      await otherWays.click();
+      await preview.getByRole('button', { name: 'Choose exam questions', exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/questions$`));
+      await expect(page.getByRole('heading', { name: 'Questions', exact: true })).toBeVisible();
+      await expect(preview).toBeHidden();
+      await expect(page.getByTestId('study-cover')).toBeHidden();
+      const search = page.getByRole('searchbox', { name: 'Search sets', exact: true });
+      await search.click();
+      await expect(search).toBeFocused();
+      await expect(
+        page.getByRole('heading', { name: 'Membrane application', exact: true }),
+      ).toBeVisible();
+
+      await page.goto(courseUrl);
+      await study.click();
+      await expect(preview.getByText('Practise Cell membranes', { exact: true })).toBeVisible();
+      await expect(otherWays).toHaveAttribute('aria-expanded', 'false');
       await capture(page, testInfo, `study-preview-${width}`);
       await preview.getByRole('button', { name: 'Start session', exact: true }).click();
       const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });

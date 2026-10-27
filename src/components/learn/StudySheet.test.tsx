@@ -134,6 +134,18 @@ describe('StudySheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Practise for exam' }));
     expect(mockNavigate).toHaveBeenCalledWith('/course/chem/study?review=exam');
   });
+  it('opens the question browser without a study cover and closes the preview', () => {
+    motionPreference.multiplier = 1;
+    const onClose = vi.fn();
+    renderSheet('chem', { onClose });
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Choose exam questions' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/chem/questions');
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(hasLandingArrival()).toBe(false);
+    expect(screen.queryByTestId('study-cover')).not.toBeInTheDocument();
+  });
+
   it('expands the preview before navigating under the cover', async () => {
     motionPreference.multiplier = 1;
     renderSheet('chem');
