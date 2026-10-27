@@ -114,7 +114,17 @@ export function LandingTransition() {
   if (!transition) return null;
   const { rect, covered, colour, radius, paper, navigate, id } = transition;
   const multiplier = getMotionMultiplier();
-  const coverTransform = `translate3d(${-rect.left}px, ${-rect.top}px, 0) scale(${innerWidth / rect.width}, ${innerHeight / rect.height})`;
+  const identity = 'translate3d(0, 0, 0) scale(1, 1)';
+  const initialTransform = paper
+    ? `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${rect.width / innerWidth}, ${rect.height / innerHeight})`
+    : identity;
+  const coverTransform = paper
+    ? identity
+    : `translate3d(${-rect.left}px, ${-rect.top}px, 0) scale(${innerWidth / rect.width}, ${innerHeight / rect.height})`;
+  // Counter-scale the viewport surface's corners to match the source preview.
+  const initialRadius = paper
+    ? `${(parseFloat(radius) * 100) / rect.width}% / ${(parseFloat(radius) * 100) / rect.height}%`
+    : radius;
 
   return (
     <div
@@ -149,31 +159,41 @@ export function LandingTransition() {
       <motion.div
         key={covered && !paper ? 'reveal' : 'cover'}
         className={
-          covered && !paper ? 'absolute inset-0' : paper ? 'flow-surface absolute' : 'absolute'
+          covered && !paper
+            ? 'absolute inset-0'
+            : paper
+              ? 'flow-surface absolute inset-0'
+              : 'absolute'
         }
         style={
           covered && !paper
             ? { backgroundColor: colour, willChange: 'transform' }
-            : {
-                backgroundColor: colour,
-                borderRadius: radius,
-                height: rect.height,
-                left: rect.left,
-                top: rect.top,
-                transformOrigin: '0 0',
-                width: rect.width,
-                willChange: 'transform',
-              }
+            : paper
+              ? { backgroundColor: colour, transformOrigin: '0 0', willChange: 'transform' }
+              : {
+                  backgroundColor: colour,
+                  borderRadius: radius,
+                  height: rect.height,
+                  left: rect.left,
+                  top: rect.top,
+                  transformOrigin: '0 0',
+                  width: rect.width,
+                  willChange: 'transform',
+                }
         }
         initial={
           covered && !paper
             ? { transform: 'translateY(0%)' }
-            : { transform: 'translate3d(0, 0, 0) scale(1, 1)', borderRadius: radius }
+            : { transform: initialTransform, borderRadius: initialRadius }
         }
         animate={
           covered && !paper
             ? { transform: 'translateY(-100%)' }
-            : { transform: coverTransform, borderRadius: '0px', backgroundColor: paper ?? colour }
+            : {
+                transform: coverTransform,
+                borderRadius: paper ? '0% / 0%' : '0px',
+                backgroundColor: paper ?? colour,
+              }
         }
         transition={
           covered && !paper

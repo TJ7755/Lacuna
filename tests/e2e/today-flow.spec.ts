@@ -61,7 +61,9 @@ test('cold Study acknowledges input and Escape cancels before the chunk arrives'
   }
 });
 
-test('one Escape cancels Study launch before its destination arrives', async ({ page }) => {
+test('Study fills the viewport through resize and Escape cancels its pending destination', async ({
+  page,
+}, testInfo) => {
   let release = () => {};
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -81,6 +83,18 @@ test('one Escape cancels Study launch before its destination arrives', async ({ 
       .click();
     const cover = page.getByTestId('study-cover');
     await expect(cover).toBeVisible();
+    const surface = cover.locator('.flow-surface');
+    await expect
+      .poll(() => surface.boundingBox())
+      .toEqual({ x: 0, y: 0, width: 1470, height: 956 });
+    await page.setViewportSize({ width: 2000, height: 1159 });
+    await expect
+      .poll(() => surface.boundingBox())
+      .toEqual({ x: 0, y: 0, width: 2000, height: 1159 });
+    await testInfo.attach('study-cover-full-viewport', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
     await page.keyboard.press('Escape');
     await expect(cover).toBeHidden();
     await expect(page).toHaveURL(/#\/$/);
