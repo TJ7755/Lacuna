@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { LazyMotion, domAnimation } from 'motion/react';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import {
   beginStudyTransition,
   hasLandingArrival,
@@ -14,6 +14,22 @@ vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal'],
   speedMultiplier: () => preference.multiplier,
 }));
+beforeAll(() => {
+  const nativeCancel = Animation.prototype.cancel;
+  vi.spyOn(Animation.prototype, 'cancel').mockImplementation(function (this: Animation) {
+    // Motion observes onfinish; Happy DOM also creates a separate cancellation promise.
+    void this.finished.catch((error: unknown) => {
+      if (!(error instanceof DOMException) || error.name !== 'AbortError') throw error;
+    });
+    nativeCancel.call(this);
+  });
+});
+afterAll(async () => {
+  await act(async () => {
+    await new Promise(requestAnimationFrame);
+  });
+  vi.restoreAllMocks();
+});
 beforeEach(() => {
   sessionStorage.clear();
   preference.multiplier = 1;
@@ -78,8 +94,14 @@ it('Escape cancels a covered launch while its destination is pending', async () 
     ),
   );
   await vi.waitFor(() => expect(navigate).toHaveBeenCalledOnce(), { timeout: 2000 });
+  await act(async () => {
+    await new Promise(requestAnimationFrame);
+  });
   fireEvent.keyDown(window, { key: 'Escape' });
   expect(cancel).toHaveBeenCalledOnce();
   expect(screen.queryByTestId('study-cover')).not.toBeInTheDocument();
   expect(hasLandingArrival()).toBe(false);
+  await act(async () => {
+    await new Promise(requestAnimationFrame);
+  });
 });
