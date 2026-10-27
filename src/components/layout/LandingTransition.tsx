@@ -117,6 +117,7 @@ export function LandingTransition() {
   if (!transition) return null;
   const { rect, covered, revealing, colour, radius, paper, navigate, id } = transition;
   const multiplier = getMotionMultiplier();
+  const landingReveal = covered && !paper;
   const identity = 'translate3d(0, 0, 0) scale(1, 1)';
   const initialTransform = paper
     ? `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${rect.width / innerWidth}, ${rect.height / innerHeight})`
@@ -158,46 +159,32 @@ export function LandingTransition() {
           </div>
         </motion.header>
       )}
-      {paper && (
-        <motion.div
-          className="absolute inset-0 bg-black"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: revealing ? 0 : 0.04 }}
-          transition={{ duration: (revealing ? 0.18 : 0.38) * multiplier }}
-        />
-      )}
       <motion.div
-        key={covered && !paper ? 'reveal' : 'cover'}
+        key={landingReveal ? 'reveal' : 'cover'}
         className={
-          covered && !paper
-            ? 'absolute inset-0'
-            : paper
-              ? 'flow-surface absolute inset-0'
-              : 'absolute'
+          paper ? 'flow-surface absolute inset-0' : covered ? 'absolute inset-0' : 'absolute'
         }
-        style={
-          covered && !paper
-            ? { backgroundColor: colour, willChange: 'transform' }
-            : paper
-              ? { backgroundColor: colour, transformOrigin: '0 0', willChange: 'transform' }
-              : {
-                  backgroundColor: colour,
-                  borderRadius: radius,
-                  height: rect.height,
-                  left: rect.left,
-                  top: rect.top,
-                  transformOrigin: '0 0',
-                  width: rect.width,
-                  willChange: 'transform',
-                }
-        }
+        style={{
+          backgroundColor: colour,
+          willChange: 'transform',
+          transformOrigin: landingReveal ? undefined : '0 0',
+          ...(!paper && !covered
+            ? {
+                borderRadius: radius,
+                height: rect.height,
+                left: rect.left,
+                top: rect.top,
+                width: rect.width,
+              }
+            : {}),
+        }}
         initial={
-          covered && !paper
+          landingReveal
             ? { transform: 'translateY(0%)' }
             : { transform: initialTransform, borderRadius: initialRadius }
         }
         animate={
-          covered && !paper
+          landingReveal
             ? { transform: 'translateY(-100%)' }
             : {
                 transform: coverTransform,
@@ -207,7 +194,7 @@ export function LandingTransition() {
               }
         }
         transition={
-          covered && !paper
+          landingReveal
             ? { duration: 0.24 * multiplier, ease: REVEAL_EASE }
             : {
                 transform: paper
@@ -220,11 +207,9 @@ export function LandingTransition() {
         }
         onAnimationComplete={() => {
           if (id !== generation.current) return;
-          if (revealing) {
+          if (revealing || landingReveal) {
             setTransition(null);
-          } else if (covered) {
-            if (!paper) setTransition(null);
-          } else {
+          } else if (!covered) {
             if (navigate) navigate();
             else window.dispatchEvent(new CustomEvent(COVERED_EVENT));
             setTransition((current) => (current ? { ...current, covered: true } : null));
