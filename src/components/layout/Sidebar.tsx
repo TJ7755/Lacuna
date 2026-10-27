@@ -102,7 +102,11 @@ export function Sidebar({
       map.set(course.id, {
         days: hasExam ? calendarDaysUntil(course.examDate as number, now) : null,
         recall: forecast?.ifStopped ?? summaries?.[course.id]?.mastery ?? 0,
-        status: forecast ? forecastStatus(forecast) : hasExam ? 'ahead' : 'steady',
+        status: forecast
+          ? forecastStatus(forecast)
+          : hasExam && !course.specificationData
+            ? 'ahead'
+            : 'steady',
         load: glyphLoad(today?.byDeck.find((slice) => slice.sourceId === course.id)?.minutes ?? 0),
       });
     }
