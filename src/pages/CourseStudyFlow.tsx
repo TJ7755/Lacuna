@@ -19,7 +19,11 @@ import {
   planNextStudyStep,
   type StudyFlowStep,
 } from '../course/studyFlowPlanner';
-import type { SessionSummary } from '../components/learn/types';
+import type {
+  SessionSummary,
+  StudyStepSummary,
+  QuestionStudySummary,
+} from '../course/sessionSummary';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import { StudyQuestionStep } from '../components/learn/StudyQuestionStep';
@@ -28,7 +32,7 @@ import { continuesWithoutPause, mayContinueWithoutPause } from '../course/studyF
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
 
 interface TransitionState {
-  summary: SessionSummary;
+  summary: StudyStepSummary;
   completedStep: StudyFlowStep;
 }
 
@@ -55,7 +59,6 @@ function CourseStudyFlowInner() {
   );
   const [refreshKey, setRefreshKey] = useState(0);
   const [previousStep, setPreviousStep] = useState<StudyFlowStep | null>(null);
-  const [questionFinished, setQuestionFinished] = useState(false);
   const [catchUpFinished, setCatchUpFinished] = useState(false);
   const entryAssessmentId = searchParams.get('assessmentId');
   const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
@@ -111,7 +114,6 @@ function CourseStudyFlowInner() {
   const displayStep = useMemo<StudyFlowStep | null>(() => {
     if (currentStep) return currentStep;
     if (transition || !flow) return null;
-    if (questionFinished && flow.generation !== refreshKey) return null;
     // A deep link may name the practice node to run; honour it while it is still active,
     // and otherwise fall through to whatever the planner says comes next.
     if (entryPracticeNodeKey) {
@@ -132,14 +134,13 @@ function CourseStudyFlowInner() {
       return flow.decision.step;
     }
     return null;
-  }, [currentStep, entryPracticeNodeKey, flow, transition, questionFinished, refreshKey]);
+  }, [currentStep, entryPracticeNodeKey, flow, transition]);
 
   useEffect(() => {
     if (currentStep || transition || !displayStep) return;
     // Reuse the render-derived object. Building a second practice-node step here
     // used to change `displayStep`'s identity, rebuild `request`, and restart Learn.
     setCurrentStep(displayStep);
-    setQuestionFinished(false);
   }, [currentStep, displayStep, transition]);
 
   // Freeze curricular scope ids with the committed step. An in-flight Learn
@@ -223,23 +224,31 @@ function CourseStudyFlowInner() {
     [courseId, currentStep, displayStep, refreshKey],
   );
 
-  const handleQuestionFinished = useCallback(() => {
-    const completed = currentStep ?? displayStep;
-    if (!completed || !courseId || refreshKey <= completedGenerationRef.current) return;
-    completedGenerationRef.current = refreshKey;
-    touchActiveStudyFlow(courseId);
-    setPreviousStep(completed);
-    setCurrentStep(null);
-    setQuestionFinished(true);
-    setRefreshKey((value) => value + 1);
-  }, [courseId, currentStep, displayStep, refreshKey]);
+  const handleQuestionFinished = useCallback(
+    (summary: QuestionStudySummary) => {
+      const completed = currentStep ?? displayStep;
+      if (!completed || !courseId || refreshKey <= completedGenerationRef.current) return;
+      completedGenerationRef.current = refreshKey;
+      touchActiveStudyFlow(courseId);
+      setPreviousStep(completed);
+      setTransition({ completedStep: completed, summary });
+      setRefreshKey((value) => value + 1);
+    },
+    [courseId, currentStep, displayStep, refreshKey],
+  );
+
+  const transitionComplete =
+    transition !== null &&
+    (!('events' in transition.summary) ||
+      transition.summary.reachedGoal ||
+      transition.summary.blockComplete === true);
 
   const continueFlow = useCallback(() => {
     if (!transition) return;
     const readyFlow = flow?.generation === refreshKey ? flow : null;
-    if ((transition.summary.reachedGoal || transition.summary.blockComplete) && !readyFlow) return;
+    if (transitionComplete && !readyFlow) return;
     if (pomodoro.breakPending) pomodoro.deferBreak();
-    if (!transition.summary.reachedGoal && !transition.summary.blockComplete) {
+    if (!transitionComplete) {
       setTransition(null);
       return;
     }
@@ -252,13 +261,14 @@ function CourseStudyFlowInner() {
     }
     setCurrentStep(null);
     setTransition(null);
-  }, [flow, pomodoro, refreshKey, transition]);
+  }, [flow, pomodoro, refreshKey, transition, transitionComplete]);
 
   // Contiguous Practice continues without the full-screen hand-off once the planner
   // has the next step; see continuesWithoutPause for the boundaries that still pause.
   const nextFlow = flow?.generation === refreshKey ? flow : null;
   const awaitingContinuation =
     transition !== null &&
+    'events' in transition.summary &&
     mayContinueWithoutPause(transition.completedStep, transition.summary, pomodoro.breakPending) &&
     (nextFlow === null ||
       continuesWithoutPause(
@@ -268,7 +278,7 @@ function CourseStudyFlowInner() {
         pomodoro.breakPending,
       ));
   useEffect(() => {
-    if (!transition || !nextFlow) return;
+    if (!transition || !nextFlow || !('events' in transition.summary)) return;
     const { decision } = nextFlow;
     if (
       continuesWithoutPause(
@@ -300,7 +310,7 @@ function CourseStudyFlowInner() {
     );
   }
 
-  if (!transition && (flow === undefined || (questionFinished && flow.generation !== refreshKey))) {
+  if (!transition && flow === undefined) {
     return (
       <div className="min-h-dvh bg-paper">
         <StudyExitHeader onExit={finishFlow} />
@@ -312,9 +322,7 @@ function CourseStudyFlowInner() {
   let scene: string;
   let body: ReactNode;
   if (transition && !awaitingContinuation) {
-    const planningNextStep =
-      (transition.summary.reachedGoal || transition.summary.blockComplete) === true &&
-      flow?.generation !== refreshKey;
+    const planningNextStep = transitionComplete && flow?.generation !== refreshKey;
     const catchUpIsNext =
       flow?.decision.kind === 'step' &&
       flow.decision.step.kind === 'practice' &&
@@ -329,6 +337,14 @@ function CourseStudyFlowInner() {
         completedLabel={transition.completedStep.label}
         nextLabel={nextLabel}
         summary={transition.summary}
+        progress={flow?.generation === refreshKey ? flow.progress : undefined}
+        nextReason={
+          !planningNextStep &&
+          (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice') &&
+          flow.decision.step.kind === 'exam-questions'
+            ? flow.decision.step.reason
+            : undefined
+        }
         canReviewDueCards={
           transition.completedStep !== DUE_REVIEW_STEP &&
           !planningNextStep &&

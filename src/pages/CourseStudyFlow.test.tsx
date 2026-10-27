@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import type { Course } from '../db/types';
 import type { SessionSummary } from '../components/learn/types';
+import type { QuestionStudySummary } from '../course/sessionSummary';
 import { CATCH_UP_STEP, type StudyFlowStep } from '../course/studyFlowPlanner';
 import type { CourseStudyFlowSnapshot, StudyFlowPracticeState } from '../course/studyFlowSnapshot';
 import type { AssessmentPracticeOption } from '../course/assessmentPractice';
@@ -64,8 +65,36 @@ vi.mock('../components/learn/PomodoroTimer', () => ({
 }));
 
 vi.mock('../components/learn/StudyQuestionStep', () => ({
-  StudyQuestionStep: ({ conceptId, onComplete }: { conceptId: string; onComplete: () => void }) => (
-    <button onClick={onComplete}>Complete question {conceptId}</button>
+  StudyQuestionStep: ({
+    conceptId,
+    onComplete,
+  }: {
+    conceptId: string;
+    onComplete: (summary: QuestionStudySummary) => void;
+  }) => (
+    <button
+      onClick={() =>
+        onComplete({
+          kind: 'question',
+          marking: 'Self-marked',
+          score: {
+            status: 'complete',
+            total: { awarded: 1, available: 2 },
+            resolvedCount: 1,
+            unsureCount: 0,
+            unmarkedCount: 0,
+            dimensions: {
+              knowledge: { awarded: 0, available: 0 },
+              application: { awarded: 1, available: 2 },
+              'exam-execution': { awarded: 0, available: 0 },
+              mixed: { awarded: 0, available: 0 },
+            },
+          },
+        })
+      }
+    >
+      Complete question {conceptId}
+    </button>
   ),
 }));
 
@@ -468,7 +497,7 @@ describe('CourseStudyFlow', () => {
     expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
   });
 
-  it('waits for fresh planning after a question before mounting the next activity', async () => {
+  it('keeps the marked question hand-off and waits for fresh planning before continuing', async () => {
     const question: StudyFlowStep = {
       kind: 'exam-questions',
       nodeKey: 'question-cells',
@@ -485,6 +514,9 @@ describe('CourseStudyFlow', () => {
     expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
     mockFlows[1] = flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Next lesson' }, 1);
     act(() => mockFlowListeners.forEach((listener) => listener()));
+    expect(await screen.findByText('1 / 2 marks · Self-marked')).toBeInTheDocument();
+    expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
     await waitFor(() => expect(request()).toMatchObject({ kind: 'lesson', lessonId: 'lesson-2' }));
     expect(learnMounts).toBe(1);
   });
@@ -506,6 +538,39 @@ describe('CourseStudyFlow', () => {
     });
 
     expect(await screen.findByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('waits for fresh progress after pausing without blocking Resume', async () => {
+    const step: StudyFlowStep = { kind: 'lesson', lessonId: 'lesson-1', label: 'Cells' };
+    const stale = flow(step, 0);
+    stale.progress = {
+      fsrs: {
+        newCards: 0,
+        learningCards: 0,
+        reviewCards: 4,
+        dueCards: 4,
+        totalCards: 4,
+        meanStability: 2,
+        recallNow: 0.8,
+      },
+      priorities: [],
+    };
+    mockFlows = [stale, stale];
+    renderFlow();
+    fireEvent.click(await screen.findByRole('button', { name: 'Pause step' }));
+    expect(await screen.findByRole('button', { name: 'Resume' })).toBeEnabled();
+    expect(
+      screen.queryByRole('region', { name: 'Progress and priorities' }),
+    ).not.toBeInTheDocument();
+    mockFlows[1] = {
+      ...stale,
+      generation: 1,
+      progress: { ...stale.progress, fsrs: { ...stale.progress.fsrs, dueCards: 3 } },
+    };
+    act(() => mockFlowListeners.forEach((listener) => listener()));
+    const panel = await screen.findByRole('region', { name: 'Progress and priorities' });
+    expect(panel).toHaveTextContent('FSRS progress');
+    expect(screen.getByText('Due now').parentElement).toHaveTextContent('3');
   });
 
   it('resumes the same step when the embedded session is incomplete', async () => {

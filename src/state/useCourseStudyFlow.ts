@@ -17,6 +17,7 @@ import {
   type StudyFlowStep,
 } from '../course/studyFlowPlanner';
 import type { Card, Course } from '../db/types';
+import { buildStudyProgress, type StudyProgress } from '../course/studyProgress';
 
 interface CourseStudyFlowData {
   course: Course;
@@ -27,6 +28,7 @@ interface CourseStudyFlowData {
   lessonCardsById: ReadonlyMap<string, Card[]>;
   /** The course's mean seconds per review, for time estimates. */
   meanReviewSeconds: number;
+  progress?: StudyProgress;
 }
 
 /** Loads one authoritative course snapshot for both preview and conductor decisions. */
@@ -158,6 +160,24 @@ export function useCourseStudyFlow(
       generation: records.generation,
       lessonCardsById,
       meanReviewSeconds,
+      progress: buildStudyProgress({
+        course: records.course,
+        lessons: records.lessons,
+        cards: records.cards,
+        assessments: records.assessments,
+        links: records.links,
+        concepts: records.concepts ?? [],
+        questionPractice: records.questionPractice ?? [],
+        questionScopeConceptIds: snapshot.questionScopeConceptIds ?? [],
+        dueReviewCardIds: snapshot.dueReviewCardIds,
+        availableLessonIds: new Set(
+          nodes.flatMap((node) =>
+            node.nodeType === 'lesson' && node.status === 'available' ? [node.id] : [],
+          ),
+        ),
+        assessmentId: previousStep?.kind === 'practice' ? previousStep.assessmentId : undefined,
+        now,
+      }),
     };
   }, [records, previousStep]);
 }

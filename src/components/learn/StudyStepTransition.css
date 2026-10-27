@@ -211,3 +211,18 @@
     transition: none;
   }
 }
+
+.study-progress-panel {
+  margin: 28px 0 0 var(--path-gutter);
+  padding: 20px 0;
+  border-top: 1px solid hsl(var(--line));
+  border-bottom: 1px solid hsl(var(--line));
+}
+.study-transition-reason {
+  margin: 12px 0 0 var(--path-gutter);
+}
+@media (max-width: 639px) {
+  .study-progress-panel {
+    margin-left: 0;
+  }
+}

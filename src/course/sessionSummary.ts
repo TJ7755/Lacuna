@@ -1,4 +1,13 @@
 import type { Grade } from '../db/types';
+import type { SelfMarkSummary } from '../questions/questionSets';
+
+export interface QuestionStudySummary {
+  kind: 'question';
+  score: SelfMarkSummary;
+  marking: 'Self-marked' | 'Jev-marked' | 'Mixed marking';
+}
+
+export type StudyStepSummary = SessionSummary | QuestionStudySummary;
 
 /** A single answered card within a Learn session, retained for the end report. */
 export interface SessionEvent {

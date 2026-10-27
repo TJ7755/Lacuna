@@ -21,14 +21,29 @@ function allocations(question: QuestionSetQuestion): MarkAllocation[] {
   ].flatMap((answer) => answer?.allocations ?? []);
 }
 
-/** Latest supported observations within a Concept, never a course-wide skill mastery score. */
-export function deriveConceptPracticeNeeds(
+type Category = JevDiagnosis['decisions'][number]['categoryId'];
+
+export interface DiagnosticCategoryEvidence {
+  categoryId: Category;
+  demonstratedCount: number;
+  gapCount: number;
+  lastObservedAt: number;
+  latestOutcome: 'gap' | 'demonstrated';
+}
+
+interface DiagnosticObservation {
+  answerId: string;
+  categoryId: Category;
+  gap: boolean;
+  at: number;
+}
+
+function eligibleDiagnosticObservations(
   attempts: readonly QuestionSetAttemptRecord[],
   sets: readonly QuestionSetRecord[],
-): ReadonlyMap<string, ConceptPracticeNeeds> {
-  type Category = JevDiagnosis['decisions'][number]['categoryId'];
+): ReadonlyMap<string, readonly DiagnosticObservation[]> {
   const currentSets = new Map(sets.map((set) => [set.id, set]));
-  const observations = new Map<string, Map<Category, { gap: boolean; at: number }>>();
+  const observations = new Map<string, DiagnosticObservation[]>();
   const ordered = [...attempts].sort(
     (a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id),
   );
@@ -77,41 +92,91 @@ export function deriveConceptPracticeNeeds(
         )
           continue;
         const conceptId = allocation.targetConceptIds[0];
-        const categories = observations.get(conceptId) ?? new Map();
+        const rows = observations.get(conceptId) ?? [];
+        observations.set(conceptId, rows);
         for (const diagnostic of receipt.diagnosis.decisions) {
           if (
             diagnostic.confidence < JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD ||
             diagnostic.outcome === 'insufficient-evidence'
           )
             continue;
-          const previous = categories.get(diagnostic.categoryId);
-          const gap = diagnostic.outcome === 'gap';
-          if (
-            !previous ||
-            receipt.marking.markedAt > previous.at ||
-            (receipt.marking.markedAt === previous.at && gap)
-          ) {
-            categories.set(diagnostic.categoryId, { gap, at: receipt.marking.markedAt });
-          }
+          rows.push({
+            answerId: JSON.stringify([attempt.id, question.id]),
+            categoryId: diagnostic.categoryId,
+            gap: diagnostic.outcome === 'gap',
+            at: receipt.marking.markedAt,
+          });
         }
-        observations.set(conceptId, categories);
       }
     }
   }
-  return new Map(
-    [...observations].map(([conceptId, categories]) => [
-      conceptId,
-      {
-        knowledge: categories.get('knowledge')?.gap === true,
-        application: categories.get('application')?.gap === true,
-        techniques: [...categories].flatMap(([category, observation]) =>
-          category !== 'knowledge' && category !== 'application' && observation.gap
-            ? [category]
-            : [],
-        ),
-      },
-    ]),
-  );
+  return observations;
+}
+
+/** Latest supported observations within a Concept, never a course-wide skill mastery score. */
+export function deriveConceptPracticeNeeds(
+  attempts: readonly QuestionSetAttemptRecord[],
+  sets: readonly QuestionSetRecord[],
+): ReadonlyMap<string, ConceptPracticeNeeds> {
+  const needs = new Map<string, ConceptPracticeNeeds>();
+  for (const [conceptId, observations] of eligibleDiagnosticObservations(attempts, sets)) {
+    const categories = new Map<Category, DiagnosticObservation>();
+    for (const observation of observations) {
+      const previous = categories.get(observation.categoryId);
+      if (
+        !previous ||
+        observation.at > previous.at ||
+        (observation.at === previous.at && observation.gap)
+      )
+        categories.set(observation.categoryId, observation);
+    }
+    needs.set(conceptId, {
+      knowledge: categories.get('knowledge')?.gap === true,
+      application: categories.get('application')?.gap === true,
+      techniques: [...categories].flatMap(([category, observation]) =>
+        category !== 'knowledge' && category !== 'application' && observation.gap ? [category] : [],
+      ),
+    });
+  }
+  return needs;
+}
+
+/** Distinct assessed answers within each Concept, not transferable Technique mastery. */
+export function deriveConceptDiagnosticEvidence(
+  attempts: readonly QuestionSetAttemptRecord[],
+  sets: readonly QuestionSetRecord[],
+): ReadonlyMap<string, readonly DiagnosticCategoryEvidence[]> {
+  const result = new Map<string, DiagnosticCategoryEvidence[]>();
+  for (const [conceptId, observations] of eligibleDiagnosticObservations(attempts, sets)) {
+    const categories = new Map<Category, Map<string, { gap: boolean; at: number }>>();
+    for (const observation of observations) {
+      const answers = categories.get(observation.categoryId) ?? new Map();
+      const previous = answers.get(observation.answerId);
+      answers.set(observation.answerId, {
+        gap: Boolean(previous?.gap || observation.gap),
+        at: Math.max(previous?.at ?? 0, observation.at),
+      });
+      categories.set(observation.categoryId, answers);
+    }
+    const evidence: DiagnosticCategoryEvidence[] = [];
+    for (const [categoryId, answers] of categories) {
+      let demonstratedCount = 0;
+      let gapCount = 0;
+      let lastObservedAt = 0;
+      let latestOutcome: DiagnosticCategoryEvidence['latestOutcome'] = 'demonstrated';
+      for (const answer of answers.values()) {
+        if (answer.gap) gapCount++;
+        else demonstratedCount++;
+        if (answer.at > lastObservedAt || (answer.at === lastObservedAt && answer.gap)) {
+          lastObservedAt = answer.at;
+          latestOutcome = answer.gap ? 'gap' : 'demonstrated';
+        }
+      }
+      evidence.push({ categoryId, demonstratedCount, gapCount, lastObservedAt, latestOutcome });
+    }
+    if (evidence.length) result.set(conceptId, evidence);
+  }
+  return result;
 }
 
 /** Order comparable fresh Questions using separately attributable knowledge and technique needs. */

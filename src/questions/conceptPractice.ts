@@ -16,10 +16,13 @@ import type { MarkAllocation, QuestionAnswer, QuestionSetQuestion } from './ques
 import { emptyQuestionSchedule, scheduleQuestionReview } from './scheduler';
 import type { QuestionScheduleState } from './types';
 import {
+  deriveConceptDiagnosticEvidence,
   deriveConceptPracticeNeeds,
   questionGapPriority,
   type ConceptPracticeNeeds,
+  type DiagnosticCategoryEvidence,
 } from './techniqueEvidence';
+import type { TechniqueId } from './techniqueTags';
 
 export { undoConceptPracticeAttempt } from './questionSetAttemptRepository';
 export { questionPresentationFingerprint as conceptPracticeFingerprint } from './generators/declarative';
@@ -174,6 +177,8 @@ export interface ConceptPracticeItem {
   familiarCount: number;
   availableCount: number;
   needs?: ConceptPracticeNeeds;
+  diagnosticEvidence?: readonly DiagnosticCategoryEvidence[];
+  techniqueIds?: TechniqueId[];
   unfinished?: boolean;
 }
 
@@ -210,6 +215,7 @@ async function context(courseId: string) {
     seenVariants,
     concepts: concepts.filter((concept) => concept.scope === 'course'),
     candidates: candidates(currentSets),
+    sets: currentSets,
     needs: deriveConceptPracticeNeeds(records, currentSets),
     attempts: records,
     seen,
@@ -251,6 +257,7 @@ export async function listConceptPractice(
   scopeConceptIds?: readonly string[],
 ): Promise<ConceptPracticeItem[]> {
   const data = await context(courseId);
+  const diagnosticEvidence = deriveConceptDiagnosticEvidence(data.attempts, data.sets);
   const scope = scopeConceptIds ? new Set(scopeConceptIds) : undefined;
   return data.concepts
     .filter((concept) => !scope || scope.has(concept.id))
@@ -277,6 +284,20 @@ export async function listConceptPractice(
         familiarCount: availableCount - unseenCount,
         availableCount,
         needs: data.needs.get(concept.id),
+        diagnosticEvidence: diagnosticEvidence.get(concept.id),
+        techniqueIds: [
+          ...new Set(
+            available.flatMap(({ question }) =>
+              answers(question).flatMap(({ answer }) =>
+                answer.allocations.flatMap((allocation) =>
+                  allocation.targetConceptIds.includes(concept.id)
+                    ? (allocation.techniqueTags?.techniqueIds ?? [])
+                    : [],
+                ),
+              ),
+            ),
+          ),
+        ],
         unfinished: Boolean(unfinishedPractice(data, concept.id, scope)),
       };
     })

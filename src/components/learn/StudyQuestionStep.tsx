@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { startConceptPractice } from '../../questions/conceptPractice';
+import type { QuestionStudySummary } from '../../course/sessionSummary';
 import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 const QuestionSetPractice = lazy(() =>
   import('../../pages/QuestionSetPractice').then((module) => ({
@@ -22,7 +23,7 @@ export function StudyQuestionStep({
   conceptId: string;
   scopeConceptIds: string[];
   allowFamiliar?: boolean;
-  onComplete: () => void;
+  onComplete: (summary: QuestionStudySummary) => void;
   onExit: () => void;
 }) {
   const pending = useRef<ReturnType<typeof startConceptPractice> | null>(null);

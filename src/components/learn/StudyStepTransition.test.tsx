@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { SessionSummary } from './types';
+import type { StudyProgress } from '../../course/studyProgress';
 import { StudyStepTransition } from './StudyStepTransition';
 import * as motionSettings from '../../state/motionSpeed';
 
@@ -52,7 +53,124 @@ function renderTransition(
   );
 }
 
+const progress: StudyProgress = {
+  fsrs: {
+    newCards: 2,
+    learningCards: 1,
+    reviewCards: 5,
+    dueCards: 3,
+    totalCards: 8,
+    meanStability: 4.2,
+    recallNow: 0.88,
+  },
+  priorities: [
+    {
+      conceptId: 'cells',
+      name: 'Cells and transport',
+      dueCards: 3,
+      newCards: 2,
+      questionCount: 4,
+      knowledgeGap: false,
+      applicationGap: false,
+      skills: [
+        {
+          id: 'causal-link',
+          name: 'Link cause and effect',
+          demonstratedCount: 2,
+          gapCount: 1,
+          latestOutcome: 'gap',
+        },
+        {
+          id: 'paired-comparison',
+          name: 'Compare like with like',
+          demonstratedCount: 0,
+          gapCount: 0,
+        },
+      ],
+    },
+  ],
+};
+
 describe('StudyStepTransition', () => {
+  it('shows the named exam forecast separately from contextual skill evidence', () => {
+    renderTransition({
+      progress: {
+        ...progress,
+        exam: {
+          name: 'Biology paper 1',
+          date: Date.UTC(2026, 10, 3),
+          daysRemaining: 7,
+          value: 0.64,
+          label: 'Predicted recall',
+          securedCards: 2,
+          totalCards: 8,
+        },
+      },
+    });
+    expect(screen.getByRole('region', { name: 'Progress and priorities' })).toBeInTheDocument();
+    expect(screen.getByText('Biology paper 1')).toBeInTheDocument();
+    expect(screen.getByText(/7 days to go/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('progressbar', { name: 'Predicted recall on exam day' }),
+    ).toHaveAttribute('aria-valuenow', '64');
+    expect(screen.getByText(/2 of 8 cards at 90% predicted recall/)).toBeInTheDocument();
+    expect(screen.queryByText('FSRS progress')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText(/2 exam skills/));
+    expect(screen.getByText('Not yet assessed')).toBeVisible();
+    expect(screen.getByText('2 demonstrated · 1 with gaps · latest: gap observed')).toBeVisible();
+    expect(screen.getByText('3 cards due · 2 new · 4 exam questions in pool')).toBeInTheDocument();
+  });
+
+  it('shows ordinary FSRS counts and current recall when no exam is upcoming', () => {
+    renderTransition({ progress });
+    expect(screen.getByText('FSRS progress')).toBeInTheDocument();
+    const due = screen.getByText('Due now').parentElement;
+    expect(due).toHaveTextContent('3');
+    expect(screen.getByText(/88% estimated recall now/)).toHaveTextContent(
+      '4.2 days average stability',
+    );
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(screen.queryByText(/days to go/)).not.toBeInTheDocument();
+  });
+
+  it('retains actual question marks without inventing card reviews or recall for a cardless exam', () => {
+    renderTransition({
+      summary: {
+        kind: 'question',
+        marking: 'Self-marked',
+        score: {
+          status: 'complete',
+          total: { awarded: 1, available: 2 },
+          resolvedCount: 1,
+          unsureCount: 0,
+          unmarkedCount: 0,
+          dimensions: {
+            knowledge: { awarded: 0, available: 0 },
+            application: { awarded: 1, available: 2 },
+            'exam-execution': { awarded: 0, available: 0 },
+            mixed: { awarded: 0, available: 0 },
+          },
+        },
+      },
+      progress: {
+        ...progress,
+        exam: {
+          name: 'Biology paper 1',
+          date: Date.UTC(2026, 10, 3),
+          daysRemaining: 7,
+          value: null,
+          label: 'Predicted recall',
+          securedCards: 0,
+          totalCards: 0,
+        },
+      },
+    });
+    expect(screen.getByText('1 / 2 marks · Self-marked')).toBeInTheDocument();
+    expect(screen.getByText('No card recall data for this assessment yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(screen.queryByText(/reviews ·/)).not.toBeInTheDocument();
+  });
+
   it('claims focus from the inert outgoing step during the crossfade', () => {
     const outgoing = document.createElement('div');
     const oldAction = document.createElement('button');
@@ -113,7 +231,7 @@ describe('StudyStepTransition', () => {
     expect(screen.queryByText('Step complete')).not.toBeInTheDocument();
     expect(screen.queryByText('Up next')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Checkpoint', level: 2 })).toBeInTheDocument();
-    expect(screen.queryByText('2 cards reviewed · 50% correct')).not.toBeInTheDocument();
+    expect(screen.getByText('2 reviews · 1 recalled')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Take a break' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue without break' }));
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss break' }));

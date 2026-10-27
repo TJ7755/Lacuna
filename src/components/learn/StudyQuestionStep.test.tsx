@@ -145,7 +145,13 @@ it('saves and resumes an embedded question, then hands back only after a durable
       },
     ],
   });
-  expect(onComplete).toHaveBeenCalledWith();
+  expect(onComplete).toHaveBeenCalledWith(
+    expect.objectContaining({
+      kind: 'question',
+      marking: 'Self-marked',
+      score: expect.objectContaining({ status: 'complete', total: { awarded: 1, available: 1 } }),
+    }),
+  );
   expect(await db.cards.get(card.id)).toEqual(card);
   expect(await db.reviewHistory.count()).toBe(0);
   expect(await db.sessionHistory.count()).toBe(0);

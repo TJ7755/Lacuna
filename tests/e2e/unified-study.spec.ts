@@ -6,6 +6,9 @@ import type { QuestionSetAttemptRecord } from '../../src/questions/questionSetAt
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 
+const MEMBRANE_ANSWER =
+  'Damage to the membrane reduces its control over which substances enter and leave the cell.';
+
 async function seedQuestion(page: Page, courseId: string) {
   const now = Date.now();
   const concept: Concept = {
@@ -27,7 +30,7 @@ async function seedQuestion(page: Page, courseId: string) {
     questions: [
       {
         id: 'membrane',
-        prompt: 'Describe the function of the cell membrane.',
+        prompt: 'Explain how damage to the cell membrane affects movement into and out of a cell.',
         parts: [],
         answer: {
           maxMarks: 1,
@@ -36,10 +39,17 @@ async function seedQuestion(page: Page, courseId: string) {
           allocations: [
             {
               id: 'permeability',
-              criterion: 'Controls movement of substances into and out of the cell.',
+              criterion:
+                'Links membrane damage to loss of control over movement into and out of the cell.',
               maxMarks: 1,
               dimension: 'application',
               targetConceptIds: [concept.id],
+              techniqueTags: {
+                taxonomyId: 'science-techniques',
+                taxonomyVersion: 1,
+                techniqueIds: ['causal-link'],
+                provenance: { source: 'author' },
+              },
             },
           ],
         },
@@ -92,6 +102,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     test(`one Study entry resumes and completes manual question practice at ${width}px with ${reducedMotion} motion`, async ({
       page,
     }, testInfo) => {
+      const hasExam = width === 1440 && reducedMotion === 'no-preference';
       // The shared course-creation fixture checks the desktop navigation link.
       await page.setViewportSize({ width: 1440, height: 1000 });
       await page.emulateMedia({ reducedMotion });
@@ -140,6 +151,27 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       await expect(page.getByRole('button', { name: /^Revise for / })).toHaveCount(0);
       await expect(page).toHaveURL(courseUrl);
 
+      if (!hasExam) {
+        await assessments
+          .locator('button[data-path-row]')
+          .filter({ hasText: 'Friday biology test' })
+          .click();
+        await editTest.getByRole('button', { name: 'Delete', exact: true }).click();
+        await page
+          .getByRole('dialog', { name: 'Delete', exact: true })
+          .getByRole('button', { name: 'Delete', exact: true })
+          .click();
+        await expect(editTest).toBeHidden();
+        await expect
+          .poll(
+            async () =>
+              (await readAll<CourseAssessment>(page, 'courseAssessments')).filter(
+                (assessment) => assessment.examDate !== undefined,
+              ).length,
+          )
+          .toBe(0);
+      }
+
       const study = page.getByRole('button', { name: 'Study', exact: true });
       await expect(study).toHaveCount(1);
       await study.click();
@@ -182,14 +214,14 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       await expect(
         page.getByRole('heading', { name: 'Time available today', exact: true }),
       ).toHaveCount(0);
-      await answer.fill('Controls which substances enter and leave the cell.');
+      await answer.fill(MEMBRANE_ANSWER);
       await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
       await expect(page).toHaveURL(courseUrl);
 
       await study.click();
       await expect(preview.getByText('Resume Cell membranes', { exact: true })).toBeVisible();
       await preview.getByRole('button', { name: 'Start session', exact: true }).click();
-      await expect(answer).toHaveValue('Controls which substances enter and leave the cell.');
+      await expect(answer).toHaveValue(MEMBRANE_ANSWER);
       await expect(page.getByTestId('study-cover')).toBeHidden();
       await answer.click();
       await expect(answer).toBeFocused();
@@ -213,7 +245,39 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
         )
         .toBe('complete');
 
-      await page.goto(courseUrl);
+      const handoff = page.getByRole('main', { name: 'Study progress', exact: true });
+      await expect(handoff).toBeVisible();
+      await expect(handoff.getByText('1 / 1 marks · Self-marked', { exact: true })).toBeVisible();
+      const progress = handoff.getByRole('region', {
+        name: 'Progress and priorities',
+        exact: true,
+      });
+      await expect(progress).toBeVisible();
+      await expect(
+        progress.getByRole('heading', { name: 'Cell membranes', exact: true }),
+      ).toBeVisible();
+      if (hasExam) {
+        await expect(
+          progress.getByRole('heading', { name: 'Friday biology test', exact: true }),
+        ).toBeVisible();
+        await expect(progress.getByText(/^\d+ days to go · /)).toBeVisible();
+        await expect(
+          progress.getByText('No card recall data for this assessment yet.', { exact: true }),
+        ).toBeVisible();
+        await expect(progress.getByRole('progressbar')).toHaveCount(0);
+        await expect(progress.getByText('100%', { exact: true })).toHaveCount(0);
+      } else {
+        await expect(
+          progress.getByRole('heading', { name: 'FSRS progress', exact: true }),
+        ).toBeVisible();
+        await expect(progress.getByText('No reviewed cards yet.', { exact: true })).toBeVisible();
+      }
+      await progress.getByText('1 exam skill', { exact: true }).click();
+      await expect(progress.getByText('Link cause and effect', { exact: true })).toBeVisible();
+      await expect(progress.getByText('Not yet assessed', { exact: true })).toBeVisible();
+      await capture(page, testInfo, `study-progress-${width}`);
+      await handoff.getByRole('button', { name: 'Finish for now', exact: true }).click();
+      await expect(page).toHaveURL(courseUrl);
       await page.reload();
       const [complete] = await readAll<QuestionSetAttemptRecord>(page, 'questionSetAttempts');
       expect(complete).toMatchObject({
@@ -226,6 +290,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
           },
         ],
       });
+      expect(complete.jevAssessmentReceipts ?? []).toHaveLength(0);
       expect(await readAll(page, 'cards')).toHaveLength(0);
       expect(await readAll(page, 'reviewHistory')).toHaveLength(0);
       expect(await readAll(page, 'sessionHistory')).toHaveLength(0);

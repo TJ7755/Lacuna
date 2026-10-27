@@ -43,6 +43,8 @@ import {
 } from '../components/question-sets/QuestionSetRouteState';
 import { dimensionNames } from '../components/question-sets/presentation';
 import { FileTextIcon } from '../components/ui/icons';
+import type { QuestionStudySummary } from '../course/sessionSummary';
+import { summariseSelfMarking } from '../questions/questionSets';
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import '../components/question-sets/question-sets.css';
@@ -55,7 +57,7 @@ export function QuestionSetPractice({
     courseId: string;
     setId: string;
     attemptId: string;
-    onComplete: () => void;
+    onComplete: (summary: QuestionStudySummary) => void;
     onExit: () => void;
   };
 } = {}) {
@@ -123,7 +125,7 @@ function PracticeWorkspace({
 }: {
   session: QuestionSetAttemptSession;
   initialFocusOwner?: Element | null;
-  study?: { onComplete: () => void; onExit: () => void };
+  study?: { onComplete: (summary: QuestionStudySummary) => void; onExit: () => void };
 }) {
   const [formDirty, setFormDirty] = useState(false);
   const [reflectionDirty, setReflectionDirty] = useState(false);
@@ -133,9 +135,21 @@ function PracticeWorkspace({
   useEffect(() => {
     if (study && attempt.status === 'complete' && completed.current !== attempt.id) {
       completed.current = attempt.id;
-      study.onComplete();
+      const jevCount = attempt.decisions.filter(
+        (decision) => decision.markedBy?.by === 'jev',
+      ).length;
+      study.onComplete({
+        kind: 'question',
+        score: summariseSelfMarking(attempt.receipt, attempt.decisions),
+        marking:
+          jevCount === 0
+            ? 'Self-marked'
+            : jevCount === attempt.decisions.length
+              ? 'Jev-marked'
+              : 'Mixed marking',
+      });
     }
-  }, [attempt.id, attempt.status, study]);
+  }, [attempt, study]);
   const origin = questionSetReturn(useLocation().state, attempt.courseId);
   const navigate = useNavigate();
   const rootRef = useQuestionSetScroll(`question-set-scroll:${attempt.id}`);
