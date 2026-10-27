@@ -35,7 +35,9 @@ export interface CourseOverviewProps {
   onPracticeOpen: (node: PracticePathNode) => void;
   onPracticeEdit: (node: PracticePathNode) => void;
   onAssessmentOpen: (id: string) => void;
+  onAssessmentDetails?: (id: string) => void;
   onAssessmentPractise: (id: string) => void;
+  onAddTest?: () => void;
   onAdd: (kind: Exclude<CourseAddKind, 'lesson'>) => void;
   /** Rendered beneath the lessons, in the same column. */
   summary?: (cardClassName: string) => ReactNode;

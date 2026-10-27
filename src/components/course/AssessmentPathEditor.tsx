@@ -20,6 +20,7 @@ import {
 import { PathEditorSurface } from './PathEditorSurface';
 import { PathEditorPopover } from './PathEditorPopover';
 import { AssessmentExclusions } from './AssessmentExclusions';
+import { defaultExamDate } from '../../utils/datetime';
 
 export function AssessmentPathEditor({
   courseId,
@@ -31,6 +32,7 @@ export function AssessmentPathEditor({
   timeZone,
   preferredLessonIds,
   learnerOwnedOnly = false,
+  schoolTest = false,
   onSaved,
 }: {
   courseId: string;
@@ -42,7 +44,8 @@ export function AssessmentPathEditor({
   timeZone?: string;
   preferredLessonIds?: readonly string[];
   learnerOwnedOnly?: boolean;
-  onSaved: () => void;
+  schoolTest?: boolean;
+  onSaved: (assessmentId?: string) => void;
 }) {
   const orderedLessons = useMemo(
     () => resolveLessonOrder(lessons, preferredLessonIds),
@@ -55,6 +58,9 @@ export function AssessmentPathEditor({
       : {
           ...emptyAssessmentDraft(orderedLessons, timeZone),
           ...(defaultAfterLessonId !== undefined ? { afterLessonId: defaultAfterLessonId } : {}),
+          ...(schoolTest
+            ? { coverageMode: 'custom', lessonIds: [], examDate: defaultExamDate() }
+            : {}),
         },
   );
   const [error, setError] = useState('');
@@ -63,6 +69,7 @@ export function AssessmentPathEditor({
   const [dateValid, setDateValid] = useState(true);
   const name = useRef<HTMLInputElement>(null);
   const coverage = useRef<HTMLSpanElement>(null);
+  const savedAssessmentId = useRef<string | undefined>(undefined);
   const { notify } = useToast();
   const record = useMemo(
     () =>
@@ -93,6 +100,14 @@ export function AssessmentPathEditor({
   );
 
   function changeCoverage(next: AssessmentDraft) {
+    setError('');
+    if (schoolTest && next.coverageMode === 'custom') {
+      next = {
+        ...next,
+        afterLessonId:
+          orderedLessons.findLast((lesson) => next.lessonIds.includes(lesson.id))?.id ?? null,
+      };
+    }
     const scope = resolveAssessmentCoverage(
       { ...record, ...assessmentChanges(next), excludedCardIds: [] } as CourseAssessment,
       orderedLessons,
@@ -118,7 +133,11 @@ export function AssessmentPathEditor({
       return false;
     }
     if (!resolved.validation.valid || resolved.validation.needsAuthorConfirmation) {
-      setError(resolved.validation.issues[0]?.message ?? 'Confirm the assessment’s scope.');
+      setError(
+        schoolTest && draft.coverageMode === 'custom' && draft.lessonIds.length === 0
+          ? 'Choose at least one lesson for this test.'
+          : (resolved.validation.issues[0]?.message ?? 'Confirm the assessment’s scope.'),
+      );
       coverage.current?.querySelector('button')?.focus();
       return false;
     }
@@ -128,9 +147,16 @@ export function AssessmentPathEditor({
         if (learnerOwnedOnly)
           await updateCourseAssessment(assessment.id, changes, { learnerOwnedOnly: true });
         else await updateCourseAssessment(assessment.id, changes);
+        savedAssessmentId.current = assessment.id;
       } else {
         const { name, examDate, ...options } = changes;
-        await createCourseAssessment(courseId, name!, examDate ?? draft.examDate, options);
+        const created = await createCourseAssessment(
+          courseId,
+          name!,
+          examDate ?? draft.examDate,
+          options,
+        );
+        savedAssessmentId.current = created?.id;
       }
       return true;
     } catch (cause) {
@@ -170,14 +196,19 @@ export function AssessmentPathEditor({
   return (
     <PathEditorSurface
       label={
-        assessment
-          ? `Edit ${kind === 'final' ? 'final assessment' : 'checkpoint'}`
-          : 'Add checkpoint'
+        schoolTest
+          ? assessment
+            ? 'Edit test'
+            : 'Add test'
+          : assessment
+            ? `Edit ${kind === 'final' ? 'final assessment' : 'checkpoint'}`
+            : 'Add checkpoint'
       }
       onSave={save}
-      onClosed={onSaved}
+      onClosed={() => onSaved(savedAssessmentId.current)}
+      cancellable={schoolTest}
       onDelete={assessment && kind !== 'final' ? remove : undefined}
-      deleteNoun="checkpoint"
+      deleteNoun={schoolTest ? 'test' : 'checkpoint'}
     >
       <p className="path-editor-sentence">
         <input
@@ -188,7 +219,13 @@ export function AssessmentPathEditor({
           data-path-editor-focus
           className="path-editor-name"
           value={draft.name}
-          placeholder={kind === 'final' ? 'Final exam' : 'Checkpoint name'}
+          placeholder={
+            kind === 'final'
+              ? 'Final exam'
+              : schoolTest
+                ? 'e.g. Cells topic test'
+                : 'Checkpoint name'
+          }
           onChange={(event) => {
             setDraft({ ...draft, name: event.target.value });
             setError('');
@@ -251,6 +288,11 @@ export function AssessmentPathEditor({
           {error}
         </p>
       )}
+      {schoolTest && (
+        <p className="mt-3 text-sm text-ink-soft">
+          Choose the lessons in your test. Revision uses your existing cards and progress.
+        </p>
+      )}
       <AnimatedDisclosure open={draft.coverageMode === 'custom'}>
         <div className="mt-3 flex flex-wrap gap-2" aria-label="Covered lessons">
           {orderedLessons.map((lesson, index) => (
@@ -258,7 +300,7 @@ export function AssessmentPathEditor({
               key={lesson.id}
               type="button"
               aria-pressed={draft.lessonIds.includes(lesson.id)}
-              disabled={index > resolved.placementIndex}
+              disabled={!schoolTest && index > resolved.placementIndex}
               className={choiceChipClass(draft.lessonIds.includes(lesson.id))}
               onClick={() =>
                 changeCoverage({

@@ -6,6 +6,7 @@ import { AddLessonControl } from './AddLessonControl';
 import { ExpandingCreateControl } from '../ui/ExpandingCreateControl';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { FlagIcon } from '../ui/icons';
+import { Button } from '../ui/Button';
 import { PathNodeActionsMenu } from './PathNodeActionsMenu';
 import type { MenuHandle } from '../ui/Menu';
 import type { CourseOverviewProps } from './courseOverviewTypes';
@@ -141,9 +142,16 @@ export function CourseOverview(props: CourseOverviewProps) {
             aria-labelledby="course-assessments-heading"
           >
             {/* Matches the Lessons card beside it, so the two headings share a line. */}
-            <h2 id="course-assessments-heading" className="font-display text-[22px]">
-              Assessments
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="course-assessments-heading" className="font-display text-[22px]">
+                Assessments
+              </h2>
+              {!archived && props.lessonCount > 0 && props.onAddTest && (
+                <Button variant="ghost" size="sm" onClick={props.onAddTest}>
+                  Add test
+                </Button>
+              )}
+            </div>
             {props.assessments.map((assessment) => {
               const editable =
                 authoring || (localOrder && props.learnerCheckpointIds?.includes(assessment.id));
@@ -160,7 +168,9 @@ export function CourseOverview(props: CourseOverviewProps) {
                     data-press={editable ? 'none' : undefined}
                     type="button"
                     disabled={archived}
-                    onClick={() => props.onAssessmentOpen(assessment.id)}
+                    onClick={() =>
+                      (props.onAssessmentDetails ?? props.onAssessmentOpen)(assessment.id)
+                    }
                     className={cn(
                       '-mx-2 flex min-h-11 min-w-0 flex-1 items-center gap-3.5 rounded-xl px-2 py-1 text-left transition-colors hover:bg-ink/[0.03]',
                       editable && 'pr-[60px]',

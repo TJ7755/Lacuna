@@ -18,6 +18,7 @@ interface AssessmentDetailSheetProps {
   preferredLessonIds?: readonly string[];
   onClose: () => void;
   onRevise: () => void;
+  onEdit?: () => void;
 }
 
 export function assessmentSheetTiming(multiplier: number) {
@@ -36,6 +37,7 @@ export function AssessmentDetailSheet({
   preferredLessonIds,
   onClose,
   onRevise,
+  onEdit,
 }: AssessmentDetailSheetProps) {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
@@ -142,6 +144,11 @@ export function AssessmentDetailSheet({
         </div>
 
         <footer className="border-t border-line px-6 py-4">
+          {onEdit && (
+            <Button variant="ghost" onClick={onEdit} className="mb-2 w-full">
+              Edit test
+            </Button>
+          )}
           <Button
             variant="primary"
             onClick={onRevise}

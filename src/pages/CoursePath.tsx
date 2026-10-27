@@ -69,6 +69,7 @@ export function CoursePath() {
   const [assessmentEditor, setAssessmentEditor] = useState<{
     assessment?: CourseAssessment;
     defaultAfterLessonId?: string | null;
+    schoolTest?: boolean;
   } | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedAssessmentId = searchParams.get('exam');
@@ -188,6 +189,22 @@ export function CoursePath() {
                 `/course/${courseId}/study?assessmentId=${encodeURIComponent(selectedAssessmentId)}`,
               )
             }
+            onEdit={
+              assessments.some(
+                (assessment) =>
+                  assessment.id === selectedAssessmentId &&
+                  assessment.kind === 'checkpoint' &&
+                  (!course.distributedCopy?.locked || learnerCheckpointIds.includes(assessment.id)),
+              )
+                ? () => {
+                    const assessment = assessments.find(
+                      (item) => item.id === selectedAssessmentId,
+                    )!;
+                    setSelectedAssessmentId(null);
+                    setAssessmentEditor({ assessment, schoolTest: true });
+                  }
+                : undefined
+            }
           />
         )}
       {practiceEditor && (
@@ -212,7 +229,11 @@ export function CoursePath() {
           timeZone={course.timeZone}
           preferredLessonIds={courseLessonOrderPreference(course)}
           learnerOwnedOnly={localOrder}
-          onSaved={() => setAssessmentEditor(null)}
+          schoolTest={assessmentEditor.schoolTest}
+          onSaved={(id) => {
+            setAssessmentEditor(null);
+            if (assessmentEditor.schoolTest && id) setSelectedAssessmentId(id);
+          }}
         />
       )}
     </AnimatePresence>
@@ -363,6 +384,16 @@ export function CoursePath() {
         onAssessmentPractise={(id) =>
           navigate(`/course/${courseId}/study?assessmentId=${encodeURIComponent(id)}`)
         }
+        onAssessmentDetails={(id) => {
+          if (!archived) setSelectedAssessmentId(id);
+        }}
+        onAddTest={() => {
+          if (!archived)
+            setAssessmentEditor({
+              defaultAfterLessonId: lastLesson?.id ?? null,
+              schoolTest: true,
+            });
+        }}
         onAssessmentOpen={(id) => {
           const assessment = assessments.find((item) => item.id === id);
           if (!assessment || archived) return;

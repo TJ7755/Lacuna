@@ -8,10 +8,10 @@ mode supports automatically marked application problems with independent evidenc
 
 ## Product direction
 
-Our aim is to be the best in the world at personalised GCSE science revision: choosing
-what each student needs to practise next to improve their exam performance.
+Our aim is to be the best in the world at school-aligned GCSE science preparation:
+organising revision around each pupil's teaching, assessments and learning needs.
 
-**GCSE science revision that adapts to what you know, how you answer and when your exams are.**
+**Revision that fits what you are learning at school and what you are being tested on next.**
 
 That ambition covers the complete revision process across biology, chemistry and physics,
 boards and tiers:
@@ -20,6 +20,15 @@ boards and tiers:
 - **Application:** use that knowledge in unfamiliar situations.
 - **Exam technique:** interpret questions, construct explanations, use evidence and show working.
 - **Preparation:** allocate practice across papers, deadlines, school teaching order and available time.
+
+Pupils should be able to use their school's teaching order, add their own topic tests and mocks,
+and prepare for several exam papers without duplicating content or resetting their progress.
+One realistic daily workload should combine recall and exam-question practice. Concise notes and
+worked examples remain available for independent revision; material covered in class should not
+require repeating every lesson in Lacuna. Being taught something and remembering it are separate.
+
+FSRS and local planning are central. AI marking is optional and ordinary revision must work
+without it. The product's promise is preparation that fits the pupil's school life.
 
 Every feature should help choose, deliver or assess the next useful practice. Diagnosing lost
 marks is one part of this direction; the broader goal is to answer: **what should I practise
