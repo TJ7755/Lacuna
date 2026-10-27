@@ -8,13 +8,20 @@ import { db } from '../../db/schema';
 import { createQuestionSet } from '../../questions/questionSetRepository';
 import { getQuestionSetAttempt } from '../../questions/questionSetAttemptRepository';
 import { StudyQuestionStep } from './StudyQuestionStep';
+import {
+  beginStudyTransition,
+  hasLandingArrival,
+  releaseStudyCover,
+} from '../layout/LandingTransition';
 
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal', vi.fn()],
   speedMultiplier: () => 0,
+  getMotionMultiplier: () => 1,
 }));
 
 beforeEach(async () => {
+  releaseStudyCover();
   db.close();
   await db.delete();
   await db.open();
@@ -60,6 +67,12 @@ it('saves and resumes an embedded question, then hands back only after a durable
   const onComplete = vi.fn();
   const onExit = vi.fn();
   function open() {
+    beginStudyTransition(
+      new DOMRect(0, 0, 200, 48),
+      { colour: '#111', radius: '24px', paper: '#fff' },
+      vi.fn(),
+    );
+    expect(hasLandingArrival()).toBe(true);
     const router = createMemoryRouter(
       [
         {
@@ -88,7 +101,9 @@ it('saves and resumes an embedded question, then hands back only after a durable
   }
 
   const first = open();
-  fireEvent.change(await screen.findByLabelText('Your answer'), {
+  const answer = await screen.findByLabelText('Your answer');
+  expect(hasLandingArrival()).toBe(false);
+  fireEvent.change(answer, {
     target: { value: 'Controls which substances enter and leave.' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Save and finish later' }));
@@ -107,6 +122,7 @@ it('saves and resumes an embedded question, then hands back only after a durable
   expect(await screen.findByLabelText('Your answer')).toHaveValue(
     'Controls which substances enter and leave.',
   );
+  expect(hasLandingArrival()).toBe(false);
   expect(await db.questionSetAttempts.count()).toBe(1);
   fireEvent.click(screen.getByRole('button', { name: 'Submit question' }));
   await screen.findByText('Controls movement of substances into and out of the cell.');

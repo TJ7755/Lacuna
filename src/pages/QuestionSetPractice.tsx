@@ -43,6 +43,8 @@ import {
 } from '../components/question-sets/QuestionSetRouteState';
 import { dimensionNames } from '../components/question-sets/presentation';
 import { FileTextIcon } from '../components/ui/icons';
+import { StudyEntrance } from '../components/learn/StudyEntrance';
+import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import '../components/question-sets/question-sets.css';
 import '../components/question-sets/question-set-practice.css';
 
@@ -62,6 +64,14 @@ export function QuestionSetPractice({
   const { session, error, missing, retryLoad } = useQuestionSetAttempt(courseId, setId, attemptId);
   const retryFocusOwner = useRef<Element | null | undefined>(undefined);
   const backTo = `/course/${courseId}/question-sets/${setId}`;
+  if (study && (missing || error))
+    return (
+      <StudyFlowMessage
+        title={missing ? 'Attempt not found' : 'Could not open this attempt'}
+        detail={error ?? 'This saved attempt is no longer available.'}
+        onExit={study.onExit}
+      />
+    );
   if (missing)
     return (
       <QuestionSetUnavailable
@@ -89,13 +99,20 @@ export function QuestionSetPractice({
       </QuestionSetUnavailable>
     );
   if (!session) return <QuestionSetLoading />;
-  return (
+  const workspace = (
     <PracticeWorkspace
       key={attemptId}
       session={session}
       initialFocusOwner={retryFocusOwner.current}
       study={study}
     />
+  );
+  return study ? (
+    <StudyEntrance>
+      <main>{workspace}</main>
+    </StudyEntrance>
+  ) : (
+    workspace
   );
 }
 
