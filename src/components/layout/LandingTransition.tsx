@@ -67,6 +67,7 @@ interface Transition extends Appearance {
   id: number;
   rect: DOMRect;
   covered: boolean;
+  revealing: boolean;
 }
 
 export function LandingTransition() {
@@ -76,12 +77,14 @@ export function LandingTransition() {
   useEffect(() => {
     const onBegin = (event: Event) => {
       setTransition({
-        ...(event as CustomEvent<Omit<Transition, 'covered' | 'id'>>).detail,
+        ...(event as CustomEvent<Omit<Transition, 'covered' | 'revealing' | 'id'>>).detail,
         covered: false,
+        revealing: false,
         id: ++generation.current,
       });
     };
-    const release = () => setTransition(null);
+    const release = () =>
+      setTransition((current) => (current ? { ...current, revealing: true } : null));
     window.addEventListener(BEGIN_EVENT, onBegin);
     window.addEventListener(RELEASE_EVENT, release);
     return () => {
@@ -112,9 +115,20 @@ export function LandingTransition() {
   }, [transition, cancel]);
 
   if (!transition) return null;
-  const { rect, covered, colour, radius, paper, navigate, id } = transition;
+  const { rect, covered, revealing, colour, radius, paper, navigate, id } = transition;
   const multiplier = getMotionMultiplier();
-  const coverTransform = `translate3d(${-rect.left}px, ${-rect.top}px, 0) scale(${innerWidth / rect.width}, ${innerHeight / rect.height})`;
+  const landingReveal = covered && !paper;
+  const identity = 'translate3d(0, 0, 0) scale(1, 1)';
+  const initialTransform = paper
+    ? `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${rect.width / innerWidth}, ${rect.height / innerHeight})`
+    : identity;
+  const coverTransform = paper
+    ? identity
+    : `translate3d(${-rect.left}px, ${-rect.top}px, 0) scale(${innerWidth / rect.width}, ${innerHeight / rect.height})`;
+  // Counter-scale the viewport surface's corners to match the source preview.
+  const initialRadius = paper
+    ? `${(parseFloat(radius) * 100) / rect.width}% / ${(parseFloat(radius) * 100) / rect.height}%`
+    : radius;
 
   return (
     <div
@@ -122,61 +136,65 @@ export function LandingTransition() {
       data-landing-transition
       data-testid={paper ? 'study-cover' : undefined}
       role="presentation"
+      style={{ pointerEvents: revealing ? 'none' : undefined }}
     >
       {paper && transition.cancel && (
         <motion.header
-          className="absolute inset-x-0 top-0 z-10 bg-paper pt-[env(safe-area-inset-top)]"
+          className="absolute inset-x-0 top-0 z-10 pt-[env(safe-area-inset-top)]"
+          inert={revealing}
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: covered ? 1 : 0 }}
           transition={{ duration: 0.18 * multiplier, ease: SWEEP_EASE }}
         >
           <div className={STUDY_HEADER_ROW}>
-            <Button variant="secondary" size="sm" onClick={cancel} className="h-11 shrink-0 px-4">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={cancel}
+              className="h-11 shrink-0 px-4 max-md:w-11 max-md:px-0"
+            >
               <CloseIcon width={16} height={16} aria-hidden="true" />
-              Exit
+              <span className="max-md:sr-only">Exit</span>
             </Button>
           </div>
         </motion.header>
       )}
-      {paper && (
-        <motion.div
-          className="absolute inset-0 bg-black"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.04 }}
-          transition={{ duration: 0.38 * multiplier }}
-        />
-      )}
       <motion.div
-        key={covered && !paper ? 'reveal' : 'cover'}
+        key={landingReveal ? 'reveal' : 'cover'}
         className={
-          covered && !paper ? 'absolute inset-0' : paper ? 'flow-surface absolute' : 'absolute'
+          paper ? 'flow-surface absolute inset-0' : covered ? 'absolute inset-0' : 'absolute'
         }
-        style={
-          covered && !paper
-            ? { backgroundColor: colour, willChange: 'transform' }
-            : {
-                backgroundColor: colour,
+        style={{
+          backgroundColor: colour,
+          willChange: 'transform',
+          transformOrigin: landingReveal ? undefined : '0 0',
+          ...(!paper && !covered
+            ? {
                 borderRadius: radius,
                 height: rect.height,
                 left: rect.left,
                 top: rect.top,
-                transformOrigin: '0 0',
                 width: rect.width,
-                willChange: 'transform',
               }
-        }
+            : {}),
+        }}
         initial={
-          covered && !paper
+          landingReveal
             ? { transform: 'translateY(0%)' }
-            : { transform: 'translate3d(0, 0, 0) scale(1, 1)', borderRadius: radius }
+            : { transform: initialTransform, borderRadius: initialRadius }
         }
         animate={
-          covered && !paper
+          landingReveal
             ? { transform: 'translateY(-100%)' }
-            : { transform: coverTransform, borderRadius: '0px', backgroundColor: paper ?? colour }
+            : {
+                transform: coverTransform,
+                borderRadius: paper ? '0% / 0%' : '0px',
+                backgroundColor: paper ?? colour,
+                opacity: revealing ? 0 : 1,
+              }
         }
         transition={
-          covered && !paper
+          landingReveal
             ? { duration: 0.24 * multiplier, ease: REVEAL_EASE }
             : {
                 transform: paper
@@ -184,13 +202,14 @@ export function LandingTransition() {
                   : { duration: 0.24 * multiplier, ease: SWEEP_EASE },
                 backgroundColor: { duration: 0.38 * multiplier, ease: 'linear' },
                 borderRadius: { duration: (paper ? 0.38 : 0.08) * multiplier, ease: SWEEP_EASE },
+                opacity: { duration: 0.18 * multiplier, ease: REVEAL_EASE },
               }
         }
         onAnimationComplete={() => {
           if (id !== generation.current) return;
-          if (covered) {
-            if (!paper) setTransition(null);
-          } else {
+          if (revealing || landingReveal) {
+            setTransition(null);
+          } else if (!covered) {
             if (navigate) navigate();
             else window.dispatchEvent(new CustomEvent(COVERED_EVENT));
             setTransition((current) => (current ? { ...current, covered: true } : null));
