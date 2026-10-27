@@ -4,6 +4,9 @@ import { beforeEach, expect, it } from 'vitest';
 import { db } from './schema';
 import { createCourse, updateCourse } from './courseRepository';
 import { createLesson } from './lessonRepository';
+import { reorderLessons } from './lessonRepository';
+import { setLocalLessonOrder } from './lessonOrder';
+import { earlierCourseLessonIds } from '../course/courseEntry';
 import { exportDatabase, importBackup, validateBackup } from './portability';
 import { buildCourseSharePayload } from './share';
 import { importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
@@ -16,6 +19,41 @@ beforeEach(async () => {
   await db.delete();
   await db.open();
 });
+
+it.each([false, true])(
+  'retains declared prior material when lessons move (locked: %s)',
+  async (locked) => {
+    const course = await createCourse(
+      'Science',
+      locked
+        ? {
+            distributedCopy: {
+              lineageId: 'school-scope',
+              revision: 1,
+              locked: true,
+              autoAcceptUpdates: false,
+            },
+          }
+        : {},
+    );
+    const first = await createLesson(course.id, 'Already covered');
+    const current = await createLesson(course.id, 'Current');
+    const later = await createLesson(course.id, 'Not covered');
+    await setCourseStudyStartLesson(course.id, current.id);
+    const order = [later.id, current.id, first.id];
+    if (locked) await setLocalLessonOrder(course.id, order);
+    else await reorderLessons(course.id, order);
+    const saved = (await db.courses.get(course.id))!;
+    const lessons = await db.lessons.where('courseId').equals(course.id).toArray();
+    expect(earlierCourseLessonIds(saved, lessons, [], [])).toEqual(new Set([first.id]));
+    const backup = await exportDatabase();
+    await importBackup(backup, 'replace');
+    expect((await db.courses.get(course.id))!.schoolCoveredLessonIds).toEqual([first.id]);
+    expect(await db.lessonCardExposures.count()).toBe(0);
+    expect(await db.lessonCompletions.count()).toBe(0);
+    expect(await db.reviewHistory.count()).toBe(0);
+  },
+);
 
 it('validates the entry point and changes only the local Course preference', async () => {
   const course = await createCourse('Science');

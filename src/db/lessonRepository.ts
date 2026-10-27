@@ -1,6 +1,7 @@
 import { assertLessonPrerequisites } from './lessonPrerequisites';
 import { syncCourseSchedulingUnits } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
+import { earlierLessonIds } from '../course/courseEntry';
 import {
   lessonCardExposureId,
   recordTombstone,
@@ -126,6 +127,17 @@ export async function reorderLessons(courseId: string, orderedLessonIds: string[
     if (course.distributedCopy?.locked) throw new Error('Published lesson order is locked.');
     const lessons = await db.lessons.where('courseId').equals(courseId).toArray();
     validateLessonPermutation(lessons, orderedLessonIds);
+    if (course.schoolCoveredLessonIds === undefined && course.studyStartLessonId) {
+      await db.courses.update(
+        courseId,
+        stampUpdatedAt(
+          {
+            schoolCoveredLessonIds: [...earlierLessonIds(course.studyStartLessonId, lessons)],
+          },
+          Math.max(now, course.updatedAt + 1),
+        ),
+      );
+    }
     await db.lessons.bulkUpdate(
       orderedLessonIds.map((id, orderIndex) => ({
         key: id,

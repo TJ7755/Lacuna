@@ -20,7 +20,6 @@ export type AssessmentValidationCode =
   | 'duplicate-custom-lesson'
   | 'missing-covered-lesson'
   | 'cross-course-covered-lesson'
-  | 'custom-lesson-after-assessment'
   | 'missing-excluded-card'
   | 'cross-course-excluded-card'
   | 'excluded-card-not-covered'
@@ -46,7 +45,8 @@ export interface ResolvedAssessmentCoverage {
 /**
  * Resolve placement and coverage. A learner preference changes prefixes, while
  * published custom membership and exclusions stay intact. Without a preference,
- * authoring validation also enforces placement and exclusion consistency.
+ * authoring validation also enforces anchor and exclusion consistency. Explicit
+ * lesson membership is independent of path placement.
  */
 export function resolveAssessmentCoverage(
   assessment: CourseAssessment,
@@ -163,17 +163,6 @@ export function resolveAssessmentCoverage(
           message: `Covered lesson ${lessonId} belongs to another course.`,
         });
       } else {
-        const lessonIndex = orderedLessons.findIndex((candidate) => candidate.id === lessonId);
-        if (preferredLessonIds === undefined && lessonIndex > placementIndex) {
-          issues.push({
-            code: 'custom-lesson-after-assessment',
-            referenceId: lessonId,
-            message: `Covered lesson ${lessonId} is positioned after the assessment.`,
-          });
-          // Saves reject this order, but reordering lessons can still produce it.
-          // Its cards must not reach practice or exam-date targeting meanwhile.
-          continue;
-        }
         coveredLessons.push(lesson);
       }
     }

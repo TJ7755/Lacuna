@@ -127,13 +127,12 @@ describe('course assessment repository', () => {
         lessonIds: [foreign.id],
       }),
     ).rejects.toThrow('belongs to another course');
-    await expect(
-      createCourseAssessment(course.id, 'Future lesson', Date.now(), {
-        afterLessonId: first.id,
-        coverageMode: 'custom',
-        lessonIds: [second.id],
-      }),
-    ).rejects.toThrow('positioned after the assessment');
+    const saved = await createCourseAssessment(course.id, 'Selected future lesson', Date.now(), {
+      afterLessonId: first.id,
+      coverageMode: 'custom',
+      lessonIds: [second.id],
+    });
+    expect(saved).toMatchObject({ coverageMode: 'custom', lessonIds: [second.id] });
   });
 
   it('rejects exclusions that do not resolve to covered cards', async () => {

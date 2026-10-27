@@ -190,6 +190,7 @@ export const course = object({
   autoPractice: flag,
   localLessonOrder: ids.optional(),
   studyStartLessonId: id.optional(),
+  schoolCoveredLessonIds: ids.optional(),
   practiceThresholdMinutesFar: number,
   practiceThresholdMinutesNear: number,
   practiceUrgentWindowDays: number,

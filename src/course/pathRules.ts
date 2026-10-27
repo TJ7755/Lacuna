@@ -101,6 +101,7 @@ export function initiallyUnlockedLessonIds(course: Course, lessons: Lesson[]): R
     course.studyStartLessonId,
     lessons,
     sorted.map((lesson) => lesson.id),
+    course.schoolCoveredLessonIds,
   );
   const start =
     sorted.find(

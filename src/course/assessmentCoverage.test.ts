@@ -111,7 +111,7 @@ describe('resolveAssessmentCoverage', () => {
     expect(result.coveredLessons.map((lesson) => lesson.id)).toEqual(['two']);
   });
 
-  it('rejects a custom lesson positioned after the assessment', () => {
+  it('retains explicit lesson membership beyond the assessment path anchor', () => {
     const result = resolveAssessmentCoverage(
       assessment({ coverageMode: 'custom', lessonIds: ['one', 'three'] }),
       lessons,
@@ -119,11 +119,9 @@ describe('resolveAssessmentCoverage', () => {
       [],
     );
 
-    expect(result.validation.issues).toContainEqual(
-      expect.objectContaining({ code: 'custom-lesson-after-assessment', referenceId: 'three' }),
-    );
-    expect(result.coveredLessons.map((lesson) => lesson.id)).toEqual(['one']);
-    expect(result.cards.map((value) => value.id)).toEqual(['before']);
+    expect(result.validation.valid).toBe(true);
+    expect(result.coveredLessons.map((lesson) => lesson.id)).toEqual(['one', 'three']);
+    expect(result.cards.map((value) => value.id)).toEqual(['before', 'after']);
   });
 
   it('uses linked membership, deduplicates cards and applies exclusions', () => {
