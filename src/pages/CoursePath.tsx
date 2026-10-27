@@ -332,7 +332,9 @@ export function CoursePath() {
               recallPct={forecastPct}
               recallLabel={
                 assessments.some((assessment) => assessment.coverageMode === 'specification')
-                  ? 'Predicted recall'
+                  ? course.examObjective === 'securedTopics'
+                    ? 'Secured cards'
+                    : 'Predicted recall'
                   : undefined
               }
               status={status ?? 'steady'}

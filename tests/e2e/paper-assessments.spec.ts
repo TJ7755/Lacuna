@@ -236,6 +236,15 @@ for (const width of [1440, 390]) {
         .getByRole('region', { name: 'Course summary' })
         .getByText('Predicted recall', { exact: true }),
     ).toBeVisible();
+    await page.goto(`/#/course/${course.id}/settings`);
+    await page.getByRole('button', { name: 'Secure topics', exact: true }).click();
+    await expect
+      .poll(async () => (await readAll<CourseRecord>(page, 'courses'))[0].examObjective)
+      .toBe('securedTopics');
+    await page.goto(`/#/course/${course.id}`);
+    const summary = page.getByRole('region', { name: 'Course summary' });
+    await expect(summary.getByText('Secured cards', { exact: true })).toBeVisible();
+    await expect(summary.getByText('0%', { exact: true })).toBeVisible();
     await page
       .getByRole('region', { name: 'Assessments', exact: true })
       .getByRole('button', { name: /1: First paper/ })
