@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { jevAssessmentReceiptSchema, jevMarkProvenanceSchema } from '../jev/provenance';
+import { diagnosisMatchesRequest, type JevDiagnosticRequest } from '../jev/diagnosis';
 import { questionSchedulerConfigFingerprint } from './scheduler';
 import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
 import { answerableNodes, type QuestionSetAttemptRecord } from './questionSetAttempts';
@@ -150,7 +151,7 @@ export function parseQuestionSetAttemptRecord(value: unknown): QuestionSetAttemp
   const responseOptions = new Map<string, { selection: 'single' | 'multiple'; ids: Set<string> }>();
   const allocationMax = new Map<string, number>();
   const allocationNode = new Map<string, string>();
-  const diagnosticAllocations = new Set<string>();
+  const diagnosticAllocations = new Map<string, JevDiagnosticRequest>();
   const registerAnswer = (
     nodeId: string,
     answer: QuestionSetRecord['questions'][number]['answer'],
@@ -166,8 +167,8 @@ export function parseQuestionSetAttemptRecord(value: unknown): QuestionSetAttemp
     answer.allocations.forEach((row) => {
       allocationMax.set(row.id, row.maxMarks);
       allocationNode.set(row.id, nodeId);
-      if (row.techniqueTags?.techniqueIds.includes('causal-link'))
-        diagnosticAllocations.add(row.id);
+      if (row.techniqueTags?.techniqueIds.length)
+        diagnosticAllocations.set(row.id, row.techniqueTags);
     });
   };
   for (const question of record.receipt.questions) {
@@ -224,6 +225,10 @@ export function parseQuestionSetAttemptRecord(value: unknown): QuestionSetAttemp
     const response = record.responses.find((row) => row.nodeId === nodeId);
     if (
       !diagnosticAllocations.has(receipt.allocationId) ||
+      !diagnosisMatchesRequest(
+        receipt.diagnosis,
+        diagnosticAllocations.get(receipt.allocationId)!,
+      ) ||
       response?.submitted?.kind !== 'written' ||
       (receipt.mark !== null && receipt.mark > allocationMax.get(receipt.allocationId)!) ||
       receipt.marking.markedAt < response.submittedAt! ||

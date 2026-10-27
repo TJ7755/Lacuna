@@ -147,6 +147,73 @@ const unknownKind = {
   probabilities: { same: 0.6, spelling: 0.4, imprecise: 0, partial: 0, wrong: 0, blank: 0 },
 };
 
+it('diagnoses the requested techniques independently in the same provider request as the mark', async () => {
+  const fetcher = vi.fn(async () =>
+    Response.json({
+      model: 'jev-1.14.0',
+      answers: {
+        allocation_0: { type: 'noul', noul: 0.02 },
+        ...Object.fromEntries(
+          [
+            ['knowledge', 'no-gap'],
+            ['application', 'no-gap'],
+            ['causal-link', 'gap'],
+            ['paired-comparison', 'no-gap'],
+          ].map(([category, outcome]) => [
+            `allocation_0_diagnosis_${category}`,
+            {
+              type: 'choice',
+              choice: outcome,
+              confidence: 0.99,
+              probabilities: {
+                gap: outcome === 'gap' ? 0.98 : 0.01,
+                'no-gap': outcome === 'no-gap' ? 0.98 : 0.01,
+                'insufficient-evidence': 0.01,
+              },
+            },
+          ]),
+        ),
+      },
+      usage: { input_tokens: 150, output_tokens: 20 },
+    }),
+  );
+  const result = await callJevAllocationBatch(
+    {
+      purpose: 'mark-allocation',
+      allocations: [
+        {
+          prompt: 'Compare and explain the two enzyme reactions.',
+          criterion: 'Compare rates and explain the difference.',
+          explanation: '',
+          maxMarks: 1,
+          answer: 'One reaction is faster than the other.',
+          diagnostic: {
+            taxonomyId: 'science-techniques',
+            taxonomyVersion: 1,
+            techniqueIds: ['causal-link', 'paired-comparison'],
+          },
+        },
+      ],
+    },
+    'key',
+    new AbortController().signal,
+    fetcher,
+  );
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(result.decisions[0]).toMatchObject({
+    value: 0,
+    diagnosis: {
+      taxonomyId: 'science-techniques',
+      decisions: [
+        { categoryId: 'knowledge', outcome: 'no-gap' },
+        { categoryId: 'application', outcome: 'no-gap' },
+        { categoryId: 'causal-link', outcome: 'gap' },
+        { categoryId: 'paired-comparison', outcome: 'no-gap' },
+      ],
+    },
+  });
+});
+
 it('builds a fixed noul question from structured content and reads billable usage', async () => {
   const fetcher = vi.fn().mockResolvedValue(
     Response.json({

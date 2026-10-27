@@ -17,6 +17,7 @@ import { mergeSnapshots } from '../sync/mergeSnapshots';
 import { encodeSnapshot, decodeSnapshot } from '../sync/snapshot';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 import type { JevDiagnosis } from './diagnosis';
+import type { TechniqueTags } from '../questions/techniqueTags';
 import { summariseSelfMarking } from '../questions/questionSets';
 import { gradeQuestionAttempt } from '../questions/grading';
 import { deriveConceptApplicationSchedules } from '../questions/conceptPractice';
@@ -31,7 +32,7 @@ beforeEach(async () => {
 async function fixture(
   kind: 'written' | 'calculation' | 'multiple-choice' = 'written',
   marks = [1, 2],
-  diagnostic = false,
+  diagnostic: boolean | TechniqueTags = false,
 ) {
   const course = await createCourse('Biology');
   const concept = await createConcept(course.id, 'Water');
@@ -69,12 +70,15 @@ async function fixture(
             targetConceptIds: [concept.id],
             ...(diagnostic && maxMarks === 1
               ? {
-                  techniqueTags: {
-                    taxonomyId: 'science-explanations' as const,
-                    taxonomyVersion: 1 as const,
-                    techniqueIds: ['causal-link' as const],
-                    provenance: { source: 'author' as const },
-                  },
+                  techniqueTags:
+                    typeof diagnostic === 'object'
+                      ? diagnostic
+                      : {
+                          taxonomyId: 'science-explanations' as const,
+                          taxonomyVersion: 1 as const,
+                          techniqueIds: ['causal-link' as const],
+                          provenance: { source: 'author' as const },
+                        },
                 }
               : {}),
           })),
@@ -135,6 +139,46 @@ const diagnosis: JevDiagnosis = {
     { categoryId: 'causal-link', outcome: 'gap', confidence: 0.99 },
   ],
 };
+
+it('marks two techniques independently and retains only the requested evidence through backup', async () => {
+  const { attempt } = await fixture('written', [1], {
+    taxonomyId: 'science-techniques',
+    taxonomyVersion: 1,
+    techniqueIds: ['causal-link', 'paired-comparison'],
+    provenance: { source: 'author' },
+  });
+  const evidence: JevDiagnosis = {
+    taxonomyId: 'science-techniques',
+    taxonomyVersion: 1,
+    decisions: [
+      { categoryId: 'knowledge', outcome: 'no-gap', confidence: 0.99 },
+      { categoryId: 'application', outcome: 'no-gap', confidence: 0.99 },
+      { categoryId: 'causal-link', outcome: 'gap', confidence: 0.99 },
+      { categoryId: 'paired-comparison', outcome: 'no-gap', confidence: 0.99 },
+    ],
+  };
+  const { engine } = engineWith(async () =>
+    Response.json({
+      value: 0,
+      confidence: 0.98,
+      inputTokens: 25,
+      model: 'jev-1.14.0',
+      diagnosis: evidence,
+    }),
+  );
+  await markJevAttempt(attempt.id, engine, 'a1');
+  const marked = (await getQuestionSetAttempt(attempt.id))!;
+  expect(marked.jevAssessmentReceipts![0].diagnosis).toEqual(evidence);
+  const backup = await exportDatabase();
+  await importBackup(await decodeSnapshot((await encodeSnapshot(backup)).payload), 'replace');
+  expect((await getQuestionSetAttempt(attempt.id))!.jevAssessmentReceipts).toEqual(
+    marked.jevAssessmentReceipts,
+  );
+  expect(await db.reviewHistory.count()).toBe(0);
+  const mismatched = structuredClone(marked);
+  mismatched.jevAssessmentReceipts![0].diagnosis.decisions[3].categoryId = 'unit-conversion';
+  expect(() => parseQuestionSetAttemptRecord(mismatched)).toThrow(/criterion/);
+});
 
 it('retains combined assessment evidence through a stale learner override, backup and peer merge', async () => {
   const { attempt } = await fixture('written', [1, 2], true);
