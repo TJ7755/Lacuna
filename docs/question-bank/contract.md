@@ -16,8 +16,8 @@ bun scripts/question-bank.ts materialise bank.json materialised.json
 The initial scope for [#902](https://github.com/TJ7755/Lacuna/issues/902) is Edexcel
 International GCSE Biology 4BI1 enzyme explanations. The portable-tag slice of
 [#556](https://github.com/TJ7755/Lacuna/issues/556) adds optional `techniqueTags` to each
-`MarkAllocation`, the smallest existing attributable criterion. It does not diagnose answers
-or change practice selection. Knowledge remains linked through `targetConceptIds`; application
+`MarkAllocation`, the smallest existing attributable criterion. Knowledge remains linked through
+`targetConceptIds`; application
 remains an assessment dimension. Neither is a technique tag.
 
 ```json
@@ -60,5 +60,36 @@ The preliminary frozen-content inventory found four enzyme sets, 22 questions, 3
 and 65 marks in 4BI1 revision 29. This is not a coverage or transfer certification. Before pilot
 publication, [#907](https://github.com/TJ7755/Lacuna/issues/907) must supply a reviewed tagged
 artefact, supported repair and an independent retest pool. Existing prompts that supply the
-explanation steps are not evidence of uncued transfer. Combined marking/diagnosis, separate
-learner evidence, targeted selection and evaluation remain subsequent slices.
+explanation steps are not evidence of uncued transfer. Targeted selection and evaluation remain
+subsequent slices.
+
+## Combined marking and diagnosis
+
+When Jev marks a written criterion tagged `causal-link`, the same provider request now asks
+separately about knowledge, application and the causal link. Each returns `gap`, `no-gap` or
+`insufficient-evidence` with its own confidence. Several gaps may coexist. The existing UI
+requests only the criterion the learner opens; this does not mean one request marks an entire
+submission. Batch callers also combine marking and diagnosis in their existing call. No second
+diagnosis request or per-tag network fan-out is added. Untagged criteria retain mark-only behaviour.
+
+The model uses only the supplied answer and authored criterion. Missing knowledge cannot be
+distinguished from an unexplained omission merely because a mark was lost. Blank answers always
+produce insufficient diagnostic evidence; diagnostic confidence below 0.85 also abstains without
+changing confidence in the mark. This threshold is an initial policy, not a calibrated reliability
+claim. [#905](https://github.com/TJ7755/Lacuna/issues/905) still gates public marking/diagnosis.
+
+Combined results are retained in optional attempt-level `jevAssessmentReceipts`, alongside the
+immutable submitted answer and authored-content receipt. They record the original mark or
+abstention, marking provenance, taxonomy version and separately confident diagnostic outcomes.
+Learner overrides replace the effective mark but retain these original receipts. Peer merge unions
+competing receipts for audit rather than treating a diagnostic disagreement as a disagreement in
+marks. Backups and sync retain them; published course content does not contain learner attempts.
+Older strict application versions cannot read these new receipts and need updating before import.
+
+No selector or scheduler consumes these diagnostic receipts yet. A future consumer must exclude
+overridden, disputed, undone or assisted evidence as appropriate; retaining a model result does
+not make it independent evidence or authorise practice-priority changes. Device cache keys include
+the diagnostic request, rubric and policy; diagnostic evidence can be cached even when the mark
+abstains. The route continues to report actual batch input tokens once and `Server-Timing`;
+one HTTP request does not establish a token-cost saving. No live diagnostic accuracy, latency or
+cost benchmark is claimed by synthetic transport tests.

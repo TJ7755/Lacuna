@@ -1,5 +1,145 @@
 import { expect, it, vi } from 'vitest';
-import { callJevDecision } from './provider';
+import { callJevDecision, callJevAllocationBatch } from './provider';
+import type { JevAllocationInput } from '../../src/jev/protocol';
+
+it.each([
+  {
+    name: 'correct',
+    answer: 'A mechanism and consequence',
+    outcomes: ['no-gap', 'no-gap', 'no-gap'],
+    expected: ['no-gap', 'no-gap', 'no-gap'],
+    mark: 0.98,
+    diagnosticConfidence: 0.99,
+  },
+  {
+    name: 'knowledge gap',
+    answer: 'An incorrect scientific fact',
+    outcomes: ['gap', 'insufficient-evidence', 'insufficient-evidence'],
+    expected: ['gap', 'insufficient-evidence', 'insufficient-evidence'],
+    mark: 0.02,
+    diagnosticConfidence: 0.99,
+  },
+  {
+    name: 'technique gap',
+    answer: 'Facts without a causal connection',
+    outcomes: ['no-gap', 'no-gap', 'gap'],
+    expected: ['no-gap', 'no-gap', 'gap'],
+    mark: 0.02,
+    diagnosticConfidence: 0.99,
+  },
+  {
+    name: 'mixed gaps',
+    answer: 'Mixed evidence',
+    outcomes: ['gap', 'gap', 'gap'],
+    expected: ['gap', 'gap', 'gap'],
+    mark: 0.02,
+    diagnosticConfidence: 0.99,
+  },
+  {
+    name: 'uncertain cause',
+    answer: 'Ambiguous evidence',
+    outcomes: ['gap', 'gap', 'gap'],
+    expected: ['insufficient-evidence', 'insufficient-evidence', 'insufficient-evidence'],
+    mark: 0.02,
+    diagnosticConfidence: 0.6,
+  },
+  {
+    name: 'blank',
+    answer: '   ',
+    outcomes: ['gap', 'gap', 'gap'],
+    expected: ['insufficient-evidence', 'insufficient-evidence', 'insufficient-evidence'],
+    mark: 0.02,
+    diagnosticConfidence: 0.99,
+  },
+  {
+    name: 'uncertain mark',
+    answer: 'A mechanism and consequence',
+    outcomes: ['no-gap', 'no-gap', 'no-gap'],
+    expected: ['no-gap', 'no-gap', 'no-gap'],
+    mark: 0.5,
+    diagnosticConfidence: 0.99,
+  },
+])(
+  'combines marking and independent diagnosis in one call: $name',
+  async ({ answer, outcomes, expected, mark, diagnosticConfidence }) => {
+    const fetcher = vi.fn().mockResolvedValue(
+      Response.json({
+        model: 'jev-1.14.0',
+        answers: {
+          allocation_0: { type: 'noul', noul: mark },
+          allocation_1: { type: 'noul', noul: 0.98 },
+          ...Object.fromEntries(
+            ['knowledge', 'application', 'causal-link'].map((id, index) => [
+              `allocation_0_diagnosis_${id}`,
+              {
+                type: 'choice',
+                choice: outcomes[index],
+                confidence: 0.999,
+                probabilities: Object.fromEntries(
+                  ['gap', 'no-gap', 'insufficient-evidence'].map((outcome) => [
+                    outcome,
+                    outcome === outcomes[index]
+                      ? diagnosticConfidence
+                      : (1 - diagnosticConfidence) / 2,
+                  ]),
+                ),
+              },
+            ]),
+          ),
+        },
+        usage: { input_tokens: 432, output_tokens: 25 },
+      }),
+    );
+    const allocation: JevAllocationInput = {
+      prompt: 'Shared scientific question',
+      answer,
+      criterion: 'Unique scientific criterion',
+      explanation: 'Unique rubric detail',
+      maxMarks: 1,
+      diagnostic: {
+        taxonomyId: 'science-explanations',
+        taxonomyVersion: 1,
+        techniqueIds: ['causal-link'],
+      },
+    };
+    const result = await callJevAllocationBatch(
+      {
+        purpose: 'mark-allocation',
+        allocations: [
+          allocation,
+          {
+            prompt: allocation.prompt,
+            answer,
+            criterion: 'Other mark',
+            explanation: '',
+            maxMarks: 1,
+          },
+        ],
+      },
+      'key',
+      new AbortController().signal,
+      fetcher,
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(result.inputTokens).toBe(432);
+    expect(result.decisions[0].value).toBe(mark === 0.5 ? null : mark > 0.5 ? 1 : 0);
+    expect(result.decisions[0].diagnosis?.decisions.map((row) => row.outcome)).toEqual(expected);
+    expect(result.decisions[0].diagnosis?.decisions[0].confidence).toBe(diagnosticConfidence);
+    expect(result.decisions[1].diagnosis).toBeUndefined();
+    const wire = JSON.parse(fetcher.mock.calls[0][1].body);
+    expect(wire.state.submissions).toEqual([{ prompt: allocation.prompt, answer }]);
+    expect(wire.state.rubrics).toEqual([
+      {
+        criterion: allocation.criterion,
+        explanation: allocation.explanation,
+        maxMarks: 1,
+        submissionIndex: 0,
+      },
+    ]);
+    expect(fetcher.mock.calls[0][1].body.split(allocation.criterion)).toHaveLength(2);
+    expect(Object.keys(wire.questions)).toHaveLength(5);
+  },
+);
 const unknownKind = {
   type: 'choice',
   choice: 'same',

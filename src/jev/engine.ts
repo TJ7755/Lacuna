@@ -6,6 +6,7 @@ import {
 import { HOSTED_SERVICE_ORIGIN } from '../config/origins';
 import { decisionHash, jevDecisionCache, type JevDecisionCache } from './cache';
 import { splitJevExpectedAnswer } from './answerParts';
+import { checkedDiagnosis } from './diagnosis';
 import {
   jevDecisionRequestSchema,
   jevDecisionResultSchema,
@@ -235,6 +236,10 @@ export function createJevEngine(
     }
   }
   function checked(request: JevDecisionRequest, result: JevDecisionResult): JevDecisionResult {
+    if (result.diagnosis) {
+      if (request.purpose !== 'mark-allocation' || !request.diagnostic) throw new Pause('error');
+      result = { ...result, diagnosis: checkedDiagnosis(result.diagnosis, request.answer) };
+    }
     if (request.purpose === 'typed-equivalence' && result.feedback) {
       const split = splitJevExpectedAnswer(request.expected);
       const parts = split.length >= 2 && split.length <= JEV_TYPED_MAX_PARTS ? split : [];

@@ -1,6 +1,7 @@
 import type { FsrsParameters } from '../db/types';
 import type { QuestionSetRecord } from './questionSetCodec';
 import type { SelfMarkDecision } from './questionSets';
+import type { JevAssessmentReceipt } from '../jev/provenance';
 
 export type QuestionSetAttemptMode = 'practice' | 'paper';
 export type QuestionSetAttemptStatus = 'answering' | 'marking' | 'complete';
@@ -81,6 +82,8 @@ export interface QuestionSetAttemptRecord {
   status: QuestionSetAttemptStatus;
   responses: QuestionSetAttemptResponse[];
   decisions: SelfMarkDecision[];
+  /** Original combined model results, retained independently of learner overrides. */
+  jevAssessmentReceipts?: JevAssessmentReceipt[];
   annotations: QuestionSetAttemptAnnotation[];
   corrections: QuestionSetAttemptCorrection[];
   reflection: QuestionSetAttemptReflection;

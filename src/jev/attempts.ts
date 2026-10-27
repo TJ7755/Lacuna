@@ -82,6 +82,15 @@ function candidates(attempt: QuestionSetAttemptRecord, only?: string) {
                 explanation: allocation.explanation ?? '',
                 maxMarks: allocation.maxMarks,
                 answer: submitted.text,
+                ...(allocation.techniqueTags?.techniqueIds.includes('causal-link')
+                  ? {
+                      diagnostic: {
+                        taxonomyId: allocation.techniqueTags.taxonomyId,
+                        taxonomyVersion: allocation.techniqueTags.taxonomyVersion,
+                        techniqueIds: allocation.techniqueTags.techniqueIds,
+                      },
+                    }
+                  : {}),
               } satisfies JevDecisionRequest,
             },
           ],
@@ -206,6 +215,7 @@ export function markJevAttempt(
                 },
               },
               stillEnabled,
+              result.diagnosis,
             );
           });
         } finally {

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { jevMarkProvenanceSchema } from '../jev/provenance';
+import { jevAssessmentReceiptSchema, jevMarkProvenanceSchema } from '../jev/provenance';
 import { questionSchedulerConfigFingerprint } from './scheduler';
 import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
 import { answerableNodes, type QuestionSetAttemptRecord } from './questionSetAttempts';
@@ -107,6 +107,7 @@ const attemptSchema = z
     responses: z.array(response),
     decisions: z.array(decision),
     annotations: z.array(annotation),
+    jevAssessmentReceipts: z.array(jevAssessmentReceiptSchema).optional(),
     corrections: z.array(correction),
     reflection,
     assistance: z.array(assistance),
@@ -149,6 +150,7 @@ export function parseQuestionSetAttemptRecord(value: unknown): QuestionSetAttemp
   const responseOptions = new Map<string, { selection: 'single' | 'multiple'; ids: Set<string> }>();
   const allocationMax = new Map<string, number>();
   const allocationNode = new Map<string, string>();
+  const diagnosticAllocations = new Set<string>();
   const registerAnswer = (
     nodeId: string,
     answer: QuestionSetRecord['questions'][number]['answer'],
@@ -164,6 +166,8 @@ export function parseQuestionSetAttemptRecord(value: unknown): QuestionSetAttemp
     answer.allocations.forEach((row) => {
       allocationMax.set(row.id, row.maxMarks);
       allocationNode.set(row.id, nodeId);
+      if (row.techniqueTags?.techniqueIds.includes('causal-link'))
+        diagnosticAllocations.add(row.id);
     });
   };
   for (const question of record.receipt.questions) {
@@ -215,6 +219,21 @@ export function parseQuestionSetAttemptRecord(value: unknown): QuestionSetAttemp
   const submittedNodes = new Set(
     record.responses.filter((row) => row.submitted).map((row) => row.nodeId),
   );
+  for (const receipt of record.jevAssessmentReceipts ?? []) {
+    const nodeId = allocationNode.get(receipt.allocationId);
+    const response = record.responses.find((row) => row.nodeId === nodeId);
+    if (
+      !diagnosticAllocations.has(receipt.allocationId) ||
+      response?.submitted?.kind !== 'written' ||
+      (receipt.mark !== null && receipt.mark > allocationMax.get(receipt.allocationId)!) ||
+      receipt.marking.markedAt < response.submittedAt! ||
+      receipt.marking.markedAt > record.updatedAt ||
+      (!response.submitted.text.trim() &&
+        receipt.diagnosis.decisions.some((row) => row.outcome !== 'insufficient-evidence'))
+    ) {
+      throw new Error('Jev assessment receipt does not match its submitted criterion.');
+    }
+  }
   if (
     new Set(record.decisions.map((row) => row.allocationId)).size !== record.decisions.length ||
     record.decisions.some(

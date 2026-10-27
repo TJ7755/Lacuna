@@ -1,4 +1,5 @@
 import { db, makeId } from '../db/schema';
+import type { JevDiagnosis } from '../jev/diagnosis';
 import { resolveFamilyVariant } from './bank';
 import { normaliseQuestionSchedulerConfig, questionSchedulerConfigFingerprint } from './scheduler';
 import { QUESTION_SCHEDULER_VERSION } from './types';
@@ -269,7 +270,14 @@ export function saveQuestionSetMarking(
     ) {
       throw new Error('Submit a response before annotating or correcting it.');
     }
-    const next = clone(input);
+    const next = clone({
+      decisions: input.decisions,
+      annotations: input.annotations,
+      corrections: input.corrections,
+      reflection: input.reflection,
+      activeNodeId: input.activeNodeId,
+      activeAllocationId: input.activeAllocationId,
+    });
     next.decisions = next.decisions.map((decision) => {
       const previous = attempt.decisions.find((row) => row.allocationId === decision.allocationId);
       if (
@@ -371,6 +379,7 @@ export async function applyJevAllocationDecision(
   nodeId: string,
   decision: SelfMarkDecision,
   stillEnabled: () => boolean,
+  diagnosis?: JevDiagnosis,
 ): Promise<boolean> {
   let revision = expectedRevisionId;
   for (let retry = 0; retry < 3; retry++) {
@@ -394,6 +403,14 @@ export async function applyJevAllocationDecision(
           )
             throw new JevDecisionSkipped();
           attempt.decisions.push(clone(decision));
+          if (diagnosis) {
+            (attempt.jevAssessmentReceipts ??= []).push({
+              allocationId: decision.allocationId,
+              mark: decision.status === 'awarded' ? decision.marks : null,
+              marking: clone(decision.markedBy!),
+              diagnosis: clone(diagnosis),
+            });
+          }
         },
         { recordExposure: false },
       );
