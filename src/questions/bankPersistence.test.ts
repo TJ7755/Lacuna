@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, it } from 'vitest';
 import familyExample from '../../docs/question-bank/examples/numeric-family.json';
+import staticExample from '../../docs/question-bank/examples/static-multipart.json';
 import { db } from '../db/schema';
 import { createCourse } from '../db/repository';
 import { exportDatabase, importBackup } from '../db/portability';
@@ -19,16 +20,68 @@ import {
   completeQuestionSetAttempt,
   saveQuestionSetMarking,
   submitPracticeQuestion,
+  startQuestionSetAttempt,
 } from './questionSetAttemptRepository';
+import {
+  createQuestionSetDraft,
+  publishQuestionSetDraft,
+  saveQuestionSetDraft,
+} from './questionSetDrafts';
 
 beforeEach(async () => {
   await db.delete();
   await db.open();
 });
 
+it('publishes an author classification correction without rewriting the old attempt, then retains both through backup and sync', async () => {
+  const course = await createCourse('Criterion authoring');
+  const [set] = await importQuestionBank(staticExample, course.id);
+  const oldAttempt = await startQuestionSetAttempt(set.id, 'practice');
+  const draft = createQuestionSetDraft(set, set.contentRevisionId);
+  expect(draft.content.bank).toEqual(set.bank);
+  const point = draft.content.questions[0].parts[0].answer!.allocations[0];
+  const conceptIds = [...point.targetConceptIds];
+  point.techniqueTags = {
+    taxonomyId: 'science-techniques',
+    taxonomyVersion: 1,
+    techniqueIds: ['calculation-setup', 'substitution'],
+    provenance: { source: 'author' },
+  };
+  const saved = await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
+  const published = await publishQuestionSetDraft(course.id, set.id, saved.draftRevisionId);
+  expect(published.contentVersion).toBe(set.contentVersion + 1);
+  expect(published.contentRevisionId).not.toBe(set.contentRevisionId);
+  expect(published.bank).toEqual(set.bank);
+  expect(published.questions[0].parts[0].answer!.allocations[0].targetConceptIds).toEqual(
+    conceptIds,
+  );
+  expect(await db.questionSetAttempts.get(oldAttempt.id)).toEqual(oldAttempt);
+  const newAttempt = await startQuestionSetAttempt(set.id, 'practice');
+  expect(newAttempt.receipt.questions[0].parts[0].answer!.allocations[0].techniqueTags).toEqual(
+    point.techniqueTags,
+  );
+  expect(oldAttempt.receipt.questions[0].parts[0].answer!.allocations[0]).not.toHaveProperty(
+    'techniqueTags',
+  );
+  expect(
+    (await exportQuestionBank(course.id, staticExample.bankId)).sets[0].questions[0].parts[0]
+      .answer!.allocations[0].techniqueTags,
+  ).toEqual(point.techniqueTags);
+  const snapshot = await exportDatabase();
+  const encoded = await encodeSnapshot(snapshot);
+  await importBackup(await decodeSnapshot(encoded.payload), 'replace');
+  expect(await db.questionSets.get(set.id)).toEqual(published);
+  expect(await db.questionSetAttempts.get(oldAttempt.id)).toEqual(oldAttempt);
+  expect(await db.questionSetAttempts.get(newAttempt.id)).toEqual(newAttempt);
+});
+
 it('round-trips lazy families and immutable Concept evidence through backups, recovery and sync', async () => {
   const course = await createCourse('Physics');
   await importQuestionBank(familyExample, course.id);
+  const familySet = (await db.questionSets.where('courseId').equals(course.id).toArray())[0];
+  expect(createQuestionSetDraft(familySet, familySet.contentRevisionId).content.bank).toEqual(
+    familySet.bank,
+  );
   let { attempt } = await startConceptPractice(course.id);
   attempt = await submitPracticeQuestion(
     attempt.id,

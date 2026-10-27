@@ -163,6 +163,7 @@ export function createQuestionSetDraft(
       lessonIds: content.lessonIds,
       assessmentIds: content.assessmentIds,
       questions: content.questions,
+      ...(content.bank ? { bank: content.bank } : {}),
     }),
     baseContentRevisionId,
     draftRevisionId: (options.makeId ?? makeId)(),
