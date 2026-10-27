@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { jevDiagnosticRequestSchema, jevDiagnosisSchema } from './diagnosis.js';
 
 export const JEV_MODEL = 'jev-1.14.0';
 export const JEV_TYPED_CORRECT_THRESHOLD = 0.75;
@@ -48,6 +49,7 @@ export const jevDecisionRequestSchema = z.discriminatedUnion('purpose', [
     explanation: text,
     maxMarks: z.number().int().min(1).max(9),
     answer: text,
+    diagnostic: jevDiagnosticRequestSchema.optional(),
   }),
 ]);
 export type JevDecisionRequest = z.infer<typeof jevDecisionRequestSchema>;
@@ -57,6 +59,7 @@ export const jevDecisionResultSchema = z.strictObject({
   inputTokens: z.number().int().nonnegative(),
   model: z.literal(JEV_MODEL),
   feedback: jevTypedFeedbackSchema.optional(),
+  diagnosis: jevDiagnosisSchema.optional(),
 });
 export type JevDecisionResult = z.infer<typeof jevDecisionResultSchema>;
 export type JevDecisionClient = (

@@ -5,6 +5,65 @@ import { HOSTED_ACCESS_STORAGE_KEY } from '../ai/session/hostedTransport';
 
 const emptyCache = () => ({ get: vi.fn(async () => undefined), put: vi.fn(async () => {}) });
 const request = { cardId: 'c', prompt: 'What?', expected: 'Water', answer: 'Water molecules' };
+
+it.each([
+  { answer: 'Facts only', confidence: 0.6, outcome: 'insufficient-evidence', invalid: false },
+  { answer: 'Facts only', confidence: 0.85, outcome: 'gap', invalid: false },
+  { answer: '  ', confidence: 0.99, outcome: 'insufficient-evidence', invalid: false },
+  { answer: 'Facts only', confidence: 0.99, outcome: null, invalid: true },
+])(
+  'validates diagnostic confidence and categories independently of marks: %j',
+  async ({ answer, confidence, outcome, invalid }) => {
+    localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+    const fetcher = vi.fn(async (url) =>
+      url.endsWith('/session')
+        ? Response.json({ token: 'session', expiresAt: Date.now() + 60_000 })
+        : Response.json({
+            model: 'jev-1.14.0',
+            inputTokens: 50,
+            decisions: [
+              {
+                value: 1,
+                confidence: 0.99,
+                model: 'jev-1.14.0',
+                diagnosis: {
+                  taxonomyId: 'science-explanations',
+                  taxonomyVersion: 1,
+                  decisions: ['knowledge', 'application', invalid ? 'invented' : 'causal-link'].map(
+                    (categoryId) => ({
+                      categoryId,
+                      outcome: 'gap',
+                      confidence,
+                    }),
+                  ),
+                },
+              },
+            ],
+          }),
+    );
+    const engine = createJevEngine({ fetcher, cache: emptyCache() });
+    engine.enable(1);
+    const result = await engine.decideAllocations([
+      {
+        prompt: 'Explain',
+        criterion: 'A scientific mechanism',
+        explanation: '',
+        maxMarks: 1,
+        answer,
+        diagnostic: {
+          taxonomyId: 'science-explanations',
+          taxonomyVersion: 1,
+          techniqueIds: ['causal-link'],
+        },
+      },
+    ]);
+    if (invalid) expect(result).toBeNull();
+    else {
+      expect(result![0].value).toBe(1);
+      expect(result![0].diagnosis!.decisions.every((row) => row.outcome === outcome)).toBe(true);
+    }
+  },
+);
 afterEach(() => {
   localStorage.clear();
   vi.restoreAllMocks();
@@ -160,24 +219,23 @@ it.each([
   [0, 0.7499, 'unsure'],
   [0, 0.75, 'incorrect'],
   [0, 0.79, 'incorrect'],
-] as const)('applies the typed threshold to cached value %s at confidence %s', async (
-  value,
-  confidence,
-  outcome,
-) => {
-  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
-  const fetcher = vi.fn();
-  const engine = createJevEngine({
-    fetcher,
-    cache: {
-      get: async () => ({ model: 'jev-1.14.0', value, confidence, inputTokens: 12 }),
-      put: async () => {},
-    },
-  });
-  engine.enable(1);
-  expect(await engine.markTyped(request)).toMatchObject({ outcome });
-  expect(fetcher).not.toHaveBeenCalled();
-});
+] as const)(
+  'applies the typed threshold to cached value %s at confidence %s',
+  async (value, confidence, outcome) => {
+    localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+    const fetcher = vi.fn();
+    const engine = createJevEngine({
+      fetcher,
+      cache: {
+        get: async () => ({ model: 'jev-1.14.0', value, confidence, inputTokens: 12 }),
+        put: async () => {},
+      },
+    });
+    engine.enable(1);
+    expect(await engine.markTyped(request)).toMatchObject({ outcome });
+    expect(fetcher).not.toHaveBeenCalled();
+  },
+);
 it('stays off if the browser refuses access to localStorage', () => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')!;
   Object.defineProperty(globalThis, 'localStorage', {

@@ -85,6 +85,16 @@ export function mergeQuestionSetAttemptPair(
   const selected = incomingWins ? incoming : existing;
   const winner = structuredClone(selected);
   const loser = incomingWins ? existing : incoming;
+  if (existing.jevAssessmentReceipts || incoming.jevAssessmentReceipts) {
+    const receipts = new Map(
+      [...(existing.jevAssessmentReceipts ?? []), ...(incoming.jevAssessmentReceipts ?? [])].map(
+        (receipt) => [canonicalJson(receipt), receipt],
+      ),
+    );
+    winner.jevAssessmentReceipts = [...receipts.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([, receipt]) => structuredClone(receipt));
+  }
   // A model result is subordinate to a learner decision, including across peers.
   const winnerHasModelMarks = winner.decisions.some((decision) => decision.markedBy);
   winner.decisions = winner.decisions.map((decision) => {

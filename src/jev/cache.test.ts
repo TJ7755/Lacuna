@@ -1,6 +1,46 @@
 import 'fake-indexeddb/auto';
 import { expect, it } from 'vitest';
 import { createJevDecisionCache, decisionHash } from './cache';
+import type { JevDecisionRequest, JevDecisionResult } from './protocol';
+
+it('caches diagnostic evidence when marking abstains and separates it from mark-only requests', async () => {
+  const request: JevDecisionRequest = {
+    purpose: 'mark-allocation',
+    prompt: 'Explain enzyme activity',
+    criterion: 'A causal link',
+    explanation: '',
+    maxMarks: 1,
+    answer: 'Facts without a connection',
+    diagnostic: {
+      taxonomyId: 'science-explanations',
+      taxonomyVersion: 1,
+      techniqueIds: ['causal-link'],
+    },
+  };
+  const result: JevDecisionResult = {
+    model: 'jev-1.14.0',
+    value: null,
+    confidence: 0.5,
+    inputTokens: 0,
+    diagnosis: {
+      taxonomyId: 'science-explanations',
+      taxonomyVersion: 1,
+      decisions: [
+        { categoryId: 'knowledge', outcome: 'no-gap', confidence: 0.99 },
+        { categoryId: 'application', outcome: 'insufficient-evidence', confidence: 0.5 },
+        { categoryId: 'causal-link', outcome: 'gap', confidence: 0.99 },
+      ],
+    },
+  };
+  const hash = await decisionHash(request);
+  await createJevDecisionCache().put(hash, result);
+  expect(await createJevDecisionCache().get(hash)).toEqual(result);
+  const { diagnostic: _diagnostic, ...markOnly } = request;
+  expect(await decisionHash(markOnly)).not.toBe(hash);
+  expect(await decisionHash({ ...request, criterion: 'A changed causal requirement' })).not.toBe(
+    hash,
+  );
+});
 it('reuses a device verdict after recreating the in-memory cache and invalidates changed content', async () => {
   const request = {
     purpose: 'typed-equivalence' as const,

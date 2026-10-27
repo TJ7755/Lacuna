@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { QuestionSet } from '../../src/questions/questionSets';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
-async function openSet(page: Page) {
+async function openSet(page: Page, diagnostic = false) {
   await enterFreshLacuna(page);
   await createCourse(page, 'Question-set keyboard');
   const courseId = new URL(page.url()).hash.split('/')[2];
@@ -17,6 +17,16 @@ async function openSet(page: Page) {
         maxMarks: 1,
         dimension: 'knowledge' as const,
         targetConceptIds: [],
+        ...(diagnostic
+          ? {
+              techniqueTags: {
+                taxonomyId: 'science-explanations' as const,
+                taxonomyVersion: 1 as const,
+                techniqueIds: ['causal-link' as const],
+                provenance: { source: 'author' as const },
+              },
+            }
+          : {}),
       },
     ],
   });
@@ -68,16 +78,20 @@ async function openSet(page: Page) {
   await expect(page.getByRole('heading', { name: 'Cells', exact: true })).toBeVisible();
 }
 
-async function startMarking(page: Page) {
+async function startMarking(page: Page, diagnostic = false) {
   await page.route('**/api/ai/session', (route) =>
     route.fulfill({
       json: { token: 'browser-test-session', expiresAt: Date.now() + 600_000 },
     }),
   );
-  await openSet(page);
+  await openSet(page, diagnostic);
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
-  await answer.fill('It does something in the cell.');
+  await answer.fill(
+    diagnostic
+      ? 'The nucleus contains genetic material and controls cell activities.'
+      : 'It does something in the cell.',
+  );
   await answer.press('Control+Enter');
 }
 
@@ -89,46 +103,114 @@ async function chooseZero(page: Page) {
   await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
 }
 
-test('saves automatic Unsure on re-entry and permits a numeric override', async ({
-  page,
-}, testInfo) => {
-  let calls = 0;
-  await page.route('**/api/ai/jev', (route) => {
-    calls++;
-    return route.fulfill({
-      json: {
-        model: 'jev-1.14.0',
-        inputTokens: 20,
-        decisions: [{ value: null, confidence: 0.5, model: 'jev-1.14.0' }],
-      },
+for (const diagnostic of [false, true])
+  test(`saves automatic Unsure on re-entry and permits a numeric override (diagnostic: ${diagnostic})`, async ({
+    page,
+  }, testInfo) => {
+    let calls = 0;
+    await page.route('**/api/ai/jev', (route) => {
+      calls++;
+      expect(route.request().postDataJSON().allocations[0].diagnostic).toEqual(
+        diagnostic
+          ? {
+              taxonomyId: 'science-explanations',
+              taxonomyVersion: 1,
+              techniqueIds: ['causal-link'],
+            }
+          : undefined,
+      );
+      return route.fulfill({
+        json: {
+          model: 'jev-1.14.0',
+          inputTokens: 20,
+          decisions: [
+            {
+              value: null,
+              confidence: 0.5,
+              model: 'jev-1.14.0',
+              ...(diagnostic
+                ? {
+                    diagnosis: {
+                      taxonomyId: 'science-explanations',
+                      taxonomyVersion: 1,
+                      decisions: [
+                        { categoryId: 'knowledge', outcome: 'no-gap', confidence: 0.99 },
+                        {
+                          categoryId: 'application',
+                          outcome: 'insufficient-evidence',
+                          confidence: 0.6,
+                        },
+                        {
+                          categoryId: 'causal-link',
+                          outcome: 'insufficient-evidence',
+                          confidence: 0.99,
+                        },
+                      ],
+                    },
+                  }
+                : {}),
+            },
+          ],
+        },
+      });
     });
+    await startMarking(page, diagnostic);
+    await expect(
+      page.getByText('Marking this answer automatically…', { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText('Marking this answer automatically…', { exact: true })).toHaveCount(
+      0,
+    );
+    await page.screenshot({
+      path: testInfo.outputPath('low-confidence.png'),
+      animations: 'disabled',
+    });
+    const unsure = page.getByRole('radio', { name: 'Unsure', exact: true });
+    await expect(unsure).toBeChecked();
+    await expect(
+      page.getByText('Automatic marking was not sure enough. Choose a mark.', { exact: true }),
+    ).toHaveCount(0);
+    const attemptUrl = page.url();
+    await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
+    await page.goto(attemptUrl);
+    await expect(unsure).toBeChecked();
+    await page.reload();
+    await expect(unsure).toBeChecked();
+    expect(calls).toBe(1);
+    await chooseZero(page);
+    await page.reload();
+    await expect(page.getByRole('radio', { name: '0 / 1', exact: true })).toBeChecked();
+    expect(calls).toBe(1);
+    if (diagnostic) {
+      const receipts = await page.evaluate(
+        () =>
+          new Promise<unknown[]>((resolve, reject) => {
+            const request = indexedDB.open('lacuna');
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+              const database = request.result;
+              const transaction = database.transaction('questionSetAttempts', 'readonly');
+              const read = transaction.objectStore('questionSetAttempts').getAll();
+              transaction.oncomplete = () => {
+                database.close();
+                resolve(read.result.flatMap((attempt) => attempt.jevAssessmentReceipts ?? []));
+              };
+              transaction.onerror = () => {
+                database.close();
+                reject(transaction.error);
+              };
+            };
+          }),
+      );
+      expect(receipts).toEqual([
+        expect.objectContaining({
+          mark: null,
+          marking: expect.objectContaining({ confidence: 0.5 }),
+          diagnosis: expect.objectContaining({ taxonomyId: 'science-explanations' }),
+        }),
+      ]);
+    }
   });
-  await startMarking(page);
-  await expect(page.getByText('Marking this answer automatically…', { exact: true })).toBeVisible();
-  await expect(page.getByText('Marking this answer automatically…', { exact: true })).toHaveCount(
-    0,
-  );
-  await page.screenshot({
-    path: testInfo.outputPath('low-confidence.png'),
-    animations: 'disabled',
-  });
-  const unsure = page.getByRole('radio', { name: 'Unsure', exact: true });
-  await expect(unsure).toBeChecked();
-  await expect(
-    page.getByText('Automatic marking was not sure enough. Choose a mark.', { exact: true }),
-  ).toHaveCount(0);
-  const attemptUrl = page.url();
-  await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
-  await page.goto(attemptUrl);
-  await expect(unsure).toBeChecked();
-  await page.reload();
-  await expect(unsure).toBeChecked();
-  expect(calls).toBe(1);
-  await chooseZero(page);
-  await page.reload();
-  await expect(page.getByRole('radio', { name: '0 / 1', exact: true })).toBeChecked();
-  expect(calls).toBe(1);
-});
 
 test('retains a learner mark chosen while a low-confidence result is in flight', async ({
   page,

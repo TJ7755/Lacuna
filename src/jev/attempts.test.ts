@@ -10,7 +10,13 @@ import {
   saveQuestionSetMarking,
   getQuestionSetAttempt,
   completeQuestionSetAttempt,
+  saveQuestionSetResponseDraft,
 } from '../questions/questionSetAttemptRepository';
+import { exportDatabase, importBackup } from '../db/portability';
+import { mergeSnapshots } from '../sync/mergeSnapshots';
+import { encodeSnapshot, decodeSnapshot } from '../sync/snapshot';
+import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
+import type { JevDiagnosis } from './diagnosis';
 import { summariseSelfMarking } from '../questions/questionSets';
 import { gradeQuestionAttempt } from '../questions/grading';
 import { deriveConceptApplicationSchedules } from '../questions/conceptPractice';
@@ -25,6 +31,7 @@ beforeEach(async () => {
 async function fixture(
   kind: 'written' | 'calculation' | 'multiple-choice' = 'written',
   marks = [1, 2],
+  diagnostic = false,
 ) {
   const course = await createCourse('Biology');
   const concept = await createConcept(course.id, 'Water');
@@ -60,12 +67,30 @@ async function fixture(
             maxMarks,
             dimension: 'knowledge' as const,
             targetConceptIds: [concept.id],
+            ...(diagnostic && maxMarks === 1
+              ? {
+                  techniqueTags: {
+                    taxonomyId: 'science-explanations' as const,
+                    taxonomyVersion: 1 as const,
+                    techniqueIds: ['causal-link' as const],
+                    provenance: { source: 'author' as const },
+                  },
+                }
+              : {}),
           })),
         },
       },
     ],
   });
-  const attempt = await startQuestionSetAttempt(set.id, 'paper');
+  let attempt = await startQuestionSetAttempt(set.id, 'paper');
+  if (diagnostic)
+    attempt = await saveQuestionSetResponseDraft(
+      attempt.id,
+      attempt.revisionId,
+      'q',
+      { kind: 'written', text: 'Water moves across the membrane.' },
+      'q',
+    );
   return { attempt: await submitQuestionSetPaper(attempt.id, attempt.revisionId), concept };
 }
 function engineWith(decide: (request: { maxMarks?: number }) => Promise<Response>) {
@@ -100,6 +125,124 @@ const result = (value: number | null) =>
     confidence: value === null ? 0.5 : 0.98,
     inputTokens: 10,
   });
+
+const diagnosis: JevDiagnosis = {
+  taxonomyId: 'science-explanations',
+  taxonomyVersion: 1,
+  decisions: [
+    { categoryId: 'knowledge', outcome: 'no-gap', confidence: 0.98 },
+    { categoryId: 'application', outcome: 'gap', confidence: 0.6 },
+    { categoryId: 'causal-link', outcome: 'gap', confidence: 0.99 },
+  ],
+};
+
+it('retains combined assessment evidence through a stale learner override, backup and peer merge', async () => {
+  const { attempt } = await fixture('written', [1, 2], true);
+  const { engine, fetcher } = engineWith(async () =>
+    Response.json({
+      value: 0,
+      confidence: 0.98,
+      inputTokens: 25,
+      model: 'jev-1.14.0',
+      diagnosis,
+    }),
+  );
+  await markJevAttempt(attempt.id, engine, 'a1');
+  const marked = (await getQuestionSetAttempt(attempt.id))!;
+  const receipt = marked.jevAssessmentReceipts![0];
+  expect(marked.decisions).toHaveLength(1);
+  expect(receipt).toMatchObject({
+    allocationId: 'a1',
+    mark: 0,
+    marking: { by: 'jev', model: 'jev-1.14.0', confidence: 0.98 },
+    diagnosis: {
+      decisions: [
+        { categoryId: 'knowledge', outcome: 'no-gap', confidence: 0.98 },
+        { categoryId: 'application', outcome: 'insufficient-evidence', confidence: 0.6 },
+        { categoryId: 'causal-link', outcome: 'gap', confidence: 0.99 },
+      ],
+    },
+  });
+  const requests = fetcher.mock.calls.filter(([url]) => !url.endsWith('/session'));
+  expect(requests).toHaveLength(1);
+  expect(JSON.parse(requests[0][1].body).allocations[0].diagnostic).toEqual({
+    taxonomyId: 'science-explanations',
+    taxonomyVersion: 1,
+    techniqueIds: ['causal-link'],
+  });
+  const staleInput = {
+    ...attempt,
+    jevAssessmentReceipts: [],
+    decisions: [{ ...marked.decisions[0], status: 'awarded' as const, marks: 1 }],
+  };
+  const overridden = await saveQuestionSetMarking(attempt.id, marked.revisionId, staleInput);
+  expect(overridden.decisions).toEqual([{ allocationId: 'a1', status: 'awarded', marks: 1 }]);
+  expect(overridden.jevAssessmentReceipts).toEqual([receipt]);
+  const backup = await exportDatabase();
+  const peer = await decodeSnapshot((await encodeSnapshot(backup)).payload);
+  peer.questionSetAttempts = [
+    {
+      ...marked,
+      jevAssessmentReceipts: [],
+      revisionId: 'peer',
+      updatedAt: overridden.updatedAt + 1,
+    },
+  ];
+  const merged = mergeSnapshots(backup, peer);
+  expect(merged.questionSetAttempts![0].jevAssessmentReceipts).toEqual([receipt]);
+  expect(merged.questionSetAttempts![0].decisions).toEqual(overridden.decisions);
+  expect(mergeSnapshots(peer, backup)).toEqual(merged);
+  const competing = structuredClone(receipt);
+  competing.diagnosis.decisions[0].outcome = 'gap';
+  peer.questionSetAttempts[0].jevAssessmentReceipts = [competing];
+  const disputedDiagnoses = mergeSnapshots(backup, peer).questionSetAttempts![0];
+  expect(disputedDiagnoses.jevAssessmentReceipts).toEqual(
+    expect.arrayContaining([receipt, competing]),
+  );
+  expect(disputedDiagnoses.jevAssessmentReceipts).toHaveLength(2);
+  expect(disputedDiagnoses.disputedQuestionIds).toBeUndefined();
+  await importBackup(merged, 'replace');
+  expect((await getQuestionSetAttempt(attempt.id))!.jevAssessmentReceipts).toEqual([receipt]);
+  expect((await db.questionSetAttempts.get(attempt.id))!.firstMarking).toEqual([]);
+  expect(await db.reviewHistory.count()).toBe(0);
+
+  for (const invalid of [
+    { ...receipt, allocationId: 'unknown' },
+    { ...receipt, mark: 2 },
+    { ...receipt, diagnosis: { ...diagnosis, taxonomyVersion: 2 } },
+    {
+      ...receipt,
+      diagnosis: {
+        ...receipt.diagnosis,
+        decisions: receipt.diagnosis.decisions.map((row) => ({ ...row, categoryId: 'unknown' })),
+      },
+    },
+  ])
+    expect(() =>
+      parseQuestionSetAttemptRecord({ ...marked, jevAssessmentReceipts: [invalid] }),
+    ).toThrow();
+});
+
+it('drops both the mark and diagnosis when the learner decides during the combined request', async () => {
+  const { attempt } = await fixture('written', [1], true);
+  const { engine } = engineWith(async () => {
+    await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
+      ...attempt,
+      decisions: [{ allocationId: 'a1', status: 'awarded', marks: 1 }],
+    });
+    return Response.json({
+      value: 0,
+      confidence: 0.98,
+      model: 'jev-1.14.0',
+      inputTokens: 25,
+      diagnosis,
+    });
+  });
+  await markJevAttempt(attempt.id, engine, 'a1');
+  const current = (await getQuestionSetAttempt(attempt.id))!;
+  expect(current.decisions).toEqual([{ allocationId: 'a1', status: 'awarded', marks: 1 }]);
+  expect(current.jevAssessmentReceipts).toBeUndefined();
+});
 it('confident marks carry provenance and feed summaries, grading and concept schedules', async () => {
   const { attempt, concept } = await fixture();
   const { engine } = engineWith(async (request) => result(request.maxMarks!));

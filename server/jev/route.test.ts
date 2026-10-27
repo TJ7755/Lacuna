@@ -59,21 +59,28 @@ function providerResponse(init: RequestInit) {
     answers: Object.fromEntries(
       Object.entries(questions).map(([id, question]) => [
         id,
-        (question as { type: string }).type === 'choice'
+        id.includes('_diagnosis_')
           ? {
               type: 'choice',
-              choice: 'same',
-              confidence: 0.98,
-              probabilities: {
-                same: 0.98,
-                spelling: 0.02,
-                imprecise: 0,
-                partial: 0,
-                wrong: 0,
-                blank: 0,
-              },
+              choice: 'insufficient-evidence',
+              confidence: 1,
+              probabilities: { gap: 0, 'no-gap': 0, 'insufficient-evidence': 1 },
             }
-          : { type: 'noul', noul: 0.98 },
+          : (question as { type: string }).type === 'choice'
+            ? {
+                type: 'choice',
+                choice: 'same',
+                confidence: 0.98,
+                probabilities: {
+                  same: 0.98,
+                  spelling: 0.02,
+                  imprecise: 0,
+                  partial: 0,
+                  wrong: 0,
+                  blank: 0,
+                },
+              }
+            : { type: 'noul', noul: 0.98 },
       ]),
     ),
     usage: { input_tokens: 123, output_tokens: 12 },
@@ -232,33 +239,52 @@ it('reports TypeSafe and total handler timings without settlement or secrets', a
     timing.mockRestore();
   }
 });
-it('batches all allocation questions into one TypeSafe call and one counter write', async () => {
-  configured();
-  const fetcher = vi.fn(async (url, init) =>
-    url === 'https://redis.example' ? Response.json({ result: 0 }) : providerResponse(init),
-  );
-  vi.stubGlobal('fetch', fetcher);
-  const allocation = {
-    prompt: 'Q',
-    criterion: 'Water',
-    explanation: '',
-    maxMarks: 1,
-    answer: 'Water',
-  };
-  const response = await route.fetch(
-    request({
-      purpose: 'mark-allocation',
-      allocations: [allocation, { ...allocation, criterion: 'Membrane' }],
-    }),
-  );
-  expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({
-    inputTokens: 123,
-    decisions: [{ value: 1 }, { value: 1 }],
-  });
-  await Promise.all(background.tasks);
-  expect(fetcher.mock.calls.filter(([url]) => url !== 'https://redis.example')).toHaveLength(1);
-  expect(fetcher.mock.calls.filter(([, init]) => JSON.parse(init.body)[0] === 'EVAL')).toHaveLength(
-    1,
-  );
-});
+it.each([false, true])(
+  'batches allocation marking/diagnosis into one TypeSafe call and one counter write (diagnostic: %s)',
+  async (diagnostic) => {
+    configured();
+    const fetcher = vi.fn(async (url, init) =>
+      url === 'https://redis.example' ? Response.json({ result: 0 }) : providerResponse(init),
+    );
+    vi.stubGlobal('fetch', fetcher);
+    const allocation = {
+      prompt: 'Q',
+      criterion: 'Water',
+      explanation: '',
+      maxMarks: 1,
+      answer: 'Water',
+      ...(diagnostic
+        ? {
+            diagnostic: {
+              taxonomyId: 'science-explanations',
+              taxonomyVersion: 1,
+              techniqueIds: ['causal-link'],
+            },
+          }
+        : {}),
+    };
+    const response = await route.fetch(
+      request({
+        purpose: 'mark-allocation',
+        allocations: [allocation, { ...allocation, criterion: 'Membrane' }],
+      }),
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      inputTokens: 123,
+      decisions: [{ value: 1 }, { value: 1 }],
+    });
+    if (diagnostic)
+      expect(body.decisions[0].diagnosis.decisions).toEqual([
+        { categoryId: 'knowledge', outcome: 'insufficient-evidence', confidence: 1 },
+        { categoryId: 'application', outcome: 'insufficient-evidence', confidence: 1 },
+        { categoryId: 'causal-link', outcome: 'insufficient-evidence', confidence: 1 },
+      ]);
+    await Promise.all(background.tasks);
+    expect(fetcher.mock.calls.filter(([url]) => url !== 'https://redis.example')).toHaveLength(1);
+    expect(
+      fetcher.mock.calls.filter(([, init]) => JSON.parse(init.body)[0] === 'EVAL'),
+    ).toHaveLength(1);
+  },
+);
