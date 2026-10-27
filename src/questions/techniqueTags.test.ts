@@ -41,6 +41,11 @@ describe('criterion technique tags', () => {
   it.each([
     undefined,
     tags,
+    {
+      ...tags,
+      taxonomyId: 'science-techniques',
+      techniqueIds: ['causal-link', 'paired-comparison'],
+    },
     { ...tags, techniqueIds: [] },
     { ...tags, provenance: { source: 'jev', model: 'reviewed-model' } },
   ])('retains legacy, explicit none and attributed classification: %j', (classification) => {
@@ -56,6 +61,12 @@ describe('criterion technique tags', () => {
     { ...tags, taxonomyVersion: 2 },
     { ...tags, techniqueIds: ['invented-skill'] },
     { ...tags, techniqueIds: ['causal-link', 'causal-link'] },
+    {
+      ...tags,
+      taxonomyId: 'science-techniques',
+      techniqueIds: ['paired-comparison', 'paired-comparison'],
+    },
+    { ...tags, techniqueIds: ['paired-comparison'] },
     { ...tags, provenance: { source: 'jev' } },
     { ...tags, provenance: { source: 'author', model: 'invented' } },
     { ...tags, learnerMastery: 1 },

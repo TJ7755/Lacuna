@@ -284,7 +284,10 @@ export async function callJevAllocationBatch(
         maxMarks: allocation.maxMarks,
         submissionIndex,
       });
-      Object.assign(questions, diagnosticQuestions(questionKeys[index], rubricIndex));
+      Object.assign(
+        questions,
+        diagnosticQuestions(questionKeys[index], rubricIndex, allocation.diagnostic),
+      );
     }
     questions[questionKeys[index]] = allocationQuestion(allocation, submissionIndex, rubricIndex);
   }
@@ -301,7 +304,14 @@ export async function callJevAllocationBatch(
     decisions: request.allocations.map((allocation, index) => ({
       ...verdict(parsed.answers[questionKeys[index]], allocation.maxMarks, 'mark-allocation'),
       ...(allocation.diagnostic
-        ? { diagnosis: readDiagnosis(parsed.answers, questionKeys[index], allocation.answer) }
+        ? {
+            diagnosis: readDiagnosis(
+              parsed.answers,
+              questionKeys[index],
+              allocation.answer,
+              allocation.diagnostic,
+            ),
+          }
         : {}),
     })),
   };

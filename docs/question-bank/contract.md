@@ -63,14 +63,39 @@ artefact, supported repair and an independent retest pool. Existing prompts that
 explanation steps are not evidence of uncued transfer. Targeted selection and evaluation remain
 subsequent slices.
 
+## Multiple science techniques
+
+`science-techniques` version 1 supports several defined techniques on one marking criterion.
+The supported identities and their definitions belong to
+[the technique registry](../../src/questions/techniqueTags.ts). `science-explanations` version 1
+keeps its original single-skill meaning; existing tags and receipts are not rewritten.
+
+```json
+{
+  "taxonomyId": "science-techniques",
+  "taxonomyVersion": 1,
+  "techniqueIds": ["causal-link", "paired-comparison"],
+  "provenance": { "source": "author" }
+}
+```
+
+Only tag skills actually required by that criterion. Several tagged skills do not multiply its
+marks or the Concept evidence it can supply. Duplicate or unsupported identities are rejected.
+Question-level skill coverage is the union of its criteria, not a declaration that every answer
+demonstrates every skill. The broader registry is a classification contract, not an accuracy or
+science-wide content claim. Existing library content needs separate review before retagging or
+publication; no automatic library migration is performed.
+
 ## Combined marking and diagnosis
 
-When Jev marks a written criterion tagged `causal-link`, the same provider request now asks
-separately about knowledge, application and the causal link. Each returns `gap`, `no-gap` or
+When Jev marks a written criterion with supported technique tags, the same provider request asks
+separately about knowledge, application and each named technique. Each returns `gap`, `no-gap` or
 `insufficient-evidence` with its own confidence. Several gaps may coexist. The existing UI
 requests only the criterion the learner opens; this does not mean one request marks an entire
 submission. Batch callers also combine marking and diagnosis in their existing call. No second
 diagnosis request or per-tag network fan-out is added. Untagged criteria retain mark-only behaviour.
+Results must match the requested taxonomy and exact category set, including when reading a saved
+receipt. A result for another criterion's skills cannot supply evidence for this one.
 
 The model uses only the supplied answer and authored criterion. Missing knowledge cannot be
 distinguished from an unexplained omission merely because a mark was lost. Blank answers always

@@ -51,3 +51,13 @@ contributes at most one scheduling update per Concept. This schedule describes p
 not calibrated mastery across arbitrary question formats.
 
 _Avoid:_ Card review, answer record, mutable response.
+
+**Technique**
+
+An exam skill exercised by a marking criterion, such as linking cause and effect or comparing
+like properties. One criterion may exercise several Techniques, and the same Technique may occur
+in many Questions. A Technique describes the demand of a task; an Attempt supplies separate,
+contextual evidence about whether the learner demonstrated it. Knowledge and application remain
+distinct from Technique evidence.
+
+_Avoid:_ Concept, mastery, inferred misconception from a lost mark alone.

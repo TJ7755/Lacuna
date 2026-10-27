@@ -82,7 +82,7 @@ function candidates(attempt: QuestionSetAttemptRecord, only?: string) {
                 explanation: allocation.explanation ?? '',
                 maxMarks: allocation.maxMarks,
                 answer: submitted.text,
-                ...(allocation.techniqueTags?.techniqueIds.includes('causal-link')
+                ...(allocation.techniqueTags?.techniqueIds.length
                   ? {
                       diagnostic: {
                         taxonomyId: allocation.techniqueTags.taxonomyId,
