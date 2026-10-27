@@ -23,9 +23,17 @@ const next: StudyFlowDecision = { kind: 'step', step: practice('practice-2') };
 
 describe('continuesWithoutPause', () => {
   it('never chains catch-up into itself while prior material remains eligible', () => {
-    expect(continuesWithoutPause(CATCH_UP_STEP, summary(), {
-      kind: 'step', step: CATCH_UP_STEP,
-    }, false)).toBe(false);
+    expect(
+      continuesWithoutPause(
+        CATCH_UP_STEP,
+        summary(),
+        {
+          kind: 'step',
+          step: CATCH_UP_STEP,
+        },
+        false,
+      ),
+    ).toBe(false);
   });
   it('continues contiguous Practice after its work is cleared', () => {
     expect(continuesWithoutPause(practice('practice-1'), summary(), next, false)).toBe(true);
@@ -33,17 +41,21 @@ describe('continuesWithoutPause', () => {
 
   it('keeps the hand-off at a goal, a limit, a break or an exit', () => {
     const done = practice('practice-1');
-    expect(continuesWithoutPause(done, summary({ dailyGoalReached: true }), next, false)).toBe(false);
+    expect(continuesWithoutPause(done, summary({ dailyGoalReached: true }), next, false)).toBe(
+      false,
+    );
     expect(continuesWithoutPause(done, summary({ limitReached: true }), next, false)).toBe(false);
-    expect(continuesWithoutPause(done, summary({ timeLimitReached: true }), next, false)).toBe(false);
+    expect(continuesWithoutPause(done, summary({ timeLimitReached: true }), next, false)).toBe(
+      false,
+    );
     expect(continuesWithoutPause(done, summary({ reachedGoal: false }), next, false)).toBe(false);
     expect(continuesWithoutPause(done, summary(), next, true)).toBe(false);
   });
 
   it('never chains a step that ended without an answer', () => {
-    expect(continuesWithoutPause(practice('practice-1'), summary({ events: [] }), next, false)).toBe(
-      false,
-    );
+    expect(
+      continuesWithoutPause(practice('practice-1'), summary({ events: [] }), next, false),
+    ).toBe(false);
   });
 
   it('keeps the hand-off before lessons, assessments, choices and the end of the flow', () => {
@@ -56,8 +68,12 @@ describe('continuesWithoutPause', () => {
       kind: 'step',
       step: { ...practice('a'), mode: 'assessment', assessmentId: 'a' } as StudyFlowStep,
     };
+    const exam: StudyFlowDecision = {
+      kind: 'step',
+      step: { kind: 'practice', nodeKey: 'exam', label: 'Practise for exam', mode: 'exam' },
+    };
     const choice: StudyFlowDecision = { kind: 'choice', step: practice('p'), assessments: [] };
-    for (const decision of [lesson, assessment, choice, { kind: 'complete' } as const]) {
+    for (const decision of [lesson, assessment, exam, choice, { kind: 'complete' } as const]) {
       expect(continuesWithoutPause(done, summary(), decision, false)).toBe(false);
     }
     const lessonDone: StudyFlowStep = { kind: 'lesson', lessonId: 'l', label: 'Lesson 1' };

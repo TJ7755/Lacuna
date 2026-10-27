@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test';
+import type { Card, Course } from '../../src/db/types';
+import type { ReviewHistoryEntry } from '../../src/db/reviewHistory';
 import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
+import { readAll } from './fixtures/syncConvergence';
 
 for (const width of [1440, 390]) {
-  test(`joins a locked course midway and studies prior knowledge separately at ${width}px`, async ({
+  test(`joins a locked course midway and prepares for the exam before current lessons at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -90,13 +93,30 @@ for (const width of [1440, 390]) {
     await page.reload();
     await page.getByRole('button', { name: /^Lessons/ }).click();
     await expect(page.getByRole('combobox', { name: 'Start study from' })).toHaveValue('year-2');
+    expect((await readAll<Course>(page, 'courses'))[0]).toMatchObject({
+      studyStartLessonId: 'year-2',
+      schoolCoveredLessonIds: ['year-1'],
+    });
+    expect(await readAll(page, 'reviewHistory')).toHaveLength(0);
+    const priorCard = (await readAll<Card>(page, 'cards')).find(
+      (card) => card.front === 'Year one recall',
+    )!;
+    expect(priorCard.reps).toBe(0);
+    expect(priorCard.lastReviewed).toBeNull();
     await page.goto(courseUrl);
     await expect(page.getByRole('button', { name: 'Year one', exact: true })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Year two', exact: true })).toBeEnabled();
     await page.getByRole('button', { name: 'Study', exact: true }).click();
     const preview = page.getByRole('region', { name: 'Session preview' });
-    await expect(preview.getByRole('list', { name: "Today's session" })).toContainText('Year two');
-    await expect(preview.getByRole('button', { name: /Review earlier material/ })).toBeVisible();
+    const recommendation = preview.getByRole('list', { name: "Today's session" });
+    await expect(recommendation.getByRole('listitem')).toHaveCount(1);
+    await expect(recommendation).toHaveText(
+      'Prepare for Final exam1 card available · up to 10 reviews',
+    );
+    await preview.getByRole('button', { name: 'Other ways', exact: true }).click();
+    await expect(
+      preview.getByRole('button', { name: 'Review earlier material', exact: true }),
+    ).toBeVisible();
     await page.screenshot({
       path: test.info().outputPath(`entry-study-${width}.png`),
       animations: 'disabled',
@@ -108,9 +128,25 @@ for (const width of [1440, 390]) {
     await expect(page.getByText('Year two recall', { exact: true })).toHaveCount(0);
     await page.goto(courseUrl);
     await page.getByRole('button', { name: 'Study', exact: true }).click();
-    await page.getByRole('button', { name: 'Start session', exact: true }).click();
+    await expect(recommendation).toHaveText(
+      'Prepare for Final exam1 card available · up to 10 reviews',
+    );
+    await preview.getByRole('button', { name: 'Start session', exact: true }).click();
+    await expect(
+      page.locator('[data-study-face="front"]').getByText('Year one recall', { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText('Year two recall', { exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
+    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+    await expect
+      .poll(() => readAll<ReviewHistoryEntry>(page, 'reviewHistory'))
+      .toMatchObject([{ cardId: priorCard.id, correct: true, sessionKind: 'assessment-revision' }]);
+    const continuation = page.getByRole('button', { name: 'Continue', exact: true });
+    await expect(continuation).toBeEnabled();
+    await continuation.click();
     await expect(
       page.locator('[data-study-face="front"]').getByText('Year two recall', { exact: true }),
     ).toBeVisible();
+    expect(await readAll(page, 'reviewHistory')).toHaveLength(1);
   });
 }

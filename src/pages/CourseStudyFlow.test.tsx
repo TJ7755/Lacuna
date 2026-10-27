@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import type { Course } from '../db/types';
 import type { SessionSummary } from '../components/learn/types';
+import type { QuestionStudySummary } from '../course/sessionSummary';
 import { CATCH_UP_STEP, type StudyFlowStep } from '../course/studyFlowPlanner';
 import type { CourseStudyFlowSnapshot, StudyFlowPracticeState } from '../course/studyFlowSnapshot';
 import type { AssessmentPracticeOption } from '../course/assessmentPractice';
@@ -63,16 +64,36 @@ vi.mock('../components/learn/PomodoroTimer', () => ({
   PomodoroTimer: () => <div data-testid="pomodoro" />,
 }));
 
-vi.mock('../components/learn/RevisionPlanSetup', () => ({
-  RevisionPlanSetup: ({
-    assessmentId,
-    onStart,
+vi.mock('../components/learn/StudyQuestionStep', () => ({
+  StudyQuestionStep: ({
+    conceptId,
+    onComplete,
   }: {
-    assessmentId: string;
-    onStart: (planId: string, windowId: string) => void;
+    conceptId: string;
+    onComplete: (summary: QuestionStudySummary) => void;
   }) => (
-    <button type="button" onClick={() => onStart('plan-1', 'window-1')}>
-      Plan {assessmentId}
+    <button
+      onClick={() =>
+        onComplete({
+          kind: 'question',
+          marking: 'Self-marked',
+          score: {
+            status: 'complete',
+            total: { awarded: 1, available: 2 },
+            resolvedCount: 1,
+            unsureCount: 0,
+            unmarkedCount: 0,
+            dimensions: {
+              knowledge: { awarded: 0, available: 0 },
+              application: { awarded: 1, available: 2 },
+              'exam-execution': { awarded: 0, available: 0 },
+              mixed: { awarded: 0, available: 0 },
+            },
+          },
+        })
+      }
+    >
+      Complete question {conceptId}
     </button>
   ),
 }));
@@ -189,6 +210,7 @@ function snapshot(
   return {
     courseId: course.id,
     archived: false,
+    priorKnowledgeLessonIds: new Set(),
     nodes: [],
     practiceByKey: new Map(practices.map((practice) => [practice.nodeKey, practice])),
     activeManualNodeKeys: new Set(),
@@ -291,7 +313,7 @@ describe('CourseStudyFlow', () => {
     // paint — a later effect would flash "You are caught up" into Learn.
     expect(screen.queryByRole('heading', { name: 'You are caught up' })).not.toBeInTheDocument();
     await screen.findByTestId('learn-request');
-    expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' });
+    expect(request()).toMatchObject({ kind: 'lesson', lessonId: 'lesson-1' });
   });
 
   it('uses the mounted conductor Exit when a covered launch is waiting for its first plan', () => {
@@ -334,7 +356,7 @@ describe('CourseStudyFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Continue$/ }));
 
     await waitFor(() =>
-      expect(request()).toEqual({
+      expect(request()).toMatchObject({
         kind: 'practice',
         courseId: 'course-1',
         nodeKey: 'auto-1',
@@ -360,9 +382,9 @@ describe('CourseStudyFlow', () => {
       outgoing(summary(true));
     });
     fireEvent.click(await screen.findByRole('button', { name: /^Continue$/ }));
-    await waitFor(() => expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-2' }));
+    await waitFor(() => expect(request()).toMatchObject({ kind: 'lesson', lessonId: 'lesson-2' }));
     act(() => outgoing(summary(true)));
-    expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-2' });
+    expect(request()).toMatchObject({ kind: 'lesson', lessonId: 'lesson-2' });
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
     expect(
       await screen.findByRole('heading', { name: 'Third lesson', level: 2 }),
@@ -398,7 +420,7 @@ describe('CourseStudyFlow', () => {
   });
 
   it.each(['Clear step', 'Reach review goal', 'Pause step'])(
-    'keeps catch-up explicit after %s while cards remain eligible',
+    'keeps one catch-up continuation after %s while cards remain eligible',
     async (stop) => {
       const after = flow(CATCH_UP_STEP, 1);
       after.snapshot.catchUpEligibleCount = 1;
@@ -407,7 +429,9 @@ describe('CourseStudyFlow', () => {
       renderFlow('/course/course-1/study?review=earlier');
       await screen.findByTestId('learn-request');
       fireEvent.click(screen.getByRole('button', { name: stop }));
-      const review = await screen.findByRole('button', { name: 'Review earlier material' });
+      const review = await screen.findByRole('button', {
+        name: stop === 'Pause step' ? 'Resume' : 'Review earlier material',
+      });
       expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
       expect(learnMounts).toBe(1);
       expect(screen.queryByRole('button', { name: /^Continue$/ })).not.toBeInTheDocument();
@@ -473,6 +497,30 @@ describe('CourseStudyFlow', () => {
     expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
   });
 
+  it('keeps the marked question hand-off and waits for fresh planning before continuing', async () => {
+    const question: StudyFlowStep = {
+      kind: 'exam-questions',
+      nodeKey: 'question-cells',
+      conceptId: 'cells',
+      scopeConceptIds: ['cells'],
+      label: 'Practise cells',
+    };
+    mockFlows = [flow(question, 0), flow(question, 0)];
+    renderFlow();
+    fireEvent.click(await screen.findByRole('button', { name: 'Complete question cells' }));
+    expect(
+      screen.queryByRole('button', { name: 'Complete question cells' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
+    mockFlows[1] = flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Next lesson' }, 1);
+    act(() => mockFlowListeners.forEach((listener) => listener()));
+    expect(await screen.findByText('1 / 2 marks · Self-marked')).toBeInTheDocument();
+    expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(request()).toMatchObject({ kind: 'lesson', lessonId: 'lesson-2' }));
+    expect(learnMounts).toBe(1);
+  });
+
   it('keeps Continue disabled while the next planner generation is pending', async () => {
     mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
     renderFlow();
@@ -492,6 +540,39 @@ describe('CourseStudyFlow', () => {
     expect(await screen.findByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
+  it('waits for fresh progress after pausing without blocking Resume', async () => {
+    const step: StudyFlowStep = { kind: 'lesson', lessonId: 'lesson-1', label: 'Cells' };
+    const stale = flow(step, 0);
+    stale.progress = {
+      fsrs: {
+        newCards: 0,
+        learningCards: 0,
+        reviewCards: 4,
+        dueCards: 4,
+        totalCards: 4,
+        meanStability: 2,
+        recallNow: 0.8,
+      },
+      priorities: [],
+    };
+    mockFlows = [stale, stale];
+    renderFlow();
+    fireEvent.click(await screen.findByRole('button', { name: 'Pause step' }));
+    expect(await screen.findByRole('button', { name: 'Resume' })).toBeEnabled();
+    expect(
+      screen.queryByRole('region', { name: 'Progress and priorities' }),
+    ).not.toBeInTheDocument();
+    mockFlows[1] = {
+      ...stale,
+      generation: 1,
+      progress: { ...stale.progress, fsrs: { ...stale.progress.fsrs, dueCards: 3 } },
+    };
+    act(() => mockFlowListeners.forEach((listener) => listener()));
+    const panel = await screen.findByRole('region', { name: 'Progress and priorities' });
+    expect(panel).toHaveTextContent('FSRS progress');
+    expect(screen.getByText('Due now').parentElement).toHaveTextContent('3');
+  });
+
   it('resumes the same step when the embedded session is incomplete', async () => {
     mockFlows = [
       flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0),
@@ -504,7 +585,7 @@ describe('CourseStudyFlow', () => {
     expect(await screen.findByText('Step paused')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
 
-    await waitFor(() => expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' }));
+    await waitFor(() => expect(request()).toMatchObject({ kind: 'lesson', lessonId: 'lesson-1' }));
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
     expect(await screen.findByRole('button', { name: 'Planning next step…' })).toBeDisabled();
     expect(mockNavigate).not.toHaveBeenCalled();
@@ -515,7 +596,7 @@ describe('CourseStudyFlow', () => {
     renderFlow('/course/course-1/study?review=due');
 
     await screen.findByTestId('learn-request');
-    expect(request()).toEqual({
+    expect(request()).toMatchObject({
       kind: 'practice',
       courseId: 'course-1',
       mode: 'recurring',
@@ -526,7 +607,7 @@ describe('CourseStudyFlow', () => {
     mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
     renderFlow('/course/course-1/study?review=exam');
     await screen.findByTestId('learn-request');
-    expect(request()).toEqual({ kind: 'practice', courseId: 'course-1', mode: 'exam' });
+    expect(request()).toMatchObject({ kind: 'practice', courseId: 'course-1', mode: 'exam' });
   });
 
   it('runs due review rather than the next step when the sheet asked for it', async () => {
@@ -538,7 +619,7 @@ describe('CourseStudyFlow', () => {
     renderFlow('/course/course-1/study?review=due');
 
     await screen.findByTestId('learn-request');
-    expect(request()).toEqual({ kind: 'practice', courseId: 'course-1', mode: 'recurring' });
+    expect(request()).toMatchObject({ kind: 'practice', courseId: 'course-1', mode: 'recurring' });
   });
 
   it('starts an exact manual Practice node from its direct query', async () => {
@@ -547,7 +628,7 @@ describe('CourseStudyFlow', () => {
     renderFlow('/course/course-1/study?practiceNode=manual-1');
 
     await screen.findByTestId('learn-request');
-    expect(request()).toEqual({
+    expect(request()).toMatchObject({
       kind: 'practice',
       courseId: 'course-1',
       nodeKey: 'manual-1',
@@ -588,15 +669,13 @@ describe('CourseStudyFlow', () => {
     mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
     renderFlow('/course/course-1/study?assessmentId=paper-1');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Plan paper-1' }));
     await screen.findByTestId('learn-request');
-    expect(request()).toEqual({
+    expect(request()).toMatchObject({
       kind: 'practice',
       courseId: 'course-1',
       mode: 'assessment',
       assessmentId: 'paper-1',
-      planId: 'plan-1',
-      windowId: 'window-1',
+      reviewLimit: 10,
     });
   });
 
@@ -618,7 +697,7 @@ describe('CourseStudyFlow', () => {
     // An overlapping assessment no longer diverts this route: the sheet offered the
     // revision option before entry, so arriving here means the curriculum was chosen.
     await screen.findByTestId('learn-request');
-    expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' });
+    expect(request()).toMatchObject({ kind: 'lesson', lessonId: 'lesson-1' });
   });
 
   it('starts the chosen assessment branch and does not retain it as a preference', async () => {
@@ -643,15 +722,13 @@ describe('CourseStudyFlow', () => {
     // assessment named in the query.
     renderFlow('/course/course-1/study?assessmentId=paper-1');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Plan paper-1' }));
     await waitFor(() =>
-      expect(request()).toEqual({
+      expect(request()).toMatchObject({
         kind: 'practice',
         courseId: 'course-1',
         mode: 'assessment',
         assessmentId: 'paper-1',
-        planId: 'plan-1',
-        windowId: 'window-1',
+        reviewLimit: 10,
       }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
@@ -659,7 +736,7 @@ describe('CourseStudyFlow', () => {
 
     // Not retained as a preference: what follows is the curriculum's next step rather
     // than another round of revision.
-    await waitFor(() => expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-2' }));
+    await waitFor(() => expect(request()).toMatchObject({ kind: 'lesson', lessonId: 'lesson-2' }));
   });
 
   it('clears the active flow and returns to the course when finished', async () => {
@@ -696,7 +773,7 @@ describe('CourseStudyFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Continue$/ }));
 
-    await waitFor(() => expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-2' }));
+    await waitFor(() => expect(request()).toMatchObject({ kind: 'lesson', lessonId: 'lesson-2' }));
     expect(screen.getByTestId('learn-session')).toHaveTextContent(sessionId!);
     expect(mockNavigate).not.toHaveBeenCalled();
   });

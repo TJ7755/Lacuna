@@ -36,7 +36,6 @@ function overview(nodes: PathNode[], authoring = true, assessments: CourseAssess
           onPracticeOpen={vi.fn()}
           onPracticeEdit={vi.fn()}
           onAssessmentOpen={vi.fn()}
-          onAssessmentPractise={vi.fn()}
           onAdd={vi.fn()}
         />
       </ToastProvider>

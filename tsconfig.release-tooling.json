@@ -12,6 +12,7 @@
     "tests/config/playwright.*.config.ts",
     "tests/performance/playwright.*.config.ts",
     "scripts/performance-audit.ts",
-    "scripts/library-publish.ts"
+    "scripts/library-publish.ts",
+    "scripts/question-bank.ts"
   ]
 }

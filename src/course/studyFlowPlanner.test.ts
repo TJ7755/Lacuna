@@ -36,6 +36,7 @@ function snapshot(
   return {
     courseId: 'course',
     archived: false,
+    priorKnowledgeLessonIds: new Set(),
     nodes,
     practiceByKey: new Map(practices.map((practice) => [practice.nodeKey, practice])),
     activeManualNodeKeys: new Set(),
@@ -130,18 +131,62 @@ describe('planNextStudyStep', () => {
     });
   });
 
-  it('offers ranked assessment revision without replacing the curriculum step', () => {
+  it('recommends preparation for the nearest applicable assessment without a separate plan', () => {
     const assessments = [
       { assessmentId: 'near', name: 'Near paper', examDate: 2, eligibleCount: 2 },
       { assessmentId: 'later', name: 'Later paper', examDate: 3, eligibleCount: 1 },
     ];
     expect(planNextStudyStep(snapshot([lessonNode('1', 'available')], [], 0, assessments))).toEqual(
       {
-        kind: 'choice',
-        step: { kind: 'lesson', lessonId: '1', label: 'Lesson 1' },
-        assessments,
+        kind: 'step',
+        step: {
+          kind: 'practice',
+          nodeKey: 'assessment-near',
+          mode: 'assessment',
+          assessmentId: 'near',
+          label: 'Prepare for Near paper',
+        },
       },
     );
+  });
+
+  it('moves from recall to independent Questions and repairs demonstrated knowledge gaps first', () => {
+    const next = {
+      ...snapshot([lessonNode('1', 'completed')], [], 20),
+      questionScopeConceptIds: ['enzymes'],
+      questionOptions: [
+        {
+          conceptId: 'enzymes',
+          name: 'Enzymes',
+          needs: { knowledge: false, application: false, techniques: ['causal-link' as const] },
+        },
+      ],
+    };
+    const due = {
+      kind: 'practice' as const,
+      nodeKey: 'due-review',
+      mode: 'recurring' as const,
+      label: 'Review due cards',
+    };
+    expect(planNextStudyStep(next, true, due)).toMatchObject({
+      kind: 'step',
+      step: { kind: 'exam-questions', conceptId: 'enzymes' },
+    });
+    next.questionOptions[0] = {
+      ...next.questionOptions[0],
+      needs: { knowledge: true, application: false, techniques: [] },
+    };
+    const repair = {
+      ...next,
+      questionOptions: [{ ...next.questionOptions[0], repairLessonId: '1' }],
+    };
+    expect(planNextStudyStep(repair)).toMatchObject({
+      kind: 'step',
+      step: { kind: 'lesson', lessonId: '1' },
+    });
+    expect(
+      planNextStudyStep(repair, true, { kind: 'lesson', lessonId: '1', label: 'Notes' }),
+    ).toMatchObject({ kind: 'step', step: { kind: 'exam-questions' } });
   });
 });
 
@@ -155,6 +200,7 @@ describe('mid-course entry', () => {
   const joined = () => ({
     ...snapshot(nodes, [practiceState('p1', true)]),
     studyStartLessonId: '2',
+    priorKnowledgeLessonIds: new Set(['1']),
   });
 
   it('starts at the joining lesson without requiring earlier lessons or practice', () => {
@@ -176,16 +222,25 @@ describe('mid-course entry', () => {
   });
 
   it('can finish the flow without automatically repeating completed catch-up', () => {
-    expect(planNextStudyStep({ ...joined(), catchUpEligibleCount: 20,
-      nodes: [nodes[0], nodes[1], lessonNode('2', 'completed'), nodes[3]],
-    }, false)).toEqual({ kind: 'blocked', reason: 'curriculum-locked' });
+    expect(
+      planNextStudyStep(
+        {
+          ...joined(),
+          catchUpEligibleCount: 20,
+          nodes: [nodes[0], nodes[1], lessonNode('2', 'completed'), nodes[3]],
+        },
+        false,
+      ),
+    ).toEqual({ kind: 'blocked', reason: 'curriculum-locked' });
   });
 
   it('starts at the chosen core lesson even when an extension precedes it', () => {
     const extension = lessonNode('0', 'available');
     if (extension.nodeType === 'lesson') extension.lesson.isExtension = true;
-    expect(planNextStudyStep({ ...joined(), nodes: [extension, ...nodes] }))
-      .toMatchObject({ kind: 'step', step: { lessonId: '2' } });
+    expect(planNextStudyStep({ ...joined(), nodes: [extension, ...nodes] })).toMatchObject({
+      kind: 'step',
+      step: { lessonId: '2' },
+    });
   });
 
   it('keeps due reviews ahead of the joining lesson', () => {
@@ -211,9 +266,25 @@ describe('mid-course entry', () => {
   });
 
   it('falls back to the whole path if the starting lesson was removed', () => {
-    expect(planNextStudyStep({ ...joined(), studyStartLessonId: 'removed' })).toMatchObject({
+    expect(
+      planNextStudyStep({
+        ...joined(),
+        studyStartLessonId: 'removed',
+        priorKnowledgeLessonIds: new Set(),
+      }),
+    ).toMatchObject({
       kind: 'step',
       step: { lessonId: '1' },
     });
+  });
+});
+
+it('recommends available exam practice for Cards outside named lesson coverage', () => {
+  const input = snapshot([]);
+  input.cardCount = 1;
+  input.examPracticeEligibleCount = 1;
+  expect(planNextStudyStep(input)).toMatchObject({
+    kind: 'step',
+    step: { kind: 'practice', mode: 'exam' },
   });
 });

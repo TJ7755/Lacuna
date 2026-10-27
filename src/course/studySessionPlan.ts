@@ -1,10 +1,12 @@
-// What the study sheet previews before Start: the step the planner chose, then the due
-// reviews the conductor offers after it. The planner decides one step at a time from a
-// fresh snapshot (studyFlowPlanner.ts), so this never guesses beyond those two.
+// Preview only the next block. Later work is selected from fresh evidence after it finishes.
 
 import type { Card } from '../db/types';
 import type { CourseStudyFlowSnapshot } from './studyFlowSnapshot';
-import { DUE_REVIEW_STEP, type StudyFlowDecision, type StudyFlowStep } from './studyFlowPlanner';
+import {
+  STUDY_REVIEW_BLOCK_SIZE,
+  type StudyFlowDecision,
+  type StudyFlowStep,
+} from './studyFlowPlanner';
 import { countOf } from '../utils/plural';
 
 /** A new card is introduced and then recalled at least twice in its first session. */
@@ -64,17 +66,26 @@ function describeStep(
     const count =
       step.mode === 'catch-up'
         ? (snapshot.catchUpEligibleCount ?? 0)
-        : step.mode === 'recurring'
-        ? snapshot.recurringPracticeEligibleCount
-        : (snapshot.practiceByKey.get(step.nodeKey)?.eligibleCount ?? 0);
+        : step.mode === 'assessment'
+          ? (snapshot.assessmentOptions.find((option) => option.assessmentId === step.assessmentId)
+              ?.eligibleCount ?? 0)
+          : step.mode === 'exam'
+            ? snapshot.examPracticeEligibleCount
+            : step.mode === 'recurring'
+              ? snapshot.recurringPracticeEligibleCount
+              : (snapshot.practiceByKey.get(step.nodeKey)?.eligibleCount ?? 0);
     return {
       key: `practice:${step.nodeKey}`,
       title: step.mode === 'recurring' ? 'Review due cards' : step.label,
-      detail: countOf(count, 'card'),
-      minutes: count > 0 ? minutesFor(count, meanReviewSeconds) : undefined,
+      detail: `${countOf(count, 'card')} available · up to ${STUDY_REVIEW_BLOCK_SIZE} reviews`,
+      minutes: count > 0 ? minutesFor(STUDY_REVIEW_BLOCK_SIZE, meanReviewSeconds) : undefined,
     };
   }
-  return { key: `questions:${step.nodeKey}`, title: step.label };
+  return {
+    key: `questions:${step.nodeKey}`,
+    title: step.label,
+    detail: step.reason ?? 'Independent exam question',
+  };
 }
 
 export function planStudySession({
@@ -94,11 +105,6 @@ export function planStudySession({
   const first = decision.step;
   const startsWithDueReview = first.kind === 'practice' && first.mode === 'recurring';
   const steps = [describeStep(first, snapshot, lessonCardsById, meanReviewSeconds)];
-  if (!startsWithDueReview && snapshot.recurringPracticeEligibleCount > 0) {
-    // The between-steps screen offers these beside Continue; they never start on their own.
-    const review = describeStep(DUE_REVIEW_STEP, snapshot, lessonCardsById, meanReviewSeconds);
-    steps.push({ ...review, detail: `${review.detail}, offered next` });
-  }
   const totalMinutes = steps.every((step) => step.minutes !== undefined)
     ? steps.reduce((sum, step) => sum + step.minutes!, 0)
     : undefined;

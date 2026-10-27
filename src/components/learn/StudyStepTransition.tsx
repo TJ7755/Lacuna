@@ -3,7 +3,9 @@ import { Button } from '../ui/Button';
 import { CheckIcon, ClockIcon } from '../ui/icons';
 import { STUDY_HEADER_ROW } from './studyHeaderLayout';
 import { PomodoroTimer } from './PomodoroTimer';
-import type { SessionSummary } from './types';
+import type { StudyStepSummary } from '../../course/sessionSummary';
+import type { StudyProgress } from '../../course/studyProgress';
+import { StudyProgressPanel } from './StudyProgressPanel';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { useUnclaimedFocus } from '../../hooks/useUnclaimedFocus';
 import './StudyStepTransition.css';
@@ -11,7 +13,9 @@ import './StudyStepTransition.css';
 interface StudyStepTransitionProps {
   completedLabel: string;
   nextLabel?: string;
-  summary: SessionSummary;
+  summary: StudyStepSummary;
+  progress?: StudyProgress;
+  nextReason?: string;
   canReviewDueCards: boolean;
   canReviewEarlierMaterial?: boolean;
   onReviewEarlierMaterial?: () => void;
@@ -33,11 +37,13 @@ function formatPlanDay(day: string): string {
   });
 }
 
-/** A quiet hand-off between conductor steps; the detailed report remains an end-of-period view. */
+/** The hand-off names the next step and makes its supporting progress evidence visible. */
 export function StudyStepTransition({
   completedLabel,
   nextLabel,
   summary,
+  progress,
+  nextReason,
   canReviewDueCards,
   canReviewEarlierMaterial,
   onReviewEarlierMaterial,
@@ -51,14 +57,16 @@ export function StudyStepTransition({
 }: StudyStepTransitionProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const incomplete = !summary.reachedGoal;
+  const cardSummary = 'events' in summary ? summary : undefined;
+  const questionSummary = 'kind' in summary ? summary : undefined;
+  const incomplete = cardSummary ? !cardSummary.reachedGoal && !cardSummary.blockComplete : false;
   // The finished step's controls are gone; hand the keyboard to the primary action.
   const actionsRef = useRef<HTMLDivElement>(null);
   useUnclaimedFocus(actionsRef, !planningNextStep);
 
-  const hasNext = !incomplete && Boolean(nextLabel) && !summary.revision?.nextWindowDay;
-  const destination = summary.revision?.nextWindowDay
-    ? `Next revision window: ${formatPlanDay(summary.revision.nextWindowDay)}`
+  const hasNext = !incomplete && Boolean(nextLabel) && !cardSummary?.revision?.nextWindowDay;
+  const destination = cardSummary?.revision?.nextWindowDay
+    ? `Next revision window: ${formatPlanDay(cardSummary?.revision.nextWindowDay)}`
     : incomplete
       ? 'Resume when ready'
       : planningNextStep
@@ -97,26 +105,39 @@ export function StudyStepTransition({
           </div>
         </div>
         <div className="study-transition-details">
-          {summary.revision && (
+          {cardSummary && cardSummary.events.length > 0 && (
+            <p className="text-sm text-ink-soft">
+              {cardSummary.events.length} reviews ·{' '}
+              {cardSummary.events.filter((event) => event.correct).length} recalled
+            </p>
+          )}
+          {questionSummary && (
+            <p className="text-sm text-ink-soft">
+              {questionSummary.score.total.awarded} / {questionSummary.score.total.available} marks
+              · {questionSummary.marking}
+              {questionSummary.score.status === 'provisional' ? ' · provisional' : ''}
+            </p>
+          )}
+          {cardSummary?.revision && (
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <RevisionFact label="Covered" value={summary.revision.cardsCovered} />
-              <RevisionFact label="Improved" value={summary.revision.cardsImproved} />
-              <RevisionFact label="Parked" value={summary.revision.cardsParked} />
-              <RevisionFact label="Not reached" value={summary.revision.workNotReached} />
+              <RevisionFact label="Covered" value={cardSummary?.revision.cardsCovered} />
+              <RevisionFact label="Improved" value={cardSummary?.revision.cardsImproved} />
+              <RevisionFact label="Parked" value={cardSummary?.revision.cardsParked} />
+              <RevisionFact label="Not reached" value={cardSummary?.revision.workNotReached} />
             </div>
           )}
 
-          {summary.revision?.replanExplanation && (
+          {cardSummary?.revision?.replanExplanation && (
             <p className="mt-4 text-sm text-ink-soft">
-              Plan updated: {summary.revision.replanExplanation}.
+              Plan updated: {cardSummary?.revision.replanExplanation}.
             </p>
           )}
 
-          {summary.revision?.predictedReadiness !== undefined &&
-            summary.revision.readinessUncertainty !== undefined && (
+          {cardSummary?.revision?.predictedReadiness !== undefined &&
+            cardSummary?.revision.readinessUncertainty !== undefined && (
               <p className="mt-4 text-sm text-ink-soft">
-                {Math.round(summary.revision.predictedReadiness * 100)}% predicted readiness · ±
-                {Math.round(summary.revision.readinessUncertainty * 100)}% uncertainty
+                {Math.round(cardSummary?.revision.predictedReadiness * 100)}% predicted readiness ·
+                ±{Math.round(cardSummary?.revision.readinessUncertainty * 100)}% uncertainty
               </p>
             )}
         </div>
@@ -130,6 +151,10 @@ export function StudyStepTransition({
             <h2>{destination}</h2>
           </div>
         )}
+        {nextReason && !incomplete && (
+          <p className="study-transition-reason text-sm text-ink-soft">{nextReason}</p>
+        )}
+        {progress && <StudyProgressPanel progress={progress} />}
         <div ref={actionsRef} className="study-transition-actions">
           {breakPending && (
             <Button variant="primary" size="lg" onClick={onTakeBreak}>

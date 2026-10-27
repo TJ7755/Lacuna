@@ -124,3 +124,42 @@ the diagnostic request, rubric and policy; diagnostic evidence can be cached eve
 abstains. The route continues to report actual batch input tokens once and `Server-Timing`;
 one HTTP request does not establish a token-cost saving. No live diagnostic accuracy, latency or
 cost benchmark is claimed by synthetic transport tests.
+
+## Maintain criterion classifications
+
+In the Question Set composer, open a row’s **What it tests** menu. Each marking point keeps its
+assessment dimension and has a separate **Exam techniques** field. Definitions come from the
+versioned registry above; select every technique actually required by that criterion. Use
+**Link to knowledge** for existing Concept identities rather than creating Concepts named after
+techniques. Combined Concept links remain combined evidence, without separate Concept grades.
+
+**Unclassified** removes the classification. Choosing a taxonomy with no techniques selected
+records an explicit none-of-these outcome. Opening existing content preserves its taxonomy and
+provenance; an edit records an author correction. Legacy `science-explanations` tags remain in
+their original taxonomy unless the author explicitly changes it. Review the classification after
+changing the question or rubric. There is no automatic classifier or keyword tagging: an organic
+substitution reaction does not imply the mathematical `substitution` technique.
+
+Save through the existing draft and Question Set revision workflow. Existing Attempt receipts keep
+their original tags and marking evidence. For generated families, edit the source bank and import
+a higher `bankVersion`; the composer shows its technique tags read-only because the family template
+must supply them to every resolved variant. Published Course editing locks still apply.
+
+Before reviewing or updating library content, audit the actual frozen Course file or portable bank:
+
+```sh
+bun scripts/question-bank.ts audit course.lacuna course-audit.json
+bun scripts/question-bank.ts audit bank.json bank-audit.json
+```
+
+The read-only audit reports the exact input SHA256 and Course lineage/revision or bank identity/version.
+It lists criterion mappings, unlinked/single/combined Concept attribution, unresolved Concept references,
+unclassified/explicit-none/tagged criteria, and distinct Questions per technique and taxonomy version.
+It never writes the source; an output path must be new, or omit it to print JSON. Reports include
+authored criterion text, so keep reports from private or licensed sources with their authorised content.
+
+Bank counts cover static sets and one template per family, not all numerical variants. Course counts
+cover stored Question Sets; legacy individual Questions are reported as excluded. Counts describe
+authored demand, not fresh transfer capacity, diagnostic accuracy, learner mastery or complete syllabus
+coverage. Preserve unclassified content until its demands have been reviewed. Publication still needs
+the existing exact-artefact review and approval in [the library procedure](../library.md).

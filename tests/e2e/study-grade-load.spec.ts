@@ -278,7 +278,8 @@ test('rapid keyboard grades avoid a blank study area and background course hydra
   ).toBe(true);
   const began = await page.evaluate(() => performance.now());
   const samples: (KeyboardGradeSample & { grade: number })[] = [];
-  for (const grade of [1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4]) {
+  // Measure Card advances within a block; review ten deliberately opens the hand-off.
+  for (const grade of [1, 2, 1, 3, 1, 4, 1, 2, 1]) {
     const cardId = (await active.getAttribute('data-study-card-id'))!;
     const before = await page.evaluate((id) => window.StudyRapidFixture.snapshot(id), cardId);
     await page.evaluate(() => {

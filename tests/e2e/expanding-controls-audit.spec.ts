@@ -5,27 +5,30 @@ import {
   importWelcomeCourse,
 } from './fixtures/lacunaApp';
 
-test('Tab leaves Other ways from its trigger in both directions', async ({ page }) => {
+test('Study alternatives remain keyboard accessible and Escape returns to Study', async ({
+  page,
+}) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
-  const trigger = page.getByRole('button', { name: 'Other ways to study' });
-  for (const [key, target] of [
-    ['Tab', 'Add'],
-    ['Shift+Tab', 'Study'],
-  ] as const) {
-    await trigger.focus();
-    await page.keyboard.press('ArrowDown');
-    await expect(page.getByRole('menu', { name: 'Other ways to study' })).toBeVisible();
-    await page.keyboard.press(key);
-    await expect(page.getByRole('menu', { name: 'Other ways to study' })).toBeHidden();
-    await expect(page.getByRole('button', { name: target, exact: true })).toBeFocused();
-  }
+  const study = page.getByRole('button', { name: 'Study', exact: true });
+  await study.click();
+  const preview = page.getByRole('region', { name: 'Session preview' });
+  const otherWays = preview.getByRole('button', { name: 'Other ways', exact: true });
+  await otherWays.focus();
+  await page.keyboard.press('Enter');
+  await expect(otherWays).toHaveAttribute('aria-expanded', 'true');
+  await expect(preview.getByRole('region', { name: 'Other ways', exact: true })).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(preview.getByRole('button', { name: 'Start session', exact: true })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(otherWays).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(preview).toBeHidden();
+  await expect(study).toBeFocused();
 });
 
 async function assertPanelContained(trigger: Locator, menu: Locator) {
@@ -41,7 +44,7 @@ async function assertPanelContained(trigger: Locator, menu: Locator) {
 }
 
 for (const width of [390, 1440]) {
-  test(`Add and Other ways share accessible expanding surfaces at ${width}px`, async ({ page }) => {
+  test(`Add retains its accessible expanding surface at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterWithWelcomeCourse(page);
@@ -50,43 +53,41 @@ for (const width of [390, 1440]) {
       .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
       .click();
     await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
-    for (const label of ['Add', 'Other ways to study']) {
-      const trigger = page.getByRole('button', { name: label, exact: true });
-      await expect(trigger).toBeVisible();
-      const closedFont = await trigger.evaluate((element) => getComputedStyle(element).fontSize);
-      const closed = (await trigger.locator('..').boundingBox())!;
-      await trigger.focus();
-      await page.keyboard.press('ArrowDown');
-      const menu = page.getByRole('menu', { name: label, exact: true });
-      const enabled = menu.locator('[role="menuitem"]:not(:disabled)');
-      await expect(menu).toBeVisible();
-      await expect(enabled.first()).toBeFocused();
-      await assertPanelContained(trigger, menu);
-      const opened = (await trigger.locator('..').boundingBox())!;
-      expect(Math.abs(opened.x + opened.width - closed.x - closed.width)).toBeLessThanOrEqual(1);
-      expect(await trigger.evaluate((element) => getComputedStyle(element).fontSize)).toBe(
-        closedFont,
-      );
-      expect(opened.height).toBeGreaterThan(closed.height);
-      expect(opened.x).toBeGreaterThanOrEqual(0);
-      expect(opened.x + opened.width).toBeLessThanOrEqual(width);
-      await page.keyboard.press('End');
-      await expect(enabled.last()).toBeFocused();
-      await page.keyboard.press('Home');
-      await expect(enabled.first()).toBeFocused();
-      await page.screenshot({
-        animations: 'disabled',
-        path: test.info().outputPath(`${label.replaceAll(' ', '-')}-${width}.png`),
-      });
-      await page.keyboard.press('Escape');
-      await expect(menu).toBeHidden();
-      await expect(trigger).toBeFocused();
-      await trigger.click();
-      await expect(menu).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(menu).toBeHidden();
-      await expect(trigger).toBeFocused();
-    }
+    const trigger = page.getByRole('button', { name: 'Add', exact: true });
+    await expect(trigger).toBeVisible();
+    const closedFont = await trigger.evaluate((element) => getComputedStyle(element).fontSize);
+    const closed = (await trigger.locator('..').boundingBox())!;
+    await trigger.focus();
+    await page.keyboard.press('ArrowDown');
+    const menu = page.getByRole('menu', { name: 'Add', exact: true });
+    const enabled = menu.locator('[role="menuitem"]:not(:disabled)');
+    await expect(menu).toBeVisible();
+    await expect(enabled.first()).toBeFocused();
+    await assertPanelContained(trigger, menu);
+    const opened = (await trigger.locator('..').boundingBox())!;
+    expect(Math.abs(opened.x + opened.width - closed.x - closed.width)).toBeLessThanOrEqual(1);
+    expect(await trigger.evaluate((element) => getComputedStyle(element).fontSize)).toBe(
+      closedFont,
+    );
+    expect(opened.height).toBeGreaterThan(closed.height);
+    expect(opened.x).toBeGreaterThanOrEqual(0);
+    expect(opened.x + opened.width).toBeLessThanOrEqual(width);
+    await page.keyboard.press('End');
+    await expect(enabled.last()).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(enabled.first()).toBeFocused();
+    await page.screenshot({
+      animations: 'disabled',
+      path: test.info().outputPath(`Add-${width}.png`),
+    });
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await expect(trigger).toBeFocused();
+    await trigger.click();
+    await expect(menu).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await expect(trigger).toBeFocused();
   });
 }
 

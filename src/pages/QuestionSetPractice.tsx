@@ -4,7 +4,7 @@ import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
 import { QuestionSetPracticeNavigation } from '../components/question-sets/QuestionSetPracticeNavigation';
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { questionSetReturn } from '../questions/questionSetNavigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   questionSetPrimaryKey,
   useQuestionSetBlankConfirmation,
@@ -43,14 +43,37 @@ import {
 } from '../components/question-sets/QuestionSetRouteState';
 import { dimensionNames } from '../components/question-sets/presentation';
 import { FileTextIcon } from '../components/ui/icons';
+import type { QuestionStudySummary } from '../course/sessionSummary';
+import { summariseSelfMarking } from '../questions/questionSets';
+import { StudyEntrance } from '../components/learn/StudyEntrance';
+import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import '../components/question-sets/question-sets.css';
 import '../components/question-sets/question-set-practice.css';
 
-export function QuestionSetPractice() {
-  const { courseId = '', setId = '', attemptId = '' } = useParams();
+export function QuestionSetPractice({
+  study,
+}: {
+  study?: {
+    courseId: string;
+    setId: string;
+    attemptId: string;
+    onComplete: (summary: QuestionStudySummary) => void;
+    onExit: () => void;
+  };
+} = {}) {
+  const params = useParams();
+  const { courseId = '', setId = '', attemptId = '' } = study ?? params;
   const { session, error, missing, retryLoad } = useQuestionSetAttempt(courseId, setId, attemptId);
   const retryFocusOwner = useRef<Element | null | undefined>(undefined);
   const backTo = `/course/${courseId}/question-sets/${setId}`;
+  if (study && (missing || error))
+    return (
+      <StudyFlowMessage
+        title={missing ? 'Attempt not found' : 'Could not open this attempt'}
+        detail={error ?? 'This saved attempt is no longer available.'}
+        onExit={study.onExit}
+      />
+    );
   if (missing)
     return (
       <QuestionSetUnavailable
@@ -78,26 +101,55 @@ export function QuestionSetPractice() {
       </QuestionSetUnavailable>
     );
   if (!session) return <QuestionSetLoading />;
-  return (
+  const workspace = (
     <PracticeWorkspace
       key={attemptId}
       session={session}
       initialFocusOwner={retryFocusOwner.current}
+      study={study}
     />
+  );
+  return study ? (
+    <StudyEntrance>
+      <main>{workspace}</main>
+    </StudyEntrance>
+  ) : (
+    workspace
   );
 }
 
 function PracticeWorkspace({
   session,
   initialFocusOwner,
+  study,
 }: {
   session: QuestionSetAttemptSession;
   initialFocusOwner?: Element | null;
+  study?: { onComplete: (summary: QuestionStudySummary) => void; onExit: () => void };
 }) {
   const [formDirty, setFormDirty] = useState(false);
   const [reflectionDirty, setReflectionDirty] = useState(false);
   const progress = useAttemptProgress(session, formDirty || reflectionDirty);
   const attempt = progress.record;
+  const completed = useRef<string | null>(null);
+  useEffect(() => {
+    if (study && attempt.status === 'complete' && completed.current !== attempt.id) {
+      completed.current = attempt.id;
+      const jevCount = attempt.decisions.filter(
+        (decision) => decision.markedBy?.by === 'jev',
+      ).length;
+      study.onComplete({
+        kind: 'question',
+        score: summariseSelfMarking(attempt.receipt, attempt.decisions),
+        marking:
+          jevCount === 0
+            ? 'Self-marked'
+            : jevCount === attempt.decisions.length
+              ? 'Jev-marked'
+              : 'Mixed marking',
+      });
+    }
+  }, [attempt, study]);
   const origin = questionSetReturn(useLocation().state, attempt.courseId);
   const navigate = useNavigate();
   const rootRef = useQuestionSetScroll(`question-set-scroll:${attempt.id}`);
@@ -250,9 +302,24 @@ function PracticeWorkspace({
   return (
     <div className="qs-practice" ref={rootRef} onKeyDown={questionSetPrimaryKey}>
       <header className="qs-practice-header">
-        <Link className="qs-back" to={base} state={origin}>
-          ← {attempt.receipt.title}
-        </Link>
+        {study ? (
+          <Button
+            variant="ghost"
+            disabled={formDirty || reflectionDirty || busy}
+            onClick={() =>
+              void perform(async () => {
+                await progress.flush();
+                study.onExit();
+              })
+            }
+          >
+            Finish for now
+          </Button>
+        ) : (
+          <Link className="qs-back" to={base} state={origin}>
+            ← {attempt.receipt.title}
+          </Link>
+        )}
         <QuestionSetPracticeStepper
           mode={attempt.mode}
           nodes={nodes}
@@ -302,7 +369,8 @@ function PracticeWorkspace({
               onClick={() =>
                 void perform(async () => {
                   await progress.flush();
-                  await navigate(origin?.questionSetReturnTo ?? base);
+                  if (study) study.onExit();
+                  else await navigate(origin?.questionSetReturnTo ?? base);
                 })
               }
             >

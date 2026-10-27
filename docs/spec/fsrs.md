@@ -27,3 +27,25 @@ share the same Card and FSRS history. Earliest-paper targeting is a product heur
 of optimal allocation across examinations. Predicted recall does not estimate marks, grades or
 independent application. Existing short-term projection validity checks and ordinary-Practice
 fallbacks continue to apply.
+
+## One Study conductor
+
+The Course's Study action recommends one current activity; optional ways to study remain in its
+preview disclosure. Named assessments define dates and coverage. They do not launch a separate
+revision-plan setup or require daily windows. Existing saved revision plans remain portable history.
+No timetable or assumed next visit is required: future recall is projected at the applicable exam,
+and available early practice is permitted even before an ordinary review becomes due.
+
+The conductor replans at activity boundaries. A ten-review block is an operational hand-off to
+notes or independent questions, not a daily allowance, mastery threshold or completed milestone.
+Unfinished question attempts resume before new work. Reliable knowledge gaps can lead to lesson
+notes and then an independent question; attributable application or technique gaps prioritise
+fresh matching questions. Due recall and assessment preparation otherwise alternate with available
+question or lesson work. Exhausted question pools remain explicit; familiar questions are an
+optional choice rather than fresh assessment evidence.
+
+This ordering is an engineering policy informed by retrieval practice and spaced learning. It is
+not a scientifically proven optimal allocator. Jev's criterion diagnostics are uncertain evidence
+in that Concept context, not global skill mastery. Question marks and diagnostics never manufacture
+Card reviews or FSRS transitions. Publisher editing locks do not alter learner access rules;
+question targets and prerequisites must stay within the accessible knowledge scope.

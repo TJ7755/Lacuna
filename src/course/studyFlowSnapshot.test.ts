@@ -104,7 +104,7 @@ function assessment(id: string, examDate: number, afterLessonId: string): Course
 
 describe('buildCourseStudyFlowSnapshot', () => {
   it.each([MS_PER_DAY, 0, -MS_PER_DAY])(
-    'only offers final-lesson review when due (%ims)',
+    'keeps due recall separate while recommending available early exam practice (%ims)',
     (dueOffset) => {
       const c = course();
       const finalLesson = lesson('final', 0);
@@ -131,7 +131,15 @@ describe('buildCourseStudyFlowSnapshot', () => {
       expect(snapshot.recurringPracticeEligibleCount).toBe(dueOffset > 0 ? 0 : 1);
       expect(planNextStudyStep(snapshot)).toEqual(
         dueOffset > 0
-          ? { kind: 'complete' }
+          ? {
+              kind: 'step',
+              step: {
+                kind: 'practice',
+                nodeKey: 'exam-practice',
+                mode: 'exam',
+                label: 'Practise for exam',
+              },
+            }
           : {
               kind: 'step',
               step: {
@@ -441,7 +449,6 @@ describe('buildCourseStudyFlowSnapshot', () => {
   });
 });
 
-
 it('plans the joining lesson while independently counting capped earlier exam practice', () => {
   const c = course({ studyStartLessonId: 'l2', unlockMode: 'semi-linear', newCardsPerDay: 1 });
   const lessons = [lesson('l1', 0), lesson('l2', 1), lesson('l3', 2)];
@@ -494,5 +501,47 @@ it.each([true, false])(
     expect([...snapshot.practiceByKey.get(practice.id)!.scopeLessonIds]).toEqual(['l2']);
     expect(snapshot.activeManualNodeKeys.size).toBe(0);
     expect(snapshot.catchUpEligibleCount).toBe(1);
+  },
+);
+
+it.each([false, true])(
+  'plans unlearnt material moved before the starting lesson (locked copy: %s)',
+  (locked) => {
+    const c = course({
+      studyStartLessonId: 'current',
+      schoolCoveredLessonIds: ['prior'],
+      distributedCopy: { lineageId: 'science', revision: 1, locked, autoAcceptUpdates: false },
+    });
+    const lessons = [lesson('later', 0), lesson('current', 1), lesson('prior', 2)];
+    const nodes: PathNode[] = lessons.map((item) => ({
+      id: item.id,
+      nodeType: 'lesson',
+      lesson: item,
+      status: item.id === 'current' ? 'completed' : 'available',
+    }));
+    const snapshot = buildCourseStudyFlowSnapshot({
+      course: c,
+      nodes,
+      cards: [],
+      links: [],
+      exposures: [],
+      meanReviewSeconds: 20,
+      examDateContext: makeExamDateContext(c, lessons, []),
+      now: NOW,
+    });
+    expect(planNextStudyStep(snapshot)).toMatchObject({
+      kind: 'step',
+      step: { lessonId: 'later' },
+    });
+    expect(
+      planNextStudyStep({
+        ...snapshot,
+        nodes: nodes.map((node) =>
+          node.nodeType === 'lesson' && node.id === 'later'
+            ? { ...node, status: 'completed' }
+            : node,
+        ),
+      }),
+    ).toEqual({ kind: 'complete' });
   },
 );

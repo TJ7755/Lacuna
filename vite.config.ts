@@ -195,6 +195,11 @@ export default defineConfig({
           // catalogue download motion/router code, or the landing page download the app.
           groups: [
             {
+              name: 'study-entrance',
+              test: /[\\/]src[\\/]components[\\/]learn[\\/](?:StudyEntrance|StudyFlowMessage)\.tsx$/,
+              includeDependenciesRecursively: false,
+            },
+            {
               name: 'course-sequencing',
               test: /[\\/]src[\\/]course[\\/](?:lessonOrder|assessmentCoverage)\.ts$/,
             },

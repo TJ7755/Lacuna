@@ -19,7 +19,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ToastProvider } from '../components/ui/Toast';
-import type { Card, QuestionSetPracticeNode } from '../db/types';
+import type { QuestionSetPracticeNode } from '../db/types';
 import { MS_PER_DAY } from '../fsrs/params';
 describe('CoursePath View mode', () => {
   beforeEach(resetCoursePathFixtures);
@@ -155,29 +155,10 @@ describe('CoursePath View mode', () => {
     pathState.mockLessons = [lesson1, lesson2].slice(0, count);
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Study' }));
-    expect(mockOpenStudySheet).toHaveBeenCalledWith('course-1', { otherWays: false });
+    expect(mockOpenStudySheet).toHaveBeenCalledWith('course-1');
     mockOpenStudySheet.mockClear();
     fireEvent.keyDown(window, { key: 's' });
-    expect(mockOpenStudySheet).toHaveBeenCalledWith('course-1', { otherWays: false });
-  });
-
-  it('starts course-wide practice from the header', () => {
-    // Header practice serves scheduled reviews; unseen cards no longer count as due.
-    const card: Card = { ...makeCard('card-1', 'lesson-1'), state: 2, due: Date.now() - 1 };
-    pathState.mockCourseCards = [card];
-    live.exposures = [{ lessonId: 'lesson-1', cardId: 'card-1', taughtAt: 1, updatedAt: 1 }];
-
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /Only review due cards/ }));
-
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
-  });
-
-  it('keeps optional practice available when no reviews or assessments are due', () => {
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
-    expect(screen.getByRole('menuitem', { name: 'Practise until all correct' })).toBeEnabled();
+    expect(mockOpenStudySheet).toHaveBeenCalledWith('course-1');
   });
 
   it.each([false, true])(
@@ -243,18 +224,6 @@ describe('CoursePath View mode', () => {
     },
   );
 
-  it('exposes course-wide practice in a single-lesson course header', async () => {
-    // Header practice serves scheduled reviews; unseen cards no longer count as due.
-    const card: Card = { ...makeCard('card-1', 'lesson-1'), state: 2, due: Date.now() - 1 };
-    pathState.mockLessons = [lesson1];
-    pathState.mockCourseCards = [card];
-    live.exposures = [{ lessonId: 'lesson-1', cardId: 'card-1', taughtAt: 1, updatedAt: 1 }];
-
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
-    expect(screen.getByRole('menuitem', { name: /Only review due cards/ })).toBeEnabled();
-  });
-
   it.each([1, 2])(
     'keeps study options available after all %i lessons are complete',
     async (count) => {
@@ -276,7 +245,8 @@ describe('CoursePath View mode', () => {
       renderPage();
 
       expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
-      expect(screen.getByRole('button', { name: 'Other ways to study' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Study' }));
+      expect(mockOpenStudySheet).toHaveBeenCalledWith('course-1');
       expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
     },
   );

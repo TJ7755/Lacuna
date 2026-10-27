@@ -104,15 +104,6 @@ export function renderCoursePathRows(
                 )}
               </span>
             </PathRowButton>
-            {!archived && (
-              <button
-                type="button"
-                onClick={() => props.onAssessmentPractise(node.assessment.id)}
-                className="min-h-11 px-1 font-bold text-accent-ink hover:underline"
-              >
-                Revise
-              </button>
-            )}
           </div>
           {editable && !archived && (
             <div className="absolute right-1.5 top-1/2 -translate-y-1/2">

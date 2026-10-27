@@ -13,21 +13,26 @@ import {
 } from '../state/activeStudyFlow';
 import {
   DUE_REVIEW_STEP,
+  STUDY_REVIEW_BLOCK_SIZE,
   CATCH_UP_STEP,
   EXAM_PRACTICE_STEP,
   planNextStudyStep,
   type StudyFlowStep,
 } from '../course/studyFlowPlanner';
-import type { SessionSummary } from '../components/learn/types';
+import type {
+  SessionSummary,
+  StudyStepSummary,
+  QuestionStudySummary,
+} from '../course/sessionSummary';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
-import { RevisionPlanSetup } from '../components/learn/RevisionPlanSetup';
+import { StudyQuestionStep } from '../components/learn/StudyQuestionStep';
 import { StepSwap } from '../components/ui/StepSwap';
 import { continuesWithoutPause, mayContinueWithoutPause } from '../course/studyFlowContinuation';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
 
 interface TransitionState {
-  summary: SessionSummary;
+  summary: StudyStepSummary;
   completedStep: StudyFlowStep;
 }
 
@@ -53,6 +58,7 @@ function CourseStudyFlowInner() {
     courseId ? identityFor(courseId) : null,
   );
   const [refreshKey, setRefreshKey] = useState(0);
+  const [previousStep, setPreviousStep] = useState<StudyFlowStep | null>(null);
   const [catchUpFinished, setCatchUpFinished] = useState(false);
   const entryAssessmentId = searchParams.get('assessmentId');
   const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
@@ -73,22 +79,19 @@ function CourseStudyFlowInner() {
   // The choice is made in the study sheet before this route is entered and arrives as a
   // query parameter, so the flow no longer presents an entry screen of its own.
   const [transition, setTransition] = useState<TransitionState | null>(null);
-  const [revisionSession, setRevisionSession] = useState<{
-    planId: string;
-    windowId: string;
-  } | null>(null);
   const plannedFlow = useCourseStudyFlow(
     courseId,
     refreshKey,
     currentStep === null || transition !== null,
+    previousStep,
   );
   // Reaching a session objective need not empty the broader catch-up pool.
   const flow = useMemo(
     () =>
       plannedFlow && catchUpFinished
-        ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false) }
+        ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false, previousStep) }
         : plannedFlow,
-    [catchUpFinished, plannedFlow],
+    [catchUpFinished, plannedFlow, previousStep],
   );
   const pomodoro = usePomodoroFlowContext();
 
@@ -181,14 +184,13 @@ function CourseStudyFlowInner() {
     }
     if (displayStep.kind === 'practice') {
       if (displayStep.mode === 'assessment') {
-        if (!displayStep.assessmentId || !revisionSession) return null;
+        if (!displayStep.assessmentId) return null;
         return {
           kind: 'practice',
           courseId: courseId ?? '',
           mode: 'assessment',
           assessmentId: displayStep.assessmentId,
-          planId: revisionSession.planId,
-          windowId: revisionSession.windowId,
+          reviewLimit: STUDY_REVIEW_BLOCK_SIZE,
         };
       }
       return {
@@ -198,16 +200,11 @@ function CourseStudyFlowInner() {
         scopeLessonIds: committedScopeLessonIds,
         milestoneLessonIds: committedMilestoneLessonIds,
         mode: displayStep.mode,
+        reviewLimit: STUDY_REVIEW_BLOCK_SIZE,
       };
     }
     return null;
-  }, [
-    committedMilestoneLessonIds,
-    committedScopeLessonIds,
-    courseId,
-    displayStep,
-    revisionSession,
-  ]);
+  }, [committedMilestoneLessonIds, committedScopeLessonIds, courseId, displayStep]);
 
   const handleStepFinished = useCallback(
     (summary: SessionSummary) => {
@@ -218,22 +215,40 @@ function CourseStudyFlowInner() {
       if (refreshKey <= completedGenerationRef.current) return;
       completedGenerationRef.current = refreshKey;
       touchActiveStudyFlow(courseId);
-      if (completed.kind === 'practice' && completed.mode === 'assessment') {
-        setRevisionSession(null);
-      }
-      if (completed.kind === 'practice' && completed.mode === 'catch-up') setCatchUpFinished(true);
+      setPreviousStep(completed);
+      if (completed.kind === 'practice' && completed.mode === 'catch-up' && summary.reachedGoal)
+        setCatchUpFinished(true);
       setTransition({ summary, completedStep: completed });
       setRefreshKey((value) => value + 1);
     },
     [courseId, currentStep, displayStep, refreshKey],
   );
 
+  const handleQuestionFinished = useCallback(
+    (summary: QuestionStudySummary) => {
+      const completed = currentStep ?? displayStep;
+      if (!completed || !courseId || refreshKey <= completedGenerationRef.current) return;
+      completedGenerationRef.current = refreshKey;
+      touchActiveStudyFlow(courseId);
+      setPreviousStep(completed);
+      setTransition({ completedStep: completed, summary });
+      setRefreshKey((value) => value + 1);
+    },
+    [courseId, currentStep, displayStep, refreshKey],
+  );
+
+  const transitionComplete =
+    transition !== null &&
+    (!('events' in transition.summary) ||
+      transition.summary.reachedGoal ||
+      transition.summary.blockComplete === true);
+
   const continueFlow = useCallback(() => {
     if (!transition) return;
     const readyFlow = flow?.generation === refreshKey ? flow : null;
-    if (transition.summary.reachedGoal && !readyFlow) return;
+    if (transitionComplete && !readyFlow) return;
     if (pomodoro.breakPending) pomodoro.deferBreak();
-    if (!transition.summary.reachedGoal) {
+    if (!transitionComplete) {
       setTransition(null);
       return;
     }
@@ -246,13 +261,14 @@ function CourseStudyFlowInner() {
     }
     setCurrentStep(null);
     setTransition(null);
-  }, [flow, pomodoro, refreshKey, transition]);
+  }, [flow, pomodoro, refreshKey, transition, transitionComplete]);
 
   // Contiguous Practice continues without the full-screen hand-off once the planner
   // has the next step; see continuesWithoutPause for the boundaries that still pause.
   const nextFlow = flow?.generation === refreshKey ? flow : null;
   const awaitingContinuation =
     transition !== null &&
+    'events' in transition.summary &&
     mayContinueWithoutPause(transition.completedStep, transition.summary, pomodoro.breakPending) &&
     (nextFlow === null ||
       continuesWithoutPause(
@@ -262,7 +278,7 @@ function CourseStudyFlowInner() {
         pomodoro.breakPending,
       ));
   useEffect(() => {
-    if (!transition || !nextFlow) return;
+    if (!transition || !nextFlow || !('events' in transition.summary)) return;
     const { decision } = nextFlow;
     if (
       continuesWithoutPause(
@@ -306,7 +322,7 @@ function CourseStudyFlowInner() {
   let scene: string;
   let body: ReactNode;
   if (transition && !awaitingContinuation) {
-    const planningNextStep = transition.summary.reachedGoal && flow?.generation !== refreshKey;
+    const planningNextStep = transitionComplete && flow?.generation !== refreshKey;
     const catchUpIsNext =
       flow?.decision.kind === 'step' &&
       flow.decision.step.kind === 'practice' &&
@@ -321,6 +337,14 @@ function CourseStudyFlowInner() {
         completedLabel={transition.completedStep.label}
         nextLabel={nextLabel}
         summary={transition.summary}
+        progress={flow?.generation === refreshKey ? flow.progress : undefined}
+        nextReason={
+          !planningNextStep &&
+          (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice') &&
+          flow.decision.step.kind === 'exam-questions'
+            ? flow.decision.step.reason
+            : undefined
+        }
         canReviewDueCards={
           transition.completedStep !== DUE_REVIEW_STEP &&
           !planningNextStep &&
@@ -343,17 +367,16 @@ function CourseStudyFlowInner() {
         onFinish={finishFlow}
       />
     );
-  } else if (
-    displayStep?.kind === 'practice' &&
-    displayStep.mode === 'assessment' &&
-    displayStep.assessmentId &&
-    !revisionSession
-  ) {
-    scene = 'revision';
+  } else if (displayStep?.kind === 'exam-questions') {
+    scene = `questions-${frozenScopeRef.current.serial}`;
     body = (
-      <RevisionPlanSetup
-        assessmentId={displayStep.assessmentId}
-        onStart={(planId, windowId) => setRevisionSession({ planId, windowId })}
+      <StudyQuestionStep
+        key={scene}
+        courseId={courseId}
+        conceptId={displayStep.conceptId}
+        scopeConceptIds={displayStep.scopeConceptIds}
+        allowFamiliar={displayStep.allowFamiliar}
+        onComplete={handleQuestionFinished}
         onExit={finishFlow}
       />
     );

@@ -77,6 +77,8 @@ for (const width of [1280, 390]) {
         }),
       courseId,
     );
+    // Native seeding bypasses Dexie's live-query cache invalidation.
+    await page.reload();
     await page.setViewportSize({ width, height: 600 });
     await page.goto(`/#${coursePath}/questions`);
     await page.getByRole('button', { name: 'View mode', exact: true }).click();

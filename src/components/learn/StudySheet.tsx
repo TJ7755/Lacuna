@@ -12,6 +12,7 @@ import { planStudySession } from '../../course/studySessionPlan';
 import { canEditLessons } from '../../course/lessonViewMode';
 import { lessonEffectiveReleaseDates } from '../../course/path';
 import { lockHintFor } from '../course/lockHint';
+import { SimpleLearnOptions } from './SimpleLearnOptions';
 
 export function StudySheet({
   courseId,
@@ -56,6 +57,7 @@ export function StudySheet({
           <CourseStudyOptions
             courseId={scopedCourseId}
             otherWays={otherWays}
+            onClose={onClose}
             onBack={
               courseId === null
                 ? () => {
@@ -111,10 +113,12 @@ function CoursePicker({ onPick }: { onPick: (courseId: string) => void }) {
 function CourseStudyOptions({
   courseId,
   otherWays,
+  onClose,
   onBack,
 }: {
   courseId: string;
   otherWays: boolean;
+  onClose: () => void;
   onBack?: () => void;
 }) {
   const navigate = useNavigate();
@@ -141,9 +145,8 @@ function CourseStudyOptions({
     );
   }
 
-  const decision = flow?.decision;
   const snapshot = flow?.snapshot;
-  const assessments = decision?.kind === 'choice' ? decision.assessments : [];
+  const assessments = snapshot?.assessmentOptions ?? [];
   const plan = flow ? planStudySession(flow) : undefined;
   const canReviewDueCards =
     snapshot !== undefined &&
@@ -179,23 +182,7 @@ function CourseStudyOptions({
       )}
 
       <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
-        {(snapshot?.catchUpEligibleCount ?? 0) > 0 && (
-          <Button variant="secondary" onClick={() => start('?review=earlier')}>
-            Review earlier material
-            <span className="ml-1 text-sm opacity-70 tabular-nums">
-              {snapshot?.catchUpEligibleCount}
-            </span>
-          </Button>
-        )}
-        {canPractiseForExam && (
-          <Button variant="secondary" onClick={() => start('?review=exam')}>
-            Practise for exam
-            <span className="ml-1 text-sm opacity-70 tabular-nums">
-              {snapshot?.examPracticeEligibleCount}
-            </span>
-          </Button>
-        )}
-        {otherWays && (canReviewDueCards || assessments.length > 0) && (
+        {otherWays && (
           <Button
             variant="ghost"
             className="mr-auto"
@@ -208,20 +195,39 @@ function CourseStudyOptions({
           </Button>
         )}
         {plan && plan.steps.length > 0 && (
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => start(plan.startsWithDueReview ? '?review=due' : '')}
-          >
+          <Button variant="primary" size="lg" onClick={() => start('')}>
             Start session
             <ArrowRightIcon width={18} height={18} aria-hidden="true" />
           </Button>
         )}
       </div>
 
-      {otherWays && (canReviewDueCards || assessments.length > 0) && (
+      {snapshot?.questionPracticeExhausted && (
+        <p className="mt-2 text-sm text-ink-soft">
+          No fresh exam questions remain in this pool. Recall and lesson study are still available.
+        </p>
+      )}
+      {otherWays && (
         <AnimatedDisclosure open={showOtherWays}>
           <section id={otherWaysId} aria-label="Other ways" className="flex flex-col gap-1">
+            {(snapshot?.catchUpEligibleCount ?? 0) > 0 && (
+              <Button
+                variant="ghost"
+                className="justify-start"
+                onClick={() => start('?review=earlier')}
+              >
+                Review earlier material
+              </Button>
+            )}
+            {canPractiseForExam && (
+              <Button
+                variant="ghost"
+                className="justify-start"
+                onClick={() => start('?review=exam')}
+              >
+                Practise for exam
+              </Button>
+            )}
             {canReviewDueCards && (
               <Button
                 variant="ghost"
@@ -246,6 +252,17 @@ function CourseStudyOptions({
                 Revise for {assessment.name}
               </Button>
             ))}
+            <Button
+              variant="ghost"
+              className="justify-start"
+              onClick={() => {
+                onClose();
+                void navigate(`/course/${courseId}/questions`);
+              }}
+            >
+              Choose exam questions
+            </Button>
+            <SimpleLearnOptions courseId={courseId} />
           </section>
         </AnimatedDisclosure>
       )}
