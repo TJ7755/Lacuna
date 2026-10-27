@@ -1,5 +1,8 @@
 import type { PathNode } from '../../course/path';
-import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
+import {
+  resolveAssessmentCoverage,
+  type AssessmentSpecificationContext,
+} from '../../course/assessmentCoverage';
 import type { Card, Lesson, LessonCardLink } from '../../db/types';
 import { updateCourseAssessment } from '../../db/assessmentRepository';
 import { updatePracticeNode, updateQuestionSetPracticeNode } from '../../db/practiceNodeRepository';
@@ -24,6 +27,7 @@ export function pathMoveOrder(
   targetIndex: number,
   cards: Card[],
   links: LessonCardLink[],
+  specificationContext?: AssessmentSpecificationContext,
 ): string[] | null {
   const moving = nodes.find((node) => node.id === id);
   if (
@@ -47,7 +51,16 @@ export function pathMoveOrder(
     if (node.nodeType !== 'checkpoint') continue;
     const assessment =
       node.id === id ? { ...node.assessment, afterLessonId: anchor } : node.assessment;
-    if (!resolveAssessmentCoverage(assessment, orderedLessons, cards, links).validation.valid)
+    if (
+      !resolveAssessmentCoverage(
+        assessment,
+        orderedLessons,
+        cards,
+        links,
+        undefined,
+        specificationContext,
+      ).validation.valid
+    )
       return null;
   }
   const placed = nodes
@@ -93,6 +106,7 @@ export function pathKeyboardTarget(
   delta: -1 | 1,
   cards: Card[],
   links: LessonCardLink[],
+  specificationContext?: AssessmentSpecificationContext,
 ): number {
   const node = nodes.find((node) => node.id === id);
   if (!node) return -1;
@@ -106,7 +120,7 @@ export function pathKeyboardTarget(
   const remaining = nodes.filter((item) => item.id !== id);
   let target = next === -1 ? 0 : remaining.findIndex((item) => item.id === lessons[next].id) + 1;
   if (node.nodeType === 'lesson' && delta < 0) target -= 1;
-  return pathMoveOrder(nodes, id, target, cards, links)?.indexOf(id) ?? -1;
+  return pathMoveOrder(nodes, id, target, cards, links, specificationContext)?.indexOf(id) ?? -1;
 }
 
 /** Local lessons retain published indices; learner checkpoints retain lesson anchors. */
@@ -116,6 +130,7 @@ export function localPathMoveOrder(
   targetIndex: number,
   cards: Card[],
   links: LessonCardLink[],
+  specificationContext?: AssessmentSpecificationContext,
 ): string[] | null {
   const moving = nodes.find((node) => node.id === id);
   if (!moving || (moving.nodeType !== 'lesson' && moving.nodeType !== 'checkpoint')) return null;
@@ -135,6 +150,7 @@ export function localPathMoveOrder(
       cards,
       links,
       lessons.map((lesson) => lesson.id),
+      specificationContext,
     ).validation.valid
   )
     return null;

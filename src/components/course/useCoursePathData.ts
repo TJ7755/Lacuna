@@ -29,6 +29,7 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
   const course = records?.course;
   const lessons = records?.lessons;
   const courseCards = records?.cards;
+  const concepts = records?.concepts;
   // Match the existing Dexie sort: an undated assessment keeps its relative position.
   const assessments = useMemo(
     () => records?.assessments.slice().sort((a, b) => (a.examDate ?? NaN) - (b.examDate ?? NaN)),
@@ -48,6 +49,10 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
       records.lessons,
       records.cards,
       records.assessments,
+      Date.now(),
+      { links: records.links, exposures: records.exposures, completions: records.completions },
+      undefined,
+      records.concepts,
     )[records.course.id];
   }, [records]);
   const archived = course?.archived === true;
@@ -89,6 +94,7 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
           practiceNodes: practiceNodes ?? [],
           lessons: lessons ?? [],
           cards: courseCards ?? [],
+          concepts,
           links: lessonLinks ?? [],
           exposures: exposures ?? [],
           now,
@@ -103,7 +109,17 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
     // `now` is deliberately excluded: recomputation is scoped to data changes
     // (cards/perf), not wall-clock drift, and live-query updates re-render anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assessments, course, courseCards, exposures, lessonLinks, lessons, perf, practiceNodes]);
+  }, [
+    assessments,
+    course,
+    courseCards,
+    concepts,
+    exposures,
+    lessonLinks,
+    lessons,
+    perf,
+    practiceNodes,
+  ]);
 
   const nodes = useMemo(
     () =>
@@ -146,9 +162,9 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
   const examDateContext = useMemo(
     () =>
       course && lessons && assessments
-        ? makeExamDateContext(course, lessons, assessments)
+        ? makeExamDateContext(course, lessons, assessments, lessonLinks, concepts)
         : undefined,
-    [course, lessons, assessments],
+    [course, lessons, assessments, lessonLinks, concepts],
   );
 
   const studyFlowSnapshot = useMemo(
@@ -206,6 +222,7 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
     course,
     lessons,
     courseCards,
+    concepts,
     assessments,
     practiceNodes,
     lessonLinks,

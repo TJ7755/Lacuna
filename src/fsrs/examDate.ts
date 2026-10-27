@@ -1,26 +1,14 @@
 import { courseLessonOrderPreference } from '../course/lessonOrder';
-// Per-card exam-date resolution for the Course model.
-//
-// In the Course model a single card can be aimed at several possible exam dates:
-// a lesson-level override, one or more checkpoint assessments,
-// or the course's primary exam date. This module resolves, for one card, the
-// single effective date the scheduler should target. It is pure: no DB access and
-// no Date.now() except as a default parameter.
-//
-// Resolution order:
-//   1. Lesson override: if the card's primary lesson has an `examDate`, use it.
-//      This is an explicit teacher override and wins outright, regardless of
-//      whether it is in the past or the future, and even if a sooner checkpoint
-//      exists. (Override beats "nearest".)
-//   2. Nearest applicable future checkpoint: among the course's checkpoint assessments
-//      rows that apply to this card, pick the soonest whose date is still in the
-//      future (>= now). Once a checkpoint passes it is ignored, so the next-nearest
-//      checkpoint (or the course default) naturally takes over. (Here we use
-//      nearest-future-applicable, NOT a fixed priority.)
-//   3. Otherwise: the course's primary `examDate`, if it has one.
+// Lesson overrides win. Otherwise target the nearest applicable upcoming paper
+// or checkpoint. A specification-scoped final covers only its linked Concepts;
+// legacy finals retain the course-wide fallback used by existing courses.
 
-import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import {
+  resolveAssessmentCoverage,
+  type AssessmentSpecificationContext,
+} from '../course/assessmentCoverage';
 import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '../db/types';
+import type { Concept } from '../questions/types';
 
 export interface ExamDateContext {
   /** The Course.examDate default, used when nothing nearer applies. */
@@ -32,6 +20,7 @@ export interface ExamDateContext {
   courseAssessments: CourseAssessment[];
   /** Additional effective lesson memberships for cards. */
   lessonCardLinks?: LessonCardLink[];
+  specificationContext?: AssessmentSpecificationContext;
 }
 
 /** Build a resolution context once for a course, reused across its cards. */
@@ -40,6 +29,7 @@ export function makeExamDateContext(
   lessons: Lesson[],
   assessments: CourseAssessment[],
   lessonCardLinks: LessonCardLink[] = [],
+  concepts: readonly Concept[] = [],
 ): ExamDateContext {
   return {
     ...(course.examDate === undefined ? {} : { courseExamDate: course.examDate }),
@@ -47,11 +37,12 @@ export function makeExamDateContext(
     courseAssessments: assessments,
     lessonCardLinks,
     preferredLessonIds: courseLessonOrderPreference(course),
+    specificationContext: { course, concepts },
   };
 }
 
-/** Whether a checkpoint applies to a card: in-scope lesson and not excluded. */
-function checkpointApplies(
+/** Whether the authoritative assessment coverage contains this Card. */
+function assessmentApplies(
   assessment: CourseAssessment,
   card: Card,
   ctx: ExamDateContext,
@@ -62,13 +53,13 @@ function checkpointApplies(
     [card],
     ctx.lessonCardLinks ?? [],
     ctx.preferredLessonIds,
+    ctx.specificationContext,
   ).cards.some((coveredCard) => coveredCard.id === card.id);
 }
 
 /**
- * Resolve the effective target exam date for a single card. See the file header
- * for the full resolution order; in short: lesson override wins outright, else the
- * nearest applicable future checkpoint, else the course's primary exam date.
+ * Resolve a Card's next real assessment target without changing its recall evidence.
+ * No upcoming applicable paper leaves it in ordinary maintenance scheduling.
  */
 export function resolveCardExamDate(
   card: Card,
@@ -81,17 +72,21 @@ export function resolveCardExamDate(
     if (lesson?.examDate !== undefined) return lesson.examDate;
   }
 
-  // 2. Nearest applicable future checkpoint.
+  // A specification-scoped final is one paper, not a course-wide fallback.
+  const specificationFinal = ctx.courseAssessments.some(
+    (assessment) => assessment.kind === 'final' && assessment.coverageMode === 'specification',
+  );
+  // 2. Nearest applicable future assessment. Legacy finals retain their fallback semantics.
   let nearest: number | undefined;
   for (const assessment of ctx.courseAssessments) {
     if (
-      assessment.kind !== 'checkpoint' ||
+      (assessment.kind !== 'checkpoint' && !specificationFinal) ||
       assessment.examDate === undefined ||
       assessment.examDate < now
     ) {
       continue;
     }
-    if (!checkpointApplies(assessment, card, ctx)) continue;
+    if (!assessmentApplies(assessment, card, ctx)) continue;
     if (nearest === undefined || assessment.examDate < nearest) {
       nearest = assessment.examDate;
     }
@@ -99,5 +94,5 @@ export function resolveCardExamDate(
   if (nearest !== undefined) return nearest;
 
   // 3. Course default.
-  return ctx.courseExamDate;
+  return specificationFinal ? undefined : ctx.courseExamDate;
 }

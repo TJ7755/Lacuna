@@ -28,6 +28,8 @@ import type { CourseAssessment } from '../../db/types';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { useCourseAssessments, useCourseCards, useLessons } from '../../state/useCourseData';
 import { formatDateTime } from '../../utils/datetime';
+import { CoursePaperDates } from '../../components/course/CoursePaperDates';
+import { useAssessmentSpecification } from '../../state/useAssessmentSpecification';
 
 export interface ExamDatesSectionProps {
   courseId: string;
@@ -44,6 +46,7 @@ function focusCurrentAssessmentEditor(
 
 export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamDatesSectionProps) {
   const course = useLiveQuery(() => db.courses.get(courseId), [courseId]);
+  const specificationContext = useAssessmentSpecification(courseId);
   const assessments = useCourseAssessments(courseId);
   const lessons = useLessons(courseId);
   const cards = useCourseCards(courseId);
@@ -140,6 +143,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
 
   return (
     <div className="flex flex-col gap-3">
+      {loaded && course && <CoursePaperDates course={course} assessments={assessments} />}
       <AnimatePresence initial={false} mode="popLayout">
         {loaded &&
           assessments.map((assessment) => {
@@ -149,6 +153,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
               cards,
               links,
               course && courseLessonOrderPreference(course),
+              specificationContext,
             );
             return (
               <motion.div
@@ -265,6 +270,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
                       lessons,
                       cards,
                       links,
+                      specificationContext,
                     )
                   }
                 >

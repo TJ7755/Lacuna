@@ -1,7 +1,7 @@
 import { db } from './schema';
 import type { SharePayloadV4, SharePayloadV5, SharePayloadV6 } from './share';
 import type { CourseAssessment, LineageIdMapping } from './types';
-import { validateAssessmentStructure } from './assessmentRepository';
+import { validateAssessmentStructure } from './assessmentValidation';
 
 type Payload = (SharePayloadV4 | SharePayloadV5 | SharePayloadV6) & { li: string; rv: number };
 type Snapshot = Omit<CourseAssessment, 'updatedAt'>;
@@ -20,7 +20,8 @@ function publishedContent(record: Snapshot): Snapshot {
 function unchanged(record: CourseAssessment, expected: Snapshot | undefined): boolean {
   return (
     expected !== undefined &&
-    JSON.stringify(publishedContent(snapshot(record))) === JSON.stringify(publishedContent(expected))
+    JSON.stringify(publishedContent(snapshot(record))) ===
+      JSON.stringify(publishedContent(expected))
   );
 }
 
@@ -90,7 +91,20 @@ export async function applyLineageAssessments(
     if (previousIds.has(id) && !existing) {
       throw new Error('A locally deleted Assessment conflicts with this published update.');
     }
-    if (existing && (!previousIds.has(id) || !unchanged(existing, previousSnapshots[id]))) {
+    const previous = previousSnapshots[id];
+    const keepLearnerPaperFinal =
+      !firstImport &&
+      previousIds.has(id) &&
+      existing?.kind === 'final' &&
+      existing.coverageMode === 'specification' &&
+      previous?.kind === 'final' &&
+      previous.coverageMode !== 'specification' &&
+      exam.k === 'f' &&
+      exam.m !== 's';
+    if (
+      existing &&
+      (!previousIds.has(id) || (!unchanged(existing, previous) && !keepLearnerPaperFinal))
+    ) {
       throw new Error('A locally edited Assessment conflicts with this published update.');
     }
     if (exam.a !== null && exam.a !== undefined && !lessons[exam.a]) {
@@ -121,13 +135,21 @@ export async function applyLineageAssessments(
       ),
     };
     const record: CourseAssessment =
-      exam.m === 'c'
+      exam.m === 's'
         ? {
             ...common,
-            coverageMode: 'custom',
-            lessonIds: (exam.ls ?? []).map((index) => lessons[index]!),
+            coverageMode: 'specification',
+            ...(exam.specificationPaperId !== undefined
+              ? { specificationPaperId: exam.specificationPaperId }
+              : { specificationPointIds: exam.specificationPointIds! }),
           }
-        : { ...common, coverageMode: 'prefix' };
+        : exam.m === 'c'
+          ? {
+              ...common,
+              coverageMode: 'custom',
+              lessonIds: (exam.ls ?? []).map((index) => lessons[index]!),
+            }
+          : { ...common, coverageMode: 'prefix' };
     validateAssessmentStructure(record);
     snapshots[id] = snapshot(record);
     if (!firstImport && existing?.kind === 'final' && record.kind === 'final') {
@@ -140,7 +162,8 @@ export async function applyLineageAssessments(
       if (existing.schedulingMode !== undefined) record.schedulingMode = existing.schedulingMode;
       validateAssessmentStructure(record);
     }
-    await db.courseAssessments.put(record);
+    // Course-supplied paper setup is learner-owned; snapshots above retain the actual source.
+    if (!keepLearnerPaperFinal) await db.courseAssessments.put(record);
     if (tombstone) await db.tombstones.delete(['courseAssessments', id]);
   }
   mapping.assessmentIds = [...incomingIds];

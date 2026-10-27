@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
 import { db } from '../db/schema';
+import type { Concept } from '../questions/types';
 import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { performanceForCourseBackingDecks } from '../db/backingDecks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
@@ -22,6 +23,7 @@ interface CourseStudyFlowRecords {
   course: Course | null;
   lessons: Lesson[];
   cards: Card[];
+  concepts?: Concept[];
   assessments: CourseAssessment[];
   links: LessonCardLink[];
   exposures: LessonCardExposure[];
@@ -42,7 +44,8 @@ export function useCourseStudyFlowRecords(
   const cache = useMemo(
     () => ({
       courseId,
-      value: undefined as { courseId: string | undefined; records: CourseStudyFlowRecords } | undefined,
+      value: undefined as
+        { courseId: string | undefined; records: CourseStudyFlowRecords } | undefined,
       version: 0,
     }),
     [courseId],
@@ -77,6 +80,7 @@ async function readCourseStudyFlowRecords(
       course: null,
       lessons: [],
       cards: [],
+      concepts: [],
       assessments: [],
       links: [],
       exposures: [],
@@ -101,6 +105,7 @@ async function readCourseStudyFlowRecords(
       course: null,
       lessons: [],
       cards: [],
+      concepts: [],
       assessments: [],
       links: [],
       exposures: [],
@@ -112,11 +117,12 @@ async function readCourseStudyFlowRecords(
     };
   }
   const course = hydrateCourse(courseRecord, finalAssessmentForCourse(courseId, assessments));
-  const [lessons, rawCards, practiceNodes, milestones] = await Promise.all([
+  const [lessons, rawCards, practiceNodes, milestones, concepts] = await Promise.all([
     db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
     db.cards.where('courseId').equals(courseId).toArray(),
     db.practiceNodes.where('courseId').equals(courseId).toArray(),
     db.practiceMilestones.where('courseId').equals(courseId).toArray(),
+    db.concepts.where('courseId').equals(courseId).toArray(),
   ]);
   const cards = await hydrateCardsWithHistory(rawCards);
   const lessonIds = lessons.map((lesson) => lesson.id);
@@ -130,6 +136,7 @@ async function readCourseStudyFlowRecords(
     course,
     lessons,
     cards,
+    concepts,
     assessments,
     links,
     exposures,

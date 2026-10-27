@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { assertSpecificationAssessmentReferences } from '../specifications/assessment';
 import { assertLessonPrerequisites } from './lessonPrerequisites';
 import type { BackupFile, Lesson } from './types';
 import { recordSchemas } from './backupRecordSchemas';
@@ -33,6 +34,19 @@ export const backupSchema = z
       assertLessonPrerequisites((backup.lessons ?? []) as Lesson[]);
     } catch (error) {
       context.addIssue({ code: 'custom', path: ['lessons'], message: (error as Error).message });
+    }
+    const paperBackup = backup as unknown as BackupFile;
+    try {
+      assertSpecificationAssessmentReferences(
+        paperBackup.courses ?? [],
+        paperBackup.courseAssessments ?? [],
+      );
+    } catch (error) {
+      context.addIssue({
+        code: 'custom',
+        path: ['courseAssessments'],
+        message: (error as Error).message,
+      });
     }
     const require = (key: string, version: number) => {
       if (backup[key] === undefined)

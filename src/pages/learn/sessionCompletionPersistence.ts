@@ -68,6 +68,7 @@ export async function persistSessionCompletion(
       db.revisionPlans,
       db.courseAssessments,
       db.courses,
+      db.concepts,
       db.lessons,
       db.cards,
       db.lessonCards,

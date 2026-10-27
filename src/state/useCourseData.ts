@@ -30,7 +30,11 @@ import {
   performanceForCourseBackingDecks,
 } from '../db/backingDecks';
 
-export { computeCourseSummaries, type CourseSummary, type CourseSummaryProgress } from './courseSummaries';
+export {
+  computeCourseSummaries,
+  type CourseSummary,
+  type CourseSummaryProgress,
+} from './courseSummaries';
 export { useSidebarData, useCourseDashboardData } from './ShellCourseData';
 
 // ---------------------------------------------------------------------------
@@ -303,15 +307,17 @@ export function useCourseAssessments(courseId: string | undefined): CourseAssess
  */
 export function useCourseSummaries(): Record<string, CourseSummary> | undefined {
   return useLiveQuery(async () => {
-    const [records, lessons, cards, assessments] = await db.transaction(
+    const [records, lessons, cards, assessments, concepts, links] = await db.transaction(
       'r',
-      [db.courses, db.lessons, db.cards, db.courseAssessments],
+      [db.courses, db.lessons, db.cards, db.courseAssessments, db.concepts, db.lessonCards],
       () =>
         Promise.all([
           db.courses.toArray(),
           db.lessons.toArray(),
           db.cards.toArray(),
           db.courseAssessments.toArray(),
+          db.concepts.toArray(),
+          db.lessonCards.toArray(),
         ]),
     );
     return computeCourseSummaries(
@@ -319,6 +325,10 @@ export function useCourseSummaries(): Record<string, CourseSummary> | undefined 
       lessons,
       await hydrateCardsWithHistory(cards),
       assessments,
+      Date.now(),
+      { links, exposures: [], completions: [] },
+      undefined,
+      concepts,
     );
   }, []);
 }

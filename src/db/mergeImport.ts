@@ -1,3 +1,8 @@
+import {
+  specificationAssessmentPointIds,
+  validatePaperAssessmentDates,
+} from '../specifications/assessment';
+import { assertShareSpecificationAssessments } from './sharePayload';
 /**
  * Classroom-distribution merge importer (docs/spec/portability.md).
  *
@@ -122,6 +127,9 @@ function courseSource(payload: LineagePayload): NonNullable<CourseDistributedCop
     ...(payload.course.specificationRef === undefined
       ? {}
       : { specificationRef: payload.course.specificationRef }),
+    ...(payload.course.specificationData === undefined
+      ? {}
+      : { specificationData: payload.course.specificationData }),
     ...(payload.course.examBoard === undefined ? {} : { examBoard: payload.course.examBoard }),
     ...(payload.course.specification === undefined
       ? {}
@@ -163,6 +171,7 @@ export async function importLineageFirstTime(
     throw new Error('Payload does not carry a course lineage (missing li/rv).');
   }
   assertShareLessonPrerequisites(payload.lessons);
+  assertShareSpecificationAssessments(payload);
   // A detached copy (or the teacher's own course) already holds these ids, and
   // adoption cannot reuse them, so fall back to a plain, untracked import.
   if (await lineageIdsInUse(payload)) {
@@ -180,6 +189,9 @@ export async function importLineageFirstTime(
       ...(payload.course.specificationRef === undefined
         ? {}
         : { specificationRef: payload.course.specificationRef }),
+      ...(payload.course.specificationData === undefined
+        ? {}
+        : { specificationData: payload.course.specificationData }),
       ...(payload.course.examBoard === undefined ? {} : { examBoard: payload.course.examBoard }),
       ...(payload.course.specification === undefined
         ? {}
@@ -413,6 +425,7 @@ export async function mergeLineageUpdate(
   }
 
   assertShareLessonPrerequisites(payload.lessons);
+  assertShareSpecificationAssessments(payload);
   return db.transaction('rw', MERGE_TABLES, async (tx) => {
     const course = await db.courses.get(courseId);
     if (!course) throw new Error('Course not found.');
@@ -612,6 +625,7 @@ export async function mergeLineageUpdate(
       unlockMode: course.unlockMode,
       creator: course.creator,
       specificationRef: course.specificationRef,
+      specificationData: course.specificationData,
       examBoard: course.examBoard,
       specification: course.specification,
     };
@@ -621,6 +635,7 @@ export async function mergeLineageUpdate(
       'unlockMode',
       'creator',
       'specificationRef',
+      'specificationData',
       'examBoard',
       'specification',
     ] as const) {
@@ -644,6 +659,15 @@ export async function mergeLineageUpdate(
         },
       }),
     );
+    const updatedCourse = await db.courses.get(courseId);
+    const updatedAssessments = await db.courseAssessments
+      .where('courseId')
+      .equals(courseId)
+      .toArray();
+    for (const assessment of updatedAssessments) {
+      specificationAssessmentPointIds(assessment, updatedCourse);
+    }
+    validatePaperAssessmentDates(updatedAssessments);
     await syncCourseSchedulingUnits(courseId);
     await db.lineageIdMappings.put(mapping);
 

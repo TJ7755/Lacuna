@@ -1,3 +1,4 @@
+import { assertSpecificationAssessmentReferences } from '../specifications/assessment';
 import { assertLessonPrerequisites } from './lessonPrerequisites';
 import { db } from './schema';
 import { addReviewHistoryInBatches } from './addReviewHistoryInBatches';
@@ -102,6 +103,11 @@ export async function mergeBackupForRecovery(prepared: PreparedBackup): Promise<
     }
     await db.courseAssessments.bulkPut(mergedCourseAssessments);
   }
+
+  assertSpecificationAssessmentReferences(
+    await db.courses.toArray(),
+    await db.courseAssessments.toArray(),
+  );
 
   const localQuestionState = {
     concepts: await db.concepts.toArray(),

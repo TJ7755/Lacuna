@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  specificationAssessmentPointIds,
+  validatePaperAssessmentDates,
+} from '../specifications/assessment';
 import { assertShareLessonPrerequisites } from './lessonPrerequisites';
 import { parseQuestionSetPracticeNode } from './questionSetPracticeNode';
 import { CURRENT_ITEM_PAYLOAD_VERSION } from './types';
@@ -6,7 +10,15 @@ import type { ItemPayload, QuestionSetPracticeNode, UnlockMode } from './types';
 import type { QuestionPayload } from '../questions/types';
 import { itemPayloadIsValid } from '../items/payloadValidation';
 import { parseQuestionSetRecord, type QuestionSetRecord } from '../questions/questionSetCodec';
-import { specificationPointIdsSchema, specificationRefSchema } from '../specifications/linkSchemas';
+import {
+  specificationPointIdsSchema,
+  specificationRefSchema,
+  specificationDataSchema,
+  specificationCoverageFields,
+  validSpecificationCoverageSelector,
+} from '../specifications/linkSchemas';
+import { assertCourseSpecificationSelection } from '../specifications/data';
+import type { Specification } from '../specifications/catalogue';
 import type { SpecificationReference } from '../specifications/links';
 
 // ---------------------------------------------------------------------------
@@ -189,6 +201,7 @@ const ShareCourseSchema = z
     n: z.string().min(1),
     d: z.string().optional(), // description
     specificationRef: specificationRefSchema.optional(),
+    specificationData: specificationDataSchema.optional(),
     examBoard: z.string().optional(),
     specification: z.string().optional(),
     o: z.union([z.literal(0), z.literal(1)]), // objective: 0 expectedMarks, 1 securedTopics
@@ -202,6 +215,11 @@ const ShareCourseSchema = z
     um: z.union([z.literal('linear'), z.literal('semi-linear'), z.literal('open')]),
   })
   .superRefine((course, context) => {
+    try {
+      assertCourseSpecificationSelection(course.specificationData, course.specificationRef);
+    } catch (error) {
+      context.addIssue({ code: 'custom', message: (error as Error).message });
+    }
     if (course.sm === 1 && course.e !== undefined) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -225,12 +243,21 @@ const ShareExamSchema = z
     ls: z.array(z.number()).optional(), // indices into the payload's lessons array
     k: z.union([z.literal('f'), z.literal('c')]).optional(),
     a: z.number().nullable().optional(),
-    m: z.union([z.literal('p'), z.literal('c')]).optional(),
+    m: z.union([z.literal('p'), z.literal('c'), z.literal('s')]).optional(),
+    ...specificationCoverageFields,
     x: z.array(z.string()).optional(),
     ac: z.literal(1).optional(),
     c: z.number().optional(),
   })
   .superRefine((assessment, context) => {
+    if (
+      assessment.m === 's'
+        ? !validSpecificationCoverageSelector(assessment) || assessment.ls !== undefined
+        : assessment.specificationPaperId !== undefined ||
+          assessment.specificationPointIds !== undefined
+    ) {
+      context.addIssue({ code: 'custom', message: 'Invalid specification assessment coverage.' });
+    }
     if (assessment.sm === 1) {
       if (assessment.k !== 'f') {
         context.addIssue({
@@ -475,6 +502,7 @@ export interface ShareCourse {
   n: string; // name
   d?: string; // description
   specificationRef?: SpecificationReference;
+  specificationData?: Specification;
   examBoard?: string;
   specification?: string;
   o: 0 | 1; // objective: 0 expectedMarks, 1 securedTopics
@@ -498,7 +526,9 @@ export interface ShareExam {
   ls?: number[]; // indices into the payload's lessons array (scoped lessons)
   k?: 'f' | 'c';
   a?: number | null;
-  m?: 'p' | 'c';
+  m?: 'p' | 'c' | 's';
+  specificationPaperId?: string;
+  specificationPointIds?: string[];
   x?: string[];
   ac?: 1;
   c?: number;
@@ -658,6 +688,23 @@ export type SharePayload =
 export const V1_SHARE_CODE_MESSAGE =
   'This share code is a v1 deck share code and can no longer be imported.';
 
+export function assertShareSpecificationAssessments(
+  payload: Exclude<SharePayload, SharePayloadV1>,
+): void {
+  const assessments = (payload.exams ?? []).map((exam) => ({
+    coverageMode: exam.m === 's' ? ('specification' as const) : ('prefix' as const),
+    specificationPaperId: exam.specificationPaperId,
+    specificationPointIds: exam.specificationPointIds,
+    kind: exam.k === 'f' ? ('final' as const) : ('checkpoint' as const),
+    examDate: exam.e,
+    schedulingMode: exam.sm === 1 ? ('steady' as const) : ('exam' as const),
+  }));
+  for (const assessment of assessments) {
+    specificationAssessmentPointIds(assessment, payload.course);
+  }
+  validatePaperAssessmentDates(assessments);
+}
+
 export function parseSharePayload(payload: unknown): SharePayload {
   const parse = SharePayloadSchema.safeParse(payload);
   if (!parse.success) {
@@ -667,6 +714,7 @@ export function parseSharePayload(payload: unknown): SharePayload {
     throw new Error(V1_SHARE_CODE_MESSAGE);
   }
   assertShareLessonPrerequisites(parse.data.lessons);
+  assertShareSpecificationAssessments(parse.data as Exclude<SharePayload, SharePayloadV1>);
   if (parse.data.v === 4 || parse.data.v === 5 || parse.data.v === 6) {
     return {
       ...parse.data,

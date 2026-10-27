@@ -6,7 +6,7 @@ import { db, makeId } from '../../db/schema';
 import { pauseAssetGc } from '../../db/assets';
 import { getSchedulingUnit, performanceForReviewUnits } from '../../db/backingDecks';
 import { getCourse } from '../../db/read';
-import { dailyReviewCounts, hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
+import { dailyReviewCounts } from '../../db/reviewHistoryRead';
 import type {
   Card,
   Grade,
@@ -75,6 +75,7 @@ import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
 import {
   prepareSimpleSessionQueue,
   loadLessonSessionSource,
+  loadGlobalSessionSource,
   loadCourseSessionSource,
   resolveCourseSessionSelection,
   prepareCourseSessionPool,
@@ -853,7 +854,7 @@ export function useLearnSession({
       };
       markLoad('load-start');
       let units: StudyUnit[];
-      let sessionUnits: SchedulingUnitRecord[] | SessionUnit[];
+      let sessionUnits: Array<SchedulingUnitRecord | SessionUnit>;
       let cards: Card[];
       // Set for lesson sessions so notes always precede the Simple-mode pass.
       let firstStudyLessonId: string | undefined;
@@ -877,13 +878,21 @@ export function useLearnSession({
           courseLessons,
           examDates,
           links,
+          courseLinks,
+          concepts,
           allCourseCards,
           lessonExposures,
           linkedCardIds,
           membership,
         } = await loadLessonSessionSource(course.id, lessonId);
         lessonHasMembersRef.current = membership.length > 0;
-        const examDateContext = makeExamDateContext(course, courseLessons, examDates);
+        const examDateContext = makeExamDateContext(
+          course,
+          courseLessons,
+          examDates,
+          courseLinks,
+          concepts,
+        );
         const schedulingUnit = (await getSchedulingUnit(course.id, lessonId)) ?? course;
         cards = standaloneSimple
           ? course.archived
@@ -1021,10 +1030,10 @@ export function useLearnSession({
           };
         }
       } else {
-        const schedulingUnits = await db.schedulingUnits.toArray();
-        units = schedulingUnits;
-        sessionUnits = schedulingUnits;
-        cards = await hydrateCardsWithHistory(await db.cards.toArray());
+        const source = await loadGlobalSessionSource();
+        units = source.schedulingUnits;
+        sessionUnits = source.sessionUnits;
+        cards = source.cards;
       }
       if (cancelled) return;
 

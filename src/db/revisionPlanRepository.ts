@@ -26,6 +26,7 @@ const revisionPlanInputTables = [
   db.revisionPlans,
   db.courseAssessments,
   db.courses,
+  db.concepts,
   db.lessons,
   db.cards,
   db.lessonCards,
@@ -46,17 +47,27 @@ async function resolveCurrentRevisionInput(
     throw new Error('Steady retention does not have an assessment deadline.');
   }
   const datedAssessment = assessment as CourseAssessment & { examDate: number };
-  const [courseRecord, assessments, lessons, cards, links, exposures, completions, practiceNodes] =
-    await Promise.all([
-      db.courses.get(assessment.courseId),
-      db.courseAssessments.where('courseId').equals(assessment.courseId).toArray(),
-      db.lessons.where('courseId').equals(assessment.courseId).sortBy('orderIndex'),
-      db.cards.where('courseId').equals(assessment.courseId).toArray(),
-      db.lessonCards.toArray(),
-      db.lessonCardExposures.toArray(),
-      db.lessonCompletions.toArray(),
-      db.practiceNodes.where('courseId').equals(assessment.courseId).toArray(),
-    ]);
+  const [
+    courseRecord,
+    assessments,
+    lessons,
+    cards,
+    links,
+    exposures,
+    completions,
+    practiceNodes,
+    concepts,
+  ] = await Promise.all([
+    db.courses.get(assessment.courseId),
+    db.courseAssessments.where('courseId').equals(assessment.courseId).toArray(),
+    db.lessons.where('courseId').equals(assessment.courseId).sortBy('orderIndex'),
+    db.cards.where('courseId').equals(assessment.courseId).toArray(),
+    db.lessonCards.toArray(),
+    db.lessonCardExposures.toArray(),
+    db.lessonCompletions.toArray(),
+    db.practiceNodes.where('courseId').equals(assessment.courseId).toArray(),
+    db.concepts.where('courseId').equals(assessment.courseId).toArray(),
+  ]);
   if (!courseRecord) throw new Error('The course could not be found.');
   const hydratedCards = await hydrateCardsWithHistory(cards);
   const course = hydrateCourse(
@@ -65,6 +76,7 @@ async function resolveCurrentRevisionInput(
   );
   const reachedLessonIds = currentAssessmentPracticeContext({
     course,
+    concepts,
     assessments,
     lessons,
     cards: hydratedCards,
@@ -77,6 +89,7 @@ async function resolveCurrentRevisionInput(
     assessment: datedAssessment,
     resolved: resolveRevisionPlanInput({
       assessment: datedAssessment,
+      specificationContext: { course, concepts },
       preferredLessonIds: courseLessonOrderPreference(course),
       lessons,
       cards: hydratedCards,

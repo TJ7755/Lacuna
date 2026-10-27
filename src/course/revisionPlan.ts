@@ -17,12 +17,16 @@ import type {
 } from '../db/types';
 import { isAvailable } from '../fsrs/eligibility';
 import { getComponentsInZone } from '../utils/datetime';
-import { resolveAssessmentCoverage } from './assessmentCoverage';
+import {
+  resolveAssessmentCoverage,
+  type AssessmentSpecificationContext,
+} from './assessmentCoverage';
 import { lessonCardMembership } from './lessonMembership';
 import { lessonTaught } from './unlock';
 
 export interface RevisionPlanContext {
   assessment: CourseAssessment;
+  specificationContext?: AssessmentSpecificationContext;
   preferredLessonIds?: readonly string[];
   lessons: Lesson[];
   cards: Card[];
@@ -84,6 +88,7 @@ export function resolveRevisionPlanInput(context: RevisionPlanContext): Resolved
     context.cards,
     context.links,
     context.preferredLessonIds,
+    context.specificationContext,
   );
   if (!resolved.validation.valid) {
     throw new Error(resolved.validation.issues[0]?.message ?? 'Assessment coverage is invalid.');

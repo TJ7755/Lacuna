@@ -1,7 +1,17 @@
 import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../db/types';
 import { lessonCardMembershipForLessons } from './lessonMembership';
 import { resolveLessonOrder } from './lessonOrder';
+import type { Concept } from '../questions/types';
+import {
+  specificationAssessmentPointIds,
+  type AssessmentSpecificationCourse,
+} from '../specifications/assessment';
 export { lessonOrder } from './lessonOrder';
+
+export interface AssessmentSpecificationContext {
+  course?: AssessmentSpecificationCourse;
+  concepts?: readonly Concept[];
+}
 
 export type AssessmentValidationCode =
   | 'missing-placement-lesson'
@@ -13,7 +23,8 @@ export type AssessmentValidationCode =
   | 'custom-lesson-after-assessment'
   | 'missing-excluded-card'
   | 'cross-course-excluded-card'
-  | 'excluded-card-not-covered';
+  | 'excluded-card-not-covered'
+  | 'invalid-specification-coverage';
 
 export interface AssessmentValidationIssue {
   code: AssessmentValidationCode;
@@ -43,6 +54,7 @@ export function resolveAssessmentCoverage(
   cards: Card[],
   links: LessonCardLink[],
   preferredLessonIds?: readonly string[],
+  specificationContext?: AssessmentSpecificationContext,
 ): ResolvedAssessmentCoverage {
   const issues: AssessmentValidationIssue[] = [];
   const orderedLessons = resolveLessonOrder(
@@ -81,7 +93,42 @@ export function resolveAssessmentCoverage(
   }
 
   let coveredLessons: Lesson[];
-  if (assessment.coverageMode === 'prefix') {
+  let specificationCards: Card[] | undefined;
+  if (assessment.coverageMode === 'specification') {
+    specificationCards = [];
+    try {
+      const points = new Set(
+        specificationAssessmentPointIds(assessment, specificationContext?.course),
+      );
+      if (!specificationContext?.concepts) {
+        throw new Error('Specification coverage requires Course Concepts.');
+      }
+      const conceptIds = new Set(
+        specificationContext.concepts
+          .filter(
+            (concept) =>
+              concept.scope === 'course' &&
+              concept.courseId === assessment.courseId &&
+              concept.specificationPointIds?.some((point) => points.has(point)),
+          )
+          .map((concept) => concept.id),
+      );
+      specificationCards = cards.filter(
+        (card) => card.courseId === assessment.courseId && conceptIds.has(card.conceptId),
+      );
+    } catch (error) {
+      issues.push({
+        code: 'invalid-specification-coverage',
+        message: error instanceof Error ? error.message : 'Invalid specification coverage.',
+      });
+    }
+    const memberIds = new Set(specificationCards.map((card) => card.id));
+    const lessonIds = new Set(
+      specificationCards.flatMap((card) => (card.primaryLessonId ? [card.primaryLessonId] : [])),
+    );
+    for (const link of links) if (memberIds.has(link.cardId)) lessonIds.add(link.lessonId);
+    coveredLessons = orderedLessons.filter((lesson) => lessonIds.has(lesson.id));
+  } else if (assessment.coverageMode === 'prefix') {
     coveredLessons = orderedLessons.slice(0, placementIndex + 1);
   } else {
     if (assessment.lessonIds.length === 0) {
@@ -135,9 +182,11 @@ export function resolveAssessmentCoverage(
   }
 
   const coveredLessonIds = new Set(coveredLessons.map((lesson) => lesson.id));
-  const coveredCards = lessonCardMembershipForLessons(coveredLessonIds, cards, links).filter(
-    (card) => card.courseId === assessment.courseId,
-  );
+  const coveredCards =
+    specificationCards ??
+    lessonCardMembershipForLessons(coveredLessonIds, cards, links).filter(
+      (card) => card.courseId === assessment.courseId,
+    );
   const coveredCardIds = new Set(coveredCards.map((card) => card.id));
   for (const cardId of assessment.excludedCardIds) {
     const card = cardsById.get(cardId);
@@ -179,6 +228,7 @@ export function resolveAssessmentCoverage(
             'cross-course-covered-lesson',
             'missing-excluded-card',
             'cross-course-excluded-card',
+            'invalid-specification-coverage',
           ].includes(issue.code),
         ),
       issues,

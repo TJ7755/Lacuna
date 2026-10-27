@@ -4,7 +4,13 @@ import { itemPayloadIsValid } from '../items/payloadValidation';
 import { parseQuestionSetRecord } from '../questions/questionSetCodec';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 import { parseQuestionSetPracticeNode } from './questionSetPracticeNode';
-import { specificationRefSchema } from '../specifications/linkSchemas';
+import {
+  specificationRefSchema,
+  specificationDataSchema,
+  specificationCoverageFields,
+  validSpecificationCoverageSelector,
+} from '../specifications/linkSchemas';
+import { assertCourseSpecificationSelection } from '../specifications/data';
 
 export const text = z.string();
 export const id = text.min(1);
@@ -171,6 +177,7 @@ export const course = object({
   examBoard: text.optional(),
   specification: text.optional(),
   specificationRef: specificationRefSchema.optional(),
+  specificationData: specificationDataSchema.optional(),
   colour: text.optional(),
   examDatePromptDismissed: flag.optional(),
   learnFirst: flag.optional(),
@@ -203,8 +210,18 @@ export const course = object({
       examBoard: text.optional(),
       specification: text.optional(),
       specificationRef: specificationRefSchema.optional(),
+      specificationData: specificationDataSchema.optional(),
     }).optional(),
   }).optional(),
+}).superRefine((course, context) => {
+  for (const source of [course, course.distributedCopy?.source]) {
+    if (!source) continue;
+    try {
+      assertCourseSpecificationSelection(source.specificationData, source.specificationRef);
+    } catch (error) {
+      context.addIssue({ code: 'custom', message: (error as Error).message });
+    }
+  }
 });
 export const assessment = object({
   ...timestamps,
@@ -218,12 +235,21 @@ export const assessment = object({
   afterLessonId: id.nullable(),
   excludedCardIds: ids,
   needsAuthorConfirmation: flag.optional(),
-  coverageMode: z.enum(['prefix', 'custom']),
+  coverageMode: z.enum(['prefix', 'custom', 'specification']),
   lessonIds: ids.optional(),
-}).refine(
-  (row) => row.coverageMode !== 'custom' || row.lessonIds !== undefined,
-  'Custom coverage requires lessonIds',
-);
+  ...specificationCoverageFields,
+})
+  .refine(
+    (row) => row.coverageMode !== 'custom' || row.lessonIds !== undefined,
+    'Custom coverage requires lessonIds',
+  )
+  .refine(
+    (row) =>
+      row.coverageMode === 'specification'
+        ? validSpecificationCoverageSelector(row) && row.lessonIds === undefined
+        : row.specificationPaperId === undefined && row.specificationPointIds === undefined,
+    'Invalid specification assessment coverage',
+  );
 const performance = {
   runningMeanResponseTime: number,
   runningStdDevResponseTime: number,

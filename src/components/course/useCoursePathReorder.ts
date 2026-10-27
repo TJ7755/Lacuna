@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import type { AssessmentSpecificationContext } from '../../course/assessmentCoverage';
 import type { PathNode } from '../../course/path';
 import type { Card, Lesson, LessonCardLink } from '../../db/types';
 import { reorderLessons } from '../../db/lessonRepository';
@@ -23,6 +24,7 @@ export function useCoursePathReorder(
   onError: (message: string) => void,
   localOrder = false,
   learnerCheckpointIds: readonly string[] = [],
+  specificationContext?: AssessmentSpecificationContext,
 ) {
   const reorderNodes = useMemo(
     () => (localOrder ? nodes : nodes.filter((node) => node.nodeType !== 'practice-auto')),
@@ -51,16 +53,16 @@ export function useCoursePathReorder(
   const orderForMove = useCallback(
     (_ids: string[], id: string, index: number) =>
       localOrder
-        ? localPathMoveOrder(reorderNodes, id, index, cards, links)
-        : pathMoveOrder(reorderNodes, id, index, cards, links),
-    [reorderNodes, cards, links, localOrder],
+        ? localPathMoveOrder(reorderNodes, id, index, cards, links, specificationContext)
+        : pathMoveOrder(reorderNodes, id, index, cards, links, specificationContext),
+    [reorderNodes, cards, links, localOrder, specificationContext],
   );
   const keyboardTarget = useCallback(
     (id: string, delta: -1 | 1) =>
       localOrder
         ? localPathKeyboardTarget(reorderNodes, id, delta)
-        : pathKeyboardTarget(reorderNodes, id, delta, cards, links),
-    [reorderNodes, cards, links, localOrder],
+        : pathKeyboardTarget(reorderNodes, id, delta, cards, links, specificationContext),
+    [reorderNodes, cards, links, localOrder, specificationContext],
   );
   const persistPathOrder = useCallback(
     async (ids: string[], id: string) => {

@@ -138,6 +138,7 @@ export function CoursePath() {
     notifyReorderError,
     localOrder,
     learnerCheckpointIds,
+    examDateContext?.specificationContext,
   );
 
   usePageShortcuts({

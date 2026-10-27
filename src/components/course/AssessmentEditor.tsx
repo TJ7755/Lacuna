@@ -19,6 +19,9 @@ import {
 } from '../ui/Field';
 import { choiceChipClass } from '../ui/choiceChip';
 import { plainFront } from '../cards/lessonCardRow';
+import { useAssessmentSpecification } from '../../state/useAssessmentSpecification';
+import type { AssessmentSpecificationContext } from '../../course/assessmentCoverage';
+import { papersForSelection, pointsForSelection } from '../../specifications/selection';
 
 export interface AssessmentDraft {
   name: string;
@@ -30,6 +33,8 @@ export interface AssessmentDraft {
   lessonIds: string[];
   excludedCardIds: string[];
   needsAuthorConfirmation?: boolean;
+  specificationPaperId?: string;
+  specificationPointIds?: string[];
 }
 
 export function draftFromAssessment(assessment: CourseAssessment): AssessmentDraft {
@@ -43,6 +48,8 @@ export function draftFromAssessment(assessment: CourseAssessment): AssessmentDra
     lessonIds: assessment.coverageMode === 'custom' ? [...assessment.lessonIds] : [],
     excludedCardIds: [...assessment.excludedCardIds],
     needsAuthorConfirmation: assessment.needsAuthorConfirmation,
+    specificationPaperId: assessment.specificationPaperId,
+    specificationPointIds: assessment.specificationPointIds,
   };
 }
 
@@ -69,9 +76,31 @@ export function assessmentChanges(draft: AssessmentDraft): Partial<CourseAssessm
     excludedCardIds: draft.excludedCardIds,
     needsAuthorConfirmation: draft.needsAuthorConfirmation,
   };
+  if (draft.coverageMode === 'specification') {
+    return draft.specificationPaperId
+      ? {
+          ...common,
+          coverageMode: 'specification',
+          specificationPaperId: draft.specificationPaperId,
+          specificationPointIds: undefined,
+          lessonIds: undefined,
+        }
+      : {
+          ...common,
+          coverageMode: 'specification',
+          specificationPaperId: undefined,
+          specificationPointIds: draft.specificationPointIds ?? [],
+          lessonIds: undefined,
+        };
+  }
+  const lessonCoverage = {
+    ...common,
+    specificationPaperId: undefined,
+    specificationPointIds: undefined,
+  };
   return draft.coverageMode === 'custom'
-    ? { ...common, coverageMode: 'custom', lessonIds: draft.lessonIds }
-    : { ...common, coverageMode: 'prefix', lessonIds: undefined };
+    ? { ...lessonCoverage, coverageMode: 'custom', lessonIds: draft.lessonIds }
+    : { ...lessonCoverage, coverageMode: 'prefix', lessonIds: undefined };
 }
 
 interface AssessmentEditorProps {
@@ -98,6 +127,12 @@ export function AssessmentEditor({
   initialNameFocusTarget = false,
 }: AssessmentEditorProps) {
   const [query, setQuery] = useState('');
+  const specificationContext = useAssessmentSpecification(courseId);
+  const { course } = specificationContext;
+  const spec = course?.specificationData;
+  const selection = course?.specificationRef;
+  const papers = spec && selection ? papersForSelection(spec, selection) : [];
+  const points = spec && selection ? pointsForSelection(spec, selection) : [];
   const assessment = useMemo(
     () =>
       ({
@@ -111,14 +146,21 @@ export function AssessmentEditor({
     [courseId, draft, kind],
   );
   const resolved = useMemo(
-    () => resolveAssessmentCoverage(assessment, lessons, cards, links),
-    [assessment, cards, lessons, links],
+    () =>
+      resolveAssessmentCoverage(assessment, lessons, cards, links, undefined, specificationContext),
+    [assessment, cards, lessons, links, specificationContext],
   );
   const candidates = useMemo(
     () =>
-      resolveAssessmentCoverage({ ...assessment, excludedCardIds: [] }, lessons, cards, links)
-        .cards,
-    [assessment, cards, lessons, links],
+      resolveAssessmentCoverage(
+        { ...assessment, excludedCardIds: [] },
+        lessons,
+        cards,
+        links,
+        undefined,
+        specificationContext,
+      ).cards,
+    [assessment, cards, lessons, links, specificationContext],
   );
   const coveredLessonIds = new Set(resolved.coveredLessons.map((lesson) => lesson.id));
   const normalisedQuery = query.trim().toLocaleLowerCase();
@@ -205,7 +247,9 @@ export function AssessmentEditor({
       <fieldset>
         <legend className={`mb-2 ${fieldLabelClassName}`}>Coverage</legend>
         <div className="flex flex-wrap gap-2">
-          {(['prefix', 'custom'] as const).map((mode) => (
+          {(
+            ['prefix', 'custom', ...(papers.length ? ['specification' as const] : [])] as const
+          ).map((mode) => (
             <button
               key={mode}
               type="button"
@@ -213,11 +257,68 @@ export function AssessmentEditor({
               onClick={() => onChange({ ...draft, coverageMode: mode })}
               className={choiceChipClass(draft.coverageMode === mode)}
             >
-              {mode === 'prefix' ? 'Everything so far' : 'Choose lessons'}
+              {mode === 'prefix'
+                ? 'Everything so far'
+                : mode === 'custom'
+                  ? 'Choose lessons'
+                  : 'Specification'}
             </button>
           ))}
         </div>
       </fieldset>
+
+      {draft.coverageMode === 'specification' && spec && (
+        <fieldset className="flex flex-col gap-3">
+          <legend className={`mb-2 ${fieldLabelClassName}`}>Specification coverage</legend>
+          <label className={fieldLabelClassName}>
+            Paper
+            <select
+              className={inputClassName}
+              value={draft.specificationPaperId ?? ''}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  specificationPaperId: event.target.value || undefined,
+                  specificationPointIds: event.target.value ? undefined : [],
+                })
+              }
+            >
+              <option value="">Choose specification points</option>
+              {papers.map((paper) => (
+                <option key={paper.id} value={paper.id}>
+                  {paper.ref}: {paper.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          {!draft.specificationPaperId && (
+            <div className="flex flex-wrap gap-2" aria-label="Covered specification points">
+              {points.map((point) => {
+                const id = `${spec.id}:${point.id}`;
+                const selected = draft.specificationPointIds?.includes(id) ?? false;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={selected}
+                    className={choiceChipClass(selected)}
+                    onClick={() =>
+                      onChange({
+                        ...draft,
+                        specificationPointIds: selected
+                          ? draft.specificationPointIds!.filter((value) => value !== id)
+                          : [...(draft.specificationPointIds ?? []), id],
+                      })
+                    }
+                  >
+                    {point.ref}: {point.title}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </fieldset>
+      )}
 
       {draft.coverageMode === 'custom' && (
         <fieldset>
@@ -328,6 +429,7 @@ export function assessmentDraftIsSaveable(
   lessons: Lesson[],
   cards: Card[],
   links: LessonCardLink[],
+  specificationContext?: AssessmentSpecificationContext,
 ): boolean {
   const resolved = resolveAssessmentCoverage(
     {
@@ -341,6 +443,8 @@ export function assessmentDraftIsSaveable(
     lessons,
     cards,
     links,
+    undefined,
+    specificationContext,
   );
   return resolved.validation.valid && !resolved.validation.needsAuthorConfirmation;
 }

@@ -2,6 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { makeExamDateContext, resolveCardExamDate } from './examDate';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from './params';
 import type { Card, Course, CourseAssessment, Lesson } from '../db/types';
+import type { Concept } from '../questions/types';
+import { cardSchedulingHorizon } from './horizon';
+import {
+  paperSpecification,
+  paperSpecificationReference,
+} from '../specifications/paperFixture.testFixtures';
 
 const NOW = 1_000_000_000_000;
 
@@ -183,5 +189,101 @@ describe('resolveCardExamDate', () => {
     const course = makeCourse({ examDate: NOW + 42 * MS_PER_DAY });
     const ctx = makeExamDateContext(course, [makeLesson()], []);
     expect(resolveCardExamDate(makeCard(), ctx, NOW)).toBe(course.examDate);
+  });
+
+  it('advances shared knowledge through its papers and maintains recall after the last one', () => {
+    const course = makeCourse({
+      specificationRef: paperSpecificationReference,
+      specificationData: paperSpecification,
+      examDate: NOW + 20 * MS_PER_DAY,
+    });
+    const first = makeExamDate({
+      coverageMode: 'specification',
+      specificationPaperId: 'paper-1',
+      examDate: NOW + 10 * MS_PER_DAY,
+    });
+    const final = makeExamDate({
+      id: 'final',
+      kind: 'final',
+      coverageMode: 'specification',
+      specificationPaperId: 'paper-2',
+      examDate: course.examDate,
+    });
+    const card = makeCard();
+    const concept: Concept = {
+      id: card.conceptId,
+      scope: 'course',
+      courseId: course.id,
+      scopeKey: `course:${course.id}`,
+      name: 'Cells',
+      provisional: false,
+      createdAt: NOW,
+      updatedAt: NOW,
+      specificationPointIds: ['example-science:cells'],
+    };
+    const ctx = makeExamDateContext(course, [makeLesson()], [final, first], [], [concept]);
+
+    expect(resolveCardExamDate(card, ctx, NOW)).toBe(first.examDate);
+    expect(resolveCardExamDate(card, ctx, first.examDate!)).toBe(first.examDate);
+    expect(resolveCardExamDate(card, ctx, first.examDate! + 1)).toBe(final.examDate);
+    const afterFinal = final.examDate! + 1;
+    expect(resolveCardExamDate(card, ctx, afterFinal)).toBeUndefined();
+    expect(cardSchedulingHorizon(card, course, ctx, afterFinal)).toBe(afterFinal + 7 * MS_PER_DAY);
+  });
+
+  it('does not target an unrelated final after a Card has finished its own paper', () => {
+    const course = makeCourse({
+      specificationRef: paperSpecificationReference,
+      specificationData: paperSpecification,
+      examDate: NOW + 20 * MS_PER_DAY,
+    });
+    const first = makeExamDate({
+      coverageMode: 'specification',
+      specificationPaperId: 'paper-1',
+      examDate: NOW + 10 * MS_PER_DAY,
+    });
+    const final = makeExamDate({
+      id: 'final',
+      kind: 'final',
+      coverageMode: 'specification',
+      specificationPointIds: ['example-science:enzymes'],
+      examDate: course.examDate,
+    });
+    const cards = [
+      makeCard(),
+      makeCard({ id: 'enzymes', conceptId: 'enzymes' }),
+      makeCard({ id: 'unlinked', conceptId: 'unlinked' }),
+    ];
+    const concepts: Concept[] = ['cells', 'enzymes'].map((point, index) => ({
+      id: cards[index].conceptId,
+      scope: 'course',
+      courseId: course.id,
+      scopeKey: `course:${course.id}`,
+      name: point,
+      provisional: false,
+      createdAt: NOW,
+      updatedAt: NOW,
+      specificationPointIds: [`example-science:${point}`],
+    }));
+    const ctx = makeExamDateContext(course, [makeLesson()], [first, final], [], concepts);
+
+    expect(cards.map((card) => resolveCardExamDate(card, ctx, NOW))).toEqual([
+      first.examDate,
+      final.examDate,
+      undefined,
+    ]);
+    const betweenPapers = first.examDate! + 1;
+    expect(resolveCardExamDate(cards[0], ctx, betweenPapers)).toBeUndefined();
+    expect(cardSchedulingHorizon(cards[0], course, ctx, betweenPapers)).toBe(
+      betweenPapers + 7 * MS_PER_DAY,
+    );
+    const laterTest = makeExamDate({ id: 'school-test', examDate: NOW + 30 * MS_PER_DAY });
+    expect(
+      resolveCardExamDate(
+        cards[1],
+        makeExamDateContext(course, [makeLesson()], [laterTest, final], [], concepts),
+        NOW,
+      ),
+    ).toBe(final.examDate);
   });
 });

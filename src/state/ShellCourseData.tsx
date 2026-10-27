@@ -43,22 +43,32 @@ export function ShellCourseDataProvider({
   children: ReactNode;
 }) {
   const data = useLiveQuery(async (): Promise<ShellCourseData> => {
-    const [records, lessons, cards, assessments, practiceNodes, dashboardRows] =
-      await db.transaction(
-        'r',
-        [
-          db.courses,
-          db.lessons,
-          db.cards,
-          db.courseAssessments,
-          db.practiceNodes,
-          db.lessonCards,
-          db.lessonCardExposures,
-          db.lessonCompletions,
-          db.coursePerformance,
-        ],
-        () =>
-          Promise.all([
+    const [
+      records,
+      lessons,
+      cards,
+      assessments,
+      practiceNodes,
+      concepts,
+      lessonLinks,
+      dashboardRows,
+    ] = await db.transaction(
+      'r',
+      [
+        db.courses,
+        db.lessons,
+        db.cards,
+        db.courseAssessments,
+        db.concepts,
+        db.practiceNodes,
+        db.lessonCards,
+        db.lessonCardExposures,
+        db.lessonCompletions,
+        db.coursePerformance,
+      ],
+      async () => {
+        const [records, lessons, cards, assessments, practiceNodes, dashboardRows] =
+          await Promise.all([
             db.courses.toArray(),
             db.lessons.toArray(),
             db.cards.toArray(),
@@ -72,8 +82,31 @@ export function ShellCourseDataProvider({
                   db.coursePerformance.toArray(),
                 ])
               : undefined,
-          ]),
-      );
+          ]);
+        const hasPapers = assessments.some(
+          (assessment) => assessment.coverageMode === 'specification',
+        );
+        const concepts = hasPapers ? await db.concepts.toArray() : [];
+        const lessonLinks =
+          dashboardRows?.[0] ??
+          (hasPapers && lessons.length
+            ? await db.lessonCards
+                .where('lessonId')
+                .anyOf(lessons.map((lesson) => lesson.id))
+                .toArray()
+            : []);
+        return [
+          records,
+          lessons,
+          cards,
+          assessments,
+          practiceNodes,
+          concepts,
+          lessonLinks,
+          dashboardRows,
+        ] as const;
+      },
+    );
     const courses = records.map((record) =>
       hydrateCourse(record, finalAssessmentForCourse(record.id, assessments)),
     );
@@ -106,8 +139,9 @@ export function ShellCourseDataProvider({
         cards,
         assessments,
         now,
-        undefined,
+        { links: lessonLinks, exposures: [], completions: [] },
         activity,
+        concepts,
       ),
       stats: computeStudyStats(
         cards,
@@ -150,6 +184,7 @@ export function ShellCourseDataProvider({
             completions,
           },
           activity,
+          concepts,
         ),
         forecasts: sidebar.forecasts,
         // Dashboard response-time calibration is course-based; navigation keeps

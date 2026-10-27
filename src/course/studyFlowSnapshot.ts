@@ -136,13 +136,14 @@ export function buildCourseStudyFlowSnapshot({
   const earlier = earlierLessonIds(
     course.studyStartLessonId,
     lessons,
-    nodes.flatMap((node) => node.nodeType === 'lesson' ? [node.id] : []),
+    nodes.flatMap((node) => (node.nodeType === 'lesson' ? [node.id] : [])),
   );
   const curricularReachedLessonIds = new Set(
     [...reachedLessonIds].filter((id) => !earlier.has(id)),
   );
   const assessmentContext = {
     course,
+    concepts: examDateContext.specificationContext?.concepts,
     assessments: examDateContext.courseAssessments,
     lessons,
     cards,
@@ -312,8 +313,14 @@ export function buildCourseStudyFlowSnapshot({
     courseId: course.id,
     studyStartLessonId: course.studyStartLessonId,
     catchUpEligibleCount: catchUpPracticePool(
-      cards, course, lessons, links,
-      examDateContext, reachedLessonIds, now, earlier,
+      cards,
+      course,
+      lessons,
+      links,
+      examDateContext,
+      reachedLessonIds,
+      now,
+      earlier,
     ).length,
     archived: course.archived === true,
     nodes,

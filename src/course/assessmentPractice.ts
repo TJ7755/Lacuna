@@ -18,6 +18,7 @@ import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { isLessonUnlocked, lessonEffectiveReleaseDates } from './path';
 import { practiceCardScope } from './studyPools';
 import { earlierCourseLessonIds } from './courseEntry';
+import type { Concept } from '../questions/types';
 
 export interface AssessmentPracticeOption {
   assessmentId: string;
@@ -28,6 +29,7 @@ export interface AssessmentPracticeOption {
 
 export interface AssessmentPracticeContext {
   course: Course;
+  concepts?: readonly Concept[];
   assessments: CourseAssessment[];
   lessons: Lesson[];
   cards: Card[];
@@ -112,16 +114,17 @@ export function assessmentPracticePool(
     context.cards,
     context.links,
     courseLessonOrderPreference(context.course),
+    { course: context.course, concepts: context.concepts },
   );
   const reachedCoveredLessonIds = new Set(
     resolved.coveredLessons
       .filter((lesson) => context.reachedLessonIds.has(lesson.id))
       .map((lesson) => lesson.id),
   );
-  const excludedCardIds = new Set(assessment.excludedCardIds);
+  const resolvedCardIds = new Set(resolved.cards.map((card) => card.id));
   const assessmentCardIds = new Set(
     lessonCardMembershipForLessons(reachedCoveredLessonIds, context.cards, context.links)
-      .filter((card) => card.courseId === assessment.courseId && !excludedCardIds.has(card.id))
+      .filter((card) => resolvedCardIds.has(card.id))
       .map((card) => card.id),
   );
   const decay = decayOf(context.course.fsrsParameters);
@@ -164,6 +167,7 @@ export function assessmentPracticeOptions(
         context.cards,
         context.links,
         courseLessonOrderPreference(context.course),
+        { course: context.course, concepts: context.concepts },
       );
       if (!resolved.cards.some((card) => triggerCardIds.has(card.id))) return [];
       const eligibleCount = assessmentPracticePool(assessment, context).length;

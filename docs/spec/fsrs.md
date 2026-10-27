@@ -18,6 +18,9 @@ Keep exactly one final assessment, dated at the last paper. Earlier papers are c
 Card without an explicit lesson date override, target the earliest upcoming assessment that covers
 it. After that paper passes, use its next applicable paper. A specification-scoped final is not a
 fallback date for unrelated Cards. Passing an earlier paper does not end the Course.
+After a Card's last applicable paper, the existing ordinary-retention horizon applies even if
+another paper remains for other material. A session explicitly revising one assessment keeps that
+assessment's own horizon.
 
 These dates change the prediction horizon, not the underlying review evidence: overlapping papers
 share the same Card and FSRS history. Earliest-paper targeting is a product heuristic, not a claim
