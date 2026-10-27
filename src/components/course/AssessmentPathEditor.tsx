@@ -132,9 +132,14 @@ export function AssessmentPathEditor({
         ?.focus();
       return false;
     }
-    if (!resolved.validation.valid || resolved.validation.needsAuthorConfirmation) {
+    const emptySchoolTest = schoolTest && resolved.coveredLessons.length === 0;
+    if (
+      emptySchoolTest ||
+      !resolved.validation.valid ||
+      resolved.validation.needsAuthorConfirmation
+    ) {
       setError(
-        schoolTest && draft.coverageMode === 'custom' && draft.lessonIds.length === 0
+        emptySchoolTest
           ? 'Choose at least one lesson for this test.'
           : (resolved.validation.issues[0]?.message ?? 'Confirm the assessment’s scope.'),
       );

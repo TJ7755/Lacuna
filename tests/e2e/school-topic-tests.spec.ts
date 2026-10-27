@@ -154,7 +154,7 @@ for (const width of [1440, 390]) {
 
     await page.goto(courseUrl);
     const assessments = page.getByRole('region', { name: 'Assessments', exact: true });
-    await assessments.getByRole('button', { name: /Biology topic test/ }).click();
+    await assessments.getByRole('button', { name: /Biology topic test Checkpoint$/ }).click();
     await details.getByRole('button', { name: 'Edit test', exact: true }).click();
     const edit = page.getByRole('dialog', { name: 'Edit test', exact: true });
     await edit.getByRole('button', { name: 'Enzymes', exact: true }).click();

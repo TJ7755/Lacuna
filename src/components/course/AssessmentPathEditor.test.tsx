@@ -3,7 +3,11 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import type { Card, CourseAssessment, Lesson } from '../../db/types';
 import { ToastProvider } from '../ui/Toast';
 import { AssessmentPathEditor } from './AssessmentPathEditor';
-import { updateCourseAssessment, deleteCourseAssessment } from '../../db/assessmentRepository';
+import {
+  createCourseAssessment,
+  updateCourseAssessment,
+  deleteCourseAssessment,
+} from '../../db/assessmentRepository';
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal'],
   speedMultiplier: () => 0,
@@ -117,4 +121,35 @@ it('requires anchored confirmation before deleting a checkpoint', async () => {
 it('never offers deletion of the final assessment', () => {
   editor('final');
   expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+});
+
+it('keeps a school test open when switching to Everything so far leaves no covered lessons', async () => {
+  const onSaved = vi.fn();
+  render(
+    <ToastProvider>
+      <AssessmentPathEditor
+        courseId="course"
+        lessons={lessons}
+        cards={cards}
+        links={[]}
+        schoolTest
+        onSaved={onSaved}
+      />
+    </ToastProvider>,
+  );
+  fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+    target: { value: 'Atoms topic test' },
+  });
+  const lesson = screen.getByRole('button', { name: 'Atoms' });
+  fireEvent.click(lesson);
+  fireEvent.click(lesson);
+  fireEvent.click(screen.getByRole('button', { name: '0 chosen lessons' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Everything so far' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Choose at least one lesson for this test.',
+  );
+  expect(createCourseAssessment).not.toHaveBeenCalled();
+  expect(onSaved).not.toHaveBeenCalled();
 });
