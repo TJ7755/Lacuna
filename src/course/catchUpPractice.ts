@@ -14,13 +14,14 @@ export function catchUpPracticePool(
   examDateContext: ExamDateContext,
   reachedLessonIds: ReadonlySet<string>,
   now: number = Date.now(),
-  priorKnowledgeLessonIds: ReadonlySet<string> = earlierLessonIds(course.studyStartLessonId, lessons),
+  priorKnowledgeLessonIds: ReadonlySet<string> = earlierLessonIds(
+    course.studyStartLessonId,
+    lessons,
+    undefined,
+    course.schoolCoveredLessonIds,
+  ),
 ): Card[] {
-  const earlier = new Set(
-    [...priorKnowledgeLessonIds].filter((id) =>
-      reachedLessonIds.has(id),
-    ),
-  );
+  const earlier = new Set([...priorKnowledgeLessonIds].filter((id) => reachedLessonIds.has(id)));
   const scope = lessonCardMembershipForLessons(earlier, cards, links);
   return studyPool(
     eligiblePracticePool(scope, course, examDateContext, now),

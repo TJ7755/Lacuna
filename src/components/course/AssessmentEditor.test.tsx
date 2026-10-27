@@ -125,14 +125,13 @@ describe('AssessmentEditor', () => {
     expect(screen.getByText(/1 lesson · 1 card/)).toBeInTheDocument();
   });
 
-  it('surfaces lessons positioned after the assessment', () => {
+  it('allows explicit coverage beyond the assessment path position', () => {
     render(<Harness />);
     fireEvent.change(screen.getByLabelText('Path position'), { target: { value: 'l1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Choose lessons' }));
     fireEvent.click(screen.getByRole('button', { name: 'Bonding' }));
-    expect(
-      screen.getByText('Covered lesson l2 is positioned after the assessment.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bonding', pressed: true })).toBeInTheDocument();
+    expect(screen.getByText(/1 lesson · 1 card/)).toBeInTheDocument();
   });
 
   it('shows stale references and keeps the draft unsaveable', () => {

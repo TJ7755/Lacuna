@@ -3,6 +3,7 @@ import {
   validatePaperAssessmentDates,
 } from '../specifications/assessment';
 import { assertShareSpecificationAssessments } from './sharePayload';
+import { earlierCourseLessonIds } from '../course/courseEntry';
 /**
  * Classroom-distribution merge importer (docs/spec/portability.md).
  *
@@ -651,6 +652,9 @@ export async function mergeLineageUpdate(
       courseId,
       stampUpdatedAt({
         ...detailChanges,
+        ...(course.schoolCoveredLessonIds === undefined && course.studyStartLessonId
+          ? { schoolCoveredLessonIds: [...earlierCourseLessonIds(course, existingLessons, [], [])] }
+          : {}),
         distributedCopy: {
           ...dc,
           revision: payload.rv,
