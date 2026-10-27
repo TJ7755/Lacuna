@@ -1,5 +1,6 @@
 import type { StudyProgress } from '../../course/studyProgress';
 import { ProgressBar } from '../ui/ProgressBar';
+import { formatShortDate } from '../../utils/datetime';
 
 /** The current course evidence, refreshed at the activity boundary rather than while answering. */
 export function StudyProgressPanel({ progress }: { progress: StudyProgress }) {
@@ -16,7 +17,7 @@ export function StudyProgressPanel({ progress }: { progress: StudyProgress }) {
                 ? 'Today'
                 : `${exam.daysRemaining} ${exam.daysRemaining === 1 ? 'day' : 'days'} to go`}
               {' · '}
-              {new Date(exam.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              {formatShortDate(exam.date, exam.timeZone)}
             </p>
           </div>
           {exam.value === null ? (

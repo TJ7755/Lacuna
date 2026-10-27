@@ -172,7 +172,7 @@ export function useCourseStudyFlow(
         dueReviewCardIds: snapshot.dueReviewCardIds,
         availableLessonIds: new Set(
           nodes.flatMap((node) =>
-            node.nodeType === 'lesson' && node.status === 'available' ? [node.id] : [],
+            node.nodeType === 'lesson' && node.status !== 'locked' ? [node.id] : [],
           ),
         ),
         assessmentId: previousStep?.kind === 'practice' ? previousStep.assessmentId : undefined,

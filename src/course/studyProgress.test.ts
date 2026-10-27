@@ -396,3 +396,26 @@ it('lists current work rather than every reviewed topic or authored question poo
     skills: [{ id: 'causal-link', demonstratedCount: 0, gapCount: 0, latestOutcome: undefined }],
   });
 });
+
+it.each([
+  ['2026-10-27T12:00:00Z', '2026-10-27T14:00:00Z', 'Europe/London', 0],
+  ['2026-10-27T23:00:00Z', '2026-10-28T01:00:00Z', 'America/Los_Angeles', 0],
+  ['2026-10-27T23:00:00Z', '2026-10-28T01:00:00Z', 'UTC', 1],
+] as const)('counts calendar days for %s to %s in %s', (now, date, timeZone, daysRemaining) => {
+  const input = fixture();
+  const exam = makeExamDate({
+    id: 'timed-exam',
+    courseId: 'course',
+    examDate: Date.parse(date),
+    timeZone,
+    lessonIds: ['a'],
+  });
+  expect(
+    buildStudyProgress({
+      ...input,
+      course: { ...input.course, timeZone: 'Asia/Tokyo' },
+      assessments: [exam],
+      now: Date.parse(now),
+    }).exam,
+  ).toMatchObject({ date: Date.parse(date), timeZone, daysRemaining });
+});

@@ -98,7 +98,8 @@ describe('StudyStepTransition', () => {
         ...progress,
         exam: {
           name: 'Biology paper 1',
-          date: Date.UTC(2026, 10, 3),
+          date: Date.UTC(2026, 10, 3, 0, 30),
+          timeZone: 'America/Los_Angeles',
           daysRemaining: 7,
           value: 0.64,
           label: 'Predicted recall',
@@ -109,7 +110,7 @@ describe('StudyStepTransition', () => {
     });
     expect(screen.getByRole('region', { name: 'Progress and priorities' })).toBeInTheDocument();
     expect(screen.getByText('Biology paper 1')).toBeInTheDocument();
-    expect(screen.getByText(/7 days to go/)).toBeInTheDocument();
+    expect(screen.getByText('7 days to go · 2 Nov')).toBeInTheDocument();
     expect(
       screen.getByRole('progressbar', { name: 'Predicted recall on exam day' }),
     ).toHaveAttribute('aria-valuenow', '64');

@@ -3,7 +3,8 @@ import { isAvailable } from '../fsrs/eligibility';
 import { rAtExam } from '../fsrs/forwardSim';
 import { decayOf } from '../fsrs/fsrs';
 import { progressHeading, progressValue } from '../fsrs/objective';
-import { MASTERY_R, MS_PER_DAY } from '../fsrs/params';
+import { MASTERY_R } from '../fsrs/params';
+import { calendarDaysUntil } from '../utils/datetime';
 import type { ConceptPracticeItem } from '../questions/conceptPractice';
 import { SCIENCE_TECHNIQUES, type TechniqueId } from '../questions/techniqueTags';
 import type { Concept } from '../questions/types';
@@ -15,6 +16,7 @@ export interface StudyProgress {
   exam?: {
     name: string;
     date: number;
+    timeZone?: string;
     daysRemaining: number;
     value: number | null;
     label: string;
@@ -134,10 +136,12 @@ export function buildStudyProgress(input: StudyProgressInput): StudyProgress {
       : cards;
     // One displayed target has one horizon; nearer papers and lesson overrides cannot replace it.
     const target = { ...course, examDate: date };
+    const timeZone = selected?.timeZone ?? course.timeZone;
     exam = {
       name: selected?.name ?? 'Final exam',
       date,
-      daysRemaining: Math.ceil((date - now) / MS_PER_DAY),
+      timeZone,
+      daysRemaining: calendarDaysUntil(date, now, timeZone),
       value: scope.length ? progressValue(scope, target, now) : null,
       label: progressHeading(course),
       securedCards: scope.filter((card) => rAtExam(card, date, now, decay) >= MASTERY_R).length,
