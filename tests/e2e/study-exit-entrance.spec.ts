@@ -33,22 +33,43 @@ for (const [width, reducedMotion] of [
       .first();
     await expect(start).toBeEnabled();
     const frames = await start.evaluate((button) => {
-      const frames: { time: number; opacity: number; covered: boolean }[] = [];
+      const frames: {
+        time: number;
+        covered: boolean;
+        surfaceTop: number | null;
+        headerPaintsTop: boolean;
+        pendingExitOpacity: number;
+        exitOpacity: number | null;
+      }[] = [];
+      const opacity = (element: Element | null | undefined) => {
+        if (!element) return 0;
+        let value = 1;
+        for (let node: Element | null = element; node; node = node.parentElement) {
+          value *= Number(getComputedStyle(node).opacity);
+        }
+        return value;
+      };
       const started = performance.now();
       const done = new Promise<typeof frames>((resolve, reject) => {
         function sample() {
           const cover = document.querySelector('[data-testid="study-cover"]');
-          const exit = [...document.querySelectorAll('header button')].find(
-            (element) => element.textContent?.trim() === 'Exit' && !element.closest('[inert]'),
+          const surface = cover?.querySelector('.flow-surface');
+          const pendingHeader = cover?.querySelector('header');
+          const exit = [...document.querySelectorAll('[data-study-entrance] header button')].find(
+            (element) => element.textContent?.trim() === 'Exit',
           );
-          if (exit) {
-            let opacity = 1;
-            for (let element: Element | null = exit; element; element = element.parentElement) {
-              opacity *= Number(getComputedStyle(element).opacity);
-            }
-            frames.push({ time: performance.now() - started, opacity, covered: !!cover });
-          }
-          if (!cover && frames.length > 0 && performance.now() - started > 700) {
+          frames.push({
+            time: performance.now() - started,
+            covered: !!cover,
+            surfaceTop: surface?.getBoundingClientRect().top ?? null,
+            headerPaintsTop:
+              !!pendingHeader &&
+              opacity(pendingHeader) > 0.01 &&
+              getComputedStyle(pendingHeader).backgroundColor !== 'rgba(0, 0, 0, 0)',
+            pendingExitOpacity: opacity(pendingHeader?.querySelector('button')),
+            exitOpacity: exit ? opacity(exit) * (1 - opacity(surface)) : null,
+          });
+          if (!cover && !!exit && performance.now() - started > 900) {
             resolve(frames);
           } else if (performance.now() - started > 5000) {
             reject(new Error('The session entrance did not settle.'));
@@ -64,16 +85,26 @@ for (const [width, reducedMotion] of [
       contentType: 'application/json',
     });
     await page.screenshot({ path: testInfo.outputPath('session.png') });
+    const sessionFrames = frames.filter((frame) => frame.exitOpacity !== null);
+    expect(sessionFrames.length).toBeGreaterThan(0);
     if (reducedMotion === 'no-preference') {
-      const covered = frames.filter((frame) => frame.covered);
-      expect(covered.length).toBeGreaterThan(0);
-      expect(covered[0].opacity).toBeLessThan(0.95);
-      expect(covered.some((frame) => frame.opacity > 0 && frame.opacity < 0.95)).toBe(true);
-      expect(covered.at(-1)!.opacity).toBe(1);
+      const expanding = frames.filter(
+        (frame) => frame.surfaceTop !== null && frame.surfaceTop > 84,
+      );
+      expect(expanding.length).toBeGreaterThan(0);
+      expect(expanding.every((frame) => !frame.headerPaintsTop)).toBe(true);
+      expect(expanding.every((frame) => frame.pendingExitOpacity <= 0.01)).toBe(true);
+      expect(
+        sessionFrames.some(
+          (frame) => frame.covered && frame.exitOpacity! > 0 && frame.exitOpacity! < 0.95,
+        ),
+      ).toBe(true);
+      const revealed = sessionFrames.find((frame) => !frame.covered)!;
+      expect(revealed.exitOpacity).toBeGreaterThanOrEqual(0.95);
     } else {
-      expect(frames.every((frame) => !frame.covered && frame.opacity === 1)).toBe(true);
+      expect(sessionFrames.every((frame) => !frame.covered && frame.exitOpacity === 1)).toBe(true);
     }
-    expect(frames.at(-1)!.opacity).toBe(1);
+    expect(sessionFrames.at(-1)!.exitOpacity).toBe(1);
     await expect(page.locator('[data-study-face="front"]')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Exit', exact: true })).toBeEnabled();
     await page.getByRole('button', { name: 'Exit', exact: true }).click();
