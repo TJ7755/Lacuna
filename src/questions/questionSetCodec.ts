@@ -1,4 +1,5 @@
 import { parseQuestionBankMetadata } from './bankMetadata';
+import { techniqueTagsSchema } from './techniqueTags';
 import {
   validateQuestionSet,
   type AssessmentDimension,
@@ -95,6 +96,7 @@ function parseAllocation(value: unknown, path: string): MarkAllocation {
     'maxMarks',
     'dimension',
     'targetConceptIds',
+    'techniqueTags',
   ]);
   const dimension = string(row.dimension, `${path}.dimension`);
   if (!['knowledge', 'application', 'exam-execution', 'mixed'].includes(dimension)) {
@@ -107,6 +109,9 @@ function parseAllocation(value: unknown, path: string): MarkAllocation {
     maxMarks: safePositiveInteger(row.maxMarks, `${path}.maxMarks`),
     dimension: dimension as AssessmentDimension,
     targetConceptIds: strings(row.targetConceptIds, `${path}.targetConceptIds`),
+    ...(row.techniqueTags === undefined
+      ? {}
+      : { techniqueTags: techniqueTagsSchema.parse(row.techniqueTags) }),
   };
 }
 

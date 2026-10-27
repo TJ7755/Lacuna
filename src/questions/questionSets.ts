@@ -1,5 +1,6 @@
 import type { JevMarkProvenance } from '../jev/types';
 import type { QuestionBankMetadata } from './bankMetadata';
+import { techniqueTagsSchema, type TechniqueTags } from './techniqueTags';
 
 /** Ordered, shareable question content. Markdown source includes images and maths. */
 export interface QuestionSet {
@@ -53,6 +54,7 @@ export interface MarkAllocation {
   dimension: AssessmentDimension;
   /** Existing Concept identities; multiple links do not multiply this allocation's marks. */
   targetConceptIds: string[];
+  techniqueTags?: TechniqueTags;
 }
 
 export interface QuestionAnswer {
@@ -73,6 +75,7 @@ export type QuestionSetIssueCode =
   | 'invalid-marks'
   | 'allocation-total-mismatch'
   | 'invalid-dimension'
+  | 'invalid-technique-tags'
   | 'invalid-options';
 
 export interface QuestionSetIssue {
@@ -136,6 +139,12 @@ export function validateQuestionSet(set: QuestionSet): QuestionSetIssue[] {
         issue('invalid-dimension', `${allocationPath}.dimension`);
       }
       checkLinks(allocation.targetConceptIds, `${allocationPath}.targetConceptIds`);
+      if (
+        allocation.techniqueTags !== undefined &&
+        !techniqueTagsSchema.safeParse(allocation.techniqueTags).success
+      ) {
+        issue('invalid-technique-tags', `${allocationPath}.techniqueTags`);
+      }
     });
     if (validAllocations && !Number.isSafeInteger(allocationTotal)) {
       issue('invalid-marks', `${path}.allocations`);

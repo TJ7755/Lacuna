@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { techniqueTagsSchema } from './techniqueTags';
 
 const text = z.string().trim().min(1).max(20000);
 const identity = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/);
@@ -41,6 +42,7 @@ const answer = z.strictObject({
         maxMarks: marks,
         dimension: z.enum(['knowledge', 'application', 'exam-execution', 'mixed']),
         targetConceptIds: z.array(identity).length(1),
+        techniqueTags: techniqueTagsSchema.optional(),
       }),
     )
     .min(1)
