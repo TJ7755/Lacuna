@@ -15,6 +15,11 @@ import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCod
 import type { MarkAllocation, QuestionAnswer, QuestionSetQuestion } from './questionSets';
 import { emptyQuestionSchedule, scheduleQuestionReview } from './scheduler';
 import type { QuestionScheduleState } from './types';
+import {
+  deriveConceptPracticeNeeds,
+  questionGapPriority,
+  type ConceptPracticeNeeds,
+} from './techniqueEvidence';
 
 export { undoConceptPracticeAttempt } from './questionSetAttemptRepository';
 export { questionPresentationFingerprint as conceptPracticeFingerprint } from './generators/declarative';
@@ -152,6 +157,7 @@ export interface ConceptPracticeItem {
   unseenCount: number;
   familiarCount: number;
   availableCount: number;
+  needs?: ConceptPracticeNeeds;
 }
 
 function familyKey(set: QuestionSetRecord, questionId: string): string {
@@ -168,6 +174,7 @@ async function context(courseId: string) {
     db.questionSetAttempts.where('courseId').equals(courseId).toArray(),
   ]);
   const records = attempts.map(parseQuestionSetAttemptRecord);
+  const currentSets = sets.map(parseQuestionSetRecord);
   const seen = new Set(
     records.flatMap((attempt) => exposedQuestions(attempt).map(conceptPracticeFingerprint)),
   );
@@ -185,7 +192,8 @@ async function context(courseId: string) {
   return {
     seenVariants,
     concepts: concepts.filter((concept) => concept.scope === 'course'),
-    candidates: candidates(sets.map(parseQuestionSetRecord)),
+    candidates: candidates(currentSets),
+    needs: deriveConceptPracticeNeeds(records, currentSets),
     attempts: records,
     seen,
     schedules: deriveConceptApplicationSchedules(records),
@@ -216,10 +224,18 @@ export async function listConceptPractice(
         conceptId: concept.id,
         name: concept.name,
         schedule,
-        due: schedule.due === null || schedule.due <= now,
+        due:
+          schedule.due === null ||
+          schedule.due <= now ||
+          Boolean(
+            data.needs.get(concept.id)?.knowledge ||
+            data.needs.get(concept.id)?.application ||
+            data.needs.get(concept.id)?.techniques.length,
+          ),
         unseenCount,
         familiarCount: availableCount - unseenCount,
         availableCount,
+        needs: data.needs.get(concept.id),
       };
     })
     .sort(
@@ -261,7 +277,13 @@ export async function startConceptPractice(
       const data = await context(courseId);
       const due = data.concepts.filter((concept) => {
         const schedule = data.schedules.get(concept.id);
-        return !schedule || schedule.due === null || schedule.due <= now;
+        const needs = data.needs.get(concept.id);
+        return (
+          !schedule ||
+          schedule.due === null ||
+          schedule.due <= now ||
+          Boolean(needs?.knowledge || needs?.application || needs?.techniques.length)
+        );
       });
       const eligible = conceptId
         ? data.concepts.filter((concept) => concept.id === conceptId)
@@ -309,6 +331,8 @@ export async function startConceptPractice(
       pool.sort(
         (a, b) =>
           Number(unseenCapacity(a, data) === 0) - Number(unseenCapacity(b, data) === 0) ||
+          questionGapPriority(b.question, data.needs) -
+            questionGapPriority(a.question, data.needs) ||
           (options.mode === 'mixed'
             ? (cellExposures.get(cellKey(a.set)) ?? 0) - (cellExposures.get(cellKey(b.set)) ?? 0)
             : 0) ||

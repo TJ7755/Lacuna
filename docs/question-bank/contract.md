@@ -111,9 +111,15 @@ competing receipts for audit rather than treating a diagnostic disagreement as a
 marks. Backups and sync retain them; published course content does not contain learner attempts.
 Older strict application versions cannot read these new receipts and need updating before import.
 
-No selector or scheduler consumes these diagnostic receipts yet. A future consumer must exclude
-overridden, disputed, undone or assisted evidence as appropriate; retaining a model result does
-not make it independent evidence or authorise practice-priority changes. Device cache keys include
+Concept practice consumes supported diagnostic receipts to prioritise fresh questions for the
+same Concept and required technique. It excludes overridden, disputed, undone, assisted,
+corrected and superseded-content evidence, and abstains on competing receipts or uncertain
+categories. A lost mark does not downgrade every tagged skill. No-gap evidence remains contextual
+to its Concept; it does not establish general technique mastery or update Card FSRS state.
+Knowledge gaps take priority over technique-only gaps, with a match to both preferred when
+available. Novelty and finite family-capacity rules remain in force; exhaustion requires explicit
+familiar practice. Retaining a model result alone does not make it independent evidence or
+authorise practice-priority changes. Device cache keys include
 the diagnostic request, rubric and policy; diagnostic evidence can be cached even when the mark
 abstains. The route continues to report actual batch input tokens once and `Server-Timing`;
 one HTTP request does not establish a token-cost saving. No live diagnostic accuracy, latency or
