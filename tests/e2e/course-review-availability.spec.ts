@@ -25,7 +25,7 @@ for (const width of [320, 390]) {
 }
 
 for (const exam of [false, true]) {
-  test(`keeps due reviews and early practice separate (exam: ${exam})`, async ({
+  test(`recommends due reviews then early exam preparation (exam: ${exam})`, async ({
     page,
   }, testInfo) => {
     const errors: string[] = [];
@@ -100,6 +100,7 @@ for (const exam of [false, true]) {
                   if (assessment.kind === 'final')
                     assessments.put({
                       ...assessment,
+                      name: 'Biology exam',
                       schedulingMode: 'exam',
                       examDate: now + 30 * day,
                       timeZone: 'UTC',
@@ -119,7 +120,7 @@ for (const exam of [false, true]) {
     await page.getByRole('button', { name: 'Study Biology' }).click();
     const preview = page.getByRole('region', { name: 'Session preview' });
     await expect(preview.getByRole('list', { name: "Today's session" })).toHaveText(
-      'Review due cards1 card',
+      'Review due cards1 card available · up to 10 reviews',
     );
     await preview.getByRole('button', { name: 'Start session' }).click();
     await expect(page.locator('[data-study-card-id="review-due"]:not([inert])')).toBeVisible();
@@ -132,9 +133,18 @@ for (const exam of [false, true]) {
 
     if (exam) {
       await page.getByRole('button', { name: 'Study Biology' }).click();
-      await expect(preview.getByText('Nothing is due right now.')).toBeVisible();
-      await page.screenshot({ path: testInfo.outputPath('optional-exam-practice.png') });
-      await preview.getByRole('button', { name: 'Practise for exam 1' }).click();
+      const recommendation = preview.getByRole('list', { name: "Today's session" });
+      await expect(recommendation.getByRole('listitem')).toHaveCount(1);
+      await expect(recommendation).toHaveText(
+        'Practise for exam1 card available · up to 10 reviews',
+      );
+      await page.screenshot({ path: testInfo.outputPath('early-exam-preparation.png') });
+      await preview.getByRole('button', { name: 'Other ways', exact: true }).click();
+      await expect(
+        preview.getByRole('button', { name: 'Practise for exam', exact: true }),
+      ).toBeVisible();
+      await preview.getByRole('button', { name: 'Start session', exact: true }).click();
+      await expect(page).toHaveURL(/#\/course\/[^/]+\/study$/);
       await expect(page.locator('[data-study-card-id="review-future"]:not([inert])')).toBeVisible();
       await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
       await page.getByRole('button', { name: 'Yes', exact: true }).click();

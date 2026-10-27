@@ -61,19 +61,16 @@ describe('checkpoint assessment details', () => {
           cards={[card]}
           links={[]}
           onClose={vi.fn()}
-          onRevise={vi.fn()}
         />
       </MemoryRouter>,
     );
     const close = screen.getByRole('button', { name: 'Close assessment details' });
-    const revise = screen.getByRole('button', { name: 'Revise for Paper 1' });
-    expect(revise).toBeEnabled();
-    revise.focus();
-    fireEvent.keyDown(revise, { key: 'Tab' });
+    close.focus();
+    fireEvent.keyDown(close, { key: 'Tab' });
     expect(document.activeElement).toBe(close);
     close.focus();
     fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(revise);
+    expect(document.activeElement).toBe(close);
   });
   it('scales sheet motion and disables durations for reduced motion', () => {
     expect(assessmentSheetTiming(1.4).sheet).toEqual(expandingActionSpring(1.4));
@@ -81,8 +78,8 @@ describe('checkpoint assessment details', () => {
     expect(assessmentSheetTiming(0).sheet).toEqual({ duration: 0 });
   });
 
-  it('shows identity, resolved scope, exclusions and exact-assessment revision action', () => {
-    const onRevise = vi.fn();
+  it('shows identity, resolved scope and exclusions without a separate revision launch', () => {
+    const onClose = vi.fn();
     render(
       <MemoryRouter>
         <AssessmentDetailSheet
@@ -90,8 +87,7 @@ describe('checkpoint assessment details', () => {
           lessons={[lesson]}
           cards={[card]}
           links={[]}
-          onClose={vi.fn()}
-          onRevise={onRevise}
+          onClose={onClose}
         />
       </MemoryRouter>,
     );
@@ -101,8 +97,9 @@ describe('checkpoint assessment details', () => {
     expect(screen.getByText(/1 lesson · 0 cards/)).toBeInTheDocument();
     expect(screen.queryByText('Scope is valid')).not.toBeInTheDocument();
     expect(screen.queryByText('Needs author review')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Revise for Paper 1' }));
-    expect(onRevise).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('button', { name: /Revise/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close assessment details' }));
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it('folds the kind into the date line and hides an empty exclusions list', () => {
@@ -114,13 +111,12 @@ describe('checkpoint assessment details', () => {
           cards={[card]}
           links={[]}
           onClose={vi.fn()}
-          onRevise={vi.fn()}
         />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('heading', { level: 2, name: 'Paper 1' }).nextElementSibling).toHaveTextContent(
-      /^Checkpoint · /,
-    );
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Paper 1' }).nextElementSibling,
+    ).toHaveTextContent(/^Checkpoint · /);
     expect(screen.queryByText('Exclusions')).not.toBeInTheDocument();
     expect(screen.queryByText('None')).not.toBeInTheDocument();
   });

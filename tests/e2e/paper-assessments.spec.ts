@@ -251,12 +251,28 @@ for (const width of [1440, 390]) {
       .click();
     const details = page.getByRole('dialog', { name: '1: First paper details', exact: true });
     await expect(details.getByText('1 lesson · 1 card', { exact: true })).toBeVisible();
+    await expect(details.getByRole('button', { name: /Revise/ })).toHaveCount(0);
     await capture(page, testInfo, `paper-coverage-details-${width}`);
-    await details.getByRole('button', { name: 'Revise for 1: First paper', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '1: First paper', exact: true })).toBeVisible();
+    await details.getByRole('button', { name: 'Close assessment details', exact: true }).click();
+    await expect(details).toBeHidden();
+    await page.getByRole('button', { name: 'Study', exact: true }).click();
+    const preview = page.getByRole('region', { name: 'Session preview' });
+    await preview.getByRole('button', { name: 'Other ways', exact: true }).click();
+    await preview.getByRole('button', { name: 'Revise for 1: First paper', exact: true }).click();
+    await expect(preview).toBeHidden();
+    const cellsCard = before.cards.find((card) => card.front === 'Name the basic unit of life.');
+    expect(cellsCard).toBeDefined();
+    const scopedCard = page.locator('[data-study-card-id]:not([inert])').filter({ visible: true });
+    await expect(scopedCard).toHaveAttribute('data-study-card-id', cellsCard!.id);
+    await expect(
+      scopedCard
+        .getByText('Name the basic unit of life.', { exact: true })
+        .filter({ visible: true }),
+    ).toBeVisible();
+    await expect(scopedCard.getByText('What does an enzyme do?', { exact: true })).toHaveCount(0);
     await expect(
       page.getByRole('heading', { name: 'Time available today', exact: true }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     expect(await evidence(page)).toEqual(before);
   });
 }

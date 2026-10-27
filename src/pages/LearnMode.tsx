@@ -171,6 +171,7 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
     filterParams,
     requestScopeLessonIds,
     requestMilestoneLessonIds,
+    requestReviewLimit: request?.kind === 'practice' ? request.reviewLimit : undefined,
     practiceNodeKeyParam,
     requestAssessmentId,
     requestPlanId,

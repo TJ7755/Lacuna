@@ -14,7 +14,7 @@ function snapshot(due: number, practices: Partial<StudyFlowPracticeState>[] = []
 const card = (reviewed: boolean) => ({ lastReviewed: reviewed ? 1 : null }) as Card;
 
 describe('planStudySession', () => {
-  it('previews a lesson and the due reviews offered after it, with estimates', () => {
+  it('previews one recommended block without guessing the later queue', () => {
     const plan = planStudySession({
       decision: { kind: 'step', step: { kind: 'lesson', lessonId: 'l1', label: 'Cell structure' } },
       snapshot: snapshot(6),
@@ -24,14 +24,8 @@ describe('planStudySession', () => {
     expect(plan.steps).toEqual([
       // Two reviews plus one new card counted three times: 60 seconds.
       { key: 'lesson:l1', title: 'Cell structure', detail: 'Learn · 3 cards, 1 new', minutes: 1 },
-      {
-        key: 'practice:due-review',
-        title: 'Review due cards',
-        detail: '6 cards, offered next',
-        minutes: 2,
-      },
     ]);
-    expect(plan.totalMinutes).toBe(3);
+    expect(plan.totalMinutes).toBe(1);
     expect(plan.startsWithDueReview).toBe(false);
   });
 
@@ -53,7 +47,12 @@ describe('planStudySession', () => {
       meanReviewSeconds: 8,
     });
     expect(plan.steps).toEqual([
-      { key: 'practice:due-review', title: 'Review due cards', detail: '30 cards', minutes: 4 },
+      {
+        key: 'practice:due-review',
+        title: 'Review due cards',
+        detail: '30 cards available · up to 10 reviews',
+        minutes: 2,
+      },
     ]);
     expect(plan.startsWithDueReview).toBe(true);
   });
@@ -82,7 +81,12 @@ describe('planStudySession', () => {
       meanReviewSeconds: 8,
     });
     expect(plan.steps).toEqual([
-      { key: 'practice:p1', title: 'Card practice', detail: '1 card', minutes: 1 },
+      {
+        key: 'practice:p1',
+        title: 'Card practice',
+        detail: '1 card available · up to 10 reviews',
+        minutes: 2,
+      },
     ]);
   });
 

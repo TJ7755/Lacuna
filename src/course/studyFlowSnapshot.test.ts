@@ -104,7 +104,7 @@ function assessment(id: string, examDate: number, afterLessonId: string): Course
 
 describe('buildCourseStudyFlowSnapshot', () => {
   it.each([MS_PER_DAY, 0, -MS_PER_DAY])(
-    'only offers final-lesson review when due (%ims)',
+    'keeps due recall separate while recommending available early exam practice (%ims)',
     (dueOffset) => {
       const c = course();
       const finalLesson = lesson('final', 0);
@@ -131,7 +131,15 @@ describe('buildCourseStudyFlowSnapshot', () => {
       expect(snapshot.recurringPracticeEligibleCount).toBe(dueOffset > 0 ? 0 : 1);
       expect(planNextStudyStep(snapshot)).toEqual(
         dueOffset > 0
-          ? { kind: 'complete' }
+          ? {
+              kind: 'step',
+              step: {
+                kind: 'practice',
+                nodeKey: 'exam-practice',
+                mode: 'exam',
+                label: 'Practise for exam',
+              },
+            }
           : {
               kind: 'step',
               step: {
@@ -440,7 +448,6 @@ describe('buildCourseStudyFlowSnapshot', () => {
     });
   });
 });
-
 
 it('plans the joining lesson while independently counting capped earlier exam practice', () => {
   const c = course({ studyStartLessonId: 'l2', unlockMode: 'semi-linear', newCardsPerDay: 1 });

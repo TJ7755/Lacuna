@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ReactRouterDom from 'react-router-dom';
 import type { Card, Course } from '../../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
-import { CourseStudyActions } from '../course/CourseStudyActions';
 import { prefetchRoute } from '../../routes/prefetch';
 import { StudySheet } from './StudySheet';
 import {
@@ -28,6 +27,7 @@ const mockFlows: Record<
       recurringPracticeEligibleCount: number;
       examPracticeEligibleCount?: number;
       practiceByKey: Map<string, unknown>;
+      assessmentOptions?: { assessmentId: string; name: string }[];
     };
     decision: { kind: 'step'; step: { kind: 'lesson'; lessonId: string; label: string } };
     lessonCardsById: Map<string, Card[]>;
@@ -130,7 +130,8 @@ describe('StudySheet', () => {
   it('offers early exam practice separately from due reviews and the default plan', () => {
     mockFlows.chem.snapshot.examPracticeEligibleCount = 4;
     renderSheet('chem');
-    fireEvent.click(screen.getByRole('button', { name: 'Practise for exam 4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Practise for exam' }));
     expect(mockNavigate).toHaveBeenCalledWith('/course/chem/study?review=exam');
   });
   it('expands the preview before navigating under the cover', async () => {
@@ -155,18 +156,18 @@ describe('StudySheet', () => {
     expect(screen.queryByTestId('study-cover')).not.toBeInTheDocument();
   });
 
-  it('previews the session it will start, with the due reviews offered after', () => {
+  it('previews only the next recommendation and keeps due review available in Other ways', () => {
     mockFlows.chem.snapshot.recurringPracticeEligibleCount = 6;
     renderSheet('chem');
     const steps = screen.getByRole('list', { name: "Today's session" });
     expect(steps).toHaveTextContent('Atomic structureLearn · 2 cards, 1 new');
     expect(steps).toHaveTextContent('2 cards, 1 new');
-    expect(steps).toHaveTextContent('Review due cards6 cards, offered next');
+    expect(steps).not.toHaveTextContent('Review due cards');
     expect(steps.querySelector('[aria-hidden="true"]')).toBeNull();
     expect(steps).not.toHaveTextContent('min');
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
-    // One review plus a new card counted three times is a minute; six reviews round up to two.
-    expect(screen.getByText('About 3 min')).toBeInTheDocument();
+    // One review plus a new card counted three times is a minute.
+    expect(screen.getByText('About 1 min')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study');
     expect(
@@ -191,13 +192,9 @@ describe('StudySheet', () => {
   });
 
   it('reveals named assessments on demand and keeps their study route', () => {
-    Object.assign(mockFlows.chem, {
-      decision: {
-        kind: 'choice',
-        step: { kind: 'lesson', lessonId: 'l1', label: 'Atomic structure' },
-        assessments: [{ assessmentId: 'exam/1', name: 'Chemistry checkpoint' }],
-      },
-    });
+    mockFlows.chem.snapshot.assessmentOptions = [
+      { assessmentId: 'exam/1', name: 'Chemistry checkpoint' },
+    ];
     renderSheet('chem');
     const alternatives = screen.getByRole('button', { name: 'Other ways' });
     expect(alternatives).toHaveAttribute('aria-expanded', 'false');
@@ -264,9 +261,9 @@ describe('StudySheet', () => {
     });
     mockFlows.chem.snapshot.recurringPracticeEligibleCount = 6;
     renderSheet('chem');
-    expect(screen.getByText('About 2 min')).toBeInTheDocument();
+    expect(screen.getByText('About 3 min')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
-    expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study?review=due');
+    expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study');
   });
 
   it('keeps optional practice out of the session preview', () => {
@@ -275,33 +272,16 @@ describe('StudySheet', () => {
   });
 
   it('offers whole-course and lesson practice inside Other ways', async () => {
-    render(
-      <LazyMotion features={domAnimation}>
-        <MemoryRouter>
-          <CourseStudyActions
-            courseId="chem"
-            dueCount={6}
-            doneToday={0}
-            onStudy={vi.fn()}
-            otherWays={[{ label: 'Only review due cards', onSelect: vi.fn() }]}
-          />
-        </MemoryRouter>
-      </LazyMotion>,
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
-    expect(screen.getByRole('menuitem', { name: 'Only review due cards' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Practise until all correct' }));
+    renderSheet('chem');
+    fireEvent.click(screen.getByRole('button', { name: /^Other ways$/ }));
+    const details = screen.getByText('Practise until all correct').closest('details')!;
+    details.open = true;
+    fireEvent(details, new Event('toggle'));
     fireEvent.click(await screen.findByRole('button', { name: 'Start practising' }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/learn?mode=simple');
     fireEvent.change(screen.getByLabelText('What to practise'), { target: { value: 'l1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Start practising' }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/lesson/l1/learn?mode=simple');
-    fireEvent.click(screen.getByRole('button', { name: /^Other ways$/ }));
-    expect(screen.getByRole('menuitem', { name: 'Practise until all correct' })).toHaveFocus();
-    fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Practise until all correct' }), {
-      key: 'Escape',
-    });
-    expect(screen.getByRole('button', { name: 'Other ways to study' })).toHaveFocus();
   });
 
   it('offers to add cards when the course is empty', () => {

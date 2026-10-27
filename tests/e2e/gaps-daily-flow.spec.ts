@@ -358,8 +358,9 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       await pupil.bringToFront();
       const count = (await readAll(pupil, 'reviewHistory')).length;
       await pupil.goto(`/#/course/${importedId}`);
-      await pupil.getByRole('button', { name: 'Other ways to study' }).click();
-      await pupil.getByRole('menuitem', { name: 'Practise until all correct' }).click();
+      await pupil.getByRole('button', { name: 'Study', exact: true }).click();
+      await pupil.getByRole('button', { name: 'Other ways', exact: true }).click();
+      await pupil.getByText('Practise until all correct', { exact: true }).click();
       await pupil.getByRole('button', { name: 'Start practising' }).click();
       await expect(pupil).toHaveURL(new RegExp(`#/course/${importedId}/learn\\?mode=simple$`));
       await expect(pupil.locator('[data-study-card-id]')).toBeVisible();

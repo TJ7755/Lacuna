@@ -10,6 +10,7 @@ export function mayContinueWithoutPause(
   return (
     completed.kind === 'practice' &&
     completed.mode !== 'assessment' &&
+    completed.mode !== 'exam' &&
     summary.reachedGoal &&
     !summary.limitReached &&
     !summary.timeLimitReached &&
@@ -38,7 +39,11 @@ export function continuesWithoutPause(
     next.kind === 'step' &&
     next.step.kind === 'practice' &&
     next.step.mode !== 'assessment' &&
-    !(completed.kind === 'practice' && completed.mode === 'catch-up' &&
-      next.step.mode === 'catch-up')
+    next.step.mode !== 'exam' &&
+    !(
+      completed.kind === 'practice' &&
+      completed.mode === 'catch-up' &&
+      next.step.mode === 'catch-up'
+    )
   );
 }

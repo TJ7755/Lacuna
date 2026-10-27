@@ -1,5 +1,9 @@
 import type { CourseStudyFlowSnapshot } from './studyFlowSnapshot';
 import type { AssessmentPracticeOption } from './assessmentPractice';
+import { SCIENCE_TECHNIQUES } from '../questions/techniqueTags';
+
+/** An operational hand-off size, not a daily allowance or a learning-success threshold. */
+export const STUDY_REVIEW_BLOCK_SIZE = 10;
 
 export type StudyFlowStep =
   | { kind: 'lesson'; lessonId: string; label: string }
@@ -10,7 +14,15 @@ export type StudyFlowStep =
       label: string;
       assessmentId?: string;
     }
-  | { kind: 'exam-questions'; nodeKey: string; label: string };
+  | {
+      kind: 'exam-questions';
+      nodeKey: string;
+      label: string;
+      conceptId: string;
+      scopeConceptIds: string[];
+      allowFamiliar?: boolean;
+      reason?: string;
+    };
 
 export type StudyFlowDecision =
   | { kind: 'step'; step: StudyFlowStep }
@@ -49,19 +61,17 @@ export const EXAM_PRACTICE_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = 
 export function planNextStudyStep(
   snapshot: CourseStudyFlowSnapshot,
   allowCatchUp = true,
+  previousStep?: StudyFlowStep | null,
 ): StudyFlowDecision {
   if (snapshot.archived) return { kind: 'blocked', reason: 'archived' };
-  if (snapshot.recurringPracticeEligibleCount > 0) {
-    return snapshot.assessmentOptions.length > 0
-      ? { kind: 'choice', step: DUE_REVIEW_STEP, assessments: snapshot.assessmentOptions }
-      : { kind: 'step', step: DUE_REVIEW_STEP };
-  }
 
   let hasCurriculum = false;
   let hasLockedLesson = false;
   let step: StudyFlowStep | undefined;
   const startIndex = snapshot.nodes.findIndex(
-    (node) => node.nodeType === 'lesson' && !node.lesson.isExtension &&
+    (node) =>
+      node.nodeType === 'lesson' &&
+      !node.lesson.isExtension &&
       node.id === snapshot.studyStartLessonId,
   );
   for (const node of snapshot.nodes.slice(Math.max(0, startIndex))) {
@@ -90,13 +100,61 @@ export function planNextStudyStep(
     }
   }
 
-  if (step) {
-    const assessments =
-      step.kind === 'practice'
-        ? (snapshot.practiceByKey.get(step.nodeKey)?.assessmentOptions ?? [])
-        : snapshot.assessmentOptions;
-    return assessments.length > 0 ? { kind: 'choice', step, assessments } : { kind: 'step', step };
+  const question = snapshot.questionOptions?.[0];
+  const questionStep: StudyFlowStep | undefined = question
+    ? {
+        kind: 'exam-questions',
+        nodeKey: `questions-${question.conceptId}`,
+        conceptId: question.conceptId,
+        scopeConceptIds: snapshot.questionScopeConceptIds ?? [],
+        label: question.unfinished ? `Resume ${question.name}` : `Practise ${question.name}`,
+        reason: question.needs?.techniques.length
+          ? `Practise: ${question.needs.techniques.map((id) => SCIENCE_TECHNIQUES.find((skill) => skill.id === id)?.name ?? id).join(', ')}.`
+          : question.needs?.knowledge
+            ? 'Check your understanding after reviewing the notes.'
+            : question.needs?.application
+              ? 'Apply your knowledge to an exam question.'
+              : undefined,
+      }
+    : undefined;
+  const repair = question?.repairLessonId;
+  if (questionStep && question?.unfinished) return { kind: 'step', step: questionStep };
+  if (repair && !(previousStep?.kind === 'lesson' && previousStep.lessonId === repair)) {
+    const lesson = snapshot.nodes.find(
+      (node) => node.nodeType === 'lesson' && node.id === repair && node.status !== 'locked',
+    );
+    if (lesson?.nodeType === 'lesson')
+      return {
+        kind: 'step',
+        step: { kind: 'lesson', lessonId: repair, label: `Review ${lesson.lesson.name}` },
+      };
   }
+  if (questionStep && repair && previousStep?.kind === 'lesson')
+    return { kind: 'step', step: questionStep };
+  if (previousStep?.kind === 'practice') {
+    if (questionStep) return { kind: 'step', step: questionStep };
+    if (step?.kind === 'lesson') return { kind: 'step', step };
+  }
+  if (snapshot.recurringPracticeEligibleCount > 0) return { kind: 'step', step: DUE_REVIEW_STEP };
+  const assessment = snapshot.assessmentOptions[0];
+  const assessmentStep: StudyFlowStep | undefined = assessment
+    ? {
+        kind: 'practice',
+        nodeKey: `assessment-${assessment.assessmentId}`,
+        mode: 'assessment',
+        assessmentId: assessment.assessmentId,
+        label: `Prepare for ${assessment.name}`,
+      }
+    : snapshot.examPracticeEligibleCount > 0 && !step
+      ? EXAM_PRACTICE_STEP
+      : undefined;
+  if (assessmentStep && previousStep?.kind !== 'practice')
+    return { kind: 'step', step: assessmentStep };
+  if (questionStep && previousStep?.kind !== 'exam-questions')
+    return { kind: 'step', step: questionStep };
+  if (step) return { kind: 'step', step };
+  if (assessmentStep) return { kind: 'step', step: assessmentStep };
+  if (questionStep) return { kind: 'step', step: questionStep };
 
   if (allowCatchUp && (snapshot.catchUpEligibleCount ?? 0) > 0)
     return { kind: 'step', step: CATCH_UP_STEP };

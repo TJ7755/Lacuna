@@ -4,7 +4,7 @@ import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
 import { QuestionSetPracticeNavigation } from '../components/question-sets/QuestionSetPracticeNavigation';
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { questionSetReturn } from '../questions/questionSetNavigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   questionSetPrimaryKey,
   useQuestionSetBlankConfirmation,
@@ -46,8 +46,19 @@ import { FileTextIcon } from '../components/ui/icons';
 import '../components/question-sets/question-sets.css';
 import '../components/question-sets/question-set-practice.css';
 
-export function QuestionSetPractice() {
-  const { courseId = '', setId = '', attemptId = '' } = useParams();
+export function QuestionSetPractice({
+  study,
+}: {
+  study?: {
+    courseId: string;
+    setId: string;
+    attemptId: string;
+    onComplete: () => void;
+    onExit: () => void;
+  };
+} = {}) {
+  const params = useParams();
+  const { courseId = '', setId = '', attemptId = '' } = study ?? params;
   const { session, error, missing, retryLoad } = useQuestionSetAttempt(courseId, setId, attemptId);
   const retryFocusOwner = useRef<Element | null | undefined>(undefined);
   const backTo = `/course/${courseId}/question-sets/${setId}`;
@@ -83,6 +94,7 @@ export function QuestionSetPractice() {
       key={attemptId}
       session={session}
       initialFocusOwner={retryFocusOwner.current}
+      study={study}
     />
   );
 }
@@ -90,14 +102,23 @@ export function QuestionSetPractice() {
 function PracticeWorkspace({
   session,
   initialFocusOwner,
+  study,
 }: {
   session: QuestionSetAttemptSession;
   initialFocusOwner?: Element | null;
+  study?: { onComplete: () => void; onExit: () => void };
 }) {
   const [formDirty, setFormDirty] = useState(false);
   const [reflectionDirty, setReflectionDirty] = useState(false);
   const progress = useAttemptProgress(session, formDirty || reflectionDirty);
   const attempt = progress.record;
+  const completed = useRef<string | null>(null);
+  useEffect(() => {
+    if (study && attempt.status === 'complete' && completed.current !== attempt.id) {
+      completed.current = attempt.id;
+      study.onComplete();
+    }
+  }, [attempt.id, attempt.status, study]);
   const origin = questionSetReturn(useLocation().state, attempt.courseId);
   const navigate = useNavigate();
   const rootRef = useQuestionSetScroll(`question-set-scroll:${attempt.id}`);
@@ -250,9 +271,24 @@ function PracticeWorkspace({
   return (
     <div className="qs-practice" ref={rootRef} onKeyDown={questionSetPrimaryKey}>
       <header className="qs-practice-header">
-        <Link className="qs-back" to={base} state={origin}>
-          ← {attempt.receipt.title}
-        </Link>
+        {study ? (
+          <Button
+            variant="ghost"
+            disabled={formDirty || reflectionDirty || busy}
+            onClick={() =>
+              void perform(async () => {
+                await progress.flush();
+                study.onExit();
+              })
+            }
+          >
+            Finish for now
+          </Button>
+        ) : (
+          <Link className="qs-back" to={base} state={origin}>
+            ← {attempt.receipt.title}
+          </Link>
+        )}
         <QuestionSetPracticeStepper
           mode={attempt.mode}
           nodes={nodes}
@@ -302,7 +338,8 @@ function PracticeWorkspace({
               onClick={() =>
                 void perform(async () => {
                   await progress.flush();
-                  await navigate(origin?.questionSetReturnTo ?? base);
+                  if (study) study.onExit();
+                  else await navigate(origin?.questionSetReturnTo ?? base);
                 })
               }
             >

@@ -74,7 +74,10 @@ it('uses the supported local entry prefix consistently without changing exam cov
     meanReviewSeconds: 20,
     examDateContext: makeExamDateContext(local, lessons, assessments),
   });
-  expect(planNextStudyStep(snapshot)).toMatchObject({ kind: 'step', step: { lessonId: a.id } });
+  expect(planNextStudyStep(snapshot)).toMatchObject({
+    kind: 'step',
+    step: { kind: 'practice', mode: 'assessment', assessmentId: assessments[0].id },
+  });
   expect(snapshot.catchUpEligibleCount).toBe(1);
   const context = { course: local, assessments, lessons, cards, links: [], exposures: [] };
   const current = currentAssessmentPracticeContext(context);

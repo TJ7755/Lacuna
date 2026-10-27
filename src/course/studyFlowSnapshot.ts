@@ -9,6 +9,7 @@ import type {
 } from '../db/types';
 import type { ExamDateContext } from '../fsrs/examDate';
 import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
+import type { ConceptPracticeNeeds } from '../questions/techniqueEvidence';
 import type { PathNode, PracticePathNode } from './path';
 import { assessmentPracticeOptions, type AssessmentPracticeOption } from './assessmentPractice';
 import {
@@ -50,6 +51,16 @@ export interface CourseStudyFlowSnapshot {
   /** Cards behind recurringPracticeEligibleCount, for lesson-level due counts. */
   dueReviewCardIds: ReadonlySet<string>;
   assessmentOptions: AssessmentPracticeOption[];
+  questionOptions?: Array<{
+    conceptId: string;
+    name: string;
+    repairLessonId?: string;
+    examDate?: number;
+    needs?: ConceptPracticeNeeds;
+    unfinished?: boolean;
+  }>;
+  questionScopeConceptIds?: string[];
+  questionPracticeExhausted?: boolean;
 }
 
 export interface BuildCourseStudyFlowSnapshotInput {
@@ -162,7 +173,7 @@ export function buildCourseStudyFlowSnapshot({
     now,
     course.leechThreshold,
   );
-  const recurringAssessmentOptions = assessmentPracticeOptions(assessmentContext, recurringScope);
+  const recurringAssessmentOptions = assessmentPracticeOptions(assessmentContext, cards, false);
   const curricularScope =
     earlier.size === 0
       ? recurringScope
