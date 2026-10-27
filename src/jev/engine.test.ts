@@ -11,9 +11,10 @@ it.each([
   { answer: 'Facts only', confidence: 0.85, outcome: 'gap', invalid: false },
   { answer: '  ', confidence: 0.99, outcome: 'insufficient-evidence', invalid: false },
   { answer: 'Facts only', confidence: 0.99, outcome: null, invalid: true },
+  { answer: 'Facts only', confidence: 0.99, outcome: null, invalid: true, mismatched: true },
 ])(
   'validates diagnostic confidence and categories independently of marks: %j',
-  async ({ answer, confidence, outcome, invalid }) => {
+  async ({ answer, confidence, outcome, invalid, mismatched = false }) => {
     localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
     const fetcher = vi.fn(async (url) =>
       url.endsWith('/session')
@@ -29,13 +30,15 @@ it.each([
                 diagnosis: {
                   taxonomyId: 'science-explanations',
                   taxonomyVersion: 1,
-                  decisions: ['knowledge', 'application', invalid ? 'invented' : 'causal-link'].map(
-                    (categoryId) => ({
-                      categoryId,
-                      outcome: 'gap',
-                      confidence,
-                    }),
-                  ),
+                  decisions: [
+                    'knowledge',
+                    'application',
+                    invalid && !mismatched ? 'invented' : 'causal-link',
+                  ].map((categoryId) => ({
+                    categoryId,
+                    outcome: 'gap',
+                    confidence,
+                  })),
                 },
               },
             ],
@@ -51,9 +54,9 @@ it.each([
         maxMarks: 1,
         answer,
         diagnostic: {
-          taxonomyId: 'science-explanations',
+          taxonomyId: mismatched ? 'science-techniques' : 'science-explanations',
           taxonomyVersion: 1,
-          techniqueIds: ['causal-link'],
+          techniqueIds: mismatched ? ['causal-link', 'paired-comparison'] : ['causal-link'],
         },
       },
     ]);
