@@ -54,6 +54,32 @@ function publishedBiologyPayload(overrides: Partial<SharePayloadV4> = {}): Share
 }
 
 describe('portable Question banks', () => {
+  it.each([staticExample, familyExample])(
+    'preserves criterion technique tags through bank import, materialisation and export: $bankId',
+    async (example) => {
+      const bank = parseQuestionBank(example);
+      const template = bank.sets[0] ?? bank.families[0].template;
+      const question = template.questions[0];
+      const answer = question.answer ?? question.parts[0].answer!;
+      const tags = {
+        taxonomyId: 'science-explanations' as const,
+        taxonomyVersion: 1 as const,
+        techniqueIds: ['causal-link' as const],
+        provenance: { source: 'author' as const },
+      };
+      answer.allocations[0].techniqueTags = tags;
+      const course = await createCourse('Pilot');
+
+      const [set] = await importQuestionBank(bank, course.id);
+      const materialised = set.questions[0];
+      expect(
+        (materialised.answer ?? materialised.parts[0].answer!).allocations[0].techniqueTags,
+      ).toEqual(tags);
+      expect(await exportQuestionBank(course.id, bank.bankId)).toEqual(bank);
+      expect(await importQuestionBank(bank, course.id)).toEqual([set]);
+    },
+  );
+
   it('imports the public bank into a locked published course while retaining its lineage and content', async () => {
     const { course } = await importLineageFirstTime(publishedBiologyPayload());
     const card = await db.cards.get('published-cell-card');

@@ -44,6 +44,7 @@ export function issueMessage(set: QuestionSet, issue: QuestionSetIssue): string 
     'invalid-marks': 'Marks must be positive whole numbers.',
     'allocation-total-mismatch': 'The criteria must add up to the part’s total marks.',
     'invalid-dimension': 'Choose what the criterion assesses.',
+    'invalid-technique-tags': 'Use supported technique tags and record their source.',
     'invalid-options': 'Add at least two options and choose the correct answer or answers.',
   };
   const indices = [...issue.path.matchAll(/(?:questions|parts|subparts)\[(\d+)\]/g)].map((match) =>

@@ -70,6 +70,12 @@ describe('course files with authored Question Sets', () => {
                           maxMarks: 1,
                           dimension: 'knowledge',
                           targetConceptIds: [concept.id],
+                          techniqueTags: {
+                            taxonomyId: 'science-explanations',
+                            taxonomyVersion: 1,
+                            techniqueIds: ['causal-link'],
+                            provenance: { source: 'author' },
+                          },
                         },
                       ],
                     },
@@ -111,10 +117,16 @@ describe('course files with authored Question Sets', () => {
 
     const importedActivity = (await db.practiceNodes.toArray())[0];
     const byId = new Map((await db.questionSets.toArray()).map((set) => [set.id, set.title]));
-    expect(importedActivity.questionSetIds?.map((id) => byId.get(id)))
-      .toEqual(['Third', 'Cell paper', 'Second']);
+    expect(importedActivity.questionSetIds?.map((id) => byId.get(id))).toEqual([
+      'Third',
+      'Cell paper',
+      'Second',
+    ]);
     expect(importedActivity.afterLessonId).toBe(importedLesson.id);
     expect(importedSet.id).not.toBe(sourceSet.id);
+    expect(
+      importedSet.questions[0].parts[0].subparts[0].answer!.allocations[0].techniqueTags,
+    ).toEqual(sourceSet.questions[0].parts[0].subparts[0].answer!.allocations[0].techniqueTags);
     expect(importedSet.lessonIds).toEqual([importedLesson.id]);
     expect(importedSet.assessmentIds).toEqual([importedAssessment.id]);
     expect(importedSet.questions[0].id).not.toBe(sourceSet.questions[0].id);

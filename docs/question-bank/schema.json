@@ -40,10 +40,7 @@
             "maxLength": 20000
           }
         },
-        "required": [
-          "id",
-          "name"
-        ],
+        "required": ["id", "name"],
         "additionalProperties": false
       }
     },
@@ -92,9 +89,7 @@
                               "const": "written"
                             }
                           },
-                          "required": [
-                            "kind"
-                          ],
+                          "required": ["kind"],
                           "additionalProperties": false
                         },
                         {
@@ -105,9 +100,7 @@
                               "const": "calculation"
                             }
                           },
-                          "required": [
-                            "kind"
-                          ],
+                          "required": ["kind"],
                           "additionalProperties": false
                         },
                         {
@@ -119,10 +112,7 @@
                             },
                             "selection": {
                               "type": "string",
-                              "enum": [
-                                "single",
-                                "multiple"
-                              ]
+                              "enum": ["single", "multiple"]
                             },
                             "options": {
                               "minItems": 2,
@@ -141,10 +131,7 @@
                                     "maxLength": 20000
                                   }
                                 },
-                                "required": [
-                                  "id",
-                                  "content"
-                                ],
+                                "required": ["id", "content"],
                                 "additionalProperties": false
                               }
                             },
@@ -157,12 +144,7 @@
                               }
                             }
                           },
-                          "required": [
-                            "kind",
-                            "selection",
-                            "options",
-                            "correctOptionIds"
-                          ],
+                          "required": ["kind", "selection", "options", "correctOptionIds"],
                           "additionalProperties": false
                         }
                       ]
@@ -195,12 +177,7 @@
                           },
                           "dimension": {
                             "type": "string",
-                            "enum": [
-                              "knowledge",
-                              "application",
-                              "exam-execution",
-                              "mixed"
-                            ]
+                            "enum": ["knowledge", "application", "exam-execution", "mixed"]
                           },
                           "targetConceptIds": {
                             "minItems": 1,
@@ -210,6 +187,65 @@
                               "type": "string",
                               "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$"
                             }
+                          },
+                          "techniqueTags": {
+                            "type": "object",
+                            "properties": {
+                              "taxonomyId": {
+                                "type": "string",
+                                "const": "science-explanations"
+                              },
+                              "taxonomyVersion": {
+                                "type": "number",
+                                "const": 1
+                              },
+                              "techniqueIds": {
+                                "maxItems": 1,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": ["causal-link"]
+                                }
+                              },
+                              "provenance": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "source": {
+                                        "type": "string",
+                                        "const": "author"
+                                      }
+                                    },
+                                    "required": ["source"],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "source": {
+                                        "type": "string",
+                                        "const": "jev"
+                                      },
+                                      "model": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      }
+                                    },
+                                    "required": ["source", "model"],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "taxonomyId",
+                              "taxonomyVersion",
+                              "techniqueIds",
+                              "provenance"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -231,12 +267,7 @@
                       }
                     }
                   },
-                  "required": [
-                    "maxMarks",
-                    "response",
-                    "allocations",
-                    "prerequisiteConceptIds"
-                  ],
+                  "required": ["maxMarks", "response", "allocations", "prerequisiteConceptIds"],
                   "additionalProperties": false
                 },
                 "parts": {
@@ -272,9 +303,7 @@
                                     "const": "written"
                                   }
                                 },
-                                "required": [
-                                  "kind"
-                                ],
+                                "required": ["kind"],
                                 "additionalProperties": false
                               },
                               {
@@ -285,9 +314,7 @@
                                     "const": "calculation"
                                   }
                                 },
-                                "required": [
-                                  "kind"
-                                ],
+                                "required": ["kind"],
                                 "additionalProperties": false
                               },
                               {
@@ -299,10 +326,7 @@
                                   },
                                   "selection": {
                                     "type": "string",
-                                    "enum": [
-                                      "single",
-                                      "multiple"
-                                    ]
+                                    "enum": ["single", "multiple"]
                                   },
                                   "options": {
                                     "minItems": 2,
@@ -321,10 +345,7 @@
                                           "maxLength": 20000
                                         }
                                       },
-                                      "required": [
-                                        "id",
-                                        "content"
-                                      ],
+                                      "required": ["id", "content"],
                                       "additionalProperties": false
                                     }
                                   },
@@ -337,12 +358,7 @@
                                     }
                                   }
                                 },
-                                "required": [
-                                  "kind",
-                                  "selection",
-                                  "options",
-                                  "correctOptionIds"
-                                ],
+                                "required": ["kind", "selection", "options", "correctOptionIds"],
                                 "additionalProperties": false
                               }
                             ]
@@ -375,12 +391,7 @@
                                 },
                                 "dimension": {
                                   "type": "string",
-                                  "enum": [
-                                    "knowledge",
-                                    "application",
-                                    "exam-execution",
-                                    "mixed"
-                                  ]
+                                  "enum": ["knowledge", "application", "exam-execution", "mixed"]
                                 },
                                 "targetConceptIds": {
                                   "minItems": 1,
@@ -390,6 +401,65 @@
                                     "type": "string",
                                     "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$"
                                   }
+                                },
+                                "techniqueTags": {
+                                  "type": "object",
+                                  "properties": {
+                                    "taxonomyId": {
+                                      "type": "string",
+                                      "const": "science-explanations"
+                                    },
+                                    "taxonomyVersion": {
+                                      "type": "number",
+                                      "const": 1
+                                    },
+                                    "techniqueIds": {
+                                      "maxItems": 1,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "enum": ["causal-link"]
+                                      }
+                                    },
+                                    "provenance": {
+                                      "oneOf": [
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "source": {
+                                              "type": "string",
+                                              "const": "author"
+                                            }
+                                          },
+                                          "required": ["source"],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "source": {
+                                              "type": "string",
+                                              "const": "jev"
+                                            },
+                                            "model": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 120
+                                            }
+                                          },
+                                          "required": ["source", "model"],
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "taxonomyId",
+                                    "taxonomyVersion",
+                                    "techniqueIds",
+                                    "provenance"
+                                  ],
+                                  "additionalProperties": false
                                 }
                               },
                               "required": [
@@ -452,9 +522,7 @@
                                           "const": "written"
                                         }
                                       },
-                                      "required": [
-                                        "kind"
-                                      ],
+                                      "required": ["kind"],
                                       "additionalProperties": false
                                     },
                                     {
@@ -465,9 +533,7 @@
                                           "const": "calculation"
                                         }
                                       },
-                                      "required": [
-                                        "kind"
-                                      ],
+                                      "required": ["kind"],
                                       "additionalProperties": false
                                     },
                                     {
@@ -479,10 +545,7 @@
                                         },
                                         "selection": {
                                           "type": "string",
-                                          "enum": [
-                                            "single",
-                                            "multiple"
-                                          ]
+                                          "enum": ["single", "multiple"]
                                         },
                                         "options": {
                                           "minItems": 2,
@@ -501,10 +564,7 @@
                                                 "maxLength": 20000
                                               }
                                             },
-                                            "required": [
-                                              "id",
-                                              "content"
-                                            ],
+                                            "required": ["id", "content"],
                                             "additionalProperties": false
                                           }
                                         },
@@ -570,6 +630,65 @@
                                           "type": "string",
                                           "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$"
                                         }
+                                      },
+                                      "techniqueTags": {
+                                        "type": "object",
+                                        "properties": {
+                                          "taxonomyId": {
+                                            "type": "string",
+                                            "const": "science-explanations"
+                                          },
+                                          "taxonomyVersion": {
+                                            "type": "number",
+                                            "const": 1
+                                          },
+                                          "techniqueIds": {
+                                            "maxItems": 1,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "enum": ["causal-link"]
+                                            }
+                                          },
+                                          "provenance": {
+                                            "oneOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "source": {
+                                                    "type": "string",
+                                                    "const": "author"
+                                                  }
+                                                },
+                                                "required": ["source"],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "source": {
+                                                    "type": "string",
+                                                    "const": "jev"
+                                                  },
+                                                  "model": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 120
+                                                  }
+                                                },
+                                                "required": ["source", "model"],
+                                                "additionalProperties": false
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "taxonomyId",
+                                          "taxonomyVersion",
+                                          "techniqueIds",
+                                          "provenance"
+                                        ],
+                                        "additionalProperties": false
                                       }
                                     },
                                     "required": [
@@ -600,28 +719,17 @@
                               "additionalProperties": false
                             }
                           },
-                          "required": [
-                            "id",
-                            "prompt"
-                          ],
+                          "required": ["id", "prompt"],
                           "additionalProperties": false
                         }
                       }
                     },
-                    "required": [
-                      "id",
-                      "prompt",
-                      "subparts"
-                    ],
+                    "required": ["id", "prompt", "subparts"],
                     "additionalProperties": false
                   }
                 }
               },
-              "required": [
-                "id",
-                "prompt",
-                "parts"
-              ],
+              "required": ["id", "prompt", "parts"],
               "additionalProperties": false
             }
           },
@@ -653,12 +761,7 @@
                 "maxLength": 20000
               }
             },
-            "required": [
-              "title",
-              "reference",
-              "author",
-              "licence"
-            ],
+            "required": ["title", "reference", "author", "licence"],
             "additionalProperties": false
           },
           "blueprint": {
@@ -685,22 +788,11 @@
                 "maxLength": 20000
               }
             },
-            "required": [
-              "skill",
-              "type",
-              "difficulty",
-              "context"
-            ],
+            "required": ["skill", "type", "difficulty", "context"],
             "additionalProperties": false
           }
         },
-        "required": [
-          "title",
-          "questions",
-          "id",
-          "source",
-          "blueprint"
-        ],
+        "required": ["title", "questions", "id", "source", "blueprint"],
         "additionalProperties": false
       }
     },
@@ -748,13 +840,7 @@
                 },
                 "op": {
                   "type": "string",
-                  "enum": [
-                    "+",
-                    "-",
-                    "*",
-                    "/",
-                    "^"
-                  ]
+                  "enum": ["+", "-", "*", "/", "^"]
                 },
                 "left": {
                   "anyOf": [
@@ -781,12 +867,7 @@
                   ]
                 }
               },
-              "required": [
-                "name",
-                "op",
-                "left",
-                "right"
-              ],
+              "required": ["name", "op", "left", "right"],
               "additionalProperties": false
             }
           },
@@ -832,9 +913,7 @@
                                   "const": "written"
                                 }
                               },
-                              "required": [
-                                "kind"
-                              ],
+                              "required": ["kind"],
                               "additionalProperties": false
                             },
                             {
@@ -845,9 +924,7 @@
                                   "const": "calculation"
                                 }
                               },
-                              "required": [
-                                "kind"
-                              ],
+                              "required": ["kind"],
                               "additionalProperties": false
                             },
                             {
@@ -859,10 +936,7 @@
                                 },
                                 "selection": {
                                   "type": "string",
-                                  "enum": [
-                                    "single",
-                                    "multiple"
-                                  ]
+                                  "enum": ["single", "multiple"]
                                 },
                                 "options": {
                                   "minItems": 2,
@@ -881,10 +955,7 @@
                                         "maxLength": 20000
                                       }
                                     },
-                                    "required": [
-                                      "id",
-                                      "content"
-                                    ],
+                                    "required": ["id", "content"],
                                     "additionalProperties": false
                                   }
                                 },
@@ -897,12 +968,7 @@
                                   }
                                 }
                               },
-                              "required": [
-                                "kind",
-                                "selection",
-                                "options",
-                                "correctOptionIds"
-                              ],
+                              "required": ["kind", "selection", "options", "correctOptionIds"],
                               "additionalProperties": false
                             }
                           ]
@@ -935,12 +1001,7 @@
                               },
                               "dimension": {
                                 "type": "string",
-                                "enum": [
-                                  "knowledge",
-                                  "application",
-                                  "exam-execution",
-                                  "mixed"
-                                ]
+                                "enum": ["knowledge", "application", "exam-execution", "mixed"]
                               },
                               "targetConceptIds": {
                                 "minItems": 1,
@@ -950,6 +1011,65 @@
                                   "type": "string",
                                   "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$"
                                 }
+                              },
+                              "techniqueTags": {
+                                "type": "object",
+                                "properties": {
+                                  "taxonomyId": {
+                                    "type": "string",
+                                    "const": "science-explanations"
+                                  },
+                                  "taxonomyVersion": {
+                                    "type": "number",
+                                    "const": 1
+                                  },
+                                  "techniqueIds": {
+                                    "maxItems": 1,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "enum": ["causal-link"]
+                                    }
+                                  },
+                                  "provenance": {
+                                    "oneOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "source": {
+                                            "type": "string",
+                                            "const": "author"
+                                          }
+                                        },
+                                        "required": ["source"],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "source": {
+                                            "type": "string",
+                                            "const": "jev"
+                                          },
+                                          "model": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 120
+                                          }
+                                        },
+                                        "required": ["source", "model"],
+                                        "additionalProperties": false
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "taxonomyId",
+                                  "taxonomyVersion",
+                                  "techniqueIds",
+                                  "provenance"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -971,12 +1091,7 @@
                           }
                         }
                       },
-                      "required": [
-                        "maxMarks",
-                        "response",
-                        "allocations",
-                        "prerequisiteConceptIds"
-                      ],
+                      "required": ["maxMarks", "response", "allocations", "prerequisiteConceptIds"],
                       "additionalProperties": false
                     },
                     "parts": {
@@ -1012,9 +1127,7 @@
                                         "const": "written"
                                       }
                                     },
-                                    "required": [
-                                      "kind"
-                                    ],
+                                    "required": ["kind"],
                                     "additionalProperties": false
                                   },
                                   {
@@ -1025,9 +1138,7 @@
                                         "const": "calculation"
                                       }
                                     },
-                                    "required": [
-                                      "kind"
-                                    ],
+                                    "required": ["kind"],
                                     "additionalProperties": false
                                   },
                                   {
@@ -1039,10 +1150,7 @@
                                       },
                                       "selection": {
                                         "type": "string",
-                                        "enum": [
-                                          "single",
-                                          "multiple"
-                                        ]
+                                        "enum": ["single", "multiple"]
                                       },
                                       "options": {
                                         "minItems": 2,
@@ -1061,10 +1169,7 @@
                                               "maxLength": 20000
                                             }
                                           },
-                                          "required": [
-                                            "id",
-                                            "content"
-                                          ],
+                                          "required": ["id", "content"],
                                           "additionalProperties": false
                                         }
                                       },
@@ -1130,6 +1235,65 @@
                                         "type": "string",
                                         "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$"
                                       }
+                                    },
+                                    "techniqueTags": {
+                                      "type": "object",
+                                      "properties": {
+                                        "taxonomyId": {
+                                          "type": "string",
+                                          "const": "science-explanations"
+                                        },
+                                        "taxonomyVersion": {
+                                          "type": "number",
+                                          "const": 1
+                                        },
+                                        "techniqueIds": {
+                                          "maxItems": 1,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "enum": ["causal-link"]
+                                          }
+                                        },
+                                        "provenance": {
+                                          "oneOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "source": {
+                                                  "type": "string",
+                                                  "const": "author"
+                                                }
+                                              },
+                                              "required": ["source"],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "source": {
+                                                  "type": "string",
+                                                  "const": "jev"
+                                                },
+                                                "model": {
+                                                  "type": "string",
+                                                  "minLength": 1,
+                                                  "maxLength": 120
+                                                }
+                                              },
+                                              "required": ["source", "model"],
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "taxonomyId",
+                                        "taxonomyVersion",
+                                        "techniqueIds",
+                                        "provenance"
+                                      ],
+                                      "additionalProperties": false
                                     }
                                   },
                                   "required": [
@@ -1192,9 +1356,7 @@
                                               "const": "written"
                                             }
                                           },
-                                          "required": [
-                                            "kind"
-                                          ],
+                                          "required": ["kind"],
                                           "additionalProperties": false
                                         },
                                         {
@@ -1205,9 +1367,7 @@
                                               "const": "calculation"
                                             }
                                           },
-                                          "required": [
-                                            "kind"
-                                          ],
+                                          "required": ["kind"],
                                           "additionalProperties": false
                                         },
                                         {
@@ -1219,10 +1379,7 @@
                                             },
                                             "selection": {
                                               "type": "string",
-                                              "enum": [
-                                                "single",
-                                                "multiple"
-                                              ]
+                                              "enum": ["single", "multiple"]
                                             },
                                             "options": {
                                               "minItems": 2,
@@ -1241,10 +1398,7 @@
                                                     "maxLength": 20000
                                                   }
                                                 },
-                                                "required": [
-                                                  "id",
-                                                  "content"
-                                                ],
+                                                "required": ["id", "content"],
                                                 "additionalProperties": false
                                               }
                                             },
@@ -1310,6 +1464,65 @@
                                               "type": "string",
                                               "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$"
                                             }
+                                          },
+                                          "techniqueTags": {
+                                            "type": "object",
+                                            "properties": {
+                                              "taxonomyId": {
+                                                "type": "string",
+                                                "const": "science-explanations"
+                                              },
+                                              "taxonomyVersion": {
+                                                "type": "number",
+                                                "const": 1
+                                              },
+                                              "techniqueIds": {
+                                                "maxItems": 1,
+                                                "type": "array",
+                                                "items": {
+                                                  "type": "string",
+                                                  "enum": ["causal-link"]
+                                                }
+                                              },
+                                              "provenance": {
+                                                "oneOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "source": {
+                                                        "type": "string",
+                                                        "const": "author"
+                                                      }
+                                                    },
+                                                    "required": ["source"],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "source": {
+                                                        "type": "string",
+                                                        "const": "jev"
+                                                      },
+                                                      "model": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 120
+                                                      }
+                                                    },
+                                                    "required": ["source", "model"],
+                                                    "additionalProperties": false
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "required": [
+                                              "taxonomyId",
+                                              "taxonomyVersion",
+                                              "techniqueIds",
+                                              "provenance"
+                                            ],
+                                            "additionalProperties": false
                                           }
                                         },
                                         "required": [
@@ -1340,36 +1553,22 @@
                                   "additionalProperties": false
                                 }
                               },
-                              "required": [
-                                "id",
-                                "prompt"
-                              ],
+                              "required": ["id", "prompt"],
                               "additionalProperties": false
                             }
                           }
                         },
-                        "required": [
-                          "id",
-                          "prompt",
-                          "subparts"
-                        ],
+                        "required": ["id", "prompt", "subparts"],
                         "additionalProperties": false
                       }
                     }
                   },
-                  "required": [
-                    "id",
-                    "prompt",
-                    "parts"
-                  ],
+                  "required": ["id", "prompt", "parts"],
                   "additionalProperties": false
                 }
               }
             },
-            "required": [
-              "title",
-              "questions"
-            ],
+            "required": ["title", "questions"],
             "additionalProperties": false
           },
           "source": {
@@ -1396,12 +1595,7 @@
                 "maxLength": 20000
               }
             },
-            "required": [
-              "title",
-              "reference",
-              "author",
-              "licence"
-            ],
+            "required": ["title", "reference", "author", "licence"],
             "additionalProperties": false
           },
           "blueprint": {
@@ -1428,24 +1622,11 @@
                 "maxLength": 20000
               }
             },
-            "required": [
-              "skill",
-              "type",
-              "difficulty",
-              "context"
-            ],
+            "required": ["skill", "type", "difficulty", "context"],
             "additionalProperties": false
           }
         },
-        "required": [
-          "id",
-          "version",
-          "parameters",
-          "derived",
-          "template",
-          "source",
-          "blueprint"
-        ],
+        "required": ["id", "version", "parameters", "derived", "template", "source", "blueprint"],
         "additionalProperties": false
       }
     }
