@@ -39,8 +39,16 @@ export function questionStudyScope(input: {
       ...lessonCardMembershipForLessons(priorReached, input.cards, input.links),
     ].map((card) => card.conceptId),
   );
-  const cardConcepts = new Set(input.cards.map((card) => card.conceptId));
   if (input.course.unlockMode === 'open') {
+    const cardConcepts = new Set(input.cards.map((card) => card.conceptId));
+    const lessonMemberIds = new Set(
+      lessonCardMembershipForLessons(
+        new Set(input.lessons.map((lesson) => lesson.id)),
+        input.cards,
+        input.links,
+      ).map((card) => card.id),
+    );
+    for (const card of input.cards) if (!lessonMemberIds.has(card.id)) known.add(card.conceptId);
     for (const concept of input.concepts) if (!cardConcepts.has(concept.id)) known.add(concept.id);
   }
   const data = input.course.specificationData;

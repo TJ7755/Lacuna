@@ -39,6 +39,7 @@ export interface StudyFlowPracticeState {
 export interface CourseStudyFlowSnapshot {
   courseId: string;
   studyStartLessonId?: string;
+  priorKnowledgeLessonIds: ReadonlySet<string>;
   catchUpEligibleCount?: number;
   archived: boolean;
   nodes: PathNode[];
@@ -324,6 +325,7 @@ export function buildCourseStudyFlowSnapshot({
   return {
     courseId: course.id,
     studyStartLessonId: course.studyStartLessonId,
+    priorKnowledgeLessonIds: earlier,
     catchUpEligibleCount: catchUpPracticePool(
       cards,
       course,
