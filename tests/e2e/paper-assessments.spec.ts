@@ -231,6 +231,11 @@ for (const width of [1440, 390]) {
       .scrollIntoViewIfNeeded();
     await capture(page, testInfo, `saved-paper-dates-${width}`);
     await page.goto(`/#/course/${course.id}`);
+    await expect(
+      page
+        .getByRole('region', { name: 'Course summary' })
+        .getByText('Predicted recall', { exact: true }),
+    ).toBeVisible();
     await page
       .getByRole('region', { name: 'Assessments', exact: true })
       .getByRole('button', { name: /1: First paper/ })

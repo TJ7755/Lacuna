@@ -330,6 +330,11 @@ export function CoursePath() {
             <CourseSummaryCard
               className={cardClassName}
               recallPct={forecastPct}
+              recallLabel={
+                assessments.some((assessment) => assessment.coverageMode === 'specification')
+                  ? 'Predicted recall'
+                  : undefined
+              }
               status={status ?? 'steady'}
               cards={cardTotal}
               lessons={lessonTotal}

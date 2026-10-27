@@ -51,6 +51,7 @@ export default defineConfig({
       'src/pages/learn/simpleSessionPersistence.test.ts',
       'src/pages/learn/sessionScope.test.ts',
       'src/pages/learn/sessionUnlocks.test.ts',
+      'src/pages/learn/paperAssessmentRuntime.test.ts',
     ],
     setupFiles: ['./tests/setup.ts'],
     maxWorkers: 1,

@@ -14,18 +14,20 @@ const STATUS_TEXT: Record<ForecastStatus, string> = {
 export function CourseSummaryCard({
   className,
   recallPct,
+  recallLabel = 'Exam-day recall',
   status,
   cards,
   lessons,
 }: {
   className: string;
   recallPct: number;
+  recallLabel?: string;
   status: ForecastStatus;
   cards: number;
   lessons: number;
 }) {
   const figures = [
-    { value: `${recallPct}%`, label: 'Exam-day recall', tone: STATUS_TEXT[status] },
+    { value: `${recallPct}%`, label: recallLabel, tone: STATUS_TEXT[status] },
     { value: cards, label: cards === 1 ? 'Card' : 'Cards', tone: 'text-ink' },
     { value: lessons, label: lessons === 1 ? 'Lesson' : 'Lessons', tone: 'text-ink' },
   ];

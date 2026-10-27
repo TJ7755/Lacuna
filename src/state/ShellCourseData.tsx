@@ -120,6 +120,11 @@ export function ShellCourseDataProvider({
       courses.filter((course) => !course.archived).map((course) => course.id),
     );
     const schedulingByCourse = new Map(courses.map((course) => [course.id, course]));
+    const paperCourseIds = new Set(
+      assessments
+        .filter((assessment) => assessment.coverageMode === 'specification')
+        .map((assessment) => assessment.courseId),
+    );
     const resolveOrder = courses.some((course) => course.localLessonOrder)
       ? (await import('../course/lessonOrder')).resolveCourseLessonOrder
       : (_course: Course, courseLessons: Lesson[]) => courseLessons.sort(lessonOrder);
@@ -151,7 +156,13 @@ export function ShellCourseDataProvider({
         activity,
         schedulingByCourse,
       ),
-      forecasts: dashboardForecasts(courses, lessons, cards, now),
+      // The legacy forecast assumes one horizon; paper Courses use their per-Card summary.
+      forecasts: dashboardForecasts(
+        courses.filter((course) => !paperCourseIds.has(course.id)),
+        lessons,
+        cards,
+        now,
+      ),
     };
 
     // Navigation retains derived figures. The dashboard also needs card projections
