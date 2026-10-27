@@ -1,5 +1,19 @@
 # Portability and published-content boundaries
 
+## Course-supplied specification papers
+
+Specification metadata and its source reference travel with the Course. Format validation does not
+verify the source document or certify complete coverage. Published updates retain the existing
+local-override policy for paper dates. Backups, recovery and peer merges reject a resulting paper
+whose specification selection cannot resolve, or whose date falls after the sole final assessment.
+They refuse the incompatible combination rather than broadening coverage or overwriting evidence.
+
+These are additive records without an IndexedDB index change or destructive migration. Older
+readers reject specification-based assessment coverage; after using it, rollback requires a
+compatible reader or a retained earlier backup. Reference-only Courses remain supported.
+
+## Creator metadata
+
 `Course.creator` is a literal creator/project display label transported through `payload.by`, not
 verified human authorship or approval. Null/absent `by` means no label; string values, including an
 empty string, survive unchanged. Lineage updates use the existing Course-detail baseline policy,

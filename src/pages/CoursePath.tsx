@@ -138,6 +138,7 @@ export function CoursePath() {
     notifyReorderError,
     localOrder,
     learnerCheckpointIds,
+    examDateContext?.specificationContext,
   );
 
   usePageShortcuts({
@@ -329,6 +330,13 @@ export function CoursePath() {
             <CourseSummaryCard
               className={cardClassName}
               recallPct={forecastPct}
+              recallLabel={
+                assessments.some((assessment) => assessment.coverageMode === 'specification')
+                  ? course.examObjective === 'securedTopics'
+                    ? 'Secured cards'
+                    : 'Predicted recall'
+                  : undefined
+              }
               status={status ?? 'steady'}
               cards={cardTotal}
               lessons={lessonTotal}

@@ -12,6 +12,10 @@ import { createOcclusion } from '../../db/occlusionRepository';
 import type { ToolContext } from '../types';
 import { validateAndRun } from '../registry';
 import * as tools from './content';
+import {
+  paperSpecification,
+  paperSpecificationReference,
+} from '../../specifications/paperFixture.testFixtures';
 
 async function clearAll(): Promise<void> {
   await Promise.all([
@@ -505,6 +509,69 @@ describe('mcp content tools', () => {
   });
 
   describe('lacuna.create_course_assessment / lacuna.update_course_assessment', () => {
+    it('validates paper coverage and clears old selectors when changing coverage mode', async () => {
+      const course = await createCourse('Science', {
+        specificationRef: paperSpecificationReference,
+        specificationData: paperSpecification,
+      });
+      const input = {
+        courseId: course.id,
+        name: 'First paper',
+        examDate: Date.now() + 1000,
+        afterLessonId: null,
+        coverageMode: 'specification',
+        specificationPaperId: 'paper-1',
+      };
+      const created = await validateAndRun(tools.createCourseAssessment, input, ctx);
+      expect(created.ok).toBe(true);
+      const paper = (await db.courseAssessments.where('courseId').equals(course.id).toArray()).find(
+        (assessment) => assessment.kind === 'checkpoint',
+      )!;
+      expect(paper).toMatchObject({
+        coverageMode: 'specification',
+        specificationPaperId: 'paper-1',
+      });
+      const invalid = await validateAndRun(
+        tools.updateCourseAssessment,
+        {
+          assessmentId: paper.id,
+          coverageMode: 'specification',
+          specificationPaperId: 'paper-1',
+          specificationPointIds: ['example-science:cells'],
+        },
+        ctx,
+      );
+      expect(invalid.ok).toBe(false);
+      if (!invalid.ok) expect(invalid.error.kind).toBe('validation');
+      const explicit = await validateAndRun(
+        tools.updateCourseAssessment,
+        {
+          assessmentId: paper.id,
+          coverageMode: 'specification',
+          specificationPointIds: ['example-science:cells'],
+        },
+        ctx,
+      );
+      expect(explicit.ok).toBe(true);
+      expect(await db.courseAssessments.get(paper.id)).toMatchObject({
+        specificationPointIds: ['example-science:cells'],
+      });
+      expect((await db.courseAssessments.get(paper.id))?.specificationPaperId).toBeUndefined();
+      const prefix = await validateAndRun(
+        tools.updateCourseAssessment,
+        {
+          assessmentId: paper.id,
+          coverageMode: 'prefix',
+        },
+        ctx,
+      );
+      expect(prefix.ok).toBe(true);
+      const restored = await db.courseAssessments.get(paper.id);
+      expect(restored?.coverageMode).toBe('prefix');
+      expect(restored?.specificationPaperId).toBeUndefined();
+      expect(restored?.specificationPointIds).toBeUndefined();
+    });
+
     it('creates an assessment with explicit placement, coverage and exclusions', async () => {
       const course = await createCourse('Course A');
       const lesson = await createLesson(course.id, 'Lesson 1');

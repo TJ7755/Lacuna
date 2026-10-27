@@ -5,7 +5,10 @@ import { describe, expect, it } from 'vitest';
 import { build, type Metafile } from 'esbuild';
 import { z } from 'zod';
 import { AjvJsonSchemaValidator } from '@modelcontextprotocol/server/validators/ajv';
-import { createCourseAssessmentContract } from './contracts/content';
+import {
+  createCourseAssessmentContract,
+  updateCourseAssessmentContract,
+} from './contracts/content';
 import { MCP_TOOL_SURFACE_VERSION, TOOL_CONTRACT_REGISTRY } from './contracts/registry';
 import { TOOL_REGISTRY } from './registry';
 
@@ -26,12 +29,12 @@ const PACKAGED_MCP_ENTRY_POINTS = [
   'electron/mcp/aiCompanion.ts',
   'electron/mcp/aiCompanionEntry.ts',
 ] as const;
-// The due-card description excludes new and future cards. Names, schemas,
-// permission scopes and the tool-surface version remain unchanged.
+// Paper coverage adds selectors to existing assessment tools. Existing inputs,
+// tool names, permission scopes and the breaking-change version remain unchanged.
 const REVIEWED_TOOL_SURFACE = {
   version: 3,
   toolCount: 64,
-  sha256: '115307e290f325cd6558f66e0f78cacb0429d1b64f98f3e7247eb28bc42dc662',
+  sha256: '2875b9895793ef2f130b0df17a705efa218905c1bd54f89ebc0efd41edb92148',
 } as const;
 
 function normalise(filePath: string): string {
@@ -74,30 +77,101 @@ describe('Electron MCP contract boundary', () => {
   });
 
   it.each([
-    ['prefix with null anchor', { coverageMode: 'prefix', afterLessonId: null }, true],
-    ['prefix with lesson anchor', { coverageMode: 'prefix', afterLessonId: 'lesson-1' }, true],
-    ['custom coverage', { coverageMode: 'custom', lessonIds: ['lesson-1'] }, true],
-    ['missing coverage', {}, false],
-    ['missing custom lessons', { coverageMode: 'custom' }, false],
-    ['empty custom lessons', { coverageMode: 'custom', lessonIds: [] }, false],
-  ])('keeps emitted assessment validation aligned for %s', (_label, fields, accepted) => {
-    const payload = {
-      courseId: 'course-1',
-      name: 'Checkpoint',
-      examDate: 1_800_000_000_000,
-      afterLessonId: null,
-      ...fields,
-    };
-    const schema = createCourseAssessmentContract.inputSchema;
-    // Zod and the SDK differ in their $vocabulary typings; validate the emitted
-    // JSON at runtime through the SDK's actual draft-2020-12 implementation.
-    const emitted = z.toJSONSchema(schema) as unknown as Parameters<
-      AjvJsonSchemaValidator['getValidator']
-    >[0];
-    const validate = new AjvJsonSchemaValidator().getValidator(emitted);
-    expect(schema.safeParse(payload).success).toBe(accepted);
-    expect(validate(payload).valid).toBe(accepted);
-  });
+    ['prefix with null anchor', { coverageMode: 'prefix', afterLessonId: null }, true, true],
+    [
+      'prefix with lesson anchor',
+      { coverageMode: 'prefix', afterLessonId: 'lesson-1' },
+      true,
+      true,
+    ],
+    ['custom coverage', { coverageMode: 'custom', lessonIds: ['lesson-1'] }, true, true],
+    ['missing coverage', {}, false, true],
+    ['missing custom lessons', { coverageMode: 'custom' }, false, false],
+    ['empty custom lessons', { coverageMode: 'custom', lessonIds: [] }, false, false],
+    [
+      'paper coverage',
+      { coverageMode: 'specification', specificationPaperId: 'paper-1' },
+      true,
+      true,
+    ],
+    [
+      'explicit points',
+      { coverageMode: 'specification', specificationPointIds: ['science:cells'] },
+      true,
+      true,
+    ],
+    ['missing specification selector', { coverageMode: 'specification' }, false, false],
+    [
+      'both specification selectors',
+      {
+        coverageMode: 'specification',
+        specificationPaperId: 'paper-1',
+        specificationPointIds: ['science:cells'],
+      },
+      false,
+      false,
+    ],
+    [
+      'empty point selection',
+      { coverageMode: 'specification', specificationPointIds: [] },
+      false,
+      false,
+    ],
+    [
+      'unqualified point',
+      { coverageMode: 'specification', specificationPointIds: ['cells'] },
+      false,
+      false,
+    ],
+    [
+      'duplicate points',
+      { coverageMode: 'specification', specificationPointIds: ['science:cells', 'science:cells'] },
+      false,
+      false,
+    ],
+    [
+      'paper with lesson selection',
+      { coverageMode: 'specification', specificationPaperId: 'paper-1', lessonIds: ['lesson-1'] },
+      false,
+      false,
+    ],
+    [
+      'paper selector without specification mode',
+      { coverageMode: 'prefix', specificationPaperId: 'paper-1' },
+      false,
+      false,
+    ],
+  ])(
+    'keeps emitted assessment validation aligned for %s',
+    (_label, fields, createAccepted, updateAccepted) => {
+      for (const [schema, payload, accepted] of [
+        [
+          createCourseAssessmentContract.inputSchema,
+          {
+            courseId: 'course-1',
+            name: 'Checkpoint',
+            examDate: 1_800_000_000_000,
+            afterLessonId: null,
+            ...fields,
+          },
+          createAccepted,
+        ],
+        [
+          updateCourseAssessmentContract.inputSchema,
+          { assessmentId: 'assessment-1', ...fields },
+          updateAccepted,
+        ],
+      ] as const) {
+        // Exercise the SDK's actual draft-2020-12 validator, not merely Zod refinements.
+        const emitted = z.toJSONSchema(schema) as unknown as Parameters<
+          AjvJsonSchemaValidator['getValidator']
+        >[0];
+        const validate = new AjvJsonSchemaValidator().getValidator(emitted);
+        expect(schema.safeParse(payload).success).toBe(accepted);
+        expect(validate(payload).valid).toBe(accepted);
+      }
+    },
+  );
 
   it('keeps executable tools in exact contract order with identical metadata and schemas', () => {
     expect(TOOL_REGISTRY.map((tool) => tool.name)).toEqual(
@@ -142,36 +216,38 @@ describe('Electron MCP contract boundary', () => {
   );
 
   it('preserves data and AI dependency closures in the combined code-split build', async () => {
-    const metafile = (await build({
-      entryPoints: ['server', 'companion', 'aiCompanion', 'aiCompanionEntry'].map(
-        (name) => path.join(PROJECT_ROOT, `electron/mcp/${name}.ts`),
-      ),
-      outdir: path.join(PROJECT_ROOT, '.mcp-closure-probe'),
-      bundle: true,
-      splitting: true,
-      platform: 'node',
-      format: 'esm',
-      target: 'es2022',
-      packages: 'external',
-      write: false,
-      metafile: true,
-      logLevel: 'silent',
-    })).metafile;
+    const metafile = (
+      await build({
+        entryPoints: ['server', 'companion', 'aiCompanion', 'aiCompanionEntry'].map((name) =>
+          path.join(PROJECT_ROOT, `electron/mcp/${name}.ts`),
+        ),
+        outdir: path.join(PROJECT_ROOT, '.mcp-closure-probe'),
+        bundle: true,
+        splitting: true,
+        platform: 'node',
+        format: 'esm',
+        target: 'es2022',
+        packages: 'external',
+        write: false,
+        metafile: true,
+        logLevel: 'silent',
+      })
+    ).metafile;
     const outputs = new Map(
       Object.entries(metafile.outputs).map(([file, output]) => [path.resolve(file), output]),
     );
     for (const [file, output] of outputs) {
       if (output.entryPoint || !file.endsWith('.js')) continue;
       expect(
-        output.imports.length > 0 || Object.values(output.inputs).some(
-          (input) => input.bytesInOutput > 0,
-        ),
+        output.imports.length > 0 ||
+          Object.values(output.inputs).some((input) => input.bytesInOutput > 0),
         `Shared chunk has no implementation or imports: ${file}`,
       ).toBe(true);
     }
     for (const name of ['server', 'companion', 'aiCompanion', 'aiCompanionEntry']) {
-      const entry = [...outputs].find(([, output]) =>
-        output.entryPoint && normalise(output.entryPoint) === `electron/mcp/${name}.ts`,
+      const entry = [...outputs].find(
+        ([, output]) =>
+          output.entryPoint && normalise(output.entryPoint) === `electron/mcp/${name}.ts`,
       );
       if (!entry) throw new Error(`Missing build entry: ${name}`);
       const inputs = new Set<string>();
@@ -190,9 +266,12 @@ describe('Electron MCP contract boundary', () => {
       }
       visit(entry[0]);
       expect(inputs.has('src/ai/companionErrors.ts'), name).toBe(name.startsWith('ai'));
-      expect([...inputs].filter((input) =>
-        FORBIDDEN_SOURCE_ROOTS.some((root) => input.startsWith(root)),
-      ), name).toEqual([]);
+      expect(
+        [...inputs].filter((input) =>
+          FORBIDDEN_SOURCE_ROOTS.some((root) => input.startsWith(root)),
+        ),
+        name,
+      ).toEqual([]);
     }
   });
 

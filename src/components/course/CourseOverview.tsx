@@ -189,7 +189,11 @@ export function CourseOverview(props: CourseOverviewProps) {
                     <span className="min-w-0 flex-1">
                       <strong className="block break-words font-bold">{assessment.name}</strong>
                       <span className="text-sm text-ink-faint">
-                        {assessment.kind === 'final' ? 'All lessons' : 'Checkpoint'}
+                        {assessment.coverageMode === 'specification'
+                          ? 'Specification coverage'
+                          : assessment.kind === 'final'
+                            ? 'All lessons'
+                            : 'Checkpoint'}
                       </span>
                     </span>
                   </button>

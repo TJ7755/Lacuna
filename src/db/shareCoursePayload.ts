@@ -236,7 +236,22 @@ export async function buildCourseSharePayload(
         assessment.afterLessonId === null
           ? null
           : (lessonIndexById.get(assessment.afterLessonId) ?? null),
-      m: assessment.coverageMode === 'custom' ? 'c' : 'p',
+      m:
+        assessment.coverageMode === 'specification'
+          ? 's'
+          : assessment.coverageMode === 'custom'
+            ? 'c'
+            : 'p',
+      ...(assessment.coverageMode === 'specification'
+        ? {
+            ...(assessment.specificationPaperId === undefined
+              ? {}
+              : { specificationPaperId: assessment.specificationPaperId }),
+            ...(assessment.specificationPointIds === undefined
+              ? {}
+              : { specificationPointIds: assessment.specificationPointIds }),
+          }
+        : {}),
       ...(assessment.coverageMode === 'custom' ? { ls } : {}),
       ...(assessment.excludedCardIds.length ? { x: assessment.excludedCardIds } : {}),
       ...(assessment.needsAuthorConfirmation ? { ac: 1 as const } : {}),
@@ -248,6 +263,9 @@ export async function buildCourseSharePayload(
     n: course.name,
     ...(course.description ? { d: course.description } : {}),
     ...(course.specificationRef === undefined ? {} : { specificationRef: course.specificationRef }),
+    ...(course.specificationData === undefined
+      ? {}
+      : { specificationData: course.specificationData }),
     ...(course.examBoard === undefined ? {} : { examBoard: course.examBoard }),
     ...(course.specification === undefined ? {} : { specification: course.specification }),
     o: course.examObjective === 'securedTopics' ? 1 : 0,

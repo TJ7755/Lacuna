@@ -19,6 +19,69 @@ import {
   practiceCardScope,
 } from '../../course/studyPools';
 import { makeExamDateContext } from '../../fsrs/examDate';
+import { finalAssessmentForCourse, hydrateCourse } from '../../db/assessmentMigration';
+import type { SessionUnit } from '../../fsrs/session';
+
+/** Global study keeps scheduling-unit ownership while honouring each Course's papers. */
+export async function loadGlobalSessionSource() {
+  const [schedulingUnits, rawCards, assessments] = await Promise.all([
+    db.schedulingUnits.toArray(),
+    db.cards.toArray(),
+    db.courseAssessments.toArray(),
+  ]);
+  const cards = await hydrateCardsWithHistory(rawCards);
+  const paperCourseIds = [
+    ...new Set(
+      assessments
+        .filter((assessment) => assessment.coverageMode === 'specification')
+        .map((assessment) => assessment.courseId),
+    ),
+  ];
+  if (!paperCourseIds.length) return { schedulingUnits, sessionUnits: schedulingUnits, cards };
+  const [records, lessons, concepts] = await Promise.all([
+    db.courses.bulkGet(paperCourseIds),
+    db.lessons.where('courseId').anyOf(paperCourseIds).toArray(),
+    db.concepts.where('courseId').anyOf(paperCourseIds).toArray(),
+  ]);
+  const links = lessons.length
+    ? await db.lessonCards
+        .where('lessonId')
+        .anyOf(lessons.map((lesson) => lesson.id))
+        .toArray()
+    : [];
+  const contexts = new Map(
+    records.flatMap((record) => {
+      if (!record) return [];
+      const courseAssessments = assessments.filter(
+        (assessment) => assessment.courseId === record.id,
+      );
+      const course = hydrateCourse(record, finalAssessmentForCourse(record.id, courseAssessments));
+      return [
+        [
+          record.id,
+          makeExamDateContext(
+            course,
+            lessons.filter((lesson) => lesson.courseId === record.id),
+            courseAssessments,
+            links,
+            concepts,
+          ),
+        ],
+      ] as const;
+    }),
+  );
+  const sessionUnits = schedulingUnits.map((unit) => {
+    const context = unit.courseId ? contexts.get(unit.courseId) : undefined;
+    return context
+      ? ({
+          config: unit,
+          scope: { kind: 'scheduling-unit', schedulingUnitId: unit.id },
+          examDateContext: context,
+        } satisfies SessionUnit)
+      : unit;
+  });
+  return { schedulingUnits, sessionUnits, cards };
+}
 
 interface CoursePoolRequest {
   standaloneSimple: boolean;
@@ -32,23 +95,34 @@ interface CoursePoolRequest {
 
 /** Load curricular evidence once; optional passes deliberately skip practice reads. */
 export async function loadCourseSessionSource(courseId: string, standaloneSimple: boolean) {
-  const [rawAllCards, courseLessons, examDates, manualNodes] = await Promise.all([
+  const [rawAllCards, courseLessons, examDates, manualNodes, concepts] = await Promise.all([
     db.cards.where('courseId').equals(courseId).toArray(),
     db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
     listCourseAssessments(courseId),
     standaloneSimple ? [] : db.practiceNodes.where('courseId').equals(courseId).toArray(),
+    db.concepts.where('courseId').equals(courseId).toArray(),
   ]);
   const allCards = await hydrateCardsWithHistory(rawAllCards);
   const courseLessonIds = courseLessons.map((lesson) => lesson.id);
   const [courseLinks, courseExposures] = await Promise.all([
-    !standaloneSimple && courseLessonIds.length > 0
+    (!standaloneSimple ||
+      examDates.some((assessment) => assessment.coverageMode === 'specification')) &&
+    courseLessonIds.length > 0
       ? db.lessonCards.where('lessonId').anyOf(courseLessonIds).toArray()
       : [],
     !standaloneSimple && courseLessonIds.length > 0
       ? db.lessonCardExposures.where('lessonId').anyOf(courseLessonIds).toArray()
       : [],
   ]);
-  return { allCards, courseLessons, examDates, manualNodes, courseLinks, courseExposures };
+  return {
+    allCards,
+    courseLessons,
+    examDates,
+    manualNodes,
+    courseLinks,
+    courseExposures,
+    concepts,
+  };
 }
 
 type CourseSessionSource = Awaited<ReturnType<typeof loadCourseSessionSource>>;
@@ -99,7 +173,15 @@ export function prepareCourseSessionPool(
   }: CoursePoolRequest,
   activeRevisionPlan: RevisionPlan | null,
 ) {
-  const { allCards, courseLessons, examDates, manualNodes, courseLinks, courseExposures } = source;
+  const {
+    allCards,
+    courseLessons,
+    examDates,
+    manualNodes,
+    courseLinks,
+    courseExposures,
+    concepts,
+  } = source;
   const { reachedLessonIds, practiceNode, selectedAssessment } = selection;
   // Optional passes need scheduling context, but no curricular eligibility planning.
   const dueReview = !selectedAssessment && !practiceNodeKeyParam && filterParams.includes('due');
@@ -113,6 +195,7 @@ export function prepareCourseSessionPool(
             allCards,
             courseLinks,
             courseLessonOrderPreference(course),
+            { course, concepts },
           ).cards
         : practiceCardScope(
             allCards,
@@ -132,7 +215,7 @@ export function prepareCourseSessionPool(
         lessonsById: new Map<string, Lesson>(),
         courseAssessments: [],
       }
-    : makeExamDateContext(course, courseLessons, examDates);
+    : makeExamDateContext(course, courseLessons, examDates, courseLinks, concepts);
   const cards = catchUpPractice
     ? catchUpPracticePool(
         allCards,
@@ -153,6 +236,7 @@ export function prepareCourseSessionPool(
           ? allCards.filter((card) => activeRevisionPlan.scope.eligibleCardIds.includes(card.id))
           : assessmentPracticePool(selectedAssessment, {
               course,
+              concepts,
               assessments: examDates,
               practiceNodes: manualNodes,
               lessons: courseLessons,
@@ -170,13 +254,21 @@ export function prepareCourseSessionPool(
 }
 
 export async function loadLessonSessionSource(courseId: string, lessonId: string) {
-  const [courseLessons, examDates, links, rawAllCourseCards, lessonExposures] = await Promise.all([
-    db.lessons.where('courseId').equals(courseId).toArray(),
-    listCourseAssessments(courseId),
-    db.lessonCards.where('lessonId').equals(lessonId).toArray(),
-    db.cards.where('courseId').equals(courseId).toArray(),
-    db.lessonCardExposures.where('lessonId').equals(lessonId).toArray(),
-  ]);
+  const [courseLessons, examDates, rawAllCourseCards, lessonExposures, concepts] =
+    await Promise.all([
+      db.lessons.where('courseId').equals(courseId).toArray(),
+      listCourseAssessments(courseId),
+      db.cards.where('courseId').equals(courseId).toArray(),
+      db.lessonCardExposures.where('lessonId').equals(lessonId).toArray(),
+      db.concepts.where('courseId').equals(courseId).toArray(),
+    ]);
+  const courseLinks = courseLessons.length
+    ? await db.lessonCards
+        .where('lessonId')
+        .anyOf(courseLessons.map((lesson) => lesson.id))
+        .toArray()
+    : [];
+  const links = courseLinks.filter((link) => link.lessonId === lessonId);
   const allCourseCards = await hydrateCardsWithHistory(rawAllCourseCards);
   const linkedCardIds = new Set(links.map((link) => link.cardId));
   const membership = lessonCardMembership(lessonId, allCourseCards, links);
@@ -184,6 +276,8 @@ export async function loadLessonSessionSource(courseId: string, lessonId: string
     courseLessons,
     examDates,
     links,
+    courseLinks,
+    concepts,
     allCourseCards,
     lessonExposures,
     linkedCardIds,

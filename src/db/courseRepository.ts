@@ -1,10 +1,12 @@
+import Dexie from 'dexie';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
+import { specificationAssessmentPointIds } from '../specifications/assessment';
 import { canEditLessons } from '../course/lessonViewMode';
 import { parseSpecificationReference, type SpecificationReference } from '../specifications/links';
 import { readPracticeDefaults } from '../state/practiceDefaults';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import { courseToRecord, hydrateCourse } from './assessmentMigration';
-import { validateAssessmentStructure } from './assessmentRepository';
+import { validateAssessmentStructure } from './assessmentValidation';
 import { scheduleAssetGc } from './assets';
 import { removeCourseSchedulingUnits, syncCourseSchedulingUnits } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
@@ -46,6 +48,16 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
     } = opts ?? {};
     if (recordOptions.specificationRef !== undefined) {
       recordOptions.specificationRef = parseSpecificationReference(recordOptions.specificationRef);
+    }
+    if (recordOptions.specificationData !== undefined) {
+      // Course imports also call this inside their atomic transaction.
+      const { parseCourseSpecificationData } = await Dexie.waitFor(
+        import('../specifications/data'),
+      );
+      recordOptions.specificationData = parseCourseSpecificationData(
+        recordOptions.specificationData,
+        recordOptions.specificationRef,
+      );
     }
     if (schedulingMode === 'steady' && requestedExamDate !== undefined) {
       throw new Error('A steady-retention course cannot also have an exam date.');
@@ -140,6 +152,9 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
               : parseSpecificationReference(changes.specificationRef),
         }
       : changes;
+    const setsData = Object.prototype.hasOwnProperty.call(changes, 'specificationData');
+    const dataValidation =
+      setsReference || setsData ? await Dexie.waitFor(import('../specifications/data')) : undefined;
     const compatibilityChanges = changes as Partial<Course>;
     if (
       Object.prototype.hasOwnProperty.call(compatibilityChanges, 'examDate') ||
@@ -158,10 +173,21 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
         db.schedulingPerformance,
       ],
       async () => {
-        if (setsReference) {
+        if (setsReference || setsData) {
           const course = await db.courses.get(id);
           if (!course) throw new Error('The course could not be found.');
           if (!canEditLessons(course)) throw new Error('This published course is locked.');
+          const specificationRef = setsReference
+            ? validatedChanges.specificationRef
+            : course.specificationRef;
+          const specificationData = setsData ? changes.specificationData : course.specificationData;
+          if (specificationData !== undefined) {
+            dataValidation!.parseCourseSpecificationData(specificationData, specificationRef);
+          }
+          const assessments = await db.courseAssessments.where('courseId').equals(id).toArray();
+          for (const assessment of assessments) {
+            specificationAssessmentPointIds(assessment, { specificationData, specificationRef });
+          }
         }
         await db.courses.update(id, stampUpdatedAt(validatedChanges));
         await syncCourseSchedulingUnits(id);
@@ -176,18 +202,7 @@ export async function setCourseSpecificationReference(
   courseId: string,
   reference: SpecificationReference | undefined,
 ): Promise<void> {
-  try {
-    const specificationRef =
-      reference === undefined ? undefined : parseSpecificationReference(reference);
-    await db.transaction('rw', db.courses, async () => {
-      const course = await db.courses.get(courseId);
-      if (!course) throw new Error('The course could not be found.');
-      if (!canEditLessons(course)) throw new Error('This published course is locked.');
-      await db.courses.update(courseId, stampUpdatedAt({ specificationRef }));
-    });
-  } catch (err) {
-    throw friendlyDbError(err);
-  }
+  await updateCourse(courseId, { specificationRef: reference });
 }
 
 /**

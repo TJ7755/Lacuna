@@ -20,6 +20,7 @@ import {
 import { PathEditorSurface } from './PathEditorSurface';
 import { PathEditorPopover } from './PathEditorPopover';
 import { AssessmentExclusions } from './AssessmentExclusions';
+import { useAssessmentSpecification } from '../../state/useAssessmentSpecification';
 
 export function AssessmentPathEditor({
   courseId,
@@ -44,6 +45,7 @@ export function AssessmentPathEditor({
   learnerOwnedOnly?: boolean;
   onSaved: () => void;
 }) {
+  const specificationContext = useAssessmentSpecification(courseId);
   const orderedLessons = useMemo(
     () => resolveLessonOrder(lessons, preferredLessonIds),
     [lessons, preferredLessonIds],
@@ -77,8 +79,16 @@ export function AssessmentPathEditor({
     [courseId, draft, kind],
   );
   const resolved = useMemo(
-    () => resolveAssessmentCoverage(record, orderedLessons, cards, links, preferredLessonIds),
-    [record, orderedLessons, cards, links, preferredLessonIds],
+    () =>
+      resolveAssessmentCoverage(
+        record,
+        orderedLessons,
+        cards,
+        links,
+        preferredLessonIds,
+        specificationContext,
+      ),
+    [record, orderedLessons, cards, links, preferredLessonIds, specificationContext],
   );
   const candidates = useMemo(
     () =>
@@ -88,8 +98,9 @@ export function AssessmentPathEditor({
         cards,
         links,
         preferredLessonIds,
+        specificationContext,
       ),
-    [record, orderedLessons, cards, links, preferredLessonIds],
+    [record, orderedLessons, cards, links, preferredLessonIds, specificationContext],
   );
 
   function changeCoverage(next: AssessmentDraft) {
@@ -99,6 +110,7 @@ export function AssessmentPathEditor({
       cards,
       links,
       preferredLessonIds,
+      specificationContext,
     );
     const ids = new Set(scope.cards.map((card) => card.id));
     setDraft({ ...next, excludedCardIds: next.excludedCardIds.filter((id) => ids.has(id)) });
@@ -212,9 +224,12 @@ export function AssessmentPathEditor({
         <span ref={coverage}>
           <PathEditorPopover
             label={
-              draft.coverageMode === 'prefix'
-                ? 'everything so far'
-                : `${draft.lessonIds.length} chosen lesson${draft.lessonIds.length === 1 ? '' : 's'}`
+              draft.coverageMode === 'specification'
+                ? (draft.specificationPaperId ??
+                  `${draft.specificationPointIds?.length ?? 0} specification points`)
+                : draft.coverageMode === 'prefix'
+                  ? 'everything so far'
+                  : `${draft.lessonIds.length} chosen lesson${draft.lessonIds.length === 1 ? '' : 's'}`
             }
           >
             {(close) => (

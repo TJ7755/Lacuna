@@ -1,3 +1,4 @@
+import type { Specification } from '../../specifications/catalogue';
 import type { SpecificationReference } from '../../specifications/links';
 import type { CardFilter } from '../search';
 import type { ExamObjective, FsrsParameters } from './scheduling';
@@ -34,6 +35,8 @@ export interface CourseRecord {
   examBoard?: string;
   specification?: string;
   specificationRef?: SpecificationReference;
+  /** Specification metadata and source supplied with this Course. */
+  specificationData?: Specification;
   createdAt: number;
   /** Last mutation time. Required after schema v23; backfilled from createdAt. */
   updatedAt: number;
@@ -129,6 +132,8 @@ export interface CourseDistributedCopy {
     examBoard?: string;
     specification?: string;
     specificationRef?: SpecificationReference;
+    /** Specification metadata and source supplied with this Course. */
+    specificationData?: Specification;
   };
 }
 
@@ -174,7 +179,24 @@ interface CourseAssessmentBase {
  * `afterLessonId`; custom coverage stores an explicit, non-contiguous lesson set.
  */
 export type CourseAssessment = CourseAssessmentBase &
-  ({ coverageMode: 'prefix'; lessonIds?: never } | { coverageMode: 'custom'; lessonIds: string[] });
+  (
+    | {
+        coverageMode: 'prefix';
+        lessonIds?: never;
+        specificationPaperId?: never;
+        specificationPointIds?: never;
+      }
+    | {
+        coverageMode: 'custom';
+        lessonIds: string[];
+        specificationPaperId?: never;
+        specificationPointIds?: never;
+      }
+    | ({ coverageMode: 'specification'; lessonIds?: never } & (
+        | { specificationPaperId: string; specificationPointIds?: never }
+        | { specificationPaperId?: never; specificationPointIds: string[] }
+      ))
+  );
 
 export type RevisionProjection =
   | {

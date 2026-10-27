@@ -289,6 +289,7 @@ export async function deleteLesson(id: string): Promise<void> {
     'rw',
     [
       db.courses,
+      db.concepts,
       db.lessons,
       db.notes,
       db.noteAnnotations,
@@ -393,12 +394,15 @@ export async function deleteLesson(id: string): Promise<void> {
       if (schedulingUnit) await recordTombstone(tx, 'schedulingUnits', id);
       if (schedulingPerformance) await recordTombstone(tx, 'schedulingPerformance', id);
 
-      const [remainingLessons, courseCards, courseLinks, assessments] = await Promise.all([
-        db.lessons.where('courseId').equals(lesson.courseId).toArray(),
-        db.cards.where('courseId').equals(lesson.courseId).toArray(),
-        db.lessonCards.toArray(),
-        db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
-      ]);
+      const [remainingLessons, courseCards, courseLinks, assessments, course, concepts] =
+        await Promise.all([
+          db.lessons.where('courseId').equals(lesson.courseId).toArray(),
+          db.cards.where('courseId').equals(lesson.courseId).toArray(),
+          db.lessonCards.toArray(),
+          db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
+          db.courses.get(lesson.courseId),
+          db.concepts.where('courseId').equals(lesson.courseId).toArray(),
+        ]);
       for (const assessment of assessments) {
         const lostPlacement = assessment.afterLessonId === id;
         const lostCustomLesson =
@@ -418,6 +422,8 @@ export async function deleteLesson(id: string): Promise<void> {
             remainingLessons,
             courseCards,
             courseLinks,
+            undefined,
+            { course, concepts },
           ).cards.map((card) => card.id),
         );
         const excludedCardIds = updated.excludedCardIds.filter((cardId) =>

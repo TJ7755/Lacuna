@@ -42,18 +42,25 @@ export async function ratchetSessionUnlocks(
   const lId = getLessonId();
   const now = Date.now();
   const lessonIds = coreLessons.map((lesson) => lesson.id);
-  const [rawCourseCards, links, exposures, completions, practiceNodes, examDates, milestones] =
-    await Promise.all([
-      db.cards.where('courseId').equals(cId).toArray(),
-      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
-      lessonIds.length > 0
-        ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
-        : [],
-      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-      db.practiceNodes.where('courseId').equals(cId).toArray(),
-      listCourseAssessments(cId),
-      db.practiceMilestones.where('courseId').equals(cId).toArray(),
-    ]);
+  const [
+    rawCourseCards,
+    links,
+    exposures,
+    completions,
+    practiceNodes,
+    examDates,
+    milestones,
+    concepts,
+  ] = await Promise.all([
+    db.cards.where('courseId').equals(cId).toArray(),
+    lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+    lessonIds.length > 0 ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray() : [],
+    lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
+    db.practiceNodes.where('courseId').equals(cId).toArray(),
+    listCourseAssessments(cId),
+    db.practiceMilestones.where('courseId').equals(cId).toArray(),
+    db.concepts.where('courseId').equals(cId).toArray(),
+  ]);
   const courseCards = await hydrateCardsWithHistory(rawCourseCards);
   const performance = await performanceForCourseBackingDecks(cId, courseCards);
   const lessonCardsById = new Map(
@@ -66,6 +73,7 @@ export async function ratchetSessionUnlocks(
     assessments: examDates,
     lessons,
     cards: courseCards,
+    concepts,
     links,
     exposures,
     now,
@@ -93,7 +101,7 @@ export async function ratchetSessionUnlocks(
     cards: courseCards,
     links,
     exposures,
-    examDateContext: makeExamDateContext(course, lessons, examDates),
+    examDateContext: makeExamDateContext(course, lessons, examDates, links, concepts),
     meanReviewSeconds,
     practiceMilestones: milestones,
     now,

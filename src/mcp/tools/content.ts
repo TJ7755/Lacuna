@@ -36,8 +36,7 @@ import {
   createOcclusion as repoCreateOcclusion,
   updateOcclusion as repoUpdateOcclusion,
 } from '../../db/occlusionRepository';
-import type {
-  occlusionRegionSchema} from '../contracts/content';
+import type { occlusionRegionSchema } from '../contracts/content';
 import {
   createCardContract,
   createCourseAssessmentContract,
@@ -90,7 +89,10 @@ const createCourse: ToolDefinition<
   },
 };
 
-const updateCourse: ToolDefinition<z.infer<typeof updateCourseContract.inputSchema>, { id: string }> = {
+const updateCourse: ToolDefinition<
+  z.infer<typeof updateCourseContract.inputSchema>,
+  { id: string }
+> = {
   ...updateCourseContract,
   async handler({ courseId, ...changes }) {
     if (!(await read.getCourse(courseId))) notFound('Course', courseId);
@@ -132,7 +134,10 @@ const createLesson: ToolDefinition<
   },
 };
 
-const updateLesson: ToolDefinition<z.infer<typeof updateLessonContract.inputSchema>, { id: string }> = {
+const updateLesson: ToolDefinition<
+  z.infer<typeof updateLessonContract.inputSchema>,
+  { id: string }
+> = {
   ...updateLessonContract,
   async handler({ lessonId, ...changes }) {
     if (!(await read.getLesson(lessonId))) notFound('Lesson', lessonId);
@@ -217,7 +222,16 @@ const createSequence: ToolDefinition<
   Awaited<ReturnType<typeof repoCreateSequence>>
 > = {
   ...createSequenceContract,
-  async handler({ courseId, lessonId, name, items, cueWindow, mode, mySpeaker, recitationChunkSize }) {
+  async handler({
+    courseId,
+    lessonId,
+    name,
+    items,
+    cueWindow,
+    mode,
+    mySpeaker,
+    recitationChunkSize,
+  }) {
     if (!(await read.getCourse(courseId))) notFound('Course', courseId);
     if (lessonId !== undefined && !(await read.getLesson(lessonId))) notFound('Lesson', lessonId);
     const opts: Partial<Awaited<ReturnType<typeof repoCreateSequence>>> = {};
@@ -229,7 +243,10 @@ const createSequence: ToolDefinition<
   },
 };
 
-const updateSequence: ToolDefinition<z.infer<typeof updateSequenceContract.inputSchema>, { id: string }> = {
+const updateSequence: ToolDefinition<
+  z.infer<typeof updateSequenceContract.inputSchema>,
+  { id: string }
+> = {
   ...updateSequenceContract,
   async handler({ sequenceId, name, items, cueWindow, recitationChunkSize }) {
     const existing = await read.getSequence(sequenceId);
@@ -293,7 +310,10 @@ const createOcclusion: ToolDefinition<
   },
 };
 
-const updateOcclusion: ToolDefinition<z.infer<typeof updateOcclusionContract.inputSchema>, { id: string }> = {
+const updateOcclusion: ToolDefinition<
+  z.infer<typeof updateOcclusionContract.inputSchema>,
+  { id: string }
+> = {
   ...updateOcclusionContract,
   async handler({ occlusionId, name, assetHash, regions }) {
     const existing = await read.getOcclusion(occlusionId);
@@ -322,7 +342,14 @@ const createCourseAssessment: ToolDefinition<
   async handler(input) {
     const { courseId, name, examDate, ...options } = input;
     if (!(await read.getCourse(courseId))) notFound('Course', courseId);
-    return ok(await repoCreateCourseAssessment(courseId, name, examDate, options));
+    return ok(
+      await repoCreateCourseAssessment(
+        courseId,
+        name,
+        examDate,
+        options as Partial<CourseAssessment>,
+      ),
+    );
   },
 };
 
@@ -336,9 +363,14 @@ const updateCourseAssessment: ToolDefinition<
       notFound('Course assessment', assessmentId);
     await repoUpdateCourseAssessment(
       assessmentId,
-      (changes.coverageMode === 'prefix'
-        ? { ...changes, lessonIds: undefined }
-        : changes) as Partial<CourseAssessment>,
+      (changes.coverageMode === undefined
+        ? changes
+        : {
+            lessonIds: undefined,
+            specificationPaperId: undefined,
+            specificationPointIds: undefined,
+            ...changes,
+          }) as Partial<CourseAssessment>,
     );
     return ok({ id: assessmentId });
   },

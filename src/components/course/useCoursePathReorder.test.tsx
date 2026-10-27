@@ -13,6 +13,12 @@ import type { Course, CourseAssessment, Lesson, PracticeNode } from '../../db/ty
 import { CourseOverview } from './CourseOverview';
 import { ToastProvider } from '../ui/Toast';
 import { useCoursePathReorder } from './useCoursePathReorder';
+import { pathMoveOrder } from './pathNodeReorder';
+import { setCoursePaperAssessments } from '../../db/paperAssessmentRepository';
+import {
+  paperSpecification,
+  paperSpecificationReference,
+} from '../../specifications/paperFixture.testFixtures';
 
 const onLessonOpen = vi.fn();
 const onError = vi.fn();
@@ -81,6 +87,31 @@ beforeEach(async () => {
   vi.clearAllMocks();
 });
 afterEach(cleanup);
+
+it('keeps paper coverage valid when an author changes lesson order', async () => {
+  const course = await createCourse('Science', {
+    specificationData: paperSpecification,
+    specificationRef: paperSpecificationReference,
+  });
+  const a = await createLesson(course.id, 'A');
+  const b = await createLesson(course.id, 'B');
+  await setCoursePaperAssessments(course.id, [
+    { paperId: 'paper-1', examDate: Date.now() + 86400000 },
+    { paperId: 'paper-2', examDate: Date.now() + 172800000 },
+  ]);
+  const assessments = await db.courseAssessments.toArray();
+  const nodes = buildPath(course, [a, b], assessments, new Map(), []);
+  const order = pathMoveOrder(
+    nodes,
+    a.id,
+    nodes.findIndex((node) => node.id === b.id) + 1,
+    [],
+    [],
+    { course, concepts: [] },
+  );
+  expect(order?.filter((id) => id === a.id || id === b.id)).toEqual([b.id, a.id]);
+  expect(await db.courseAssessments.toArray()).toEqual(assessments);
+});
 
 it.each(['semi-linear', 'linear'] as const)(
   'reorders unreached %s library lessons without editing published content or starting study',

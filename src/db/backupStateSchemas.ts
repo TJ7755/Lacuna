@@ -1,6 +1,6 @@
 import { parseQuestionSetPracticeNodeSnapshot } from './questionSetPracticeNode';
 import { z } from 'zod';
-import { validateAssessmentStructure } from './assessmentRepository';
+import { validateAssessmentStructure } from './assessmentValidation';
 import type { CourseAssessment } from './types';
 import {
   answerMode,
@@ -289,9 +289,14 @@ export const stateSchemas = {
     assessmentSnapshots: z.record(text, z.looseObject({ id, courseId: id })).optional(),
   }).superRefine((mapping, context) => {
     for (const [key, snapshot] of Object.entries(mapping.questionSetPracticeNodeSnapshots ?? {})) {
-      try { parseQuestionSetPracticeNodeSnapshot(snapshot); } catch {
-        context.addIssue({ code: 'custom', path: ['questionSetPracticeNodeSnapshots', key],
-          message: 'Invalid Question Set activity snapshot' });
+      try {
+        parseQuestionSetPracticeNodeSnapshot(snapshot);
+      } catch {
+        context.addIssue({
+          code: 'custom',
+          path: ['questionSetPracticeNodeSnapshots', key],
+          message: 'Invalid Question Set activity snapshot',
+        });
       }
     }
     for (const [key, snapshot] of Object.entries(mapping.assessmentSnapshots ?? {})) {

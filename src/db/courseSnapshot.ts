@@ -8,7 +8,7 @@ import type { QuestionSetRecord } from '../questions/questionSetCodec';
 import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
 import type { QuestionSetDraft } from '../questions/questionSetDrafts';
 import { finalAssessmentForCourse } from './assessmentMigration';
-import { validateAssessmentStructure } from './assessmentRepository';
+import { validateAssessmentStructure } from './assessmentValidation';
 import { replaceReviewHistoryForCards } from './cardReviewHistory';
 import { friendlyDbError } from './dbErrors';
 import { clearTombstone, clearTombstones, lessonCardExposureId } from './mutationStamp';

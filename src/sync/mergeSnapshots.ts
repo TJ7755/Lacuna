@@ -1,3 +1,4 @@
+import { assertSpecificationAssessmentReferences } from '../specifications/assessment';
 import { referencedQuestionSetConceptIds } from '../questions/questionSets';
 // Pure peer-merge of two BackupFile snapshots. No Dexie, no I/O, no knowledge
 // of which device produced either side. After this, the two-device dance is
@@ -313,6 +314,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
       tombstones,
     ),
   ).filter((attempt) => courses.some((course) => course.id === attempt.courseId));
+  assertSpecificationAssessmentReferences(courses, courseAssessments);
   assertLessonPrerequisites(lessons);
   assertQuestionSetReferences(
     questionSets,

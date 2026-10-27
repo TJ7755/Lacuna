@@ -9,6 +9,7 @@ import { formatDateTime } from '../../utils/datetime';
 import { expandingActionSpring } from '../ui/motion';
 import { Button } from '../ui/Button';
 import { CloseIcon } from '../ui/icons';
+import { useAssessmentSpecification } from '../../state/useAssessmentSpecification';
 
 interface AssessmentDetailSheetProps {
   assessment: CourseAssessment;
@@ -37,12 +38,20 @@ export function AssessmentDetailSheet({
   onClose,
   onRevise,
 }: AssessmentDetailSheetProps) {
+  const specificationContext = useAssessmentSpecification(assessment.courseId);
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const transition = assessmentSheetTiming(multiplier);
   const present = useIsPresent();
   const trapRef = useFocusTrap(present);
-  const resolved = resolveAssessmentCoverage(assessment, lessons, cards, links, preferredLessonIds);
+  const resolved = resolveAssessmentCoverage(
+    assessment,
+    lessons,
+    cards,
+    links,
+    preferredLessonIds,
+    specificationContext,
+  );
   const excludedNames = assessment.excludedCardIds.map(
     (id) => cards.find((card) => card.id === id)?.front ?? `Missing card: ${id}`,
   );

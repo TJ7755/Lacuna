@@ -1,3 +1,4 @@
+import type { Concept } from '../questions/types';
 import { lessonCardMembership } from '../course/lessonMembership';
 import type {
   Card,
@@ -66,6 +67,7 @@ export function computeCourseSummaries(
   now: number = Date.now(),
   progress: CourseSummaryProgress = EMPTY_SUMMARY_PROGRESS,
   activity?: ReviewActivity,
+  concepts: readonly Concept[] = [],
 ): Record<string, CourseSummary> {
   // Build a set of lesson ids that are extensions, for O(1) exclusion.
   const extensionLessonIds = new Set(lessons.filter((l) => l.isExtension).map((l) => l.id));
@@ -112,6 +114,8 @@ export function computeCourseSummaries(
       course,
       courseLessons,
       assessmentsByCourse[course.id] ?? [],
+      progress.links,
+      concepts,
     );
     summaries[course.id] = {
       lessonCount: coreLessons.length,

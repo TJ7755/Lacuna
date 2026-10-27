@@ -12,6 +12,75 @@ import {
 } from './ShellCourseData';
 import { reviewHistoryEntriesForCard } from '../db/reviewHistory';
 import type { ReviewLog } from '../db/types';
+import { createCourseAssessment, updateCourseAssessment } from '../db/assessmentRepository';
+import {
+  paperSpecification,
+  paperSpecificationReference,
+} from '../specifications/paperFixture.testFixtures';
+
+it('uses per-Card recall instead of a final-only forecast before and after its paper', async () => {
+  const day = 86_400_000;
+  const now = Date.parse('2027-06-01T09:00:00Z');
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+  try {
+    const course = await createCourse('Science', {
+      examDate: now + 20 * day,
+      specificationRef: paperSpecificationReference,
+      specificationData: {
+        ...paperSpecification,
+        papers: paperSpecification.papers.map((paper) =>
+          paper.id === 'paper-2' ? { ...paper, pointIds: ['enzymes'] } : paper,
+        ),
+      },
+    });
+    const legacy = await createCourse('Legacy', { examDate: now + 20 * day });
+    const card = await createCourseCard(course.id, 'front_back', 'Cells', 'A unit of life');
+    await db.cards.update(card.id, {
+      stability: 10,
+      difficulty: 5,
+      lastReviewed: now,
+      state: 2,
+      reps: 1,
+    });
+    await db.concepts.update(card.conceptId, { specificationPointIds: ['example-science:cells'] });
+    const final = (await db.courseAssessments.where('courseId').equals(course.id).first())!;
+    await updateCourseAssessment(final.id, {
+      coverageMode: 'specification',
+      specificationPaperId: 'paper-2',
+    });
+    await createCourseAssessment(course.id, 'First paper', now + 10 * day, {
+      coverageMode: 'specification',
+      specificationPaperId: 'paper-1',
+      afterLessonId: null,
+    });
+    const { result, unmount } = renderHook(
+      () => ({ sidebar: useSidebarData(), dashboard: useCourseDashboardData() }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <ShellCourseDataProvider includeDashboard>{children}</ShellCourseDataProvider>
+        ),
+      },
+    );
+    try {
+      await waitFor(() =>
+        expect(result.current.sidebar?.summaries[course.id].mastery).toBeCloseTo(0.9, 5),
+      );
+      expect(result.current.sidebar?.forecasts[course.id]).toBeUndefined();
+      expect(result.current.dashboard?.forecasts[course.id]).toBeUndefined();
+      expect(result.current.sidebar?.forecasts[legacy.id]).toBeDefined();
+      clock.mockReturnValue(now + 11 * day);
+      await db.courses.update(course.id, { name: 'Science after the first paper' });
+      await waitFor(() =>
+        expect(result.current.sidebar?.summaries[course.id].mastery).toBeLessThan(0.9),
+      );
+      expect(result.current.sidebar?.forecasts[course.id]).toBeUndefined();
+    } finally {
+      unmount();
+    }
+  } finally {
+    clock.mockRestore();
+  }
+});
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));

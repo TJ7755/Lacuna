@@ -32,7 +32,7 @@ import { assertValidCardPayload } from '../items/payloadValidation';
 import { emptyQuestionSchedule } from '../questions/scheduler';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { importSharedQuestionSets } from '../questions/questionSetShare';
-import { V1_SHARE_CODE_MESSAGE } from './sharePayload';
+import { V1_SHARE_CODE_MESSAGE, assertShareSpecificationAssessments } from './sharePayload';
 import type {
   ShareCard,
   SharePayload,
@@ -102,6 +102,7 @@ async function importCourseSharePayload(
   scheduling?: ImportCourseScheduling,
 ): Promise<ImportShareResult> {
   assertShareLessonPrerequisites(payload.lessons);
+  assertShareSpecificationAssessments(payload);
   let cardCount = 0;
   let importedCourseId: string | null = null;
 
@@ -179,6 +180,9 @@ async function importCourseSharePayload(
         ...(payload.course.specificationRef === undefined
           ? {}
           : { specificationRef: payload.course.specificationRef }),
+        ...(payload.course.specificationData === undefined
+          ? {}
+          : { specificationData: payload.course.specificationData }),
         ...(payload.course.examBoard === undefined ? {} : { examBoard: payload.course.examBoard }),
         ...(payload.course.specification === undefined
           ? {}
@@ -384,6 +388,14 @@ async function importCourseSharePayload(
             ...(shareExam.ac ? { needsAuthorConfirmation: true } : {}),
             ...(shareExam.tz ? { timeZone: shareExam.tz } : {}),
           };
+          if (shareExam.m === 's')
+            return {
+              ...common,
+              coverageMode: 'specification' as const,
+              ...(shareExam.specificationPaperId !== undefined
+                ? { specificationPaperId: shareExam.specificationPaperId }
+                : { specificationPointIds: shareExam.specificationPointIds! }),
+            };
           return shareExam.m === 'c' || (!fullAssessmentPayload && coveredLessonIds.length > 0)
             ? { ...common, coverageMode: 'custom' as const, lessonIds: coveredLessonIds }
             : { ...common, coverageMode: 'prefix' as const };

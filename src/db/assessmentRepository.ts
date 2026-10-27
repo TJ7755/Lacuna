@@ -7,77 +7,18 @@ import { friendlyDbError } from './dbErrors';
 import { recordTombstone, recordTombstones, stampUpdatedAt } from './mutationStamp';
 import { db, makeId } from './schema';
 import type { CourseAssessment } from './types';
+import { validateAssessmentStructure } from './assessmentValidation';
+import { validatePaperAssessmentDates } from '../specifications/assessment';
 
-export function validateAssessmentStructure(assessment: CourseAssessment): void {
-  if (assessment.kind !== 'final' && assessment.kind !== 'checkpoint') {
-    throw new Error('Assessment kind must be final or checkpoint.');
-  }
-  if (
-    assessment.afterLessonId !== null &&
-    (typeof assessment.afterLessonId !== 'string' || assessment.afterLessonId.length === 0)
-  ) {
-    throw new Error('An assessment path position must be a lesson id or null.');
-  }
-  if (assessment.kind === 'checkpoint') {
-    if (assessment.schedulingMode === 'steady') {
-      throw new Error('Only the final assessment can use steady retention.');
-    }
-    if (!Number.isFinite(assessment.examDate)) {
-      throw new Error('An assessment date must be a finite timestamp.');
-    }
-  } else if (assessment.schedulingMode === 'steady') {
-    if (assessment.examDate !== undefined || assessment.timeZone !== undefined) {
-      throw new Error('Steady retention cannot store an exam date or time zone.');
-    }
-  } else if (!Number.isFinite(assessment.examDate)) {
-    throw new Error('An exam-targeted final assessment must have a finite timestamp.');
-  }
-  if (
-    assessment.needsAuthorConfirmation !== undefined &&
-    typeof assessment.needsAuthorConfirmation !== 'boolean'
-  ) {
-    throw new Error('Assessment author-confirmation state must be boolean.');
-  }
-  if (!Array.isArray(assessment.excludedCardIds)) {
-    throw new Error('Assessment exclusions must be an explicit card-id array.');
-  }
-  if (
-    assessment.excludedCardIds.some((cardId) => typeof cardId !== 'string' || cardId.length === 0)
-  ) {
-    throw new Error('Assessment exclusions must contain valid card ids.');
-  }
-  if (new Set(assessment.excludedCardIds).size !== assessment.excludedCardIds.length) {
-    throw new Error('Assessment exclusions cannot contain duplicate card ids.');
-  }
-  if (assessment.coverageMode === 'prefix') {
-    if (assessment.lessonIds !== undefined) {
-      throw new Error('Prefix assessment coverage cannot store lesson ids.');
-    }
-    return;
-  }
-  if (assessment.coverageMode === 'custom') {
-    if (!Array.isArray(assessment.lessonIds) || assessment.lessonIds.length === 0) {
-      throw new Error('Custom assessment coverage requires an explicit lesson-id array.');
-    }
-    if (
-      assessment.lessonIds.some((lessonId) => typeof lessonId !== 'string' || lessonId.length === 0)
-    ) {
-      throw new Error('Custom assessment coverage must contain valid lesson ids.');
-    }
-    if (new Set(assessment.lessonIds).size !== assessment.lessonIds.length) {
-      throw new Error('Custom assessment coverage cannot contain duplicate lesson ids.');
-    }
-    return;
-  }
-  throw new Error('Assessment coverage mode must be prefix or custom.');
-}
+export { validateAssessmentStructure } from './assessmentValidation';
 
 async function validateAssessmentReferences(assessment: CourseAssessment): Promise<void> {
-  const [lessons, cards, links, course] = await Promise.all([
+  const [lessons, cards, links, course, concepts] = await Promise.all([
     db.lessons.toArray(),
     db.cards.toArray(),
     db.lessonCards.toArray(),
     db.courses.get(assessment.courseId),
+    db.concepts.where('courseId').equals(assessment.courseId).toArray(),
   ]);
   const issue = resolveAssessmentCoverage(
     assessment,
@@ -85,6 +26,7 @@ async function validateAssessmentReferences(assessment: CourseAssessment): Promi
     cards,
     links,
     course && courseLessonOrderPreference(course),
+    { course, concepts },
   ).validation.issues[0];
   if (issue) throw new Error(issue.message);
 }
@@ -103,6 +45,7 @@ export async function createCourseAssessment(
         db.courses,
         db.lessons,
         db.cards,
+        db.concepts,
         db.lessonCards,
         db.courseAssessments,
         db.schedulingUnits,
@@ -151,6 +94,7 @@ export async function createCourseAssessment(
         await validateAssessmentReferences(entry);
         if (entry.kind === 'final')
           throw new Error('A course must have exactly one final assessment.');
+        validatePaperAssessmentDates([...existing, entry]);
         await db.courseAssessments.add(entry);
         await syncCourseSchedulingUnits(courseId);
       },
@@ -187,6 +131,7 @@ export async function updateCourseAssessment(
         ...(options?.learnerOwnedOnly ? [db.lineageIdMappings] : []),
         db.lessons,
         db.cards,
+        db.concepts,
         db.lessonCards,
         db.courseAssessments,
         db.schedulingUnits,
@@ -221,6 +166,9 @@ export async function updateCourseAssessment(
           throw new Error('The sole final assessment cannot be demoted.');
         if (existing.kind !== 'final' && updated.kind === 'final' && finalAssessment.id !== id)
           throw new Error('A course must have exactly one final assessment.');
+        validatePaperAssessmentDates(
+          assessments.map((entry) => (entry.id === id ? updated : entry)),
+        );
         await db.courseAssessments.put(updated);
         await syncCourseSchedulingUnits(existing.courseId);
       },

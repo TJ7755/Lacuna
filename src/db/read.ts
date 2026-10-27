@@ -47,6 +47,7 @@ import { performanceForCourseBackingDecks } from './backingDecks';
 import {
   resolveAssessmentCoverage,
   type AssessmentValidationIssue,
+  type AssessmentSpecificationContext,
 } from '../course/assessmentCoverage';
 
 // ---------------------------------------------------------------------------
@@ -154,12 +155,14 @@ export async function listDueCards(
 ): Promise<Card[]> {
   const course = await getCourse(courseId);
   if (!course) return [];
-  const [cards, lessons, assessments] = await Promise.all([
+  const [cards, lessons, assessments, links, concepts] = await Promise.all([
     listCardsForCourse(courseId),
     listLessons(courseId),
     listCourseAssessments(courseId),
+    db.lessonCards.toArray(),
+    db.concepts.where('courseId').equals(courseId).toArray(),
   ]);
-  const examDateContext = makeExamDateContext(course, lessons, assessments);
+  const examDateContext = makeExamDateContext(course, lessons, assessments, links, concepts);
   const servable = dueReviewPool(cards, course, now);
   const oc = makeObjectiveContext(course, examDateContext);
   const sorted = sortByObjective(servable, oc, now).map((s) => s.card);
@@ -187,12 +190,14 @@ export async function getWeakCards(
 ): Promise<WeakCard[]> {
   const course = await getCourse(courseId);
   if (!course) return [];
-  const [cards, lessons, assessments] = await Promise.all([
+  const [cards, lessons, assessments, links, concepts] = await Promise.all([
     listCardsForCourse(courseId),
     listLessons(courseId),
     listCourseAssessments(courseId),
+    db.lessonCards.toArray(),
+    db.concepts.where('courseId').equals(courseId).toArray(),
   ]);
-  const examDateContext = makeExamDateContext(course, lessons, assessments);
+  const examDateContext = makeExamDateContext(course, lessons, assessments, links, concepts);
   const oc = makeObjectiveContext(course, examDateContext);
   const scored: WeakCard[] = availableCards(cards, now).map((card) => ({
     card,
@@ -231,14 +236,13 @@ export async function getCourseStats(
 ): Promise<CourseStats | null> {
   const course = await getCourse(courseId);
   if (!course) return null;
-  const [lessons, cards, assessments] = await Promise.all([
+  const [lessons, cards, assessments, concepts] = await Promise.all([
     listLessons(courseId),
     listCardsForCourse(courseId),
     listCourseAssessments(courseId),
+    db.concepts.where('courseId').equals(courseId).toArray(),
   ]);
   const perf = await performanceForCourseBackingDecks(courseId, cards);
-  const examDateContext = makeExamDateContext(course, lessons, assessments);
-  const mastery = progressValue(availableCards(cards, now), course, now, examDateContext);
   const lessonIds = lessons.map((lesson) => lesson.id);
   const [links, exposures] = lessonIds.length
     ? await Promise.all([
@@ -246,6 +250,8 @@ export async function getCourseStats(
         db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray(),
       ])
     : [[], []];
+  const examDateContext = makeExamDateContext(course, lessons, assessments, links, concepts);
+  const mastery = progressValue(availableCards(cards, now), course, now, examDateContext);
   const header = {
     ...courseHeaderStats(course, assessments, mastery, now),
     dueCardCount: courseDueReviewCards({
@@ -323,8 +329,16 @@ function assessmentDetails(
   cards: Card[],
   links: LessonCardLink[],
   preferredLessonIds?: readonly string[],
+  specificationContext?: AssessmentSpecificationContext,
 ): CourseAssessmentDetails {
-  const resolved = resolveAssessmentCoverage(assessment, lessons, cards, links, preferredLessonIds);
+  const resolved = resolveAssessmentCoverage(
+    assessment,
+    lessons,
+    cards,
+    links,
+    preferredLessonIds,
+    specificationContext,
+  );
   return {
     assessment,
     placementIndex: resolved.placementIndex,
@@ -337,10 +351,11 @@ function assessmentDetails(
 async function assessmentScope(courseId: string) {
   // Coverage uses card membership, never review history. Keep the persisted cards
   // unhydrated so listing assessments does not allocate an entire review log.
-  const [lessons, cards, course] = await Promise.all([
+  const [lessons, cards, course, concepts] = await Promise.all([
     listLessons(courseId),
     db.cards.where('courseId').equals(courseId).toArray(),
     db.courses.get(courseId),
+    db.concepts.where('courseId').equals(courseId).toArray(),
   ]);
   const links = lessons.length
     ? await db.lessonCards
@@ -353,6 +368,7 @@ async function assessmentScope(courseId: string) {
     cards,
     links,
     preferredLessonIds: course && courseLessonOrderPreference(course),
+    specificationContext: { course, concepts },
   };
 }
 
@@ -362,14 +378,20 @@ export async function getCourseAssessmentDetails(
 ): Promise<CourseAssessmentDetails | null> {
   return db.transaction(
     'r',
-    [db.courseAssessments, db.lessons, db.cards, db.lessonCards, db.courses],
+    [db.courseAssessments, db.lessons, db.cards, db.lessonCards, db.courses, db.concepts],
     async () => {
       const assessment = await db.courseAssessments.get(assessmentId);
       if (!assessment) return null;
-      const { lessons, cards, links, preferredLessonIds } = await assessmentScope(
-        assessment.courseId,
+      const { lessons, cards, links, preferredLessonIds, specificationContext } =
+        await assessmentScope(assessment.courseId);
+      return assessmentDetails(
+        assessment,
+        lessons,
+        cards,
+        links,
+        preferredLessonIds,
+        specificationContext,
       );
-      return assessmentDetails(assessment, lessons, cards, links, preferredLessonIds);
     },
   );
 }
@@ -380,13 +402,21 @@ export async function listCourseAssessmentDetails(
 ): Promise<CourseAssessmentDetails[]> {
   return db.transaction(
     'r',
-    [db.courseAssessments, db.lessons, db.cards, db.lessonCards, db.courses],
+    [db.courseAssessments, db.lessons, db.cards, db.lessonCards, db.courses, db.concepts],
     async () => {
       const assessments = await listCourseAssessments(courseId);
       if (assessments.length === 0) return [];
-      const { lessons, cards, links, preferredLessonIds } = await assessmentScope(courseId);
+      const { lessons, cards, links, preferredLessonIds, specificationContext } =
+        await assessmentScope(courseId);
       return assessments.map((assessment) =>
-        assessmentDetails(assessment, lessons, cards, links, preferredLessonIds),
+        assessmentDetails(
+          assessment,
+          lessons,
+          cards,
+          links,
+          preferredLessonIds,
+          specificationContext,
+        ),
       );
     },
   );
