@@ -503,3 +503,45 @@ it.each([true, false])(
     expect(snapshot.catchUpEligibleCount).toBe(1);
   },
 );
+
+it.each([false, true])(
+  'plans unlearnt material moved before the starting lesson (locked copy: %s)',
+  (locked) => {
+    const c = course({
+      studyStartLessonId: 'current',
+      schoolCoveredLessonIds: ['prior'],
+      distributedCopy: { lineageId: 'science', revision: 1, locked, autoAcceptUpdates: false },
+    });
+    const lessons = [lesson('later', 0), lesson('current', 1), lesson('prior', 2)];
+    const nodes: PathNode[] = lessons.map((item) => ({
+      id: item.id,
+      nodeType: 'lesson',
+      lesson: item,
+      status: item.id === 'current' ? 'completed' : 'available',
+    }));
+    const snapshot = buildCourseStudyFlowSnapshot({
+      course: c,
+      nodes,
+      cards: [],
+      links: [],
+      exposures: [],
+      meanReviewSeconds: 20,
+      examDateContext: makeExamDateContext(c, lessons, []),
+      now: NOW,
+    });
+    expect(planNextStudyStep(snapshot)).toMatchObject({
+      kind: 'step',
+      step: { lessonId: 'later' },
+    });
+    expect(
+      planNextStudyStep({
+        ...snapshot,
+        nodes: nodes.map((node) =>
+          node.nodeType === 'lesson' && node.id === 'later'
+            ? { ...node, status: 'completed' }
+            : node,
+        ),
+      }),
+    ).toEqual({ kind: 'complete' });
+  },
+);

@@ -181,6 +181,7 @@ function snapshot(
   return {
     courseId: course.id,
     archived: false,
+    priorKnowledgeLessonIds: new Set(),
     nodes: [],
     practiceByKey: new Map(practices.map((practice) => [practice.nodeKey, practice])),
     activeManualNodeKeys: new Set(),

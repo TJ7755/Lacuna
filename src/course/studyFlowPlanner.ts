@@ -74,8 +74,11 @@ export function planNextStudyStep(
       !node.lesson.isExtension &&
       node.id === snapshot.studyStartLessonId,
   );
-  for (const node of snapshot.nodes.slice(Math.max(0, startIndex))) {
+  for (const [index, node] of snapshot.nodes.entries()) {
     if (node.nodeType === 'lesson') {
+      if (snapshot.priorKnowledgeLessonIds.has(node.id)) continue;
+      // Optional extensions before the chosen entry stay optional, independently of core coverage.
+      if (node.lesson.isExtension && index < startIndex) continue;
       hasCurriculum = true;
       if (node.status === 'available') {
         step = { kind: 'lesson', lessonId: node.id, label: node.lesson.name };
@@ -86,6 +89,11 @@ export function planNextStudyStep(
     }
 
     if (node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual') {
+      if (
+        snapshot.priorKnowledgeLessonIds.size > 0 &&
+        (!node.afterLessonId || snapshot.priorKnowledgeLessonIds.has(node.afterLessonId))
+      )
+        continue;
       hasCurriculum = true;
       const practice = snapshot.practiceByKey.get(node.nodeKey);
       if (practice?.active) {

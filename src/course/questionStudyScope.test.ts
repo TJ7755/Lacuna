@@ -136,3 +136,25 @@ it('filters tier and route restrictions while allowing unclassified course Conce
     }),
   ).toEqual(['foundation', 'higher', 'spoken', 'unclassified']);
 });
+
+it('keeps a Concept accessible when an open course gains a Card without lesson membership', () => {
+  const input = fixture();
+  expect(questionStudyScope(input)).toContain('no-card');
+  input.cards.push({
+    ...input.cards[0],
+    id: 'loose',
+    conceptId: 'no-card',
+    primaryLessonId: null,
+    lastReviewed: 500,
+  });
+  expect(questionStudyScope(input)).toContain('no-card');
+  expect(
+    questionStudyScope({
+      ...input,
+      exposures: [],
+      links: [
+        { id: 'loose-link', lessonId: 'second', cardId: 'loose', createdAt: 0, updatedAt: 0 },
+      ],
+    }),
+  ).not.toContain('no-card');
+});

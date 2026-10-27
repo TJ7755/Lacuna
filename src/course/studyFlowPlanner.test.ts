@@ -36,6 +36,7 @@ function snapshot(
   return {
     courseId: 'course',
     archived: false,
+    priorKnowledgeLessonIds: new Set(),
     nodes,
     practiceByKey: new Map(practices.map((practice) => [practice.nodeKey, practice])),
     activeManualNodeKeys: new Set(),
@@ -199,6 +200,7 @@ describe('mid-course entry', () => {
   const joined = () => ({
     ...snapshot(nodes, [practiceState('p1', true)]),
     studyStartLessonId: '2',
+    priorKnowledgeLessonIds: new Set(['1']),
   });
 
   it('starts at the joining lesson without requiring earlier lessons or practice', () => {
@@ -264,7 +266,13 @@ describe('mid-course entry', () => {
   });
 
   it('falls back to the whole path if the starting lesson was removed', () => {
-    expect(planNextStudyStep({ ...joined(), studyStartLessonId: 'removed' })).toMatchObject({
+    expect(
+      planNextStudyStep({
+        ...joined(),
+        studyStartLessonId: 'removed',
+        priorKnowledgeLessonIds: new Set(),
+      }),
+    ).toMatchObject({
       kind: 'step',
       step: { lessonId: '1' },
     });
