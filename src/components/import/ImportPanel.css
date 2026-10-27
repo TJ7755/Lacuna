@@ -1,6 +1,22 @@
 .import-panel {
   padding: 8px 20px 20px;
 }
+.import-control-title {
+  visibility: hidden;
+}
+@container import-surface (min-width: 240px) {
+  .import-control-title {
+    visibility: visible;
+  }
+}
+@media (max-height: 700px) {
+  .import-panel .import-sources button {
+    padding-block: 8px;
+  }
+  .import-panel .import-drop {
+    padding-block: 12px;
+  }
+}
 .import-step-height {
   overflow: clip;
   overflow-clip-margin: 4px;
@@ -14,7 +30,7 @@
   grid-template-columns: 24px 1fr;
   column-gap: 14px;
   padding: 14px;
-  border-radius: 16px;
+  border-radius: var(--flow-control-radius, 20px);
   text-align: left;
   background: hsl(var(--surface));
   border: var(--card-border);
@@ -43,7 +59,7 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  border-radius: 16px;
+  border-radius: var(--flow-control-radius, 20px);
   background: hsl(var(--ink) / 0.04);
   text-align: center;
 }

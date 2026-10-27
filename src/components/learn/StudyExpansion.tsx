@@ -10,6 +10,7 @@ import { m as motion, useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { expandingActionSpring } from '../ui/motion';
+import { FlowExpansionSurface, flowSurfaceColour } from '../ui/FlowExpansionSurface';
 import { StudyActionIcon } from './StudyActionIcon';
 
 import { beginStudyTransition } from '../layout/LandingTransition';
@@ -35,7 +36,7 @@ export function StudyExpansion({
   const present = useIsPresent();
   const surface = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
-  const [origin] = useState(() => anchor.getBoundingClientRect());
+  const [origin, setOrigin] = useState(() => anchor.getBoundingClientRect());
   const [originColours] = useState(() => {
     const style = getComputedStyle(anchor);
     return { backgroundColor: style.backgroundColor, color: style.color };
@@ -60,6 +61,7 @@ export function StudyExpansion({
     if (!element) return;
     const measure = () => {
       const rect = anchor.getBoundingClientRect();
+      setOrigin(rect);
       const panelWidth = Math.min(448, window.innerWidth - 32);
       const height = Math.min(element.scrollHeight + 44, window.innerHeight - 32);
       setBounds({
@@ -149,7 +151,7 @@ export function StudyExpansion({
       }
       animate={{
         ...bounds,
-        borderRadius: 24,
+        borderRadius: 36,
         opacity: launching ? 0 : 1,
       }}
       exit={{
@@ -173,8 +175,11 @@ export function StudyExpansion({
             }
           : { zIndex: present ? 50 : 20 }
       }
-      className="fixed z-50 overflow-hidden bg-surface-raised text-ink card-surface"
+      className="flow-expansion fixed z-50 overflow-hidden bg-surface-raised text-ink card-surface"
     >
+      {!launching && (
+        <FlowExpansionSurface triggerWidth={origin.width} triggerHeight={origin.height} />
+      )}
       <motion.button
         type="button"
         aria-label="Close session preview"
@@ -183,6 +188,7 @@ export function StudyExpansion({
           returnFocus.current = false;
         }}
         data-press="none"
+        data-flow-feedback
         initial={multiplier > 0 ? originColours : false}
         animate={{
           backgroundColor: 'rgba(0, 0, 0, 0)',
@@ -210,7 +216,11 @@ export function StudyExpansion({
         </span>
       </motion.button>
       {/* Keep the final-width body still while the shell reveals it towards the left. */}
-      <div className="absolute right-0 top-0 pt-11 text-ink" style={{ width }}>
+      <div
+        data-flow-expansion-content
+        className="absolute right-0 top-0 pt-11 text-ink"
+        style={{ width }}
+      >
         <div className="max-h-[calc(100dvh-76px)] overflow-y-auto">
           <motion.div
             ref={content}
@@ -234,8 +244,9 @@ export function StudyExpansion({
                 beginStudyTransition(
                   element.getBoundingClientRect(),
                   {
-                    colour: style.backgroundColor,
-                    radius: style.borderRadius,
+                    colour: flowSurfaceColour(element),
+                    radius:
+                      style.getPropertyValue('--flow-surface-radius').trim() || style.borderRadius,
                     paper: `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--paper').trim()})`,
                   },
                   navigate,

@@ -347,3 +347,83 @@
     }
   }
 }
+
+:root {
+  --flow-surface-radius: 28px;
+  --flow-control-radius: 20px;
+}
+.flow-surface,
+.today-forecast {
+  border-radius: var(--flow-surface-radius);
+}
+.today-course-row,
+.study-target-tiles > label {
+  border-radius: var(--flow-control-radius);
+}
+
+/* Feedback never replaces native paint or the control's existing pseudo-elements. */
+.flow-feedback-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  corner-shape: inherit;
+  pointer-events: none;
+  will-change: opacity;
+  box-shadow:
+    inset 0 0 0 1px currentColor,
+    inset 0 2px 4px -2px currentColor;
+}
+[data-study-trigger][aria-busy='true']::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid currentColor;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.today-forecast-chart {
+  flex: 1;
+  min-width: 0;
+}
+@media (min-width: 640px) {
+  .today-forecast {
+    min-height: clamp(340px, calc(100dvh - 220px), 496px);
+  }
+}
+.study-target-tiles {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+}
+@supports (corner-shape: superellipse(1.5)) {
+  :root {
+    --flow-surface-radius: 36px;
+    --flow-control-radius: 28px;
+  }
+  .today-forecast,
+  .today-course-row,
+  .flow-surface,
+  [data-expanding-action],
+  .study-target-tiles > label,
+  .import-sources button,
+  .import-drop {
+    corner-shape: superellipse(1.5);
+  }
+}
+
+.today-empty-state {
+  padding-top: clamp(24px, 5dvh, 64px);
+}
+
+.flow-expansion {
+  background-color: transparent !important;
+  border-color: transparent;
+  --tw-ring-color: transparent !important;
+  overflow: visible !important;
+  isolation: isolate;
+}
+.flow-expansion-paint {
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  overflow: visible;
+  filter: drop-shadow(0 1px 1px hsl(var(--line-strong)));
+}

@@ -41,7 +41,9 @@ export function WeekPanel({
           <FlameIcon width={20} height={20} aria-hidden="true" />
         </motion.span>
         <div className="flex flex-col-reverse leading-tight">
-          <dt className="text-sm text-ink-faint">{streak === 1 ? 'day in a row' : 'days in a row'}</dt>
+          <dt className="text-sm text-ink-faint">
+            {streak === 1 ? 'day in a row' : 'days in a row'}
+          </dt>
           <dd className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
             <CountUp value={streak} multiplier={multiplier} />
           </dd>
@@ -50,7 +52,7 @@ export function WeekPanel({
       <div className="flex items-center gap-3 text-ink-soft">
         <CardsIcon width={20} height={20} aria-hidden="true" />
         <div className="flex flex-col-reverse leading-tight">
-          <dt className="text-sm text-ink-faint">cards in the last 7 days</dt>
+          <dt className="text-sm text-ink-faint">reviews in the last 7 days</dt>
           <dd className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
             <CountUp value={week.reviewed} multiplier={multiplier} />
           </dd>
@@ -77,7 +79,7 @@ export function WeekPanel({
                     delay: (0.5 + index * 0.06) * multiplier,
                   }}
                 />
-                <span className="text-[11px] leading-none text-ink-faint">{DAY_LETTERS[index]}</span>
+                <span className="text-sm leading-none text-ink-faint">{DAY_LETTERS[index]}</span>
               </span>
             );
           })}

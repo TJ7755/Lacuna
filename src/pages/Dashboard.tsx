@@ -1,8 +1,8 @@
+import { Button } from '../components/ui/Button';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
-import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useDelayedPending } from '../hooks/useDelayedPending';
+import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useNavigation } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
@@ -31,25 +31,12 @@ import { useAllReviewHistory } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
 import { useToast } from '../components/ui/Toast';
 import { finishOnboarding, onboardingPending } from '../onboarding/onboardingState';
-import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/CourseActions';
-
-/**
- * The forecast leads Today, so the queue waits for it to arrive as one piece. A forecast
- * still pending after this long gives way so the queue remains available.
- */
-const FORECAST_WAIT_MS = 600;
-
-// The course actions open on demand, so they stay out of the first-load bundle.
-const CourseContextMenu = lazy(() =>
-  import('../components/dashboard/CourseActions').then((module) => ({
-    default: module.CourseContextMenu,
-  })),
-);
-const ArchiveCourseDialog = lazy(() =>
-  import('../components/dashboard/CourseActions').then((module) => ({
-    default: module.ArchiveCourseDialog,
-  })),
-);
+import {
+  CourseContextMenu,
+  ArchiveCourseDialog,
+  type ArchiveTarget,
+  type CourseMenuState,
+} from '../components/dashboard/CourseActions';
 
 export function Dashboard() {
   const frame = useRef<HTMLDivElement>(null);
@@ -125,6 +112,10 @@ export function Dashboard() {
         status: forecast ? forecastStatus(forecast) : course.examDate ? 'ahead' : 'steady',
         state: queueState(summary),
         due,
+        learning:
+          due === 0 && summary?.unreviewed && summary.completedLessonCount < summary.lessonCount
+            ? 'New learning'
+            : 'Practice available',
         minutes: slice ? (slice.minutes / Math.max(1, slice.dueCount + slice.newCount)) * due : 0,
         href: pending ? `/course/${course.id}/updates` : `/course/${course.id}`,
         hasPendingUpdate: pending,
@@ -171,22 +162,15 @@ export function Dashboard() {
   );
 
   // The chart waits on review history anyway, so it loads alongside it rather than at start-up.
-  const anyForecast = rows?.some((row) => forecasts?.[row.id]) ?? false;
-  const { Chart: ForecastChart, settled: chartSettled } = useForecastChart(anyForecast);
-  const forecastSettled =
-    !anyForecast || (histories !== undefined && (lines.length === 0 || chartSettled));
-  const forecastOverdue = useDelayedPending(
-    rows !== undefined && !forecastSettled,
-    FORECAST_WAIT_MS,
-  );
-  // Once Today has arrived it stays through live updates.
-  const [arrived, setArrived] = useState(false);
-  const ready = arrived || (rows !== undefined && (forecastSettled || forecastOverdue));
-  useEffect(() => {
-    if (ready) setArrived(true);
-  }, [ready]);
-  const showForecast =
-    forecastSettled && ((ForecastChart !== null && lines.length > 0) || (week?.reviewed ?? 0) > 0);
+  const anyForecast =
+    rows?.some((row) => forecasts?.[row.id] && (summaries?.[row.id]?.cardCount ?? 0) > 0) ?? false;
+  const {
+    Chart: ForecastChart,
+    failed: chartFailed,
+    retry: retryChart,
+    reloadRequired,
+  } = useForecastChart(anyForecast);
+  const showForecast = anyForecast || (week?.reviewed ?? 0) > 0;
 
   useLayoutEffect(() => {
     const pending = archiveFocus.current;
@@ -219,37 +203,46 @@ export function Dashboard() {
     Math.round(rows?.reduce((sum, row) => sum + row.minutes, 0) ?? 0),
   );
 
+  const emptyToday = rows?.length === 0;
+
   return (
-    <div ref={frame} className={`${PAGE_FRAME} py-6 sm:py-10`}>
+    <div ref={frame} className={`${PAGE_FRAME} flex flex-col py-6 sm:py-10`}>
       <h1 ref={heading} tabIndex={-1} className="sr-only focus-visible:shadow-none">
         Today
       </h1>
-      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-3 text-ink-soft sm:mb-6 sm:gap-x-6">
+      <div
+        className={`flex flex-wrap items-center gap-x-4 gap-y-3 text-ink-soft sm:gap-x-6 ${emptyToday ? 'order-2 mx-auto' : 'mb-5 sm:mb-6'}`}
+      >
         {rows && rows.length > 0 && (
           <p
             className="flex items-center gap-4 sm:gap-6"
-            aria-label={`Today: ${totalCards} ${totalCards === 1 ? 'card' : 'cards'}, about ${totalMinutes} ${totalMinutes === 1 ? 'minute' : 'minutes'}`}
+            aria-label={`Today: ${totalCards} ${totalCards === 1 ? 'review' : 'reviews'} due${totalCards > 0 ? `, about ${totalMinutes} ${totalMinutes === 1 ? 'minute' : 'minutes'}` : ''}`}
           >
             <span className="inline-flex items-center gap-2" aria-hidden="true">
               <CardsIcon width={20} height={20} className="max-sm:hidden" />
               <strong className="font-display text-xl font-semibold tracking-tight text-ink tabular-nums sm:text-2xl">
                 <CountUp value={totalCards} multiplier={m} />
               </strong>
-              {totalCards === 1 ? 'card' : 'cards'}
+              {totalCards === 1 ? 'review' : 'reviews'} due
             </span>
-            <span className="inline-flex items-center gap-2" aria-hidden="true">
-              <ClockIcon width={20} height={20} className="max-sm:hidden" />
-              <strong className="font-display text-xl font-semibold tracking-tight text-ink tabular-nums sm:text-2xl">
-                <CountUp value={totalMinutes} multiplier={m} />
-              </strong>
-              min
-            </span>
+            {totalCards > 0 && (
+              <span className="inline-flex items-center gap-2" aria-hidden="true">
+                <ClockIcon width={20} height={20} className="max-sm:hidden" />
+                <strong className="font-display text-xl font-semibold tracking-tight text-ink tabular-nums sm:text-2xl">
+                  <CountUp value={totalMinutes} multiplier={m} />
+                </strong>
+                min
+              </span>
+            )}
           </p>
         )}
         <SyncStatus />
-        <div className="ml-auto flex max-w-full shrink-0 flex-wrap justify-end gap-2">
-          <div inert={importing}>
+        <div
+          className={`${emptyToday ? '' : 'ml-auto'} flex max-w-full shrink-0 flex-wrap justify-end gap-2`}
+        >
+          <div inert={importing} style={{ visibility: importing ? 'hidden' : undefined }}>
             <NewCourseControl
+              prominent={rows?.length === 0}
               open={creatingCourse && !importing}
               onOpenChange={setCreatingCourse}
             />
@@ -258,9 +251,11 @@ export function Dashboard() {
         </div>
       </div>
 
-      <PageLoadingBoundary>
-        {!rows || !ready ? (
-          <PageLoading />
+      <PageLoadingBoundary className={emptyToday ? 'order-1' : undefined}>
+        {!rows ? (
+          <p role="status" className="text-sm text-ink-soft">
+            Loading Today…
+          </p>
         ) : rows.length === 0 ? (
           <EmptyState
             hasArchivedCourses={courses?.some((course) => course.archived) ?? false}
@@ -268,20 +263,13 @@ export function Dashboard() {
           />
         ) : (
           <div className="flex flex-col gap-6">
-            {/* The forecast arrives whole before the queue. */}
-            <PageLoadingBoundary pending={!forecastSettled} animateArrival={false}>
-              {forecastSettled && showForecast && (
-                <motion.section
-                  aria-label="Forecast and this week"
-                  className="flex flex-col gap-5 rounded-3xl bg-surface p-5 card-surface md:p-6"
-                  initial={m > 0 ? { opacity: 0 } : false}
-                  animate={{ opacity: 1 }}
-                  transition={{
-                    duration: MOTION_DURATION.local * m,
-                    ease: MOTION_EASING.emphasised,
-                  }}
-                >
-                  {ForecastChart && lines.length > 0 && (
+            {showForecast && (
+              <section
+                aria-label="Forecast and this week"
+                className="today-forecast flex flex-col gap-5 rounded-3xl bg-surface p-5 card-surface md:p-6"
+              >
+                <div className="today-forecast-chart">
+                  {ForecastChart && lines.length > 0 ? (
                     <ForecastChart
                       lines={lines}
                       now={Date.now()}
@@ -289,15 +277,29 @@ export function Dashboard() {
                       future={chartWindow.future}
                       multiplier={m}
                     />
+                  ) : (
+                    <div className="flex h-full flex-col items-start justify-center gap-3">
+                      <p role={chartFailed ? 'alert' : 'status'} className="text-sm text-ink-soft">
+                        {chartFailed
+                          ? 'Could not load forecast.'
+                          : histories !== undefined && lines.length === 0
+                            ? 'No cards to forecast.'
+                            : 'Loading forecast…'}
+                      </p>
+                      {chartFailed && (
+                        <Button size="sm" onClick={retryChart}>
+                          {reloadRequired ? 'Reload' : 'Retry'}
+                        </Button>
+                      )}
+                    </div>
                   )}
-                  {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
-                </motion.section>
-              )}
-            </PageLoadingBoundary>
-            {/* The queue follows the forecast that explains it, starting as the forecast settles. */}
+                </div>
+                {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
+              </section>
+            )}
             <TodayQueue
               rows={rows}
-              delay={showForecast ? MOTION_DURATION.local * 0.6 : 0}
+              delay={0}
               openMenuId={courseMenu?.course.id}
               multiplier={m}
               onStudy={(id) => openStudySheet(id)}
@@ -313,55 +315,52 @@ export function Dashboard() {
       </PageLoadingBoundary>
 
       {courseMenu && (
-        <Suspense fallback={null}>
-          <CourseContextMenu
-            {...courseMenu}
-            onClose={(restoreFocus = true) => {
-              setCourseMenu(null);
-              if (restoreFocus) courseMenu.trigger.focus();
-            }}
-            onArchive={() => {
-              setCourseMenu(null);
-              setArchiveTarget({ course: courseMenu.course, trigger: courseMenu.trigger });
-            }}
-          />
-        </Suspense>
+        <CourseContextMenu
+          {...courseMenu}
+          onClose={(restoreFocus = true) => {
+            setCourseMenu(null);
+            if (restoreFocus) courseMenu.trigger.focus();
+          }}
+          onArchive={() => {
+            setCourseMenu(null);
+            setArchiveTarget({ course: courseMenu.course, trigger: courseMenu.trigger });
+          }}
+        />
       )}
 
       <AnimatePresence>
         {archiveTarget && (
-          <Suspense key="archive" fallback={null}>
-            <ArchiveCourseDialog
-              course={archiveTarget.course}
-              onClose={() => {
-                setArchiveTarget(null);
-                archiveTarget.trigger.focus();
-              }}
-              onArchived={() => {
-                archiveFocus.current = {
-                  courseId: archiveTarget.course.id,
-                  index: Math.max(
-                    0,
-                    rows?.findIndex((row) => row.id === archiveTarget.course.id) ?? 0,
-                  ),
-                };
-                setArchiveTarget(null);
-                notify(`${archiveTarget.course.name} archived`, 'positive', {
-                  actionLabel: 'Undo',
-                  onAction: () => {
-                    void import('../db/courseRepository')
-                      .then(({ updateCourse }) =>
-                        updateCourse(archiveTarget.course.id, { archived: false }),
-                      )
-                      .then(() => notify(`${archiveTarget.course.name} restored`, 'positive'))
-                      .catch(() =>
-                        notify(`Could not restore ${archiveTarget.course.name}`, 'negative'),
-                      );
-                  },
-                });
-              }}
-            />
-          </Suspense>
+          <ArchiveCourseDialog
+            key="archive"
+            course={archiveTarget.course}
+            onClose={() => {
+              setArchiveTarget(null);
+              archiveTarget.trigger.focus();
+            }}
+            onArchived={() => {
+              archiveFocus.current = {
+                courseId: archiveTarget.course.id,
+                index: Math.max(
+                  0,
+                  rows?.findIndex((row) => row.id === archiveTarget.course.id) ?? 0,
+                ),
+              };
+              setArchiveTarget(null);
+              notify(`${archiveTarget.course.name} archived`, 'positive', {
+                actionLabel: 'Undo',
+                onAction: () => {
+                  void import('../db/courseRepository')
+                    .then(({ updateCourse }) =>
+                      updateCourse(archiveTarget.course.id, { archived: false }),
+                    )
+                    .then(() => notify(`${archiveTarget.course.name} restored`, 'positive'))
+                    .catch(() =>
+                      notify(`Could not restore ${archiveTarget.course.name}`, 'negative'),
+                    );
+                },
+              });
+            }}
+          />
         )}
       </AnimatePresence>
     </div>
@@ -377,10 +376,10 @@ function EmptyState({
 }) {
   return (
     <motion.div
-      initial={multiplier > 0 ? { opacity: 0 } : false}
+      initial={false}
       animate={{ opacity: 1 }}
       transition={{ duration: MOTION_DURATION.local * multiplier, ease: MOTION_EASING.standard }}
-      className="relative flex flex-col items-center justify-center px-4 py-12 text-center sm:py-20"
+      className="today-empty-state relative flex flex-col items-center justify-center px-4 text-center"
     >
       <div className="relative flex flex-col items-center">
         <StudyDrawing kind="course" className="mb-7 h-28 w-28" />

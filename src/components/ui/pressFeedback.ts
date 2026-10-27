@@ -1,104 +1,129 @@
 import { speedMultiplier } from '../../state/motionSpeed';
+import { createFeedbackSurface } from './flowFeedbackSurface';
 
-// data-press delegates pointer feedback to the control; "none" also skips keyboard scaling.
 const PRESSABLE =
   'button:not(:disabled), a[href], [role="button"], [role="link"], ' +
-  '[role="menuitem"], [role="tab"], [role="option"], [role="switch"], summary';
+  '[role="menuitem"], [role="tab"], [role="option"], [role="switch"], summary, label:has(input[type="radio"]:not(:disabled))';
 
-/** Sink about 5px whatever the size, so a card dips as gently as a pill. */
-export function pressDepth(element: Element): number {
-  const { width, height } = element.getBoundingClientRect();
-  const size = Math.max(width, height);
-  if (size <= 0) return 0.96;
-  return Math.min(0.995, Math.max(0.96, 1 - 5 / size));
-}
-
-/**
- * Give every control a brief press-in and spring-back, so each tap or click is
- * acknowledged. It animates the standalone `scale` property, which composes
- * with any transform a control already carries, and follows the motion-speed
- * setting (none when motion is off).
- */
+/** One input owner; feedback leaves content, paint and native targets intact. */
 export function installPressFeedback(root: Document = document): () => void {
-  let pressed: { element: HTMLElement; animation: Animation; depth: number } | null = null;
-
-  const release = () => {
-    if (!pressed) return;
-    const { element, animation, depth } = pressed;
-    pressed = null;
-    const multiplier = speedMultiplier();
-    animation.cancel();
-    if (multiplier <= 0 || typeof element.animate !== 'function') return;
-    element.animate(
-      [{ scale: `${depth}` }, { scale: `${2 - depth}`, offset: 0.55 }, { scale: '1' }],
-      {
-        duration: 260 * multiplier,
-        easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-      },
-    );
+  type Surface = ReturnType<typeof createFeedbackSurface>;
+  const surfaces = new Map<HTMLElement, Surface>();
+  let held: HTMLElement | null = null,
+    hovered: HTMLElement | null = null;
+  const target = (event: Event) => {
+    const element =
+      event.target instanceof Element ? event.target.closest<HTMLElement>(PRESSABLE) : null;
+    return element &&
+      !element.closest('[inert]') &&
+      element.getAttribute('aria-disabled') !== 'true' &&
+      (element.getAttribute('data-press') !== 'none' || element.hasAttribute('data-flow-feedback'))
+      ? element
+      : null;
   };
-
+  const feedback = (element: HTMLElement, pressed: boolean, over: boolean) => {
+    if (!element.isConnected) return;
+    let surface = surfaces.get(element);
+    if (!surface) {
+      surface = createFeedbackSurface(element, () => surfaces.delete(element));
+      surfaces.set(element, surface);
+    }
+    surface.retarget(pressed, over);
+  };
+  const over = (event: PointerEvent) => {
+    const element = target(event);
+    if (hovered === element) return;
+    if (hovered) feedback(hovered, held === hovered, false);
+    hovered = element;
+    if (element) feedback(element, held === element, true);
+  };
+  const leave = (event: PointerEvent) => {
+    if (hovered && !hovered.contains(event.relatedTarget as Node | null)) {
+      feedback(hovered, held === hovered, false);
+      hovered = null;
+    }
+  };
   const press = (event: PointerEvent) => {
     if (event.button !== 0) return;
-    const target =
-      event.target instanceof Element ? event.target.closest<HTMLElement>(PRESSABLE) : null;
-    if (
-      !target ||
-      target.hasAttribute('data-press') ||
-      target.closest('[inert]') ||
-      target.getAttribute('aria-disabled') === 'true'
-    )
-      return;
-    const multiplier = speedMultiplier();
-    if (multiplier <= 0 || typeof target.animate !== 'function') return;
-    release();
-    const depth = pressDepth(target);
-    pressed = {
-      element: target,
-      depth,
-      animation: target.animate([{ scale: '1' }, { scale: `${depth}` }], {
-        duration: 90 * multiplier,
-        easing: 'ease-out',
-        fill: 'forwards',
-      }),
-    };
+    if (held) feedback(held, false, false);
+    held = target(event);
+    if (held) feedback(held, true, true);
   };
-
-  // Keyboard and assistive-technology activation produces a click without a pointer.
-  // Include the shared Button here: its pointer gesture is handled by Motion.
+  const release = () => {
+    if (held) feedback(held, false, hovered === held);
+    held = null;
+  };
+  const cancel = () => {
+    for (const element of [held, hovered]) if (element) feedback(element, false, false);
+    held = hovered = null;
+  };
   const activate = (event: MouseEvent) => {
     if (event.detail !== 0) return;
-    const target =
-      event.target instanceof Element ? event.target.closest<HTMLElement>(PRESSABLE) : null;
-    const multiplier = speedMultiplier();
-    if (
-      !target ||
-      target.getAttribute('data-press') === 'none' ||
-      target.closest('[inert]') ||
-      target.getAttribute('aria-disabled') === 'true' ||
-      multiplier <= 0 ||
-      typeof target.animate !== 'function'
-    )
-      return;
-    const depth = pressDepth(target);
-    target.animate([{ scale: '1' }, { scale: `${depth}`, offset: 0.3 }, { scale: '1' }], {
-      duration: 260 * multiplier,
-      easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-    });
+    const element = target(event);
+    if (element && held !== element) {
+      feedback(element, true, false);
+      queueMicrotask(() => feedback(element, false, false));
+    }
   };
-
-  root.addEventListener('click', activate, true);
+  const keyDown = (event: KeyboardEvent) => {
+    if ((event.key !== ' ' && event.key !== 'Enter') || event.repeat) return;
+    held = target(event);
+    if (held) feedback(held, true, false);
+  };
+  const keyUp = (event: KeyboardEvent) => {
+    if (event.key === ' ' || event.key === 'Enter') release();
+  };
+  const focusOut = (event: FocusEvent) => {
+    if (held && !held.contains(event.relatedTarget as Node | null)) release();
+  };
+  const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const reset = () => {
+    if (speedMultiplier() === 0) surfaces.forEach((surface) => surface.reset());
+  };
+  // Detached surfaces are disposed without waiting for another pointer event.
+  const observer = new MutationObserver(() => {
+    for (const [element, surface] of surfaces) {
+      if (!element.isConnected || element.matches(':disabled') || element.closest('[inert]')) {
+        surface.dispose();
+        if (held === element) held = null;
+        if (hovered === element) hovered = null;
+      }
+    }
+  });
+  observer.observe(root.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class', 'aria-pressed', 'aria-checked', 'disabled', 'data-state'],
+  });
+  root.addEventListener('pointerover', over, true);
+  root.addEventListener('pointerout', leave, true);
   root.addEventListener('pointerdown', press, true);
   root.addEventListener('pointerup', release, true);
-  root.addEventListener('pointercancel', release, true);
-  root.addEventListener('dragstart', release, true);
+  root.addEventListener('pointercancel', cancel, true);
+  root.addEventListener('dragstart', cancel, true);
+  root.addEventListener('click', activate, true);
+  root.addEventListener('keydown', keyDown, true);
+  root.addEventListener('keyup', keyUp, true);
+  root.addEventListener('focusout', focusOut, true);
+  window.addEventListener('blur', cancel);
+  media.addEventListener('change', reset);
   return () => {
-    pressed?.animation.cancel();
-    pressed = null;
-    root.removeEventListener('click', activate, true);
+    observer.disconnect();
+    surfaces.forEach((surface) => surface.dispose());
+    surfaces.clear();
+    held = hovered = null;
+    root.removeEventListener('pointerover', over, true);
+    root.removeEventListener('pointerout', leave, true);
     root.removeEventListener('pointerdown', press, true);
     root.removeEventListener('pointerup', release, true);
-    root.removeEventListener('pointercancel', release, true);
-    root.removeEventListener('dragstart', release, true);
+    root.removeEventListener('pointercancel', cancel, true);
+    root.removeEventListener('dragstart', cancel, true);
+    root.removeEventListener('click', activate, true);
+    root.removeEventListener('keydown', keyDown, true);
+    root.removeEventListener('keyup', keyUp, true);
+    root.removeEventListener('focusout', focusOut, true);
+    window.removeEventListener('blur', cancel);
+    media.removeEventListener('change', reset);
   };
 }

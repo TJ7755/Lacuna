@@ -8,7 +8,7 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('region', { name: 'Today, most urgent first' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Join a class', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Join a class', exact: true })).toHaveCount(0);
-    await expect(page.getByLabel(/^Today: \d+ cards?, about/)).toBeVisible();
+    await expect(page.getByLabel(/^Today: \d+ reviews? due/)).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath(`dashboard-${width}.png`) });
     await openImport(page);
     const join = page.getByRole('button', { name: /Join a class Enter your teacher/ });

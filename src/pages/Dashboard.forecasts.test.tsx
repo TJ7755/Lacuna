@@ -6,8 +6,8 @@ import {
   forecast,
   setCourseData,
 } from './Dashboard.testSupport';
-import { describe, expect, it, vi } from 'vitest';
-import { act, render, screen, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
 import { Dashboard } from './Dashboard';
 
 describe('Dashboard forecasts', () => {
@@ -49,13 +49,13 @@ describe('Dashboard forecasts', () => {
     render(<Dashboard />);
 
     expect(await screen.findByText('days in a row')).toBeInTheDocument();
-    expect(screen.getByText('cards in the last 7 days')).toBeInTheDocument();
+    expect(screen.getByText('reviews in the last 7 days')).toBeInTheDocument();
     expect(screen.getByText('studied this week')).toBeInTheDocument();
     expect(screen.getByLabelText(/^Studied on \d of \d days this week/)).toBeInTheDocument();
     const streak = screen.getByText('days in a row').parentElement as HTMLElement;
     expect(streak).toHaveTextContent('5');
-    const cards = screen.getByText('cards in the last 7 days').parentElement as HTMLElement;
-    expect(cards).toHaveTextContent('2');
+    const reviews = screen.getByText('reviews in the last 7 days').parentElement as HTMLElement;
+    expect(reviews).toHaveTextContent('2');
   });
 
   it('leads with the forecast, above what to study', async () => {
@@ -69,51 +69,25 @@ describe('Dashboard forecasts', () => {
     const queue = await screen.findByRole('region', { name: 'Today, most urgent first' });
     const forecastPanel = screen.getByRole('region', { name: 'Forecast and this week' });
     expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(screen.getByLabelText('Today: 3 cards, about 1 minute')).toHaveTextContent('3cards');
+    expect(screen.getByLabelText('Today: 3 reviews due, about 1 minute')).toHaveTextContent(
+      '3reviews due',
+    );
   });
 
-  it('holds the queue until the forecast can arrive whole above it', async () => {
+  it('keeps Study available while forecast history is pending', async () => {
     setCourseData([mockCourse], { summaries: { 'course-1': summary(3) } });
     dashboardState.mockForecasts = { 'course-1': forecast(0.9) };
     dashboardState.mockReviewHistory = undefined;
     const { rerender } = render(<Dashboard />);
-
-    // Review history is still loading, so neither the forecast nor the queue shows yet.
-    expect(
-      screen.queryByRole('region', { name: 'Today, most urgent first' }),
-    ).not.toBeInTheDocument();
-
+    expect(screen.getByRole('button', { name: 'Study Test Course' })).toBeEnabled();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading forecast');
     dashboardState.mockReviewHistory = [];
     rerender(<Dashboard />);
-    const queue = await screen.findByRole('region', { name: 'Today, most urgent first' });
-    const forecastPanel = screen.getByRole('region', { name: 'Forecast and this week' });
+    const queue = screen.getByRole('region', { name: 'Today, most urgent first' });
+    const panel = screen.getByRole('region', { name: 'Forecast and this week' });
     expect(
-      within(forecastPanel).getByRole('heading', { name: 'Exam-day forecast' }),
+      await within(panel).findByRole('heading', { name: 'Exam-day forecast' }),
     ).toBeInTheDocument();
-    expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-  });
-
-  it('shows the queue without waiting indefinitely on a slow forecast', () => {
-    vi.useFakeTimers();
-    try {
-      setCourseData([mockCourse], { summaries: { 'course-1': summary(3) } });
-      dashboardState.mockForecasts = { 'course-1': forecast(0.9) };
-      dashboardState.mockReviewHistory = undefined;
-      render(<Dashboard />);
-      expect(screen.queryByRole('button', { name: 'Test Course' })).not.toBeInTheDocument();
-
-      act(() => {
-        vi.advanceTimersByTime(200);
-      });
-      act(() => {
-        vi.advanceTimersByTime(800);
-      });
-      expect(screen.getByRole('button', { name: 'Test Course' })).toBeInTheDocument();
-      expect(
-        screen.queryByRole('region', { name: 'Forecast and this week' }),
-      ).not.toBeInTheDocument();
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(panel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });

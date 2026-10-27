@@ -5,6 +5,7 @@ import { loadImportPanel } from '../../routes/loaders';
 import { prefetchRoute } from '../../routes/prefetch';
 import { getLoadedRouteModule, loadRouteModule } from '../../routes/routeModule';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { FlowExpansionSurface } from '../ui/FlowExpansionSurface';
 import { expandingActionSpring } from '../ui/motion';
 
 const panelWidth = 'min(448px, calc(100vw - 48px))';
@@ -36,6 +37,12 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
       cancelled = true;
     };
   }, [open, panelModule, attempt]);
+  const root = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  const [offsetY, setOffsetY] = useState(0);
+  const [offsetX, setOffsetX] = useState(0);
+  const anchoredTop = useRef<number | null>(null);
+  const [bodyHeight, setBodyHeight] = useState<number>();
   const trigger = useRef<HTMLButtonElement>(null);
   const [triggerHeight, setTriggerHeight] = useState(44);
   useLayoutEffect(() => {
@@ -49,6 +56,55 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
     observer.observe(button);
     return () => observer.disconnect();
   }, []);
+  useLayoutEffect(() => {
+    const body = content.current;
+    if (!expanded || !body) {
+      anchoredTop.current = null;
+      return;
+    }
+    const measure = () => {
+      const rect = root.current?.getBoundingClientRect();
+      if (!rect) return;
+      const height = Math.min(body.offsetHeight + triggerHeight, window.innerHeight - 36);
+      const minimumTop = Math.max(
+        18,
+        (root.current?.closest('main')?.getBoundingClientRect().top ?? 0) + 8,
+      );
+      const top = Math.max(
+        minimumTop,
+        anchoredTop.current ?? Math.min(rect.top, window.innerHeight - height - 18),
+      );
+      anchoredTop.current = top;
+      const width = Math.min(448, window.innerWidth - 48);
+      const left = Math.max(24, Math.min(rect.right - width, window.innerWidth - width - 24));
+      setOffsetX(left + width - rect.right);
+      setOffsetY(top - rect.top);
+      setBodyHeight(Math.max(0, window.innerHeight - top - triggerHeight - 18));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(body);
+    // Today can finish loading after Import opens, moving its trigger without resizing the panel.
+    for (
+      let container: HTMLElement | null = root.current;
+      container;
+      container = container.parentElement
+    ) {
+      observer.observe(container);
+      if (container.tagName === 'MAIN') break;
+    }
+    const resize = () => {
+      anchoredTop.current = null;
+      measure();
+    };
+    window.addEventListener('resize', resize);
+    window.addEventListener('scroll', measure, true);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('scroll', measure, true);
+    };
+  }, [expanded, triggerHeight]);
   const panelId = useId();
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
@@ -79,21 +135,25 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
   }
 
   return (
-    <div className="relative z-[6] w-[100px] shrink-0" style={{ height: triggerHeight }}>
+    <div ref={root} className="relative z-[6] w-[100px] shrink-0" style={{ height: triggerHeight }}>
       <motion.div
         initial={false}
         animate={{
+          x: expanded ? offsetX : 0,
+          y: expanded ? offsetY : 0,
           width: expanded ? panelWidth : 100,
           height: expanded ? 'auto' : triggerHeight,
-          borderRadius: expanded ? 24 : triggerHeight / 2,
+          borderRadius: expanded ? 36 : triggerHeight / 2,
         }}
         transition={transition}
-        className={`absolute right-0 top-0 overflow-hidden bg-surface-raised ring-1 ring-inset ${expanded ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
+        style={{ containerType: 'inline-size', containerName: 'import-surface' }}
+        className={`absolute right-0 top-0 flow-expansion overflow-hidden bg-surface-raised ring-1 ring-inset ${expanded ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
       >
+        <FlowExpansionSurface triggerWidth={100} triggerHeight={triggerHeight} />
         {expanded && (
           <span
             aria-hidden="true"
-            className="absolute left-5 top-3 font-display text-lg font-semibold text-ink"
+            className="import-control-title absolute left-5 top-3 font-display text-lg font-semibold text-ink"
           >
             Import
           </span>
@@ -109,12 +169,13 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
           onFocus={prefetch}
           onClick={() => changeOpen(!open)}
           data-press="none"
+          data-flow-feedback
           transition={transition}
-          className="absolute right-0 top-0 flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink disabled:opacity-40"
+          className="absolute right-0 top-0 z-10 flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink disabled:opacity-40"
         >
           {pending ? 'Loading…' : open ? 'Close' : 'Import'}
         </motion.button>
-        <div inert={!expanded} aria-hidden={!expanded || undefined}>
+        <div data-flow-expansion-content inert={!expanded} aria-hidden={!expanded || undefined}>
           <AnimatePresence initial={false}>
             {expanded && ImportPanel && (
               <motion.div
@@ -127,12 +188,17 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.12 * multiplier }}
               >
-                <div>
-                  <ImportPanel
-                    key={params.has('join') ? 'class' : 'sources'}
-                    onClose={() => changeOpen(false)}
-                    onBusyChange={setBusy}
-                  />
+                <div
+                  className="scroll-edge-fade overflow-y-auto overscroll-contain"
+                  style={{ maxHeight: bodyHeight }}
+                >
+                  <div ref={content}>
+                    <ImportPanel
+                      key={params.has('join') ? 'class' : 'sources'}
+                      onClose={() => changeOpen(false)}
+                      onBusyChange={setBusy}
+                    />
+                  </div>
                 </div>
               </motion.div>
             )}

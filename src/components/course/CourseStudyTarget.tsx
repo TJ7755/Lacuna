@@ -31,7 +31,7 @@ export function StudyTargetTiles({
   wording?: Record<CourseSchedulingMode, { label: string; detail: string }>;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="study-target-tiles grid gap-2">
       {TARGETS.map((target) => {
         const { value: mode, Icon } = target;
         const { label, detail } = wording?.[mode] ?? target;

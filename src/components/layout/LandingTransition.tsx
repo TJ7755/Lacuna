@@ -148,7 +148,9 @@ export function LandingTransition() {
       )}
       <motion.div
         key={covered && !paper ? 'reveal' : 'cover'}
-        className={covered && !paper ? 'absolute inset-0' : 'absolute'}
+        className={
+          covered && !paper ? 'absolute inset-0' : paper ? 'flow-surface absolute' : 'absolute'
+        }
         style={
           covered && !paper
             ? { backgroundColor: colour, willChange: 'transform' }

@@ -26,7 +26,7 @@ export interface ArchiveTarget {
 export function CourseContextMenu({
   course,
   position,
-  trigger: _trigger,
+  trigger,
   onClose,
   onArchive,
 }: CourseMenuState & { onClose: (restoreFocus?: boolean) => void; onArchive: () => void }) {
@@ -37,12 +37,35 @@ export function CourseContextMenu({
     const menu = menuRef.current;
     if (!menu) return;
     const gutter = 8;
-    setClampedPosition({
-      x: Math.max(gutter, Math.min(position.x, window.innerWidth - menu.offsetWidth - gutter)),
-      y: Math.max(gutter, Math.min(position.y, window.innerHeight - menu.offsetHeight - gutter)),
-    });
+    const origin = trigger.getBoundingClientRect();
+    const place = () => {
+      const current = trigger.getBoundingClientRect();
+      setClampedPosition({
+        x: Math.max(
+          gutter,
+          Math.min(
+            position.x + current.left - origin.left,
+            window.innerWidth - menu.offsetWidth - gutter,
+          ),
+        ),
+        y: Math.max(
+          gutter,
+          Math.min(
+            position.y + current.top - origin.top,
+            window.innerHeight - menu.offsetHeight - gutter,
+          ),
+        ),
+      });
+    };
+    place();
     menu.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
-  }, [position]);
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [position, trigger]);
 
   useEffect(() => {
     const closeOutside = (event: PointerEvent) => {
@@ -58,7 +81,7 @@ export function CourseContextMenu({
       id="dashboard-course-actions"
       role="menu"
       aria-label={`Actions for ${course.name}`}
-      className="fixed z-[70] min-w-40 rounded-[18px] bg-surface-raised p-1.5 card-surface"
+      className="flow-surface fixed z-[70] min-w-40 rounded-[18px] bg-surface-raised p-1.5 card-surface"
       style={{ left: clampedPosition.x, top: clampedPosition.y }}
       onKeyDown={(event) => {
         event.stopPropagation();
@@ -142,7 +165,7 @@ export function ArchiveCourseDialog({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={m > 0 ? { opacity: 0, y: 12, scale: 0.98 } : undefined}
         transition={scaledSpring(m, 320, 30)}
-        className="relative z-10 w-full max-w-md rounded-3xl bg-surface p-6 card-surface"
+        className="flow-surface relative z-10 w-full max-w-md rounded-3xl bg-surface p-6 card-surface"
       >
         <h2 id="archive-course-title" className="font-display text-2xl">
           Archive {course.name}?

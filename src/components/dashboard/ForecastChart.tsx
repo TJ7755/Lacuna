@@ -24,28 +24,42 @@ const BOTTOM = 34;
 
 /**
  * The chart is drawn at its rendered width so text keeps its real pixel size on a phone
- * instead of shrinking with the viewBox. Height follows the width, within sensible limits.
+ * instead of shrinking with the viewBox. Plot height follows the viewport; the surrounding
+ * surface grows with its legend.
  * The first measurement lands before paint, so the chart never shows at a guessed size
  * and then resizes, shifting everything below it.
  */
 function useChartSize() {
   const ref = useRef<SVGSVGElement>(null);
-  const [width, setWidth] = useState(WIDE_WIDTH);
+  const [size, setSize] = useState({ width: WIDE_WIDTH, height: 260 });
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const first = Math.round(el.getBoundingClientRect().width);
-    if (first > 0) setWidth(first);
+    const measure = (entries?: ResizeObserverEntry[]) => {
+      const svgEntry = entries?.find((entry) => !entry.target || entry.target === el);
+      const width = Math.round(
+        el.getBoundingClientRect().width || svgEntry?.contentRect.width || WIDE_WIDTH,
+      );
+      // Legend rows grow the page instead of taking space away from the plot.
+      const height = Math.round(
+        Math.max(140, Math.min(260, window.innerHeight - 460, width * 0.5)),
+      );
+      setSize((current) =>
+        current.width === width && current.height === height ? current : { width, height },
+      );
+    };
+    measure();
     if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(([entry]) => {
-      const next = Math.round(entry.contentRect.width);
-      if (next > 0) setWidth(next);
-    });
+    const observer = new ResizeObserver(measure);
+    const onResize = () => measure();
     observer.observe(el);
-    return () => observer.disconnect();
+    window.addEventListener('resize', onResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', onResize);
+    };
   }, []);
-  const height = Math.round(Math.max(190, Math.min(260, width * 0.5)));
-  return { ref, W: width, H: height, narrow: width < 480 };
+  return { ref, W: size.width, H: size.height, narrow: size.width < 480 };
 }
 
 /**
@@ -66,7 +80,8 @@ export function easeSeries(values: number[], radius = 3): number[] {
 /** Five tidy ticks from 100% down, stepping by a round amount that reaches every value. */
 export function recallTicks(values: number[]): number[] {
   const lowest = Math.min(0.9, ...values.filter(Number.isFinite));
-  const step = [0.05, 0.1, 0.2, 0.25].find((candidate) => 1 - 4 * candidate <= lowest - 0.02) ?? 0.25;
+  const step =
+    [0.05, 0.1, 0.2, 0.25].find((candidate) => 1 - 4 * candidate <= lowest - 0.02) ?? 0.25;
   return [0, 1, 2, 3, 4].map((i) => Math.round((1 - step * i) * 100) / 100);
 }
 
@@ -149,7 +164,12 @@ export function ForecastChart({
   const colours = useCourseColours();
   const titleId = useId();
   const { ref, W, H, narrow } = useChartSize();
-  const [focus, setFocus] = useState<string | null>(null);
+  const [preview, setFocus] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const focus = preview ?? selected;
+  const allExam = inputLines.every((line) => line.forecast.hasExam);
+  const noExam = inputLines.every((line) => !line.forecast.hasExam);
+  const title = allExam ? 'Exam-day forecast' : noExam ? 'Four-week forecast' : 'Recall forecast';
   const [expanded, setExpanded] = useState(false);
   const spotlit = inputLines.length <= SPOTLIGHT_LIMIT ? inputLines.length : SPOTLIGHT;
   const lines = useMemo(() => {
@@ -179,7 +199,12 @@ export function ForecastChart({
 
     // Date labels: the window's start and today, then each exam inside the window,
     // dropping any that would collide.
-    const marks: { at: number; label: string; strong: boolean; anchor: 'start' | 'middle' | 'end' }[] = [
+    const marks: {
+      at: number;
+      label: string;
+      strong: boolean;
+      anchor: 'start' | 'middle' | 'end';
+    }[] = [
       { at: start, label: formatShortDate(start), strong: false, anchor: 'start' },
       { at: now, label: 'Today', strong: true, anchor: 'middle' },
     ];
@@ -206,6 +231,28 @@ export function ForecastChart({
   }, [lines, now, past, future, target, W, H, narrow]);
 
   const { x, y, ticks, marks, inside, beyond } = geometry;
+  useLayoutEffect(() => {
+    const svg = ref.current;
+    if (!svg) return;
+    const placeLabels = () => {
+      const labels = [...svg.querySelectorAll<SVGTextElement>('[data-date-priority]')].sort(
+        (a, b) => Number(a.dataset.datePriority) - Number(b.dataset.datePriority),
+      );
+      const occupied: DOMRect[] = [];
+      for (const label of labels) {
+        const bounds = label.getBoundingClientRect();
+        const overlaps = occupied.some(
+          (other) => bounds.left < other.right + 8 && bounds.right + 8 > other.left,
+        );
+        label.style.visibility = overlaps ? 'hidden' : 'visible';
+        if (!overlaps) occupied.push(bounds);
+      }
+    };
+    placeLabels();
+    document.fonts?.addEventListener('loadingdone', placeLabels);
+    return () => document.fonts?.removeEventListener('loadingdone', placeLabels);
+  }, [marks, beyond, W, H, ref]);
+
   const draw = multiplier > 0;
   const plotTop = y(ticks[0]);
   const plotBottom = y(ticks[ticks.length - 1]);
@@ -230,6 +277,8 @@ export function ForecastChart({
     <li key={line.id}>
       <button
         type="button"
+        aria-pressed={selected === line.id}
+        onClick={() => setSelected((value) => (value === line.id ? null : line.id))}
         onPointerEnter={() => setFocus(line.id)}
         onPointerLeave={() => setFocus(null)}
         onFocus={() => setFocus(line.id)}
@@ -254,14 +303,17 @@ export function ForecastChart({
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-3">
       {/* The title keeps to the top edge, level with the legend's first 44px row, however
           many rows the legend wraps to. */}
       <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-6">
         <h2 id={titleId} className="shrink-0 font-display text-2xl sm:py-1.5">
-          Exam-day forecast
+          {title}
         </h2>
-        <ul className="-mx-2 flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4" aria-label="Courses">
+        <ul
+          className="-mx-2 flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4"
+          aria-label="Courses"
+        >
           {lines.slice(0, spotlit).map((line, index) => legendItem(line, index))}
           {expanded && lines.slice(spotlit).map((line, index) => legendItem(line, spotlit + index))}
           {hidden > 0 && (
@@ -278,12 +330,19 @@ export function ForecastChart({
           )}
           {sharedTarget && (
             <li className="inline-flex min-h-11 items-center gap-2 px-2 text-ink">
-              <span aria-hidden="true" className="w-[18px] border-t-[1.5px] border-dashed border-ink" />
-              Target recall <strong className="font-bold tabular-nums">{Math.round(target * 100)}%</strong>
+              <span
+                aria-hidden="true"
+                className="w-[18px] border-t-[1.5px] border-dashed border-ink"
+              />
+              Target recall{' '}
+              <strong className="font-bold tabular-nums">{Math.round(target * 100)}%</strong>
             </li>
           )}
         </ul>
       </div>
+      <p className="text-sm text-ink-soft">
+        If you stop studying now{!allExam && !noExam ? ' · Exam dates or four weeks ahead' : ''}
+      </p>
       <svg
         ref={ref}
         viewBox={`0 0 ${W} ${H}`}
@@ -302,7 +361,10 @@ export function ForecastChart({
             )
             .join('. ')}
         </desc>
-        <g className="fill-ink-faint text-[12px] tabular-nums" style={{ fontFamily: 'var(--font-body)' }}>
+        <g
+          className="fill-ink-faint text-sm tabular-nums"
+          style={{ fontFamily: 'var(--font-body)' }}
+        >
           {ticks.map((tick) => {
             const isTarget = sharedTarget && Math.abs(tick - target) < 0.005;
             return (
@@ -321,6 +383,7 @@ export function ForecastChart({
           {marks.map((mark) => (
             <text
               key={mark.at}
+              data-date-priority={mark.at === now ? 0 : mark.strong ? 3 : 2}
               x={x(mark.at)}
               y={H - 10}
               textAnchor={mark.anchor}
@@ -330,14 +393,27 @@ export function ForecastChart({
             </text>
           ))}
           {beyond !== undefined && (
-            <text x={W - RIGHT} y={H - 10} textAnchor="end" className="fill-ink">
+            <text
+              data-date-priority={1}
+              x={W - RIGHT}
+              y={H - 10}
+              textAnchor="end"
+              className="fill-ink"
+            >
               Exam {formatShortDate(beyond)} →
             </text>
           )}
         </g>
         <line x1={LEFT} x2={W - RIGHT} y1={plotBottom} y2={plotBottom} className="stroke-line" />
         {[now, ...inside].map((at) => (
-          <line key={at} x1={x(at)} x2={x(at)} y1={plotTop} y2={plotBottom} className="stroke-line" />
+          <line
+            key={at}
+            x1={x(at)}
+            x2={x(at)}
+            y1={plotTop}
+            y2={plotBottom}
+            className="stroke-line"
+          />
         ))}
         {sharedTarget && (
           <line
@@ -378,7 +454,11 @@ export function ForecastChart({
                 strokeLinecap="round"
                 initial={draw ? { pathLength: 0 } : false}
                 animate={{ pathLength: 1 }}
-                transition={{ duration: 1.1 * multiplier, delay: delay * multiplier, ease: MOTION_EASING.emphasised }}
+                transition={{
+                  duration: 1.1 * multiplier,
+                  delay: delay * multiplier,
+                  ease: MOTION_EASING.emphasised,
+                }}
               />
               {last && (!context || focused) && (
                 <>
@@ -407,7 +487,11 @@ export function ForecastChart({
                       style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                       initial={{ scale: 1, opacity: 0 }}
                       animate={{ scale: [1, 3.2], opacity: [0.6, 0] }}
-                      transition={{ duration: 0.9 * multiplier, delay: (delay + 1.05) * multiplier, ease: 'easeOut' }}
+                      transition={{
+                        duration: 0.9 * multiplier,
+                        delay: (delay + 1.05) * multiplier,
+                        ease: 'easeOut',
+                      }}
                     />
                   )}
                   {/* Paint the whole halo first: per-glyph strokes can erase neighbouring fills. */}

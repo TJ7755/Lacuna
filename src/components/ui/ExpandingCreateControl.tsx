@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState, useId, useRef, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
+import { FlowExpansionSurface } from './FlowExpansionSurface';
 import { PlusIcon } from './icons';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { expandingActionSpring } from './motion';
@@ -50,10 +51,11 @@ export function ExpandingCreateControl({
   const [formWidth, setFormWidth] = useState<number>();
   const [retainForm, setRetainForm] = useState(open);
   const form = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
   const surface = useRef<HTMLDivElement>(null);
   const [formHeight, setFormHeight] = useState<number>();
   useLayoutEffect(() => {
-    const element = form.current;
+    const element = body.current;
     if (!element || !open) return;
     setRetainForm(true);
     const measure = (height = element.offsetHeight) => {
@@ -81,7 +83,8 @@ export function ExpandingCreateControl({
       const originLeft = align === 'end' ? bounds.right - width : bounds.left;
       const left = align === 'centre' ? bounds.left + (bounds.width - width) / 2 : originLeft;
       setOffset(Math.min(Math.max(18, left), window.innerWidth - 18 - width) - originLeft);
-      const top = Math.max(18, Math.min(bounds.top, window.innerHeight - 18 - triggerHeight - 240));
+      const height = Math.min(formHeight ?? triggerHeight + 240, window.innerHeight - 36);
+      const top = Math.max(18, Math.min(bounds.top, window.innerHeight - 18 - height));
       setVerticalOffset(top - bounds.top);
       setAvailableHeight(Math.max(triggerHeight, window.innerHeight - top - 18));
     };
@@ -92,7 +95,7 @@ export function ExpandingCreateControl({
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
-  }, [open, align, triggerHeight]);
+  }, [open, align, triggerHeight, formHeight]);
 
   const previouslyOpen = useRef(open);
   useEffect(() => {
@@ -120,8 +123,12 @@ export function ExpandingCreateControl({
           x: open ? offset : 0,
           y: open ? verticalOffset : 0,
           width: open ? 'min(448px, calc(100vw - 36px))' : closedWidth,
-          height: open ? (formHeight ?? 'auto') : triggerHeight,
-          borderRadius: open ? 24 : triggerHeight / 2,
+          height: open
+            ? formHeight === undefined
+              ? 'auto'
+              : Math.min(formHeight, availableHeight ?? formHeight)
+            : triggerHeight,
+          borderRadius: open ? 36 : triggerHeight / 2,
         }}
         transition={transition}
         // Keep drafts and selection alive until the shape has actually closed.
@@ -130,8 +137,13 @@ export function ExpandingCreateControl({
         }}
         // The closed button uses an inset ring; the open form is a flat card.
         // Only the inner form scrolls: autofocus must not scroll the growing shell and its label.
-        className={`absolute ${anchor} top-0 overflow-clip ring-1 ring-inset ${open ? 'bg-surface-raised ring-transparent card-surface' : prominent ? 'bg-accent ring-transparent' : 'bg-surface-raised ring-line-strong'}`}
+        className={`absolute ${anchor} top-0 flow-expansion overflow-clip ring-1 ring-inset ${open ? 'bg-surface-raised ring-transparent card-surface' : prominent ? 'bg-accent ring-transparent' : 'bg-surface-raised ring-line-strong'}`}
       >
+        <FlowExpansionSurface
+          triggerWidth={closedWidth}
+          triggerHeight={triggerHeight}
+          prominent={prominent}
+        />
         <motion.button
           ref={trigger}
           type="button"
@@ -143,9 +155,10 @@ export function ExpandingCreateControl({
           }}
           animate={{ x: open ? -offset : 0 }}
           data-press="none"
+          data-flow-feedback
           transition={transition}
-          style={{ width: closedWidth }}
-          className={`absolute ${anchor} top-0 flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold ${prominent && !open ? 'text-accent-fg' : 'text-ink'} focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink`}
+          style={{ width: closedWidth, color: prominent ? 'var(--flow-expansion-ink)' : undefined }}
+          className={`absolute ${anchor} top-0 z-10 flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold ${prominent && !open ? 'text-accent-fg' : 'text-ink'} focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink`}
         >
           <motion.span
             aria-hidden="true"
@@ -157,6 +170,8 @@ export function ExpandingCreateControl({
           <span>{label}</span>
         </motion.button>
         <div
+          data-flow-expansion-content
+          className="pointer-events-none absolute inset-0"
           inert={!open}
           aria-hidden={!open || undefined}
           onKeyDown={(event) => {
@@ -172,20 +187,20 @@ export function ExpandingCreateControl({
               ref={form}
               id={formId}
               // Measure and reveal the resting layout rather than reflowing it with the shell.
-              className={`absolute ${anchor}`}
+              className={`pointer-events-auto absolute ${anchor}`}
               style={{ top: triggerHeight, width: formWidth }}
               initial={{ opacity: 0 }}
               animate={{ opacity: open ? 1 : 0 }}
               transition={{ duration: 0.12 * multiplier }}
             >
               <div
-                className="overflow-y-auto overscroll-contain text-left"
+                className="scroll-edge-fade overflow-y-auto overscroll-contain text-left"
                 style={{
                   maxHeight:
                     availableHeight === undefined ? undefined : availableHeight - triggerHeight,
                 }}
               >
-                {typeof children === 'function' ? children(close) : children}
+                <div ref={body}>{typeof children === 'function' ? children(close) : children}</div>
               </div>
             </motion.div>
           )}

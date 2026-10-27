@@ -256,7 +256,7 @@ export function Sidebar({
                 key={course.id}
                 // Single-line rows at the 44px target; the list scrolls beyond that.
                 className="flex shrink-0 flex-col"
-                initial={{ opacity: 0, x: -8 }}
+                initial={false}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
                 transition={{

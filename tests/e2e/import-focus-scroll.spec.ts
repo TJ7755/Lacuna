@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { settle } from './fixtures/flowEvidence';
 
 test('inline Import autofocus preserves the expanding surface scroll position', async ({
   page,
@@ -16,6 +17,7 @@ test('inline Import autofocus preserves the expanding surface scroll position', 
     content:
       '[data-import-scroll-regression] { height: 240px !important; overflow: hidden !important; }',
   });
+  await settle(surface);
   await source.evaluate((element) => element.focus({ preventScroll: true }));
   await surface.evaluate((element) => {
     element.scrollTop = 0;
@@ -27,4 +29,30 @@ test('inline Import autofocus preserves the expanding surface scroll position', 
   expect(
     Math.abs((await heading.evaluate((element) => element.getBoundingClientRect().top)) - top),
   ).toBeLessThanOrEqual(1);
+});
+
+test('open Import stays anchored when Today content reflows', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await enterFreshLacuna(page);
+  await page.goto('/#/import');
+  const heading = page.locator('main span[aria-hidden="true"]').filter({ hasText: /^Import$/ });
+  const surface = heading.locator('..');
+  await expect(heading).toBeVisible();
+  await settle(surface);
+  const top = (await surface.boundingBox())!.y;
+  // Late content or font metrics can move the trigger after the panel has opened.
+  await page.locator('.today-empty-state').evaluate((element) => {
+    element.style.paddingTop = '150px';
+  });
+  await expect
+    .poll(async () => Math.abs((await surface.boundingBox())!.y - top))
+    .toBeLessThanOrEqual(1);
+  const panel = page.locator('.import-panel');
+  await expect.poll(async () => (await panel.boundingBox())!.x).toBeGreaterThanOrEqual(0);
+  await expect
+    .poll(async () => {
+      const bounds = (await panel.boundingBox())!;
+      return bounds.x + bounds.width;
+    })
+    .toBeLessThanOrEqual(390);
 });

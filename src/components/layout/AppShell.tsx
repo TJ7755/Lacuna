@@ -1,5 +1,14 @@
 import { ModalBackdrop } from '../ui/ModalBackdrop';
-import { lazy, Suspense, useEffect, useRef, useState, type ComponentProps } from 'react';
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { ShellCourseDataProvider } from '../../state/ShellCourseData';
@@ -374,7 +383,9 @@ function AppShellLayout() {
         <AnimatePresence>
           {studySheet.open && studySheet.anchor && (
             <OverlayLoadBoundary label="Study options" onClose={studySheet.close}>
-              <Suspense fallback={null}>
+              <Suspense
+                fallback={<StudyPending anchor={studySheet.anchor} onClose={studySheet.close} />}
+              >
                 <StudySheet
                   anchor={studySheet.anchor}
                   courseId={studySheet.courseId}
@@ -416,4 +427,39 @@ function AppShellLayout() {
 function MobileDrawerPresence(props: ComponentProps<typeof motion.div>) {
   const present = useIsPresent();
   return <motion.div {...props} inert={!present} aria-hidden={!present || undefined} />;
+}
+
+function StudyPending({ anchor, onClose }: { anchor: HTMLElement; onClose: () => void }) {
+  useLayoutEffect(() => {
+    const position = anchor.style.position;
+    if (getComputedStyle(anchor).position === 'static') anchor.style.position = 'relative';
+    anchor.setAttribute('aria-busy', 'true');
+    const outside = (event: PointerEvent) => {
+      if (!anchor.contains(event.target as Node)) onClose();
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      event.preventDefault();
+      onClose();
+      anchor.focus({ preventScroll: true });
+    };
+    document.addEventListener('pointerdown', outside);
+    window.addEventListener('keydown', escape);
+    return () => {
+      anchor.removeAttribute('aria-busy');
+      anchor.style.position = position;
+      document.removeEventListener('pointerdown', outside);
+      window.removeEventListener('keydown', escape);
+    };
+  }, [anchor, onClose]);
+  return createPortal(
+    <span
+      role="status"
+      aria-label="Loading study options"
+      className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[inherit] bg-inherit text-sm"
+    >
+      Loading…
+    </span>,
+    anchor,
+  );
 }
