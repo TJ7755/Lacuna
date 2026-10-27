@@ -268,12 +268,11 @@ export function AssessmentPathEditor({
       )}
       <AnimatedDisclosure open={draft.coverageMode === 'custom'}>
         <div className="mt-3 flex flex-wrap gap-2" aria-label="Covered lessons">
-          {orderedLessons.map((lesson, index) => (
+          {orderedLessons.map((lesson) => (
             <button
               key={lesson.id}
               type="button"
               aria-pressed={draft.lessonIds.includes(lesson.id)}
-              disabled={index > resolved.placementIndex}
               className={choiceChipClass(draft.lessonIds.includes(lesson.id))}
               onClick={() =>
                 changeCoverage({

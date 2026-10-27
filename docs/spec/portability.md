@@ -1,5 +1,19 @@
 # Portability and published-content boundaries
 
+## School study scope
+
+Choosing a starting lesson records the learner's declared earlier material by stable lesson IDs.
+Later reordering and publisher updates preserve that declaration without creating exposures,
+completions or successful review evidence. Legacy entry preferences acquire the stable list
+before an order change or publisher update. The optional local preference travels in backups and
+sync, not published course content; deleted lessons are ignored when resolving it. No database
+index change or destructive migration is required. Older strict backup readers need updating to
+read this preference.
+
+Explicit assessment lesson membership is independent of its path anchor. Reordering can change
+display order but cannot remove a selected lesson merely because it now follows the anchor.
+Prefix coverage retains its literal, order-dependent meaning. School tests use explicit coverage.
+
 ## Course-supplied specification papers
 
 Specification metadata and its source reference travel with the Course. Format validation does not

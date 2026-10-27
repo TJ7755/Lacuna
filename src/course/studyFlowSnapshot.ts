@@ -137,6 +137,7 @@ export function buildCourseStudyFlowSnapshot({
     course.studyStartLessonId,
     lessons,
     nodes.flatMap((node) => (node.nodeType === 'lesson' ? [node.id] : [])),
+    course.schoolCoveredLessonIds,
   );
   const curricularReachedLessonIds = new Set(
     [...reachedLessonIds].filter((id) => !earlier.has(id)),
