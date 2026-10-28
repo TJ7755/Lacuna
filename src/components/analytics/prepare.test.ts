@@ -3,7 +3,6 @@ import {
   forecastSeries,
   globalTrajectorySeries,
   leechCountByCourse,
-  lessonBreakdown,
   overallRecall,
   reviewActivityFromHistory,
   reviewVolume,
@@ -12,7 +11,7 @@ import {
   totalStudyMinutes,
 } from './prepare';
 import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
-import type { Card, Course, Grade, Lesson, ReviewLog, SessionHistoryEntry } from '../../db/types';
+import type { Card, Course, Grade, ReviewLog, SessionHistoryEntry } from '../../db/types';
 import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 import { startOfDay } from '../../utils/datetime';
 import { computeStudyStats, FORECAST_DAYS } from '../../fsrs/stats';
@@ -37,17 +36,6 @@ function makeCourse(overrides: Partial<Course> & Pick<Course, 'id'>): Course {
     practiceThresholdMinutesNear: 6,
     practiceUrgentWindowDays: 7,
     practiceMaxGap: 3,
-    ...overrides,
-  };
-}
-
-function makeLesson(overrides: Partial<Lesson> & Pick<Lesson, 'id' | 'courseId'>): Lesson {
-  return {
-    name: 'Test lesson',
-    orderIndex: 0,
-    createdAt: 0,
-    updatedAt: 0,
-    isExtension: false,
     ...overrides,
   };
 }
@@ -161,58 +149,6 @@ describe('forecastSeries', () => {
     ).forecast;
     expect(counts(cards)[0]).toEqual({ due: 1, newCards: 1 });
     expect(dashboard[0]).toMatchObject({ dueCount: 1, newCount: 0 });
-  });
-});
-
-describe('lessonBreakdown', () => {
-  it('returns an empty array when there are no lessons', () => {
-    expect(lessonBreakdown([], [], makeCourse({ id: 'c1' }))).toEqual([]);
-  });
-
-  it('groups cards by primaryLessonId and computes completion', () => {
-    const course = makeCourse({ id: 'c1' });
-    const lesson = makeLesson({ id: 'l1', courseId: 'c1', name: 'Lesson one' });
-    const cards = [
-      makeCard({
-        id: 'card1',
-        deckId: 'd1',
-        schedulingUnitId: 'd1',
-        courseId: 'c1',
-        primaryLessonId: 'l1',
-        lastReviewed: 100,
-      }),
-      makeCard({
-        id: 'card2',
-        deckId: 'd1',
-        schedulingUnitId: 'd1',
-        courseId: 'c1',
-        primaryLessonId: 'l1',
-        lastReviewed: null,
-      }),
-    ];
-    const [entry] = lessonBreakdown([lesson], cards, course);
-    expect(entry.lessonId).toBe('l1');
-    expect(entry.name).toBe('Lesson one');
-    expect(entry.cardCount).toBe(2);
-    expect(entry.completionPct).toBe(50);
-  });
-
-  it('excludes extension lessons', () => {
-    const course = makeCourse({ id: 'c1' });
-    const extensionLesson = makeLesson({ id: 'l1', courseId: 'c1', isExtension: true });
-    const cards = [makeCard({ id: 'card1', deckId: 'd1', courseId: 'c1', primaryLessonId: 'l1' })];
-    expect(lessonBreakdown([extensionLesson], cards, course)).toEqual([]);
-  });
-
-  it('gives a lesson with no cards a fully-mastered entry rather than omitting it', () => {
-    // An empty card set is treated as fully mastered, matching the course-level
-    // progressValue convention (Addendum 2 §J), not hardcoded to zero.
-    const course = makeCourse({ id: 'c1' });
-    const lesson = makeLesson({ id: 'l1', courseId: 'c1' });
-    const [entry] = lessonBreakdown([lesson], [], course);
-    expect(entry.cardCount).toBe(0);
-    expect(entry.masteryPct).toBe(100);
-    expect(entry.completionPct).toBe(0);
   });
 });
 

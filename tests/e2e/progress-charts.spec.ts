@@ -43,7 +43,7 @@ test('Lesson breakdown keeps card counts off the percentage axis', async ({ page
   const text = (await tooltip.textContent()) ?? '';
   const recallAt = text.indexOf('Predicted recall');
   expect(recallAt).toBeGreaterThanOrEqual(0);
-  expect(recallAt).toBeLessThan(text.indexOf('Completion'));
+  expect(recallAt).toBeLessThan(text.indexOf('Reviewed'));
 });
 
 test('Progress reading surfaces remain visible after their entrance settles', async ({ page }) => {

@@ -2,15 +2,7 @@
 
 import { startOfDay } from '../../utils/datetime';
 import { isLeech } from '../../fsrs/leech';
-import { progressValue } from '../../fsrs/objective';
-import type {
-  Card,
-  Course,
-  Lesson,
-  ReviewLog,
-  SchedulerConfig,
-  SessionHistoryEntry,
-} from '../../db/types';
+import type { Card, Course, ReviewLog, SessionHistoryEntry } from '../../db/types';
 import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 
 /** DST-safe day offset: add/subtract whole days from a local-midnight epoch. */
@@ -292,57 +284,6 @@ export function globalTrajectorySeries(history: SessionHistoryEntry[]): Trajecto
         }),
         retrievability: Number.isFinite(avg) ? Math.round(avg * 100) : 0,
         courses: values.length,
-      };
-    });
-}
-
-export interface LessonBreakdownPoint {
-  lessonId: string;
-  name: string;
-  cardCount: number;
-  masteryPct: number;
-  completionPct: number;
-}
-
-/**
- * Per-lesson breakdown for the course analytics page: card count, objective-aware
- * mastery (per Addendum 2 §J — the same `progressValue` the course-level figure
- * uses, scoped to this lesson's own cards) and completion (fraction of the
- * lesson's cards that have been reviewed at least once). Extension lessons are
- * excluded, matching `computeCourseSummaries`. Cards are grouped by
- * `primaryLessonId` — a card belongs to exactly one lesson here, so no
- * double-counting across the breakdown. Assumes every non-extension card has
- * a valid `primaryLessonId` pointing at a lesson in this course; cards with a
- * stale or missing `primaryLessonId` are silently dropped, so per-lesson
- * `cardCount` totals may not sum to the course's overall card count.
- */
-export function lessonBreakdown(
-  lessons: Lesson[],
-  cards: Card[],
-  scheduler: SchedulerConfig,
-): LessonBreakdownPoint[] {
-  const byLesson = new Map<string, Card[]>();
-  for (const card of cards) {
-    if (!card.primaryLessonId) continue;
-    const bucket = byLesson.get(card.primaryLessonId) ?? [];
-    bucket.push(card);
-    byLesson.set(card.primaryLessonId, bucket);
-  }
-  return lessons
-    .filter((lesson) => !lesson.isExtension)
-    .map((lesson) => {
-      const lessonCards = byLesson.get(lesson.id) ?? [];
-      const reviewed = lessonCards.filter((c) => c.lastReviewed !== null).length;
-      return {
-        lessonId: lesson.id,
-        name: lesson.name,
-        cardCount: lessonCards.length,
-        // progressValue is called unconditionally so a zero-card lesson gets the
-        // same 100% convention as course-level mastery (Addendum 2 §J), rather
-        // than a hardcoded 0.
-        masteryPct: Math.round(progressValue(lessonCards, scheduler) * 100),
-        completionPct:
-          lessonCards.length > 0 ? Math.round((reviewed / lessonCards.length) * 100) : 0,
       };
     });
 }

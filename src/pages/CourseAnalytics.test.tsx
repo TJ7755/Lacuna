@@ -1,5 +1,5 @@
 import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
@@ -7,17 +7,28 @@ import type { QuestionAttempt, QuestionDefinition } from '../questions/types';
 import { CourseAnalytics } from './CourseAnalytics';
 import { ToastProvider } from '../components/ui/Toast';
 import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
+import { makeCard, makeCourse, makeExamDate, makeLesson } from '../course/path.testFixtures';
+import type { Course } from '../db/types';
+import { MS_PER_DAY } from '../fsrs/params';
 
 const mocks = vi.hoisted(() => ({
   questionData: undefined as CourseQuestionData | undefined,
-  course: { id: 'course-1', name: 'Mathematics', archived: false },
+  course: { id: 'course-1', name: 'Mathematics', archived: false } as Course,
+  records: undefined as unknown,
+  openStudySheet: vi.fn(),
 }));
 
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mocks.course,
-  useLessons: () => [],
-  useCourseCards: () => [],
   useCourseReviewHistory: () => [],
+}));
+
+vi.mock('../state/useCourseStudyFlowRecords', () => ({
+  useCoursePathRecords: () => mocks.records,
+}));
+
+vi.mock('../components/learn/StudySheetContext', () => ({
+  useStudySheet: () => ({ openStudySheet: mocks.openStudySheet }),
 }));
 
 vi.mock('../components/questions/useQuestionData', () => ({
@@ -105,9 +116,61 @@ function novelAttempt(): QuestionAttempt {
   };
 }
 
+function records(course: Course) {
+  const now = Date.now();
+  const card = (id: string, lessonId: string, reviewed: boolean) =>
+    makeCard({
+      id,
+      deckId: course.id,
+      courseId: course.id,
+      primaryLessonId: lessonId,
+      ...(reviewed
+        ? {
+            state: 2 as const,
+            lastReviewed: now - MS_PER_DAY,
+            stability: 20,
+            due: now + 19 * MS_PER_DAY,
+          }
+        : {}),
+    });
+  return {
+    course,
+    lessons: [
+      makeLesson({ id: 'a', courseId: course.id, name: 'Cells', orderIndex: 0 }),
+      makeLesson({ id: 'b', courseId: course.id, name: 'Enzymes', orderIndex: 1 }),
+    ],
+    cards: [card('a1', 'a', true), card('a2', 'a', false), card('b1', 'b', true)],
+    assessments: [
+      makeExamDate({
+        id: 'near',
+        courseId: course.id,
+        name: 'Topic test',
+        examDate: now + 3 * MS_PER_DAY,
+        lessonIds: ['a'],
+      }),
+      makeExamDate({
+        id: 'final',
+        courseId: course.id,
+        name: 'Final paper',
+        kind: 'final',
+        examDate: now + 60 * MS_PER_DAY,
+      }),
+    ],
+    links: [],
+    exposures: [],
+    completions: [],
+    concepts: [],
+  };
+}
+
 describe('CourseAnalytics', () => {
   beforeEach(() => {
-    mocks.course = { id: 'course-1', name: 'Mathematics', archived: false };
+    mocks.course = makeCourse({
+      id: 'course-1',
+      name: 'Mathematics',
+      examDate: Date.now() + 60 * MS_PER_DAY,
+    });
+    mocks.records = records(mocks.course);
   });
 
   it('renders Question evidence separately with novel generated performance as the headline', () => {
@@ -148,34 +211,43 @@ describe('CourseAnalytics', () => {
     expect(screen.getByText('Card analytics charts')).toBeInTheDocument();
   });
 
-  it('opens with the headline figures and the course forecast before the evidence', () => {
+  it('scopes the overview, forecast chart and next action to a selected assessment', () => {
     mocks.questionData = { questions: [], conceptSets: [], concepts: [], attempts: [] };
     render(
       <MemoryRouter initialEntries={['/course/course-1/analytics']}>
         <ToastProvider>
           <Routes>
             <Route path="/course/:courseId/analytics" element={<CourseAnalytics />} />
+            <Route path="/course/:courseId/study" element={<p>Study opened</p>} />
           </Routes>
         </ToastProvider>
       </MemoryRouter>,
     );
 
-    const summary = screen.getByRole('region', { name: 'Summary' });
-    for (const label of ['Cards at 90% predicted recall', 'Cards', 'Reviews, 30 days', 'Study time, 30 days']) {
-      expect(summary).toHaveTextContent(label);
-    }
-    const forecast = screen.getByText('Exam-day forecast');
+    const whole = screen.getByRole('region', { name: 'Whole course' });
+    expect(whole).toHaveTextContent('2 of 3');
+    expect(whole).toHaveTextContent('Each card is measured at its next test or paper.');
+    // Cards target two dates, so no single exam-day line is drawn.
+    expect(screen.queryByText('Exam-day forecast')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Revise for/ })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Show'), { target: { value: 'near' } });
+    const scoped = screen.getByRole('region', { name: 'Topic test' });
+    expect(scoped).toHaveTextContent('1 of 2');
+    expect(scoped).toHaveTextContent('(in 3 days) if you stop reviewing now.');
+    expect(screen.getByText('Exam-day forecast')).toBeInTheDocument();
     const questions = screen.getByRole('heading', { name: 'Questions' });
     expect(
-      summary.compareDocumentPosition(forecast) & Node.DOCUMENT_POSITION_FOLLOWING,
+      scoped.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(
-      forecast.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+
+    fireEvent.click(within(scoped).getByRole('button', { name: 'Revise for Topic test' }));
+    expect(screen.getByText('Study opened')).toBeInTheDocument();
   });
 
   it('keeps archived analytics read-only without active-course navigation', () => {
-    mocks.course = { id: 'course-1', name: 'Mathematics', archived: true };
+    mocks.course = { ...mocks.course, archived: true };
+    mocks.records = records(mocks.course);
     mocks.questionData = { questions: [], conceptSets: [], concepts: [], attempts: [] };
 
     render(
@@ -199,5 +271,6 @@ describe('CourseAnalytics', () => {
     expect(screen.getByText('Archived course')).toBeInTheDocument();
     expectAppDestination(screen.getByRole('link', { name: 'Archived courses' }), '/archived');
     expect(screen.queryByText('Course tabs')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
   });
 });
