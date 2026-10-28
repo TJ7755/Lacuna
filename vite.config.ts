@@ -200,6 +200,11 @@ export default defineConfig({
               includeDependenciesRecursively: false,
             },
             {
+              name: 'specification-data',
+              test: /[\\/]src[\\/]specifications[\\/](?:catalogue|data|linkSchemas|tagResolver)\.ts$/,
+              includeDependenciesRecursively: false,
+            },
+            {
               name: 'course-sequencing',
               test: /[\\/]src[\\/]course[\\/](?:lessonOrder|assessmentCoverage)\.ts$/,
             },
