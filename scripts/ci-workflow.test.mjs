@@ -395,11 +395,11 @@ test('browser consumers use the same pinned browser image and shared production 
   );
   assert.deepEqual(
     jobs['browser-tests'].strategy.matrix.shard,
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
   );
   assert.ok(
     jobs['browser-tests'].steps.some(
-      (step) => step.run === 'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/12',
+      (step) => step.run === 'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/16',
     ),
   );
   const functionalEvidence = jobs['browser-tests'].steps.find(
@@ -869,7 +869,7 @@ test('push scope still selects the full matrix regardless of changed web specs',
   }
 });
 
-test('web spec-only changes reduce heavy matrix instances from 38 to 22', () => {
+test('web spec-only changes reduce heavy matrix instances from 42 to 26', () => {
   const count = (scope) => {
     const outputs = Object.fromEntries(
       Object.entries(scope).map(([key, value]) => [key, String(value)]),
@@ -894,10 +894,10 @@ test('web spec-only changes reduce heavy matrix instances from 38 to 22', () => 
     }
     return { heavy, runners };
   };
-  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 38, runners: 42 });
+  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 42, runners: 46 });
   assert.deepEqual(count(classifyPaths(['tests/e2e/study-flip.spec.ts'])), {
-    heavy: 22,
-    runners: 29,
+    heavy: 26,
+    runners: 33,
   });
 });
 
