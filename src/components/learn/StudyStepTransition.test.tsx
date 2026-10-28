@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { SessionSummary } from './types';
 import type { StudyProgress } from '../../course/studyProgress';
 import { StudyStepTransition } from './StudyStepTransition';
@@ -92,8 +92,9 @@ const progress: StudyProgress = {
 };
 
 describe('StudyStepTransition', () => {
-  it('shows the named exam forecast separately from contextual skill evidence', () => {
+  it('shows the named exam countdown and forecast beside the ranked topics', () => {
     renderTransition({
+      nextConceptId: 'cells',
       progress: {
         ...progress,
         exam: {
@@ -108,30 +109,28 @@ describe('StudyStepTransition', () => {
         },
       },
     });
-    expect(screen.getByRole('region', { name: 'Progress and priorities' })).toBeInTheDocument();
-    expect(screen.getByText('Biology paper 1')).toBeInTheDocument();
-    expect(screen.getByText('7 days to go · 2 Nov')).toBeInTheDocument();
+    const panel = screen.getByRole('region', { name: 'Progress and priorities' });
+    expect(within(panel).getByRole('heading', { name: 'Biology paper 1' })).toBeInTheDocument();
+    expect(panel).toHaveTextContent('2 Nov');
+    expect(panel).toHaveTextContent('7days to go');
     expect(
-      screen.getByRole('progressbar', { name: 'Predicted recall on exam day' }),
+      within(panel).getByRole('progressbar', { name: 'Predicted recall on exam day' }),
     ).toHaveAttribute('aria-valuenow', '64');
-    expect(screen.getByText(/2 of 8 cards at 90% predicted recall/)).toBeInTheDocument();
-    expect(screen.queryByText('FSRS progress')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText(/2 exam skills/));
-    expect(screen.getByText('Not yet assessed')).toBeVisible();
-    expect(screen.getByText('2 demonstrated · 1 with gaps · latest: gap observed')).toBeVisible();
-    expect(screen.getByText('3 cards due · 2 new · 4 exam questions in pool')).toBeInTheDocument();
+    expect(within(panel).getByText('Cells and transport')).toHaveClass('font-semibold');
+    expect(within(panel).getByText('3 due')).toBeInTheDocument();
+    expect(panel).not.toHaveTextContent(/cards at 90%|exam skill|Not yet assessed/);
   });
 
-  it('shows ordinary FSRS counts and current recall when no exam is upcoming', () => {
+  it('shows current recall and due cards when no exam is upcoming', () => {
     renderTransition({ progress });
-    expect(screen.getByText('FSRS progress')).toBeInTheDocument();
-    const due = screen.getByText('Due now').parentElement;
-    expect(due).toHaveTextContent('3');
-    expect(screen.getByText(/88% estimated recall now/)).toHaveTextContent(
-      '4.2 days average stability',
+    const panel = screen.getByRole('region', { name: 'Progress and priorities' });
+    expect(within(panel).getByRole('progressbar', { name: 'Recall now' })).toHaveAttribute(
+      'aria-valuenow',
+      '88',
     );
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
-    expect(screen.queryByText(/days to go/)).not.toBeInTheDocument();
+    expect(panel).toHaveTextContent('3cards due');
+    expect(within(panel).getByText('Cells and transport')).not.toHaveClass('font-semibold');
+    expect(panel).not.toHaveTextContent(/days to go/);
   });
 
   it('retains actual question marks without inventing card reviews or recall for a cardless exam', () => {
@@ -166,10 +165,13 @@ describe('StudyStepTransition', () => {
         },
       },
     });
-    expect(screen.getByText('1 / 2 marks · Self-marked')).toBeInTheDocument();
-    expect(screen.getByText('No card recall data for this assessment yet.')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '1 of 2 marks' })).toBeInTheDocument();
+    expect(screen.queryByText(/Self-marked|recall data|recalled/)).not.toBeInTheDocument();
+    // Without card memory there is no forecast to draw, only the countdown.
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
-    expect(screen.queryByText(/reviews ·/)).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Progress and priorities' })).toHaveTextContent(
+      '7days to go',
+    );
   });
 
   it('claims focus from the inert outgoing step during the crossfade', () => {
@@ -231,8 +233,11 @@ describe('StudyStepTransition', () => {
     expect(screen.getByLabelText('Completed')).toBeInTheDocument();
     expect(screen.queryByText('Step complete')).not.toBeInTheDocument();
     expect(screen.queryByText('Up next')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Checkpoint', level: 2 })).toBeInTheDocument();
-    expect(screen.getByText('2 reviews · 1 recalled')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Checkpoint', level: 1 })).toBeInTheDocument();
+    expect(screen.getByText('Atomic structure')).toBeInTheDocument();
+    // The answers are drawn, not written out.
+    expect(screen.getByRole('img', { name: '1 of 2 recalled' })).toBeInTheDocument();
+    expect(screen.queryByText(/recalled/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Take a break' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue without break' }));
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss break' }));

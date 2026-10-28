@@ -247,34 +247,24 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
 
       const handoff = page.getByRole('main', { name: 'Study progress', exact: true });
       await expect(handoff).toBeVisible();
-      await expect(handoff.getByText('1 / 1 marks · Self-marked', { exact: true })).toBeVisible();
+      await expect(handoff.getByRole('img', { name: '1 of 1 marks', exact: true })).toBeVisible();
+      await expect(handoff.getByText(/Self-marked|recalled/)).toHaveCount(0);
       const progress = handoff.getByRole('region', {
         name: 'Progress and priorities',
         exact: true,
       });
       await expect(progress).toBeVisible();
-      await expect(
-        progress.getByRole('heading', { name: 'Cell membranes', exact: true }),
-      ).toBeVisible();
       if (hasExam) {
         await expect(
           progress.getByRole('heading', { name: 'Friday biology test', exact: true }),
         ).toBeVisible();
-        await expect(progress.getByText(/^\d+ days to go · /)).toBeVisible();
-        await expect(
-          progress.getByText('No card recall data for this assessment yet.', { exact: true }),
-        ).toBeVisible();
+        await expect(progress.getByText('days to go', { exact: true })).toBeVisible();
+        // A cardless assessment has no forecast, so no gauge is drawn.
         await expect(progress.getByRole('progressbar')).toHaveCount(0);
-        await expect(progress.getByText('100%', { exact: true })).toHaveCount(0);
+        await expect(progress.getByText(/recall data/)).toHaveCount(0);
       } else {
-        await expect(
-          progress.getByRole('heading', { name: 'FSRS progress', exact: true }),
-        ).toBeVisible();
-        await expect(progress.getByText('No reviewed cards yet.', { exact: true })).toBeVisible();
+        await expect(progress.getByText(/^cards? due$/)).toBeVisible();
       }
-      await progress.getByText('1 exam skill', { exact: true }).click();
-      await expect(progress.getByText('Link cause and effect', { exact: true })).toBeVisible();
-      await expect(progress.getByText('Not yet assessed', { exact: true })).toBeVisible();
       await capture(page, testInfo, `study-progress-${width}`);
       await handoff.getByRole('button', { name: 'Finish for now', exact: true }).click();
       await expect(page).toHaveURL(courseUrl);

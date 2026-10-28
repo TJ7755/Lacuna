@@ -1,164 +1,156 @@
+import type { CSSProperties } from 'react';
 import type { StudyProgress } from '../../course/studyProgress';
-import { ProgressBar } from '../ui/ProgressBar';
+import { CountUp } from '../ui/Celebration';
 import { formatShortDate } from '../../utils/datetime';
 
+const GAUGE_VIEW = 148;
+const GAUGE_STROKE = 11;
+const VISIBLE_TOPICS = 5;
+
 /** The current course evidence, refreshed at the activity boundary rather than while answering. */
-export function StudyProgressPanel({ progress }: { progress: StudyProgress }) {
-  const { exam, fsrs, priorities, otherTopics = [] } = progress;
-  const visible = priorities.slice(0, 3);
+export function StudyProgressPanel({
+  progress,
+  nextConceptId,
+  motion,
+}: {
+  progress: StudyProgress;
+  /** The topic the next step practises, drawn in the accent colour. */
+  nextConceptId?: string;
+  motion: number;
+}) {
+  const { exam, fsrs } = progress;
+  const recall = exam ? exam.value : fsrs.recallNow;
+  const topics = progress.priorities.slice(0, VISIBLE_TOPICS);
+  const most = Math.max(1, ...topics.map((topic) => topic.dueCards));
+
   return (
     <section aria-label="Progress and priorities" className="study-progress-panel">
-      {exam ? (
-        <div>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h3 className="font-semibold">{exam.name}</h3>
-            <p className="text-sm text-ink-soft">
-              {exam.daysRemaining === 0
-                ? 'Today'
-                : `${exam.daysRemaining} ${exam.daysRemaining === 1 ? 'day' : 'days'} to go`}
-              {' · '}
-              {formatShortDate(exam.date, exam.timeZone)}
-            </p>
-          </div>
-          {exam.value === null ? (
-            <p className="mt-3 text-sm text-ink-soft">
-              No card recall data for this assessment yet.
-            </p>
-          ) : (
+      <div className="flex items-center gap-6 sm:gap-7">
+        {recall !== null && (
+          <RecallGauge
+            value={recall}
+            label={exam ? `${exam.label} on exam day` : 'Recall now'}
+            caption={exam ? 'on exam day' : 'recall now'}
+            motion={motion}
+          />
+        )}
+        <div className="min-w-0">
+          {exam && (
             <>
-              <div className="mt-3 flex items-baseline justify-between gap-4">
-                <p className="text-sm text-ink-soft">{exam.label} on exam day</p>
-                <p className="font-display text-2xl font-semibold tabular-nums">
-                  {Math.round(exam.value * 100)}%
-                </p>
-              </div>
-              <ProgressBar
-                label={`${exam.label} on exam day`}
-                value={exam.value}
-                height={6}
-                className="mt-2"
-              />
-              <p className="mt-2 text-sm text-ink-soft">
-                {exam.securedCards} of {exam.totalCards} cards at 90% predicted recall. Forecast
-                from current card memory; exam marks are separate.
-              </p>
+              <h3 className="text-lg font-semibold leading-snug">{exam.name}</h3>
+              <p className="text-base text-ink-soft">{formatShortDate(exam.date, exam.timeZone)}</p>
             </>
           )}
-        </div>
-      ) : (
-        <div>
-          <h3 className="font-semibold">FSRS progress</h3>
-          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-            <Fact label="Due now" value={fsrs.dueCards} />
-            <Fact label="New" value={fsrs.newCards} />
-            <Fact label="Learning" value={fsrs.learningCards} />
-            <Fact label="Review" value={fsrs.reviewCards} />
-          </dl>
-          <p className="mt-3 text-sm text-ink-soft">
-            {fsrs.recallNow === null
-              ? 'No reviewed cards yet.'
-              : `${Math.round(fsrs.recallNow * 100)}% estimated recall now in reviewed cards`}
-            {fsrs.meanStability !== null &&
-              ` · ${fsrs.meanStability.toFixed(1)} days average stability`}
+          <p className={`study-progress-figure ${exam ? 'mt-4' : ''}`}>
+            {exam ? (exam.daysRemaining === 0 ? 'Today' : exam.daysRemaining) : fsrs.dueCards}
           </p>
+          {(!exam || exam.daysRemaining > 0) && (
+            <p className="mt-1 text-base text-ink-soft">
+              {exam
+                ? exam.daysRemaining === 1
+                  ? 'day to go'
+                  : 'days to go'
+                : fsrs.dueCards === 1
+                  ? 'card due'
+                  : 'cards due'}
+            </p>
+          )}
         </div>
-      )}
-      <div className="mt-5 border-t border-line pt-4">
-        <h3 className="font-semibold">Study priorities</h3>
-        {priorities.length ? (
-          <>
-            <ul className="mt-1 divide-y divide-line">
-              {visible.map((priority) => (
-                <Priority key={priority.conceptId} priority={priority} />
-              ))}
-            </ul>
-            {priorities.length > visible.length && (
-              <details className="mt-2 text-sm">
-                <summary className="cursor-pointer py-2 text-ink-soft">
-                  {priorities.length - visible.length} more topics
-                </summary>
-                <ul className="divide-y divide-line">
-                  {priorities.slice(3).map((priority) => (
-                    <Priority key={priority.conceptId} priority={priority} />
-                  ))}
-                </ul>
-              </details>
-            )}
-          </>
-        ) : (
-          <p className="mt-2 text-sm text-ink-soft">No scheduled practice right now.</p>
-        )}
-        {otherTopics.length > 0 && (
-          <details className="mt-3 text-sm" open={priorities.length === 0}>
-            <summary className="cursor-pointer py-2 font-medium">
-              Other topics and skills · {otherTopics.length}
-            </summary>
-            <ul className="divide-y divide-line">
-              {otherTopics.map((priority) => (
-                <Priority key={priority.conceptId} priority={priority} scheduled={false} />
-              ))}
-            </ul>
-          </details>
-        )}
       </div>
+
+      {topics.length > 0 && (
+        <ol className="mt-8 space-y-5 border-t border-line pt-6">
+          {topics.map((topic, index) => {
+            const next = topic.conceptId === nextConceptId;
+            return (
+              <li
+                key={topic.conceptId}
+                className="study-progress-topic"
+                style={{ '--topic-index': index } as CSSProperties}
+              >
+                <div className="flex items-baseline justify-between gap-4 text-base">
+                  <span className={`truncate ${next ? 'font-semibold' : 'text-ink-soft'}`}>
+                    {topic.name}
+                  </span>
+                  {topic.dueCards > 0 && (
+                    <span className="shrink-0 tabular-nums text-ink-soft">
+                      {topic.dueCards} due
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2 h-1 overflow-hidden rounded-full bg-line" aria-hidden="true">
+                  <div
+                    className={`study-progress-bar h-full rounded-full ${next ? 'bg-accent' : 'bg-ink-faint'}`}
+                    style={{ width: `${(topic.dueCards / most) * 100}%` }}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
     </section>
   );
 }
 
-function Fact({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <dt className="text-sm text-ink-soft">{label}</dt>
-      <dd className="mt-1 font-display text-xl font-semibold tabular-nums">{value}</dd>
-    </div>
-  );
-}
-
-function Priority({
-  priority,
-  scheduled = true,
+function RecallGauge({
+  value,
+  label,
+  caption,
+  motion,
 }: {
-  priority: StudyProgress['priorities'][number];
-  scheduled?: boolean;
+  value: number;
+  label: string;
+  caption: string;
+  motion: number;
 }) {
-  const gapCount = priority.skills.filter((skill) => skill.latestOutcome === 'gap').length;
+  const radius = (GAUGE_VIEW - GAUGE_STROKE) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const percent = Math.round(Math.min(Math.max(value, 0), 1) * 100);
+  const offset = circumference * (1 - percent / 100);
   return (
-    <li className="py-3 text-sm">
-      <h4 className="font-semibold">{priority.name}</h4>
-      {!scheduled && <p className="mt-1 text-ink-faint">No scheduled practice</p>}
-      <p className="mt-1 text-ink-soft">
-        {`${priority.dueCards} ${priority.dueCards === 1 ? 'card' : 'cards'} due · ${priority.newCards} new · ${priority.questionCount} exam ${priority.questionCount === 1 ? 'question' : 'questions'} in pool`}
-      </p>
-      {(priority.knowledgeGap || priority.applicationGap) && (
-        <p className="mt-1 text-ink-soft">
-          {priority.knowledgeGap
-            ? 'Review the knowledge behind these questions.'
-            : 'Practise applying this knowledge.'}
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={percent}
+      className="study-progress-gauge"
+    >
+      <svg viewBox={`0 0 ${GAUGE_VIEW} ${GAUGE_VIEW}`} aria-hidden="true">
+        <circle
+          cx={GAUGE_VIEW / 2}
+          cy={GAUGE_VIEW / 2}
+          r={radius}
+          fill="none"
+          stroke="hsl(var(--line))"
+          strokeWidth={GAUGE_STROKE}
+        />
+        <circle
+          className="study-progress-ring"
+          cx={GAUGE_VIEW / 2}
+          cy={GAUGE_VIEW / 2}
+          r={radius}
+          fill="none"
+          stroke="hsl(var(--accent))"
+          strokeWidth={GAUGE_STROKE}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          style={
+            {
+              '--ring-empty': circumference,
+              '--ring-filled': offset,
+              strokeDashoffset: offset,
+            } as CSSProperties
+          }
+        />
+      </svg>
+      <div className="relative text-center" aria-hidden="true">
+        <p className="font-display text-[28px] font-semibold leading-none tabular-nums tracking-[-0.03em] sm:text-[34px]">
+          <CountUp value={percent} multiplier={motion} duration={1.1} delay={0.56} suffix="%" />
         </p>
-      )}
-      {priority.skills.length > 0 && (
-        <details className="mt-2">
-          <summary className="cursor-pointer text-ink-soft">
-            {priority.skills.length} exam {priority.skills.length === 1 ? 'skill' : 'skills'}
-            {gapCount > 0 ? ` · ${gapCount} with an observed gap` : ''}
-          </summary>
-          <ul className="mt-2 space-y-2 pl-3">
-            {priority.skills.map((skill) => (
-              <li key={skill.id}>
-                <span className="font-medium">{skill.name}</span>
-                <span className="block text-ink-soft">
-                  {skill.latestOutcome === undefined
-                    ? 'Not yet assessed'
-                    : `${skill.demonstratedCount} demonstrated · ${skill.gapCount} with gaps · latest: ${skill.latestOutcome === 'gap' ? 'gap observed' : 'demonstrated'}`}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 pl-3 text-xs text-ink-faint">
-            Counts are assessed answers in this topic.
-          </p>
-        </details>
-      )}
-    </li>
+        <p className="mt-1.5 text-sm text-ink-soft">{caption}</p>
+      </div>
+    </div>
   );
 }

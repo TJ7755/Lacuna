@@ -327,24 +327,20 @@ function CourseStudyFlowInner() {
       flow?.decision.kind === 'step' &&
       flow.decision.step.kind === 'practice' &&
       flow.decision.step.mode === 'catch-up';
-    const nextLabel =
+    const nextStep =
       !planningNextStep && (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice')
-        ? flow.decision.step.label
+        ? flow.decision.step
         : undefined;
+    const nextQuestions = nextStep?.kind === 'exam-questions' ? nextStep : undefined;
     scene = 'transition';
     body = (
       <StudyStepTransition
         completedLabel={transition.completedStep.label}
-        nextLabel={nextLabel}
+        nextLabel={nextStep?.label}
         summary={transition.summary}
         progress={flow?.generation === refreshKey ? flow.progress : undefined}
-        nextReason={
-          !planningNextStep &&
-          (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice') &&
-          flow.decision.step.kind === 'exam-questions'
-            ? flow.decision.step.reason
-            : undefined
-        }
+        nextReason={nextQuestions?.reason}
+        nextConceptId={nextQuestions?.conceptId}
         canReviewDueCards={
           transition.completedStep !== DUE_REVIEW_STEP &&
           !planningNextStep &&
