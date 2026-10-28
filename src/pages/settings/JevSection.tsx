@@ -23,6 +23,7 @@ const PAUSE_MESSAGES: Record<JevPauseReason, string> = {
   'access-code-rejected': 'Paused: the access code was not accepted.',
   'service-disabled': 'Paused: the service is unavailable. It will try again later.',
   'limit-reached': 'Paused: this month’s safety limit has been reached.',
+  'rate-limited': 'Paused: too many requests.',
   error: 'Paused after an error. It will try again later.',
 };
 
@@ -39,7 +40,11 @@ export function jevStatusMessage(status: JevStatus, now = Date.now()): string | 
         ? 'Ready. It marks your next typed or written answer.'
         : `Ready. Last used ${formatRelativeTime(status.lastUsedAt, now)}.`;
     case 'paused':
-      return `${PAUSE_MESSAGES[status.reason]}${last}`;
+      return `${PAUSE_MESSAGES[status.reason]}${
+        (status.reason === 'rate-limited' || status.reason === 'limit-reached') && status.retryAt
+          ? ` Try again after ${new Date(status.retryAt).toLocaleString('en-GB')}. You can still mark answers yourself.`
+          : ''
+      }${last}`;
   }
 }
 

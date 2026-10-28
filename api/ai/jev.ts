@@ -60,7 +60,13 @@ export default {
       usage = getJevUsageStore(url, token);
       const refresh = usage.refresh();
       if (refresh) waitUntil(refresh.catch(() => {}));
-      if (!usage.allowed(limit)) return error(429, 'Jev input-token ceiling reached.');
+      if (!usage.allowed(limit)) {
+        const now = new Date();
+        const reset = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
+        headers.set('X-Lacuna-AI-Limit', 'monthly-tokens');
+        headers.set('Retry-After', String(Math.max(1, Math.ceil((reset - now.getTime()) / 1000))));
+        return error(429, 'Jev input-token ceiling reached.');
+      }
       const signal = AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]);
       calledAt = Date.now();
       const typesafeStarted = performance.now();

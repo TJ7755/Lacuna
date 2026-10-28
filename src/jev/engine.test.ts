@@ -134,7 +134,7 @@ it('reuses session tokens and cached decisions, mapping confident yes and no wit
 });
 it.each([
   [503, 'service-disabled'],
-  [429, 'limit-reached'],
+  [429, 'rate-limited'],
   [401, 'access-code-rejected'],
 ])('silently pauses on status %s', async (status, reason) => {
   localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
@@ -144,6 +144,46 @@ it.each([
   expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
   expect(engine.status()).toMatchObject({ state: 'paused', reason });
 });
+it.each([
+  ['session-minute', 60],
+  ['session-day', 43_200],
+] as const)(
+  'resumes marking after a %s throttle instead of waiting until next month',
+  async (limit, seconds) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-21T10:00:00Z'));
+    localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response('', {
+          status: 429,
+          headers: { 'Retry-After': String(seconds), 'X-Lacuna-AI-Limit': limit },
+        }),
+      )
+      .mockImplementation(async (url) =>
+        String(url).endsWith('/session')
+          ? Response.json({ token: 's', expiresAt: Date.now() + 3_600_000 })
+          : Response.json({ model: 'jev-1.14.0', value: 1, confidence: 0.97, inputTokens: 12 }),
+      );
+    const engine = createJevEngine({ fetcher, cache: emptyCache() });
+    engine.enable(1);
+    expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+    expect(engine.status()).toMatchObject({
+      state: 'paused',
+      reason: 'rate-limited',
+      retryAt: Date.UTC(2026, 9, 21, 10) + seconds * 1000,
+    });
+    await vi.advanceTimersByTimeAsync(seconds * 1000 - 1);
+    expect(engine.marker()).toBeNull();
+    expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(await engine.marker()!(request)).toMatchObject({ outcome: 'correct' });
+    expect(engine.status()).toMatchObject({ state: 'ready' });
+  },
+);
 it('resolves one hung request within the typed timeout without pausing', async () => {
   vi.useFakeTimers();
   localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
@@ -466,7 +506,13 @@ it('reopens the monthly fuse only on the first natural request in the next UTC m
   const fetcher = vi.fn(async (url: string | URL | Request) =>
     String(url).endsWith('/session')
       ? Response.json({ token: 's', expiresAt: Date.now() + 3_600_000 })
-      : new Response('', { status: 429 }),
+      : new Response('', {
+          status: 429,
+          headers: {
+            'X-Lacuna-AI-Limit': 'monthly-tokens',
+            'Retry-After': '60',
+          },
+        }),
   );
   const engine = createJevEngine({ fetcher, cache: emptyCache() });
   engine.enable(1);
@@ -640,9 +686,16 @@ it.each([
   [401, 'That access code was not recognised.'],
   [503, 'Automatic marking is unavailable right now. Try again later.'],
   [400, 'Automatic marking is unavailable right now. Try again later.'],
-  [429, 'Too many attempts. Try again later.'],
+  [
+    429,
+    expect.stringMatching(
+      /^Too many access-code attempts\. Try again after 21\/10\/2026, \d{2}:01:00\.$/,
+    ),
+  ],
   [0, 'Could not reach Lacuna. Check your connection.'],
 ])('uses marking-specific connection errors for status %s', async (status, message) => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-10-21T10:00:00Z'));
   const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => {
     if (!status) throw new Error('offline');
     return new Response('', { status });

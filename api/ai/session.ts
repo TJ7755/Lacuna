@@ -8,20 +8,39 @@ export default {
     if (origin === false) return new Response('Origin is not allowed.', { status: 403 });
     const headers = aiHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
-    if (request.method !== 'POST') return new Response('Method not allowed.', { status: 405, headers });
-    if (process.env.AI_SERVICE_DISABLED === '1') return new Response('AI is unavailable.', { status: 503, headers });
+    if (request.method !== 'POST')
+      return new Response('Method not allowed.', { status: 405, headers });
+    if (process.env.AI_SERVICE_DISABLED === '1')
+      return new Response('AI is unavailable.', { status: 503, headers });
     const configuration = loadAccessConfiguration(process.env);
-    if (!configuration || !process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    if (
+      !configuration ||
+      !process.env.UPSTASH_REDIS_REST_URL ||
+      !process.env.UPSTASH_REDIS_REST_TOKEN
+    ) {
       return new Response('AI is unavailable.', { status: 503, headers });
     }
-    const limiter = createSessionExchangeLimiter(process.env.UPSTASH_REDIS_REST_URL, process.env.UPSTASH_REDIS_REST_TOKEN);
-    let allowed: boolean;
+    const limiter = createSessionExchangeLimiter(
+      process.env.UPSTASH_REDIS_REST_URL,
+      process.env.UPSTASH_REDIS_REST_TOKEN,
+    );
+    let decision: Awaited<ReturnType<typeof limiter.check>>;
     try {
-      allowed = await limiter.allow(clientAddress(request));
+      decision = await limiter.check(clientAddress(request));
     } catch {
       return new Response('AI is unavailable.', { status: 503, headers });
     }
-    if (!allowed) return new Response('Too many attempts. Try again later.', { status: 429, headers });
+    if (!decision.allowed) {
+      headers.set('X-Lacuna-AI-Limit', decision.limit);
+      headers.set(
+        'Retry-After',
+        String(Math.max(1, Math.ceil((decision.retryAt - Date.now()) / 1000))),
+      );
+      return new Response('Too many attempts. Try again after the limit resets.', {
+        status: 429,
+        headers,
+      });
+    }
     const body = await readBoundedBody(request);
     if (body === null) return new Response('AI request is too large.', { status: 413, headers });
     let credential: unknown;
@@ -30,9 +49,11 @@ export default {
     } catch {
       return new Response('Invalid request.', { status: 400, headers });
     }
-    if (typeof credential !== 'string') return new Response('Invalid request.', { status: 400, headers });
+    if (typeof credential !== 'string')
+      return new Response('Invalid request.', { status: 400, headers });
     const session = exchangeCredential(credential, configuration);
-    if (!session) return new Response('Access code is invalid or revoked.', { status: 401, headers });
+    if (!session)
+      return new Response('Access code is invalid or revoked.', { status: 401, headers });
     return Response.json(session, { headers });
   },
 };

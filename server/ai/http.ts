@@ -16,7 +16,11 @@ export function clientAddress(request: Request): string {
   const vercel = first(request.headers.get('x-vercel-forwarded-for'));
   if (vercel) return vercel;
   if (process.env.VERCEL) return 'unknown';
-  return first(request.headers.get('x-forwarded-for')) ?? request.headers.get('x-real-ip')?.trim() ?? 'unknown';
+  return (
+    first(request.headers.get('x-forwarded-for')) ??
+    request.headers.get('x-real-ip')?.trim() ??
+    'unknown'
+  );
 }
 
 export function aiHeaders(origin: string | null): Headers {
@@ -25,6 +29,7 @@ export function aiHeaders(origin: string | null): Headers {
     headers.set('Access-Control-Allow-Origin', origin);
     headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
     headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    headers.set('Access-Control-Expose-Headers', 'Retry-After, X-Lacuna-AI-Limit');
   }
   return headers;
 }

@@ -148,7 +148,14 @@ it('refuses only once its background-refreshed monthly total exceeds the fuse', 
   expect((await route.fetch(request())).status).toBe(200);
   await Promise.all(background.tasks);
   const calls = fetcher.mock.calls.length;
-  expect((await route.fetch(request())).status).toBe(429);
+  const response = await route.fetch(request());
+  expect(response.status).toBe(429);
+  expect(response.headers.get('X-Lacuna-AI-Limit')).toBe('monthly-tokens');
+  const now = new Date();
+  const reset = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
+  expect(
+    Math.abs(Number(response.headers.get('Retry-After')) - (reset - Date.now()) / 1000),
+  ).toBeLessThanOrEqual(1);
   expect(fetcher).toHaveBeenCalledTimes(calls);
 });
 it('records calls and actual usage after the response, independently of free chat', async () => {
