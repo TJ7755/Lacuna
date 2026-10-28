@@ -29,12 +29,14 @@ test('Lesson breakdown keeps card counts off the percentage axis', async ({ page
     .click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   await page.goto(`${page.url()}/analytics`);
+  await page.getByRole('button', { name: 'Cards', exact: true }).click();
   const card = await chartCard(page, 'Lesson breakdown');
   await expect(card.locator('.recharts-bar').first()).toBeAttached();
   // Counts were a dotted line on a hidden second axis, read against the percentages.
   await expect(card.locator('.recharts-line')).toHaveCount(0);
   await expect(card.locator('.recharts-yAxis')).toHaveCount(1);
 
+  await card.locator('.recharts-surface').scrollIntoViewIfNeeded();
   const plot = (await card.locator('.recharts-surface').boundingBox())!;
   await page.mouse.move(plot.x + 80, plot.y + plot.height / 2);
   const tooltip = card.locator('.recharts-tooltip-wrapper');

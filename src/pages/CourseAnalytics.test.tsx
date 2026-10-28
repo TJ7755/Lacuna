@@ -225,6 +225,10 @@ describe('CourseAnalytics', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Questions' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Marks earned: 100%' })).toBeInTheDocument();
+    expect(screen.getByText(/a topic without marked answers is not a gap/)).toBeInTheDocument();
+    expect(screen.getByText(/This is predicted recall, not a mark or grade/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Question details' }));
     const generatedHeadline = screen.getByText('Novel generated accuracy').parentElement;
     expect(generatedHeadline).not.toBeNull();
     expect(within(generatedHeadline!).getByText('100%')).toBeInTheDocument();
@@ -232,7 +236,11 @@ describe('CourseAnalytics', () => {
     expect(screen.queryByText('Separate evidence')).not.toBeInTheDocument();
     expect(screen.queryByText('Memory evidence')).not.toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Question performance' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Cards' })).toBeInTheDocument();
+    expect(screen.getAllByRole('region', { name: 'Questions' })).toHaveLength(1);
+    const cards = screen.getByRole('button', { name: 'Cards' });
+    expect(screen.queryByText('Card analytics charts')).not.toBeInTheDocument();
+    fireEvent.click(cards);
+    expect(cards).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('Card analytics charts')).toBeInTheDocument();
   });
 
@@ -250,7 +258,8 @@ describe('CourseAnalytics', () => {
     );
 
     const whole = screen.getByRole('region', { name: 'Whole course' });
-    expect(whole).toHaveTextContent('2 of 3');
+    expect(within(whole).getByRole('img', { name: 'Cards: 3' })).toBeInTheDocument();
+    expect(whole).toHaveTextContent('Reviewed at least once:2');
     expect(whole).toHaveTextContent('Each card is measured at its next test or paper.');
     // Cards target two dates, so no single exam-day line is drawn; each paper gets a row.
     expect(screen.queryByText('Exam-day forecast')).not.toBeInTheDocument();
@@ -263,13 +272,13 @@ describe('CourseAnalytics', () => {
     const scoped = screen.getByRole('region', { name: 'Topic test' });
     expect(screen.queryByRole('region', { name: 'Forecast by paper' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Show')).toHaveFocus();
-    const evidence = await screen.findByRole('table', {
-      name: 'Exam-question evidence by category',
-    });
-    expect(within(evidence).getByRole('row', { name: 'Knowledge 1 1 1' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Exam-question evidence' })).toHaveTextContent(
-      '1 of 1 topic has marked answers.',
+    const evidence = await screen.findByRole('list', { name: 'Exam-question evidence' });
+    expect(within(evidence).getByRole('listitem')).toHaveTextContent(
+      'Knowledge: 1 secure, 1 gap, 1 topic to work on',
     );
+    expect(
+      screen.getByRole('img', { name: '1 of 1 topic has marked answers' }),
+    ).toBeInTheDocument();
     expect(scoped).toHaveTextContent('1 of 2');
     expect(scoped).toHaveTextContent('(in 3 days) if you stop reviewing now.');
     expect(screen.getByText('Exam-day forecast')).toBeInTheDocument();

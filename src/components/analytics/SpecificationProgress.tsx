@@ -19,10 +19,10 @@ import {
   FileTextIcon,
   FilterIcon,
   FolderIcon,
-  InfoIcon,
   PlayIcon,
 } from '../ui/icons';
 import { MiniRing } from '../ui/MiniRing';
+import { InfoPopover } from './InfoPopover';
 import { SectionCard } from '../ui/SectionCard';
 import { Select } from '../ui/Select';
 
@@ -290,56 +290,47 @@ function About({
 }) {
   const { source } = report.specification;
   return (
-    <details className="relative">
-      <summary
-        aria-label="About these numbers"
-        title="About these numbers"
-        className="grid size-9 cursor-pointer list-none place-items-center rounded-full text-ink-soft hover:bg-ink/5 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-      >
-        <InfoIcon width={18} height={18} />
-      </summary>
-      <div className="absolute right-0 top-full mt-2 z-20 w-[min(22rem,calc(100vw-2rem))] space-y-2 rounded-2xl border border-line bg-surface-raised p-4 text-xs text-ink-soft shadow-lg">
-        <ul className="space-y-1.5">
-          {(['new', 'taught', 'started', 'reviewed', 'unlinked'] as const).map((status) => (
-            <li key={status} className="flex items-center gap-2">
-              <StatusIcon status={status} /> {STATUS_LABEL[status]}
+    <InfoPopover>
+      <ul className="space-y-1.5">
+        {(['new', 'taught', 'started', 'reviewed', 'unlinked'] as const).map((status) => (
+          <li key={status} className="flex items-center gap-2">
+            <StatusIcon status={status} /> {STATUS_LABEL[status]}
+          </li>
+        ))}
+        <li className="flex items-center gap-2">
+          <MiniRing value={0.6} size={16} /> Predicted recall
+        </li>
+        <li className="flex items-center gap-2">
+          <AlertIcon width={16} height={16} className="text-warning" /> Question gaps
+        </li>
+      </ul>
+      <p>
+        Coverage is linked content, not readiness. Taught at school does not mean remembered.
+        Filters change this view only.
+      </p>
+      <p>
+        {/^https?:\/\//i.test(source.url) ? (
+          <a className="underline" href={source.url} target="_blank" rel="noreferrer">
+            {source.document}
+          </a>
+        ) : (
+          source.document
+        )}
+        , {source.issue}
+      </p>
+      {(report.unresolvedLinks.length > 0 || report.unmappedConcepts.length > 0) && (
+        <ul aria-label="Author checks" className="space-y-1 break-words">
+          {report.unresolvedLinks.map(({ concept, pointId }) => (
+            <li key={`${concept.id}:${pointId}`}>
+              {concept.name}: unresolved {pointId}
             </li>
           ))}
-          <li className="flex items-center gap-2">
-            <MiniRing value={0.6} size={16} /> Predicted recall
-          </li>
-          <li className="flex items-center gap-2">
-            <AlertIcon width={16} height={16} className="text-warning" /> Question gaps
-          </li>
+          {report.unmappedConcepts.map((concept) => (
+            <li key={concept.id}>{concept.name}: no specification links</li>
+          ))}
         </ul>
-        <p>
-          Coverage is linked content, not readiness. Taught at school does not mean remembered.
-          Filters change this view only.
-        </p>
-        <p>
-          {/^https?:\/\//i.test(source.url) ? (
-            <a className="underline" href={source.url} target="_blank" rel="noreferrer">
-              {source.document}
-            </a>
-          ) : (
-            source.document
-          )}
-          , {source.issue}
-        </p>
-        {(report.unresolvedLinks.length > 0 || report.unmappedConcepts.length > 0) && (
-          <ul aria-label="Author checks" className="space-y-1 break-words">
-            {report.unresolvedLinks.map(({ concept, pointId }) => (
-              <li key={`${concept.id}:${pointId}`}>
-                {concept.name}: unresolved {pointId}
-              </li>
-            ))}
-            {report.unmappedConcepts.map((concept) => (
-              <li key={concept.id}>{concept.name}: no specification links</li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </details>
+      )}
+    </InfoPopover>
   );
 }
 
