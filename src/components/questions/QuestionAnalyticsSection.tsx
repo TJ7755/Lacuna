@@ -10,11 +10,11 @@ function percent(value: number | null): string {
 
 export function QuestionAnalyticsSection({
   analytics,
-  labelledBy,
+  embedded = false,
 }: {
   analytics: QuestionAnalytics;
-  /** A heading the caller already shows; the section then omits its own. */
-  labelledBy?: string;
+  /** Set when the caller's own Questions region holds this; it then omits its heading and landmark. */
+  embedded?: boolean;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const detailsId = useId();
@@ -46,10 +46,10 @@ export function QuestionAnalyticsSection({
 
   return (
     <section
-      aria-labelledby={labelledBy ?? 'question-analytics-heading'}
-      className={labelledBy ? undefined : 'mb-10'}
+      aria-labelledby={embedded ? undefined : 'question-analytics-heading'}
+      className={embedded ? undefined : 'mb-10'}
     >
-      {!labelledBy && (
+      {!embedded && (
         <h2 id="question-analytics-heading" className="mb-4 font-display text-2xl text-ink">
           Questions
         </h2>

@@ -344,7 +344,7 @@ export function ProgressOverview({
                 )}
               </button>
             )}
-            <InfoPopover>
+            <InfoPopover label="About recall">
               <p className="text-sm text-ink">{recall.detail}</p>
               {recall.figure !== null && (
                 <p>

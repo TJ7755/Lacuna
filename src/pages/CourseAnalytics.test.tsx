@@ -226,6 +226,8 @@ describe('CourseAnalytics', () => {
 
     expect(screen.getByRole('heading', { name: 'Questions' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Marks earned: 100%' })).toBeInTheDocument();
+    expect(screen.getByText(/a topic without marked answers is not a gap/)).toBeInTheDocument();
+    expect(screen.getByText(/This is predicted recall, not a mark or grade/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Question details' }));
     const generatedHeadline = screen.getByText('Novel generated accuracy').parentElement;
     expect(generatedHeadline).not.toBeNull();
@@ -234,6 +236,7 @@ describe('CourseAnalytics', () => {
     expect(screen.queryByText('Separate evidence')).not.toBeInTheDocument();
     expect(screen.queryByText('Memory evidence')).not.toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Question performance' })).toBeInTheDocument();
+    expect(screen.getAllByRole('region', { name: 'Questions' })).toHaveLength(1);
     const cards = screen.getByRole('button', { name: 'Cards' });
     expect(screen.queryByText('Card analytics charts')).not.toBeInTheDocument();
     fireEvent.click(cards);

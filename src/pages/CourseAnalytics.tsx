@@ -180,9 +180,11 @@ export function CourseAnalytics() {
         )
       )}
 
-      <Rise index={3}>
-        <LessonStrip lessons={report.lessons} />
-      </Rise>
+      {report.lessons.length > 0 && (
+        <Rise index={3}>
+          <LessonStrip lessons={report.lessons} />
+        </Rise>
+      )}
 
       <SpecificationProgress
         key={course.id}

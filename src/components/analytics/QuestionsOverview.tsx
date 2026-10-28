@@ -81,7 +81,7 @@ export function QuestionsOverview({
             <MiniRing value={markRate ?? 0} size={20} />
             {markRate === null ? '–' : percent(markRate)}
           </span>
-          {topicsName && (
+          {topicsName && evidence.topics > 0 && (
             <span
               role="img"
               aria-label={topicsName}
@@ -93,7 +93,7 @@ export function QuestionsOverview({
             </span>
           )}
           <div className="ml-auto flex items-center gap-1">
-            <InfoPopover>
+            <InfoPopover label="About question evidence">
               <ul className="space-y-1.5">
                 <li className="flex items-center gap-2">
                   <MiniRing value={0.6} size={16} /> Share of marked answers that were secure
@@ -105,8 +105,8 @@ export function QuestionsOverview({
               <p>
                 Knowledge and technique are judged separately for each marked answer, counted once
                 per topic. Answers with help, corrections, disputed marks or an unsure diagnosis are
-                left out. A topic is to work on when its latest answer showed a gap. These counts
-                never change card recall.
+                left out. A topic is to work on when its latest answer showed a gap; a topic without
+                marked answers is not a gap. These counts never change card recall.
               </p>
             </InfoPopover>
             <button
@@ -156,7 +156,7 @@ export function QuestionsOverview({
       </SectionCard>
       <div id={detailsId}>
         <AnimatedDisclosure open={open}>
-          <QuestionAnalyticsSection analytics={analytics} labelledBy={titleId} />
+          <QuestionAnalyticsSection analytics={analytics} embedded />
         </AnimatedDisclosure>
       </div>
     </div>
