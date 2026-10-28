@@ -74,7 +74,10 @@ for (const viewport of [
 
     const whole = page.getByRole('region', { name: 'Whole course' });
     await expect(whole).toBeVisible();
-    await expect(whole.getByRole('heading', { name: 'Studied' })).toBeVisible();
+    await expect(whole.getByRole('img', { name: /^Cards: \d+$/ })).toBeVisible();
+    await expect(
+      page.getByRole('region', { name: 'Lessons' }).getByRole('listitem').first(),
+    ).toBeVisible();
     // The topic test and the rest of the course fall on different dates: one row per paper.
     const papers = page.getByRole('region', { name: 'Forecast by paper' });
     await expect(papers.getByRole('button', { name: 'Show Topic test' })).toBeVisible();
@@ -88,8 +91,8 @@ for (const viewport of [
     await expect(scoped).toContainText('(in 5 days) if you stop reviewing now.');
     await expect(page.getByRole('heading', { name: 'Exam-day forecast' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Forecast by paper' })).toHaveCount(0);
-    const evidence = page.getByRole('region', { name: 'Exam-question evidence' });
-    await expect(evidence).toBeVisible();
+    const evidence = page.getByRole('region', { name: 'Questions' });
+    await expect(evidence.getByRole('img', { name: /marked answers$/ })).toBeVisible();
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(viewport.width);
     await capture(page, testInfo, `${viewport.name}-topic-test`);

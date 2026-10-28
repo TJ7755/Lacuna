@@ -8,7 +8,14 @@ function percent(value: number | null): string {
   return value === null ? '—' : `${Math.round(value * 100)}%`;
 }
 
-export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAnalytics }) {
+export function QuestionAnalyticsSection({
+  analytics,
+  labelledBy,
+}: {
+  analytics: QuestionAnalytics;
+  /** A heading the caller already shows; the section then omits its own. */
+  labelledBy?: string;
+}) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const detailsId = useId();
   const criteria = [...analytics.criteria].sort(
@@ -38,10 +45,15 @@ export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAna
     excludedAttemptCount > 0;
 
   return (
-    <section aria-labelledby="question-analytics-heading" className="mb-10">
-      <h2 id="question-analytics-heading" className="mb-4 font-display text-2xl text-ink">
-        Questions
-      </h2>
+    <section
+      aria-labelledby={labelledBy ?? 'question-analytics-heading'}
+      className={labelledBy ? undefined : 'mb-10'}
+    >
+      {!labelledBy && (
+        <h2 id="question-analytics-heading" className="mb-4 font-display text-2xl text-ink">
+          Questions
+        </h2>
+      )}
 
       {analytics.inventory.total === 0 && !hasRetainedEvidence ? (
         <div className={`${SECTION_CARD_SURFACE_CLASS} px-6 py-8 text-sm text-ink-soft`}>

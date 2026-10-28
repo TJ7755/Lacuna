@@ -4,23 +4,24 @@ import { MissingRecord } from '../components/course/MissingRecord';
 
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
-import { useMemo, useRef } from 'react';
+import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useCourseReviewHistory } from '../state/useCourseData';
 import { useCourseProgressRecords } from '../state/useCourseProgressRecords';
 import { useQuestionEvidence } from '../state/useQuestionEvidence';
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
-import { QuestionAnalyticsSection } from '../components/questions/QuestionAnalyticsSection';
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { buildQuestionAnalytics } from '../questions/analytics';
 import { Rise } from '../components/analytics/Arrival';
-import { KpiRow } from '../components/analytics/KpiRow';
 import { CourseForecastCard } from '../components/analytics/CourseForecastCard';
-import { ProgressOverview } from '../components/analytics/ProgressOverview';
+import { ProgressOverview, ProgressScopeSelect } from '../components/analytics/ProgressOverview';
+import { LessonStrip } from '../components/analytics/LessonStrip';
+import { QuestionsOverview } from '../components/analytics/QuestionsOverview';
+import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
+import { ChartIcon, ChevronDownIcon } from '../components/ui/icons';
 import { reviewVolume, studyTimeSeries, totalStudyMinutes } from '../components/analytics/prepare';
 import { PaperForecastCard } from '../components/analytics/PaperForecastCard';
-import { QuestionEvidenceCard } from '../components/analytics/QuestionEvidenceCard';
 import {
   buildCourseProgress,
   scopeQuestions,
@@ -134,21 +135,21 @@ export function CourseAnalytics() {
 
   return (
     <div className={`${COURSE_PAGE_FRAME} flex flex-col gap-4 pb-8 md:gap-6`}>
-      <Rise index={0} className="pt-6 md:pt-8">
+      <Rise index={0} className="flex flex-wrap items-center justify-between gap-3 pt-6 md:pt-8">
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
           Progress
         </h1>
-      </Rise>
-
-      <Rise index={1}>
-        <ProgressOverview
-          course={course}
+        <ProgressScopeSelect
           report={report}
           assessments={assessments}
           now={progress.now}
           onScopeChange={selectScope}
-          scopeSelectRef={scopeSelect}
+          selectRef={scopeSelect}
         />
+      </Rise>
+
+      <Rise index={1}>
+        <ProgressOverview course={course} report={report} activity={activity} />
       </Rise>
 
       {chartDate !== undefined ? (
@@ -179,11 +180,9 @@ export function CourseAnalytics() {
         )
       )}
 
-      {questionEvidence && (
-        <Rise index={3}>
-          <QuestionEvidenceCard evidence={questionEvidence} />
-        </Rise>
-      )}
+      <Rise index={3}>
+        <LessonStrip lessons={report.lessons} />
+      </Rise>
 
       <SpecificationProgress
         key={course.id}
@@ -192,28 +191,50 @@ export function CourseAnalytics() {
       />
 
       <Rise index={4}>
-        <QuestionAnalyticsSection analytics={questionAnalytics} />
+        <QuestionsOverview analytics={questionAnalytics} evidence={questionEvidence} />
       </Rise>
 
-      <Rise index={5} className="flex flex-col gap-4 md:gap-6">
-        <h2 className="font-display text-2xl text-ink">Cards</h2>
-        {activity && (
-          <KpiRow
-            label="Recent activity"
-            multiplier={m}
-            items={[
-              { label: 'Reviews, 30 days', value: activity.reviews },
-              { label: 'Study time, 30 days', value: activity.minutes, unit: 'min' },
-            ]}
+      <Rise index={5}>
+        <CardCharts>
+          <CourseAnalyticsCharts
+            course={course}
+            lessons={report.lessons}
+            cards={records.cards}
+            reviewHistory={reviewHistory}
           />
-        )}
-        <CourseAnalyticsCharts
-          course={course}
-          lessons={report.lessons}
-          cards={records.cards}
-          reviewHistory={reviewHistory}
-        />
+        </CardCharts>
       </Rise>
     </div>
+  );
+}
+
+/** The card charts are detail, so they open on request beneath a heading button. */
+function CardCharts({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const chartsId = useId();
+  return (
+    <section className="flex flex-col gap-4 md:gap-6">
+      <h2 className="font-display text-2xl text-ink">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={chartsId}
+          onClick={() => setOpen(!open)}
+          className="flex items-center gap-2 rounded-full hover:text-ink-soft"
+        >
+          <ChartIcon width={20} height={20} className="text-ink-soft" aria-hidden="true" />
+          Cards
+          <ChevronDownIcon
+            width={18}
+            height={18}
+            aria-hidden="true"
+            className={open ? 'rotate-180 text-ink-soft' : 'text-ink-soft'}
+          />
+        </button>
+      </h2>
+      <div id={chartsId}>
+        <AnimatedDisclosure open={open}>{children}</AnimatedDisclosure>
+      </div>
+    </section>
   );
 }
