@@ -38,36 +38,36 @@ const questions = [
   },
   {
     prompt:
-      'Two identical tubes contain the same amount of an enzyme at its optimum temperature and pH. Tube P has a low substrate concentration. Tube Q has a higher substrate concentration, below saturation. Explain why Q initially produces product faster.',
+      'An enzyme in a laboratory sensor produces a coloured product. Colour develops more slowly at 12 °C than at 28 °C. Both temperatures are below the optimum; pH and all concentrations are unchanged. Explain the faster reaction at 28 °C.',
     criterion:
-      'More substrate causes more frequent successful collisions with active sites, producing more enzyme–substrate complexes per second.',
+      'Warming increases molecular movement and successful collisions between enzyme and substrate per second.',
     explanation:
-      'Award one mark only when greater substrate concentration is causally connected to more frequent successful collisions or enzyme–substrate complex formation per second. More substrate by itself earns zero.',
+      'Award one mark for linking increased kinetic energy or faster molecular movement to more frequent successful enzyme–substrate collisions. Warming alone, or an unsupported claim of more enzyme, earns zero.',
     maxMarks: 1,
     answers: [
-      'Q has more substrate molecules per unit volume, so they collide successfully with active sites more often and more enzyme–substrate complexes form per second.',
-      'Enzymes have active sites where substrates bind to make complexes. Q has more substrate. P makes product faster.',
-      'Q has a higher temperature, so its enzymes replicate and make product faster.',
+      'At 28 °C the molecules have more kinetic energy, so enzymes and substrates collide successfully more often per second and product forms faster.',
+      'Enzymes have active sites and substrates bind there. The warmer sensor makes more product, but I cannot explain why.',
+      'At 28 °C all enzymes are denatured and their active sites disappear, which speeds up the reaction.',
       '',
-      'Tube Q is the seventeenth letter of the alphabet.',
-      'There are more collisions, but I cannot say whether this is in P or Q or whether any involve an enzyme.',
+      'A coloured sensor is easier to find on a laboratory shelf.',
+      'They move more, although I mean the sensors rather than any molecules.',
     ],
   },
   {
     prompt:
-      'A factory fixes the amount of an enzyme in a reactor. At a very high substrate concentration, adding still more substrate does not increase the initial reaction rate. Explain this plateau.',
+      'An enzyme used in a medical assay reacts slowly after chilling to 5 °C but regains its original rate at 25 °C. Another sample heated to 85 °C remains slow after returning to 25 °C. Explain the different recovery of the two samples.',
     criterion:
-      'All active sites are occupied; available enzyme limits further complex formation and product rate.',
+      'Chilling slows molecular movement without denaturing the enzyme; strong heating changes active-site shape and reduces substrate binding after cooling.',
     explanation:
-      'One mark for stating that all enzyme active sites are occupied at the high substrate concentration. One further independent mark for linking limited enzyme availability to no further increase in complexes or product made per second.',
+      'One mark for linking reversible cold inhibition to slower molecular movement or fewer successful collisions without denaturation. One independent mark for linking heat-induced lasting active-site shape change to poorer substrate binding after cooling.',
     maxMarks: 2,
     answers: [
-      'All enzyme active sites are occupied. The amount of enzyme now limits how many complexes can process substrate per second, so extra substrate cannot increase product rate.',
-      'All the active sites are occupied. The graph is flat.',
-      'All active sites are empty because substrate destroys enzymes at any concentration.',
+      'Chilling slows molecules and successful collisions without denaturing the enzyme, so warming restores the rate. Strong heating permanently alters active-site shape, so substrate binds less well even after cooling.',
+      'The cold enzyme is not denatured, and the hot enzyme is denatured. Both samples react slowly.',
+      'Chilling permanently destroys active sites, but boiling always makes them fit the substrate better.',
       '',
-      'Factories should use recyclable packaging.',
-      'They are all full, so nothing changes. By they I might mean the substrate containers.',
+      'The assay should be labelled with the date and patient reference.',
+      'One changes back and the other does not, but I cannot tell which sample or what changed.',
     ],
   },
 ] as const;

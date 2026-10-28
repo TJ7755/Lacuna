@@ -65,15 +65,13 @@ async function main(args: string[]) {
     options: {
       out: { type: 'string' },
       labels: { type: 'string' },
-      authority: { type: 'string' },
-      'trust-sha256': { type: 'string' },
       'allow-paid': { type: 'boolean' },
     },
   });
   const command = positionals[0];
   if (positionals.length !== 1 || !['export', 'validate', 'live'].includes(command))
     throw new Error(
-      'Use export --out NEW_DIRECTORY, or validate/live --labels FILE --authority FILE --trust-sha256 HASH; live also requires --allow-paid --out NEW_DIRECTORY.',
+      'Use export --out NEW_DIRECTORY, or validate/live --labels FILE; live also requires --allow-paid --out NEW_DIRECTORY.',
     );
   const pin = JSON.parse(
     await readFile(new URL('relay/scripts/security-bun.json', root), 'utf8'),
@@ -87,12 +85,13 @@ async function main(args: string[]) {
     await writeNew(join(values.out, 'blind.json'), {
       identity: frozen.identity,
       instructions:
-        'Review independently; do not inspect pack.ts, answer strata, other reviews or provider results. Complete the separate human record and sign its exact UTF-8 bytes.',
+        'Review independently; do not inspect pack.ts, answer strata, other reviews or provider results. Complete the separate human review record with its approval reference.',
       cases: cases.map(({ id, request }) => ({ id, ...request })),
     });
     await writeNew(join(values.out, 'human-record-template.json'), {
       identity: frozen.identity,
       reviewerId: null,
+      approvalReference: null,
       source: null,
       independent: null,
       contentApproved: null,
@@ -119,18 +118,9 @@ async function main(args: string[]) {
     console.log(`Blind packet exported: ${resolve(values.out)}; identity ${frozen.identity}`);
     return;
   }
-  if (!values.labels || !values.authority || !values['trust-sha256'])
-    throw new Error(
-      'Complete signed human labels and an independently pinned authority document are required.',
-    );
+  if (!values.labels) throw new Error('Complete independently approved human labels are required.');
   const labelText = await readFile(values.labels, 'utf8');
-  const authorityText = await readFile(values.authority, 'utf8');
-  const labels = validateLabels(
-    JSON.parse(labelText),
-    authorityText,
-    values['trust-sha256'],
-    frozen.identity,
-  );
+  const labels = validateLabels(JSON.parse(labelText), frozen.identity);
   if (command === 'validate') {
     console.log(
       json({
@@ -175,7 +165,6 @@ async function main(args: string[]) {
           encoding: 'utf8',
         }).trim(),
         labelFileSha256: hash(labelText),
-        authoritySha256: hash(authorityText),
         humanEvidence: labels,
         observations,
         report: summarise(labels.gold, observations),
@@ -264,7 +253,7 @@ async function main(args: string[]) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main(process.argv.slice(2)).catch(() => {
     console.error(
-      'Evaluation refused or failed. Check the command, pinned runtime, signed human records and new output path. No credentials or provider error bodies are logged.',
+      'Evaluation refused or failed. Check the command, pinned runtime, human review records and new output path. No credentials or provider error bodies are logged.',
     );
     process.exitCode = 1;
   });

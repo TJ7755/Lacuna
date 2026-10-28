@@ -1,28 +1,14 @@
-import { generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { afterEach, expect, test } from 'vitest';
-import { hash, validateLabels, type Label } from './jev-evaluation/labels';
+import { validateLabels, type Label } from './jev-evaluation/labels';
 import { cases } from './jev-evaluation/pack';
 import { proportion, summarise, type Observation } from './jev-evaluation/metrics';
 
-// All signatures, identities and marks below are synthetic test fixtures, never accuracy evidence.
-const people = ['fixture-a', 'fixture-b', 'fixture-c'].map((id) => ({
-  id,
-  ...generateKeyPairSync('ed25519'),
-}));
-const authority = JSON.stringify({
-  authorisationReference: 'Synthetic test approval; no real human authorisation.',
-  reviewers: people.map((person, index) => ({
-    id: person.id,
-    publicKey: person.publicKey.export({ type: 'spki', format: 'pem' }),
-    role: index < 2 ? 'reviewer' : 'adjudicator',
-    human: true,
-    independentOfAuthoringAndProvider: true,
-  })),
-});
+// Identities and marks below are synthetic test fixtures, never accuracy evidence.
+const people = ['fixture-a', 'fixture-b', 'fixture-c'];
 const labels: Label[] = cases.map(({ id }) => ({
   id,
   mark: 0,
@@ -37,22 +23,15 @@ function envelope(
   frozen = 'fixture-identity',
   source = 'human',
 ) {
-  const payload = `${JSON.stringify(
-    {
-      identity: frozen,
-      reviewerId: people[index].id,
-      source,
-      independent: true,
-      contentApproved: true,
-      completedAt: '2026-01-01T00:00:00Z',
-      labels: rows,
-    },
-    null,
-    2,
-  )}\n`;
   return {
-    payload,
-    signature: sign(null, Buffer.from(payload), people[index].privateKey).toString('base64'),
+    identity: frozen,
+    reviewerId: people[index],
+    approvalReference: 'Synthetic test approval; no real human authorisation.',
+    source,
+    independent: true,
+    contentApproved: true,
+    completedAt: '2026-01-01T00:00:00Z',
+    labels: rows,
   };
 }
 const bundle = () => ({ reviews: [envelope(0), envelope(1)] });
@@ -66,22 +45,18 @@ afterEach(() => {
   for (const path of directories.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
-test('requires signed, complete, independently authorised reviews and preserves adjudicated disagreement', () => {
+test('requires complete independent human records and preserves adjudicated disagreement', () => {
   const second = labels.map((row, index) => (index === 0 ? { ...row, mark: 1 } : row));
   const disputed = { reviews: [envelope(0), envelope(1, second)] };
-  expect(() => validateLabels(disputed, authority, hash(authority), 'fixture-identity')).toThrow(
-    /adjudication/,
-  );
+  expect(() => validateLabels(disputed, 'fixture-identity')).toThrow(/adjudication/);
   const result = validateLabels(
     { ...disputed, adjudication: envelope(2, [second[0]]) },
-    authority,
-    hash(authority),
     'fixture-identity',
   );
   expect(result.disagreements).toEqual([labels[0].id]);
   expect(result.gold[0].mark).toBe(1);
   expect(result.reviews.map((review) => review.labels[0].mark)).toEqual([0, 1]);
-  expect(result.signedRecords.reviews).toEqual(disputed.reviews);
+  expect(result.reviews).toEqual(disputed.reviews);
 });
 
 test.each([
@@ -121,11 +96,6 @@ test.each([
   ],
   ['same reviewer twice', () => ({ reviews: [envelope(0), envelope(0)] })],
   ['stale identity', () => ({ reviews: [envelope(0, labels, 'old'), envelope(1)] })],
-  ['wrong role', () => ({ reviews: [envelope(2), envelope(1)] })],
-  [
-    'forged signature',
-    () => ({ reviews: [{ ...envelope(0), signature: envelope(1).signature }, envelope(1)] }),
-  ],
   ['extra adjudication', () => ({ ...bundle(), adjudication: envelope(2, [labels[0]]) })],
   [
     'absent category',
@@ -156,19 +126,23 @@ test.each([
     }),
   ],
 ])('rejects %s before evaluation', (_name, input) => {
-  expect(() => validateLabels(input(), authority, hash(authority), 'fixture-identity')).toThrow();
+  expect(() => validateLabels(input(), 'fixture-identity')).toThrow();
 });
 
-test('rejects an unapproved authority even when label signatures match it', () => {
-  expect(() => validateLabels(bundle(), authority, '0'.repeat(64), 'fixture-identity')).toThrow(
-    /authority hash/,
-  );
-  const duplicateKey = JSON.parse(authority);
-  duplicateKey.reviewers[1].publicKey = duplicateKey.reviewers[0].publicKey;
-  const changed = JSON.stringify(duplicateKey);
-  expect(() => validateLabels(bundle(), changed, hash(changed), 'fixture-identity')).toThrow(
-    /distinct/,
-  );
+test('requires approval references and a separate adjudicator', () => {
+  expect(() =>
+    validateLabels(
+      { reviews: [{ ...envelope(0), approvalReference: '' }, envelope(1)] },
+      'fixture-identity',
+    ),
+  ).toThrow();
+  const second = labels.map((row, index) => (index === 0 ? { ...row, mark: 1 } : row));
+  expect(() =>
+    validateLabels(
+      { reviews: [envelope(0), envelope(1, second)], adjudication: envelope(0, [second[0]]) },
+      'fixture-identity',
+    ),
+  ).toThrow(/separate/);
 });
 
 test('reports independently specified errors, unavailable cases and uncertainty without treating abstentions as marks', () => {
@@ -258,7 +232,6 @@ test('blind CLI export is reproducible, unlabelled and refuses overwrites; incom
   expect(cli(['export', '--out', join(directory, 'one')]).status).not.toBe(0);
   const frozen = JSON.parse(readFileSync(join(directory, 'one/manifest.json'), 'utf8'));
   expect(blind.identity).toBe(frozen.identity);
-  writeFileSync(join(directory, 'authority.json'), authority);
   writeFileSync(
     join(directory, 'labels.json'),
     JSON.stringify({
@@ -281,10 +254,6 @@ test('blind CLI export is reproducible, unlabelled and refuses overwrites; incom
       'live',
       '--labels',
       join(directory, 'labels.json'),
-      '--authority',
-      join(directory, 'authority.json'),
-      '--trust-sha256',
-      hash(authority),
       '--allow-paid',
       '--out',
       join(directory, 'invalid'),
@@ -304,7 +273,6 @@ test('synthetic transport exercises both provider entry points, records real usa
     }).status,
   ).toBe(0);
   const frozen = JSON.parse(readFileSync(join(directory, 'packet/manifest.json'), 'utf8'));
-  writeFileSync(join(directory, 'authority.json'), authority);
   writeFileSync(
     join(directory, 'labels.json'),
     JSON.stringify({
@@ -342,10 +310,6 @@ test('synthetic transport exercises both provider entry points, records real usa
         'live',
         '--labels',
         join(directory, 'labels.json'),
-        '--authority',
-        join(directory, 'authority.json'),
-        '--trust-sha256',
-        hash(authority),
         '--allow-paid',
         '--out',
         output,

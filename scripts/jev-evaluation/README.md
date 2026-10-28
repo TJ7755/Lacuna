@@ -1,123 +1,93 @@
 # Bounded Jev enzyme evaluation
 
-This is the offline preparation and execution protocol for [#905](https://github.com/TJ7755/Lacuna/issues/905).
-Human content approval, independent labels and live results are **pending**. Keep the issue open.
-No result authorises wider hosted access. No production prompts, thresholds or authority change here.
+Offline preparation and opt-in execution for [#905](https://github.com/TJ7755/Lacuna/issues/905).
+Human content review, independent labels and live results are pending. Keep the issue open.
+No result automatically widens hosted access; production prompts and thresholds are unchanged.
 
-The first pack contains four original 4BI1 enzyme explanation questions, each with six evaluation-written
-answers: strong, partial, wrong, blank, off-topic and ambiguous. These are authoring strata, not marks
-or diagnostic truth. Mixed-gap opportunities are included; only human labels establish whether gaps
-coexist, and the report may still find none. There are 12 one-mark short answers and 12 two-mark answers. No learner records,
-private practice pool, exam-board question text or model-generated labels were used as evidence.
-Human reviewers must approve the scientific validity, level descriptors and syllabus fit before running.
-The questions are unreviewed original material, not an Edexcel endorsement.
+The pack contains four original 4BI1 temperature/pH explanation questions and six evaluation-written
+answers per question: strong, partial, wrong, blank, off-topic and ambiguous. These are authoring
+strata, not marks or diagnostic truth. There are 12 one-mark and 12 two-mark cases. Scope follows
+[Pearson 4BI1 Issue 3](https://qualifications.pearson.com/content/dam/pdf/International%20GCSE/Biology/2017/specification-and-sample-assessments/international-gcse-biology-2017-specification1.pdf),
+printed page 14, points 2.10, 2.11 and 2.13. The author checked that scope; independent human reviewers
+must approve the science, rubrics and fit before live use. This is not exam-board endorsement.
 
-Do not import these questions, answers or labels into #907 practice, prompt examples or taxonomy tuning.
-Question IDs group dependent cases; case IDs conceal authoring strata from reviewers. Give reviewers
-only `blind.json`, `human-record-template.json` and this protocol, not `pack.ts` or provider results.
-Reviewers who have inspected authoring strata or results must disclose that and be replaced for blind review.
-Any later change informed by these cases needs a separately reviewed change and fresh held-out material.
+No learner records, private practice questions or purported human labels are supplied. Keep this
+material out of #907 practice, prompt examples and taxonomy tuning. A change informed by these cases
+needs separately reviewed remediation and fresh held-out material.
 
-## Prepare the human packet
+## Prepare and label
 
-Use the exact repository-pinned Bun revision. Commands default to offline operation:
+Use the repository-pinned Bun revision. Export is offline and refuses an existing output directory:
 
 ```sh
 bun scripts/jev-evaluation.ts export --out artifacts/jev-evaluation-human-v1
 ```
 
-The new directory contains a blind question/rubric/answer sheet, an unsigned JSON label template,
-the frozen protocol and a manifest. Exports refuse existing directories. Case ordering and identity
-are deterministic. The identity hashes the pack, predeclared decision policy, provider/prompt code,
-diagnostic policy, taxonomy definitions, runtime pin and dependency lockfile. Protocol or harness edits
-invalidate earlier labels; export again after all edits. Preserve the manifest with the signed records.
+The packet contains `blind.json`, `human-record-template.json`, this protocol and a manifest. Its
+identity hashes the cases, declared policy, provider/diagnostic code, taxonomy, runner and runtime
+pins. Export again after changes; earlier labels cannot be reused with a changed identity.
 
-Two independently authorised human science reviewers complete separate templates, without consulting
-each other or a model. Set `source` to `human`, `independent` and `contentApproved` to `true` only when
-those statements are true. Enter an authorised `reviewerId` and ISO UTC `completedAt`. Every case needs
-an integer mark within its rubric, all three diagnostic outcomes and a non-empty evidence rationale.
-Never infer a cause merely from a lost mark. Evaluate each dimension independently; mixed gaps are valid:
+Give two independent human science reviewers only the packet, without authoring strata, another
+review or provider results. Each completes a separate template and records their `reviewerId`,
+`approvalReference` to the maintainer's actual reviewer approval, ISO UTC `completedAt`, and truthful
+`source: human`, `independent: true`, `contentApproved: true` attestations. All cases need a mark,
+three diagnostic outcomes and a non-empty rationale. The operator verifies the people, independence
+and approval reference; schema checks do not establish that a person exists. Keep completed review
+records and results private. Synthetic test fixtures are never human accuracy evidence.
 
-- Knowledge: `gap` requires explicit incorrect or missing scientific knowledge; `no-gap` requires
-  demonstrated relevant knowledge; unexplained omissions give `insufficient-evidence`.
-- Application: `gap` requires demonstrated knowledge applied incorrectly to this setting; `no-gap`
-  requires correct contextual application; otherwise use `insufficient-evidence`.
-- Causal-link: `gap` requires relevant facts or mechanism without the required cause-to-consequence
-  connection; `no-gap` requires that connection; incorrect knowledge or unexplained omissions do not
-  establish this gap. Blank answers give `insufficient-evidence` in every category.
+Assess knowledge, application and causal-link independently; several gaps may coexist. A lost mark
+alone does not establish a cause:
 
-Preserve both original reviews. A third independently authorised human adjudicator resolves every
-case where any mark or category differs, recording the complete final label and a reason addressing
-the disagreement. The adjudication payload has the same envelope fields but contains exactly the
-disputed cases. Do not silently replace either review or turn disagreement into model consensus.
+- Knowledge: explicit incorrect knowledge is a gap; demonstrated relevant knowledge is no-gap;
+  unexplained omission is insufficient evidence.
+- Application: demonstrated knowledge used incorrectly in this setting is a gap; correctly applied
+  knowledge is no-gap; otherwise use insufficient evidence.
+- Causal-link: relevant facts without the required causal connection can establish a gap. Incorrect
+  knowledge, blanks and unexplained omissions cannot. Blank answers are insufficient in all categories.
 
-## Authorise and sign human records
-
-The maintainer approves reviewer identities, independence from authoring/provider output, roles and
-Ed25519 public keys through a recorded human approval. Keep private keys outside the repository.
-Create an authority JSON document with `authorisationReference` pointing to that approval and
-`reviewers` entries containing `id`, PEM `publicKey`, `role` (`reviewer` or `adjudicator`),
-`human: true` and `independentOfAuthoringAndProvider: true`. Distinct identities and keys are required.
-Obtain this document's SHA256 through the independent approval channel. Passing a hash computed from
-an unreviewed local document does not authorise its contents. Cryptography proves key possession,
-not humanity: the maintainer is responsible for checking the people and approval reference.
-
-Each human signs their completed payload's **exact UTF-8 file bytes**, including any final newline,
-with Ed25519 (for example, `openssl pkeyutl -sign -rawin -inkey PRIVATE_KEY -in RECORD.json -out SIGNATURE`).
-Construct a labels JSON bundle with `reviews` containing two objects with `payload` (the exact file
-contents encoded as a JSON string) and `signature` (base64 signature bytes). Add `adjudication` in the
-same signed format when there are disagreements. Templates contain nulls and cannot pass validation.
-No signing key, credentials or completed human labels are supplied by this pack. Automated fixtures
-use disposable synthetic test keys and labels; they are never independent human accuracy evidence.
+Combine the two original records in `{"reviews": [REVIEW_ONE, REVIEW_TWO]}`. A separate independent
+human adjudicates every case with any mark/category disagreement, using the same record fields and
+exactly those disputed cases; add that record as `adjudication`. Retain both original reviews.
+Templates contain nulls and cannot pass validation. No signing keys or authority registry are needed.
 
 ```sh
-bun scripts/jev-evaluation.ts validate --labels LABELS.json --authority AUTHORITY.json --trust-sha256 APPROVED_HASH
+bun scripts/jev-evaluation.ts validate --labels LABELS.json
 ```
 
-This checks signatures, roles, source attestations, complete case coverage, mark bounds, category
-labels, case identity and complete adjudication. Rejected or incomplete labels cause no network calls.
+Validation rejects absent/incomplete/non-human records, stale identity, duplicate/unknown cases,
+invalid marks/categories, missing approval references and unresolved disagreements before any call.
 
-## Live operation, after human approval only
+## Live operation
 
-Use an explicitly approved TypeSafe account and paid-call budget. Supply `TYPESAFE_API_KEY` through
-the environment using the existing credential procedure; never put it in files, command arguments or logs.
+After genuine human approval, use an approved TypeSafe account/budget and provide `TYPESAFE_API_KEY`
+through the environment. Never put it in command arguments, committed files or logs.
 
 ```sh
-bun scripts/jev-evaluation.ts live --labels LABELS.json --authority AUTHORITY.json --trust-sha256 APPROVED_HASH --allow-paid --out artifacts/jev-evaluation-live-v1
+bun scripts/jev-evaluation.ts live --labels LABELS.json --allow-paid --out artifacts/jev-evaluation-live-v1
 ```
 
-There are at most 24 sequential requests, one case each, no retries, a 30-second deadline per request
-and no redirects. The first timeout, provider/HTTP error or invalid response stops further requests.
-No local cache is used; requests set `cache: no-store`; upstream cache behaviour remains unknown.
-Rerunning requires a new output directory and a new explicit invocation. The runner saves before the
-first call and after each result, retaining unrun cases. A killed process leaves the current request
-marked `in-flight` with unresolved usage. Source changes
-during a run invalidate it. Versions and hashes identify dirty-source runs independently of Git HEAD.
+The runner makes at most 24 sequential requests, no retries, 30 seconds each, with no redirects or
+local cache. It uses the existing single/allocation-batch provider entry points and stops after the
+first failed call. New output paths prevent accidental overwrite. Results are saved before the first
+call and after each case; interruption retains an in-flight request with unknown usage. Source
+changes invalidate the run. Provider error bodies and credentials are never saved. Upstream caching
+is unknown; reruns are explicit, separate invocations and may incur further cost.
 
-Reports preserve signed reviews, disagreements, adjudication, original provider decisions and
-per-case failures. They report counts, mark agreement among non-abstained marks, overmarks,
-undermarks, errors exceeding one mark, abstention, unavailable cases, mixed human gaps, full-mark
-answers and precision/recall for each outcome in every category. Recall includes unavailable cases
-as missed predictions. Blank/off-topic/ambiguous strata are shown separately, not pooled away.
-Diagnostic `insufficient-evidence` is also reported as abstention, including correct abstentions.
+Reports preserve reviews, disagreement/adjudication, provider decisions and per-case failures. They
+show mark agreement/overmarks/undermarks among decided marks, errors over one mark, abstention,
+unavailable cases, mixed gaps and per-category/outcome precision/recall. Recall includes unavailable
+cases as missed predictions. Blank/off-topic/ambiguous strata stay separate. Counts, model/source
+versions, actual known tokens, unknown-usage requests, latency and timeouts are retained. Currency
+cost is unconfigured; #909 owns reviewed pricing. Failed calls may still be billable.
 
-The predeclared candidate criteria in `pack.ts` require at least 100 cases and 20 distinct questions
-per answer type, with at least 30 gap and 30 non-gap labels per category. Wilson 95% lower bounds must
-reach 0.90 for mark agreement and each outcome's category precision/recall; confident mark-error
-upper bound must be at most 0.05, abstention upper bound at most 0.20, with no unavailable cases.
-These are feasibility screening criteria, not calibrated safety guarantees. This pack cannot meet
-the sample requirements. Shared-question dependence means intervals are descriptive, not independent
-population estimates. Even a passing expanded subset requires independent review before access changes.
-Handwriting, typed recall, extended responses and other subjects are unsupported here.
+The predeclared screening policy requires 100 cases and 20 distinct questions per answer type,
+30 gap/non-gap labels per category, Wilson 95% lower bounds of 0.90 for mark agreement and category
+precision/recall, confident-error upper bound 0.05, abstention upper bound 0.20 and no unavailable
+cases. These are provisional screening criteria, not calibrated guarantees. This feasibility pack
+cannot meet the sample minima and must report undersampling. Shared-question dependence makes the
+intervals descriptive, not independent population estimates. Handwriting, typed recall, extended
+responses and other subjects are unsupported. No report authorises an access change.
 
-Actual known input/output tokens, unknown-usage requests, timeout counts, HTTP status and local
-round-trip latency (p50/p95/max) are recorded. Error bodies and credentials are never persisted.
-Currency cost is null: pricing is unconfigured and #909 owns a reviewed cost model. Counts do not
-establish savings or a complete bill; failed requests may be billable with unknown usage.
-
-Direct-provider runs do not exercise hosted rate limiting, pupil error states or manual fallback.
-Before accepting #905, run the complete pupil flow for abstention, rate limits, errors and manual
-mark overrides; preserve original receipts and confirm overrides do not become diagnostic evidence.
-The existing `question-set-jev-unsure` and `jev-study` browser checks cover relevant synthetic flows,
-not live accuracy. Record unsupported platforms and unavailable checks honestly. Review failures
-individually and propose remediation separately; never tune the threshold simply to reduce abstention.
+Direct-provider runs do not verify pupil-facing hosted throttling, errors, abstention or manual
+fallback/overrides. Complete those workflow checks separately before accepting #905. Synthetic
+`question-set-jev-unsure` and `jev-study` browser checks exercise the flows, not live accuracy.
