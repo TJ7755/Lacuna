@@ -654,14 +654,17 @@ export function useLearnSession({
     presentedAnswerInput.current = undefined;
 
     if (
-      !isSimpleMode &&
       requestReviewLimit !== undefined &&
       requestReviewLimit > 0 &&
       events.current.length >= requestReviewLimit
     ) {
       const context = ctxRef.current;
       finish(
-        context ? sessionComplete(cardsRef.current, context) : false,
+        isSimpleMode
+          ? simpleQueue.current.every((card) => simpleMastered.current.has(card.id))
+          : context
+            ? sessionComplete(cardsRef.current, context)
+            : false,
         false,
         false,
         false,

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { makeId } from '../db/schema';
 import { useLeaveFlow } from '../utils/editorOrigin';
 import { useCourseStudyFlowRecords } from '../state/useCourseStudyFlowRecords';
+import { useCourseConceptPractice } from '../state/useCourseConceptPractice';
 import { resolveSpecificationStudyScope } from '../course/specificationStudyScope';
 import { STUDY_REVIEW_BLOCK_SIZE } from '../course/studyFlowPlanner';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
@@ -73,12 +74,10 @@ export function SpecificationStudyFlow({
     );
     const accessible = new Set(records.questionScopeConceptIds ?? []);
     const conceptIds = scope.conceptIds.filter((id) => accessible.has(id));
-    const concepts = new Set(conceptIds);
-    const question = records.questionPractice?.find(
-      (item) => concepts.has(item.conceptId) && (item.unfinished || item.unseenCount > 0),
-    );
-    return { scope, recall: recall.cards.length > 0, conceptIds, question };
+    return { scope, recall: recall.cards.length > 0, conceptIds };
   }, [records, pointId, assessmentId]);
+  const practice = useCourseConceptPractice(entry ? courseId : undefined, entry?.conceptIds ?? []);
+  const question = practice?.find((item) => item.unfinished || item.unseenCount > 0);
   const request = useMemo<LearnSessionRequest>(
     () =>
       assessmentId
@@ -103,7 +102,11 @@ export function SpecificationStudyFlow({
   const [recallStarted, setRecallStarted] = useState<boolean | null>(null);
   if (recallStarted === null && entry) setRecallStarted(entry.recall);
 
-  if (records === undefined || (recallFinished && records.generation !== refreshKey))
+  if (
+    records === undefined ||
+    (recallFinished && records.generation !== refreshKey) ||
+    (!questionEntry && practice === undefined && (recallFinished || recallStarted === false))
+  )
     return (
       <div className="min-h-dvh bg-paper">
         <StudyExitHeader onExit={leave} />
@@ -138,9 +141,9 @@ export function SpecificationStudyFlow({
         }}
       />
     );
-  if (questionEntry || entry.question) {
+  if (questionEntry || question) {
     const next = questionEntry ?? {
-      conceptId: entry.question!.conceptId,
+      conceptId: question!.conceptId,
       scopeConceptIds: entry.conceptIds,
     };
     if (!questionEntry) setQuestionEntry(next);

@@ -104,6 +104,7 @@ it('does not resolve missing, stale or out-of-selection requests to the course',
 
 it('narrows the real recall pool without bypassing exposure, availability, extension or paper coverage', () => {
   const input = fixture();
+  input.concepts[0].specificationPointIds!.push('example-science:enzymes');
   const original = input.cards[0];
   input.lessons.push(makeLesson({ id: 'extension', courseId: 'course', isExtension: true }));
   input.cards.push(

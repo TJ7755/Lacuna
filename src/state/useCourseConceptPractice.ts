@@ -1,10 +1,26 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 
-/** One course read supplies point-level diagnostic evidence without a query for each tree row. */
-export function useCourseConceptPractice(courseId: string | undefined) {
-  return useLiveQuery(async () => {
-    if (!courseId) return [];
-    const { listConceptPractice } = await import('../questions/conceptPractice');
-    return listConceptPractice(courseId);
-  }, [courseId]);
+/** One scoped read supplies both fresh capacity and diagnostic evidence. */
+export function useCourseConceptPractice(
+  courseId: string | undefined,
+  conceptIds?: readonly string[],
+) {
+  const scopeKey = conceptIds?.join('\n');
+  const value = useLiveQuery(
+    async () => ({
+      courseId,
+      scopeKey,
+      items: courseId
+        ? await import('../questions/conceptPractice').then(({ listConceptPractice }) =>
+            listConceptPractice(
+              courseId,
+              Date.now(),
+              scopeKey === undefined ? undefined : scopeKey ? scopeKey.split('\n') : [],
+            ),
+          )
+        : [],
+    }),
+    [courseId, scopeKey],
+  );
+  return value?.courseId === courseId && value?.scopeKey === scopeKey ? value?.items : undefined;
 }

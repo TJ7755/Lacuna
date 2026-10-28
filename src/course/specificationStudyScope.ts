@@ -39,22 +39,14 @@ export function resolveSpecificationStudyScope(input: {
 }): SpecificationStudyScope | null {
   const { course } = input;
   if (course.archived) return null;
-  const branch = new Set(specificationPointBranch(course, input.pointId));
+  let branch = new Set(specificationPointBranch(course, input.pointId));
   if (!branch.size) return null;
   const assessment =
     input.assessmentId !== undefined
       ? input.assessments.find((row) => row.id === input.assessmentId && row.courseId === course.id)
       : undefined;
   if (input.assessmentId !== undefined && !assessment) return null;
-  const concepts = input.concepts.filter(
-    (concept) =>
-      concept.scope === 'course' &&
-      concept.courseId === course.id &&
-      concept.specificationPointIds?.some((id) => branch.has(id)),
-  );
-  const conceptIds = new Set(concepts.map((concept) => concept.id));
   let coverage = input.cards;
-  let assessmentPoints: Set<string> | undefined;
   try {
     if (assessment) {
       const resolved = resolveAssessmentCoverage(
@@ -68,12 +60,20 @@ export function resolveSpecificationStudyScope(input: {
       if (!resolved.validation.valid) return null;
       coverage = resolved.cards;
       if (assessment.coverageMode === 'specification') {
-        assessmentPoints = new Set(specificationAssessmentPointIds(assessment, course));
+        const assessmentPoints = new Set(specificationAssessmentPointIds(assessment, course));
+        branch = new Set([...branch].filter((id) => assessmentPoints.has(id)));
       }
     }
   } catch {
     return null;
   }
+  const concepts = input.concepts.filter(
+    (concept) =>
+      concept.scope === 'course' &&
+      concept.courseId === course.id &&
+      concept.specificationPointIds?.some((id) => branch.has(id)),
+  );
+  const conceptIds = new Set(concepts.map((concept) => concept.id));
   const cards = coverage.filter(
     (card) => card.courseId === course.id && conceptIds.has(card.conceptId),
   );
@@ -87,11 +87,8 @@ export function resolveSpecificationStudyScope(input: {
       .filter(
         (concept) =>
           !assessment ||
-          (assessmentPoints
-            ? concept.specificationPointIds?.some(
-                (id) => branch.has(id) && assessmentPoints.has(id),
-              )
-            : coveredConcepts.has(concept.id)),
+          assessment.coverageMode === 'specification' ||
+          coveredConcepts.has(concept.id),
       )
       .map((concept) => concept.id),
     cardIds: [...new Set(cards.map((card) => card.id))],

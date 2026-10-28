@@ -67,6 +67,10 @@ vi.mock('../state/useCourseStudyFlowRecords', () => ({
     generation,
   }),
 }));
+vi.mock('../state/useCourseConceptPractice', () => ({
+  useCourseConceptPractice: (_courseId: string, ids: string[]) =>
+    records.questionPractice.filter((item) => ids.includes(item.conceptId)),
+}));
 vi.mock('../components/learn/StudyEntrance', () => ({
   StudyEntrance: ({ children }: { children: ReactNode }) => children,
 }));
