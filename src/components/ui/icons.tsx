@@ -265,6 +265,12 @@ export const MenuIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const LockIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 10h12a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2m2 0V6a4 4 0 0 1 8 0v4m-4 4v3" />
+  </Icon>
+);
+
 export const UnlockIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="4" y="10" width="16" height="11" rx="2" />

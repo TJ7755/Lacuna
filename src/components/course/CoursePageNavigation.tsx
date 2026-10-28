@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { AppLink as Link } from '../ui/AppLink';
-import { ChevronLeftIcon } from '../ui/icons';
+import { ChevronLeftIcon, LockIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { ArchivedCourseBadge } from './ArchivedCourseState';
 import { CourseTabs } from './CourseTabs';
@@ -9,6 +9,8 @@ import { updateCourse } from '../../db/courseRepository';
 import { canEditLessons, resolveLessonViewMode } from '../../course/lessonViewMode';
 import { LessonViewModeToggle } from './LessonViewModeToggle';
 import { useToast } from '../ui/Toast';
+
+const AUTHORING_LOCKED = 'Authoring is locked for shared courses';
 
 interface CoursePageNavigationProps {
   courseId: string;
@@ -56,9 +58,11 @@ export function CoursePageNavigation({
       ) : (
         <Link
           to={`/course/${course.id}/settings`}
-          className="hidden text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink sm:inline"
+          aria-label={AUTHORING_LOCKED}
+          title={AUTHORING_LOCKED}
+          className="hidden size-9 place-items-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink sm:grid"
         >
-          Authoring is locked for shared courses
+          <LockIcon width={18} height={18} />
         </Link>
       )
     ) : undefined);

@@ -61,7 +61,7 @@ const INITIAL_ASSET_BUDGET = {
 
 const PUBLIC_ASSET_BUDGET = {
   comparison: {
-    javascriptBytes: 1_650_000,
+    javascriptBytes: 1_652_000,
     javascriptGzipBytes: 510_000,
     scriptRequests: 28,
     cssBytes: 190_000,
