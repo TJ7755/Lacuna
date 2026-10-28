@@ -208,6 +208,7 @@ function snapshot(
   recurringPracticeEligibleCount = 0,
 ): CourseStudyFlowSnapshot {
   return {
+    hasStudyHistory: true,
     courseId: course.id,
     archived: false,
     priorKnowledgeLessonIds: new Set(),

@@ -5,10 +5,160 @@ import { createCourse, createLesson, createLessonCard } from '../db/repository';
 import { recordReview } from '../db/reviewRepository';
 import { db } from '../db/schema';
 import { useCourseStudyFlow } from './useCourseStudyFlow';
+import { createConcept } from '../questions/repository';
+import { createQuestionSet } from '../questions/questionSetRepository';
+import { startConceptPractice } from '../questions/conceptPractice';
+import {
+  completeQuestionSetAttempt,
+  recordQuestionSetAssistance,
+  saveQuestionSetMarking,
+  submitPracticeQuestion,
+} from '../questions/questionSetAttemptRepository';
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
 });
+
+it.each([
+  { learnFirst: true, reordered: false },
+  { learnFirst: true, reordered: true },
+  { learnFirst: false, reordered: true },
+])(
+  'starts an untouched course at its teaching position ($learnFirst, reordered: $reordered)',
+  async ({ learnFirst, reordered }) => {
+    const course = await createCourse('Biology', { learnFirst, autoPractice: false });
+    const first = await createLesson(course.id, 'Life processes');
+    const second = await createLesson(course.id, 'Cells');
+    const current = reordered ? second : first;
+    await createLessonCard(course.id, first.id, 'front_back', 'Living?', 'Respiration.');
+    const card = await createLessonCard(
+      course.id,
+      current.id,
+      'front_back',
+      'Membrane?',
+      'Transport.',
+    );
+    await createLessonCard(course.id, current.id, 'front_back', 'Nucleus?', 'Genetic material.');
+    await db.courses.update(course.id, {
+      distributedCopy: {
+        lineageId: 'publisher',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: true,
+      },
+      localLessonOrder: reordered ? [second.id, first.id] : undefined,
+      studyStartLessonId: current.id,
+      schoolCoveredLessonIds: [],
+    });
+    const later = await createConcept(course.id, 'Design controlled diffusion investigations');
+    await createQuestionSet({
+      id: 'diffusion-set',
+      courseId: course.id,
+      title: 'Diffusion application',
+      lessonIds: [],
+      assessmentIds: [],
+      questions: ['diffusion-question', 'diffusion-transfer'].map((id) => ({
+        id,
+        prompt: `Explain dye penetration into agar cubes: ${id}.`,
+        parts: [],
+        answer: {
+          maxMarks: 1,
+          response: { kind: 'written' },
+          prerequisiteConceptIds: [],
+          allocations: [
+            {
+              id: `${id}-criterion`,
+              criterion: 'Links diffusion to penetration.',
+              maxMarks: 1,
+              dimension: 'application',
+              targetConceptIds: [later.id],
+            },
+          ],
+        },
+      })),
+    });
+    const { result, rerender } = renderHook(
+      ({ refreshKey }) => useCourseStudyFlow(course.id, refreshKey),
+      { initialProps: { refreshKey: 0 } },
+    );
+    await waitFor(() => expect(result.current?.generation).toBe(0));
+    expect(result.current?.snapshot.questionOptions).toEqual([
+      expect.objectContaining({ conceptId: later.id }),
+    ]);
+    expect(result.current?.decision).toMatchObject({
+      kind: 'step',
+      step: { kind: 'lesson', lessonId: current.id },
+    });
+
+    // A partial introduction is history, not a requirement to finish or master the lesson.
+    await act(async () => {
+      await db.lessonCardExposures.put({
+        lessonId: current.id,
+        cardId: card.id,
+        taughtAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+    rerender({ refreshKey: 1 });
+    await waitFor(() => expect(result.current?.generation).toBe(1));
+    expect(result.current?.decision).toMatchObject({
+      kind: 'step',
+      step: { kind: 'practice', mode: 'assessment' },
+    });
+
+    await act(async () => {
+      await db.lessonCardExposures.clear();
+      await db.courses.update(course.id, { schoolCoveredLessonIds: [current.id] });
+    });
+    rerender({ refreshKey: 2 });
+    await waitFor(() => expect(result.current?.generation).toBe(2));
+    expect(result.current?.decision).toMatchObject({
+      kind: 'step',
+      step: { kind: 'practice', mode: 'assessment' },
+    });
+
+    await act(async () => {
+      await db.courses.update(course.id, { schoolCoveredLessonIds: [] });
+      await startConceptPractice(course.id, later.id);
+    });
+    rerender({ refreshKey: 3 });
+    await waitFor(() => expect(result.current?.generation).toBe(3));
+    expect(result.current?.decision).toMatchObject({
+      kind: 'step',
+      step: { kind: 'exam-questions', conceptId: later.id },
+    });
+
+    await act(async () => {
+      let { attempt } = await startConceptPractice(course.id, later.id, { resume: true });
+      const question = attempt.receipt.questions[0];
+      attempt = await recordQuestionSetAssistance(attempt.id, attempt.revisionId, {
+        nodeId: question.id,
+        kind: 'related-knowledge',
+        occurredAt: Date.now(),
+      });
+      attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, question.id);
+      attempt = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
+        decisions: [
+          { allocationId: question.answer!.allocations[0].id, status: 'awarded', marks: 1 },
+        ],
+        annotations: [],
+        corrections: [],
+        reflection: { reasons: [], note: '' },
+        activeNodeId: question.id,
+        activeAllocationId: null,
+      });
+      await completeQuestionSetAttempt(attempt.id, attempt.revisionId);
+    });
+    rerender({ refreshKey: 4 });
+    await waitFor(() => expect(result.current?.generation).toBe(4));
+    expect(result.current?.decision).toMatchObject({
+      kind: 'step',
+      step: learnFirst
+        ? { kind: 'exam-questions', conceptId: later.id }
+        : { kind: 'practice', mode: 'assessment' },
+    });
+  },
+);
 
 it('labels a stale read with its own generation until the refreshed read arrives', async () => {
   const course = await createCourse('Biology');

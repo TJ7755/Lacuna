@@ -109,6 +109,10 @@ export function useCourseStudyFlow(
       records.concepts,
     );
     const dates = new Map<string, number>();
+    snapshot.hasStudyHistory ||=
+      records.questionPractice?.some(
+        (item) => item.schedule.lastReviewed !== null || item.unfinished || item.familiarCount > 0,
+      ) ?? false;
     for (const card of records.cards) {
       const date = resolveCardExamDate(card, examContext, now);
       if (date !== undefined && date > now)

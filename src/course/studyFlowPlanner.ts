@@ -144,6 +144,8 @@ export function planNextStudyStep(
     if (step?.kind === 'lesson') return { kind: 'step', step };
   }
   if (snapshot.recurringPracticeEligibleCount > 0) return { kind: 'step', step: DUE_REVIEW_STEP };
+  // An available Question or exam date is not evidence that an untouched course was taught.
+  if (snapshot.hasStudyHistory === false && step?.kind === 'lesson') return { kind: 'step', step };
   const assessment = snapshot.assessmentOptions[0];
   const assessmentStep: StudyFlowStep | undefined = assessment
     ? {
