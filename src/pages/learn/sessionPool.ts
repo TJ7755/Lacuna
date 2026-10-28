@@ -83,7 +83,7 @@ export async function loadGlobalSessionSource() {
   return { schedulingUnits, sessionUnits, cards };
 }
 
-interface CoursePoolRequest {
+export interface CoursePoolRequest {
   standaloneSimple: boolean;
   requestScopeLessonIds: string[] | undefined;
   practiceNodeKeyParam: string | null;
@@ -125,7 +125,7 @@ export async function loadCourseSessionSource(courseId: string, standaloneSimple
   };
 }
 
-type CourseSessionSource = Awaited<ReturnType<typeof loadCourseSessionSource>>;
+export type CourseSessionSource = Awaited<ReturnType<typeof loadCourseSessionSource>>;
 
 export function resolveCourseSessionSelection(
   course: Course,

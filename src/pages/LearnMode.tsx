@@ -120,13 +120,17 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
   const sessionReady = !lessonId || lessonCourse !== undefined;
   const [startInFocusMode] = useStartInFocusMode();
   // Course lessons follow their introduction setting; the global preference remains
-  // available for ad-hoc deck/global sessions.
+  // available for ad-hoc deck/global sessions. Bounded point practice uses scheduled
+  // reviews rather than cumulative recitation.
   const isSimpleMode =
     standaloneSimple ||
     (lessonId
       ? lessonCourse?.learnFirst !== false
       : dueReviewRequest ||
-          (request?.kind === 'practice' && (request.mode === 'exam' || request.mode === 'catch-up'))
+          (request?.kind === 'practice' &&
+            (request.specificationPointId !== undefined ||
+              request.mode === 'exam' ||
+              request.mode === 'catch-up'))
         ? false
         : studyMode === 'simple');
 
@@ -170,6 +174,8 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
     tagFilter,
     filterParams,
     requestScopeLessonIds,
+    requestSpecificationPointId:
+      request?.kind === 'practice' ? request.specificationPointId : undefined,
     requestMilestoneLessonIds,
     requestReviewLimit: request?.kind === 'practice' ? request.reviewLimit : undefined,
     practiceNodeKeyParam,

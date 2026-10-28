@@ -66,6 +66,8 @@ export type LearnSessionRequest =
       /** Fixed lesson prefix the node's milestone is measured and persisted against. */
       milestoneLessonIds?: string[];
       reviewLimit?: number;
+      /** Additional authored boundary; it can only narrow ordinary practice eligibility. */
+      specificationPointId?: string;
       mode: 'curricular' | 'recurring' | 'exam' | 'catch-up';
       assessmentId?: never;
     }
@@ -77,4 +79,5 @@ export type LearnSessionRequest =
       planId?: string;
       windowId?: string;
       reviewLimit?: number;
+      specificationPointId?: string;
     };

@@ -1,7 +1,16 @@
 import { StudyExitHeader } from '../components/learn/StudyExitHeader';
 import { useLeaveFlow } from '../utils/editorOrigin';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { PomodoroProvider, usePomodoroFlowContext } from '../hooks/PomodoroContext';
 import { useCourseStudyFlow } from '../state/useCourseStudyFlow';
@@ -30,6 +39,11 @@ import { StudyQuestionStep } from '../components/learn/StudyQuestionStep';
 import { StepSwap } from '../components/ui/StepSwap';
 import { continuesWithoutPause, mayContinueWithoutPause } from '../course/studyFlowContinuation';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
+const SpecificationStudyFlow = lazy(() =>
+  import('./SpecificationStudyFlow').then((module) => ({
+    default: module.SpecificationStudyFlow,
+  })),
+);
 
 interface TransitionState {
   summary: StudyStepSummary;
@@ -37,9 +51,23 @@ interface TransitionState {
 }
 
 export function CourseStudyFlow() {
+  const { courseId } = useParams<{ courseId: string }>();
+  const [params] = useSearchParams();
+  const point = params.get('specificationPoint');
   return (
     <PomodoroProvider>
-      <CourseStudyFlowInner />
+      {point !== null && courseId ? (
+        <Suspense fallback={<PageLoading />}>
+          <SpecificationStudyFlow
+            key={`${courseId}:${point}:${params.get('assessmentId') ?? ''}`}
+            courseId={courseId}
+            pointId={point}
+            assessmentId={params.get('assessmentId') ?? undefined}
+          />
+        </Suspense>
+      ) : (
+        <CourseStudyFlowInner />
+      )}
     </PomodoroProvider>
   );
 }

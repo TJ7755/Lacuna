@@ -120,9 +120,9 @@ it('filters tier and route restrictions while allowing unclassified course Conce
     specificationRef: { ...paperSpecificationReference, tier: 'foundation' },
   });
   input.concepts = [
-    concept('foundation', ['cells']),
-    concept('higher', ['enzymes']),
-    concept('spoken', ['spoken']),
+    concept('foundation', ['example-science:cells']),
+    concept('higher', ['example-science:enzymes']),
+    concept('spoken', ['example-science:spoken']),
     concept('unclassified'),
   ];
   expect(questionStudyScope(input)).toEqual(['foundation', 'unclassified']);
