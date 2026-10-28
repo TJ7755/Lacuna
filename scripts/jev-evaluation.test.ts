@@ -21,12 +21,12 @@ function envelope(
   index: number,
   rows: unknown = labels,
   frozen = 'fixture-identity',
-  source = 'human',
+  source = 'agent',
 ) {
   return {
     identity: frozen,
     reviewerId: people[index],
-    approvalReference: 'Synthetic test approval; no real human authorisation.',
+    reviewReference: 'Synthetic independent reference review.',
     source,
     independent: true,
     contentApproved: true,
@@ -45,7 +45,15 @@ afterEach(() => {
   for (const path of directories.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
-test('requires complete independent human records and preserves adjudicated disagreement', () => {
+test('accepts a single complete independent agent reference review', () => {
+  const record = envelope(0);
+  const result = validateLabels({ reviews: [record] }, 'fixture-identity');
+  expect(result.gold).toEqual(labels);
+  expect(result.reviews[0].source).toBe('agent');
+  expect(result.disagreements).toEqual([]);
+});
+
+test('requires complete reference records and preserves adjudicated disagreement', () => {
   const second = labels.map((row, index) => (index === 0 ? { ...row, mark: 1 } : row));
   const disputed = { reviews: [envelope(0), envelope(1, second)] };
   expect(() => validateLabels(disputed, 'fixture-identity')).toThrow(/adjudication/);
@@ -60,7 +68,7 @@ test('requires complete independent human records and preserves adjudicated disa
 });
 
 test.each([
-  ['missing review', () => ({ reviews: [envelope(0)] })],
+  ['missing review', () => ({ reviews: [] })],
   ['incomplete review', () => ({ reviews: [envelope(0, labels.slice(1)), envelope(1)] })],
   [
     'duplicate case',
@@ -129,10 +137,10 @@ test.each([
   expect(() => validateLabels(input(), 'fixture-identity')).toThrow();
 });
 
-test('requires approval references and a separate adjudicator', () => {
+test('requires review provenance and a separate adjudicator', () => {
   expect(() =>
     validateLabels(
-      { reviews: [{ ...envelope(0), approvalReference: '' }, envelope(1)] },
+      { reviews: [{ ...envelope(0), reviewReference: '' }, envelope(1)] },
       'fixture-identity',
     ),
   ).toThrow();
@@ -209,7 +217,7 @@ test('reports independently specified errors, unavailable cases and uncertainty 
   expect(() => summarise(gold, observations.slice(1))).toThrow(/exactly one/);
 });
 
-test('blind CLI export is reproducible, unlabelled and refuses overwrites; incomplete labels cannot reach fetch', () => {
+test('blind CLI export is reproducible, unmarked and refuses overwrites; incomplete labels cannot reach fetch', () => {
   const directory = join(temporary(), 'new-parent');
   const cli = (args: string[], preload?: string) =>
     spawnSync(

@@ -117,11 +117,12 @@ export function summarise(gold: Label[], observations: Observation[]) {
       ),
       unavailable: proportion(subset.filter((row) => row.status !== 'ok').length, subset.length),
       categories,
-      mixedHumanGaps: subset.filter(
+      mixedReferenceGaps: subset.filter(
         (row) =>
           JEV_DIAGNOSTIC_CATEGORIES.filter((category) => row.label[category] === 'gap').length > 1,
       ).length,
-      correctHumanAnswers: subset.filter((row) => row.label.mark === row.request.maxMarks).length,
+      fullMarkReferenceAnswers: subset.filter((row) => row.label.mark === row.request.maxMarks)
+        .length,
     };
   };
   const byAnswerType = Object.fromEntries(

@@ -100,7 +100,7 @@ export const policy = {
   version: 1,
   scope: 'Original typed 4BI1 enzyme explanations; evaluation-written answers, never learner data.',
   provenance:
-    'Agent-authored original material; independent human content review and labels pending. No private practice pool was read.',
+    'Agent-authored original material; independent reference marking pending. No private practice pool was read.',
   maximumRequests: 24,
   retries: 0,
   timeoutMs: 30_000,
