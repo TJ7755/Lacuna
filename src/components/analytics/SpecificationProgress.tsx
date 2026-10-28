@@ -30,7 +30,7 @@ type Status = 'unlinked' | 'linked' | 'new' | 'taught' | 'started' | 'reviewed';
 
 const STATUS_LABEL: Record<Status, string> = {
   unlinked: 'No linked content',
-  linked: 'Linked Concepts; no practice content',
+  linked: 'No practice content',
   new: 'Not started',
   taught: 'Taught, not reviewed',
   started: 'Partly reviewed',
@@ -47,24 +47,20 @@ function statusOf(point: SpecificationPointProgress): Status {
   return taughtNotReviewed ? 'taught' : 'new';
 }
 
-function percent(value: number) {
-  return `${Math.round(value * 100)}%`;
-}
-
 function StatusIcon({ status }: { status: Status }) {
   return (
     <span
       role="img"
       aria-label={STATUS_LABEL[status]}
       title={STATUS_LABEL[status]}
-      className="grid size-4 shrink-0 place-items-center"
+      className="grid h-4 w-4 shrink-0 place-items-center"
     >
       {status === 'reviewed' ? (
-        <span className="grid size-4 place-items-center rounded-full bg-accent text-accent-fg">
+        <span className="grid h-4 w-4 place-items-center rounded-full bg-accent text-accent-fg">
           <CheckIcon width={11} height={11} strokeWidth={2.4} />
         </span>
       ) : status === 'taught' ? (
-        <BookIcon width={16} height={16} className="text-accent/70" />
+        <BookIcon width={16} height={16} className="text-accent" />
       ) : (
         <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
           <circle
@@ -84,23 +80,28 @@ function StatusIcon({ status }: { status: Status }) {
 }
 
 function CardsBar({ point }: { point: SpecificationPointProgress }) {
-  if (!point.countedCards) return <span className="hidden w-[5.375rem] shrink-0 sm:block" />;
   const total = Math.max(1, point.countedCards);
   const label = `${point.study.reviewed} of ${point.countedCards} cards reviewed; ${point.study.taughtNotReviewed} taught, not reviewed`;
   return (
     <span
-      role="img"
-      aria-label={label}
-      title={label}
-      className="hidden shrink-0 items-center gap-1.5 text-ink-soft sm:flex"
+      role={point.countedCards ? 'img' : undefined}
+      aria-label={point.countedCards ? label : undefined}
+      aria-hidden={!point.countedCards}
+      title={point.countedCards ? label : undefined}
+      className={cn('hidden shrink-0 text-ink-soft sm:block', !point.countedCards && 'invisible')}
     >
-      <CardsIcon width={14} height={14} />
-      <span className="flex h-1.5 w-16 overflow-hidden rounded-full bg-line">
-        <span className="bg-accent" style={{ width: `${(point.study.reviewed / total) * 100}%` }} />
-        <span
-          className="bg-accent/35"
-          style={{ width: `${(point.study.taughtNotReviewed / total) * 100}%` }}
-        />
+      <span className="flex items-center gap-1.5">
+        <CardsIcon width={14} height={14} />
+        <span className="flex h-1.5 w-16 overflow-hidden rounded-full bg-line">
+          <span
+            className="bg-accent"
+            style={{ width: `${(point.study.reviewed / total) * 100}%` }}
+          />
+          <span
+            className="bg-accent/35"
+            style={{ width: `${(point.study.taughtNotReviewed / total) * 100}%` }}
+          />
+        </span>
       </span>
     </span>
   );
@@ -108,7 +109,7 @@ function CardsBar({ point }: { point: SpecificationPointProgress }) {
 
 function Recall({ point, label }: { point: SpecificationPointProgress; label: string }) {
   if (point.forecast === null) return <span className="size-5 shrink-0" />;
-  const name = `${percent(point.forecast)} ${label.toLowerCase()}`;
+  const name = `${Math.round(point.forecast * 100)}% ${label.toLowerCase()}`;
   return (
     <span role="img" aria-label={name} title={name} className="grid shrink-0">
       <MiniRing value={point.forecast} size={20} />
@@ -117,20 +118,18 @@ function Recall({ point, label }: { point: SpecificationPointProgress; label: st
 }
 
 function EvidenceIcon({ point, loading }: { point: SpecificationPointProgress; loading: boolean }) {
-  if (loading || !point.hasContent) return <span className="size-4 shrink-0" />;
+  if (loading || !point.hasContent) return <span className="h-4 w-4 shrink-0" />;
   const gaps = point.evidence.rows.reduce((sum, row) => sum + row.gaps, 0);
   const secure = point.evidence.rows.reduce((sum, row) => sum + row.demonstrated, 0);
   const label =
-    !gaps && !secure
-      ? 'No question evidence yet'
-      : `Questions: ${secure} secure answers, ${gaps} gap answers`;
+    !gaps && !secure ? 'No question evidence yet' : `Questions: ${secure} secure, ${gaps} gaps`;
   return (
     <span
       role="img"
       aria-label={label}
       title={label}
       className={cn(
-        'grid size-4 shrink-0 place-items-center',
+        'grid h-4 w-4 shrink-0 place-items-center',
         gaps ? 'text-warning' : 'text-accent',
       )}
     >
@@ -139,7 +138,7 @@ function EvidenceIcon({ point, loading }: { point: SpecificationPointProgress; l
       ) : secure ? (
         <FileTextIcon width={16} height={16} />
       ) : (
-        <span className="size-1 rounded-full bg-line-strong" />
+        <span className="h-1 w-1 rounded-full bg-line-strong" />
       )}
     </span>
   );
@@ -159,7 +158,7 @@ function PractiseButton({
       aria-label={`Practise ${point.ref}`}
       title={`Practise ${point.ref}`}
       onClick={() => onPractise(point.id)}
-      className="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft transition-colors hover:bg-accent hover:text-accent-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+      className="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
     >
       <PlayIcon width={14} height={14} />
     </button>
@@ -193,7 +192,7 @@ function PointRow({
           className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-default"
         >
           <span className="w-11 shrink-0 tabular-nums text-ink-soft">{point.ref}</span>
-          <span className="line-clamp-2 sm:truncate">{point.title}</span>
+          <span className="line-clamp-2">{point.title}</span>
         </button>
         <CardsBar point={point} />
         <Recall point={point} label={forecastLabel} />
@@ -201,7 +200,7 @@ function PointRow({
         <PractiseButton point={point} onPractise={onPractise} />
       </div>
       {open && (
-        <div id={detailId} className="space-y-2 pb-3 pl-[4.75rem] pr-1">
+        <div id={detailId} className="space-y-2 pb-3 pl-10 pr-1">
           <ul aria-label={`Concepts for ${point.ref}`} className="flex flex-wrap gap-1.5">
             {point.concepts.map((concept) => (
               <li key={concept.id} className="rounded-full border border-line px-2.5 py-1 text-xs">
@@ -295,11 +294,11 @@ function About({
       <summary
         aria-label="About these numbers"
         title="About these numbers"
-        className="grid size-9 cursor-pointer list-none place-items-center rounded-full text-ink-soft hover:bg-ink/5 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
+        className="grid size-9 cursor-pointer list-none place-items-center rounded-full text-ink-soft hover:bg-ink/5 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       >
         <InfoIcon width={18} height={18} />
       </summary>
-      <div className="absolute right-0 top-11 z-20 w-[min(20rem,calc(100vw-3rem))] space-y-2 rounded-2xl border border-line bg-surface-raised p-4 text-xs text-ink-soft shadow-xl">
+      <div className="absolute right-0 top-full mt-2 z-20 w-[min(22rem,calc(100vw-2rem))] space-y-2 rounded-2xl border border-line bg-surface-raised p-4 text-xs text-ink-soft shadow-lg">
         <ul className="space-y-1.5">
           {(['new', 'taught', 'started', 'reviewed', 'unlinked'] as const).map((status) => (
             <li key={status} className="flex items-center gap-2">
@@ -328,7 +327,7 @@ function About({
           , {source.issue}
         </p>
         {(report.unresolvedLinks.length > 0 || report.unmappedConcepts.length > 0) && (
-          <ul aria-label="Author checks" className="max-h-40 space-y-1 overflow-y-auto break-words">
+          <ul aria-label="Author checks" className="space-y-1 break-words">
             {report.unresolvedLinks.map(({ concept, pointId }) => (
               <li key={`${concept.id}:${pointId}`}>
                 {concept.name}: unresolved {pointId}
@@ -379,6 +378,71 @@ export function SpecificationProgress({
     (report.specification.tiers.length > 0 ||
       report.specification.routes.length > 0 ||
       papers.length > 1);
+  const filters = report.kind === 'ready' && (
+    <>
+      {report.specification.tiers.length > 0 && (
+        <Select
+          aria-label="Tier"
+          className="text-sm"
+          value={selection.tier ?? ''}
+          onChange={(event) =>
+            setFilter((old) => ({
+              ...old,
+              tier: event.target.value || undefined,
+              paperId: undefined,
+            }))
+          }
+        >
+          <option value="">All tiers</option>
+          {report.specification.tiers.map((tier) => (
+            <option key={tier.id} value={tier.id}>
+              {tier.name}
+            </option>
+          ))}
+        </Select>
+      )}
+      {report.specification.routes.length > 0 && (
+        <Select
+          aria-label="Route"
+          className="text-sm"
+          value={selection.routeIds?.length === 1 ? selection.routeIds[0] : ''}
+          onChange={(event) =>
+            setFilter((old) => ({
+              ...old,
+              routeIds: event.target.value
+                ? [event.target.value]
+                : input.course.specificationRef?.routeIds,
+              paperId: undefined,
+            }))
+          }
+        >
+          <option value="">Course routes</option>
+          {report.specification.routes.map((route) => (
+            <option key={route.id} value={route.id}>
+              {route.name}
+            </option>
+          ))}
+        </Select>
+      )}
+      {papers.length > 1 && (
+        <Select
+          aria-label="Paper"
+          className="text-sm"
+          value={filter.paperId ?? ''}
+          onChange={(event) =>
+            setFilter((old) => ({ ...old, paperId: event.target.value || undefined }))
+          }
+        >
+          <option value="">All papers</option>
+          {papers.map((paper) => (
+            <option key={paper.id} value={paper.id}>
+              {paper.ref}: {paper.title}
+            </option>
+          ))}
+        </Select>
+      )}
+    </>
+  );
   return (
     <SectionCard aria-labelledby={titleId} className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -400,73 +464,8 @@ export function SpecificationProgress({
               <FolderIcon width={14} height={14} className="text-ink-soft" />
               {report.coveredPoints}/{report.totalPoints}
             </span>
-            <div
-              className={cn(
-                'order-last basis-full flex-wrap gap-2 sm:contents',
-                filtersOpen ? 'flex' : 'hidden',
-              )}
-            >
-              {report.specification.tiers.length > 0 && (
-                <Select
-                  aria-label="Tier"
-                  className="min-h-9 text-sm"
-                  value={selection.tier ?? ''}
-                  onChange={(event) =>
-                    setFilter((old) => ({
-                      ...old,
-                      tier: event.target.value || undefined,
-                      paperId: undefined,
-                    }))
-                  }
-                >
-                  <option value="">All tiers</option>
-                  {report.specification.tiers.map((tier) => (
-                    <option key={tier.id} value={tier.id}>
-                      {tier.name}
-                    </option>
-                  ))}
-                </Select>
-              )}
-              {report.specification.routes.length > 0 && (
-                <Select
-                  aria-label="Route"
-                  className="min-h-9 text-sm"
-                  value={selection.routeIds?.length === 1 ? selection.routeIds[0] : ''}
-                  onChange={(event) =>
-                    setFilter((old) => ({
-                      ...old,
-                      routeIds: event.target.value
-                        ? [event.target.value]
-                        : input.course.specificationRef?.routeIds,
-                      paperId: undefined,
-                    }))
-                  }
-                >
-                  <option value="">Course routes</option>
-                  {report.specification.routes.map((route) => (
-                    <option key={route.id} value={route.id}>
-                      {route.name}
-                    </option>
-                  ))}
-                </Select>
-              )}
-              {papers.length > 1 && (
-                <Select
-                  aria-label="Paper"
-                  className="min-h-9 text-sm"
-                  value={filter.paperId ?? ''}
-                  onChange={(event) =>
-                    setFilter((old) => ({ ...old, paperId: event.target.value || undefined }))
-                  }
-                >
-                  <option value="">All papers</option>
-                  {papers.map((paper) => (
-                    <option key={paper.id} value={paper.id}>
-                      {paper.ref}: {paper.title}
-                    </option>
-                  ))}
-                </Select>
-              )}
+            <div className="hidden sm:block">
+              <div className="flex flex-wrap gap-2">{filters}</div>
             </div>
             {hasFilters && (
               <button
@@ -487,6 +486,7 @@ export function SpecificationProgress({
           </div>
         )}
       </div>
+      {filtersOpen && <div className="flex flex-wrap gap-2 sm:hidden">{filters}</div>}
       {report.kind !== 'ready' ? (
         <p className="text-sm text-ink-soft">
           {report.kind === 'missing'
