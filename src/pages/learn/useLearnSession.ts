@@ -131,6 +131,7 @@ export interface UseLearnSessionParams {
   tagFilter: string | null;
   filterParams: CardFilter[];
   requestScopeLessonIds: string[] | undefined;
+  requestSpecificationPointId?: string;
   /** Fixed lesson prefix of a curricular node's milestone; undefined records no milestone. */
   requestMilestoneLessonIds?: string[];
   requestReviewLimit?: number;
@@ -171,6 +172,7 @@ export function useLearnSession({
   tagFilter,
   filterParams,
   requestScopeLessonIds,
+  requestSpecificationPointId,
   requestMilestoneLessonIds,
   requestReviewLimit,
   practiceNodeKeyParam,
@@ -949,6 +951,7 @@ export function useLearnSession({
         const poolRequest = {
           standaloneSimple,
           requestScopeLessonIds,
+          requestSpecificationPointId,
           practiceNodeKeyParam,
           requestAssessmentId,
           filterParams,
@@ -1024,7 +1027,7 @@ export function useLearnSession({
         ];
         reviewKindRef.current = 'course';
         if (!standaloneSimple) ratchetCourseIdRef.current = course.id;
-        setUnitDisplayName(selectedAssessment?.name ?? course.name);
+        setUnitDisplayName(prepared.scopeTitle ?? selectedAssessment?.name ?? course.name);
         // The milestone is measured against the node's fixed lesson prefix, exactly as
         // the study-flow snapshot checks it; the wider live pool above is only what is
         // studied. Without a prefix there is no safe fingerprint, so nothing is recorded.
@@ -1269,6 +1272,7 @@ export function useLearnSession({
     catchUpPractice,
     practiceNodeKeyParam,
     requestScopeLessonIdsKey,
+    requestSpecificationPointId,
     requestMilestoneLessonIdsKey,
     requestAssessmentId,
     requestPlanId,

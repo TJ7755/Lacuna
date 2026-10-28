@@ -54,7 +54,9 @@ export function questionStudyScope(input: {
   const data = input.course.specificationData;
   const points = data
     ? new Set(
-        pointsForSelection(data, input.course.specificationRef ?? {}).map((point) => point.id),
+        pointsForSelection(data, input.course.specificationRef ?? {}).map(
+          (point) => `${data.id}:${point.id}`,
+        ),
       )
     : undefined;
   return input.concepts

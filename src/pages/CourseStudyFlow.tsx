@@ -30,6 +30,7 @@ import { StudyQuestionStep } from '../components/learn/StudyQuestionStep';
 import { StepSwap } from '../components/ui/StepSwap';
 import { continuesWithoutPause, mayContinueWithoutPause } from '../course/studyFlowContinuation';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
+import { SpecificationStudyFlow } from './SpecificationStudyFlow';
 
 interface TransitionState {
   summary: StudyStepSummary;
@@ -37,9 +38,21 @@ interface TransitionState {
 }
 
 export function CourseStudyFlow() {
+  const { courseId } = useParams<{ courseId: string }>();
+  const [params] = useSearchParams();
+  const point = params.get('specificationPoint');
   return (
     <PomodoroProvider>
-      <CourseStudyFlowInner />
+      {point !== null && courseId ? (
+        <SpecificationStudyFlow
+          key={`${courseId}:${point}:${params.get('assessmentId') ?? ''}`}
+          courseId={courseId}
+          pointId={point}
+          assessmentId={params.get('assessmentId') ?? undefined}
+        />
+      ) : (
+        <CourseStudyFlowInner />
+      )}
     </PomodoroProvider>
   );
 }

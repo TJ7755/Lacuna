@@ -170,6 +170,8 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
     tagFilter,
     filterParams,
     requestScopeLessonIds,
+    requestSpecificationPointId:
+      request?.kind === 'practice' ? request.specificationPointId : undefined,
     requestMilestoneLessonIds,
     requestReviewLimit: request?.kind === 'practice' ? request.reviewLimit : undefined,
     practiceNodeKeyParam,

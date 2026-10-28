@@ -27,6 +27,8 @@ import {
   selectableAssessments,
 } from '../course/courseProgress';
 import { progressHeading } from '../fsrs/objective';
+import { SpecificationProgress } from '../components/analytics/SpecificationProgress';
+import { useCourseConceptPractice } from '../state/useCourseConceptPractice';
 
 export function CourseAnalytics() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -40,6 +42,9 @@ export function CourseAnalytics() {
   const course = records?.course;
   const reviewHistory = useCourseReviewHistory(courseId);
   const questionData = useCourseQuestionData(courseId);
+  const conceptPractice = useCourseConceptPractice(
+    course?.specificationData ? courseId : undefined,
+  );
   // The selected scope lives in the URL, so it survives reloads without stored state.
   const requestedAssessmentId = searchParams.get('assessment') ?? undefined;
   const assessments = useMemo(
@@ -179,6 +184,12 @@ export function CourseAnalytics() {
           <QuestionEvidenceCard evidence={questionEvidence} />
         </Rise>
       )}
+
+      <SpecificationProgress
+        key={course.id}
+        input={{ ...records, course, assessmentId, now: progress.now }}
+        practice={conceptPractice}
+      />
 
       <Rise index={4}>
         <QuestionAnalyticsSection analytics={questionAnalytics} />
