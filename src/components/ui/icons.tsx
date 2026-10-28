@@ -432,3 +432,9 @@ export const PathIcon = (p: IconProps) => (
     <path d="M8.5 17.5L16 13" strokeDasharray="2 2" />
   </Icon>
 );
+
+export const FilterIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3 5h18l-7 8.5V19l-4 2v-7.5z" />
+  </Icon>
+);
