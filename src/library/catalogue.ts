@@ -28,7 +28,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     id: 'biology4bi1',
     author: 'Lacuna',
     publisher: 'Lacuna',
-    revision: 29,
+    revision: 31,
     subject: 'Biology',
     board: 'Pearson Edexcel',
     qualification: 'Pearson Edexcel International GCSE',
@@ -42,7 +42,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
       'Use of biological resources',
     ],
     shareUrl: 'https://getlacuna.app/#/s/6fb10671c70197caeff8616f80697ac5',
-    stats: { cards: 1465, notes: 164, practiceSets: 165, practiceMarks: 1506 },
+    stats: { cards: 1465, notes: 164, practiceSets: 168, practiceMarks: 1533 },
   },
   {
     id: 'chemistry4ch1',
