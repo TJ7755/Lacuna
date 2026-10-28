@@ -141,7 +141,7 @@ fi
       readFileSync(join(directory, 'watch'), 'utf8'),
       /run watch 42 --repo owner\/repo --exit-status/,
     );
-    assert.match(readFileSync(join(directory, 'watch'), 'utf8'), /--interval 60/);
+    assert.match(readFileSync(join(directory, 'watch'), 'utf8'), /--interval 10/);
     for (const runs of [
       [],
       [{ id: 1, display_title: 'CI validation older-merge' }],

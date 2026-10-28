@@ -71,7 +71,7 @@ jobs:
             echo "No validation run exists for this merge commit. Reopen the PR or push a commit to validate it."
             exit 1
           fi
-          gh run watch "$run_id" --repo "$GH_REPO" --exit-status --interval 60
+          gh run watch "$run_id" --repo "$GH_REPO" --exit-status --interval 10
           conclusion=$(gh api "repos/$GH_REPO/actions/runs/$run_id" --jq .conclusion)
           [ "$conclusion" = success ]
           echo "Reused successful validation: https://github.com/$GH_REPO/actions/runs/$run_id" >> "$GITHUB_STEP_SUMMARY"
