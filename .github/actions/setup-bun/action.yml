@@ -1,5 +1,12 @@
 name: Set up the patched Bun runtime
 description: Install the checksum-verified stable Bun release and reject any other revision.
+inputs:
+  cache-dependency-path:
+    description: Lockfile for the workspace this job installs; keeps partial caches separate.
+    default: bun.lock
+  cache-packages:
+    description: Restore package downloads only when this job installs dependencies.
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -11,13 +18,13 @@ runs:
     - name: Restore Bun package downloads
       # Extracting the many-file package cache costs more than installing on Windows.
       # Keep the small checksum-verified runtime cache on every platform.
-      if: runner.os != 'Windows'
+      if: runner.os != 'Windows' && inputs.cache-packages == 'true'
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: ~/.bun/install/cache
-        key: bun-packages-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.bun-version', 'bun.lock', 'relay/bun.lock', 'tooling/handwriting-maths/bun.lock') }}
+        key: bun-packages-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-dependency-path }}-${{ hashFiles('.bun-version', inputs.cache-dependency-path) }}
         restore-keys: |
-          bun-packages-${{ runner.os }}-${{ runner.arch }}-
+          bun-packages-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-dependency-path }}-
     - name: Install the checksum-verified security revision
       shell: bash
       run: node relay/scripts/security-bun.mjs --install

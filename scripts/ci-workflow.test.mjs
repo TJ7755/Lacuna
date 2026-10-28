@@ -393,10 +393,13 @@ test('browser consumers use the same pinned browser image and shared production 
     jobs['browser-smoke'].steps[0].env.PRODUCTION_RESULT,
     '${{ needs.production.result }}',
   );
-  assert.deepEqual(jobs['browser-tests'].strategy.matrix.shard, [1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.deepEqual(
+    jobs['browser-tests'].strategy.matrix.shard,
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  );
   assert.ok(
     jobs['browser-tests'].steps.some(
-      (step) => step.run === 'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/8',
+      (step) => step.run === 'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/12',
     ),
   );
   const functionalEvidence = jobs['browser-tests'].steps.find(
@@ -412,13 +415,61 @@ test('Windows skips the slow package cache while retaining verified runtime inst
   );
   const steps = action.runs.steps;
   const packages = steps.find((step) => step.name === 'Restore Bun package downloads');
-  assert.equal(packages.if, "runner.os != 'Windows'");
+  assert.equal(packages.if, "runner.os != 'Windows' && inputs.cache-packages == 'true'");
   const runtime = steps.find((step) => step.name === 'Restore verified Bun download');
   assert.equal(runtime.if, undefined);
   const install = steps.find(
     (step) => step.run === 'node relay/scripts/security-bun.mjs --install',
   );
   assert.equal(install.if, undefined);
+});
+
+test('workspace installs cannot restore or save another workspace’s partial package cache', () => {
+  const action = parse(readFileSync('.github/actions/setup-bun/action.yml', 'utf8'));
+  const cache = action.runs.steps.find((step) => step.name === 'Restore Bun package downloads');
+  const security = parse(readFileSync('.github/workflows/security.yml', 'utf8'));
+  const namespaces = new Map();
+  for (const job of [...Object.values(workflow.jobs), ...Object.values(security.jobs)]) {
+    const setup = job.steps?.find((step) => step.uses === './.github/actions/setup-bun');
+    const install = job.steps?.find((step) => step.run?.startsWith('bun install '));
+    if (!setup || !install) continue;
+    const workspace =
+      install['working-directory'] ?? job.defaults?.run?.['working-directory'] ?? '.';
+    const inputs = {
+      ...Object.fromEntries(
+        Object.entries(action.inputs ?? {}).map(([key, value]) => [key, value.default]),
+      ),
+      ...setup.with,
+    };
+    const expand = (value) =>
+      value.replace(/\$\{\{(.*?)\}\}/g, (_, expression) =>
+        String(
+          runInNewContext(expression.replace(/inputs\.([\w-]+)/g, 'inputs["$1"]'), {
+            inputs,
+            runner: { os: 'Linux', arch: 'X64' },
+            // Even identical lockfile contents must not allow cross-workspace fallback.
+            hashFiles: () => 'same-content-hash',
+          }),
+        ),
+      );
+    const namespace = {
+      key: expand(cache.with.key),
+      prefix: expand(cache.with['restore-keys']).trim(),
+    };
+    if (namespaces.has(workspace)) assert.deepEqual(namespace, namespaces.get(workspace));
+    namespaces.set(workspace, namespace);
+  }
+  assert.equal(namespaces.size, 3);
+  for (const [workspace, cacheKey] of namespaces) {
+    for (const [other, otherCache] of namespaces) {
+      if (workspace !== other)
+        assert.equal(
+          cacheKey.key.startsWith(otherCache.prefix),
+          false,
+          `${workspace} restores ${other}`,
+        );
+    }
+  }
 });
 
 test('a retry cannot share or cancel newer pull-request validation even if the branch advances after inspection', () => {
@@ -735,7 +786,7 @@ test('push scope still selects the full matrix regardless of changed web specs',
   }
 });
 
-test('web spec-only changes reduce heavy matrix instances from 33 to 18', () => {
+test('web spec-only changes reduce heavy matrix instances from 37 to 22', () => {
   const count = (scope) => {
     const outputs = Object.fromEntries(
       Object.entries(scope).map(([key, value]) => [key, String(value)]),
@@ -760,10 +811,10 @@ test('web spec-only changes reduce heavy matrix instances from 33 to 18', () => 
     }
     return { heavy, runners };
   };
-  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 33, runners: 37 });
+  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 37, runners: 41 });
   assert.deepEqual(count(classifyPaths(['tests/e2e/study-flip.spec.ts'])), {
-    heavy: 18,
-    runners: 25,
+    heavy: 22,
+    runners: 29,
   });
 });
 
