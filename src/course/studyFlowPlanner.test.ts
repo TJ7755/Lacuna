@@ -35,6 +35,7 @@ function snapshot(
 ): CourseStudyFlowSnapshot {
   return {
     courseId: 'course',
+    hasStudyHistory: true,
     archived: false,
     priorKnowledgeLessonIds: new Set(),
     nodes,
@@ -69,7 +70,12 @@ function practiceState(nodeKey: string, active: boolean): StudyFlowPracticeState
 describe('planNextStudyStep', () => {
   it('offers scheduled reviews before available or locked curriculum', () => {
     for (const status of ['available', 'locked'] as const) {
-      expect(planNextStudyStep(snapshot([lessonNode('1', status)], [], 1))).toMatchObject({
+      expect(
+        planNextStudyStep({
+          ...snapshot([lessonNode('1', status)], [], 1),
+          hasStudyHistory: false,
+        }),
+      ).toMatchObject({
         kind: 'step',
         step: { mode: 'recurring' },
       });

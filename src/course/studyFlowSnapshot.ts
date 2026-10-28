@@ -38,6 +38,8 @@ export interface StudyFlowPracticeState {
 
 export interface CourseStudyFlowSnapshot {
   courseId: string;
+  /** Routing history, including declared school coverage; never a mastery judgement. */
+  hasStudyHistory: boolean;
   studyStartLessonId?: string;
   priorKnowledgeLessonIds: ReadonlySet<string>;
   catchUpEligibleCount?: number;
@@ -324,6 +326,11 @@ export function buildCourseStudyFlowSnapshot({
 
   return {
     courseId: course.id,
+    hasStudyHistory:
+      earlier.size > 0 ||
+      exposures.length > 0 ||
+      cards.some((card) => card.lastReviewed !== null) ||
+      nodes.some((node) => node.nodeType === 'lesson' && node.status === 'completed'),
     studyStartLessonId: course.studyStartLessonId,
     priorKnowledgeLessonIds: earlier,
     catchUpEligibleCount: catchUpPracticePool(

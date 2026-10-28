@@ -176,6 +176,17 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       await expect(study).toHaveCount(1);
       await study.click();
       const preview = page.getByRole('region', { name: 'Session preview', exact: true });
+      await expect(preview.getByText('Lesson 1', { exact: true })).toBeVisible();
+      await capture(page, testInfo, `first-study-preview-${width}`);
+      await preview.getByRole('button', { name: 'Start session', exact: true }).click();
+      await expect(page.getByRole('heading', { name: 'Lesson 1', exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Continue', exact: true }).click();
+      await page
+        .getByRole('main', { name: 'Study progress', exact: true })
+        .getByRole('button', { name: 'Finish for now', exact: true })
+        .click();
+      await expect(page).toHaveURL(courseUrl);
+      await study.click();
       await expect(preview.getByText('Practise Cell membranes', { exact: true })).toBeVisible();
       await expect(
         preview.getByRole('list', { name: "Today's session" }).getByRole('listitem'),
