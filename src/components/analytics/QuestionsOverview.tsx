@@ -5,7 +5,7 @@ import { countOf } from '../../utils/plural';
 import { QuestionAnalyticsSection } from '../questions/QuestionAnalyticsSection';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { cn } from '../ui/cn';
-import { AlertIcon, BookIcon, ChevronDownIcon, HelpIcon, RefreshIcon } from '../ui/icons';
+import { AlertIcon, BookIcon, ChevronDownIcon, HelpIcon, RestoreIcon } from '../ui/icons';
 import { MiniRing } from '../ui/MiniRing';
 import { SectionCard } from '../ui/SectionCard';
 import { InfoPopover } from './InfoPopover';
@@ -69,7 +69,7 @@ export function QuestionsOverview({
               due > 0 ? 'text-warning' : 'text-ink-soft',
             )}
           >
-            <RefreshIcon width={16} height={16} />
+            <RestoreIcon width={16} height={16} />
             {due}
           </span>
           <span

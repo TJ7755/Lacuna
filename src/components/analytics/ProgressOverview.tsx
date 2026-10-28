@@ -17,7 +17,7 @@ import {
   FlagIcon,
   FlameIcon,
   PlayIcon,
-  RefreshIcon,
+  RestoreIcon,
   SparklesIcon,
 } from '../ui/icons';
 import { MiniRing } from '../ui/MiniRing';
@@ -281,7 +281,7 @@ export function ProgressOverview({
             />
           )}
           <Stat
-            icon={<RefreshIcon width={18} height={18} />}
+            icon={<RestoreIcon width={18} height={18} />}
             value={report.dueCards}
             label="Due for review"
             tone={report.dueCards > 0 ? 'warning' : undefined}
