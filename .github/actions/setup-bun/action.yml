@@ -21,10 +21,16 @@ runs:
       if: runner.os != 'Windows' && inputs.cache-packages == 'true'
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
-        path: ~/.bun/install/cache
-        key: bun-packages-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-dependency-path }}-${{ hashFiles('.bun-version', inputs.cache-dependency-path) }}
+        path: ${{ runner.temp }}/bun-package-cache
+        key: bun-packages-v3-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-dependency-path }}-${{ hashFiles('.bun-version', inputs.cache-dependency-path) }}
         restore-keys: |
-          bun-packages-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-dependency-path }}-
+          bun-packages-v3-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-dependency-path }}-
     - name: Install the checksum-verified security revision
       shell: bash
       run: node relay/scripts/security-bun.mjs --install
+    - name: Use the restored package download directory
+      shell: bash
+      run: |
+        echo "Default Bun package cache: $(bun pm cache)"
+        echo "BUN_INSTALL_CACHE_DIR=$RUNNER_TEMP/bun-package-cache" >> "$GITHUB_ENV"
+        BUN_INSTALL_CACHE_DIR="$RUNNER_TEMP/bun-package-cache" bun pm cache
