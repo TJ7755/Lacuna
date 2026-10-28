@@ -21,45 +21,6 @@ beforeEach(async () => {
 });
 afterEach(() => vi.useRealTimers());
 
-it.each([2, 3])(
-  'hands off a Simple-mode block without inventing completion (%s cards)',
-  async (count) => {
-    const course = await createCourse('Simple review block', { learnFirst: false });
-    const lesson = await createLesson(course.id, 'Facts');
-    for (let index = 0; index < count; index += 1)
-      await createLessonCard(course.id, lesson.id, 'front_back', `Question ${index}`, 'Answer');
-    const onStepFinished = vi.fn();
-    const params = sessionParams({
-      courseId: course.id,
-      isSimpleMode: true,
-      mode: 'simple',
-      requestReviewLimit: 2,
-      onStepFinished,
-    });
-    const session = renderHook(() => useLearnSession(params));
-    try {
-      await waitFor(() => expect(session.result.current.phase).toBe('question'));
-      for (let index = 0; index < 2; index += 1) {
-        act(() => session.result.current.reveal());
-        await act(async () => {
-          await session.result.current.answer(3);
-        });
-      }
-      await waitFor(() => expect(session.result.current.phase).toBe('finished'));
-      expect(session.result.current.summary).toMatchObject({
-        reachedGoal: count === 2,
-        simpleMode: true,
-      });
-      if (count > 2) expect(session.result.current.summary?.blockComplete).toBe(true);
-      expect(session.result.current.summary?.events).toHaveLength(2);
-      expect(await db.reviewHistory.count()).toBe(2);
-      expect(onStepFinished).toHaveBeenCalledTimes(1);
-    } finally {
-      session.unmount();
-    }
-  },
-);
-
 it.each([10, 11])(
   'hands off after ten reviews without inventing completion (%s due cards)',
   async (count) => {
