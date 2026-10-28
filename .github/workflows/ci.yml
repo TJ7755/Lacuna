@@ -71,7 +71,7 @@ jobs:
             echo "No validation run exists for this merge commit. Reopen the PR or push a commit to validate it."
             exit 1
           fi
-          gh run watch "$run_id" --repo "$GH_REPO" --exit-status --interval 60
+          gh run watch "$run_id" --repo "$GH_REPO" --exit-status --interval 10
           conclusion=$(gh api "repos/$GH_REPO/actions/runs/$run_id" --jq .conclusion)
           [ "$conclusion" = success ]
           echo "Reused successful validation: https://github.com/$GH_REPO/actions/runs/$run_id" >> "$GITHUB_STEP_SUMMARY"
@@ -216,6 +216,8 @@ jobs:
           working-directory: tooling/${{ matrix.workspace }}
           enable-cache: true
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-packages: 'false'
         if: matrix.workspace == 'semantic-answer-match'
       - run: uv run --locked pytest
         working-directory: tooling/${{ matrix.workspace }}
@@ -293,6 +295,8 @@ jobs:
           node-version: '24.22.1'
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-dependency-path: tooling/handwriting-maths/bun.lock
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun run test
@@ -317,6 +321,8 @@ jobs:
           node-version: '24.22.1'
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-dependency-path: relay/bun.lock
         if: needs.changes.outputs.relay != 'false'
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.relay != 'false'
@@ -426,7 +432,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -448,7 +454,7 @@ jobs:
         with:
           name: browser-web-dist
           path: dist/
-      - run: node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/8
+      - run: node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/16
       - name: Preserve browser test evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -701,6 +707,12 @@ jobs:
     needs: changes
     if: needs.changes.outputs.electron != 'false'
     runs-on: windows-latest
+    # NSIS uses machine-wide process discovery and installation markers.
+    # Keep each upgrade scenario isolated while removing their serial dependency.
+    strategy:
+      fail-fast: false
+      matrix:
+        probe: [companion, release]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -715,6 +727,7 @@ jobs:
       # The release build enforces the same budget; checking here catches growth before a tag.
       - run: bun run perf:check:electron-package
       - name: Download the verified v0.2.7 installer
+        if: matrix.probe == 'companion'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
@@ -722,8 +735,10 @@ jobs:
           New-Item -ItemType Directory -Force test-results/windows-upgrade/source | Out-Null
           gh release download v0.2.7 --pattern Lacuna-Setup-0.2.7.exe --dir test-results/windows-upgrade/source
       - name: Upgrade with a long-running installed AI companion
+        if: matrix.probe == 'companion'
         run: node scripts/windows-upgrade-companion.mjs test-results/windows-upgrade/source/Lacuna-Setup-0.2.7.exe
       - name: Verify installation and latest released profile upgrade
+        if: matrix.probe == 'release'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
@@ -738,7 +753,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: windows-installed-upgrade-results
+          name: windows-installed-upgrade-results-${{ matrix.probe }}
           path: |
             test-results/windows-upgrade/installed-upgrade.json
             test-results/windows-release-upgrade/report.json

@@ -141,7 +141,7 @@ fi
       readFileSync(join(directory, 'watch'), 'utf8'),
       /run watch 42 --repo owner\/repo --exit-status/,
     );
-    assert.match(readFileSync(join(directory, 'watch'), 'utf8'), /--interval 60/);
+    assert.match(readFileSync(join(directory, 'watch'), 'utf8'), /--interval 10/);
     for (const runs of [
       [],
       [{ id: 1, display_title: 'CI validation older-merge' }],
@@ -393,10 +393,13 @@ test('browser consumers use the same pinned browser image and shared production 
     jobs['browser-smoke'].steps[0].env.PRODUCTION_RESULT,
     '${{ needs.production.result }}',
   );
-  assert.deepEqual(jobs['browser-tests'].strategy.matrix.shard, [1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.deepEqual(
+    jobs['browser-tests'].strategy.matrix.shard,
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+  );
   assert.ok(
     jobs['browser-tests'].steps.some(
-      (step) => step.run === 'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/8',
+      (step) => step.run === 'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/16',
     ),
   );
   const functionalEvidence = jobs['browser-tests'].steps.find(
@@ -412,13 +415,112 @@ test('Windows skips the slow package cache while retaining verified runtime inst
   );
   const steps = action.runs.steps;
   const packages = steps.find((step) => step.name === 'Restore Bun package downloads');
-  assert.equal(packages.if, "runner.os != 'Windows'");
+  assert.equal(packages.if, "runner.os != 'Windows' && inputs.cache-packages == 'true'");
   const runtime = steps.find((step) => step.name === 'Restore verified Bun download');
   assert.equal(runtime.if, undefined);
   const install = steps.find(
     (step) => step.run === 'node relay/scripts/security-bun.mjs --install',
   );
   assert.equal(install.if, undefined);
+});
+
+test('workspace installs cannot restore or save another workspace’s partial package cache', () => {
+  const action = parse(readFileSync('.github/actions/setup-bun/action.yml', 'utf8'));
+  const cache = action.runs.steps.find((step) => step.name === 'Restore Bun package downloads');
+  const security = parse(readFileSync('.github/workflows/security.yml', 'utf8'));
+  const namespaces = new Map();
+  for (const job of [...Object.values(workflow.jobs), ...Object.values(security.jobs)]) {
+    const setup = job.steps?.find((step) => step.uses === './.github/actions/setup-bun');
+    const install = job.steps?.find((step) => step.run?.startsWith('bun install '));
+    if (!setup || !install) continue;
+    const workspace =
+      install['working-directory'] ?? job.defaults?.run?.['working-directory'] ?? '.';
+    const inputs = {
+      ...Object.fromEntries(
+        Object.entries(action.inputs ?? {}).map(([key, value]) => [key, value.default]),
+      ),
+      ...setup.with,
+    };
+    const expand = (value) =>
+      value.replace(/\$\{\{(.*?)\}\}/g, (_, expression) =>
+        String(
+          runInNewContext(expression.replace(/inputs\.([\w-]+)/g, 'inputs["$1"]'), {
+            inputs,
+            runner: { os: 'Linux', arch: 'X64' },
+            // Even identical lockfile contents must not allow cross-workspace fallback.
+            hashFiles: () => 'same-content-hash',
+          }),
+        ),
+      );
+    const namespace = {
+      key: expand(cache.with.key),
+      prefix: expand(cache.with['restore-keys']).trim(),
+    };
+    if (namespaces.has(workspace)) assert.deepEqual(namespace, namespaces.get(workspace));
+    namespaces.set(workspace, namespace);
+  }
+  assert.equal(namespaces.size, 3);
+  for (const [workspace, cacheKey] of namespaces) {
+    for (const [other, otherCache] of namespaces) {
+      if (workspace !== other)
+        assert.equal(
+          cacheKey.key.startsWith(otherCache.prefix),
+          false,
+          `${workspace} restores ${other}`,
+        );
+    }
+  }
+});
+
+test('host and container installs consume the checkout-relative cache Actions restores', () => {
+  const action = parse(readFileSync('.github/actions/setup-bun/action.yml', 'utf8'));
+  const cache = action.runs.steps.find((step) => step.name === 'Restore Bun package downloads');
+  const configure = action.runs.steps.find(
+    (step) => step.name === 'Use the restored package download directory',
+  );
+  const directory = mkdtempSync(join(tmpdir(), 'lacuna-cache-translation-'));
+  try {
+    for (const surface of ['host', 'container']) {
+      const workspace = join(directory, surface, 'workspace');
+      const runnerTemp = join(directory, surface, 'temp');
+      const hostTemp = join(directory, 'host', 'temp');
+      mkdirSync(workspace, { recursive: true });
+      const environment = join(directory, `${surface}-environment`);
+      // Only the cache diagnostic is stubbed: the action’s real shell exports the path.
+      const bin = join(directory, 'bin');
+      mkdirSync(bin, { recursive: true });
+      writeFileSync(
+        join(bin, 'bun'),
+        '#!/bin/sh\nprintf "%s\\n" "${BUN_INSTALL_CACHE_DIR:-default-cache}"\n',
+        { mode: 0o755 },
+      );
+      const result = spawnSync('bash', ['-e', '-c', configure.run], {
+        cwd: workspace,
+        env: {
+          ...process.env,
+          PATH: `${bin}:${process.env.PATH}`,
+          GITHUB_ENV: environment,
+          GITHUB_WORKSPACE: workspace,
+          RUNNER_TEMP: runnerTemp,
+        },
+        encoding: 'utf8',
+      });
+      assert.equal(result.status, 0, result.stderr);
+      const exported = readFileSync(environment, 'utf8')
+        .trim()
+        .replace(/^BUN_INSTALL_CACHE_DIR=/, '');
+      const restored = cache.with.path.replace(/\$\{\{(.*?)\}\}/g, (_, expression) =>
+        String(runInNewContext(expression, { runner: { temp: hostTemp } })),
+      );
+      assert.equal(
+        resolve(exported),
+        resolve(workspace, restored),
+        `${surface} must consume the restored cache`,
+      );
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('a retry cannot share or cancel newer pull-request validation even if the branch advances after inspection', () => {
@@ -597,6 +699,38 @@ test('Electron AI evidence survives native failures without widening execution s
   assert.ok(steps.indexOf(evidence) > nativeTest);
 });
 
+test('Windows upgrade scenarios retain both probes on isolated runners with the release package audit', () => {
+  const job = workflow.jobs['windows-installed-upgrade'];
+  assert.equal(job['runs-on'], 'windows-latest');
+  assert.ok(job.strategy?.matrix, 'Both upgrade scenarios require isolated matrix runners');
+  assert.equal(job.strategy['fail-fast'], false);
+  assert.deepEqual(job.strategy.matrix.probe, ['companion', 'release']);
+  const observed = [];
+  for (const probe of job.strategy.matrix.probe) {
+    const steps = job.steps.filter(
+      (step) => !step.if || runInNewContext(step.if, { matrix: { probe }, always: () => true }),
+    );
+    const commands = steps.map((step) => step.run ?? '').join('\n');
+    assert.match(commands, /bun run electron:build:win/);
+    assert.match(commands, /bun run perf:check:electron-package/);
+    const selected = ['windows-upgrade-companion.mjs', 'windows-release-upgrade.mjs'].filter(
+      (script) => commands.includes(script),
+    );
+    assert.equal(selected.length, 1, 'Each runner executes exactly one upgrade scenario');
+    observed.push(...selected);
+    const evidence = steps.find((step) => step.name === 'Preserve installed upgrade evidence');
+    assert.equal(evidence.if, 'always()');
+    assert.ok(
+      evidence.with.name.includes('${{ matrix.probe }}'),
+      'Evidence from both runners must survive',
+    );
+  }
+  assert.deepEqual(observed.sort(), [
+    'windows-release-upgrade.mjs',
+    'windows-upgrade-companion.mjs',
+  ]);
+});
+
 test('narrow web specs remain registered with the selected browser projects and typecheck', () => {
   const specs = readdirSync('tests/e2e').filter((file) => file.endsWith('.spec.ts'));
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-web-registration-'));
@@ -735,7 +869,7 @@ test('push scope still selects the full matrix regardless of changed web specs',
   }
 });
 
-test('web spec-only changes reduce heavy matrix instances from 33 to 18', () => {
+test('web spec-only changes reduce heavy matrix instances from 42 to 26', () => {
   const count = (scope) => {
     const outputs = Object.fromEntries(
       Object.entries(scope).map(([key, value]) => [key, String(value)]),
@@ -760,10 +894,10 @@ test('web spec-only changes reduce heavy matrix instances from 33 to 18', () => 
     }
     return { heavy, runners };
   };
-  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 33, runners: 37 });
+  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 42, runners: 46 });
   assert.deepEqual(count(classifyPaths(['tests/e2e/study-flip.spec.ts'])), {
-    heavy: 18,
-    runners: 25,
+    heavy: 26,
+    runners: 33,
   });
 });
 
