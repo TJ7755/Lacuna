@@ -648,6 +648,38 @@ test('Electron AI evidence survives native failures without widening execution s
   assert.ok(steps.indexOf(evidence) > nativeTest);
 });
 
+test('Windows upgrade scenarios retain both probes on isolated runners with the release package audit', () => {
+  const job = workflow.jobs['windows-installed-upgrade'];
+  assert.equal(job['runs-on'], 'windows-latest');
+  assert.ok(job.strategy?.matrix, 'Both upgrade scenarios require isolated matrix runners');
+  assert.equal(job.strategy['fail-fast'], false);
+  assert.deepEqual(job.strategy.matrix.probe, ['companion', 'release']);
+  const observed = [];
+  for (const probe of job.strategy.matrix.probe) {
+    const steps = job.steps.filter(
+      (step) => !step.if || runInNewContext(step.if, { matrix: { probe }, always: () => true }),
+    );
+    const commands = steps.map((step) => step.run ?? '').join('\n');
+    assert.match(commands, /bun run electron:build:win/);
+    assert.match(commands, /bun run perf:check:electron-package/);
+    const selected = ['windows-upgrade-companion.mjs', 'windows-release-upgrade.mjs'].filter(
+      (script) => commands.includes(script),
+    );
+    assert.equal(selected.length, 1, 'Each runner executes exactly one upgrade scenario');
+    observed.push(...selected);
+    const evidence = steps.find((step) => step.name === 'Preserve installed upgrade evidence');
+    assert.equal(evidence.if, 'always()');
+    assert.ok(
+      evidence.with.name.includes('${{ matrix.probe }}'),
+      'Evidence from both runners must survive',
+    );
+  }
+  assert.deepEqual(observed.sort(), [
+    'windows-release-upgrade.mjs',
+    'windows-upgrade-companion.mjs',
+  ]);
+});
+
 test('narrow web specs remain registered with the selected browser projects and typecheck', () => {
   const specs = readdirSync('tests/e2e').filter((file) => file.endsWith('.spec.ts'));
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-web-registration-'));
@@ -786,7 +818,7 @@ test('push scope still selects the full matrix regardless of changed web specs',
   }
 });
 
-test('web spec-only changes reduce heavy matrix instances from 37 to 22', () => {
+test('web spec-only changes reduce heavy matrix instances from 38 to 22', () => {
   const count = (scope) => {
     const outputs = Object.fromEntries(
       Object.entries(scope).map(([key, value]) => [key, String(value)]),
@@ -811,7 +843,7 @@ test('web spec-only changes reduce heavy matrix instances from 37 to 22', () => 
     }
     return { heavy, runners };
   };
-  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 37, runners: 41 });
+  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 38, runners: 42 });
   assert.deepEqual(count(classifyPaths(['tests/e2e/study-flip.spec.ts'])), {
     heavy: 22,
     runners: 29,
