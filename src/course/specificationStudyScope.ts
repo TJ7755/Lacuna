@@ -6,7 +6,7 @@ import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { courseLessonOrderPreference } from './lessonOrder';
 
 /** Qualified ids for an applicable point and its applicable descendants, in document order. */
-export function specificationPointBranch(course: Course, pointId: string): string[] {
+function specificationPointBranch(course: Course, pointId: string): string[] {
   const data = course.specificationData;
   const selection = course.specificationRef;
   if (!data || !selection || data.id !== selection.specificationId) return [];

@@ -8,7 +8,8 @@ import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { StudyExitHeader } from '../components/learn/StudyExitHeader';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import { StudyQuestionStep } from '../components/learn/StudyQuestionStep';
-import { prepareCourseSessionPool, resolveCourseSessionSelection } from './learn/sessionPool';
+import { resolveCourseSessionSelection } from './learn/sessionPool';
+import { prepareSpecificationSessionPool } from './learn/specificationSessionPool';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
 
 /** One point-scoped recall block and one fresh Question, without widening into the course. */
@@ -63,7 +64,13 @@ export function SpecificationStudyFlow({
       concepts: records.concepts ?? [],
     };
     const selection = resolveCourseSessionSelection(records.course, source, request);
-    const recall = prepareCourseSessionPool(records.course, source, selection, request, null);
+    const recall = prepareSpecificationSessionPool(
+      records.course,
+      source,
+      selection,
+      request,
+      null,
+    );
     const accessible = new Set(records.questionScopeConceptIds ?? []);
     const conceptIds = scope.conceptIds.filter((id) => accessible.has(id));
     const concepts = new Set(conceptIds);

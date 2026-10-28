@@ -5,11 +5,9 @@ import {
   paperSpecificationReference,
 } from '../../specifications/paperFixture.testFixtures';
 import { makeCard, makeCourse, makeExamDate, makeLesson } from '../../course/path.testFixtures';
-import {
-  resolveSpecificationStudyScope,
-  specificationPointBranch,
-} from '../../course/specificationStudyScope';
-import { prepareCourseSessionPool, resolveCourseSessionSelection } from './sessionPool';
+import { resolveSpecificationStudyScope } from '../../course/specificationStudyScope';
+import { resolveCourseSessionSelection } from './sessionPool';
+import { prepareSpecificationSessionPool as prepareCourseSessionPool } from './specificationSessionPool';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -69,12 +67,6 @@ it('resolves qualified descendants and deduplicates shared Concept Cards within 
   const input = fixture();
   input.concepts[0].specificationPointIds!.push('example-science:practical');
   const before = structuredClone(input);
-  expect(specificationPointBranch(input.course, input.pointId)).toEqual([
-    'example-science:topic',
-    'example-science:cells',
-    'example-science:enzymes',
-    'example-science:practical',
-  ]);
   expect(resolveSpecificationStudyScope({ ...input, assessmentId: 'paper' })).toEqual({
     title: 'A Topic',
     conceptIds: ['cells', 'practical'],

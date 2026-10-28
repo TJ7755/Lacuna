@@ -21,7 +21,6 @@ import {
 import { makeExamDateContext } from '../../fsrs/examDate';
 import { finalAssessmentForCourse, hydrateCourse } from '../../db/assessmentMigration';
 import type { SessionUnit } from '../../fsrs/session';
-import { resolveSpecificationStudyScope } from '../../course/specificationStudyScope';
 
 /** Global study keeps scheduling-unit ownership while honouring each Course's papers. */
 export async function loadGlobalSessionSource() {
@@ -84,10 +83,9 @@ export async function loadGlobalSessionSource() {
   return { schedulingUnits, sessionUnits, cards };
 }
 
-interface CoursePoolRequest {
+export interface CoursePoolRequest {
   standaloneSimple: boolean;
   requestScopeLessonIds: string[] | undefined;
-  requestSpecificationPointId?: string;
   practiceNodeKeyParam: string | null;
   requestAssessmentId: string | undefined;
   filterParams: CardFilter[];
@@ -127,7 +125,7 @@ export async function loadCourseSessionSource(courseId: string, standaloneSimple
   };
 }
 
-type CourseSessionSource = Awaited<ReturnType<typeof loadCourseSessionSource>>;
+export type CourseSessionSource = Awaited<ReturnType<typeof loadCourseSessionSource>>;
 
 export function resolveCourseSessionSelection(
   course: Course,
@@ -172,8 +170,6 @@ export function prepareCourseSessionPool(
     filterParams,
     examPractice,
     catchUpPractice,
-    requestSpecificationPointId,
-    requestAssessmentId,
   }: CoursePoolRequest,
   activeRevisionPlan: RevisionPlan | null,
 ) {
@@ -254,29 +250,7 @@ export function prepareCourseSessionPool(
           : examPractice
             ? examPracticePool(fullScope, course, examDateContext)
             : eligiblePracticePool(fullScope, course, examDateContext);
-  if (requestSpecificationPointId === undefined)
-    return { cards, examDateContext, scopeTitle: undefined };
-  const scoped = resolveSpecificationStudyScope({
-    course,
-    pointId: requestSpecificationPointId,
-    cards: allCards,
-    concepts,
-    lessons: courseLessons,
-    assessments: examDates,
-    links: courseLinks,
-    assessmentId: requestAssessmentId,
-  });
-  const ids = new Set(scoped?.cardIds ?? []);
-  const extensionIds = new Set(
-    courseLessons.filter((lesson) => lesson.isExtension).map((lesson) => lesson.id),
-  );
-  return {
-    cards: cards.filter(
-      (card) => ids.has(card.id) && !extensionIds.has(card.primaryLessonId ?? ''),
-    ),
-    examDateContext,
-    scopeTitle: scoped?.title,
-  };
+  return { cards, examDateContext };
 }
 
 export async function loadLessonSessionSource(courseId: string, lessonId: string) {

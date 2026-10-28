@@ -995,13 +995,16 @@ export function useLearnSession({
             )?.day,
           );
         }
-        const prepared = prepareCourseSessionPool(
-          course,
-          source,
-          selection,
-          poolRequest,
-          activeRevisionPlan,
-        );
+        const prepared: ReturnType<typeof prepareCourseSessionPool> & { scopeTitle?: string } =
+          requestSpecificationPointId === undefined
+            ? prepareCourseSessionPool(course, source, selection, poolRequest, activeRevisionPlan)
+            : (await import('./specificationSessionPool')).prepareSpecificationSessionPool(
+                course,
+                source,
+                selection,
+                { ...poolRequest, requestSpecificationPointId },
+                activeRevisionPlan,
+              );
         cards = prepared.cards;
         const { examDateContext } = prepared;
         const schedulingUnit = (await getSchedulingUnit(course.id)) ?? course;

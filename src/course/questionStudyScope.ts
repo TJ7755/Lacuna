@@ -24,42 +24,37 @@ export function questionStudyScope(input: {
   practiceNodes: PracticeNode[];
   concepts: Concept[];
 }): string[] {
-  if (input.course.archived) return [];
+  const { course, lessons, cards, concepts } = input;
+  if (course.archived) return [];
   const practice = currentAssessmentPracticeContext(input);
-  const prior = earlierCourseLessonIds(
-    input.course,
-    input.lessons,
-    input.assessments,
-    input.practiceNodes,
-  );
+  const prior = earlierCourseLessonIds(course, lessons, input.assessments, input.practiceNodes);
   const priorReached = new Set([...prior].filter((id) => practice.reachedLessonIds.has(id)));
   const known = new Set(
-    [
-      ...practice.scope,
-      ...lessonCardMembershipForLessons(priorReached, input.cards, input.links),
-    ].map((card) => card.conceptId),
+    [...practice.scope, ...lessonCardMembershipForLessons(priorReached, cards, input.links)].map(
+      (card) => card.conceptId,
+    ),
   );
-  if (input.course.unlockMode === 'open') {
-    const cardConcepts = new Set(input.cards.map((card) => card.conceptId));
+  if (course.unlockMode === 'open') {
+    const cardConcepts = new Set(cards.map((card) => card.conceptId));
     const lessonMemberIds = new Set(
       lessonCardMembershipForLessons(
-        new Set(input.lessons.map((lesson) => lesson.id)),
-        input.cards,
+        new Set(lessons.map((lesson) => lesson.id)),
+        cards,
         input.links,
       ).map((card) => card.id),
     );
-    for (const card of input.cards) if (!lessonMemberIds.has(card.id)) known.add(card.conceptId);
-    for (const concept of input.concepts) if (!cardConcepts.has(concept.id)) known.add(concept.id);
+    for (const card of cards) if (!lessonMemberIds.has(card.id)) known.add(card.conceptId);
+    for (const concept of concepts) if (!cardConcepts.has(concept.id)) known.add(concept.id);
   }
-  const data = input.course.specificationData;
+  const data = course.specificationData;
   const points = data
     ? new Set(
-        pointsForSelection(data, input.course.specificationRef ?? {}).map(
+        pointsForSelection(data, course.specificationRef ?? {}).map(
           (point) => `${data.id}:${point.id}`,
         ),
       )
     : undefined;
-  return input.concepts
+  return concepts
     .filter(
       (concept) =>
         concept.scope === 'course' &&
