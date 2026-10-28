@@ -351,7 +351,7 @@ describe('CourseStudyFlow', () => {
     await screen.findByTestId('learn-request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
-    expect(await screen.findByRole('heading', { name: 'Practice', level: 2 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Practice', level: 1 })).toBeInTheDocument();
     expect(screen.queryByText('Up next')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^Continue$/ }));
 
@@ -387,7 +387,7 @@ describe('CourseStudyFlow', () => {
     expect(request()).toMatchObject({ kind: 'lesson', lessonId: 'lesson-2' });
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
     expect(
-      await screen.findByRole('heading', { name: 'Third lesson', level: 2 }),
+      await screen.findByRole('heading', { name: 'Third lesson', level: 1 }),
     ).toBeInTheDocument();
   });
 
@@ -514,7 +514,7 @@ describe('CourseStudyFlow', () => {
     expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
     mockFlows[1] = flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Next lesson' }, 1);
     act(() => mockFlowListeners.forEach((listener) => listener()));
-    expect(await screen.findByText('1 / 2 marks · Self-marked')).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: '1 of 2 marks' })).toBeInTheDocument();
     expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
     await waitFor(() => expect(request()).toMatchObject({ kind: 'lesson', lessonId: 'lesson-2' }));
@@ -569,8 +569,7 @@ describe('CourseStudyFlow', () => {
     };
     act(() => mockFlowListeners.forEach((listener) => listener()));
     const panel = await screen.findByRole('region', { name: 'Progress and priorities' });
-    expect(panel).toHaveTextContent('FSRS progress');
-    expect(screen.getByText('Due now').parentElement).toHaveTextContent('3');
+    expect(panel).toHaveTextContent('3cards due');
   });
 
   it('resumes the same step when the embedded session is incomplete', async () => {

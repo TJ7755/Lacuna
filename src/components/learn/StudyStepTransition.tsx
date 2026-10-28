@@ -10,12 +10,17 @@ import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { useUnclaimedFocus } from '../../hooks/useUnclaimedFocus';
 import './StudyStepTransition.css';
 
+/** Beyond this many answers a segment per answer stops reading as a sequence. */
+const MAX_RESULT_SEGMENTS = 24;
+
 interface StudyStepTransitionProps {
   completedLabel: string;
   nextLabel?: string;
   summary: StudyStepSummary;
   progress?: StudyProgress;
   nextReason?: string;
+  /** The topic the next step practises, highlighted among the priorities. */
+  nextConceptId?: string;
   canReviewDueCards: boolean;
   canReviewEarlierMaterial?: boolean;
   onReviewEarlierMaterial?: () => void;
@@ -37,13 +42,17 @@ function formatPlanDay(day: string): string {
   });
 }
 
-/** The hand-off names the next step and makes its supporting progress evidence visible. */
+/**
+ * The hand-off names the next step beside the course evidence behind it. The step column is
+ * pinned in place so it never moves when the evidence panel changes shape.
+ */
 export function StudyStepTransition({
   completedLabel,
   nextLabel,
   summary,
   progress,
   nextReason,
+  nextConceptId,
   canReviewDueCards,
   canReviewEarlierMaterial,
   onReviewEarlierMaterial,
@@ -64,14 +73,26 @@ export function StudyStepTransition({
   const actionsRef = useRef<HTMLDivElement>(null);
   useUnclaimedFocus(actionsRef, !planningNextStep);
 
-  const hasNext = !incomplete && Boolean(nextLabel) && !cardSummary?.revision?.nextWindowDay;
-  const destination = cardSummary?.revision?.nextWindowDay
-    ? `Next revision window: ${formatPlanDay(cardSummary?.revision.nextWindowDay)}`
-    : incomplete
-      ? 'Resume when ready'
+  const nextWindowDay = cardSummary?.revision?.nextWindowDay;
+  const heading = incomplete
+    ? completedLabel
+    : nextWindowDay
+      ? `Next revision window: ${formatPlanDay(nextWindowDay)}`
       : planningNextStep
         ? undefined
         : (nextLabel ?? 'Nothing else is ready right now');
+
+  const results = cardSummary
+    ? cardSummary.events.map((event) => event.correct)
+    : questionSummary
+      ? Array.from(
+          { length: questionSummary.score.total.available },
+          (_, index) => index < questionSummary.score.total.awarded,
+        )
+      : [];
+  const resultLabel = cardSummary
+    ? `${results.filter(Boolean).length} of ${results.length} recalled`
+    : `${questionSummary?.score.total.awarded} of ${results.length} marks`;
 
   return (
     <div
@@ -87,120 +108,125 @@ export function StudyStepTransition({
         </div>
       </header>
       <main className="study-transition-main" aria-label="Study progress">
-        <div className={`study-transition-completed ${hasNext ? 'has-next' : ''}`}>
-          <span
-            className="study-transition-tick"
-            role="img"
-            aria-label={incomplete ? 'Paused' : 'Completed'}
-          >
-            {incomplete ? (
-              <ClockIcon width={24} height={24} />
-            ) : (
-              <CheckIcon width={24} height={24} />
-            )}
-          </span>
-          <div className="study-transition-title">
-            {incomplete && <p className="mb-2 text-sm text-ink-soft">Step paused</p>}
-            <h1>{completedLabel}</h1>
-          </div>
-        </div>
-        <div className="study-transition-details">
-          {cardSummary && cardSummary.events.length > 0 && (
-            <p className="text-sm text-ink-soft">
-              {cardSummary.events.length} reviews ·{' '}
-              {cardSummary.events.filter((event) => event.correct).length} recalled
-            </p>
+        <div className="min-w-0">
+          <p className="study-transition-done">
+            <span role="img" aria-label={incomplete ? 'Paused' : 'Completed'}>
+              {incomplete ? (
+                <ClockIcon width={18} height={18} />
+              ) : (
+                <CheckIcon width={18} height={18} />
+              )}
+            </span>
+            <span className="truncate">{incomplete ? 'Step paused' : completedLabel}</span>
+          </p>
+          <ResultStrip results={results} label={resultLabel} />
+
+          <h1 className="study-transition-heading">
+            {heading ?? <span aria-hidden="true">&nbsp;</span>}
+          </h1>
+          {nextReason && !incomplete && !planningNextStep && (
+            <p className="study-transition-reason">{nextReason}</p>
           )}
-          {questionSummary && (
-            <p className="text-sm text-ink-soft">
-              {questionSummary.score.total.awarded} / {questionSummary.score.total.available} marks
-              · {questionSummary.marking}
-              {questionSummary.score.status === 'provisional' ? ' · provisional' : ''}
-            </p>
-          )}
+
           {cardSummary?.revision && (
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <RevisionFact label="Covered" value={cardSummary?.revision.cardsCovered} />
-              <RevisionFact label="Improved" value={cardSummary?.revision.cardsImproved} />
-              <RevisionFact label="Parked" value={cardSummary?.revision.cardsParked} />
-              <RevisionFact label="Not reached" value={cardSummary?.revision.workNotReached} />
+            <div className="study-transition-revision mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <RevisionFact label="Covered" value={cardSummary.revision.cardsCovered} />
+              <RevisionFact label="Improved" value={cardSummary.revision.cardsImproved} />
+              <RevisionFact label="Parked" value={cardSummary.revision.cardsParked} />
+              <RevisionFact label="Not reached" value={cardSummary.revision.workNotReached} />
             </div>
           )}
-
           {cardSummary?.revision?.replanExplanation && (
-            <p className="mt-4 text-sm text-ink-soft">
-              Plan updated: {cardSummary?.revision.replanExplanation}.
+            <p className="mt-4 text-base text-ink-soft">
+              Plan updated: {cardSummary.revision.replanExplanation}.
             </p>
           )}
-
           {cardSummary?.revision?.predictedReadiness !== undefined &&
-            cardSummary?.revision.readinessUncertainty !== undefined && (
-              <p className="mt-4 text-sm text-ink-soft">
-                {Math.round(cardSummary?.revision.predictedReadiness * 100)}% predicted readiness ·
-                ±{Math.round(cardSummary?.revision.readinessUncertainty * 100)}% uncertainty
+            cardSummary.revision.readinessUncertainty !== undefined && (
+              <p className="mt-4 text-base text-ink-soft">
+                {Math.round(cardSummary.revision.predictedReadiness * 100)}% predicted readiness · ±
+                {Math.round(cardSummary.revision.readinessUncertainty * 100)}% uncertainty
               </p>
             )}
-        </div>
-        {destination && (
-          <div className={`study-transition-destination ${hasNext ? 'has-next' : ''}`}>
-            {hasNext && (
-              <span className="study-transition-node" aria-hidden="true">
-                <TransitionArrow />
-              </span>
-            )}
-            <h2>{destination}</h2>
+
+          <div ref={actionsRef} className="study-transition-actions">
+            <div className="flex flex-wrap items-center gap-2">
+              {breakPending && (
+                <Button variant="primary" size="lg" onClick={onTakeBreak}>
+                  Take a break
+                </Button>
+              )}
+              {(incomplete || nextLabel || planningNextStep) && (
+                <Button
+                  variant={breakPending ? 'secondary' : 'primary'}
+                  size="lg"
+                  onClick={onContinue}
+                  disabled={planningNextStep}
+                  className="study-transition-continue"
+                >
+                  {planningNextStep
+                    ? 'Planning next step…'
+                    : breakPending
+                      ? 'Continue without break'
+                      : incomplete
+                        ? 'Resume'
+                        : 'Continue'}
+                  <span className="study-transition-arrow" aria-hidden="true">
+                    <TransitionArrow />
+                  </span>
+                </Button>
+              )}
+            </div>
+            <div className="study-transition-secondary">
+              {breakPending && (
+                <Button variant="ghost" size="md" onClick={onDeferBreak}>
+                  Dismiss break
+                </Button>
+              )}
+              {canReviewEarlierMaterial && (
+                <Button variant="ghost" size="md" onClick={onReviewEarlierMaterial}>
+                  Review earlier material
+                </Button>
+              )}
+              {canReviewDueCards && (
+                <Button variant="ghost" size="md" onClick={onReviewDueCards}>
+                  Review due cards
+                </Button>
+              )}
+              <Button variant="ghost" size="md" onClick={onFinish}>
+                Finish for now
+              </Button>
+            </div>
           </div>
-        )}
-        {nextReason && !incomplete && (
-          <p className="study-transition-reason text-sm text-ink-soft">{nextReason}</p>
-        )}
-        {progress && <StudyProgressPanel progress={progress} />}
-        <div ref={actionsRef} className="study-transition-actions">
-          {breakPending && (
-            <Button variant="primary" size="lg" onClick={onTakeBreak}>
-              Take a break
-            </Button>
-          )}
-          {(incomplete || nextLabel || planningNextStep) && (
-            <Button
-              variant={breakPending ? 'secondary' : 'primary'}
-              size="lg"
-              onClick={onContinue}
-              disabled={planningNextStep}
-              className="study-transition-continue"
-            >
-              {planningNextStep
-                ? 'Planning next step…'
-                : breakPending
-                  ? 'Continue without break'
-                  : incomplete
-                    ? 'Resume'
-                    : 'Continue'}
-              <span className="study-transition-arrow" aria-hidden="true">
-                <TransitionArrow />
-              </span>
-            </Button>
-          )}
-          {breakPending && (
-            <Button variant="ghost" size="lg" onClick={onDeferBreak}>
-              Dismiss break
-            </Button>
-          )}
-          {canReviewEarlierMaterial && (
-            <Button variant="ghost" size="lg" onClick={onReviewEarlierMaterial}>
-              Review earlier material
-            </Button>
-          )}
-          {canReviewDueCards && (
-            <Button variant="ghost" size="lg" onClick={onReviewDueCards}>
-              Review due cards
-            </Button>
-          )}
-          <Button variant="ghost" size="lg" onClick={onFinish}>
-            Finish for now
-          </Button>
         </div>
+        {progress && (
+          <StudyProgressPanel progress={progress} nextConceptId={nextConceptId} motion={m} />
+        )}
       </main>
+    </div>
+  );
+}
+
+/** One segment per answer, in answer order; a single proportion once that would crowd. */
+function ResultStrip({ results, label }: { results: boolean[]; label: string }) {
+  if (results.length === 0) return <div className="study-transition-strip" />;
+  const hits = results.filter(Boolean).length;
+  const bars =
+    results.length > MAX_RESULT_SEGMENTS
+      ? [
+          { hit: true, grow: hits },
+          { hit: false, grow: results.length - hits },
+        ].filter((bar) => bar.grow > 0)
+      : results.map((hit) => ({ hit, grow: 1 }));
+  return (
+    <div className="study-transition-strip" role="img" aria-label={label}>
+      {bars.map((bar, index) => (
+        <span
+          key={index}
+          className={bar.hit ? 'bg-positive' : 'bg-line-strong'}
+          style={{ flexGrow: bar.grow, '--segment-index': index } as CSSProperties}
+        />
+      ))}
     </div>
   );
 }

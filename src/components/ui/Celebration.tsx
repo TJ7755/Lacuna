@@ -59,11 +59,10 @@ export function Burst({
   count?: number;
   spread?: number;
 }) {
-  const pieces = useMemo(() => burstPieces(count, spread, String(trigger).length + count), [
-    count,
-    spread,
-    trigger,
-  ]);
+  const pieces = useMemo(
+    () => burstPieces(count, spread, String(trigger).length + count),
+    [count, spread, trigger],
+  );
   if (multiplier === 0) return null;
   return (
     <span
@@ -109,6 +108,7 @@ export function CountUp({
   from = 0,
   multiplier,
   duration = 0.9,
+  delay = 0,
   format = (n: number) => String(Math.round(n)),
   suffix = '',
 }: {
@@ -116,6 +116,8 @@ export function CountUp({
   from?: number;
   multiplier: number;
   duration?: number;
+  /** Seconds before counting starts, scaled like the duration. */
+  delay?: number;
   format?: (n: number) => string;
   /** Text after the figure, such as "%", kept with it for assistive technology. */
   suffix?: string;
@@ -129,10 +131,11 @@ export function CountUp({
     }
     const controls = animate(motionValue, value, {
       duration: duration * multiplier,
+      delay: delay * multiplier,
       ease: MOTION_EASING.emphasised,
     });
     return () => controls.stop();
-  }, [value, multiplier, duration, motionValue]);
+  }, [value, multiplier, duration, delay, motionValue]);
   // Screen readers get the final figure, not every intermediate frame.
   return (
     <>
