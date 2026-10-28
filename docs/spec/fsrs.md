@@ -61,7 +61,18 @@ learner-declared school lesson), and not started. Exposure is never counted as r
 Predicted recall uses the Course objective with no further reviews; unreviewed Cards count as 0.
 A selected assessment is measured at its own date, as in the Study hand-off. The whole course
 measures each Card at its applicable paper, as the course summary does, so it has no single date
-and the exam-day chart appears only when every counted Card shares one. Passed, undated and empty
+and the exam-day chart appears only when every counted Card shares one. When counted Cards target
+different dates, a per-paper table groups them by that date instead, with Cards that have no
+upcoming paper measured at the maintenance horizon; its rows' card-weighted mean equals the
+headline, and choosing a paper selects that assessment and its chart. Passed, undated and empty
 scopes show no forecast. Lesson rows partition the same pool by primary lesson, with an "Other
 cards" row for Cards linked in from elsewhere or without a lesson, and use the same date, so their
-card-weighted mean equals the headline; a lesson without counted Cards has no figure. Question evidence remains separate and course-wide.
+card-weighted mean equals the headline; a lesson without counted Cards has no figure.
+
+Question evidence stays separate from recall and never changes it. For a selected assessment,
+question performance counts only Questions linked to one of its covered lessons, and their
+attempts. Exam-question evidence reads the per-Concept diagnostic aggregates that choose practice
+([questionEvidence](../../src/course/questionEvidence.ts)), over the course topics of the counted
+Cards for an assessment or every course topic for the whole course. Knowledge, application and each technique
+are separate counts of secure and gap answers, with the topics whose latest answer showed a gap;
+the aggregates' exclusions apply, and a topic without marked answers is not a gap.

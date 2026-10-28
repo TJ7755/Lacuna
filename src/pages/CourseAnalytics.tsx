@@ -4,10 +4,11 @@ import { MissingRecord } from '../components/course/MissingRecord';
 
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useCourseReviewHistory } from '../state/useCourseData';
 import { useCourseProgressRecords } from '../state/useCourseProgressRecords';
+import { useQuestionEvidence } from '../state/useQuestionEvidence';
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
 import { QuestionAnalyticsSection } from '../components/questions/QuestionAnalyticsSection';
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
@@ -18,7 +19,14 @@ import { KpiRow } from '../components/analytics/KpiRow';
 import { CourseForecastCard } from '../components/analytics/CourseForecastCard';
 import { ProgressOverview } from '../components/analytics/ProgressOverview';
 import { reviewVolume, studyTimeSeries, totalStudyMinutes } from '../components/analytics/prepare';
-import { buildCourseProgress, selectableAssessments } from '../course/courseProgress';
+import { PaperForecastCard } from '../components/analytics/PaperForecastCard';
+import { QuestionEvidenceCard } from '../components/analytics/QuestionEvidenceCard';
+import {
+  buildCourseProgress,
+  scopeQuestions,
+  selectableAssessments,
+} from '../course/courseProgress';
+import { progressHeading } from '../fsrs/objective';
 
 export function CourseAnalytics() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -73,11 +81,14 @@ export function CourseAnalytics() {
       minutes: totalStudyMinutes(studyTimeSeries(records.cards, 30, now, reviewHistory)),
     };
   }, [records, reviewHistory]);
-  const questionAnalytics = useMemo(
-    () =>
-      questionData ? buildQuestionAnalytics(questionData.questions, questionData.attempts) : null,
-    [questionData],
-  );
+  // Lesson-linked questions and exam-question evidence both follow the selected scope.
+  const questionAnalytics = useMemo(() => {
+    if (!questionData || !progress) return null;
+    const scoped = scopeQuestions(progress.report, questionData.questions, questionData.attempts);
+    return buildQuestionAnalytics(scoped.questions, scoped.attempts);
+  }, [questionData, progress]);
+  const questionEvidence = useQuestionEvidence(courseId, progress?.report.conceptIds);
+  const scopeSelect = useRef<HTMLSelectElement>(null);
 
   if (
     records === undefined ||
@@ -101,6 +112,12 @@ export function CourseAnalytics() {
   }
 
   const { report } = progress;
+  const selectScope = (id: string | undefined) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set('assessment', id);
+    else next.delete('assessment');
+    setSearchParams(next, { replace: true });
+  };
   // The exam-day chart draws one date. A whole course whose cards target different
   // papers has no single date, so only the overview's per-paper figure applies.
   const chartDate =
@@ -124,16 +141,12 @@ export function CourseAnalytics() {
           report={report}
           assessments={assessments}
           now={progress.now}
-          onScopeChange={(id) => {
-            const next = new URLSearchParams(searchParams);
-            if (id) next.set('assessment', id);
-            else next.delete('assessment');
-            setSearchParams(next, { replace: true });
-          }}
+          onScopeChange={selectScope}
+          scopeSelectRef={scopeSelect}
         />
       </Rise>
 
-      {chartDate !== undefined && (
+      {chartDate !== undefined ? (
         <Rise index={2}>
           <CourseForecastCard
             course={{ ...course, examDate: chartDate }}
@@ -143,13 +156,35 @@ export function CourseAnalytics() {
             multiplier={m}
           />
         </Rise>
+      ) : (
+        report.forecast.kind === 'applicable' &&
+        report.forecast.papers.length > 1 && (
+          <Rise index={2}>
+            <PaperForecastCard
+              papers={report.forecast.papers}
+              objectiveLabel={progressHeading(course)}
+              timeZone={report.timeZone}
+              onSelect={(id) => {
+                selectScope(id);
+                // The paper table leaves with the whole-course scope; keep focus on the scope.
+                scopeSelect.current?.focus();
+              }}
+            />
+          </Rise>
+        )
       )}
 
-      <Rise index={3}>
+      {questionEvidence && (
+        <Rise index={3}>
+          <QuestionEvidenceCard evidence={questionEvidence} />
+        </Rise>
+      )}
+
+      <Rise index={4}>
         <QuestionAnalyticsSection analytics={questionAnalytics} />
       </Rise>
 
-      <Rise index={4} className="flex flex-col gap-4 md:gap-6">
+      <Rise index={5} className="flex flex-col gap-4 md:gap-6">
         <h2 className="font-display text-2xl text-ink">Cards</h2>
         {activity && (
           <KpiRow

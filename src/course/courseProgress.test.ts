@@ -2,7 +2,12 @@ import { expect, it } from 'vitest';
 import type { CourseAssessment } from '../db/types';
 import { MS_PER_DAY } from '../fsrs/params';
 import { computeCourseSummaries } from '../state/courseSummaries';
-import { buildCourseProgress, OTHER_CARDS_ROW, selectableAssessments } from './courseProgress';
+import {
+  buildCourseProgress,
+  OTHER_CARDS_ROW,
+  scopeQuestions,
+  selectableAssessments,
+} from './courseProgress';
 import { makeCard, makeCourse, makeExamDate, makeLesson } from './path.testFixtures';
 import { buildStudyProgress } from './studyProgress';
 
@@ -120,6 +125,15 @@ it('measures cards for an earlier paper at that paper rather than at the final d
   // Only a single shared date can be drawn as one exam-day line.
   expect(perPaper.sharedDate).toBeUndefined();
   expect(finalOnly.sharedDate).toBe(input.course.examDate);
+
+  // Mixed dates are reported one paper at a time; the rows add up to the headline.
+  expect(perPaper.papers.map((paper) => [paper.date, paper.assessments, paper.cardCount])).toEqual([
+    [NOW + 3 * MS_PER_DAY, [{ id: 'near', name: 'Topic test' }], 3],
+    [input.course.examDate, [{ id: 'final', name: 'Final paper' }], 2],
+  ]);
+  const weighted =
+    perPaper.papers.reduce((sum, paper) => sum + paper.value * paper.cardCount, 0) / 5;
+  expect(weighted).toBeCloseTo(perPaper.value, 12);
 });
 
 it('scopes the pool, lessons and forecast to one selected assessment', () => {
@@ -132,6 +146,12 @@ it('scopes the pool, lessons and forecast to one selected assessment', () => {
   expect(report.excluded).toEqual({ extension: 0, unavailable: 0 });
   expect(report.study).toEqual({ reviewed: 2, taughtNotReviewed: 1, notStarted: 0 });
   expect(report.lessons.map((lesson) => lesson.lessonId)).toEqual(['a']);
+  expect(report.lessonIds).toEqual(['a']);
+  expect(report.conceptIds.sort()).toEqual([
+    'concept-a-due',
+    'concept-a-exposed',
+    'concept-a-reviewed',
+  ]);
   expect(report.forecast).toMatchObject({ kind: 'assessment', daysRemaining: 3 });
 
   const handOff = buildStudyProgress({
@@ -199,4 +219,27 @@ it('gives cards without a listed lesson their own row so the rows add up to the 
     report.lessons.reduce((sum, lesson) => sum + (lesson.value ?? 0) * lesson.cardCount, 0) /
     report.cardCount;
   expect(weighted).toBeCloseTo(report.forecast.value, 12);
+});
+
+it('keeps questions linked to a covered lesson when an assessment is selected', () => {
+  const input = fixture();
+  const questions = [
+    { id: 'q-a', primaryLessonId: 'a', additionalLessonIds: [] },
+    { id: 'q-b-linked-a', primaryLessonId: 'b', additionalLessonIds: ['a'] },
+    { id: 'q-b', primaryLessonId: 'b', additionalLessonIds: [] },
+    { id: 'q-none', primaryLessonId: null, additionalLessonIds: [] },
+  ];
+  const attempts = questions.map((question) => ({ questionId: question.id }));
+
+  const whole = scopeQuestions(buildCourseProgress(input), questions, attempts);
+  expect(whole.questions).toHaveLength(4);
+  expect(whole.attempts).toHaveLength(4);
+
+  const near = scopeQuestions(
+    buildCourseProgress({ ...input, assessmentId: 'near' }),
+    questions,
+    attempts,
+  );
+  expect(near.questions.map((question) => question.id)).toEqual(['q-a', 'q-b-linked-a']);
+  expect(near.attempts.map((attempt) => attempt.questionId)).toEqual(['q-a', 'q-b-linked-a']);
 });

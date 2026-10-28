@@ -27,6 +27,32 @@ vi.mock('../state/useCourseProgressRecords', () => ({
   useCourseProgressRecords: () => mocks.records,
 }));
 
+vi.mock('../state/useQuestionEvidence', async () => {
+  const { buildQuestionEvidence } = await import('../course/questionEvidence');
+  // The Concept practice read is the database's; the page's scoping and aggregation are real.
+  return {
+    useQuestionEvidence: (_courseId: string, conceptIds: string[] | undefined) =>
+      conceptIds &&
+      buildQuestionEvidence(
+        [
+          {
+            conceptId: 'concept-a1',
+            diagnosticEvidence: [
+              {
+                categoryId: 'knowledge',
+                demonstratedCount: 1,
+                gapCount: 1,
+                lastObservedAt: 1,
+                latestOutcome: 'gap',
+              },
+            ],
+          },
+        ],
+        conceptIds,
+      ),
+  };
+});
+
 vi.mock('../components/learn/StudySheetContext', () => ({
   useStudySheet: () => ({ openStudySheet: mocks.openStudySheet }),
 }));
@@ -210,7 +236,7 @@ describe('CourseAnalytics', () => {
     expect(screen.getByText('Card analytics charts')).toBeInTheDocument();
   });
 
-  it('scopes the overview, forecast chart and next action to a selected assessment', () => {
+  it('scopes the overview, forecast, question evidence and next action to a selected assessment', async () => {
     mocks.questionData = { questions: [], conceptSets: [], concepts: [], attempts: [] };
     render(
       <MemoryRouter initialEntries={['/course/course-1/analytics']}>
@@ -226,12 +252,24 @@ describe('CourseAnalytics', () => {
     const whole = screen.getByRole('region', { name: 'Whole course' });
     expect(whole).toHaveTextContent('2 of 3');
     expect(whole).toHaveTextContent('Each card is measured at its next test or paper.');
-    // Cards target two dates, so no single exam-day line is drawn.
+    // Cards target two dates, so no single exam-day line is drawn; each paper gets a row.
     expect(screen.queryByText('Exam-day forecast')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Revise for/ })).not.toBeInTheDocument();
+    const papers = screen.getByRole('region', { name: 'Forecast by paper' });
+    expect(within(papers).getAllByRole('row')).toHaveLength(3);
+    expect(papers).toHaveTextContent('3 cards in total, matching the headline.');
 
-    fireEvent.change(screen.getByLabelText('Show'), { target: { value: 'near' } });
+    fireEvent.click(within(papers).getByRole('button', { name: 'Show Topic test' }));
     const scoped = screen.getByRole('region', { name: 'Topic test' });
+    expect(screen.queryByRole('region', { name: 'Forecast by paper' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Show')).toHaveFocus();
+    const evidence = await screen.findByRole('table', {
+      name: 'Exam-question evidence by category',
+    });
+    expect(within(evidence).getByRole('row', { name: 'Knowledge 1 1 1' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Exam-question evidence' })).toHaveTextContent(
+      '1 of 1 topic has marked answers.',
+    );
     expect(scoped).toHaveTextContent('1 of 2');
     expect(scoped).toHaveTextContent('(in 3 days) if you stop reviewing now.');
     expect(screen.getByText('Exam-day forecast')).toBeInTheDocument();
