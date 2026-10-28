@@ -332,6 +332,10 @@ describe('CoursePath View mode', () => {
     expect(
       screen.getByRole('link', { name: 'Authoring is locked for shared courses' }),
     ).toHaveAttribute('title', 'Authoring is locked for shared courses');
+    expectAppDestination(
+      screen.getByRole('link', { name: 'Authoring is locked for shared courses' }),
+      '/course/course-1/settings',
+    );
     expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();

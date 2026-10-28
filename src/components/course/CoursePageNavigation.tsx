@@ -60,7 +60,7 @@ export function CoursePageNavigation({
           to={`/course/${course.id}/settings`}
           aria-label={AUTHORING_LOCKED}
           title={AUTHORING_LOCKED}
-          className="hidden size-9 place-items-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink sm:grid"
+          className="hidden size-11 place-items-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink sm:grid"
         >
           <LockIcon width={18} height={18} />
         </Link>
