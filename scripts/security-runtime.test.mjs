@@ -48,7 +48,14 @@ test('the Bun security guard rejects changed downloads and unreviewed revisions'
     () => verifyArchive(Buffer.from('changed download'), expected),
     /checksum mismatch/,
   );
-  assert.equal(action.runs.steps.at(-1).run, 'node relay/scripts/security-bun.mjs --install');
+  const verifiedInstall = action.runs.steps.findIndex(
+    (step) => step.run === 'node relay/scripts/security-bun.mjs --install',
+  );
+  assert.ok(verifiedInstall >= 0, 'The verified runtime installation is mandatory');
+  for (const [index, step] of action.runs.steps.entries()) {
+    if (/\bbun\s/.test(step.run ?? ''))
+      assert.ok(index > verifiedInstall, 'Bun commands must run only after runtime verification');
+  }
 });
 
 test('every Bun workflow uses the security guard and manifests share its pin', () => {
