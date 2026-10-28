@@ -23,8 +23,8 @@ vi.mock('../state/useCourseData', () => ({
   useCourseReviewHistory: () => [],
 }));
 
-vi.mock('../state/useCourseStudyFlowRecords', () => ({
-  useCoursePathRecords: () => mocks.records,
+vi.mock('../state/useCourseProgressRecords', () => ({
+  useCourseProgressRecords: () => mocks.records,
 }));
 
 vi.mock('../components/learn/StudySheetContext', () => ({
@@ -158,7 +158,6 @@ function records(course: Course) {
     ],
     links: [],
     exposures: [],
-    completions: [],
     concepts: [],
   };
 }

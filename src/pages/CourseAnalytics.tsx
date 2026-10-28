@@ -7,7 +7,7 @@ import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useCourseReviewHistory } from '../state/useCourseData';
-import { useCoursePathRecords } from '../state/useCourseStudyFlowRecords';
+import { useCourseProgressRecords } from '../state/useCourseProgressRecords';
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
 import { QuestionAnalyticsSection } from '../components/questions/QuestionAnalyticsSection';
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
@@ -28,7 +28,7 @@ export function CourseAnalytics() {
 
   // Null-sentinel to distinguish "loading" from "not found", matching CoursePath
   // and CourseSettings.
-  const records = useCoursePathRecords(courseId);
+  const records = useCourseProgressRecords(courseId);
   const course = records?.course;
   const reviewHistory = useCourseReviewHistory(courseId);
   const questionData = useCourseQuestionData(courseId);
@@ -56,7 +56,7 @@ export function CourseAnalytics() {
         assessments: records.assessments,
         links: records.links,
         exposures: records.exposures,
-        concepts: records.concepts ?? [],
+        concepts: records.concepts,
         assessmentId,
         now,
       }),

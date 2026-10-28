@@ -4,7 +4,7 @@ import type { CourseProgressReport } from '../../course/courseProgress';
 import type { Course, CourseAssessment } from '../../db/types';
 import { progressHeading } from '../../fsrs/objective';
 import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
-import { formatDate, relativeExam } from '../../utils/datetime';
+import { formatDate } from '../../utils/datetime';
 import { countOf } from '../../utils/plural';
 import { useStudySheet } from '../learn/StudySheetContext';
 import { Button } from '../ui/Button';
@@ -13,6 +13,11 @@ import { SECTION_CARD_SURFACE_CLASS } from '../ui/SectionCard';
 import { Select } from '../ui/Select';
 
 const percent = (value: number) => `${Math.round(value * 100)}%`;
+
+// The report's calendar-day count, phrased as `relativeExam` would. Importing that helper
+// here moves it into a shared first-load chunk.
+const daysPhrase = (days: number) =>
+  days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
 
 function assessmentOption(assessment: CourseAssessment, now: number): string {
   if (assessment.examDate === undefined) return `${assessment.name} (no date)`;
@@ -58,10 +63,8 @@ export function ProgressOverview({
     case 'assessment':
       recall = {
         figure: percent(forecast.value),
-        detail: `On ${formatDate(forecast.date, report.timeZone)} (${relativeExam(
-          forecast.date,
-          now,
-          report.timeZone,
+        detail: `On ${formatDate(forecast.date, report.timeZone)} (${daysPhrase(
+          forecast.daysRemaining,
         )}) if you stop reviewing now. ${forecast.securedCards} of ${countOf(
           cardCount,
           'card',
