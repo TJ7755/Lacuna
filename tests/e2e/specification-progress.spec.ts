@@ -94,27 +94,27 @@ for (const width of [1440, 390]) {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const course = await importScience(page);
     const records = await readAll<Card>(page, 'cards');
-    const section = page.getByRole('region', { name: 'Specification coverage' });
-    await expect(section).toContainText('2 of 3 supplied leaf points');
-    await section
-      .locator('summary')
-      .filter({ hasText: /^S Science/ })
-      .press('Enter');
-    await section
-      .locator('summary')
-      .filter({ hasText: /^3 Practical methods/ })
-      .click();
-    await expect(section).toContainText('No linked content');
-    await section.getByText(/^Author coverage:/).click();
-    await expect(section).toContainText('unresolved example-science:unknown');
+    const section = page.getByRole('region', { name: 'Specification', exact: true });
+    await expect(
+      section.getByRole('img', { name: '2 of 3 points have practice content' }),
+    ).toBeVisible();
+    const points = section.getByRole('list', { name: 'Points within S' });
+    await expect(points.getByRole('listitem')).toHaveCount(3);
+    await expect(points.getByRole('img', { name: 'No linked content' })).toBeVisible();
+    await section.getByLabel('About these numbers').click();
+    await expect(section.getByRole('list', { name: 'Author checks' })).toContainText(
+      'unresolved example-science:unknown',
+    );
+    await section.getByLabel('About these numbers').click();
+    // Phones keep the filters behind one control.
+    if (width < 640) await section.getByRole('button', { name: 'Filters' }).click();
     await section.getByRole('combobox', { name: 'Paper', exact: true }).selectOption('paper-1');
-    await expect(section).toContainText('1 of 2 supplied leaf points');
-    await expect(section.locator('summary').filter({ hasText: /^2 Enzymes/ })).toHaveCount(0);
+    await expect(
+      section.getByRole('img', { name: '1 of 2 points have practice content' }),
+    ).toBeVisible();
+    await expect(section.getByRole('button', { name: /^2 Enzymes/ })).toHaveCount(0);
     await section.getByRole('combobox', { name: 'Paper', exact: true }).selectOption('');
-    await section
-      .locator('summary')
-      .filter({ hasText: /^2 Enzymes/ })
-      .press('Enter');
+    await section.getByRole('button', { name: /^2 Enzymes/ }).press('Enter');
     await expect(section.getByRole('list', { name: 'Concepts for 2' })).toContainText('Enzymes');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
