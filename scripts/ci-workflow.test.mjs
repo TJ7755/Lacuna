@@ -472,6 +472,57 @@ test('workspace installs cannot restore or save another workspace’s partial pa
   }
 });
 
+test('host and container installs consume the checkout-relative cache Actions restores', () => {
+  const action = parse(readFileSync('.github/actions/setup-bun/action.yml', 'utf8'));
+  const cache = action.runs.steps.find((step) => step.name === 'Restore Bun package downloads');
+  const configure = action.runs.steps.find(
+    (step) => step.name === 'Use the restored package download directory',
+  );
+  const directory = mkdtempSync(join(tmpdir(), 'lacuna-cache-translation-'));
+  try {
+    for (const surface of ['host', 'container']) {
+      const workspace = join(directory, surface, 'workspace');
+      const runnerTemp = join(directory, surface, 'temp');
+      const hostTemp = join(directory, 'host', 'temp');
+      mkdirSync(workspace, { recursive: true });
+      const environment = join(directory, `${surface}-environment`);
+      // Only the cache diagnostic is stubbed: the action’s real shell exports the path.
+      const bin = join(directory, 'bin');
+      mkdirSync(bin, { recursive: true });
+      writeFileSync(
+        join(bin, 'bun'),
+        '#!/bin/sh\nprintf "%s\\n" "${BUN_INSTALL_CACHE_DIR:-default-cache}"\n',
+        { mode: 0o755 },
+      );
+      const result = spawnSync('bash', ['-e', '-c', configure.run], {
+        cwd: workspace,
+        env: {
+          ...process.env,
+          PATH: `${bin}:${process.env.PATH}`,
+          GITHUB_ENV: environment,
+          GITHUB_WORKSPACE: workspace,
+          RUNNER_TEMP: runnerTemp,
+        },
+        encoding: 'utf8',
+      });
+      assert.equal(result.status, 0, result.stderr);
+      const exported = readFileSync(environment, 'utf8')
+        .trim()
+        .replace(/^BUN_INSTALL_CACHE_DIR=/, '');
+      const restored = cache.with.path.replace(/\$\{\{(.*?)\}\}/g, (_, expression) =>
+        String(runInNewContext(expression, { runner: { temp: hostTemp } })),
+      );
+      assert.equal(
+        resolve(exported),
+        resolve(workspace, restored),
+        `${surface} must consume the restored cache`,
+      );
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('a retry cannot share or cancel newer pull-request validation even if the branch advances after inspection', () => {
   for (const action of ['opened', 'synchronize', 'edited']) {
     const freshGroup = render(workflow.concurrency.group, action);
