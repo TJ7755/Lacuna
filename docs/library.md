@@ -4,15 +4,22 @@ Counts are publication snapshots. Refresh them when republishing a course, using
 actual published payload or its matching build report. Omit unknown statistics instead
 of inventing them. Publish a course or revision only after its review is complete; the library
 therefore shows no review or progress status. The science courses are Higher-tier selections
-alongside History revision 15. Native Biology is revision 29, Chemistry revision 22 and
+alongside History revision 15. Native Biology is revision 31, Chemistry revision 22 and
 Physics revision 20; the 18 board variants were republished on 24 October 2026 with reviewed
-labelled image Cards, image practice and shared corrections. The latest update removes authoring
+labelled image Cards, image practice and shared corrections. The 24 October update removed authoring
 caveats and repeated mark totals while preserving scientific conditions, stable identities and
 learner progress. Combined Science AQA 8464 revision 10, Pearson Edexcel 1SC0 revision 4 and OCR
 Gateway J250 revision 3 cover Higher tier with shared
 Foundation content; full specification coverage is not independently certified. All three Combined
 Science payloads exceed 4 MiB and are published compressed (`deflate-raw-v1`). All science share
 URLs and counts were filled from verified exact-byte publication records.
+
+Biology 4BI1 revision 31 adds reviewed specification metadata for five enzyme requirements
+(2.10–2.14B), linked to 14 Concepts; 508 Concepts remain explicitly unmapped. This pilot subset
+does not certify whole-syllabus coverage or readiness. The verified publication retains the
+existing share identity and contains 1,465 Cards, 164 notes, 168 practice sets and 1,533 practice
+marks. Independent agent acceptance under the content repository’s standing authority replaces
+exact-file human approval; frozen `humanApproval` remains null.
 
 AQA GCSE Religious Studies A (8062) revision 12 is also published. It covers Christianity and
 Islam beliefs, teachings and practices for Component 1, with Themes A–F included as optional
