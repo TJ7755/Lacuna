@@ -49,3 +49,19 @@ not a scientifically proven optimal allocator. Jev's criterion diagnostics are u
 in that Concept context, not global skill mastery. Question marks and diagnostics never manufacture
 Card reviews or FSRS transitions. Publisher editing locks do not alter learner access rules;
 question targets and prerequisites must stay within the accessible knowledge scope.
+
+## Progress measures
+
+The course Progress page reads one report for the whole course or one selected assessment
+([courseProgress](../../src/course/courseProgress.ts)). Every figure counts the same Cards: those
+in scope, outside extension lessons and not suspended or buried; excluded Cards are stated. Studied
+coverage partitions them into reviewed, taught or introduced but unreviewed (a lesson exposure or a
+learner-declared school lesson), and not started. Exposure is never counted as recall.
+
+Predicted recall uses the Course objective with no further reviews; unreviewed Cards count as 0.
+A selected assessment is measured at its own date, as in the Study hand-off. The whole course
+measures each Card at its applicable paper, as the course summary does, so it has no single date
+and the exam-day chart appears only when every counted Card shares one. Passed, undated and empty
+scopes show no forecast. Lesson rows partition the same pool by primary lesson, with an "Other
+cards" row for Cards linked in from elsewhere or without a lesson, and use the same date, so their
+card-weighted mean equals the headline; a lesson without counted Cards has no figure. Question evidence remains separate and course-wide.

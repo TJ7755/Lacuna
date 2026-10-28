@@ -14,7 +14,8 @@ import {
 } from 'recharts';
 import { ChartCard, ChartFrame } from './ChartCard';
 import { useChartStyle } from './chartStyle';
-import type { ForecastPoint, LessonBreakdownPoint } from './prepare';
+import type { ForecastPoint } from './prepare';
+import type { LessonProgress } from '../../course/courseProgress';
 import type { PredictionAccuracyPoint } from '../../fsrs/calibration';
 import { countOf } from '../../utils/plural';
 
@@ -187,41 +188,65 @@ export function PredictionAccuracyCard({ prediction }: { prediction: PredictionA
 }
 
 /**
- * Per-lesson recall (the course's objective figure scoped to each lesson) and
- * completion for each lesson. Card counts stay in the tooltip and data table:
+ * Per-lesson recall (the Progress scope's objective figure, at the same date) and the
+ * share of each lesson's counted cards reviewed at least once. Card counts stay in the tooltip and data table:
  * plotted on a hidden second axis, a count read against the percentage scale.
  */
 export function LessonBreakdownCard({
-  breakdown,
+  lessons,
   objectiveLabel,
 }: {
-  breakdown: LessonBreakdownPoint[];
+  lessons: LessonProgress[];
   objectiveLabel: string;
 }) {
   const s = useChartStyle();
-  const mean = (pick: (point: LessonBreakdownPoint) => number) =>
-    breakdown.length > 0
-      ? Math.round(breakdown.reduce((sum, point) => sum + pick(point), 0) / breakdown.length)
-      : 0;
+  // A lesson without counted cards has no figure, rather than a perfect or zero one.
+  const breakdown = lessons.map((lesson) => ({
+    ...lesson,
+    masteryPct: lesson.value === null ? null : Math.round(lesson.value * 100),
+    reviewedPct:
+      lesson.cardCount > 0 ? Math.round((lesson.reviewedCards / lesson.cardCount) * 100) : null,
+  }));
+  type Point = (typeof breakdown)[number];
+  // Weighted by card count, so the legend equals the scope's headline: both measures are
+  // per-card means and the rows partition the scope's cards.
+  const weighted = (pick: (lesson: LessonProgress) => number | null) => {
+    let cards = 0;
+    let total = 0;
+    for (const lesson of lessons) {
+      const value = pick(lesson);
+      if (value === null) continue;
+      cards += lesson.cardCount;
+      total += value * lesson.cardCount;
+    }
+    return cards > 0 ? `${Math.round((total / cards) * 100)}%` : '–';
+  };
+  const cell = (value: number | null) => (value === null ? 'No cards' : value);
   return (
     <ChartCard
       title="Lesson breakdown"
       data={{
-        columns: ['Lesson', 'Cards', `${objectiveLabel} (%)`, 'Completion (%)'],
+        columns: ['Lesson', 'Cards', `${objectiveLabel} (%)`, 'Reviewed at least once (%)'],
         rows: breakdown.map((point) => [
           point.name,
           point.cardCount,
-          point.masteryPct,
-          point.completionPct,
+          cell(point.masteryPct),
+          cell(point.reviewedPct),
         ]),
       }}
       legend={[
-        { label: objectiveLabel, colour: s.c.accent, value: `${mean((p) => p.masteryPct)}%` },
-        { label: 'Completion', colour: s.c.positive, value: `${mean((p) => p.completionPct)}%` },
+        { label: objectiveLabel, colour: s.c.accent, value: weighted((lesson) => lesson.value) },
+        {
+          label: 'Reviewed',
+          colour: s.c.positive,
+          value: weighted((lesson) =>
+            lesson.cardCount > 0 ? lesson.reviewedCards / lesson.cardCount : null,
+          ),
+        },
       ]}
       emptyDrawing="course"
       empty={breakdown.length === 0}
-      emptyMessage="This course has no lessons yet."
+      emptyMessage="No lessons in this scope."
       className="h-72"
     >
       <ChartFrame>
@@ -240,10 +265,10 @@ export function LessonBreakdownCard({
             {...s.tooltip}
             cursor={s.cursorBar}
             labelFormatter={(name, payload) => {
-              const cards = (payload[0]?.payload as LessonBreakdownPoint | undefined)?.cardCount;
+              const cards = (payload[0]?.payload as Point | undefined)?.cardCount;
               return cards === undefined ? name : `${name} · ${countOf(cards, 'card')}`;
             }}
-            formatter={(v, name) => [`${v}%`, name === 'masteryPct' ? objectiveLabel : 'Completion']}
+            formatter={(v, name) => [`${v}%`, name === 'masteryPct' ? objectiveLabel : 'Reviewed']}
           />
           <Bar
             dataKey="masteryPct"
@@ -253,7 +278,7 @@ export function LessonBreakdownCard({
             {...s.animate}
           />
           <Bar
-            dataKey="completionPct"
+            dataKey="reviewedPct"
             radius={[8, 8, 0, 0]}
             maxBarSize={24}
             fill={s.c.positive}

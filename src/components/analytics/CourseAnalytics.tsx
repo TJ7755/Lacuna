@@ -4,15 +4,17 @@ import { Columns } from './charts';
 import { LessonBreakdownCard } from './SeriesCards';
 import { useChartColours } from './useChartColours';
 import { FadeInView } from '../ui/FadeInView';
-import { lessonBreakdown, reviewVolume, stabilityProfile } from './prepare';
+import { reviewVolume, stabilityProfile } from './prepare';
 import { progressHeading } from '../../fsrs/objective';
-import type { Card, Course, Lesson } from '../../db/types';
+import type { Card, Course } from '../../db/types';
+import type { LessonProgress } from '../../course/courseProgress';
 import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 import { useAdvancedDetails } from '../../state/advancedDetails';
 
 interface CourseAnalyticsProps {
   course: Course;
-  lessons: Lesson[];
+  /** The Progress scope's per-lesson rows, sharing its card pool and date. */
+  lessons: LessonProgress[];
   cards: Card[];
   reviewHistory: ReviewHistoryEntry[];
 }
@@ -21,9 +23,8 @@ interface CourseAnalyticsProps {
 const CELL = 'min-w-0 [&>section]:h-full';
 
 /**
- * Course-scoped analytics: stability profile and review volume across the course's
- * deduplicated card set (Addendum 2 §J — the same card pool `progressValue` and the path view's mastery figure use), plus a
- * per-lesson breakdown of card count, mastery and completion. The exam-day trend is the
+ * Course-scoped analytics: the selected scope's per-lesson breakdown, then stability
+ * profile and review volume across the course's cards. The exam-day trend is the
  * forecast card's, above these.
  */
 export function CourseAnalytics({ course, lessons, cards, reviewHistory }: CourseAnalyticsProps) {
@@ -35,16 +36,12 @@ export function CourseAnalytics({ course, lessons, cards, reviewHistory }: Cours
     () => reviewVolume(cards, 30, Date.now(), reviewHistory),
     [cards, reviewHistory],
   );
-  const breakdown = useMemo(
-    () => lessonBreakdown(lessons, cards, course),
-    [lessons, cards, course],
-  );
   const hasReviews = reviewHistory.length > 0;
 
   return (
     <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
       <FadeInView className={`${CELL} lg:col-span-2`} y={12}>
-        <LessonBreakdownCard breakdown={breakdown} objectiveLabel={progressHeading(course)} />
+        <LessonBreakdownCard lessons={lessons} objectiveLabel={progressHeading(course)} />
       </FadeInView>
 
       {advancedDetails && (
