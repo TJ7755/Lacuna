@@ -42,8 +42,9 @@ import { formatDate } from '../utils/datetime';
 import { CourseSettingsArchive } from './settings/CourseSettingsArchive';
 import { CourseSettingsDisclosure } from './settings/CourseSettingsDisclosure';
 import { CourseInsightsSection } from './settings/CourseInsightsSection';
+import { CourseSpecificationSection } from './settings/CourseSpecificationSection';
 
-/** Common edits lead; secondary settings expand in place without a separate save step. */
+/** Common edits lead; secondary settings expand in place. */
 export function CourseSettings() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
@@ -191,6 +192,7 @@ export function CourseSettings() {
                 Course name
                 <Input value={name} onChange={(e) => setName(e.target.value)} onBlur={commitName} />
               </label>
+              <CourseSpecificationSection key={course.id} course={course} />
               <div className="grid gap-5 sm:grid-cols-2">
                 <label className={fieldLabelClassName}>
                   Exam board

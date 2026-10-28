@@ -22,6 +22,14 @@ local-override policy for paper dates. Backups, recovery and peer merges reject 
 whose specification selection cannot resolve, or whose date falls after the sole final assessment.
 They refuse the incompatible combination rather than broadening coverage or overwriting evidence.
 
+Course Settings shows the supplied qualification, subject, code and edition, with tier/route
+choices from that Course only. Changes require an explicit save after previewing retained
+unsupported Concept links and changes to existing paper coverage. An incompatible assessment
+blocks saving; assessment definitions and learner evidence are never rewritten to make a choice
+fit. Locked published copies retain publisher ownership of the selection. Missing metadata leaves
+free-text board/specification details available, without implying reviewed coverage. A sole tier
+or route can be offered in the draft; opening Settings alone does not persist a default.
+
 These are additive records without an IndexedDB index change or destructive migration. Older
 readers reject specification-based assessment coverage; after using it, rollback requires a
 compatible reader or a retained earlier backup. Reference-only Courses remain supported.
