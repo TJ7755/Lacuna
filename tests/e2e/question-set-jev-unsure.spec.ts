@@ -238,3 +238,50 @@ test('retains a learner mark chosen while a low-confidence result is in flight',
   await page.reload();
   await expect(page.getByRole('radio', { name: '0 / 1', exact: true })).toBeChecked();
 });
+
+for (const viewport of [
+  { width: 1280, height: 900 },
+  { width: 390, height: 844 },
+]) {
+  test(`preserves a throttled answer and manual mark (${viewport.width}px)`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.route('**/api/ai/session', (route) =>
+      route.fulfill({
+        status: 429,
+        headers: { 'Retry-After': '60', 'X-Lacuna-AI-Limit': 'session-minute' },
+        body: 'Too many attempts.',
+      }),
+    );
+    await openSet(page);
+    await page.setViewportSize(viewport);
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
+    await answer.fill('The nucleus controls cell activities.');
+    await answer.press('Control+Enter');
+    await expect(
+      page.getByText('Automatic marking is paused. Choose a mark.', { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel('Original answer')).toContainText(
+      'The nucleus controls cell activities.',
+    );
+    await chooseZero(page);
+    const attemptUrl = page.url();
+    await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
+    await page.goto('/#/settings#settings-jev');
+    const status = page.getByRole('status').filter({ hasText: 'Paused: too many requests.' });
+    await expect(status).toContainText('Try again after');
+    await expect(status).toContainText('You can still mark answers yourself.');
+    await expect(status).not.toContainText('month');
+    await status.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: test.info().outputPath(`session-throttle-${viewport.width}.png`),
+      animations: 'disabled',
+    });
+    await page.goto(attemptUrl);
+    await page.reload();
+    await expect(page.getByLabel('Original answer')).toContainText(
+      'The nucleus controls cell activities.',
+    );
+    await expect(page.getByRole('radio', { name: '0 / 1', exact: true })).toBeChecked();
+  });
+}

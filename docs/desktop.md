@@ -34,7 +34,7 @@ them privately and keep the CSV in secure storage. Hashes cannot recover lost co
 
 Jev requires the hosted access/session configuration and existing Upstash Redis variables
 above. It caches the one-hour access session in device memory. `AI_SERVICE_DISABLED` disables
-new shared session exchanges as well as chat; already-issued sessions can still access Jev
+new shared session exchanges; already-issued sessions can still access Jev
 unless its own kill switch is set. There are no per-learner Jev quotas. Session verification
 uses a local signature check. The marking request never waits for Redis: each function instance
 checks its in-memory monthly total, refreshed in the background at most once per minute.
@@ -42,6 +42,12 @@ It refuses only when that cached total exceeds the configured ceiling; `0` disab
 A cold instance initially admits requests while its first refresh runs. About a minute of
 traffic may overshoot the ceiling across warm instances; cold starts and Redis outages can
 extend cross-instance staleness. This is an eventually consistent bug fuse, not a spending cap.
+
+Session throttles report their actual minute or UTC-day reset separately from the monthly
+Jev ceiling. Settings shows when marking can be retried; the next marking request after that
+time retries without background polling. Unlabelled or malformed 429 responses use a short
+backoff rather than claiming monthly exhaustion. Manual marking remains available throughout.
+The removed hosted chat endpoint returns HTTP 410 and cannot forward inference requests.
 
 TypeSafe is US-hosted. Its [privacy policy](https://typesafe.ai/legal/privacy-policy) states
 that inputs are not used for training or fine-tuning and are disclosed only to service providers.

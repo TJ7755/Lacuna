@@ -28,12 +28,13 @@ export type JevPauseReason =
   | 'access-code-rejected'
   | 'service-disabled'
   | 'limit-reached'
+  | 'rate-limited'
   | 'error';
 
 export type JevStatus =
   | { state: 'off' }
   | { state: 'ready'; lastUsedAt: number | null }
-  | { state: 'paused'; reason: JevPauseReason; lastUsedAt: number | null };
+  | { state: 'paused'; reason: JevPauseReason; lastUsedAt: number | null; retryAt?: number | null };
 
 /** Recorded with every mark Jev applies, so it can be audited and told apart from the learner's. */
 export interface JevMarkProvenance {

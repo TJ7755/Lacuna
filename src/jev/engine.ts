@@ -2,6 +2,7 @@ import {
   createHostedTransport,
   HOSTED_ACCESS_STORAGE_KEY,
   HostedTransportError,
+  hostedLimitError,
 } from '../ai/session/hostedTransport';
 import { HOSTED_SERVICE_ORIGIN } from '../config/origins';
 import { decisionHash, jevDecisionCache, type JevDecisionCache } from './cache';
@@ -36,7 +37,8 @@ const connectionMessages: Record<HostedTransportError['kind'], string> = {
   access: 'That access code was not recognised.',
   unavailable: 'Automatic marking is unavailable right now. Try again later.',
   invalid: 'Automatic marking is unavailable right now. Try again later.',
-  quota: 'Too many attempts. Try again later.',
+  quota: 'The automatic marking limit has been reached.',
+  'rate-limit': 'Too many access-code attempts.',
   network: 'Could not reach Lacuna. Check your connection.',
 };
 class Pause extends Error {
@@ -101,7 +103,7 @@ export function createJevEngine(
         : globalThis.navigator?.onLine === false
           ? { state: 'paused', reason: 'offline', lastUsedAt }
           : pause
-            ? { state: 'paused', reason: pause, lastUsedAt }
+            ? { state: 'paused', reason: pause, lastUsedAt, retryAt }
             : { state: 'ready', lastUsedAt };
     if (JSON.stringify(next) !== JSON.stringify(status)) status = next;
     if (notify) listeners.forEach((listener) => listener());
@@ -135,6 +137,7 @@ export function createJevEngine(
             {
               access: 'access-code-rejected',
               quota: 'limit-reached',
+              'rate-limit': 'rate-limited',
               unavailable: 'service-disabled',
               network: globalThis.navigator?.onLine === false ? 'offline' : 'error',
               invalid: 'error',
@@ -143,7 +146,7 @@ export function createJevEngine(
         : globalThis.navigator?.onLine === false
           ? 'offline'
           : 'error';
-  const failed = (failure: JevPauseReason) => {
+  const failed = (failure: JevPauseReason, resetAt: number | null = null) => {
     if (pause === 'access-code-rejected') return;
     consecutiveFailures++;
     if (failure === 'error' && consecutiveFailures < 3) {
@@ -157,9 +160,8 @@ export function createJevEngine(
     if (failure === 'error' || failure === 'service-disabled') {
       retryAt = Date.now() + [60_000, 300_000, 900_000][Math.min(backoffStep, 2)];
       backoffStep++;
-    } else if (failure === 'limit-reached') {
-      const now = new Date();
-      retryAt = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
+    } else if (failure === 'limit-reached' || failure === 'rate-limited') {
+      retryAt = resetAt ?? Date.now() + 60_000;
     } else retryAt = null;
     if (failure === 'access-code-rejected') session = null;
     publish();
@@ -191,7 +193,7 @@ export function createJevEngine(
       publish();
       return null;
     }
-    if (pause === 'limit-reached') {
+    if (pause === 'limit-reached' || pause === 'rate-limited') {
       pause = null;
       retryAt = null;
     }
@@ -226,7 +228,7 @@ export function createJevEngine(
       return result;
     } catch (error) {
       if (!signal.aborted && !lifetime.aborted) {
-        failed(reason(error));
+        failed(reason(error), error instanceof HostedTransportError ? error.retryAt : null);
       }
       return null;
     } finally {
@@ -280,15 +282,14 @@ export function createJevEngine(
       body: JSON.stringify(body),
       signal,
     });
+    if (response.status === 429) throw hostedLimitError(response, 'marking');
     if (!response.ok)
       throw new Pause(
         response.status === 401
           ? 'access-code-rejected'
-          : response.status === 429
-            ? 'limit-reached'
-            : response.status === 503
-              ? 'service-disabled'
-              : 'error',
+          : response.status === 503
+            ? 'service-disabled'
+            : 'error',
       );
     return response.json();
   }
@@ -417,12 +418,15 @@ export function createJevEngine(
         return { ok: true };
       } catch (error) {
         if (!signal.aborted) {
-          failed(reason(error));
+          failed(reason(error), error instanceof HostedTransportError ? error.retryAt : null);
         }
         return {
           ok: false,
           message:
-            connectionMessages[error instanceof HostedTransportError ? error.kind : 'network'],
+            connectionMessages[error instanceof HostedTransportError ? error.kind : 'network'] +
+            (error instanceof HostedTransportError && error.retryAt !== null
+              ? ` Try again after ${new Date(error.retryAt).toLocaleString('en-GB')}.`
+              : ''),
         };
       }
     },

@@ -21,8 +21,10 @@ function quotaFixture(initialTimestamp = Date.UTC(2026, 9, 18, 12)) {
     }
     const counterKeys = keys.slice(0, -2);
     const limits = args.slice(2).map(Number);
-    if (counterKeys.some((key, index) => (counts.get(key) ?? 0) >= limits[index]!) ||
-      keys.slice(-2).some((key, index) => members(key).size >= limits[counterKeys.length + index]!)) {
+    if (
+      counterKeys.some((key, index) => (counts.get(key) ?? 0) >= limits[index]!) ||
+      keys.slice(-2).some((key, index) => members(key).size >= limits[counterKeys.length + index]!)
+    ) {
       return Response.json({ result: 0 });
     }
     for (const key of counterKeys) counts.set(key, (counts.get(key) ?? 0) + 1);
@@ -30,8 +32,16 @@ function quotaFixture(initialTimestamp = Date.UTC(2026, 9, 18, 12)) {
     return Response.json({ result: 1 });
   }) as unknown as typeof fetch;
   return {
-    store: createAiQuotaStore('https://quota.example', 'server-secret', undefined, fetcher, () => timestamp),
-    advance: (milliseconds: number) => { timestamp += milliseconds; },
+    store: createAiQuotaStore(
+      'https://quota.example',
+      'server-secret',
+      undefined,
+      fetcher,
+      () => timestamp,
+    ),
+    advance: (milliseconds: number) => {
+      timestamp += milliseconds;
+    },
     counts,
   };
 }
@@ -117,49 +127,96 @@ describe('hosted AI quota admission', () => {
       commands.push(command);
       return Response.json({ result: 1 });
     }) as unknown as typeof fetch;
-    const store = createAiQuotaStore('https://quota.example', 'server-secret', undefined, fetcher,
-      () => Date.UTC(2026, 8, 25, 12));
+    const store = createAiQuotaStore(
+      'https://quota.example',
+      'server-secret',
+      undefined,
+      fetcher,
+      () => Date.UTC(2026, 8, 25, 12),
+    );
     const release = await store.reserve('learner_1');
     expect(release).toBeTypeOf('function');
-    expect(commands[0]?.slice(0, 6)).toEqual(['EVAL', expect.any(String), 7,
+    expect(commands[0]?.slice(0, 6)).toEqual([
+      'EVAL',
+      expect.any(String),
+      7,
       'lacuna:ai:day:user:learner_1:2026-09-25',
       'lacuna:ai:month:user:learner_1:2026-09',
-      'lacuna:ai:day:global:2026-09-25']);
+      'lacuna:ai:day:global:2026-09-25',
+    ]);
     await release!();
     await release!();
     expect(commands).toHaveLength(2);
-    expect(commands[1]?.slice(0, 5)).toEqual(['EVAL', expect.any(String), 2,
-      'lacuna:ai:active:user:learner_1', 'lacuna:ai:active:global']);
+    expect(commands[1]?.slice(0, 5)).toEqual([
+      'EVAL',
+      expect.any(String),
+      2,
+      'lacuna:ai:active:user:learner_1',
+      'lacuna:ai:active:global',
+    ]);
   });
 
   it('treats a denied reservation or store failure as unavailable', async () => {
-    const denied = createAiQuotaStore('https://quota.example', 'server-secret', undefined,
-      vi.fn(async () => Response.json({ result: 0 })) as typeof fetch);
+    const denied = createAiQuotaStore(
+      'https://quota.example',
+      'server-secret',
+      undefined,
+      vi.fn(async () => Response.json({ result: 0 })) as typeof fetch,
+    );
     expect(await denied.reserve('learner_1')).toBeNull();
-    const failed = createAiQuotaStore('https://quota.example', 'server-secret', undefined,
-      vi.fn(async () => new Response('error', { status: 503 })) as typeof fetch);
+    const failed = createAiQuotaStore(
+      'https://quota.example',
+      'server-secret',
+      undefined,
+      vi.fn(async () => new Response('error', { status: 503 })) as typeof fetch,
+    );
     await expect(failed.reserve('learner_1')).rejects.toThrow('unavailable');
     expect(() => createAiQuotaStore('http://quota.example', 'server-secret')).toThrow();
   });
 });
 
 describe('session exchange rate limit', () => {
+  it('uses the day reset when the atomic store reports daily exhaustion', async () => {
+    const limiter = createSessionExchangeLimiter(
+      'https://quota.example',
+      'server-secret',
+      vi.fn(async () => Response.json({ result: -1 })) as typeof fetch,
+      () => Date.UTC(2026, 11, 31, 23, 59, 30),
+    );
+    expect(await limiter.check('203.0.113.7')).toEqual({
+      allowed: false,
+      limit: 'session-day',
+      retryAt: Date.UTC(2027, 0, 1),
+    });
+  });
+
   it('counts attempts per hashed address against minute and day windows', async () => {
     const commands: unknown[][] = [];
     const fetcher = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       commands.push(JSON.parse(String(init?.body)) as unknown[]);
       return Response.json({ result: commands.length === 1 ? 1 : 0 });
     }) as unknown as typeof fetch;
-    const limiter = createSessionExchangeLimiter('https://quota.example', 'server-secret', fetcher,
-      () => Date.UTC(2026, 8, 25, 12));
+    const limiter = createSessionExchangeLimiter(
+      'https://quota.example',
+      'server-secret',
+      fetcher,
+      () => Date.UTC(2026, 8, 25, 12),
+    );
 
-    expect(await limiter.allow('203.0.113.7')).toBe(true);
-    expect(await limiter.allow('203.0.113.7')).toBe(false);
+    expect(await limiter.check('203.0.113.7')).toEqual({ allowed: true });
+    expect(await limiter.check('203.0.113.7')).toEqual({
+      allowed: false,
+      limit: 'session-minute',
+      retryAt: Date.UTC(2026, 8, 25, 12, 1),
+    });
     const [, , keyCount, minuteKey, dayKey, perMinute, perDay] = commands[0]!;
     expect(keyCount).toBe(2);
     expect(minuteKey).toMatch(/^lacuna:ai:session:minute:[a-f0-9]{64}:\d+$/);
     expect(dayKey).toMatch(/^lacuna:ai:session:day:[a-f0-9]{64}:2026-09-25$/);
     expect(JSON.stringify(commands)).not.toContain('203.0.113.7');
-    expect([perMinute, perDay]).toEqual([SESSION_EXCHANGE_LIMITS.perMinute, SESSION_EXCHANGE_LIMITS.perDay]);
+    expect([perMinute, perDay]).toEqual([
+      SESSION_EXCHANGE_LIMITS.perMinute,
+      SESSION_EXCHANGE_LIMITS.perDay,
+    ]);
   });
 });
