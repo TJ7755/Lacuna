@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type Ref } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { CourseProgressReport } from '../../course/courseProgress';
 import type { Course, CourseAssessment } from '../../db/types';
@@ -38,6 +38,7 @@ export function ProgressOverview({
   assessments,
   onScopeChange,
   now,
+  scopeSelectRef,
 }: {
   course: Course;
   report: CourseProgressReport;
@@ -45,6 +46,7 @@ export function ProgressOverview({
   assessments: CourseAssessment[];
   onScopeChange: (assessmentId: string | undefined) => void;
   now: number;
+  scopeSelectRef?: Ref<HTMLSelectElement>;
 }) {
   const titleId = useId();
   const selectId = useId();
@@ -131,6 +133,7 @@ export function ProgressOverview({
               Show
             </label>
             <Select
+              ref={scopeSelectRef}
               id={selectId}
               value={assessment?.id ?? ''}
               onChange={(event) => onScopeChange(event.target.value || undefined)}

@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import type { Lesson } from '../../src/db/types';
 import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
@@ -53,10 +53,11 @@ async function openCourseProgress(page: Page) {
   return courseId;
 }
 
-async function capture(page: Page, testInfo: TestInfo, name: string) {
+async function capture(page: Page, testInfo: TestInfo, name: string, region?: Locator) {
   await page.mouse.move(0, 0);
   const path = testInfo.outputPath(`${name}.png`);
-  await page.screenshot({ path, animations: 'disabled', fullPage: true });
+  // The app scrolls inside its own frame, so cards below the fold are captured on their own.
+  await (region ?? page).screenshot({ path, animations: 'disabled', fullPage: !region });
   await testInfo.attach(name, { path, contentType: 'image/png' });
 }
 
@@ -74,16 +75,25 @@ for (const viewport of [
     const whole = page.getByRole('region', { name: 'Whole course' });
     await expect(whole).toBeVisible();
     await expect(whole.getByRole('heading', { name: 'Studied' })).toBeVisible();
+    // The topic test and the rest of the course fall on different dates: one row per paper.
+    const papers = page.getByRole('region', { name: 'Forecast by paper' });
+    await expect(papers.getByRole('button', { name: 'Show Topic test' })).toBeVisible();
+    await expect(papers).toContainText('in total, matching the headline.');
     await capture(page, testInfo, `${viewport.name}-whole-course`);
+    await capture(page, testInfo, `${viewport.name}-forecast-by-paper`, papers);
 
     await page.getByLabel('Show', { exact: true }).selectOption('topic-test');
     await expect(page).toHaveURL(/assessment=topic-test/);
     const scoped = page.getByRole('region', { name: 'Topic test' });
     await expect(scoped).toContainText('(in 5 days) if you stop reviewing now.');
     await expect(page.getByRole('heading', { name: 'Exam-day forecast' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Forecast by paper' })).toHaveCount(0);
+    const evidence = page.getByRole('region', { name: 'Exam-question evidence' });
+    await expect(evidence).toBeVisible();
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(viewport.width);
     await capture(page, testInfo, `${viewport.name}-topic-test`);
+    await capture(page, testInfo, `${viewport.name}-question-evidence`, evidence);
 
     // The scope survives a reload because it lives in the URL.
     await page.reload();

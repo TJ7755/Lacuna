@@ -46,6 +46,8 @@ export type ProgressForecast =
       undatedCards: number;
       /** Set when every counted card targets this one future date. */
       sharedDate?: number;
+      /** Cards grouped by the date they are measured at, nearest first; undated cards last. */
+      papers: PaperForecast[];
     }
   /** The selected assessment's date has passed. */
   | { kind: 'past'; date: number }
@@ -56,6 +58,15 @@ export type ProgressForecast =
 
 /** The lesson-row id for counted cards whose primary lesson has no row in the scope. */
 export const OTHER_CARDS_ROW = '';
+
+export interface PaperForecast {
+  /** Undefined for cards with no upcoming test or paper, measured at the maintenance horizon. */
+  date?: number;
+  /** Assessments on this date, so a row can select one. */
+  assessments: { id: string; name: string }[];
+  cardCount: number;
+  value: number;
+}
 
 export interface LessonProgress {
   lessonId: string;
@@ -72,6 +83,10 @@ export interface CourseProgressReport {
   /** Cards behind every figure: in scope, outside extension lessons and not suspended or buried. */
   cards: Card[];
   cardCount: number;
+  /** Lessons the scope covers, extensions included, for scoping lesson-linked questions. */
+  lessonIds: string[];
+  /** Course Concepts in scope: every one for the whole course, otherwise those of the scope's cards. */
+  conceptIds: string[];
   /** In-scope cards left out of the figures, so the reader can reconcile the totals. */
   excluded: { extension: number; unavailable: number };
   /** A partition of `cardCount`. */
@@ -182,12 +197,32 @@ export function buildCourseProgress(input: CourseProgressInput): CourseProgressR
     });
     const shared = new Set(dates);
     const sharedDate = shared.size === 1 ? dates[0] : undefined;
+    const byDate = new Map<number | undefined, Card[]>();
+    counted.forEach((card, index) => {
+      const group = byDate.get(dates[index]) ?? [];
+      group.push(card);
+      byDate.set(dates[index], group);
+    });
+    const papers = [...byDate]
+      .sort(([a], [b]) => (a ?? Number.POSITIVE_INFINITY) - (b ?? Number.POSITIVE_INFINITY))
+      .map(([date, cards]): PaperForecast => ({
+        ...(date === undefined ? {} : { date }),
+        assessments:
+          date === undefined
+            ? []
+            : selectableAssessments(input.assessments, course.id, now)
+                .filter((candidate) => candidate.examDate === date)
+                .map(({ id, name }) => ({ id, name })),
+        cardCount: cards.length,
+        value: measure(cards),
+      }));
     forecast = {
       kind: 'applicable',
       value: measure(counted),
       securedCards: secured(counted),
       undatedCards: dates.filter((date) => date === undefined).length,
       ...(sharedDate === undefined ? {} : { sharedDate }),
+      papers,
     };
   }
 
@@ -222,6 +257,12 @@ export function buildCourseProgress(input: CourseProgressInput): CourseProgressR
       : {}),
     cards: counted,
     cardCount: counted.length,
+    lessonIds: (coverage?.coveredLessons ?? courseLessons).map((lesson) => lesson.id),
+    conceptIds: coverage
+      ? [...new Set(counted.map((card) => card.conceptId))]
+      : input.concepts.flatMap((concept) =>
+          concept.scope === 'course' && concept.courseId === course.id ? [concept.id] : [],
+        ),
     excluded: {
       extension: scopeCards.filter(isExtension).length,
       unavailable: scopeCards.filter((card) => !isExtension(card) && !isAvailable(card, now))
@@ -235,5 +276,27 @@ export function buildCourseProgress(input: CourseProgressInput): CourseProgressR
     dueCards: dueReviewPool(counted, course, now).length,
     forecast,
     lessons,
+  };
+}
+
+/**
+ * Lesson-linked questions and their attempts within a report's scope. The whole course keeps
+ * every question; an assessment keeps those with a primary or additional lesson it covers.
+ */
+export function scopeQuestions<
+  Q extends { id: string; primaryLessonId: string | null; additionalLessonIds: string[] },
+  A extends { questionId: string },
+>(report: CourseProgressReport, questions: readonly Q[], attempts: readonly A[]) {
+  if (!report.assessment) return { questions: [...questions], attempts: [...attempts] };
+  const lessons = new Set(report.lessonIds);
+  const scoped = questions.filter((question) =>
+    [question.primaryLessonId, ...question.additionalLessonIds].some(
+      (id) => id !== null && lessons.has(id),
+    ),
+  );
+  const ids = new Set(scoped.map((question) => question.id));
+  return {
+    questions: scoped,
+    attempts: attempts.filter((attempt) => ids.has(attempt.questionId)),
   };
 }
