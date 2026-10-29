@@ -1,6 +1,8 @@
 import { useId, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { InfoPopover } from '../../components/analytics/InfoPopover';
 import { Button } from '../../components/ui/Button';
+import { AlertIcon, LockIcon } from '../../components/ui/icons';
 import { fieldLabelClassName } from '../../components/ui/Field';
 import { Select } from '../../components/ui/Select';
 import { canEditLessons } from '../../course/lessonViewMode';
@@ -65,6 +67,11 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
     selected.routeIds?.filter((id) => !spec.routes.some((route) => route.id === id)) ?? [];
   const unavailableTier = selected.tier && !spec.tiers.some((tier) => tier.id === selected.tier);
   const papers = papersForSelection(spec, selected);
+  const hasChoices =
+    spec.tiers.length > 0 ||
+    spec.routes.length > 0 ||
+    !!reference?.tier ||
+    !!reference?.routeIds?.length;
 
   function close() {
     setDraft(undefined);
@@ -97,21 +104,35 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
         }
       }}
     >
-      <div>
-        <h3 className="font-semibold text-ink">{spec.title}</h3>
-        <p className="mt-1 text-sm text-ink-soft">
-          {boards[spec.board]} · {qualifications[spec.qualification]} · {spec.code}
-        </p>
-        <p className="mt-1 text-sm text-ink-soft">
-          First examination {spec.firstExamination}. Edition: {spec.source.issue}.
-        </p>
-        <p className="mt-1 break-words text-sm text-ink-faint">
-          Source: {spec.source.document}. Course-supplied metadata; coverage is not independently
-          verified.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-semibold text-ink">{spec.title}</h3>
+          <p className="mt-1 text-sm text-ink-soft">
+            {boards[spec.board]} · {qualifications[spec.qualification]} · {spec.code} · First exam{' '}
+            {spec.firstExamination}
+          </p>
+        </div>
+        <InfoPopover label="About this specification">
+          <p>Edition: {spec.source.issue}.</p>
+          <p className="break-words">Source: {spec.source.document}.</p>
+          <p>Course-supplied metadata; coverage is not independently verified.</p>
+        </InfoPopover>
       </div>
+      {papers.length > 0 && (
+        <ul aria-label="Available papers" className="flex flex-col gap-1.5 text-sm">
+          {papers.map((paper) => (
+            <li key={paper.id} className="flex min-w-0 items-baseline gap-2">
+              <span className="shrink-0 rounded-lg bg-ink/[0.06] px-2 py-0.5 text-xs tabular text-ink-soft">
+                {paper.ref}
+              </span>
+              <span className="min-w-0">{paper.title}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       {!editable && (
-        <p className="text-sm text-ink-soft">
+        <p className="flex items-start gap-2 text-sm text-ink-soft">
+          <LockIcon width={16} height={16} className="mt-0.5 shrink-0" />
           This published course is locked. The publisher owns its specification selection. Use the
           existing detach option below if you want to edit your own copy.
         </p>
@@ -171,27 +192,31 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
           )}
         </fieldset>
       ) : (
-        <p className="text-sm text-ink-soft">
-          Tier:{' '}
-          {spec.tiers.find((tier) => tier.id === reference?.tier)?.name ??
-            (reference?.tier
-              ? `Unavailable (${reference.tier})`
-              : spec.tiers.length
-                ? 'Not chosen'
-                : 'Not required')}
-          . Routes:{' '}
-          {reference?.routeIds?.length
-            ? reference.routeIds
-                .map(
-                  (id) =>
-                    spec.routes.find((route) => route.id === id)?.name ?? `Unavailable (${id})`,
-                )
-                .join(', ')
-            : spec.routes.length
-              ? 'Not chosen'
-              : 'Not required'}
-          .
-        </p>
+        hasChoices && (
+          <div className="flex flex-wrap gap-2 text-xs text-ink-soft">
+            {(spec.tiers.length > 0 || reference?.tier) && (
+              <span className="rounded-lg bg-ink/[0.06] px-2 py-1">
+                Tier ·{' '}
+                {spec.tiers.find((tier) => tier.id === reference?.tier)?.name ??
+                  (reference?.tier ? `Unavailable (${reference.tier})` : 'Not chosen')}
+              </span>
+            )}
+            {(spec.routes.length > 0 || reference?.routeIds?.length) && (
+              <span className="rounded-lg bg-ink/[0.06] px-2 py-1">
+                Routes ·{' '}
+                {reference?.routeIds?.length
+                  ? reference.routeIds
+                      .map(
+                        (id) =>
+                          spec.routes.find((route) => route.id === id)?.name ??
+                          `Unavailable (${id})`,
+                      )
+                      .join(', ')
+                  : 'Not chosen'}
+              </span>
+            )}
+          </div>
+        )
       )}
       <div
         role="region"
@@ -204,32 +229,29 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
         ) : (
           <>
             {preview.selectionError && <p className="text-negative">{preview.selectionError}</p>}
-            <p>
-              {papers.length} available paper{papers.length === 1 ? '' : 's'}
-              {papers.length
-                ? `: ${papers.map((paper) => `${paper.ref}: ${paper.title}`).join('; ')}`
-                : '.'}
-            </p>
-            <p>
-              {preview.unavailableLinks.length} unsupported Concept point link
-              {preview.unavailableLinks.length === 1 ? '' : 's'}. All links are retained.
-            </p>
             {preview.unavailableLinks.length > 0 && (
-              <ul className="max-h-48 list-disc overflow-auto pl-5">
-                {preview.unavailableLinks.map((link) => (
-                  <li
-                    key={`${link.conceptId}:${link.specificationPointId}`}
-                    className="break-words"
-                  >
-                    {link.conceptName}: {link.specificationPointId} (
-                    {link.reason.replaceAll('-', ' ')})
-                  </li>
-                ))}
-              </ul>
+              <>
+                <p className="flex items-center gap-2 text-warning">
+                  <AlertIcon width={16} height={16} className="shrink-0" />
+                  {preview.unavailableLinks.length} unsupported Concept point link
+                  {preview.unavailableLinks.length === 1 ? '' : 's'}. All links are retained.
+                </p>
+                {draft && (
+                  <ul className="max-h-48 list-disc overflow-auto pl-5 text-ink-soft">
+                    {preview.unavailableLinks.map((link) => (
+                      <li
+                        key={`${link.conceptId}:${link.specificationPointId}`}
+                        className="break-words"
+                      >
+                        {link.conceptName}: {link.specificationPointId} (
+                        {link.reason.replaceAll('-', ' ')})
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
-            {preview.paperCoverage.length === 0 ? (
-              <p>No existing assessments use specification coverage.</p>
-            ) : (
+            {draft && preview.paperCoverage.length > 0 && (
               <ul className="list-disc pl-5">
                 {preview.paperCoverage.map((paper) => (
                   <li key={paper.id}>
@@ -241,10 +263,12 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
                 ))}
               </ul>
             )}
-            <p>
-              Cards, review history, lesson order and assessment definitions stay unchanged. Paper
-              coverage follows the chosen tier and routes.
-            </p>
+            {draft && (
+              <p className="text-xs text-ink-faint">
+                Cards, review history, lesson order and assessment definitions stay unchanged. Paper
+                coverage follows the chosen tier and routes.
+              </p>
+            )}
           </>
         )}
       </div>
@@ -262,7 +286,8 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
       <div className="flex flex-wrap gap-2">
         <Button
           ref={changeButton}
-          hidden={draft !== undefined}
+          size="sm"
+          hidden={draft !== undefined || !hasChoices}
           disabled={!editable}
           onClick={() => {
             initialSource.current = source;
@@ -285,6 +310,7 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
           <>
             <Button
               variant="primary"
+              size="sm"
               onClick={() => void save()}
               disabled={
                 saving ||
@@ -297,7 +323,7 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
             >
               Save selection
             </Button>
-            <Button variant="ghost" onClick={close} disabled={saving}>
+            <Button variant="ghost" size="sm" onClick={close} disabled={saving}>
               Cancel
             </Button>
           </>
