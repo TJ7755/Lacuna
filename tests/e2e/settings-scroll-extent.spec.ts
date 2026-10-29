@@ -44,7 +44,10 @@ for (const viewport of VIEWPORTS) {
       await page.goto('/#/settings');
       const groups = page.locator('section[id^="settings-group-"]');
       await expect(groups).toHaveCount(5);
-      const lastRow = page.locator('#settings-group-integrations h2');
+      const feedback = page.getByRole('region', { name: 'Feedback' });
+      const lastRow = (await feedback.count())
+        ? feedback
+        : page.locator('#settings-group-integrations h2');
       const frame = page
         .getByRole('heading', { level: 1, name: 'Settings', exact: true })
         .locator('../..');
