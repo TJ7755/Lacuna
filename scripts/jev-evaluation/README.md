@@ -26,8 +26,9 @@ For fresh held-out material, pass `--cases CASES.json` to **every** export, vali
 command. This extends the same runner and metrics; it does not replace the acceptance policy.
 The JSON array uses the existing `EvaluationCase` shape in `pack.ts`: unique `id`, `questionId`,
 `answerType`, `stratum` and a validated allocation `request`. Packs are bounded to 1,000 cases.
-The request's mark count must match its answer type. The exported identity binds the complete
-pack, policy and implementation; changed material requires a new independent reference record.
+The request's mark count must be one or two and match its answer type; larger allocations remain
+outside this screening protocol and are rejected before export or execution. The exported identity
+binds the complete pack, policy and implementation; changed material requires a new independent reference record.
 Each pack allows at most one request per case, sequentially, stopping at the first failure.
 
 Keep development and held-out packs separate. Material inspected while changing prompts or

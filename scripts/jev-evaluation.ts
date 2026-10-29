@@ -77,6 +77,7 @@ async function readCases(path?: string): Promise<EvaluationCase[]> {
             })
             .refine(
               (item) =>
+                item.request.maxMarks <= 2 &&
                 item.answerType === (item.request.maxMarks === 1 ? 'short-answer' : 'multi-mark'),
             ),
         )

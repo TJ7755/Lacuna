@@ -269,6 +269,19 @@ test.each([
   }
 });
 
+test('rejects unsupported allocations above two marks before creating a reference packet', () => {
+  const directory = temporary();
+  const item = cases.find((row) => row.request.maxMarks === 2)!;
+  const path = join(directory, 'unsupported.json');
+  writeFileSync(path, JSON.stringify([{ ...item, request: { ...item.request, maxMarks: 3 } }]));
+  const result = spawnSync(
+    'bun',
+    ['scripts/jev-evaluation.ts', 'export', '--cases', path, '--out', join(directory, 'packet')],
+    { encoding: 'utf8', timeout: 10_000 },
+  );
+  expect(result.status).not.toBe(0);
+});
+
 test('blind CLI export is reproducible, unmarked and refuses overwrites; incomplete labels cannot reach fetch', () => {
   const directory = join(temporary(), 'new-parent');
   const cli = (args: string[], preload?: string) =>
