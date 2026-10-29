@@ -104,10 +104,14 @@ export const cases: EvaluationCase[] = questions
   .sort((a, b) => a.id.localeCompare(b.id));
 
 export const policy = {
-  version: 2,
+  version: 4,
   scope: 'Original typed 4BI1 enzyme explanations; evaluation-written answers, never learner data.',
   provenance:
     'Agent-authored original material; independent reference marking pending. No private practice pool was read.',
+  diagnosticDefinition:
+    'An explicit relevant false scientific claim establishes a knowledge gap even alongside correct facts. An application gap requires separately demonstrated misapplication, not double-counting that same false claim.',
+  semanticConventions:
+    'Failure to fit an active site can express failed binding in context. Accept equivalent meaning without supplying absent mechanisms. Where literal and metaphorical readings remain plausible, affected diagnostic categories have insufficient evidence.',
   maximumRequests: 24,
   retries: 0,
   timeoutMs: 30_000,
@@ -119,7 +123,13 @@ export const policy = {
   maximumAbstentionUpper95: 0.2,
   maximumObservedAbstention: 0.05,
   minimumCategoryPrecisionRecallLower95: 0.9,
-  unsupported: ['handwriting', 'typed-recall', 'extended-response', 'other subjects'],
+  unsupported: [
+    'handwriting',
+    'typed-recall',
+    'extended-response',
+    'allocations above two marks',
+    'other subjects',
+  ],
   uncertainty:
     'Wilson 95% intervals are descriptive at case level; shared-question dependence prevents population or transfer claims.',
 } as const;

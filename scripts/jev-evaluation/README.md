@@ -49,10 +49,12 @@ these records with the results so the basis of the measured agreement is explici
 Assess knowledge, application and causal-link independently; several gaps may coexist. A lost mark
 alone does not establish a cause:
 
-- Knowledge: explicit incorrect knowledge is a gap; demonstrated relevant knowledge is no-gap;
-  unexplained omission is insufficient evidence.
+- Knowledge: an explicit relevant false scientific claim is a gap, including a false conclusion
+  about the case, even when another fact is correct. Demonstrated relevant knowledge without such
+  a contradiction is no-gap; unexplained omission is insufficient evidence.
 - Application: demonstrated knowledge used incorrectly in this setting is a gap; correctly applied
-  knowledge is no-gap; otherwise use insufficient evidence.
+  knowledge is no-gap; otherwise use insufficient evidence. An application gap needs evidence
+  separate from the false scientific claim already establishing a knowledge gap.
 - Causal-link: relevant facts without the required causal connection can establish a gap. Incorrect
   knowledge, blanks and unexplained omissions cannot. Blank answers are insufficient in all categories.
 
@@ -101,7 +103,7 @@ The predeclared screening policy requires 100 cases and 20 distinct questions pe
 30 gap/non-gap labels per category, Wilson 95% lower bounds of 0.90 for mark agreement and category
 precision/recall, confident-error upper bound 0.05, abstention upper bound 0.20 and no unavailable
 cases. Policy v2 additionally requires an observed mark-abstention rate of at most 5% per
-answer type, as requested by the maintainer. These are provisional screening criteria, not
+answer type. That screen is stricter than the requested overall average. These are provisional screening criteria, not
 calibrated guarantees. The default 24-case feasibility pack
 cannot meet the sample minima and must report undersampling. Shared-question dependence makes the
 intervals descriptive, not independent population estimates. Handwriting, typed recall, extended
@@ -110,3 +112,12 @@ responses and other subjects are unsupported. Access decisions use the recorded 
 Direct-provider runs do not verify pupil-facing hosted throttling, errors, abstention or manual
 fallback/overrides. Complete those workflow checks separately before accepting #905. Synthetic
 `question-set-jev-unsure` and `jev-study` browser checks exercise the flows, not live accuracy.
+
+Policy v3 records the maintainer's knowledge/application clarification above. Its statistical gates
+are unchanged. Reference records from an earlier definition remain historical evidence; do not
+silently relabel them or reuse inspected validation material to certify a tuned candidate.
+Policy v4 accepts contextual failure to fit as failed binding, without supplying absent mechanisms.
+Genuinely ambiguous literal/metaphorical readings give insufficient evidence in affected diagnostic
+categories. Review reference consistency under these conventions before rebinding a packet identity.
+Marking cutoffs distinguish one-mark, two-mark and unsupported larger allocations; the exported
+manifest records the actual policy used. Client checks and cache identity use the same policy.

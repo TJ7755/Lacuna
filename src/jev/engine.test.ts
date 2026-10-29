@@ -73,6 +73,40 @@ afterEach(() => {
   vi.useRealTimers();
 });
 it.each([
+  [1, 0.5499, null],
+  [1, 0.55, 1],
+  [2, 0.3999, null],
+  [2, 0.4, 1],
+  [3, 0.8499, null],
+  [3, 0.85, 1],
+] as const)(
+  'checks the %i-mark server verdict at confidence %s',
+  async (maxMarks, confidence, value) => {
+    localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+    const fetcher = vi.fn(async (url) =>
+      url.endsWith('/session')
+        ? Response.json({ token: 'session', expiresAt: Date.now() + 60_000 })
+        : Response.json({
+            model: 'jev-1.14.0',
+            inputTokens: 12,
+            decisions: [{ model: 'jev-1.14.0', value: 1, confidence }],
+          }),
+    );
+    const engine = createJevEngine({ fetcher, cache: emptyCache() });
+    engine.enable(JEV_CONSENT_VERSION);
+    const result = await engine.decideAllocations([
+      {
+        prompt: 'Fixture',
+        criterion: 'Authored requirement',
+        explanation: '',
+        maxMarks,
+        answer: 'Written',
+      },
+    ]);
+    expect(result?.[0]).toMatchObject({ value, confidence });
+  },
+);
+it.each([
   null,
   { enabled: false, acceptedConsentVersion: 1 },
   { enabled: true, acceptedConsentVersion: null },

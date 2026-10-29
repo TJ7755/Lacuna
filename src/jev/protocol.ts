@@ -4,9 +4,20 @@ import { jevDiagnosticRequestSchema, jevDiagnosisSchema } from './diagnosis.js';
 export const JEV_MODEL = 'jev-1.14.0';
 export const JEV_TYPED_CORRECT_THRESHOLD = 0.75;
 export const JEV_TYPED_INCORRECT_THRESHOLD = 0.75;
-export const JEV_ALLOCATION_CONFIDENCE_THRESHOLD = 0.55;
-export const JEV_ALLOCATION_PROMPT_VERSION = 2;
-export const JEV_DIAGNOSTIC_PROMPT_VERSION = 2;
+export const JEV_ALLOCATION_CONFIDENCE_THRESHOLDS = {
+  singleMark: 0.55,
+  twoMarks: 0.4,
+  other: 0.85,
+} as const;
+export function jevAllocationConfidenceThreshold(maxMarks: number): number {
+  return maxMarks === 1
+    ? JEV_ALLOCATION_CONFIDENCE_THRESHOLDS.singleMark
+    : maxMarks === 2
+      ? JEV_ALLOCATION_CONFIDENCE_THRESHOLDS.twoMarks
+      : JEV_ALLOCATION_CONFIDENCE_THRESHOLDS.other;
+}
+export const JEV_ALLOCATION_PROMPT_VERSION = 4;
+export const JEV_DIAGNOSTIC_PROMPT_VERSION = 4;
 export const JEV_TYPED_KIND_CONFIDENCE_THRESHOLD = 0.7;
 export const JEV_TYPED_PART_COVERED_THRESHOLD = 0.8;
 export const JEV_TYPED_PART_NOT_COVERED_THRESHOLD = 0.2;

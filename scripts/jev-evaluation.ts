@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { callJevAllocationBatch, callJevDecision } from '../server/jev/provider';
 import {
   JEV_MODEL,
-  JEV_ALLOCATION_CONFIDENCE_THRESHOLD,
+  JEV_ALLOCATION_CONFIDENCE_THRESHOLDS,
   jevDecisionResultSchema,
   jevAllocationBatchResultSchema,
   jevAllocationInputSchema,
@@ -46,7 +46,7 @@ async function identity(evaluationCases = cases, executionPolicy = policy) {
     model: JEV_MODEL,
     taxonomy: 'science-explanations@1',
     protocol: executionPolicy.version,
-    markThreshold: JEV_ALLOCATION_CONFIDENCE_THRESHOLD,
+    markThresholds: JEV_ALLOCATION_CONFIDENCE_THRESHOLDS,
     diagnosticThreshold: JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD,
     sourceHashes,
   };
