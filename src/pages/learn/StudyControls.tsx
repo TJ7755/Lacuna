@@ -1,4 +1,4 @@
-import { useLayoutEffect, type RefObject } from 'react';
+import { useId, useLayoutEffect, type RefObject } from 'react';
 import { m as motion } from 'motion/react';
 import type { Grade } from '../../db/types';
 import { Button } from '../../components/ui/Button';
@@ -26,6 +26,7 @@ export function StudyControls({
   onHide,
   onAnswer,
   autoMark,
+  recallPrompt,
   departing = false,
   m,
 }: {
@@ -42,10 +43,14 @@ export function StudyControls({
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
   /** Automatic marking of a typed answer: still judging, or the verdict it reached. */
   autoMark?: AutoMark;
+  recallPrompt?: string;
   departing?: boolean;
   m: number;
 }) {
   const question = phase === 'question';
+  const recallPromptId = useId();
+  const selfRating =
+    Boolean(recallPrompt) && !question && gradingMode === 'silent' && !(isTypingCard && autoMark);
   useLayoutEffect(() => {
     const input = typingInputRef.current;
     if (!isTypingCard || !input) return;
@@ -142,7 +147,20 @@ export function StudyControls({
   return (
     <>
       {!isTouchMode && (
-        <div className={`study-controls ${isTypingCard ? 'mt-6' : 'mt-8'} w-full shrink-0`}>
+        <div
+          className={`study-controls ${isTypingCard ? 'mt-6' : 'mt-8'} w-full shrink-0`}
+          role={selfRating ? 'group' : undefined}
+          aria-labelledby={selfRating ? recallPromptId : undefined}
+        >
+          {recallPrompt && gradingMode === 'silent' && (
+            <p
+              id={recallPromptId}
+              className={`mb-3 text-center text-sm text-ink-soft${selfRating ? '' : ' invisible'}`}
+              aria-hidden={!selfRating}
+            >
+              {recallPrompt}
+            </p>
+          )}
           <FlowGradeControls
             question={question}
             autoMark={isTypingCard ? autoMark : undefined}
@@ -186,6 +204,7 @@ export function StudyControls({
           m={m}
           isTypingCard={isTypingCard}
           autoMark={autoMark}
+          recallPrompt={recallPrompt}
         />
       )}
     </>
