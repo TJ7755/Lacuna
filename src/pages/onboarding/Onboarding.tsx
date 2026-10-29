@@ -229,6 +229,7 @@ function CardStep({
       </div>
       <StudyControls
         phase={phase}
+        recallPrompt="Did you remember the answer?"
         isTypingCard={false}
         isTouchMode={isTouchMode}
         gradingMode="silent"

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { m as motion } from 'motion/react';
 import { hapticLight, hapticMedium } from '../../utils/haptic';
 import type { Grade } from '../../db/types';
@@ -22,6 +23,7 @@ export function TouchBottomSheet({
   m,
   isTypingCard,
   autoMark,
+  recallPrompt,
 }: {
   phase: Phase;
   feedback?: StudyGradeFeedback;
@@ -33,9 +35,15 @@ export function TouchBottomSheet({
   isTypingCard?: boolean;
   /** Automatic marking of a typed answer: the self-marking grades stay away. */
   autoMark?: AutoMark;
+  recallPrompt?: string;
 }) {
+  const recallPromptId = useId();
+  const selfRating =
+    Boolean(recallPrompt) && phase === 'answer' && gradingMode === 'silent' && !autoMark;
   return (
     <motion.div
+      role={selfRating ? 'group' : undefined}
+      aria-labelledby={selfRating ? recallPromptId : undefined}
       initial={{ y: 80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
@@ -69,101 +77,107 @@ export function TouchBottomSheet({
           </>
         ) : (
           <>
-            {!autoMark && (gradingMode === 'manual' ? (
-              <div className="grid w-full grid-cols-2 gap-3">
-                <StudyGradeButton
-                  grade={1}
-                  feedback={feedback}
-                  m={m}
-                  variant="secondary"
-                  size="lg"
-                  className={cn(GRADE_BUTTON, 'w-full border-[1.5px] border-ink bg-surface')}
-                  onClick={() => {
-                    hapticMedium();
-                    void onAnswer(1, 'touch');
-                  }}
-                >
-                  <CloseIcon width={20} height={20} />
-                  Again
-                </StudyGradeButton>
-                <StudyGradeButton
-                  grade={2}
-                  feedback={feedback}
-                  m={m}
-                  variant="secondary"
-                  size="lg"
-                  className={cn(GRADE_BUTTON, 'w-full')}
-                  onClick={() => {
-                    hapticLight();
-                    void onAnswer(2, 'touch');
-                  }}
-                >
-                  Hard
-                </StudyGradeButton>
-                <StudyGradeButton
-                  grade={3}
-                  feedback={feedback}
-                  m={m}
-                  variant="secondary"
-                  size="lg"
-                  className={cn(GRADE_BUTTON, 'w-full')}
-                  onClick={() => {
-                    hapticLight();
-                    void onAnswer(3, 'touch');
-                  }}
-                >
-                  Good
-                </StudyGradeButton>
-                <StudyGradeButton
-                  grade={4}
-                  feedback={feedback}
-                  m={m}
-                  variant="primary"
-                  size="lg"
-                  className={cn(GRADE_BUTTON, 'w-full')}
-                  onClick={() => {
-                    hapticMedium();
-                    void onAnswer(4, 'touch');
-                  }}
-                >
-                  <CheckIcon width={20} height={20} />
-                  Easy
-                </StudyGradeButton>
-              </div>
-            ) : (
-              <div className="flex w-full gap-3">
-                <StudyGradeButton
-                  grade={false}
-                  feedback={feedback}
-                  m={m}
-                  variant="secondary"
-                  size="lg"
-                  className={cn(GRADE_BUTTON, 'flex-1 border-[1.5px] border-ink bg-surface')}
-                  onClick={() => {
-                    hapticMedium();
-                    void onAnswer(false, 'touch');
-                  }}
-                >
-                  <CloseIcon width={20} height={20} />
-                  No
-                </StudyGradeButton>
-                <StudyGradeButton
-                  grade={true}
-                  feedback={feedback}
-                  m={m}
-                  variant="primary"
-                  size="lg"
-                  className={cn(GRADE_BUTTON, 'flex-1')}
-                  onClick={() => {
-                    hapticMedium();
-                    void onAnswer(true, 'touch');
-                  }}
-                >
-                  <CheckIcon width={20} height={20} />
-                  Yes
-                </StudyGradeButton>
-              </div>
-            ))}
+            {selfRating && (
+              <p id={recallPromptId} className="text-sm text-ink-soft">
+                {recallPrompt}
+              </p>
+            )}
+            {!autoMark &&
+              (gradingMode === 'manual' ? (
+                <div className="grid w-full grid-cols-2 gap-3">
+                  <StudyGradeButton
+                    grade={1}
+                    feedback={feedback}
+                    m={m}
+                    variant="secondary"
+                    size="lg"
+                    className={cn(GRADE_BUTTON, 'w-full border-[1.5px] border-ink bg-surface')}
+                    onClick={() => {
+                      hapticMedium();
+                      void onAnswer(1, 'touch');
+                    }}
+                  >
+                    <CloseIcon width={20} height={20} />
+                    Again
+                  </StudyGradeButton>
+                  <StudyGradeButton
+                    grade={2}
+                    feedback={feedback}
+                    m={m}
+                    variant="secondary"
+                    size="lg"
+                    className={cn(GRADE_BUTTON, 'w-full')}
+                    onClick={() => {
+                      hapticLight();
+                      void onAnswer(2, 'touch');
+                    }}
+                  >
+                    Hard
+                  </StudyGradeButton>
+                  <StudyGradeButton
+                    grade={3}
+                    feedback={feedback}
+                    m={m}
+                    variant="secondary"
+                    size="lg"
+                    className={cn(GRADE_BUTTON, 'w-full')}
+                    onClick={() => {
+                      hapticLight();
+                      void onAnswer(3, 'touch');
+                    }}
+                  >
+                    Good
+                  </StudyGradeButton>
+                  <StudyGradeButton
+                    grade={4}
+                    feedback={feedback}
+                    m={m}
+                    variant="primary"
+                    size="lg"
+                    className={cn(GRADE_BUTTON, 'w-full')}
+                    onClick={() => {
+                      hapticMedium();
+                      void onAnswer(4, 'touch');
+                    }}
+                  >
+                    <CheckIcon width={20} height={20} />
+                    Easy
+                  </StudyGradeButton>
+                </div>
+              ) : (
+                <div className="flex w-full gap-3">
+                  <StudyGradeButton
+                    grade={false}
+                    feedback={feedback}
+                    m={m}
+                    variant="secondary"
+                    size="lg"
+                    className={cn(GRADE_BUTTON, 'flex-1 border-[1.5px] border-ink bg-surface')}
+                    onClick={() => {
+                      hapticMedium();
+                      void onAnswer(false, 'touch');
+                    }}
+                  >
+                    <CloseIcon width={20} height={20} />
+                    No
+                  </StudyGradeButton>
+                  <StudyGradeButton
+                    grade={true}
+                    feedback={feedback}
+                    m={m}
+                    variant="primary"
+                    size="lg"
+                    className={cn(GRADE_BUTTON, 'flex-1')}
+                    onClick={() => {
+                      hapticMedium();
+                      void onAnswer(true, 'touch');
+                    }}
+                  >
+                    <CheckIcon width={20} height={20} />
+                    Yes
+                  </StudyGradeButton>
+                </div>
+              ))}
             <Button variant="ghost" size="sm" onClick={onHide}>
               Hide answer
             </Button>
