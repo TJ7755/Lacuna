@@ -3,7 +3,7 @@
 Offline preparation and opt-in execution for [#905](https://github.com/TJ7755/Lacuna/issues/905).
 Independent reference marking and bounded live results supply the evaluation evidence. Results
 record agreement against those references, source versions, uncertainty, usage and latency.
-The pack contains four original 4BI1 temperature/pH explanation questions and six evaluation-written
+The default pack contains four original 4BI1 temperature/pH explanation questions and six evaluation-written
 answers per question: strong, partial, wrong, blank, off-topic and ambiguous. These are authoring
 strata, not marks or diagnostic truth. There are 12 one-mark and 12 two-mark cases. Scope follows
 [Pearson 4BI1 Issue 3](https://qualifications.pearson.com/content/dam/pdf/International%20GCSE/Biology/2017/specification-and-sample-assessments/international-gcse-biology-2017-specification1.pdf),
@@ -21,6 +21,20 @@ Use the repository-pinned Bun revision. Export is offline and refuses an existin
 ```sh
 bun scripts/jev-evaluation.ts export --out artifacts/jev-evaluation-reference-v1
 ```
+
+For fresh held-out material, pass `--cases CASES.json` to **every** export, validate and live
+command. This extends the same runner and metrics; it does not replace the acceptance policy.
+The JSON array uses the existing `EvaluationCase` shape in `pack.ts`: unique `id`, `questionId`,
+`answerType`, `stratum` and a validated allocation `request`. Packs are bounded to 1,000 cases.
+The request's mark count must match its answer type. The exported identity binds the complete
+pack, policy and implementation; changed material requires a new independent reference record.
+Each pack allows at most one request per case, sequentially, stopping at the first failure.
+
+Keep development and held-out packs separate. Material inspected while changing prompts or
+confidence thresholds is development evidence. Freeze the candidate before inspecting held-out
+answers or results; a failed inspected pack cannot certify a later revision. Enough cases without
+enough distinct questions or category outcomes still reports undersampling. Repeated contexts do
+not establish independent population or transfer evidence.
 
 The packet contains `blind.json`, `reference-record-template.json`, this protocol and a manifest. Its
 identity hashes the cases, declared policy, provider/diagnostic code, taxonomy, runner and runtime
@@ -63,7 +77,7 @@ through the environment. Never put it in command arguments, committed files or l
 bun scripts/jev-evaluation.ts live --labels LABELS.json --allow-paid --out artifacts/jev-evaluation-live-v1
 ```
 
-The runner makes at most 24 sequential requests, no retries, 30 seconds each, with no redirects or
+The default pack makes at most 24 sequential requests, no retries, 30 seconds each, with no redirects or
 local cache. It uses the existing single/allocation-batch provider entry points and stops after the
 first failed call. New output paths prevent accidental overwrite. Results are saved before the first
 call and after each case; interruption retains an in-flight request with unknown usage. Source
@@ -77,10 +91,18 @@ cases as missed predictions. Blank/off-topic/ambiguous strata stay separate. Cou
 versions, actual known tokens, unknown-usage requests, latency and timeouts are retained. Currency
 cost is unconfigured; #909 owns reviewed pricing. Failed calls may still be billable.
 
+Multi-mark allocation now asks for an explicit mark-level Choice rather than rounding an expected
+Score. The selected level must be a highest-probability authored option; its effective confidence is
+the lower of the provider confidence and that option's probability. Marking and diagnostic cutoffs
+remain separate. Neither a model confidence nor a development-set pass establishes accuracy on
+fresh answers; the versioned candidate must pass the held-out screen before any access decision.
+
 The predeclared screening policy requires 100 cases and 20 distinct questions per answer type,
 30 gap/non-gap labels per category, Wilson 95% lower bounds of 0.90 for mark agreement and category
 precision/recall, confident-error upper bound 0.05, abstention upper bound 0.20 and no unavailable
-cases. These are provisional screening criteria, not calibrated guarantees. This feasibility pack
+cases. Policy v2 additionally requires an observed mark-abstention rate of at most 5% per
+answer type, as requested by the maintainer. These are provisional screening criteria, not
+calibrated guarantees. The default 24-case feasibility pack
 cannot meet the sample minima and must report undersampling. Shared-question dependence makes the
 intervals descriptive, not independent population estimates. Handwriting, typed recall, extended
 responses and other subjects are unsupported. Access decisions use the recorded scope and sampling evidence.

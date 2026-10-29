@@ -73,7 +73,14 @@ const questions = [
 ] as const;
 
 export const strata = ['strong', 'partial', 'wrong', 'blank', 'off-topic', 'ambiguous'] as const;
-export const cases = questions
+export type EvaluationCase = {
+  id: string;
+  questionId: string;
+  answerType: 'short-answer' | 'multi-mark';
+  stratum: (typeof strata)[number];
+  request: JevAllocationInput;
+};
+export const cases: EvaluationCase[] = questions
   .flatMap(({ answers, ...question }, index) =>
     answers.map((answer, variant) => ({
       id: createHash('sha256')
@@ -97,7 +104,7 @@ export const cases = questions
   .sort((a, b) => a.id.localeCompare(b.id));
 
 export const policy = {
-  version: 1,
+  version: 2,
   scope: 'Original typed 4BI1 enzyme explanations; evaluation-written answers, never learner data.',
   provenance:
     'Agent-authored original material; independent reference marking pending. No private practice pool was read.',
@@ -110,6 +117,7 @@ export const policy = {
   minimumMarkAgreementLower95: 0.9,
   maximumConfidentErrorUpper95: 0.05,
   maximumAbstentionUpper95: 0.2,
+  maximumObservedAbstention: 0.05,
   minimumCategoryPrecisionRecallLower95: 0.9,
   unsupported: ['handwriting', 'typed-recall', 'extended-response', 'other subjects'],
   uncertainty:

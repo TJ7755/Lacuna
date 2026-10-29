@@ -33,6 +33,15 @@ it('caches diagnostic evidence when marking abstains and separates it from mark-
     },
   };
   const hash = await decisionHash(request);
+  const oldBytes = new TextEncoder().encode(
+    JSON.stringify(['jev-1.14.0', { marking: 1, diagnosis: 1, confidence: 0.85 }, request]),
+  );
+  const oldDigest = await crypto.subtle.digest('SHA-256', oldBytes);
+  const oldHash = Array.from(new Uint8Array(oldDigest), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+  await createJevDecisionCache().put(oldHash, result);
+  expect(await createJevDecisionCache().get(hash)).toBeUndefined();
   await createJevDecisionCache().put(hash, result);
   expect(await createJevDecisionCache().get(hash)).toEqual(result);
   const { diagnostic: _diagnostic, ...markOnly } = request;
