@@ -26,7 +26,7 @@ for (const width of [1280, 375]) {
       const slot = new URL(route.request().url()).pathname.split('/').at(-1);
       if (slot === 'meta') {
         await route.fulfill({
-          headers: { ETag: '"1"' },
+          headers: { ETag: '"1"', 'Access-Control-Expose-Headers': 'ETag' },
           json: {
             v: 1,
             lineageId: 'loading-biology',
@@ -42,7 +42,11 @@ for (const width of [1280, 375]) {
         finish = resolve;
         requests += 1;
       });
-      await route.fulfill({ status, headers: { ETag: '"1"' }, body: status === 200 ? file : '' });
+      await route.fulfill({
+        status,
+        headers: { ETag: '"1"', 'Access-Control-Expose-Headers': 'ETag' },
+        body: status === 200 ? file : '',
+      });
     });
 
     await enterFreshLacuna(page);
