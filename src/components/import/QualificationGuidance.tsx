@@ -6,16 +6,16 @@ export function QualificationGuidance() {
       </summary>
       <div className="flex max-w-prose flex-col gap-3 pb-3">
         <p>
-          Combined Science includes biology, chemistry and physics in one qualification. Biology is
-          the separate qualification.
+          Combined Science includes biology, chemistry and physics. Biology is the separate
+          qualification.
         </p>
         <p>
-          GCSE and IGCSE are different qualifications. Match the qualification, exam board (awarding
-          body) and syllabus code to the school’s course.
+          GCSE and IGCSE are different qualifications. Match the exam board and syllabus code to
+          your school’s course.
         </p>
         <p>
-          Find the board and syllabus code on the exam timetable or specification. If you are unsure
-          which route, board or code applies, ask the school or teacher before choosing.
+          Check the exam timetable or specification for the board and code. If unsure, ask the
+          school or teacher before choosing.
         </p>
       </div>
     </details>
