@@ -12,7 +12,6 @@ import type * as ManualMergeModule from '../../sync/manualMerge';
 import type { ManualMergeSummary, MergeDelta } from '../../sync/manualMerge';
 import { formatDate } from '../../utils/datetime';
 import { SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
-import { cn } from '../../components/ui/cn';
 
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
@@ -135,92 +134,95 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
 
   return (
     <SettingsCard id="settings-export">
-      <div className={cn('mb-1', SETTINGS_HEADING_ROW_CLASS)}>
+      <div className={SETTINGS_HEADING_ROW_CLASS}>
         <UploadIcon width={18} height={18} />
         <SettingsSectionHeading className="mb-1 font-display text-xl font-semibold tracking-tight">
           Full backup and recovery
         </SettingsSectionHeading>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">
-        A full JSON backup holds every course, Card, Question, attempt, schedule and media file.
-        Export one to keep a copy, combine two devices or recover this installation.
-      </p>
-      <div className="mb-6">
-        <UnifiedExportPanel heading="Export a full backup" />
-      </div>
+      <div className="mt-4 flex flex-col gap-3">
+        <UnifiedExportPanel />
 
-      <div>
-        <SettingsSubsectionHeading className="mb-3 font-display text-lg font-semibold tracking-tight">
-          Combine two devices
-        </SettingsSubsectionHeading>
-        <p className="mb-4 text-sm text-ink-soft">
-          Combine this installation with a backup from another device. Cards, Questions and review
-          evidence from either side are kept; content deleted on either is removed. A restore point
-          is saved first.
-        </p>
-        <div className="flex flex-wrap items-center gap-3">
-          {combineBusy ? (
-            <Button variant="secondary" disabled>
-              Combining…
-            </Button>
-          ) : pendingCombine ? (
-            <ConfirmInline
-              message={`Combine with the ${formatDate(pendingCombine.exportedAt)} backup (${plural(pendingCombine.cards.length, 'card')}, ${plural(pendingCombine.questions?.length ?? 0, 'Question')})?`}
-              confirmLabel="Combine"
-              variant="default"
-              onCancel={() => setPendingCombine(null)}
-              onConfirm={() => void runCombine()}
+        <div className="rounded-2xl bg-paper px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0 flex-1 basis-64">
+              <SettingsSubsectionHeading className="text-sm font-semibold text-ink">
+                Combine two devices
+              </SettingsSubsectionHeading>
+              <p className="text-xs text-ink-soft">
+                Keeps Cards, Questions and reviews from both sides; removes what either deleted.
+                Saves a restore point first.
+              </p>
+            </div>
+            {combineBusy ? (
+              <Button variant="secondary" size="sm" disabled>
+                Combining…
+              </Button>
+            ) : pendingCombine ? (
+              <ConfirmInline
+                message={`Combine with the ${formatDate(pendingCombine.exportedAt)} backup (${plural(pendingCombine.cards.length, 'card')}, ${plural(pendingCombine.questions?.length ?? 0, 'Question')})?`}
+                confirmLabel="Combine"
+                variant="default"
+                onCancel={() => setPendingCombine(null)}
+                onConfirm={() => void runCombine()}
+              />
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => combineInputRef.current?.click()}
+              >
+                <UploadIcon width={16} height={16} />
+                Choose backup from another device
+              </Button>
+            )}
+            <input
+              ref={combineInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              aria-label="Backup from another device"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void handleCombineFile(file);
+                event.target.value = '';
+              }}
             />
-          ) : (
-            <Button variant="secondary" onClick={() => combineInputRef.current?.click()}>
-              <UploadIcon width={18} height={18} />
-              Choose backup from another device
-            </Button>
-          )}
-          <input
-            ref={combineInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            aria-label="Backup from another device"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void handleCombineFile(file);
-              event.target.value = '';
-            }}
-          />
+          </div>
         </div>
-      </div>
 
-      <div className="mt-6">
-        <SettingsSubsectionHeading className="mb-3 font-display text-lg font-semibold tracking-tight">
-          Recover this installation
-        </SettingsSubsectionHeading>
-        <p className="mb-4 text-sm text-ink-soft">
-          Choose a backup file to add its contents to this installation, or to replace everything
-          here.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Button
-            variant="secondary"
-            onClick={() => recoverInputRef.current?.click()}
-            disabled={combineBusy}
-          >
-            <UploadIcon width={18} height={18} />
-            Choose backup file
-          </Button>
-          <input
-            ref={recoverInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            aria-label="Recover this installation"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void handleRecoverFile(file);
-              event.target.value = '';
-            }}
-          />
+        <div className="rounded-2xl bg-paper px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0 flex-1 basis-64">
+              <SettingsSubsectionHeading className="text-sm font-semibold text-ink">
+                Recover this installation
+              </SettingsSubsectionHeading>
+              <p className="text-xs text-ink-soft">
+                Add a backup&rsquo;s contents here, or replace everything with it.
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => recoverInputRef.current?.click()}
+              disabled={combineBusy}
+            >
+              <UploadIcon width={16} height={16} />
+              Choose backup file
+            </Button>
+            <input
+              ref={recoverInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              aria-label="Recover this installation"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void handleRecoverFile(file);
+                event.target.value = '';
+              }}
+            />
+          </div>
         </div>
       </div>
 
