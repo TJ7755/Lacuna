@@ -36,15 +36,15 @@ export function proportion(count: number, total: number) {
   };
 }
 
-export function summarise(gold: Label[], observations: Observation[]) {
+export function summarise(gold: Label[], observations: Observation[], evaluationCases = cases) {
   if (
-    gold.length !== cases.length ||
-    observations.length !== cases.length ||
-    new Set(gold.map((row) => row.id)).size !== cases.length ||
-    new Set(observations.map((row) => row.id)).size !== cases.length
+    gold.length !== evaluationCases.length ||
+    observations.length !== evaluationCases.length ||
+    new Set(gold.map((row) => row.id)).size !== evaluationCases.length ||
+    new Set(observations.map((row) => row.id)).size !== evaluationCases.length
   )
     throw new Error('Metrics require exactly one label and observation per case.');
-  const rows = cases.map((item) => {
+  const rows = evaluationCases.map((item) => {
     const label = gold.find((row) => row.id === item.id);
     const observation = observations.find((row) => row.id === item.id);
     if (!label || !observation) throw new Error('Metrics case identity mismatch.');
@@ -144,6 +144,7 @@ export function summarise(gold: Label[], observations: Observation[]) {
         (result.markAgreement.lower95 ?? 0) >= policy.minimumMarkAgreementLower95 &&
         (result.confidentErrors.upper95 ?? 1) <= policy.maximumConfidentErrorUpper95 &&
         (result.abstention.upper95 ?? 1) <= policy.maximumAbstentionUpper95 &&
+        (result.abstention.rate ?? 1) <= policy.maximumObservedAbstention &&
         result.unavailable.count === 0 &&
         Object.values(result.categories).every((category) =>
           Object.values(category.outcomes).every(

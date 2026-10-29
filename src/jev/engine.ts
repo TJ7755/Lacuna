@@ -16,7 +16,7 @@ import {
   type JevAllocationInput,
   type JevDecisionRequest,
   type JevDecisionResult,
-  JEV_ALLOCATION_CONFIDENCE_THRESHOLD,
+  jevAllocationConfidenceThreshold,
   JEV_TYPED_MAX_PARTS,
   JEV_TYPED_CORRECT_THRESHOLD,
   JEV_TYPED_INCORRECT_THRESHOLD,
@@ -263,7 +263,7 @@ export function createJevEngine(
     const maximum = request.purpose === 'typed-equivalence' ? 1 : request.maxMarks;
     const threshold =
       request.purpose === 'mark-allocation'
-        ? JEV_ALLOCATION_CONFIDENCE_THRESHOLD
+        ? jevAllocationConfidenceThreshold(maximum)
         : result.value === 1
           ? JEV_TYPED_CORRECT_THRESHOLD
           : JEV_TYPED_INCORRECT_THRESHOLD;

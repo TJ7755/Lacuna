@@ -2,6 +2,9 @@ import Dexie, { type Table } from 'dexie';
 import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD } from './diagnosis';
 import {
   JEV_MODEL,
+  JEV_ALLOCATION_PROMPT_VERSION,
+  JEV_DIAGNOSTIC_PROMPT_VERSION,
+  jevAllocationConfidenceThreshold,
   JEV_TYPED_FEEDBACK_VERSION,
   JEV_TYPED_CORRECT_THRESHOLD,
   JEV_TYPED_INCORRECT_THRESHOLD,
@@ -39,8 +42,16 @@ export async function decisionHash(request: JevDecisionRequest): Promise<string>
           notCovered: JEV_TYPED_PART_NOT_COVERED_THRESHOLD,
         }
       : request.diagnostic
-        ? { marking: 1, diagnosis: 1, confidence: JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD }
-        : 1;
+        ? {
+            marking: JEV_ALLOCATION_PROMPT_VERSION,
+            markConfidence: jevAllocationConfidenceThreshold(request.maxMarks),
+            diagnosis: JEV_DIAGNOSTIC_PROMPT_VERSION,
+            confidence: JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD,
+          }
+        : {
+            marking: JEV_ALLOCATION_PROMPT_VERSION,
+            markConfidence: jevAllocationConfidenceThreshold(request.maxMarks),
+          };
   const bytes = new TextEncoder().encode(JSON.stringify([JEV_MODEL, policy, request]));
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');

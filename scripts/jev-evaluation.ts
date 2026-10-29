@@ -3,16 +3,18 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { z } from 'zod';
 import { callJevAllocationBatch, callJevDecision } from '../server/jev/provider';
 import {
   JEV_MODEL,
-  JEV_ALLOCATION_CONFIDENCE_THRESHOLD,
+  JEV_ALLOCATION_CONFIDENCE_THRESHOLDS,
   jevDecisionResultSchema,
   jevAllocationBatchResultSchema,
+  jevAllocationInputSchema,
 } from '../src/jev/protocol';
 import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD } from '../src/jev/diagnosis';
 import { hash, validateLabels } from './jev-evaluation/labels';
-import { cases, policy } from './jev-evaluation/pack';
+import { cases, policy, strata, type EvaluationCase } from './jev-evaluation/pack';
 import { summarise, type Observation } from './jev-evaluation/metrics';
 
 const root = new URL('../', import.meta.url);
@@ -32,7 +34,7 @@ const sources = [
   '.bun-version',
   'relay/scripts/security-bun.json',
 ];
-async function identity() {
+async function identity(evaluationCases = cases, executionPolicy = policy) {
   const sourceHashes = Object.fromEntries(
     await Promise.all(
       sources.map(
@@ -43,12 +45,15 @@ async function identity() {
   const versions = {
     model: JEV_MODEL,
     taxonomy: 'science-explanations@1',
-    protocol: policy.version,
-    markThreshold: JEV_ALLOCATION_CONFIDENCE_THRESHOLD,
+    protocol: executionPolicy.version,
+    markThresholds: JEV_ALLOCATION_CONFIDENCE_THRESHOLDS,
     diagnosticThreshold: JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD,
     sourceHashes,
   };
-  return { identity: hash(JSON.stringify({ cases, policy, versions })), versions };
+  return {
+    identity: hash(JSON.stringify({ cases: evaluationCases, policy: executionPolicy, versions })),
+    versions,
+  };
 }
 const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 const writeNew = (path: string, value: unknown) =>
@@ -58,6 +63,33 @@ async function createOutput(path: string) {
   await mkdir(path, { mode: 0o700 });
 }
 
+async function readCases(path?: string): Promise<EvaluationCase[]> {
+  const parsed = path
+    ? z
+        .array(
+          z
+            .strictObject({
+              id: z.string().trim().min(1),
+              questionId: z.string().trim().min(1),
+              answerType: z.enum(['short-answer', 'multi-mark']),
+              stratum: z.enum(strata),
+              request: jevAllocationInputSchema,
+            })
+            .refine(
+              (item) =>
+                item.request.maxMarks <= 2 &&
+                item.answerType === (item.request.maxMarks === 1 ? 'short-answer' : 'multi-mark'),
+            ),
+        )
+        .min(1)
+        .max(1000)
+        .parse(JSON.parse(await readFile(path, 'utf8')))
+    : cases;
+  if (new Set(parsed.map((item) => item.id)).size !== parsed.length)
+    throw new Error('Evaluation case identities must be unique.');
+  return parsed;
+}
+
 async function main(args: string[]) {
   const { values, positionals } = parseArgs({
     args,
@@ -65,6 +97,7 @@ async function main(args: string[]) {
     options: {
       out: { type: 'string' },
       labels: { type: 'string' },
+      cases: { type: 'string' },
       'allow-paid': { type: 'boolean' },
     },
   });
@@ -78,7 +111,9 @@ async function main(args: string[]) {
   ) as { revision: string };
   if (execFileSync(process.execPath, ['--revision'], { encoding: 'utf8' }).trim() !== pin.revision)
     throw new Error('Use the repository-pinned Bun revision.');
-  const frozen = await identity();
+  const evaluationCases = await readCases(values.cases);
+  const executionPolicy = { ...policy, maximumRequests: evaluationCases.length };
+  const frozen = await identity(evaluationCases, executionPolicy);
   if (command === 'export') {
     if (!values.out) throw new Error('A new packet directory is required.');
     await createOutput(values.out);
@@ -86,7 +121,7 @@ async function main(args: string[]) {
       identity: frozen.identity,
       instructions:
         'Review independently; do not inspect pack.ts, answer strata, other reviews or provider results. Complete the separate reference review record with its provenance.',
-      cases: cases.map(({ id, request }) => ({ id, ...request })),
+      cases: evaluationCases.map(({ id, request }) => ({ id, ...request })),
     });
     await writeNew(join(values.out, 'reference-record-template.json'), {
       identity: frozen.identity,
@@ -96,7 +131,7 @@ async function main(args: string[]) {
       independent: null,
       contentApproved: null,
       completedAt: null,
-      labels: cases.map(({ id }) => ({
+      labels: evaluationCases.map(({ id }) => ({
         id,
         mark: null,
         knowledge: null,
@@ -107,7 +142,7 @@ async function main(args: string[]) {
     });
     await writeNew(join(values.out, 'manifest.json'), {
       ...frozen,
-      policy,
+      policy: executionPolicy,
       status: 'Reference marking and live evaluation pending.',
     });
     await writeFile(
@@ -120,7 +155,7 @@ async function main(args: string[]) {
   }
   if (!values.labels) throw new Error('Complete independent reference labels are required.');
   const labelText = await readFile(values.labels, 'utf8');
-  const labels = validateLabels(JSON.parse(labelText), frozen.identity);
+  const labels = validateLabels(JSON.parse(labelText), frozen.identity, evaluationCases);
   if (command === 'validate') {
     console.log(
       json({
@@ -137,7 +172,7 @@ async function main(args: string[]) {
   const key = process.env.TYPESAFE_API_KEY;
   if (!key) throw new Error('TYPESAFE_API_KEY must be supplied through the environment.');
   await createOutput(values.out);
-  const observations: Observation[] = cases.map(({ id }) => ({
+  const observations: Observation[] = evaluationCases.map(({ id }) => ({
     id,
     status: 'not-run',
     latencyMs: null,
@@ -152,7 +187,7 @@ async function main(args: string[]) {
       join(values.out!, 'results.json'),
       json({
         ...frozen,
-        policy,
+        policy: executionPolicy,
         startedAt,
         updatedAt: new Date().toISOString(),
         executionStatus: !sourceIntact
@@ -174,7 +209,7 @@ async function main(args: string[]) {
           ),
         ],
         observations,
-        report: summarise(labels.gold, observations),
+        report: summarise(labels.gold, observations, evaluationCases),
         scope:
           'Direct provider only. Hosted rate limits, manual fallback and overrides require separate pupil-flow verification.',
       }),
@@ -182,8 +217,9 @@ async function main(args: string[]) {
     );
   };
   await save();
-  for (const [index, item] of cases.entries()) {
-    if (index >= policy.maximumRequests) throw new Error('Evaluation request bound exceeded.');
+  for (const [index, item] of evaluationCases.entries()) {
+    if (index >= executionPolicy.maximumRequests)
+      throw new Error('Evaluation request bound exceeded.');
     const observation = observations[index];
     observation.status = 'in-flight';
     await save();
@@ -247,7 +283,8 @@ async function main(args: string[]) {
     await save();
     if (observation.status !== 'ok') break;
   }
-  if ((await identity()).identity !== frozen.identity) {
+  const finalCases = await readCases(values.cases);
+  if ((await identity(finalCases, executionPolicy)).identity !== frozen.identity) {
     sourceIntact = false;
     await save();
     throw new Error('Sources changed during evaluation; discard this run.');

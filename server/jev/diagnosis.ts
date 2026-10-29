@@ -78,7 +78,8 @@ export function readDiagnosis(
         if (
           Object.keys(decision.probabilities).length !== JEV_DIAGNOSTIC_OUTCOMES.length ||
           JEV_DIAGNOSTIC_OUTCOMES.some((id) => decision.probabilities[id] === undefined) ||
-          Math.abs(Object.values(decision.probabilities).reduce((sum, p) => sum + p, 0) - 1) > 0.01
+          Math.abs(Object.values(decision.probabilities).reduce((sum, p) => sum + p, 0) - 1) >
+            0.01 + Number.EPSILON * JEV_DIAGNOSTIC_OUTCOMES.length
         ) {
           throw new Error('TypeSafe returned invalid diagnostic probabilities.');
         }

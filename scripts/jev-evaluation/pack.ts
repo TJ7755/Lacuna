@@ -73,7 +73,14 @@ const questions = [
 ] as const;
 
 export const strata = ['strong', 'partial', 'wrong', 'blank', 'off-topic', 'ambiguous'] as const;
-export const cases = questions
+export type EvaluationCase = {
+  id: string;
+  questionId: string;
+  answerType: 'short-answer' | 'multi-mark';
+  stratum: (typeof strata)[number];
+  request: JevAllocationInput;
+};
+export const cases: EvaluationCase[] = questions
   .flatMap(({ answers, ...question }, index) =>
     answers.map((answer, variant) => ({
       id: createHash('sha256')
@@ -97,10 +104,14 @@ export const cases = questions
   .sort((a, b) => a.id.localeCompare(b.id));
 
 export const policy = {
-  version: 1,
+  version: 4,
   scope: 'Original typed 4BI1 enzyme explanations; evaluation-written answers, never learner data.',
   provenance:
     'Agent-authored original material; independent reference marking pending. No private practice pool was read.',
+  diagnosticDefinition:
+    'An explicit relevant false scientific claim establishes a knowledge gap even alongside correct facts. An application gap requires separately demonstrated misapplication, not double-counting that same false claim.',
+  semanticConventions:
+    'Failure to fit an active site can express failed binding in context. Accept equivalent meaning without supplying absent mechanisms. Where literal and metaphorical readings remain plausible, affected diagnostic categories have insufficient evidence.',
   maximumRequests: 24,
   retries: 0,
   timeoutMs: 30_000,
@@ -110,8 +121,15 @@ export const policy = {
   minimumMarkAgreementLower95: 0.9,
   maximumConfidentErrorUpper95: 0.05,
   maximumAbstentionUpper95: 0.2,
+  maximumObservedAbstention: 0.05,
   minimumCategoryPrecisionRecallLower95: 0.9,
-  unsupported: ['handwriting', 'typed-recall', 'extended-response', 'other subjects'],
+  unsupported: [
+    'handwriting',
+    'typed-recall',
+    'extended-response',
+    'allocations above two marks',
+    'other subjects',
+  ],
   uncertainty:
     'Wilson 95% intervals are descriptive at case level; shared-question dependence prevents population or transfer claims.',
 } as const;
