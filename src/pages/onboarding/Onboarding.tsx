@@ -199,6 +199,15 @@ function CardStep({
 
   return (
     <>
+      <div className="mb-4 shrink-0 text-center">
+        <h2 className="mb-2 font-display text-xl tracking-tight text-ink">
+          Try a practice example
+        </h2>
+        <p className="mx-auto max-w-prose text-sm text-ink-soft">
+          See how revision works before choosing your own material. Think of an answer, then select
+          Show answer and check whether you knew it.
+        </p>
+      </div>
       <div className="study-card-slot min-h-0 flex-1">
         <StudyCardTransition cardId={FIRST_CARD.id} phase={phase} multiplier={m}>
           <FlipCard
