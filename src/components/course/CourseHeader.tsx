@@ -117,13 +117,15 @@ export function CourseHeader({
               key="display-title"
               data-course-title-text={renameLabel === 'course' ? '' : undefined}
               onDoubleClick={startRename}
-              title={onRename ? `Double-click to rename ${renameLabel}` : undefined}
+              title={title}
               layout={motionMultiplier > 0 ? 'position' : undefined}
-              initial={renameLabel !== 'course' && motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}
+              initial={
+                renameLabel !== 'course' && motionMultiplier > 0 ? { opacity: 0, y: 3 } : false
+              }
               animate={{ opacity: 1, y: 0 }}
               transition={motionTransition('feedback', motionMultiplier)}
               className={cn(
-                'min-w-0 break-words font-display text-4xl leading-[1.02] tracking-[-0.04em] md:text-[44px]',
+                'line-clamp-3 min-w-0 break-words font-display text-4xl leading-[1.02] tracking-[-0.04em] md:text-[44px]',
                 onRename && 'cursor-text',
               )}
             >
