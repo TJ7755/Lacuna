@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
 import { FlameIcon } from '../../components/ui/icons';
 import { NumberField } from './NumberField';
@@ -20,6 +21,12 @@ import {
 import { useAfterFinalExamPolicy, type AfterFinalExamPolicy } from '../../state/finalExamLifecycle';
 import { PillSwitch, SegmentedPills, SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
 
+const STRICTNESS_DESCRIPTIONS: Record<AnswerStrictness, string> = {
+  lenient: 'Typed answers ignore case and punctuation.',
+  standard: 'Typed answers ignore case but not punctuation.',
+  exact: 'Typed answers must match case and punctuation.',
+};
+
 const FINAL_EXAM_POLICIES: Array<{
   value: AfterFinalExamPolicy;
   label: string;
@@ -35,6 +42,7 @@ export function StudySection() {
   const [answerInput, setAnswerInput] = useAnswerInput();
   const [gradingMode, setGradingMode] = useGradingMode();
   const [answerStrictness, setAnswerStrictness] = useAnswerStrictness();
+  const strictnessDescriptionId = useId();
   const [startInFocusMode, setStartInFocusMode] = useStartInFocusMode();
   const [audioSettings, setAudioSettings] = useAudioSettings();
   const [recitationInput, setRecitationInput] = useRecitationInput();
@@ -112,9 +120,8 @@ export function StudySection() {
       <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <div className="min-w-0 flex-1 basis-64">
           <div className="font-semibold text-ink">Grading strictness</div>
-          <p className="mt-1 text-sm text-ink-soft">
-            How closely a typed answer must match. Lenient ignores case and punctuation, standard
-            ignores case only, exact requires both to match.
+          <p id={strictnessDescriptionId} className="mt-1 text-sm text-ink-soft">
+            {STRICTNESS_DESCRIPTIONS[answerStrictness]}
           </p>
         </div>
         <SegmentedPills
@@ -125,6 +132,7 @@ export function StudySection() {
             label: <span className="capitalize">{level}</span>,
           }))}
           onChange={setAnswerStrictness}
+          describedBy={strictnessDescriptionId}
         />
       </div>
 
@@ -161,6 +169,7 @@ export function CourseDefaultsSection() {
   const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
   const [afterFinalExam, setAfterFinalExam] = useAfterFinalExamPolicy();
+  const finalExamDescriptionId = useId();
 
   return (
     <SettingsCard id="settings-course-defaults">
@@ -178,26 +187,18 @@ export function CourseDefaultsSection() {
 
       <div className="mt-6 pt-0">
         <div className="font-semibold text-ink">After the final exam</div>
-        <div className="mt-3 grid gap-2" role="radiogroup" aria-label="After the final exam">
-          {FINAL_EXAM_POLICIES.map((policy) => (
-            <button
-              key={policy.value}
-              type="button"
-              role="radio"
-              aria-checked={afterFinalExam === policy.value}
-              onClick={() => setAfterFinalExam(policy.value)}
-              className={cn(
-                'rounded-xl border px-4 py-3 text-left transition-colors',
-                afterFinalExam === policy.value
-                  ? 'border-accent bg-accent-soft'
-                  : 'border-line hover:border-line-strong',
-              )}
-            >
-              <span className="block text-sm text-ink">{policy.label}</span>
-              <span className="mt-0.5 block text-xs text-ink-soft">{policy.description}</span>
-            </button>
-          ))}
-        </div>
+        <SegmentedPills
+          label="After the final exam"
+          size="sm"
+          value={afterFinalExam}
+          options={FINAL_EXAM_POLICIES}
+          onChange={setAfterFinalExam}
+          describedBy={finalExamDescriptionId}
+          className="mt-3 w-fit max-w-full"
+        />
+        <p id={finalExamDescriptionId} className="mt-2 text-sm text-ink-soft">
+          {FINAL_EXAM_POLICIES.find((policy) => policy.value === afterFinalExam)?.description}
+        </p>
       </div>
 
       {showAdvancedDetails && (
