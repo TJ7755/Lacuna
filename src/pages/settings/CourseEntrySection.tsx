@@ -37,9 +37,8 @@ export function CourseEntrySection({ courseId }: { courseId: string }) {
           </label>
         </h3>
         <p id={hintId} className="mt-1 text-sm text-ink-soft">
-          Joining part-way through? Choose your class’s current lesson. Earlier lessons stay open
-          for catch-up and revision, and nothing is marked as completed. Only your copy changes.
-          Reordering later keeps that earlier material attached to the same lessons.
+          Joining part-way? Pick your class’s current lesson. Earlier lessons stay open and nothing
+          is marked complete.
         </p>
       </div>
       <Select
