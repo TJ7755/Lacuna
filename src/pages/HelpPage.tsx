@@ -20,6 +20,7 @@ import {
   SETTINGS_HEADING_ROW_CLASS,
 } from './settings/SettingsUi';
 import { SettingsSectionHeading } from './settings/SettingsSectionHeading';
+import { FeedbackSection } from '../components/feedback/FeedbackSection';
 
 const GROUP_ICONS = [SparklesIcon, PlayIcon, CardsIcon, ChartIcon, SettingsIcon];
 const GROUP_COLUMNS = [HELP_GROUPS.slice(0, 2), HELP_GROUPS.slice(2)];
@@ -154,6 +155,8 @@ export function HelpPage() {
           </div>
         )}
       </SettingsArrivalProvider>
+
+      <FeedbackSection />
 
       <div className="mt-4 border-t border-line py-10 text-left">
         <div className="flex flex-wrap gap-2">

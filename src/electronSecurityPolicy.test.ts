@@ -30,7 +30,7 @@ describe('Electron renderer security policy', () => {
         'Cross-Origin-Embedder-Policy': ['credentialless'],
         'Access-Control-Allow-Origin': ['*'],
         'Content-Security-Policy': [
-          "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; media-src 'self' blob: app: file:; connect-src 'self' https://relay.getlacuna.app https://lacuna-relay.vercel.app https://getlacuna.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'none'; base-uri 'self'; form-action 'self';",
+          "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; media-src 'self' blob: app: file:; connect-src 'self' https://relay.getlacuna.app https://lacuna-relay.vercel.app https://getlacuna.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com https://tally.so/embed/; object-src 'none'; base-uri 'self'; form-action 'self';",
         ],
       });
     });
@@ -98,22 +98,23 @@ describe('Electron renderer security policy', () => {
           addElectronSecurityHeaders('https://example.com/channel', {}, 'production'),
         ).not.toHaveProperty('Access-Control-Allow-Origin');
         expect(
-          addElectronSecurityHeaders(
-            `${origin}.evil.example/channel`,
-            {},
-            'production',
-          ),
+          addElectronSecurityHeaders(`${origin}.evil.example/channel`, {}, 'production'),
         ).not.toHaveProperty('Access-Control-Allow-Origin');
       },
     );
   });
 
   it('repairs hosted AI CORS only for its exact domain and API path', () => {
-    expect(addElectronSecurityHeaders('https://getlacuna.app/api/ai/session', {}, 'production'))
-      .toMatchObject({ 'Access-Control-Allow-Origin': ['app://.'] });
-    for (const url of ['https://getlacuna.app.evil.example/api/ai/session', 'https://getlacuna.app/other']) {
-      expect(addElectronSecurityHeaders(url, {}, 'production'))
-        .not.toHaveProperty('Access-Control-Allow-Origin');
+    expect(
+      addElectronSecurityHeaders('https://getlacuna.app/api/ai/session', {}, 'production'),
+    ).toMatchObject({ 'Access-Control-Allow-Origin': ['app://.'] });
+    for (const url of [
+      'https://getlacuna.app.evil.example/api/ai/session',
+      'https://getlacuna.app/other',
+    ]) {
+      expect(addElectronSecurityHeaders(url, {}, 'production')).not.toHaveProperty(
+        'Access-Control-Allow-Origin',
+      );
     }
   });
 

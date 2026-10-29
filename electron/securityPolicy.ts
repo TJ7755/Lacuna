@@ -5,19 +5,18 @@ export const APP_RENDERER_ORIGIN = 'app://.';
 const APP_RENDERER_HOST = '.';
 // Remove the legacy origin from this allowlist and the CSP only after the migration has shipped
 // in a released desktop build and older supported builds have had time to update. Refs #677.
-const SYNC_RELAY_ORIGINS = new Set(['https://relay.getlacuna.app', 'https://lacuna-relay.vercel.app']);
+const SYNC_RELAY_ORIGINS = new Set([
+  'https://relay.getlacuna.app',
+  'https://lacuna-relay.vercel.app',
+]);
 const HOSTED_AI_ORIGIN = 'https://getlacuna.app';
 const ALLOWED_MEDIA_TYPES = new Set(['audio', 'video']);
 const PRODUCTION_RENDERER_CSP =
-  "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; media-src 'self' blob: app: file:; connect-src 'self' https://relay.getlacuna.app https://lacuna-relay.vercel.app https://getlacuna.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'none'; base-uri 'self'; form-action 'self';";
+  "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; media-src 'self' blob: app: file:; connect-src 'self' https://relay.getlacuna.app https://lacuna-relay.vercel.app https://getlacuna.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com https://tally.so/embed/; object-src 'none'; base-uri 'self'; form-action 'self';";
 
 export type ElectronResponseHeaders = Record<string, string[]>;
 
-function setResponseHeader(
-  headers: ElectronResponseHeaders,
-  name: string,
-  values: string[],
-): void {
+function setResponseHeader(headers: ElectronResponseHeaders, name: string, values: string[]): void {
   for (const existingName of Object.keys(headers)) {
     if (existingName.toLowerCase() === name.toLowerCase()) delete headers[existingName];
   }
@@ -57,8 +56,10 @@ export function addElectronSecurityHeaders(
         setResponseHeader(headers, 'Access-Control-Expose-Headers', ['ETag']);
         setResponseHeader(headers, 'Cross-Origin-Resource-Policy', ['cross-origin']);
         setResponseHeader(headers, 'Vary', ['Origin']);
-      } else if (new URL(responseUrl).origin === HOSTED_AI_ORIGIN &&
-          new URL(responseUrl).pathname.startsWith('/api/ai/')) {
+      } else if (
+        new URL(responseUrl).origin === HOSTED_AI_ORIGIN &&
+        new URL(responseUrl).pathname.startsWith('/api/ai/')
+      ) {
         setResponseHeader(headers, 'Access-Control-Allow-Origin', [APP_RENDERER_ORIGIN]);
         setResponseHeader(headers, 'Access-Control-Allow-Methods', ['POST, OPTIONS']);
         setResponseHeader(headers, 'Access-Control-Allow-Headers', ['Authorization, Content-Type']);

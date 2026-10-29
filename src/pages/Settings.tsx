@@ -19,6 +19,7 @@ import { SyncSection } from './settings/SyncSection';
 import { JevSection } from './settings/JevSection';
 import { SettingsDisclosure } from './settings/SettingsDisclosure';
 import { Rise } from '../components/analytics/Arrival';
+import { FeedbackSection } from '../components/feedback/FeedbackSection';
 
 declare const __APP_VERSION__: string;
 
@@ -124,6 +125,7 @@ export function Settings() {
           </SettingsDisclosure>
         </Rise>
       </div>
+      <FeedbackSection />
     </div>
   );
 }
