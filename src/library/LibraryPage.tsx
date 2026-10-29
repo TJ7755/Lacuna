@@ -24,6 +24,7 @@ import {
 } from './catalogue';
 import { ExpandingSheet } from '../components/ui/ExpandingSheet';
 import { CourseProvenance } from './CourseProvenance';
+import { QualificationGuidance } from '../components/import/QualificationGuidance';
 
 const APP_URL = 'https://getlacuna.app/#/';
 const count = new Intl.NumberFormat('en-GB');
@@ -123,6 +124,11 @@ function Library({ courses }: { courses: readonly LibraryCourse[] }) {
           </motion.div>
         </div>
 
+        {courses.length > 0 && (
+          <div className="mb-6 max-w-2xl">
+            <QualificationGuidance />
+          </div>
+        )}
         {courses.length > 0 && (
           <label className="mb-6 block max-w-lg text-sm text-ink-soft">
             Search courses

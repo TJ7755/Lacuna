@@ -10,6 +10,7 @@ import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { ChevronRightIcon } from '../ui/icons';
 import { scaledSpring } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { QualificationGuidance } from './QualificationGuidance';
 
 const count = new Intl.NumberFormat('en-GB');
 const available = libraryCourses.filter((course) => resolveCourseShareUrl(course.shareUrl));
@@ -58,6 +59,7 @@ export function CourseLibraryPicker({
         value={browse.query}
         onChange={(event) => onBrowseChange({ ...browse, query: event.target.value })}
       />
+      <QualificationGuidance />
       <ul className="import-library-subjects" aria-label="Library subjects">
         {subjects.map((subject) => {
           const courses = shown.filter((course) => course.subject === subject);
