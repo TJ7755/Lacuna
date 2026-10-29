@@ -6,6 +6,8 @@ import { App } from './App';
 import { installPressFeedback } from './components/ui/pressFeedback';
 import { installTypingFeedback } from './components/ui/typingFeedback';
 
+export { router } from './routes/router';
+
 const loadMotionFeatures = () => import('./motionFeatures').then((module) => module.default);
 
 /** Mount the full study app, replacing any prerendered landing markup. */
