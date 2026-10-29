@@ -47,6 +47,35 @@ test('keeps the sidebar quiet and shows study details beside a hovered course', 
   await expect(card).toHaveCount(0);
 });
 
+test('traces the rounded course row while a course with lessons is pressed', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await enterWithWelcomeCourse(page);
+  const course = page
+    .getByRole('complementary')
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true });
+  await expect(
+    page.getByRole('button', { name: 'Expand Welcome to Lacuna', exact: true }),
+  ).toBeVisible();
+  const bounds = (await course.boundingBox())!;
+  await page.mouse.move(bounds.x + 40, bounds.y + bounds.height / 2);
+  await page.mouse.down();
+  // Press feedback paints inside the link with the link's radius, so the link must be the row.
+  await expect(course.locator('.flow-feedback-layer')).toHaveCount(1);
+  const [link, row] = await course.evaluate((element) =>
+    [element, element.parentElement!].map((node) => {
+      const box = node.getBoundingClientRect();
+      return {
+        x: box.x,
+        width: box.width,
+        height: box.height,
+        radius: getComputedStyle(node).borderRadius,
+      };
+    }),
+  );
+  expect(link).toEqual(row);
+  await page.mouse.up();
+});
+
 test('shows details on focus in the collapsed rail and dismisses on navigation', async ({
   page,
 }) => {

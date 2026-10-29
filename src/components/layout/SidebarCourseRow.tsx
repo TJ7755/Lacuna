@@ -115,7 +115,12 @@ export const CourseRow = memo(function CourseRow({
             )
           }
         >
-          <CourseGlyph {...glyph} courseId={courseId} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
+          <CourseGlyph
+            {...glyph}
+            courseId={courseId}
+            size={compact ? 28 : GLYPH_SIZE}
+            multiplier={m}
+          />
           <SidebarLabel
             className={cn(
               'font-semibold',
@@ -134,9 +139,8 @@ export const CourseRow = memo(function CourseRow({
     <div className="flex flex-col">
       <div
         className={cn(
-          'group relative flex w-full items-center gap-1 rounded-xl transition-colors duration-150',
-          compact ? 'min-h-11 py-1.5 pl-3 pr-1 text-xs' : 'min-h-11 pl-3 pr-1 text-[15px]',
-          !drawer && (compact ? 'pl-[10px]' : 'pl-[9px]'),
+          'group relative flex min-h-11 w-full rounded-xl transition-colors duration-150',
+          compact ? 'text-xs' : 'text-[15px]',
           !drawer && 'overflow-hidden',
           isCourseActive ? ACTIVE_PILL : 'text-ink hover:bg-ink/5',
         )}
@@ -149,12 +153,21 @@ export const CourseRow = memo(function CourseRow({
             onFocus={() => prefetchRoute(`/course/${courseId}`)}
             aria-label={courseName}
             title={collapsed ? courseName : undefined}
+            // The link fills the rounded row, so press feedback traces the row rather than a
+            // square box that stops short of the chevron.
             className={cn(
-              'flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-0',
-              !drawer && 'overflow-hidden',
+              'flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl pl-3',
+              compact && 'py-1.5',
+              drawer ? 'pr-12' : 'overflow-hidden pr-1',
+              !drawer && (compact ? 'pl-[10px]' : 'pl-[9px]'),
             )}
           >
-            <CourseGlyph {...glyph} courseId={courseId} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
+            <CourseGlyph
+              {...glyph}
+              courseId={courseId}
+              size={compact ? 28 : GLYPH_SIZE}
+              multiplier={m}
+            />
             <SidebarLabel
               className={cn(
                 'font-semibold',
@@ -165,7 +178,12 @@ export const CourseRow = memo(function CourseRow({
             </SidebarLabel>
           </NavLink>
         </SidebarHoverCard>
-        <SidebarLabel className={cn('flex shrink-0', !drawer && 'absolute left-48 top-0')}>
+        <SidebarLabel
+          className={cn(
+            'absolute flex shrink-0',
+            drawer ? 'inset-y-0 right-1 items-center' : 'left-48 top-0',
+          )}
+        >
           <button
             type="button"
             onClick={(e) => {
