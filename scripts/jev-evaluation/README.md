@@ -96,7 +96,9 @@ cost is unconfigured; #909 owns reviewed pricing. Failed calls may still be bill
 Multi-mark allocation now asks for an explicit mark-level Choice rather than rounding an expected
 Score. The selected level must be a highest-probability authored option; its effective confidence is
 the lower of the provider confidence and that option's probability. Marking and diagnostic cutoffs
-remain separate. Neither a model confidence nor a development-set pass establishes accuracy on
+remain separate. The marking policy uses 0.55 for one- and two-mark allocations and retains 0.85
+for unsupported larger allocations. A marking pilot is separate from diagnostic qualification;
+mark agreement does not establish the accuracy of practice advice. Neither a model confidence nor a development-set pass establishes accuracy on
 fresh answers; the versioned candidate must pass the held-out screen before any access decision.
 
 The predeclared screening policy requires 100 cases and 20 distinct questions per answer type,
