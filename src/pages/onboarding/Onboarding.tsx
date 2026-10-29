@@ -174,6 +174,7 @@ function CardStep({
   const [motionSpeed] = useMotionSpeed();
   const [answerStrictness] = useAnswerStrictness();
   const [phase, setPhase] = useState<Phase>('question');
+  const [hasMissed, setHasMissed] = useState(false);
   const typingInputRef = useRef<HTMLInputElement>(null);
 
   const reveal = () => setPhase('answer');
@@ -181,7 +182,10 @@ function CardStep({
   const answer = (input: boolean | number) => {
     if (phase !== 'answer') return;
     if (input === true || (typeof input === 'number' && input > 1)) onDone();
-    else hide();
+    else {
+      setHasMissed(true);
+      hide();
+    }
   };
 
   // Space shows the answer, as it does in a study session.
@@ -217,6 +221,14 @@ function CardStep({
             answerStrictness={answerStrictness}
           />
         </StudyCardTransition>
+      </div>
+      <div role="status" aria-atomic="true" className="shrink-0">
+        {hasMissed && (
+          <p className="mx-auto mt-4 max-w-prose text-center text-sm text-ink-soft">
+            Missed cards come back for practice. Try recalling the answer, then show it again.
+            Choose Yes if you remembered, or No to practise again. You can Exit at any time.
+          </p>
+        )}
       </div>
       <StudyControls
         phase={phase}
