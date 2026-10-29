@@ -6,7 +6,7 @@ test.use({ serviceWorkers: 'block' });
 test('Settings and Help embed feedback only after a deliberate action', async ({
   page,
 }, testInfo) => {
-  const formId = process.env.VITE_TALLY_FEEDBACK_FORM_ID?.trim();
+  const formId = (process.env.VITE_TALLY_FEEDBACK_FORM_ID ?? 'zEEkv1').trim();
   const requests: { url: string; referrer: string | undefined }[] = [];
   await page.route('https://tally.so/**', async (route) => {
     requests.push({ url: route.request().url(), referrer: route.request().headers().referer });

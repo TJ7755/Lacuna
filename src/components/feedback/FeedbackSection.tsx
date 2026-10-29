@@ -4,7 +4,7 @@ import { Button } from '../ui/Button';
 export function FeedbackSection() {
   const [open, setOpen] = useState(false);
   const panelId = useId();
-  const formId = import.meta.env.VITE_TALLY_FEEDBACK_FORM_ID?.trim();
+  const formId = (import.meta.env.VITE_TALLY_FEEDBACK_FORM_ID ?? 'zEEkv1').trim();
   if (!formId || !/^[a-zA-Z0-9]+$/.test(formId)) return null;
 
   return (
