@@ -125,6 +125,14 @@ Prefer source files below 500 lines, excluding generated files and lockfiles. Ex
 limit triggers a review of cohesive responsibilities and meaningful extraction opportunities, not
 an automatic split. Keep cohesive modules together when splitting would reduce clarity.
 
+## Platform priority
+
+Lacuna is not currently being worked on for mobile. Design, polish and review effort goes to the
+desktop site, and mobile is not a priority until the desktop site is polished enough to justify it.
+Do not design phone-specific layouts or capture phone screenshots as review evidence. Existing
+phone-width tests stay and must keep passing, so a desktop change should not break the narrow layout,
+but they do not call for new mobile work.
+
 ## Stacked pull requests
 
 Use a stack when a change has genuinely independent layers. Each pull request must have one parent
