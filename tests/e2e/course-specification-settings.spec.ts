@@ -158,10 +158,13 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name: /^Course details/ }).click();
     const section = page.getByRole('region', { name: 'Supplied specification', exact: true });
     await expect(section.getByRole('heading', { name: 'Synthetic science' })).toBeVisible();
-    await expect(section.getByText('AQA · GCSE · EXAMPLE', { exact: true })).toBeVisible();
     await expect(
-      section.getByText('First examination 2027. Edition: 1.', { exact: true }),
+      section.getByText('AQA · GCSE · EXAMPLE · First exam 2027', { exact: true }),
     ).toBeVisible();
+    const about = section.getByLabel('About this specification', { exact: true });
+    await about.click();
+    await expect(section.getByText('Edition: 1.', { exact: true })).toBeVisible();
+    await about.click();
     await section.getByRole('button', { name: 'Change selection', exact: true }).press('Enter');
     const tier = section.getByRole('combobox', { name: 'Tier', exact: true });
     await expect(tier).toBeFocused();
@@ -208,9 +211,8 @@ for (const width of [1440, 390]) {
     ).toBeVisible();
     await page.reload();
     await page.getByRole('button', { name: /^Course details/ }).click();
-    await expect(
-      section.getByText('Tier: Foundation. Routes: Written papers.', { exact: true }),
-    ).toBeVisible();
+    await expect(section.getByText('Tier · Foundation', { exact: true })).toBeVisible();
+    await expect(section.getByText('Routes · Written papers', { exact: true })).toBeVisible();
     expect(await evidence(page)).toEqual(before);
     const saved = (await readAll<CourseRecord>(page, 'courses'))[0];
     expect(saved.specificationRef).toEqual({ ...paperSpecificationReference, tier: 'foundation' });
