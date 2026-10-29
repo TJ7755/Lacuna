@@ -163,7 +163,9 @@ describe('DataPortabilitySection', () => {
     expect(
       screen.getByRole('heading', { level: 3, name: 'Combine two devices' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Cards, Questions and review evidence/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Keeps Cards, Questions and reviews from both sides/),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Choose backup from another device' }),
     ).toBeInTheDocument();

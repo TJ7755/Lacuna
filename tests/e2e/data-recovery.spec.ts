@@ -52,7 +52,7 @@ test('replaces a clean browser context with a media-bearing full backup', async 
   await openRecoverySettings(page);
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: /^Full backup Complete database/ }).click(),
+    page.getByRole('button', { name: 'Download full backup', exact: true }).click(),
   ]);
   const backupPath = await download.path();
   if (!backupPath) throw new Error('Expected the full backup download to have a local path.');
