@@ -81,10 +81,10 @@ const Onboarding = lazy(loadOnboarding);
 const Download = lazy(loadDownload);
 const Method = lazy(loadMethod);
 const Privacy = lazy(() =>
-  import('../pages/PublicInformation').then((module) => ({ default: module.Privacy })),
+  import('../pages/publicPages').then((module) => ({ default: module.Privacy })),
 );
 const Terms = lazy(() =>
-  import('../pages/PublicInformation').then((module) => ({ default: module.Terms })),
+  import('../pages/publicPages').then((module) => ({ default: module.Terms })),
 );
 
 function lazyRoute(Component: ComponentType, study = false) {

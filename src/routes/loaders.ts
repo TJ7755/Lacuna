@@ -68,7 +68,7 @@ export const loadMergeReviewPanel = () =>
   }));
 
 export const loadDownload = () =>
-  import('../pages/Download').then((module) => ({ default: module.Download }));
+  import('../pages/publicPages').then((module) => ({ default: module.Download }));
 
 export const loadMethod = () =>
   import('../pages/Method').then((module) => ({ default: module.Method }));
