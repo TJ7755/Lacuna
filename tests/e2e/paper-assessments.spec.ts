@@ -148,9 +148,12 @@ for (const width of [1440, 390]) {
 
     await page.getByRole('button', { name: 'Set up paper dates', exact: true }).click();
     const setup = page.getByRole('region', { name: 'Paper dates', exact: true });
+    const about = setup.getByLabel('About paper dates', { exact: true });
+    await about.click();
     await expect(
       setup.getByText('Source: Synthetic specification, 1.', { exact: true }),
     ).toBeVisible();
+    await about.click();
     await setup.getByRole('button', { name: 'Date and time for First paper', exact: true }).click();
     const invalidTimePicker = page.getByRole('dialog', { name: 'Choose date and time' });
     await invalidTimePicker.getByRole('textbox', { name: 'Hour', exact: true }).fill('99');

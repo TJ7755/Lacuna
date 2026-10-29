@@ -2,12 +2,9 @@
 // Course share codes use the dedicated Course-facing Share page.
 
 import { useState } from 'react';
-import { m as motion } from 'motion/react';
-import { DownloadIcon, FileTextIcon } from '../ui/icons';
-import { cn } from '../ui/cn';
+import { Button } from '../ui/Button';
+import { DownloadIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
-import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import { SettingsSubsectionHeading } from '../../pages/settings/SettingsSectionHeading';
 
 // ---------------------------------------------------------------------------
 // Export format definitions
@@ -26,100 +23,80 @@ type ExportFormat =
 interface ExportFormatDef {
   id: ExportFormat;
   label: string;
+  /** Accessible name; the visible label alone repeats across the two groups. */
+  name: string;
   description: string;
-  extension: string;
   mimeType: string;
-  icon: React.ReactNode;
 }
 
-const EXPORT_FORMATS: ExportFormatDef[] = [
-  {
-    id: 'json-backup',
-    label: 'Full backup',
-    description: 'Complete database snapshot with all courses, cards, review history, and images.',
-    extension: 'json',
-    mimeType: 'application/json',
-    icon: <DownloadIcon width={18} height={18} />,
-  },
+const FULL_BACKUP: ExportFormatDef = {
+  id: 'json-backup',
+  label: 'Download',
+  name: 'Download full backup',
+  description: 'Every course, Card, Question, attempt, schedule and image, as JSON.',
+  mimeType: 'application/json',
+};
+
+const CARD_FORMATS: ExportFormatDef[] = [
   {
     id: 'csv',
     label: 'CSV',
+    name: 'Cards as CSV',
     description: 'Comma-separated values. Human-readable, compatible with spreadsheets.',
-    extension: 'csv',
     mimeType: 'text/csv',
-    icon: <FileTextIcon width={18} height={18} />,
   },
   {
     id: 'tsv',
     label: 'TSV',
+    name: 'Cards as TSV',
     description: 'Tab-separated values. Compatible with Anki import.',
-    extension: 'tsv',
     mimeType: 'text/tab-separated-values',
-    icon: <FileTextIcon width={18} height={18} />,
   },
   {
     id: 'markdown-table',
-    label: 'Markdown table',
+    label: 'Markdown',
+    name: 'Cards as a Markdown table',
     description: 'A GFM Markdown table with front, back, and tags columns.',
-    extension: 'md',
     mimeType: 'text/markdown',
-    icon: <FileTextIcon width={18} height={18} />,
   },
   {
     id: 'json-array',
-    label: 'JSON array',
+    label: 'JSON',
+    name: 'Cards as a JSON array',
     description: 'A JSON array of card objects. Re-importable into Lacuna.',
-    extension: 'json',
     mimeType: 'application/json',
-    icon: <FileTextIcon width={18} height={18} />,
   },
   {
     id: 'plain-text',
     label: 'Plain text',
+    name: 'Cards as plain text',
     description: 'Human-readable Q:/A: format with course, lesson and tag metadata.',
-    extension: 'txt',
     mimeType: 'text/plain',
-    icon: <FileTextIcon width={18} height={18} />,
-  },
-  {
-    id: 'review-history-csv',
-    label: 'Review history (CSV)',
-    description: 'Every review log with timestamps, grades, and response times.',
-    extension: 'csv',
-    mimeType: 'text/csv',
-    icon: <FileTextIcon width={18} height={18} />,
-  },
-  {
-    id: 'review-history-json',
-    label: 'Review history (JSON)',
-    description: 'Review history as a JSON array of objects.',
-    extension: 'json',
-    mimeType: 'application/json',
-    icon: <FileTextIcon width={18} height={18} />,
   },
 ];
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
+const REVIEW_FORMATS: ExportFormatDef[] = [
+  {
+    id: 'review-history-csv',
+    label: 'CSV',
+    name: 'Review history as CSV',
+    description: 'Every review log with timestamps, grades, and response times.',
+    mimeType: 'text/csv',
+  },
+  {
+    id: 'review-history-json',
+    label: 'JSON',
+    name: 'Review history as JSON',
+    description: 'Review history as a JSON array of objects.',
+    mimeType: 'application/json',
+  },
+];
 
-interface UnifiedExportPanelProps {
-  /** Label shown above the format grid. */
-  heading?: string;
-}
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExportPanelProps) {
+export function UnifiedExportPanel() {
   const { notify } = useToast();
   const [busy, setBusy] = useState(false);
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
 
   const stamp = new Date().toISOString().slice(0, 10);
-  const formats = EXPORT_FORMATS;
 
   async function handleExport(format: ExportFormatDef) {
     setBusy(true);
@@ -180,43 +157,48 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
     }
   }
 
-  return (
-    <div className="flex flex-col gap-5">
-      <SettingsSubsectionHeading className="font-display text-lg text-ink">
-        {heading}
-      </SettingsSubsectionHeading>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        {formats.map((format, i) => (
-          <motion.button
+  function formatGroup(label: string, formats: ExportFormatDef[]) {
+    return (
+      <div role="group" aria-label={label} className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs text-ink-faint">{label}</span>
+        {formats.map((format) => (
+          <Button
             key={format.id}
-            type="button"
-            initial={m > 0 ? { opacity: 0, y: 6 } : false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.2 * m,
-              delay: Math.min(i * 0.03, 0.12) * m,
-              ease: [0.16, 1, 0.3, 1],
-            }}
-            onClick={() => void handleExport(format)}
+            variant="ghost"
+            size="sm"
+            aria-label={format.name}
+            title={format.description}
             disabled={busy}
-            className={cn(
-              'group flex items-start gap-3.5 rounded-3xl card-surface card-surface-control bg-surface p-5 md:p-6 text-left transition-colors',
-              'hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
-              'disabled:opacity-40 disabled:pointer-events-none',
-            )}
+            onClick={() => void handleExport(format)}
           >
-            <div className="mt-0.5 rounded-full bg-ink/[0.04] p-2 text-ink-faint transition-colors group-hover:bg-accent-soft/30 group-hover:text-accent-ink">
-              {format.icon}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold text-ink transition-colors group-hover:text-ink">
-                {format.label}
-              </div>
-              <p className="mt-1 text-xs leading-relaxed text-ink-faint">{format.description}</p>
-            </div>
-          </motion.button>
+            {format.label}
+          </Button>
         ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl bg-paper px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-ink">Full backup</div>
+          <p className="text-xs text-ink-soft">{FULL_BACKUP.description}</p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-label={FULL_BACKUP.name}
+          disabled={busy}
+          onClick={() => void handleExport(FULL_BACKUP)}
+        >
+          <DownloadIcon width={16} height={16} />
+          {FULL_BACKUP.label}
+        </Button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 border-t border-ink/10 pt-3">
+        {formatGroup('Cards', CARD_FORMATS)}
+        {formatGroup('Review history', REVIEW_FORMATS)}
       </div>
     </div>
   );

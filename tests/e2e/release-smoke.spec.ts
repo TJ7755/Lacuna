@@ -168,7 +168,7 @@ test('downloads a full backup from recovery settings', async ({ page }) => {
   await enterWithWelcomeCourse(page);
   await page.goto('/#/settings#settings-export');
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Full backup Complete database' }).click();
+  await page.getByRole('button', { name: 'Download full backup', exact: true }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/^lacuna-backup-.*\.json$/);
 });

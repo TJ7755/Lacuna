@@ -31,6 +31,8 @@ interface DateTimePickerProps {
   onChange: (epochMs: number) => void;
   onValidityChange?: (valid: boolean) => void;
   label?: string;
+  /** Keep the label as the trigger's accessible name only, where a row already names it. */
+  hideLabel?: boolean;
   timeZone?: string;
   appearance?: 'field' | 'chip';
 }
@@ -47,6 +49,7 @@ export function DateTimePicker({
   onChange,
   onValidityChange,
   label,
+  hideLabel = false,
   timeZone,
   appearance = 'field',
 }: DateTimePickerProps) {
@@ -432,7 +435,7 @@ export function DateTimePicker({
   return (
     <div ref={containerRef} className="relative" data-date-time-picker>
       {label && (
-        <span id={labelId} className={`mb-2 ${fieldLabelClassName}`}>
+        <span id={labelId} className={hideLabel ? 'sr-only' : `mb-2 ${fieldLabelClassName}`}>
           {label}
         </span>
       )}
