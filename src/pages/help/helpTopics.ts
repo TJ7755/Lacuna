@@ -17,6 +17,24 @@ export interface HelpTopic {
 
 export const helpTopics: readonly HelpTopic[] = [
   {
+    id: 'choose-qualification',
+    group: 'Getting started',
+    question: 'How do I choose the right board and science qualification?',
+    answer:
+      'Combined Science includes biology, chemistry and physics in one qualification; Biology is the separate qualification. GCSE and IGCSE are different qualifications. Match the qualification, exam board (awarding body) and syllabus code to the school’s course. Find the board and code on the exam timetable or specification. If you are unsure which route, board or code applies, ask the school or teacher before choosing.',
+    keywords: [
+      'exam board',
+      'combined',
+      'separate',
+      'biology',
+      'GCSE',
+      'IGCSE',
+      'syllabus',
+      'school',
+      'teacher',
+    ],
+  },
+  {
     id: 'create-course',
     group: 'Getting started',
     question: 'How do I create a course and lessons?',
