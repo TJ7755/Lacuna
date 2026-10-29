@@ -125,6 +125,12 @@ export function Privacy() {
       <section>
         <h2>Connections you choose</h2>
         <p>
+          Choosing Send feedback in Settings or Help loads an external Tally form. Opening it
+          connects to Tally; information you submit is sent to Tally for the form owner to read.
+          Lacuna does not attach your study data, page URL or referrer. The form cannot read your
+          local Lacuna database.
+        </p>
+        <p>
           If you configure MCP access for an external AI client, that client can receive the Lacuna
           data exposed by the tools you authorise. Its provider’s data practices apply to anything
           it receives. Keep access codes, sync keys and teacher connection files private.
