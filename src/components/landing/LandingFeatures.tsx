@@ -160,8 +160,8 @@ export function LandingFeatures() {
         them alongside your cards.
       </Feature>
       <Feature id="landing-privacy" title="Yours, on your device.">
-        No account. Everything stays on your device, with backups to a file and optional encrypted
-        sync.
+        No account. Study data stays on your device unless you choose sharing, encrypted sync or
+        automatic marking. You can back it up to a file.
       </Feature>
     </>
   );

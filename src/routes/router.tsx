@@ -80,6 +80,12 @@ const loadOnboarding = () =>
 const Onboarding = lazy(loadOnboarding);
 const Download = lazy(loadDownload);
 const Method = lazy(loadMethod);
+const Privacy = lazy(() =>
+  import('../pages/publicPages').then((module) => ({ default: module.Privacy })),
+);
+const Terms = lazy(() =>
+  import('../pages/publicPages').then((module) => ({ default: module.Terms })),
+);
 
 function lazyRoute(Component: ComponentType, study = false) {
   return (
@@ -258,6 +264,14 @@ export const router = createHashRouter([
         // Public download guidance stays outside the application shell.
         path: '/download',
         element: isolatedRoute('the download page', lazyRoute(Download)),
+      },
+      {
+        path: '/privacy',
+        element: isolatedRoute('privacy information', lazyRoute(Privacy)),
+      },
+      {
+        path: '/terms',
+        element: isolatedRoute('terms information', lazyRoute(Terms)),
       },
       {
         // The technical account belongs to the landing page, outside the app shell.

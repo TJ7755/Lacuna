@@ -15,6 +15,8 @@ function routeLabel(pathname: string): string {
     '/start': 'Get started',
     '/landing': 'Welcome',
     '/download': 'Download',
+    '/privacy': 'Privacy',
+    '/terms': 'Terms',
     '/method': 'The method',
     '/learn': 'Practice',
   };
