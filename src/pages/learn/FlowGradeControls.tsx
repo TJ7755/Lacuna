@@ -580,6 +580,10 @@ export function FlowGradeControls({
         className={`relative col-start-1 row-start-1 mx-auto self-start ${rowClassName}`}
         inert={gathered}
         aria-hidden={gathered}
+        onClickCapture={(event) => {
+          // A second reveal click can land on a grade as it splits out of the pill.
+          if (event.detail > 1) event.stopPropagation();
+        }}
       >
         {grades.map((grade, index) => {
           const primary = index === grades.length - 1;

@@ -651,6 +651,11 @@ export function useLearnSession({
   /** Present the next eligible card, or finish if the goal has been reached. */
   const serveNext = useCallback(() => {
     if (!mountedRef.current) return;
+    // Keep studying starts a new pass after the previous report was committed.
+    if (completionConfirmed.current) {
+      finalising.current = false;
+      completionConfirmed.current = false;
+    }
     presentedAnswerInput.current = undefined;
 
     if (
