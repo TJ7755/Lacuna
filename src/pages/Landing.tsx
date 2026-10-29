@@ -43,6 +43,8 @@ export function Landing() {
           </Link>
         </div>
         <div className="landing-footer-end">
+          <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
           <a href="https://github.com/TJ7755/Lacuna" target="_blank" rel="noreferrer">
             GitHub
           </a>

@@ -44,7 +44,13 @@ async function upgradeToApp(): Promise<void> {
   // must honour it instead of bouncing the visitor back to the welcome route.
   markLandingHandover();
   prefetchApp();
-  const { renderApp } = await import('../../appRoot');
+  const [{ renderApp }, { router }] = await Promise.all([
+    import('../../appRoot'),
+    import('../../routes/router'),
+  ]);
+  // Idle prefetch may have constructed the app router before this navigation.
+  // Its hash listener cannot observe another router's pushState transition.
+  await router.navigate(window.location.hash.slice(1) || '/', { replace: true });
   landingRoot?.unmount();
   landingRoot = null;
   renderApp();

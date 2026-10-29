@@ -1,0 +1,64 @@
+.public-information {
+  min-height: 100svh;
+  padding: 32px clamp(24px, 5vw, 72px) 80px;
+  color: hsl(var(--ink));
+  background: hsl(var(--paper));
+}
+.public-information nav {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+  max-width: 1120px;
+  margin: auto;
+  font-size: 14px;
+}
+.public-information nav > div {
+  display: flex;
+  gap: 24px;
+}
+.public-information a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.public-information a:focus-visible {
+  outline: 2px solid hsl(var(--accent-ink));
+  outline-offset: 5px;
+}
+.public-information main {
+  max-width: 740px;
+  margin: 80px auto 0;
+  font-size: 17px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.public-information h1,
+.public-information h2 {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.public-information h1 {
+  font-size: clamp(44px, 6vw, 64px);
+  margin: 12px 0 24px;
+}
+.public-information h2 {
+  font-size: 26px;
+  margin-bottom: 20px;
+}
+.public-information-kicker {
+  color: hsl(var(--accent-ink));
+  font-size: 14px;
+}
+.public-information-intro {
+  font-size: 20px;
+}
+.public-information section {
+  border-top: 1px solid hsl(var(--line));
+  margin-top: 40px;
+  padding-top: 32px;
+}
+.public-information section p + p {
+  margin-top: 18px;
+}
