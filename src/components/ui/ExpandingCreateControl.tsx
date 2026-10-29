@@ -149,7 +149,8 @@ export function ExpandingCreateControl({
           type="button"
           aria-expanded={open}
           aria-controls={formId}
-          onClick={() => {
+          onClick={(event) => {
+            if (event.detail > 1) return;
             if (open) close();
             else onOpenChange(true);
           }}
