@@ -39,7 +39,7 @@ test('Settings and Help embed feedback only after a deliberate action', async ({
       'credentialless',
       '',
     );
-    await expect(page.getByRole('link', { name: 'open it in a new tab' })).toHaveAttribute(
+    await expect(page.getByRole('link', { name: 'Open in a new tab' })).toHaveAttribute(
       'href',
       `https://tally.so/r/${formId}`,
     );
