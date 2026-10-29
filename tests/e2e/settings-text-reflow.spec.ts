@@ -66,7 +66,7 @@ for (const width of [320, 390]) {
           groupBox!.y < labelBox!.y + labelBox!.height;
         expect(overlaps, `${name} label overlaps its choices`).toBe(false);
       }
-      const explanation = page.getByText(/How closely a typed answer must match/);
+      const explanation = page.getByText(/^Typed answers ignore case/);
       const card = page.locator('main section#settings-study');
       const [textBox, cardBox] = await Promise.all([explanation.boundingBox(), card.boundingBox()]);
       expect(textBox!.width).toBeGreaterThan(cardBox!.width * 0.6);
