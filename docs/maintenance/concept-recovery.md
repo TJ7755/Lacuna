@@ -11,4 +11,3 @@ If neither snapshot contains the missing Concept, or its Course does not match, 
 fails without replacing the database. Keep the affected export and look for an older intact backup;
 do not delete Question Sets or edit deletion receipts to force sync through. A snapshot whose
 Concept records have all been lost cannot be repaired automatically by this workflow.
-
