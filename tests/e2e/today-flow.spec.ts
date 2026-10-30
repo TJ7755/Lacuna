@@ -61,6 +61,33 @@ test('cold Study acknowledges input and Escape cancels before the chunk arrives'
   }
 });
 
+test('warm Study opens its preview without a loading state', async ({ page }) => {
+  let warmed = () => {};
+  const chunk = new Promise<void>((resolve) => {
+    warmed = resolve;
+  });
+  page.on('requestfinished', (request) => {
+    if (/\/assets\/StudySheet-[^/]+\.js$/.test(request.url())) warmed();
+  });
+  await enterFreshLacuna(page);
+  await importWelcomeCourse(page);
+  // The shell fetches the preview while idle, before anyone presses Study.
+  await chunk;
+  await page.evaluate(() => {
+    const record = window as typeof window & { studyPending?: boolean };
+    record.studyPending = false;
+    new MutationObserver(() => {
+      if (document.querySelector('[data-study-trigger][aria-busy="true"]'))
+        record.studyPending = true;
+    }).observe(document.body, { subtree: true, attributes: true, childList: true });
+  });
+  await page.getByRole('button', { name: 'Study Welcome to Lacuna' }).click();
+  await expect(page.getByRole('region', { name: 'Session preview' })).toBeVisible();
+  expect(
+    await page.evaluate(() => (window as typeof window & { studyPending?: boolean }).studyPending),
+  ).toBe(false);
+});
+
 test('Study fills the viewport through resize and Escape cancels its pending destination', async ({
   page,
 }, testInfo) => {

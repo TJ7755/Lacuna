@@ -16,6 +16,7 @@ import {
   CourseNavigationDataProvider,
   useNavigationCourses,
 } from '../../state/CourseNavigationData';
+import { scheduleIdlePrefetch } from '../../routes/idlePrefetch';
 import { useIdleRoutePrefetch } from '../../routes/useIdleRoutePrefetch';
 import { Sidebar } from './Sidebar';
 import { Titlebar } from './Titlebar';
@@ -23,6 +24,7 @@ import { useScrollMemory } from './scrollMemory';
 import { RouteTransitions } from './RouteTransitions';
 import { ErrorBoundary } from './ErrorBoundary';
 import { OverlayLoadBoundary } from './OverlayLoadBoundary';
+import type { StudySheet as StudySheetComponent } from '../learn/StudySheet';
 import { StudySheetProvider, useStudySheetState } from '../learn/StudySheetContext';
 import { CourseSectionBar } from '../course/CourseSectionBar';
 import { courseIdFromPath } from '../course/courseSections';
@@ -40,9 +42,19 @@ import { keyMatches, loadBindings } from '../../state/shortcutBindings';
 const CommandPalette = lazy(() =>
   import('../search/CommandPalette').then((module) => ({ default: module.CommandPalette })),
 );
-const StudySheet = lazy(() =>
-  import('../learn/StudySheet').then(({ StudySheet }) => ({ default: StudySheet })),
-);
+let warmStudySheet: typeof StudySheetComponent | undefined;
+const loadStudySheet = () =>
+  import('../learn/StudySheet').then(({ StudySheet }) => (warmStudySheet = StudySheet));
+// Once warmed, the module resolves synchronously so the first press never shows the fallback.
+const StudySheet = lazy(() => {
+  const component = warmStudySheet;
+  if (!component) return loadStudySheet().then((loaded) => ({ default: loaded }));
+  const ready = {
+    then: (resolve: (module: { default: typeof component }) => void) =>
+      resolve({ default: component }),
+  };
+  return ready as unknown as Promise<{ default: typeof component }>;
+});
 const KeyHints = lazy(() =>
   import('../ui/KeyHints').then(({ KeyHints }) => ({ default: KeyHints })),
 );
@@ -90,6 +102,16 @@ function AppShellLayout() {
           .slice(0, 1)
           .map((course) => `/course/${course.id}`)
       : [],
+  );
+  // Warm the Study preview so a first press opens it straight away, not on a loading label.
+  useEffect(
+    () =>
+      scheduleIdlePrefetch(['study'], () => {
+        void loadStudySheet().catch(() => {
+          // Speculative failures leave Study's own load free to retry.
+        });
+      }),
+    [],
   );
   const navigate = useNavigate();
   const outlet = useOutlet();
