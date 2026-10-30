@@ -10,7 +10,12 @@ import {
   createInsightsLastPublishedAtSetting,
 } from '../state/insightsOptIn';
 import { createInsightsOwner, openInsightEnvelope, type InsightsOwner } from './envelope';
-import { enrolInClass, setReportingConsent } from './enrolment';
+import {
+  createEnrolmentSetting,
+  disconnectFromClass,
+  enrolInClass,
+  setReportingConsent,
+} from './enrolment';
 import { deliverCourseInsights, publishCourseInsights } from './delivery';
 import { parseDailyEvidence } from './evidence';
 
@@ -90,25 +95,58 @@ it('delivers yesterday’s encrypted recall once and records only an accepted re
   expect(fetchImpl).toHaveBeenCalledTimes(1);
   expect(createInsightsLastSentDaySetting(courseId).read()).toBe(day);
 });
-it('aborts an upload when consent is revoked and does not record an acknowledgement', async () => {
-  setReportingConsent(courseId, true, 'Pupil A');
-  let started!: () => void;
-  const ready = new Promise<void>((resolve) => {
-    started = resolve;
-  });
-  const fetchImpl = vi.fn<typeof fetch>(async (_url, init) => {
-    started();
-    return new Promise((_resolve, reject) =>
-      init!.signal!.addEventListener('abort', () => reject(new Error('aborted')), { once: true }),
-    );
-  });
-  const sending = deliverCourseInsights(courseId, { now, fetchImpl });
-  const rejected = expect(sending).rejects.toThrow();
-  await ready;
-  setReportingConsent(courseId, false);
-  await rejected;
-  expect(createInsightsLastSentDaySetting(courseId).read()).toBeNull();
-});
+it.each(['opt out', 'disconnect'])(
+  'aborts an upload on %s and does not record an acknowledgement',
+  async (action) => {
+    setReportingConsent(courseId, true, 'Pupil A');
+    let started!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const fetchImpl = vi.fn<typeof fetch>(async (_url, init) => {
+      started();
+      return new Promise((_resolve, reject) =>
+        init!.signal!.addEventListener('abort', () => reject(new Error('aborted')), { once: true }),
+      );
+    });
+    const sending = deliverCourseInsights(courseId, { now, fetchImpl });
+    const rejected = expect(sending).rejects.toThrow();
+    await ready;
+    if (action === 'disconnect') await disconnectFromClass(courseId);
+    else setReportingConsent(courseId, false);
+    await rejected;
+    expect(createInsightsLastSentDaySetting(courseId).read()).toBeNull();
+  },
+);
+it.each([
+  ['daily delivery', deliverCourseInsights, day],
+  ['current publication', publishCourseInsights, '2026-10-19'],
+] as const)(
+  'discards the old pupil’s failed %s after disconnecting and rejoining',
+  async (_name, send, isoDay) => {
+    setReportingConsent(courseId, true, 'Old identifier');
+    const oldPupilId = createEnrolmentSetting(courseId).read()!.pupilId;
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+    await expect(send(courseId, { now, fetchImpl })).rejects.toThrow();
+    await disconnectFromClass(courseId);
+    enrolInClass(courseId, { shareId, lineageId: 'lineage', recipient: owner.recipient });
+    setReportingConsent(courseId, true, 'Fresh identifier');
+    const newPupilId = createEnrolmentSetting(courseId).read()!.pupilId;
+    expect(newPupilId).not.toBe(oldPupilId);
+    const pupils: { id: string; label: string }[] = [];
+    fetchImpl.mockImplementation(async (_url, init) => {
+      const report = parseDailyEvidence(
+        await openInsightEnvelope(owner, JSON.parse(String(init?.body)), { shareId, isoDay }),
+        { shareId, day: isoDay },
+      );
+      pupils.push(report.pupil);
+      return new Response(null, { status: 204 });
+    });
+    await send(courseId, { now, fetchImpl, retry: true });
+    expect(pupils).toEqual([{ id: newPupilId, label: 'Fresh identifier' }]);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  },
+);
 it('backs off failed automatic attempts for an hour but permits an explicit retry', async () => {
   setReportingConsent(courseId, true, 'Pupil A');
   const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));

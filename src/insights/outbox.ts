@@ -62,6 +62,18 @@ export function createInsightsOutbox(
     });
 
   return {
+    async discard(shareId: string): Promise<void> {
+      // Serialise with packet writes before allowing a fresh enrolment.
+      await database.transaction('rw', [packets, snapshots], async () => {
+        for (const table of [packets, snapshots]) {
+          await table
+            .where('[shareId+isoDay]')
+            .between([shareId, Dexie.minKey], [shareId, Dexie.maxKey])
+            .delete();
+        }
+      });
+    },
+
     async send(options: DailyDelivery): Promise<InsightsPublicationResult> {
       if (!options.isOptedIn() || options.signal?.aborted) return 'idle';
       if (!INSIGHT_ID_RE.test(options.shareId)) throw new Error('Invalid insights course.');
@@ -95,6 +107,7 @@ export function createInsightsOutbox(
         };
         // Seal before the transaction. Concurrent tabs must use the committed winner.
         packet = await database.transaction('rw', [packets, snapshots], async () => {
+          if (!stillAllowed()) return undefined;
           if (await snapshots.get(key)) return undefined;
           await packets.where('isoDay').below(isoDay).delete();
           const existing = await packets.get(key);
