@@ -100,7 +100,7 @@ export function useLearnAnswerFeedback({
       markedBy?: JevMarkProvenance,
       automatic = false,
     ) => {
-      if (undoInFlightRef.current) return;
+      if (undoInFlightRef.current || answerPromiseRef.current) return;
       const commit = () => {
         setAnswerSaveStatus('saving');
         const pending = (async () => {
@@ -126,6 +126,8 @@ export function useLearnAnswerFeedback({
             cardTransitionRef.current?.cancel();
             notify('Your answer could not be saved. Please try again.', 'negative');
             throw error;
+          } finally {
+            answerPromiseRef.current = null;
           }
         })();
         answerPromiseRef.current = pending;

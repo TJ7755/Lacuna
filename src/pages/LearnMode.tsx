@@ -57,11 +57,26 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
   const [leaveConfirmationOpen, setLeaveConfirmationOpen] = useState(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
+  const exitDecisionPendingRef = useRef(false);
+  const deferredCompletionRef = useRef<SessionSummary | null>(null);
   const completionDeliveriesRef = useRef(0);
   const stepFinished = useCallback(
     (summary: SessionSummary) => {
       completionDeliveriesRef.current += 1;
-      if (!leavingSessionRef.current) onStepFinished?.(summary);
+      if (leavingSessionRef.current) return;
+      if (exitDecisionPendingRef.current) deferredCompletionRef.current = summary;
+      else onStepFinished?.(summary);
+    },
+    [onStepFinished],
+  );
+  const handleLeaveOpenChange = useCallback(
+    (open: boolean) => {
+      exitDecisionPendingRef.current = open;
+      setLeaveConfirmationOpen(open);
+      if (open || leavingSessionRef.current) return;
+      const deferred = deferredCompletionRef.current;
+      deferredCompletionRef.current = null;
+      if (deferred) onStepFinished?.(deferred);
     },
     [onStepFinished],
   );
@@ -220,6 +235,7 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
     backOut,
     finish,
     confirmCompletion,
+    settleCompletion,
     serveNextRef,
     reveal,
     hide,
@@ -361,7 +377,7 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
     <StudyEntrance className="min-h-dvh overflow-x-clip bg-paper">
       <SessionExitGuard
         ref={exitGuardRef}
-        onOpenChange={setLeaveConfirmationOpen}
+        onOpenChange={handleLeaveOpenChange}
         active={() =>
           !leavingSessionRef.current &&
           ((current !== null && (phase === 'question' || phase === 'answer')) ||
@@ -372,7 +388,8 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
         answeredCount={sessionCardOutcomes.size}
         totalCount={sessionCardIds.length}
         answerSaveStatus={answerSaveStatus}
-        onAttempt={() => {
+        onAttempt={(source) => {
+          if (source === 'navigation') exitDecisionPendingRef.current = true;
           void settleAnswer().catch(() => {});
           cardTransitionRef.current?.cancel();
           persistSimpleResume();
@@ -381,7 +398,7 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
           leavingSessionRef.current = true;
           try {
             if (answerSaveStatus !== 'failed') await settleAnswer();
-            if (phase === 'finished' && !(await confirmCompletion())) {
+            if (!(await settleCompletion())) {
               throw new Error('Session completion could not be saved.');
             }
           } catch (error) {
