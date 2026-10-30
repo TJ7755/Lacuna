@@ -122,9 +122,9 @@ describe('LibraryPage', () => {
     expect(sheet).toHaveTextContent('AQA GCSE · 8062');
     expect(sheet).toHaveTextContent('optional Themes A–F modules to choose from');
     expect(sheet).toHaveTextContent('1, 1, 4 and 6-mark question styles');
-    expect(sheet).toHaveTextContent('1,218 cards');
-    expect(sheet).toHaveTextContent('115 lesson notes');
-    expect(sheet).toHaveTextContent('115 practice sets, 1,380 marks');
+    expect(sheet).toHaveTextContent('1,272 cards');
+    expect(sheet).toHaveTextContent('126 lesson notes');
+    expect(sheet).toHaveTextContent('126 practice sets, 1,656 marks');
     expect(within(sheet).getByRole('link', { name: /Open in Lacuna/ })).toHaveAttribute(
       'href',
       'https://getlacuna.app/#/s/e85fc39e709074d58669c2d8bfd723bb',
