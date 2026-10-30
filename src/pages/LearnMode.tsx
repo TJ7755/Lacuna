@@ -264,6 +264,8 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
     undoWithTransitionCancel,
     confirmReport,
     answerWithUndo,
+    answerSaveStatus,
+    settleAnswer,
   } = feedback;
 
   const typedAutoMark = useTypedAutoMark({
@@ -369,15 +371,22 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
         resumable={isSimpleMode}
         answeredCount={sessionCardOutcomes.size}
         totalCount={sessionCardIds.length}
+        answerSaveStatus={answerSaveStatus}
         onAttempt={() => {
+          void settleAnswer().catch(() => {});
           cardTransitionRef.current?.cancel();
           persistSimpleResume();
         }}
         onConfirm={async () => {
           leavingSessionRef.current = true;
-          if (phase === 'finished' && !(await confirmCompletion())) {
+          try {
+            if (answerSaveStatus !== 'failed') await settleAnswer();
+            if (phase === 'finished' && !(await confirmCompletion())) {
+              throw new Error('Session completion could not be saved.');
+            }
+          } catch (error) {
             leavingSessionRef.current = false;
-            throw new Error('Session completion could not be saved.');
+            throw error;
           }
         }}
         onExplicitLeave={backOut}

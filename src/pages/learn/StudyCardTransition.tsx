@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useCallback,
   useImperativeHandle,
   useLayoutEffect,
   useRef,
@@ -36,6 +37,7 @@ export interface StudyCardTransitionHandle {
     velocity?: number,
   ) => boolean;
   cancel: () => void;
+  flush: () => void;
 }
 
 /** Persistence chooses the next card; presence retains the old presentation during the write. */
@@ -52,9 +54,17 @@ export const StudyCardTransition = forwardRef<
   const element = useRef<HTMLDivElement>(null);
   const busy = useRef(false);
   const commitTimer = useRef<number | null>(null);
+  const pendingCommit = useRef<(() => void) | null>(null);
   const [presentation, setPresentation] = useState({ cardId, phase, serial: 0 });
   const [reset, setReset] = useState(0);
   const [departure, setDeparture] = useState<Departure | null>(null);
+  const flush = useCallback(() => {
+    if (commitTimer.current !== null) window.clearTimeout(commitTimer.current);
+    commitTimer.current = null;
+    const commit = pendingCommit.current;
+    pendingCommit.current = null;
+    commit?.();
+  }, []);
 
   // Controls outside the card begin their exit in the same commit as its flight.
   useLayoutEffect(() => {
@@ -69,6 +79,7 @@ export const StudyCardTransition = forwardRef<
     busy.current = false;
     if (commitTimer.current !== null) window.clearTimeout(commitTimer.current);
     commitTimer.current = null;
+    pendingCommit.current = null;
   } else if (phase !== presentation.phase) {
     setPresentation({ ...presentation, phase });
   }
@@ -84,11 +95,13 @@ export const StudyCardTransition = forwardRef<
     cancel() {
       if (commitTimer.current !== null) window.clearTimeout(commitTimer.current);
       commitTimer.current = null;
+      pendingCommit.current = null;
       busy.current = false;
       setDeparture(null);
       // Undo also removes any retained outgoing presentation.
       setReset((value) => value + 1);
     },
+    flush,
     dismiss(correct, commit, source = 'keyboard', velocity = 0) {
       if (busy.current) return false;
       busy.current = true;
@@ -108,10 +121,8 @@ export const StudyCardTransition = forwardRef<
       });
       // Begin persistence while the card is still visible. No speculative queue read,
       // second commit, or empty inter-card pause; the incoming presentation overlaps.
-      commitTimer.current = window.setTimeout(() => {
-        commitTimer.current = null;
-        commit();
-      }, 70 * m);
+      pendingCommit.current = commit;
+      commitTimer.current = window.setTimeout(flush, 70 * m);
       return true;
     },
   }));
