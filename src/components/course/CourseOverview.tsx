@@ -203,6 +203,11 @@ export function CourseOverview(props: CourseOverviewProps) {
                             ? 'All lessons'
                             : 'Checkpoint'}
                       </span>
+                      {assessment.schedulingMode === 'steady' && (
+                        <span className="block text-sm text-ink-soft">
+                          Ongoing revision with no exam date.
+                        </span>
+                      )}
                     </span>
                   </button>
                   {editable && !archived && (
