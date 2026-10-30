@@ -470,6 +470,60 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     ).toBeVisible();
     await expect(publish).toHaveCount(0);
     expect(uploads).toHaveLength(uploadedBeforeOptOut);
+
+    // Disconnecting removes reporting on this device without deleting study data.
+    await consent.click();
+    await expect(consent).toHaveAttribute('aria-checked', 'true');
+    const tables = ['courses', 'lessons', 'cards', 'reviewHistory'];
+    const studyData = await Promise.all(tables.map((table) => readAll(pupil, table)));
+    expect(studyData.every((rows) => rows.length > 0)).toBe(true);
+    const disconnect = pupil.getByRole('button', { name: 'Disconnect from Gaps', exact: true });
+    await expect(disconnect).toBeVisible();
+    await pupil.screenshot({ path: testInfo.outputPath('gaps-disconnect.png'), fullPage: true });
+    await disconnect.click();
+    await expect(
+      pupil.getByText(/Results your teacher has already received are kept/),
+    ).toBeVisible();
+    await expect(
+      pupil.locator('[data-confirm-trigger]').filter({ hasText: 'Disconnect from Gaps' }),
+    ).toHaveCount(0);
+    await pupil.screenshot({
+      path: testInfo.outputPath('gaps-disconnect-confirm.png'),
+      fullPage: true,
+    });
+    await pupil.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(disconnect).toBeFocused();
+    await expect(consent).toHaveAttribute('aria-checked', 'true');
+    await disconnect.click();
+    await pupil.getByRole('button', { name: 'Disconnect', exact: true }).click();
+    await expect(pupil).toHaveURL(new RegExp(`#/course/${importedId}$`));
+    await expect(pupilClasses).toHaveCount(0);
+    await pupil.reload();
+    await expect(pupil.getByRole('list', { name: 'Course path' })).toBeVisible();
+    await expect(pupilClasses).toHaveCount(0);
+    expect(await Promise.all(tables.map((table) => readAll(pupil, table)))).toEqual(studyData);
+    expect(uploads).toHaveLength(uploadedBeforeOptOut);
+    await pupil.screenshot({ path: testInfo.outputPath('gaps-disconnected.png'), fullPage: true });
+
+    await pupil.goto(`/#/s/${link.split('/').pop()!}`);
+    await expect(consent).toHaveAttribute('aria-checked', 'false');
+    await expect(pupil.getByText('Nothing has been sent yet.')).toBeVisible();
+    await expect(
+      pupilClasses.getByRole('link', { name: 'Class biology', exact: true }),
+    ).toBeVisible();
+    expect(await Promise.all(tables.map((table) => readAll(pupil, table)))).toEqual(studyData);
+    expect(uploads).toHaveLength(uploadedBeforeOptOut);
+
+    // The same control also works from course settings without leaving that page.
+    await pupil.goto(`/#/course/${importedId}/settings`);
+    await disconnect.click();
+    await pupil.getByRole('button', { name: 'Disconnect', exact: true }).click();
+    await expect(
+      pupil.getByRole('status').filter({ hasText: 'Disconnected from Gaps.' }),
+    ).toBeVisible();
+    await expect(pupil).toHaveURL(new RegExp(`#/course/${importedId}/settings$`));
+    await expect(pupilClasses).toHaveCount(0);
+    await expect(consent).toBeDisabled();
   } finally {
     await Promise.allSettled([
       teacherContext.close(),

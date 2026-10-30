@@ -3,6 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import { Toggle } from '../../components/ui/Toggle';
 import { Field, Input } from '../../components/ui/Field';
+import { Button } from '../../components/ui/Button';
+import { ConfirmInlineSwap } from '../../components/ui/ConfirmInline';
 import { buttonClassName } from '../../components/ui/buttonStyles';
 import {
   createInsightsLastSentDaySetting,
@@ -11,13 +13,20 @@ import {
 } from '../../state/insightsOptIn';
 import {
   createEnrolmentSetting,
+  disconnectFromClass,
   reportingEnabled,
   setReportingConsent,
 } from '../../insights/enrolment';
 import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
 import { SettingsCard } from './SettingsUi';
 
-export function CourseInsightsSection({ courseId }: { courseId: string }) {
+export function CourseInsightsSection({
+  courseId,
+  onDisconnected,
+}: {
+  courseId: string;
+  onDisconnected?: () => void;
+}) {
   const [enrolment] = createEnrolmentSetting(courseId).use();
   const [optedIn] = createInsightsOptInSetting(courseId).use();
   const [lastSent] = createInsightsLastSentDaySetting(courseId).use();
@@ -26,8 +35,25 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
   const [label, setLabel] = useState(enrolment?.pupilLabel ?? '');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const enabled = reportingEnabled();
   const consenting = optedIn && enrolment?.consentedAt !== null && enrolment !== null;
+
+  async function disconnect() {
+    setDisconnecting(true);
+    try {
+      await disconnectFromClass(courseId);
+      setLabel('');
+      setConfirmingDisconnect(false);
+      setMessage('Disconnected from Gaps. Your course and study history are kept.');
+      onDisconnected?.();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not disconnect from Gaps.');
+    } finally {
+      setDisconnecting(false);
+    }
+  }
 
   async function publish() {
     setBusy(true);
@@ -111,7 +137,7 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
         <Toggle
           id={`insights-opt-in-${courseId}`}
           checked={consenting}
-          disabled={!enrolment}
+          disabled={!enrolment || disconnecting}
           onChange={(checked) => {
             try {
               setReportingConsent(courseId, checked, label);
@@ -125,7 +151,7 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
       {enabled && consenting && (
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || disconnecting}
           className={`${buttonClassName('secondary', 'sm')} mt-3`}
           onClick={() => void publish()}
         >
@@ -173,6 +199,27 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
       >
         School data notice
       </a>
+      {enrolment && (
+        <div className="mt-5 border-t border-line pt-5">
+          <h3 className="text-sm font-medium text-ink">Disconnect from Gaps</h3>
+          <p className="mt-1 mb-3 text-sm text-ink-soft">
+            Stop sharing with this teacher and remove this course from Gaps on this device. Your
+            course, lessons and study history stay in Lacuna.
+          </p>
+          <ConfirmInlineSwap
+            active={confirmingDisconnect}
+            message="Disconnect from Gaps on this device? Your course and study history stay in Lacuna. Results your teacher has already received are kept."
+            confirmLabel="Disconnect"
+            variant="default"
+            onConfirm={disconnect}
+            onCancel={() => setConfirmingDisconnect(false)}
+          >
+            <Button variant="secondary" size="sm" onClick={() => setConfirmingDisconnect(true)}>
+              Disconnect from Gaps
+            </Button>
+          </ConfirmInlineSwap>
+        </div>
+      )}
     </SettingsCard>
   );
 }

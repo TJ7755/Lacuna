@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AppLink } from '../components/ui/AppLink';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
@@ -10,6 +10,7 @@ import { CourseInsightsSection } from './settings/CourseInsightsSection';
 
 export function PupilClassPage() {
   const { courseId } = useParams();
+  const navigate = useNavigate();
   const course = useCourse(courseId);
   const [enrolment] = createEnrolmentSetting(courseId ?? '').use();
 
@@ -41,7 +42,11 @@ export function PupilClassPage() {
           Open course
         </AppLink>
       </header>
-      <CourseInsightsSection key={course.id} courseId={course.id} />
+      <CourseInsightsSection
+        key={course.id}
+        courseId={course.id}
+        onDisconnected={() => navigate(`/course/${course.id}`, { replace: true })}
+      />
     </div>
   );
 }

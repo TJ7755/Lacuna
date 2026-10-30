@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { enrolmentStorageOptions } from './enrolmentStorage';
 import { createLocalSetting, parseJson } from '../state/localSetting';
-import { createInsightsOptInSetting } from '../state/insightsOptIn';
+import {
+  createInsightsOptInSetting,
+  createInsightsLastSentDaySetting,
+  createInsightsLastPublishedAtSetting,
+} from '../state/insightsOptIn';
 import { insightsRecipientSchema, type InsightsRecipient } from './recipient';
 
 const enrolmentSchema = z
@@ -83,4 +87,24 @@ export function setReportingConsent(courseId: string, enabled: boolean, label = 
   optIn.write(false);
   setting.write({ ...saved, pupilLabel, consentedAt: Date.now() });
   optIn.write(true);
+}
+
+export async function disconnectFromClass(courseId: string): Promise<void> {
+  const setting = createEnrolmentSetting(courseId);
+  const enrolment = setting.read();
+  // Revoke consent first so an interrupted disconnect still leaves reporting off.
+  setReportingConsent(courseId, false);
+  if (enrolment) {
+    const { createInsightsOutbox } = await import('./outbox');
+    const outbox = createInsightsOutbox();
+    try {
+      await outbox.discard(enrolment.shareId);
+    } finally {
+      outbox.close();
+    }
+  }
+  createInsightsLastSentDaySetting(courseId).write(null);
+  createInsightsLastPublishedAtSetting(courseId).write(null);
+  localStorage.removeItem(`lacuna.insights.attempt.${courseId}`);
+  setting.write(null);
 }
