@@ -1,7 +1,11 @@
 import { waitUntil } from '@vercel/functions';
 import { loadAccessConfiguration, verifySessionToken } from '../../server/ai/access.js';
 import { aiHeaders, allowedOrigin, readBoundedBody } from '../../server/ai/http.js';
-import { callJevDecision, callJevAllocationBatch } from '../../server/jev/provider.js';
+import {
+  callJevDecision,
+  callJevAllocationBatch,
+  JevProviderError,
+} from '../../server/jev/provider.js';
 import { getJevUsageStore, loadJevLimit } from '../../server/jev/usage.js';
 import { jevMarkRequestSchema } from '../../src/jev/apiEntry.js';
 
@@ -56,6 +60,8 @@ export default {
     if (!parsed.success) return error(400, 'Invalid request.');
     let usage: ReturnType<typeof getJevUsageStore> | null = null;
     let calledAt: number | null = null;
+    let stage: 'usage' | 'provider' = 'usage';
+    let providerSignal: AbortSignal | undefined;
     try {
       usage = getJevUsageStore(url, token);
       const refresh = usage.refresh();
@@ -68,6 +74,8 @@ export default {
         return error(429, 'Jev input-token ceiling reached.');
       }
       const signal = AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]);
+      providerSignal = signal;
+      stage = 'provider';
       calledAt = Date.now();
       const typesafeStarted = performance.now();
       let result;
@@ -82,8 +90,25 @@ export default {
       const response = finish(Response.json(result, { headers }));
       waitUntil(usage.record(result.inputTokens, calledAt).catch(() => {}));
       return response;
-    } catch {
-      const response = error(503, 'Jev is unavailable.');
+    } catch (failure) {
+      console.error({
+        event: 'jev-failure',
+        stage,
+        kind: providerSignal?.aborted
+          ? 'aborted'
+          : failure instanceof JevProviderError
+            ? failure.kind
+            : stage === 'provider'
+              ? 'invalid-response'
+              : 'internal',
+        ...(failure instanceof JevProviderError && failure.status !== undefined
+          ? { status: failure.status }
+          : {}),
+      });
+      const response =
+        stage === 'provider'
+          ? error(502, 'Jev could not mark this answer.')
+          : error(503, 'Jev is unavailable.');
       // Count failed provider calls too; their unreported token usage is unknown.
       if (usage && calledAt !== null) waitUntil(usage.record(0, calledAt).catch(() => {}));
       return response;

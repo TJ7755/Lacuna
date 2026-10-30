@@ -46,6 +46,15 @@ const responseSchema = z.object({
   }),
 });
 
+export class JevProviderError extends Error {
+  constructor(
+    readonly kind: 'http' | 'network' | 'invalid-response',
+    readonly status?: number,
+  ) {
+    super('Jev provider request failed.');
+  }
+}
+
 type WireQuestion =
   | {
       type: 'noul';
@@ -102,14 +111,24 @@ async function callWire(
   signal: AbortSignal,
   fetcher: typeof fetch,
 ) {
-  const response = await fetcher('https://api.typesafe.ai/v1/systemone', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: JEV_MODEL, state, questions }),
-    signal,
-  });
-  if (!response.ok) throw new Error('TypeSafe is unavailable.');
-  const parsed = responseSchema.parse(await response.json());
+  let response: Response;
+  try {
+    response = await fetcher('https://api.typesafe.ai/v1/systemone', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: JEV_MODEL, state, questions }),
+      signal,
+    });
+  } catch {
+    throw new JevProviderError('network');
+  }
+  if (!response.ok) throw new JevProviderError('http', response.status);
+  let parsed: z.infer<typeof responseSchema>;
+  try {
+    parsed = responseSchema.parse(await response.json());
+  } catch {
+    throw new JevProviderError('invalid-response');
+  }
   const keys = Object.keys(questions);
   if (
     Object.keys(parsed.answers).length !== keys.length ||

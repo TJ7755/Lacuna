@@ -95,14 +95,22 @@ export function createJevEngine(
   let exchange: { code: string; promise: Promise<{ token: string; expiresAt: number }> } | null =
     null;
   let warmedSession: { code: string; expiresAt: number | null } | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | undefined;
   const publish = (notify = true) => {
+    clearTimeout(retryTimer);
+    retryTimer = undefined;
+    const waiting = retryAt === null || Date.now() < retryAt;
+    if (settings.enabled && listeners.size && retryAt !== null && Date.now() < retryAt) {
+      // Wake the UI without issuing a background marking request.
+      retryTimer = setTimeout(() => publish(), Math.min(retryAt - Date.now(), 2_147_483_647));
+    }
     const next: JevStatus = !settings.enabled
       ? { state: 'off' }
       : !readCode()
         ? { state: 'paused', reason: 'no-access-code', lastUsedAt }
         : globalThis.navigator?.onLine === false
           ? { state: 'paused', reason: 'offline', lastUsedAt }
-          : pause
+          : pause && waiting
             ? { state: 'paused', reason: pause, lastUsedAt, retryAt }
             : { state: 'ready', lastUsedAt };
     if (JSON.stringify(next) !== JSON.stringify(status)) status = next;
@@ -480,9 +488,12 @@ export function createJevEngine(
         globalThis.addEventListener?.('offline', online);
       }
       listeners.add(listener);
+      publish(false);
       return () => {
         listeners.delete(listener);
         if (!listeners.size) {
+          clearTimeout(retryTimer);
+          retryTimer = undefined;
           globalThis.removeEventListener?.('storage', changed);
           globalThis.removeEventListener?.('online', online);
           globalThis.removeEventListener?.('offline', online);
