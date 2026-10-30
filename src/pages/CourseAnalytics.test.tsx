@@ -259,7 +259,9 @@ describe('CourseAnalytics', () => {
 
     const whole = screen.getByRole('region', { name: 'Whole course' });
     expect(within(whole).getByRole('img', { name: 'Cards: 3' })).toBeInTheDocument();
-    expect(whole).toHaveTextContent('Reviewed at least once:2');
+    expect(within(whole).getByText('Predicted recall')).toBeInTheDocument();
+    expect(within(whole).getByText('Reviews, 30 days')).toBeInTheDocument();
+    expect(whole).toHaveTextContent('Reviewed cards:2');
     expect(whole).toHaveTextContent('Each card is measured at its next test or paper.');
     // Cards target two dates, so no single exam-day line is drawn; each paper gets a row.
     expect(screen.queryByText('Exam-day forecast')).not.toBeInTheDocument();

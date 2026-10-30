@@ -82,7 +82,7 @@ export function ProgressScopeSelect({
   );
 }
 
-/** One figure behind an icon; the label is its accessible name and tooltip. */
+/** One figure with a visible label and an accessible name. */
 function Stat({
   icon,
   value,
@@ -107,27 +107,30 @@ function Stat({
       >
         {icon}
       </span>
-      <span className="font-display text-2xl font-semibold tabular-nums">
-        {value}
-        {unit && <span className="ml-1 text-sm font-normal text-ink-soft">{unit}</span>}
+      <span className="flex min-w-0 flex-col">
+        <span className="font-display text-2xl font-semibold tabular-nums">
+          {value}
+          {unit && <span className="ml-1 text-sm font-normal text-ink-soft">{unit}</span>}
+        </span>
+        <span className="text-sm leading-snug text-ink-soft">{label}</span>
       </span>
     </span>
   );
 }
 
-/** Reviewed, taught-not-reviewed and not-started as one segmented bar with icon counts. */
+/** Reviewed, taught-not-reviewed and not-started as one segmented bar with labelled counts. */
 function StudyBar({ study, cardCount }: Pick<CourseProgressReport, 'study' | 'cardCount'>) {
   const parts = [
     {
       count: study.reviewed,
-      label: 'Reviewed at least once',
+      label: 'Reviewed cards',
       bar: 'bg-accent',
       badge: 'bg-accent text-accent-fg',
       icon: <CheckIcon width={12} height={12} strokeWidth={2.4} />,
     },
     {
       count: study.taughtNotReviewed,
-      label: 'Taught or introduced, not yet reviewed',
+      label: 'Introduced, not reviewed',
       bar: 'bg-accent/40',
       badge: 'bg-ink/5 text-ink-soft',
       icon: <BookIcon width={12} height={12} />,
@@ -159,7 +162,7 @@ function StudyBar({ study, cardCount }: Pick<CourseProgressReport, 'study' | 'ca
             <span className={cn('grid size-5 place-items-center rounded-full', part.badge)}>
               {part.icon}
             </span>
-            <span className="sr-only">{part.label}:</span>
+            <span>{part.label}:</span>
             {part.count}
           </li>
         ))}
@@ -264,14 +267,24 @@ export function ProgressOverview({
         {assessment?.name ?? 'Whole course'}
       </h2>
 
-      <div className={cn(CARD, 'flex items-center gap-5')}>
-        <span role="img" aria-label={recallName} title={recallName} className="relative grid">
-          <MiniRing value={recall.figure ?? 0} size={132} strokeWidth={12} />
-          <span className="absolute inset-0 grid place-items-center font-display text-3xl font-semibold tabular-nums">
-            {recall.figure === null ? '–' : percent(recall.figure)}
+      <div className={cn(CARD, 'flex min-w-0 items-center gap-5')}>
+        <span
+          role="img"
+          aria-label={recallName}
+          title={recallName}
+          className="flex w-[132px] shrink-0 flex-col items-center gap-2"
+        >
+          <span className="relative grid">
+            <MiniRing value={recall.figure ?? 0} size={132} strokeWidth={12} />
+            <span className="absolute inset-0 grid place-items-center font-display text-3xl font-semibold tabular-nums">
+              {recall.figure === null ? '–' : percent(recall.figure)}
+            </span>
+          </span>
+          <span className="text-center text-sm leading-snug text-ink-soft">
+            {progressHeading(course)}
           </span>
         </span>
-        <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 max-w-40 flex-col gap-3">
           {recall.days !== undefined && (
             <Stat
               icon={<CalendarIcon width={18} height={18} />}
@@ -289,8 +302,8 @@ export function ProgressOverview({
         </div>
       </div>
 
-      <div className={cn(CARD, 'flex flex-col justify-between gap-4 sm:flex-1')}>
-        <div className="flex items-start justify-between gap-4">
+      <div className={cn(CARD, 'flex min-w-0 flex-col justify-between gap-4 sm:flex-1')}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-wrap gap-x-6 gap-y-3">
             <Stat icon={<CardsIcon width={18} height={18} />} value={cardCount} label="Cards" />
             {activity && (
