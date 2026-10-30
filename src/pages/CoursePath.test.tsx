@@ -45,7 +45,37 @@ describe('CoursePath View mode', () => {
     expect(
       within(deadlines).getByRole('button', { name: /^1\s*Jan\s*Zoned exam/ }),
     ).toBeInTheDocument();
+    expect(within(deadlines).queryByText(/Ongoing revision/)).not.toBeInTheDocument();
   });
+
+  it.each(['Steady retention', 'Keep my biology fresh'])(
+    'explains no-date revision beside the saved assessment title "%s"',
+    (name) => {
+      pathState.mockCourse = { ...course, schedulingMode: 'steady', examDate: undefined };
+      pathState.mockAssessments = [
+        {
+          id: 'steady-assessment',
+          courseId: course.id,
+          kind: 'final',
+          name,
+          schedulingMode: 'steady',
+          afterLessonId: null,
+          coverageMode: 'prefix',
+          excludedCardIds: [],
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ];
+
+      renderPage();
+
+      const assessments = screen.getByRole('region', { name: 'Assessments' });
+      const revision = within(assessments).getByRole('button', { name: new RegExp(name) });
+      expect(within(revision).getByText(name, { exact: true })).toBeVisible();
+      expect(within(revision).getByText('All lessons')).toBeVisible();
+      expect(within(revision).getByText('Ongoing revision with no exam date.')).toBeVisible();
+    },
+  );
 
   it('shows a one-lesson course as a path when it contains a Practice Qs activity', () => {
     pathState.mockLessons = [lesson1];
