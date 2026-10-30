@@ -7,6 +7,7 @@ import {
   createInsightsLastPublishedAtSetting,
 } from '../state/insightsOptIn';
 import { insightsRecipientSchema, type InsightsRecipient } from './recipient';
+import { createInsightsOutbox } from './outbox';
 
 const enrolmentSchema = z
   .object({
@@ -95,7 +96,6 @@ export async function disconnectFromClass(courseId: string): Promise<void> {
   // Revoke consent first so an interrupted disconnect still leaves reporting off.
   setReportingConsent(courseId, false);
   if (enrolment) {
-    const { createInsightsOutbox } = await import('./outbox');
     const outbox = createInsightsOutbox();
     try {
       await outbox.discard(enrolment.shareId);
