@@ -7,6 +7,11 @@ import { ImportPanel } from './ImportPanel';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { libraryCourses } from '../../library/catalogue';
 
+// Routing tests stub decoding; real-file identity coverage lives in SharedCourseImport.identity.test.tsx.
+vi.mock('../course/CourseSpecificationIdentity', () => ({
+  CourseSpecificationIdentity: () => null,
+}));
+
 const mocks = vi.hoisted(() => ({
   multiplier: 0,
   navigate: vi.fn(),

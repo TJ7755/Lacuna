@@ -17,6 +17,11 @@ import { createEnrolmentSetting } from '../insights/enrolment';
 const SHARE_ID = 'a'.repeat(32);
 const LINEAGE_ID = 'lineage-teacher';
 
+// Routing tests stub decoding; real-file identity coverage lives in SharedCourseImport.identity.test.tsx.
+vi.mock('../components/course/CourseSpecificationIdentity', () => ({
+  CourseSpecificationIdentity: () => null,
+}));
+
 const mocks = vi.hoisted(() => ({
   notify: vi.fn(),
   decodeFile: vi.fn(),
