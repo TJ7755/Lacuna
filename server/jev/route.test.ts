@@ -295,3 +295,34 @@ it.each([false, true])(
     ).toHaveLength(1);
   },
 );
+
+it.each(['http', 'network', 'json', 'schema'] as const)(
+  'reports transient provider %s failures without logging private content',
+  async (kind) => {
+    configured();
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        if (url === 'https://redis.example') return Response.json({ result: 0 });
+        if (kind === 'http') return new Response('private provider body', { status: 429 });
+        if (kind === 'network') throw new TypeError('private network details');
+        if (kind === 'json') return new Response('private invalid JSON');
+        return Response.json({ private: 'private invalid response' });
+      }),
+    );
+    try {
+      const response = await route.fetch(request());
+      expect(response.status).toBe(502);
+      expect(await response.text()).toBe('Jev could not mark this answer.');
+      expect(log).toHaveBeenCalledExactlyOnceWith({
+        event: 'jev-failure',
+        stage: 'provider',
+        kind: kind === 'http' ? 'http' : kind === 'network' ? 'network' : 'invalid-response',
+        ...(kind === 'http' ? { status: 429 } : {}),
+      });
+    } finally {
+      log.mockRestore();
+    }
+  },
+);

@@ -418,7 +418,7 @@ it.each(['marking', 'session exchange'])(
       expect(fetcher).toHaveBeenCalledTimes(calls);
       await vi.advanceTimersByTimeAsync(1);
       expect(fetcher).toHaveBeenCalledTimes(calls);
-      expect(engine.status()).toMatchObject({ state: 'paused', reason: 'error' });
+      expect(engine.status().state).toBe('ready');
       expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
       expect(fetcher).toHaveBeenCalledTimes(calls + 1);
       expect(engine.status()).toMatchObject({ state: 'paused', reason: 'error' });
@@ -427,7 +427,7 @@ it.each(['marking', 'session exchange'])(
     const calls = fetcher.mock.calls.length;
     await vi.advanceTimersByTimeAsync(900_000);
     expect(fetcher).toHaveBeenCalledTimes(calls);
-    expect(engine.status()).toMatchObject({ state: 'paused', reason: 'error' });
+    expect(engine.status().state).toBe('ready');
     expect(await engine.marker()!(request)).toMatchObject({ outcome: 'correct' });
     expect(engine.status().state).toBe('ready');
     if (stage === 'session exchange') await vi.advanceTimersByTimeAsync(3_600_000);
@@ -485,7 +485,7 @@ it.each(['marking', 'session exchange'])(
   },
 );
 
-it.each([500, 503])(
+it.each([500, 502, 503])(
   'admits only natural requests after growing backoff for status %s and resets on success',
   async (status) => {
     vi.useFakeTimers();
@@ -501,7 +501,7 @@ it.each([500, 503])(
     );
     const engine = createJevEngine({ fetcher, cache: emptyCache() });
     engine.enable(1);
-    for (let count = 0; count < (status === 500 ? 3 : 1); count++) await engine.markTyped(request);
+    for (let count = 0; count < (status === 503 ? 1 : 3); count++) await engine.markTyped(request);
     for (const delay of [60_000, 300_000, 900_000, 900_000]) {
       const calls = fetcher.mock.calls.length;
       expect(engine.marker()).toBeNull();
@@ -511,7 +511,7 @@ it.each([500, 503])(
       expect(fetcher).toHaveBeenCalledTimes(calls);
       await vi.advanceTimersByTimeAsync(1);
       expect(fetcher).toHaveBeenCalledTimes(calls);
-      expect(engine.status().state).toBe('paused');
+      expect(engine.status().state).toBe('ready');
       expect(engine.marker()).not.toBeNull();
       await engine.marker()!(request);
       expect(fetcher).toHaveBeenCalledTimes(calls + 1);
@@ -523,7 +523,7 @@ it.each([500, 503])(
     expect(engine.status().state).toBe('ready');
     failing = true;
     await engine.markTyped(request);
-    if (status === 500) expect(engine.status().state).toBe('ready');
+    if (status !== 503) expect(engine.status().state).toBe('ready');
     else {
       const calls = fetcher.mock.calls.length;
       await vi.advanceTimersByTimeAsync(60_000);
@@ -533,7 +533,7 @@ it.each([500, 503])(
   },
 );
 
-it('reopens the monthly fuse only on the first natural request in the next UTC month', async () => {
+it('allows marking again in the next UTC month without background requests', async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-12-31T23:59:00Z'));
   localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
@@ -557,7 +557,7 @@ it('reopens the monthly fuse only on the first natural request in the next UTC m
   expect(fetcher).toHaveBeenCalledTimes(2);
   await vi.advanceTimersByTimeAsync(1);
   expect(fetcher).toHaveBeenCalledTimes(2);
-  expect(engine.status()).toMatchObject({ state: 'paused', reason: 'limit-reached' });
+  expect(engine.status().state).toBe('ready');
   fetcher.mockResolvedValue(
     Response.json({ model: 'jev-1.14.0', value: 1, confidence: 0.97, inputTokens: 12 }),
   );
