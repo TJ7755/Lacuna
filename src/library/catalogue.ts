@@ -144,7 +144,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     id: 'religiousstudies8062',
     author: 'Lacuna',
     publisher: 'Lacuna',
-    revision: 12,
+    revision: 21,
     subject: 'Religious Studies',
     board: 'AQA',
     qualification: 'AQA GCSE',
@@ -164,7 +164,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
       'Human rights and responsibilities',
     ],
     shareUrl: 'https://getlacuna.app/#/s/e85fc39e709074d58669c2d8bfd723bb',
-    stats: { cards: 1218, notes: 115, practiceSets: 115, practiceMarks: 1380 },
+    stats: { cards: 1272, notes: 126, practiceSets: 126, practiceMarks: 1656 },
   },
   {
     id: 'biology8461',

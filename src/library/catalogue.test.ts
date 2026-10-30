@@ -41,7 +41,7 @@ describe('libraryCourses', () => {
         ['physics0972', 20, 1310, 152, 153, 1968],
         ['combinedscience8464', 10, 3760, 447, 429, 4192],
         ['history0977', 15, 708, 111, 112, 1738],
-        ['religiousstudies8062', 12, 1218, 115, 115, 1380],
+        ['religiousstudies8062', 21, 1272, 126, 126, 1656],
         ['combinedscience1sc0', 4, 4310, 445, 449, 4634],
         ['combinedsciencej250', 3, 4478, 476, 479, 5064],
       ]),
