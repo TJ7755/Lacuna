@@ -127,6 +127,33 @@ beforeEach(() => {
 });
 
 describe('StudySheet', () => {
+  it.each(['cards', 'questions'])('reassures learners before starting %s', async (kind) => {
+    if (kind === 'questions') {
+      Object.assign(mockFlows.chem, {
+        decision: {
+          kind: 'step',
+          step: {
+            kind: 'exam-questions',
+            nodeKey: 'questions-atoms',
+            label: 'Atomic structure questions',
+            conceptId: 'atoms',
+            scopeConceptIds: ['atoms'],
+          },
+        },
+      });
+    }
+    renderSheet('chem');
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          'Even a few cards or questions help. You can stop early and keep your recorded progress.',
+        ),
+      ).toBeVisible(),
+    );
+    expect(screen.getByRole('button', { name: 'Start session' })).toBeVisible();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
   it('offers early exam practice separately from due reviews and the default plan', () => {
     mockFlows.chem.snapshot.examPracticeEligibleCount = 4;
     renderSheet('chem');

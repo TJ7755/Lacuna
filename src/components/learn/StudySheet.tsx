@@ -181,6 +181,12 @@ function CourseStudyOptions({
         <NothingToStudy flow={flow} onAddCards={() => navigate(`/course/${courseId}/cards/new`)} />
       )}
 
+      {plan && plan.steps.length > 0 && (
+        <p className="text-sm text-ink-soft">
+          Even a few cards or questions help. You can stop early and keep your recorded progress.
+        </p>
+      )}
+
       <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
         {otherWays && (
           <Button
