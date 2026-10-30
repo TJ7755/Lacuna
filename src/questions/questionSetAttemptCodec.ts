@@ -125,6 +125,7 @@ const attemptSchema = z
     shownQuestionIds: z.array(z.string().min(1)).optional(),
     firstMarking: z.array(firstMarkingSnapshot).optional(),
     firstMarkingConflicts: z.array(firstMarkingSnapshot).optional(),
+    practiceScope: z.literal('question').optional(),
     conceptPractice: z
       .object({
         conceptId: z.string().min(1),
@@ -360,6 +361,11 @@ export function parseQuestionSetAttemptRecord(value: unknown): QuestionSetAttemp
       record.conceptPractice.questionId !== record.receipt.questions[0].id)
   )
     throw new Error('Concept practice selection does not match its receipt.');
+  if (
+    record.practiceScope === 'question' &&
+    (record.mode !== 'practice' || record.receipt.questions.length !== 1)
+  )
+    throw new Error('Question practice scope does not match its receipt.');
   const allSubmitted = submittedNodes.size === nodes.size;
   if (record.mode === 'paper') {
     const paperSubmitted = record.paperSubmittedAt !== undefined;

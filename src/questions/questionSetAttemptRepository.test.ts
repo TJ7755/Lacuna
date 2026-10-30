@@ -23,6 +23,7 @@ import {
 import { feedbackAvailable } from './questionSetAttempts';
 import { parseQuestionSetAttemptRecord } from './questionSetAttemptCodec';
 import type { QuestionSet, SelfMarkDecision } from './questionSets';
+import { conceptPracticeFingerprint } from './conceptPractice';
 
 /** A sweep after the grace period, so fresh test assets are eligible for collection. */
 const afterGrace = () => Date.now() + ASSET_GC_GRACE_MS;
@@ -254,19 +255,48 @@ describe('Question Set attempt repository', () => {
     expect(attempt.completedAt).toBe(260);
   });
 
-  it('round-trips attempts and their immutable receipts through replacement backup', async () => {
-    const set = await setFixture();
-    const attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
-    const backup = await exportDatabase();
-    expect(backup.app).toBe('lacuna-v15');
-    expect(backup.questionSetAttempts).toEqual([attempt]);
-    await db.questionSetAttempts.clear();
-    await importBackup(backup, 'replace');
-    expect(await getQuestionSetAttempt(attempt.id)).toEqual(attempt);
-    await db.questionSetAttempts.clear();
-    await importBackup(backup, 'merge');
-    expect(await getQuestionSetAttempt(attempt.id)).toEqual(attempt);
-  });
+  it.each(['whole-set', 'selected-question'] as const)(
+    'round-trips %s attempts and immutable scope through replacement and merge backups',
+    async (scope) => {
+      const set = await setFixture();
+      const attempt = await startQuestionSetAttempt(
+        set.id,
+        scope === 'whole-set' ? 'paper' : 'practice',
+        200,
+        scope === 'whole-set'
+          ? undefined
+          : {
+              questionSetId: set.id,
+              questionId: set.questions[0].id,
+              novelty: 'unseen',
+              fingerprint: conceptPracticeFingerprint(set.questions[0]),
+            },
+      );
+      const backup = await exportDatabase();
+      expect(backup.app).toBe('lacuna-v15');
+      expect(backup.questionSetAttempts).toEqual([attempt]);
+      if (scope === 'selected-question') {
+        expect(attempt.practiceScope).toBe('question');
+        const changedScope = structuredClone(backup);
+        delete changedScope.questionSetAttempts![0].practiceScope;
+        changedScope.questionSetAttempts![0].revisionId = 'conflicting-scope';
+        changedScope.questionSetAttempts![0].updatedAt++;
+        await expect(importBackup(changedScope, 'merge')).rejects.toThrow(
+          'conflicting immutable identity',
+        );
+        expect(await getQuestionSetAttempt(attempt.id)).toEqual(attempt);
+        expect(() => parseQuestionSetAttemptRecord({ ...attempt, mode: 'paper' })).toThrow(
+          'Question practice scope',
+        );
+      }
+      await db.questionSetAttempts.clear();
+      await importBackup(JSON.parse(JSON.stringify(backup)), 'replace');
+      expect(await getQuestionSetAttempt(attempt.id)).toEqual(attempt);
+      await db.questionSetAttempts.clear();
+      await importBackup(backup, 'merge');
+      expect(await getQuestionSetAttempt(attempt.id)).toEqual(attempt);
+    },
+  );
 
   it('cascades and restores attempts with their Course', async () => {
     const set = await setFixture();

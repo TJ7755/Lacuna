@@ -39,10 +39,13 @@ export function useQuestionSetPathData(
               return {
                 id: setId,
                 content: content?.courseId === courseId ? content : undefined,
-                // Concept practice pins only one question, so it cannot describe the whole set.
+                // Selected-Question receipts cannot describe whole-set progress.
                 attempt:
                   attempts.find(
-                    (attempt) => attempt.courseId === courseId && !attempt.conceptPractice,
+                    (attempt) =>
+                      attempt.courseId === courseId &&
+                      !attempt.conceptPractice &&
+                      attempt.practiceScope !== 'question',
                   ) ?? null,
                 exam: exam?.courseId === courseId ? exam : undefined,
               };

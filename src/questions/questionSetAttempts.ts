@@ -103,6 +103,8 @@ export interface QuestionSetAttemptRecord {
   shownQuestionIds?: string[];
   disputedQuestionIds?: string[];
   conceptPractice?: ConceptPracticeSelection;
+  /** A selected Question receipt cannot represent whole-set path progress. */
+  practiceScope?: 'question';
   undoneAt?: number;
 }
 

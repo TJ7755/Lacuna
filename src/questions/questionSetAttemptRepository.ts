@@ -84,6 +84,7 @@ export async function startQuestionSetAttempt(
       firstMarking: [],
       shownQuestionIds: [nodes[0].questionId],
       ...(selection?.conceptId ? { conceptPractice: clone(selection) } : {}),
+      ...(selection ? { practiceScope: 'question' } : {}),
       annotations: [],
       corrections: [],
       reflection: { reasons: [], note: '' },
