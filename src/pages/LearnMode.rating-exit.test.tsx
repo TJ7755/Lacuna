@@ -62,8 +62,8 @@ async function startSession() {
 }
 
 function rateAndExit() {
-  fireEvent.click(screen.getByRole('button', { name: 'Yes', exact: true }));
-  fireEvent.click(screen.getByRole('button', { name: 'Exit', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
 }
 
 it('saves an accepted rating when Exit interrupts its departure', async () => {
@@ -76,7 +76,7 @@ it('saves an accepted rating when Exit interrupts its departure', async () => {
   expect(loadSimpleSession({ kind: 'lesson', lessonId: lesson.id }, cardIds)?.outcomes).toEqual(
     new Map([[cardId, 'correct']]),
   );
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Leave', exact: true }));
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Leave' }));
   await screen.findByText('Left session');
   expect(await db.reviewHistory.count()).toBe(1);
 });
@@ -96,7 +96,7 @@ it('keeps a confirmed exit in the session until the accepted answer is stored', 
   const dialog = await screen.findByRole('dialog', { name: 'Leave this session?' });
   expect(dialog).toHaveTextContent('Saving your answer…');
   expect(dialog).not.toHaveTextContent('Your progress is saved');
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Leave', exact: true }));
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Leave' }));
   await screen.findByRole('button', { name: 'Leaving…' });
   expect(screen.queryByText('Left session')).not.toBeInTheDocument();
   expect(await db.reviewHistory.count()).toBe(0);
@@ -117,11 +117,11 @@ it('makes an unsuccessful save explicit and lets Stay retry the same answer', as
   await waitFor(() => expect(dialog).toHaveTextContent('Your last answer was not saved.'));
   expect(dialog).not.toHaveTextContent('Your progress is saved');
   expect(await db.reviewHistory.count()).toBe(0);
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Stay', exact: true }));
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Stay' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-  fireEvent.click(await screen.findByRole('button', { name: 'Yes', exact: true }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Yes' }));
   await waitFor(async () => expect(await db.reviewHistory.count()).toBe(1));
-  fireEvent.click(screen.getByRole('button', { name: 'Exit', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
   expect(await screen.findByRole('dialog')).toHaveTextContent('1 of 2 Cards answered.');
   expect(await db.reviewHistory.count()).toBe(1);
 });
