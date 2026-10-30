@@ -7,8 +7,10 @@ import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
 import { formatDate } from '../../utils/datetime';
 import { countOf } from '../../utils/plural';
 import { useStudySheet } from '../learn/StudySheetContext';
+import { Button } from '../ui/Button';
 import { cn } from '../ui/cn';
 import {
+  ArrowRightIcon,
   BookIcon,
   CalendarIcon,
   CardsIcon,
@@ -16,7 +18,6 @@ import {
   ClockIcon,
   FlagIcon,
   FlameIcon,
-  PlayIcon,
   RestoreIcon,
   SparklesIcon,
 } from '../ui/icons';
@@ -310,6 +311,17 @@ export function ProgressOverview({
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <InfoPopover label="About recall">
+              <p className="text-sm text-ink">{recall.detail}</p>
+              {recall.figure !== null && (
+                <p>
+                  Cards not yet reviewed count as forgotten. This is predicted recall, not a mark or
+                  grade.
+                </p>
+              )}
+              <p>{next}</p>
+              {excludedNote.length > 0 && <p>Not counted: {excludedNote.join(', ')}.</p>}
+            </InfoPopover>
             {!course.archived && revise && (
               <button
                 type="button"
@@ -326,35 +338,19 @@ export function ProgressOverview({
               </button>
             )}
             {!course.archived && (
-              <button
-                type="button"
-                aria-label="Study"
-                title="Study"
+              // The shared Study pill, so the session preview grows from the shape it expects.
+              <Button
+                data-study-trigger={course.id}
+                hoverScale={false}
+                pressScale={false}
+                variant="primary"
+                size="lg"
                 onClick={(event) => openStudySheet(course.id, { anchor: event.currentTarget })}
-                className="relative grid size-12 place-items-center rounded-full bg-accent text-accent-fg shadow-lg"
               >
-                <PlayIcon width={20} height={20} />
-                {report.dueCards > 0 && (
-                  <span
-                    aria-hidden="true"
-                    className="absolute -right-2 -top-2 rounded-full bg-warning px-2 text-xs font-semibold leading-6 text-white tabular-nums"
-                  >
-                    {report.dueCards}
-                  </span>
-                )}
-              </button>
+                Study
+                <ArrowRightIcon />
+              </Button>
             )}
-            <InfoPopover label="About recall">
-              <p className="text-sm text-ink">{recall.detail}</p>
-              {recall.figure !== null && (
-                <p>
-                  Cards not yet reviewed count as forgotten. This is predicted recall, not a mark or
-                  grade.
-                </p>
-              )}
-              <p>{next}</p>
-              {excludedNote.length > 0 && <p>Not counted: {excludedNote.join(', ')}.</p>}
-            </InfoPopover>
           </div>
         </div>
         <StudyBar study={study} cardCount={cardCount} />
