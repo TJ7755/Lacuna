@@ -14,7 +14,7 @@ beforeEach(async () => {
 });
 
 describe('study actions during the retained grading pause', () => {
-  it.each(['edit', 'exit'])('cancels an uncommitted grade when opening %s', async (action) => {
+  it('cancels an uncommitted grade when opening the editor', async () => {
     const course = await createCourse('Keyboard regression');
     await createCard(course.id, 'front_back', 'First question', 'First answer');
     await createCard(course.id, 'front_back', 'Second question', 'Second answer');
@@ -34,18 +34,11 @@ describe('study actions during the retained grading pause', () => {
     const yes = await screen.findByRole('button', { name: 'Yes' });
     yes.focus();
     fireEvent.click(yes);
-    if (action === 'edit') {
-      fireEvent.keyDown(window, { key: 'e' });
-      await screen.findByRole('textbox', { name: 'Front' });
-    } else {
-      fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
-      await screen.findByRole('dialog', { name: 'Leave this session?' });
-    }
+    fireEvent.keyDown(window, { key: 'e' });
+    await screen.findByRole('textbox', { name: 'Front' });
     await act(async () => new Promise((resolve) => setTimeout(resolve, 650)));
     expect(await db.reviewHistory.count()).toBe(0);
-    if (action === 'edit') {
-      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-      await waitFor(() => expect(screen.getByRole('main', { name: 'Study card' })).toHaveFocus());
-    }
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.getByRole('main', { name: 'Study card' })).toHaveFocus());
   });
 });

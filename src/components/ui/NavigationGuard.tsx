@@ -21,7 +21,7 @@ export interface NavigationGuardProps {
   message: string;
   stayLabel?: string;
   leaveLabel?: string;
-  onAttempt?: () => void;
+  onAttempt?: (source: 'navigation' | 'unload') => void;
   onConfirm?: () => unknown | Promise<unknown>;
   onExplicitLeave?: () => unknown | Promise<unknown>;
   onOpenChange?: (open: boolean) => void;
@@ -61,7 +61,7 @@ const DataRouterNavigationGuard = forwardRef<NavigationGuardHandle, NavigationGu
     const blocker = useBlocker(
       useCallback(() => {
         if (!resolveActive(activeRef.current)) return false;
-        onAttemptRef.current?.();
+        onAttemptRef.current?.('navigation');
         return true;
       }, []),
     );
@@ -116,7 +116,7 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
             void onExplicitLeaveRef.current?.();
             return;
           }
-          onAttemptRef.current?.();
+          onAttemptRef.current?.('navigation');
           setExplicitAttempt(true);
         },
       }),
@@ -126,7 +126,7 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
     useEffect(() => {
       const handleBeforeUnload = (event: BeforeUnloadEvent) => {
         if (!resolveActive(activeRef.current)) return;
-        onAttemptRef.current?.();
+        onAttemptRef.current?.('unload');
         event.preventDefault();
         event.returnValue = '';
       };

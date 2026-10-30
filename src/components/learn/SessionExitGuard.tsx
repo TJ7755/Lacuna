@@ -14,11 +14,12 @@ interface SessionExitGuardProps extends Pick<
   totalCount: number;
   /** The session is saved on leaving and resumes next time (Simple Learn). */
   resumable?: boolean;
+  answerSaveStatus?: 'saving' | 'failed';
 }
 
 export const SessionExitGuard = forwardRef<NavigationGuardHandle, SessionExitGuardProps>(
   function SessionExitGuard(
-    { itemName, answeredCount, totalCount, resumable, ...guardProps },
+    { itemName, answeredCount, totalCount, resumable, answerSaveStatus, ...guardProps },
     ref,
   ) {
     const itemLabel = totalCount === 1 ? itemName : `${itemName}s`;
@@ -29,12 +30,18 @@ export const SessionExitGuard = forwardRef<NavigationGuardHandle, SessionExitGua
             ? 'the current Question will be abandoned.'
             : 'this session will end.'
         }`;
+    const message =
+      answerSaveStatus === 'saving'
+        ? 'Saving your answer… Please wait before leaving.'
+        : answerSaveStatus === 'failed'
+          ? 'Your last answer was not saved. Leave without it, or Stay to try again.'
+          : `${answeredCount} of ${totalCount} ${itemLabel} answered. ${consequence}`;
     return (
       <NavigationGuard
         ref={ref}
         {...guardProps}
         title="Leave this session?"
-        message={`${answeredCount} of ${totalCount} ${itemLabel} answered. ${consequence}`}
+        message={message}
         stayLabel="Stay"
         leaveLabel="Leave"
       />

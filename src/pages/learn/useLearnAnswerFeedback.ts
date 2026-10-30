@@ -43,6 +43,12 @@ export function useLearnAnswerFeedback({
 }) {
   const [gradeFeedback, setGradeFeedback] = useState<StudyGradeFeedback>();
   const cardTransitionRef = useRef<StudyCardTransitionHandle>(null);
+  const answerPromiseRef = useRef<Promise<void> | null>(null);
+  const [answerSaveStatus, setAnswerSaveStatus] = useState<'saving' | 'failed' | undefined>();
+  const settleAnswer = useCallback(() => {
+    cardTransitionRef.current?.flush();
+    return answerPromiseRef.current ?? Promise.resolve();
+  }, []);
   // Consecutive correct answers, self-graded or machine-marked, for the milestone celebration.
   const runRef = useRef(0);
   const [streakMoment, setStreakMoment] = useState<StreakMoment | null>(null);
@@ -94,25 +100,40 @@ export function useLearnAnswerFeedback({
       markedBy?: JevMarkProvenance,
       automatic = false,
     ) => {
-      if (undoInFlightRef.current) return;
-      const commit = () =>
-        void (async () => {
-          const result = await answer(
-            input,
-            automatic ? { markedBy, retainUndo: true } : undefined,
-          );
-          lastTypedAnswerRef.current =
-            result.undoAvailable && presentedAnswerInput === 'typed' && current
-              ? { cardId: current.id, answer: typedAnswer }
-              : null;
-          if (result.undoAvailable) {
-            notify(result.feedbackMessage ?? 'Answer recorded', 'neutral', {
-              actionLabel: 'Undo',
-              onAction: () => void undoWithTransitionCancel(),
-              replaceKey: 'learn-answer',
-            });
+      if (undoInFlightRef.current || answerPromiseRef.current) return;
+      const commit = () => {
+        setAnswerSaveStatus('saving');
+        const pending = (async () => {
+          try {
+            const result = await answer(
+              input,
+              automatic ? { markedBy, retainUndo: true } : undefined,
+            );
+            lastTypedAnswerRef.current =
+              result.undoAvailable && presentedAnswerInput === 'typed' && current
+                ? { cardId: current.id, answer: typedAnswer }
+                : null;
+            if (result.undoAvailable) {
+              notify(result.feedbackMessage ?? 'Answer recorded', 'neutral', {
+                actionLabel: 'Undo',
+                onAction: () => void undoWithTransitionCancel(),
+                replaceKey: 'learn-answer',
+              });
+            }
+            setAnswerSaveStatus(undefined);
+          } catch (error) {
+            setAnswerSaveStatus('failed');
+            cardTransitionRef.current?.cancel();
+            notify('Your answer could not be saved. Please try again.', 'negative');
+            throw error;
+          } finally {
+            answerPromiseRef.current = null;
           }
         })();
+        answerPromiseRef.current = pending;
+        // Exit awaits this promise; failures during ordinary study are shown above.
+        void pending.catch(() => {});
+      };
       const correct =
         typeof input === 'object' ? input.correct : typeof input === 'number' ? input > 1 : input;
       // Machine-marked cards measure response time at submission, so keep that path immediate.
@@ -139,5 +160,7 @@ export function useLearnAnswerFeedback({
     undoWithTransitionCancel,
     confirmReport,
     answerWithUndo,
+    answerSaveStatus,
+    settleAnswer,
   };
 }

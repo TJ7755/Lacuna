@@ -576,6 +576,15 @@ export function useLearnSession({
     return completionPromise.current;
   }, [isSimpleMode, notify, onStepFinished, requestWindowId, simpleSessionScope]);
 
+  /** Settle completion produced by an answer, or allow exit when none is due. */
+  const settleCompletion = useCallback(
+    () =>
+      pendingCompletion.current || completionPromise.current
+        ? confirmCompletion()
+        : Promise.resolve(true),
+    [confirmCompletion],
+  );
+
   const finaliseSummary = useCallback(
     (nextSummary: SessionSummary) => {
       if (!mountedRef.current || finalising.current) return;
@@ -2104,6 +2113,7 @@ export function useLearnSession({
     answer,
     undoLast,
     confirmCompletion,
+    settleCompletion,
     openEdit,
     cancelEdit,
     handleEdited,
