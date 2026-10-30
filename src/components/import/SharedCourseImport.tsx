@@ -39,6 +39,7 @@ import {
   getLocalTimeZone,
 } from '../../utils/datetime';
 import { CourseStudyTarget } from '../course/CourseStudyTarget';
+import { LibraryCourseCoverage } from '../../library/LibraryCourseCoverage';
 
 /** A decoded, not-yet-confirmed import. `merge` is present when the payload's lineage
  *  (Arc 7 §7.5) matches a course already imported locally — routing this to the merge
@@ -47,6 +48,7 @@ interface PendingShareImport {
   summary: ShareSummary;
   raw: string;
   file?: CourseFile;
+  sourceShareId?: string;
   scheduling?: {
     mode: CourseSchedulingMode | null;
     examDate: number;
@@ -164,11 +166,14 @@ function describeMergeResult(result: MergeLineageResult): string {
 
 export function SharedCourseImport({
   initialFile,
+  sourceShareId,
   onImported,
   onBusyChange,
   chosen = false,
 }: {
   initialFile?: File;
+  /** Provenance for the initial link file only; inspecting another source clears it. */
+  sourceShareId?: string;
   onImported?: (courseId: string) => void;
   onBusyChange?: (busy: boolean) => void;
   /** The learner already picked this course, so other ways to find one are hidden. */
@@ -223,7 +228,7 @@ export function SharedCourseImport({
         const file = await decodeCourseFile(await initialFile.text());
         const next = await resolvePending(file.payload, '');
         if (!cancelled && generation === inspectionGeneration.current)
-          setPending({ ...next, file });
+          setPending({ ...next, file, sourceShareId });
       } catch (error) {
         if (!cancelled && generation === inspectionGeneration.current)
           setError(error instanceof Error ? error.message : 'Could not read the course file.');
@@ -232,7 +237,7 @@ export function SharedCourseImport({
     return () => {
       cancelled = true;
     };
-  }, [initialFile]);
+  }, [initialFile, sourceShareId]);
   function beginInspection() {
     setPending(null);
     setError('');
@@ -492,6 +497,7 @@ export function SharedCourseImport({
                   as placeholders after import. Use a full backup for an exact transfer.
                 </p>
               )}
+              <LibraryCourseCoverage shareId={pending.sourceShareId} />
               {pending.scheduling?.fromOnboarding && (
                 <p className="mb-5 text-sm text-ink-soft">
                   {pending.scheduling.mode === 'exam'

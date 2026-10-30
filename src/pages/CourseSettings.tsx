@@ -43,6 +43,8 @@ import { CourseSettingsArchive } from './settings/CourseSettingsArchive';
 import { CourseSettingsDisclosure } from './settings/CourseSettingsDisclosure';
 import { CourseInsightsSection } from './settings/CourseInsightsSection';
 import { CourseSpecificationSection } from './settings/CourseSpecificationSection';
+import { LibraryCourseCoverage } from '../library/LibraryCourseCoverage';
+import { getShareIdForCourse } from '../shareLinks/linkStore';
 
 /** Common edits lead; secondary settings expand in place. */
 export function CourseSettings() {
@@ -193,6 +195,7 @@ export function CourseSettings() {
                 <Input value={name} onChange={(e) => setName(e.target.value)} onBlur={commitName} />
               </label>
               <CourseSpecificationSection key={course.id} course={course} />
+              <LibraryCourseCoverage shareId={getShareIdForCourse(course.id)} />
               <div className="grid gap-5 sm:grid-cols-2">
                 <label className={fieldLabelClassName}>
                   Exam board

@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { CourseSettings } from './CourseSettings';
 import type { Card, Course } from '../db/types';
+import { recordShareImport } from '../shareLinks/linkStore';
 
 const mockMotion = vi.hoisted(() => ({ multiplier: 1 }));
 const mockNavigate = vi.fn();
@@ -147,6 +148,23 @@ function renderPage(path = '/course/course-1/settings') {
     </MemoryRouter>,
   );
 }
+
+it('keeps known catalogue coverage reachable in Course details through the recorded share', () => {
+  mockMotion.multiplier = 0;
+  recordShareImport('f59cf55a906edfede13902ca7bfda358', course.id);
+  renderPage();
+  fireEvent.click(screen.getByRole('button', { name: /Course details/ }));
+  const context = screen.getByRole('region', { name: 'Course coverage' });
+  expect(
+    within(context).getByText(
+      'Selected Pearson Edexcel Biology topics and original practice. Some board requirements remain outside this selection.',
+    ),
+  ).toBeVisible();
+  expect(within(context).getByRole('link', { name: 'View public course details' })).toHaveAttribute(
+    'href',
+    'https://getlacuna.app/courses/biology1bi0/',
+  );
+});
 
 beforeEach(() => {
   localStorage.clear();

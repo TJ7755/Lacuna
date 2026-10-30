@@ -215,6 +215,7 @@ export function ShareLinkImport({
         <div className="space-y-6">
           <SharedCourseImport
             initialFile={state.file}
+            sourceShareId={state.shareId}
             chosen={chosen}
             onBusyChange={onBusyChange}
             onImported={(courseId) => {
