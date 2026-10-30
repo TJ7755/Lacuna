@@ -32,6 +32,7 @@ import { useToast } from '../ui/Toast';
 import { Button } from '../ui/Button';
 import { UploadIcon, CameraIcon, CloseIcon } from '../ui/icons';
 import { chosenStudyTarget } from '../../onboarding/onboardingState';
+import { jsonValuesEqual } from '../../db/lineageDiff';
 import {
   defaultExamDate,
   formatDate,
@@ -90,9 +91,26 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
     const course = await findCourseForLineage(payload.li);
     if (course) {
       const localRevision = course.distributedCopy?.revision ?? 0;
+      const previewCourse: CourseIdentity = { ...payload.course };
+      const previous = course.distributedCopy?.source;
+      if (previous) {
+        for (const key of [
+          'examBoard',
+          'specification',
+          'specificationRef',
+          'specificationData',
+        ] as const) {
+          if (!jsonValuesEqual(course[key], previous[key])) {
+            Object.assign(previewCourse, { [key]: course[key] });
+          }
+        }
+      }
       return {
         summary,
-        identity,
+        identity: {
+          course: previewCourse,
+          publication: { lineageId: payload.li, revision: payload.rv },
+        },
         raw,
         merge: { course, incomingRevision: payload.rv, stale: payload.rv <= localRevision },
       };

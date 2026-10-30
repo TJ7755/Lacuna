@@ -3,6 +3,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { SharePayloadV2 } from '../../db/share';
 import { db } from '../../db/schema';
+import { importLineageFirstTime } from '../../db/mergeImport';
+import { updateCourse } from '../../db/courseRepository';
 import { CourseSpecificationSection } from '../../pages/settings/CourseSpecificationSection';
 import {
   paperSpecification,
@@ -138,4 +140,32 @@ it('retains conflicting supplied labels without presenting a false catalogue rou
   expect(identity.getByText('J247', { exact: true })).toBeVisible();
   expect(identity.queryByText('Trilogy', { exact: true })).not.toBeInTheDocument();
   expect(identity.getByText(/Tier and route are unverified/)).toBeVisible();
+});
+
+it('previews the local identity retained by a publication update', async () => {
+  const lineage = 'tj7755-lacuna-content-2028-aqa-8464-pilot';
+  const imported = await importLineageFirstTime(publication(lineage, 9));
+  await updateCourse(imported.course.id, { examBoard: 'OCR', specification: 'J247' });
+  const onImported = vi.fn();
+  const view = render(
+    <SharedCourseImport
+      initialFile={courseFile(publication(lineage, 10))}
+      onImported={onImported}
+    />,
+  );
+  const update = await screen.findByRole('button', { name: 'Update course' });
+  const preview = within(screen.getByRole('region', { name: 'Course identity' }));
+  expect(preview.getByText('OCR', { exact: true })).toBeVisible();
+  expect(preview.getByText('J247', { exact: true })).toBeVisible();
+  expect(preview.queryByText('Trilogy', { exact: true })).not.toBeInTheDocument();
+  fireEvent.click(update);
+  await waitFor(() => expect(onImported).toHaveBeenCalledOnce());
+  const stored = (await db.courses.get(imported.course.id))!;
+  expect(stored.distributedCopy?.revision).toBe(10);
+  view.unmount();
+  render(<CourseSpecificationSection course={stored} />);
+  const reopened = within(screen.getByRole('region', { name: 'Course identity' }));
+  expect(reopened.getByText('OCR', { exact: true })).toBeVisible();
+  expect(reopened.getByText('J247', { exact: true })).toBeVisible();
+  expect(reopened.queryByText('Trilogy', { exact: true })).not.toBeInTheDocument();
 });
