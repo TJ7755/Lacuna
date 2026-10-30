@@ -9,6 +9,3 @@
 - Touch and keyboard workflows are equally supported. Motion confirms state changes without
   delaying input, concealing controls or replacing accessible feedback.
 - Predictions are model estimates, not guarantees of recall, mastery or examination marks.
-
-See the [domain language](../domain-language.md), [scientific limits](../scientific-assessment.md)
-and [implementation entry points](../README.md). Details and examples belong in the owning tests.

@@ -1,6 +1,6 @@
 // Transport-agnostic types shared by every tool definition under src/mcp/tools/. These
 // run inside the renderer (the only process with IndexedDB) and are ignorant of IPC or
-// the MCP SDK — see docs/spec/desktop.md for the transport boundary.
+// the MCP SDK — see the bridge protocol for the transport boundary.
 
 import type { z } from 'zod';
 import type { McpToolError } from './bridge/protocol';

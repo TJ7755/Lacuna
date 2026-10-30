@@ -5,7 +5,7 @@ import { scaledSpring } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { SECTION_CARD_SURFACE_CLASS } from '../ui/SectionCard';
 
-/** Hold-out results from tooling/short-term-memory/BENCHMARK.md, verbatim. */
+/** Hold-out results from https://github.com/TJ7755/Lacuna/blob/fcfd3c6008fb35730fef609083b732fe360baa62/tooling/short-term-memory/BENCHMARK.md, verbatim. */
 const MODELS = [
   { name: 'FSRS-6', note: 'old baseline', barClass: 'bg-negative/70' },
   { name: 'Half-life-logistic', note: 'selected', barClass: 'bg-accent-ink' },

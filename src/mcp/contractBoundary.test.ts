@@ -29,12 +29,12 @@ const PACKAGED_MCP_ENTRY_POINTS = [
   'electron/mcp/aiCompanion.ts',
   'electron/mcp/aiCompanionEntry.ts',
 ] as const;
-// Paper coverage adds selectors to existing assessment tools. Existing inputs,
+// The Concept update description permits independent agent review. Existing inputs,
 // tool names, permission scopes and the breaking-change version remain unchanged.
 const REVIEWED_TOOL_SURFACE = {
   version: 3,
   toolCount: 64,
-  sha256: '2875b9895793ef2f130b0df17a705efa218905c1bd54f89ebc0efd41edb92148',
+  sha256: 'ed175d47a7421780693d78b7bdcf0f3cb79370b24a4c97ab2ee4ad095025767f',
 } as const;
 
 function normalise(filePath: string): string {

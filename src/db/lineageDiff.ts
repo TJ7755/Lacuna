@@ -1,5 +1,5 @@
 /**
- * Pure diff engine for the classroom-distribution merge path (docs/spec/portability.md).
+ * Pure diff engine for the classroom-distribution merge path.
  *
  * Generalises `diffRegeneration`'s shape (`sequenceGeneration.ts:217`) — "one sequence's
  * cards, keyed on the stable `sequenceItemId`" — to "a lineage's lessons, notes, and
@@ -18,7 +18,7 @@ import type { CardType, ItemPayload } from './types';
 // --- Incoming payload shapes -----------------------------------------------------------
 //
 // Local diff inputs adapt the originating IDs from the share schemas in src/db/share.ts.
-// See docs/spec/portability.md for the classroom-distribution contract.
+// Preserve the classroom-distribution identity contract.
 
 export interface ShareCardInput {
   am?: 'reveal' | 'type';
@@ -96,7 +96,7 @@ export interface ExistingCard {
 }
 
 /**
- * The adopted-id membership registry (docs/spec/portability.md), structurally matching
+ * The adopted-id membership registry, structurally matching
  * the Dexie record in `src/db/types.ts`. Purely a membership check ("has this id already
  * been adopted"), never a translation table, since incoming id and local id are the same
  * value by construction (§7.1).

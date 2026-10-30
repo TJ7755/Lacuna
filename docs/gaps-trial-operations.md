@@ -2,8 +2,47 @@
 
 Scope: one class of about 30 pupils, daily reports, existing Vercel services.
 Use the [school notice](gaps-school-notice.md) and the
-[teacher walkthrough](gaps-teacher-walkthrough.md). The
-[Gaps guide](gaps.md#disable-the-trial) owns the disable/rollback procedure.
+[teacher walkthrough](gaps-teacher-walkthrough.md). Use the disable procedure below.
+
+## Deploy the teacher project and migrate hostnames
+
+Use the separate `lacuna-gaps` project for `gaps.getlacuna.app` and its
+`teach.getlacuna.app` redirect. Do not change the learner project's build command.
+Confirm team `tj7755`, production branch `master`, Root Directory `gaps`, and
+inclusion of source files outside that directory. Keep the frozen-lockfile
+install/build commands in [gaps/vercel.json](../gaps/vercel.json); they run from
+the repository parent and produce `gaps/dist`. Use the repository's pinned Bun.
+
+Keep the remote Ignored Build Step skipping automatic previews:
+
+```sh
+if [ "$VERCEL_ENV" = "production" ]; then exit 1; else exit 0; fi
+```
+
+Inspect the linked project and team before deployment; a link to `lacuna` is the
+wrong target. Stage with `bunx vercel deploy --prod --skip-domain`, verify the
+returned deployment with `bunx vercel curl`, then promote that exact production
+deployment. Keep protection enabled for generated URLs. Hosting the teacher
+workspace does not activate pupil delivery.
+
+Before moving a hostname, preserve its old project, branch assignment and ready
+deployment for rollback. Use Vercel's project-domain move endpoint with the
+explicit destination project and `gitBranch: null`; it also moves redirects to
+that hostname. `domains add --force` cannot remove a domain while a redirect
+points to it. Leave the learner project's other hostnames and relay gates intact.
+
+Retain `/sw.js` with `no-store` throughout the migration window so returning
+installations can retire their old worker. Before the move, verify preview and
+production using both a fresh profile and an existing installation. Check the
+bare root, old hashes, preserved course data, sharing, missing assets returning
+errors rather than HTML, and the main site's study and desktop behaviour. The
+existing installation must update its registration; delayed updates may require
+a reload. The migration browser fixture proves local takeover, not remote domain
+assignment or production update timing.
+
+Use the [frozen activation record](https://github.com/TJ7755/Lacuna/blob/30d7e808f9b056afcfd61702c6de7d4ee204e759/docs/review-evidence/gaps-trial-activation/README.md)
+for initial source, deployment and fallback identities. For later teacher
+releases, roll back to a verified ready production deployment in `lacuna-gaps`.
 
 ## Check device storage policy before the trial
 
@@ -72,8 +111,7 @@ Compare builds, functions and Blob usage, rather than counting encrypted reports
 alone. Keep automatic PR previews skipped as configured; production builds still
 run. Do not add paid monitoring, databases or account-wide pause rules for this
 trial without a concrete need and the owner's choice about effects on other apps.
-The [cost assumptions](gaps.md#trial-cost-assumptions) are planning estimates;
-check [current Blob pricing](https://vercel.com/docs/vercel-blob/usage-and-pricing)
+Check [current Blob pricing](https://vercel.com/docs/vercel-blob/usage-and-pricing)
 and [Pro credit rules](https://vercel.com/docs/plans/pro-plan) when reviewing them.
 
 ## After the class starts
@@ -88,3 +126,22 @@ Review spend and the next scheduled maintenance result after the first day, then
 after the first week. This is an operator procedure, not a newly installed
 recurring automation. Keep the epic open for the real teacher's observations and
 the first-class follow-through; do not mark them complete from synthetic tests.
+
+## Disable the trial
+
+Confirm the intended team and projects before changing production configuration.
+Set production `RELAY_INSIGHTS_ENABLED=0` on `lacuna-relay` and
+`VITE_GAPS_REPORTING_ENABLED=false` on `lacuna`, or remove those production values.
+Changing a saved variable does not change an already deployed build: deploy the
+reviewed source with those disabled values, or roll back to verified production
+deployments that captured disabled gates. Stop relay admission first, then pupil
+delivery. The relay gate disables report reads as well as uploads; retained
+ciphertext remains stored. Failed uploads retain the existing encrypted retry packet.
+
+Use `bunx vercel rollback` with the exact selected production deployment URL and
+the verified team scope. The activation record retains the initial fallback
+deployments; for later releases, check compatibility before reverting learner code.
+Disabling the saved values as well prevents a later automatic build from silently
+reactivating reporting. Rollback disables collection; it does not erase retained
+reports, teacher keys or pupil data. Keep the teacher hostname, retirement worker
+and existing storage intact.

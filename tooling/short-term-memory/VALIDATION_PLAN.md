@@ -3,7 +3,7 @@
 Status: phases 1–4 complete. Follows the external peer review of `half-life-logistic-v1-lag64-count8`
 (July 2026). The review was checked against the code before this plan was written; its factual
 claims hold, with the corrections noted in the appendix. Phases 3–4's results, the predeclared
-routing decision and the v3 shipping decision are recorded in `BENCHMARK.md`.
+routing decision and the v3 shipping decision are recorded in [frozen benchmark](https://github.com/TJ7755/Lacuna/blob/fcfd3c6008fb35730fef609083b732fe360baa62/tooling/short-term-memory/BENCHMARK.md).
 
 ## Motivating conclusion
 
@@ -28,7 +28,7 @@ a success FSRS-6 wins. Routing should consider recent outcome, not lag alone.
 overall and conditioned on previous outcome.
 
 **Exit criterion.** A written table naming the empirical crossover point(s), committed to
-`BENCHMARK.md`.
+[frozen benchmark](https://github.com/TJ7755/Lacuna/blob/fcfd3c6008fb35730fef609083b732fe360baa62/tooling/short-term-memory/BENCHMARK.md).
 
 ## Phase 2 — Re-route the handover
 
@@ -36,7 +36,7 @@ overall and conditioned on previous outcome.
 and decide whether routing should condition on previous outcome.
 
 **Exit criterion.** Re-routed candidate passes the strengthened gate; runtime constants,
-coefficient artefact and documentation agree; `BENCHMARK.md` updated.
+coefficient artefact and documentation agree; [frozen benchmark](https://github.com/TJ7755/Lacuna/blob/fcfd3c6008fb35730fef609083b732fe360baa62/tooling/short-term-memory/BENCHMARK.md) updated.
 
 ## Phase 3 — Cohort transfer test
 
@@ -44,14 +44,14 @@ coefficient artefact and documentation agree; `BENCHMARK.md` updated.
 fit. This is the difference between "works for users 1–100" and "works".
 
 **Exit criterion.** Frozen-coefficient results on ≥ 1 unseen cohort recorded in
-`BENCHMARK.md`, with an explicit transfer verdict.
+[frozen benchmark](https://github.com/TJ7755/Lacuna/blob/fcfd3c6008fb35730fef609083b732fe360baa62/tooling/short-term-memory/BENCHMARK.md), with an explicit transfer verdict.
 
 ## Phase 4 — User-level reporting
 
 **Goal.** Stop letting a handful of heavy reviewers carry an event-weighted aggregate.
 
 **Exit criterion.** Reports state both weightings and the per-user win rate; conclusions in
-`BENCHMARK.md` cite the user-level numbers.
+[frozen benchmark](https://github.com/TJ7755/Lacuna/blob/fcfd3c6008fb35730fef609083b732fe360baa62/tooling/short-term-memory/BENCHMARK.md) cite the user-level numbers.
 
 ## Phase 5 — Robustness and product validation (after 1–4)
 

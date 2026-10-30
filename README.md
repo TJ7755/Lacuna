@@ -45,12 +45,10 @@ installations, regression tests and review policy.
 
 ## Documentation
 
-- [Documentation index](docs/README.md): source entry points, constraints, procedures and measurements.
-- [domain language](docs/domain-language.md): intent and boundaries; source and tests own behaviour.
+- [Documentation index](docs/README.md): operational procedures.
 - [GitHub issues](https://github.com/TJ7755/Lacuna/issues): active work.
 - [Release maintenance](docs/maintenance/release.md), [security](SECURITY.md) and
   [governance](docs/maintenance/governance.md): operating and contribution boundaries.
-- [Scientific assessment](docs/scientific-assessment.md): evidence and limits of learning claims.
 
 ## Contributors
 

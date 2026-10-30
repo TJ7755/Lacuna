@@ -2,7 +2,7 @@
 
 This directory contains the Arc 3 offline dataset, candidate and evaluation tooling. It is an
 independent Python project and is not imported by the browser or Electron builds. Arc 3 Task 6
-selected a compact short-term model; see [`BENCHMARK.md`](BENCHMARK.md).
+selected a compact short-term model; see [frozen benchmark](https://github.com/TJ7755/Lacuna/blob/fcfd3c6008fb35730fef609083b732fe360baa62/tooling/short-term-memory/BENCHMARK.md).
 
 ## Dataset and licence
 

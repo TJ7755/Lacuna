@@ -1,11 +1,14 @@
-# Human release verification
+# Release verification
 
 Use one frozen candidate and disposable profiles. Record commit/version, device, OS/browser, input
 method, theme, app text size, native zoom and motion preference. Attach observations and original
 captures to the owning release/issue. Automated check results come from that candidate's CI;
 this checklist covers evidence those checks cannot supply.
 
-## Human checks
+Complete the sol-loop skill against the frozen candidate and its evidence. Record unavailable
+device observations honestly; no human sign-off is required.
+
+## Device checks
 
 - [ ] On a physical phone, study, reveal/mark, swipe, correct an answer and leave/resume work.
   Check deliberate pacing, gesture cancellation, sticky controls and keyboard occlusion.
@@ -34,8 +37,8 @@ without losing work. Record completion without help, time, interventions, hesita
 and readiness for the next item. Keep raw observations separate from interpretation. Comparative
 usability claims require an equivalent named baseline and recorded task order/learning effects.
 
-## Sign-off
+## Record results
 
 Record passes, failures and untested items separately, with an owner for each outstanding item.
 A browser assertion is engineering evidence; it is not physical-device, accessibility or novice
-sign-off. Keep unresolved redesign gates in [#456](https://github.com/TJ7755/Lacuna/issues/456).
+evidence. Keep unresolved redesign gates in [#456](https://github.com/TJ7755/Lacuna/issues/456).

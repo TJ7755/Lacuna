@@ -41,7 +41,7 @@ The threat model matters more than the presence of a lock icon:
 - Gaps web reporting is an explicit per-course, per-device pupil choice. The teacher decrypts
   identifiable study evidence locally; the relay still sees routing and request metadata. There are
   no keyless participation counters. See the [school notice](docs/gaps-school-notice.md) and
-  [technical boundaries](docs/gaps.md), including the limits of expiry, opt-out and key recovery.
+  [technical boundaries](docs/gaps-trial-operations.md), including the limits of expiry, opt-out and key recovery.
 - Electron uses a sandboxed renderer, context isolation and a narrow preload bridge. Renderer content
   must not gain arbitrary filesystem, process or network authority.
 - The desktop AI companion and the broader data MCP companion are separate authorities. Reads,

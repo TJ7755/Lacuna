@@ -1,4 +1,4 @@
-// Classroom-distribution merge tools (docs/spec/portability.md). Two additive
+// Classroom-distribution merge tools. Two additive
 // tools sitting on top of the merge machinery `src/db/mergeImport.ts` (Task 5) and
 // `src/db/lineageDiff.ts` (Task 3) already own:
 //

@@ -57,7 +57,7 @@ export const createConceptContract = {
 } satisfies ToolContract;
 export const updateConceptContract = {
   name: 'lacuna.update_concept',
-  description: "Update a Concept's display name. Migration provenance remains human-reviewed.",
+  description: "Update a Concept's display name. Migration provenance requires independent review.",
   inputSchema: z.object({
     conceptId: conceptIdSchema,
     name: authoredTextSchema.optional(),
