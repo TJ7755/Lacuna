@@ -25,9 +25,7 @@ describe('public course catalogue', () => {
     },
   );
 
-  it.each([
-    ['history0977', '0977', '0470'],
-  ])(
+  it.each([['history0977', '0977', '0470']])(
     'includes both codes in %s content, metadata and structured data',
     (id, primary, alternative) => {
       const course = libraryCourses.find((entry) => entry.id === id)!;
@@ -73,12 +71,12 @@ describe('public course catalogue', () => {
     expect(metadata.title).toBe('Religious Studies 8062 revision — AQA GCSE | Lacuna');
     expect(metadata.canonical).toBe('https://getlacuna.app/courses/religiousstudies8062/');
     expect(metadata.description).toContain(
-      '1,218 flashcards, 115 notes and 115 exam-style practice sets',
+      '1,272 flashcards, 126 notes and 126 exam-style practice sets',
     );
     render(<CoursePage course={course} />);
     expect(screen.getByText(course.summary)).toHaveTextContent('optional Themes A–F');
     expect(screen.getByText(course.summary)).toHaveTextContent('1, 1, 4 and 6-mark');
-    expect(screen.getByText('1,380 marks of practice')).toBeInTheDocument();
+    expect(screen.getByText('1,656 marks of practice')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Start revising' })).toHaveAttribute(
       'href',
       'https://getlacuna.app/#/s/e85fc39e709074d58669c2d8bfd723bb',
@@ -96,9 +94,9 @@ describe('public course catalogue', () => {
   });
 
   it('lists each subject once using British list formatting in the index description', () => {
-    const subjects = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(
-      [...new Set(libraryCourses.map(({ subject }) => subject))],
-    );
+    const subjects = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format([
+      ...new Set(libraryCourses.map(({ subject }) => subject)),
+    ]);
     expect(courseMetadata().description).toBe(
       `Free GCSE and IGCSE revision courses for ${subjects}, with flashcards, notes and exam-style practice planned to your exam date.`,
     );

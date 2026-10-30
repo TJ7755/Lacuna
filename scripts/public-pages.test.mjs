@@ -276,5 +276,5 @@ test('Religious Studies ships its published scope and revision in crawlable HTML
   assert.match(html, /optional Themes A–F modules to choose from/);
   assert.match(html, /1, 1, 4 and 6-mark question styles/);
   assert.match(html, /e85fc39e709074d58669c2d8bfd723bb/);
-  assert.match(html, /<dd>12<\/dd>/);
+  assert.match(html, /<dd>21<\/dd>/);
 });
