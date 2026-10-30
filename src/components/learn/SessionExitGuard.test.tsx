@@ -69,6 +69,9 @@ describe('SessionExitGuard', () => {
     render(<RouterProvider router={router} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
+    expect(await screen.findByRole('dialog', { name: 'Leave this session?' })).toHaveTextContent(
+      '1 of 4 Cards answered. Your recorded answers are safe, but this session will end. Lesson notes may appear again when you return.',
+    );
     fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
 
     await waitFor(() => expect(calls).toEqual(['confirm', 'leave']));

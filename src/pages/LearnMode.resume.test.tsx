@@ -209,7 +209,7 @@ describe('LearnMode resume', () => {
     expect(unload.defaultPrevented).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
     expect(await screen.findByRole('dialog', { name: 'Leave this session?' })).toHaveTextContent(
-      '0 of 1 Card answered. Your progress is saved, so you can pick up where you left off.',
+      '0 of 1 Card answered. Your recorded answers are safe. You can continue your remaining Cards when you return, but lesson notes may appear again.',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Stay' }));
     expect(studyFaceText('Define erosion')).toBeInTheDocument();

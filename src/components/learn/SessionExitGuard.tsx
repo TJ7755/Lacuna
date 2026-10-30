@@ -12,7 +12,7 @@ interface SessionExitGuardProps extends Pick<
   itemName: 'Card' | 'Question';
   answeredCount: number;
   totalCount: number;
-  /** The session is saved on leaving and resumes next time (Simple Learn). */
+  /** The remaining card queue is saved on leaving (Simple Learn). */
   resumable?: boolean;
 }
 
@@ -23,11 +23,11 @@ export const SessionExitGuard = forwardRef<NavigationGuardHandle, SessionExitGua
   ) {
     const itemLabel = totalCount === 1 ? itemName : `${itemName}s`;
     const consequence = resumable
-      ? 'Your progress is saved, so you can pick up where you left off.'
+      ? 'Your recorded answers are safe. You can continue your remaining Cards when you return, but lesson notes may appear again.'
       : `Your recorded answers are safe, but ${
           itemName === 'Question'
             ? 'the current Question will be abandoned.'
-            : 'this session will end.'
+            : 'this session will end. Lesson notes may appear again when you return.'
         }`;
     return (
       <NavigationGuard
