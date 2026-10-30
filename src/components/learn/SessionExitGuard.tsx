@@ -23,7 +23,7 @@ export const SessionExitGuard = forwardRef<NavigationGuardHandle, SessionExitGua
   ) {
     const itemLabel = totalCount === 1 ? itemName : `${itemName}s`;
     const consequence = resumable
-      ? 'Your recorded answers are safe. You can continue your remaining Cards when you return, but lesson notes may appear again.'
+      ? 'Your recorded answers are safe. You can continue studying when you return, but lesson notes may appear again.'
       : `Your recorded answers are safe, but ${
           itemName === 'Question'
             ? 'the current Question will be abandoned.'
