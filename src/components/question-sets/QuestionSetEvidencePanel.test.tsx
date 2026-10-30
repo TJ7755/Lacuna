@@ -131,7 +131,9 @@ describe('QuestionSetEvidencePanel', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Evidence attempts' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Evidence details' }));
-    await waitFor(() => expect(screen.getByText('2 of 2 skills assessed')).toBeVisible());
+    await waitFor(() =>
+      expect(screen.getByText('2 of 2 knowledge Concepts assessed')).toBeVisible(),
+    );
     expect(screen.getByText('4 / 6')).toBeInTheDocument();
     const recordedMarks = screen.getByRole('heading', { name: 'Recorded marks' }).parentElement;
     expect(recordedMarks).not.toBeNull();
@@ -199,7 +201,7 @@ it('shows unresolved marks without recording them as zero and hides filters for 
   fireEvent.click(screen.getByRole('button', { name: 'Evidence details' }));
   expect(screen.getAllByText('Not marked yet')).toHaveLength(4);
   expect(screen.getByText('4 marks unresolved')).toBeInTheDocument();
-  expect(screen.getByText('0 of 2 skills assessed')).toBeInTheDocument();
+  expect(screen.getByText('0 of 2 knowledge Concepts assessed')).toBeInTheDocument();
   expect(screen.queryByText('0 / 4')).not.toBeInTheDocument();
   expect(screen.queryByRole('group', { name: 'Evidence attempts' })).not.toBeInTheDocument();
 });
@@ -215,7 +217,7 @@ it('excludes unrelated sets and courses and hides unlinked concept coverage', ()
   render(<QuestionSetEvidencePanel content={set} attempts={[row, unrelated, otherCourse]} />);
   expect(screen.getByRole('region', { name: 'Recorded marks' })).toHaveTextContent('1 / 1');
   expect(screen.queryByRole('group', { name: 'Evidence attempts' })).not.toBeInTheDocument();
-  expect(screen.queryByText(/skills assessed/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/knowledge Concepts assessed/)).not.toBeInTheDocument();
 });
 
 it('omits dimensions without submitted marks', async () => {

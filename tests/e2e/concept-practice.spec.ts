@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { SCIENCE_TECHNIQUES } from '../../src/questions/techniqueTags';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 const examples = 'docs/question-bank/examples';
-const density = 'Density as mass per unit volume';
+const density = 'Set up a calculation';
 const source = {
   title: 'Original browser test content',
   reference: 'Synthetic public UI fixture',
@@ -16,6 +17,12 @@ const allocation = (id: string, concept: string, maxMarks = 2) => ({
   maxMarks,
   dimension: 'application',
   targetConceptIds: [concept],
+  techniqueTags: {
+    taxonomyId: 'science-techniques',
+    taxonomyVersion: 1,
+    techniqueIds: ['paired-comparison'],
+    provenance: { source: 'author' },
+  },
 });
 const mixedBank = {
   format: 'lacuna-question-bank',
@@ -113,7 +120,28 @@ async function upload(page: Page, value: unknown, name = 'question-bank.json') {
 }
 
 async function importExample(page: Page, name: string) {
-  await upload(page, await readFile(`${examples}/${name}.json`, 'utf8'));
+  const bank = JSON.parse(await readFile(`${examples}/${name}.json`, 'utf8'));
+  // Classify this synthetic fixture explicitly; importing an untagged bank never infers skills.
+  for (const set of [
+    ...bank.sets,
+    ...bank.families.map((family: { template: unknown }) => family.template),
+  ]) {
+    for (const question of set.questions) {
+      for (const answer of [
+        question.answer,
+        ...question.parts.map((part: { answer: unknown }) => part.answer),
+      ]) {
+        for (const mark of answer?.allocations ?? [])
+          mark.techniqueTags = {
+            taxonomyId: 'science-techniques',
+            taxonomyVersion: 1,
+            techniqueIds: ['calculation-setup'],
+            provenance: { source: 'author' },
+          };
+      }
+    }
+  }
+  await upload(page, bank);
   await expect(page.getByRole('status').filter({ hasText: /Imported/ })).toBeVisible();
 }
 
@@ -146,10 +174,10 @@ async function award(page: Page, marks: string) {
 }
 
 for (const width of [1280, 390]) {
-  test.describe(`Concept practice at ${width}px`, () => {
+  test.describe(`Exam-skill practice at ${width}px`, () => {
     test.use({ viewport: { width, height: width === 390 ? 844 : 800 } });
 
-    test('keeps the long skill chooser inside the library and usable from the keyboard', async ({
+    test('keeps the exam-skill chooser inside the library and usable from the keyboard', async ({
       page,
     }, info) => {
       await openLibrary(page);
@@ -184,7 +212,17 @@ for (const width of [1280, 390]) {
                 maxMarks: 1,
                 response: { kind: 'written' },
                 prerequisiteConceptIds: [],
-                allocations: [allocation(`a-${index}`, concept.id, 1)],
+                allocations: [
+                  {
+                    ...allocation(`a-${index}`, concept.id, 1),
+                    techniqueTags: {
+                      taxonomyId: 'science-techniques',
+                      taxonomyVersion: 1,
+                      techniqueIds: [SCIENCE_TECHNIQUES[index].id],
+                      provenance: { source: 'author' },
+                    },
+                  },
+                ],
               },
             },
           ],
@@ -211,7 +249,7 @@ for (const width of [1280, 390]) {
       await expect(practise).toBeDisabled();
       await chooser.focus();
       // Native typeahead works without a platform popup in headless macOS Chromium.
-      await chooser.press('a');
+      await chooser.press('c');
       await expect(chooser).not.toHaveValue('');
       await expect(chooser).toBeFocused();
       await capture(page, info, 'skills-library');
@@ -251,7 +289,7 @@ for (const width of [1280, 390]) {
       await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
       await expect(page).toHaveURL(/\/questions$/);
       await importExample(page, 'static-multipart');
-      await page.getByRole('button', { name: 'Resume skill practice', exact: true }).click();
+      await page.getByRole('button', { name: 'Resume question practice', exact: true }).click();
       await expect(page).toHaveURL(attemptUrl);
       await expect(answer).toHaveValue('24 / 8 = 3 g/cm³');
       await page.reload();
@@ -275,14 +313,6 @@ for (const width of [1280, 390]) {
       await page.getByRole('button', { name: 'Practise familiar questions', exact: true }).click();
       await expect(page.locator('article.qs-paper')).toBeVisible();
       await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
-      await page.getByRole('button', { name: 'Undo latest skill practice', exact: true }).click();
-      await expect(
-        page.getByRole('button', { name: 'Undo latest skill practice', exact: true }),
-      ).toHaveCount(0);
-      await page.reload();
-      await expect(
-        page.getByRole('button', { name: 'Undo latest skill practice', exact: true }),
-      ).toHaveCount(0);
     });
 
     test('presents every finite family variant once before offering familiar questions', async ({
@@ -316,7 +346,7 @@ for (const width of [1280, 390]) {
       await upload(page, mixedBank);
       await expect(page.getByRole('status').filter({ hasText: /Imported/ })).toBeVisible();
       await page
-        .getByRole('button', { name: 'Practise Explain a relationship', exact: true })
+        .getByRole('button', { name: 'Practise Compare like with like', exact: true })
         .click();
       const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
       await expect(answer).toBeFocused();
@@ -358,10 +388,6 @@ for (const width of [1280, 390]) {
       await expect(page.locator('.qs-result')).toContainText('1 / 3');
       await page.goto(library);
       await expect(page.getByRole('img', { name: 'Latest score 33%', exact: true })).toBeVisible();
-      await page.getByRole('button', { name: 'Undo latest skill practice', exact: true }).click();
-      await expect(
-        page.getByRole('button', { name: 'Undo latest skill practice', exact: true }),
-      ).toHaveCount(0);
     });
   });
 }
@@ -452,9 +478,7 @@ for (const width of [1280, 390]) {
           return await new Promise<boolean>((resolve, reject) => {
             const transaction = connection.transaction(['courses', 'lineageIdMappings']);
             const courseRequest = transaction.objectStore('courses').get(courseId);
-            const mappingRequest = transaction
-              .objectStore('lineageIdMappings')
-              .get(lineageId);
+            const mappingRequest = transaction.objectStore('lineageIdMappings').get(lineageId);
             transaction.oncomplete = () =>
               resolve(
                 courseRequest.result?.distributedCopy?.locked === true &&

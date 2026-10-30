@@ -1,18 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ConceptPracticeExhaustedError,
-  startConceptPractice,
-  undoConceptPracticeAttempt,
-  type ConceptPracticeItem,
-} from '../../questions/conceptPractice';
+  QuestionPracticeExhaustedError,
+  startExamSkillPractice,
+  type ExamSkillPracticeItem,
+} from '../../questions/examSkillPractice';
+import { undoConceptPracticeAttempt } from '../../questions/conceptPractice';
+import type { TechniqueId } from '../../questions/techniqueTags';
 import type { QuestionBankMetadata } from '../../questions/bankMetadata';
 import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
 import { Select } from '../ui/Select';
 
-export function ConceptPracticePanel({
+export function ExamSkillPracticePanel({
   courseId,
   skills,
   recent,
@@ -21,7 +22,7 @@ export function ConceptPracticePanel({
   blueprints = [],
 }: {
   courseId: string;
-  skills: ConceptPracticeItem[];
+  skills: ExamSkillPracticeItem[];
   recent?: QuestionSetAttemptRecord;
   unfinished?: QuestionSetAttemptRecord;
   disabled: boolean;
@@ -30,27 +31,19 @@ export function ConceptPracticePanel({
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [fallback, setFallback] = useState<{ conceptId?: string; mode: 'due' | 'mixed' } | null>(
-    null,
-  );
+  const [fallback, setFallback] = useState<{ techniqueId?: TechniqueId } | null>(null);
   const [blueprint, setBlueprint] = useState<
     Partial<{ type: string; difficulty: string; context: string }>
   >({});
-  const [selectedSkill, setSelectedSkill] = useState('');
+  const [selectedSkill, setSelectedSkill] = useState<TechniqueId | ''>('');
   const available = skills.filter((skill) => skill.availableCount > 0);
-  const due = available.filter((skill) => skill.due);
-  const start = async (
-    conceptId?: string,
-    allowFamiliar = false,
-    mode: 'due' | 'mixed' = 'due',
-  ) => {
+  const start = async (techniqueId?: TechniqueId, allowFamiliar = false) => {
     setBusy(true);
     setError('');
     setFallback(null);
     try {
-      const { attempt } = await startConceptPractice(courseId, conceptId, {
+      const { attempt } = await startExamSkillPractice(courseId, techniqueId, {
         allowFamiliar,
-        mode,
         blueprint,
       });
       await navigate(
@@ -58,16 +51,16 @@ export function ConceptPracticePanel({
         {
           state: {
             questionSetReturnTo: `/course/${courseId}/questions`,
-            questionSetReturnLabel: 'Back to skills',
+            questionSetReturnLabel: 'Back to Questions',
           },
         },
       );
     } catch (cause) {
       if (
-        cause instanceof ConceptPracticeExhaustedError &&
+        cause instanceof QuestionPracticeExhaustedError &&
         cause.reason === 'no-unseen-questions'
       ) {
-        setFallback({ conceptId, mode });
+        setFallback({ techniqueId });
       } else setError(cause instanceof Error ? cause.message : 'Could not start skill practice.');
     } finally {
       setBusy(false);
@@ -85,31 +78,27 @@ export function ConceptPracticePanel({
       setBusy(false);
     }
   };
-  if (!available.length) return null;
   return (
     <section
-      aria-label="Skill practice"
+      aria-label="Exam-skill practice"
       aria-busy={busy}
       className="mb-6 min-w-0 rounded-xl border border-line p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-medium">Skill practice</h2>
+          <h2 className="text-lg font-medium">Exam-skill practice</h2>
           <p className="text-sm text-ink-soft">
-            {due.length} {due.length === 1 ? 'skill' : 'skills'} due · Application practice is
-            separate from recall cards.
+            Practise explicitly tagged exam techniques. Knowledge topics stay linked to their
+            questions.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="primary"
-            disabled={disabled || busy || !due.length}
+            disabled={disabled || busy || !available.length}
             onClick={() => void start()}
           >
-            Practise due skills
-          </Button>
-          <Button disabled={disabled || busy} onClick={() => void start(undefined, false, 'mixed')}>
-            Mixed practice
+            Practise exam skills
           </Button>
         </div>
       </div>
@@ -121,8 +110,8 @@ export function ConceptPracticePanel({
         <details className="mb-3 text-sm">
           <summary>Practice boundaries</summary>
           <p className="my-2 text-ink-soft">
-            Mixed practice balances authored question types, difficulty and contexts. It does not
-            apply official exam weightings.
+            Practice balances authored question types, difficulty and contexts. It does not apply
+            official exam weightings.
           </p>
           <div className="flex flex-wrap gap-3">
             {(['type', 'difficulty', 'context'] as const).map((key) => (
@@ -154,20 +143,25 @@ export function ConceptPracticePanel({
           </div>
         </details>
       )}
+      {!available.length && (
+        <p className="my-3 text-sm text-ink-soft">
+          No exam skills are explicitly tagged for practice yet. Browse the question sets below.
+        </p>
+      )}
       <ul className="space-y-2">
         {available.slice(0, 6).map((skill) => (
-          <li key={skill.conceptId} className="flex flex-wrap items-center justify-between gap-2">
+          <li key={skill.techniqueId} className="flex flex-wrap items-center justify-between gap-2">
             <span className="min-w-0 flex-1 basis-48">
               {skill.name}{' '}
               <span className="text-sm text-ink-soft">
-                · {skill.due ? 'due' : 'scheduled'} · {skill.unseenCount} unseen
+                · {skill.unseenCount} unseen / {skill.availableCount} available
               </span>
             </span>
             <Button
               size="sm"
               aria-label={`Practise ${skill.name}`}
               disabled={disabled || busy}
-              onClick={() => void start(skill.conceptId)}
+              onClick={() => void start(skill.techniqueId)}
             >
               Practise
             </Button>
@@ -180,20 +174,20 @@ export function ConceptPracticePanel({
             <Select
               className="mt-2 block w-full min-w-0 max-w-full"
               value={selectedSkill}
-              onChange={(event) => setSelectedSkill(event.target.value)}
+              onChange={(event) => setSelectedSkill(event.target.value as TechniqueId | '')}
               disabled={disabled || busy}
             >
               <option value="">Choose a skill</option>
               {available.map((skill) => (
-                <option key={skill.conceptId} value={skill.conceptId}>
-                  {skill.name} · {skill.due ? 'due' : 'scheduled'} · {skill.unseenCount} unseen
+                <option key={skill.techniqueId} value={skill.techniqueId}>
+                  {skill.name} · {skill.unseenCount} unseen / {skill.availableCount} available
                 </option>
               ))}
             </Select>
           </Field>
           <Button
             disabled={disabled || busy || !selectedSkill}
-            onClick={() => void start(selectedSkill)}
+            onClick={() => void start(selectedSkill || undefined)}
           >
             Practise selected skill
           </Button>
@@ -208,7 +202,7 @@ export function ConceptPracticePanel({
           </p>
           <Button
             disabled={disabled || busy}
-            onClick={() => void start(fallback.conceptId, true, fallback.mode)}
+            onClick={() => void start(fallback.techniqueId, true)}
           >
             Practise familiar questions
           </Button>
@@ -224,18 +218,20 @@ export function ConceptPracticePanel({
               {
                 state: {
                   questionSetReturnTo: `/course/${courseId}/questions`,
-                  questionSetReturnLabel: 'Back to skills',
+                  questionSetReturnLabel: 'Back to Questions',
                 },
               },
             )
           }
         >
-          Resume skill practice
+          {unfinished.conceptPractice
+            ? 'Resume Concept application practice'
+            : 'Resume question practice'}
         </Button>
       )}
       {recent && (
         <Button className="mt-3" size="sm" disabled={disabled || busy} onClick={() => void undo()}>
-          Undo latest skill practice
+          Undo latest Concept application practice
         </Button>
       )}
       {error && (
