@@ -4,6 +4,46 @@ Scope: one class of about 30 pupils, daily reports, existing Vercel services.
 Use the [school notice](gaps-school-notice.md) and the
 [teacher walkthrough](gaps-teacher-walkthrough.md). Use the disable procedure below.
 
+## Deploy the teacher project and migrate hostnames
+
+Use the separate `lacuna-gaps` project for `gaps.getlacuna.app` and its
+`teach.getlacuna.app` redirect. Do not change the learner project's build command.
+Confirm team `tj7755`, production branch `master`, Root Directory `gaps`, and
+inclusion of source files outside that directory. Keep the frozen-lockfile
+install/build commands in [gaps/vercel.json](../gaps/vercel.json); they run from
+the repository parent and produce `gaps/dist`. Use the repository's pinned Bun.
+
+Keep the remote Ignored Build Step skipping automatic previews:
+
+```sh
+if [ "$VERCEL_ENV" = "production" ]; then exit 1; else exit 0; fi
+```
+
+Inspect the linked project and team before deployment; a link to `lacuna` is the
+wrong target. Stage with `bunx vercel deploy --prod --skip-domain`, verify the
+returned deployment with `bunx vercel curl`, then promote that exact production
+deployment. Keep protection enabled for generated URLs. Hosting the teacher
+workspace does not activate pupil delivery.
+
+Before moving a hostname, preserve its old project, branch assignment and ready
+deployment for rollback. Use Vercel's project-domain move endpoint with the
+explicit destination project and `gitBranch: null`; it also moves redirects to
+that hostname. `domains add --force` cannot remove a domain while a redirect
+points to it. Leave the learner project's other hostnames and relay gates intact.
+
+Retain `/sw.js` with `no-store` throughout the migration window so returning
+installations can retire their old worker. Before the move, verify preview and
+production using both a fresh profile and an existing installation. Check the
+bare root, old hashes, preserved course data, sharing, missing assets returning
+errors rather than HTML, and the main site's study and desktop behaviour. The
+existing installation must update its registration; delayed updates may require
+a reload. The migration browser fixture proves local takeover, not remote domain
+assignment or production update timing.
+
+Use the [frozen activation record](https://github.com/TJ7755/Lacuna/blob/30d7e808f9b056afcfd61702c6de7d4ee204e759/docs/review-evidence/gaps-trial-activation/README.md)
+for initial source, deployment and fallback identities. For later teacher
+releases, roll back to a verified ready production deployment in `lacuna-gaps`.
+
 ## Check device storage policy before the trial
 
 Ask school IT whether shared PCs or pooled tablets clear browser storage at logout,
