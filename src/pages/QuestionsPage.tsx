@@ -1,9 +1,9 @@
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { SearchIcon } from '../components/ui/icons';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
-import { ConceptPracticePanel } from '../components/question-sets/ConceptPracticePanel';
+import { ExamSkillPracticePanel } from '../components/question-sets/ExamSkillPracticePanel';
 import { QuestionBankControls } from '../components/question-sets/QuestionBankControls';
-import { listConceptPractice } from '../questions/conceptPractice';
+import { listExamSkillPractice } from '../questions/examSkillPractice';
 import {
   COURSE_PAGE_FRAME,
   COURSE_PAGE_HEADER,
@@ -73,7 +73,7 @@ export function QuestionsPage() {
         listQuestionSetDrafts(courseId),
         db.questions.where('courseId').equals(courseId).count(),
         db.questionSetAttempts.where('courseId').equals(courseId).toArray(),
-        listConceptPractice(courseId),
+        listExamSkillPractice(courseId),
         db.lessons.where('courseId').equals(courseId).toArray(),
         db.concepts.where('courseId').equals(courseId).toArray(),
       ]);
@@ -218,7 +218,7 @@ export function QuestionsPage() {
           </ExpandingCreateControl>
         )}
       </header>
-      <ConceptPracticePanel
+      <ExamSkillPracticePanel
         courseId={course.id}
         skills={data.skills ?? []}
         blueprints={data.sets.flatMap((set) => (set.bank ? [set.bank.blueprint] : []))}
@@ -226,12 +226,7 @@ export function QuestionsPage() {
         unfinished={
           [...data.attemptsBySet.values()]
             .flat()
-            .filter(
-              (attempt) =>
-                attempt.conceptPractice &&
-                attempt.status !== 'complete' &&
-                attempt.undoneAt === undefined,
-            )
+            .filter((attempt) => attempt.status !== 'complete' && attempt.undoneAt === undefined)
             .sort((a, b) => b.updatedAt - a.updatedAt)[0]
         }
         recent={

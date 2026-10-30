@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, expect, it } from 'vitest';
 import familyExample from '../../docs/question-bank/examples/numeric-family.json';
 import { db } from '../db/schema';
+import { createCard } from '../db/cardRepository';
 import { createCourse } from '../db/repository';
 import { createConcept } from './repository';
 import { createQuestionSet } from './questionSetRepository';
@@ -423,4 +424,86 @@ it('retains family exposure when only marking arithmetic and feedback change', a
   expect(
     (await startConceptPractice(course.id, conceptId)).attempt.receipt.bank!.variant!.index,
   ).toBe(1);
+});
+
+it('excludes pure knowledge from application selection and replays only applicable marks in a mixed question', async () => {
+  const { course, concept, set } = await fixture();
+  const card = await createCard(course.id, 'front_back', 'Recall transport', 'Transport', [], {
+    courseId: course.id,
+    conceptId: concept.id,
+  });
+  const recall = structuredClone(set.questions[0]);
+  recall.answer!.allocations[0].dimension = 'knowledge';
+  await db.questionSets.clear();
+  const saved = await createQuestionSet({ ...set, questions: [recall] });
+  expect((await listConceptPractice(course.id))[0].availableCount).toBe(0);
+  await expect(startConceptPractice(course.id, concept.id)).rejects.toThrow(/No questions/);
+  let attempt = await startQuestionSetAttempt(saved.id, 'practice', 200);
+  attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, recall.id, 210);
+  attempt = await saveQuestionSetMarking(
+    attempt.id,
+    attempt.revisionId,
+    {
+      decisions: [{ allocationId: recall.answer!.allocations[0].id, status: 'awarded', marks: 0 }],
+      annotations: [],
+      corrections: [],
+      reflection: { reasons: [], note: '' },
+      activeNodeId: recall.id,
+      activeAllocationId: null,
+    },
+    220,
+  );
+  attempt = await completeQuestionSetAttempt(attempt.id, attempt.revisionId, 230);
+  expect(deriveConceptApplicationSchedules([attempt]).size).toBe(0);
+  const application = {
+    ...recall.answer!.allocations[0],
+    id: 'apply',
+    dimension: 'application' as const,
+  };
+  const mixed = await createQuestionSet({
+    ...set,
+    id: 'mixed-recall',
+    questions: [
+      {
+        ...recall,
+        prompt: 'Apply the recalled relationship to this new situation.',
+        answer: {
+          ...recall.answer!,
+          maxMarks: 4,
+          allocations: [...recall.answer!.allocations, application],
+        },
+      },
+    ],
+  });
+  let started = (await startConceptPractice(course.id, concept.id, { now: 240 })).attempt;
+  expect(started.receipt.questions[0].answer!.allocations).toHaveLength(2);
+  started = await submitPracticeQuestion(started.id, started.revisionId, recall.id, 250);
+  started = await saveQuestionSetMarking(
+    started.id,
+    started.revisionId,
+    {
+      decisions: [
+        { allocationId: recall.answer!.allocations[0].id, status: 'awarded', marks: 0 },
+        { allocationId: 'apply', status: 'awarded', marks: 2 },
+      ],
+      annotations: [],
+      corrections: [],
+      reflection: { reasons: [], note: '' },
+      activeNodeId: recall.id,
+      activeAllocationId: null,
+    },
+    260,
+  );
+  started = await completeQuestionSetAttempt(started.id, started.revisionId, 270);
+  expect(started.questionSetId).toBe(mixed.id);
+  expect(deriveConceptApplicationSchedules([attempt, started]).get(concept.id)).toEqual(
+    scheduleQuestionReview(
+      emptyQuestionSchedule(),
+      3,
+      started.firstMarking![0].schedulerConfig,
+      270,
+    ).schedule,
+  );
+  expect(await db.cards.get(card.id)).toEqual(card);
+  expect(await db.reviewHistory.count()).toBe(0);
 });

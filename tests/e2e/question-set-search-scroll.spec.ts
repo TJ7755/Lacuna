@@ -20,14 +20,57 @@ for (const width of [1280, 390]) {
             const database = request.result;
             const transaction = database.transaction(['concepts', 'questionSets'], 'readwrite');
             const now = Date.now();
+            const techniques = [
+              {
+                id: 'causal-link',
+                prompt:
+                  'A potato cylinder loses mass in concentrated sucrose solution. Explain why.',
+                criterion:
+                  'Links lower external water potential to net water movement out by osmosis.',
+              },
+              {
+                id: 'paired-comparison',
+                prompt: 'Cell A has a nucleus; cell B has no nucleus. Compare their nuclei.',
+                criterion: 'States that A has a nucleus whereas B does not.',
+              },
+              {
+                id: 'evidence-based-judgement',
+                prompt:
+                  'Equal samples contain 20, 21 and 80 cells. Judge whether 80 needs checking.',
+                criterion: 'Supports checking 80 because it differs greatly from the other counts.',
+              },
+              {
+                id: 'calculation-setup',
+                prompt: 'An image is 120 mm long and the cell is 0.03 mm. Set up magnification.',
+                criterion: 'Uses magnification = image size / actual size.',
+              },
+              {
+                id: 'substitution',
+                prompt:
+                  'Use image size / actual size with 120 mm and 0.03 mm. Substitute the values.',
+                criterion: 'Substitutes 120 / 0.03.',
+              },
+              {
+                id: 'unit-conversion',
+                prompt: 'A cell is 0.12 mm wide. Convert this width to micrometres.',
+                criterion: 'Converts 0.12 mm to 120 micrometres.',
+              },
+              {
+                id: 'practical-controls',
+                prompt:
+                  'Compare osmosis rates in potato cylinders. How should their size be controlled?',
+                criterion: 'Cuts the cylinders to the same length and diameter.',
+              },
+            ];
             for (let index = 0; index < 10; index++) {
-              const conceptId = `scroll-skill-${index}`;
+              const technique = techniques[index % techniques.length];
+              const conceptId = `scroll-concept-${index}`;
               transaction.objectStore('concepts').add({
                 id: conceptId,
                 courseId,
                 scope: 'course',
                 scopeKey: `course:${courseId}`,
-                name: `Cell skill ${index}`,
+                name: `Cell knowledge ${index}`,
                 provisional: false,
                 createdAt: now,
                 updatedAt: now,
@@ -45,7 +88,7 @@ for (const width of [1280, 390]) {
                 questions: [
                   {
                     id: `question-${index}`,
-                    prompt: `Explain cell process ${index}.`,
+                    prompt: technique.prompt,
                     parts: [],
                     answer: {
                       maxMarks: 1,
@@ -54,10 +97,16 @@ for (const width of [1280, 390]) {
                       allocations: [
                         {
                           id: `mark-${index}`,
-                          criterion: 'Explains the process.',
+                          criterion: technique.criterion,
                           maxMarks: 1,
-                          dimension: 'knowledge',
+                          dimension: 'application',
                           targetConceptIds: [conceptId],
+                          techniqueTags: {
+                            taxonomyId: 'science-techniques',
+                            taxonomyVersion: 1,
+                            techniqueIds: [technique.id],
+                            provenance: { source: 'author' },
+                          },
                         },
                       ],
                     },
@@ -82,7 +131,9 @@ for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 600 });
     await page.goto(`/#${coursePath}/questions`);
     await page.getByRole('button', { name: 'View mode', exact: true }).click();
-    await expect(page.getByRole('region', { name: 'Skill practice' })).toBeVisible();
+    await expect(
+      page.getByRole('region', { name: 'Exam-skill practice', exact: true }),
+    ).toBeVisible();
     const main = page.getByRole('main');
     const search = page.getByRole('searchbox', { name: 'Search sets' });
     await search.scrollIntoViewIfNeeded();

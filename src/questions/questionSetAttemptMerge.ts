@@ -47,6 +47,7 @@ export function mergeQuestionSetAttemptPair(
   if (
     existing.id !== incoming.id ||
     existing.mode !== incoming.mode ||
+    existing.practiceScope !== incoming.practiceScope ||
     existing.courseId !== incoming.courseId ||
     existing.questionSetId !== incoming.questionSetId ||
     existing.createdAt !== incoming.createdAt

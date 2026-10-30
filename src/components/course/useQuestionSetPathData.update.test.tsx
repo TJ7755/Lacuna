@@ -15,6 +15,7 @@ import {
 } from '../../questions/questionSetAttemptRepository';
 import type { QuestionSetRecord } from '../../questions/questionSetCodec';
 import type { ConceptPracticeSelection } from '../../questions/questionSetAttempts';
+import { startExamSkillPractice } from '../../questions/examSkillPractice';
 import { useQuestionSetPathData } from './useQuestionSetPathData';
 import type { QuestionSetPathNode } from '../../course/path';
 import { QuestionSetCourseRow } from './QuestionSetCourseRow';
@@ -227,57 +228,76 @@ it('shows new parts after a real update extends a completed set, including a rep
   expect(await db.questionSetAttempts.get(completed.id)).toEqual(completed);
 });
 
-it('keeps full-set completion after newer partial Concept practice and detects only genuinely added parts', async () => {
-  const first = payload();
-  first.questionSets[0].questions.push(
-    ...setRecord('set-b', 'question-b', 'allocation-b').questions,
-  );
-  const { course } = await importLineageFirstTime(first);
-  const completed = await completeSet('set-a');
-  const partial = await completeSet('set-a', 3_000, {
-    conceptId: 'concept-quadratic',
-    questionSetId: 'set-a',
-    questionId: 'question-a',
-    novelty: 'familiar',
-    fingerprint: 'question-a-original',
-  });
-  expect(partial.receipt.questions).toHaveLength(1);
-  render(
-    <MemoryRouter>
-      <ToastProvider>
-        <QuestionSetCourseRow
-          node={pathNode(course.id, ['set-a'])}
-          index={0}
-          authoring={false}
-          lessons={[]}
-        />
-      </ToastProvider>
-    </MemoryRouter>,
-  );
-  const row = await screen.findByRole('button', { name: 'Practice questions: Paper set-a' });
-  await waitFor(() => expect(row).toHaveTextContent('2/2 answered'));
-  expect(row).not.toHaveTextContent('new part');
-  expect(row.querySelector('.origin-left')).toHaveStyle({ width: '100%' });
+it.each(['Concept', 'exam-skill'] as const)(
+  'keeps full-set completion after newer partial %s practice and detects only genuinely added parts',
+  async (kind) => {
+    const first = payload();
+    const allocation = first.questionSets[0].questions[0].answer!.allocations[0];
+    allocation.dimension = 'application';
+    allocation.techniqueTags = {
+      taxonomyId: 'science-techniques',
+      taxonomyVersion: 1,
+      techniqueIds: ['calculation-setup'],
+      provenance: { source: 'author' },
+    };
+    first.questionSets[0].questions.push(
+      ...setRecord('set-b', 'question-b', 'allocation-b').questions,
+    );
+    const { course } = await importLineageFirstTime(first);
+    const completed = await completeSet('set-a');
+    const partial =
+      kind === 'Concept'
+        ? await completeSet('set-a', 3_000, {
+            conceptId: 'concept-quadratic',
+            questionSetId: 'set-a',
+            questionId: 'question-a',
+            novelty: 'familiar',
+            fingerprint: 'question-a-original',
+          })
+        : (
+            await startExamSkillPractice(course.id, 'calculation-setup', {
+              now: 3_000,
+              allowFamiliar: true,
+            })
+          ).attempt;
+    expect(partial.receipt.questions).toHaveLength(1);
+    render(
+      <MemoryRouter>
+        <ToastProvider>
+          <QuestionSetCourseRow
+            node={pathNode(course.id, ['set-a'])}
+            index={0}
+            authoring={false}
+            lessons={[]}
+          />
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+    const row = await screen.findByRole('button', { name: 'Practice questions: Paper set-a' });
+    await waitFor(() => expect(row).toHaveTextContent('2/2 answered'));
+    expect(row).not.toHaveTextContent('new part');
+    expect(row.querySelector('.origin-left')).toHaveStyle({ width: '100%' });
 
-  await mergeLineageUpdate(
-    course.id,
-    payload({
-      at: 4_000,
-      rv: 2,
-      questionSets: [
-        {
-          ...first.questionSets[0],
-          contentRevisionId: 'set-a-revision-2',
-          questions: [
-            ...first.questionSets[0].questions,
-            ...setRecord('set-c', 'question-c', 'allocation-c').questions,
-          ],
-        },
-      ],
-    }),
-  );
-  await waitFor(() => expect(row).toHaveTextContent('2/2 answered · 1 new part'));
-  expect(row.querySelector('.origin-left')).toHaveStyle({ width: '67%' });
-  expect(await db.questionSetAttempts.get(completed.id)).toEqual(completed);
-  expect(await db.questionSetAttempts.get(partial.id)).toEqual(partial);
-});
+    await mergeLineageUpdate(
+      course.id,
+      payload({
+        at: 4_000,
+        rv: 2,
+        questionSets: [
+          {
+            ...first.questionSets[0],
+            contentRevisionId: 'set-a-revision-2',
+            questions: [
+              ...first.questionSets[0].questions,
+              ...setRecord('set-c', 'question-c', 'allocation-c').questions,
+            ],
+          },
+        ],
+      }),
+    );
+    await waitFor(() => expect(row).toHaveTextContent('2/2 answered · 1 new part'));
+    expect(row.querySelector('.origin-left')).toHaveStyle({ width: '67%' });
+    expect(await db.questionSetAttempts.get(completed.id)).toEqual(completed);
+    expect(await db.questionSetAttempts.get(partial.id)).toEqual(partial);
+  },
+);

@@ -287,7 +287,7 @@ it('drops both the mark and diagnosis when the learner decides during the combin
   expect(current.decisions).toEqual([{ allocationId: 'a1', status: 'awarded', marks: 1 }]);
   expect(current.jevAssessmentReceipts).toBeUndefined();
 });
-it('confident marks carry provenance and feed summaries, grading and concept schedules', async () => {
+it('confident knowledge marks carry provenance and feed grading without application reviews', async () => {
   const { attempt, concept } = await fixture();
   const { engine } = engineWith(async (request) => result(request.maxMarks!));
   await markJevAttempt(attempt.id, engine);
@@ -305,7 +305,7 @@ it('confident marks carry provenance and feed summaries, grading and concept sch
     }),
   ).toBe(3);
   const complete = await completeQuestionSetAttempt(marked.id, marked.revisionId);
-  expect(deriveConceptApplicationSchedules([complete]).get(concept.id)?.reps).toBe(1);
+  expect(deriveConceptApplicationSchedules([complete]).has(concept.id)).toBe(false);
 });
 it('persists unsure lines with provenance and applies explicit zero marks', async () => {
   const { attempt } = await fixture();

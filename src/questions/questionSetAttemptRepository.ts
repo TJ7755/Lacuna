@@ -39,7 +39,7 @@ export async function startQuestionSetAttempt(
   questionSetId: string,
   mode: QuestionSetAttemptMode,
   now = Date.now(),
-  selection?: ConceptPracticeSelection,
+  selection?: Omit<ConceptPracticeSelection, 'conceptId'> & { conceptId?: string },
   familyVariantIndex?: number,
 ): Promise<QuestionSetAttemptRecord> {
   return db.transaction('rw', [db.courses, db.questionSets, db.questionSetAttempts], async () => {
@@ -52,7 +52,7 @@ export async function startQuestionSetAttempt(
     }
     if (selection) {
       if (mode !== 'practice' || selection.questionSetId !== questionSetId)
-        throw new Error('Invalid Concept practice selection.');
+        throw new Error('Invalid question practice selection.');
       const question = receipt.questions.find((row) => row.id === selection.questionId);
       if (!question) throw new Error('Selected question not found.');
       receipt = parseQuestionSetRecord({ ...receipt, questions: [question] });
@@ -83,7 +83,8 @@ export async function startQuestionSetAttempt(
       decisions: [],
       firstMarking: [],
       shownQuestionIds: [nodes[0].questionId],
-      ...(selection ? { conceptPractice: clone(selection) } : {}),
+      ...(selection?.conceptId ? { conceptPractice: clone(selection) } : {}),
+      ...(selection ? { practiceScope: 'question' } : {}),
       annotations: [],
       corrections: [],
       reflection: { reasons: [], note: '' },

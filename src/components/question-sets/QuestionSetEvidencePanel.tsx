@@ -128,7 +128,7 @@ export function QuestionSetEvidencePanel({
               </dl>
               {targetCount > 0 && (
                 <p className="text-sm text-ink-faint">
-                  {coverage.markedConceptIds.length} of {targetCount} skills assessed
+                  {coverage.markedConceptIds.length} of {targetCount} knowledge Concepts assessed
                 </p>
               )}
             </StepSwap>
