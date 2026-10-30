@@ -48,7 +48,7 @@ rather than repeatedly rerunning the full suite or treating workflow success as 
 required check has passed.
 
 The [contributor policy](../../CONTRIBUTING.md) requires independent review for risk-bearing work.
-An independent agent review satisfies that requirement; human review is optional. The authoring
+The sol-loop skill’s independent agent review satisfies that requirement; human approval is not required. The authoring
 agent cannot serve as its own independent reviewer. CODEOWNERS requests and GitHub approval
 requirements are separate controls; inspect live settings before merging.
 

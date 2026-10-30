@@ -1,7 +1,7 @@
 // IPC envelope shared by the Electron main process (electron/mcp/server.ts, which owns
 // the MCP SDK's stdio transport) and the renderer (src/mcp/bridge/renderer.ts, which is
 // the only process with IndexedDB and therefore the only process that can execute a tool
-// handler). See docs/spec/desktop.md for the transport and authority boundaries.
+// handler). Preserve the transport and authority boundaries.
 //
 // This module is types only — no runtime transport code lives here. The MCP SDK itself
 // must never be imported from anywhere under src/, since src/ is bundled into both the
@@ -26,8 +26,7 @@ export interface McpInvokeRequest {
 
 /** A tool invocation response sent from the renderer back to the main process. */
 export type McpInvokeResponse =
-  | { id: string; ok: true; result: unknown }
-  | { id: string; ok: false; error: McpToolError };
+  { id: string; ok: true; result: unknown } | { id: string; ok: false; error: McpToolError };
 
 export type McpScope = 'read' | 'write' | 'destructive';
 
@@ -56,7 +55,10 @@ export interface McpScopeResolutionRequest {
   input: unknown;
 }
 
-export interface McpScopeTarget { courseId: string; label?: string }
+export interface McpScopeTarget {
+  courseId: string;
+  label?: string;
+}
 
 export type McpScopeResolutionResponse =
   | { id: string; ok: true; targets: McpScopeTarget[] }

@@ -56,7 +56,7 @@ export interface LineageIdMapping {
    * the just-applied content on every successful first import or merge — including for
    * entities the student's own edit left untouched, since "untouched" is exactly what a
    * matching snapshot records. Extends the v18 shape in place (see the classroom
-   * distribution contract in docs/spec/portability.md) rather than a schema bump, since no index is
+   * distribution identity contract) rather than a schema bump, since no index is
    * needed for these fields.
    */
   lessonSnapshots: Record<string, LineageLessonSnapshot>;

@@ -88,5 +88,4 @@ device, substituted invitation or compromised application can defeat these
 protections. Closing and locking Gaps clears its open report view; it cannot erase
 screenshots, downloads or other copies made outside that view.
 
-Technical details and the approved activation record are in the
-[Gaps implementation and operations guide](gaps.md).
+Follow the [trial operations procedure](gaps-trial-operations.md) for retention and withdrawal.

@@ -303,7 +303,9 @@ export function Method() {
         <footer className="method-sources">
           <p>
             Sources: the shipped model coefficients and the hold-out benchmark in{' '}
-            <span className="normal-case">tooling/short-term-memory/BENCHMARK.md</span>
+            <a href="https://github.com/TJ7755/Lacuna/blob/fcfd3c6008fb35730fef609083b732fe360baa62/tooling/short-term-memory/BENCHMARK.md">
+              the frozen benchmark
+            </a>
           </p>
         </footer>
       </main>

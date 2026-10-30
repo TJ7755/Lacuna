@@ -12,7 +12,7 @@ betas are supported; macOS packages are a separate local step, not an implicit p
    Edit only the root package version through this helper.
 2. Write `docs/releases/<version>.md` with the learner-facing notes and known limitations.
 3. Check the actual PR and exact-commit CI/Security results, native upgrade evidence and applicable
-   human gates. Merge through normal protection. An existing tag must never be moved.
+   sol-loop independent review. Merge through normal protection. An existing tag must never be moved.
 4. If building or verification fails, fix the cause and rerun the failed release workflow.
    `gh workflow run release.yml --ref v<version>` restarts the existing tag's build.
 
@@ -45,7 +45,7 @@ assets replaced during verification. Failure or an expired wait is not permissio
 Only exact tag/commit provenance is acceptable; `git describe` or a nearby checkout is insufficient.
 Attestations and checksums identify bytes and their build source, not application signing.
 
-## Native and human evidence
+## Native evidence
 
 Dispatch `gh workflow run electron-e2e.yml --ref <branch>` for pre-merge hosted package/interaction
 checks. Isolated profiles and fixture-backed services do not prove physical touch, real microphone/

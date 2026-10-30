@@ -1,47 +1,10 @@
-# Course library
-
-Counts are publication snapshots. Refresh them when republishing a course, using the
-actual published payload or its matching build report. Omit unknown statistics instead
-of inventing them. Publish a course or revision only after its review is complete; the library
-therefore shows no review or progress status. The science courses are Higher-tier selections
-alongside History revision 15. Native Biology is revision 31, Chemistry revision 22 and
-Physics revision 20; the 18 board variants were republished on 24 October 2026 with reviewed
-labelled image Cards, image practice and shared corrections. The 24 October update removed authoring
-caveats and repeated mark totals while preserving scientific conditions, stable identities and
-learner progress. Combined Science AQA 8464 revision 10, Pearson Edexcel 1SC0 revision 4 and OCR
-Gateway J250 revision 3 cover Higher tier with shared
-Foundation content; full specification coverage is not independently certified. All three Combined
-Science payloads exceed 4 MiB and are published compressed (`deflate-raw-v1`). All science share
-URLs and counts were filled from verified exact-byte publication records.
-
-Biology 4BI1 revision 31 adds reviewed specification metadata for five enzyme requirements
-(2.10–2.14B), linked to 14 Concepts; 508 Concepts remain explicitly unmapped. This pilot subset
-does not certify whole-syllabus coverage or readiness. The verified publication retains the
-existing share identity and contains 1,465 Cards, 164 notes, 168 practice sets and 1,533 practice
-marks. Independent agent acceptance under the content repository’s standing authority replaces
-exact-file human approval; frozen `humanApproval` remains null.
-
-AQA GCSE Religious Studies A (8062) revision 12 is also published. It covers Christianity and
-Islam beliefs, teachings and practices for Component 1, with Themes A–F included as optional
-Component 2 modules for learners to choose. Its snapshot records 115 lessons, 115 notes,
-1,218 Cards, 115 practice sets, 1,380 practice marks and one asset. Practice uses short
-lesson-level questions in the 1, 1, 4 and 6-mark styles; this is not full-paper or 12-mark
-evaluation practice and does not include SPaG marking. It carries no AQA endorsement or
-exam-board review claim. The catalogue counts and stable link come from the verified
-revision 12 publication record.
-
-These links retain the source files' lineage and entity identities. Earlier library links used
-a separate publisher lineage; importing a current link therefore does not migrate an earlier
-subscriber's course or learner evidence. Keep old links available until that migration has
-been designed and verified. Use the same current link for later revisions.
+# Course library operations
 
 ## Publish a frozen artefact
 
-The command itself grants no publishing authority. The requester explicitly authorised the
-24 October wording corrections and republication of all 26 existing courses after saved review
-findings, bounded corrections, builds and import/update checks. This is publication authority for
-these exact candidates, not approval for arbitrary later changes. Historical draft approval fields
-remain unchanged; requester approval is not trusted builder approval.
+Complete the sol-loop skill’s independent review of the exact frozen candidate and its build/import/update
+checks before publishing. Record the accepted SHA-256 separately from historical draft fields.
+Source booleans do not authorise publication. Supply that accepted hash to the existing publisher.
 
 Supply ownership through `LACUNA_RELAY_URL` and `LACUNA_WRITE_TOKEN` in the process environment,
 or `--credentials "$LACUNA_OWNER_FILE"`. The latter is a JSON file outside the repository,
@@ -89,72 +52,6 @@ before retrying, and do not treat the failed run as publication evidence.
 Skipping unchanged bytes does not renew a share. Ordinary share expiry is unchanged; official
 publications use the relay retention policy below after deployment. No production relay was used
 to validate this command.
-
-## Cambridge alternative codes
-
-Science entries use the single awarding-body label `Cambridge`. Physics `0972` and `0625`
-now have separate catalogue entries and distinct publication lineages. The native `physics0972`
-ID and stable share URL remain unchanged, but `0625` is no longer its display/search alias.
-Do not treat the two downloads as interchangeable subscriber updates, even where teaching is shared.
-The 9–1 science entries use the Cambridge IGCSE (9–1) qualification label.
-
-History remains unchanged: `0977` retains `0470` through `alternativeCodes` for display,
-search and public-page metadata, with its original ID, URL, revision and counts.
-
-### Official syllabus check
-
-Historical syllabus comparison checked on 20 October 2026 against the following Cambridge
-International PDFs.
-This comparison does not merge the separately published Physics lineages. Neither the
-catalogue nor its course sheet declares exam years; this check is limited to the editions below
-and does not establish coverage for later syllabuses or audit every published lesson.
-
-- Physics, exams 2026–28: [0625, version 2](https://www.cambridgeinternational.org/Images/697209-2026-2028-syllabus.pdf)
-  and [0972, version 2](https://www.cambridgeinternational.org/Images/697240-2026-2028-syllabus.pdf),
-  subject content pp. 12–41. Both state: “Use this syllabus for exams in 2026, 2027 and 2028.”
-  Comparing the complete subject-content sections after removing page headers, footers and
-  whitespace finds only grading-label differences: maximum Core grade C versus 5, and Extended
-  target grades A*–C versus 9–4. Learning objectives, Core/Supplement content and all six topic
-  groups match. Cambridge's [0972 overview](https://www.cambridgeinternational.org/programmes-and-qualifications/cambridge-igcse-physics-9-1-0972/)
-  explicitly confirms it is “graded from 9 to 1 but is otherwise the same as Cambridge IGCSE Physics (0625)”.
-- History, exams 2024–26: [0470, version 1](https://www.cambridgeinternational.org/Images/649636-2024-2026-syllabus.pdf)
-  and [0977, version 2](https://www.cambridgeinternational.org/Images/649638-2024-2026-syllabus.pdf),
-  subject content pp. 11–28. Both include “Option B The twentieth century: international relations
-  since 1919.” and “Depth study B: Germany, 1918–45”. The complete subject-content text matches
-  after removing page headers, footers and whitespace. This comparison, rather than a blanket
-  equivalence sentence in these PDFs, establishes the content equivalence.
-- History, exams 2027–28: [0470, version 1](https://www.cambridgeinternational.org/Images/721327-2027-2028-syllabus.pdf)
-  and [0977, version 1](https://www.cambridgeinternational.org/Images/721357-2027-2028-syllabus.pdf),
-  subject content pp. 11–28. Again the paired subject-content text matches. Both say:
-  “There are no significant changes which affect teaching.” The changes section on p. 41 repeats this teaching-continuity statement; Paper 2 still uses
-  year- and series-specific prescribed topics (p. 30).
-  The change in introductory wording and added faculty feedback does not change the subject
-  objectives between the two History periods checked.
-
-Both History codes offer Core Option A or B and the same five depth studies: the First World
-War; Germany; Russia; the United States; and the Second World War in Europe and the Asia–Pacific.
-Lacuna advertises only its listed Option B topics and Germany, 1918–45. The preview does not
-list the sixth Option B question on USSR control of Eastern Europe, and does not establish full
-Option B coverage. Adding 0470 does not claim all History options, coursework support or full
-exam preparation. Paper 2 prescribed topics depend on the exam year and series.
-
-The codes also differ in entry arrangements, not just grades. The PDF covers offer June and
-November for all four codes, with an additional March series in India for 0625/0470. The 9–1
-versions have administrative-zone restrictions; consult the current Cambridge syllabus pages
-before making entries. Do not treat these metadata aliases as interchangeable exam-entry codes.
-
-## Science acceptance limits
-
-The final review accepts the exact 22 frozen candidates and their selected-topic summaries.
-It does not certify full syllabus coverage, tier filtering, laboratory competence, future exam
-entry, board endorsement or every retained paragraph/Card. Grouped coverage ledgers remain
-limitations. Originality declarations and targeted checks are not an exhaustive rights audit.
-Historical build/import/update checks do not certify later Biology bytes; current matching
-reports and static lineage checks were reviewed separately. Timings remain estimates.
-
-The expanded catalogue uses the existing fields, course sheets and public-page generator.
-Distinct board lineages remain distinct. Keep the native links stable when updating their
-approved revisions and use verified publication records for new links.
 
 ## Hosting
 

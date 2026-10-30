@@ -2,8 +2,7 @@
 
 Scope: one class of about 30 pupils, daily reports, existing Vercel services.
 Use the [school notice](gaps-school-notice.md) and the
-[teacher walkthrough](gaps-teacher-walkthrough.md). The
-[Gaps guide](gaps.md#disable-the-trial) owns the disable/rollback procedure.
+[teacher walkthrough](gaps-teacher-walkthrough.md). Use the disable procedure below.
 
 ## Check device storage policy before the trial
 
@@ -72,8 +71,7 @@ Compare builds, functions and Blob usage, rather than counting encrypted reports
 alone. Keep automatic PR previews skipped as configured; production builds still
 run. Do not add paid monitoring, databases or account-wide pause rules for this
 trial without a concrete need and the owner's choice about effects on other apps.
-The [cost assumptions](gaps.md#trial-cost-assumptions) are planning estimates;
-check [current Blob pricing](https://vercel.com/docs/vercel-blob/usage-and-pricing)
+Check [current Blob pricing](https://vercel.com/docs/vercel-blob/usage-and-pricing)
 and [Pro credit rules](https://vercel.com/docs/plans/pro-plan) when reviewing them.
 
 ## After the class starts
@@ -88,3 +86,22 @@ Review spend and the next scheduled maintenance result after the first day, then
 after the first week. This is an operator procedure, not a newly installed
 recurring automation. Keep the epic open for the real teacher's observations and
 the first-class follow-through; do not mark them complete from synthetic tests.
+
+## Disable the trial
+
+Confirm the intended team and projects before changing production configuration.
+Set production `RELAY_INSIGHTS_ENABLED=0` on `lacuna-relay` and
+`VITE_GAPS_REPORTING_ENABLED=false` on `lacuna`, or remove those production values.
+Changing a saved variable does not change an already deployed build: deploy the
+reviewed source with those disabled values, or roll back to verified production
+deployments that captured disabled gates. Stop relay admission first, then pupil
+delivery. The relay gate disables report reads as well as uploads; retained
+ciphertext remains stored. Failed uploads retain the existing encrypted retry packet.
+
+Use `bunx vercel rollback` with the exact selected production deployment URL and
+the verified team scope. The activation record retains the initial fallback
+deployments; for later releases, check compatibility before reverting learner code.
+Disabling the saved values as well prevents a later automatic build from silently
+reactivating reporting. Rollback disables collection; it does not erase retained
+reports, teacher keys or pupil data. Keep the teacher hostname, retirement worker
+and existing storage intact.

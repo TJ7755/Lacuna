@@ -5,7 +5,7 @@
 // attachMcpBridge() delegates execution to the shared executor and replies with
 // `mcp:invoke:reply`.
 //
-// Bridge-deadlock risk (docs/spec/desktop.md): if a failure here never replies, the
+// Bridge-deadlock risk: if a failure here never replies, the
 // main process's request hangs until its own timeout fires (src/mcp/bridge/dispatcher.ts).
 // Every path below — unknown tool, validation/handler failure, or a genuinely unexpected
 // thrown error — is therefore wrapped so a reply is always sent.

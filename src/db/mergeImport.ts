@@ -5,7 +5,7 @@ import {
 import { assertShareSpecificationAssessments } from './sharePayload';
 import { earlierCourseLessonIds } from '../course/courseEntry';
 /**
- * Classroom-distribution merge importer (docs/spec/portability.md).
+ * Classroom-distribution merge importer.
  *
  * Two entry points:
  *  - {@link importLineageFirstTime} — first import of a published lineage. Adopts every
