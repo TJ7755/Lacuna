@@ -39,12 +39,20 @@ import {
   getLocalTimeZone,
 } from '../../utils/datetime';
 import { CourseStudyTarget } from '../course/CourseStudyTarget';
+import {
+  CourseSpecificationIdentity,
+  type CourseIdentity,
+} from '../course/CourseSpecificationIdentity';
 
 /** A decoded, not-yet-confirmed import. `merge` is present when the payload's lineage
  *  (Arc 7 §7.5) matches a course already imported locally — routing this to the merge
  *  importer instead of a plain new-course import. */
 interface PendingShareImport {
   summary: ShareSummary;
+  identity?: {
+    course: CourseIdentity;
+    publication?: { lineageId: string; revision: number };
+  };
   raw: string;
   file?: CourseFile;
   scheduling?: {
@@ -69,12 +77,22 @@ interface PendingShareImport {
  *  instead of the plain `importSharePayload` path. */
 async function resolvePending(payload: SharePayload, raw: string): Promise<PendingShareImport> {
   const summary = summariseShare(payload);
+  const identity =
+    payload.v === 1
+      ? undefined
+      : {
+          course: payload.course,
+          publication: isLineagePayload(payload)
+            ? { lineageId: payload.li, revision: payload.rv }
+            : undefined,
+        };
   if (isLineagePayload(payload)) {
     const course = await findCourseForLineage(payload.li);
     if (course) {
       const localRevision = course.distributedCopy?.revision ?? 0;
       return {
         summary,
+        identity,
         raw,
         merge: { course, incomingRevision: payload.rv, stale: payload.rv <= localRevision },
       };
@@ -90,6 +108,7 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
   const timeZone = (!chosen && final?.tz) || getLocalTimeZone();
   return {
     summary,
+    identity,
     raw,
     scheduling: payload.course
       ? {
@@ -486,6 +505,7 @@ export function SharedCourseImport({
                   course.
                 </p>
               )}
+              {pending.identity && <CourseSpecificationIdentity {...pending.identity} />}
               {!pending.merge && pending.summary.omittedImages && (
                 <p className="mb-4 rounded-2xl bg-ink/[0.06] px-4 py-3 text-sm text-ink-soft">
                   This share code omitted media to keep the code small. Images and audio will appear

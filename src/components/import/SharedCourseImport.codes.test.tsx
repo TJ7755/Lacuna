@@ -16,6 +16,11 @@ vi.mock('../../state/motionSpeed', () => ({
   speedMultiplier: () => 1,
 }));
 
+// Routing tests use decoder stubs; identity rendering has real-file coverage.
+vi.mock('../course/CourseSpecificationIdentity', () => ({
+  CourseSpecificationIdentity: () => null,
+}));
+
 let mockDecodedPayload: Record<string, unknown> = {};
 
 vi.mock('../../db/share', () => ({
@@ -173,7 +178,9 @@ describe('SharedCourseImport with course codes and files', () => {
       finish({ payload: { v: 2 }, assets: [] });
     });
     fireEvent.click(screen.getByText('Add to my courses'));
-    await waitFor(() => expect(importSharePayload).toHaveBeenCalledWith(mockDecodedPayload, undefined));
+    await waitFor(() =>
+      expect(importSharePayload).toHaveBeenCalledWith(mockDecodedPayload, undefined),
+    );
     expect(mockWithCourseFileAssets).not.toHaveBeenCalled();
   });
 

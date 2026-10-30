@@ -12,19 +12,12 @@ import type { CourseRecord } from '../../db/types';
 import type { SpecificationReference } from '../../specifications/links';
 import { previewSpecificationSelection } from '../../specifications/selectionPreview';
 import { papersForSelection } from '../../specifications/selection';
-
-const qualifications = {
-  gcse: 'GCSE',
-  'international-gcse': 'International GCSE',
-  'cambridge-igcse-9-1': 'Cambridge IGCSE (9–1)',
-  fsmq: 'FSMQ',
-};
-const boards = {
-  aqa: 'AQA',
-  'pearson-edexcel': 'Pearson Edexcel',
-  ocr: 'OCR',
-  cambridge: 'Cambridge',
-};
+import {
+  CourseSpecificationIdentity,
+  libraryPublication,
+  specificationBoardNames,
+  specificationQualificationNames,
+} from '../../components/course/CourseSpecificationIdentity';
 
 export function CourseSpecificationSection({ course }: { course: CourseRecord }) {
   const [draft, setDraft] = useState<SpecificationReference>();
@@ -46,6 +39,9 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
   );
 
   if (!spec) {
+    if (!reference && libraryPublication(course.distributedCopy)) {
+      return <CourseSpecificationIdentity course={course} publication={course.distributedCopy} />;
+    }
     return (
       <p className="text-sm text-ink-soft">
         {reference
@@ -108,7 +104,8 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
         <div className="min-w-0">
           <h3 className="font-semibold text-ink">{spec.title}</h3>
           <p className="mt-1 text-sm text-ink-soft">
-            {boards[spec.board]} · {qualifications[spec.qualification]} · {spec.code} · First exam{' '}
+            {specificationBoardNames[spec.board]} ·{' '}
+            {specificationQualificationNames[spec.qualification]} · {spec.code} · First exam{' '}
             {spec.firstExamination}
           </p>
         </div>

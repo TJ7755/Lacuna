@@ -14,6 +14,13 @@ export interface LibraryCourse {
   revision?: number;
   /** Publication date for this revision, in YYYY-MM-DD format; omit when unknown. */
   revisionDate?: string;
+  /** Identity checked against this revision's frozen publication and awarding-body source. */
+  publication?: {
+    lineageId: string;
+    route: string;
+    tierTarget: string;
+    specificationUrl: string;
+  };
   stats?: {
     cards: number;
     notes: number;
@@ -288,6 +295,13 @@ export const libraryCourses: readonly LibraryCourse[] = [
   },
   {
     id: 'biology1bi0',
+    publication: {
+      lineageId: 'tj7755-lacuna-content-2028-edexcel-1bi0-pilot',
+      route: 'Separate Biology',
+      tierTarget: 'Foundation and Higher; no tier filter supplied',
+      specificationUrl:
+        'https://qualifications.pearson.com/content/dam/pdf/GCSE/Science/2016/Specification/gcse-biology-spec.pdf',
+    },
     author: 'Lacuna',
     publisher: 'Lacuna',
     revision: 7,
@@ -438,6 +452,12 @@ export const libraryCourses: readonly LibraryCourse[] = [
   },
   {
     id: 'combinedscience8464',
+    publication: {
+      lineageId: 'tj7755-lacuna-content-2028-aqa-8464-pilot',
+      route: 'Trilogy',
+      tierTarget: 'Higher with shared Foundation content; no tier filter supplied',
+      specificationUrl: 'https://www.aqa.org.uk/subjects/science/gcse/science-8464/specification',
+    },
     author: 'Lacuna',
     publisher: 'Lacuna',
     revision: 10,
