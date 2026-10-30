@@ -215,11 +215,7 @@ export interface LineageConflict {
 }
 
 export interface LineageDiffResult {
-  creates: {
-    lessons: CreateLessonPayload[];
-    notes: CreateNotePayload[];
-    cards: CreateCardPayload[];
-  };
+  creates: { lessons: CreateLessonPayload[]; notes: CreateNotePayload[]; cards: CreateCardPayload[] };
   updates: { lessons: LessonUpdate[]; notes: NoteUpdate[]; cards: CardUpdate[] };
   removals: { lessonIds: string[]; noteIds: string[]; cardIds: string[] };
   conflicts: LineageConflict[];
@@ -266,23 +262,15 @@ export function jsonValuesEqual(a: unknown, b: unknown): boolean {
   const aKeys = Object.keys(aRecord).sort();
   const bKeys = Object.keys(bRecord).sort();
   return (
-    arraysEqual(aKeys, bKeys) && aKeys.every((key) => jsonValuesEqual(aRecord[key], bRecord[key]))
+    arraysEqual(aKeys, bKeys) &&
+    aKeys.every((key) => jsonValuesEqual(aRecord[key], bRecord[key]))
   );
 }
 
-function diffLesson(
-  incoming: ShareLessonInput,
-  existing: ExistingLesson,
-  orderIndex: number,
-): LessonUpdate | undefined {
+function diffLesson(incoming: ShareLessonInput, existing: ExistingLesson, orderIndex: number): LessonUpdate | undefined {
   const update: LessonUpdate = { id: existing.id };
   let changed = false;
-  if (
-    !arraysEqual(
-      [...(existing.prerequisiteLessonIds ?? [])].sort(),
-      [...(incoming.pr ?? [])].sort(),
-    )
-  ) {
+  if (!arraysEqual([...(existing.prerequisiteLessonIds ?? [])].sort(), [...(incoming.pr ?? [])].sort())) {
     update.prerequisiteLessonIds = [...(incoming.pr ?? [])];
     changed = true;
   }
@@ -520,9 +508,7 @@ export function diffLineage(input: LineageDiffInput): LineageDiffResult {
       }
     });
 
-    incomingLesson.cards.forEach((incomingCard) =>
-      diffIncomingCard(incomingCard, incomingLesson.i),
-    );
+    incomingLesson.cards.forEach((incomingCard) => diffIncomingCard(incomingCard, incomingLesson.i));
   });
   (incoming.bankCards ?? []).forEach((incomingCard) => diffIncomingCard(incomingCard, null));
 

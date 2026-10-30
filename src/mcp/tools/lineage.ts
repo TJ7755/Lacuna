@@ -63,14 +63,8 @@ function notFound(kind: string, id: string): never {
 // doc comment above.
 // ---------------------------------------------------------------------------
 
-function toShareLessonInput(
-  lesson: Extract<Awaited<ReturnType<typeof decodeShare>>, { v: 2 }>['lessons'][number],
-): ShareLessonInput {
-  if (!lesson.i)
-    throw new McpToolException({
-      kind: 'validation',
-      message: 'Lineage payload lesson is missing its originating id.',
-    });
+function toShareLessonInput(lesson: Extract<Awaited<ReturnType<typeof decodeShare>>, { v: 2 }>['lessons'][number]): ShareLessonInput {
+  if (!lesson.i) throw new McpToolException({ kind: 'validation', message: 'Lineage payload lesson is missing its originating id.' });
   return {
     i: lesson.i,
     pr: lesson.pr,
@@ -83,40 +77,17 @@ function toShareLessonInput(
     sf: lesson.sf,
     am: lesson.am,
     notes: lesson.notes.map((note): ShareNoteInput => {
-      if (!note.oi)
-        throw new McpToolException({
-          kind: 'validation',
-          message: 'Lineage payload note is missing its originating id.',
-        });
+      if (!note.oi) throw new McpToolException({ kind: 'validation', message: 'Lineage payload note is missing its originating id.' });
       return { i: note.oi, n: note.n, c: note.c };
     }),
     // Sequence- and occlusion-generated cards are regenerated, never diffed (as in mergeImport.ts).
-    cards: lesson.cards
-      .filter((card) => card.si === undefined && card.oc === undefined)
-      .map(toShareCardInput),
+    cards: lesson.cards.filter((card) => card.si === undefined && card.oc === undefined).map(toShareCardInput),
   };
 }
 
-function toShareCardInput(
-  card: Extract<
-    Awaited<ReturnType<typeof decodeShare>>,
-    { v: 2 }
-  >['lessons'][number]['cards'][number],
-): ShareCardInput {
-  if (!card.id)
-    throw new McpToolException({
-      kind: 'validation',
-      message: 'Lineage payload card is missing its originating id.',
-    });
-  return {
-    i: card.id,
-    k: card.k,
-    f: card.f,
-    b: card.b,
-    g: card.g,
-    p: card.p as ItemPayload | undefined,
-    am: card.am,
-  };
+function toShareCardInput(card: Extract<Awaited<ReturnType<typeof decodeShare>>, { v: 2 }>['lessons'][number]['cards'][number]): ShareCardInput {
+  if (!card.id) throw new McpToolException({ kind: 'validation', message: 'Lineage payload card is missing its originating id.' });
+  return { i: card.id, k: card.k, f: card.f, b: card.b, g: card.g, p: card.p as ItemPayload | undefined, am: card.am };
 }
 
 function toExistingLesson(lesson: Lesson): ExistingLesson {
@@ -136,13 +107,7 @@ function toExistingLesson(lesson: Lesson): ExistingLesson {
 }
 
 function toExistingNote(note: Note): ExistingNote {
-  return {
-    id: note.id,
-    lessonId: note.lessonId,
-    name: note.name,
-    content: note.content,
-    orderIndex: note.orderIndex,
-  };
+  return { id: note.id, lessonId: note.lessonId, name: note.name, content: note.content, orderIndex: note.orderIndex };
 }
 
 function toExistingCard(card: Card): ExistingCard {
@@ -178,12 +143,10 @@ function assertQuestionSetLineagePreviewSupported(
   payload: Awaited<ReturnType<typeof decodeShare>>,
   mapping: LineageIdMapping,
 ): void {
-  if (
-    ((payload.v === 4 || payload.v === 5 || payload.v === 6) && payload.questionSets.length > 0) ||
-    (mapping.questionSetIds?.length ?? 0) > 0 ||
-    ((payload.v === 5 || payload.v === 6) && payload.questionSetPracticeNodes.length > 0) ||
-    (mapping.questionSetPracticeNodeIds?.length ?? 0) > 0
-  ) {
+  if (((payload.v === 4 || payload.v === 5 || payload.v === 6) && payload.questionSets.length > 0) ||
+      (mapping.questionSetIds?.length ?? 0) > 0 ||
+      ((payload.v === 5 || payload.v === 6) && payload.questionSetPracticeNodes.length > 0) ||
+      (mapping.questionSetPracticeNodeIds?.length ?? 0) > 0) {
     throw new McpToolException({
       kind: 'validation',
       message: 'Lineage preview and apply do not yet support authored Question Sets.',
@@ -229,10 +192,7 @@ function summariseDiff(diff: LineageDiffResult): LineageDiffSummary {
   };
 }
 
-const diffLineageUpdate: ToolDefinition<
-  z.infer<typeof diffLineageUpdateContract.inputSchema>,
-  LineageDiffSummary
-> = {
+const diffLineageUpdate: ToolDefinition<z.infer<typeof diffLineageUpdateContract.inputSchema>, LineageDiffSummary> = {
   ...diffLineageUpdateContract,
   async handler({ courseId, shareCode }) {
     const course = await read.getCourse(courseId);
@@ -240,10 +200,7 @@ const diffLineageUpdate: ToolDefinition<
 
     const payload = await decodeShare(shareCode);
     if (!isLineagePayload(payload)) {
-      throw new McpToolException({
-        kind: 'validation',
-        message: 'Share code does not carry a course lineage.',
-      });
+      throw new McpToolException({ kind: 'validation', message: 'Share code does not carry a course lineage.' });
     }
     if (!course.distributedCopy || course.distributedCopy.lineageId !== payload.li) {
       throw new McpToolException({
@@ -261,8 +218,7 @@ const diffLineageUpdate: ToolDefinition<
       ? await db.notes.where('lessonId').anyOf(lessonIds).toArray()
       : [];
 
-    const mapping =
-      (await db.lineageIdMappings.get(payload.li)) ?? emptyMapping(payload.li, courseId);
+    const mapping = (await db.lineageIdMappings.get(payload.li)) ?? emptyMapping(payload.li, courseId);
     assertQuestionSetLineagePreviewSupported(payload, mapping);
     await prepareLineageMapping(payload, courseId, mapping);
     const studentEdits = detectStudentEdits(mapping, existingLessons, existingNotes, courseCards);
@@ -304,10 +260,7 @@ interface ApplyLineageUpdateResult {
   reviewId: string | null;
 }
 
-const applyLineageUpdate: ToolDefinition<
-  z.infer<typeof applyLineageUpdateContract.inputSchema>,
-  ApplyLineageUpdateResult
-> = {
+const applyLineageUpdate: ToolDefinition<z.infer<typeof applyLineageUpdateContract.inputSchema>, ApplyLineageUpdateResult> = {
   ...applyLineageUpdateContract,
   async handler({ courseId, shareCode, decisions }) {
     const course = await read.getCourse(courseId);
@@ -315,14 +268,10 @@ const applyLineageUpdate: ToolDefinition<
 
     const payload = await decodeShare(shareCode);
     if (!isLineagePayload(payload)) {
-      throw new McpToolException({
-        kind: 'validation',
-        message: 'Share code does not carry a course lineage.',
-      });
+      throw new McpToolException({ kind: 'validation', message: 'Share code does not carry a course lineage.' });
     }
 
-    const mapping =
-      (await db.lineageIdMappings.get(payload.li)) ?? emptyMapping(payload.li, courseId);
+    const mapping = (await db.lineageIdMappings.get(payload.li)) ?? emptyMapping(payload.li, courseId);
     assertQuestionSetLineagePreviewSupported(payload, mapping);
 
     const merge = await mergeLineageUpdate(courseId, payload);
@@ -347,10 +296,7 @@ const applyLineageUpdate: ToolDefinition<
 
 /** The lineage-merge MCP tools, in §7.6's inventory order. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see src/mcp/tools/read.ts's READ_TOOLS comment.
-export const LINEAGE_TOOLS: readonly ToolDefinition<any, any>[] = [
-  diffLineageUpdate,
-  applyLineageUpdate,
-];
+export const LINEAGE_TOOLS: readonly ToolDefinition<any, any>[] = [diffLineageUpdate, applyLineageUpdate];
 
 // Also export individually for direct handler-level unit tests.
 export { diffLineageUpdate, applyLineageUpdate };
