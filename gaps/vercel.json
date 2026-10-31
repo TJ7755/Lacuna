@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "node ../scripts/vercel-ignore-build.mjs gaps",
   "framework": "vite",
   "installCommand": "cd .. && node relay/scripts/security-bun.mjs install --frozen-lockfile",
   "buildCommand": "cd .. && node relay/scripts/security-bun.mjs run build:gaps",
