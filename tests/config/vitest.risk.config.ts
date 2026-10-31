@@ -8,6 +8,7 @@ export default defineConfig({
     environment: 'happy-dom',
     clearMocks: false,
     include: [
+      'src/db/compatibilityCorpus.test.ts',
       'src/course/simpleSession.test.ts',
       'src/course/revisionSession.test.ts',
       'src/db/migrations*.test.ts',
