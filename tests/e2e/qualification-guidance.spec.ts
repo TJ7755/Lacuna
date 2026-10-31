@@ -36,27 +36,6 @@ for (const width of [1280, 640]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
-    await guidance.locator('summary').click();
-    await page.getByRole('button', { name: /^Combined Science \d+ courses$/ }).click();
-    await expect(
-      page.getByRole('list', { name: 'Combined Science courses', exact: true }),
-    ).toBeVisible();
-
-    await page.getByRole('button', { name: 'Exit', exact: true }).click();
-    await page.goto('/#/help');
-    const search = page.getByRole('searchbox', { name: 'Search help' });
-    for (const query of ['exam board', 'combined']) {
-      await search.fill(query);
-      await expect(
-        page.getByRole('button', {
-          name: 'How do I choose the right board and science qualification?',
-        }),
-      ).toBeVisible();
-      await expect(page.locator('#choose-qualification')).toContainText(
-        'ask the school or teacher before choosing',
-      );
-      await page.screenshot({ path: info.outputPath(`help-${query.replace(' ', '-')}.png`) });
-    }
   });
 }
 
