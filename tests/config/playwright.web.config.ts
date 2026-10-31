@@ -9,9 +9,9 @@ export default defineConfig({
   outputDir: '../../test-results',
   testDir: '../e2e',
   // Each spec provisions its own page/context and intercepts relay traffic on
-  // that page. Keep local runs serial and use one isolated worker per CI core.
+  // that page. Keep local runs serial and use two isolated workers in CI.
   fullyParallel: process.env.CI === 'true',
-  workers: process.env.CI === 'true' ? 4 : 1,
+  workers: process.env.CI === 'true' ? 2 : 1,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI
     ? [
