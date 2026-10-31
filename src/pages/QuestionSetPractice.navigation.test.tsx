@@ -93,7 +93,12 @@ describe('QuestionSetPractice navigation and focus', () => {
     const { course, set } = await fixture();
     const attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
     open(course.id, set.id, attempt.id);
+    await screen.findByLabelText('Your answer');
+    const sessionProgress = screen.getByRole('progressbar', { name: 'Session progress' });
+    expect(sessionProgress).toHaveAttribute('aria-valuenow', '0');
+    expect(sessionProgress).toHaveAttribute('aria-valuemax', '3');
     await answerAndAdvance('Answer one', 'Q1 (b)');
+    expect(sessionProgress).toHaveAttribute('aria-valuenow', '0');
     await answerAndAdvance('Answer two', 'Q2');
     const answer = screen.getByLabelText('Your answer');
     fireEvent.change(answer, { target: { value: 'Answer three' } });
@@ -114,6 +119,7 @@ describe('QuestionSetPractice navigation and focus', () => {
           screen.getByRole('button', { name: count < 3 ? /^Next$/ : /^Finish attempt/ }),
         ).not.toBeDisabled();
       });
+      expect(sessionProgress).toHaveAttribute('aria-valuenow', String(count));
       fireEvent.keyDown(award, { key: 'Enter', ctrlKey: true });
       if (count < 3) {
         await screen.findByRole('button', { name: new RegExp(`criterion ${count + 1} of 3`) });
@@ -124,6 +130,10 @@ describe('QuestionSetPractice navigation and focus', () => {
     }
     await waitFor(async () =>
       expect((await getQuestionSetAttempt(attempt.id))?.status).toBe('complete'),
+    );
+    expect(screen.getByRole('progressbar', { name: 'Session progress' })).toHaveAttribute(
+      'aria-valuenow',
+      '3',
     );
     await waitFor(() => expect(screen.getByRole('link', { name: 'Back to set' })).toHaveFocus());
   });

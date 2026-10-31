@@ -187,7 +187,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
         .click();
       await expect(page).toHaveURL(courseUrl);
       await study.click();
-      await expect(preview.getByText('Practise Cell membranes', { exact: true })).toBeVisible();
+      await expect(preview.getByText('Practise: Cell membranes', { exact: true })).toBeVisible();
       await expect(
         preview.getByRole('list', { name: "Today's session" }).getByRole('listitem'),
       ).toHaveCount(1);
@@ -212,7 +212,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
 
       await page.goto(courseUrl);
       await study.click();
-      await expect(preview.getByText('Practise Cell membranes', { exact: true })).toBeVisible();
+      await expect(preview.getByText('Practise: Cell membranes', { exact: true })).toBeVisible();
       await expect(otherWays).toHaveAttribute('aria-expanded', 'false');
       await capture(page, testInfo, `study-preview-${width}`);
       await preview.getByRole('button', { name: 'Start session', exact: true }).click();
@@ -230,7 +230,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       await expect(page).toHaveURL(courseUrl);
 
       await study.click();
-      await expect(preview.getByText('Resume Cell membranes', { exact: true })).toBeVisible();
+      await expect(preview.getByText('Resume: Cell membranes', { exact: true })).toBeVisible();
       await preview.getByRole('button', { name: 'Start session', exact: true }).click();
       await expect(answer).toHaveValue(MEMBRANE_ANSWER);
       await expect(page.getByTestId('study-cover')).toBeHidden();

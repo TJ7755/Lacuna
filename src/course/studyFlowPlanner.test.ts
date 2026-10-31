@@ -68,6 +68,24 @@ function practiceState(nodeKey: string, active: boolean): StudyFlowPracticeState
 }
 
 describe('planNextStudyStep', () => {
+  it.each([false, true])(
+    'separates the question title from its action (unfinished: %s)',
+    (unfinished) => {
+      const input = {
+        ...snapshot([]),
+        questionOptions: [
+          { conceptId: 'diffusion', name: 'Design ATP diffusion investigations', unfinished },
+        ],
+      };
+      expect(planNextStudyStep(input)).toMatchObject({
+        kind: 'step',
+        step: {
+          label: `${unfinished ? 'Resume' : 'Practise'}: Design ATP diffusion investigations`,
+        },
+      });
+    },
+  );
+
   it('offers scheduled reviews before available or locked curriculum', () => {
     for (const status of ['available', 'locked'] as const) {
       expect(

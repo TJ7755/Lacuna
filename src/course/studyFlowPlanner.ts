@@ -115,7 +115,7 @@ export function planNextStudyStep(
         nodeKey: `questions-${question.conceptId}`,
         conceptId: question.conceptId,
         scopeConceptIds: snapshot.questionScopeConceptIds ?? [],
-        label: question.unfinished ? `Resume ${question.name}` : `Practise ${question.name}`,
+        label: question.unfinished ? `Resume: ${question.name}` : `Practise: ${question.name}`,
         reason: question.needs?.techniques.length
           ? `Practise: ${question.needs.techniques.map((id) => SCIENCE_TECHNIQUES.find((skill) => skill.id === id)?.name ?? id).join(', ')}.`
           : question.needs?.knowledge
