@@ -175,7 +175,7 @@ test.describe('ready-first course navigation', () => {
       await page.waitForFunction(() =>
         (
           window as typeof window & { arrivalFrames: { content: number[] | null }[] }
-        ).arrivalFrames.some(({ content }) => content && content.every((v) => v > 0.99)),
+        ).arrivalFrames.some(({ content }) => content && content.every((v) => v === 1)),
       );
       const study = page.getByRole('button', { name: 'Study', exact: true });
       await study.focus();

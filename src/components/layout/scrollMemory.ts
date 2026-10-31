@@ -56,6 +56,9 @@ export function useScrollMemory(containerRef: RefObject<HTMLElement | null>): vo
     const target = positions.get(key) ?? 0;
     const deadline = performance.now() + RESTORE_WINDOW_MS;
     restoringUntil.current = deadline;
+    const overflowAnchor = container.style.overflowAnchor;
+    // Browser anchoring must not adjust the position this restoration owns.
+    container.style.overflowAnchor = 'none';
     let frame = 0;
     const settle = () => {
       container.scrollTo({ top: target });
@@ -64,11 +67,17 @@ export function useScrollMemory(containerRef: RefObject<HTMLElement | null>): vo
         frame = requestAnimationFrame(settle);
       } else {
         restoringUntil.current = 0;
+        // Keep anchoring suppressed through this layout's queued adjustments.
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          container.style.overflowAnchor = overflowAnchor;
+        });
       }
     };
     settle();
     return () => {
       cancelAnimationFrame(frame);
+      if (frame !== 0) container.style.overflowAnchor = overflowAnchor;
       restoringUntil.current = 0;
     };
     // The location key changes on every navigation, including returns to the same URL.
