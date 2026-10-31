@@ -3,7 +3,20 @@ import { pathToFileURL } from 'node:url';
 
 const DOCS_PREFIXES = ['docs/', '.github/ISSUE_TEMPLATE/'];
 const DOCS_FILES = new Set(['.github/PULL_REQUEST_TEMPLATE.md']);
-const AREAS = ['app', 'electron', 'relay', 'tooling', 'sites', 'docs', 'handwriting', 'python', 'ai_mcp', 'lint', 'web_tests'];
+const AREAS = [
+  'app',
+  'electron',
+  'windows_native',
+  'relay',
+  'tooling',
+  'sites',
+  'docs',
+  'handwriting',
+  'python',
+  'ai_mcp',
+  'lint',
+  'web_tests',
+];
 
 export function isDocsPath(path) {
   if (DOCS_FILES.has(path)) return true;
@@ -23,27 +36,57 @@ export function classifyPaths(paths) {
   if (!Array.isArray(paths) || paths.length === 0) return fullScope();
   const scope = { docs_only: false, ...Object.fromEntries(AREAS.map((area) => [area, false])) };
   for (const path of paths) {
-    if (typeof path !== 'string' || !path || /[\0\r\n\\]/.test(path) || path.split('/').some((part) => !part || part === '.' || part === '..')) return fullScope();
-    if (isDocsPath(path)) { scope.docs = true; continue; }
+    if (
+      typeof path !== 'string' ||
+      !path ||
+      /[\0\r\n\\]/.test(path) ||
+      path.split('/').some((part) => !part || part === '.' || part === '..')
+    )
+      return fullScope();
+    if (isDocsPath(path)) {
+      scope.docs = true;
+      continue;
+    }
     // Shared runtime, bootstrap, protocols and consumed training fixtures must stay full.
-    if (/(^|\/)(package\.json|bun\.lock|uv\.lock|vercel\.json)$/.test(path) ||
-        path.startsWith('relay/shared/') || path.startsWith('relay/scripts/') ||
-        path.startsWith('tooling/short-term-memory/coefficients/') ||
-        path.startsWith('tooling/short-term-memory/tests/fixtures/')) return fullScope();
-    if (path.startsWith('relay/')) {
+    if (
+      /(^|\/)(package\.json|bun\.lock|uv\.lock|vercel\.json)$/.test(path) ||
+      path.startsWith('relay/shared/') ||
+      path.startsWith('relay/scripts/') ||
+      path.startsWith('tooling/short-term-memory/coefficients/') ||
+      path.startsWith('tooling/short-term-memory/tests/fixtures/')
+    )
+      return fullScope();
+    if (/^src\/.+\.css$/.test(path)) {
+      // Stylesheets alone cannot alter native authority. Retain the existing broad
+      // non-Windows checks, without clearing native risk from another changed path.
+      Object.assign(scope, { ...fullScope(), windows_native: scope.windows_native });
+    } else if (path.startsWith('relay/')) {
       // App unit/browser fixtures and the standalone MCP tests import relay/src directly.
       Object.assign(scope, { relay: true, app: true, sites: true, ai_mcp: true });
     } else if (path.startsWith('tooling/handwriting-maths/')) {
       Object.assign(scope, { tooling: true, handwriting: true, lint: true });
-    } else if (path.startsWith('tooling/short-term-memory/') || path.startsWith('tooling/semantic-answer-match/')) {
+    } else if (
+      path.startsWith('tooling/short-term-memory/') ||
+      path.startsWith('tooling/semantic-answer-match/')
+    ) {
       Object.assign(scope, { tooling: true, python: true, lint: true });
     } else if (path.startsWith('tooling/lacuna-ai-mcp/')) {
       // Browser and native integration fixtures use the terminal client.
-      Object.assign(scope, { tooling: true, ai_mcp: true, app: true, electron: true, sites: true, lint: true });
+      Object.assign(scope, {
+        tooling: true,
+        ai_mcp: true,
+        app: true,
+        electron: true,
+        windows_native: true,
+        sites: true,
+        lint: true,
+      });
     } else if (/^tests\/e2e\/[^/]+\.spec\.ts$/.test(path)) {
       // Fixtures can be shared with Electron; only web spec entry points are isolated.
       Object.assign(scope, { web_tests: true, sites: true, lint: true });
-    } else if (['gaps/', 'library/', 'courses/', 'compare/'].some((prefix) => path.startsWith(prefix))) {
+    } else if (
+      ['gaps/', 'library/', 'courses/', 'compare/'].some((prefix) => path.startsWith(prefix))
+    ) {
       Object.assign(scope, { sites: true, lint: true });
     } else {
       return fullScope();

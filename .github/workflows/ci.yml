@@ -46,6 +46,7 @@ jobs:
       docs_only: ${{ steps.metadata.outputs.docs_only || steps.scope.outputs.docs_only }}
       app: ${{ steps.metadata.outputs.app || steps.scope.outputs.app }}
       electron: ${{ steps.metadata.outputs.electron || steps.scope.outputs.electron }}
+      windows_native: ${{ steps.metadata.outputs.windows_native || steps.scope.outputs.windows_native }}
       relay: ${{ steps.metadata.outputs.relay || steps.scope.outputs.relay }}
       tooling: ${{ steps.metadata.outputs.tooling || steps.scope.outputs.tooling }}
       sites: ${{ steps.metadata.outputs.sites || steps.scope.outputs.sites }}
@@ -65,19 +66,29 @@ jobs:
           GH_REPO: ${{ github.repository }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           VALIDATION_TITLE: CI validation ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           run_id=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$HEAD_SHA&event=pull_request&per_page=100" |
-            jq -r --arg title "$VALIDATION_TITLE" '[.workflow_runs[] | select(.display_title == $title)] | first | .id // empty')
+            jq -r --arg title "$VALIDATION_TITLE" --arg head "$HEAD_SHA" --arg base "$BASE_SHA" --argjson pr "$PR_NUMBER" '
+              [.workflow_runs[] | select(
+                .display_title == $title and .event == "pull_request" and .head_sha == $head and
+                any(.pull_requests[]; .number == $pr and .head.sha == $head and .base.sha == $base)
+              )] | first | .id // empty')
           if [ -z "$run_id" ]; then
             echo "No validation run exists for this merge commit. Reopen the PR or push a commit to validate it."
             exit 1
           fi
           gh run watch "$run_id" --repo "$GH_REPO" --exit-status --interval 10
-          conclusion=$(gh api "repos/$GH_REPO/actions/runs/$run_id" --jq .conclusion)
-          [ "$conclusion" = success ]
+          # Recheck the identity after waiting; only a real validation run may grant reuse.
+          gh api "repos/$GH_REPO/actions/runs/$run_id" |
+            jq -e --arg title "$VALIDATION_TITLE" --arg head "$HEAD_SHA" --arg base "$BASE_SHA" --argjson pr "$PR_NUMBER" '
+              .conclusion == "success" and .status == "completed" and
+              .display_title == $title and .event == "pull_request" and .head_sha == $head and
+              any(.pull_requests[]; .number == $pr and .head.sha == $head and .base.sha == $base)' > /dev/null
           echo "Reused successful validation: https://github.com/$GH_REPO/actions/runs/$run_id" >> "$GITHUB_STEP_SUMMARY"
           echo "docs_only=true" >> "$GITHUB_OUTPUT"
-          for area in app electron relay tooling sites docs handwriting python ai_mcp lint web_tests; do echo "$area=false" >> "$GITHUB_OUTPUT"; done
+          for area in app electron windows_native relay tooling sites docs handwriting python ai_mcp lint web_tests; do echo "$area=false" >> "$GITHUB_OUTPUT"; done
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         with:
@@ -722,45 +733,47 @@ jobs:
 
   electron-ai:
     name: electron-ai
-    needs: changes
-    if: needs.changes.result == 'success'
-    # Windows Electron AI runs on master pushes, which gate releases. Pull requests only
-    # acknowledge the required name, so they skip the slower Windows runner.
-    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'windows-latest' }}
+    needs: [changes, windows-installed-upgrade]
+    if: ${{ always() }}
+    # Keep the required check name; only explicitly unaffected changes use a Linux acknowledgement.
+    runs-on: ${{ needs.changes.outputs.windows_native == 'false' && 'ubuntu-latest' || 'windows-latest' }}
     steps:
       - name: Report unaffected scope
-        if: github.event_name == 'pull_request' || needs.changes.outputs.electron == 'false'
+        if: needs.changes.outputs.windows_native == 'false'
         shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          if [ "$EVENT_NAME" = pull_request ]; then
-            echo 'Windows Electron AI runs on master pushes after merge.' >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo 'Area unaffected or validation reused; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
-          fi
+        run: echo 'Area unaffected or validation reused; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: github.event_name != 'pull_request' && needs.changes.outputs.electron != 'false'
+        if: needs.changes.outputs.windows_native != 'false'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: github.event_name != 'pull_request' && needs.changes.outputs.electron != 'false'
+        if: needs.changes.outputs.windows_native != 'false'
         with:
           node-version: '24.22.1'
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
-        if: github.event_name != 'pull_request' && needs.changes.outputs.electron != 'false'
+        if: needs.changes.outputs.windows_native != 'false'
       - run: bun install --frozen-lockfile
-        if: github.event_name != 'pull_request' && needs.changes.outputs.electron != 'false'
+        if: needs.changes.outputs.windows_native != 'false'
       - run: bun run test:e2e:electron-ai
-        if: github.event_name != 'pull_request' && needs.changes.outputs.electron != 'false'
+        if: needs.changes.outputs.windows_native != 'false'
       - name: Preserve Electron AI test evidence
-        if: always() && github.event_name != 'pull_request' && needs.changes.outputs.electron != 'false'
+        if: always() && needs.changes.outputs.windows_native != 'false'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: electron-ai-results
           path: test-results/
           if-no-files-found: ignore
+      - name: Require Windows installer evidence
+        if: always()
+        shell: bash
+        env:
+          SCOPE_RESULT: ${{ needs.changes.result }}
+          WINDOWS_NATIVE: ${{ needs.changes.outputs.windows_native }}
+          UPGRADE_RESULT: ${{ needs.windows-installed-upgrade.result }}
+        run: |
+          [ "$SCOPE_RESULT" = success ]
+          [ "$UPGRADE_RESULT" = success ] || { [ "$WINDOWS_NATIVE" = false ] && [ "$UPGRADE_RESULT" = skipped ]; }
 
   electron-macos-smoke:
     needs: changes
@@ -792,9 +805,8 @@ jobs:
 
   windows-installed-upgrade:
     needs: changes
-    # Installer upgrades take over three minutes, so they gate master commits
-    # (and therefore releases) rather than every pull request.
-    if: github.event_name != 'pull_request' && needs.changes.outputs.electron != 'false'
+    # Native-risk pull requests and every master push retain both installer probes.
+    if: needs.changes.outputs.windows_native != 'false'
     runs-on: windows-latest
     # NSIS uses machine-wide process discovery and installation markers.
     # Keep each upgrade scenario isolated while removing their serial dependency.
