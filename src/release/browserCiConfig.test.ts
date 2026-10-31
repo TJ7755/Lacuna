@@ -1,9 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { expect, it } from 'vitest';
-import { parse } from 'yaml';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -94,11 +93,8 @@ function cases(suites: Suite[], ancestors: string[] = []): string[] {
   ]);
 }
 
-it('partitions the complete local Chromium suite across functional shards and isolated timing projects', () => {
-  const workflow = parse(readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8')) as {
-    jobs: { 'browser-tests': { strategy: { matrix: { shard: number[] } } } };
-  };
-  const shardNumbers = workflow.jobs['browser-tests'].strategy.matrix.shard;
+// scripts/ci-browser-shards.mjs plans functional shards and verifies their inventory at run time.
+it('partitions the complete local Chromium suite across the functional and isolated timing projects', () => {
   const directory = mkdtempSync(resolve(tmpdir(), 'lacuna-browser-discovery-'));
   // One spec reads the built homepage during discovery. No browser or test body runs here.
   mkdirSync(resolve(directory, 'dist'));
@@ -138,13 +134,7 @@ it('partitions the complete local Chromium suite across functional shards and is
 
   try {
     const local = list('playwright.web.config.ts', 'chromium');
-    const shards = shardNumbers.map((shard) =>
-      list(
-        'playwright.web.ci.config.ts',
-        'chromium-functional',
-        `--shard=${shard}/${shardNumbers.length}`,
-      ),
-    );
+    const functional = list('playwright.web.ci.config.ts', 'chromium-functional');
     const image = list('playwright.web.ci.config.ts', 'chromium-image-performance', '--workers=1');
     const study = list('playwright.web.ci.config.ts', 'chromium-study-performance', '--workers=1');
     const motion = list('playwright.web.ci.config.ts', 'chromium-sidebar-motion', '--workers=1');
@@ -156,7 +146,7 @@ it('partitions the complete local Chromium suite across functional shards and is
       '--workers=1',
     );
     const mobile = list('playwright.web.config.ts', 'webkit-mobile', '--workers=1');
-    const functionalCases = shards.flatMap((shard) => cases(shard.suites));
+    const functionalCases = cases(functional.suites);
     const imageCases = cases(image.suites);
     const motionCases = cases(motion.suites);
     const studyCases = cases(study.suites);
@@ -187,11 +177,8 @@ it('partitions the complete local Chromium suite across functional shards and is
       [...imageCases, ...motionCases, ...studyCases].sort(),
     );
     expect(timing.config.workers).toBe(1);
-    for (const shard of shards) {
-      expect(shard.config.workers).toBe(2);
-      expect(shard.config.fullyParallel).toBe(true);
-      expect(cases(shard.suites).length).toBeGreaterThan(0);
-    }
+    expect(functional.config.workers).toBe(2);
+    expect(functional.config.fullyParallel).toBe(true);
     expect(image.config.workers).toBe(1);
     expect(image.config.filteredProjects).toEqual([
       expect.objectContaining({ name: 'chromium-image-performance' }),
