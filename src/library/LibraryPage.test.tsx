@@ -93,23 +93,17 @@ describe('LibraryPage', () => {
     expect(sheet).not.toHaveTextContent(code === '0972' ? '0625' : '0972');
   });
 
-  it('finds Edexcel Combined Science by code and shows its counts and link', async () => {
-    renderLibrary(libraryCourses);
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search courses' }), {
-      target: { value: '1SC0' },
-    });
-    expect(screen.getAllByRole('button', { expanded: false })).toHaveLength(1);
-    fireEvent.click(cover('Combined Science'));
-    const sheet = await screen.findByRole('dialog', { name: 'Combined Science' });
-    expect(sheet).toHaveTextContent('Pearson Edexcel GCSE · 1SC0');
-    expect(sheet).toHaveTextContent('4,310 cards');
-    expect(sheet).toHaveTextContent('445 lesson notes');
-    expect(sheet).toHaveTextContent('449 practice sets, 4,634 marks');
-    expect(within(sheet).getByRole('link', { name: /Open in Lacuna/ })).toHaveAttribute(
-      'href',
-      'https://getlacuna.app/#/s/5459ed1b6b0ca5ac7e646b68f17d1732',
-    );
-  });
+  it.each(['8464', '1SC0', 'J250'])(
+    'does not list withdrawn Combined Science course %s',
+    (code) => {
+      renderLibrary(libraryCourses);
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Search courses' }), {
+        target: { value: code },
+      });
+      expect(screen.queryByRole('button', { name: /Combined Science/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /Open in Lacuna/ })).not.toBeInTheDocument();
+    },
+  );
 
   it('finds Religious Studies by code and shows its published scope, counts and link', async () => {
     renderLibrary(libraryCourses);
@@ -120,7 +114,7 @@ describe('LibraryPage', () => {
     fireEvent.click(cover('Religious Studies'));
     const sheet = await screen.findByRole('dialog', { name: 'Religious Studies' });
     expect(sheet).toHaveTextContent('AQA GCSE · 8062');
-    expect(sheet).toHaveTextContent('optional Themes A–F modules to choose from');
+    expect(sheet).toHaveTextContent('optional Themes A–F modules');
     expect(sheet).toHaveTextContent('1, 1, 4 and 6-mark question styles');
     expect(sheet).toHaveTextContent('1,272 cards');
     expect(sheet).toHaveTextContent('126 lesson notes');

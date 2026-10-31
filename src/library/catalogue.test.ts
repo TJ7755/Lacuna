@@ -7,7 +7,7 @@ describe('libraryCourses', () => {
   });
 
   it('retains the published science, History and Religious Studies snapshots', () => {
-    expect(libraryCourses).toHaveLength(26);
+    expect(libraryCourses).toHaveLength(23);
     const snapshots = libraryCourses.map(({ id, revision, stats }) => [
       id,
       revision,
@@ -18,32 +18,29 @@ describe('libraryCourses', () => {
     ]);
     expect(snapshots).toEqual(
       expect.arrayContaining([
-        ['biology8461', 7, 1328, 152, 152, 1371],
+        ['biology8461', 22, 2208, 242, 243, 2284],
         ['chemistry8462', 10, 1674, 209, 215, 2005],
         ['physics8463', 9, 1835, 190, 190, 2417],
-        ['biology0610', 6, 1398, 155, 155, 1414],
+        ['biology0610', 15, 1812, 212, 212, 1820],
         ['chemistry0620', 10, 1371, 180, 183, 1614],
         ['physics0625', 8, 1569, 150, 151, 2092],
-        ['biology0970', 6, 1398, 155, 155, 1414],
+        ['biology0970', 15, 1812, 212, 212, 1820],
         ['chemistry0971', 10, 1371, 180, 183, 1614],
-        ['biology1bi0', 7, 1304, 147, 148, 1350],
+        ['biology1bi0', 16, 2385, 254, 265, 2429],
         ['chemistry1ch0', 10, 1683, 213, 215, 1959],
         ['physics1ph0', 9, 1853, 199, 199, 2398],
-        ['biologyj247', 7, 1311, 149, 149, 1344],
+        ['biologyj247', 16, 2251, 232, 239, 2295],
         ['chemistryj248', 10, 1602, 207, 204, 1886],
         ['physicsj249', 9, 1743, 176, 177, 2298],
-        ['biologyj257', 7, 1287, 147, 147, 1326],
+        ['biologyj257', 16, 2267, 235, 243, 2311],
         ['chemistryj258', 10, 1620, 209, 206, 1899],
         ['physicsj259', 9, 1760, 180, 181, 2332],
         ['physics4ph1', 9, 1571, 150, 151, 1990],
         ['biology4bi1', 44, 1559, 165, 174, 1585],
         ['chemistry4ch1', 43, 1192, 147, 154, 1531],
         ['physics0972', 28, 1569, 152, 153, 2172],
-        ['combinedscience8464', 10, 3760, 447, 429, 4192],
         ['history0977', 21, 737, 111, 112, 1738],
         ['religiousstudies8062', 22, 1272, 126, 126, 1656],
-        ['combinedscience1sc0', 4, 4310, 445, 449, 4634],
-        ['combinedsciencej250', 3, 4478, 476, 479, 5064],
       ]),
     );
     for (const course of libraryCourses) {
@@ -102,12 +99,7 @@ describe('libraryCourses', () => {
         expect(course.summary).toContain('shared Foundation content');
       }
     }
-    const combined = libraryCourses.filter(({ subject }) => subject === 'Combined Science');
-    expect(combined.map(({ code }) => code)).toEqual(['8464', '1SC0', 'J250']);
-    for (const course of combined) {
-      expect(course.summary).toContain('biology, chemistry, physics and practical exam practice');
-      expect(course.topics.length).toBeGreaterThan(8);
-    }
+    expect(libraryCourses.some(({ subject }) => subject === 'Combined Science')).toBe(false);
   });
 });
 
