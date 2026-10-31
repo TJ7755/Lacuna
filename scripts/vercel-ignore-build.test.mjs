@@ -134,13 +134,16 @@ test('missing history, mismatched checkout and empty comparisons build', (t) => 
   assert.deepEqual(f.results(unrelated), [1, 1, 1, 1]);
 });
 
-test('shallow repositories and unavailable Git metadata build', (t) => {
+test('shallow history skips only when the complete comparison is available', (t) => {
   const f = fixture(t);
   f.write('docs/guide.md', 'change\n');
   f.commit();
   const shallow = join(f.directory, 'shallow');
   f.git('clone', '--quiet', '--depth=2', `file://${f.directory}`, shallow);
-  assert.deepEqual(f.results(f.base, {}, shallow), [1, 1, 1, 1]);
+  assert.deepEqual(f.results(f.base, {}, shallow), [0, 0, 0, 0]);
+  const missingPrevious = join(f.directory, 'missing-previous');
+  f.git('clone', '--quiet', '--depth=1', `file://${f.directory}`, missingPrevious);
+  assert.deepEqual(f.results(f.base, {}, missingPrevious), [1, 1, 1, 1]);
   const detached = mkdtempSync(join(tmpdir(), 'lacuna-without-git-'));
   t.after(() => rmSync(detached, { recursive: true, force: true }));
   for (const path of ['scripts', 'vercel.json', 'relay', 'gaps', 'library']) {

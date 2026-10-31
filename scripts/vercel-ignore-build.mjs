@@ -20,7 +20,6 @@ function decision() {
   if (![previous, current].every((sha) => /^[a-f0-9]{40}$/.test(sha ?? ''))) return 1;
 
   const git = (...args) => execFileSync('git', args, { encoding: 'utf8', timeout: 10_000 });
-  if (git('rev-parse', '--is-shallow-repository').trim() !== 'false') return 1;
   if (git('rev-parse', 'HEAD').trim() !== current) return 1;
   git('merge-base', '--is-ancestor', previous, current);
   const changes = git(
