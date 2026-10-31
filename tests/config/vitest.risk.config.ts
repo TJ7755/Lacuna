@@ -8,6 +8,7 @@ export default defineConfig({
     environment: 'happy-dom',
     clearMocks: false,
     include: [
+      'src/course/revisionSession.test.ts',
       'src/db/migrations*.test.ts',
       'src/db/schemaLifecycle.test.ts',
       'src/db/rawDatabaseSnapshot.test.ts',
@@ -60,6 +61,7 @@ export default defineConfig({
       reporter: ['text', 'json-summary'],
       reportsDirectory: './coverage/risk',
       include: [
+        'src/course/revisionSession.ts',
         'src/db/schema.ts',
         'src/db/database.ts',
         'src/db/legacySchemaUpgrades.ts',
@@ -87,6 +89,12 @@ export default defineConfig({
       ],
       thresholds: {
         perFile: true,
+        'src/course/revisionSession.ts': {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
         'src/db/schema.ts': { statements: 72, branches: 60, functions: 66, lines: 75 },
         'src/db/database.ts': { statements: 72, branches: 60, functions: 66, lines: 75 },
         'src/db/legacySchemaUpgrades.ts': {
