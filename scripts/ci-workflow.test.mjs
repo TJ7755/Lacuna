@@ -259,92 +259,112 @@ test('documentation-only changes resolve required names without running heavy st
   }
 });
 
+// Pull requests require the browser smoke job; other events require the full browser suites.
+const eventBrowserResults = {
+  pull_request: ['PR_RESULT'],
+  push: ['RESULT', 'TIMING_RESULT', 'MOBILE_RESULT', 'STANDALONE_RESULT'],
+};
+const gateCases = (job) =>
+  job === 'browser-smoke'
+    ? Object.entries(eventBrowserResults).map(([event, keys]) => ({
+        event,
+        ignored: Object.values(eventBrowserResults)
+          .flat()
+          .filter((key) => !keys.includes(key)),
+      }))
+    : [{ event: 'pull_request', ignored: [] }];
+
 test('aggregate shell gates fail closed and report each dependency result', () => {
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-gates-'));
   try {
-    for (const job of ['test', 'browser-smoke']) {
-      const step = workflow.jobs[job].steps[0];
-      const results = Object.keys(step.env).filter((key) => key.endsWith('RESULT'));
-      const run = (overrides) => {
-        const summary = join(directory, `${job}.md`);
-        writeFileSync(summary, '');
-        const env = {
-          ...process.env,
-          APP: 'true',
-          SITES: 'true',
-          ELECTRON: 'true',
-          HANDWRITING: 'true',
-          PYTHON: 'true',
-          GITHUB_STEP_SUMMARY: summary,
-          ...Object.fromEntries(results.map((key) => [key, 'success'])),
-          ...overrides,
+    for (const job of ['test', 'browser-smoke'])
+      for (const { event, ignored } of gateCases(job)) {
+        const step = workflow.jobs[job].steps[0];
+        const results = Object.keys(step.env).filter(
+          (key) => key.endsWith('RESULT') && !ignored.includes(key),
+        );
+        const run = (overrides) => {
+          const summary = join(directory, `${job}.md`);
+          writeFileSync(summary, '');
+          const env = {
+            ...process.env,
+            APP: 'true',
+            SITES: 'true',
+            ELECTRON: 'true',
+            HANDWRITING: 'true',
+            PYTHON: 'true',
+            EVENT_NAME: event,
+            GITHUB_STEP_SUMMARY: summary,
+            ...Object.fromEntries(ignored.map((key) => [key, 'skipped'])),
+            ...Object.fromEntries(results.map((key) => [key, 'success'])),
+            ...overrides,
+          };
+          const result = spawnSync('bash', ['-e', '-c', step.run], { env, encoding: 'utf8' });
+          return { ...result, summary: readFileSync(summary, 'utf8') };
         };
-        const result = spawnSync('bash', ['-e', '-c', step.run], { env, encoding: 'utf8' });
-        return { ...result, summary: readFileSync(summary, 'utf8') };
-      };
-      assert.equal(run({}).status, 0);
-      for (const key of results) {
-        for (const status of ['failure', 'cancelled', 'skipped', '']) {
-          const result = run({ [key]: status });
-          assert.equal(result.status, 1, `${job}: ${key}=${status}`);
-          assert.ok(result.summary.includes(status));
+        assert.equal(run({}).status, 0);
+        for (const key of results) {
+          for (const status of ['failure', 'cancelled', 'skipped', '']) {
+            const result = run({ [key]: status });
+            assert.equal(result.status, 1, `${job} ${event}: ${key}=${status}`);
+            assert.ok(result.summary.includes(status));
+          }
+        }
+        const docs = Object.fromEntries(
+          results
+            .filter((key) => !['SCOPE_RESULT', 'DOCUMENTATION_RESULT'].includes(key))
+            .map((key) => [key, 'skipped']),
+        );
+        assert.equal(
+          run({
+            ...docs,
+            APP: 'false',
+            SITES: 'false',
+            ELECTRON: 'false',
+            HANDWRITING: 'false',
+            PYTHON: 'false',
+          }).status,
+          0,
+        );
+        assert.equal(
+          run({
+            ...docs,
+            APP: 'false',
+            SITES: 'false',
+            ELECTRON: 'false',
+            HANDWRITING: 'false',
+            PYTHON: 'false',
+            SCOPE_RESULT: 'failure',
+          }).status,
+          1,
+        );
+        for (const key of Object.keys(docs)) {
+          assert.equal(
+            run({
+              ...docs,
+              APP: 'false',
+              SITES: 'false',
+              ELECTRON: 'false',
+              HANDWRITING: 'false',
+              PYTHON: 'false',
+              [key]: 'failure',
+            }).status,
+            1,
+          );
+          assert.equal(
+            run({
+              ...docs,
+              APP: 'false',
+              SITES: 'false',
+              ELECTRON: 'false',
+              HANDWRITING: 'false',
+              PYTHON: 'false',
+              [key]: 'cancelled',
+            }).status,
+            1,
+          );
         }
       }
-      const docs = Object.fromEntries(
-        results
-          .filter((key) => !['SCOPE_RESULT', 'DOCUMENTATION_RESULT'].includes(key))
-          .map((key) => [key, 'skipped']),
-      );
-      assert.equal(
-        run({
-          ...docs,
-          APP: 'false',
-          SITES: 'false',
-          ELECTRON: 'false',
-          HANDWRITING: 'false',
-          PYTHON: 'false',
-        }).status,
-        0,
-      );
-      assert.equal(
-        run({
-          ...docs,
-          APP: 'false',
-          SITES: 'false',
-          ELECTRON: 'false',
-          HANDWRITING: 'false',
-          PYTHON: 'false',
-          SCOPE_RESULT: 'failure',
-        }).status,
-        1,
-      );
-      for (const key of Object.keys(docs)) {
-        assert.equal(
-          run({
-            ...docs,
-            APP: 'false',
-            SITES: 'false',
-            ELECTRON: 'false',
-            HANDWRITING: 'false',
-            PYTHON: 'false',
-            [key]: 'failure',
-          }).status,
-          1,
-        );
-        assert.equal(
-          run({
-            ...docs,
-            APP: 'false',
-            SITES: 'false',
-            ELECTRON: 'false',
-            HANDWRITING: 'false',
-            PYTHON: 'false',
-            [key]: 'cancelled',
-          }).status,
-          1,
-        );
-      }
-    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -355,7 +375,7 @@ test('browser consumers use the same pinned browser image and shared production 
     /"@playwright\/test": \["@playwright\/test@([^"\s]+)"/,
   )[1];
   const jobs = workflow.jobs;
-  const consumers = ['browser-tests', 'browser-timing', 'browser-mobile'];
+  const consumers = ['browser-pr', 'browser-tests', 'browser-timing', 'browser-mobile'];
   const producer = jobs.production.steps.find((step) =>
     step.uses?.startsWith('actions/upload-artifact@'),
   );
@@ -407,6 +427,63 @@ test('browser consumers use the same pinned browser image and shared production 
   );
   assert.equal(functionalEvidence.if, 'always()');
   assert.ok(functionalEvidence.with.path.split('\n').includes('artifacts/ci-browser-shards/'));
+  const smoke = jobs['browser-pr'].steps.find((step) => step.env?.CHANGED_SPECS);
+  assert.equal(smoke.env.CHANGED_SPECS, '${{ needs.changes.outputs.web_specs }}');
+  assert.match(smoke.run, /--project=chromium-functional release-smoke\.spec\.ts \$CHANGED_SPECS$/);
+});
+
+test('pull requests pass only plain changed web spec names to the browser smoke job', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-web-specs-'));
+  try {
+    const git = (...args) => {
+      const result = spawnSync('git', args, { cwd: directory, encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+      return result.stdout.trim();
+    };
+    git('init', '-q');
+    git(
+      '-c',
+      'user.name=CI',
+      '-c',
+      'user.email=ci@example.invalid',
+      'commit',
+      '-q',
+      '--allow-empty',
+      '-m',
+      'base',
+    );
+    const base = git('rev-parse', 'HEAD');
+    for (const path of [
+      'tests/e2e/study-flip.spec.ts',
+      'tests/e2e/fixtures/videoEmbeds.ts',
+      'tests/e2e/nested/deep.spec.ts',
+      'tests/e2e/$(touch pwned).spec.ts',
+    ]) {
+      mkdirSync(join(directory, path, '..'), { recursive: true });
+      writeFileSync(join(directory, path), '');
+    }
+    git('add', '.');
+    git('-c', 'user.name=CI', '-c', 'user.email=ci@example.invalid', 'commit', '-q', '-m', 'head');
+    // The untracked link lets the step run the real scope classifier.
+    symlinkSync(new URL('.', import.meta.url).pathname, join(directory, 'scripts'));
+    const step = workflow.jobs.changes.steps.find((step) => step.id === 'scope');
+    const output = join(directory, 'output');
+    const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', step.run], {
+      cwd: directory,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        EVENT_NAME: 'pull_request',
+        BASE_SHA: base,
+        HEAD_SHA: git('rev-parse', 'HEAD'),
+        GITHUB_OUTPUT: output,
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(readFileSync(output, 'utf8'), /^web_specs=study-flip\.spec\.ts$/m);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('Windows skips the slow package cache while retaining verified runtime installation', () => {
@@ -612,6 +689,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'relay',
     'ai-mcp',
     'production',
+    'browser-pr',
     'browser-tests',
     'browser-standalone',
     'browser-timing',
@@ -619,13 +697,10 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'electron-ai',
     'electron-macos-smoke',
   ];
-  const web = [
-    'production',
-    'browser-tests',
-    'browser-standalone',
-    'browser-timing',
-    'browser-mobile',
-  ];
+  // Pull requests run the browser smoke job; the full browser suites gate master commits.
+  const fullBrowser = ['browser-tests', 'browser-standalone', 'browser-timing', 'browser-mobile'];
+  const web = ['production', 'browser-pr'];
+  const all = workers.filter((name) => !fullBrowser.includes(name));
   for (const [paths, expected] of [
     [['docs/README.md'], []],
     [
@@ -638,17 +713,17 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     [['tests/e2e/study-flip.spec.ts'], ['typecheck', 'lint', ...web]],
     [['tests/e2e/mobile-pwa-smoke.spec.ts'], ['typecheck', 'lint', ...web]],
     [['tests/e2e/gaps-standalone.spec.ts'], ['typecheck', 'lint', ...web]],
-    [['tests/e2e/fixtures/videoEmbeds.ts'], workers],
-    [['tests/config/playwright.web.config.ts'], workers],
-    [['tests/e2e/study-flip.spec.ts', 'src/App.tsx'], workers],
+    [['tests/e2e/fixtures/videoEmbeds.ts'], all],
+    [['tests/config/playwright.web.config.ts'], all],
+    [['tests/e2e/study-flip.spec.ts', 'src/App.tsx'], all],
     [
       ['docs/README.md', 'gaps/sw.js', 'tooling/handwriting-maths/src/main.ts'],
       ['lint', 'handwriting', ...web],
     ],
-    [['src/fsrs/coefficients/model.json'], workers],
-    [['relay/shared/insights/index.ts'], workers],
-    [['library/vercel.json'], workers],
-    [['unknown/file'], workers],
+    [['src/fsrs/coefficients/model.json'], all],
+    [['relay/shared/insights/index.ts'], all],
+    [['library/vercel.json'], all],
+    [['unknown/file'], all],
   ]) {
     const outputs = Object.fromEntries(
       Object.entries(classifyPaths(paths)).map(([key, value]) => [key, String(value)]),
@@ -664,6 +739,18 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     });
     assert.deepEqual(selected.sort(), [...expected].sort(), paths.join(', '));
   }
+  const push = Object.fromEntries(
+    Object.entries(classifyPaths(['unknown/file'])).map(([key, value]) => [key, String(value)]),
+  );
+  const selected = workers.filter((name) => {
+    const job = workflow.jobs[name];
+    const predicate = required.includes(name) ? job.steps[1].if : job.if;
+    return runInNewContext(predicate, {
+      github: { event_name: 'push' },
+      needs: { changes: { result: 'success', outputs: push } },
+    });
+  });
+  assert.deepEqual(selected.sort(), workers.filter((name) => name !== 'browser-pr').sort());
 });
 
 test('installer upgrades gate master commits rather than pull requests', () => {
@@ -822,38 +909,43 @@ test('web spec aggregate gates retain every browser result and allow only unaffe
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-web-gates-'));
   try {
     const scope = classifyPaths(['tests/e2e/study-flip.spec.ts']);
-    for (const name of ['test', 'browser-smoke']) {
-      const step = workflow.jobs[name].steps[0];
-      const results = Object.keys(step.env).filter((key) => key.endsWith('RESULT'));
-      const env = {
-        ...process.env,
-        ...Object.fromEntries(
-          Object.entries(scope).map(([key, value]) => [key.toUpperCase(), String(value)]),
-        ),
-        ...Object.fromEntries(results.map((key) => [key, 'success'])),
-        GITHUB_STEP_SUMMARY: join(directory, 'summary'),
-      };
-      if (name === 'test')
-        Object.assign(env, {
-          UNIT_RESULT: 'skipped',
-          COVERAGE_RESULT: 'skipped',
-          HANDWRITING_RESULT: 'skipped',
-          PYTHON_RESULT: 'skipped',
-          MACOS_ELECTRON_RESULT: 'skipped',
-        });
-      const run = (overrides = {}) =>
-        spawnSync('bash', ['-e', '-c', step.run], {
-          encoding: 'utf8',
-          env: { ...env, ...overrides },
-        });
-      assert.equal(run().status, 0, name);
-      for (const key of results) {
-        for (const status of ['failure', 'cancelled', ''])
-          assert.equal(run({ [key]: status }).status, 1, `${name} ${key} ${status}`);
-        if (env[key] === 'success')
-          assert.equal(run({ [key]: 'skipped' }).status, 1, `${name} ${key} skipped`);
+    for (const name of ['test', 'browser-smoke'])
+      for (const { event, ignored } of gateCases(name)) {
+        const step = workflow.jobs[name].steps[0];
+        const results = Object.keys(step.env).filter(
+          (key) => key.endsWith('RESULT') && !ignored.includes(key),
+        );
+        const env = {
+          ...process.env,
+          ...Object.fromEntries(
+            Object.entries(scope).map(([key, value]) => [key.toUpperCase(), String(value)]),
+          ),
+          ...Object.fromEntries(ignored.map((key) => [key, 'skipped'])),
+          ...Object.fromEntries(results.map((key) => [key, 'success'])),
+          EVENT_NAME: event,
+          GITHUB_STEP_SUMMARY: join(directory, 'summary'),
+        };
+        if (name === 'test')
+          Object.assign(env, {
+            UNIT_RESULT: 'skipped',
+            COVERAGE_RESULT: 'skipped',
+            HANDWRITING_RESULT: 'skipped',
+            PYTHON_RESULT: 'skipped',
+            MACOS_ELECTRON_RESULT: 'skipped',
+          });
+        const run = (overrides = {}) =>
+          spawnSync('bash', ['-e', '-c', step.run], {
+            encoding: 'utf8',
+            env: { ...env, ...overrides },
+          });
+        assert.equal(run().status, 0, `${name} ${event}`);
+        for (const key of results) {
+          for (const status of ['failure', 'cancelled', ''])
+            assert.equal(run({ [key]: status }).status, 1, `${name} ${key} ${status}`);
+          if (env[key] === 'success')
+            assert.equal(run({ [key]: 'skipped' }).status, 1, `${name} ${key} skipped`);
+        }
       }
-    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -883,13 +975,13 @@ test('push scope still selects the full matrix regardless of changed web specs',
   }
 });
 
-test('web spec-only changes reduce heavy matrix instances from 42 to 26', () => {
-  const count = (scope) => {
+test('pull requests run 20 heavy matrix instances against 44 on pushes, and to 4 for web spec-only changes', () => {
+  const count = (scope, event_name = 'pull_request') => {
     const outputs = Object.fromEntries(
       Object.entries(scope).map(([key, value]) => [key, String(value)]),
     );
     const context = {
-      github: { event_name: 'pull_request' },
+      github: { event_name },
       needs: { changes: { result: 'success', outputs } },
     };
     let heavy = 0;
@@ -911,10 +1003,11 @@ test('web spec-only changes reduce heavy matrix instances from 42 to 26', () => 
     }
     return { heavy, runners };
   };
-  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 42, runners: 46 });
+  assert.deepEqual(count(classifyPaths(['unknown/file']), 'push'), { heavy: 44, runners: 48 });
+  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 20, runners: 24 });
   assert.deepEqual(count(classifyPaths(['tests/e2e/study-flip.spec.ts'])), {
-    heavy: 26,
-    runners: 33,
+    heavy: 4,
+    runners: 11,
   });
 });
 

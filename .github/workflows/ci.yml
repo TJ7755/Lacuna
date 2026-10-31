@@ -55,6 +55,7 @@ jobs:
       ai_mcp: ${{ steps.metadata.outputs.ai_mcp || steps.scope.outputs.ai_mcp }}
       lint: ${{ steps.metadata.outputs.lint || steps.scope.outputs.lint }}
       web_tests: ${{ steps.metadata.outputs.web_tests || steps.scope.outputs.web_tests }}
+      web_specs: ${{ steps.scope.outputs.web_specs }}
     steps:
       - id: metadata
         if: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title != null || github.event.changes.body != null) }}
@@ -92,6 +93,11 @@ jobs:
         run: |
           if [ "$EVENT_NAME" = pull_request ]; then
             git diff --name-status -z --find-renames "$BASE_SHA...$HEAD_SHA" | node scripts/ci-change-scope.mjs --name-status >> "$GITHUB_OUTPUT"
+            # Changed web spec entry points join the pull-request browser smoke run.
+            # Only plain spec file names reach the later command line.
+            specs=$(git diff --name-only --diff-filter=d "$BASE_SHA...$HEAD_SHA" |
+              { grep -E '^tests/e2e/[A-Za-z0-9._-]+\.spec\.ts$' || true; } | sed 's|^tests/e2e/||' | tr '\n' ' ')
+            echo "web_specs=${specs% }" >> "$GITHUB_OUTPUT"
           else
             printf 'unknown-root-path\n' | node scripts/ci-change-scope.mjs >> "$GITHUB_OUTPUT"
           fi
@@ -430,9 +436,55 @@ jobs:
       - run: bun run release:scenario
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
 
+  # Pull requests run the release smoke spec and any changed web specs. The full
+  # functional, timing, mobile and standalone suites gate master commits.
+  browser-pr:
+    needs: changes
+    if: github.event_name == 'pull_request' && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
+      options: --ipc=host
+    env:
+      LACUNA_BROWSER_PREBUILT: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.1'
+          package-manager-cache: false
+      - uses: ./.github/actions/setup-bun
+      - run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile
+        working-directory: relay
+      - name: Require the current production gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci-wait-for-production.mjs
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: browser-web-dist
+          path: dist/
+      - name: Run release smoke and changed web specs
+        env:
+          CHANGED_SPECS: ${{ needs.changes.outputs.web_specs }}
+        run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-functional release-smoke.spec.ts $CHANGED_SPECS
+      - name: Preserve browser test evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-results-pr
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
   browser-tests:
     needs: changes
-    if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
+    if: github.event_name != 'pull_request' && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
@@ -480,7 +532,7 @@ jobs:
   # These sites and feature flags require their own isolated builds.
   browser-standalone:
     needs: changes
-    if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
+    if: github.event_name != 'pull_request' && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
@@ -521,7 +573,7 @@ jobs:
   # Each timing project runs on its own runner without competing functional workers.
   browser-timing:
     needs: changes
-    if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
+    if: github.event_name != 'pull_request' && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
@@ -566,7 +618,7 @@ jobs:
 
   browser-mobile:
     needs: changes
-    if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
+    if: github.event_name != 'pull_request' && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
@@ -606,7 +658,16 @@ jobs:
   # Keep the existing branch-protection check name and require every browser job.
   browser-smoke:
     name: browser-smoke
-    needs: [changes, production, browser-tests, browser-timing, browser-mobile, browser-standalone]
+    needs:
+      [
+        changes,
+        production,
+        browser-pr,
+        browser-tests,
+        browser-timing,
+        browser-mobile,
+        browser-standalone,
+      ]
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
@@ -619,7 +680,9 @@ jobs:
           HANDWRITING: ${{ needs.changes.outputs.handwriting }}
           PYTHON: ${{ needs.changes.outputs.python }}
           ELECTRON: ${{ needs.changes.outputs.electron }}
+          EVENT_NAME: ${{ github.event_name }}
           PRODUCTION_RESULT: ${{ needs.production.result }}
+          PR_RESULT: ${{ needs.browser-pr.result }}
           RESULT: ${{ needs.browser-tests.result }}
           MOBILE_RESULT: ${{ needs.browser-mobile.result }}
           TIMING_RESULT: ${{ needs.browser-timing.result }}
@@ -628,18 +691,23 @@ jobs:
           # A skipped dependency passes only with an explicit unaffected scope.
           WEB=true
           if [ "$APP" = false ] && [ "$SITES" = false ]; then WEB=false; fi
+          # Pull requests require the smoke job; master commits require the full suites.
+          PR_WEB=false
+          FULL_WEB=$WEB
+          if [ "$EVENT_NAME" = pull_request ]; then PR_WEB=$WEB; FULL_WEB=false; fi
           ok() { [ "$1" = success ] || { [ "$2" = false ] && [ "$1" = skipped ]; }; }
           {
             echo '### Browser dependencies'
             echo "- Scope classification: $SCOPE_RESULT (app: $APP; sites: $SITES; electron: $ELECTRON)"
             echo "- Production: $PRODUCTION_RESULT"
+            echo "- Pull-request smoke: $PR_RESULT"
             echo "- Functional shards: $RESULT"
             echo "- Isolated timing projects: $TIMING_RESULT"
             echo "- Standalone sites: $STANDALONE_RESULT"
             echo "- Mobile WebKit: $MOBILE_RESULT"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$RESULT" "$WEB" || ! ok "$TIMING_RESULT" "$WEB" || ! ok "$MOBILE_RESULT" "$WEB" || ! ok "$STANDALONE_RESULT" "$WEB"; then
-            echo "Browser jobs did not pass: scope=$SCOPE_RESULT functional=$RESULT timing=$TIMING_RESULT mobile=$MOBILE_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
+          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$MOBILE_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$FULL_WEB"; then
+            echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT timing=$TIMING_RESULT mobile=$MOBILE_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
             exit 1
           fi
 

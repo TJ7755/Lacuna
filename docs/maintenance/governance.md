@@ -24,6 +24,9 @@ contexts as pending. All currently reported checks passing does not establish th
 check exists or passed. Workflow cancellation suppresses the aggregate jobs rather than reporting
 a second failure for superseded work; a failed or independently cancelled dependency in an active
 run still fails its aggregate. Do not publish early green or skipped placeholders under required names.
+On pull requests `browser-smoke` requires the release smoke spec plus any changed top-level web
+specs; on master pushes it requires the full functional, timing, mobile and standalone browser
+suites, so release tagging still waits for them.
 
 If a successful CI or Security workflow retains a running job record after every step, including
 `Complete job`, succeeded, [CI recovery](../../.github/workflows/ci-recovery.yml) requests one real
