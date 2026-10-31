@@ -123,7 +123,8 @@ describe('StudyCardTransition', () => {
       </StudyCardTransition>,
     );
     act(() => {
-      ref.current!.dismiss(false, commit);
+      expect(ref.current!.dismiss(false, commit)).toBe(true);
+      expect(ref.current!.dismiss(false, commit)).toBe(false);
     });
     expect(commit).toHaveBeenCalledOnce();
     view.rerender(

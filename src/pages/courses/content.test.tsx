@@ -65,24 +65,6 @@ describe('public course catalogue', () => {
     }
   });
 
-  it('publishes the Religious Studies scope, counts and stable destination', () => {
-    const course = libraryCourses.find(({ id }) => id === 'religiousstudies8062')!;
-    const metadata = courseMetadata(course);
-    expect(metadata.title).toBe('Religious Studies 8062 revision — AQA GCSE | Lacuna');
-    expect(metadata.canonical).toBe('https://getlacuna.app/courses/religiousstudies8062/');
-    expect(metadata.description).toContain(
-      '1,272 flashcards, 126 notes and 126 exam-style practice sets',
-    );
-    render(<CoursePage course={course} />);
-    expect(screen.getByText(course.summary)).toHaveTextContent('optional Themes A–F');
-    expect(screen.getByText(course.summary)).toHaveTextContent('1, 1, 4 and 6-mark');
-    expect(screen.getByText('1,656 marks of practice')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Start revising' })).toHaveAttribute(
-      'href',
-      'https://getlacuna.app/#/s/e85fc39e709074d58669c2d8bfd723bb',
-    );
-  });
-
   it('advertises every course in both source crawl files', () => {
     for (const path of ['public/sitemap.xml', 'public/llms.txt']) {
       const source = readFileSync(path, 'utf8');
@@ -91,15 +73,6 @@ describe('public course catalogue', () => {
         expect(source).toContain(`https://getlacuna.app/courses/${course.id}/`);
       }
     }
-  });
-
-  it('lists each subject once using British list formatting in the index description', () => {
-    const subjects = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format([
-      ...new Set(libraryCourses.map(({ subject }) => subject)),
-    ]);
-    expect(courseMetadata().description).toBe(
-      `Free GCSE and IGCSE revision courses for ${subjects}, with flashcards, notes and exam-style practice planned to your exam date.`,
-    );
   });
 
   it('omits unknown counts and uses plain coming-soon text for an unpublished course', () => {

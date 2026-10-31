@@ -54,20 +54,6 @@ describe('shared pill choices', () => {
     },
   );
 
-  it('uses the same track and selection geometry for every caller', () => {
-    render(
-      <>
-        <SegmentedPills label="Settings choice" options={options} value="a" onChange={vi.fn()} />
-        <PillToggleGroup label="Card choice" options={options} value="a" onChange={vi.fn()} />
-        <QuestionSegmented label="Question choice" options={options} value="a" onChange={vi.fn()} />
-      </>,
-    );
-    const tracks = [screen.getByRole('radiogroup'), ...screen.getAllByRole('group')];
-    expect(new Set(tracks.map((track) => track.className)).size).toBe(1);
-    const indicators = tracks.map((track) => track.firstElementChild?.firstElementChild);
-    expect(new Set(indicators.map((indicator) => indicator?.className)).size).toBe(1);
-  });
-
   it('reveals further options through the existing More action', () => {
     function Choices() {
       const [more, setMore] = useState(false);

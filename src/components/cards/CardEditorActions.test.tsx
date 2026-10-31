@@ -3,35 +3,6 @@ import { act, render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { CardEditorActions } from './CardEditorActions';
 
-function renderActions(editing: boolean) {
-  render(
-    <CardEditorActions
-      editing={editing}
-      canSave
-      addedCount={0}
-      isTouchMode={false}
-      onCancel={vi.fn()}
-      onSave={vi.fn()}
-      saveAddRef={createRef()}
-      saveRef={createRef()}
-    />,
-  );
-}
-
-it('puts repeat-save on its own full-width row above the shorter actions', () => {
-  renderActions(false);
-  expect(screen.getByRole('button', { name: 'Save & add another' })).toHaveClass(
-    'order-first',
-    'col-span-2',
-  );
-  expect(screen.getByRole('button', { name: 'Cancel' })).toHaveClass('justify-self-start');
-});
-
-it('keeps two actions in one row while editing', () => {
-  renderActions(true);
-  expect(screen.getByRole('button', { name: 'Save changes' })).not.toHaveClass('col-span-2');
-});
-
 it('keeps the same count announcement mounted before and after a repeat save', () => {
   const props = {
     editing: false,

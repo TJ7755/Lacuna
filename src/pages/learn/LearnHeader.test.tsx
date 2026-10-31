@@ -122,7 +122,14 @@ it.each([false, true])(
     expect(screen.queryByText(/75% forecast recall/)).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: course.name })).toBeVisible();
     rerender(<LearnHeader {...props} menuOpen />);
-    expect(screen.getByText(/75% forecast recall/)).toBeVisible();
+    for (const [examDate, horizon] of [
+      [undefined, 'in 7 days'],
+      [Date.now() - 86_400_000, 'in 7 days'],
+      [Date.now() + 86_400_000, 'at the exam'],
+    ] as const) {
+      rerender(<LearnHeader {...props} singleDeck={{ ...course, examDate }} menuOpen />);
+      expect(screen.getByText(`75% forecast recall ${horizon}`)).toBeVisible();
+    }
     for (const [name, description] of [
       ['Flag card', 'Find it later; its schedule is unchanged.'],
       ['Bury until tomorrow', 'Back tomorrow.'],

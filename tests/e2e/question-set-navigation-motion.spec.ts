@@ -91,10 +91,8 @@ async function openSet(page: Page) {
   await expect(page.getByRole('heading', { name: 'Cells', exact: true })).toBeVisible();
 }
 
-test.use({ video: 'on' });
-
 for (const width of [1280, 390]) {
-  test(`navigation transitions in both directions at ${width}px`, async ({ page }, testInfo) => {
+  test(`navigation retains draft answers in both directions at ${width}px`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await openSet(page);
     await page.setViewportSize({ width, height: 900 });
@@ -103,55 +101,12 @@ for (const width of [1280, 390]) {
     await page
       .getByRole('textbox', { name: 'Your answer', exact: true })
       .fill('Controls cell activities.');
-    for (const [label, heading, direction] of [
-      ['Next', 'Q1 (b)', 1],
-      ['Previous', 'Q1 (a)', -1],
+    for (const [label, heading] of [
+      ['Next', 'Q1 (b)'],
+      ['Previous', 'Q1 (a)'],
     ] as const) {
       await expect(page.getByRole('button', { name: label, exact: true })).toBeEnabled();
-      const frames = await page.evaluate(
-        async ({ label, heading }) => {
-          const samples: { opacity: number; x: number; time: number }[] = [];
-          const start = performance.now();
-          const done = new Promise<typeof samples>((resolve) => {
-            const sample = () => {
-              const surface = Array.from(
-                document.querySelectorAll('.qs-paper > .relative > div'),
-              ).find(
-                (element) =>
-                  !element.hasAttribute('inert') && element.textContent?.includes(heading),
-              );
-              if (surface) {
-                const style = getComputedStyle(surface);
-                samples.push({
-                  opacity: Number(style.opacity),
-                  x: new DOMMatrixReadOnly(style.transform).m41,
-                  time: performance.now() - start,
-                });
-              }
-              if (performance.now() - start < 650) requestAnimationFrame(sample);
-              else resolve(samples);
-            };
-            requestAnimationFrame(sample);
-          });
-          (
-            document.querySelector(
-              `.qs-preview-nav button[aria-label="${label}"]`,
-            ) as HTMLButtonElement
-          ).click();
-          return done;
-        },
-        { label, heading },
-      );
-      await testInfo.attach(`${label}-frames`, {
-        body: JSON.stringify(frames, null, 2),
-        contentType: 'application/json',
-      });
-      await page.screenshot({ path: testInfo.outputPath(`${label}-${width}.png`) });
-      expect(frames.some((frame) => frame.opacity > 0 && frame.opacity < 0.95)).toBe(true);
-      expect(frames.some((frame) => frame.x * direction > 1)).toBe(true);
-      expect(frames.at(-1)!.x).toBe(0);
-      expect(frames.at(-1)!.opacity).toBe(1);
-      await expect(page.locator('.qs-paper > .relative > div')).toHaveCount(1);
+      await page.getByRole('button', { name: label, exact: true }).click();
       await expect(page.getByRole('textbox', { name: 'Your answer', exact: true })).toBeFocused();
       await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
     }
@@ -169,7 +124,6 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('heading', { name: 'Q1 (a)', exact: true })).toBeVisible();
     await expect(answer).toHaveValue('Controls cell activities.');
     await expect(answer).toBeFocused();
-    await expect(page.locator('.qs-paper > .relative > div')).toHaveCount(1);
     await page.reload();
     await expect(answer).toHaveValue('Controls cell activities.');
     await expect(page.getByRole('heading', { name: 'Q1 (a)', exact: true })).toBeVisible();

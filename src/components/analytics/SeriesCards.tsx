@@ -26,7 +26,7 @@ const CHART_MARGIN = { top: 8, right: 12, bottom: 0, left: 0 };
  * name ran past the axis and was clipped mid-word; the tooltip and data table keep it whole.
  */
 const LESSON_TICK_CHARS = 22;
-export function lessonTickLabel(name: string): string {
+function lessonTickLabel(name: string): string {
   return name.length > LESSON_TICK_CHARS
     ? `${name.slice(0, LESSON_TICK_CHARS - 1).trimEnd()}…`
     : name;

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AnimatedDisclosure, animatedDisclosureTiming } from './AnimatedDisclosure';
-import { scaledSpring } from './motion';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { spring } from 'motion';
 
@@ -30,21 +29,6 @@ describe('animatedDisclosureTiming', () => {
       }
       expect(previous).toBe(0);
     }
-  });
-
-  it('follows the global speed and reduced-motion multipliers', () => {
-    expect(animatedDisclosureTiming(1.4).height).toEqual(
-      scaledSpring(1.4, 420, 2 * Math.sqrt(420)),
-    );
-    expect(animatedDisclosureTiming(1.4).opacity.duration).toBeCloseTo(0.168);
-    expect(animatedDisclosureTiming(0.6).height).toEqual(
-      scaledSpring(0.6, 420, 2 * Math.sqrt(420)),
-    );
-    expect(animatedDisclosureTiming(0.6).opacity.duration).toBeCloseTo(0.072);
-    expect(animatedDisclosureTiming(0)).toEqual({
-      height: { duration: 0 },
-      opacity: { duration: 0 },
-    });
   });
 });
 

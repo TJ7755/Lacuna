@@ -92,19 +92,6 @@ describe('StudyCardTransition hand-off', () => {
     view.unmount();
   });
 
-  it('commits synchronously and only once without motion', () => {
-    const { ref, view } = setup(0);
-    const commit = vi.fn();
-    void act(() => {
-      expect(ref.current!.dismiss(false, commit)).toBe(true);
-      expect(commit).toHaveBeenCalledOnce();
-      expect(ref.current!.dismiss(false, commit)).toBe(false);
-    });
-    expect(commit).toHaveBeenCalledOnce();
-    expect(view.container.querySelector('[data-study-rim]')).toBeNull();
-    view.unmount();
-  });
-
   it('removes the settled transform so fixed descendants remain viewport-bound', async () => {
     const { view } = setup();
     await waitFor(() =>

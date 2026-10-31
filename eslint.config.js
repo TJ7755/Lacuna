@@ -25,6 +25,7 @@ export default [
       '**/dist/**',
       'electron/dist-electron/**',
       '**/node_modules/**',
+      '**/.venv/**',
       // Separate packages with their own manifests and configs.
       'relay/**',
       'tooling/lacuna-ai-mcp/**',
@@ -176,12 +177,21 @@ export default [
     files: ['{src,server,electron,api}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}'],
     plugins: { 'training-contract': { rules: { 'no-deep-imports': trainingImportsRule } } },
     rules: {
-      'training-contract/no-deep-imports': ['error', {
-        integrationTests: [
-          { from: 'src/fsrs/halfLifeLogisticModel.test.ts', to: 'tooling/short-term-memory/coefficients/half-life-logistic-v1.json' },
-          { from: 'src/fsrs/halfLifeLogisticModel.test.ts', to: 'tooling/short-term-memory/tests/fixtures/model-port-v3.json' },
-        ],
-      }],
+      'training-contract/no-deep-imports': [
+        'error',
+        {
+          integrationTests: [
+            {
+              from: 'src/fsrs/halfLifeLogisticModel.test.ts',
+              to: 'tooling/short-term-memory/coefficients/half-life-logistic-v1.json',
+            },
+            {
+              from: 'src/fsrs/halfLifeLogisticModel.test.ts',
+              to: 'tooling/short-term-memory/tests/fixtures/model-port-v3.json',
+            },
+          ],
+        },
+      ],
     },
   },
   prettier,
