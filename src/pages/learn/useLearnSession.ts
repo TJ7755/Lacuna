@@ -787,6 +787,41 @@ export function useLearnSession({
     progressCacheRef.current.dirty = true;
   }, [finish, distraction, isSimpleMode, persistSimpleResume, requestWindowId, requestReviewLimit]);
 
+  const continueStudying = useCallback(() => {
+    if (summary?.simpleMode) {
+      // Restart simple mode: reset all simple state and begin again.
+      simpleMastered.current = new Set();
+      simpleWrong.current = new Set();
+      simpleQueue.current = createSimpleQueue(
+        cardsRef.current.filter(
+          (c) => !c.suspended && !(c.buriedUntil && c.buriedUntil > Date.now()),
+        ),
+      );
+      events.current = [];
+      progressBefore.current = 0;
+      sessionStartMs.current = Date.now();
+      setSummary(null);
+      setSessionCardIds(simpleQueue.current.map((card) => card.id));
+      resetSimpleSessionOutcomes();
+      serveNext();
+    } else {
+      const ctx = ctxRef.current;
+      if (!ctx) return;
+      events.current = [];
+      progressBefore.current = cachedSessionProgress(cardsRef.current, ctx);
+      setSummary(null);
+      setLimitOverride(true);
+      setTimeLimitOverride(true);
+      serveNext();
+    }
+  }, [
+    cachedSessionProgress,
+    createSimpleQueue,
+    resetSimpleSessionOutcomes,
+    serveNext,
+    summary?.simpleMode,
+  ]);
+
   const preloadEnabled = enabled && (phase === 'question' || phase === 'answer');
   useEffect(() => {
     if (!preloadEnabled || !current) return;
@@ -2087,11 +2122,9 @@ export function useLearnSession({
     occlusion: currentOcclusionData?.occlusion,
     occlusionAnswerText: currentOcclusionData?.answerText,
     summary,
-    setSummary,
     canUndo,
     editing,
     sessionCardIds,
-    setSessionCardIds,
     sessionCardOutcomes,
     schedulerProgress,
     predictedRecall:
@@ -2102,11 +2135,9 @@ export function useLearnSession({
     revisionSecondsRemaining,
     revisionWindowBudgetSeconds,
     revisionNextWindowDay,
-    setLimitOverride,
-    setTimeLimitOverride,
     backOut,
     finish,
-    serveNext,
+    continueStudying,
     serveNextRef,
     reveal,
     hide,
@@ -2120,19 +2151,14 @@ export function useLearnSession({
     toggleFlagCurrent,
     suspendCurrent,
     buryCurrent,
-    cachedSessionProgress,
-    // Session refs the render body reads directly (restart handlers, tag suggestions).
+    // Session refs read by the view and existing integration tests.
     cardsRef,
     ctxRef,
     events,
-    progressBefore,
-    sessionStartMs,
     simpleQueue,
-    createSimpleQueue,
     simpleMastered,
     simpleWrong,
     lessonHasMembersRef,
     persistSimpleResume,
-    resetSimpleSessionOutcomes,
   };
 }

@@ -99,10 +99,11 @@ describe('useLearnSession pool preparation', () => {
     expect(second.result.current.summary?.[resultFlag]).toBe(true);
     expect(second.result.current.events.current).toHaveLength(0);
     if (setting === 'maxReviewsPerDay') {
+      await act(async () => {
+        expect(await second.result.current.confirmCompletion()).toBe(true);
+      });
       act(() => {
-        second.result.current.setSummary(null);
-        second.result.current.setLimitOverride(true);
-        second.result.current.serveNext();
+        second.result.current.continueStudying();
       });
       await waitFor(() => expect(second.result.current.phase).toBe('question'));
     }
