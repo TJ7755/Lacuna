@@ -51,7 +51,33 @@ export async function evidence(name, work) {
   console.log(`Evidence: ${directory}`);
   const started = performance.now();
   let status = 1;
+  let activeChild;
+  let interruptedSignal;
+  let killTimer;
+  const stopCommand = (signal) => {
+    if (!activeChild?.pid) return;
+    try {
+      if (process.platform === 'win32') {
+        execFileSync('taskkill', ['/PID', String(activeChild.pid), '/T', '/F'], {
+          stdio: 'ignore',
+        });
+      } else process.kill(-activeChild.pid, signal);
+    } catch (error) {
+      if (error.code !== 'ESRCH' && process.platform !== 'win32') throw error;
+    }
+  };
+  const interrupt = (signal) => {
+    interruptedSignal ??= signal;
+    report.interruptedSignal = interruptedSignal;
+    stopCommand(signal);
+    killTimer ??= setTimeout(() => stopCommand('SIGKILL'), 5000).unref();
+  };
+  const onInterrupt = () => interrupt('SIGINT');
+  const onTerminate = () => interrupt('SIGTERM');
+  process.on('SIGINT', onInterrupt);
+  process.on('SIGTERM', onTerminate);
   const run = async (command, args, cwd = '.', capture = false) => {
+    if (interruptedSignal) throw new Error(`Interrupted by ${interruptedSignal}`);
     const env = args[0] === 'run' && args[1] === 'test:e2e:web' ? { CI: 'true' } : {};
     const record = { command, args, cwd, env, startedAt: new Date().toISOString() };
     report.commands.push(record);
@@ -66,7 +92,9 @@ export async function evidence(name, work) {
         cwd: join(root, cwd),
         env: { ...process.env, ...env },
         shell: false,
+        detached: process.platform !== 'win32',
       });
+      activeChild = child;
       child.stdout.on('data', (data) => {
         appendFileSync(log, data);
         if (capture) output += data;
@@ -85,6 +113,10 @@ export async function evidence(name, work) {
         resolve(code ?? (signal ? 128 + (constants.signals[signal] ?? 0) : 127));
       });
     });
+    if (interruptedSignal) stopCommand('SIGKILL');
+    activeChild = undefined;
+    clearTimeout(killTimer);
+    killTimer = undefined;
     Object.assign(record, {
       exitCode: code,
       durationMs: Math.round(performance.now() - commandStarted),
@@ -119,8 +151,12 @@ export async function evidence(name, work) {
   } catch (error) {
     report.error = error.message;
     console.error(error.message);
-    status = error.exitCode ?? 1;
+    status = error.exitCode === 2 ? 1 : (error.exitCode ?? 1);
   } finally {
+    if (interruptedSignal) status = 128 + constants.signals[interruptedSignal];
+    clearTimeout(killTimer);
+    process.removeListener('SIGINT', onInterrupt);
+    process.removeListener('SIGTERM', onTerminate);
     report.exitCode = status;
     report.durationMs = Math.round(performance.now() - started);
     report.completedAt = new Date().toISOString();

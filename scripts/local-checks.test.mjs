@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
 import {
   chmodSync,
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -14,6 +16,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, test } from 'node:test';
+import { setTimeout } from 'node:timers/promises';
 
 const repository = fileURLToPath(new URL('../', import.meta.url));
 const pin = JSON.parse(readFileSync(join(repository, 'relay/scripts/security-bun.json'), 'utf8'));
@@ -52,7 +55,8 @@ function fixture(t) {
   writeFileSync(
     executable,
     `#!${process.execPath}
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, writeFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
 const args = process.argv.slice(2);
 if (args[0] === '--revision') console.log(process.env.FAKE_REVISION);
 else {
@@ -60,7 +64,11 @@ else {
   console.error('fake diagnostic');
   if (process.env.FAKE_CHANGE) appendFileSync(process.env.FAKE_CHANGE, '\\nchanged');
   if (process.env.FAKE_SIGNAL) process.kill(process.pid, process.env.FAKE_SIGNAL);
-  process.exitCode = Number(process.env.FAKE_STATUS || 0);
+  if (process.env.FAKE_WAIT_FILE) {
+    spawn(process.execPath, ['-e', "require('node:fs').writeFileSync(process.env.FAKE_DESCENDANT_FILE, String(process.pid)); setInterval(() => {}, 1000)"], { stdio: 'inherit' });
+    writeFileSync(process.env.FAKE_WAIT_FILE, String(process.pid));
+    setInterval(() => {}, 1000);
+  } else process.exitCode = Number(process.env.FAKE_STATUS || 0);
 }
 `,
   );
@@ -107,7 +115,7 @@ else {
     const report = match ? JSON.parse(readFileSync(join(match[1], 'report.json'), 'utf8')) : null;
     return { ...result, report };
   };
-  return { root, run, change, git };
+  return { root, bin, run, change, git };
 }
 
 describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' }, () => {
@@ -145,6 +153,70 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
     assert.equal(result.report.commands.length, 2);
     assert.equal(result.report.commands[1].exitCode, 37);
     assert.match(result.stderr, /fake diagnostic/);
+  });
+
+  test('a failed command cannot use the outstanding-evidence exit status', (t) => {
+    const { run } = fixture(t);
+    const result = run('setup.mjs', [], { FAKE_STATUS: '2' });
+    assert.equal(result.status, 1);
+    assert.equal(result.report.exitCode, 1);
+    assert.equal(result.report.commands.at(-1).exitCode, 2);
+    assert.match(result.report.error, /failed with exit status 2/);
+  });
+
+  test('terminating the runner stops its command tree and finalises evidence', async (t) => {
+    const { root, bin } = fixture(t);
+    const childFile = join(root, '../child.pid');
+    const descendantFile = join(root, '../descendant.pid');
+    const runner = spawn(process.execPath, [join(root, 'scripts/setup.mjs')], {
+      cwd: root,
+      env: {
+        ...process.env,
+        PATH: `${bin}${delimiter}${process.env.PATH}`,
+        FAKE_REVISION: pin.revision,
+        FAKE_WAIT_FILE: childFile,
+        FAKE_DESCENDANT_FILE: descendantFile,
+      },
+      stdio: 'ignore',
+    });
+    const exited = once(runner, 'exit', { signal: AbortSignal.timeout(10000) });
+    const pids = [runner.pid];
+    t.after(() => {
+      for (const file of [childFile, descendantFile]) {
+        if (existsSync(file)) pids.push(Number(readFileSync(file, 'utf8')));
+      }
+      for (const pid of pids) {
+        try {
+          process.kill(pid, 'SIGKILL');
+        } catch (error) {
+          if (error.code !== 'ESRCH') throw error;
+        }
+      }
+    });
+    for (let attempt = 0; attempt < 500 && !existsSync(descendantFile); attempt++) {
+      await setTimeout(10);
+    }
+    assert.ok(existsSync(childFile), 'command started');
+    assert.ok(existsSync(descendantFile), 'descendant started');
+    const descendants = [childFile, descendantFile].map((file) =>
+      Number(readFileSync(file, 'utf8')),
+    );
+    pids.push(...descendants);
+    runner.kill('SIGTERM');
+    const [code, signal] = await exited;
+    assert.equal(code, 143);
+    assert.equal(signal, null);
+    for (const pid of descendants) {
+      assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+    }
+    const directory = join(root, 'artifacts/local-checks');
+    const report = JSON.parse(
+      readFileSync(join(directory, readdirSync(directory)[0], 'report.json'), 'utf8'),
+    );
+    assert.equal(report.exitCode, 143);
+    assert.equal(report.interruptedSignal, 'SIGTERM');
+    assert.ok(report.completedAt);
+    assert.equal(report.commands.length, 2);
   });
 
   test('a terminated command cannot become a pass', { skip: process.platform === 'win32' }, (t) => {
