@@ -5,7 +5,7 @@ import { db } from '../../db/schema';
 import { listCourseAssessments } from '../../db/read';
 import { hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
 import type { Card, Course, Lesson, RevisionPlan } from '../../db/types';
-import type { SessionCardOutcome } from './types';
+import type { SessionCardOutcome } from '../../course/sessionSummary';
 import type { CardFilter } from '../../db/search';
 import { isLessonUnlocked, lessonEffectiveReleaseDates } from '../../course/path';
 import { catchUpPracticePool } from '../../course/catchUpPractice';

@@ -7,7 +7,7 @@ import type {
 } from '../../db/types';
 
 export type Phase = 'loading' | 'notes' | 'question' | 'answer' | 'finished';
-export type SessionCardOutcome = 'correct' | 'wrong';
+export type { SessionCardOutcome } from '../../course/sessionSummary';
 
 /** Automatic marking of a submitted typed answer: still judging, or the verdict it reached. */
 export type AutoMark = { pending: true } | { pending: false; correct: boolean };

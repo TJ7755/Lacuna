@@ -50,7 +50,7 @@ import { MS_PER_DAY } from '../../fsrs/params';
 import { allocateCramReview } from '../../fsrs/cramAllocator';
 import { CRAM_SUCCESS_GRADES, createHalfLifeLogisticModel } from '../../fsrs/halfLifeLogisticModel';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
-import type { SessionEvent, SessionSummary } from '../../components/learn/types';
+import type { SessionCardOutcome, SessionEvent, SessionSummary } from '../../course/sessionSummary';
 import type { useToast } from '../../components/ui/Toast';
 import { linesModeSequencesByCard } from '../../db/linesModeCards';
 import { isLabelCardId } from '../../db/sequenceGeneration';
@@ -63,7 +63,6 @@ import type {
   LessonNotesScreen,
   Phase,
   MachineMarkedAnswer,
-  SessionCardOutcome,
   StudyUnit,
 } from './types';
 import { hasMachineMarkedPayload, isUnrenderableItemPayload } from './sessionCardCapabilities';
@@ -92,7 +91,7 @@ import {
   persistSessionPracticeMilestone,
   type PracticeSession,
 } from './sessionCompletionPersistence';
-import { transitionSimpleAnswer } from './sessionTransitions';
+import { transitionSimpleAnswer } from '../../course/simpleSession';
 import {
   createRevisionSessionState,
   snapshotRevisionSessionState,

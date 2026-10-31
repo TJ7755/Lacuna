@@ -8,6 +8,7 @@ export interface QuestionStudySummary {
 }
 
 export type StudyStepSummary = SessionSummary | QuestionStudySummary;
+export type SessionCardOutcome = 'correct' | 'wrong';
 
 /** A single answered card within a Learn session, retained for the end report. */
 export interface SessionEvent {

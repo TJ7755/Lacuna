@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Card } from '../../db/types';
-import { transitionSimpleAnswer } from './sessionTransitions';
+import type { Card } from '../db/types';
+import { transitionSimpleAnswer } from './simpleSession';
 
 const card = { id: 'card-1' } as Card;
 
