@@ -1,5 +1,5 @@
 import type { RelayMailbox } from '../relayClient';
-import type { RelayAiSessionOptions, RelaySessionCrypto } from './relay';
+import type { RelayAiSessionOptions, RelaySessionCrypto, RelaySessionTimers } from './relay';
 import type { RelaySessionState } from './relaySessionState';
 import type { AiSessionSnapshot } from './types';
 import type { AiToolSession } from '../toolSession';
@@ -19,9 +19,12 @@ import {
   markQuietConnection,
 } from './relaySessionState';
 
+const POLL_INTERVAL_MS = 1_000;
+
 interface RelayPollingOperations {
   options: Pick<RelayAiSessionOptions, 'relay'>;
   crypto: RelaySessionCrypto;
+  timers: RelaySessionTimers;
   now: () => number;
   toolSession: AiToolSession;
   serialise<T>(operation: () => Promise<T>): Promise<T>;
@@ -30,17 +33,22 @@ interface RelayPollingOperations {
   getEncryptionKey(epoch: number): Promise<CryptoKey | null>;
   pushMailbox(mailbox: RelayBrowserMailbox, epoch: number): Promise<string | null>;
   disconnectMailboxGeneration(reason: string, current?: AiSessionSnapshot): void;
-  stopPolling(): void;
 }
 
 export function createRelayPolling(
   state: Pick<
     RelaySessionState,
-    'persisted' | 'snapshot' | 'encryptionKey' | 'pollingEpoch' | 'pollInFlightEpoch'
+    | 'persisted'
+    | 'snapshot'
+    | 'encryptionKey'
+    | 'pollingEpoch'
+    | 'pollInFlightEpoch'
+    | 'cancelPolling'
   >,
   {
     options,
     crypto,
+    timers,
     now,
     toolSession,
     serialise,
@@ -49,9 +57,20 @@ export function createRelayPolling(
     getEncryptionKey,
     pushMailbox,
     disconnectMailboxGeneration,
-    stopPolling,
   }: RelayPollingOperations,
 ) {
+  function startPolling(): void {
+    if (state.cancelPolling) return;
+    const epoch = ++state.pollingEpoch;
+    state.cancelPolling = timers.repeat(() => poll(epoch), POLL_INTERVAL_MS);
+  }
+
+  function stopPolling(): void {
+    state.pollingEpoch += 1;
+    state.cancelPolling?.();
+    state.cancelPolling = null;
+  }
+
   async function poll(epoch: number): Promise<void> {
     if (epoch !== state.pollingEpoch || state.pollInFlightEpoch === epoch) return;
     state.pollInFlightEpoch = epoch;
@@ -272,5 +291,5 @@ export function createRelayPolling(
       stopPolling();
     }
   }
-  return { poll };
+  return { poll, startPolling, stopPolling };
 }
