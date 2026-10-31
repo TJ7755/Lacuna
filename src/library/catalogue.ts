@@ -292,7 +292,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     id: 'biology1bi0',
     author: 'Lacuna',
     publisher: 'Lacuna',
-    revision: 16,
+    revision: 17,
     subject: 'Biology',
     board: 'Pearson Edexcel',
     qualification: 'Pearson Edexcel GCSE',
