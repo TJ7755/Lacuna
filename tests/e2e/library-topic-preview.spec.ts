@@ -19,7 +19,9 @@ for (const width of [1280, 768]) {
     await page.screenshot({ path: info.outputPath('edexcel-gcse-biology-topics.png') });
 
     await expect(sheet).toContainText('Pearson Edexcel GCSE · 1BI0');
-    await expect(sheet).toContainText('Some board requirements remain outside this selection.');
+    await expect(sheet).toContainText(
+      'Higher-tier GCSE Biology, including shared Foundation content',
+    );
     const topics = sheet.getByRole('region', { name: 'What you’ll study' });
     await expect(topics.getByText('Animal cell structures', { exact: true })).toBeVisible();
     const plantCells = topics.getByText('Plant cell structures', { exact: true });
