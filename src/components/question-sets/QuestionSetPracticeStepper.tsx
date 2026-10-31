@@ -36,15 +36,13 @@ export function QuestionSetPracticeStepper({
     setOpen(false);
     if (refocus) requestAnimationFrame(() => toggle.current?.focus());
   };
-  const status = (node: Part, partIndex: number) => {
-    if (partIndex === index) return 'current';
+  const done = (node: Part) => {
     const allocations = node.node.answer!.allocations;
-    const done =
-      attempt.status === 'answering'
-        ? attempt.responses.find((row) => row.nodeId === node.id)?.submitted
-        : allocations.every((row) => attempt.decisions.some((d) => d.allocationId === row.id));
-    return done ? 'done' : 'todo';
+    return attempt.status === 'answering'
+      ? Boolean(attempt.responses.find((row) => row.nodeId === node.id)?.submitted)
+      : allocations.every((row) => attempt.decisions.some((d) => d.allocationId === row.id));
   };
+  const completed = nodes.filter(done).length;
   return (
     <div
       className="qs-part-stepper"
@@ -61,6 +59,15 @@ export function QuestionSetPracticeStepper({
       }}
     >
       <div
+        className="sr-only"
+        role="progressbar"
+        aria-label="Session progress"
+        aria-valuemin={0}
+        aria-valuemax={nodes.length}
+        aria-valuenow={completed}
+        aria-valuetext={`${completed} of ${nodes.length} parts ${attempt.status === 'answering' ? 'submitted' : 'marked'}`}
+      />
+      <div
         ref={segments}
         className="qs-part-segments"
         inert={!open}
@@ -72,7 +79,7 @@ export function QuestionSetPracticeStepper({
             key={node.id}
             type="button"
             className="qs-part-segment"
-            data-status={status(node, partIndex)}
+            data-status={done(node) ? 'done' : 'todo'}
             aria-current={partIndex === index ? 'step' : undefined}
             disabled={blocked}
             onClick={() => {

@@ -122,6 +122,12 @@ for (const viewport of [
           path: testInfo.outputPath(`${state}.png`),
           animations: 'disabled',
         });
+        if (viewport.width === 1280) {
+          await testInfo.attach(state, {
+            path: testInfo.outputPath(`${state}.png`),
+            contentType: 'image/png',
+          });
+        }
       };
       const assertFits = async () => {
         const dimensions = await page.evaluate(() =>
@@ -147,6 +153,11 @@ for (const viewport of [
       const header = page.locator('.qs-practice-header');
       const back = header.getByRole('link');
       const stepper = header.locator('.qs-part-stepper');
+      const segments = stepper.locator('.qs-part-segment');
+      const uncompletedColour = await segments
+        .nth(1)
+        .evaluate((node) => getComputedStyle(node).backgroundColor);
+      await expect(segments.nth(0)).toHaveCSS('background-color', uncompletedColour);
       const finish = header.getByRole('button', { name: 'Save and finish later', exact: true });
       const headerBoxes = async () => ({
         back: await back.boundingBox(),
@@ -185,6 +196,8 @@ for (const viewport of [
       await award.focus();
       await award.press('Space');
       await expect(award).toBeChecked();
+      await expect(segments.nth(0)).not.toHaveCSS('background-color', uncompletedColour);
+      await expect(segments.nth(1)).toHaveCSS('background-color', uncompletedColour);
       await expect(primary).toBeEnabled();
       await award.press('Control+Enter');
       await expect(page.getByRole('button', { name: /criterion 2 of 2/ })).toBeVisible();
@@ -192,6 +205,7 @@ for (const viewport of [
       await award.focus();
       await award.press('Space');
       await expect(award).toBeChecked();
+      await expect(segments.nth(1)).not.toHaveCSS('background-color', uncompletedColour);
       const finishAttempt = card.getByRole('button', { name: 'Finish attempt', exact: true });
       await expect(finishAttempt).toBeEnabled();
       await finishAttempt.click();

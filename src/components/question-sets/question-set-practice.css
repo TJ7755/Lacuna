@@ -60,7 +60,7 @@
   background: hsl(var(--ink) / 0.45);
   color: hsl(var(--paper));
 }
-.qs-part-segment[data-status='current'] {
+.qs-part-stepper[data-open] .qs-part-segment[aria-current='step'] {
   background: hsl(var(--accent));
   color: hsl(var(--accent-fg));
 }
