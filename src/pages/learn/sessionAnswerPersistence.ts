@@ -5,6 +5,7 @@ import { upsertLessonCardExposure } from '../../db/lessonRepository';
 import { undoReview, type RecordReviewArgs, type ReviewUndo } from '../../db/reviewRepository';
 import type { Card, LessonCardExposure, UserPerformance } from '../../db/types';
 import type { CooldownMap } from '../../fsrs/cooldown';
+import type { RevisionSessionState } from '../../course/revisionSession';
 import type { SessionCardOutcome } from './types';
 import { persistAnswer } from './answerSteps';
 
@@ -19,13 +20,7 @@ export interface AnswerSnapshot {
   deckId: string;
   deckReviews: number;
   outcomeBefore?: SessionCardOutcome;
-  revisionCovered: Set<string>;
-  revisionImproved: Set<string>;
-  revisionParked: Set<string>;
-  revisionCompleted: Set<string>;
-  revisionRetryAt: Map<string, number>;
-  revisionFailures: Map<string, number>;
-  revisionReviewEventIds: string[];
+  revision: RevisionSessionState;
   simple?: {
     queue: Card[];
     mastered: Set<string>;

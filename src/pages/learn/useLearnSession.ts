@@ -92,7 +92,12 @@ import {
   persistSessionPracticeMilestone,
   type PracticeSession,
 } from './sessionCompletionPersistence';
-import { transitionRevisionAnswer, transitionSimpleAnswer } from './sessionTransitions';
+import { transitionSimpleAnswer } from './sessionTransitions';
+import {
+  createRevisionSessionState,
+  snapshotRevisionSessionState,
+  transitionRevisionAnswer,
+} from '../../course/revisionSession';
 import {
   answerCorrect,
   answerFeedback,
@@ -415,13 +420,7 @@ export function useLearnSession({
   const revisionPlanRef = useRef<RevisionPlan | null>(null);
   const revisionInitialRevision = useRef(0);
   const revisionWindowStartedAt = useRef(0);
-  const revisionCovered = useRef<Set<string>>(new Set());
-  const revisionImproved = useRef<Set<string>>(new Set());
-  const revisionParked = useRef<Set<string>>(new Set());
-  const revisionCompleted = useRef<Set<string>>(new Set());
-  const revisionRetryAt = useRef<Map<string, number>>(new Map());
-  const revisionFailures = useRef<Map<string, number>>(new Map());
-  const revisionReviewEventIds = useRef<string[]>([]);
+  const revisionSessionRef = useRef(createRevisionSessionState());
   const timerStart = useRef(0);
   const responseTime = useRef(0);
   // Elapsed thinking time captured when the edit overlay opens during the question
@@ -538,10 +537,10 @@ export function useLearnSession({
             initialRevision: revisionInitialRevision.current,
             sessionId: reviewSessionIdRef.current,
             startedAt: revisionWindowStartedAt.current,
-            covered: revisionCovered.current,
-            improved: revisionImproved.current,
-            parked: revisionParked.current,
-            reviewEventIds: revisionReviewEventIds.current,
+            covered: revisionSessionRef.current.covered,
+            improved: revisionSessionRef.current.improved,
+            parked: revisionSessionRef.current.parked,
+            reviewEventIds: revisionSessionRef.current.reviewEventIds,
             context: ctxRef.current,
             cards: cardsRef.current,
             practice: practiceSessionRef.current,
@@ -715,16 +714,17 @@ export function useLearnSession({
         ? window.budgetMinutes * 60 - (now - revisionWindowStartedAt.current) / 1000
         : 0;
       if (!window || remainingWindowSeconds <= 0 || now >= revisionPlan.input.deadlineAt) {
-        for (const cardId of revisionRetryAt.current.keys()) revisionParked.current.add(cardId);
+        for (const cardId of revisionSessionRef.current.retryAt.keys())
+          revisionSessionRef.current.parked.add(cardId);
         finish(false, false, true);
         return;
       }
       const eligibleCardIds = new Set(
         revisionPlan.scope.eligibleCardIds.filter(
           (cardId) =>
-            !revisionCompleted.current.has(cardId) &&
-            !revisionParked.current.has(cardId) &&
-            (revisionRetryAt.current.get(cardId) ?? 0) <= now,
+            !revisionSessionRef.current.completed.has(cardId) &&
+            !revisionSessionRef.current.parked.has(cardId) &&
+            (revisionSessionRef.current.retryAt.get(cardId) ?? 0) <= now,
         ),
       );
       const objectiveContext = ctx.decks.values().next().value?.oc;
@@ -749,7 +749,8 @@ export function useLearnSession({
           : (allocation.selected?.card ??
             (allocation.stopReason ? undefined : allocation.fallbackCards[0]));
       if (!next) {
-        for (const cardId of revisionRetryAt.current.keys()) revisionParked.current.add(cardId);
+        for (const cardId of revisionSessionRef.current.retryAt.keys())
+          revisionSessionRef.current.parked.add(cardId);
         finish(true);
         return;
       }
@@ -887,13 +888,7 @@ export function useLearnSession({
     revisionPlanRef.current = null;
     revisionInitialRevision.current = 0;
     revisionWindowStartedAt.current = 0;
-    revisionCovered.current = new Set();
-    revisionImproved.current = new Set();
-    revisionParked.current = new Set();
-    revisionCompleted.current = new Set();
-    revisionRetryAt.current = new Map();
-    revisionFailures.current = new Map();
-    revisionReviewEventIds.current = [];
+    revisionSessionRef.current = createRevisionSessionState();
     reviewsByDeck.current = new Map();
     reviewsDayStart.current = 0;
     setCanUndo(false);
@@ -1466,13 +1461,7 @@ export function useLearnSession({
               deckId: deck.id,
               deckReviews: reviewsByDeck.current.get(deck.id) ?? 0,
               outcomeBefore,
-              revisionCovered: new Set(revisionCovered.current),
-              revisionImproved: new Set(revisionImproved.current),
-              revisionParked: new Set(revisionParked.current),
-              revisionCompleted: new Set(revisionCompleted.current),
-              revisionRetryAt: new Map(revisionRetryAt.current),
-              revisionFailures: new Map(revisionFailures.current),
-              revisionReviewEventIds: [...revisionReviewEventIds.current],
+              revision: snapshotRevisionSessionState(revisionSessionRef.current),
               simple: simpleSnapshot,
             }
           : null;
@@ -1671,15 +1660,7 @@ export function useLearnSession({
       const perfBefore = perf ?? null;
       const outcomeBefore = sessionCardOutcomes.get(cardNow.id);
       const eventId = pendingReviewEventId.current ?? makeId();
-      const revisionSnapshot = {
-        revisionCovered: new Set(revisionCovered.current),
-        revisionImproved: new Set(revisionImproved.current),
-        revisionParked: new Set(revisionParked.current),
-        revisionCompleted: new Set(revisionCompleted.current),
-        revisionRetryAt: new Map(revisionRetryAt.current),
-        revisionFailures: new Map(revisionFailures.current),
-        revisionReviewEventIds: [...revisionReviewEventIds.current],
-      };
+      const revisionSnapshot = snapshotRevisionSessionState(revisionSessionRef.current);
       pendingReviewEventId.current = eventId;
 
       const { result, performance: nextPerf } = await persistAnswer(
@@ -1726,36 +1707,20 @@ export function useLearnSession({
       sessionCardOutcomesRef.current = nextOutcomes;
       setSchedulerProgress(sessionCompletionProgress(nextCards, ctx, nextOutcomes));
       if (revisionPlanRef.current && requestWindowId) {
-        if (recorded) revisionReviewEventIds.current.push(eventId);
+        if (recorded) revisionSessionRef.current.reviewEventIds.push(eventId);
         const now = Date.now();
         const window = revisionPlanRef.current.windows.find(
           (candidate) => candidate.id === requestWindowId,
         );
-        const nextRevision = transitionRevisionAnswer(
-          {
-            covered: revisionCovered.current,
-            improved: revisionImproved.current,
-            parked: revisionParked.current,
-            completed: revisionCompleted.current,
-            retryAt: revisionRetryAt.current,
-            failures: revisionFailures.current,
-          },
-          {
-            cardId: updated.id,
-            correct,
-            now,
-            productiveAt: updated.due ?? now,
-            windowEndsAt: window
-              ? revisionWindowStartedAt.current + window.budgetMinutes * 60_000
-              : now,
-          },
-        );
-        revisionCovered.current = nextRevision.covered;
-        revisionImproved.current = nextRevision.improved;
-        revisionParked.current = nextRevision.parked;
-        revisionCompleted.current = nextRevision.completed;
-        revisionRetryAt.current = nextRevision.retryAt;
-        revisionFailures.current = nextRevision.failures;
+        revisionSessionRef.current = transitionRevisionAnswer(revisionSessionRef.current, {
+          cardId: updated.id,
+          correct,
+          now,
+          productiveAt: updated.due ?? now,
+          windowEndsAt: window
+            ? revisionWindowStartedAt.current + window.budgetMinutes * 60_000
+            : now,
+        });
       } else if (grade === 1) {
         // Global sessions span several decks, so size the cooldown to just this
         // card's deck; course/lesson sessions are already scoped to their own
@@ -1804,7 +1769,7 @@ export function useLearnSession({
             deckId: deck.id,
             deckReviews,
             outcomeBefore,
-            ...revisionSnapshot,
+            revision: revisionSnapshot,
           }
         : null;
       setCanUndo(recorded);
@@ -1938,13 +1903,7 @@ export function useLearnSession({
         setSessionCardOutcomes(restoredOutcomes);
         setSchedulerProgress(sessionCompletionProgress(cardsRef.current, ctx, restoredOutcomes));
         cooldowns.current = snap.cooldowns;
-        revisionCovered.current = snap.revisionCovered;
-        revisionImproved.current = snap.revisionImproved;
-        revisionParked.current = snap.revisionParked;
-        revisionCompleted.current = snap.revisionCompleted;
-        revisionRetryAt.current = snap.revisionRetryAt;
-        revisionFailures.current = snap.revisionFailures;
-        revisionReviewEventIds.current = snap.revisionReviewEventIds;
+        revisionSessionRef.current = snap.revision;
         perfRef.current.set(snap.deckId, snap.undo.perfBefore ?? emptyPerformance(snap.deckId));
         events.current = events.current.slice(0, snap.eventsLen);
         if (snap.simple) {
