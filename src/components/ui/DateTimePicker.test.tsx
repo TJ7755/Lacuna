@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DateTimePicker } from './DateTimePicker';
 
 function ControlledPicker({
@@ -303,6 +303,25 @@ describe('DateTimePicker', () => {
     fireEvent.keyDown(await day('29 February 2028'), { key: 'Enter' });
     expect(onChange).toHaveBeenLastCalledWith(Date.UTC(2028, 1, 29, 14, 30));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('navigates from adjacent-month cells without changing the selected value', async () => {
+    const onChange = vi.fn();
+    render(<ControlledPicker initialValue={Date.UTC(2026, 0, 10, 14, 30)} onChange={onChange} />);
+    openPicker();
+
+    const previousMonth = screen.getByRole('button', { name: '31 December 2025' });
+    act(() => previousMonth.focus());
+    expect(fireEvent.keyDown(previousMonth, { key: 'a' })).toBe(true);
+    expect(previousMonth).toHaveFocus();
+    fireEvent.keyDown(previousMonth, { key: 'ArrowLeft' });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '30 December 2025' })).toHaveFocus(),
+    );
+    expect(screen.getByRole('button', { name: 'Pick a date' })).toHaveTextContent(
+      '10 Jan 2026 · 14:30',
+    );
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('moves by weeks and week boundaries and selects with Space', async () => {

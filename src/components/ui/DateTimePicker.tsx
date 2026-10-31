@@ -1,5 +1,5 @@
 import { scaledSpring } from './motion';
-import { calendarKeyboardDate } from './calendarKeyboardDate';
+import { dateTimePickerDayAction } from './dateTimePickerDayAction';
 import { buttonClassName } from './buttonStyles';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -188,33 +188,27 @@ export function DateTimePicker({
     [year, month, hours, minutes, onChange, reportValidity, timeZone],
   );
 
-  // Date arithmetic uses UTC only as a calendar coordinate, never as the chosen instant.
   const handleDayKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
-      const current = focusIndex ?? initialFocusIndex;
-      const cell = cells[current];
-      if (!cell) return;
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        selectDay(cell.day, cell.currentMonth);
-        return;
-      }
-      const { y, m } = resolveAdjacentMonth(cell.day, cell.currentMonth, year, month);
-      const next = calendarKeyboardDate(y, m, cell.day, event.key, event.shiftKey);
-      if (!next) return;
+      const action = dateTimePickerDayAction(
+        { year, month },
+        cells,
+        focusIndex ?? initialFocusIndex,
+        event.key,
+        event.shiftKey,
+      );
+      if (!action) return;
       event.preventDefault();
-      if (next.year !== year || next.month !== month) {
-        setSlideDir(next.year * 12 + next.month > year * 12 + month ? 1 : -1);
+      if (action.kind === 'select') {
+        selectDay(action.day, action.currentMonth);
+      } else if (action.direction !== 0) {
+        setSlideDir(action.direction);
         dayRefs.current = [];
-        const index = new Date(Date.UTC(next.year, next.month, 1)).getUTCDay() + next.day - 1;
-        pendingGridFocusRef.current = { mode: 'days', index };
-        setView({ year: next.year, month: next.month });
+        pendingGridFocusRef.current = { mode: 'days', index: action.index };
+        setView(action.view);
       } else {
-        const index = cells.findIndex(
-          (candidate) => candidate.currentMonth && candidate.day === next.day,
-        );
-        setFocusIndex(index);
-        dayRefs.current[index]?.focus();
+        setFocusIndex(action.index);
+        dayRefs.current[action.index]?.focus();
       }
     },
     [cells, focusIndex, initialFocusIndex, month, selectDay, year],
