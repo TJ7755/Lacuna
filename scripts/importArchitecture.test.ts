@@ -52,12 +52,45 @@ describe('domain-to-UI boundary', () => {
     project.write('src/components/import/mergeReviewRows.ts', 'export const value = 1;');
     project.write('src/components/analytics/prepare.ts', 'export const value = 1;');
     const probes = [
-      ...['db', 'fsrs', 'sync', 'ai', 'mcp', 'questions', 'state', 'course'].map((domain) => ({
-        filePath: `src/${domain}/probe.ts`,
-        source:
-          "import type { Contract } from '../components/contract'; export type Result = Contract;",
-        forbidden: true,
-      })),
+      ...[
+        'db',
+        'fsrs',
+        'sync',
+        'ai',
+        'mcp',
+        'questions',
+        'state',
+        'course',
+        'insights',
+        'items',
+        'jev',
+        'media',
+        'onboarding',
+        'shareLinks',
+        'specifications',
+      ].flatMap((domain) => [
+        {
+          filePath: `src/${domain}/probe.ts`,
+          source:
+            "import type { Contract } from '../components/contract'; export type Result = Contract;",
+          forbidden: true,
+        },
+        {
+          filePath: `src/${domain}/nested/probe.ts`,
+          source: "export const load = () => import('../../teacher/contract');",
+          forbidden: true,
+        },
+        {
+          filePath: `src/${domain}/probe.test.ts`,
+          source: "export type Result = import('../pages/contract').Contract;",
+          forbidden: true,
+        },
+        {
+          filePath: `src/${domain}/probe.ts`,
+          source: "export type { Contract } from '../db/contract';",
+          forbidden: false,
+        },
+      ]),
       ...[
         "export { value } from '../pages/contract';",
         "export type { Contract } from '../teacher/contract';",
@@ -90,20 +123,20 @@ describe('domain-to-UI boundary', () => {
         source: "export { value } from '../components/contract';",
         forbidden: true,
       },
+      ...['pages', 'components', 'teacher', 'library', 'routes', 'hooks'].map((folder) => ({
+        filePath: `src/${folder}/probe.ts`,
+        source: "export type { Contract } from '../components/contract';",
+        forbidden: false,
+      })),
       {
-        filePath: 'src/course/probe.test.ts',
-        source: "export { value } from '../components/contract';",
+        filePath: 'src/insights/probe.js',
+        source: "export { value } from '../pages/contract';",
         forbidden: true,
       },
       {
-        filePath: 'src/course/probe.ts',
-        source: "export type { Contract } from '../db/contract';",
-        forbidden: false,
-      },
-      {
-        filePath: 'src/pages/probe.ts',
-        source: "export type { Contract } from '../components/contract';",
-        forbidden: false,
+        filePath: 'src/shareLinks/lessonPrerequisites.test.ts',
+        source: "export { value } from '../components/import/mergeReviewRows';",
+        forbidden: true,
       },
     ];
     project.write('src/components/index.ts', "export * from './contract';");
@@ -131,7 +164,11 @@ describe('domain-to-UI boundary', () => {
     );
     expect(result.error).toBeUndefined();
     expect(result.status, result.stderr).toBe(0);
-    expect(JSON.parse(result.stdout)).toEqual(probes.map((probe) => Number(probe.forbidden)));
+    const counts: number[] = JSON.parse(result.stdout);
+    expect(counts).toHaveLength(probes.length);
+    probes.forEach((probe, index) => {
+      expect(counts[index], `${probe.filePath}: ${probe.source}`).toBe(Number(probe.forbidden));
+    });
   });
 });
 
@@ -184,21 +221,24 @@ describe('src value-import cycles', () => {
     ['jsx', 'd.ts'],
     ['mjs', 'd.mts'],
     ['cjs', 'd.cts'],
-  ])('rejects a JavaScript cycle shadowed by companion declarations (%s)', (extension, declaration) => {
-    const project = fixture();
-    const source = (target: string) =>
-      extension === 'cjs' ? `require('./${target}.cjs');` : `import './${target}.${extension}';`;
-    project.write(`src/a.${extension}`, source('b'));
-    project.write(`src/b.${extension}`, source('a'));
-    expect(cycles(project.root).status).toBe(1);
-    project.write(`src/a.${declaration}`, 'export {};');
-    project.write(`src/b.${declaration}`, 'export {};');
-    const result = cycles(project.root);
-    expect(result.error).toBeUndefined();
-    expect(result.status, result.stderr).toBe(1);
-    expect(result.stderr).toContain(`src/a.${extension} -> src/b.${extension}`);
-    expect(result.stderr).toContain(`src/b.${extension} -> src/a.${extension}`);
-  });
+  ])(
+    'rejects a JavaScript cycle shadowed by companion declarations (%s)',
+    (extension, declaration) => {
+      const project = fixture();
+      const source = (target: string) =>
+        extension === 'cjs' ? `require('./${target}.cjs');` : `import './${target}.${extension}';`;
+      project.write(`src/a.${extension}`, source('b'));
+      project.write(`src/b.${extension}`, source('a'));
+      expect(cycles(project.root).status).toBe(1);
+      project.write(`src/a.${declaration}`, 'export {};');
+      project.write(`src/b.${declaration}`, 'export {};');
+      const result = cycles(project.root);
+      expect(result.error).toBeUndefined();
+      expect(result.status, result.stderr).toBe(1);
+      expect(result.stderr).toContain(`src/a.${extension} -> src/b.${extension}`);
+      expect(result.stderr).toContain(`src/b.${extension} -> src/a.${extension}`);
+    },
+  );
 
   it('resolves runtime aliases and indexes without adding explicit type-only edges', () => {
     const project = fixture();

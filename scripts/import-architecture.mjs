@@ -2,6 +2,25 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
 
+// Domain owners must not depend on UI composition, including through type imports.
+export const domainDirectories = [
+  'ai',
+  'course',
+  'db',
+  'fsrs',
+  'insights',
+  'items',
+  'jev',
+  'mcp',
+  'media',
+  'onboarding',
+  'questions',
+  'shareLinks',
+  'specifications',
+  'state',
+  'sync',
+];
+
 const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const declarationExtension = /\.d\.[cm]?ts$/;
 export const sourcePath = (root, file) => relative(root, file).split(sep).join('/');
@@ -77,7 +96,8 @@ export const domainUiRule = {
   create(context) {
     const root = context.cwd;
     const importer = context.filename;
-    if (!/^src\/(?:db|fsrs|sync|ai|mcp|questions|state|course)\//.test(sourcePath(root, importer)))
+    const importerPath = sourcePath(root, importer);
+    if (!domainDirectories.some((directory) => importerPath.startsWith(`src/${directory}/`)))
       return {};
     const resolveImport = createResolver(root);
     const check = (node, source) => {
