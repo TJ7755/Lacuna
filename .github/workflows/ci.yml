@@ -189,7 +189,7 @@ jobs:
 
       - name: Verify CI predicates and browser diagnostics without browsers
         if: matrix.shard == 1
-        run: node --test scripts/local-checks.test.mjs scripts/security-runtime.test.mjs scripts/ci-workflow.test.mjs scripts/ci-recover-stale-jobs.test.mjs scripts/browser-ci-summary.test.mjs scripts/ci-browser-shards.test.mjs scripts/ci-wait-for-production.test.mjs
+        run: node --test scripts/vercel-ignore-build.test.mjs scripts/local-checks.test.mjs scripts/security-runtime.test.mjs scripts/ci-workflow.test.mjs scripts/ci-recover-stale-jobs.test.mjs scripts/browser-ci-summary.test.mjs scripts/ci-browser-shards.test.mjs scripts/ci-wait-for-production.test.mjs
       # Each shard spends most of its time importing modules and creating DOM
       # environments, so use every runner core rather than the one-worker local default.
       - run: bun run test:ci:unit -- --shard=${{ matrix.shard }}/8 --maxWorkers=100%
