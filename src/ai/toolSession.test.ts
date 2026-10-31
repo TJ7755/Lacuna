@@ -13,22 +13,20 @@ beforeEach(async () => {
 });
 
 function makeExecutor() {
-  return vi.fn(
-    async (request: ToolExecutionRequest): Promise<ToolExecutionOutcome> => ({
-      ok: true,
-      result:
-        request.toolName === 'lacuna.create_course'
-          ? { id: 'created-course', name: (request.input as { name: string }).name }
-          : { id: 'result' },
-      receipt: {
-        callId: request.callId,
-        toolName: request.toolName,
-        requiredScope: request.grant.scope,
-        target: { courseId: request.grant.courseId, label: request.grant.label },
-        completedAt: 100,
-      },
-    }),
-  );
+  return vi.fn(async (request: ToolExecutionRequest): Promise<ToolExecutionOutcome> => ({
+    ok: true,
+    result:
+      request.toolName === 'lacuna.create_course'
+        ? { id: 'created-course', name: (request.input as { name: string }).name }
+        : { id: 'result' },
+    receipt: {
+      callId: request.callId,
+      toolName: request.toolName,
+      requiredScope: request.grant.scope,
+      target: { courseId: request.grant.courseId, label: request.grant.label },
+      completedAt: 100,
+    },
+  }));
 }
 
 function makeSession(
@@ -65,9 +63,7 @@ describe('AiToolSession', () => {
   it('suggests valid tools when an agent guesses a legacy deck name', async () => {
     const { session } = makeSession();
 
-    await expect(
-      invoke(session, { toolName: 'lacuna.list_decks' }),
-    ).resolves.toMatchObject({
+    await expect(invoke(session, { toolName: 'lacuna.list_decks' })).resolves.toMatchObject({
       response: {
         ok: false,
         error: {
@@ -110,6 +106,61 @@ describe('AiToolSession', () => {
       },
     });
     expect(JSON.stringify(outcome)).not.toContain('/Users/Private');
+    expect(outcome.effects).toEqual({
+      activity: { status: 'failed', summary: 'The Lacuna domain tool failed.', updatedAt: 100 },
+    });
+    expect(await invoke(session)).toEqual({ response: outcome.response, effects: {} });
+    expect(executeToolCall).toHaveBeenCalledTimes(1);
+  });
+
+  it('records an invalid result before failure activity and replays it without execution', async () => {
+    const executeToolCall = makeExecutor();
+    executeToolCall.mockImplementation(async (request) => ({
+      ok: true,
+      result: { invalid: Number.NaN },
+      receipt: {
+        callId: request.callId,
+        toolName: request.toolName,
+        requiredScope: request.grant.scope,
+        target: { courseId: request.grant.courseId },
+        completedAt: 90,
+      },
+    }));
+    const ledgerSizes: number[] = [];
+    const createId = vi.fn(() => 'unused');
+    const session = new AiToolSession({
+      executeToolCall,
+      digest: (input) => input,
+      createId,
+      now: () => {
+        ledgerSizes.push(session.exportState().ledger.length);
+        return 100;
+      },
+    });
+
+    expect(await invoke(session)).toEqual({
+      response: {
+        ok: false,
+        error: { kind: 'internal', message: 'Tool result is not JSON-safe.' },
+      },
+      effects: {
+        activity: { status: 'failed', summary: 'Tool result was not JSON-safe.', updatedAt: 100 },
+      },
+    });
+    expect(ledgerSizes).toEqual([0, 1]);
+    const restored = new AiToolSession(
+      { executeToolCall, digest: (input) => input },
+      session.exportState(),
+    );
+    expect(await invoke(restored)).toEqual({
+      response: {
+        ok: false,
+        error: { kind: 'internal', message: 'Tool result is not JSON-safe.' },
+      },
+      effects: {},
+    });
+    expect(executeToolCall).toHaveBeenCalledTimes(1);
+    expect(createId).not.toHaveBeenCalled();
   });
 
   it('executes reads with an implicit exact read grant', async () => {
@@ -206,7 +257,8 @@ describe('AiToolSession', () => {
     const retry = await invoke(session, request);
 
     expect(retry.response).toMatchObject({
-      ok: false, error: { kind: 'conflict', message: 'You rejected this write. No change was made.' },
+      ok: false,
+      error: { kind: 'conflict', message: 'You rejected this write. No change was made.' },
     });
     expect(executeToolCall).not.toHaveBeenCalled();
   });
@@ -220,7 +272,8 @@ describe('AiToolSession', () => {
     const retry = await invoke(session, request);
 
     expect(retry.response).toMatchObject({
-      ok: false, error: { kind: 'conflict', message: 'You rejected this action. No change was made.' },
+      ok: false,
+      error: { kind: 'conflict', message: 'You rejected this action. No change was made.' },
     });
     expect(executeToolCall).not.toHaveBeenCalled();
   });
@@ -240,7 +293,8 @@ describe('AiToolSession', () => {
     const retry = await invoke(session, request);
 
     expect(retry.response).toMatchObject({
-      ok: false, error: { kind: 'conflict', message: 'This approval expired. No change was made.' },
+      ok: false,
+      error: { kind: 'conflict', message: 'This approval expired. No change was made.' },
     });
     expect(executeToolCall).not.toHaveBeenCalled();
   });
