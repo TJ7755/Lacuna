@@ -47,7 +47,8 @@ import {
 import { clearTombstone, stampUpdatedAt } from './mutationStamp';
 import { assertValidCardPayload } from '../items/payloadValidation';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
-import { diffLineage, jsonValuesEqual } from './lineageDiff';
+import { diffLineage } from './lineageDiff';
+import { courseDetailChanges, courseSource } from './mergeImportCourseDetails';
 import type { LineageDiffInput } from './lineageDiff';
 import {
   applyImportedCourseScheduling,
@@ -58,7 +59,6 @@ import type { SharePayload } from './share';
 import type {
   Card,
   Course,
-  CourseDistributedCopy,
   CourseRecord,
   Lesson,
   ItemPayload,
@@ -117,26 +117,6 @@ export {
   rejectMergeReviewItems,
 } from './mergeReview';
 export type { MergeReviewItemKind, MergeReviewItemRef } from './mergeReview';
-
-/** The teacher's course details as first import writes them. */
-function courseSource(payload: LineagePayload): NonNullable<CourseDistributedCopy['source']> {
-  return {
-    name: payload.course.n || 'Shared course',
-    description: payload.course.d ?? '',
-    creator: payload.by ?? undefined,
-    unlockMode: payload.course.um,
-    ...(payload.course.specificationRef === undefined
-      ? {}
-      : { specificationRef: payload.course.specificationRef }),
-    ...(payload.course.specificationData === undefined
-      ? {}
-      : { specificationData: payload.course.specificationData }),
-    ...(payload.course.examBoard === undefined ? {} : { examBoard: payload.course.examBoard }),
-    ...(payload.course.specification === undefined
-      ? {}
-      : { specification: payload.course.specification }),
-  };
-}
 
 async function lineageIdsInUse(payload: LineagePayload): Promise<boolean> {
   const lessonIds = payload.lessons.flatMap((lesson) => (lesson.i ? [lesson.i] : []));
@@ -619,34 +599,7 @@ export async function mergeLineageUpdate(
     // 6. Course details, revision + mapping bookkeeping. A detail the learner changed
     // since the last import (it no longer matches `dc.source`) is theirs to keep.
     const source = courseSource(payload);
-    const detailChanges: Partial<CourseRecord> = {};
-    const local = {
-      name: course.name,
-      description: course.description ?? '',
-      unlockMode: course.unlockMode,
-      creator: course.creator,
-      specificationRef: course.specificationRef,
-      specificationData: course.specificationData,
-      examBoard: course.examBoard,
-      specification: course.specification,
-    };
-    for (const key of [
-      'name',
-      'description',
-      'unlockMode',
-      'creator',
-      'specificationRef',
-      'specificationData',
-      'examBoard',
-      'specification',
-    ] as const) {
-      if (
-        !jsonValuesEqual(local[key], source[key]) &&
-        (!dc.source || jsonValuesEqual(local[key], dc.source[key]))
-      ) {
-        Object.assign(detailChanges, { [key]: source[key] });
-      }
-    }
+    const detailChanges = courseDetailChanges(course, source);
     // A teacher import may update its locked copy; public authoring mutations remain gated.
     await db.courses.update(
       courseId,
