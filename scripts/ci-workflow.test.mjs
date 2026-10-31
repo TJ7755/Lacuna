@@ -975,7 +975,7 @@ test('push scope still selects the full matrix regardless of changed web specs',
   }
 });
 
-test('pull requests run 20 heavy matrix instances against 44 on pushes, and to 4 for web spec-only changes', () => {
+test('pull requests run 22 heavy matrix instances against 46 on pushes, and to 4 for web spec-only changes', () => {
   const count = (scope, event_name = 'pull_request') => {
     const outputs = Object.fromEntries(
       Object.entries(scope).map(([key, value]) => [key, String(value)]),
@@ -1003,8 +1003,8 @@ test('pull requests run 20 heavy matrix instances against 44 on pushes, and to 4
     }
     return { heavy, runners };
   };
-  assert.deepEqual(count(classifyPaths(['unknown/file']), 'push'), { heavy: 44, runners: 48 });
-  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 20, runners: 24 });
+  assert.deepEqual(count(classifyPaths(['unknown/file']), 'push'), { heavy: 46, runners: 50 });
+  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 22, runners: 26 });
   assert.deepEqual(count(classifyPaths(['tests/e2e/study-flip.spec.ts'])), {
     heavy: 4,
     runners: 11,
