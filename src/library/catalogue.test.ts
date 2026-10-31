@@ -93,12 +93,19 @@ describe('libraryCourses', () => {
       ['Biology', 'Chemistry', 'Physics', 'Combined Science'].includes(subject),
     );
     for (const course of scienceCourses) {
-      expect(course.summary).toMatch(/selected|selection/);
+      if (course.qualification.includes('International GCSE')) {
+        expect(course.summary).toContain('International GCSE');
+      } else if (course.board === 'Cambridge') {
+        expect(course.summary).toContain('Core and Supplement');
+      } else {
+        expect(course.summary).toContain('Higher-tier GCSE');
+        expect(course.summary).toContain('shared Foundation content');
+      }
     }
     const combined = libraryCourses.filter(({ subject }) => subject === 'Combined Science');
     expect(combined.map(({ code }) => code)).toEqual(['8464', '1SC0', 'J250']);
     for (const course of combined) {
-      expect(course.summary).toMatch(/^A Higher-tier selection of biology, chemistry and physics/);
+      expect(course.summary).toContain('biology, chemistry, physics and practical exam practice');
       expect(course.topics.length).toBeGreaterThan(8);
     }
   });

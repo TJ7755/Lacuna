@@ -56,7 +56,6 @@ const physicsTopicPreview = [
   'Writing a workable investigation plan',
 ] as const;
 
-/** Topic previews describe the published selection, not complete syllabus coverage. */
 export const libraryCourses: readonly LibraryCourse[] = [
   {
     id: 'biology4bi1',
@@ -67,7 +66,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     board: 'Pearson Edexcel',
     qualification: 'Pearson Edexcel International GCSE',
     code: '4BI1',
-    summary: 'Biology concepts and original practice across selected International GCSE topics.',
+    summary: 'International GCSE Biology with flashcards, exam questions and practical reasoning.',
     topics: [
       'The nature and variety of living organisms',
       'Structures and functions in living organisms',
@@ -87,7 +86,8 @@ export const libraryCourses: readonly LibraryCourse[] = [
     board: 'Pearson Edexcel',
     qualification: 'Pearson Edexcel International GCSE',
     code: '4CH1',
-    summary: 'Chemistry concepts and original practice across selected International GCSE topics.',
+    summary:
+      'International GCSE Chemistry with flashcards, exam questions and practical reasoning.',
     topics: [
       'Principles of chemistry',
       'Inorganic chemistry',
@@ -106,7 +106,8 @@ export const libraryCourses: readonly LibraryCourse[] = [
     board: 'Cambridge',
     qualification: 'Cambridge IGCSE (9–1)',
     code: '0972',
-    summary: 'Physics concepts and original practice across selected International GCSE topics.',
+    summary:
+      'Extended IGCSE Physics, covering Core and Supplement content, with theory and practical exam practice.',
     topics: [
       'Motion, forces and energy',
       'Thermal physics',
@@ -128,7 +129,8 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'Cambridge IGCSE',
     code: '0977',
     alternativeCodes: ['0470'],
-    summary: 'The twentieth-century world and Germany, 1918–45.',
+    summary:
+      'School selection: Option B Topics 1–5 and Germany, 1918–45. Papers 1–2; Topic 6 and coursework are excluded.',
     topics: [
       'Option B: Was the Treaty of Versailles fair?',
       'Option B: To what extent was the League of Nations a success?',
@@ -150,7 +152,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'AQA GCSE',
     code: '8062',
     summary:
-      'Christianity and Islam: beliefs, teachings and practices, with optional Themes A–F modules to choose from. Short lesson-level practice uses 1, 1, 4 and 6-mark question styles.',
+      'Christianity and Islam: beliefs, teachings and practices, with optional Themes A–F modules. Lesson practice uses 1, 1, 4 and 6-mark question styles.',
     topics: [
       'Christian monotheism and the Trinity',
       'Christian prayer',
@@ -176,7 +178,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'AQA GCSE',
     code: '8461',
     summary:
-      'Selected AQA Biology topics and original practice. Some board requirements remain outside this selection.',
+      'Higher-tier GCSE Biology, including shared Foundation content, with exam questions and practical reasoning.',
     topics: biologyTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/9a44358aa0d59d1f1fbd02b30c38b746',
     stats: { cards: 1328, notes: 152, practiceSets: 152, practiceMarks: 1371 },
@@ -191,7 +193,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'AQA GCSE',
     code: '8462',
     summary:
-      'Selected AQA Chemistry topics and original practice. Some board requirements remain outside this selection.',
+      'Higher-tier GCSE Chemistry, including shared Foundation content, with exam questions and practical reasoning.',
     topics: chemistryTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/40aab20ad7ab21811e1059b47522cc3a',
     stats: { cards: 980, notes: 139, practiceSets: 145, practiceMarks: 1293 },
@@ -206,7 +208,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'AQA GCSE',
     code: '8463',
     summary:
-      'Selected AQA Physics topics and original practice. Some board requirements remain outside this selection.',
+      'Higher-tier GCSE Physics, including shared Foundation content, with exam questions and practical reasoning.',
     topics: physicsTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/e0da40253700207827f2b26455bd9ed6',
     stats: { cards: 1164, notes: 140, practiceSets: 141, practiceMarks: 1698 },
@@ -221,7 +223,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'Cambridge IGCSE',
     code: '0610',
     summary:
-      'Selected Cambridge Biology topics and original practice. Some board requirements remain outside this selection.',
+      'Extended IGCSE Biology, covering Core and Supplement content, with theory and practical exam practice.',
     topics: biologyTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/819c37db9ae88c45631f51348b7b44f2',
     stats: { cards: 1398, notes: 155, practiceSets: 155, practiceMarks: 1414 },
@@ -236,7 +238,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'Cambridge IGCSE',
     code: '0620',
     summary:
-      'Selected Cambridge Chemistry topics and original practice. Some board requirements remain outside this selection.',
+      'Extended IGCSE Chemistry, covering Core and Supplement content, with theory and practical exam practice.',
     topics: chemistryTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/40d06cbdd6fc0170da1faa1e1192e3fb',
     stats: { cards: 990, notes: 137, practiceSets: 143, practiceMarks: 1278 },
@@ -251,7 +253,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'Cambridge IGCSE',
     code: '0625',
     summary:
-      'Selected Cambridge Physics topics and original practice. Some board requirements remain outside this selection.',
+      'Extended IGCSE Physics, covering Core and Supplement content, with theory and practical exam practice.',
     topics: physicsTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/6f78a8e5f86fd26bf5be39ff96a13733',
     stats: { cards: 1228, notes: 150, practiceSets: 151, practiceMarks: 1827 },
@@ -266,7 +268,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'Cambridge IGCSE (9–1)',
     code: '0970',
     summary:
-      'Selected Cambridge Biology topics and original practice. Some board requirements remain outside this selection.',
+      'Extended IGCSE Biology, covering Core and Supplement content, with theory and practical exam practice.',
     topics: biologyTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/4e756f914aea44bfe8312b2e9cb83843',
     stats: { cards: 1398, notes: 155, practiceSets: 155, practiceMarks: 1414 },
@@ -281,7 +283,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'Cambridge IGCSE (9–1)',
     code: '0971',
     summary:
-      'Selected Cambridge Chemistry topics and original practice. Some board requirements remain outside this selection.',
+      'Extended IGCSE Chemistry, covering Core and Supplement content, with theory and practical exam practice.',
     topics: chemistryTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/6d31d711f32f4c3ee59884e86d2a7d7f',
     stats: { cards: 990, notes: 137, practiceSets: 143, practiceMarks: 1278 },
@@ -296,7 +298,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'Pearson Edexcel GCSE',
     code: '1BI0',
     summary:
-      'Selected Pearson Edexcel Biology topics and original practice. Some board requirements remain outside this selection.',
+      'Higher-tier GCSE Biology, including shared Foundation content, with exam questions and practical reasoning.',
     topics: biologyTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/f59cf55a906edfede13902ca7bfda358',
     stats: { cards: 1304, notes: 147, practiceSets: 148, practiceMarks: 1350 },
@@ -311,7 +313,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'Pearson Edexcel GCSE',
     code: '1CH0',
     summary:
-      'Selected Pearson Edexcel Chemistry topics and original practice. Some board requirements remain outside this selection.',
+      'Higher-tier GCSE Chemistry, including shared Foundation content, with exam questions and practical reasoning.',
     topics: chemistryTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/79c53406f469e40ec6949746d6879167',
     stats: { cards: 985, notes: 140, practiceSets: 146, practiceMarks: 1305 },
@@ -326,7 +328,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'Pearson Edexcel GCSE',
     code: '1PH0',
     summary:
-      'Selected Pearson Edexcel Physics topics and original practice. Some board requirements remain outside this selection.',
+      'Higher-tier GCSE Physics, including shared Foundation content, with exam questions and practical reasoning.',
     topics: physicsTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/6ab9bb362064a8f661737b11b634b6d1',
     stats: { cards: 1160, notes: 140, practiceSets: 141, practiceMarks: 1702 },
@@ -341,7 +343,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'OCR GCSE',
     code: 'J247',
     summary:
-      'Selected OCR Biology topics and original practice. Some board requirements remain outside this selection.',
+      'Higher-tier GCSE Biology, including shared Foundation content, with exam questions and practical reasoning.',
     topics: biologyTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/b9079bf89fcc37a4dfaa4f665c8ea236',
     stats: { cards: 1311, notes: 149, practiceSets: 149, practiceMarks: 1344 },
@@ -356,7 +358,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'OCR GCSE',
     code: 'J248',
     summary:
-      'Selected OCR Chemistry topics and original practice. Some board requirements remain outside this selection.',
+      'Higher-tier GCSE Chemistry, including shared Foundation content, with exam questions and practical reasoning.',
     topics: chemistryTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/96fbd96735ce0d4efe7d05675eb6cb72',
     stats: { cards: 972, notes: 136, practiceSets: 142, practiceMarks: 1276 },
@@ -371,7 +373,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'OCR GCSE',
     code: 'J249',
     summary:
-      'Selected OCR Physics topics and original practice. Some board requirements remain outside this selection.',
+      'Higher-tier GCSE Physics, including shared Foundation content, with exam questions and practical reasoning.',
     topics: physicsTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/c93779cc47d65de9af9fd421914b06bb',
     stats: { cards: 1170, notes: 141, practiceSets: 142, practiceMarks: 1709 },
@@ -386,7 +388,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'OCR GCSE',
     code: 'J257',
     summary:
-      'Selected OCR Biology topics and original practice. Some board requirements remain outside this selection.',
+      'Higher-tier GCSE Biology, including shared Foundation content, with exam questions and practical reasoning.',
     topics: biologyTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/405b448b4804d48c3bd80a4d3ccfd85d',
     stats: { cards: 1287, notes: 147, practiceSets: 147, practiceMarks: 1326 },
@@ -401,7 +403,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'OCR GCSE',
     code: 'J258',
     summary:
-      'Selected OCR Chemistry topics and original practice. Some board requirements remain outside this selection.',
+      'Higher-tier GCSE Chemistry, including shared Foundation content, with exam questions and practical reasoning.',
     topics: chemistryTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/ae447daf5e1b587fd7e725dd1db8ec27',
     stats: { cards: 972, notes: 136, practiceSets: 142, practiceMarks: 1276 },
@@ -416,7 +418,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'OCR GCSE',
     code: 'J259',
     summary:
-      'Selected OCR Physics topics and original practice. Some board requirements remain outside this selection.',
+      'Higher-tier GCSE Physics, including shared Foundation content, with exam questions and practical reasoning.',
     topics: physicsTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/e8bdbfc18b3270faa77cc341e876bf26',
     stats: { cards: 1154, notes: 140, practiceSets: 141, practiceMarks: 1700 },
@@ -430,8 +432,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     board: 'Pearson Edexcel',
     qualification: 'Pearson Edexcel International GCSE',
     code: '4PH1',
-    summary:
-      'Selected Pearson Edexcel Physics topics and original practice. Some board requirements remain outside this selection.',
+    summary: 'International GCSE Physics with flashcards, exam questions and practical reasoning.',
     topics: physicsTopicPreview,
     shareUrl: 'https://getlacuna.app/#/s/b01c1050191588212cff4cc28131fa10',
     stats: { cards: 1118, notes: 132, practiceSets: 133, practiceMarks: 1623 },
@@ -446,7 +447,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'AQA GCSE',
     code: '8464',
     summary:
-      'A Higher-tier selection of biology, chemistry and physics for AQA Trilogy, including shared Foundation content, required practicals and labelled diagrams.',
+      'Higher-tier GCSE Combined Science, including shared Foundation content, with biology, chemistry, physics and practical exam practice.',
     topics: [
       'Cell biology',
       'Infection and response',
@@ -473,7 +474,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'Pearson Edexcel GCSE',
     code: '1SC0',
     summary:
-      'A Higher-tier selection of biology, chemistry and physics for Edexcel Combined Science, including shared Foundation content, core practicals and labelled diagrams.',
+      'Higher-tier GCSE Combined Science, including shared Foundation content, with biology, chemistry, physics and practical exam practice.',
     topics: [
       'Cells and control',
       'Genetics',
@@ -500,7 +501,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
     qualification: 'OCR GCSE',
     code: 'J250',
     summary:
-      'A Higher-tier selection of biology, chemistry and physics for OCR Gateway Combined Science A, including shared Foundation content, practical activities and labelled diagrams.',
+      'Higher-tier GCSE Combined Science, including shared Foundation content, with biology, chemistry, physics and practical exam practice.',
     topics: [
       'Cell level systems',
       'Scaling up',
