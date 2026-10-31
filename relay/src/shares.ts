@@ -4,7 +4,9 @@ import { consumeRatePermit } from './rateLimit.js';
 import { CHANNEL_CLEANUP_GRACE_MS, CHANNEL_TTL_MS } from './channelMaintenance.js';
 import { relayCorsHeaders } from './cors.js';
 import { insightDayExpiresAt } from '../shared/insights/index.js';
-import { isOfficialPublication } from './officialPublications.js';
+import { courseSource, shareLive, SHARE_ID_RE } from './shareSource.js';
+
+export { shareLive, SHARE_ID_RE } from './shareSource.js';
 
 /**
  * Teacher-published course snapshots behind a stable link. A share is an
@@ -28,8 +30,6 @@ export const SHARE_META_MAX_BYTES = 8 * 1024;
 
 export const SHORT_CLASS_CODE_RE = /^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{8}$/;
 const CLASS_CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-
-export const SHARE_ID_RE = /^[0-9a-f]{32}$/;
 
 const SHARE_ID_BYTES = 16;
 const WRITE_TOKEN_BYTES = 32;
@@ -497,70 +497,12 @@ function shareSourceKey(id: string): string {
   return `shares/${id}/source`;
 }
 
-/** Flatten classroom links to the publisher, never to another teacher's keys or mailbox. */
-async function courseSource(
-  store: BlobStore,
-  id: string,
-  now: () => number,
-): Promise<string | null> {
-  const visited = new Set<string>();
-  for (let hop = 0; hop < 8; hop += 1) {
-    if (
-      !SHARE_ID_RE.test(id) ||
-      visited.has(id) ||
-      !(await store.stat(shareAuthKey(id))) ||
-      !(await shareLive(store, id, now))
-    )
-      return null;
-    visited.add(id);
-    const source = await store.get(shareSourceKey(id));
-    if (!source) return id;
-    id = new TextDecoder().decode(source.body);
-  }
-  return null;
-}
-
 function shareAuthKey(id: string): string {
   return `shares/${id}/auth`;
 }
 
 function shareSlotKey(id: string, slot: ShareSlot): string {
   return `shares/${id}/${slot}`;
-}
-
-export async function shareLive(store: BlobStore, id: string, now: () => number): Promise<boolean> {
-  if (await persistentPublicationExists(store, id)) return true;
-  const [latest, source] = await Promise.all([
-    lastShareWrite(store, id),
-    store.get(shareSourceKey(id)),
-  ]);
-  if (latest !== null && now() - latest < CHANNEL_TTL_MS) return true;
-  if (!source || !(await store.stat(shareAuthKey(id)))) return false;
-  const sourceId = new TextDecoder().decode(source.body);
-  if (!SHARE_ID_RE.test(sourceId) || !(await store.stat(shareAuthKey(sourceId)))) return false;
-  if (await persistentPublicationExists(store, sourceId)) return true;
-  // Mint flattens links to the publisher. Its updates also keep classroom links alive.
-  const sourceLatest = await lastShareWrite(store, sourceId);
-  return sourceLatest !== null && now() - sourceLatest < CHANNEL_TTL_MS;
-}
-
-async function persistentPublicationExists(store: BlobStore, id: string): Promise<boolean> {
-  if (!isOfficialPublication(id)) return false;
-  const [auth, payload] = await Promise.all([
-    store.stat(shareAuthKey(id)),
-    store.stat(shareSlotKey(id, 'payload')),
-  ]);
-  return auth !== null && payload !== null;
-}
-
-async function lastShareWrite(store: BlobStore, id: string): Promise<number | null> {
-  const objects = await Promise.all(
-    ['auth', 'payload', 'meta', 'teacher', 'source', 'class-code'].map((name) =>
-      store.stat(`shares/${id}/${name}`),
-    ),
-  );
-  const stamps = objects.flatMap((stored) => (stored ? [stored.uploadedAt] : []));
-  return stamps.length ? Math.max(...stamps) : null;
 }
 
 async function sweepShare(store: BlobStore, id: string): Promise<void> {
