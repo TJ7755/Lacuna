@@ -21,17 +21,7 @@ export interface MachineMarkedAnswer {
   checkerDisputes?: CheckerDisputeReport[];
 }
 
-/** The distinct visual identity of the current learn session. */
-export type LearnModeType =
-  | 'fsrs'
-  | 'simple'
-  | 'cram'
-  | 'filtered'
-  | 'filtered-due'
-  | 'filtered-new'
-  | 'filtered-leech'
-  | 'filtered-flagged'
-  | 'filtered-suspended';
+export type { LearnModeType, LearnSessionRequest } from '../../course/learnSessionRequest';
 
 export const FILTER_LABELS: Record<string, string> = {
   due: 'due cards',
@@ -54,30 +44,3 @@ export interface LessonNotesScreen {
   lessonName: string;
   notes: Note[];
 }
-
-export type LearnSessionRequest =
-  | { kind: 'lesson'; lessonId: string }
-  | {
-      kind: 'practice';
-      courseId: string;
-      nodeKey?: string;
-      /** Current curricular session scope; omitted for due review. */
-      scopeLessonIds?: string[];
-      /** Fixed lesson prefix the node's milestone is measured and persisted against. */
-      milestoneLessonIds?: string[];
-      reviewLimit?: number;
-      /** Additional authored boundary; it can only narrow ordinary practice eligibility. */
-      specificationPointId?: string;
-      mode: 'curricular' | 'recurring' | 'exam' | 'catch-up';
-      assessmentId?: never;
-    }
-  | {
-      kind: 'practice';
-      courseId: string;
-      mode: 'assessment';
-      assessmentId: string;
-      planId?: string;
-      windowId?: string;
-      reviewLimit?: number;
-      specificationPointId?: string;
-    };
