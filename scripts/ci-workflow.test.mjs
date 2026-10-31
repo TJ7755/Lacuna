@@ -869,7 +869,7 @@ test('push scope still selects the full matrix regardless of changed web specs',
   }
 });
 
-test('web spec-only changes reduce heavy matrix instances from 42 to 26', () => {
+test('web spec-only changes reduce heavy matrix instances from 44 to 26', () => {
   const count = (scope) => {
     const outputs = Object.fromEntries(
       Object.entries(scope).map(([key, value]) => [key, String(value)]),
@@ -894,7 +894,7 @@ test('web spec-only changes reduce heavy matrix instances from 42 to 26', () => 
     }
     return { heavy, runners };
   };
-  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 42, runners: 46 });
+  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 44, runners: 48 });
   assert.deepEqual(count(classifyPaths(['tests/e2e/study-flip.spec.ts'])), {
     heavy: 26,
     runners: 33,
