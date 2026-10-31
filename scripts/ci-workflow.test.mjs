@@ -235,7 +235,9 @@ test('documentation-only changes resolve required names without running heavy st
         ? "(needs.changes.outputs.app == 'false' && needs.changes.outputs.web_tests == 'false')"
         : name === 'production'
           ? "(needs.changes.outputs.app == 'false' && needs.changes.outputs.sites == 'false')"
-          : `needs.changes.outputs.${{ 'ai-mcp': 'ai_mcp', 'electron-ai': 'electron', typecheck: 'app' }[name] ?? name} == 'false'`,
+          : name === 'electron-ai'
+            ? "github.event_name == 'pull_request' || needs.changes.outputs.electron == 'false'"
+            : `needs.changes.outputs.${{ 'ai-mcp': 'ai_mcp', typecheck: 'app' }[name] ?? name} == 'false'`,
       name,
     );
     assert.equal(acknowledgement.shell, 'bash', name);
@@ -252,7 +254,9 @@ test('documentation-only changes resolve required names without running heavy st
           ? "(needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')"
           : name === 'production'
             ? "(needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')"
-            : `needs.changes.outputs.${{ 'ai-mcp': 'ai_mcp', 'electron-ai': 'electron', typecheck: 'app' }[name] ?? name} != 'false'`,
+            : name === 'electron-ai'
+              ? "github.event_name != 'pull_request' && needs.changes.outputs.electron != 'false'"
+              : `needs.changes.outputs.${{ 'ai-mcp': 'ai_mcp', typecheck: 'app' }[name] ?? name} != 'false'`,
         `${name}: ${step.uses ?? step.run}`,
       );
     }
@@ -697,10 +701,17 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'electron-ai',
     'electron-macos-smoke',
   ];
-  // Pull requests run the browser smoke job; the full browser suites gate master commits.
-  const fullBrowser = ['browser-tests', 'browser-standalone', 'browser-timing', 'browser-mobile'];
+  // Pull requests run the browser smoke job; the full browser suites and Windows Electron AI
+  // gate master commits.
+  const postMerge = [
+    'browser-tests',
+    'browser-standalone',
+    'browser-timing',
+    'browser-mobile',
+    'electron-ai',
+  ];
   const web = ['production', 'browser-pr'];
-  const all = workers.filter((name) => !fullBrowser.includes(name));
+  const all = workers.filter((name) => !postMerge.includes(name));
   for (const [paths, expected] of [
     [['docs/README.md'], []],
     [
@@ -786,9 +797,18 @@ test('site-only production runs the existing build, hosting and asset contracts'
 });
 
 test('Electron AI evidence survives native failures without widening execution scope', () => {
-  const steps = workflow.jobs['electron-ai'].steps;
+  const job = workflow.jobs['electron-ai'];
+  const steps = job.steps;
+  for (const [event_name, runner] of [
+    ['pull_request', 'ubuntu-latest'],
+    ['push', 'windows-latest'],
+  ])
+    assert.equal(runInNewContext(job['runs-on'].slice(4, -3), { github: { event_name } }), runner);
   const evidence = steps.find((step) => step.name === 'Preserve Electron AI test evidence');
-  assert.equal(evidence.if, "always() && needs.changes.outputs.electron != 'false'");
+  assert.equal(
+    evidence.if,
+    "always() && github.event_name != 'pull_request' && needs.changes.outputs.electron != 'false'",
+  );
   assert.equal(evidence.uses, 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9');
   assert.deepEqual(evidence.with, {
     name: 'electron-ai-results',
@@ -975,7 +995,7 @@ test('push scope still selects the full matrix regardless of changed web specs',
   }
 });
 
-test('pull requests run 22 heavy matrix instances against 46 on pushes, and to 4 for web spec-only changes', () => {
+test('pull requests run 21 heavy matrix instances against 46 on pushes, and 4 for web spec-only changes', () => {
   const count = (scope, event_name = 'pull_request') => {
     const outputs = Object.fromEntries(
       Object.entries(scope).map(([key, value]) => [key, String(value)]),
@@ -1004,7 +1024,7 @@ test('pull requests run 22 heavy matrix instances against 46 on pushes, and to 4
     return { heavy, runners };
   };
   assert.deepEqual(count(classifyPaths(['unknown/file']), 'push'), { heavy: 46, runners: 50 });
-  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 22, runners: 26 });
+  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 21, runners: 26 });
   assert.deepEqual(count(classifyPaths(['tests/e2e/study-flip.spec.ts'])), {
     heavy: 4,
     runners: 11,
