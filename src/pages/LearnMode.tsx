@@ -19,7 +19,6 @@ import { useShortcutBindings } from '../state/shortcutBindings';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
 import { useToast } from '../components/ui/Toast';
-import type { CardFilter } from '../db/search';
 import { useLearnSession } from './learn/useLearnSession';
 import { useLearnView } from './learn/useLearnView';
 import { useLearnAnswerFeedback } from './learn/useLearnAnswerFeedback';
@@ -27,12 +26,15 @@ import { LearnSessionReport } from './learn/LearnSessionReport';
 import { LearnStudyPhase } from './learn/LearnStudyPhase';
 import { useLearnKeyboardShortcuts } from './learn/useLearnKeyboardShortcuts';
 import { useStudyFocus } from './learn/useStudyFocus';
-import type { ReviewSessionKind } from '../db/types';
-import type { LearnModeType, LearnSessionRequest } from './learn/types';
+import {
+  resolveLearnSessionIds,
+  resolveLearnSessionRequest,
+  type LearnSessionRequest,
+} from '../course/learnSessionRequest';
 import { SessionExitGuard } from '../components/learn/SessionExitGuard';
 import type { NavigationGuardHandle } from '../components/ui/NavigationGuard';
 
-export type { LearnSessionRequest } from './learn/types';
+export type { LearnSessionRequest } from '../course/learnSessionRequest';
 
 interface LearnModeProps {
   /** Supplied by CourseStudyFlow; omitted for the existing route-driven sessions. */
@@ -81,45 +83,8 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
     [onStepFinished],
   );
   const routeParams = useParams<{ courseId: string; lessonId: string }>();
-  const courseId = request?.kind === 'practice' ? request.courseId : routeParams.courseId;
-  const lessonId = request?.kind === 'lesson' ? request.lessonId : routeParams.lessonId;
+  const { lessonId } = resolveLearnSessionIds(request, routeParams);
   const [searchParams] = useSearchParams();
-  const tagFilter = searchParams.get('tag');
-  const simpleModeParam = searchParams.get('mode') === 'simple';
-  const standaloneSimple = !request && simpleModeParam;
-  const practiceNodeKeyParam =
-    request?.kind === 'practice' && request.mode === 'curricular'
-      ? (request.nodeKey ?? null)
-      : searchParams.get('practiceNode');
-  const requestScopeLessonIds =
-    request?.kind === 'practice' && request.mode !== 'assessment'
-      ? request.scopeLessonIds
-      : undefined;
-  const requestMilestoneLessonIds =
-    request?.kind === 'practice' && request.mode === 'curricular'
-      ? request.milestoneLessonIds
-      : undefined;
-  const requestAssessmentId =
-    request?.kind === 'practice' && request.mode === 'assessment'
-      ? request.assessmentId
-      : undefined;
-  const requestPlanId =
-    request?.kind === 'practice' && request.mode === 'assessment' ? request.planId : undefined;
-  const requestWindowId =
-    request?.kind === 'practice' && request.mode === 'assessment' ? request.windowId : undefined;
-  const plannedRevision = Boolean(requestAssessmentId && requestPlanId && requestWindowId);
-  const reviewSessionKind: ReviewSessionKind = requestAssessmentId
-    ? 'assessment-revision'
-    : lessonId
-      ? 'lesson'
-      : courseId
-        ? 'practice'
-        : 'deck';
-  const dueReviewRequest = request?.kind === 'practice' && request.mode === 'recurring';
-  const filterParams = useMemo(() => {
-    const filters = searchParams.getAll('filter') as CardFilter[];
-    return dueReviewRequest && !filters.includes('due') ? [...filters, 'due' as const] : filters;
-  }, [searchParams, dueReviewRequest]);
   const navigate = useNavigate();
   const distraction = useDistraction();
   const [gradingMode] = useGradingMode();
@@ -134,37 +99,25 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
   const lessonCourse = useLessonCourse(lessonId);
   const sessionReady = !lessonId || lessonCourse !== undefined;
   const [startInFocusMode] = useStartInFocusMode();
-  // Course lessons follow their introduction setting; the global preference remains
-  // available for ad-hoc deck/global sessions. Bounded point practice uses scheduled
-  // reviews rather than cumulative recitation.
-  const isSimpleMode =
-    standaloneSimple ||
-    (lessonId
-      ? lessonCourse?.learnFirst !== false
-      : dueReviewRequest ||
-          (request?.kind === 'practice' &&
-            (request.specificationPointId !== undefined ||
-              request.mode === 'exam' ||
-              request.mode === 'catch-up'))
-        ? false
-        : studyMode === 'simple');
-
-  const mode: LearnModeType = useMemo(() => {
-    if (isSimpleMode) return 'simple';
-    if (plannedRevision) return 'cram';
-    if (filterParams.length > 0) {
-      if (filterParams.length === 1) {
-        const f = filterParams[0];
-        if (f === 'due') return 'filtered-due';
-        if (f === 'new') return 'filtered-new';
-        if (f === 'leech') return 'filtered-leech';
-        if (f === 'flagged') return 'filtered-flagged';
-        if (f === 'suspended') return 'filtered-suspended';
-      }
-      return 'filtered';
-    }
-    return 'fsrs';
-  }, [isSimpleMode, filterParams, plannedRevision]);
+  const sessionOptions = useMemo(
+    () =>
+      resolveLearnSessionRequest({
+        request,
+        route: { courseId: routeParams.courseId, lessonId: routeParams.lessonId },
+        searchParams,
+        studyMode,
+        lessonLearnFirst: lessonCourse?.learnFirst,
+      }),
+    [
+      request,
+      routeParams.courseId,
+      routeParams.lessonId,
+      searchParams,
+      studyMode,
+      lessonCourse?.learnFirst,
+    ],
+  );
+  const { courseId, tagFilter, filterParams, isSimpleMode, plannedRevision, mode } = sessionOptions;
 
   const view = useLearnView(startInFocusMode, notify);
   const {
@@ -183,27 +136,8 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
 
   const session = useLearnSession({
     enabled: sessionReady,
-    courseId,
-    lessonId,
+    ...sessionOptions,
     sessionId,
-    tagFilter,
-    filterParams,
-    requestScopeLessonIds,
-    requestSpecificationPointId:
-      request?.kind === 'practice' ? request.specificationPointId : undefined,
-    requestMilestoneLessonIds,
-    requestReviewLimit: request?.kind === 'practice' ? request.reviewLimit : undefined,
-    practiceNodeKeyParam,
-    requestAssessmentId,
-    requestPlanId,
-    requestWindowId,
-    plannedRevision,
-    reviewSessionKind,
-    isSimpleMode,
-    standaloneSimple,
-    examPractice: request?.kind === 'practice' && request.mode === 'exam',
-    catchUpPractice: request?.kind === 'practice' && request.mode === 'catch-up',
-    mode,
     navigate,
     onFlowExit,
     onStepFinished: onStepFinished ? stepFinished : undefined,
