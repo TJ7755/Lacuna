@@ -1,7 +1,11 @@
 import { afterEach } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { Storage } from 'happy-dom';
 import '@testing-library/jest-dom/vitest';
+
+// CI shards run one worker per core, so a render can take longer than Testing
+// Library's one-second default while still being correct.
+configure({ asyncUtilTimeout: 5_000 });
 
 // Node 25 can install an unusable localStorage shim before Happy DOM starts.
 Object.defineProperty(globalThis, 'localStorage', {

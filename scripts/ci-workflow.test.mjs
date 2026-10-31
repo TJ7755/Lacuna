@@ -618,7 +618,6 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'browser-mobile',
     'electron-ai',
     'electron-macos-smoke',
-    'windows-installed-upgrade',
   ];
   const web = [
     'production',
@@ -654,7 +653,10 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     const outputs = Object.fromEntries(
       Object.entries(classifyPaths(paths)).map(([key, value]) => [key, String(value)]),
     );
-    const context = { needs: { changes: { result: 'success', outputs } } };
+    const context = {
+      github: { event_name: 'pull_request' },
+      needs: { changes: { result: 'success', outputs } },
+    };
     const selected = workers.filter((name) => {
       const job = workflow.jobs[name];
       const predicate = required.includes(name) ? job.steps[1].if : job.if;
@@ -662,6 +664,18 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     });
     assert.deepEqual(selected.sort(), [...expected].sort(), paths.join(', '));
   }
+});
+
+test('installer upgrades gate master commits rather than pull requests', () => {
+  const predicate = workflow.jobs['windows-installed-upgrade'].if;
+  const select = (event_name, electron) =>
+    runInNewContext(predicate, {
+      github: { event_name },
+      needs: { changes: { outputs: { electron } } },
+    });
+  assert.equal(select('pull_request', 'true'), false);
+  assert.equal(select('push', 'true'), true);
+  assert.equal(select('push', 'false'), false);
 });
 
 test('site-only production runs the existing build, hosting and asset contracts', () => {
@@ -869,12 +883,15 @@ test('push scope still selects the full matrix regardless of changed web specs',
   }
 });
 
-test('web spec-only changes reduce heavy matrix instances from 44 to 26', () => {
+test('web spec-only changes reduce heavy matrix instances from 42 to 26', () => {
   const count = (scope) => {
     const outputs = Object.fromEntries(
       Object.entries(scope).map(([key, value]) => [key, String(value)]),
     );
-    const context = { needs: { changes: { result: 'success', outputs } } };
+    const context = {
+      github: { event_name: 'pull_request' },
+      needs: { changes: { result: 'success', outputs } },
+    };
     let heavy = 0;
     let runners = 0;
     for (const [name, job] of Object.entries(workflow.jobs)) {
@@ -894,7 +911,7 @@ test('web spec-only changes reduce heavy matrix instances from 44 to 26', () => 
     }
     return { heavy, runners };
   };
-  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 44, runners: 48 });
+  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 42, runners: 46 });
   assert.deepEqual(count(classifyPaths(['tests/e2e/study-flip.spec.ts'])), {
     heavy: 26,
     runners: 33,
