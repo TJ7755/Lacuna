@@ -185,11 +185,11 @@ jobs:
       matrix:
         include:
           - suite: critical
-            command: bun run test:coverage
+            command: bun run test:coverage -- --maxWorkers=100%
           - suite: recovery
-            command: bun run test:coverage:recovery
+            command: bun run test:coverage:recovery -- --maxWorkers=100%
           - suite: risk
-            command: bun run test:coverage:risk
+            command: bun run test:coverage:risk -- --maxWorkers=100%
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -715,7 +715,9 @@ jobs:
 
   windows-installed-upgrade:
     needs: changes
-    if: needs.changes.outputs.electron != 'false'
+    # Installer upgrades take over three minutes, so they gate master commits
+    # (and therefore releases) rather than every pull request.
+    if: github.event_name != 'pull_request' && needs.changes.outputs.electron != 'false'
     runs-on: windows-latest
     # NSIS uses machine-wide process discovery and installation markers.
     # Keep each upgrade scenario isolated while removing their serial dependency.

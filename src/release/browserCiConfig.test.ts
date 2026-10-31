@@ -188,7 +188,7 @@ it('partitions the complete local Chromium suite across functional shards and is
     );
     expect(timing.config.workers).toBe(1);
     for (const shard of shards) {
-      expect(shard.config.workers).toBe(2);
+      expect(shard.config.workers).toBe(4);
       expect(shard.config.fullyParallel).toBe(true);
       expect(cases(shard.suites).length).toBeGreaterThan(0);
     }
