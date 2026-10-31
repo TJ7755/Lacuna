@@ -10,6 +10,7 @@ import {
 } from '../../db/repository';
 import { db } from '../../db/schema';
 import { useLearnSession } from './useLearnSession';
+import { loadSimpleSession } from './simpleSessionPersistence';
 import { resetSessionTestDatabase, sessionParams } from './useLearnSession.testFixtures';
 
 beforeEach(resetSessionTestDatabase);
@@ -37,7 +38,10 @@ it('rolls back the review when its introduction exposure fails, then retries and
     expect(await db.cards.get(card.id)).toEqual(before);
     expect(await db.reviewHistory.count()).toBe(0);
     expect(await db.coursePerformance.toArray()).toEqual(performanceBefore);
-    expect(session.result.current.events.current).toHaveLength(0);
+    session.result.current.persistSimpleResume();
+    expect(loadSimpleSession({ kind: 'lesson', lessonId: lesson.id }, [card.id])?.events).toEqual(
+      [],
+    );
     expect(session.result.current.phase).toBe('answer');
     addExposure.mockRestore();
 
@@ -46,14 +50,19 @@ it('rolls back the review when its introduction exposure fails, then retries and
     });
     expect(await db.reviewHistory.count()).toBe(1);
     expect(await db.lessonCardExposures.count()).toBe(1);
-    expect(session.result.current.events.current).toHaveLength(1);
+    expect(session.result.current.summary?.events).toEqual([
+      expect.objectContaining({ cardId: card.id, correct: true }),
+    ]);
     await act(async () => {
       await session.result.current.undoLast();
     });
     expect(await db.reviewHistory.count()).toBe(0);
     expect(await db.lessonCardExposures.count()).toBe(0);
     expect(await db.cards.get(card.id)).toEqual(before);
-    expect(session.result.current.events.current).toHaveLength(0);
+    session.result.current.persistSimpleResume();
+    expect(loadSimpleSession({ kind: 'lesson', lessonId: lesson.id }, [card.id])?.events).toEqual(
+      [],
+    );
   } finally {
     session.unmount();
   }
@@ -88,7 +97,9 @@ it('refuses undo without removing evidence when another writer changes its expos
     expect(await db.cards.get(card.id)).toEqual(reviewed);
     expect(await db.reviewHistory.count()).toBe(1);
     expect(session.result.current.canUndo).toBe(true);
-    expect(session.result.current.events.current).toHaveLength(1);
+    expect(session.result.current.summary?.events).toEqual([
+      expect.objectContaining({ cardId: card.id, correct: true }),
+    ]);
   } finally {
     session.unmount();
   }
@@ -133,11 +144,32 @@ it('records each recited line once and exposes only mastered lines', async () =>
       runningMeanResponseTime: 4,
     });
     expect(await db.lessonCardExposures.count()).toBe(1);
-    expect(session.result.current.simpleMastered.current.size).toBe(1);
-    expect(session.result.current.events.current.map(({ grade }) => grade)).toEqual([1, 3]);
+    const first = cards.find((card) => card.sequenceItemId === 'first')!;
+    const second = cards.find((card) => card.sequenceItemId === 'second')!;
     expect(
-      session.result.current.events.current.map(({ responseTimeSec }) => responseTimeSec),
-    ).toEqual([12, 4]);
+      loadSimpleSession(
+        { kind: 'lesson', lessonId: lesson.id },
+        cards.map((card) => card.id),
+      ),
+    ).toMatchObject({
+      masteredCardIds: [first.id],
+      outcomes: new Map([
+        [first.id, 'correct'],
+        [second.id, 'correct'],
+      ]),
+      events: [
+        expect.objectContaining({ cardId: first.id, grade: 1, responseTimeSec: 12 }),
+        expect.objectContaining({ cardId: second.id, grade: 3, responseTimeSec: 4 }),
+      ],
+    });
+    expect(await db.reviewHistory.where('cardId').equals(first.id).first()).toMatchObject({
+      grade: 1,
+      responseTimeSec: 12,
+    });
+    expect(await db.reviewHistory.where('cardId').equals(second.id).first()).toMatchObject({
+      grade: 3,
+      responseTimeSec: 4,
+    });
     for (const card of cards) {
       expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(1);
     }

@@ -12,6 +12,7 @@ import {
 } from '../../db/repository';
 import { db } from '../../db/schema';
 import { useLearnSession } from './useLearnSession';
+import { loadSimpleSession } from './simpleSessionPersistence';
 import { isLabelCardId } from '../../db/sequenceGeneration';
 import { writeAnswerInput } from '../../state/answerInput';
 
@@ -68,8 +69,8 @@ describe('useLearnSession answer boundary', () => {
     });
 
     expect(undoAvailable).toBe(false);
+    expect(result.current.sessionCardOutcomes.size).toBe(0);
     expect(result.current.phase).toBe('question');
-    expect(result.current.events.current).toHaveLength(0);
     expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
     expect(await db.sessionHistory.count()).toBe(0);
   });
@@ -329,7 +330,9 @@ describe('useLearnSession answer boundary', () => {
       await act(async () => {
         await result.current.answer(true);
       });
-      expect(result.current.events.current[0]?.grade).toBe(4);
+      expect(await db.reviewHistory.where('cardId').equals(card.id).first()).toMatchObject({
+        grade: 4,
+      });
     } finally {
       unmount?.();
       nowSpy.mockRestore();
@@ -390,7 +393,12 @@ describe('useLearnSession answer boundary', () => {
         correct: true,
         responseTimeSec: 10,
       });
-      expect(rendered.result.current.events.current[0]?.grade).toBe(4);
+      expect(
+        loadSimpleSession({ kind: 'practice', courseId: course.id, sessionId: 'simple-session' }, [
+          fastCardId,
+          slowCardId,
+        ])?.events,
+      ).toEqual([expect.objectContaining({ cardId: fastCardId, grade: 4 })]);
       expect((await db.cards.get(fastCardId))?.reps).toBe(1);
 
       await waitFor(() => expect(rendered.result.current.current?.id).toBe(slowCardId));
@@ -430,9 +438,19 @@ describe('useLearnSession answer boundary', () => {
     const reviews = await db.reviewHistory.where('cardId').equals(answeredId).toArray();
     expect(reviews).toHaveLength(1);
     expect(reviews[0]).toMatchObject({ grade: 1, correct: false });
-    expect(result.current.simpleWrong.current.has(answeredId)).toBe(true);
-    expect(result.current.simpleMastered.current.has(answeredId)).toBe(false);
-    expect(result.current.simpleQueue.current.find((card) => card.id === answeredId)?.reps).toBe(1);
+    expect(
+      loadSimpleSession({ kind: 'course', courseId: course.id }, [first.id, second.id]),
+    ).toMatchObject({
+      masteredCardIds: [],
+      outcomes: new Map([[answeredId, 'wrong']]),
+    });
+    expect(result.current.current?.id).not.toBe(answeredId);
+    act(() => result.current.reveal());
+    await act(async () => {
+      await result.current.answer(true);
+    });
+    expect(result.current.current?.id).toBe(answeredId);
+    expect(result.current.current?.reps).toBe(1);
   });
 
   it('removes an automatically suspended card from the Simple Learn queue and progress', async () => {
@@ -460,7 +478,6 @@ describe('useLearnSession answer boundary', () => {
       await result.current.answer(false);
     });
     expect((await db.cards.get(card.id))?.suspended).toBe(true);
-    expect(result.current.simpleQueue.current).toEqual([]);
     expect(result.current.sessionCardIds).not.toContain(card.id);
     expect(result.current.sessionCardOutcomes.has(card.id)).toBe(false);
     expect(result.current.phase).toBe('finished');
@@ -511,7 +528,6 @@ describe('useLearnSession answer boundary', () => {
 
     expect(undoAvailable).toBe(true);
     expect(result.current.phase).not.toBe('answer');
-    expect(result.current.events.current).toHaveLength(1);
     expect(await db.reviewHistory.where('cardId').equals(currentCardId).count()).toBe(1);
     expect(await db.reviewHistory.where('cardId').equals(currentCardId).first()).toMatchObject({
       input: 'reveal',
@@ -523,8 +539,18 @@ describe('useLearnSession answer boundary', () => {
 
     expect(result.current.current?.id).toBe(currentCardId);
     expect(result.current.phase).toBe('question');
-    expect(result.current.events.current).toHaveLength(0);
     expect(result.current.canUndo).toBe(false);
     expect(await db.reviewHistory.where('cardId').equals(currentCardId).count()).toBe(0);
+    for (let attempts = 0; attempts < 6 && result.current.phase !== 'finished'; attempts += 1) {
+      act(() => result.current.reveal());
+      await act(async () => {
+        await result.current.answer(4);
+      });
+    }
+    await waitFor(() => expect(result.current.phase).toBe('finished'));
+    expect(result.current.summary?.events).toHaveLength(2);
+    expect(
+      result.current.summary?.events.filter((event) => event.cardId === currentCardId),
+    ).toHaveLength(1);
   });
 });
