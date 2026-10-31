@@ -26,7 +26,8 @@ a second failure for superseded work; a failed or independently cancelled depend
 run still fails its aggregate. Do not publish early green or skipped placeholders under required names.
 On pull requests `browser-smoke` requires the release smoke spec plus any changed top-level web
 specs; on master pushes it requires the full functional, timing, mobile and standalone browser
-suites, so release tagging still waits for them.
+suites, so release tagging still waits for them. `electron-ai` likewise runs the Windows Electron AI
+suite on master pushes and only acknowledges its required name on pull requests.
 
 If a successful CI or Security workflow retains a running job record after every step, including
 `Complete job`, succeeded, [CI recovery](../../.github/workflows/ci-recovery.yml) requests one real
