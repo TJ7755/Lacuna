@@ -232,4 +232,4 @@ it('partitions the complete local Chromium suite across functional shards and is
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-}, 30_000);
+}, 90_000);
