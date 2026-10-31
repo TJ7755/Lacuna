@@ -1,5 +1,5 @@
-import type { Card } from '../../db/types';
-import type { SessionCardOutcome } from './types';
+import type { Card } from '../db/types';
+import type { SessionCardOutcome } from './sessionSummary';
 
 export interface SimpleSessionState {
   queue: Card[];

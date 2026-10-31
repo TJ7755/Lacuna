@@ -1,12 +1,11 @@
 import { db, makeId } from '../../db/schema';
-import type { SessionEvent } from '../../components/learn/types';
+import type { SessionCardOutcome, SessionEvent } from '../../course/sessionSummary';
 import { performanceForReviewUnit } from '../../db/backingDecks';
 import { upsertLessonCardExposure } from '../../db/lessonRepository';
 import { undoReview, type RecordReviewArgs, type ReviewUndo } from '../../db/reviewRepository';
 import type { Card, LessonCardExposure, UserPerformance } from '../../db/types';
 import type { CooldownMap } from '../../fsrs/cooldown';
 import type { RevisionSessionState } from '../../course/revisionSession';
-import type { SessionCardOutcome } from './types';
 import { persistAnswer } from './answerSteps';
 
 /** What undoing the most recent answer needs to restore (DB + in-session state). */

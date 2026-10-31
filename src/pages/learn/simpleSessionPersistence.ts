@@ -1,5 +1,4 @@
-import type { SessionEvent } from '../../components/learn/types';
-import type { SessionCardOutcome } from './types';
+import type { SessionCardOutcome, SessionEvent } from '../../course/sessionSummary';
 
 const STORAGE_PREFIX = 'lacuna.simpleSession.v1:';
 
@@ -184,7 +183,12 @@ export function loadSimpleSession(
     if (!queued.has(cardId)) queueCardIds.push(cardId);
   }
   const outcomes = new Map(stored.outcomes.filter(([cardId]) => eligible.has(cardId)));
-  const snapshot: SimpleSessionSnapshot = { queueCardIds, masteredCardIds, outcomes, events: stored.events };
+  const snapshot: SimpleSessionSnapshot = {
+    queueCardIds,
+    masteredCardIds,
+    outcomes,
+    events: stored.events,
+  };
   if (typeof stored.recitations === 'object' && stored.recitations !== null) {
     snapshot.recitations = new Map(Object.entries(stored.recitations));
   }
