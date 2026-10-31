@@ -56,12 +56,9 @@ content. They must be updated before importing it. Reverting the application aft
 also requires a compatible version to read them; there is no destructive migration or automatic
 tag removal.
 
-The preliminary frozen-content inventory found four enzyme sets, 22 questions, 30 scored parts
-and 65 marks in 4BI1 revision 29. This is not a coverage or transfer certification. Before pilot
-publication, [#907](https://github.com/TJ7755/Lacuna/issues/907) must supply a reviewed tagged
-artefact, supported repair and an independent retest pool. Existing prompts that supply the
-explanation steps are not evidence of uncued transfer. Targeted selection and evaluation remain
-subsequent slices.
+Before pilot publication, [#907](https://github.com/TJ7755/Lacuna/issues/907) must supply a
+reviewed tagged artefact, supported repair and an independent retest pool. Prompts that supply
+explanation steps do not establish uncued transfer.
 
 ## Multiple science techniques
 

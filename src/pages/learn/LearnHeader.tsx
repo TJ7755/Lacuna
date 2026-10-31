@@ -433,7 +433,7 @@ function UndoIcon({ width, height }: { width: number; height: number }) {
  * horizon, so it names that horizon: the exam while one is ahead, otherwise the
  * rolling maintenance window.
  */
-export function forecastLabel(unit: StudyUnit | null, now: number = Date.now()): string {
+function forecastLabel(unit: StudyUnit | null, now: number = Date.now()): string {
   if (!unit) return 'predicted readiness';
   if (unit.examObjective === 'securedTopics') return 'secured';
   return unit.examDate !== undefined && unit.examDate >= now

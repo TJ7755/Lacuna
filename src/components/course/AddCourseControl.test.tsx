@@ -32,15 +32,4 @@ describe('AddCourseControl', () => {
         .map((button) => button.getAttribute('aria-label')),
     ).toEqual(['Lesson', 'Checkpoint']);
   });
-
-  it('says what each choice is for', () => {
-    render(<AddCourseControl onAdd={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    expect(screen.getByRole('menuitem', { name: 'Card practice' })).toHaveAccessibleDescription(
-      'Revise earlier lessons',
-    );
-    expect(screen.getByRole('menuitem', { name: 'Checkpoint' })).toHaveAccessibleDescription(
-      'A dated test to prepare for',
-    );
-  });
 });

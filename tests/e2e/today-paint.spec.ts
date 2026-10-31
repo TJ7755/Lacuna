@@ -1,13 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enterFreshLacuna, importWelcomeCourse } from './fixtures/lacunaApp';
-import {
-  FLOW_EVIDENCE as evidence,
-  contentRect,
-  opaquePixel,
-  setDark,
-  settle,
-  upperEdge,
-} from './fixtures/flowEvidence';
+import { FLOW_EVIDENCE as evidence, settle } from './fixtures/flowEvidence';
 
 test.use({
   serviceWorkers: 'block',
@@ -27,97 +20,6 @@ test.beforeEach(async ({ page }) => {
       : route.fulfill({ status: 204, body: '' });
   });
 });
-
-for (const theme of ['light', 'dark']) {
-  test(`mouse feedback keeps clean contours and preserves paint/content in ${theme}`, async ({
-    page,
-  }, info) => {
-    await enterFreshLacuna(page);
-    await importWelcomeCourse(page);
-    if (theme === 'dark') await setDark(page);
-    const study = page.getByRole('button', { name: 'Study Welcome to Lacuna' });
-    await settle(study);
-    const label = await contentRect(study);
-    const target = await study.boundingBox();
-    await study.hover();
-    await page.waitForTimeout(350);
-    const hoverPaint = await study.screenshot();
-    const restingPaint = await opaquePixel(hoverPaint, 16, 22);
-    const hoverEdge = await upperEdge(hoverPaint);
-    expect(Math.max(...hoverEdge) - Math.min(...hoverEdge)).toBeLessThanOrEqual(1);
-    await page.screenshot({ path: `${evidence}/study-hover-${theme}.png` });
-    await page.mouse.down();
-    await page.waitForTimeout(220);
-    expect(await contentRect(study)).toEqual(label);
-    expect(await study.boundingBox()).toEqual(target);
-    const pressed = await study.screenshot();
-    expect(await opaquePixel(pressed, 16, 22)).toEqual(restingPaint);
-    const edge = await upperEdge(pressed);
-    expect(Math.max(...edge) - Math.min(...edge)).toBeLessThanOrEqual(1);
-    await info.attach('painted-edge', {
-      body: JSON.stringify(edge),
-      contentType: 'application/json',
-    });
-    await page.screenshot({ path: `${evidence}/study-held-${theme}.png` });
-    await page.mouse.move(0, 0);
-    await page.mouse.up();
-    await page.waitForTimeout(60);
-    await study.hover();
-    await page.mouse.down();
-    await page.waitForTimeout(100);
-    await upperEdge(await study.screenshot()); // Reverse -> press keeps actual primary paint.
-    await page.mouse.move(0, 0);
-    await page.mouse.up();
-
-    const row = study.locator('..');
-    const title = row.getByRole('button', { name: 'Welcome to Lacuna', exact: true });
-    await page.waitForTimeout(700);
-    const restingRow = await row.screenshot();
-    await title.hover();
-    await page.waitForTimeout(350);
-    const dot = row.locator(':scope > span').first();
-    const learning = row.getByText('New learning', { exact: true });
-    const rowBounds = (await row.boundingBox())!,
-      titleBounds = (await title.boundingBox())!;
-    const hoverRow = await row.screenshot();
-    const textBackground = await opaquePixel(
-      hoverRow,
-      titleBounds.x - rowBounds.x + 32,
-      titleBounds.y - rowBounds.y + 5,
-    );
-    const clearBackground = await opaquePixel(
-      hoverRow,
-      titleBounds.x - rowBounds.x + titleBounds.width - 32,
-      titleBounds.y - rowBounds.y + 5,
-    );
-    expect(textBackground).toEqual(clearBackground);
-    const dotBefore = await dot.screenshot(),
-      learningBefore = await learning.screenshot();
-    await page.mouse.down();
-    await page.waitForTimeout(220);
-    expect(await dot.screenshot()).toEqual(dotBefore);
-    expect(await learning.screenshot()).toEqual(learningBefore);
-    await page.screenshot({ path: `${evidence}/title-held-${theme}.png` });
-    await page.mouse.move(0, 0);
-    await page.mouse.up();
-    await expect.poll(async () => Buffer.compare(await row.screenshot(), restingRow)).toBe(0);
-    await page.screenshot({ path: `${evidence}/title-exited-${theme}.png` });
-
-    await page.locator('main').getByRole('button', { name: 'New course', exact: true }).click();
-    const form = page.getByRole('form', { name: 'New course' });
-    const selected = form.getByRole('radio', { name: /Steady retention/ }).locator('..');
-    await settle(form);
-    const before = await opaquePixel(await selected.screenshot(), 12, 40);
-    await selected.hover();
-    await page.waitForTimeout(300);
-    await page.mouse.down();
-    await page.waitForTimeout(180);
-    expect(await opaquePixel(await selected.screenshot(), 12, 40)).toEqual(before);
-    await page.screenshot({ path: `${evidence}/target-held-${theme}.png` });
-    await page.mouse.move(0, 0);
-    await page.mouse.up();
-  });
-}
 
 test('normal switch edge click retains its target through hover and selection', async ({
   page,

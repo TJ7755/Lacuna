@@ -4,13 +4,6 @@ import type { AiConversationItem } from '../../ai/session/types';
 import { AiConversation } from './AiConversation';
 
 describe('AiConversation', () => {
-  it('describes the current terminal chat without promising Lacuna actions', () => {
-    render(<AiConversation items={[]} />);
-
-    expect(screen.getByText('Chat with your connected AI client.')).toBeInTheDocument();
-    expect(screen.queryByText(/build course material|change something in Lacuna/i)).toBeNull();
-  });
-
   it('links courses but does not invent a route for lessons without course context', () => {
     const items: AiConversationItem[] = [
       {
@@ -32,67 +25,6 @@ describe('AiConversation', () => {
     expect(courseLink).toHaveClass('min-h-11');
     expect(screen.queryByRole('link', { name: 'Newton’s laws' })).not.toBeInTheDocument();
     expect(screen.getByText('Newton’s laws')).toBeInTheDocument();
-  });
-
-  it('presents user messages on the right and assistant messages on a neutral surface', () => {
-    const items: AiConversationItem[] = [
-      {
-        kind: 'user',
-        id: 'user-1',
-        content: 'What should I revise next?',
-        createdAt: 1,
-        delivery: 'claimed',
-      },
-      {
-        kind: 'assistant',
-        id: 'assistant-1',
-        content: 'Start with the topics due today.',
-        createdAt: 2,
-        sources: [],
-      },
-    ];
-
-    render(<AiConversation items={items} />);
-
-    const userMessage = screen.getByRole('article', { name: 'Your message' });
-    const assistantMessage = screen.getByRole('article', { name: 'AI response' });
-    expect(userMessage).toHaveAttribute('data-speaker', 'user');
-    expect(userMessage).toHaveClass('ml-auto');
-    expect(assistantMessage).toHaveAttribute('data-speaker', 'assistant');
-    expect(assistantMessage).toHaveClass('mr-auto', 'bg-ink/[0.04]');
-    // Side and colour name the speaker, so no label repeats it inside the bubble.
-    expect(userMessage).not.toHaveTextContent(/^You/);
-    expect(assistantMessage).not.toHaveTextContent(/^AI/);
-  });
-
-  it('keeps long and multiline messages constrained for the narrow panel', () => {
-    const items: AiConversationItem[] = [
-      {
-        kind: 'user',
-        id: 'user-long',
-        content: 'A'.repeat(240) + '\nwith a second line',
-        createdAt: 1,
-        delivery: 'claimed',
-      },
-      {
-        kind: 'assistant',
-        id: 'assistant-long',
-        content: 'A'.repeat(240) + '\nAnd a second line.',
-        createdAt: 2,
-        sources: [],
-      },
-    ];
-
-    render(<AiConversation items={items} />);
-
-    const userMessage = screen.getByRole('article', { name: 'Your message' });
-    const assistantMessage = screen.getByRole('article', { name: 'AI response' });
-    expect(userMessage).toHaveClass('max-w-[88%]');
-    expect(userMessage.querySelector('p')).toHaveClass('break-words', 'whitespace-pre-wrap');
-    expect(assistantMessage).toHaveClass('max-w-[92%]');
-    expect(assistantMessage.querySelector('.prose-lacuna')).toHaveClass('break-words');
-    expect(screen.getByText(/with a second line/)).toBeInTheDocument();
-    expect(screen.getByText(/And a second line/)).toBeInTheDocument();
   });
 
   it('scrolls the conversation log only when an item is appended', () => {

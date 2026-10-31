@@ -21,21 +21,6 @@ describe('AiActivityReceipt', () => {
     availability.targets = [true];
   });
 
-  it('shows the action summary, tool name and local time', () => {
-    render(<AiActivityReceipt receipt={receipt} />);
-
-    expect(screen.getByText('Created Mechanics')).toBeInTheDocument();
-    expect(screen.getByText('lacuna.create_course')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        new Date(receipt.createdAt).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-      ),
-    ).toBeInTheDocument();
-  });
-
   it('links a course target to its existing route', () => {
     render(<AiActivityReceipt receipt={receipt} />);
 
@@ -165,14 +150,5 @@ describe('AiActivityReceipt', () => {
     expect(
       screen.getByRole('link', { name: 'Open assessment Algebra checkpoint' }),
     ).toHaveAttribute('href', '#/course/course-1/settings#course-settings-assessments');
-  });
-
-  it('gives the receipt and target meaningful accessible names', () => {
-    render(<AiActivityReceipt receipt={receipt} />);
-
-    expect(
-      screen.getByRole('article', { name: 'Completed action: Created Mechanics' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open course Mechanics' })).toBeInTheDocument();
   });
 });

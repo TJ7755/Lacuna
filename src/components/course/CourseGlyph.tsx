@@ -23,7 +23,7 @@ const RING_COLOUR: Record<GlyphStatus, string> = {
 };
 
 /** How full the ring is: 50% recall reads as empty, 100% as full. */
-export function glyphFill(recall: number): number {
+function glyphFill(recall: number): number {
   return Math.max(0, Math.min(1, (recall - 0.5) * 2));
 }
 

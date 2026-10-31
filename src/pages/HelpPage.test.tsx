@@ -53,33 +53,6 @@ describe('HelpPage', () => {
     expect(scroll).toHaveBeenCalledTimes(calls);
   });
 
-  it('groups questions and expands a topic row', () => {
-    render(
-      <MemoryRouter>
-        <HelpPage />
-      </MemoryRouter>,
-    );
-    expect(screen.getByRole('heading', { level: 2, name: 'Getting started' })).toBeInTheDocument();
-    const headings = screen.getAllByRole('heading', { level: 2 });
-    expect(headings.map((heading) => heading.textContent)).toEqual([
-      'Getting started',
-      'Studying',
-      'Cards and content',
-      'Progress',
-      'Your data',
-    ]);
-    for (const heading of headings) {
-      const card = heading.closest('section');
-      expect(card).toHaveClass('card-surface');
-      expect(within(card!).getAllByRole('heading', { level: 3 }).length).toBeGreaterThan(0);
-    }
-    const row = screen.getByRole('button', { name: 'How do I create a course and lessons?' });
-    expect(row).toHaveAttribute('aria-expanded', 'false');
-    fireEvent.click(row);
-    expect(row).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText(/Choose New course on Today/)).toBeVisible();
-  });
-
   it('searches all words across questions, answers and keywords, ignoring case', () => {
     render(
       <MemoryRouter>

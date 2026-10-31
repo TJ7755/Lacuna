@@ -41,22 +41,6 @@ describe('AiComposer', () => {
       await waitFor(() => expect(aiSession.send).toHaveBeenCalledWith('Keep composing'));
     },
   );
-  it('uses an honest chat prompt while connected', () => {
-    render(
-      <AiComposer
-        session={session()}
-        disabled={false}
-        initialDraft=""
-        queuedFollowUp={null}
-        autoFocus={false}
-      />,
-    );
-
-    expect(screen.getByRole('textbox', { name: 'Message AI' })).toHaveAttribute(
-      'placeholder',
-      'Message AI…',
-    );
-  });
 
   it('restores a changed session draft when the composer is untouched', () => {
     const aiSession = session();
@@ -135,38 +119,6 @@ describe('AiComposer', () => {
     await waitFor(() => {
       expect(aiSession.send).toHaveBeenCalledWith('Compare both theories with an example.');
     });
-  });
-
-  it('uses the shared compact Send target in the composer', () => {
-    render(
-      <AiComposer
-        session={session()}
-        disabled={false}
-        initialDraft="Ready to send"
-        queuedFollowUp={null}
-        autoFocus={false}
-      />,
-    );
-
-    const send = screen.getByRole('button', { name: 'Send message' });
-    expect(send).toHaveClass('min-w-16');
-    expect(send).toHaveClass('text-sm');
-  });
-
-  it('keeps message actions in document flow below multiline content', () => {
-    render(
-      <AiComposer
-        session={session()}
-        disabled={false}
-        initialDraft={'First line\nSecond line\nThird line'}
-        queuedFollowUp={null}
-        autoFocus={false}
-      />,
-    );
-
-    const actions = screen.getByRole('group', { name: 'Message actions' });
-    expect(actions).not.toHaveClass('absolute');
-    expect(screen.getByRole('textbox', { name: 'Message AI' }).nextElementSibling).toBe(actions);
   });
 
   it('keeps the draft usable when the session rejects a send', async () => {

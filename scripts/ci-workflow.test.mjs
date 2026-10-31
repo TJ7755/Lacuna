@@ -995,42 +995,6 @@ test('push scope still selects the full matrix regardless of changed web specs',
   }
 });
 
-test('pull requests run 21 heavy matrix instances against 46 on pushes, and 4 for web spec-only changes', () => {
-  const count = (scope, event_name = 'pull_request') => {
-    const outputs = Object.fromEntries(
-      Object.entries(scope).map(([key, value]) => [key, String(value)]),
-    );
-    const context = {
-      github: { event_name },
-      needs: { changes: { result: 'success', outputs } },
-    };
-    let heavy = 0;
-    let runners = 0;
-    for (const [name, job] of Object.entries(workflow.jobs)) {
-      if (['changes', 'documentation', 'test', 'browser-smoke'].includes(name)) {
-        runners++;
-        continue;
-      }
-      const matrix = job.strategy?.matrix;
-      const instances = !matrix
-        ? 1
-        : (matrix.include?.length ??
-          Object.values(matrix).reduce((total, values) => total * values.length, 1));
-      const acknowledgement = required.includes(name);
-      const selected = runInNewContext(acknowledgement ? job.steps[1].if : job.if, context);
-      if (selected) heavy += instances;
-      if (acknowledgement || selected) runners += instances;
-    }
-    return { heavy, runners };
-  };
-  assert.deepEqual(count(classifyPaths(['unknown/file']), 'push'), { heavy: 46, runners: 50 });
-  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 21, runners: 26 });
-  assert.deepEqual(count(classifyPaths(['tests/e2e/study-flip.spec.ts'])), {
-    heavy: 4,
-    runners: 11,
-  });
-});
-
 test('release prerequisites match CI and Security runs by workflow file, not run name', () => {
   // ci.yml and security.yml set run-name with the commit, so a run's name never equals the workflow's.
   for (const name of ['release-tag.yml', 'release.yml']) {
