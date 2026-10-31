@@ -9,6 +9,8 @@ export default defineConfig({
     clearMocks: false,
     include: [
       'src/db/compatibilityCorpus.test.ts',
+      'src/db/portability.failure-sequences.test.ts',
+      'src/sync/manualMerge.failure-sequences.test.ts',
       'src/course/simpleSession.test.ts',
       'src/course/revisionSession.test.ts',
       'src/db/migrations*.test.ts',

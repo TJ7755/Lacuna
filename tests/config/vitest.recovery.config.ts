@@ -13,6 +13,7 @@ export default defineConfig({
     environment: 'happy-dom',
     clearMocks: false,
     include: [
+      'src/sync/manualMerge.failure-sequences.test.ts',
       'src/db/persistence.test.ts',
       'src/sync/manualMerge.test.ts',
       'src/sync/manualMerge.restorePoint.test.ts',
