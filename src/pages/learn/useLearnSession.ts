@@ -20,7 +20,7 @@ import type {
   UserPerformance,
 } from '../../db/types';
 import { buryCard, setCardFlag, suspendCard } from '../../db/cardRepository';
-import { upsertLessonCardExposure } from '../../db/lessonRepository';
+import { markLessonComplete, upsertLessonCardExposure } from '../../db/lessonRepository';
 import { listNotes } from '../../db/noteRepository';
 import { refreshRevisionPlan, startRevisionWindow } from '../../db/revisionPlanRepository';
 import {
@@ -854,6 +854,17 @@ export function useLearnSession({
   // callback identity changed (which would reset phase and undo reveal/exit).
   const serveNextRef = useRef(serveNext);
   serveNextRef.current = serveNext;
+
+  const continueFromNotes = useCallback(async (): Promise<void> => {
+    if (lessonId && cardsRef.current.length === 0 && !lessonHasMembersRef.current) {
+      await markLessonComplete(lessonId);
+      setLessonNotesScreen(null);
+      finish(true);
+      return;
+    }
+    setLessonNotesScreen(null);
+    serveNextRef.current();
+  }, [finish, lessonId]);
 
   const finaliseSummaryRef = useRef(finaliseSummary);
   finaliseSummaryRef.current = finaliseSummary;
@@ -2056,12 +2067,23 @@ export function useLearnSession({
     }
   }, [current, notify]);
 
+  const editTagSuggestions =
+    editing && current
+      ? [
+          ...new Set(
+            cardsRef.current
+              .filter((c) => c.schedulingUnitId === current.schedulingUnitId)
+              .flatMap((c) => c.tags ?? []),
+          ),
+        ].sort()
+      : [];
+
   return {
     phase,
     singleDeck,
     unitDisplayName,
     lessonNotesScreen,
-    setLessonNotesScreen,
+    continueFromNotes,
     current,
     hintStep,
     setHintStep,
@@ -2083,6 +2105,7 @@ export function useLearnSession({
     summary,
     canUndo,
     editing,
+    editTagSuggestions,
     sessionCardIds,
     sessionCardOutcomes,
     schedulerProgress,
@@ -2095,9 +2118,7 @@ export function useLearnSession({
     revisionWindowBudgetSeconds,
     revisionNextWindowDay,
     backOut,
-    finish,
     continueStudying,
-    serveNextRef,
     reveal,
     hide,
     answer,
@@ -2110,14 +2131,10 @@ export function useLearnSession({
     toggleFlagCurrent,
     suspendCurrent,
     buryCurrent,
-    // Session refs read by the view and existing integration tests.
-    cardsRef,
-    ctxRef,
     events,
     simpleQueue,
     simpleMastered,
     simpleWrong,
-    lessonHasMembersRef,
     persistSimpleResume,
   };
 }

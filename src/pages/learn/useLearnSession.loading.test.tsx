@@ -525,8 +525,6 @@ it('breaks equal scheduler scores randomly when reviewing earlier material', asy
   try {
     await waitFor(() => expect(result.current.current).not.toBeNull());
     expect(result.current.current?.id).toBe(stored[1].id);
-    const ctx = result.current.ctxRef.current!;
-    expect(selectNext(result.current.cardsRef.current, ctx, new Map())?.id).toBe(stored[1].id);
     expect(await db.reviewHistory.count()).toBe(0);
   } finally {
     unmount();

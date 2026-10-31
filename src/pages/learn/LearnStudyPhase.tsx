@@ -76,7 +76,7 @@ export function LearnStudyPhase({
   const {
     editing,
     current,
-    cardsRef,
+    editTagSuggestions,
     handleEdited,
     cancelEdit,
     phase,
@@ -145,13 +145,7 @@ export function LearnStudyPhase({
           <CardEditOverlay
             card={current}
             draftScope={lessonId ?? (courseId ? `bank:${courseId}` : undefined)}
-            tagSuggestions={[
-              ...new Set(
-                cardsRef.current
-                  .filter((c) => c.schedulingUnitId === current.schedulingUnitId)
-                  .flatMap((c) => c.tags ?? []),
-              ),
-            ].sort()}
+            tagSuggestions={editTagSuggestions}
             onSaved={handleEdited}
             onCancel={cancelEdit}
           />

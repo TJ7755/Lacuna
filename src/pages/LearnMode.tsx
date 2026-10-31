@@ -6,7 +6,6 @@ import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBo
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { markLessonComplete } from '../db/lessonRepository';
 import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
 import { useDistraction } from '../components/learn/useDistraction';
 import type { SessionSummary } from '../components/learn/types';
@@ -150,7 +149,7 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
   const {
     phase,
     lessonNotesScreen,
-    setLessonNotesScreen,
+    continueFromNotes,
     current,
     hintStep,
     setHintStep,
@@ -167,17 +166,13 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
     sessionCardIds,
     sessionCardOutcomes,
     backOut,
-    finish,
     confirmCompletion,
     settleCompletion,
-    serveNextRef,
     reveal,
     hide,
     answer,
     undoLast,
     openEdit,
-    cardsRef,
-    lessonHasMembersRef,
     persistSimpleResume,
   } = session;
 
@@ -289,18 +284,7 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
           lessonName={lessonNotesScreen.lessonName}
           notes={lessonNotesScreen.notes}
           onExit={backOut}
-          onContinue={() => {
-            void (async () => {
-              if (lessonId && cardsRef.current.length === 0 && !lessonHasMembersRef.current) {
-                await markLessonComplete(lessonId);
-                setLessonNotesScreen(null);
-                finish(true);
-                return;
-              }
-              setLessonNotesScreen(null);
-              serveNextRef.current();
-            })();
-          }}
+          onContinue={() => void continueFromNotes()}
           motionMultiplier={m}
         />
       </StudyEntrance>
