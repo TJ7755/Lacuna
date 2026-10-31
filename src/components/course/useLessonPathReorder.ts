@@ -1,4 +1,5 @@
-import { capturePathSlots, projectPathSlots } from './pathReorderLayout';
+import { capturePathSlots } from './pathReorderLayout';
+import { lessonPathReorderPreview, sameOrder } from './lessonPathReorderPreview';
 import {
   bindPathTouchReorder,
   type DragSession,
@@ -44,10 +45,6 @@ export function moveLessonIds(
   const remaining = orderedLessonIds.filter((id) => id !== lessonId);
   const clampedIndex = Math.max(0, Math.min(targetIndex, remaining.length));
   return [...remaining.slice(0, clampedIndex), lessonId, ...remaining.slice(clampedIndex)];
-}
-
-function sameOrder(left: string[], right: string[]): boolean {
-  return left.length === right.length && left.every((id, index) => id === right[index]);
 }
 
 export function usePathReorder({
@@ -246,38 +243,17 @@ export function usePathReorder({
       dragState ? orderForMove(orderedIds, dragState.lessonId, dragState.targetIndex) : orderedIds,
     [dragState, orderedIds, orderForMove],
   );
-  const projectedTops = useMemo(
+  const { projectedTops, dropMarkerByLessonId } = useMemo(
     () =>
-      dragState && sessionRef.current
-        ? projectPathSlots(orderedIds, projectedIds ?? orderedIds, sessionRef.current.slots)
-        : new Map<string, number>(),
-    [dragState, orderedIds, projectedIds],
+      lessonPathReorderPreview({
+        orderedIds,
+        projectedIds,
+        dragState,
+        slots: sessionRef.current?.slots,
+        itemById,
+      }),
+    [dragState, orderedIds, projectedIds, itemById],
   );
-
-  const dropMarkerByLessonId = useMemo(() => {
-    const result = new Map<string, { edge: NonNullable<LessonDropMarker>; active: boolean }>();
-    if (!dragState || dragState.dropping) return result;
-    const nextIds = projectedIds;
-    if (!nextIds) return result;
-    const index = nextIds.indexOf(dragState.lessonId);
-    if (index < 0) return result;
-    const isCompanion = (id: string) => (itemById.get(id)?.dragId ?? id) === dragState.lessonId;
-    const next = nextIds.slice(index + 1).find((id) => !isCompanion(id));
-    const neighbour = next ?? nextIds.slice(0, index).findLast((id) => !isCompanion(id));
-    if (!neighbour) return result;
-    const source = sessionRef.current?.slots.get(dragState.lessonId);
-    const destination = projectedTops.get(dragState.lessonId);
-    const aligned =
-      !!source &&
-      destination !== undefined &&
-      Math.abs(source.top + (dragState.y ?? 0) - destination) <=
-        Math.min(32, Math.max(12, source.height / 3));
-    result.set(neighbour, {
-      edge: next ? 'before' : 'after',
-      active: !sameOrder(nextIds, orderedIds) && aligned,
-    });
-    return result;
-  }, [dragState, orderedIds, projectedIds, projectedTops, itemById]);
 
   const touchContext = useRef<TouchReorderContext>(null!);
   touchContext.current = {
