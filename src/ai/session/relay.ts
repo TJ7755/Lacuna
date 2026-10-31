@@ -36,7 +36,6 @@ import {
 export type { RelaySessionStorage } from './relayPersistence';
 export { AI_CONNECTION_QUIET_AFTER_MS } from './relaySessionState';
 
-const POLL_INTERVAL_MS = 1_000;
 const PAIRING_EXPIRED_REASON = 'Pairing code expired. Connect the terminal again.';
 const EMPTY_SNAPSHOT: AiSessionSnapshot = {
   revision: 0,
@@ -123,9 +122,10 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
     options,
     crypto,
   });
-  const { poll } = createRelayPolling(state, {
+  const { startPolling, stopPolling } = createRelayPolling(state, {
     options,
     crypto,
+    timers,
     now,
     toolSession,
     serialise,
@@ -134,7 +134,6 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
     getEncryptionKey,
     pushMailbox,
     disconnectMailboxGeneration,
-    stopPolling,
   });
   if (isExpiredPairing(state.snapshot, now())) expirePairing();
 
@@ -149,18 +148,6 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
     state.snapshot = { ...next, revision: state.snapshot.revision + 1 };
     persist();
     listeners.forEach((listener) => listener());
-  }
-
-  function startPolling(): void {
-    if (state.cancelPolling) return;
-    const epoch = ++state.pollingEpoch;
-    state.cancelPolling = timers.repeat(() => poll(epoch), POLL_INTERVAL_MS);
-  }
-
-  function stopPolling(): void {
-    state.pollingEpoch += 1;
-    state.cancelPolling?.();
-    state.cancelPolling = null;
   }
 
   function serialise<T>(operation: () => Promise<T>): Promise<T> {
