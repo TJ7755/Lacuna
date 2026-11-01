@@ -1,5 +1,5 @@
 import { MASTERY_R, MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import type { Card } from '@lacuna/core/db/types';
+import type { SchedulingMemory } from './fsrs';
 import { isUpcomingExamDate } from './examDate';
 import { rAtExam, rAtExamIfReviewedNow, type SimContext } from './forwardSim';
 
@@ -21,7 +21,7 @@ export interface AssessmentTiming {
  * the exam. The 90% reference target is a model prediction, not a guarantee.
  */
 export function assessmentTiming(
-  card: Card,
+  card: SchedulingMemory,
   now: number,
   examDate: number | undefined,
   ctx: SimContext,
@@ -40,7 +40,7 @@ export function assessmentTiming(
 
 /** Current memory only: do not assume a future scheduled review has happened. */
 export function assessmentRecallBelowTarget(
-  card: Card,
+  card: SchedulingMemory,
   examDate: number,
   now: number,
   ctx: SimContext,
@@ -49,7 +49,7 @@ export function assessmentRecallBelowTarget(
 }
 
 export function assessmentReviewGain(
-  card: Card,
+  card: SchedulingMemory,
   examDate: number,
   now: number,
   ctx: SimContext,
@@ -63,7 +63,7 @@ export function assessmentReviewGain(
 export const MIN_ASSESSMENT_REVIEW_GAIN = 0.01;
 
 export function worthwhileAssessmentPractice(
-  card: Card,
+  card: SchedulingMemory,
   examDate: number,
   now: number,
   windowDays: number,

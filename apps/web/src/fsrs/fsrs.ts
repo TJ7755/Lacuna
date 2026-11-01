@@ -47,7 +47,7 @@ export function decayOf(params: FsrsParameters): number {
  * (epoch ms). A never-reviewed card becomes a fresh empty card so ts-fsrs applies
  * the correct initial-stability/difficulty path.
  */
-export function toTsCard(card: Card, now: number): TsCard {
+export function toTsCard(card: SchedulingMemory, now: number): TsCard {
   if (card.lastReviewed === null) {
     return createEmptyCard(new Date(now));
   }
