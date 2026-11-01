@@ -1,4 +1,11 @@
-/** Initial ceilings, not measured baselines. Compare retained reports before tightening them. */
+// Route baselines: GitHub Ubuntu run 41316356939, production merge 1d8f610b.
+export const routeAssetBudgets: Record<string, { javascriptBytes: number; cssBytes: number }> = {
+  'route-assets-today': { javascriptBytes: 1_400_000, cssBytes: 155_000 },
+  'route-assets-course': { javascriptBytes: 3_220_000, cssBytes: 174_000 },
+  'route-assets-learn': { javascriptBytes: 2_900_000, cssBytes: 163_000 },
+};
+
+/** Initial timing ceilings; compare retained reports before tightening them. */
 export const elapsedBudgetsMs: Record<string, number> = {
   'dashboard-load': 8_000,
   'global-search': 2_000,
@@ -74,9 +81,9 @@ export function checkPerformanceReport(value: unknown): string[] {
       if (
         sample.name.startsWith('route-assets-') &&
         (!(sample.javascriptBytes! > 0) ||
-          sample.javascriptBytes! > 1_700_000 ||
+          sample.javascriptBytes! > (routeAssetBudgets[sample.name]?.javascriptBytes ?? 0) ||
           !(sample.cssBytes! > 0) ||
-          sample.cssBytes! > 200_000)
+          sample.cssBytes! > (routeAssetBudgets[sample.name]?.cssBytes ?? 0))
       )
         failures.push(`${sample.name}: asset budget exceeded or missing`);
       if (

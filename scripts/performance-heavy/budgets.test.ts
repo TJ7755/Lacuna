@@ -56,7 +56,7 @@ describe('performance evidence gate', () => {
       interaction.lag.longTasks.push({ duration: 1_200 });
     }
     const route = report.runs[0].samples.find((sample) => sample.name === 'route-assets-learn')!;
-    if ('javascriptBytes' in route) route.javascriptBytes = 2_000_000;
+    if ('javascriptBytes' in route) route.javascriptBytes = 4_000_000;
     expect(checkPerformanceReport(report)).toHaveLength(4);
   });
 });

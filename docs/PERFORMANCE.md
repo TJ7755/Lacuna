@@ -78,3 +78,14 @@ The performance workflow runs a smaller workload on relevant pull requests and t
 on demand through `workflow_dispatch`. Download its artefacts to inspect failed measurements and
 retain the first green full report as the named baseline. Cheap checks do not replace the full run
 before the web return. Existing `perf:check` and first-interaction checks remain part of validation.
+
+### First hosted route baseline
+
+GitHub Ubuntu [run 41316356939](https://github.com/TJ7755/Lacuna/actions/runs/41316356939),
+production merge candidate `1d8f610b`, Chromium, 1x CPU, 10,000 cards and 200,000 reviews:
+Today loaded 1,272,961 JS / 141,005 CSS bytes; course loaded 2,918,493 / 157,775;
+learn loaded 2,629,376 / 148,018. These are decoded resource bytes through the first visible
+route result, including requested prefetches, with the browser cache disabled. Route ceilings
+allow approximately 10% headroom. The existing deterministic entry-graph budgets remain separate.
+Course and Cards input-to-readable were 480 / 318 ms; reveal and next card were 428 / 164 ms.
+All timing and long-task ceilings passed this quick run. Full backup/import evidence is separate.
