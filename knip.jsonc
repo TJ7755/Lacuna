@@ -3,20 +3,8 @@
   "ignoreBinaries": ["check", "fmt"],
   "workspaces": {
     ".": {
-      // Invoked by filename in Electron preparation; Tailwind is loaded through CSS.
       "ignoreDependencies": ["@typescript/native", "tailwindcss"],
       "entry": [
-        "apps/web/src/pages/{quizlet,courses}/entry-client.tsx",
-        "apps/web/src/{teacher,library}/main.tsx",
-        "apps/web/src/pages/{landing,quizlet,courses}/entry-server.tsx",
-        "apps/ai/api/ai/*.ts",
-        "apps/desktop/{main,preload}.ts",
-        "apps/desktop/mcp/{server,companion,aiCompanion,aiCompanionEntry}.ts",
-        "apps/web/src/workers/*.worker.ts",
-        "apps/web/src/fsrs/wasi-worker-browser.mjs",
-        "apps/web/src/{vite-env,testing}.d.ts",
-        "apps/desktop/updaterContract.d.ts",
-        "apps/gaps/sw.js",
         "scripts/{ai-benchmark,jev-smoke,question-bank,library-publish}.ts",
         "scripts/performance-heavy/{fixture,run}.ts",
         "scripts/performance-heavy/{summarise,trace-summary}.mjs",
@@ -37,16 +25,46 @@
       },
     },
     "apps/relay": {
-      "entry": ["apps/ai/api/index.ts", "tests/**/*.test.ts"],
+      "entry": ["api/index.ts", "tests/**/*.test.ts"],
       "project": ["{src,api,shared,tests,scripts}/**/*.{ts,mjs}", "*.{ts,mjs}"],
     },
     "tooling/handwriting-maths": {
-      "entry": ["apps/web/src/**/*.test.ts"],
-      "project": ["apps/web/src/**/*.ts", "*.ts"],
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.ts", "*.ts"],
     },
     "tooling/lacuna-ai-mcp": {
-      "entry": ["apps/web/src/index.ts", "apps/web/src/**/*.test.ts"],
-      "project": ["apps/web/src/**/*.ts", "*.{ts,js}"],
+      "entry": ["src/index.ts", "src/**/*.test.ts"],
+      "project": ["src/**/*.ts", "*.{ts,js}"],
+    },
+    "apps/web": {
+      "entry": [
+        "src/pages/{quizlet,courses}/entry-client.tsx",
+        "src/{teacher,library}/main.tsx",
+        "src/pages/{landing,quizlet,courses}/entry-server.tsx",
+        "src/workers/*.worker.ts",
+        "src/fsrs/wasi-worker-browser.mjs",
+        "src/{vite-env,testing}.d.ts",
+        "src/**/*.test.{ts,tsx}",
+        "src/main.tsx",
+        "src/pages/landing/entry-client.tsx",
+      ],
+      "project": ["**/*.{js,mjs,cjs,ts,tsx,mts,cts,css}", "!dist*/**"],
+    },
+    "apps/desktop": {
+      "entry": [
+        "{main,preload}.ts",
+        "mcp/{server,companion,aiCompanion,aiCompanionEntry}.ts",
+        "updaterContract.d.ts",
+      ],
+      "project": ["**/*.{js,mjs,cjs,ts,tsx,mts,cts,css}", "!dist*/**"],
+    },
+    "apps/ai": {
+      "entry": ["api/ai/*.ts", "server/ai/localSpike.ts"],
+      "project": ["**/*.{js,mjs,cjs,ts,tsx,mts,cts,css}", "!dist*/**"],
+    },
+    "apps/gaps": {
+      "entry": ["sw.js"],
+      "project": ["**/*.{js,mjs,cjs,ts,tsx,mts,cts,css}", "!dist*/**"],
     },
   },
 }
