@@ -2,6 +2,7 @@
 // before replacement. Peer sync alone can skip a proven unchanged application.
 
 import { takeAutoBackup } from '../db/backups';
+import { assertValidBackup } from '../db/backupValidation';
 import { projectBackupScheduling } from '../db/backupSchedulingProjection';
 import { migrateCardRecord } from '../db/migrations';
 import { BACKUP_VERSION, exportDatabase, importBackup, validateBackup } from '../db/portability';
@@ -52,9 +53,12 @@ export async function manualMerge(
   remote: BackupFile,
   options: ManualMergeOptions = {},
 ): Promise<ManualMergeSummary> {
-  if (!validateBackup(remote)) {
-    throw new ManualMergeError('This file is not a valid Lacuna backup.', {
+  try {
+    assertValidBackup(remote, 'This file is not a valid Lacuna backup.');
+  } catch (error) {
+    throw new ManualMergeError(messageOf(error), {
       databaseModified: false,
+      causeError: error,
     });
   }
 

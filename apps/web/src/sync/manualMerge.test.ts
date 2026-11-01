@@ -37,6 +37,9 @@ function backup(overrides: Partial<BackupFile> = {}): BackupFile {
   return {
     app: 'lacuna-v15',
     version: 15,
+    schedulingUnits: [],
+    coursePerformance: [],
+    schedulingPerformance: [],
     concepts: [],
     questions: [],
     questionConcepts: [],
@@ -276,12 +279,31 @@ describe('manualMerge', () => {
     expect(importBackup).not.toHaveBeenCalled();
   });
 
+  it.each([1, 10, 14])('rejects version %s before entering replacement', async (version) => {
+    await expect(
+      manualMerge(
+        backup({
+          app: (version < 12 ? 'lacuna' : `lacuna-v${version}`) as BackupFile['app'],
+          version,
+        }),
+      ),
+    ).rejects.toMatchObject({
+      name: 'ManualMergeError',
+      databaseModified: false,
+      message:
+        'This file is not a valid Lacuna backup. version: Unsupported old backup version. Export a new backup from the current Lacuna release.',
+    });
+    expect(replace).not.toHaveBeenCalled();
+    expect(takeAutoBackup).not.toHaveBeenCalled();
+    expect(importBackup).not.toHaveBeenCalled();
+  });
+
   it('rejects an invalid file before any write', async () => {
     await expect(manualMerge({ app: 'not-lacuna' } as unknown as BackupFile)).rejects.toMatchObject(
       {
         name: 'ManualMergeError',
         databaseModified: false,
-        message: 'This file is not a valid Lacuna backup.',
+        message: expect.stringContaining('This file is not a valid Lacuna backup.'),
       },
     );
     expect(takeAutoBackup).not.toHaveBeenCalled();

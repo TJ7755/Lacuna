@@ -62,6 +62,9 @@ const backupSchema = z
           'Unsupported old backup version. Export a new backup from the current Lacuna release',
       });
     for (const key of [
+      'schedulingUnits',
+      'coursePerformance',
+      'schedulingPerformance',
       'concepts',
       'questions',
       'questionConcepts',
