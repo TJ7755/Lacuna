@@ -33,6 +33,13 @@ function git(tags: string, changed: string) {
 const quiet = () => {};
 
 describe('weekly release', () => {
+  it.each(['packages/core/src/db/types.ts', 'packages/protocol/src/insights/index.ts'])(
+    'ships shared runtime changes in %s',
+    (path) => {
+      expect(shipsChanges([path])).toBe(true);
+    },
+  );
+
   it('prepares shipped changes using notes generated between the release tag and exact head', async () => {
     const directory = repository();
     const requests: unknown[] = [];
