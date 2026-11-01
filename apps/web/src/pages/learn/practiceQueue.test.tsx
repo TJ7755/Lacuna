@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCourse, createLesson, createLessonCard } from '../../db/repository';
 import { db } from '../../db/schema';
-import type { ExamObjective, Grade } from '../../db/types';
+import type { ExamObjective, Grade } from '@lacuna/core/db/types';
 import { useLearnSession, type UseLearnSessionParams } from './useLearnSession';
 
 const NOW = Date.UTC(2026, 8, 25, 12);

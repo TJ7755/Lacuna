@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { QuestionSetAttemptRecord } from './questionSetAttempts';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { questionSetAddedParts, questionSetPathProgress } from './questionSetPathProgress';
 
 function attempt(): QuestionSetAttemptRecord {

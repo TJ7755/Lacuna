@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { AnimatePresence, domAnimation, LazyMotion } from 'motion/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { ArchiveCourseDialog } from './CourseActions';
 
 vi.mock('../../db/courseRepository', () => ({ updateCourse: vi.fn() }));

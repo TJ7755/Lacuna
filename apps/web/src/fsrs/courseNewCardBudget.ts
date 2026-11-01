@@ -2,7 +2,7 @@
 // Lesson units inherit the course's newCardsPerDay, so applying studyPool to each unit
 // separately would let a session over N lessons introduce N times the course cap.
 
-import type { Card, SchedulerConfig } from '../db/types';
+import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 import { availableCards, studyPool } from './eligibility';
 
 /** Session cards grouped by course, with each course's admitted new cards memoised by cap. */

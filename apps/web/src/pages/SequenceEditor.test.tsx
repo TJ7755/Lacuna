@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SequenceEditor } from './SequenceEditor';
-import type { Course, Sequence } from '../db/types';
+import type { Course, Sequence } from '@lacuna/core/db/types';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 
 let mockCourse: Course | null | undefined;

@@ -5,7 +5,7 @@ import Dexie from 'dexie';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { db } from './schema';
 import { exportDatabase, importBackup, validateBackup } from './portability';
-import { defaultFsrsParameters } from '../fsrs/params';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 
 beforeEach(async () => {
   await db.delete();

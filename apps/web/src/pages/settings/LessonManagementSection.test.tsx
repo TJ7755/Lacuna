@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/react';
 import { LessonManagementSection } from './LessonManagementSection';
-import type { Lesson } from '../../db/types';
-import type { CourseRecord } from '../../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
+import type { CourseRecord } from '@lacuna/core/db/types';
 
 let mockLessons: Lesson[] | undefined;
 let mockCourse: CourseRecord;

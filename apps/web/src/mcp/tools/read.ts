@@ -6,7 +6,7 @@
 
 import type { z } from 'zod';
 import * as read from '../../db/read';
-import { searchCardsInScope } from '../../db/search';
+import { searchCardsInScope } from '@lacuna/core/db/search';
 import {
   diagnosticsSummaryContract,
   findCourseContract,

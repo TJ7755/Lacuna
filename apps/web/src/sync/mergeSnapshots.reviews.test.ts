@@ -3,7 +3,7 @@ import {
   reviewHistoryEntriesForCard,
   reviewHistoryEntryId,
   type ReviewHistoryEntry,
-} from '../db/reviewHistory';
+} from '@lacuna/core/db/reviewHistory';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 
 import {

@@ -5,7 +5,7 @@ import {
   DEFAULT_REQUEST_RETENTION,
   MAX_REQUEST_RETENTION,
   MIN_REQUEST_RETENTION,
-} from './params';
+} from '@lacuna/core/fsrs/params';
 
 describe('clampRequestRetention', () => {
   it.each([

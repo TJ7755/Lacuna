@@ -1,7 +1,7 @@
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { m as motion, useIsPresent } from 'motion/react';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
-import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../../db/types';
+import type { Card, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatDateTime } from '../../utils/datetime';

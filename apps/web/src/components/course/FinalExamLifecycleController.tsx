@@ -3,7 +3,7 @@ import { DialogPanel } from '../ui/DialogPanel';
 import { useEffect, useMemo, useReducer, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateCourse } from '../../db/courseRepository';
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import {
   finalExamNeedsDecision,

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import type { QuestionSetRecord } from '../../apps/web/src/questions/questionSetCodec';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { parseQuestionBank } from '../../apps/web/src/questions/bank';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 

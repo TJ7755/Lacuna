@@ -5,8 +5,8 @@ import {
   type LineageDiffInput,
   type LineageIdMapping,
   type ShareLessonInput,
-} from './lineageDiff';
-import type { ItemPayload } from './types';
+} from '@lacuna/core/db/lineageDiff';
+import type { ItemPayload } from '@lacuna/core/db/types';
 
 const ORIGINAL_PAYLOAD: ItemPayload = {
   v: 1,

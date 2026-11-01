@@ -1,5 +1,5 @@
 import { db, makeId } from '../db/schema';
-import type { CheckerDisputeReport, Grade, LineVerdict } from '../db/types';
+import type { CheckerDisputeReport, Grade, LineVerdict } from '@lacuna/core/db/types';
 import { validateQuestionAttempt } from './domain';
 import { gradeQuestionAttempt } from './grading';
 import { questionGeneratorRegistry } from './generators';
@@ -11,7 +11,7 @@ import {
   type QuestionCorrection,
   type QuestionDefinition,
   type ResolvedQuestionInstance,
-} from './types';
+} from '@lacuna/core/questions/types';
 
 export interface StartQuestionAttemptInput {
   questionId: string;

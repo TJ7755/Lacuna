@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { OcclusionEditor } from './OcclusionEditor';
-import type { Course, Occlusion } from '../db/types';
+import type { Course, Occlusion } from '@lacuna/core/db/types';
 
 let mockCourse: Course | null | undefined;
 let mockLesson: null | undefined;

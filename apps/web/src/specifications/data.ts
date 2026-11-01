@@ -1,5 +1,5 @@
-import { parseSpecification, type Specification } from './catalogue';
-import type { SpecificationReference } from './links';
+import { parseSpecification, type Specification } from '@lacuna/core/specifications/catalogue';
+import type { SpecificationReference } from '@lacuna/core/specifications/links';
 
 /** Validate course-supplied metadata without requiring a global catalogue. */
 export function parseCourseSpecificationData(

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { createCourse } from '../db/repository';
 import { db } from '../db/schema';
 import { createQuestionSet } from '../questions/questionSetRepository';
-import type { QuestionSet } from '../questions/questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import { QuestionSetPractice } from './QuestionSetPractice';
 
 // Browser tests exercise motion; component tests keep focus and persistence deterministic.

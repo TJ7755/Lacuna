@@ -5,9 +5,19 @@ import {
   questionPresentationFingerprint as conceptPracticeFingerprint,
 } from './generators/declarative';
 import { parseQuestionSetAttemptRecord } from './questionSetAttemptCodec';
-import { answerableNodes, type QuestionSetAttemptRecord } from './questionSetAttempts';
-import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
-import type { MarkAllocation, QuestionAnswer, QuestionSetQuestion } from './questionSets';
+import {
+  answerableNodes,
+  type QuestionSetAttemptRecord,
+} from '@lacuna/core/questions/questionSetAttempts';
+import {
+  parseQuestionSetRecord,
+  type QuestionSetRecord,
+} from '@lacuna/core/questions/questionSetCodec';
+import type {
+  MarkAllocation,
+  QuestionAnswer,
+  QuestionSetQuestion,
+} from '@lacuna/core/questions/questionSets';
 
 export class QuestionPracticeExhaustedError extends Error {
   constructor(public readonly reason: 'no-unseen-questions' | 'no-questions') {

@@ -44,8 +44,8 @@ import {
   type ShareCardInput,
   type ShareLessonInput,
   type ShareNoteInput,
-} from '../../db/lineageDiff';
-import type { Card, ItemPayload, Lesson, LineageIdMapping, Note } from '../../db/types';
+} from '@lacuna/core/db/lineageDiff';
+import type { Card, ItemPayload, Lesson, LineageIdMapping, Note } from '@lacuna/core/db/types';
 import { applyLineageUpdateContract, diffLineageUpdateContract } from '../contracts/lineage';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 

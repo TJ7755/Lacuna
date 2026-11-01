@@ -16,7 +16,7 @@ import {
   type InsightEnvelope,
   type InsightEnvelopeContext,
   type InsightMailboxPage,
-} from '../shared/insights/index.js';
+} from '@lacuna/protocol/insights/index';
 
 export async function handleInsight(
   store: BlobStore,

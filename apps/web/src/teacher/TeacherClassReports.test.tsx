@@ -9,7 +9,7 @@ import {
 } from './TeacherClassReports.testSupport';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { expect, it } from 'vitest';
-import { DAY_MS, isoDayLabel, isoDayStartMs } from '../../../relay/shared/insights/index';
+import { DAY_MS, isoDayLabel, isoDayStartMs } from '@lacuna/protocol/insights/index';
 import { createClassSessions } from './classSessions';
 import { dayLabel } from './classInsights';
 

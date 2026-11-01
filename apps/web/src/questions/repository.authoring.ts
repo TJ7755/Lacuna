@@ -16,7 +16,7 @@ import type {
   QuestionConceptSet,
   QuestionDefinition,
   QuestionPayload,
-} from './types';
+} from '@lacuna/core/questions/types';
 
 interface QuestionRelationshipInput {
   courseId: string;

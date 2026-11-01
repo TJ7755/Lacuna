@@ -1,10 +1,16 @@
 import { z } from 'zod';
-import { jevAssessmentReceiptSchema, jevMarkProvenanceSchema } from '../jev/provenance';
-import { diagnosisMatchesRequest, type JevDiagnosticRequest } from '../jev/diagnosis';
+import { jevAssessmentReceiptSchema, jevMarkProvenanceSchema } from '@lacuna/core/jev/provenance';
+import { diagnosisMatchesRequest, type JevDiagnosticRequest } from '@lacuna/core/jev/diagnosis';
 import { questionSchedulerConfigFingerprint } from './scheduler';
-import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
-import { answerableNodes, type QuestionSetAttemptRecord } from './questionSetAttempts';
-import { summariseSelfMarking } from './questionSets';
+import {
+  parseQuestionSetRecord,
+  type QuestionSetRecord,
+} from '@lacuna/core/questions/questionSetCodec';
+import {
+  answerableNodes,
+  type QuestionSetAttemptRecord,
+} from '@lacuna/core/questions/questionSetAttempts';
+import { summariseSelfMarking } from '@lacuna/core/questions/questionSets';
 
 const responseValue = z.discriminatedUnion('kind', [
   z.object({ kind: z.enum(['written', 'calculation']), text: z.string() }).strict(),

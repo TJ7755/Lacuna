@@ -50,7 +50,7 @@
 // from the same item, and so `isLabelCardId`/regeneration can tell the two kinds
 // apart from the id alone.
 
-import type { Card, CardType, Sequence, SequenceItem } from './types';
+import type { Card, CardType, Sequence, SequenceItem } from '@lacuna/core/db/types';
 
 /** Suffix appended to a SequenceItem.id to derive its label card's sequenceItemId. */
 export const LABEL_CARD_SUFFIX = '::label';

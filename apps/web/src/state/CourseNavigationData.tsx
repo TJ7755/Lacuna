@@ -2,7 +2,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 
 const CourseNavigationContext = createContext<Course[] | undefined | null>(null);
 

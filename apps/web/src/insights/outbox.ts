@@ -3,12 +3,12 @@ import {
   completedIsoDayLabel,
   DAY_MS,
   INSIGHT_RETENTION_DAYS,
-} from '../../../relay/shared/insights/index';
+} from '@lacuna/protocol/insights/index';
 import {
   INSIGHT_ID_RE,
   parseInsightEnvelope,
   type InsightEnvelope,
-} from '../../../relay/shared/insights/index';
+} from '@lacuna/protocol/insights/index';
 import { normaliseRelayUrl } from '../sync/relay';
 import { sealInsightEnvelope, type InsightsRecipient } from './envelope';
 import { putInsightEnvelope } from './mailbox';

@@ -4,7 +4,7 @@ import type { SessionEvent } from '../../course/sessionSummary';
 import { performanceForReviewUnit } from '../../db/backingDecks';
 import { upsertLessonCardExposure } from '../../db/lessonRepository';
 import { undoReview, type RecordReviewArgs, type ReviewUndo } from '../../db/reviewRepository';
-import type { LessonCardExposure, UserPerformance } from '../../db/types';
+import type { LessonCardExposure, UserPerformance } from '@lacuna/core/db/types';
 import { persistAnswer } from './answerSteps';
 
 /** What undoing the most recent answer needs to restore (DB + in-session state). */

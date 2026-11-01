@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { UserPerformance } from '../db/types';
+import type { UserPerformance } from '@lacuna/core/db/types';
 import {
   emptyPerformance,
   FULL_MARKS_EASY_SECONDS,

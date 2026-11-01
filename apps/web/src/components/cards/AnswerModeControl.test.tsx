@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Card, Course, Lesson } from '../../db/types';
+import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 import {
   CardAnswerModeField,
   LessonAnswerModeControl,

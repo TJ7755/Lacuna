@@ -9,7 +9,7 @@ import {
   insightDayExpiresAt,
   INSIGHT_RETENTION_DAYS,
   DAY_MS,
-} from '../../../relay/shared/insights/index';
+} from '@lacuna/protocol/insights/index';
 import { createInsightsOutbox } from './outbox';
 
 const shareId = 'a'.repeat(32);

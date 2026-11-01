@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isAvailable, studyPool } from './eligibility';
-import { MS_PER_DAY } from './params';
-import type { Card, LegacyDeckRecord, ReviewLog } from '../db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import type { Card, LegacyDeckRecord, ReviewLog } from '@lacuna/core/db/types';
 
 const NOW = new Date('2026-06-04T10:00:00').getTime();
 

@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { parseSpecification, type Specification } from './catalogue';
+import { parseSpecification, type Specification } from '@lacuna/core/specifications/catalogue';
 import {
   isSpecificationPointIds,
   isSpecificationReference,
   type SpecificationReference,
-} from './links';
+} from '@lacuna/core/specifications/links';
 
 // Repository writes use the same synchronous predicates without loading Zod in startup code.
 export const specificationRefSchema = z.custom<SpecificationReference>(

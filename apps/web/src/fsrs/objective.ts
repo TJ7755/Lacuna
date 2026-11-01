@@ -18,9 +18,9 @@ import { deltaR, rAtExam, rAtExamIfReviewedNow, simContext, type SimContext } fr
 import { averagePredictedRetrievability, masteryFraction } from './progress';
 import { cardSchedulingHorizon } from './horizon';
 import { availableCards } from './eligibility';
-import { MASTERY_R } from './params';
+import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import type { ExamDateContext } from './examDate';
-import type { Card, SchedulerConfig, ExamObjective } from '../db/types';
+import type { Card, SchedulerConfig, ExamObjective } from '@lacuna/core/db/types';
 
 /**
  * Below this Delta-R, a further review is deemed to add no meaningful marks, so

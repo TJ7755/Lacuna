@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import type { QuestionSet } from '../../questions/questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 import { Button } from '../ui/Button';

@@ -4,7 +4,7 @@ import { createCourse } from './courseRepository';
 import { createLesson } from './lessonRepository';
 import { importApkgResult, type ApkgImportResult } from './apkgImport';
 import type { ParsedCard } from './import';
-import type { Lesson } from './types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { canEditLessons } from '../course/lessonViewMode';
 
 export const MAX_IMPORT_CARDS = 5000;

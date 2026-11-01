@@ -7,7 +7,7 @@
 import type { Transaction } from 'dexie';
 import { migrateLegacyRelayUrl } from '../sync/pairingConfig';
 import { db } from './database';
-import type { SyncState, Tombstone } from './types';
+import type { SyncState, Tombstone } from '@lacuna/core/db/types';
 
 export const TOMBSTONE_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 export const SYNC_STATE_KEY = 'syncState';

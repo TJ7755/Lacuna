@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { db } from './schema';
-import type { SessionHistoryEntry } from './types';
+import type { SessionHistoryEntry } from '@lacuna/core/db/types';
 
 export async function waitForTrajectorySample(
   eventId: string,

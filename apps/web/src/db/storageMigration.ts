@@ -5,8 +5,12 @@ import type {
   LegacyDeckRecord,
   Lesson,
   UserPerformance,
-} from './types';
-import type { SchedulingPerformance, SchedulingUnitRecord, CoursePerformance } from './types';
+} from '@lacuna/core/db/types';
+import type {
+  SchedulingPerformance,
+  SchedulingUnitRecord,
+  CoursePerformance,
+} from '@lacuna/core/db/types';
 import { schedulingUnitFromCourse, schedulingUnitFromLesson } from './schedulingUnitBuilder';
 
 export interface DomainStorageMigrationResult {

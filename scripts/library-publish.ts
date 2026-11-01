@@ -3,7 +3,7 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { decodeCourseFile } from '../apps/web/src/db/courseFile';
-import { summariseSelfMarking } from '../apps/web/src/questions/questionSets';
+import { summariseSelfMarking } from '@lacuna/core/questions/questionSets';
 import { summariseShare } from '../apps/web/src/db/share';
 import {
   getShareBytes,

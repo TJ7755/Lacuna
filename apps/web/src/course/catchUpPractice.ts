@@ -1,5 +1,5 @@
 import { lessonCardMembershipForLessons } from './lessonMembership';
-import type { Card, Course, Lesson, LessonCardLink } from '../db/types';
+import type { Card, Course, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import type { ExamDateContext } from '../fsrs/examDate';
 import { studyPool } from '../fsrs/eligibility';
 import { earlierLessonIds } from './courseEntry';

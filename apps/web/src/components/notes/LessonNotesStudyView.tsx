@@ -8,7 +8,7 @@ import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { ChevronDownIcon } from '../ui/icons';
 import { SECTION_CARD_SURFACE_CLASS } from '../ui/SectionCard';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import type { Note } from '../../db/types';
+import type { Note } from '@lacuna/core/db/types';
 
 interface LessonNotesStudyViewProps {
   notes: Note[];

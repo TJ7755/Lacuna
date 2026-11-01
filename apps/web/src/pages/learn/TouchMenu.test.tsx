@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import { TouchMenuSheet } from './TouchMenu';
 
 function renderMenu(card: Partial<Card> = {}, focusMode = false) {

@@ -1,9 +1,9 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentMemory, BackupFile, Card, CourseRecord, Lesson } from '../db/types';
+import type { AgentMemory, BackupFile, Card, CourseRecord, Lesson } from '@lacuna/core/db/types';
 import type * as DbPortability from '../db/portability';
-import { reviewHistoryEntryId, type ReviewHistoryEntry } from '../db/reviewHistory';
-import { defaultFsrsParameters } from '../fsrs/params';
+import { reviewHistoryEntryId, type ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { BACKUP_VERSION } from '../db/portability';
 import { ManualMergeError, manualMerge, summariseMerge } from './manualMerge';
 

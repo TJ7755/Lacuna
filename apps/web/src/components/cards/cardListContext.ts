@@ -2,7 +2,7 @@ import { importCardsToDestination } from '../../db/cardImport';
 import type { ApkgImportResult } from '../../db/apkgImport';
 import type { ParsedCard } from '../../db/import';
 import { restoreCards, type CardSnapshot } from '../../db/cardRepository';
-import type { SchedulerConfig } from '../../db/types';
+import type { SchedulerConfig } from '@lacuna/core/db/types';
 
 /** A destination available to an explicitly legacy card-move action. */
 export interface CardMoveTarget {

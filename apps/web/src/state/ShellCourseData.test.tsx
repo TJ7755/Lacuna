@@ -10,8 +10,8 @@ import {
   useCourseDashboardData,
   useSidebarData,
 } from './ShellCourseData';
-import { reviewHistoryEntriesForCard } from '../db/reviewHistory';
-import type { ReviewLog } from '../db/types';
+import { reviewHistoryEntriesForCard } from '@lacuna/core/db/reviewHistory';
+import type { ReviewLog } from '@lacuna/core/db/types';
 import { createCourseAssessment, updateCourseAssessment } from '../db/assessmentRepository';
 import {
   paperSpecification,

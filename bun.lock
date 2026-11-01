@@ -5,6 +5,8 @@
     "": {
       "name": "lacuna",
       "dependencies": {
+        "@lacuna/core": "workspace:*",
+        "@lacuna/protocol": "workspace:*",
         "electron-log": "^5.4.4",
         "electron-updater": "^6.8.9",
       },
@@ -83,10 +85,44 @@
         "zod": "4.6.7",
       },
     },
-    "relay": {
+    "apps/ai": {
+      "name": "@lacuna/ai",
+      "version": "0.0.0",
+      "dependencies": {
+        "@lacuna/core": "workspace:*",
+        "@lacuna/protocol": "workspace:*",
+      },
+    },
+    "apps/desktop": {
+      "name": "@lacuna/desktop",
+      "version": "0.0.0",
+      "dependencies": {
+        "@lacuna/core": "workspace:*",
+        "@lacuna/protocol": "workspace:*",
+      },
+    },
+    "apps/gaps": {
+      "name": "@lacuna/gaps",
+      "version": "0.0.0",
+      "dependencies": {
+        "@lacuna/core": "workspace:*",
+        "@lacuna/protocol": "workspace:*",
+      },
+    },
+    "apps/library": {
+      "name": "@lacuna/library",
+      "version": "0.0.0",
+      "dependencies": {
+        "@lacuna/core": "workspace:*",
+        "@lacuna/protocol": "workspace:*",
+      },
+    },
+    "apps/relay": {
       "name": "lacuna-relay",
       "version": "0.1.0",
       "dependencies": {
+        "@lacuna/core": "workspace:*",
+        "@lacuna/protocol": "workspace:*",
         "@vercel/blob": "^2.8.2",
       },
       "devDependencies": {
@@ -101,6 +137,26 @@
         "vite": "^8.3.5",
         "vitest": "5.0.5",
       },
+    },
+    "apps/web": {
+      "name": "@lacuna/web",
+      "version": "0.0.0",
+      "dependencies": {
+        "@lacuna/core": "workspace:*",
+        "@lacuna/protocol": "workspace:*",
+      },
+    },
+    "packages/core": {
+      "name": "@lacuna/core",
+      "version": "0.0.0",
+      "dependencies": {
+        "ts-fsrs": "^5.2.3",
+        "zod": "4.6.7",
+      },
+    },
+    "packages/protocol": {
+      "name": "@lacuna/protocol",
+      "version": "0.0.0",
     },
     "tooling/handwriting-maths": {
       "name": "lacuna-handwriting-maths",
@@ -551,7 +607,21 @@
 
     "@keyv/serialize": ["@keyv/serialize@1.1.1", "", {}, "sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA=="],
 
+    "@lacuna/ai": ["@lacuna/ai@workspace:apps/ai"],
+
     "@lacuna/ai-mcp": ["@lacuna/ai-mcp@workspace:tooling/lacuna-ai-mcp"],
+
+    "@lacuna/core": ["@lacuna/core@workspace:packages/core"],
+
+    "@lacuna/desktop": ["@lacuna/desktop@workspace:apps/desktop"],
+
+    "@lacuna/gaps": ["@lacuna/gaps@workspace:apps/gaps"],
+
+    "@lacuna/library": ["@lacuna/library@workspace:apps/library"],
+
+    "@lacuna/protocol": ["@lacuna/protocol@workspace:packages/protocol"],
+
+    "@lacuna/web": ["@lacuna/web@workspace:apps/web"],
 
     "@malept/cross-spawn-promise": ["@malept/cross-spawn-promise@2.0.0", "", { "dependencies": { "cross-spawn": "^7.0.1" } }, "sha512-1DpKU0Z5ThltBwjNySMC14g0CkbyhCaz9FkhxqNsZI6uAPJXFS8cMXlBKo26FJ8ZuW6S9GCMcR9IO5k2X5/9Fg=="],
 
@@ -1799,7 +1869,7 @@
 
     "lacuna-handwriting-maths": ["lacuna-handwriting-maths@workspace:tooling/handwriting-maths"],
 
-    "lacuna-relay": ["lacuna-relay@workspace:relay"],
+    "lacuna-relay": ["lacuna-relay@workspace:apps/relay"],
 
     "layout-base": ["layout-base@1.0.2", "", {}, "sha512-8h2oVEZNktL4BH2JCOI90iD1yXwL6iNW7KcCKT2QZgQJR2vbqDsldCTPRU9NifTCqHZci57XvQQ15YTu+sTYPg=="],
 

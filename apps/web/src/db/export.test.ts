@@ -14,7 +14,7 @@ import {
 } from './export';
 import { parseImport } from './import';
 import { parseImportAuto } from './importEngine';
-import { reviewHistoryEntryForCard } from './reviewHistory';
+import { reviewHistoryEntryForCard } from '@lacuna/core/db/reviewHistory';
 
 async function reset() {
   await Promise.all([

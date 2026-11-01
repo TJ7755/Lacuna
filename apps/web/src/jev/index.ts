@@ -1,8 +1,8 @@
 /** Stable boundary consumed by the study and settings UI. */
 import { useSyncExternalStore } from 'react';
 import { jevEngine } from './engine';
-import type { JevController } from './types';
-export * from './types';
+import type { JevController } from '@lacuna/core/jev/types';
+export * from '@lacuna/core/jev/types';
 export * from './protocol';
 export { createJevEngine, JEV_SETTINGS_STORAGE_KEY } from './engine';
 export function useJevSettings() {

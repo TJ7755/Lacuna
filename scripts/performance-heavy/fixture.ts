@@ -1,12 +1,12 @@
 import { db } from '../../apps/web/src/db/schema';
-import type { Card, CourseRecord, Lesson } from '../../apps/web/src/db/types';
-import { defaultFsrsParameters } from '../../apps/web/src/fsrs/params';
+import type { Card, CourseRecord, Lesson } from '@lacuna/core/db/types';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import {
   schedulingUnitFromCourse,
   schedulingUnitFromLesson,
 } from '../../apps/web/src/db/schedulingUnitBuilder';
 import { buildCardConcept } from '../../apps/web/src/questions/concepts';
-import { reviewHistoryEntriesForCard } from '../../apps/web/src/db/reviewHistory';
+import { reviewHistoryEntriesForCard } from '@lacuna/core/db/reviewHistory';
 
 /** Only injected into a disposable Playwright context, before loading the application. */
 export async function counts() {

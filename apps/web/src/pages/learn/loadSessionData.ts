@@ -4,8 +4,8 @@ import { dailyReviewCounts } from '../../db/reviewHistoryRead';
 import { listNotes } from '../../db/noteRepository';
 import { linesModeSequencesByCard } from '../../db/linesModeCards';
 import { occlusionDataByCard, type OcclusionCardData } from '../../db/occlusionStudy';
-import { filterSessionCardPool, type CardFilter } from '../../db/search';
-import type { Sequence, UserPerformance, SchedulerConfig } from '../../db/types';
+import { filterSessionCardPool, type CardFilter } from '@lacuna/core/db/search';
+import type { Sequence, UserPerformance, SchedulerConfig } from '@lacuna/core/db/types';
 import { emptyPerformance } from '../../fsrs/grading';
 import {
   makeSessionContext,

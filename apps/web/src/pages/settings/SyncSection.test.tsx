@@ -8,7 +8,7 @@ import {
 } from './SyncSection.testSupport';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { SyncState } from '../../db/types';
+import type { SyncState } from '@lacuna/core/db/types';
 import { SyncSection } from './SyncSection';
 
 describe('SyncSection', () => {

@@ -1,6 +1,6 @@
 import type { CourseStudyFlowSnapshot } from './studyFlowSnapshot';
 import type { AssessmentPracticeOption } from './assessmentPractice';
-import { SCIENCE_TECHNIQUES } from '../questions/techniqueTags';
+import { SCIENCE_TECHNIQUES } from '@lacuna/core/questions/techniqueTags';
 
 /** An operational hand-off size, not a daily allowance or a learning-success threshold. */
 export const STUDY_REVIEW_BLOCK_SIZE = 10;

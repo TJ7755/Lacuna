@@ -2,14 +2,14 @@ import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db, ensurePreMigrationSnapshot } from './schema';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import {
   reviewHistoryEntriesForCard,
   reviewHistoryEntryIdForEvent,
   type ReviewHistoryEntry,
-} from './reviewHistory';
-import type { Card, ReviewLog } from './types';
+} from '@lacuna/core/db/reviewHistory';
+import type { Card, ReviewLog } from '@lacuna/core/db/types';
 
 const stores = {
   cards:

@@ -9,8 +9,8 @@ import type {
   Occlusion,
   SchedulingUnitRecord,
   SessionHistoryEntry,
-} from '../db/types';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
+} from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { PRE_V22_BACKUP_MESSAGE } from '../db/portability';
 import {
   assertSnapshotSize,

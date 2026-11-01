@@ -4,7 +4,7 @@ import { exportDatabase, importBackup } from './portability';
 import { db } from './schema';
 import { createCard, createCourse, createLesson } from './repository';
 import { ensureLessonBackingDeck } from './backingDecks';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 
 async function reset(): Promise<void> {
   await Promise.all([

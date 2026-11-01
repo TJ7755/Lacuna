@@ -5,7 +5,7 @@ import { takeAutoBackup } from '../db/backups';
 import { adaptLegacyBackup } from '../db/legacyBackupAdapter';
 import { migrateCardRecord } from '../db/migrations';
 import { BACKUP_VERSION, exportDatabase, importBackup, validateBackup } from '../db/portability';
-import type { BackupFile } from '../db/types';
+import type { BackupFile } from '@lacuna/core/db/types';
 import { mergeSnapshots, snapshotStateUnchanged } from './mergeSnapshots';
 import { normaliseQuestionBackup } from '../questions/backup';
 import { replacementLifecycle, type ReplacementKind } from '../db/replacementLifecycle';

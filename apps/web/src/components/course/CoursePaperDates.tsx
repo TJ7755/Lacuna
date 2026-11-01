@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import type { CourseAssessment, CourseRecord } from '../../db/types';
+import type { CourseAssessment, CourseRecord } from '@lacuna/core/db/types';
 import { setCoursePaperAssessments } from '../../db/paperAssessmentRepository';
-import { papersForSelection } from '../../specifications/selection';
+import { papersForSelection } from '@lacuna/core/specifications/selection';
 import { defaultExamDate } from '../../utils/datetime';
 import { Button } from '../ui/Button';
 import { DateTimePicker } from '../ui/DateTimePicker';

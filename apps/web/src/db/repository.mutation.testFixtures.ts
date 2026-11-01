@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { expect } from 'vitest';
 import { db } from './schema';
 import type { CourseSnapshot } from './repository';
-import type { OcclusionRegion, RevisionProjection } from './types';
+import type { OcclusionRegion, RevisionProjection } from '@lacuna/core/db/types';
 
 export const revisionFallback: RevisionProjection = {
   projectionMode: 'fsrs-6-practice-fallback',

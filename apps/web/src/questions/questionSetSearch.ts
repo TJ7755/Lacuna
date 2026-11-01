@@ -1,6 +1,9 @@
-import { plainPreview } from '../db/search';
+import { plainPreview } from '@lacuna/core/db/search';
 import { flattenQuestionSet } from './questionSetAuthoring';
-import { referencedQuestionSetConceptIds, type QuestionSet } from './questionSets';
+import {
+  referencedQuestionSetConceptIds,
+  type QuestionSet,
+} from '@lacuna/core/questions/questionSets';
 
 export interface QuestionSetSearchContext {
   lessons?: readonly { id: string; name: string }[];

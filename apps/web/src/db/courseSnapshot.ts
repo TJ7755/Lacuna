@@ -3,9 +3,9 @@ import type {
   QuestionAttempt,
   QuestionConceptSet,
   QuestionDefinition,
-} from '../questions/types';
-import type { QuestionSetRecord } from '../questions/questionSetCodec';
-import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+} from '@lacuna/core/questions/types';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import type { QuestionSetDraft } from '../questions/questionSetDrafts';
 import { finalAssessmentForCourse } from './assessmentMigration';
 import { validateAssessmentStructure } from './assessmentValidation';
@@ -16,7 +16,7 @@ import {
   projectCardsForStorage,
   reviewHistoryEntriesForCard,
   type ReviewHistoryEntry,
-} from './reviewHistory';
+} from '@lacuna/core/db/reviewHistory';
 import { db, makeId } from './schema';
 import type {
   AgentMemory,
@@ -40,7 +40,7 @@ import type {
   SchedulingUnitRecord,
   Sequence,
   SessionHistoryEntry,
-} from './types';
+} from '@lacuna/core/db/types';
 
 /** A complete copy of a course and everything that hangs off it: lessons, notes,
  * lesson-card links, practice nodes, assessments, occlusions, cards and their

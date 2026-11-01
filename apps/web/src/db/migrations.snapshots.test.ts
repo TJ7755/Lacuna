@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPreMigrationSnapshot, savePreMigrationSnapshot } from './preMigrationSnapshots';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 
 describe('pre-migration snapshot ordering', () => {
   beforeEach(async () => {

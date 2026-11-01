@@ -1,5 +1,5 @@
 import { sealInsightEnvelope, type InsightsRecipient } from '../../apps/web/src/insights/envelope';
-import { isoDayLabel, isoDayStartMs } from '../../apps/relay/shared/insights/index';
+import { isoDayLabel, isoDayStartMs } from '@lacuna/protocol/insights/index';
 import { expect, test } from '@playwright/test';
 import { createHandler } from '../../apps/relay/src/relay';
 import { MemoryStore } from '../../apps/relay/src/store';

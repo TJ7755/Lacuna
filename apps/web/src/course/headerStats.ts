@@ -20,7 +20,7 @@ import type {
   Lesson,
   LessonCardExposure,
   LessonCardLink,
-} from '../db/types';
+} from '@lacuna/core/db/types';
 import { dueReviewPool } from '../fsrs/eligibility';
 import { nearestExamDate, examIsUrgent } from './path';
 

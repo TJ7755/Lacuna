@@ -3,7 +3,7 @@ import { render, screen, fireEvent, within, act, waitFor } from '@testing-librar
 import * as React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
-import type { Card, Course, Lesson, Note, PendingMergeReview } from '../../db/types';
+import type { Card, Course, Lesson, Note, PendingMergeReview } from '@lacuna/core/db/types';
 import { MergeReviewPanel } from './MergeReviewPanel';
 
 vi.mock('../../state/motionSpeed', () => ({

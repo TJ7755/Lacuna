@@ -1,4 +1,4 @@
-import type { CourseRecord, CourseAssessment, Lesson, PracticeNode } from '../db/types';
+import type { CourseRecord, CourseAssessment, Lesson, PracticeNode } from '@lacuna/core/db/types';
 
 /** Canonical publisher order, including deterministic ties. */
 export function lessonOrder(left: Lesson, right: Lesson): number {

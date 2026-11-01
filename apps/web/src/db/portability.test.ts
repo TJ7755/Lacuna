@@ -11,7 +11,7 @@ import {
   BACKUP_VERSION,
   PRE_V22_BACKUP_MESSAGE,
 } from './portability';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 import {
   createCourse,
   createCard,

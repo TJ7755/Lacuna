@@ -6,10 +6,10 @@ import {
   searchCardsInScope,
   searchQuestionsInScope,
   type SearchOptions,
-} from './search';
-import { DEFAULT_LEECH_LAPSE_THRESHOLD } from '../fsrs/leech';
-import type { Card, Course, LegacyDeckRecord, Lesson } from './types';
-import type { FixedQuestionDefinition } from '../questions/types';
+} from '@lacuna/core/db/search';
+import { DEFAULT_LEECH_LAPSE_THRESHOLD } from '@lacuna/core/fsrs/leech';
+import type { Card, Course, LegacyDeckRecord, Lesson } from '@lacuna/core/db/types';
+import type { FixedQuestionDefinition } from '@lacuna/core/questions/types';
 
 const NOW = 1_000_000_000_000;
 

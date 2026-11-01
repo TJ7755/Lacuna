@@ -8,8 +8,14 @@
 
 import type { Transaction } from 'dexie';
 import { db, makeId } from './schema';
-import type { Card, LessonCardExposure, LessonCardLink, Occlusion, OcclusionRegion } from './types';
-import type { Concept } from '../questions/types';
+import type {
+  Card,
+  LessonCardExposure,
+  LessonCardLink,
+  Occlusion,
+  OcclusionRegion,
+} from '@lacuna/core/db/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
 import { conceptIdForRegion } from '../questions/generatedConceptIds';
 import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
@@ -27,7 +33,7 @@ import {
   projectCardsForStorage,
   reviewHistoryEntriesForCard,
   type ReviewHistoryEntry,
-} from './reviewHistory';
+} from '@lacuna/core/db/reviewHistory';
 import { diffRegeneration, generateCards, type GeneratedCardPayload } from './occlusionGeneration';
 
 async function tombstoneGeneratedCardCascade(

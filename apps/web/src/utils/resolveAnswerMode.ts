@@ -1,4 +1,4 @@
-import type { AnswerMode, Card, ReviewLog } from '../db/types';
+import type { AnswerMode, Card, ReviewLog } from '@lacuna/core/db/types';
 import type { AnswerInputPreference } from '../state/answerInput';
 import { markdownAnswerShape } from '../components/markdown/MarkdownView';
 import { splitJevExpectedAnswer } from '../jev/answerParts';

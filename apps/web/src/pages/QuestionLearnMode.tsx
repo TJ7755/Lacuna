@@ -25,7 +25,7 @@ import {
   undoQuestionAttempt,
 } from '../questions/repository';
 import { selectQuestionSession } from '../questions/selection';
-import type { QuestionAttempt } from '../questions/types';
+import type { QuestionAttempt } from '@lacuna/core/questions/types';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { useCourse } from '../state/useCourseData';
 import { MOTION_EASING } from '../components/ui/motion';

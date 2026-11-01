@@ -6,7 +6,7 @@ import {
   resolveOcclusionAnswerText,
   resolveOcclusionFace,
 } from './occlusionGeneration';
-import type { Card, Occlusion, OcclusionRegion } from './types';
+import type { Card, Occlusion, OcclusionRegion } from '@lacuna/core/db/types';
 
 function region(
   id: string,

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, Course, CourseAssessment, Lesson, LessonCardExposure } from '../db/types';
-import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
+import type {
+  Card,
+  Course,
+  CourseAssessment,
+  Lesson,
+  LessonCardExposure,
+} from '@lacuna/core/db/types';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { assessmentPracticeOptions, assessmentPracticePool } from './assessmentPractice';
 
 const NOW = 1_000_000;

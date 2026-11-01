@@ -3,7 +3,7 @@ import { importLineageFirstTime, isLineagePayload, mergeLineageUpdate } from '..
 import { decodeShare, importSharePayload } from '../../db/share';
 import { findCourseForLineage, type MergeLineageResult } from '../../db/mergeImport';
 import { summariseShare, type SharePayload, type ShareSummary } from '../../db/share';
-import type { CourseRecord } from '../../db/types';
+import type { CourseRecord } from '@lacuna/core/db/types';
 
 /** A decoded, not-yet-confirmed share-code import. `merge` is present when the
  *  payload's lineage matches a course already imported locally — routing the confirm

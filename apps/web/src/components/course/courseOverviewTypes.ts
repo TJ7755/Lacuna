@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { PathNode, PracticePathNode } from '../../course/path';
-import type { CourseAssessment, Lesson } from '../../db/types';
+import type { CourseAssessment, Lesson } from '@lacuna/core/db/types';
 import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
 import type { LessonReorderInteraction } from './useLessonPathReorder';
 import type { CourseAddKind } from './AddCourseControl';

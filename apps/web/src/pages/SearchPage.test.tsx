@@ -7,8 +7,8 @@ import type * as React from 'react';
 import { useScrollMemory } from '../components/layout/scrollMemory';
 import { writeAdvancedDetails } from '../state/advancedDetails';
 import { Outlet } from 'react-router-dom';
-import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '../db/types';
-import type { FixedQuestionDefinition, QuestionDefinition } from '../questions/types';
+import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '@lacuna/core/db/types';
+import type { FixedQuestionDefinition, QuestionDefinition } from '@lacuna/core/questions/types';
 
 const deferredQueryState = vi.hoisted(() => ({ held: false }));
 vi.mock('react', async () => {

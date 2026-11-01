@@ -8,8 +8,8 @@ import {
   simContext,
 } from './forwardSim';
 import { makeEngine } from './fsrs';
-import { defaultFsrsParameters, MS_PER_DAY } from './params';
-import type { Card, LegacyDeckRecord } from '../db/types';
+import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
 
 function makeDeck(partial: Partial<LegacyDeckRecord> = {}): LegacyDeckRecord {
   return {

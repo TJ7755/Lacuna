@@ -1,4 +1,4 @@
-import type { Concept } from '../questions/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import { lessonCardMembership } from '../course/lessonMembership';
 import type {
   Card,
@@ -8,7 +8,7 @@ import type {
   LessonCardLink,
   LessonCardExposure,
   LessonCompletion,
-} from '../db/types';
+} from '@lacuna/core/db/types';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { availableCards, dueReviewPool, examPracticePool } from '../fsrs/eligibility';

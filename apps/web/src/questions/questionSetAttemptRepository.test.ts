@@ -20,9 +20,9 @@ import {
   submitPracticeQuestion,
   submitQuestionSetPaper,
 } from './questionSetAttemptRepository';
-import { feedbackAvailable } from './questionSetAttempts';
+import { feedbackAvailable } from '@lacuna/core/questions/questionSetAttempts';
 import { parseQuestionSetAttemptRecord } from './questionSetAttemptCodec';
-import type { QuestionSet, SelfMarkDecision } from './questionSets';
+import type { QuestionSet, SelfMarkDecision } from '@lacuna/core/questions/questionSets';
 import { conceptPracticeFingerprint } from './conceptPractice';
 
 /** A sweep after the grace period, so fresh test assets are eligible for collection. */

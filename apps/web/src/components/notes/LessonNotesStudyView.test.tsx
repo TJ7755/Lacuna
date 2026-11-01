@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Note } from '../../db/types';
+import type { Note } from '@lacuna/core/db/types';
 import { LessonNotesStudyView } from './LessonNotesStudyView';
 
 const renderContent = vi.hoisted(() => vi.fn());

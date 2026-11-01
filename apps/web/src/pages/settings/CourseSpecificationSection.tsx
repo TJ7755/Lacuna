@@ -8,10 +8,10 @@ import { Select } from '../../components/ui/Select';
 import { canEditLessons } from '../../course/lessonViewMode';
 import { updateCourse } from '../../db/courseRepository';
 import { db } from '../../db/schema';
-import type { CourseRecord } from '../../db/types';
-import type { SpecificationReference } from '../../specifications/links';
+import type { CourseRecord } from '@lacuna/core/db/types';
+import type { SpecificationReference } from '@lacuna/core/specifications/links';
 import { previewSpecificationSelection } from '../../specifications/selectionPreview';
-import { papersForSelection } from '../../specifications/selection';
+import { papersForSelection } from '@lacuna/core/specifications/selection';
 
 const qualifications = {
   gcse: 'GCSE',

@@ -24,7 +24,7 @@ import {
   updateCourseAssessment,
 } from '../../db/assessmentRepository';
 import { db } from '../../db/schema';
-import type { CourseAssessment } from '../../db/types';
+import type { CourseAssessment } from '@lacuna/core/db/types';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { useCourseAssessments, useCourseCards, useLessons } from '../../state/useCourseData';
 import { formatDateTime } from '../../utils/datetime';

@@ -5,7 +5,7 @@ import { revokeAllCachedUrls } from './assetCache';
 import { assetUrl, referencedAssetHashes, sha256Blob } from './assets';
 import { db } from './schema';
 import { isFirstRun, settleFirstRun } from './seed';
-import type { Card, Course } from './types';
+import type { Card, Course } from '@lacuna/core/db/types';
 
 /** A drawing exactly as seed.ts stores it, so the tests track any change to the bytes. */
 function seedSvg(name: string): string {

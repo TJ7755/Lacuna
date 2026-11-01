@@ -4,7 +4,7 @@
 // user expects from an Anki-style heatmap.
 
 import { startOfDay } from '../utils/datetime';
-import type { Card } from '../db/types';
+import type { Card } from '@lacuna/core/db/types';
 
 /** Canonical review timestamps without the full per-attempt scheduling records. */
 export type ReviewActivity = ReadonlyMap<string, readonly number[]>;

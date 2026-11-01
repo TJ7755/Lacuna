@@ -3,7 +3,7 @@ import { MeasuredHeight } from '../ui/MeasuredHeight';
 import { StepSwap } from '../ui/StepSwap';
 import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 import { useId, useMemo, useRef, useState, type Ref, type KeyboardEvent } from 'react';
-import type { ItemFixture, MarkSchemeLine } from '../../db/types';
+import type { ItemFixture, MarkSchemeLine } from '@lacuna/core/db/types';
 import {
   compileMarkScheme,
   renderLineAsEnglish,

@@ -22,8 +22,8 @@ import type {
   SessionHistoryEntry,
   Tombstone,
   AgentMemory,
-} from '../db/types';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
+} from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { normaliseQuestionBackup } from '../questions/backup';
 import type { QuestionMergeCollections } from '../questions/merge';
 import type {
@@ -31,9 +31,9 @@ import type {
   QuestionAttempt,
   QuestionConceptSet,
   QuestionDefinition,
-} from '../questions/types';
-import type { QuestionSetRecord } from '../questions/questionSetCodec';
-import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+} from '@lacuna/core/questions/types';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { mergeQuestionSetAttemptPair } from '../questions/questionSetAttemptMerge';
 
 export interface NormalisedSnapshot extends QuestionMergeCollections {

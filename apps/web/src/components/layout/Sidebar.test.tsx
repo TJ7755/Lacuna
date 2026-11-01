@@ -5,7 +5,7 @@ import { act, render, screen, fireEvent, within, waitFor } from '@testing-librar
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Sidebar } from './Sidebar';
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { createEnrolmentSetting, enrolInClass } from '../../insights/enrolment';
 
 let mockCourses: Course[] | undefined = [];

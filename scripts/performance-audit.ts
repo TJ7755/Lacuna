@@ -2,9 +2,9 @@ import 'fake-indexeddb/auto';
 import { gzipSync } from 'node:zlib';
 import { readFile, readdir } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
-import { defaultFsrsParameters } from '../apps/web/src/fsrs/params';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { makeSessionContext, selectNext, sessionComplete } from '../apps/web/src/fsrs/session';
-import type { Card, SchedulingUnitRecord } from '../apps/web/src/db/types';
+import type { Card, SchedulingUnitRecord } from '@lacuna/core/db/types';
 
 class AuditStorage implements Storage {
   private readonly values = new Map<string, string>();

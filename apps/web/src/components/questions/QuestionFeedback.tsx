@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { QuestionAttempt } from '../../questions/types';
+import type { QuestionAttempt } from '@lacuna/core/questions/types';
 import { checkQuestionAnswer } from './QuestionResponsePanel';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { MathsAnswerInput } from '../items/MathsAnswerInput';

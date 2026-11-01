@@ -3,7 +3,7 @@ import { MarkdownView } from '../../../components/markdown/MarkdownView';
 import { Button } from '../../../components/ui/Button';
 import { CheckIcon, CloseIcon } from '../../../components/ui/icons';
 import { presetForSequence } from '../../../db/sequencePresets';
-import type { Sequence } from '../../../db/types';
+import type { Sequence } from '@lacuna/core/db/types';
 import { cn } from '../../../components/ui/cn';
 import { inputFrameClassName } from '../../../components/ui/Field';
 import { SECTION_CARD_SURFACE_CLASS } from '../../../components/ui/SectionCard';

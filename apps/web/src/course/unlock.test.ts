@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, LessonCardExposure } from '../db/types';
+import type { Card, LessonCardExposure } from '@lacuna/core/db/types';
 import { lessonTaught, nextLessonUnlockCondition } from './unlock';
 
 function makeCard(id: string): Card {

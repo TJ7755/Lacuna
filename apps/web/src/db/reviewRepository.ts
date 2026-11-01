@@ -2,7 +2,7 @@
 // Components call these rather than touching Dexie tables directly.
 
 import { applyReview, makeEngine } from '../fsrs/fsrs';
-import { isLeech } from '../fsrs/leech';
+import { isLeech } from '@lacuna/core/fsrs/leech';
 import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
 import { restoreReviewUnitPerformance, updateReviewUnitPerformance } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
@@ -11,7 +11,7 @@ import {
   projectCardForStorage,
   reviewHistoryEntryForCard,
   reviewHistoryEntryIdForEvent,
-} from './reviewHistory';
+} from '@lacuna/core/db/reviewHistory';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { isPrimedReview } from '../fsrs/primedReview';
 import { db } from './schema';
@@ -25,7 +25,7 @@ import type {
   ReviewSessionKind,
   SchedulerConfig,
   UserPerformance,
-} from './types';
+} from '@lacuna/core/db/types';
 
 export { sampleReviewTrajectory } from './reviewTrajectory';
 export type { ReviewTrajectorySampleArgs } from './reviewTrajectory';

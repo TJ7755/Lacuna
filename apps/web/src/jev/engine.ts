@@ -6,7 +6,7 @@ import {
 import { HOSTED_SERVICE_ORIGIN } from '../config/origins';
 import { decisionHash, jevDecisionCache, type JevDecisionCache } from './cache';
 import { splitJevExpectedAnswer } from './answerParts';
-import { checkedDiagnosis, diagnosisMatchesRequest } from './diagnosis';
+import { checkedDiagnosis, diagnosisMatchesRequest } from '@lacuna/core/jev/diagnosis';
 import {
   jevDecisionRequestSchema,
   jevDecisionResultSchema,
@@ -28,7 +28,7 @@ import {
   type JevPauseReason,
   type JevTypedAnswerRequest,
   type JevTypedVerdict,
-} from './types';
+} from '@lacuna/core/jev/types';
 
 export const JEV_SETTINGS_STORAGE_KEY = 'lacuna.jevSettings';
 export const JEV_INSTALLATION_STORAGE_KEY = 'lacuna.jevInstallation';

@@ -1,4 +1,4 @@
-import type { Card } from './types';
+import type { Card } from '@lacuna/core/db/types';
 import { db } from './schema';
 
 /** Read the materialised timestamp-only projection for the supplied live cards. */

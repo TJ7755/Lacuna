@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
-import type { Lesson, PracticeNode } from '../../db/types';
+import type { Lesson, PracticeNode } from '@lacuna/core/db/types';
 import { PracticeNodeEditor } from './PracticeNodeEditor';
 import { updatePracticeNode } from '../../db/practiceNodeRepository';
 import { ToastProvider } from '../ui/Toast';

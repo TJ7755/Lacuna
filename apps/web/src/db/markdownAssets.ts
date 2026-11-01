@@ -1,5 +1,5 @@
 import { db } from './database';
-import type { MediaAsset } from './types';
+import type { MediaAsset } from '@lacuna/core/db/types';
 import { extractMarkdownAssets as extract } from './markdownAssetExtraction';
 
 export async function extractMarkdownAssets(

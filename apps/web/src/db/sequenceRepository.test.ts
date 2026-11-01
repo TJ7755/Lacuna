@@ -13,7 +13,7 @@ import {
   snapshotSequence,
   updateSequence,
 } from './repository';
-import type { FsrsCardState, Sequence, SequenceItem } from './types';
+import type { FsrsCardState, Sequence, SequenceItem } from '@lacuna/core/db/types';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 

@@ -7,8 +7,8 @@ import {
   examIsUrgent,
   EXAM_URGENT_DAYS,
 } from './path';
-import { MS_PER_DAY } from '../fsrs/params';
-import { type Card } from '../db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import { type Card } from '@lacuna/core/db/types';
 import { makeCourse, makeLesson, makeCard, makeExamDate } from './path.testFixtures';
 
 describe('lessonStatus', () => {

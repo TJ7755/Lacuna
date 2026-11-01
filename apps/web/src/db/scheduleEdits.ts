@@ -1,4 +1,4 @@
-import type { Card, ScheduleEdit } from './types';
+import type { Card, ScheduleEdit } from '@lacuna/core/db/types';
 
 /** A reset clears the memory state but keeps the review and lapse counts. */
 const RESET = {

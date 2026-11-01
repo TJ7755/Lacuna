@@ -1,4 +1,4 @@
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import * as read from '../db/read';
 
 function normalise(value: string): string {

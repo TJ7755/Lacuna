@@ -8,7 +8,7 @@ import type {
   SchedulingPerformance,
   SchedulingUnitRecord,
   CoursePerformance,
-} from './types';
+} from '@lacuna/core/db/types';
 
 export interface LegacyBackupAdaptation {
   cards: Card[];

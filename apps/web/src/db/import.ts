@@ -5,7 +5,7 @@
 // spreadsheets and Anki export CSV. Anki's plain-text export is tab-separated and
 // flows through the same path.
 
-import type { AnswerMode, CardType, ItemPayload } from './types';
+import type { AnswerMode, CardType, ItemPayload } from '@lacuna/core/db/types';
 import { hasCloze } from '../utils/cloze';
 import { parseCardExportRows } from './importCardExport';
 

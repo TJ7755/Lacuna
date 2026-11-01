@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { buildCourseMigration } from './courseMigration';
-import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
+import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
 import type {
   Card,
   LegacyDeckRecord,
   LegacyFolder,
   SessionHistoryEntry,
   UserPerformance,
-} from './types';
+} from '@lacuna/core/db/types';
 
 /** Deterministic id generator so assertions are stable across runs. */
 function sequentialIds(): () => string {

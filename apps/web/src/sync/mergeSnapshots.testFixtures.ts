@@ -8,9 +8,9 @@ import type {
   SessionHistoryEntry,
   Tombstone,
   AgentMemory,
-} from '../db/types';
-import { reviewHistoryEntryId, type ReviewHistoryEntry } from '../db/reviewHistory';
-import { defaultFsrsParameters } from '../fsrs/params';
+} from '@lacuna/core/db/types';
+import { reviewHistoryEntryId, type ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { mergeSnapshots, type MergedBackupFile } from './mergeSnapshots';
 
 export const PARAMS = defaultFsrsParameters();

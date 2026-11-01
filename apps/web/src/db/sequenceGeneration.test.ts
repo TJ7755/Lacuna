@@ -6,7 +6,7 @@ import {
   LABEL_CARD_SUFFIX,
   parseSequenceFront,
 } from './sequenceGeneration';
-import type { Card, Sequence, SequenceItem } from './types';
+import type { Card, Sequence, SequenceItem } from '@lacuna/core/db/types';
 
 function item(id: string, value: string, extra?: Partial<SequenceItem>): SequenceItem {
   return { id, value, ...extra };

@@ -6,15 +6,21 @@
 // snapshot/restore) that sequenceGeneration.ts deliberately stays free of.
 
 import { db, makeId } from './schema';
-import type { Card, LessonCardExposure, LessonCardLink, Sequence, SequenceItem } from './types';
-import type { Concept } from '../questions/types';
+import type {
+  Card,
+  LessonCardExposure,
+  LessonCardLink,
+  Sequence,
+  SequenceItem,
+} from '@lacuna/core/db/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
 import { conceptIdForSequenceItem } from '../questions/generatedConceptIds';
 import {
   projectCardsForStorage,
   reviewHistoryEntriesForCard,
   type ReviewHistoryEntry,
-} from './reviewHistory';
+} from '@lacuna/core/db/reviewHistory';
 import {
   ensureCourseBankBackingDeck as ensureCourseBankDeck,
   ensureLessonBackingDeck as ensureLessonDeck,

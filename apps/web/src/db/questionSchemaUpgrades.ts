@@ -13,8 +13,8 @@ import type {
   CoursePerformance,
   SchedulingPerformance,
   Tombstone,
-} from './types';
-import { type ReviewHistoryEntry } from './reviewHistory';
+} from '@lacuna/core/db/types';
+import { type ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 export async function upgradeQuestionStorage(tx: Transaction): Promise<void> {
   const cards = await tx.table('cards').toArray();

@@ -1,6 +1,6 @@
 import { startOfDay } from '../utils/datetime';
 import { db } from './schema';
-import type { SessionHistoryEntry } from './types';
+import type { SessionHistoryEntry } from '@lacuna/core/db/types';
 
 function keepLater(
   rows: Map<string, SessionHistoryEntry>,

@@ -1,7 +1,7 @@
 import { updateSequence } from './repository';
 import { updateOcclusion } from './occlusionRepository';
 import type { LineagePayload } from './lineageImportModel';
-import type { LineageIdMapping, Occlusion, Sequence } from './types';
+import type { LineageIdMapping, Occlusion, Sequence } from '@lacuna/core/db/types';
 
 /**
  * Insert a payload's sequences via `updateSequence`, which already handles both create

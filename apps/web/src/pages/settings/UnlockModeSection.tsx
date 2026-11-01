@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
-import type { UnlockMode } from '../../db/types';
+import type { UnlockMode } from '@lacuna/core/db/types';
 import { SegmentedPills } from '../../components/ui/SegmentedPills';
 import { NumberField } from './NumberField';
 

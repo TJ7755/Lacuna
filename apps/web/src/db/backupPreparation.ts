@@ -1,11 +1,11 @@
 import { makeId } from './schema';
 import { migrateCardRecord, type LegacyCard } from './migrations';
-import type { BackupFile, MediaAsset } from './types';
+import type { BackupFile, MediaAsset } from '@lacuna/core/db/types';
 import {
   mergeReviewHistoryEntries,
   projectCardsForStorage,
   type ReviewHistoryEntry,
-} from './reviewHistory';
+} from '@lacuna/core/db/reviewHistory';
 import {
   buildCourseAssessmentMigration,
   courseToRecord,
@@ -16,7 +16,7 @@ import { backupAssetToMediaAsset, extractMarkdownAssets } from './assets';
 import { adaptLegacyBackup } from './legacyBackupAdapter';
 import { normaliseQuestionBackup } from '../questions/backup';
 import { mergeQuestionCollections } from '../questions/merge';
-import { parseQuestionSetRecord } from '../questions/questionSetCodec';
+import { parseQuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 import { assertQuestionSetReferences } from '../questions/questionSetMerge';
 import { assertQuestionSetPracticeNodeReferences } from './questionSetPracticeNode';

@@ -15,7 +15,7 @@ import type {
   AgentMemoryTag,
   Card,
   SchedulingUnitRecord,
-} from './types';
+} from '@lacuna/core/db/types';
 
 export interface CreateAgentMemoryInput {
   courseId: string | null;

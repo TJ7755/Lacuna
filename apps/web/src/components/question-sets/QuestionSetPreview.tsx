@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { flattenQuestionSet } from '../../questions/questionSetAuthoring';
-import type { QuestionSet } from '../../questions/questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { Button } from '../ui/Button';
 import { QuestionSetAnswer } from './QuestionSetAnswer';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import staticExample from '../../../../docs/question-bank/examples/static-multipart.json';
-import { parseQuestionSetRecord } from './questionSetCodec';
-import { validateQuestionSet } from './questionSets';
+import { parseQuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import { validateQuestionSet } from '@lacuna/core/questions/questionSets';
 
 function record(techniqueTags?: unknown) {
   const { source: _source, blueprint: _blueprint, ...set } = structuredClone(staticExample.sets[0]);

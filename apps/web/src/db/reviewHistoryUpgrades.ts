@@ -1,11 +1,11 @@
 import type { Transaction } from 'dexie';
 import { type Table } from 'dexie';
-import type { Card } from './types';
+import type { Card } from '@lacuna/core/db/types';
 import {
   projectCardForStorage,
   reviewHistoryEntriesForCard,
   type ReviewHistoryEntry,
-} from './reviewHistory';
+} from '@lacuna/core/db/reviewHistory';
 import { type ReviewActivityRow } from './reviewActivityProjection';
 
 function containsReviewProjection(

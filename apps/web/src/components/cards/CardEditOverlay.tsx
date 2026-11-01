@@ -14,7 +14,7 @@ import { updateCard } from '../../db/cardRepository';
 import { hasCloze } from '../../utils/cloze';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../../utils/drafts';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import type { Card, CardType } from '../../db/types';
+import type { Card, CardType } from '@lacuna/core/db/types';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 
 /** The stored types this overlay can save, labelled as the full editor's picker labels them. */

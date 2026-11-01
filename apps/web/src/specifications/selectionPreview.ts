@@ -1,8 +1,8 @@
-import type { CourseAssessment, CourseRecord } from '../db/types';
-import type { Concept } from '../questions/types';
+import type { CourseAssessment, CourseRecord } from '@lacuna/core/db/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import { specificationAssessmentPointIds } from './assessment';
 import { assertCourseSpecificationSelection } from './data';
-import type { SpecificationReference } from './links';
+import type { SpecificationReference } from '@lacuna/core/specifications/links';
 import { unavailableSpecificationPointLinks } from './tagResolver';
 
 /** Describe changes without mutating links or learner-owned assessments. */

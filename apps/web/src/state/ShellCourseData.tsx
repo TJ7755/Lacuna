@@ -5,7 +5,7 @@ import { performanceForCards } from '../db/backingDecks';
 import { readReviewActivity } from '../db/reviewActivityRead';
 import type { ReviewActivity } from '../fsrs/heatmap';
 import { db } from '../db/schema';
-import type { Card, Course, Lesson } from '../db/types';
+import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
 import { computeCourseSummaries, type CourseSummary } from './courseSummaries';
 import { dashboardForecasts } from './dashboardForecasts';

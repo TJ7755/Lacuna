@@ -1,4 +1,4 @@
-import { CURRENT_ITEM_PAYLOAD_VERSION, type Card } from '../../db/types';
+import { CURRENT_ITEM_PAYLOAD_VERSION, type Card } from '@lacuna/core/db/types';
 
 export { isTypingEligible, typingExpectedAnswer } from '../../utils/answerMode';
 

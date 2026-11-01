@@ -1,5 +1,5 @@
 import { QuestionSetAttemptRevisionConflictError } from '../../questions/questionSetAttemptRepository';
-import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 
 type Command = (record: QuestionSetAttemptRecord) => Promise<QuestionSetAttemptRecord>;
 

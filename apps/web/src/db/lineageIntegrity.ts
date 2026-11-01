@@ -7,7 +7,7 @@ import type {
   SharePayloadV5,
   SharePayloadV6,
 } from './share';
-import type { LineageIdMapping, PendingMergeReview } from './types';
+import type { LineageIdMapping, PendingMergeReview } from '@lacuna/core/db/types';
 
 type Payload = (
   SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5 | SharePayloadV6

@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { decodeShare, importSharePayload, summariseShare } from '../../db/share';
 import { SharedCourseImport } from './SharedCourseImport';
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 
 const mockNotify = vi.fn();
 

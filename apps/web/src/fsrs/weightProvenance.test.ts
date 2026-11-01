@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultFsrsParameters } from './params';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { fsrsWeightsFingerprint } from './weightProvenance';
 
 describe('fsrsWeightsFingerprint', () => {

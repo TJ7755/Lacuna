@@ -1,6 +1,6 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import type { Card, CourseAssessment, CourseRecord, Lesson } from '../../apps/web/src/db/types';
-import type { ReviewHistoryEntry } from '../../apps/web/src/db/reviewHistory';
+import type { Card, CourseAssessment, CourseRecord, Lesson } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import {
   paperSpecification,
   paperSpecificationReference,

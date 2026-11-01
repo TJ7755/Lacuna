@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Card } from '../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import type { CourseStudyFlowSnapshot, StudyFlowPracticeState } from './studyFlowSnapshot';
 import { DUE_REVIEW_STEP } from './studyFlowPlanner';
 import { planStudySession } from './studySessionPlan';

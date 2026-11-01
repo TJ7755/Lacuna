@@ -8,17 +8,17 @@ import type {
   LessonCardExposure,
   LessonCardLink,
   PracticeNode,
-} from '../db/types';
+} from '@lacuna/core/db/types';
 import { isAvailable } from '../fsrs/eligibility';
 import { rAtExam } from '../fsrs/forwardSim';
 import { decayOf } from '../fsrs/fsrs';
-import { MASTERY_R } from '../fsrs/params';
+import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import { daysUntil } from '../utils/datetime';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { isLessonUnlocked, lessonEffectiveReleaseDates } from './path';
 import { practiceCardScope } from './studyPools';
 import { earlierCourseLessonIds } from './courseEntry';
-import type { Concept } from '../questions/types';
+import type { Concept } from '@lacuna/core/questions/types';
 
 export interface AssessmentPracticeOption {
   assessmentId: string;

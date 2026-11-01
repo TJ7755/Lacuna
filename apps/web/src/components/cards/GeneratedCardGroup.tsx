@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { PathIcon, ImageIcon } from '../ui/icons';
 import { Button } from '../ui/Button';
 import { CardListBody } from './CardListBody';
-import type { Card, Occlusion, SchedulerConfig } from '../../db/types';
+import type { Card, Occlusion, SchedulerConfig } from '@lacuna/core/db/types';
 
 /** The minimal shape of a generated card's owner (a Sequence or an Occlusion) this group needs. */
 interface GeneratedCardOwner {

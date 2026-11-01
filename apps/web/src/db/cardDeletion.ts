@@ -6,9 +6,9 @@ import {
   projectCardsForStorage,
   reviewHistoryEntriesForCard,
   type ReviewHistoryEntry,
-} from './reviewHistory';
+} from '@lacuna/core/db/reviewHistory';
 import { db } from './schema';
-import type { Card, LessonCardExposure, LessonCardLink } from './types';
+import type { Card, LessonCardExposure, LessonCardLink } from '@lacuna/core/db/types';
 import { replaceReviewHistoryForCards } from './cardReviewHistory';
 
 /**

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { readSyncState } from '../../db/mutationStamp';
-import type { SyncState } from '../../db/types';
+import type { SyncState } from '@lacuna/core/db/types';
 import { formatRelativeTime } from '../../utils/datetime';
 
 export function SyncStatus() {

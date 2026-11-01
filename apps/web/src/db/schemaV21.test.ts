@@ -2,9 +2,9 @@ import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import { defaultFsrsParameters } from '../fsrs/params';
-import type { Card, CourseAssessment, CourseRecord, ReviewLog } from './types';
-import { reviewHistoryEntryIdForEvent } from './reviewHistory';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
+import type { Card, CourseAssessment, CourseRecord, ReviewLog } from '@lacuna/core/db/types';
+import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
 import { exportDatabase, importBackup, validateBackup } from './portability';
 
 const parameters = defaultFsrsParameters();

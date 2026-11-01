@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 
 const mirrorToFolder = vi.fn<(payload: BackupFile) => Promise<void>>();
 vi.mock('./backupFolder', () => ({ mirrorToFolder }));

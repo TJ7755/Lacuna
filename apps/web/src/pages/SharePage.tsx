@@ -8,7 +8,7 @@ import { gapsClassUrl, shareIdForCourse } from '../components/share/gapsClassUrl
 import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { Menu } from '../components/ui/Menu';
 import { SectionCard } from '../components/ui/SectionCard';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { useCourses, useCourseSummaries } from '../state/useCourseData';
 import { countOf } from '../utils/plural';
 

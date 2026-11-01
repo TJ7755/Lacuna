@@ -3,8 +3,8 @@ import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CourseComparison } from './CourseComparison';
-import type { Course, Card } from '../../db/types';
-import { defaultFsrsParameters } from '../../fsrs/params';
+import type { Course, Card } from '@lacuna/core/db/types';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { writeAdvancedDetails } from '../../state/advancedDetails';
 
 vi.mock('./useChartColours', () => ({

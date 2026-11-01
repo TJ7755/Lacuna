@@ -1,4 +1,4 @@
-import type { Grade } from '../db/types';
+import type { Grade } from '@lacuna/core/db/types';
 
 export interface QuestionGradeEvidence {
   marksEarned: number;

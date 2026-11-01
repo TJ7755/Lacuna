@@ -8,10 +8,10 @@
 //  - an unreviewed card contributes 0 recall;
 //  - a course without a future exam is measured `steadyDays` ahead instead.
 
-import type { Card, SchedulerConfig } from '../db/types';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
+import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { forgettingCurve, rAtExam } from './forwardSim';
-import { MS_PER_DAY, clampRequestRetention } from './params';
+import { MS_PER_DAY, clampRequestRetention } from '@lacuna/core/fsrs/params';
 
 export interface ForecastPoint {
   /** Epoch ms. */

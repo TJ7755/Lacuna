@@ -5,9 +5,9 @@
 import { rAtExam } from './forwardSim';
 import { decayOf } from './fsrs';
 import { cardSchedulingHorizon } from './horizon';
-import { MASTERY_R } from './params';
+import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import type { ExamDateContext } from './examDate';
-import type { Card, SchedulerConfig } from '../db/types';
+import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 
 /** The deck's forgetting-curve decay exponent (= -w20).
  *  Accepts any SchedulerConfig (a Deck or a Course). */

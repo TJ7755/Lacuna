@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import { SEQUENCE_PRESETS, type getPreset } from '../db/sequencePresets';
-import type { SequencePresetId } from '../db/types';
+import type { SequencePresetId } from '@lacuna/core/db/types';
 import { SequenceOutlineEditor } from '../components/sequences/SequenceOutlineEditor';
 import type { generateCards } from '../db/sequenceGeneration';
 import type { ReactNode } from 'react';
@@ -18,7 +18,7 @@ import { Toggle } from '../components/ui/Toggle';
 import { choiceChipClass } from '../components/ui/choiceChip';
 import { cn } from '../components/ui/cn';
 import { ChevronDownIcon } from '../components/ui/icons';
-import type { Sequence } from '../db/types';
+import type { Sequence } from '@lacuna/core/db/types';
 import {
   MAX_RECITATION_CHUNK_SIZE,
   MIN_RECITATION_CHUNK_SIZE,

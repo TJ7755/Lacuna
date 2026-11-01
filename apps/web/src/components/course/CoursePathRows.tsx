@@ -14,7 +14,7 @@ import {
   lessonContextMenu,
 } from './LessonActionsMenu';
 import type { MenuHandle } from '../ui/Menu';
-import type { Lesson } from '../../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import type { CourseOverviewProps } from './courseOverviewTypes';
 
 const SECURE = 90;

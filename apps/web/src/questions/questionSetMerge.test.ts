@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { QuestionSetRecord } from './questionSetCodec';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { mergeQuestionSetRecords } from './questionSetMerge';
 
 function record(overrides: Partial<QuestionSetRecord> = {}): QuestionSetRecord {

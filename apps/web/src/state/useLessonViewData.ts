@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
-import type { Lesson } from '../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import {
   useCourse,
   useCourseAssessments,

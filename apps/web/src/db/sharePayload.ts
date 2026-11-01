@@ -4,11 +4,14 @@ import {
 } from '../specifications/assessment';
 import { assertShareLessonPrerequisites } from './lessonPrerequisites';
 import { parseQuestionSetPracticeNode } from './questionSetPracticeNode';
-import type { ItemPayload, QuestionSetPracticeNode, UnlockMode } from './types';
-import type { QuestionPayload } from '../questions/types';
-import { parseQuestionSetRecord, type QuestionSetRecord } from '../questions/questionSetCodec';
-import type { Specification } from '../specifications/catalogue';
-import type { SpecificationReference } from '../specifications/links';
+import type { ItemPayload, QuestionSetPracticeNode, UnlockMode } from '@lacuna/core/db/types';
+import type { QuestionPayload } from '@lacuna/core/questions/types';
+import {
+  parseQuestionSetRecord,
+  type QuestionSetRecord,
+} from '@lacuna/core/questions/questionSetCodec';
+import type { Specification } from '@lacuna/core/specifications/catalogue';
+import type { SpecificationReference } from '@lacuna/core/specifications/links';
 
 import { SharePayloadSchema } from './sharePayloadSchema';
 

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentMemoryRepository } from '../../db/agentMemoryRepository';
-import type { AgentMemory } from '../../db/types';
+import type { AgentMemory } from '@lacuna/core/db/types';
 import { ToastProvider } from '../../components/ui/Toast';
 import { AiMemoryInspector } from './AiMemoryInspector';
 

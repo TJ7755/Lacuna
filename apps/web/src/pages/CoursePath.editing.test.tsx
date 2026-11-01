@@ -15,7 +15,7 @@ import {
 } from './CoursePath.testFixtures';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { MS_PER_DAY } from '../fsrs/params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 describe('CoursePath Edit mode', () => {
   beforeEach(resetCoursePathFixtures);
   beforeEach(() => {

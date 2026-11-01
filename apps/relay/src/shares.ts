@@ -3,7 +3,7 @@ import { canonicalEtag, type BlobStore } from './store.js';
 import { consumeRatePermit } from './rateLimit.js';
 import { CHANNEL_CLEANUP_GRACE_MS, CHANNEL_TTL_MS } from './channelMaintenance.js';
 import { relayCorsHeaders } from './cors.js';
-import { insightDayExpiresAt } from '../shared/insights/index.js';
+import { insightDayExpiresAt } from '@lacuna/protocol/insights/index';
 import { courseSource, shareLive, SHARE_ID_RE } from './shareSource.js';
 
 export { shareLive, SHARE_ID_RE } from './shareSource.js';

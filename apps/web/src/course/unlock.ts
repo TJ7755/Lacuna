@@ -10,7 +10,7 @@
 //
 // British English throughout.
 
-import type { Card, LessonCardExposure, LessonCompletion } from '../db/types';
+import type { Card, LessonCardExposure, LessonCompletion } from '@lacuna/core/db/types';
 
 // ---------------------------------------------------------------------------
 // 1. lessonTaught

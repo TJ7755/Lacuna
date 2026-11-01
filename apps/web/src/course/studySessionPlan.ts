@@ -1,6 +1,6 @@
 // Preview only the next block. Later work is selected from fresh evidence after it finishes.
 
-import type { Card } from '../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import type { CourseStudyFlowSnapshot } from './studyFlowSnapshot';
 import {
   STUDY_REVIEW_BLOCK_SIZE,

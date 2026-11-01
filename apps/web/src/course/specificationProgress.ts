@@ -4,11 +4,15 @@ import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { courseLessonOrderPreference } from './lessonOrder';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { progressValue } from '../fsrs/objective';
-import type { Concept } from '../questions/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import type { ConceptPracticeItem } from '../questions/conceptPractice';
 import { buildQuestionEvidence, type QuestionEvidenceReport } from './questionEvidence';
-import type { Specification, SpecificationSelection } from '../specifications/catalogue';
-import { paperPoints, papersForSelection, pointsForSelection } from '../specifications/selection';
+import type { Specification, SpecificationSelection } from '@lacuna/core/specifications/catalogue';
+import {
+  paperPoints,
+  papersForSelection,
+  pointsForSelection,
+} from '@lacuna/core/specifications/selection';
 import { specificationAssessmentPointIds } from '../specifications/assessment';
 import { unavailableSpecificationPointLinks } from '../specifications/tagResolver';
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import { markdownAnswerCorrect, markdownPlainText } from '../../components/markdown/MarkdownView';
 import { answerComparisonOptions, type AnswerStrictness } from '../../state/answerStrictness';
 import { renderClozeFront } from '../../utils/cloze';

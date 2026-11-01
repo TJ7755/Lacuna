@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import { createConcept } from '../../questions/repository.concepts';
-import type { QuestionAnswer } from '../../questions/questionSets';
+import type { QuestionAnswer } from '@lacuna/core/questions/questionSets';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { Button } from '../ui/Button';
 

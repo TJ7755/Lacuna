@@ -7,9 +7,9 @@ import type {
   LessonCardExposure,
   LessonCardLink,
   PracticeNode,
-} from '../db/types';
+} from '@lacuna/core/db/types';
 import { makeExamDateContext } from '../fsrs/examDate';
-import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import {
   eligiblePracticePool,
   examPracticePool,

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { auditQuestionClassifications } from './classificationAudit';
-import type { MarkAllocation, QuestionSet } from './questionSets';
+import type { MarkAllocation, QuestionSet } from '@lacuna/core/questions/questionSets';
 
 it('counts criterion attribution and distinct Questions without conflating taxonomies or learner evidence', () => {
   const point = (

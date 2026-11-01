@@ -4,7 +4,7 @@ import type {
   AgentMemoryProvenance,
   AgentMemoryReference,
   AgentMemoryStatus,
-} from './types';
+} from '@lacuna/core/db/types';
 import {
   AGENT_MEMORY_BASES,
   AGENT_MEMORY_CONTENT_LIMIT,

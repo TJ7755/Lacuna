@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { CheckIcon, SearchIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
-import type { Card, Lesson } from '../../db/types';
+import type { Card, Lesson } from '@lacuna/core/db/types';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 
 interface LinkCardsDialogProps {

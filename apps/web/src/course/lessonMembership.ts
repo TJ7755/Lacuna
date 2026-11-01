@@ -1,4 +1,4 @@
-import type { Card, LessonCardLink } from '../db/types';
+import type { Card, LessonCardLink } from '@lacuna/core/db/types';
 
 /** Primary and explicitly linked cards for one lesson, deduplicated by card id. */
 export function lessonCardMembership(

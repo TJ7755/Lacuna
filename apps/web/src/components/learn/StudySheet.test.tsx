@@ -4,8 +4,8 @@ import { LazyMotion, domAnimation } from 'motion/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ReactRouterDom from 'react-router-dom';
-import type { Card, Course } from '../../db/types';
-import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
+import type { Card, Course } from '@lacuna/core/db/types';
+import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
 import { prefetchRoute } from '../../routes/prefetch';
 import { StudySheet } from './StudySheet';
 import {

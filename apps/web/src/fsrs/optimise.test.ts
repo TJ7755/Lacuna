@@ -16,9 +16,9 @@ import {
   validateFittedWeights,
   MIN_OPTIMISE_REVIEWS,
 } from './optimise';
-import { MS_PER_DAY } from './params';
-import type { Card, Grade, ReviewLog } from '../db/types';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import type { Card, Grade, ReviewLog } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 /** A card carrying a synthetic grade/timestamp sequence (other fields are filler). */
 function cardWith(grades: Grade[], startMs: number, gapDays = 2): Card {

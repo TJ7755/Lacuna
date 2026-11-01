@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Note, NoteAnnotation } from '../../db/types';
+import type { Note, NoteAnnotation } from '@lacuna/core/db/types';
 import { AnnotatedNoteContent } from './AnnotatedNoteContent';
 
 const createAnnotation = vi.fn();

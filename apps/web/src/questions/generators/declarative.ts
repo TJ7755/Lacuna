@@ -1,5 +1,5 @@
-import type { DeclarativeQuestionFamily } from '../bankSchema';
-import type { QuestionAnswer, QuestionSetQuestion } from '../questionSets';
+import type { DeclarativeQuestionFamily } from '@lacuna/core/questions/bankSchema';
+import type { QuestionAnswer, QuestionSetQuestion } from '@lacuna/core/questions/questionSets';
 
 export function canonicalBankJson(value: unknown): string {
   if (value === undefined) return 'null';

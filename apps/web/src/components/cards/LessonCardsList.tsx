@@ -21,7 +21,7 @@ import { ScheduleChip } from './ScheduleChip';
 import { OcclusionThumbnail } from './OcclusionThumbnail';
 import { useOcclusions } from '../../state/useCourseData';
 import { occlusionForRegionId } from '../../db/occlusionGeneration';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 
 const CardContent = lazy(() =>
   import('./CardContent').then((module) => ({ default: module.CardContent })),

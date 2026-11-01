@@ -1,4 +1,4 @@
-import type { CardType, ReviewLog } from './types';
+import type { CardType, ReviewLog } from '@lacuna/core/db/types';
 import type { ApkgCardDraft } from './apkgTypes';
 import { makeId } from '../utils/id';
 

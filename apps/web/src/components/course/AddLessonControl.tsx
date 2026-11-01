@@ -4,7 +4,7 @@ import { Button } from '../ui/Button';
 import { ExpandingCreateControl } from '../ui/ExpandingCreateControl';
 import { useToast } from '../ui/Toast';
 import { createLesson } from '../../db/lessonRepository';
-import type { Lesson } from '../../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { Field, Input } from '../ui/Field';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { dialogKeyDown } from '../../hooks/dialogKeys';

@@ -3,7 +3,7 @@
 // loading the full database portability pipeline.
 
 import { db } from './database';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 
 const MAX_RESTORE_POINTS = 10;
 const FOLDER_KEY = 'backupFolderHandle';

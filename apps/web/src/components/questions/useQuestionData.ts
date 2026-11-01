@@ -5,7 +5,7 @@ import type {
   QuestionAttempt,
   QuestionConceptSet,
   QuestionDefinition,
-} from '../../questions/types';
+} from '@lacuna/core/questions/types';
 
 export interface CourseQuestionData {
   questions: QuestionDefinition[];

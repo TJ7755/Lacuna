@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { DAY_MS, isoDayStartMs } from '../../../relay/shared/insights/index';
-import { INSIGHT_MAX_EVIDENCE_BYTES } from '../../../relay/shared/insights/index';
+import { DAY_MS, isoDayStartMs } from '@lacuna/protocol/insights/index';
+import { INSIGHT_MAX_EVIDENCE_BYTES } from '@lacuna/protocol/insights/index';
 
 const identity = z.string().min(1).max(200);
 const marks = z.number().finite().min(0).max(1_000_000);

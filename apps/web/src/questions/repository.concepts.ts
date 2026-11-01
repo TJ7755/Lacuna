@@ -4,8 +4,8 @@ import { db, makeId } from '../db/schema';
 import {
   parseQualifiedSpecificationPointId,
   parseSpecificationPointIds,
-} from '../specifications/links';
-import type { Concept } from './types';
+} from '@lacuna/core/specifications/links';
+import type { Concept } from '@lacuna/core/questions/types';
 import { cleanName } from './repository.shared';
 import { referencedQuestionSetConceptIds } from './questionSetRepository';
 

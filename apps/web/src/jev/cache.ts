@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD } from './diagnosis';
+import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD } from '@lacuna/core/jev/diagnosis';
 import {
   JEV_MODEL,
   JEV_ALLOCATION_PROMPT_VERSION,

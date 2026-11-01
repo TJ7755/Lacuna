@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import { AnimatePresence } from 'motion/react';
-import type { Card, ItemPayload } from '../../db/types';
+import type { Card, ItemPayload } from '@lacuna/core/db/types';
 import { CardEditOverlay } from '../../components/cards/CardEditOverlay';
 import { KeyHints } from '../../components/ui/KeyHints';
 import { NumericStudyFace } from '../../components/items/NumericStudyFace';
@@ -10,7 +10,7 @@ import type { NavigationGuardHandle } from '../../components/ui/NavigationGuard'
 import type { useGradingMode } from '../../state/gradingMode';
 import type { useAnswerStrictness } from '../../state/answerStrictness';
 import type { useMotionSpeed } from '../../state/motionSpeed';
-import type { CardFilter } from '../../db/search';
+import type { CardFilter } from '@lacuna/core/db/search';
 import { LearnHeader } from './LearnHeader';
 import { FlipCard } from './FlipCard';
 import { StudyCardTransition } from './StudyCardTransition';

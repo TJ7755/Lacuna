@@ -1,4 +1,4 @@
-import type { NoteAnnotation } from '../../db/types';
+import type { NoteAnnotation } from '@lacuna/core/db/types';
 
 const ORDINARY_BLOCK_SELECTOR = 'p';
 const FORBIDDEN_SELECTOR =

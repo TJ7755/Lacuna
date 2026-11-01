@@ -23,12 +23,12 @@ import type {
   SchedulingPerformance,
   Tombstone,
   AgentMemory,
-} from './types';
+} from '@lacuna/core/db/types';
 import {
   projectCardsForStorage,
   resolveReviewHistoryCollisions,
   type ReviewHistoryCollisionState,
-} from './reviewHistory';
+} from '@lacuna/core/db/reviewHistory';
 import { mergeRevisionPlans } from '../course/revisionPlan';
 import { mergeQuestionCollections } from '../questions/merge';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';

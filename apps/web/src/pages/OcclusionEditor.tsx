@@ -38,7 +38,7 @@ import {
   type OcclusionSnapshot,
 } from '../db/occlusionRepository';
 import { useReturn } from '../utils/editorOrigin';
-import type { Occlusion, OcclusionRegion } from '../db/types';
+import type { Occlusion, OcclusionRegion } from '@lacuna/core/db/types';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 
 export function OcclusionEditor() {

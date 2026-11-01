@@ -2,8 +2,8 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { BACKUP_VERSION, exportDatabase, importBackup, validateBackup } from './portability';
-import { defaultFsrsParameters } from '../fsrs/params';
-import type { BackupFile, Tombstone } from './types';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
+import type { BackupFile, Tombstone } from '@lacuna/core/db/types';
 
 async function reset() {
   db.close();

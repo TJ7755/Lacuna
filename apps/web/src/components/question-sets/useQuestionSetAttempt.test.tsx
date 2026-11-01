@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { useAttemptProgress } from './useQuestionSetAttempt';
 import { QuestionSetAttemptSession } from './questionSetAttemptSession';
-import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { saveQuestionSetResponseDraft } from '../../questions/questionSetAttemptRepository';
 vi.mock('react-router-dom', () => ({ useBlocker: () => ({ state: 'unblocked' }) }));
 vi.mock('../../questions/questionSetAttemptRepository', () => ({

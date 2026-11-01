@@ -1,9 +1,9 @@
 import { db, makeId } from '../db/schema';
-import type { JevDiagnosis } from '../jev/diagnosis';
+import type { JevDiagnosis } from '@lacuna/core/jev/diagnosis';
 import { resolveFamilyVariant } from './bank';
 import { normaliseQuestionSchedulerConfig, questionSchedulerConfigFingerprint } from './scheduler';
-import { QUESTION_SCHEDULER_VERSION } from './types';
-import { parseQuestionSetRecord } from './questionSetCodec';
+import { QUESTION_SCHEDULER_VERSION } from '@lacuna/core/questions/types';
+import { parseQuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { parseQuestionSetAttemptRecord } from './questionSetAttemptCodec';
 import {
   answerableNodes,
@@ -15,8 +15,8 @@ import {
   type QuestionSetAttemptReflection,
   type QuestionSetAssistanceEvent,
   type QuestionSetResponseValue,
-} from './questionSetAttempts';
-import { summariseSelfMarking, type SelfMarkDecision } from './questionSets';
+} from '@lacuna/core/questions/questionSetAttempts';
+import { summariseSelfMarking, type SelfMarkDecision } from '@lacuna/core/questions/questionSets';
 
 export class QuestionSetAttemptRevisionConflictError extends Error {
   constructor() {

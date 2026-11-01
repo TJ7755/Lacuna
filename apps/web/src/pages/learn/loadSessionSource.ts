@@ -8,7 +8,7 @@ import type {
   RevisionPlan,
   SchedulerConfig,
   SchedulingUnitRecord,
-} from '../../db/types';
+} from '@lacuna/core/db/types';
 import {
   directLessonStudyPool,
   lessonStudyPool,

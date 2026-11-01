@@ -19,8 +19,8 @@ import type {
   PendingMergeReview,
   PracticeMilestone,
   PracticeNode,
-} from '../db/types';
-import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
+} from '@lacuna/core/db/types';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { practiceScopeVersion } from '../course/studyPools';
 export const pathState = {
   mockCourse: undefined as Course | null | undefined,

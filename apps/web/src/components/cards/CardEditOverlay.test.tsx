@@ -1,7 +1,7 @@
 import { act, fireEvent, render, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CardEditOverlay } from './CardEditOverlay';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 
 const mockUpdateCard = vi.fn();
 

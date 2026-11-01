@@ -1,4 +1,4 @@
-import type { AnswerMode, CardType, ItemPayload } from '../db/types';
+import type { AnswerMode, CardType, ItemPayload } from '@lacuna/core/db/types';
 
 const DRAFT_PREFIX = 'lacuna:draft';
 

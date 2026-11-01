@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import type * as JevModule from '../../jev';
 import type { JevTypedAnswerRequest, JevTypedVerdict } from '../../jev';
 import { JEV_JUDGING_MS, JEV_TYPED_TIMEOUT_MS } from '../../jev';

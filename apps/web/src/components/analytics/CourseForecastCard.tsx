@@ -4,8 +4,8 @@ import { ForecastChart, type ForecastLine } from '../dashboard/ForecastChart';
 import { forecastStatus } from '../dashboard/forecastStatus';
 import { dashboardForecastHistories, dashboardForecasts } from '../../state/dashboardForecasts';
 import { forecastWindow, useForecastRange } from '../../state/forecastRange';
-import type { ReviewHistoryEntry } from '../../db/reviewHistory';
-import type { Card, Course, Lesson } from '../../db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
+import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 
 /**
  * The course's own exam-day forecast, drawn by the dashboard's chart with one line.

@@ -9,10 +9,10 @@ import {
   paperSpecification,
   paperSpecificationReference,
 } from '../specifications/paperFixture.testFixtures';
-import type { Concept } from '../questions/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import type { ConceptPracticeItem } from '../questions/conceptPractice';
 import { buildCourseProgress } from './courseProgress';
-import { MS_PER_DAY } from '../fsrs/params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 const now = 100 * MS_PER_DAY;
 function concept(id: string, links: string[] = []): Concept {

@@ -11,9 +11,12 @@ import {
   listReviewHistoryForCards,
   listReviewHistoryForCourse,
 } from './reviewHistoryRead';
-import { reviewHistoryEntryIdForEvent, resolveReviewHistoryCollisions } from './reviewHistory';
+import {
+  reviewHistoryEntryIdForEvent,
+  resolveReviewHistoryCollisions,
+} from '@lacuna/core/db/reviewHistory';
 import { makeSessionContext, selectNext } from '../fsrs/session';
-import type { Card, ReviewLog } from './types';
+import type { Card, ReviewLog } from '@lacuna/core/db/types';
 
 function review(timestamp: number, eventId?: string): ReviewLog {
   return {

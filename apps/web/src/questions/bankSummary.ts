@@ -1,4 +1,4 @@
-import type { QuestionAttempt, QuestionDefinition } from './types';
+import type { QuestionAttempt, QuestionDefinition } from '@lacuna/core/questions/types';
 
 export type AttemptMark = 'right' | 'wrong' | 'none';
 

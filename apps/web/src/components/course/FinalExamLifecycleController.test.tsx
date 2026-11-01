@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FinalExamLifecycleController } from './FinalExamLifecycleController';
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import type * as FinalExamLifecycle from '../../state/finalExamLifecycle';
 
 const { updateCourse, notify, navigate } = vi.hoisted(() => ({

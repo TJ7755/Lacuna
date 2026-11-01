@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { importQuestionBank } from '../questions/bank';
 import familyExample from '../../../../docs/question-bank/examples/numeric-family.json';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createCourse } from './courseRepository';
 import { createLesson } from './lessonRepository';

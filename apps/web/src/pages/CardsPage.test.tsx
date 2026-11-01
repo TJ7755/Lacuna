@@ -2,7 +2,14 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { CardsPage } from './CardsPage';
-import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion, Sequence } from '../db/types';
+import type {
+  Card,
+  Course,
+  LegacyDeckRecord,
+  Lesson,
+  Occlusion,
+  Sequence,
+} from '@lacuna/core/db/types';
 
 vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: vi.fn() }) }));
 

@@ -35,7 +35,7 @@ import { QuestionSetScore } from '../components/question-sets/QuestionSetScore';
 import { questionSetProgress, type QuestionSetProgress } from '../questions/questionSetProgress';
 import { startQuestionSetAttempt } from '../questions/questionSetAttemptRepository';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
-import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { searchQuestionSets } from '../questions/questionSetSearch';
 import { countOf } from '../utils/plural';
 import { formatRelativeTime } from '../utils/datetime';

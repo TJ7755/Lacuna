@@ -1,4 +1,4 @@
-import type { Card } from '../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import type { SessionCardOutcome } from './sessionSummary';
 
 export interface SimpleSessionState {

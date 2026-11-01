@@ -6,7 +6,7 @@ import {
   type InsightsRecovery,
 } from './envelope';
 import { serialiseInsightsRecoveryFile } from './recoveryFile';
-import { INSIGHT_ID_RE } from '../../../relay/shared/insights/index';
+import { INSIGHT_ID_RE } from '@lacuna/protocol/insights/index';
 
 interface StoredOwner {
   shareId: string;

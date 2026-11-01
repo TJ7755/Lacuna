@@ -1,7 +1,7 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { useCallback, useState } from 'react';
 import { beforeEach, vi } from 'vitest';
-import { isoDayLabel } from '../../../relay/shared/insights/index';
+import { isoDayLabel } from '@lacuna/protocol/insights/index';
 import type { DailyEvidence, DailyEvidenceEvent } from '../insights/evidence';
 import { ClassPage } from './TeacherClassReports';
 import { createClassSessions } from './classSessions';

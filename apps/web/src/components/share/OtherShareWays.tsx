@@ -5,7 +5,7 @@ import { referencedAssetHashes } from '../../db/assets';
 import { publishCourse } from '../../db/courseRepository';
 import { exportCardsSimple } from '../../db/export';
 import { buildCourseShareCode, buildCourseShareCodeQR } from '../../db/share';
-import type { Card, Course } from '../../db/types';
+import type { Card, Course } from '@lacuna/core/db/types';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatRelativeTime } from '../../utils/datetime';
 import { CourseFileExportButton } from '../import/CourseFileControls';

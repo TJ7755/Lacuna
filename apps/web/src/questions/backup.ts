@@ -11,11 +11,19 @@ import type {
   RevisionPlan,
   SchedulingPerformance,
   Tombstone,
-} from '../db/types';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
+} from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { migrateQuestionModeContent } from './domain';
-import type { Concept, QuestionAttempt, QuestionConceptSet, QuestionDefinition } from './types';
-import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
+import type {
+  Concept,
+  QuestionAttempt,
+  QuestionConceptSet,
+  QuestionDefinition,
+} from '@lacuna/core/questions/types';
+import {
+  parseQuestionSetRecord,
+  type QuestionSetRecord,
+} from '@lacuna/core/questions/questionSetCodec';
 
 export interface QuestionBackupCollections {
   concepts: Concept[];

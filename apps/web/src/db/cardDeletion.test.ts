@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import { reviewHistoryEntryIdForEvent } from './reviewHistory';
+import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
 import { createCard, createCourse, deleteCards, restoreCards, snapshotCards } from './repository';
 
 describe('cardDeletion', () => {

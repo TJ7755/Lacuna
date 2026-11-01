@@ -1,4 +1,4 @@
-import type { ReviewLog } from '../db/types';
+import type { ReviewLog } from '@lacuna/core/db/types';
 
 /**
  * How soon after an earlier answer in the same session a graded answer counts as

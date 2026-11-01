@@ -1,4 +1,4 @@
-import type { FsrsParameters } from '../db/types';
+import type { FsrsParameters } from '@lacuna/core/db/types';
 
 /**
  * Return a short, deterministic fingerprint for the FSRS memory-model weights.

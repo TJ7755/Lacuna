@@ -6,8 +6,8 @@ import {
   resolveReviewHistoryCollisions,
   reviewHistoryEntriesForCard,
   type ReviewHistoryEntry,
-} from './reviewHistory';
-import type { Card } from './types';
+} from '@lacuna/core/db/reviewHistory';
+import type { Card } from '@lacuna/core/db/types';
 
 /** Count every persisted review attempt in the user's current local calendar day. */
 export async function dailyReviewCounts(

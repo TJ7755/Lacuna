@@ -1,4 +1,4 @@
-import { INSIGHT_ID_RE } from '../../../relay/shared/insights/index';
+import { INSIGHT_ID_RE } from '@lacuna/protocol/insights/index';
 import { parseInsightsRecovery, type InsightsRecovery } from './envelope';
 
 export const INSIGHTS_RECOVERY_FILE_MAX_BYTES = 16 * 1024;

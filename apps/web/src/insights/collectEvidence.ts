@@ -1,13 +1,13 @@
 import { db } from '../db/schema';
-import type { Card } from '../db/types';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
-import type { QuestionAttempt } from '../questions/types';
-import type { QuestionAnswer } from '../questions/questionSets';
+import type { Card } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
+import type { QuestionAttempt } from '@lacuna/core/questions/types';
+import type { QuestionAnswer } from '@lacuna/core/questions/questionSets';
 import type {
   QuestionSetAttemptRecord,
   QuestionSetResponseValue,
-} from '../questions/questionSetAttempts';
-import { DAY_MS, isoDayStartMs } from '../../../relay/shared/insights/index';
+} from '@lacuna/core/questions/questionSetAttempts';
+import { DAY_MS, isoDayStartMs } from '@lacuna/protocol/insights/index';
 import {
   DailyEvidenceTooLargeError,
   encodeDailyEvidence,

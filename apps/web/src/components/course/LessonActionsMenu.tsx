@@ -13,7 +13,7 @@ import {
   snapshotLesson,
   updateLesson,
 } from '../../db/lessonRepository';
-import type { Lesson } from '../../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';

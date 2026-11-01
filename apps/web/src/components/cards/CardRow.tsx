@@ -10,9 +10,9 @@ import { CheckIcon, CloseIcon, EditIcon, FlagIcon, TagIcon, TrashIcon } from '..
 import { cn } from '../ui/cn';
 import { scaledSpring } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import { isLeech } from '../../fsrs/leech';
+import { isLeech } from '@lacuna/core/fsrs/leech';
 import { resolveOcclusionAnswerText } from '../../db/occlusionGeneration';
-import type { Card, Occlusion, SchedulerConfig } from '../../db/types';
+import type { Card, Occlusion, SchedulerConfig } from '@lacuna/core/db/types';
 import { GeneratedCardBadge } from './GeneratedCardBadge';
 import { ExpandedCardAnalytics } from './ExpandedCardAnalytics';
 import { cardKindLabel, cardScheduleLabel } from './lessonCardRow';

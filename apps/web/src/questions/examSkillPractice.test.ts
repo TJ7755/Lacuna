@@ -5,7 +5,7 @@ import { createCourse } from '../db/courseRepository';
 import { createConcept } from './repository';
 import { createQuestionSet } from './questionSetRepository';
 import { listExamSkillPractice, startExamSkillPractice } from './examSkillPractice';
-import type { MarkAllocation, QuestionSetQuestion } from './questionSets';
+import type { MarkAllocation, QuestionSetQuestion } from '@lacuna/core/questions/questionSets';
 import { importQuestionBank } from './bank';
 import familyExample from '../../../../docs/question-bank/examples/numeric-family.json';
 

@@ -1,9 +1,9 @@
 import { numericAnswerSpecIsValid } from '../components/items/NumericAnswerEditor';
-import type { ItemFixture, NumericAnswerSpec } from '../db/types';
+import type { ItemFixture, NumericAnswerSpec } from '@lacuna/core/db/types';
 import type { compileMarkScheme } from '../items/markSchemeCompiler';
 import type { GeneratorDescription } from '../questions/generators/contracts';
 import { INTEGER_ROOT_QUADRATIC_GENERATOR_KEY } from '../questions/generators/integerRootQuadratic';
-import type { QuestionPayload } from '../questions/types';
+import type { QuestionPayload } from '@lacuna/core/questions/types';
 import type { QuestionAnswerKind } from './questionDraft';
 
 export function fixedPayload(

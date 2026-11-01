@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { exportDatabase, importBackup, validateBackup } from './portability';
-import type { AgentMemory } from './types';
+import type { AgentMemory } from '@lacuna/core/db/types';
 import { createCourse } from './repository';
 import { agentMemoryRepository } from './agentMemoryRepository';
 

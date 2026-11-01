@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { makeId } from '../../utils/id';
-import type { QuestionAnswer, QuestionResponse } from '../../questions/questionSets';
+import type { QuestionAnswer, QuestionResponse } from '@lacuna/core/questions/questionSets';
 import type { QuestionSetAuthoringNode } from '../../questions/questionSetAuthoring';
 import type { QuestionSetDraftSession } from '../../questions/questionSetDraftSession';
 import { formatMarkSchemeLines, parseMarkSchemeLines } from '../../questions/markSchemeLines';

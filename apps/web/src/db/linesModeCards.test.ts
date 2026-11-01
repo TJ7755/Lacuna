@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { cardsForSequence, createCourse, createSequence, listSequences } from './repository';
 import { linesModeSequencesByCard } from './linesModeCards';
-import type { SequenceItem } from './types';
+import type { SequenceItem } from '@lacuna/core/db/types';
 
 async function reset() {
   await Promise.all([

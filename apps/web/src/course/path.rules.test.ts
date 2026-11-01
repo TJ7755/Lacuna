@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { lessonEffectiveReleaseDates, isLessonUnlocked, buildPath } from './path';
-import { MS_PER_DAY } from '../fsrs/params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { makeCourse, makeLesson } from './path.testFixtures';
 
 describe('lessonEffectiveReleaseDates', () => {

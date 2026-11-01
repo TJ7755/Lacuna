@@ -1,7 +1,13 @@
 import type { Transaction } from 'dexie';
 import { makeId } from '../utils/id';
 import Dexie from 'dexie';
-import type { LegacyDeckRecord, LegacyFolder, Card, MediaAsset, Lesson } from './types';
+import type {
+  LegacyDeckRecord,
+  LegacyFolder,
+  Card,
+  MediaAsset,
+  Lesson,
+} from '@lacuna/core/db/types';
 import {
   migrateCardRecord,
   migrateDeckRecord,

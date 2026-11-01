@@ -18,7 +18,7 @@ import {
 } from './repository';
 import { createOrResumeRevisionPlan } from './revisionPlanRepository';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
-import { reviewHistoryEntryIdForEvent } from './reviewHistory';
+import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
 import { performanceForCourseBackingDecks, performanceForReviewUnit } from './backingDecks';
 import { createConcept, createFixedQuestion, startQuestionAttempt } from '../questions/repository';
 import { reset, waitForSessionHistory } from './courseRepository.testFixtures';

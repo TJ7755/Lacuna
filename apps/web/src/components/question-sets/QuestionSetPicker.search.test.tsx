@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { createCourse } from '../../db/courseRepository';
 import { db } from '../../db/schema';
-import type { QuestionSet } from '../../questions/questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import { QuestionSetPicker } from './QuestionSetPicker';
 
 vi.mock('../../state/motionSpeed', async (importOriginal) => ({

@@ -1,9 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import type { QuestionSetPathNode } from '../../course/path';
-import type { CourseAssessment } from '../../db/types';
-import type { QuestionSetRecord } from '../../questions/questionSetCodec';
-import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
+import type { CourseAssessment } from '@lacuna/core/db/types';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { getQuestionSet } from '../../questions/questionSetRepository';
 import { listQuestionSetAttempts } from '../../questions/questionSetAttemptRepository';
 

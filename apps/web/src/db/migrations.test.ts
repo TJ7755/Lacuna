@@ -1,12 +1,12 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
-import { FSRS_VERSION, defaultFsrsParameters } from '../fsrs/params';
+import { FSRS_VERSION, defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import {
   buildLessonCardExposureBackfill,
   migrateCardRecord,
   migrateDeckRecord,
 } from './migrations';
-import type { ReviewLog } from './types';
+import type { ReviewLog } from '@lacuna/core/db/types';
 
 describe('migrateDeckRecord', () => {
   it('re-tags an old deck to fsrs_version 6 and reseeds default FSRS-6 parameters', () => {

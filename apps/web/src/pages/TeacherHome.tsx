@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { SectionCard } from '../components/ui/SectionCard';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { readShareCredentials } from '../shareLinks/credentials';
 import { useCourses } from '../state/useCourseData';
 import { TeacherEmptyState, TeacherHomeView } from '../teacher/TeacherHomeView';

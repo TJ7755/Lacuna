@@ -6,7 +6,7 @@ import {
   updateQuestionSetNodePrompt,
   type QuestionSetAuthoringNode,
 } from '../../questions/questionSetAuthoring';
-import type { QuestionSet } from '../../questions/questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 
 export function hasChildren(row: QuestionSetAuthoringNode): boolean {
   return (

@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { ArchivedCourses } from './ArchivedCourses';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 
 const { mockUpdateCourse, mockNotify } = vi.hoisted(() => ({
   mockUpdateCourse: vi.fn(),

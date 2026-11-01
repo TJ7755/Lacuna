@@ -2,7 +2,7 @@ import { clearTombstone } from '../db/mutationStamp';
 import { db } from '../db/schema';
 import { validateQuestionConceptSet } from './domain';
 import { requireQuestionPayload, validateLessonMembership } from './repository.shared';
-import type { Concept, QuestionConceptSet, QuestionDefinition } from './types';
+import type { Concept, QuestionConceptSet, QuestionDefinition } from '@lacuna/core/questions/types';
 
 export type ConceptSnapshot = Concept;
 

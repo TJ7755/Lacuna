@@ -3,7 +3,7 @@ import frozenCoefficients from './coefficients/half-life-logistic-v3.json';
 import v1Coefficients from '../../../../tooling/short-term-memory/coefficients/half-life-logistic-v1.json';
 import modelPortCases from '../../../../tooling/short-term-memory/tests/fixtures/model-port-v3.json';
 import { revisionReplanReasons } from '../course/revisionPlan';
-import type { Card, RevisionPlanInputSnapshot } from '../db/types';
+import type { Card, RevisionPlanInputSnapshot } from '@lacuna/core/db/types';
 import {
   createHalfLifeLogisticModel,
   loadHalfLifeLogisticCoefficients,

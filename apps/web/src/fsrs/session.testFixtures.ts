@@ -1,5 +1,5 @@
-import type { Card, LegacyDeckRecord, SchedulerConfig } from '../db/types';
-import { defaultFsrsParameters } from './params';
+import type { Card, LegacyDeckRecord, SchedulerConfig } from '@lacuna/core/db/types';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 
 export const NOW = new Date(2026, 5, 4, 12).getTime();
 

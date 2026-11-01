@@ -2,7 +2,7 @@
 // owns validation, relay minting, keybag handling and the common sync hand-off.
 
 import { clearSyncState, readSyncState, updateSyncState } from '../db/mutationStamp';
-import type { RememberedSyncCredentials, SyncState } from '../db/types';
+import type { RememberedSyncCredentials, SyncState } from '@lacuna/core/db/types';
 import { SyncCryptoPassphraseError, generateChannelKey, unwrapKeybag, wrapKeybag } from './crypto';
 import { syncCycle, type SyncResult } from './cycle';
 import {

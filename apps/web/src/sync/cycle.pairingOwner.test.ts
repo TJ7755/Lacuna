@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { BackupFile, SyncState } from '../db/types';
+import type { BackupFile, SyncState } from '@lacuna/core/db/types';
 import type * as DbPortability from '../db/portability';
 import type * as SyncManualMerge from './manualMerge';
 import { __resetSyncFlightForTests, syncCycle, type SyncCycleOptions } from './cycle';

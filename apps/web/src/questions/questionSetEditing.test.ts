@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { QuestionSet } from './questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import {
   addPart,
   addQuestion,

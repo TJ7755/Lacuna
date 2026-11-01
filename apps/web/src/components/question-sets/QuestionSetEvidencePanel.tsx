@@ -3,8 +3,8 @@ import { PillToggleGroup } from '../cards/PillToggleGroup';
 import { ContentDisclosure } from '../ui/ContentDisclosure';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { StepSwap } from '../ui/StepSwap';
-import type { QuestionSetRecord } from '../../questions/questionSetCodec';
-import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import {
   summariseQuestionSetEvidence,
   type EvidenceMarks,

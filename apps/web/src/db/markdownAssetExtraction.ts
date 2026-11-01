@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import type { MediaAsset } from './types';
+import type { MediaAsset } from '@lacuna/core/db/types';
 import { assetUrl, base64ToBytes, blobToArrayBuffer, sha256Blob, toBlob } from './assetCodec';
 import { compressImageBlob } from '../utils/compressImage';
 

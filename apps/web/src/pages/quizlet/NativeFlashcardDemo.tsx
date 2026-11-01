@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import type { Card, Grade } from '../../db/types';
+import type { Card, Grade } from '@lacuna/core/db/types';
 import { generateCards } from '../../db/sequenceGeneration';
 import { FlipCard } from '../learn/FlipCard';
 import { StudyControls } from '../learn/StudyControls';

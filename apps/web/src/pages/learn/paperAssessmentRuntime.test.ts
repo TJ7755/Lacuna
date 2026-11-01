@@ -26,7 +26,7 @@ import {
   paperSpecification,
   paperSpecificationReference,
 } from '../../specifications/paperFixture.testFixtures';
-import { MS_PER_DAY } from '../../fsrs/params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 beforeEach(async () => {
   await db.transaction('rw', db.tables, () => Promise.all(db.tables.map((table) => table.clear())));

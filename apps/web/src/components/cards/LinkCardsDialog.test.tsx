@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LinkCardsDialog } from './LinkCardsDialog';
-import type { Card, Lesson } from '../../db/types';
+import type { Card, Lesson } from '@lacuna/core/db/types';
 
 const mockNotify = vi.fn();
 const mockLinkCardsToLesson = vi.fn();

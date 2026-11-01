@@ -19,7 +19,7 @@ import {
   importCardsToDestination,
   type CardImportContent,
 } from '../../db/cardImport';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import { countOf } from '../../utils/plural';
 
 export function CardSources({

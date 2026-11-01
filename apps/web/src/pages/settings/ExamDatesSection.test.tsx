@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { ExamDatesSection } from './ExamDatesSection';
-import type { Card, CourseAssessment, Lesson } from '../../db/types';
+import type { Card, CourseAssessment, Lesson } from '@lacuna/core/db/types';
 
 const motion = vi.hoisted(() => ({ multiplier: 0 }));
 

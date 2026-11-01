@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { ImportDestination, useImportDestination } from './ImportDestination';
 
 const mocks = vi.hoisted(() => ({ courses: [] as Course[] }));

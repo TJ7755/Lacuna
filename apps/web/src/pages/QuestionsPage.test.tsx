@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
-import type { QuestionDefinition } from '../questions/types';
+import type { QuestionDefinition } from '@lacuna/core/questions/types';
 import { LegacyQuestionsPage as QuestionsPage } from './LegacyQuestionsPage';
 
 const mocks = vi.hoisted(() => ({

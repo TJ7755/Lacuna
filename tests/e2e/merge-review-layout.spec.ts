@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { Lesson, LineageIdMapping } from '../../apps/web/src/db/types';
+import type { Lesson, LineageIdMapping } from '@lacuna/core/db/types';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const fontScale of [1, 1.35]) {

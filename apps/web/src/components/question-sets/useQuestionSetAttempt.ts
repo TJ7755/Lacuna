@@ -8,7 +8,7 @@ import {
 import type {
   QuestionSetAttemptRecord,
   QuestionSetResponseValue,
-} from '../../questions/questionSetAttempts';
+} from '@lacuna/core/questions/questionSetAttempts';
 import { QuestionSetAttemptSession } from './questionSetAttemptSession';
 
 export function useQuestionSetAttempt(courseId: string, setId: string, attemptId: string) {

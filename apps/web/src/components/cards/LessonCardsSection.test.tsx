@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LessonCardsSection } from './LessonCardsSection';
-import type { Card, LegacyDeckRecord, LessonCardLink } from '../../db/types';
+import type { Card, LegacyDeckRecord, LessonCardLink } from '@lacuna/core/db/types';
 
 let mockLinks: LessonCardLink[] | undefined = [];
 const mockUnlink = vi.fn();

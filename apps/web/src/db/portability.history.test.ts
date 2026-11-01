@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { exportDatabase, importBackup } from './portability';
 import { createCourse, createCard, recordReview } from './repository';
-import { reviewHistoryEntryIdForEvent } from './reviewHistory';
+import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 
 import { reset, waitForSessionHistory } from './portability.testFixtures';

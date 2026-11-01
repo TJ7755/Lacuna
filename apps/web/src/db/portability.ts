@@ -1,7 +1,7 @@
 // Import/Export: the entire database serialises to a single JSON file and back.
 
 import { db } from './schema';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 import { assertValidBackup, backupIsValid } from './backupValidation';
 import { prepareBackup, type ImportMode } from './backupPreparation';
 import { replaceBackup } from './backupReplacement';

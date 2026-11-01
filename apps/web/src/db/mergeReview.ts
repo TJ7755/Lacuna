@@ -13,7 +13,7 @@ import type {
   ShareCardInput,
   ShareLessonInput,
   ShareNoteInput,
-} from './lineageDiff';
+} from '@lacuna/core/db/lineageDiff';
 import { assertLineageReviewIntegrity } from './lineageIntegrity';
 import { applyCardUpdate, applyLineageLessonUpdate } from './lineageImportEntities';
 import {
@@ -26,7 +26,7 @@ import {
   toExistingNote,
 } from './lineageImportModel';
 import { MERGE_TABLES } from './lineageImportTables';
-import type { LineageIdMapping, PendingMergeReview } from './types';
+import type { LineageIdMapping, PendingMergeReview } from '@lacuna/core/db/types';
 
 // ---------------------------------------------------------------------------
 // Review resolution (§7.5's review UI actions, Task 7). A `pendingMergeReviews`

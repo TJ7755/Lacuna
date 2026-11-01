@@ -13,7 +13,7 @@ import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, SparklesIcon } from '../co
 import { MOTION_EASING } from '../components/ui/motion';
 import { summariseQuestion } from '../questions/bankSummary';
 import { selectQuestionSession } from '../questions/selection';
-import type { QuestionDefinition } from '../questions/types';
+import type { QuestionDefinition } from '@lacuna/core/questions/types';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { useCourse, useLessons } from '../state/useCourseData';
 

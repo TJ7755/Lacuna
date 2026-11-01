@@ -10,7 +10,7 @@ import { Button } from '../ui/Button';
 import { MeasuredHeight } from '../ui/MeasuredHeight';
 import { expandingActionSpring } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import type { CardType } from '../../db/types';
+import type { CardType } from '@lacuna/core/db/types';
 
 /** Authoring types: the stored card types plus the structured and audio variants. */
 export type EditorCardType = CardType | 'numeric' | 'working' | 'audio';

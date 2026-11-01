@@ -6,9 +6,9 @@ import type {
   LessonCardExposure,
   LessonCardLink,
   PracticeNode,
-} from '../db/types';
-import type { Concept } from '../questions/types';
-import { pointsForSelection } from '../specifications/selection';
+} from '@lacuna/core/db/types';
+import type { Concept } from '@lacuna/core/questions/types';
+import { pointsForSelection } from '@lacuna/core/specifications/selection';
 import { currentAssessmentPracticeContext } from './assessmentPractice';
 import { earlierCourseLessonIds } from './courseEntry';
 import { lessonCardMembershipForLessons } from './lessonMembership';

@@ -1,7 +1,7 @@
 import { parseQuestionSetPracticeNodeSnapshot } from './questionSetPracticeNode';
 import { z } from 'zod';
 import { validateAssessmentStructure } from './assessmentValidation';
-import type { CourseAssessment } from './types';
+import type { CourseAssessment } from '@lacuna/core/db/types';
 import {
   answerMode,
   card,

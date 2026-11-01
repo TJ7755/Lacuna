@@ -5,8 +5,8 @@ import {
   type CourseForecast,
   type ForecastPoint,
 } from '../fsrs/courseForecast';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
-import type { Card, Course, Lesson } from '../db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
+import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 
 const HOUR = 3_600_000;
 

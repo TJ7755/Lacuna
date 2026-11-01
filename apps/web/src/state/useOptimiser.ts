@@ -5,8 +5,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { OptimiseMessage, OptimiseRequest } from '../workers/optimise.worker';
 import type { OptimiseResult } from '../fsrs/optimise';
-import type { Card } from '../db/types';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
+import type { Card } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 type OptimiseStatus = 'idle' | 'running' | 'done' | 'error';
 

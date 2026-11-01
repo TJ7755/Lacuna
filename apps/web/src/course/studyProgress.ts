@@ -1,13 +1,13 @@
-import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '../db/types';
+import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import { isAvailable } from '../fsrs/eligibility';
 import { rAtExam } from '../fsrs/forwardSim';
 import { decayOf } from '../fsrs/fsrs';
 import { progressHeading, progressValue } from '../fsrs/objective';
-import { MASTERY_R } from '../fsrs/params';
+import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import { calendarDaysUntil } from '../utils/datetime';
 import type { ConceptPracticeItem } from '../questions/conceptPractice';
-import { SCIENCE_TECHNIQUES, type TechniqueId } from '../questions/techniqueTags';
-import type { Concept } from '../questions/types';
+import { SCIENCE_TECHNIQUES, type TechniqueId } from '@lacuna/core/questions/techniqueTags';
+import type { Concept } from '@lacuna/core/questions/types';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { courseLessonOrderPreference } from './lessonOrder';
 import { lessonCardMembershipForLessons } from './lessonMembership';

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, LegacyDeckRecord, Grade, ReviewLog, UserPerformance } from '../db/types';
+import type {
+  Card,
+  LegacyDeckRecord,
+  Grade,
+  ReviewLog,
+  UserPerformance,
+} from '@lacuna/core/db/types';
 import {
   allocateCramReview,
   simulateReviewOutcomes,
@@ -8,7 +14,7 @@ import {
   type RecallPrediction,
   type SuccessGradeCoefficient,
 } from './cramAllocator';
-import { defaultFsrsParameters, MS_PER_DAY } from './params';
+import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { makeObjectiveContext, sortByObjective } from './objective';
 import { estimateResponseTime, type ResponseTimeCoefficients } from './responseTimeCost';
 import { CRAM_SUCCESS_GRADES } from './halfLifeLogisticModel';

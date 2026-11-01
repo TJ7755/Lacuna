@@ -2,8 +2,8 @@ import 'fake-indexeddb/auto';
 import { beforeEach, expect, it } from 'vitest';
 import { db } from '../db/schema';
 import { createCourse, createCourseCard } from '../db/repository';
-import type { QuestionAttempt } from '../questions/types';
-import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+import type { QuestionAttempt } from '@lacuna/core/questions/types';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { collectDailyEvidence } from './collectEvidence';
 import { parseDailyEvidence } from './evidence';
 

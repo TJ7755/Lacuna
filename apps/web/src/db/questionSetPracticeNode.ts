@@ -6,8 +6,8 @@ import type {
   PracticeMilestone,
   PracticeNode,
   QuestionSetPracticeNode,
-} from './types';
-import type { QuestionSetRecord } from '../questions/questionSetCodec';
+} from '@lacuna/core/db/types';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 
 const selection = z
   .array(z.string().min(1))

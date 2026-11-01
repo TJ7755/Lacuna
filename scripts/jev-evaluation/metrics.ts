@@ -1,8 +1,5 @@
 import type { JevDecisionResult } from '../../apps/web/src/jev/protocol';
-import {
-  JEV_DIAGNOSTIC_CATEGORIES,
-  JEV_DIAGNOSTIC_OUTCOMES,
-} from '../../apps/web/src/jev/diagnosis';
+import { JEV_DIAGNOSTIC_CATEGORIES, JEV_DIAGNOSTIC_OUTCOMES } from '@lacuna/core/jev/diagnosis';
 import type { Label } from './labels';
 import { cases, policy, strata } from './pack';
 

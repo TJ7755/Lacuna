@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
-import type { BackupSnapshot } from '../../db/types';
+import type { BackupSnapshot } from '@lacuna/core/db/types';
 import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
 import { BackupHero } from './BackupHero';
 import { SettingsModal } from './SettingsModal';

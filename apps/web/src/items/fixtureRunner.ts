@@ -1,4 +1,4 @@
-import type { ItemFixture, MarkSchemeLine } from '../db/types';
+import type { ItemFixture, MarkSchemeLine } from '@lacuna/core/db/types';
 import { verifyWorkingLines } from './verify';
 
 export interface FixtureRunResult {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { QuestionAttempt, QuestionDefinition, QuestionPayload } from './types';
+import type {
+  QuestionAttempt,
+  QuestionDefinition,
+  QuestionPayload,
+} from '@lacuna/core/questions/types';
 import { buildQuestionAnalytics } from './analytics';
 
 const NOW = 10_000;

@@ -16,7 +16,7 @@ import {
   listQuestionSetAttempts,
   startQuestionSetAttempt,
 } from '../questions/questionSetAttemptRepository';
-import type { QuestionSetAttemptMode } from '../questions/questionSetAttempts';
+import type { QuestionSetAttemptMode } from '@lacuna/core/questions/questionSetAttempts';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { getQuestionSet } from '../questions/questionSetRepository';
 import { flattenQuestionSet } from '../questions/questionSetAuthoring';

@@ -3,7 +3,7 @@
 // Cooldowns live in memory for the duration of a Learn session only.
 
 import { sortByObjective, type ObjectiveContext } from './objective';
-import type { Card } from '../db/types';
+import type { Card } from '@lacuna/core/db/types';
 
 /** Default maximum cooldown, scaled down for very small decks (size - 1, floored at 0). */
 const DEFAULT_COOLDOWN = 5;

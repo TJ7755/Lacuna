@@ -1,5 +1,5 @@
 import { clozeAnswerText } from './cloze';
-import type { Card } from '../db/types';
+import type { Card } from '@lacuna/core/db/types';
 
 /** Whether the configured typing presentation can answer this ordinary card. */
 export function isTypingEligible(card: Pick<Card, 'type' | 'payload'>): boolean {

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { m as motion } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { QuestionSetPathNode } from '../../course/path';
-import type { Lesson } from '../../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { cn } from '../ui/cn';
 import { PathNodeActionsMenu } from './PathNodeActionsMenu';
 import {

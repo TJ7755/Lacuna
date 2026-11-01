@@ -6,8 +6,15 @@ import type * as ReactRouterDom from 'react-router-dom';
 import type * as MotionReact from 'motion/react';
 import type * as MarkdownEditorModule from '../components/markdown/MarkdownEditor';
 import { CardEditor } from './CardEditor';
-import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion, Sequence } from '../db/types';
-import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
+import type {
+  Card,
+  Course,
+  LegacyDeckRecord,
+  Lesson,
+  Occlusion,
+  Sequence,
+} from '@lacuna/core/db/types';
+import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
 
 export const editorState = {
   present: true,

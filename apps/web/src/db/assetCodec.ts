@@ -1,4 +1,4 @@
-import type { BackupAsset, MediaAsset } from './types';
+import type { BackupAsset, MediaAsset } from '@lacuna/core/db/types';
 
 export const ASSET_PROTOCOL = 'lacuna-asset://';
 

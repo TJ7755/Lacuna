@@ -1,6 +1,6 @@
-import type { QuestionSetRecord } from './questionSetCodec';
-import type { QuestionSetAttemptRecord } from './questionSetAttempts';
-import type { AssessmentDimension, QuestionAnswer } from './questionSets';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
+import type { AssessmentDimension, QuestionAnswer } from '@lacuna/core/questions/questionSets';
 
 export interface EvidenceMarks {
   earned: number;

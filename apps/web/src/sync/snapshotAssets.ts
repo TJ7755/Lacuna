@@ -1,7 +1,7 @@
-import type { BackupAsset, Card, Note, Occlusion } from '../db/types';
-import type { QuestionAttempt, QuestionDefinition } from '../questions/types';
-import type { QuestionSetRecord } from '../questions/questionSetCodec';
-import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+import type { BackupAsset, Card, Note, Occlusion } from '@lacuna/core/db/types';
+import type { QuestionAttempt, QuestionDefinition } from '@lacuna/core/questions/types';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { canonicalJson } from './snapshotRecords';
 
 const ASSET_RE = /lacuna-asset:\/\/([a-f0-9]{64})/gi;

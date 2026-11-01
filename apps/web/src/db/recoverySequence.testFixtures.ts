@@ -2,9 +2,9 @@ import { expect } from 'vitest';
 import { assetUrl, storeImageBlob } from './assets';
 import { createCard, createCourse, createLesson, createNote, recordReview } from './repository';
 import { waitForTrajectorySample } from './reviewRepository.testFixtures';
-import { reviewHistoryEntryIdForEvent } from './reviewHistory';
+import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
 import { db } from './schema';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 
 export async function recoverySequenceSeed(name: string) {
   const course = await createCourse(name);

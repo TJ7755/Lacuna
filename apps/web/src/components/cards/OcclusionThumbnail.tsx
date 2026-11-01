@@ -1,5 +1,5 @@
 import { OcclusionStudyFace } from '../occlusion/OcclusionStudyFace';
-import type { Card, Occlusion } from '../../db/types';
+import type { Card, Occlusion } from '@lacuna/core/db/types';
 
 /**
  * A small preview of an occlusion card's question side, so a list of them shows which

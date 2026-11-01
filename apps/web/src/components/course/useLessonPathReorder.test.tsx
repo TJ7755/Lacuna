@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Lesson } from '../../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { moveLessonIds, useLessonPathReorder } from './useLessonPathReorder';
 
 const reorderLessons = vi.fn().mockResolvedValue(undefined);

@@ -9,7 +9,7 @@ import { createLesson } from '../../db/lessonRepository';
 import { createCourseAssessment } from '../../db/assessmentRepository';
 import { createPracticeNode } from '../../db/practiceNodeRepository';
 import { db } from '../../db/schema';
-import type { Course, CourseAssessment, Lesson, PracticeNode } from '../../db/types';
+import type { Course, CourseAssessment, Lesson, PracticeNode } from '@lacuna/core/db/types';
 import { CourseOverview } from './CourseOverview';
 import { ToastProvider } from '../ui/Toast';
 import { useCoursePathReorder } from './useCoursePathReorder';

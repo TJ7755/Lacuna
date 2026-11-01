@@ -5,7 +5,7 @@ import { AppNavLink as NavLink } from '../ui/AppLink';
 import { cn } from '../ui/cn';
 import { ChevronDownIcon } from '../ui/icons';
 import { CourseGlyph, type GlyphStatus } from '../course/CourseGlyph';
-import type { Lesson } from '../../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { prefetchRoute } from '../../routes/prefetch';
 import { SidebarHoverCard, type SidebarDetail } from './SidebarHoverCard';
 import { SidebarLabel, useSidebarMotion } from './SidebarMotion';

@@ -17,8 +17,8 @@ import {
 import { expectAppDestination } from '../../../../tests/helpers/expectAppDestination';
 import { describe, expect, it, vi } from 'vitest';
 import { act, screen, fireEvent, waitFor } from '@testing-library/react';
-import type { Card, Lesson } from '../db/types';
-import { FSRS_VERSION, defaultFsrsParameters } from '../fsrs/params';
+import type { Card, Lesson } from '@lacuna/core/db/types';
+import { FSRS_VERSION, defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 
 describe('CardEditor — import entry', () => {
   it('opens the existing import dialogue without expanding More and keeps the card draft', async () => {

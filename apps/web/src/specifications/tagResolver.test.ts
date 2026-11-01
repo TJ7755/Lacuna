@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Specification } from './catalogue';
+import type { Specification } from '@lacuna/core/specifications/catalogue';
 import { resolveSpecPointTags, unavailableSpecificationPointLinks } from './tagResolver';
 
 const specification: Specification = {

@@ -28,7 +28,7 @@ import {
 } from '../ui/icons';
 import { useEnrolledCourseIds } from '../../insights/useEnrolledCourseIds';
 import { useSidebarData } from '../../state/useCourseData';
-import type { Lesson } from '../../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { calendarDaysUntil, formatDate } from '../../utils/datetime';
 import { glyphLoad } from '../course/CourseGlyph';
 import { NavItem, NAV_LABELS, FOOTER_NAV } from './SidebarNavItem';

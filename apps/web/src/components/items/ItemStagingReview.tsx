@@ -1,8 +1,8 @@
 import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { m as motion } from 'motion/react';
-import type { Lesson } from '../../db/types';
-import type { QuestionDefinition } from '../../questions/types';
+import type { Lesson } from '@lacuna/core/db/types';
+import type { QuestionDefinition } from '@lacuna/core/questions/types';
 import {
   diffImport,
   type ExistingCardForDiff,

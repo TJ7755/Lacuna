@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MS_PER_DAY } from './params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { applyReview, makeEngine } from './fsrs';
 import {
   makeSessionContext,

@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { AppLink } from '../components/ui/AppLink';
 import { db } from '../db/schema';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { getCourseIdForShare } from '../shareLinks/linkStore';
 import * as linkStore from '../shareLinks/linkStore';
 import { ShareLinkPage } from './ShareLinkPage';

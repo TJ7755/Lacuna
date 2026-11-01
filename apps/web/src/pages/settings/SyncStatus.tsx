@@ -1,4 +1,4 @@
-import type { SyncState } from '../../db/types';
+import type { SyncState } from '@lacuna/core/db/types';
 import { formatDateTime, formatRelativeTime } from '../../utils/datetime';
 import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
 

@@ -17,7 +17,7 @@ import { StrictMode } from 'react';
 import { act, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SharePage } from './SharePage';
 import { ShareLinkNeedsReplacementError } from '../shareLinks/publish';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 
 describe('SharePage links', () => {
   it('creates links after StrictMode replays the mount effect', async () => {

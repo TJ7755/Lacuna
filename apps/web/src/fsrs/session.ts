@@ -35,7 +35,7 @@ import {
 import { cramScore } from './cram';
 import type { ExamDateContext } from './examDate';
 import { daysUntil } from '../utils/datetime';
-import type { Card, SchedulerConfig, SchedulingUnitRecord } from '../db/types';
+import type { Card, SchedulerConfig, SchedulingUnitRecord } from '@lacuna/core/db/types';
 
 /** Due review uses objective ordering but finishes when no scheduled reviews are due. */
 export type SessionMode = 'objective' | 'cram' | 'due';

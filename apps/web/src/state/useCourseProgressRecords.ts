@@ -9,8 +9,8 @@ import type {
   Lesson,
   LessonCardExposure,
   LessonCardLink,
-} from '../db/types';
-import type { Concept } from '../questions/types';
+} from '@lacuna/core/db/types';
+import type { Concept } from '@lacuna/core/questions/types';
 
 /** The records behind the Progress report, without the Path's practice and question data. */
 export interface CourseProgressRecords {

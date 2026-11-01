@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { jevDiagnosticRequestSchema, jevDiagnosisSchema } from './diagnosis.js';
+import { jevDiagnosticRequestSchema, jevDiagnosisSchema } from '@lacuna/core/jev/diagnosis';
 
 export const JEV_MODEL = 'jev-1.14.0';
 export const JEV_TYPED_CORRECT_THRESHOLD = 0.75;

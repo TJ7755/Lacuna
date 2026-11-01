@@ -1,6 +1,6 @@
 import { useEffect, type ComponentProps } from 'react';
 import { animate, m as motion, useAnimationControls, useMotionValue } from 'motion/react';
-import type { Grade } from '../../db/types';
+import type { Grade } from '@lacuna/core/db/types';
 import { Button } from '../../components/ui/Button';
 
 export interface StudyGradeFeedback {

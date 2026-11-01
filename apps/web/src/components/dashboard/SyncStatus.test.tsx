@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readSyncState } from '../../db/mutationStamp';
-import type { SyncState } from '../../db/types';
+import type { SyncState } from '@lacuna/core/db/types';
 import { SyncStatus } from './SyncStatus';
 
 vi.mock('../../db/mutationStamp', () => ({ readSyncState: vi.fn() }));

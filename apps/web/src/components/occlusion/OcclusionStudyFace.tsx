@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { cachedAssetImageSize, peekCachedAssetUrl, resolveAssetUrl } from '../../db/assetCache';
 import { resolveOcclusionFace } from '../../db/occlusionGeneration';
-import type { Card, Occlusion } from '../../db/types';
+import type { Card, Occlusion } from '@lacuna/core/db/types';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { cn } from '../ui/cn';
 import {

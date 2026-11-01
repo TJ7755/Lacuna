@@ -1,5 +1,5 @@
 import { flattenQuestionSet } from '../../questions/questionSetAuthoring';
-import type { QuestionSet } from '../../questions/questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { useId } from 'react';
 import { ComposerTextarea } from './ComposerTextarea';

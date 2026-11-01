@@ -7,7 +7,7 @@ import { UploadIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import type { ImportMode } from '../../db/portability';
 import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
-import type { BackupFile } from '../../db/types';
+import type { BackupFile } from '@lacuna/core/db/types';
 import type * as ManualMergeModule from '../../sync/manualMerge';
 import type { ManualMergeSummary, MergeDelta } from '../../sync/manualMerge';
 import { formatDate } from '../../utils/datetime';

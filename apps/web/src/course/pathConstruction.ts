@@ -5,7 +5,7 @@ import type {
   Lesson,
   PracticeNode,
   QuestionSetPracticeNode,
-} from '../db/types';
+} from '@lacuna/core/db/types';
 import { shouldInsertPractice } from '../fsrs/practice';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { resolveCourseLessonOrder } from './lessonOrder';

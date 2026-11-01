@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { reviewFeedbackMessage, reviewRetentionMessage } from './gradingFeedback';
 import { predictedRetrievabilityAtHorizon } from './progress';
-import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from './params';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { ExamDateContext } from './examDate';
-import type { Card, LegacyDeckRecord } from '../db/types';
+import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
 
 const NOW = Date.parse('2026-08-31T10:00:00Z');
 

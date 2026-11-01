@@ -1,4 +1,4 @@
-import type { QuestionAttempt, QuestionDefinition } from './types';
+import type { QuestionAttempt, QuestionDefinition } from '@lacuna/core/questions/types';
 
 export interface QuestionPerformanceMetric {
   attemptCount: number;

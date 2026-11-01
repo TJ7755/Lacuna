@@ -13,7 +13,7 @@ import {
   snapshotCards,
   unsuspendCard,
 } from '../../db/cardRepository';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import { countOf } from '../../utils/plural';
 
 /** A lesson a card can be bulk-assigned to, offered in the "Assign to lesson…" panel. */

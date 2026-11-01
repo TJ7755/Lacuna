@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, Grade, ReviewLog } from '../db/types';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
+import type { Card, Grade, ReviewLog } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { predictionAccuracySeries } from './calibration';
 
 const DAY = new Date(2026, 5, 4, 12).getTime();

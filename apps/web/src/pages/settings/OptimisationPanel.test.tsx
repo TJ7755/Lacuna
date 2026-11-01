@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as FsrsOptimise from '../../fsrs/optimise';
-import { defaultFsrsParameters } from '../../fsrs/params';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimise';
 import { OptimisationPanel } from './OptimisationPanel';
 

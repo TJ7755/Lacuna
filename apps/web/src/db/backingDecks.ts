@@ -1,6 +1,11 @@
 import type { Transaction } from 'dexie';
 import { emptyPerformance, updatePerformance } from '../fsrs/grading';
-import type { Card, SchedulingPerformance, SchedulingUnitRecord, UserPerformance } from './types';
+import type {
+  Card,
+  SchedulingPerformance,
+  SchedulingUnitRecord,
+  UserPerformance,
+} from '@lacuna/core/db/types';
 import { db } from './schema';
 import { schedulingUnitFromCourse, schedulingUnitFromLesson } from './schedulingUnitBuilder';
 import { stampUpdatedAt, recordTombstone, recordTombstones } from './mutationStamp';

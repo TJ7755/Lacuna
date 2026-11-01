@@ -4,7 +4,7 @@ import { startOfDay } from '../utils/datetime';
 import { globalTrajectorySeries } from '../components/analytics/prepare';
 import { db } from './schema';
 import { listGlobalDailySessionHistory } from './sessionHistoryRead';
-import type { SessionHistoryEntry } from './types';
+import type { SessionHistoryEntry } from '@lacuna/core/db/types';
 
 function sample(
   courseId: string,

@@ -3,13 +3,13 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import type { SessionSummary } from '../components/learn/types';
 import type { QuestionStudySummary } from '../course/sessionSummary';
 import { CATCH_UP_STEP, type StudyFlowStep } from '../course/studyFlowPlanner';
 import type { CourseStudyFlowSnapshot, StudyFlowPracticeState } from '../course/studyFlowSnapshot';
 import type { AssessmentPracticeOption } from '../course/assessmentPractice';
-import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
+import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
 import type { useCourseStudyFlow } from '../state/useCourseStudyFlow';
 import { CourseStudyFlow } from './CourseStudyFlow';
 import { LazyMotion, domAnimation } from 'motion/react';

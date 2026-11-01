@@ -1,4 +1,4 @@
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { getShareIdForCourse } from '../../shareLinks/linkStore';
 
 /** The course's published share id, falling back to its recorded import link. */

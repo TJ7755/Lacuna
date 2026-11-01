@@ -4,7 +4,7 @@ import type {
   QuestionSet,
   QuestionSetQuestion,
   QuestionSubpart,
-} from './questionSets';
+} from '@lacuna/core/questions/questionSets';
 
 type Identified = { id: string };
 

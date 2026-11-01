@@ -11,7 +11,7 @@ import {
   splitPaste,
   type Outline,
 } from './sequenceOutline';
-import type { SequenceItem } from '../../db/types';
+import type { SequenceItem } from '@lacuna/core/db/types';
 
 const item = (id: string, chunkIndex?: number): SequenceItem =>
   chunkIndex === undefined ? { id, value: id } : { id, value: id, chunkIndex };

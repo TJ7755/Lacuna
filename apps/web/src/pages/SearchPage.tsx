@@ -9,7 +9,7 @@ import {
   searchCourseContent,
   searchQuestionsInScope,
   type CardFilter,
-} from '../db/search';
+} from '@lacuna/core/db/search';
 import { cn } from '../components/ui/cn';
 import { SearchIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';

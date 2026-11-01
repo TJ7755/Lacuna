@@ -12,7 +12,7 @@
 
 import type { z } from 'zod';
 import { db } from '../../db/schema';
-import type { CourseAssessment } from '../../db/types';
+import type { CourseAssessment } from '@lacuna/core/db/types';
 import {
   createCourseAssessment as repoCreateCourseAssessment,
   updateCourseAssessment as repoUpdateCourseAssessment,

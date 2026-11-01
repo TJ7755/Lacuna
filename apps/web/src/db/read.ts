@@ -27,7 +27,7 @@ import type {
   Occlusion,
   RevisionPlan,
   Sequence,
-} from './types';
+} from '@lacuna/core/db/types';
 import { finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 import { gatherCounts, type DiagnosticBundle } from './diagnostics';
 import { listNotes as repositoryListNotes } from './noteRepository';
@@ -35,7 +35,7 @@ import { listSequences as repositoryListSequences } from './sequenceRepository';
 import { listOcclusions as repositoryListOcclusions } from './occlusionRepository';
 import { availableCards, dueReviewPool } from '../fsrs/eligibility';
 import { makeObjectiveContext, progressValue, scoreCard, sortByObjective } from '../fsrs/objective';
-import { isLeech } from '../fsrs/leech';
+import { isLeech } from '@lacuna/core/fsrs/leech';
 import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
 import { makeExamDateContext } from '../fsrs/examDate';
 import {

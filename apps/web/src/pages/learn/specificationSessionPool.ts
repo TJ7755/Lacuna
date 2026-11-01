@@ -1,4 +1,4 @@
-import type { Course, RevisionPlan } from '../../db/types';
+import type { Course, RevisionPlan } from '@lacuna/core/db/types';
 import { resolveSpecificationStudyScope } from '../../course/specificationStudyScope';
 import {
   prepareCourseSessionPool,

@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import type { ReviewHistoryEntry } from './reviewHistory';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 const reviewHistorySchema =
   'id, cardId, deckId, courseId, primaryLessonId, schedulingUnitId, timestamp';

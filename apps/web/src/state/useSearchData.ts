@@ -1,8 +1,15 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
-import type { Card, Course, CourseAssessment, CourseRecord, Lesson, Note } from '../db/types';
-import type { QuestionDefinition } from '../questions/types';
+import type {
+  Card,
+  Course,
+  CourseAssessment,
+  CourseRecord,
+  Lesson,
+  Note,
+} from '@lacuna/core/db/types';
+import type { QuestionDefinition } from '@lacuna/core/questions/types';
 
 export interface SearchData {
   cards: Card[];

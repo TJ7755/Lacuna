@@ -6,10 +6,16 @@
 // without dropping any existing user data; they are exercised directly by the
 // migration unit test and also run inside the Dexie upgrade hook (see schema.ts).
 
-import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
-import type { Card, CardType, LegacyDeck, LegacyDeckRecord, LessonCardExposure } from './types';
+import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
+import type {
+  Card,
+  CardType,
+  LegacyDeck,
+  LegacyDeckRecord,
+  LessonCardExposure,
+} from '@lacuna/core/db/types';
 
-export type { LegacyDeck } from './types';
+export type { LegacyDeck } from '@lacuna/core/db/types';
 
 /**
  * A card as stored before FSRS-6: the new memory fields may be absent. `type` is

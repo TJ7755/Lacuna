@@ -1,6 +1,6 @@
 import { lazy } from 'react';
 import { useCard } from '../../state/useData';
-import type { Card, SchedulerConfig } from '../../db/types';
+import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 import { PageLoading, PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 
 const CardAnalytics = lazy(() =>

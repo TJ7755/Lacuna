@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Card, Occlusion } from '../../db/types';
+import type { Card, Occlusion } from '@lacuna/core/db/types';
 import { MarkdownView } from '../../components/markdown/MarkdownView';
 import { CardContent } from '../../components/cards/CardContent';
 import { LineHintButton, LineHintDisplay } from '../../components/learn/LineHint';

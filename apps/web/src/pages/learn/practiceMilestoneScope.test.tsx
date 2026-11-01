@@ -10,7 +10,7 @@ import {
 } from '../../db/repository';
 import { savePracticeMilestoneProgress } from '../../db/practiceNodeRepository';
 import { db } from '../../db/schema';
-import type { Course, Lesson } from '../../db/types';
+import type { Course, Lesson } from '@lacuna/core/db/types';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
 import type { PathNode } from '../../course/path';
 import { planNextStudyStep } from '../../course/studyFlowPlanner';

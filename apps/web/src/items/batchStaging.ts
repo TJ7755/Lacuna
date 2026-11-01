@@ -1,4 +1,4 @@
-import type { ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
+import type { ItemFixture, ItemPayload, NumericAnswerSpec } from '@lacuna/core/db/types';
 import { compileMarkScheme } from './markSchemeCompiler';
 import { numericAnswerSpecIsValid } from './numericAnswerSpec';
 import { runWorkingFixtures } from './fixtureRunner';

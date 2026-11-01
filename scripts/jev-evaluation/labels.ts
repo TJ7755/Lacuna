@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { JEV_DIAGNOSTIC_OUTCOMES } from '../../apps/web/src/jev/diagnosis';
+import { JEV_DIAGNOSTIC_OUTCOMES } from '@lacuna/core/jev/diagnosis';
 import { cases } from './pack';
 
 export const hash = (text: string) => createHash('sha256').update(text).digest('hex');

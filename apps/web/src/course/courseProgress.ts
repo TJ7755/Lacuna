@@ -5,13 +5,13 @@ import type {
   Lesson,
   LessonCardExposure,
   LessonCardLink,
-} from '../db/types';
+} from '@lacuna/core/db/types';
 import { dueReviewPool, isAvailable } from '../fsrs/eligibility';
 import { makeExamDateContext, resolveCardExamDate } from '../fsrs/examDate';
 import { progressValue } from '../fsrs/objective';
-import { MASTERY_R } from '../fsrs/params';
+import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import { predictedRetrievabilityAtHorizon } from '../fsrs/progress';
-import type { Concept } from '../questions/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import { calendarDaysUntil } from '../utils/datetime';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { courseLessonOrderPreference } from './lessonOrder';

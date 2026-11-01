@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SyncState } from '../db/types';
+import type { SyncState } from '@lacuna/core/db/types';
 import type { SyncCredentials } from './credentials';
 import {
   __resetTriggersForTests,

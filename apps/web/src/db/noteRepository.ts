@@ -5,7 +5,7 @@
 // tombstoned, though they do carry updatedAt.
 
 import { db, makeId } from './schema';
-import type { Note, NoteAnnotation } from './types';
+import type { Note, NoteAnnotation } from '@lacuna/core/db/types';
 import { scheduleAssetGc } from './assets';
 import { friendlyDbError } from './dbErrors';
 import { stampUpdatedAt, recordTombstone } from './mutationStamp';

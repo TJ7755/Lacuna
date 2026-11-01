@@ -26,7 +26,7 @@ import { exportDatabase, importBackup, validateBackup } from './portability';
 import { decodeSnapshot, encodeSnapshot } from '../sync/snapshot';
 import { mergeSnapshots } from '../sync/mergeSnapshots';
 import { importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 
 async function reset() {
   await db.transaction('rw', db.tables, () => Promise.all(db.tables.map((table) => table.clear())));

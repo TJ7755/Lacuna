@@ -23,7 +23,7 @@ import {
 import { compressImageBlob } from '../utils/compressImage';
 import { createCard, createCourse, createLesson, createNote } from './repository';
 import { exportDatabase, importBackup } from './portability';
-import type { MediaAsset } from './types';
+import type { MediaAsset } from '@lacuna/core/db/types';
 
 /** A sweep after the grace period, so fresh test assets are eligible for collection. */
 const afterGrace = () => Date.now() + ASSET_GC_GRACE_MS;

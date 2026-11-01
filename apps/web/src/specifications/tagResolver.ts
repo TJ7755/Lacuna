@@ -1,4 +1,8 @@
-import { appliesToSelection, type Specification, type SpecificationSelection } from './catalogue';
+import {
+  appliesToSelection,
+  type Specification,
+  type SpecificationSelection,
+} from '@lacuna/core/specifications/catalogue';
 
 interface TaggedCard {
   id: string;

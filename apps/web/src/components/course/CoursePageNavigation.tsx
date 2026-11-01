@@ -4,7 +4,7 @@ import { ChevronLeftIcon, LockIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { ArchivedCourseBadge } from './ArchivedCourseState';
 import { CourseTabs } from './CourseTabs';
-import type { CourseRecord } from '../../db/types';
+import type { CourseRecord } from '@lacuna/core/db/types';
 import { updateCourse } from '../../db/courseRepository';
 import { canEditLessons, resolveLessonViewMode } from '../../course/lessonViewMode';
 import { LessonViewModeToggle } from './LessonViewModeToggle';

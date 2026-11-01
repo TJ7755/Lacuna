@@ -6,7 +6,7 @@ import { beforeEach, expect, vi } from 'vitest';
 import { publishCourse } from '../db/courseRepository';
 import { downloadTextFile } from '../db/export';
 import { buildCourseShareCode } from '../db/share';
-import type { Card, Course } from '../db/types';
+import type { Card, Course } from '@lacuna/core/db/types';
 import type { CourseSummary } from '../state/useCourseData';
 
 export const mockNotify = vi.fn();

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import type { useCoursePathRecords } from '../../state/useCourseStudyFlowRecords';
 import { computeCourseSummaries } from '../../state/courseSummaries';
 import { availableCards, dueCards } from '../../fsrs/eligibility';

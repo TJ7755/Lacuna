@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import {
   cardKindLabel,
   cardScheduleLabel,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { CardContent } from './CardContent';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 
 function makeCard(overrides: Partial<Card>): Card {
   return {

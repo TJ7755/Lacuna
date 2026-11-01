@@ -2,7 +2,7 @@
 // on the main database never rolls the snapshot back with it.
 
 import Dexie, { type Table } from 'dexie';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 
 interface PreMigrationSnapshot {
   id?: number;

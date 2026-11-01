@@ -47,9 +47,9 @@ import {
 import { clearTombstone, stampUpdatedAt } from './mutationStamp';
 import { assertValidCardPayload } from '../items/payloadValidation';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
-import { diffLineage } from './lineageDiff';
+import { diffLineage } from '@lacuna/core/db/lineageDiff';
 import { courseDetailChanges, courseSource } from './mergeImportCourseDetails';
-import type { LineageDiffInput } from './lineageDiff';
+import type { LineageDiffInput } from '@lacuna/core/db/lineageDiff';
 import {
   applyImportedCourseScheduling,
   importSharePayload,
@@ -64,10 +64,10 @@ import type {
   ItemPayload,
   Note,
   PendingMergeReview,
-} from './types';
-import type { Concept } from '../questions/types';
+} from '@lacuna/core/db/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import { prepareLineageMapping } from './lineageIntegrity';
-import { clampRequestRetention, defaultFsrsParameters } from '../fsrs/params';
+import { clampRequestRetention, defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import {
   applyLineageQuestionSets,
   applyLineageQuestionSetPracticeNodes,

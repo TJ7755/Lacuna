@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { checkNumeric, parseExpression, verifyWorkingLines } from '../../items/verify';
-import type { CheckerDisputeReport, LineVerdict } from '../../db/types';
+import type { CheckerDisputeReport, LineVerdict } from '@lacuna/core/db/types';
 import { highlightParameters } from '../../questions/bankSummary';
-import type { QuestionAttempt, QuestionPayload } from '../../questions/types';
+import type { QuestionAttempt, QuestionPayload } from '@lacuna/core/questions/types';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { MathsAnswerInput } from '../items/MathsAnswerInput';
 import { Button } from '../ui/Button';

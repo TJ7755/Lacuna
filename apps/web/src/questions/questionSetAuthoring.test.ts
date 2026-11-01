@@ -7,7 +7,7 @@ import {
   updateQuestionSetNodeAnswer,
   updateQuestionSetNodePrompt,
 } from './questionSetAuthoring';
-import type { QuestionSet } from './questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 
 function fixture(): QuestionSet {
   return {

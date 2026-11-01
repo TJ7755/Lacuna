@@ -5,7 +5,7 @@ import { createCourse, createCourseCard, recordReview } from './repository';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { exportDatabase, importBackup, validateBackup } from './portability';
 import { PRIMING_WINDOW_MS } from '../fsrs/primedReview';
-import type { Card, Course, ReviewLog } from './types';
+import type { Card, Course, ReviewLog } from '@lacuna/core/db/types';
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));

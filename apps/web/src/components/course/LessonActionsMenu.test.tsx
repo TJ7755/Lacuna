@@ -6,7 +6,7 @@ import { createCourse, createCourseCard, createLesson } from '../../db/repositor
 import { linkCardToLesson } from '../../db/lessonRepository';
 import { createNote } from '../../db/noteRepository';
 import { db } from '../../db/schema';
-import type { Lesson } from '../../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { ToastProvider } from '../ui/Toast';
 import type { MenuHandle } from '../ui/Menu';
 import {

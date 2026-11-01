@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../db/types';
+import type { Card, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 
 const lessons: Lesson[] = ['one', 'two', 'three'].map((id, orderIndex) => ({

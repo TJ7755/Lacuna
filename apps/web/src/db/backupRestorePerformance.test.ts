@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import { createCard, createCourse } from './repository';
 import { exportDatabase, importBackup } from './portability';
-import type { ReviewHistoryEntry } from './reviewHistory';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 beforeEach(async () => {
   db.close();

@@ -1,6 +1,6 @@
 import type { LineagePayload } from './lineageImportModel';
-import { jsonValuesEqual } from './lineageDiff';
-import type { CourseDistributedCopy, CourseRecord } from './types';
+import { jsonValuesEqual } from '@lacuna/core/db/lineageDiff';
+import type { CourseDistributedCopy, CourseRecord } from '@lacuna/core/db/types';
 
 /** The teacher's course details as first import writes them. */
 export function courseSource(

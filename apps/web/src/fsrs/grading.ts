@@ -1,7 +1,7 @@
 // The invisible rating engine. The user sees only "Yes (Correct)" and "No (Incorrect)";
 // an FSRS grade is inferred from correctness and the response time, calibrated per deck.
 
-import type { Grade, UserPerformance } from '../db/types';
+import type { Grade, UserPerformance } from '@lacuna/core/db/types';
 
 /** Number of correct reviews required before switching from fixed to adaptive thresholds. */
 const CALIBRATION_THRESHOLD = 20;

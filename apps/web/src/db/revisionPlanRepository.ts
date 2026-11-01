@@ -20,7 +20,7 @@ import type {
   RevisionPlan,
   RevisionPlanSession,
   RevisionProjection,
-} from './types';
+} from '@lacuna/core/db/types';
 
 const revisionPlanInputTables = [
   db.revisionPlans,

@@ -5,8 +5,8 @@
 
 import { optimiseParameters, type OptimiseResult } from '../fsrs/optimise';
 import { getBindingOptimiser } from '../fsrs/bindingOptimiser';
-import type { Card } from '../db/types';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
+import type { Card } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 export interface OptimiseRequest {
   cards: Card[];

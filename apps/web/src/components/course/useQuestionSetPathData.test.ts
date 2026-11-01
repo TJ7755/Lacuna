@@ -9,7 +9,7 @@ import {
   createQuestionSetPracticeNode,
   updateQuestionSetPracticeNode,
 } from '../../db/practiceNodeRepository';
-import type { QuestionSetPracticeNode } from '../../db/types';
+import type { QuestionSetPracticeNode } from '@lacuna/core/db/types';
 import { importQuestionBank } from '../../questions/bank';
 import { createQuestionSet } from '../../questions/questionSetRepository';
 import {

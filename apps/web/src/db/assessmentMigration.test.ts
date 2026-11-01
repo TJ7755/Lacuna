@@ -1,8 +1,8 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
-import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
-import type { CourseAssessment, Lesson } from './types';
+import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
+import type { CourseAssessment, Lesson } from '@lacuna/core/db/types';
 import {
   buildCourseAssessmentMigration,
   finalAssessmentForCourse,

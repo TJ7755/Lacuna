@@ -10,7 +10,7 @@ import {
   updateCourse,
   updateCourseAssessment,
 } from './repository';
-import { FSRS_VERSION } from '../fsrs/params';
+import { FSRS_VERSION } from '@lacuna/core/fsrs/params';
 import { listLessons, listCardsForCourse } from './read';
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 import { reset } from './courseRepository.testFixtures';

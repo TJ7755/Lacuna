@@ -2,7 +2,7 @@
 // owns only opaque byte transport, while manualMerge remains the one database
 // apply path for a peer merge.
 
-import type { BackupFile, SyncState } from '../db/types';
+import type { BackupFile, SyncState } from '@lacuna/core/db/types';
 import { readSyncState, updateSyncState } from '../db/mutationStamp';
 import { exportDatabase } from '../db/portability';
 import { ManualMergeError, manualMerge, type ManualMergeSummary } from './manualMerge';

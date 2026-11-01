@@ -17,4 +17,4 @@ export {
   type IntegerRootQuadraticConfig,
 } from './integerRootQuadratic';
 export { questionGeneratorRegistry } from './registry';
-export { SeededRandom } from './seededRandom';
+export { SeededRandom } from '@lacuna/core/questions/generators/seededRandom';

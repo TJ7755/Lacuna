@@ -28,7 +28,7 @@ import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
 import { draftKey } from '../utils/drafts';
 import { useReturn } from '../utils/editorOrigin';
-import type { Card, CardType } from '../db/types';
+import type { Card, CardType } from '@lacuna/core/db/types';
 import { useCardEditorDraft } from './cardEditor/useCardEditorDraft';
 import { useCardEditorSave } from './cardEditor/useCardEditorSave';
 import { useCardEditorFocus } from './cardEditor/useCardEditorFocus';

@@ -5,7 +5,7 @@ import {
   summariseQuestion,
   type QuestionBankSummary,
 } from './bankSummary';
-import type { QuestionAttempt, QuestionDefinition } from './types';
+import type { QuestionAttempt, QuestionDefinition } from '@lacuna/core/questions/types';
 
 const question = {
   id: 'q1',

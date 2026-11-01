@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useCourses, useLessons } from '../../state/useCourseData';
 import type { CardImportDestination } from '../../db/cardImport';
-import type { CourseSchedulingMode } from '../../db/types';
+import type { CourseSchedulingMode } from '@lacuna/core/db/types';
 import { CourseStudyTarget } from '../course/CourseStudyTarget';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
 import { canEditLessons } from '../../course/lessonViewMode';

@@ -1,6 +1,6 @@
 import { db } from './schema';
 import { addReviewHistoryInBatches } from './addReviewHistoryInBatches';
-import type { SessionHistoryEntry } from './types';
+import type { SessionHistoryEntry } from '@lacuna/core/db/types';
 import type { PreparedBackup } from './backupPreparation';
 
 /** Apply prepared rows within the caller-owned atomic write transaction. */

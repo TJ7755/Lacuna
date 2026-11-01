@@ -11,7 +11,7 @@ import {
   DEFAULT_REQUEST_RETENTION,
   MAX_REQUEST_RETENTION,
   MIN_REQUEST_RETENTION,
-} from '../../fsrs/params';
+} from '@lacuna/core/fsrs/params';
 
 /** Named anchor points for the target-retention slider. */
 const RETENTION_PRESETS = [

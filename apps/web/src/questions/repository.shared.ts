@@ -1,7 +1,7 @@
 import { db } from '../db/schema';
 import { itemPayloadIsValid } from '../items/payloadValidation';
 import { validateQuestionConceptSet } from './domain';
-import type { Concept, QuestionConceptSet, QuestionPayload } from './types';
+import type { Concept, QuestionConceptSet, QuestionPayload } from '@lacuna/core/questions/types';
 
 export function cleanName(value: string, fallback: string): string {
   return value.trim() || fallback;

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { originFrom } from '../../utils/editorOrigin';
-import type { Card, Course, Lesson } from '../../db/types';
+import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 import { useScopedFindShortcut } from '../../hooks/useScopedFindShortcut';
 import { SearchIcon } from '../ui/icons';
 import { LessonCardsPalette } from './CommandPalette';

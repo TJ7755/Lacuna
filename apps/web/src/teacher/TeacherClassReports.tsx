@@ -5,7 +5,7 @@ import { cn } from '../components/ui/cn';
 import { ChevronLeftIcon, ChevronRightIcon, QrCodeIcon, RefreshIcon } from '../components/ui/icons';
 import { SectionCard } from '../components/ui/SectionCard';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
-import { DAY_MS, isoDayLabel, isoDayStartMs } from '../../../relay/shared/insights/index';
+import { DAY_MS, isoDayLabel, isoDayStartMs } from '@lacuna/protocol/insights/index';
 import type { DailyEvidence } from '../insights/evidence';
 import { dayLabel } from './classInsights';
 import { type ConnectedGapsCourse } from './connectionStore';

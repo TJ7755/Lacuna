@@ -11,7 +11,7 @@ import {
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { formatDate, startOfDay } from '../../utils/datetime';
 import { MOTION_EASING } from '../ui/motion';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 
 /** Historical default for consumers without a period selector. */
 const DEFAULT_DAYS = 26 * 7;

@@ -1,8 +1,8 @@
 import { seed as seedHeavy } from '../../../scripts/performance-heavy/fixture';
-import type { Card } from '../../../apps/web/src/db/types';
+import type { Card } from '@lacuna/core/db/types';
 import { db } from '../../../apps/web/src/db/schema';
 import { assetUrl, storeImageBlob } from '../../../apps/web/src/db/assets';
-import { reviewHistoryEntriesForCard } from '../../../apps/web/src/db/reviewHistory';
+import { reviewHistoryEntriesForCard } from '@lacuna/core/db/reviewHistory';
 import type { StudyImageFixture } from './largeStudyImages';
 import { buildCardConcept } from '../../../apps/web/src/questions/concepts';
 

@@ -19,8 +19,8 @@ import {
   type Grade as TsGrade,
   type Steps,
 } from 'ts-fsrs';
-import type { Card, FsrsCardState, FsrsParameters, Grade } from '../db/types';
-import { MS_PER_DAY } from './params';
+import type { Card, FsrsCardState, FsrsParameters, Grade } from '@lacuna/core/db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 export type { FSRS } from 'ts-fsrs';
 

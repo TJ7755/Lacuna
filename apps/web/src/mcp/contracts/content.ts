@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { ToolContract } from '../types';
-import { isSpecificationPointIds } from '../../specifications/links.js';
+import { isSpecificationPointIds } from '@lacuna/core/specifications/links';
 
 const courseIdSchema = z.string().describe('The id of the course.');
 const lessonIdSchema = z.string().describe('The id of the lesson.');

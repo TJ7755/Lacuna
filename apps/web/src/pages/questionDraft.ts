@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ItemFixture, NumericAnswerSpec } from '../db/types';
+import type { ItemFixture, NumericAnswerSpec } from '@lacuna/core/db/types';
 import { serialiseMarkScheme } from '../items/markSchemeCompiler';
-import type { QuestionConceptSet, QuestionDefinition } from '../questions/types';
+import type { QuestionConceptSet, QuestionDefinition } from '@lacuna/core/questions/types';
 import { clearDraft, draftKey, loadDraft, saveDraft } from '../utils/drafts';
 
 export type QuestionEditorKind = 'fixed' | 'generated';

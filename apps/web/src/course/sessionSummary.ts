@@ -1,5 +1,5 @@
-import type { Grade } from '../db/types';
-import type { SelfMarkSummary } from '../questions/questionSets';
+import type { Grade } from '@lacuna/core/db/types';
+import type { SelfMarkSummary } from '@lacuna/core/questions/questionSets';
 
 export interface QuestionStudySummary {
   kind: 'question';

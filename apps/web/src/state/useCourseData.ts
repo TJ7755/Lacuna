@@ -7,7 +7,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigationCourses } from './CourseNavigationData';
 import { db } from '../db/schema';
 import { hydrateCardsWithHistory, listReviewHistoryForCourse } from '../db/reviewHistoryRead';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import type {
   Card,
   Course,
@@ -22,7 +22,7 @@ import type {
   Sequence,
   SchedulingUnitRecord,
   UserPerformance,
-} from '../db/types';
+} from '@lacuna/core/db/types';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import {
   findBackingDeck,

@@ -1,7 +1,7 @@
-import type { Card, Grade } from '../../db/types';
+import type { Card, Grade } from '@lacuna/core/db/types';
 import { applyReview, makeEngine } from '../../fsrs/fsrs';
 import { rAtExam, simContext } from '../../fsrs/forwardSim';
-import { defaultFsrsParameters, MS_PER_DAY } from '../../fsrs/params';
+import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 export const EXAMPLE_NOW = Date.UTC(2027, 4, 25);
 export const EXAMPLE_START = EXAMPLE_NOW - 14 * MS_PER_DAY;

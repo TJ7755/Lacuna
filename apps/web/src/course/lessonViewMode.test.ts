@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { canEditLessons, isLessonAuthoringMode, resolveLessonViewMode } from './lessonViewMode';
-import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
-import type { Course } from '../db/types';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import type { Course } from '@lacuna/core/db/types';
 
 // ---------------------------------------------------------------------------
 // Fixture helper (mirroring src/course/path.test.ts)

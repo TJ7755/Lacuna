@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { bytesToBase45 } from './base45';
 import { ensureLessonBackingDeck } from './backingDecks';
 import { exportDatabase, importBackup, PRE_V22_BACKUP_MESSAGE } from './portability';
-import { reviewHistoryEntriesForCard } from './reviewHistory';
+import { reviewHistoryEntriesForCard } from '@lacuna/core/db/reviewHistory';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { createCard, createCourse, createLesson } from './repository';
 import { db } from './schema';
@@ -15,7 +15,7 @@ import {
   V1_SHARE_CODE_MESSAGE,
   type SharePayloadV1,
 } from './share';
-import type { ReviewLog } from './types';
+import type { ReviewLog } from '@lacuna/core/db/types';
 
 async function resetDatabase(): Promise<void> {
   await Promise.all(db.tables.map((table) => table.clear()));

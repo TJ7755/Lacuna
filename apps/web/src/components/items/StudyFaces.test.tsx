@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Card, ItemPayload } from '../../db/types';
+import type { Card, ItemPayload } from '@lacuna/core/db/types';
 import { NumericStudyFace } from './NumericStudyFace';
 import { WorkingStudyFace } from './WorkingStudyFace';
 

@@ -2,7 +2,7 @@ import { isLessonAuthoringMode } from '../course/lessonViewMode';
 import { isTypingEligible } from '../utils/answerMode';
 import { stampUpdatedAt } from './mutationStamp';
 import { db } from './schema';
-import type { AnswerMode } from './types';
+import type { AnswerMode } from '@lacuna/core/db/types';
 
 /** Update authored answer modes together, without touching review history. */
 export async function setAuthoredAnswerMode(

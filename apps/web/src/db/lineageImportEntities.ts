@@ -1,6 +1,6 @@
 import type { Transaction } from 'dexie';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
-import type { Concept } from '../questions/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import { db } from './schema';
 import {
   ensureCourseBankBackingDeck,
@@ -12,7 +12,7 @@ import type {
   CreateCardPayload,
   CreateLessonPayload,
   CreateNotePayload,
-} from './lineageDiff';
+} from '@lacuna/core/db/lineageDiff';
 import {
   cardSnapshot,
   lessonSnapshot,
@@ -25,7 +25,7 @@ import {
 import type { LineagePayload } from './lineageImportModel';
 import { clearTombstones, recordTombstones, stampUpdatedAt } from './mutationStamp';
 import { assignCardsToLesson, updateCard } from './repository';
-import type { Card, Lesson, LessonCardLink, LineageIdMapping, Note } from './types';
+import type { Card, Lesson, LessonCardLink, LineageIdMapping, Note } from '@lacuna/core/db/types';
 
 /** Build the full local Lesson/Note/Card rows a diff `creates` payload describes, and
  *  write the mapping's snapshot for each newly adopted entity. Card creates are always

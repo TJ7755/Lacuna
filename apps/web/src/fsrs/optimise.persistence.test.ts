@@ -9,8 +9,8 @@ import { db } from '../db/schema';
 import { createCourse, updateCourse } from '../db/repository';
 import { makeEngine, applyReview } from './fsrs';
 import { optimiseParameters } from './optimise';
-import type { Card, Grade, ReviewLog } from '../db/types';
-import { MS_PER_DAY } from './params';
+import type { Card, Grade, ReviewLog } from '@lacuna/core/db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 function cardWithHistory(deckId: string, grades: Grade[]): Card {
   const start = Date.UTC(2026, 0, 1);

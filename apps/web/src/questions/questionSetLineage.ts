@@ -1,7 +1,7 @@
 import { db } from '../db/schema';
 import type { SharePayloadV4, SharePayloadV5, SharePayloadV6 } from '../db/share';
-import type { LineageIdMapping } from '../db/types';
-import { parseQuestionSetRecord } from './questionSetCodec';
+import type { LineageIdMapping } from '@lacuna/core/db/types';
+import { parseQuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import {
   parseQuestionSetPracticeNode,
   normalisePracticeNodeLineage,

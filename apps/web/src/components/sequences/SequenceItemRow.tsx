@@ -5,7 +5,7 @@
 import { useLayoutEffect, useRef, type KeyboardEvent, type Ref } from 'react';
 import { CloseIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
-import type { SequenceItem } from '../../db/types';
+import type { SequenceItem } from '@lacuna/core/db/types';
 
 export type RowGesture =
   | { kind: 'enter'; caret: number }

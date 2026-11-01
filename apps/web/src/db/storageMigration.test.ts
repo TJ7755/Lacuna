@@ -6,8 +6,8 @@ import type {
   LegacyDeckRecord,
   Lesson,
   UserPerformance,
-} from './types';
-import { defaultFsrsParameters } from '../fsrs/params';
+} from '@lacuna/core/db/types';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { buildDomainStorageMigration } from './storageMigration';
 
 const parameters = defaultFsrsParameters();

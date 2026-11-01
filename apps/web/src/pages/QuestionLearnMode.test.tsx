@@ -10,7 +10,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
 import { questionGeneratorRegistry } from '../questions/generators';
-import type { QuestionAttempt, QuestionDefinition } from '../questions/types';
+import type { QuestionAttempt, QuestionDefinition } from '@lacuna/core/questions/types';
 import { QuestionLearnMode } from './QuestionLearnMode';
 
 const mocks = vi.hoisted(() => ({

@@ -6,7 +6,7 @@
 
 import { compressImageBlob } from '../utils/compressImage';
 import { storeImageBlob } from './assets';
-import type { MediaAsset } from './types';
+import type { MediaAsset } from '@lacuna/core/db/types';
 
 export const OCCLUSION_MAX_DIMENSION = 2560;
 

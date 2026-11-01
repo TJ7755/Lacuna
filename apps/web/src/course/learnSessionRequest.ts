@@ -1,5 +1,5 @@
-import type { CardFilter } from '../db/search';
-import type { ReviewSessionKind } from '../db/types';
+import type { CardFilter } from '@lacuna/core/db/search';
+import type { ReviewSessionKind } from '@lacuna/core/db/types';
 
 /** The distinct visual identity of the current learn session. */
 export type LearnModeType =

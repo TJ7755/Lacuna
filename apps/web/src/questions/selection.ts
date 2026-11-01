@@ -1,5 +1,9 @@
 import { questionGeneratorRegistry } from './generators';
-import type { QuestionAttempt, QuestionConceptSet, QuestionDefinition } from './types';
+import type {
+  QuestionAttempt,
+  QuestionConceptSet,
+  QuestionDefinition,
+} from '@lacuna/core/questions/types';
 
 export interface QuestionSelectionOptions {
   now?: number;

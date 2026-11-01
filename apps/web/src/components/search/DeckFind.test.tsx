@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import type * as RouterModule from 'react-router-dom';
 import { LazyMotion, domAnimation } from 'motion/react';
 import { expect, it, vi } from 'vitest';
-import type { Card, Course, Lesson } from '../../db/types';
+import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 import { DeckFind } from './DeckFind';
 import type * as MotionSpeedModule from '../../state/motionSpeed';
 

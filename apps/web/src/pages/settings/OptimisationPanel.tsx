@@ -6,13 +6,13 @@ import { Button } from '../../components/ui/Button';
 import { Toggle } from '../../components/ui/Toggle';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { useToast } from '../../components/ui/Toast';
-import { defaultFsrsParameters } from '../../fsrs/params';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { countReviews } from '../../fsrs/optimise';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
 import { useOptimiser } from '../../state/useOptimiser';
 import { optimiseEnabledForDeck, useAutoOptimiseDefault } from '../../state/optimiseSetting';
-import type { Card, FsrsParameters } from '../../db/types';
-import type { ReviewHistoryEntry } from '../../db/reviewHistory';
+import type { Card, FsrsParameters } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { SettingsCard } from './SettingsUi';
 

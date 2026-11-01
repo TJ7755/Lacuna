@@ -2,7 +2,7 @@
 // and when it next comes up. No React so they can be tested directly.
 
 import { parseAudioCardFront } from '../../media/audio';
-import type { Card, Occlusion } from '../../db/types';
+import type { Card, Occlusion } from '@lacuna/core/db/types';
 
 /** Human label for a card's kind, covering generated and structured cards. */
 export function cardKindLabel(card: Card): string {

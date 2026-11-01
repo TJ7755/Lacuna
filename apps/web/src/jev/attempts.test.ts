@@ -16,14 +16,14 @@ import { exportDatabase, importBackup } from '../db/portability';
 import { mergeSnapshots } from '../sync/mergeSnapshots';
 import { encodeSnapshot, decodeSnapshot } from '../sync/snapshot';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
-import type { JevDiagnosis } from './diagnosis';
-import type { TechniqueTags } from '../questions/techniqueTags';
-import { summariseSelfMarking } from '../questions/questionSets';
+import type { JevDiagnosis } from '@lacuna/core/jev/diagnosis';
+import type { TechniqueTags } from '@lacuna/core/questions/techniqueTags';
+import { summariseSelfMarking } from '@lacuna/core/questions/questionSets';
 import { gradeQuestionAttempt } from '../questions/grading';
 import { deriveConceptApplicationSchedules } from '../questions/conceptPractice';
 import { markJevAttempt } from './attempts';
 import { createJevEngine } from './engine';
-import { JEV_CONSENT_VERSION } from './types';
+import { JEV_CONSENT_VERSION } from '@lacuna/core/jev/types';
 
 beforeEach(async () => {
   localStorage.clear();

@@ -1,5 +1,5 @@
 import { db } from './schema';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 
 export async function reset() {
   await Promise.all([

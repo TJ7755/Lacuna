@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, animate, useIsPresent, useMotionValue } from 'motion/react';
 import { hapticMedium } from '../../utils/haptic';
-import type { Card, Grade, Occlusion } from '../../db/types';
+import type { Card, Grade, Occlusion } from '@lacuna/core/db/types';
 import { speedMultiplier, type MotionSpeed } from '../../state/motionSpeed';
 import type { AnswerStrictness } from '../../state/answerStrictness';
 import { cn } from '../../components/ui/cn';

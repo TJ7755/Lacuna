@@ -2,8 +2,8 @@ import { domAnimation, LazyMotion } from 'motion/react';
 import type { ReactNode } from 'react';
 import { fireEvent, render as renderView, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { QuestionSetRecord } from '../../questions/questionSetCodec';
-import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { QuestionSetEvidencePanel } from './QuestionSetEvidencePanel';
 
 function render(children: ReactNode) {

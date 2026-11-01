@@ -1,8 +1,8 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCourse, createCourseCard } from '../db/repository';
-import { reviewHistoryEntryForCard } from '../db/reviewHistory';
-import { searchCardsInScope } from '../db/search';
+import { reviewHistoryEntryForCard } from '@lacuna/core/db/reviewHistory';
+import { searchCardsInScope } from '@lacuna/core/db/search';
 import { db } from '../db/schema';
 import type { SearchData } from './useSearchData';
 import { useSearchData } from './useSearchData';

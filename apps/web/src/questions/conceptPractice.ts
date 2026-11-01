@@ -10,10 +10,10 @@ import { startQuestionSetAttempt } from './questionSetAttemptRepository';
 import {
   type ConceptPracticeSelection,
   type QuestionSetAttemptRecord,
-} from './questionSetAttempts';
-import type { QuestionSetQuestion } from './questionSets';
+} from '@lacuna/core/questions/questionSetAttempts';
+import type { QuestionSetQuestion } from '@lacuna/core/questions/questionSets';
 import { emptyQuestionSchedule, scheduleQuestionReview } from './scheduler';
-import type { QuestionScheduleState } from './types';
+import type { QuestionScheduleState } from '@lacuna/core/questions/types';
 import {
   deriveConceptDiagnosticEvidence,
   deriveConceptPracticeNeeds,
@@ -21,7 +21,7 @@ import {
   type ConceptPracticeNeeds,
   type DiagnosticCategoryEvidence,
 } from './techniqueEvidence';
-import type { TechniqueId } from './techniqueTags';
+import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
 
 export { undoConceptPracticeAttempt } from './questionSetAttemptRepository';
 export { questionPresentationFingerprint as conceptPracticeFingerprint } from './generators/declarative';

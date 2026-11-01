@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import type { SyncState } from './types';
+import type { SyncState } from '@lacuna/core/db/types';
 import {
   clearSyncState,
   clearTombstone,

@@ -10,12 +10,12 @@
 //    will introduce). It deliberately does not change the dashboard denominator, so
 //    the deck's exam-day trajectory stays honest while a session paces new material.
 
-import { MASTERY_R, MS_PER_DAY } from './params';
+import { MASTERY_R, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { resolveCardExamDate, type ExamDateContext } from './examDate';
 import { rAtExam } from './forwardSim';
 import { decayOf } from './fsrs';
 import { cardSchedulingHorizon } from './horizon';
-import type { Card, Course, SchedulerConfig } from '../db/types';
+import type { Card, Course, SchedulerConfig } from '@lacuna/core/db/types';
 import { cardReviewTimestamps, type ReviewActivity } from './heatmap';
 
 /** Whether a card may be studied or counted at `now` (not suspended, not buried). */

@@ -13,8 +13,8 @@ import {
   startQuestionSetAttempt,
   submitPracticeQuestion,
 } from '../../questions/questionSetAttemptRepository';
-import type { QuestionSetRecord } from '../../questions/questionSetCodec';
-import type { ConceptPracticeSelection } from '../../questions/questionSetAttempts';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { ConceptPracticeSelection } from '@lacuna/core/questions/questionSetAttempts';
 import { startExamSkillPractice } from '../../questions/examSkillPractice';
 import { useQuestionSetPathData } from './useQuestionSetPathData';
 import type { QuestionSetPathNode } from '../../course/path';

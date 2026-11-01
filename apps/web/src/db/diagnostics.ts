@@ -11,7 +11,7 @@
 
 import { db } from './schema';
 import { listAllReviewHistory } from './reviewHistoryRead';
-import type { CourseAssessment } from './types';
+import type { CourseAssessment } from '@lacuna/core/db/types';
 
 /** Build-time application version, injected by Vite (see vite.config.ts). */
 declare const __APP_VERSION__: string;

@@ -4,7 +4,7 @@ import { db } from '../db/schema';
 import { createCourse } from '../db/courseRepository';
 import { sha256Blob } from '../db/assets';
 import type { ShareLesson, SharePayloadV2, SharePayloadV5 } from '../db/share';
-import type { BackupAsset } from '../db/types';
+import type { BackupAsset } from '@lacuna/core/db/types';
 import { importLineageFirstTime } from '../db/mergeImport';
 import { recordShareImport } from './linkStore';
 import { encodeSharePayload } from './payloadCodec';

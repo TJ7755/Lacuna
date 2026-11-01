@@ -1,9 +1,9 @@
 import { addDays } from '../fsrs/heatmap';
 import { predictedRetrievabilityAtHorizon } from '../fsrs/progress';
 import { startOfDay } from '../utils/datetime';
-import { reviewHistoryEntryIdForEvent } from './reviewHistory';
+import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
 import { db } from './schema';
-import type { SchedulerConfig, SessionHistoryEntry } from './types';
+import type { SchedulerConfig, SessionHistoryEntry } from '@lacuna/core/db/types';
 
 /** Which target table owns the reviewed unit. */
 export type ReviewUnitKind = 'scheduling-unit' | 'course';

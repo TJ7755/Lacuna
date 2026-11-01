@@ -1,4 +1,4 @@
-import type { QuestionSetAttemptRecord } from './questionSetAttempts';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 
 function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);

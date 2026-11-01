@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
-import type { QuestionSetPracticeNode } from '../../db/types';
+import type { QuestionSetPracticeNode } from '@lacuna/core/db/types';
 import {
   createQuestionSetPracticeNode,
   updateQuestionSetPracticeNode,

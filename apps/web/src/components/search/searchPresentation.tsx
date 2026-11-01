@@ -5,7 +5,7 @@ import {
   questionEditPath,
   type CourseContentHit,
   type ScopedSearchResult,
-} from '../../db/search';
+} from '@lacuna/core/db/search';
 
 export type SearchHit = CourseContentHit | ScopedSearchResult | { kind: 'help'; topic: HelpTopic };
 

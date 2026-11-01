@@ -1,4 +1,4 @@
-import type { AssessmentDimension, QuestionAnswer } from '../../questions/questionSets';
+import type { AssessmentDimension, QuestionAnswer } from '@lacuna/core/questions/questionSets';
 import type { QuestionSetDraftSession } from '../../questions/questionSetDraftSession';
 import { QuestionSetImage } from './QuestionSetImage';
 import { QuestionSetLinksEditor } from './QuestionSetLinksEditor';

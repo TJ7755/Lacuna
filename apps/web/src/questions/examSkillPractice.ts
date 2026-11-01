@@ -6,8 +6,8 @@ import {
   selectPracticeQuestion,
   unseenCapacity,
 } from './questionPracticeSelection';
-import { SCIENCE_TECHNIQUES, type TechniqueId } from './techniqueTags';
-import type { QuestionSetQuestion } from './questionSets';
+import { SCIENCE_TECHNIQUES, type TechniqueId } from '@lacuna/core/questions/techniqueTags';
+import type { QuestionSetQuestion } from '@lacuna/core/questions/questionSets';
 
 export { QuestionPracticeExhaustedError } from './questionPracticeSelection';
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { QuestionSetRecord } from './questionSetCodec';
-import type { QuestionSetAttemptRecord } from './questionSetAttempts';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { summariseQuestionSetEvidence } from './questionSetEvidence';
 
 function set(): QuestionSetRecord {

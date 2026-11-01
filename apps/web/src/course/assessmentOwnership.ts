@@ -1,4 +1,4 @@
-import type { CourseAssessment, CourseRecord, LineageIdMapping } from '../db/types';
+import type { CourseAssessment, CourseRecord, LineageIdMapping } from '@lacuna/core/db/types';
 
 /** Publisher snapshots remain ownership evidence even if their ID list needs recovery. */
 export function isLearnerOwnedCheckpoint(

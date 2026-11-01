@@ -6,7 +6,7 @@ import {
   createInsightsLastPublishedAtSetting,
   createInsightsOptInSetting,
 } from '../state/insightsOptIn';
-import { completedIsoDayLabel } from '../../../relay/shared/insights/index';
+import { completedIsoDayLabel } from '@lacuna/protocol/insights/index';
 import { collectDailyEvidence } from './collectEvidence';
 import { createEnrolmentSetting, reportingEnabled } from './enrolment';
 import { createInsightsOutbox, type InsightsPublicationResult } from './outbox';

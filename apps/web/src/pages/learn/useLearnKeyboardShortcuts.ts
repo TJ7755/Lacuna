@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { Card, Grade } from '../../db/types';
+import type { Card, Grade } from '@lacuna/core/db/types';
 import { keyMatches, type ShortcutBindings } from '../../state/shortcutBindings';
 import type { GradingMode } from '../../state/gradingMode';
 import type { Phase } from './types';

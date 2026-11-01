@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { NoteAnnotation } from '../../db/types';
+import type { NoteAnnotation } from '@lacuna/core/db/types';
 import {
   hasValidSourceAnchor,
   renderAnnotationHighlights,

@@ -4,7 +4,7 @@ import type {
   LineVerdict,
   Note,
   SchedulingUnitRecord,
-} from '../../db/types';
+} from '@lacuna/core/db/types';
 
 export type Phase = 'loading' | 'notes' | 'question' | 'answer' | 'finished';
 export type { SessionCardOutcome } from '../../course/sessionSummary';

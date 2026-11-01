@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { Card, CourseSchedulingMode } from '../../db/types';
+import type { Card, CourseSchedulingMode } from '@lacuna/core/db/types';
 import { StudyTargetTiles } from '../../components/course/CourseStudyTarget';
 import { NewCourseForm } from '../../components/course/NewCourseForm';
 import { ImportPanel } from '../../components/import/ImportPanel';

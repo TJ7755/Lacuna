@@ -6,7 +6,7 @@ import {
   type PathNode,
   type PracticePathNode,
 } from './path';
-import { type Card } from '../db/types';
+import { type Card } from '@lacuna/core/db/types';
 import {
   makeCourse,
   makeLesson,

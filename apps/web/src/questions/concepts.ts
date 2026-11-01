@@ -1,5 +1,5 @@
-import type { CardType } from '../db/types';
-import type { Concept } from './types';
+import type { CardType } from '@lacuna/core/db/types';
+import type { Concept } from '@lacuna/core/questions/types';
 
 export function normaliseConceptName(value: string): string {
   return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();

@@ -1,6 +1,6 @@
 import { AppLink as Link } from '../ui/AppLink';
-import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
-import { summariseSelfMarking } from '../../questions/questionSets';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
+import { summariseSelfMarking } from '@lacuna/core/questions/questionSets';
 import type { questionSetReturn } from '../../questions/questionSetNavigation';
 
 export function QuestionSetAttemptList({

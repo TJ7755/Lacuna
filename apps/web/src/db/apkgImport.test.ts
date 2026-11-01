@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { importApkgResult, type ApkgCardDraft, type ApkgImportResult } from './apkgImport';
 import { MAX_AUDIO_BYTES } from './assets';
 import { createCourse, createLesson } from './repository';
-import { reviewHistoryEntryId } from './reviewHistory';
+import { reviewHistoryEntryId } from '@lacuna/core/db/reviewHistory';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { db } from './schema';
 

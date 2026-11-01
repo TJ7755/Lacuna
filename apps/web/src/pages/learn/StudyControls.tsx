@@ -1,6 +1,6 @@
 import { useId, useLayoutEffect, type RefObject } from 'react';
 import { m as motion } from 'motion/react';
-import type { Grade } from '../../db/types';
+import type { Grade } from '@lacuna/core/db/types';
 import { Button } from '../../components/ui/Button';
 import { fadeLiftTiming } from '../../components/ui/StepSwap';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';

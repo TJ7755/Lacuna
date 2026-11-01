@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { QuestionSetAttemptRevisionConflictError } from '../../questions/questionSetAttemptRepository';
 import { QuestionSetAttemptSession } from './questionSetAttemptSession';
-import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 
 const initial = {
   id: 'attempt',

@@ -14,8 +14,12 @@ import { useNavigate } from 'react-router-dom';
 import { AppLink as Link } from '../ui/AppLink';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import { useSearchData } from '../../state/useSearchData';
-import { searchCardsInScope, searchCourseContent, searchQuestionsInScope } from '../../db/search';
-import type { Card, Course, Lesson } from '../../db/types';
+import {
+  searchCardsInScope,
+  searchCourseContent,
+  searchQuestionsInScope,
+} from '@lacuna/core/db/search';
+import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 import { SearchIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';

@@ -1,4 +1,4 @@
-import { completedIsoDayLabel, isoDayStartMs } from '../../../relay/shared/insights/index';
+import { completedIsoDayLabel, isoDayStartMs } from '@lacuna/protocol/insights/index';
 
 export interface InsightsOptInState {
   optedIn: boolean;

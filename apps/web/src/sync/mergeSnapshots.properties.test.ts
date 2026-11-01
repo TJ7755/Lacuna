@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { BackupFile, Grade } from '../db/types';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
+import type { BackupFile, Grade } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { mergeSnapshots, type MergedBackupFile } from './mergeSnapshots';
 import {
   backup,

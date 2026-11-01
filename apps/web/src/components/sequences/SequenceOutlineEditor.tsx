@@ -10,7 +10,7 @@ import { CloseIcon, PlusIcon } from '../ui/icons';
 import { makeId } from '../../db/schema';
 import { parseSpeakerLine } from '../../db/scriptSplitter';
 import type { SequencePreset } from '../../db/sequencePresets';
-import type { SequenceItem } from '../../db/types';
+import type { SequenceItem } from '@lacuna/core/db/types';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { SequenceItemRow, type RowGesture } from './SequenceItemRow';
 import {

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import type { CourseAssessment } from '../db/types';
-import { MS_PER_DAY } from '../fsrs/params';
+import type { CourseAssessment } from '@lacuna/core/db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { computeCourseSummaries } from '../state/courseSummaries';
 import {
   buildCourseProgress,

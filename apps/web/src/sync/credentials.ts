@@ -1,5 +1,5 @@
 import { updateSyncState } from '../db/mutationStamp';
-import type { SyncState } from '../db/types';
+import type { SyncState } from '@lacuna/core/db/types';
 import { normaliseRelayUrl } from './relay';
 
 const CHANNEL_KEY_HEX_RE = /^[0-9a-f]{64}$/;

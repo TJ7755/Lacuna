@@ -6,7 +6,7 @@ import { createCourse } from '../../db/repository';
 import { db } from '../../db/schema';
 import { deleteQuestionSet, createQuestionSet } from '../../questions/questionSetRepository';
 import { startQuestionSetAttempt } from '../../questions/questionSetAttemptRepository';
-import type { QuestionSet } from '../../questions/questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import { RemovedQuestionSetAttempts } from './RemovedQuestionSetAttempts';
 
 function setContent(courseId: string): QuestionSet {

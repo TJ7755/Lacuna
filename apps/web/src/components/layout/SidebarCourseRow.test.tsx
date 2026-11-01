@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { Lesson } from '../../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { CourseRow } from './SidebarCourseRow';
 import { SidebarFrame } from './SidebarMotion';
 

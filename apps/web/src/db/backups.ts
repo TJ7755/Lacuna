@@ -3,7 +3,7 @@
 // site data being cleared (the one failure IndexedDB restore points cannot).
 
 import { db } from './schema';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 import { scheduleAssetGc } from './assets';
 import { replacementLifecycle } from './replacementLifecycle';
 import { backupIsStale, createRestorePoint } from './backupRestorePoint';

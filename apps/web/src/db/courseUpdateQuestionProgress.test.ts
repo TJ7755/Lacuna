@@ -12,8 +12,8 @@ import {
   submitPracticeQuestion,
 } from '../questions/questionSetAttemptRepository';
 import { questionSetProgress } from '../questions/questionSetProgress';
-import type { QuestionSetRecord } from '../questions/questionSetCodec';
-import type { QuestionSetQuestion } from '../questions/questionSets';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetQuestion } from '@lacuna/core/questions/questionSets';
 
 function question(questionId: string, allocationId: string): QuestionSetQuestion {
   return {

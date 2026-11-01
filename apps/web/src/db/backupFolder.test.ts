@@ -10,7 +10,7 @@ import {
   folderMirrorSupported,
   mirrorToFolder,
 } from './backupFolder';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 
 const picker = window as unknown as { showDirectoryPicker?: unknown };
 

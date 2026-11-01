@@ -6,7 +6,7 @@
 // that stamps every existing course with the (now-removed) global default's
 // last value on first run after this change.
 
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import type { LessonViewMode } from '../state/lessonViewMode';
 
 /**

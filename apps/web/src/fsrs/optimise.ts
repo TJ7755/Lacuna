@@ -25,9 +25,9 @@ import {
   type Card as TsCard,
   type Grade as TsGrade,
 } from 'ts-fsrs';
-import { DEFAULT_REQUEST_RETENTION, MS_PER_DAY } from './params';
-import type { Card, Grade } from '../db/types';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
+import { DEFAULT_REQUEST_RETENTION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import type { Card, Grade } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 export { MIN_OPTIMISE_REVIEWS } from './optimiseConfig';
 
 const EPS = 1e-6;

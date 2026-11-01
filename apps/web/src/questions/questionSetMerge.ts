@@ -1,7 +1,7 @@
-import type { Tombstone } from '../db/types';
-import type { QuestionSetRecord } from './questionSetCodec';
-import type { Concept } from './types';
-import { referencedQuestionSetConceptIds } from './questionSets';
+import type { Tombstone } from '@lacuna/core/db/types';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { Concept } from '@lacuna/core/questions/types';
+import { referencedQuestionSetConceptIds } from '@lacuna/core/questions/questionSets';
 
 function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);

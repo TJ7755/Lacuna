@@ -7,7 +7,7 @@ import { CardContent } from '../../components/cards/CardContent';
 import { GeneratedCardBadge } from '../../components/cards/GeneratedCardBadge';
 import { sequenceForItemId } from '../../db/sequenceGeneration';
 import { occlusionForRegionId } from '../../db/occlusionGeneration';
-import type { Card, Sequence, Occlusion } from '../../db/types';
+import type { Card, Sequence, Occlusion } from '@lacuna/core/db/types';
 import type { ReturnTarget } from '../../utils/editorOrigin';
 
 const CARD_SURFACE = 'card-surface';

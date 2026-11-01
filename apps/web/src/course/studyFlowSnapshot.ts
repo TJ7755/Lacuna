@@ -6,7 +6,7 @@ import type {
   LessonCardExposure,
   LessonCardLink,
   PracticeMilestone,
-} from '../db/types';
+} from '@lacuna/core/db/types';
 import type { ExamDateContext } from '../fsrs/examDate';
 import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
 import type { ConceptPracticeNeeds } from '../questions/techniqueEvidence';

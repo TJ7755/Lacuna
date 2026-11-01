@@ -8,7 +8,7 @@ import {
   ensureLessonBackingDeck,
   syncCourseSchedulingUnits,
 } from './backingDecks';
-import { clampRequestRetention, defaultFsrsParameters } from '../fsrs/params';
+import { clampRequestRetention, defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import type { ParsedCard } from './import';
 import type {
   Card,
@@ -21,8 +21,8 @@ import type {
   Sequence,
   SequenceItem,
   SequencePresetId,
-} from './types';
-import type { Concept, QuestionConceptSet, QuestionDefinition } from '../questions/types';
+} from '@lacuna/core/db/types';
+import type { Concept, QuestionConceptSet, QuestionDefinition } from '@lacuna/core/questions/types';
 import { finalAssessmentForCourse } from './assessmentMigration';
 import { updateCourseAssessment } from './assessmentRepository';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';

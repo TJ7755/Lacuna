@@ -10,7 +10,7 @@ import {
   searchQuestionSets,
   type QuestionSetSearchContext,
 } from '../../questions/questionSetSearch';
-import type { QuestionSet } from '../../questions/questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import { countOf } from '../../utils/plural';
 import { Button } from '../ui/Button';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';

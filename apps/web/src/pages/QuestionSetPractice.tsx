@@ -14,7 +14,10 @@ import { StepSwap } from '../components/ui/StepSwap';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { flattenQuestionSet } from '../questions/questionSetAuthoring';
-import { feedbackAvailable, type QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+import {
+  feedbackAvailable,
+  type QuestionSetAttemptRecord,
+} from '@lacuna/core/questions/questionSetAttempts';
 import {
   recordQuestionSetAssistance,
   completeQuestionSetAttempt,
@@ -44,7 +47,7 @@ import {
 import { dimensionNames } from '../components/question-sets/presentation';
 import { FileTextIcon } from '../components/ui/icons';
 import type { QuestionStudySummary } from '../course/sessionSummary';
-import { summariseSelfMarking } from '../questions/questionSets';
+import { summariseSelfMarking } from '@lacuna/core/questions/questionSets';
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import '../components/question-sets/question-sets.css';

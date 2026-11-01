@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { computeCourseSummaries } from './useCourseData';
-import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
-import type { Card, Course, CourseAssessment, Lesson, ReviewLog } from '../db/types';
+import type { Card, Course, CourseAssessment, Lesson, ReviewLog } from '@lacuna/core/db/types';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers

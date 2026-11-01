@@ -7,8 +7,8 @@
 
 import { Rating, type FSRS, type Grade as TsGrade } from 'ts-fsrs';
 import { toTsCard, decayOf } from './fsrs';
-import { MS_PER_DAY } from './params';
-import type { Card, SchedulerConfig, Grade } from '../db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import type { Card, SchedulerConfig, Grade } from '@lacuna/core/db/types';
 
 /**
  * Curve factor for the FSRS-6 power-law forgetting curve.

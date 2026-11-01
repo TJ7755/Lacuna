@@ -1,7 +1,7 @@
 import { vi, beforeEach } from 'vitest';
 import type * as DashboardForecasts from '../state/dashboardForecasts';
 import { screen, within } from '@testing-library/react';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 
 export const dashboardState = {
   mockPathname: '/',

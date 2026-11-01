@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { startConceptPractice } from '../../questions/conceptPractice';
 import type { QuestionStudySummary } from '../../course/sessionSummary';
-import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 const QuestionSetPractice = lazy(() =>
   import('../../pages/QuestionSetPractice').then((module) => ({
     default: module.QuestionSetPractice,

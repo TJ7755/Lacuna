@@ -1,11 +1,11 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { Concept } from '../questions/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import { db, ensurePreMigrationSnapshot } from './schema';
 import { createCourse } from './repository';
 import { exportDatabase, importBackup, readBackupFile, validateBackup } from './portability';
-import type { BackupFile, MediaAsset } from './types';
+import type { BackupFile, MediaAsset } from '@lacuna/core/db/types';
 
 const specificationRef = {
   specificationId: 'future-science-2099',

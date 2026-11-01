@@ -7,7 +7,7 @@ import { restoreBackup, takeAutoBackup, __resetBackupThrottleForTests } from '..
 import { exportDatabase, importBackup } from '../db/portability';
 import { createCard, createCourse } from '../db/repository';
 import { db } from '../db/schema';
-import type { BackupFile } from '../db/types';
+import type { BackupFile } from '@lacuna/core/db/types';
 import { ManualMergeError, manualMerge } from './manualMerge';
 import { mergeSnapshots } from './mergeSnapshots';
 

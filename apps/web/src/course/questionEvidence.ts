@@ -1,5 +1,5 @@
 import type { ConceptPracticeItem } from '../questions/conceptPractice';
-import { SCIENCE_TECHNIQUES, type TechniqueId } from '../questions/techniqueTags';
+import { SCIENCE_TECHNIQUES, type TechniqueId } from '@lacuna/core/questions/techniqueTags';
 
 // Exam-question evidence for a Progress scope, read from the same per-Concept diagnostic
 // aggregates that select practice. Knowledge, application and each technique stay separate

@@ -3,8 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import { createCard, createCourse, createLesson, createNote } from './repository';
 import { exportDatabase, importBackup } from './portability';
-import { reviewHistoryEntryIdForEvent, type ReviewHistoryEntry } from './reviewHistory';
-import type { BackupFile } from './types';
+import {
+  reviewHistoryEntryIdForEvent,
+  type ReviewHistoryEntry,
+} from '@lacuna/core/db/reviewHistory';
+import type { BackupFile } from '@lacuna/core/db/types';
 
 async function backupWithHistory(): Promise<BackupFile> {
   const course = await createCourse('History batches');

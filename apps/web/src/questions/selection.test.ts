@@ -5,7 +5,7 @@ import type {
   QuestionAttempt,
   QuestionConceptSet,
   QuestionDefinition,
-} from './types';
+} from '@lacuna/core/questions/types';
 import { selectQuestionSession } from './selection';
 
 const NOW = Date.UTC(2026, 7, 24, 12);

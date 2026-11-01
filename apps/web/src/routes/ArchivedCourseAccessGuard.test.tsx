@@ -11,7 +11,7 @@ import {
   useOutlet,
 } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Course, Lesson } from '../db/types';
+import type { Course, Lesson } from '@lacuna/core/db/types';
 import { ArchivedCourseAccessGuard } from './ArchivedCourseAccessGuard';
 
 let mockCourse: Course | null | undefined;

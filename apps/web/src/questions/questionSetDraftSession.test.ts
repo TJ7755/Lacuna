@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { QuestionSetRecord } from './questionSetCodec';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { QuestionSetRevisionConflictError } from './questionSetRepository';
 import { createEmptyQuestionSetDraft, QuestionSetDraftConflictError } from './questionSetDrafts';
 import {

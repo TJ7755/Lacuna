@@ -26,7 +26,7 @@ import {
   mergeLineageUpdate,
   type MergeLineageResult,
 } from '../../db/mergeImport';
-import type { CourseRecord, CourseSchedulingMode } from '../../db/types';
+import type { CourseRecord, CourseSchedulingMode } from '@lacuna/core/db/types';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useToast } from '../ui/Toast';
 import { Button } from '../ui/Button';

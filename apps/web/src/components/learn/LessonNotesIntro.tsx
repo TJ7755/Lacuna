@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import type { Note } from '../../db/types';
+import type { Note } from '@lacuna/core/db/types';
 import { LessonNotesStudyView } from '../notes/LessonNotesStudyView';
 import { Button } from '../ui/Button';
 import { ArrowRightIcon, CloseIcon } from '../ui/icons';

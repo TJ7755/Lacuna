@@ -1,4 +1,4 @@
-import { referencedQuestionSetConceptIds } from '../questions/questionSets';
+import { referencedQuestionSetConceptIds } from '@lacuna/core/questions/questionSets';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { emptyQuestionSchedule } from '../questions/scheduler';
 import type {
@@ -6,12 +6,12 @@ import type {
   QuestionConceptSet,
   QuestionDefinition,
   QuestionScheduleState,
-} from '../questions/types';
+} from '@lacuna/core/questions/types';
 import { db } from './schema';
-import { jsonValuesEqual } from './lineageDiff';
+import { jsonValuesEqual } from '@lacuna/core/db/lineageDiff';
 import type { LineagePayload } from './lineageImportModel';
 import type { SharePayloadV3 } from './share';
-import type { LineageIdMapping } from './types';
+import type { LineageIdMapping } from '@lacuna/core/db/types';
 
 export async function upsertLineageConcepts(
   payload: LineagePayload,

@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
-import { reviewHistoryEntryIdForEvent } from './reviewHistory';
+import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
 import { performanceForCourseBackingDecks, performanceForReviewUnit } from './backingDecks';
 import {
   createCard,

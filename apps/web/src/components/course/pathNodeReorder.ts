@@ -3,7 +3,7 @@ import {
   resolveAssessmentCoverage,
   type AssessmentSpecificationContext,
 } from '../../course/assessmentCoverage';
-import type { Card, Lesson, LessonCardLink } from '../../db/types';
+import type { Card, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import { updateCourseAssessment } from '../../db/assessmentRepository';
 import { updatePracticeNode, updateQuestionSetPracticeNode } from '../../db/practiceNodeRepository';
 

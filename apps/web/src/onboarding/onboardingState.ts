@@ -1,4 +1,4 @@
-import type { CourseSchedulingMode } from '../db/types';
+import type { CourseSchedulingMode } from '@lacuna/core/db/types';
 import { initialiseAdvancedDetailsForNewLearner } from '../state/advancedDetails';
 
 // First-run onboarding (#816). Only a fresh install is marked pending, so existing learners

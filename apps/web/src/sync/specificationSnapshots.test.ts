@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { BackupFile, CourseRecord } from '../db/types';
-import { defaultFsrsParameters } from '../fsrs/params';
-import type { Concept } from '../questions/types';
+import type { BackupFile, CourseRecord } from '@lacuna/core/db/types';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
+import type { Concept } from '@lacuna/core/questions/types';
 import { mergeSnapshots } from './mergeSnapshots';
 import { decodeSnapshot, encodeSnapshot, snapshotsEquivalent, SyncPayloadError } from './snapshot';
 

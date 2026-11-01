@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import { StudyCardFace } from './StudyCardFace';
 
 const card = {

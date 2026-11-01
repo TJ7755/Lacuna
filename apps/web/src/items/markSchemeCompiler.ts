@@ -1,4 +1,4 @@
-import type { MarkSchemeLine } from '../db/types';
+import type { MarkSchemeLine } from '@lacuna/core/db/types';
 import { constantValue, parseExpression } from './verify';
 
 export const MARK_SCHEME_PREDICATES = ['equals', 'within', 'matches-one-of', 'contains'] as const;

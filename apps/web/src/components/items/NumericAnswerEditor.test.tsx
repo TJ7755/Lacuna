@@ -1,7 +1,7 @@
 import { createRef, useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { NumericAnswerSpec } from '../../db/types';
+import type { NumericAnswerSpec } from '@lacuna/core/db/types';
 import { NumericAnswerEditor, numericAnswerSpecIsValid } from './NumericAnswerEditor';
 
 function Harness({ initialValue }: { initialValue: NumericAnswerSpec }) {

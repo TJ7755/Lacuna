@@ -14,10 +14,10 @@ import {
 import { useChartColours } from '../analytics/useChartColours';
 import { forgettingCurve } from '../../fsrs/forwardSim';
 import { decayOf } from '../../fsrs/fsrs';
-import { MS_PER_DAY } from '../../fsrs/params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { schedulingHorizon } from '../../fsrs/horizon';
 import { useAdvancedDetails } from '../../state/advancedDetails';
-import type { Card, Grade, SchedulerConfig } from '../../db/types';
+import type { Card, Grade, SchedulerConfig } from '@lacuna/core/db/types';
 
 interface CardAnalyticsProps {
   card: Card;

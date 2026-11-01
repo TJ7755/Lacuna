@@ -12,11 +12,11 @@ import type {
   SchedulerConfig,
   Sequence,
   UserPerformance,
-} from '../../db/types';
+} from '@lacuna/core/db/types';
 import { emptyPerformance } from '../../fsrs/grading';
 import type { SessionContext } from '../../fsrs/session';
 import { sessionCompletionProgress } from '../../fsrs/session';
-import type { JevMarkProvenance } from '../../jev/types';
+import type { JevMarkProvenance } from '@lacuna/core/jev/types';
 import { startOfDay } from '../../utils/datetime';
 import { answerFeedback, persistAnswer, type AnswerResult } from './answerSteps';
 import {

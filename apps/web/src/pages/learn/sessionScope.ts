@@ -1,4 +1,4 @@
-import type { CardFilter } from '../../db/search';
+import type { CardFilter } from '@lacuna/core/db/search';
 import type { SimpleSessionScope } from './simpleSessionPersistence';
 
 export interface LearnSessionScopeInput {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { UnifiedImportPanel } from './UnifiedImportPanel';
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast'],

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { QuestionsPage } from './QuestionsPage';
-import type { QuestionSetQuestion } from '../questions/questionSets';
+import type { QuestionSetQuestion } from '@lacuna/core/questions/questionSets';
 
 const mocks = vi.hoisted(() => ({
   data: undefined as

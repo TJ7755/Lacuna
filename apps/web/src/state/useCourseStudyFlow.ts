@@ -16,7 +16,7 @@ import {
   type StudyFlowDecision,
   type StudyFlowStep,
 } from '../course/studyFlowPlanner';
-import type { Card, Course } from '../db/types';
+import type { Card, Course } from '@lacuna/core/db/types';
 import { buildStudyProgress, type StudyProgress } from '../course/studyProgress';
 
 interface CourseStudyFlowData {

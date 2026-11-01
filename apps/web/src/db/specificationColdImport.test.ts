@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, it, vi } from 'vitest';
 
-vi.mock('../specifications/links', async (importOriginal) => {
+vi.mock('@lacuna/core/specifications/links', async (importOriginal) => {
   // Model a first chunk load that lasts longer than an idle IndexedDB transaction.
   await new Promise((resolve) => setTimeout(resolve, 40));
   return importOriginal();

@@ -5,14 +5,14 @@ import type {
   Grade,
   SchedulingUnitRecord,
   SessionHistoryEntry,
-} from '../db/types';
+} from '@lacuna/core/db/types';
 import {
   cardsWithReviewHistory,
   mergeReviewHistoryEntries,
   type ReviewHistoryEntry,
-} from '../db/reviewHistory';
+} from '@lacuna/core/db/reviewHistory';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
-import { defaultFsrsParameters } from '../fsrs/params';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { applyScheduleEdit, mergeScheduleEdits } from '../db/scheduleEdits';
 import { canonicalJson, sortById, type NormalisedSnapshot } from './snapshotRecords';
 

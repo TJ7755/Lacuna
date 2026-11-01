@@ -1,7 +1,11 @@
 import { db, makeId } from './schema';
 import { canEditLessons } from '../course/lessonViewMode';
 import { friendlyDbError } from './dbErrors';
-import type { PracticeMilestone, PracticeNode, QuestionSetPracticeNode } from './types';
+import type {
+  PracticeMilestone,
+  PracticeNode,
+  QuestionSetPracticeNode,
+} from '@lacuna/core/db/types';
 import { stampUpdatedAt, recordTombstone } from './mutationStamp';
 import { parseQuestionSetPracticeNode } from './questionSetPracticeNode';
 

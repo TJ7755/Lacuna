@@ -14,7 +14,7 @@ import {
 import { createCard, createCourse, createLesson } from './repository';
 import { assetUrl, storeImageBlob } from './assets';
 import { PRE_V22_BACKUP_MESSAGE } from './portability';
-import type { BackupFile, ItemPayload } from './types';
+import type { BackupFile, ItemPayload } from '@lacuna/core/db/types';
 
 const replace = vi.hoisted(() =>
   vi.fn((_kind: string, operation: () => Promise<unknown>) => operation()),

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { BackupFile, CourseRecord } from '../db/types';
+import type { BackupFile, CourseRecord } from '@lacuna/core/db/types';
 import type * as DbPortability from '../db/portability';
 import { openState, sealState } from './crypto';
 import {

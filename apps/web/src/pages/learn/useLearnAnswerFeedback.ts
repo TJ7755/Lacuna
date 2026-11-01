@@ -6,7 +6,7 @@ import {
   type RefObject,
   type SetStateAction,
 } from 'react';
-import type { Card, Grade } from '../../db/types';
+import type { Card, Grade } from '@lacuna/core/db/types';
 import type { JevMarkProvenance } from '../../jev';
 import type { useToast } from '../../components/ui/Toast';
 import type { StudyGradeFeedback } from './StudyGradeButton';

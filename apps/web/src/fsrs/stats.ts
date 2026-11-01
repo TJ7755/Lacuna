@@ -4,8 +4,8 @@
 // (review history, card due dates, per-deck response-time calibration), so they need no
 // new tables. Every function is pure and works in local time.
 
-import type { Card, SchedulerConfig, UserPerformance } from '../db/types';
-import { MS_PER_DAY } from './params';
+import type { Card, SchedulerConfig, UserPerformance } from '@lacuna/core/db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { startOfDay } from '../utils/datetime';
 import { cardReviewTimestamps, type ReviewActivity } from './heatmap';
 import { studyPool } from './eligibility';

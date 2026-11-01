@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CardSources } from './CardSources';
 import { CardTypePicker } from './CardTypePicker';
 import type { CardImportContent } from '../../db/cardImport';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 
 let mockCourseCards: Card[] = [];
 const mockEnsureLessonBackingDeck = vi.fn();

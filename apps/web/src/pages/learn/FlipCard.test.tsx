@@ -3,7 +3,7 @@ import type * as MotionReact from 'motion/react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FlipCard } from './FlipCard';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import type * as MotionSpeedModule from '../../state/motionSpeed';
 
 const motionAnimate = vi.hoisted(() => ({ animate: vi.fn() }));

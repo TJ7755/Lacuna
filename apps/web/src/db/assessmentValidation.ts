@@ -1,5 +1,5 @@
-import type { CourseAssessment } from './types';
-import { isSpecificationPointIds } from '../specifications/links';
+import type { CourseAssessment } from '@lacuna/core/db/types';
+import { isSpecificationPointIds } from '@lacuna/core/specifications/links';
 
 export function validateAssessmentStructure(assessment: CourseAssessment): void {
   if (assessment.kind !== 'final' && assessment.kind !== 'checkpoint') {

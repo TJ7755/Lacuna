@@ -3,7 +3,7 @@ import { getCourse, getCourseAssessmentDetails } from './read';
 import { makeExamDateContext, resolveCardExamDate } from '../fsrs/examDate';
 import { assessmentPracticePool } from '../course/assessmentPractice';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { RevisionPlanInputSnapshot, RevisionProjection } from './types';
+import type { RevisionPlanInputSnapshot, RevisionProjection } from '@lacuna/core/db/types';
 import { db } from './schema';
 import {
   createCourse,

@@ -15,7 +15,7 @@ import type {
   QuestionSet,
   QuestionSetQuestion,
   QuestionSubpart,
-} from './questionSets';
+} from '@lacuna/core/questions/questionSets';
 
 export type QuestionSetAuthoringNode =
   | {

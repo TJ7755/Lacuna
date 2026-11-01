@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { BackupFile } from '../../db/types';
+import type { BackupFile } from '@lacuna/core/db/types';
 import { ManualMergeError } from '../../sync/manualMerge';
 import type * as ManualMergeModule from '../../sync/manualMerge';
 import { DataPortabilitySection } from './DataPortabilitySection';

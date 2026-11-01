@@ -10,7 +10,7 @@ import {
   updateQuestionSetNodePrompt,
   type QuestionSetAuthoringNode,
 } from '../../questions/questionSetAuthoring';
-import type { QuestionSet, QuestionSetIssue } from '../../questions/questionSets';
+import type { QuestionSet, QuestionSetIssue } from '@lacuna/core/questions/questionSets';
 import type { QuestionSetDraftSession } from '../../questions/questionSetDraftSession';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { useToast } from '../ui/Toast';

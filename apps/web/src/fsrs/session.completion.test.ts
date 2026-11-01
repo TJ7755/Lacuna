@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { type Card } from '../db/types';
-import { MS_PER_DAY } from './params';
+import { type Card } from '@lacuna/core/db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { applyReview, makeEngine } from './fsrs';
 import {
   makeSessionContext,

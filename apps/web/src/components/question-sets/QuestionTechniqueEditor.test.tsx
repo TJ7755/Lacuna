@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
-import type { TechniqueTags } from '../../questions/techniqueTags';
+import type { TechniqueTags } from '@lacuna/core/questions/techniqueTags';
 import { QuestionTechniqueEditor } from './QuestionTechniqueEditor';
 
 it('preserves legacy taxonomy and Jev provenance until an explicit author correction', () => {

@@ -3,7 +3,7 @@ import { useEditorKeys } from '../../hooks/dialogKeys';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { Button } from '../ui/Button';
 import { Field, Input } from '../ui/Field';
-import type { Note } from '../../db/types';
+import type { Note } from '@lacuna/core/db/types';
 
 interface LessonNoteEditorProps {
   /** Existing note to edit; omit for a new-note form. */

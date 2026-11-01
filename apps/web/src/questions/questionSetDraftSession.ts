@@ -1,7 +1,7 @@
-import type { QuestionSetRecord } from './questionSetCodec';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { QuestionSetRevisionConflictError } from './questionSetRepository';
 import { assetUrl, prepareImageAsset } from '../db/assets';
-import type { MediaAsset } from '../db/types';
+import type { MediaAsset } from '@lacuna/core/db/types';
 import { compressImageBlob } from '../utils/compressImage';
 import { updateQuestionSetNodePrompt } from './questionSetAuthoring';
 import {
@@ -12,7 +12,7 @@ import {
   type QuestionSetDraft,
   QuestionSetDraftConflictError,
 } from './questionSetDrafts';
-import type { QuestionSet } from './questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 
 export type QuestionSetDraftSessionPhase =
   'idle' | 'loading' | 'saving' | 'publishing' | 'error' | 'disposed';

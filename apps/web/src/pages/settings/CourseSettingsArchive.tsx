@@ -5,7 +5,7 @@ import { ArchiveCourseDialog } from '../../components/dashboard/CourseActions';
 import { Button } from '../../components/ui/Button';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { useToast } from '../../components/ui/Toast';
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { updateCourse } from '../../db/courseRepository';
 
 export function CourseSettingsArchive({ course }: { course: Course }) {

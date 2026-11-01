@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readReviewActivity } from './reviewActivityRead';
 import { db } from './schema';
-import type { ReviewHistoryEntry } from './reviewHistory';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 function entry(id: string, cardId: string, timestamp: number): ReviewHistoryEntry {
   return {

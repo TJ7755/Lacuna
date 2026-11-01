@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { NumericAnswerSpec } from '../../../db/types';
+import type { NumericAnswerSpec } from '@lacuna/core/db/types';
 import { runWorkingFixtures } from '../../../items/fixtureRunner';
 import { compileMarkScheme } from '../../../items/markSchemeCompiler';
 import { numericAnswerSpecIsValid } from '../../../items/numericAnswerSpec';
@@ -13,7 +13,7 @@ import {
   updateFixedQuestion as repoUpdateFixedQuestion,
   updateGeneratedQuestion as repoUpdateGeneratedQuestion,
 } from '../../../questions/repository';
-import type { QuestionPayload } from '../../../questions/types';
+import type { QuestionPayload } from '@lacuna/core/questions/types';
 import type { questionPayloadInputSchema } from '../../contracts/questions';
 import {
   createFixedQuestionContract,

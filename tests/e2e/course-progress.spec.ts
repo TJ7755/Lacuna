@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
-import type { Lesson } from '../../apps/web/src/db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 

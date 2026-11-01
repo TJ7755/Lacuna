@@ -6,7 +6,7 @@ import type {
   CourseSchedulingMode,
   Lesson,
   LessonCardLink,
-} from '../../db/types';
+} from '@lacuna/core/db/types';
 import { defaultExamDate } from '../../utils/datetime';
 import { DateTimePicker } from '../ui/DateTimePicker';
 import { StudyTargetTiles } from './CourseStudyTarget';
@@ -21,7 +21,7 @@ import { choiceChipClass } from '../ui/choiceChip';
 import { plainFront } from '../cards/lessonCardRow';
 import { useAssessmentSpecification } from '../../state/useAssessmentSpecification';
 import type { AssessmentSpecificationContext } from '../../course/assessmentCoverage';
-import { papersForSelection, pointsForSelection } from '../../specifications/selection';
+import { papersForSelection, pointsForSelection } from '@lacuna/core/specifications/selection';
 
 export interface AssessmentDraft {
   name: string;

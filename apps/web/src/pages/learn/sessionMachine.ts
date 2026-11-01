@@ -1,5 +1,5 @@
 import type { RecordReviewArgs } from '../../db/reviewRepository';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import type { SessionCardOutcome, SessionEvent, SessionSummary } from '../../course/sessionSummary';
 import { transitionSimpleAnswer, type SimpleSessionState } from '../../course/simpleSession';
 import {
@@ -11,7 +11,7 @@ import { applyCooldown, decrementCooldowns, type CooldownMap } from '../../fsrs/
 import { selectNext, sessionComplete, type SessionContext } from '../../fsrs/session';
 import { allocateCramReview } from '../../fsrs/cramAllocator';
 import { CRAM_SUCCESS_GRADES, createHalfLifeLogisticModel } from '../../fsrs/halfLifeLogisticModel';
-import type { RevisionPlan, UserPerformance } from '../../db/types';
+import type { RevisionPlan, UserPerformance } from '@lacuna/core/db/types';
 import { answerGrade, sessionStopAfterAnswer, type SessionStop } from './answerPolicy';
 
 export interface SessionState {

@@ -77,7 +77,10 @@ export default [
     },
   },
   {
-    files: [`src/{${domainDirectories.join(',')}}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}`],
+    files: [
+      `src/{${domainDirectories.join(',')}}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}`,
+      'packages/**/*.{ts,tsx}',
+    ],
     plugins: { architecture: { rules: { 'no-domain-ui': domainUiRule } } },
     rules: {
       'architecture/no-domain-ui': [

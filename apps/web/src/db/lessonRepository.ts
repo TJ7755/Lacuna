@@ -9,7 +9,13 @@ import {
   stampUpdatedAt,
 } from './mutationStamp';
 import { db, makeId } from './schema';
-import type { Card, Lesson, LessonCardExposure, LessonCardLink, LessonCompletion } from './types';
+import type {
+  Card,
+  Lesson,
+  LessonCardExposure,
+  LessonCardLink,
+  LessonCompletion,
+} from '@lacuna/core/db/types';
 
 // ---------------------------------------------------------------------------
 // Lessons

@@ -16,7 +16,7 @@ import { cn } from '../ui/cn';
 import { motionTransition, scaledSpring } from '../ui/motion';
 import { createNote, updateNote, deleteNote, reorderNotes } from '../../db/noteRepository';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import type { Note } from '../../db/types';
+import type { Note } from '@lacuna/core/db/types';
 
 interface LessonNotesCardProps {
   lessonId: string;

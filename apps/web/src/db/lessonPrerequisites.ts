@@ -1,4 +1,4 @@
-import type { Lesson } from './types';
+import type { Lesson } from '@lacuna/core/db/types';
 
 type PrerequisiteLesson = Pick<Lesson, 'id' | 'courseId' | 'prerequisiteLessonIds'>;
 

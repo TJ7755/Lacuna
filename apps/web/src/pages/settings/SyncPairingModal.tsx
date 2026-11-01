@@ -1,7 +1,7 @@
 import { Suspense, lazy, type ComponentProps } from 'react';
 import { Button } from '../../components/ui/Button';
 import { QrCodeIcon, ShareIcon } from '../../components/ui/icons';
-import type { SyncState } from '../../db/types';
+import type { SyncState } from '@lacuna/core/db/types';
 import { SettingsModal } from './SettingsModal';
 import type { SyncPairingBusy, SyncPairingMode } from './SyncPairingFlow';
 

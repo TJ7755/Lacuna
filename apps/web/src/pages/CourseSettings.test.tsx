@@ -4,7 +4,7 @@ import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { CourseSettings } from './CourseSettings';
-import type { Card, Course } from '../db/types';
+import type { Card, Course } from '@lacuna/core/db/types';
 
 const mockMotion = vi.hoisted(() => ({ multiplier: 1 }));
 const mockNavigate = vi.fn();

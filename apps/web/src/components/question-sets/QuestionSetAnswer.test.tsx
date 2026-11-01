@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { QuestionResponse, QuestionSet } from '../../questions/questionSets';
+import type { QuestionResponse, QuestionSet } from '@lacuna/core/questions/questionSets';
 import { QuestionSetAnswer } from './QuestionSetAnswer';
 
 function ControlledAnswer({

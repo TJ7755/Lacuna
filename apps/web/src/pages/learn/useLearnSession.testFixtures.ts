@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
-import type { CardFilter } from '../../db/search';
+import type { CardFilter } from '@lacuna/core/db/search';
 import { db } from '../../db/schema';
 import type { UseLearnSessionParams } from './useLearnSession';
 

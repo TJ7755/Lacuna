@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
-import type { ReviewHistoryEntry } from '../../apps/web/src/db/reviewHistory';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 test('authors, persists and studies a card through the keyboard', async ({ page }, testInfo) => {
   const identity = `${testInfo.workerIndex}-${Date.now()}`;

@@ -1,5 +1,5 @@
 export { makeId } from '../utils/id';
-import type { BackupFile } from './types';
+import type { BackupFile } from '@lacuna/core/db/types';
 import { savePreMigrationSnapshot } from './preMigrationSnapshots';
 import { db } from './database';
 export { db } from './database';

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { describe, expect, it } from 'vitest';
-import { defaultFsrsParameters } from '../fsrs/params';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 
 describe('Dexie upgrade from the old 17-parameter schema', () => {
   it('loads an old deck, migrates it in place and keeps cards', async () => {

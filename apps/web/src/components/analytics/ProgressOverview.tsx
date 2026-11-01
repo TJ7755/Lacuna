@@ -1,7 +1,7 @@
 import { useId, type ReactNode, type Ref } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { CourseProgressReport } from '../../course/courseProgress';
-import type { Course, CourseAssessment } from '../../db/types';
+import type { Course, CourseAssessment } from '@lacuna/core/db/types';
 import { progressHeading } from '../../fsrs/objective';
 import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
 import { formatDate } from '../../utils/datetime';

@@ -1,6 +1,6 @@
 import { createRef, useImperativeHandle, useMemo, useRef, type Ref } from 'react';
 import { Button } from '../ui/Button';
-import type { NumericAnswerSpec } from '../../db/types';
+import type { NumericAnswerSpec } from '@lacuna/core/db/types';
 import { numericAnswerSpecIsValid } from '../../items/numericAnswerSpec';
 import { MathsAnswerInput } from './MathsAnswerInput';
 import { cn } from '../ui/cn';

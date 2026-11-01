@@ -9,7 +9,7 @@ import { buryCard, setCardFlag, suspendCard } from '../../db/cardRepository';
 import { markLessonComplete } from '../../db/lessonRepository';
 import { type OcclusionCardData } from '../../db/occlusionStudy';
 import { makeId } from '../../db/schema';
-import type { CardFilter } from '../../db/search';
+import type { CardFilter } from '@lacuna/core/db/search';
 import { isLabelCardId } from '../../db/sequenceGeneration';
 import type {
   Card,
@@ -19,12 +19,12 @@ import type {
   SchedulerConfig,
   Sequence,
   UserPerformance,
-} from '../../db/types';
+} from '@lacuna/core/db/types';
 import { progressHeading } from '../../fsrs/objective';
-import { MS_PER_DAY } from '../../fsrs/params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { SessionContext } from '../../fsrs/session';
 import { sessionCompletionProgress, sessionProgress, sessionServePool } from '../../fsrs/session';
-import type { JevMarkProvenance } from '../../jev/types';
+import type { JevMarkProvenance } from '@lacuna/core/jev/types';
 import { useAnswerInput } from '../../state/answerInput';
 import { startOfDay } from '../../utils/datetime';
 import { useLeaveFlowWith } from '../../utils/editorOrigin';

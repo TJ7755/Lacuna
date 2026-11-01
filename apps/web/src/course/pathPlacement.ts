@@ -1,4 +1,4 @@
-import type { Lesson } from '../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { lessonOrder } from './assessmentCoverage';
 
 /** Resolve the publisher-position anchor, returning its index in the supplied lesson order. */

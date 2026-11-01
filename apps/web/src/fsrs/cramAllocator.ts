@@ -1,8 +1,8 @@
-import type { Card, Grade, RevisionProjection, UserPerformance } from '../db/types';
+import type { Card, Grade, RevisionProjection, UserPerformance } from '@lacuna/core/db/types';
 import { isAvailable } from './eligibility';
 import { applyReview } from './fsrs';
 import { sortByObjective, type ObjectiveContext } from './objective';
-import { MASTERY_R } from './params';
+import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import {
   DEFAULT_RESPONSE_TIME_COEFFICIENTS,
   estimateResponseTime,

@@ -8,7 +8,7 @@ import {
 import { CardList } from './CardList';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 describe('CardList rendering', () => {
   beforeEach(resetCardListFixtures);
 

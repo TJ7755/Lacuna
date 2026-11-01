@@ -6,7 +6,7 @@ import {
   deleteCourseAssessment,
   updateCourseAssessment,
 } from '../../db/assessmentRepository';
-import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../../db/types';
+import type { Card, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import { DateTimePicker } from '../ui/DateTimePicker';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { choiceChipClass } from '../ui/choiceChip';

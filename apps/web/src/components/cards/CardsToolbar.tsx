@@ -9,7 +9,7 @@ import { SearchIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { scaledSpring } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import type { CardFilter } from '../../db/search';
+import type { CardFilter } from '@lacuna/core/db/search';
 
 export const CARD_FILTER_CHIPS: readonly { value: CardFilter; label: string }[] = [
   { value: 'new', label: 'New' },

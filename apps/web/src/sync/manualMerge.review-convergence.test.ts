@@ -6,7 +6,7 @@ import { createCourse } from '../db/courseRepository';
 import { exportDatabase, importBackup } from '../db/portability';
 import { recordReview } from '../db/reviewRepository';
 import { db } from '../db/schema';
-import type { BackupFile, Card, Course } from '../db/types';
+import type { BackupFile, Card, Course } from '@lacuna/core/db/types';
 import { manualMerge } from './manualMerge';
 import { mergeSnapshots } from './mergeSnapshots';
 

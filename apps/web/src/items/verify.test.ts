@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MarkSchemeLine, NumericAnswerSpec } from '../db/types';
+import type { MarkSchemeLine, NumericAnswerSpec } from '@lacuna/core/db/types';
 import {
   checkNumeric,
   compareByRandomEvaluation,

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { MS_PER_DAY } from './params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { makeObjectiveContext, scoreCard } from './objective';
 import { makeSessionContext, selectNext } from './session';
 import { NOW, deck, card } from './session.testFixtures';

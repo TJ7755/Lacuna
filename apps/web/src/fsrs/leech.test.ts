@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { isLeech, DEFAULT_LEECH_LAPSE_THRESHOLD } from './leech';
-import type { Card } from '../db/types';
+import { isLeech, DEFAULT_LEECH_LAPSE_THRESHOLD } from '@lacuna/core/fsrs/leech';
+import type { Card } from '@lacuna/core/db/types';
 
 function cardWithLapses(lapses: number): Card {
   return {

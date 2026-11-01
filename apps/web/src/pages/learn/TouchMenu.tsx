@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { animate, m as motion, useMotionValue, usePresence } from 'motion/react';
 import { expandingActionSpring } from '../../components/ui/motion';
 import { hapticLight } from '../../utils/haptic';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import {
   ClockIcon,

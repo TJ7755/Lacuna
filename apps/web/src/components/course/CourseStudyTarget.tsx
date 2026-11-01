@@ -1,6 +1,6 @@
 import { fieldLabelClassName } from '../ui/Field';
 import type { Ref } from 'react';
-import type { CourseSchedulingMode } from '../../db/types';
+import type { CourseSchedulingMode } from '@lacuna/core/db/types';
 import { DateTimePicker } from '../ui/DateTimePicker';
 import { cn } from '../ui/cn';
 import { CalendarIcon, CheckIcon, InfinityIcon } from '../ui/icons';

@@ -13,9 +13,9 @@
 // this module so the core invariant (scheduler and progress bar derived from the
 // same objective) survives the exam passing.
 
-import { MS_PER_DAY } from './params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { resolveCardExamDate, type ExamDateContext } from './examDate';
-import type { Card, SchedulerConfig } from '../db/types';
+import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 
 /**
  * How many days ahead a passed-exam deck schedules against when the user keeps

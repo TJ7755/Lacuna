@@ -6,8 +6,8 @@ import type {
   CourseRecord,
   CourseAssessment,
   Lesson,
-} from './types';
-import { type ReviewHistoryEntry } from './reviewHistory';
+} from '@lacuna/core/db/types';
+import { type ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { buildDomainStorageMigration } from './storageMigration';
 
 export async function upgradeDomainStorage(tx: Transaction): Promise<void> {

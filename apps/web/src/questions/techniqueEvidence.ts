@@ -1,9 +1,12 @@
-import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD, type JevDiagnosis } from '../jev/diagnosis';
-import type { JevAssessmentReceipt } from '../jev/provenance';
-import { answerableNodes, type QuestionSetAttemptRecord } from './questionSetAttempts';
-import type { QuestionSetRecord } from './questionSetCodec';
-import type { MarkAllocation, QuestionSetQuestion } from './questionSets';
-import type { TechniqueId } from './techniqueTags';
+import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD, type JevDiagnosis } from '@lacuna/core/jev/diagnosis';
+import type { JevAssessmentReceipt } from '@lacuna/core/jev/provenance';
+import {
+  answerableNodes,
+  type QuestionSetAttemptRecord,
+} from '@lacuna/core/questions/questionSetAttempts';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { MarkAllocation, QuestionSetQuestion } from '@lacuna/core/questions/questionSets';
+import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
 
 export interface ConceptPracticeNeeds {
   knowledge: boolean;

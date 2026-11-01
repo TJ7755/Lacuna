@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { QuestionSetPracticeNode } from '../db/types';
+import type { QuestionSetPracticeNode } from '@lacuna/core/db/types';
 
 import { mergeSnapshots } from './mergeSnapshots';
-import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 
 import {
   course,

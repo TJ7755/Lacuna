@@ -5,7 +5,7 @@
 // the learner back to the chunk containing it. Pure and React-free so every transition is
 // unit tested.
 
-import type { Card, Sequence, SequenceItem } from '../../../db/types';
+import type { Card, Sequence, SequenceItem } from '@lacuna/core/db/types';
 
 export const DEFAULT_RECITATION_CHUNK_SIZE = 4;
 export const MIN_RECITATION_CHUNK_SIZE = 2;

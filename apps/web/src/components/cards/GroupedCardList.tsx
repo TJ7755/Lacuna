@@ -1,7 +1,7 @@
 import { useMemo, type ComponentProps } from 'react';
 import { baseItemId, isLabelCardId, sequenceForItemId } from '../../db/sequenceGeneration';
 import { occlusionForRegionId } from '../../db/occlusionGeneration';
-import type { Card, Occlusion, Sequence } from '../../db/types';
+import type { Card, Occlusion, Sequence } from '@lacuna/core/db/types';
 import { CardListBody } from './CardListBody';
 import { GeneratedCardGroup } from './GeneratedCardGroup';
 

@@ -1,4 +1,4 @@
-import { INSIGHT_DAILY_SLOTS } from '../../../relay/shared/insights/index';
+import { INSIGHT_DAILY_SLOTS } from '@lacuna/protocol/insights/index';
 import { getInsightMailboxPage } from '../insights/mailbox';
 import { openInsightEnvelope, type InsightsOwner } from '../insights/envelope';
 import { parseDailyEvidence, type DailyEvidence } from '../insights/evidence';

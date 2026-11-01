@@ -5,8 +5,8 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import type {
   QuestionSetAttemptRecord,
   QuestionSetAttemptAnnotation,
-} from '../../questions/questionSetAttempts';
-import type { MarkAllocation, SelfMarkDecision } from '../../questions/questionSets';
+} from '@lacuna/core/questions/questionSetAttempts';
+import type { MarkAllocation, SelfMarkDecision } from '@lacuna/core/questions/questionSets';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { Button } from '../ui/Button';
 import { sourceAnchorFromSelection } from '../notes/noteAnchors';

@@ -3,8 +3,8 @@ import {
   type Card,
   type LessonCardLink,
   type ReviewLog,
-} from '../db/types';
-import { reviewHistoryEntryId, type ReviewHistoryEntry } from '../db/reviewHistory';
+} from '@lacuna/core/db/types';
+import { reviewHistoryEntryId, type ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { baseItemId } from '../db/sequenceGeneration';
 import { serialiseMarkScheme } from '../items/markSchemeCompiler';
 import { itemPayloadIsValid } from '../items/payloadValidation';
@@ -15,7 +15,7 @@ import type {
   QuestionConceptSet,
   QuestionPayload,
   QuestionScheduleState,
-} from './types';
+} from '@lacuna/core/questions/types';
 
 type LegacyQuestionModeCard = Omit<Card, 'conceptId' | 'payload'> & {
   conceptId?: string;

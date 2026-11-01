@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Lesson } from '../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import type { PathNode } from './path';
 import { planNextStudyStep } from './studyFlowPlanner';
 import type { CourseStudyFlowSnapshot, StudyFlowPracticeState } from './studyFlowSnapshot';

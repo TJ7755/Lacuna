@@ -1,13 +1,13 @@
-import type { BackupAsset, BackupFile, CourseRecord } from '../db/types';
-import { defaultFsrsParameters } from '../fsrs/params';
+import type { BackupAsset, BackupFile, CourseRecord } from '@lacuna/core/db/types';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import type {
   Concept,
   FixedQuestionDefinition,
   QuestionAttempt,
   QuestionConceptSet,
-} from '../questions/types';
-import type { QuestionSetRecord } from '../questions/questionSetCodec';
-import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+} from '@lacuna/core/questions/types';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 
 const PARAMS = defaultFsrsParameters();
 

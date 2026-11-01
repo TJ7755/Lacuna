@@ -5,8 +5,8 @@ import { StrictMode, useEffect, useRef, useState } from 'react';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { CommandPalette } from './CommandPalette';
-import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '../../db/types';
-import type { FixedQuestionDefinition, QuestionDefinition } from '../../questions/types';
+import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '@lacuna/core/db/types';
+import type { FixedQuestionDefinition, QuestionDefinition } from '@lacuna/core/questions/types';
 
 const mockDeck: LegacyDeckRecord = {
   id: 'deck-1',

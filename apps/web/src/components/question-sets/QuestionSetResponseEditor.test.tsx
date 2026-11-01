@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import { QuestionSetResponseEditor } from './QuestionSetResponseEditor';
-import type { QuestionAnswer } from '../../questions/questionSets';
+import type { QuestionAnswer } from '@lacuna/core/questions/questionSets';
 
 function Answer({ id }: { id: string }) {
   const [answer, setAnswer] = useState<QuestionAnswer>({

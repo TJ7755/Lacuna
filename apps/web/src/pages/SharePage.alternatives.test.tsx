@@ -15,7 +15,7 @@ import { downloadTextFile } from '../db/export';
 import { SharePage } from './SharePage';
 import { buildCourseShareCode } from '../db/share';
 import { publishCourse } from '../db/courseRepository';
-import type { Card } from '../db/types';
+import type { Card } from '@lacuna/core/db/types';
 
 describe('SharePage alternatives', () => {
   it('generates share codes after StrictMode replays the mount effect', async () => {

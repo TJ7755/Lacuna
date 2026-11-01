@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import type {
   QuestionSetAttemptReflection,
   QuestionSetReflectionReason,
-} from '../../questions/questionSetAttempts';
+} from '@lacuna/core/questions/questionSetAttempts';
 import { Button } from '../ui/Button';
 import { CompassIcon } from '../ui/icons';
 

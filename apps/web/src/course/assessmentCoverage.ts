@@ -1,7 +1,7 @@
-import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../db/types';
+import type { Card, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import { lessonCardMembershipForLessons } from './lessonMembership';
 import { resolveLessonOrder } from './lessonOrder';
-import type { Concept } from '../questions/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import {
   specificationAssessmentPointIds,
   type AssessmentSpecificationCourse,

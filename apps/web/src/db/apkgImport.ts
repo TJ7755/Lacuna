@@ -1,8 +1,8 @@
 // APKG worker orchestration and persistence. ZIP/SQLite parsing stays in apkgParser.
-import type { Card } from './types';
+import type { Card } from '@lacuna/core/db/types';
 import { guessMimeType, replaceMediaRefs, type ImportedMediaRef } from './apkgMedia';
 import { db } from './schema';
-import { projectCardsForStorage, reviewHistoryEntriesForCard } from './reviewHistory';
+import { projectCardsForStorage, reviewHistoryEntriesForCard } from '@lacuna/core/db/reviewHistory';
 import { assertApkgSize, type ApkgImportResult, type ApkgParseOptions } from './apkgTypes';
 import sqlWasmUrl from '../assets/sql-wasm.wasm?url';
 

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
-import type { ReviewLog } from './types';
+import type { ReviewLog } from '@lacuna/core/db/types';
 import { createCourse, createLesson, createLessonCard } from './repository';
 import { getCard, hydrateCardsWithHistory } from './read';
 import { clearAll } from './read.testFixtures';

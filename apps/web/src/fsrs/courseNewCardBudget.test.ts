@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { courseBudgetedStudyPool, courseNewCardBudget } from './courseNewCardBudget';
-import { MS_PER_DAY } from './params';
-import type { Card, SchedulerConfig } from '../db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 
 const NOW = new Date('2026-06-04T10:00:00').getTime();
 

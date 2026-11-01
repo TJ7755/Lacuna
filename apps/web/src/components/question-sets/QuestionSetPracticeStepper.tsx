@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { flattenQuestionSet } from '../../questions/questionSetAuthoring';
-import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 type Part = ReturnType<typeof flattenQuestionSet>[number];

@@ -4,7 +4,7 @@ import { db } from './schema';
 import { assetUrl, ASSET_GC_GRACE_MS, collectOrphanedAssets, storeImageBlob } from './assets';
 import { createCard, createCourse, deleteCards, updateCard } from './repository';
 import { createOcclusion, deleteOcclusion } from './occlusionRepository';
-import type { OcclusionRegion } from './types';
+import type { OcclusionRegion } from '@lacuna/core/db/types';
 import {
   createConcept,
   createFixedQuestion,

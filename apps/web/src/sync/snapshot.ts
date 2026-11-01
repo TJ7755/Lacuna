@@ -1,7 +1,7 @@
 // Snapshot wire helpers for P5. Keeping JSON and size accounting here keeps
 // the cycle concerned with ordering and safety rather than string handling.
 
-import type { BackupFile, Card, SessionHistoryEntry } from '../db/types';
+import type { BackupFile, Card, SessionHistoryEntry } from '@lacuna/core/db/types';
 import { isPreV22Backup, PRE_V22_BACKUP_MESSAGE, validateBackup } from '../db/portability';
 
 /**

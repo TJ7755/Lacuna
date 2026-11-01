@@ -1,4 +1,4 @@
-import type { QuestionPayload } from '../../items/types';
+import type { QuestionPayload } from '@lacuna/core/items/types';
 
 export type QuestionGeneratorErrorCode =
   | 'unknown-generator'

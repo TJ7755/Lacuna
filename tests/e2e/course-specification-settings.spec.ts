@@ -1,5 +1,5 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import type { CourseRecord } from '../../apps/web/src/db/types';
+import type { CourseRecord } from '@lacuna/core/db/types';
 import {
   paperSpecification,
   paperSpecificationReference,

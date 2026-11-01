@@ -1,5 +1,8 @@
-import { answerableNodes, type QuestionSetAttemptRecord } from './questionSetAttempts';
-import type { QuestionSetRecord } from './questionSetCodec';
+import {
+  answerableNodes,
+  type QuestionSetAttemptRecord,
+} from '@lacuna/core/questions/questionSetAttempts';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 
 /** New answerable parts are current work, separate from the attempt's historical progress. */
 export function questionSetAddedParts(

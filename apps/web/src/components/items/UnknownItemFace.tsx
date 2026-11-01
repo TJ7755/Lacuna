@@ -1,4 +1,4 @@
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import { CardContent } from '../cards/CardContent';
 
 interface UnknownItemFaceProps {

@@ -1,7 +1,7 @@
 import { localLessonOrderUnavailableReason } from '../course/lessonOrder';
 import { stampUpdatedAt } from './mutationStamp';
 import { db } from './schema';
-import type { Lesson } from './types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { earlierCourseLessonIds } from '../course/courseEntry';
 
 export function validateLessonPermutation(lessons: Lesson[], ids: string[]): void {

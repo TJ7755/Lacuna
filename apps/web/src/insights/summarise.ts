@@ -1,6 +1,6 @@
 import { buildQuestionAnalytics } from '../questions/analytics';
 import type { QuestionCriterionPerformance } from '../questions/analytics';
-import type { QuestionAttempt, QuestionDefinition } from '../questions/types';
+import type { QuestionAttempt, QuestionDefinition } from '@lacuna/core/questions/types';
 
 /**
  * Wire schema for one device's anonymous weekly study summary (issue #589).

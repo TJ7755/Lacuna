@@ -19,8 +19,8 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ToastProvider } from '../components/ui/Toast';
-import type { QuestionSetPracticeNode } from '../db/types';
-import { MS_PER_DAY } from '../fsrs/params';
+import type { QuestionSetPracticeNode } from '@lacuna/core/db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 describe('CoursePath View mode', () => {
   beforeEach(resetCoursePathFixtures);
   it('displays checkpoint dates in the assessment time zone', () => {

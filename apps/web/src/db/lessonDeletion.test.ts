@@ -19,7 +19,7 @@ import {
 } from './repository';
 import { listLessons } from './read';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
-import { reviewHistoryEntryIdForEvent } from './reviewHistory';
+import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 import { reset } from './courseRepository.testFixtures';
 

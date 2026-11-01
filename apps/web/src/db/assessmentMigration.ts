@@ -4,7 +4,7 @@ import type {
   CourseAssessment,
   CourseRecord,
   Lesson,
-} from './types';
+} from '@lacuna/core/db/types';
 
 /** Course row as stored before schema v14. */
 export type LegacyCourseRecord = CourseRecord & {

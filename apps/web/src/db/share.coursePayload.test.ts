@@ -20,7 +20,7 @@ import {
   summariseShare,
 } from './share';
 import { assetUrl, storeAudioBlob, storeImageBlob } from './assets';
-import type { ItemPayload } from './types';
+import type { ItemPayload } from '@lacuna/core/db/types';
 import { reset } from './share.testFixtures';
 
 describe('course share payload content', () => {

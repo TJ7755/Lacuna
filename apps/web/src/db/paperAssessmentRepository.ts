@@ -1,14 +1,14 @@
 import { courseLessonOrderPreference } from '../course/lessonOrder';
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 import { validatePaperAssessmentDates } from '../specifications/assessment';
-import { papersForSelection } from '../specifications/selection';
+import { papersForSelection } from '@lacuna/core/specifications/selection';
 import { finalAssessmentForCourse } from './assessmentMigration';
 import { validateAssessmentStructure } from './assessmentValidation';
 import { syncCourseSchedulingUnits } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
 import { stampUpdatedAt } from './mutationStamp';
 import { db, makeId } from './schema';
-import type { CourseAssessment } from './types';
+import type { CourseAssessment } from '@lacuna/core/db/types';
 
 /** Set up all applicable papers together, retaining the existing final assessment identity. */
 export async function setCoursePaperAssessments(

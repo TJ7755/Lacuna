@@ -6,7 +6,7 @@ import { ConfirmInlineSwap } from '../../components/ui/ConfirmInline';
 import { useToast } from '../../components/ui/Toast';
 import { ClockIcon, QrCodeIcon, ShareIcon, TrashIcon, UnlockIcon } from '../../components/ui/icons';
 import { readSyncState } from '../../db/mutationStamp';
-import type { SyncState } from '../../db/types';
+import type { SyncState } from '@lacuna/core/db/types';
 import { readRememberedCredentials } from '../../sync/credentials';
 import { allowRelayConnect } from '../../sync/csp';
 import { loadSyncPairing } from '../../sync/loaders';

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { assertSpecificationAssessmentReferences } from '../specifications/assessment';
 import { assertLessonPrerequisites } from './lessonPrerequisites';
-import type { BackupFile, Lesson } from './types';
+import type { BackupFile, Lesson } from '@lacuna/core/db/types';
 import { recordSchemas } from './backupRecordSchemas';
 import { stateSchemas } from './backupStateSchemas';
 

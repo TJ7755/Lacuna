@@ -12,7 +12,7 @@ import {
   jevAllocationBatchResultSchema,
   jevAllocationInputSchema,
 } from '../apps/web/src/jev/protocol';
-import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD } from '../apps/web/src/jev/diagnosis';
+import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD } from '@lacuna/core/jev/diagnosis';
 import { hash, validateLabels } from './jev-evaluation/labels';
 import { cases, policy, strata, type EvaluationCase } from './jev-evaluation/pack';
 import { summarise, type Observation } from './jev-evaluation/metrics';

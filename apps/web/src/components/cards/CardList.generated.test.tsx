@@ -2,7 +2,7 @@ import { mockCard, mockContext, resetCardListFixtures } from './CardList.testFix
 import { CardList } from './CardList';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import type { Card, Occlusion, Sequence } from '../../db/types';
+import type { Card, Occlusion, Sequence } from '@lacuna/core/db/types';
 describe('CardList generated ownership', () => {
   beforeEach(resetCardListFixtures);
 

@@ -1,4 +1,9 @@
-import type { CourseAssessment, CourseRecord, Lesson, SchedulingUnitRecord } from './types';
+import type {
+  CourseAssessment,
+  CourseRecord,
+  Lesson,
+  SchedulingUnitRecord,
+} from '@lacuna/core/db/types';
 
 function assessmentDate(
   courseId: string,

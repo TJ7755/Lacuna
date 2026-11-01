@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { m as motion } from 'motion/react';
 import { hapticLight, hapticMedium } from '../../utils/haptic';
-import type { Grade } from '../../db/types';
+import type { Grade } from '@lacuna/core/db/types';
 import { Button } from '../../components/ui/Button';
 import { StepSwap } from '../../components/ui/StepSwap';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';

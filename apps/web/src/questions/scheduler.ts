@@ -1,13 +1,13 @@
 import { createEmptyCard, type Card as TsCard, type Grade as TsGrade, type State } from 'ts-fsrs';
-import type { FsrsParameters, Grade } from '../db/types';
+import type { FsrsParameters, Grade } from '@lacuna/core/db/types';
 import { makeEngine } from '../fsrs/fsrs';
-import { MS_PER_DAY } from '../fsrs/params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import {
   QUESTION_SCHEDULER_VERSION,
   type QuestionAttempt,
   type QuestionDefinition,
   type QuestionScheduleState,
-} from './types';
+} from '@lacuna/core/questions/types';
 
 export interface QuestionReviewResult {
   schedule: QuestionScheduleState;

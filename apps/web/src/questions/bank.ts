@@ -1,6 +1,6 @@
-import type { QuestionBank } from './bankSchema';
+import type { QuestionBank } from '@lacuna/core/questions/bankSchema';
 
-export type { QuestionBank } from './bankSchema';
+export type { QuestionBank } from '@lacuna/core/questions/bankSchema';
 export {
   declarativeFamilyCapacity,
   materialiseQuestionBank,

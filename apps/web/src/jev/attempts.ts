@@ -5,10 +5,10 @@ import {
   applyJevAllocationDecision,
   getQuestionSetAttempt,
 } from '../questions/questionSetAttemptRepository';
-import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
-import type { QuestionAnswer } from '../questions/questionSets';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
+import type { QuestionAnswer } from '@lacuna/core/questions/questionSets';
 import { jevEngine, type createJevEngine } from './engine';
-import type { JevAllocationMarking } from './types';
+import type { JevAllocationMarking } from '@lacuna/core/jev/types';
 import {
   JEV_BATCH_MAX_ALLOCATIONS,
   JEV_BATCH_REQUEST_BYTE_LIMIT,

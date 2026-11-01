@@ -6,7 +6,7 @@ import type {
   QuestionSetQuestion,
   QuestionPart,
   QuestionSubpart,
-} from '../../questions/questionSets';
+} from '@lacuna/core/questions/questionSets';
 export type PaperNode = QuestionSetQuestion | QuestionPart | QuestionSubpart;
 export function questionSetMarks(set: QuestionSet): number {
   return set.questions.reduce((total, q) => total + nodeMarks(q), 0);

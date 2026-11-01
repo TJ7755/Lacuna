@@ -1,5 +1,5 @@
 import { readSyncState, updateSyncState } from '../db/mutationStamp';
-import type { RememberedShareLinkCredentials } from '../db/types';
+import type { RememberedShareLinkCredentials } from '@lacuna/core/db/types';
 import { SHARE_ID_RE } from './client';
 
 const WRITE_TOKEN_RE = /^[0-9a-f]{64}$/;

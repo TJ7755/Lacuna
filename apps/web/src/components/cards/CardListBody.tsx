@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useVirtualList } from '../../hooks/useVirtualList';
 import { occlusionForRegionId } from '../../db/occlusionGeneration';
-import type { Card, Occlusion, SchedulerConfig } from '../../db/types';
+import type { Card, Occlusion, SchedulerConfig } from '@lacuna/core/db/types';
 import { CardRow } from './CardRow';
 
 const VIRTUAL_THRESHOLD = 50;

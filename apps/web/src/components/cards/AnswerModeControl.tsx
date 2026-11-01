@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { isLessonAuthoringMode } from '../../course/lessonViewMode';
 import { setAuthoredAnswerMode } from '../../db/answerModeRepository';
-import type { AnswerMode, Card } from '../../db/types';
+import type { AnswerMode, Card } from '@lacuna/core/db/types';
 import { isTypingEligible } from '../../utils/answerMode';
 import { useCourse, useLesson } from '../../state/useCourseData';
 import { PillToggleGroup } from './PillToggleGroup';

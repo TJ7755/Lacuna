@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { FsrsParameters, Grade } from '../db/types';
-import { defaultFsrsParameters } from '../fsrs/params';
-import type { FixedQuestionDefinition, QuestionAttempt, QuestionScheduleState } from './types';
+import type { FsrsParameters, Grade } from '@lacuna/core/db/types';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
+import type {
+  FixedQuestionDefinition,
+  QuestionAttempt,
+  QuestionScheduleState,
+} from '@lacuna/core/questions/types';
 import {
   questionSchedulerConfigFingerprint,
   replayQuestionSchedule,

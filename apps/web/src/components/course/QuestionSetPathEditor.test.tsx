@@ -10,10 +10,10 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCourse } from '../../db/repository';
 import { createLesson } from '../../db/lessonRepository';
-import type { QuestionSetPracticeNode } from '../../db/types';
+import type { QuestionSetPracticeNode } from '@lacuna/core/db/types';
 import { db } from '../../db/schema';
 import { createQuestionSet } from '../../questions/questionSetRepository';
-import type { QuestionSet } from '../../questions/questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import {
   createQuestionSetPracticeNode,
   deleteQuestionSetPracticeNode,

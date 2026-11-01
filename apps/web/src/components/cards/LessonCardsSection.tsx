@@ -13,7 +13,7 @@ import { useToast } from '../ui/Toast';
 import { useLessonCardLinks, useOcclusions, useSequences } from '../../state/useCourseData';
 import { db } from '../../db/schema';
 import { unlinkCardFromLesson } from '../../db/lessonRepository';
-import type { Card, SchedulerConfig } from '../../db/types';
+import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 
 interface LessonCardsSectionProps {

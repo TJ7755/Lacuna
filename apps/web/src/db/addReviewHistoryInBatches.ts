@@ -1,5 +1,5 @@
 import { db } from './schema';
-import type { ReviewHistoryEntry } from './reviewHistory';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 /** The caller owns the import transaction and has resolved duplicate event identities. */
 export async function addReviewHistoryInBatches(

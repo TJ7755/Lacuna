@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { Lesson } from '../../db/types';
-import type { FixedQuestionDefinition, QuestionDefinition } from '../../questions/types';
+import type { Lesson } from '@lacuna/core/db/types';
+import type { FixedQuestionDefinition, QuestionDefinition } from '@lacuna/core/questions/types';
 import { BATCH_OUTPUT_END, BATCH_OUTPUT_START } from '../../items/prompts';
 import { ItemStagingReview } from './ItemStagingReview';
 

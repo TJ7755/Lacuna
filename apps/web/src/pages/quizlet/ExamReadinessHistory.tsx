@@ -6,7 +6,7 @@ import {
   forecastExample,
   type RecallPoint,
 } from './examReadinessModel';
-import { MS_PER_DAY } from '../../fsrs/params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 const percent = (value: number) => Math.round(value * 100);
 

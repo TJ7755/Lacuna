@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import type { AssessmentSpecificationContext } from '../../course/assessmentCoverage';
 import type { PathNode } from '../../course/path';
-import type { Card, Lesson, LessonCardLink } from '../../db/types';
+import type { Card, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import { reorderLessons } from '../../db/lessonRepository';
 import { updateCourseAssessment } from '../../db/assessmentRepository';
 import { setLocalLessonOrder } from '../../db/lessonOrder';

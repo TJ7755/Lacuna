@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
 import { db } from '../db/schema';
-import type { Concept } from '../questions/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { performanceForCourseBackingDecks } from '../db/backingDecks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
@@ -19,7 +19,7 @@ import type {
   PracticeNode,
   PracticeMilestone,
   UserPerformance,
-} from '../db/types';
+} from '@lacuna/core/db/types';
 
 interface CourseStudyFlowRecords {
   course: Course | null;

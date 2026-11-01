@@ -3,7 +3,7 @@ import { MeasuredHeight } from '../ui/MeasuredHeight';
 import { StepSwap } from '../ui/StepSwap';
 import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 import { useState } from 'react';
-import type { NumericAnswerSpec } from '../../db/types';
+import type { NumericAnswerSpec } from '@lacuna/core/db/types';
 import type { BatchCandidate } from '../../items/batchStaging';
 import { Button } from '../ui/Button';
 import { MarkSchemeEditor } from './MarkSchemeEditor';

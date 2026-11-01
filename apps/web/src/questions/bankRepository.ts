@@ -8,10 +8,13 @@ import {
   sameBankContent,
   type QuestionBank,
 } from './bankMaterialisation';
-import { remapQuestionBankMetadata } from './bankMetadata';
+import { remapQuestionBankMetadata } from '@lacuna/core/questions/bankMetadata';
 import { bankFingerprint, mapBankQuestions } from './generators/declarative';
-import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
-import type { QuestionSet } from './questionSets';
+import {
+  parseQuestionSetRecord,
+  type QuestionSetRecord,
+} from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 
 export async function importBank(value: unknown, courseId: string): Promise<QuestionSetRecord[]> {
   const bank = await parseQuestionBankAsync(value);

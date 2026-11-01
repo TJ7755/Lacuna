@@ -1,5 +1,5 @@
 import { normaliseRelayUrl } from '../sync/relay';
-import { isoDayStartMs } from '../../../relay/shared/insights/index';
+import { isoDayStartMs } from '@lacuna/protocol/insights/index';
 import {
   INSIGHT_ID_RE,
   INSIGHT_MAX_ENVELOPE_BYTES,
@@ -8,7 +8,7 @@ import {
   parseInsightMailboxPage,
   type InsightEnvelope,
   type InsightMailboxPage,
-} from '../../../relay/shared/insights/index';
+} from '@lacuna/protocol/insights/index';
 
 interface MailboxOptions {
   relayUrl: string;

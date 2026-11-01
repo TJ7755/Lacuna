@@ -31,11 +31,17 @@ import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../components/ui/motion';
 import { PlusIcon } from '../components/ui/icons';
 import { CardsToolbar, CARD_FILTER_CHIPS } from '../components/cards/CardsToolbar';
-import { filterSessionCardPool, searchCardsInScope, type CardFilter } from '../db/search';
+import { filterSessionCardPool, searchCardsInScope, type CardFilter } from '@lacuna/core/db/search';
 import { arrivalDelay } from './settings/SettingsUi';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
-import type { Card, Lesson, Occlusion, SchedulingUnitRecord, Sequence } from '../db/types';
+import type {
+  Card,
+  Lesson,
+  Occlusion,
+  SchedulingUnitRecord,
+  Sequence,
+} from '@lacuna/core/db/types';
 import { useLessonOrderData } from '../state/useLessonOrderData';
 
 /**

@@ -1,6 +1,10 @@
-import type { CourseAssessment, CourseRecord } from '../db/types';
-import { isSpecificationPointIds } from './links';
-import { paperPoints, papersForSelection, pointsForSelection } from './selection';
+import type { CourseAssessment, CourseRecord } from '@lacuna/core/db/types';
+import { isSpecificationPointIds } from '@lacuna/core/specifications/links';
+import {
+  paperPoints,
+  papersForSelection,
+  pointsForSelection,
+} from '@lacuna/core/specifications/selection';
 
 export type AssessmentSpecificationCourse = Pick<
   CourseRecord,

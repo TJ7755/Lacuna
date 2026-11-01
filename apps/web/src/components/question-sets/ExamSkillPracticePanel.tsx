@@ -6,9 +6,9 @@ import {
   type ExamSkillPracticeItem,
 } from '../../questions/examSkillPractice';
 import { undoConceptPracticeAttempt } from '../../questions/conceptPractice';
-import type { TechniqueId } from '../../questions/techniqueTags';
-import type { QuestionBankMetadata } from '../../questions/bankMetadata';
-import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
+import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
+import type { QuestionBankMetadata } from '@lacuna/core/questions/bankMetadata';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
 import { Select } from '../ui/Select';

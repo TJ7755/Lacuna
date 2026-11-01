@@ -1,8 +1,8 @@
 // A question set's standing for the Questions list: the latest score, a short history and
 // the attempt to resume, drawn from the learner's own attempts.
 
-import type { QuestionSetAttemptRecord } from './questionSetAttempts';
-import { summariseSelfMarking } from './questionSets';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
+import { summariseSelfMarking } from '@lacuna/core/questions/questionSets';
 
 /** The history shows this many of the most recent completed attempts. */
 export const SCORE_HISTORY_LENGTH = 5;

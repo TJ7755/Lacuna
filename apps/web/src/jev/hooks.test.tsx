@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { useJevController, useJevSettings, useJevStatus, useJevTypedMarker } from './index';
-import { JEV_CONSENT_VERSION } from './types';
+import { JEV_CONSENT_VERSION } from '@lacuna/core/jev/types';
 afterEach(() => {
   localStorage.clear();
   vi.unstubAllGlobals();

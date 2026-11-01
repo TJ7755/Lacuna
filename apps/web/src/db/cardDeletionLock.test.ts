@@ -4,7 +4,7 @@ import { db } from './schema';
 import { createCourse } from './courseRepository';
 import { createLesson } from './lessonRepository';
 import { createCard, deleteCards } from './cardRepository';
-import type { Card } from './types';
+import type { Card } from '@lacuna/core/db/types';
 
 beforeEach(async () => {
   await db.delete();

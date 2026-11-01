@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OcclusionStudyFace } from './OcclusionStudyFace';
-import type { Card, Occlusion, OcclusionRegion } from '../../db/types';
+import type { Card, Occlusion, OcclusionRegion } from '@lacuna/core/db/types';
 
 const resolveAssetUrl = vi.fn();
 const peekCachedAssetUrl = vi.fn();

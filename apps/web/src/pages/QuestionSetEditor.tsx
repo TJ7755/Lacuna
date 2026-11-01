@@ -6,7 +6,7 @@ import { referencedAssetHashesInValues } from '../db/assets';
 import { useCourse } from '../state/useCourseData';
 import { canEditLessons } from '../course/lessonViewMode';
 import { questionSetReturn } from '../questions/questionSetNavigation';
-import { validateQuestionSet } from '../questions/questionSets';
+import { validateQuestionSet } from '@lacuna/core/questions/questionSets';
 import { useQuestionSetEditor } from '../components/question-sets/useQuestionSetEditor';
 import { QuestionComposer } from '../components/question-sets/QuestionComposer';
 import { QuestionSetDetails } from '../components/question-sets/QuestionSetDetails';

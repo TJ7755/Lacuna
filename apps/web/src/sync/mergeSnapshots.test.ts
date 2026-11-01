@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { Lesson, LineageIdMapping, PendingMergeReview, Tombstone } from '../db/types';
+import type {
+  Lesson,
+  LineageIdMapping,
+  PendingMergeReview,
+  Tombstone,
+} from '@lacuna/core/db/types';
 import { mergeSnapshots } from './mergeSnapshots';
 
 import {

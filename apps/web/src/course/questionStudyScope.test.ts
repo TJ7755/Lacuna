@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import type { Course } from '../db/types';
-import type { Concept } from '../questions/types';
+import type { Course } from '@lacuna/core/db/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import {
   paperSpecification,
   paperSpecificationReference,

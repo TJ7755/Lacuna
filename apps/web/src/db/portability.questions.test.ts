@@ -1,17 +1,17 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { defaultFsrsParameters } from '../fsrs/params';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { assetUrl, storeImageBlob } from './assets';
 import { BACKUP_VERSION, exportDatabase, importBackup, validateBackup } from './portability';
 import { db } from './schema';
-import type { BackupFile, Card, CourseRecord } from './types';
+import type { BackupFile, Card, CourseRecord } from '@lacuna/core/db/types';
 import type {
   Concept,
   FixedQuestionDefinition,
   QuestionAttempt,
   QuestionConceptSet,
-} from '../questions/types';
-import type { QuestionSetRecord } from '../questions/questionSetCodec';
+} from '@lacuna/core/questions/types';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { deleteQuestionSet } from '../questions/questionSetRepository';
 import { mergeSnapshots } from '../sync/mergeSnapshots';
 

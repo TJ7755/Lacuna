@@ -8,9 +8,9 @@
 // module never imports schema.ts (which would create a circular dependency).
 // British English throughout.
 
-import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
+import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
 import { defaultExamDate } from '../utils/datetime';
-import type { Course, LegacyDeckRecord, LegacyFolder, Lesson } from './types';
+import type { Course, LegacyDeckRecord, LegacyFolder, Lesson } from '@lacuna/core/db/types';
 
 /** A function that produces a fresh, collision-resistant id (e.g. makeId). */
 export type IdGenerator = () => string;

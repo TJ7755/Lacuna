@@ -1,7 +1,7 @@
 import { db } from '../db/schema';
-import type { MediaAsset } from '../db/types';
+import type { MediaAsset } from '@lacuna/core/db/types';
 import { makeId } from '../utils/id';
-import type { QuestionSet } from './questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 
 export const QUESTION_SET_DRAFT_PREFIX = 'questionSetDraft:';
 

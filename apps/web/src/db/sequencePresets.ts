@@ -14,7 +14,7 @@
 // for either. They stay as two rows purely because the table makes that free — same
 // `mode`/`usesSpeakers`/`cueWindow`, distinguished only by name and description.
 
-import type { SequencePresetId } from './types';
+import type { SequencePresetId } from '@lacuna/core/db/types';
 
 export interface SequencePreset {
   id: SequencePresetId;

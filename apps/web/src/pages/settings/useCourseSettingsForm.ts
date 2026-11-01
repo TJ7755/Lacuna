@@ -7,12 +7,12 @@ import type {
   ExamObjective,
   FsrsParameters,
   UnlockMode,
-} from '../../db/types';
+} from '@lacuna/core/db/types';
 import {
   clampRequestRetention,
   defaultFsrsParameters,
   DEFAULT_REQUEST_RETENTION,
-} from '../../fsrs/params';
+} from '@lacuna/core/fsrs/params';
 import type { SchedulingFieldsSectionProps } from './SchedulingFieldsSection';
 import { parseSteps } from './parseSteps';
 

@@ -3,7 +3,10 @@ import { clearTombstone, recordTombstone } from '../db/mutationStamp';
 import { scheduleAssetGc } from '../db/assets';
 import { db, makeId } from '../db/schema';
 import { canEditLessons } from '../course/lessonViewMode';
-import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
+import {
+  parseQuestionSetRecord,
+  type QuestionSetRecord,
+} from '@lacuna/core/questions/questionSetCodec';
 import {
   deleteQuestionSetDraft,
   loadQuestionSetDraft,
@@ -14,7 +17,7 @@ import {
   referencedQuestionSetConceptIds,
   type QuestionAnswer,
   type QuestionSet,
-} from './questionSets';
+} from '@lacuna/core/questions/questionSets';
 
 export class QuestionSetRevisionConflictError extends Error {
   constructor() {
@@ -30,7 +33,7 @@ function requireValidContent(content: QuestionSet): void {
   }
 }
 
-export { referencedQuestionSetConceptIds } from './questionSets';
+export { referencedQuestionSetConceptIds } from '@lacuna/core/questions/questionSets';
 
 async function validateReferences(content: QuestionSet): Promise<void> {
   if (!(await db.courses.get(content.courseId))) throw new Error('Course not found.');

@@ -1,14 +1,14 @@
 import { z } from 'zod';
 import { PBKDF2_ITERATIONS, PBKDF2_ITERATIONS_MAX, PBKDF2_ITERATIONS_MIN } from '../sync/crypto';
-import { isoDayStartMs } from '../../../relay/shared/insights/index';
+import { isoDayStartMs } from '@lacuna/protocol/insights/index';
 import { insightsRecipientSchema as recipientSchema, type InsightsRecipient } from './recipient';
 export type { InsightsRecipient } from './recipient';
 import {
   INSIGHT_MAX_EVIDENCE_BYTES,
   parseInsightEnvelope,
   type InsightEnvelope,
-} from '../../../relay/shared/insights/index';
-export type { InsightEnvelope } from '../../../relay/shared/insights/index';
+} from '@lacuna/protocol/insights/index';
+export type { InsightEnvelope } from '@lacuna/protocol/insights/index';
 
 // Experimental #600 format. No network or persistence callers yet. Keep the
 // teacher's RSA private key out of share payloads and pupil devices.

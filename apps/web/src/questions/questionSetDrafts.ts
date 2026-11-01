@@ -1,5 +1,5 @@
 import { db } from '../db/schema';
-import type { QuestionSetRecord } from './questionSetCodec';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { createQuestionSet, updateQuestionSet } from './questionSetRepository';
 import {
   parseDraft,

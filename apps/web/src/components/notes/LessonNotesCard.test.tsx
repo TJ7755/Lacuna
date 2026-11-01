@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type * as MotionReact from 'motion/react';
-import type { Note } from '../../db/types';
+import type { Note } from '@lacuna/core/db/types';
 import { LessonNotesCard } from './LessonNotesCard';
 
 const presence = vi.hoisted(() => ({ current: true }));

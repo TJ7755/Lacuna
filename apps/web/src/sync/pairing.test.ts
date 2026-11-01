@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SyncState } from '../db/types';
+import type { SyncState } from '@lacuna/core/db/types';
 import {
   DEFAULT_RELAY_URL,
   MIN_RECOVERY_PASSPHRASE_LENGTH,

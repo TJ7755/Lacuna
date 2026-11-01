@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { BackupFile } from '../db/types';
+import type { BackupFile } from '@lacuna/core/db/types';
 import { snapshotStateUnchanged } from './mergeSnapshots';
 
 import { backup, card, asset, sample, expectPeerProperties } from './mergeSnapshots.testFixtures';

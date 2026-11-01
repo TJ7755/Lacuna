@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createCourse, setCourseSpecificationReference } from '../db/courseRepository';
 import { db } from '../db/schema';
 import * as concepts from './repository';
-import type { Concept } from './types';
+import type { Concept } from '@lacuna/core/questions/types';
 
 beforeEach(async () => {
   await db.delete();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { FixedQuestionDefinition, QuestionAttempt } from '../questions/types';
+import type { FixedQuestionDefinition, QuestionAttempt } from '@lacuna/core/questions/types';
 import {
   INSIGHTS_SCHEMA_VERSION,
   summariseForInsights,

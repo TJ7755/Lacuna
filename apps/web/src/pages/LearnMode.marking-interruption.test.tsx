@@ -7,7 +7,7 @@ import { ThemeProvider } from '../state/ThemeContext';
 import { AccentProvider } from '../state/AccentContext';
 import { createCourse, createLesson, createLessonCard } from '../db/repository';
 import { db } from '../db/schema';
-import type { Card } from '../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import type * as JevModule from '../jev';
 import type { JevTypedVerdict } from '../jev';
 import type * as MotionSpeedModule from '../state/motionSpeed';

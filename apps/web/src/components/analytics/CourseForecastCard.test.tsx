@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { CourseForecastCard } from './CourseForecastCard';
-import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
-import type { Card, Course } from '../../db/types';
+import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
+import type { Card, Course } from '@lacuna/core/db/types';
 
 const DAY = 86_400_000;
 

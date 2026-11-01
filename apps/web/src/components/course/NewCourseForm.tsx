@@ -11,7 +11,7 @@ import { cn } from '../ui/cn';
 import { fieldLabelClassName } from '../ui/Field';
 import { CourseStudyTarget } from './CourseStudyTarget';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
-import type { CourseSchedulingMode } from '../../db/types';
+import type { CourseSchedulingMode } from '@lacuna/core/db/types';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 import { BookIcon, ChevronLeftIcon } from '../ui/icons';
 import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';

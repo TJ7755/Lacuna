@@ -17,7 +17,7 @@ import { ConfirmInline } from '../ui/ConfirmInline';
 import { UploadIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { OcclusionMaskLayer, type OcclusionMaskRegion } from './OcclusionMaskLayer';
-import type { OcclusionRegion } from '../../db/types';
+import type { OcclusionRegion } from '@lacuna/core/db/types';
 
 /** Ignore drags shorter than this fraction of the image in either dimension — a tap or
  *  jitter should never create a sliver region. */

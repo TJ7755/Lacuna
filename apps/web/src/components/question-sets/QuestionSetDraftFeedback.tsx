@@ -7,7 +7,7 @@ import type {
   QuestionSetDraftSession,
   QuestionSetDraftSessionSnapshot,
 } from '../../questions/questionSetDraftSession';
-import type { QuestionSet } from '../../questions/questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import { Button } from '../ui/Button';
 
 export function QuestionSetDraftFeedback({

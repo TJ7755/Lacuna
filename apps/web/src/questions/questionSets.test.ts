@@ -4,7 +4,7 @@ import {
   validateQuestionSet,
   type QuestionSet,
   type SelfMarkDecision,
-} from './questionSets';
+} from '@lacuna/core/questions/questionSets';
 
 function questionSet(): QuestionSet {
   return {

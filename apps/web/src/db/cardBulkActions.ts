@@ -1,7 +1,7 @@
 import { stampUpdatedAt } from './mutationStamp';
 import { applyScheduleEdit, mergeScheduleEdits } from './scheduleEdits';
 import { db } from './schema';
-import type { ScheduleEdit } from './types';
+import type { ScheduleEdit } from '@lacuna/core/db/types';
 
 /** Withhold a card from all study and from progress/objective until un-suspended. */
 export async function suspendCard(id: string): Promise<void> {

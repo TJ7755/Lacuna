@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Card, CourseAssessment, Lesson } from '../../db/types';
+import type { Card, CourseAssessment, Lesson } from '@lacuna/core/db/types';
 import { AssessmentDetailSheet, assessmentSheetTiming } from './AssessmentDetailSheet';
 import { expandingActionSpring } from '../ui/motion';
 import { MemoryRouter } from 'react-router-dom';

@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { QuestionSetRecord } from '../../questions/questionSetCodec';
-import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import type { QuestionSetPathNode } from '../../course/path';
 import { ToastProvider } from '../ui/Toast';
 import { QuestionSetCourseRow } from './QuestionSetCourseRow';

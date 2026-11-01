@@ -22,7 +22,7 @@ import {
   acceptMergeReviewItems,
   rejectMergeReviewItems,
 } from '../../db/mergeImport';
-import type { Note } from '../../db/types';
+import type { Note } from '@lacuna/core/db/types';
 import { useActionFocus } from '../../hooks/useActionFocus';
 import { Button } from '../ui/Button';
 import { ChevronLeftIcon } from '../ui/icons';

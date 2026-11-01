@@ -1,4 +1,4 @@
-import { type ReviewHistoryEntry } from './reviewHistory';
+import { type ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { db } from './schema';
 
 export async function replaceReviewHistoryForCards(

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { QuestionAttempt } from '../../questions/types';
+import type { QuestionAttempt } from '@lacuna/core/questions/types';
 import { QuestionResponsePanel, checkQuestionAnswer } from './QuestionResponsePanel';
 
 function attempt(overrides: Partial<QuestionAttempt> = {}): QuestionAttempt {

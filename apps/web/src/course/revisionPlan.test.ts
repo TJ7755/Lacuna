@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { RevisionPlan } from '../db/types';
+import type { RevisionPlan } from '@lacuna/core/db/types';
 import {
   applyPendingRevisionPlanInput,
   applyRevisionPlanInput,

@@ -1,6 +1,6 @@
-import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '../db/types';
-import type { Concept } from '../questions/types';
-import { pointsForSelection } from '../specifications/selection';
+import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
+import type { Concept } from '@lacuna/core/questions/types';
+import { pointsForSelection } from '@lacuna/core/specifications/selection';
 import { specificationAssessmentPointIds } from '../specifications/assessment';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { courseLessonOrderPreference } from './lessonOrder';

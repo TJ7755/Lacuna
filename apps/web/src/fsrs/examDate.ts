@@ -7,8 +7,8 @@ import {
   resolveAssessmentCoverage,
   type AssessmentSpecificationContext,
 } from '../course/assessmentCoverage';
-import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '../db/types';
-import type { Concept } from '../questions/types';
+import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
+import type { Concept } from '@lacuna/core/questions/types';
 
 export interface ExamDateContext {
   /** The Course.examDate default, used when nothing nearer applies. */

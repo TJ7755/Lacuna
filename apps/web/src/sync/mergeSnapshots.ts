@@ -1,5 +1,5 @@
 import { assertSpecificationAssessmentReferences } from '../specifications/assessment';
-import { referencedQuestionSetConceptIds } from '../questions/questionSets';
+import { referencedQuestionSetConceptIds } from '@lacuna/core/questions/questionSets';
 // Pure peer-merge of two BackupFile snapshots. No Dexie, no I/O, no knowledge
 // of which device produced either side. After this, the two-device dance is
 // mergeSnapshots(local, remote) then importBackup(merged, 'replace') — that
@@ -27,17 +27,17 @@ import type {
   Sequence,
   Tombstone,
   AgentMemory,
-} from '../db/types';
-import { projectCardsForStorage, type ReviewHistoryEntry } from '../db/reviewHistory';
+} from '@lacuna/core/db/types';
+import { projectCardsForStorage, type ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { mergeQuestionCollections } from '../questions/merge';
 import type {
   Concept,
   QuestionAttempt,
   QuestionConceptSet,
   QuestionDefinition,
-} from '../questions/types';
-import type { QuestionSetRecord } from '../questions/questionSetCodec';
-import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+} from '@lacuna/core/questions/types';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import {
   assertQuestionSetReferences,
   mergeQuestionSetRecords,

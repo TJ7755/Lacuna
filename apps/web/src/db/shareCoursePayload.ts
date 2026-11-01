@@ -8,7 +8,7 @@ import { finalAssessmentForCourse } from './assessmentMigration';
 import { stripAssetMedia } from './assets';
 import { presetForSequence } from './sequencePresets';
 import { packQuestionSetMedia } from '../questions/questionSetShare';
-import type { Card, Note } from './types';
+import type { Card, Note } from '@lacuna/core/db/types';
 import type {
   ShareCard,
   ShareNote,

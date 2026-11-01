@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CURRENT_ITEM_PAYLOAD_VERSION } from './types';
+import { CURRENT_ITEM_PAYLOAD_VERSION } from '@lacuna/core/db/types';
 import { itemPayloadIsValid } from '../items/payloadValidation';
 import {
   specificationPointIdsSchema,

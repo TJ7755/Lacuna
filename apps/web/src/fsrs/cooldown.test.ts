@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, LegacyDeckRecord } from '../db/types';
+import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
 import { makeObjectiveContext } from './objective';
-import { defaultFsrsParameters, MS_PER_DAY } from './params';
+import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { applyCooldown, decrementCooldowns, selectNextCard } from './cooldown';
 
 const NOW = 10 * MS_PER_DAY;

@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { jevMarkProvenanceSchema } from '../jev/provenance';
+import { jevMarkProvenanceSchema } from '@lacuna/core/jev/provenance';
 import { itemPayloadIsValid } from '../items/payloadValidation';
-import { parseQuestionSetRecord } from '../questions/questionSetCodec';
+import { parseQuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 import { parseQuestionSetPracticeNode } from './questionSetPracticeNode';
 import {

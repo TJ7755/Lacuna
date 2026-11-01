@@ -6,7 +6,7 @@ import {
   readHandledFinalExam,
   writeAfterFinalExamPolicy,
 } from './finalExamLifecycle';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 
 const course = {
   id: 'course-1',

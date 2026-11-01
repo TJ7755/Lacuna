@@ -1,7 +1,10 @@
 import { stripAssetMedia } from '../db/assets';
-import { remapQuestionBankMetadata } from './bankMetadata';
-import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
-import type { QuestionAnswer } from './questionSets';
+import { remapQuestionBankMetadata } from '@lacuna/core/questions/bankMetadata';
+import {
+  parseQuestionSetRecord,
+  type QuestionSetRecord,
+} from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionAnswer } from '@lacuna/core/questions/questionSets';
 
 export function packQuestionSetMedia(
   record: QuestionSetRecord,

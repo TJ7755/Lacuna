@@ -1,5 +1,5 @@
-import type { Card, Course, CourseAssessment, Lesson, PracticeNode } from '../db/types';
-import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
+import type { Card, Course, CourseAssessment, Lesson, PracticeNode } from '@lacuna/core/db/types';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 export function makeCourse(overrides: Partial<Course> & Pick<Course, 'id'>): Course {
   return {

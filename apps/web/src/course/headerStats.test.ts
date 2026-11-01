@@ -6,8 +6,8 @@ import type {
   Lesson,
   LessonCardExposure,
   ReviewLog,
-} from '../db/types';
-import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
+} from '@lacuna/core/db/types';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { courseDueReviewCards, courseHeaderStats } from './headerStats';
 import { computeCourseSummaries } from '../state/courseSummaries';
 import { makeExamDateContext } from '../fsrs/examDate';

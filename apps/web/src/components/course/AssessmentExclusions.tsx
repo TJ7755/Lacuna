@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Card, Lesson, LessonCardLink } from '../../db/types';
+import type { Card, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import { plainFront } from '../cards/lessonCardRow';
 import { inputFrameClassName } from '../ui/Field';
 import { PathEditorPopoverContent } from './PathEditorPopover';

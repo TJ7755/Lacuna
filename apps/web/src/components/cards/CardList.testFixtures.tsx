@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { forwardRef } from 'react';
-import type { Card, LegacyDeckRecord } from '../../db/types';
+import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
 import { courseCardListContext } from './cardListContext';
 export const mockNotify = vi.fn();
 const dataHooks = vi.hoisted(() => ({ useCard: vi.fn() }));
@@ -43,7 +43,7 @@ vi.mock('../../db/assetCache', () => ({
   resolveAssetUrl: () => Promise.resolve('blob:diagram'),
 }));
 
-vi.mock('../../fsrs/leech', () => ({
+vi.mock('@lacuna/core/fsrs/leech', () => ({
   isLeech: vi.fn(() => false),
 }));
 

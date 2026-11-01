@@ -8,7 +8,7 @@
 
 import { listSequences } from './sequenceRepository';
 import { sequenceForItemId } from './sequenceGeneration';
-import type { Card, Sequence } from './types';
+import type { Card, Sequence } from '@lacuna/core/db/types';
 
 /**
  * Map each card generated from a `lines`-mode sequence to its owning Sequence. Cards not

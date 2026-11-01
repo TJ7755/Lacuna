@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Card, Sequence, SequenceItem } from '../../../db/types';
+import type { Card, Sequence, SequenceItem } from '@lacuna/core/db/types';
 import {
   advanceRecitation,
   initialRecitationState,

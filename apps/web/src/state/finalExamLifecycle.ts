@@ -1,4 +1,4 @@
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { createLocalSetting, oneOf } from './localSetting';
 
 const HANDLED_KEY = 'lacuna.handledFinalExams';

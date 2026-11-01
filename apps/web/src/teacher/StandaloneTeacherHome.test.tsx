@@ -6,7 +6,7 @@ import {
   type ClassSession,
 } from './StandaloneTeacherHome';
 import { ThemeProvider } from '../state/ThemeContext';
-import { DAY_MS, isoDayLabel, isoDayStartMs } from '../../../relay/shared/insights/index';
+import { DAY_MS, isoDayLabel, isoDayStartMs } from '@lacuna/protocol/insights/index';
 import type { ReadClassReports } from './readReports';
 
 const course = { shareId: 'a'.repeat(32), courseName: 'Biology', verifiedAt: 0 };

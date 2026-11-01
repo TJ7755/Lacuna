@@ -4,7 +4,7 @@ import {
   type RecordReviewArgs,
   type RecordReviewResult,
 } from '../../db/reviewRepository';
-import type { UserPerformance } from '../../db/types';
+import type { UserPerformance } from '@lacuna/core/db/types';
 import { updatePerformance } from '../../fsrs/grading';
 export { answerCorrect, answerFeedback, answerGrade, sessionStopAfterAnswer } from './answerPolicy';
 export type { AnswerInput, AnswerResult, SessionStop } from './answerPolicy';

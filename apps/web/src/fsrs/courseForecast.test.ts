@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { courseForecast, examDayHistory } from './courseForecast';
 import { rAtExam } from './forwardSim';
-import { defaultFsrsParameters, MS_PER_DAY } from './params';
-import type { Card, SchedulerConfig } from '../db/types';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
+import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 const NOW = 1_800_000_000_000;
 

@@ -3,7 +3,7 @@ import staticBank from '../../../../docs/question-bank/examples/static-multipart
 import familyBank from '../../../../docs/question-bank/examples/numeric-family.json';
 import { materialiseQuestionBank, parseQuestionBank } from './bank';
 import { searchQuestionSets } from './questionSetSearch';
-import type { QuestionSet } from './questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 
 const answer = {
   maxMarks: 1,

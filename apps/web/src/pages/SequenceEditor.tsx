@@ -35,7 +35,7 @@ import {
   updateSequence,
   type SequenceSnapshot,
 } from '../db/sequenceRepository';
-import type { SequencePresetId } from '../db/types';
+import type { SequencePresetId } from '@lacuna/core/db/types';
 import { useEditorKeys } from '../hooks/dialogKeys';
 import { useIsTouchMode } from '../state/inputMode';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';

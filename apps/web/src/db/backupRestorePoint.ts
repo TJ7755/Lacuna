@@ -2,7 +2,7 @@
 import { db } from './schema';
 import { exportDatabase } from './backupSnapshot';
 import { mirrorToFolder } from './backupFolder';
-import type { BackupFile, BackupSnapshot } from './types';
+import type { BackupFile, BackupSnapshot } from '@lacuna/core/db/types';
 
 const MAX_RESTORE_POINTS = 10;
 const STALE_MS = 24 * 60 * 60 * 1000;

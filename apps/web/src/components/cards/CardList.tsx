@@ -9,7 +9,7 @@ import { CheckIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { GroupedCardList } from './GroupedCardList';
-import type { Card, Occlusion, Sequence } from '../../db/types';
+import type { Card, Occlusion, Sequence } from '@lacuna/core/db/types';
 import type { CardListContext } from './cardListContext';
 import { BulkBarButton, CardBulkBar } from './CardBulkBar';
 

@@ -1,7 +1,7 @@
 import { rememberAssetImageSize, resolveAssetUrl } from '../../db/assetCache';
 import { referencedAssetHashesInValues } from '../../db/assets';
 import type { OcclusionCardData } from '../../db/occlusionStudy';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import { selectNext, type SessionContext } from '../../fsrs/session';
 import { makeObjectiveContext } from '../../fsrs/objective';
 import type { CooldownMap } from '../../fsrs/cooldown';

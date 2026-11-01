@@ -1,5 +1,5 @@
 import frozenCoefficients from './coefficients/half-life-logistic-v3.json';
-import type { Card, ReviewLog, RevisionProjection } from '../db/types';
+import type { Card, ReviewLog, RevisionProjection } from '@lacuna/core/db/types';
 import type {
   CramMemoryModel,
   MemoryModelFallbackReason,
@@ -7,7 +7,7 @@ import type {
   SuccessGradeCoefficient,
 } from './cramAllocator';
 import { forgettingCurve } from './forwardSim';
-import { MS_PER_DAY } from './params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { lacksUnprimedRetest } from './primedReview';
 
 const MODEL_NAME = 'half-life-logistic-v3-routed';

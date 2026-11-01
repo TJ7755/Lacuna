@@ -1,4 +1,4 @@
-import type { UserPerformance } from '../db/types';
+import type { UserPerformance } from '@lacuna/core/db/types';
 import { DEFAULT_REVIEW_SECONDS } from './stats';
 
 export interface ResponseTimeCoefficients {

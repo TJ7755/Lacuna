@@ -6,7 +6,7 @@ import {
   listConcepts,
 } from '../questions/repository';
 import { normaliseConceptName } from '../questions/concepts';
-import type { QuestionPayload } from '../questions/types';
+import type { QuestionPayload } from '@lacuna/core/questions/types';
 
 export interface BatchFixedQuestionInput {
   courseId: string;

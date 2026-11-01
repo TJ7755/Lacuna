@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildPath, type PracticePathNode } from './path';
-import { MS_PER_DAY } from '../fsrs/params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { makeCourse, makeLesson, makePracticeNode, makeExamDate } from './path.testFixtures';
 
 describe('buildPath — practice nodes', () => {

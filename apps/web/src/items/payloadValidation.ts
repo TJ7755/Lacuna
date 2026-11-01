@@ -1,5 +1,5 @@
-import type { CardType, MarkSchemeLine } from '../db/types';
-import { CURRENT_ITEM_PAYLOAD_VERSION } from '../db/types';
+import type { CardType, MarkSchemeLine } from '@lacuna/core/db/types';
+import { CURRENT_ITEM_PAYLOAD_VERSION } from '@lacuna/core/db/types';
 import { compileMarkScheme, serialiseMarkScheme } from './markSchemeCompiler';
 import { numericAnswerSpecIsValid } from './numericAnswerSpec';
 

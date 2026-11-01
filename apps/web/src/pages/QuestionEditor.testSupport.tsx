@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { beforeEach, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
-import type { QuestionConceptSet, QuestionDefinition } from '../questions/types';
+import type { QuestionConceptSet, QuestionDefinition } from '@lacuna/core/questions/types';
 import { QuestionEditor } from './QuestionEditor';
 
 const mocks = vi.hoisted(() => ({

@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { cardSchedulingHorizon, schedulingHorizon, MAINTENANCE_HORIZON_DAYS } from './horizon';
 import { studyPool } from './eligibility';
 import { progressValue } from './objective';
-import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from './params';
-import type { Card, LegacyDeckRecord } from '../db/types';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
 
 function makeDeck(overrides: Partial<LegacyDeckRecord> = {}): LegacyDeckRecord {
   return {

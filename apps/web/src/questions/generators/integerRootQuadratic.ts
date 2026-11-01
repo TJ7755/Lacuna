@@ -5,11 +5,11 @@ import {
   type ItemFixture,
   type MarkSchemeLine,
   type QuestionPayload,
-} from '../../items/types';
+} from '@lacuna/core/items/types';
 import type { GeneratorDescription, ResolvedGeneratedQuestion } from './contracts';
 import { QuestionGeneratorError } from './errors';
 import { deepFreeze } from './immutable';
-import { SeededRandom } from './seededRandom';
+import { SeededRandom } from '@lacuna/core/questions/generators/seededRandom';
 
 export const INTEGER_ROOT_QUADRATIC_GENERATOR_KEY = 'integer-root-quadratic' as const;
 export const INTEGER_ROOT_QUADRATIC_GENERATOR_VERSION = 1 as const;

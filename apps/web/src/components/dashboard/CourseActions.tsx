@@ -10,7 +10,7 @@ import { Button } from '../ui/Button';
 import { updateCourse } from '../../db/courseRepository';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 
 export interface CourseMenuState {
   course: Course;

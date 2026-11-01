@@ -4,8 +4,8 @@ import { db } from '../db/schema';
 import { createCourse } from '../db/courseRepository';
 import { createConcept } from './repository';
 import { createQuestionSet } from './questionSetRepository';
-import type { QuestionSetRecord } from './questionSetCodec';
-import type { JevDiagnosis } from '../jev/diagnosis';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { JevDiagnosis } from '@lacuna/core/jev/diagnosis';
 import {
   applyJevAllocationDecision,
   completeQuestionSetAttempt,

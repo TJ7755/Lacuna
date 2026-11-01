@@ -1,4 +1,4 @@
-import type { Specification } from './catalogue';
+import type { Specification } from '@lacuna/core/specifications/catalogue';
 
 export const paperSpecification: Specification = {
   id: 'example-science',

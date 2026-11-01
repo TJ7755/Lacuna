@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { OtherShareWays } from './OtherShareWays';
 
 vi.mock('../../db/assets', () => ({ referencedAssetHashes: () => [] }));

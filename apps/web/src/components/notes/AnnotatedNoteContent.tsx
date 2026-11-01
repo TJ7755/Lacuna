@@ -14,7 +14,7 @@ import {
   listNoteAnnotations,
   updateNoteAnnotation,
 } from '../../db/repository';
-import type { Note, NoteAnnotation } from '../../db/types';
+import type { Note, NoteAnnotation } from '@lacuna/core/db/types';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import {
   renderAnnotationHighlights,

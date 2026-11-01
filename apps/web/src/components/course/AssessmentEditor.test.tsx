@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
-import type { Card, Lesson } from '../../db/types';
+import type { Card, Lesson } from '@lacuna/core/db/types';
 import {
   AssessmentEditor,
   assessmentDraftIsSaveable,

@@ -8,7 +8,7 @@ import { createLesson, deleteLesson, restoreLesson, snapshotLesson } from '../db
 import { db } from '../db/schema';
 import { assetUrl, collectOrphanedAssets } from '../db/assets';
 import { createConcept, deleteConcept } from './repository';
-import { parseQuestionSetRecord } from './questionSetCodec';
+import { parseQuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import {
   createQuestionSet,
   deleteQuestionSet,
@@ -33,7 +33,7 @@ import {
   createQuestionSetPracticeNode,
   deleteQuestionSetPracticeNode,
 } from '../db/practiceNodeRepository';
-import type { QuestionSet } from './questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 
 function content(
   courseId: string,

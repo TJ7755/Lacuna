@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { ShareLinkPanel } from './ShareLinkPanel';
 
 const { publish, credentials } = vi.hoisted(() => ({ publish: vi.fn(), credentials: vi.fn() }));

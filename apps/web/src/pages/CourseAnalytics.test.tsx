@@ -3,13 +3,13 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
-import type { QuestionAttempt, QuestionDefinition } from '../questions/types';
+import type { QuestionAttempt, QuestionDefinition } from '@lacuna/core/questions/types';
 import { CourseAnalytics } from './CourseAnalytics';
 import { ToastProvider } from '../components/ui/Toast';
 import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
 import { makeCard, makeCourse, makeExamDate, makeLesson } from '../course/path.testFixtures';
-import type { Course } from '../db/types';
-import { MS_PER_DAY } from '../fsrs/params';
+import type { Course } from '@lacuna/core/db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 const mocks = vi.hoisted(() => ({
   questionData: undefined as CourseQuestionData | undefined,

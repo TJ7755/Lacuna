@@ -4,8 +4,8 @@ import type {
   CourseAssessment,
   LessonCardExposure,
   LessonCompletion,
-} from '../db/types';
-import { MS_PER_DAY } from '../fsrs/params';
+} from '@lacuna/core/db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { LessonStatus, PathNode } from './pathTypes';
 
 /**

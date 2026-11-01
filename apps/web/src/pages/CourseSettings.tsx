@@ -24,8 +24,8 @@ import {
   updateCourse,
   type CourseSnapshot,
 } from '../db/courseRepository';
-import { clampRequestRetention } from '../fsrs/params';
-import type { ExamObjective } from '../db/types';
+import { clampRequestRetention } from '@lacuna/core/fsrs/params';
+import type { ExamObjective } from '@lacuna/core/db/types';
 import { SchedulingFieldsSection } from './settings/SchedulingFieldsSection';
 import { OptimisationPanel } from './settings/OptimisationPanel';
 import { CourseEntrySection } from './settings/CourseEntrySection';

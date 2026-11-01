@@ -8,7 +8,7 @@ import {
   restoreConcept,
   restoreQuestion,
 } from '../../questions/repository';
-import type { Concept } from '../../questions/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import type { QuestionSnapshot } from '../../questions/repository';
 import { MCP_TOOL_SURFACE_VERSION, TOOL_REGISTRY, validateAndRun } from '../registry';
 import type { ToolContext } from '../types';

@@ -11,7 +11,7 @@ import {
   updateOcclusion,
 } from './occlusionRepository';
 import { createCourse, createLesson, deleteCards, recordReview } from './repository';
-import type { Occlusion, OcclusionRegion } from './types';
+import type { Occlusion, OcclusionRegion } from '@lacuna/core/db/types';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 
 async function reset() {

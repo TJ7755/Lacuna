@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MarkSchemeLine } from '../db/types';
+import type { MarkSchemeLine } from '@lacuna/core/db/types';
 import {
   compileMarkScheme,
   renderLineAsEnglish,

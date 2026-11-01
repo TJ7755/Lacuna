@@ -6,7 +6,7 @@ import {
   parseSpecification,
   pointsForSelection,
   type Specification,
-} from './catalogue';
+} from '@lacuna/core/specifications/catalogue';
 
 /** Synthetic fixture, not real specification content. */
 function fixture(overrides: Partial<Specification> = {}): Specification {

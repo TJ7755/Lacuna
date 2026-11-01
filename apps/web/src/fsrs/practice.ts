@@ -14,7 +14,7 @@
 // periodic practice.
 
 import { daysUntil } from '../utils/datetime';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 
 /**
  * Whether to auto-insert a practice node now.

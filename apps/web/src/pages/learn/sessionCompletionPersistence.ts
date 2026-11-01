@@ -1,7 +1,7 @@
 import { db } from '../../db/schema';
 import { completeRevisionWindow, refreshRevisionPlan } from '../../db/revisionPlanRepository';
 import { savePracticeMilestoneProgress } from '../../db/practiceNodeRepository';
-import type { Card, Course, RevisionPlan } from '../../db/types';
+import type { Card, Course, RevisionPlan } from '@lacuna/core/db/types';
 import type { ExamDateContext } from '../../fsrs/examDate';
 import type { SessionContext } from '../../fsrs/session';
 import {

@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
 import { AnimatePresence, m as motion } from 'motion/react';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import {
   ClockIcon,
   EditIcon,
@@ -19,7 +19,7 @@ import { STUDY_HEADER_ROW } from '../../components/learn/studyHeaderLayout';
 import { PomodoroTimer } from '../../components/learn/PomodoroTimer';
 import { cn } from '../../components/ui/cn';
 import { scaledSpring } from '../../components/ui/motion';
-import type { CardFilter } from '../../db/search';
+import type { CardFilter } from '@lacuna/core/db/search';
 import { TouchMenuSheet } from './TouchMenu';
 import { FILTER_LABELS } from './types';
 import type { LearnModeType, SessionCardOutcome, StudyUnit } from './types';

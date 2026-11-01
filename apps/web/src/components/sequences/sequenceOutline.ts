@@ -5,7 +5,7 @@
 // drops chunk labels no item refers to any more.
 
 import { splitScript, type SplitScriptItem } from '../../db/scriptSplitter';
-import type { SequenceItem } from '../../db/types';
+import type { SequenceItem } from '@lacuna/core/db/types';
 
 export interface Outline {
   items: SequenceItem[];

@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMotionValue, useSpring, useTransform } from 'motion/react';
-import type { Card } from '../../db/types';
+import type { Card } from '@lacuna/core/db/types';
 import { useIsTouchMode } from '../../state/inputMode';
 import { hapticLight, hapticMedium } from '../../utils/haptic';
 import { scaledSpring } from '../ui/motion';

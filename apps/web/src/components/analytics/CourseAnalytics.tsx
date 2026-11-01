@@ -6,9 +6,9 @@ import { useChartColours } from './useChartColours';
 import { FadeInView } from '../ui/FadeInView';
 import { reviewVolume, stabilityProfile } from './prepare';
 import { progressHeading } from '../../fsrs/objective';
-import type { Card, Course } from '../../db/types';
+import type { Card, Course } from '@lacuna/core/db/types';
 import type { LessonProgress } from '../../course/courseProgress';
-import type { ReviewHistoryEntry } from '../../db/reviewHistory';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { useAdvancedDetails } from '../../state/advancedDetails';
 
 interface CourseAnalyticsProps {

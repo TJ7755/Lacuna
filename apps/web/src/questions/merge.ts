@@ -1,6 +1,11 @@
-import type { CourseRecord, Tombstone } from '../db/types';
+import type { CourseRecord, Tombstone } from '@lacuna/core/db/types';
 import { replayQuestionSchedule } from './scheduler';
-import type { Concept, QuestionAttempt, QuestionConceptSet, QuestionDefinition } from './types';
+import type {
+  Concept,
+  QuestionAttempt,
+  QuestionConceptSet,
+  QuestionDefinition,
+} from '@lacuna/core/questions/types';
 
 export interface QuestionMergeCollections {
   concepts: Concept[];

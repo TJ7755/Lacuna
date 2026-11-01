@@ -8,7 +8,7 @@ import { exportDatabase, importBackup, readBackupFile } from './portability';
 import { recordReview } from './repository';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { waitForSessionHistory } from './portability.testFixtures';
-import type { BackupFile, ReviewLog } from './types';
+import type { BackupFile, ReviewLog } from '@lacuna/core/db/types';
 
 interface CorpusCase {
   provenance: { kind: string; sourceCommit: string };

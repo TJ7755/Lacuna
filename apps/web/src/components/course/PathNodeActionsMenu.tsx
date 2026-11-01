@@ -2,7 +2,7 @@ import { moveAuthoredPathNode } from './pathNodeReorder';
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { PathNode } from '../../course/path';
-import type { CourseAssessment, Lesson } from '../../db/types';
+import type { CourseAssessment, Lesson } from '@lacuna/core/db/types';
 import { deleteCourseAssessment, updateCourseAssessment } from '../../db/assessmentRepository';
 import { deletePracticeNode, deleteQuestionSetPracticeNode } from '../../db/practiceNodeRepository';
 import { dialogKeyDown } from '../../hooks/dialogKeys';

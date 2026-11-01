@@ -7,7 +7,7 @@
 
 import { listOcclusions } from './occlusionRepository';
 import { occlusionForRegionId, resolveOcclusionAnswerText } from './occlusionGeneration';
-import type { Card, Occlusion } from './types';
+import type { Card, Occlusion } from '@lacuna/core/db/types';
 
 /** What a Learn mode session needs for one occlusion-generated card: its owning
  *  Occlusion (for rendering) and the resolved typed-mode answer text, if any. */

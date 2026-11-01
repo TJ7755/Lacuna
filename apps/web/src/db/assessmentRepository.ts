@@ -6,7 +6,7 @@ import { syncCourseSchedulingUnits } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
 import { recordTombstone, recordTombstones, stampUpdatedAt } from './mutationStamp';
 import { db, makeId } from './schema';
-import type { CourseAssessment } from './types';
+import type { CourseAssessment } from '@lacuna/core/db/types';
 import { validateAssessmentStructure } from './assessmentValidation';
 import { validatePaperAssessmentDates } from '../specifications/assessment';
 

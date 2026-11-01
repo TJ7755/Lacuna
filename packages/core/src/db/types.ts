@@ -1,0 +1,97 @@
+// Compatibility exports for persisted domain contracts.
+
+export type {
+  Grade,
+  FsrsCardState,
+  FsrsParameters,
+  ExamObjective,
+  ReviewSessionKind,
+  ReviewLog,
+  LineVerdict,
+  CheckerDisputeReport,
+  SchedulerConfig,
+  LegacyDeckRecord,
+  LegacyDeck,
+  LegacyFolder,
+  SessionHistoryEntry,
+  UserPerformance,
+  SchedulingUnitKind,
+  SchedulingUnitRecord,
+  CoursePerformance,
+  SchedulingPerformance,
+} from '@lacuna/core/db/types/scheduling';
+export type {
+  UnlockMode,
+  CourseRecord,
+  CourseDistributedCopy,
+  CourseSchedulingMode,
+  Course,
+  AssessmentKind,
+  CourseAssessment,
+  RevisionProjection,
+  RevisionReplanReason,
+  RevisionPlanInputSnapshot,
+  RevisionPlanScopeSnapshot,
+  RevisionPlanCardState,
+  RevisionPlanWindow,
+  RevisionPlanSession,
+  RevisionPlanReplan,
+  RevisionPlanPendingReplan,
+  RevisionPlan,
+  AssessmentDateCompatibility,
+  AnswerMode,
+  Lesson,
+  Note,
+  LessonCardLink,
+  LessonCardExposure,
+  LessonCompletion,
+  NoteAnnotation,
+  PracticeNode,
+  QuestionSetPracticeNode,
+  PracticeMilestone,
+} from '@lacuna/core/db/types/course';
+export type {
+  SequencePresetId,
+  Sequence,
+  SequenceItem,
+  OcclusionRegion,
+  Occlusion,
+} from '@lacuna/core/db/types/generatedContent';
+export type {
+  CardType,
+  MarkSchemeLine,
+  NumericAnswerSpec,
+  ItemFixture,
+  ItemPayload,
+  Card,
+  ScheduleEdit,
+} from '@lacuna/core/db/types/card';
+export type {
+  MediaAsset,
+  BackupAsset,
+  BackupSnapshot,
+  AppStateEntry,
+  Tombstone,
+  RememberedSyncCredentials,
+  RememberedShareLinkCredentials,
+  SyncState,
+  BackupFile,
+} from '@lacuna/core/db/types/storage';
+export type {
+  AgentMemoryTag,
+  AgentMemoryStatus,
+  AgentMemoryBasis,
+  AgentMemoryReferenceKind,
+  AgentMemoryReference,
+  AgentMemoryProvenance,
+  AgentMemory,
+} from '@lacuna/core/db/types/agentMemory';
+export type {
+  LineageIdMapping,
+  LineageLessonSnapshot,
+  LineageNoteSnapshot,
+  LineageCardSnapshot,
+  PendingMergeReview,
+} from '@lacuna/core/db/types/lineage';
+
+export { CURRENT_ITEM_PAYLOAD_VERSION } from '@lacuna/core/items/types';

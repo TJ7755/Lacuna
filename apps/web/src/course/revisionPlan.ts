@@ -14,7 +14,7 @@ import type {
   RevisionPlanWindow,
   RevisionProjection,
   RevisionReplanReason,
-} from '../db/types';
+} from '@lacuna/core/db/types';
 import { isAvailable } from '../fsrs/eligibility';
 import { getComponentsInZone } from '../utils/datetime';
 import {

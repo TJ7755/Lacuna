@@ -7,7 +7,7 @@ import {
   type SpecificationProgressFilter,
 } from '../../course/specificationProgress';
 import type { ConceptPracticeItem } from '../../questions/conceptPractice';
-import { papersForSelection } from '../../specifications/selection';
+import { papersForSelection } from '@lacuna/core/specifications/selection';
 import { progressHeading } from '../../fsrs/objective';
 import { originFrom } from '../../utils/editorOrigin';
 import { cn } from '../ui/cn';

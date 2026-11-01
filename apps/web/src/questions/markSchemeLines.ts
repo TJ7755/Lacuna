@@ -1,5 +1,5 @@
 import { makeId } from '../utils/id';
-import type { MarkAllocation } from './questionSets';
+import type { MarkAllocation } from '@lacuna/core/questions/questionSets';
 
 /** Non-blank lines are points; a trailing integer in brackets is stored only in maxMarks. */
 export function parseMarkSchemeLines(

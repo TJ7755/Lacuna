@@ -4,8 +4,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { hydrateCardsWithHistory, listAllReviewHistory } from '../db/reviewHistoryRead';
-import type { ReviewHistoryEntry } from '../db/reviewHistory';
-import type { BackupSnapshot, Card, SessionHistoryEntry } from '../db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
+import type { BackupSnapshot, Card, SessionHistoryEntry } from '@lacuna/core/db/types';
 import { listGlobalDailySessionHistory } from '../db/sessionHistoryRead';
 
 export function useCard(cardId: string | undefined): Card | null | undefined {

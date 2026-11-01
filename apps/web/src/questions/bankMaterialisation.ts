@@ -1,15 +1,15 @@
-import { questionBankSchema, type QuestionBank } from './bankSchema';
-import type { QuestionSetRecord } from './questionSetCodec';
-import type { QuestionBankMetadata } from './bankMetadata';
+import { questionBankSchema, type QuestionBank } from '@lacuna/core/questions/bankSchema';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionBankMetadata } from '@lacuna/core/questions/bankMetadata';
 import {
   bankFingerprint,
   canonicalBankJson,
   mapBankQuestions,
   materialiseDeclarativeFamily,
 } from './generators/declarative';
-import { validateQuestionSet, type QuestionSet } from './questionSets';
+import { validateQuestionSet, type QuestionSet } from '@lacuna/core/questions/questionSets';
 
-export type { QuestionBank } from './bankSchema';
+export type { QuestionBank } from '@lacuna/core/questions/bankSchema';
 
 function parseBankShape(value: unknown): QuestionBank {
   const bank = questionBankSchema.parse(value);

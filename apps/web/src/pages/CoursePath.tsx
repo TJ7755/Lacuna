@@ -38,7 +38,7 @@ import { startOfDay } from '../utils/datetime';
 import { updateCourse } from '../db/courseRepository';
 import { useCoursePathReorder } from '../components/course/useCoursePathReorder';
 import { useToast } from '../components/ui/Toast';
-import type { CourseAssessment, PracticeNode } from '../db/types';
+import type { CourseAssessment, PracticeNode } from '@lacuna/core/db/types';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { loadLessonView } from '../routes/lessonRoute';
 import { loadRouteModule } from '../routes/routeModule';

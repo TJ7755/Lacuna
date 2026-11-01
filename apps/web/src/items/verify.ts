@@ -14,7 +14,7 @@ import {
   unaryPlusDependencies,
   type MathNode,
 } from 'mathjs/number';
-import type { LineVerdict, MarkSchemeLine, NumericAnswerSpec } from '../db/types';
+import type { LineVerdict, MarkSchemeLine, NumericAnswerSpec } from '@lacuna/core/db/types';
 
 const { parse } = create({
   absDependencies,

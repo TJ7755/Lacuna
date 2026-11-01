@@ -12,7 +12,7 @@ import {
   startQuestionSetAttempt,
 } from '../questions/questionSetAttemptRepository';
 import { jevEngine } from '../jev/engine';
-import { JEV_CONSENT_VERSION } from '../jev/types';
+import { JEV_CONSENT_VERSION } from '@lacuna/core/jev/types';
 import * as attemptRepository from '../questions/questionSetAttemptRepository';
 
 describe('QuestionSetPractice marking', () => {

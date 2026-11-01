@@ -1,4 +1,4 @@
-import type { Card, Grade, SchedulerConfig, UserPerformance } from '../../db/types';
+import type { Card, Grade, SchedulerConfig, UserPerformance } from '@lacuna/core/db/types';
 import type { ExamDateContext } from '../../fsrs/examDate';
 import { gradeFromMarks, gradeFromResponse, HINT_TIME_PENALTY_SEC } from '../../fsrs/grading';
 import { reviewFeedbackMessage, reviewRetentionMessage } from '../../fsrs/gradingFeedback';

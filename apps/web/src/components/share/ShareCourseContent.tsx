@@ -1,4 +1,4 @@
-import type { Course } from '../../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { useCourseCards } from '../../state/useCourseData';
 import { OtherShareWaysFrame, OtherShareControls } from './OtherShareWays';
 import { ShareLinkPanel } from './ShareLinkPanel';

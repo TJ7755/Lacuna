@@ -1,4 +1,4 @@
-import { MS_PER_DAY } from '../fsrs/params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 /** The user's current IANA time zone (e.g. 'Europe/London'). */
 export function getLocalTimeZone(): string {

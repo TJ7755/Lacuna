@@ -8,7 +8,7 @@ import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingD
 import { friendlyDbError } from './dbErrors';
 import { lessonCardExposureId, recordTombstones, stampUpdatedAt } from './mutationStamp';
 import { db, makeId } from './schema';
-import type { AnswerMode, Card, CardType, ItemPayload } from './types';
+import type { AnswerMode, Card, CardType, ItemPayload } from '@lacuna/core/db/types';
 
 async function assertValidCardPayload(type: CardType, payload: unknown): Promise<void> {
   if (payload === undefined || payload === null) return;

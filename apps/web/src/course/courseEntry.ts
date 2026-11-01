@@ -1,4 +1,4 @@
-import type { CourseRecord, CourseAssessment, Lesson, PracticeNode } from '../db/types';
+import type { CourseRecord, CourseAssessment, Lesson, PracticeNode } from '@lacuna/core/db/types';
 import { lessonOrder } from './assessmentCoverage';
 import { resolveCourseLessonOrder } from './lessonOrder';
 

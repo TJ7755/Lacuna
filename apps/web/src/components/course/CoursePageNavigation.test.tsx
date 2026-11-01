@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { CoursePageNavigation } from './CoursePageNavigation';
-import type { CourseRecord } from '../../db/types';
+import type { CourseRecord } from '@lacuna/core/db/types';
 
 const mocks = vi.hoisted(() => ({ updateCourse: vi.fn(), notify: vi.fn() }));
 vi.mock('../../db/courseRepository', () => ({ updateCourse: mocks.updateCourse }));

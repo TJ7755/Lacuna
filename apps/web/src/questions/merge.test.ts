@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mergeQuestionAttempt } from './merge';
-import type { QuestionAttempt } from './types';
+import type { QuestionAttempt } from '@lacuna/core/questions/types';
 
 function answeredAttempt(): QuestionAttempt {
   return {

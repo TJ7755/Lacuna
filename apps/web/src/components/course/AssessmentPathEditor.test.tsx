@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
-import type { Card, CourseAssessment, Lesson } from '../../db/types';
+import type { Card, CourseAssessment, Lesson } from '@lacuna/core/db/types';
 import { ToastProvider } from '../ui/Toast';
 import { AssessmentPathEditor } from './AssessmentPathEditor';
 import { updateCourseAssessment, deleteCourseAssessment } from '../../db/assessmentRepository';

@@ -6,7 +6,7 @@ import { exportDatabase, importBackup } from '../db/portability';
 import { encodeSnapshot, decodeSnapshot } from '../sync/snapshot';
 import { mergeSnapshots } from '../sync/mergeSnapshots';
 import { createJevEngine, JEV_SETTINGS_STORAGE_KEY, JEV_INSTALLATION_STORAGE_KEY } from './engine';
-import { JEV_CONSENT_VERSION } from './types';
+import { JEV_CONSENT_VERSION } from '@lacuna/core/jev/types';
 it('exports mark evidence but excludes device consent and credentials from backup and sync', async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
   localStorage.setItem('lacuna.answerInput', 'reveal');

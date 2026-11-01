@@ -7,8 +7,8 @@ import type * as ReactRouterDom from 'react-router-dom';
 import { LessonView } from './LessonView';
 import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
 import { ToastProvider } from '../components/ui/Toast';
-import type { Card, Course, Lesson, Note } from '../db/types';
-import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
+import type { Card, Course, Lesson, Note } from '@lacuna/core/db/types';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 const mockNavigate = vi.fn();
 const { mockUpdateCourse, mockUpdateLesson } = vi.hoisted(() => ({

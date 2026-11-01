@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, it, vi } from 'vitest';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { TeacherHome } from './TeacherHome';
 
 const state = vi.hoisted(() => ({ courses: undefined as Course[] | undefined }));

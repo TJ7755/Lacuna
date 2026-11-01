@@ -2,7 +2,7 @@ import type { TypedAnswerFeedback } from '../markdown/typedAnswerFeedback';
 import { memo } from 'react';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { isLabelCardId, parseSequenceFront } from '../../db/sequenceGeneration';
-import type { Card, Occlusion } from '../../db/types';
+import type { Card, Occlusion } from '@lacuna/core/db/types';
 import { OcclusionStudyFace } from '../occlusion/OcclusionStudyFace';
 import { cn } from '../ui/cn';
 

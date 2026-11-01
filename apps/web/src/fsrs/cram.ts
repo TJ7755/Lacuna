@@ -18,9 +18,9 @@
 
 import { rAtExam } from './forwardSim';
 import { cardSchedulingHorizon } from './horizon';
-import { MASTERY_R } from './params';
+import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import type { ObjectiveContext } from './objective';
-import type { Card, SchedulerConfig } from '../db/types';
+import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 
 /** How close to the exam cram mode becomes available (and sensible). */
 export const EXAM_EVE_WINDOW_HOURS = 48;

@@ -9,7 +9,7 @@ import {
 import { usePathDropTransition } from './usePathDropTransition';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
-import type { Lesson } from '../../db/types';
+import type { Lesson } from '@lacuna/core/db/types';
 import { reorderLessons } from '../../db/lessonRepository';
 import { hapticStrong } from '../../utils/haptic';
 

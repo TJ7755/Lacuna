@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { useToast } from '../../components/ui/Toast';
-import type { SyncState } from '../../db/types';
+import type { SyncState } from '@lacuna/core/db/types';
 import { forgetRememberedCredentials, type SyncCredentials } from '../../sync/credentials';
 import { loadSyncPairing } from '../../sync/loaders';
 import { validateRecoveryPassphrase } from '../../sync/pairingConfig';

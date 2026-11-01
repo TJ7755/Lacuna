@@ -1,4 +1,4 @@
-import { jsonValuesEqual } from './lineageDiff';
+import { jsonValuesEqual } from '@lacuna/core/db/lineageDiff';
 import type {
   ExistingCard,
   ExistingLesson,
@@ -6,7 +6,7 @@ import type {
   ShareCardInput,
   ShareLessonInput,
   ShareNoteInput,
-} from './lineageDiff';
+} from '@lacuna/core/db/lineageDiff';
 import type {
   SharePayload,
   SharePayloadV2,
@@ -25,7 +25,7 @@ import type {
   LineageLessonSnapshot,
   LineageNoteSnapshot,
   Note,
-} from './types';
+} from '@lacuna/core/db/types';
 
 /** Narrowed view of the fields this module reads off a decoded course share payload. */
 export type LineagePayload = (

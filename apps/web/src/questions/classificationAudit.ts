@@ -1,6 +1,9 @@
 import { flattenQuestionSet } from './questionSetAuthoring';
-import type { QuestionSet } from './questionSets';
-import { SCIENCE_EXPLANATION_TECHNIQUES, SCIENCE_TECHNIQUES } from './techniqueTags';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
+import {
+  SCIENCE_EXPLANATION_TECHNIQUES,
+  SCIENCE_TECHNIQUES,
+} from '@lacuna/core/questions/techniqueTags';
 
 /** Content coverage only: counts neither learner evidence nor transferable mastery. */
 export function auditQuestionClassifications(

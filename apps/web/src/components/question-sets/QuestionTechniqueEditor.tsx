@@ -2,7 +2,7 @@ import {
   SCIENCE_EXPLANATION_TECHNIQUES,
   SCIENCE_TECHNIQUES,
   type TechniqueTags,
-} from '../../questions/techniqueTags';
+} from '@lacuna/core/questions/techniqueTags';
 
 export function QuestionTechniqueEditor({
   tags,

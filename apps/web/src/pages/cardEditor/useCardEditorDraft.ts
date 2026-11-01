@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EDITOR_TYPE_ORDER, type EditorCardType } from '../../components/cards/CardTypePicker';
-import type { AnswerMode, Card, ItemFixture, NumericAnswerSpec } from '../../db/types';
+import type { AnswerMode, Card, ItemFixture, NumericAnswerSpec } from '@lacuna/core/db/types';
 import { compileMarkScheme, serialiseMarkScheme } from '../../items/markSchemeCompiler';
 import { isAudioCardFront } from '../../media/audio';
 import { saveDraft, loadDraft, clearDraft } from '../../utils/drafts';

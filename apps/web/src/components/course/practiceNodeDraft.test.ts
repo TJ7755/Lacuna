@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PracticeNode } from '../../db/types';
+import type { PracticeNode } from '@lacuna/core/db/types';
 import { emptyPracticeNodeDraft, draftFromPracticeNode, parseCardCount } from './practiceNodeDraft';
 
 describe('parseCardCount', () => {

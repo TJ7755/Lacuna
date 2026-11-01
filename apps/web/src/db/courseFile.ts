@@ -17,7 +17,7 @@ import {
   sha256Blob,
   toBlob,
 } from './assets';
-import type { BackupAsset, MediaAsset } from './types';
+import type { BackupAsset, MediaAsset } from '@lacuna/core/db/types';
 
 export const MAX_COURSE_FILE_BYTES = 100 * 1024 * 1024;
 

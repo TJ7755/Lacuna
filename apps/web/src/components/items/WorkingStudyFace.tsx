@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Card, ItemPayload } from '../../db/types';
+import type { Card, ItemPayload } from '@lacuna/core/db/types';
 import { verifyWorkingLines } from '../../items/verify';
 import type { WorkingVerificationResult } from '../../items/verify';
 import type { MachineMarkedAnswer } from '../../pages/learn/types';

@@ -1,4 +1,4 @@
-import type { NumericAnswerSpec } from '../db/types';
+import type { NumericAnswerSpec } from '@lacuna/core/db/types';
 import { constantValue, parseExpression } from './verify';
 
 function expressionIsConstant(source: string): boolean {

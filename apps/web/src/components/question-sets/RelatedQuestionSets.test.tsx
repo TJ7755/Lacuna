@@ -6,7 +6,7 @@ import { createCourse, createCourseCard, createLesson } from '../../db/repositor
 import { createCourseAssessment } from '../../db/assessmentRepository';
 import { db } from '../../db/schema';
 import { createQuestionSet } from '../../questions/questionSetRepository';
-import type { QuestionSet } from '../../questions/questionSets';
+import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import { createConcept } from '../../questions/repository';
 import { RelatedQuestionSets } from './RelatedQuestionSets';
 

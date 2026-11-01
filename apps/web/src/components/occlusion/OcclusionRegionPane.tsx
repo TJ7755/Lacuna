@@ -9,7 +9,7 @@ import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 import { useLayoutEffect, useRef } from 'react';
 import { cn } from '../ui/cn';
 import { CloseIcon } from '../ui/icons';
-import type { OcclusionRegion } from '../../db/types';
+import type { OcclusionRegion } from '@lacuna/core/db/types';
 
 /** Display-only names — never persisted — derived from a region's position among
  *  same-role regions, matching the chosen mockup (design/arc6/mockups-occlusion.html). */

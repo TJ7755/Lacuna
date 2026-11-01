@@ -2,7 +2,7 @@
 //
 // British English throughout.
 
-import type { PracticeNode } from '../../db/types';
+import type { PracticeNode } from '@lacuna/core/db/types';
 
 export interface PracticeNodeDraft {
   name: string;

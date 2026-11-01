@@ -1,9 +1,9 @@
 import { expect, it } from 'vitest';
-import type { CourseAssessment } from '../db/types';
-import { MS_PER_DAY } from '../fsrs/params';
+import type { CourseAssessment } from '@lacuna/core/db/types';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { ConceptPracticeItem } from '../questions/conceptPractice';
 import { emptyQuestionSchedule } from '../questions/scheduler';
-import type { Concept } from '../questions/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import {
   paperSpecification,
   paperSpecificationReference,

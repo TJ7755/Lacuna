@@ -1,5 +1,5 @@
-import type { Grade } from '../db/types';
-import type { Card, SchedulerConfig } from '../db/types';
+import type { Grade } from '@lacuna/core/db/types';
+import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 import { resolveCardExamDate, type ExamDateContext } from './examDate';
 import { predictedRetrievabilityAtHorizon } from './progress';
 

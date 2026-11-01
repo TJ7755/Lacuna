@@ -26,16 +26,16 @@ import type {
   SchedulingPerformance,
   Tombstone,
   AgentMemory,
-} from './types';
-import { type ReviewHistoryEntry } from './reviewHistory';
+} from '@lacuna/core/db/types';
+import { type ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import type {
   Concept,
   QuestionAttempt,
   QuestionConceptSet,
   QuestionDefinition,
-} from '../questions/types';
-import type { QuestionSetRecord } from '../questions/questionSetCodec';
-import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+} from '@lacuna/core/questions/types';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import {
   reviewActivityProjectionMiddleware,
   type ReviewActivityRow,

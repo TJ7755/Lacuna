@@ -1,4 +1,4 @@
-import type { Card, ItemPayload, Lesson, Note, PendingMergeReview } from '../../db/types';
+import type { Card, ItemPayload, Lesson, Note, PendingMergeReview } from '@lacuna/core/db/types';
 import type {
   CardUpdate,
   LessonUpdate,
@@ -6,7 +6,7 @@ import type {
   ShareCardInput,
   ShareLessonInput,
   ShareNoteInput,
-} from '../../db/lineageDiff';
+} from '@lacuna/core/db/lineageDiff';
 import type { MergeReviewItemKind } from '../../db/mergeImport';
 import { renderLineAsEnglish } from '../../items/markSchemeCompiler';
 import { formatDate } from '../../utils/datetime';

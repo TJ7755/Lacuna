@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { computeStudyStats, DEFAULT_REVIEW_SECONDS, FORECAST_DAYS } from './stats';
-import { MS_PER_DAY } from './params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { startOfDay } from '../utils/datetime';
-import type { Card, ReviewLog, SchedulerConfig } from '../db/types';
+import type { Card, ReviewLog, SchedulerConfig } from '@lacuna/core/db/types';
 
 // A fixed local-noon reference so day bucketing is unambiguous.
 const NOW = new Date(2026, 5, 4, 12, 0, 0).getTime();

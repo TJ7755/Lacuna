@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../db/schema';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import {
   clearShareImport,
   confirmShareImport,

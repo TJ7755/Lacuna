@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, vi } from 'vitest';
-import type { SyncState } from '../../db/types';
+import type { SyncState } from '@lacuna/core/db/types';
 
 export const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
 beforeAll(() => Reflect.deleteProperty(Element.prototype, 'animate'));

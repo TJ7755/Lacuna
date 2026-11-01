@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { OcclusionRegion } from '../../db/types';
+import type { OcclusionRegion } from '@lacuna/core/db/types';
 import { OcclusionRegionPane } from './OcclusionRegionPane';
 
 const box = { shape: 'rectangle', x: 0, y: 0, w: 10, h: 10 } as const;

@@ -6,7 +6,7 @@ import {
   type DeletedAgentMemory,
 } from '../../db/agentMemoryRepository';
 import { db } from '../../db/schema';
-import type { AgentMemory, AgentMemoryReference } from '../../db/types';
+import type { AgentMemory, AgentMemoryReference } from '@lacuna/core/db/types';
 import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { TrashIcon } from '../../components/ui/icons';

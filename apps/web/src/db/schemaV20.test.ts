@@ -7,8 +7,8 @@ import {
   reviewHistoryEntriesForCard,
   reviewHistoryEntryId,
   reviewHistoryEntryIdForEvent,
-} from './reviewHistory';
-import type { Card, ReviewLog } from './types';
+} from '@lacuna/core/db/reviewHistory';
+import type { Card, ReviewLog } from '@lacuna/core/db/types';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 
 function review(timestamp: number, overrides: Partial<ReviewLog> = {}): ReviewLog {

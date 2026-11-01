@@ -36,7 +36,7 @@
 // feature card. An unpaired feature region has no mask to lift, so its back shows
 // `answerText` instead.
 
-import type { Card, CardType, Occlusion, OcclusionRegion } from './types';
+import type { Card, CardType, Occlusion, OcclusionRegion } from '@lacuna/core/db/types';
 
 /** The generated card type. Plain front/back is correct here for the same reason it is
  *  for sequences: the prompt/answer split maps directly onto front/back. */

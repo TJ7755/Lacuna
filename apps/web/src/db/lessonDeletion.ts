@@ -1,6 +1,6 @@
 import { assertLessonPrerequisites } from './lessonPrerequisites';
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
-import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { scheduleAssetGc } from './assets';
 import {
   ensureCourseBankBackingDeck,
@@ -21,7 +21,7 @@ import {
   projectCardsForStorage,
   reviewHistoryEntriesForCard,
   type ReviewHistoryEntry,
-} from './reviewHistory';
+} from '@lacuna/core/db/reviewHistory';
 import { db } from './schema';
 import type {
   Card,
@@ -37,7 +37,7 @@ import type {
   SchedulingUnitRecord,
   Sequence,
   SessionHistoryEntry,
-} from './types';
+} from '@lacuna/core/db/types';
 
 /** Everything {@link deleteLesson} removes or rewrites, captured for undo. */
 export interface LessonSnapshot {

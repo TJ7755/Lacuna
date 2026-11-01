@@ -3,8 +3,8 @@ import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 // prerequisites. It follows the prompt and answer, so ordinary entry starts with content.
 
 import type { Ref } from 'react';
-import type { Lesson } from '../../db/types';
-import type { Concept } from '../../questions/types';
+import type { Lesson } from '@lacuna/core/db/types';
+import type { Concept } from '@lacuna/core/questions/types';
 import { Button } from '../ui/Button';
 import { PlusIcon } from '../ui/icons';
 import type { QuestionAuthoringState } from '../../pages/questionDraft';

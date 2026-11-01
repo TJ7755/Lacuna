@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import type { Lesson, PracticeNode } from '../../db/types';
+import type { Lesson, PracticeNode } from '@lacuna/core/db/types';
 import { PracticeNodesSection } from './PracticeNodesSection';
 
 const navigate = vi.fn();

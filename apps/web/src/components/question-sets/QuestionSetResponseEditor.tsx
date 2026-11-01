@@ -2,7 +2,7 @@ import { SegmentedPills } from '../../pages/settings/SettingsUi';
 import { useId, useState } from 'react';
 import { ConfirmInline } from '../ui/ConfirmInline';
 import { makeId } from '../../db/schema';
-import type { QuestionAnswer, QuestionResponse } from '../../questions/questionSets';
+import type { QuestionAnswer, QuestionResponse } from '@lacuna/core/questions/questionSets';
 import { Button } from '../ui/Button';
 
 export function QuestionSetResponseEditor({

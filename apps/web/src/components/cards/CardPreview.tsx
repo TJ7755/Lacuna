@@ -9,7 +9,7 @@ import { PillToggleGroup } from './PillToggleGroup';
 import { CheckIcon } from '../ui/icons';
 import { motionTransition, scaledSpring } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import type { CardType } from '../../db/types';
+import type { CardType } from '@lacuna/core/db/types';
 
 export type PreviewSide = 'front' | 'back';
 

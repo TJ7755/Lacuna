@@ -1,9 +1,9 @@
 // Pure data-shaping helpers for the analytics charts.
 
 import { startOfDay } from '../../utils/datetime';
-import { isLeech } from '../../fsrs/leech';
-import type { Card, Course, ReviewLog, SessionHistoryEntry } from '../../db/types';
-import type { ReviewHistoryEntry } from '../../db/reviewHistory';
+import { isLeech } from '@lacuna/core/fsrs/leech';
+import type { Card, Course, ReviewLog, SessionHistoryEntry } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 /** DST-safe day offset: add/subtract whole days from a local-midnight epoch. */
 function addDays(dayStart: number, days: number): number {

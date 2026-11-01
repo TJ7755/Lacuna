@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Course } from '../db/types';
+import type { Course } from '@lacuna/core/db/types';
 import { createLocalSetting } from '../state/localSetting';
 import { enrolmentStorageOptions } from './enrolmentStorage';
 

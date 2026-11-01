@@ -1,8 +1,11 @@
 import Dexie from 'dexie';
-import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
+import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
 import { specificationAssessmentPointIds } from '../specifications/assessment';
 import { canEditLessons } from '../course/lessonViewMode';
-import { parseSpecificationReference, type SpecificationReference } from '../specifications/links';
+import {
+  parseSpecificationReference,
+  type SpecificationReference,
+} from '@lacuna/core/specifications/links';
 import { readPracticeDefaults } from '../state/practiceDefaults';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import { courseToRecord, hydrateCourse } from './assessmentMigration';
@@ -24,7 +27,7 @@ import type {
   CourseSchedulingMode,
   SchedulingPerformance,
   SchedulingUnitRecord,
-} from './types';
+} from '@lacuna/core/db/types';
 
 // ---------------------------------------------------------------------------
 // Courses

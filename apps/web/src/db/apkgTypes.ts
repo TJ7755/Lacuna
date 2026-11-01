@@ -1,4 +1,4 @@
-import type { Card } from './types';
+import type { Card } from '@lacuna/core/db/types';
 
 /** Parsed Anki card data before Lacuna assigns a Course-scoped Concept. */
 export type ApkgCardDraft = Omit<Card, 'conceptId'>;

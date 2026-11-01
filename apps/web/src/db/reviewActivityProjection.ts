@@ -5,7 +5,7 @@ import Dexie, {
   type DBCoreTransaction,
   type Middleware,
 } from 'dexie';
-import type { ReviewHistoryEntry } from './reviewHistory';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 export const REVIEW_ACTIVITY_TABLE = 'reviewActivity';
 

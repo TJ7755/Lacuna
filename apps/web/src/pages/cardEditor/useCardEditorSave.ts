@@ -11,7 +11,7 @@ import {
   createCourseBasicReversedPair,
   updateCard,
 } from '../../db/cardRepository';
-import type { Card, CardType, Course, ItemPayload } from '../../db/types';
+import type { Card, CardType, Course, ItemPayload } from '@lacuna/core/db/types';
 import { hasCloze } from '../../utils/cloze';
 import { isAudioCardFront } from '../../media/audio';
 import type { ReturnTarget } from '../../utils/editorOrigin';

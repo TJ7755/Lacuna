@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
-import type { Sequence } from '../../../db/types';
+import type { Sequence } from '@lacuna/core/db/types';
 import { SequenceRecitation } from './SequenceRecitation';
 
 const sequence: Sequence = {

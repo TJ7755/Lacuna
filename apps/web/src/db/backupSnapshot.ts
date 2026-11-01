@@ -1,7 +1,7 @@
 // Read represented records and their media together; encoding runs after the snapshot closes.
 import { db } from './schema';
-import type { BackupFile } from './types';
-import { projectCardsForStorage } from './reviewHistory';
+import type { BackupFile } from '@lacuna/core/db/types';
+import { projectCardsForStorage } from '@lacuna/core/db/reviewHistory';
 import {
   encodeBackupAssets,
   referencedAssetHashes,

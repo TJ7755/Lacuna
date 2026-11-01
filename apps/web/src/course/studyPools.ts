@@ -10,15 +10,15 @@ import type {
   LessonCardLink,
   PracticeNode,
   SchedulerConfig,
-} from '../db/types';
+} from '@lacuna/core/db/types';
 import type { ExamDateContext } from '../fsrs/examDate';
 import { rAtExam } from '../fsrs/forwardSim';
 import { decayOf } from '../fsrs/fsrs';
 import { cardSchedulingHorizon } from '../fsrs/horizon';
 import { studyPool } from '../fsrs/eligibility';
 import type { ReviewActivity } from '../fsrs/heatmap';
-import { isLeech } from '../fsrs/leech';
-import { MASTERY_R } from '../fsrs/params';
+import { isLeech } from '@lacuna/core/fsrs/leech';
+import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import { lessonCardMembership } from './lessonMembership';
 
 export { lessonCardMembership, lessonCardMembershipForLessons } from './lessonMembership';
