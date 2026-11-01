@@ -532,9 +532,10 @@ try {
       let backupPath: string | undefined;
       if (!quick)
         await measure('backup-export', 0, async () => {
-          const downloadPromise = page.waitForEvent('download', { timeout: 120_000 });
-          await page.getByRole('button', { name: 'Full backup Complete database' }).click();
-          const download = await downloadPromise;
+          const [download] = await Promise.all([
+            page.waitForEvent('download', { timeout: 120_000 }),
+            page.getByRole('button', { name: 'Download full backup', exact: true }).click(),
+          ]);
           const path = await download.path();
           if (!path || (await download.failure())) throw new Error('Backup download failed');
           backupPath = path;
