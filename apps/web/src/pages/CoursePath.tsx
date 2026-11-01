@@ -1,3 +1,4 @@
+import { RemainingWork } from '../components/course/RemainingWork';
 import { courseLessonOrderPreference, resolveCourseLessonOrder } from '../course/lessonOrder';
 import { isLearnerOwnedCheckpoint } from '../course/assessmentOwnership';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -291,6 +292,7 @@ export function CoursePath() {
         </Link>
       )}
       {archived && <ArchivedCourseRestoreNotice />}
+      {!archived && <RemainingWork courseId={course.id} />}
       <CourseOverview
         summary={(cardClassName) =>
           hasStudyContent && (

@@ -1,3 +1,4 @@
+import { RemainingWork } from '../components/course/RemainingWork';
 import { Button } from '../components/ui/Button';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
@@ -295,6 +296,9 @@ export function Dashboard() {
                 {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
               </section>
             )}
+            {rows.map((row) => (
+              <RemainingWork key={row.id} courseId={row.id} />
+            ))}
             <TodayQueue
               rows={rows}
               delay={0}
