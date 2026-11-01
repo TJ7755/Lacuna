@@ -16,7 +16,7 @@ export const MAX_GRANTS = 100;
 export const MAX_APPROVALS = 100;
 export const MAX_LEDGER_ENTRIES = 500;
 
-export function isJsonValue(value: unknown): value is JsonValue {
+function isJsonValue(value: unknown): value is JsonValue {
   return jsonValueSchema.safeParse(value).success;
 }
 

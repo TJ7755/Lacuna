@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 
-export const MOBILE_NAVIGATION_QUERY = '(max-width: 767px)';
+const MOBILE_NAVIGATION_QUERY = '(max-width: 767px)';
 
 const EDGE_WIDTH_PX = 32;
 const COMMIT_DISTANCE_PX = 56;

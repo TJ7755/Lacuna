@@ -13,7 +13,6 @@ import type { Card, Occlusion, Sequence } from '@lacuna/core/db/types';
 import type { CardListContext } from './cardListContext';
 import { BulkBarButton, CardBulkBar } from './CardBulkBar';
 
-export { CardListBody } from './CardListBody';
 import { countOf } from '../../utils/plural';
 
 import { useCardListActions, type AssignableLesson } from './useCardListActions';

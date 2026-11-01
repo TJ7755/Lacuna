@@ -5,12 +5,6 @@ import type { CourseForecast } from '../../fsrs/courseForecast';
 
 export type ForecastStatus = 'ahead' | 'behind' | 'steady';
 
-export const STATUS_COLOUR: Record<ForecastStatus, string> = {
-  ahead: 'hsl(var(--positive))',
-  behind: 'hsl(var(--warning))',
-  steady: 'hsl(var(--ink-faint))',
-};
-
 export const STATUS_LABEL: Partial<Record<ForecastStatus, string>> = {
   ahead: 'On track',
   behind: 'Behind',

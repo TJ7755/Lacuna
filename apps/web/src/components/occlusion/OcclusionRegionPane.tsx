@@ -13,7 +13,7 @@ import type { OcclusionRegion } from '@lacuna/core/db/types';
 
 /** Display-only names — never persisted — derived from a region's position among
  *  same-role regions, matching the chosen mockup (design/arc6/mockups-occlusion.html). */
-export function occlusionRegionNames(regions: OcclusionRegion[]): Map<string, string> {
+function occlusionRegionNames(regions: OcclusionRegion[]): Map<string, string> {
   const names = new Map<string, string>();
   let labelIndex = 0;
   let featureIndex = 0;
