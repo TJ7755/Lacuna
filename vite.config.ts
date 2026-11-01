@@ -188,8 +188,13 @@ export default defineConfig({
               includeDependenciesRecursively: false,
             },
             {
+              name: 'dexie',
+              test: /[\\/]node_modules[\\/](?:dexie|dexie-react-hooks)[\\/]/,
+              includeDependenciesRecursively: false,
+            },
+            {
               name: 'database',
-              test: /[\\/]src[\\/](?:utils[\\/]id|db[\\/](?:database|schema|schemaFloor|assessmentMigration|backingDecks|schedulingUnitBuilder|reviewHistory|mutationStamp|preMigrationSnapshots))\.ts$/,
+              test: /[\\/]src[\\/](?:utils[\\/]id|db[\\/](?:database|schema|reviewActivityProjection|schemaFloor|assessmentMigration|backingDecks|schedulingUnitBuilder|reviewHistory|mutationStamp|preMigrationSnapshots))\.ts$/,
               includeDependenciesRecursively: false,
             },
             {
