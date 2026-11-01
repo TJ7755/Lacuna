@@ -95,3 +95,11 @@ Backup export took 5,654 ms, preview 1,225 ms and replacement 18,800 ms. Course 
 samples were 688, 513 and 493 ms. This run passed timing and long-task ceilings but failed the
 provisional learn-route asset ceiling. Earlier route samples raced background prefetch and are
 retained above as historical observations, not a stable initial-asset baseline.
+
+Current asset-only pages disable idle callbacks to exclude speculative route prefetch, then wait
+for network idle after the route's visible result. Reports retain each unique resource pathname and
+decoded body size. This measures required initial resources, including runtime imports; it does not
+claim total eventual background traffic. Timed interaction pages retain normal idle behaviour.
+Course opening has a separate 1,500 ms input-to-readable ceiling following a 1,397 ms hosted
+observation; Cards and learn interactions retain 750 ms ceilings. Read the named limits in the
+budget module before comparing results from different harness revisions.
