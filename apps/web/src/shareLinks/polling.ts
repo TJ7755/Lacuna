@@ -1,3 +1,4 @@
+import { storedString } from '../state/localSetting';
 import { db } from '../db/schema';
 import { decodeCourseFile, withCourseFileAssets } from '../db/courseFile';
 import { isLineagePayload, mergeLineageUpdate } from '../db/mergeImport';
@@ -37,7 +38,7 @@ interface PollContext {
 
 function readThrottleMap(): Record<string, number> {
   try {
-    const raw = localStorage.getItem(THROTTLE_KEY);
+    const raw = storedString(THROTTLE_KEY).read();
     if (!raw) return {};
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
@@ -60,7 +61,7 @@ function writeLastPollAt(shareId: string, at: number): void {
   try {
     const map = readThrottleMap();
     map[shareId] = at;
-    localStorage.setItem(THROTTLE_KEY, JSON.stringify(map));
+    storedString(THROTTLE_KEY).write(JSON.stringify(map));
   } catch {
     // Throttle state is best-effort; a poll must never fail because it could not
     // be recorded.

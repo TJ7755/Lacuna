@@ -1,3 +1,4 @@
+import { storedString } from './localSetting';
 import { createLocalSetting } from './localSetting';
 
 const setting = createLocalSetting<boolean>({
@@ -12,5 +13,5 @@ export const writeAdvancedDetails = setting.write;
 export const useAdvancedDetails = setting.use;
 
 export function initialiseAdvancedDetailsForNewLearner(): void {
-  if (localStorage.getItem(setting.key) === null) setting.write(false);
+  if (storedString(setting.key).read() === null) setting.write(false);
 }

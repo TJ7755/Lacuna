@@ -1,7 +1,13 @@
 import { useLayoutEffect } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createLocalSetting, createStoredValue, oneOf, parseJson } from './localSetting';
+import {
+  createLocalSetting,
+  createStoredValue,
+  storedString,
+  oneOf,
+  parseJson,
+} from './localSetting';
 import { writeAnswerStrictness } from './answerStrictness';
 import { writeAudioSettings } from './audioSettings';
 import { writeCourseCardDetail } from './courseCardDetail';
@@ -134,5 +140,28 @@ describe('stored value compatibility', () => {
     expect(localStorage.getItem('lacuna-theme')).toBe(theme);
     stored.write(theme);
     expect(localStorage.getItem('lacuna-theme')).toBe(theme);
+  });
+});
+
+describe('storedString compatibility', () => {
+  it.each(['', '0', 'false', 'pending', '{"version":1}', 'malformed'])(
+    'retains legacy raw value %j',
+    (raw) => {
+      localStorage.setItem('lacuna:draft:course:old', raw);
+      const entry = storedString('lacuna:draft:course:old');
+      expect(entry.read()).toBe(raw);
+      expect(entry.isPresent()).toBe(true);
+      entry.write(raw);
+      expect(localStorage.getItem('lacuna:draft:course:old')).toBe(raw);
+      entry.remove();
+      expect(entry.read()).toBeNull();
+      expect(entry.isPresent()).toBe(false);
+    },
+  );
+  it('propagates unavailable storage to caller recovery', () => {
+    vi.spyOn(localStorage, 'removeItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    expect(() => storedString('legacy').remove()).toThrow('blocked');
   });
 });

@@ -1,3 +1,4 @@
+import { storedString } from '../state/localSetting';
 import type { CourseSchedulingMode } from '@lacuna/core/db/types';
 import { initialiseAdvancedDetailsForNewLearner } from '../state/advancedDetails';
 
@@ -8,7 +9,7 @@ const ONBOARDING_KEY = 'lacuna-onboarding';
 export function markOnboardingPending(): void {
   try {
     initialiseAdvancedDetailsForNewLearner();
-    localStorage.setItem(ONBOARDING_KEY, 'pending');
+    storedString(ONBOARDING_KEY).write('pending');
   } catch {
     // Without storage the learner simply goes straight to Today.
   }
@@ -16,7 +17,7 @@ export function markOnboardingPending(): void {
 
 export function onboardingPending(): boolean {
   try {
-    return localStorage.getItem(ONBOARDING_KEY) === 'pending';
+    return storedString(ONBOARDING_KEY).read() === 'pending';
   } catch {
     return false;
   }
@@ -29,7 +30,7 @@ export function finishOnboarding(): void {
     // Nothing to clear without storage.
   }
   try {
-    localStorage.setItem(ONBOARDING_KEY, 'done');
+    storedString(ONBOARDING_KEY).write('done');
   } catch {
     // Best-effort, as above.
   }

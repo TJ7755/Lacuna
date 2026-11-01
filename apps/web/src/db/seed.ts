@@ -1,3 +1,4 @@
+import { storedString } from '../state/localSetting';
 // First-run bookkeeping. New installs start empty; onboarding (#816) replaces the old
 // Welcome to Lacuna course. Learners who already have that course keep it, so the one-off
 // repair of its stored drawings stays here.
@@ -64,7 +65,7 @@ const SAMPLE_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="200" he
 
 async function repairSeededSvgAssets(): Promise<void> {
   try {
-    if (localStorage.getItem(ASSET_REPAIR_FLAG_KEY)) return;
+    if (storedString(ASSET_REPAIR_FLAG_KEY).read()) return;
   } catch {
     // localStorage may be unavailable; the idempotent database check still works.
   }
@@ -108,7 +109,7 @@ async function repairSeededSvgAssets(): Promise<void> {
   }
 
   try {
-    localStorage.setItem(ASSET_REPAIR_FLAG_KEY, '1');
+    storedString(ASSET_REPAIR_FLAG_KEY).write('1');
   } catch {
     // localStorage may be unavailable; the next start will repeat the safe repair.
   }
@@ -120,7 +121,7 @@ async function repairSeededSvgAssets(): Promise<void> {
  */
 export async function isFirstRun(): Promise<boolean> {
   try {
-    if (localStorage.getItem(FLAG_KEY)) return false;
+    if (storedString(FLAG_KEY).read()) return false;
   } catch {
     // localStorage may be unavailable; fall through to the database check.
   }
@@ -135,8 +136,8 @@ export async function settleFirstRun(): Promise<void> {
     if ((await db.courses.count()) > 0) await repairSeededSvgAssets();
     // Best-effort flags so future starts skip this work.
     try {
-      localStorage.setItem(FLAG_KEY, '1');
-      localStorage.setItem(ASSET_REPAIR_FLAG_KEY, '1');
+      storedString(FLAG_KEY).write('1');
+      storedString(ASSET_REPAIR_FLAG_KEY).write('1');
     } catch {
       // localStorage may be unavailable; the next start repeats the safe checks.
     }

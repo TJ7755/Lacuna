@@ -1,3 +1,4 @@
+import { storedString } from '../state/localSetting';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type PomodoroPhase = 'idle' | 'focus' | 'shortBreak' | 'longBreak';
@@ -36,7 +37,7 @@ function toNumber(value: unknown, fallback: number): number {
 
 export function loadPomodoroSettings(): PomodoroSettings {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = storedString(STORAGE_KEY).read();
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<PomodoroSettings>;
       return {
@@ -85,7 +86,7 @@ function loadPomodoroRuntime(): PomodoroRuntime {
     pendingBreakPhase: null,
   };
   try {
-    const raw = localStorage.getItem(RUNTIME_STORAGE_KEY);
+    const raw = storedString(RUNTIME_STORAGE_KEY).read();
     if (!raw) return fallback;
     const parsed = JSON.parse(raw) as Partial<PomodoroRuntime>;
     const phase: PomodoroPhase =
@@ -115,7 +116,7 @@ export function savePomodoroSettings(settings: Partial<PomodoroSettings>): void 
   try {
     const current = loadPomodoroSettings();
     const next = { ...current, ...settings };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    storedString(STORAGE_KEY).write(JSON.stringify(next));
   } catch {
     // ignore
   }
@@ -182,7 +183,7 @@ export function usePomodoro() {
         }
       }
       try {
-        localStorage.setItem(RUNTIME_STORAGE_KEY, JSON.stringify(runtime));
+        storedString(RUNTIME_STORAGE_KEY).write(JSON.stringify(runtime));
       } catch {
         // Runtime persistence is optional; the timer still works without storage.
       }

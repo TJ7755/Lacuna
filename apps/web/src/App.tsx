@@ -1,3 +1,4 @@
+import { storedString } from './state/localSetting';
 import { buttonClassName } from './components/ui/buttonStyles';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
@@ -97,9 +98,9 @@ export function App() {
         // existing users — see stampMissingLessonViewModes and
         // src/course/lessonViewMode.ts.
         try {
-          if (!localStorage.getItem('lacuna-lesson-view-mode-migrated')) {
+          if (!storedString('lacuna-lesson-view-mode-migrated').read()) {
             await stampMissingLessonViewModes();
-            localStorage.setItem('lacuna-lesson-view-mode-migrated', '1');
+            storedString('lacuna-lesson-view-mode-migrated').write('1');
           }
         } catch {
           // Best-effort — courses without an explicit mode fall back to

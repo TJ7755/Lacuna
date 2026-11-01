@@ -1,3 +1,4 @@
+import { storedString } from '../state/localSetting';
 import { db } from '../db/schema';
 import { listShareImports, getCourseIdForShare } from '../shareLinks/linkStore';
 import { DEFAULT_RELAY_URL } from '../shareLinks/client';
@@ -100,9 +101,9 @@ async function deliver(
     if (!publish) {
       if (createInsightsLastSentDaySetting(courseId).read() === day) return 'idle';
       const attemptKey = `lacuna.insights.attempt.${courseId}`;
-      const previous = Number(localStorage.getItem(attemptKey));
+      const previous = Number(storedString(attemptKey).read());
       if (!options.retry && previous > now() - 3_600_000 && previous <= now()) return 'idle';
-      localStorage.setItem(attemptKey, String(now()));
+      storedString(attemptKey).write(String(now()));
     }
     const result = await outbox[publish ? 'publish' : 'send']({
       shareId: enrolment.shareId,
