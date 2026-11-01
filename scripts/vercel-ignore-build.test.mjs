@@ -37,9 +37,9 @@ function fixture(t) {
     write(path, readFileSync(join(source, path)));
   }
   for (const path of ['src/main.ts', 'docs/guide.md', 'library/index.html']) write(path);
-  const commit = () => {
+  const commit = (message = 'Fixture change') => {
     git('add', '--all');
-    git('commit', '--quiet', '-m', 'Fixture change');
+    git('commit', '--quiet', '-m', message);
     return git('rev-parse', 'HEAD');
   };
   const base = commit();
@@ -92,6 +92,17 @@ test('docs skip; a site change spares relay and accumulates across skipped commi
   f.commit();
   assert.deepEqual(f.results(site), [0, 0, 0, 0]);
   assert.deepEqual(f.results(docs), [1, 0, 1, 1]);
+});
+
+test('an explicit intermediate commit defers deployment until the final batch commit', (t) => {
+  const f = fixture(t);
+  f.write('unrecognised/file', 'intermediate change\n');
+  f.commit('Maintain the application [skip vercel]');
+  assert.deepEqual(f.results(''), [0, 0, 0, 0]);
+  assert.deepEqual(f.results('', { VERCEL_GIT_COMMIT_SHA: f.base }), [1, 1, 1, 1]);
+  f.write('docs/guide.md', 'final batch note\n');
+  f.commit('Release the batch\n\n[skip vercel]');
+  assert.deepEqual(f.results(), [1, 1, 1, 1]);
 });
 
 for (const path of [

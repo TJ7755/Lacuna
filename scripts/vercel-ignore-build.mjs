@@ -15,12 +15,19 @@ function decision() {
       : 0;
   }
   if (env.VERCEL_ENV !== 'production') return 1;
-  const previous = env.VERCEL_GIT_PREVIOUS_SHA;
   const current = env.VERCEL_GIT_COMMIT_SHA;
-  if (![previous, current].every((sha) => /^[a-f0-9]{40}$/.test(sha ?? ''))) return 1;
+  if (!/^[a-f0-9]{40}$/.test(current ?? '')) return 1;
 
   const git = (...args) => execFileSync('git', args, { encoding: 'utf8', timeout: 10_000 });
   if (git('rev-parse', 'HEAD').trim() !== current) return 1;
+  // Only the first line opts an intermediate commit out of a release batch.
+  const subject = git('show', '-s', '--format=%B', current).split('\n', 1)[0].trimEnd();
+  if (subject.endsWith(' [skip vercel]')) {
+    console.log('Skipping intermediate deployment for the explicit release batch.');
+    return 0;
+  }
+  const previous = env.VERCEL_GIT_PREVIOUS_SHA;
+  if (!/^[a-f0-9]{40}$/.test(previous ?? '')) return 1;
   git('merge-base', '--is-ancestor', previous, current);
   const changes = git(
     'diff',
