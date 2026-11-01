@@ -103,3 +103,8 @@ claim total eventual background traffic. Timed interaction pages retain normal i
 Course opening has a separate 1,500 ms input-to-readable ceiling following a 1,397 ms hosted
 observation; Cards and learn interactions retain 750 ms ceilings. Read the named limits in the
 budget module before comparing results from different harness revisions.
+
+With initial-only accounting, [run 41317899236](https://github.com/TJ7755/Lacuna/actions/runs/41317899236)
+recorded Today 1,514,030 JS / 141,005 CSS bytes, course 1,384,801 / 156,498 and learn
+2,899,273 / 177,820. These supersede the earlier prefetch-inclusive route baselines.
+The route ceilings use approximately 10% headroom; course JS is consequently tighter than before.

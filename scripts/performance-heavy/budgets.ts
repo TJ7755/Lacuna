@@ -1,8 +1,8 @@
-// Route baselines: GitHub Ubuntu run 41316356939, production merge 1d8f610b.
+// Route baselines: GitHub Ubuntu run 41317899236, initial-only accounting on relay v2.
 export const routeAssetBudgets: Record<string, { javascriptBytes: number; cssBytes: number }> = {
-  'route-assets-today': { javascriptBytes: 1_400_000, cssBytes: 155_000 },
-  'route-assets-course': { javascriptBytes: 3_220_000, cssBytes: 174_000 },
-  'route-assets-learn': { javascriptBytes: 2_900_000, cssBytes: 196_000 },
+  'route-assets-today': { javascriptBytes: 1_670_000, cssBytes: 155_000 },
+  'route-assets-course': { javascriptBytes: 1_530_000, cssBytes: 174_000 },
+  'route-assets-learn': { javascriptBytes: 3_200_000, cssBytes: 196_000 },
 };
 
 /** Initial timing ceilings; compare retained reports before tightening them. */

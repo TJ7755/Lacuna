@@ -398,7 +398,11 @@ try {
               window.cancelIdleCallback = () => {};
             });
             await cold.goto(`${origin}${hash}`);
-            await expect(cold.locator(selector).first()).toBeVisible();
+            if (name === 'today') {
+              await expect(cold.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+            } else {
+              await expect(cold.locator(selector).first()).toBeVisible();
+            }
             await cold.waitForLoadState('networkidle');
             const assets = await cold.evaluate(() => {
               const resources = globalThis.performance.getEntriesByType(
