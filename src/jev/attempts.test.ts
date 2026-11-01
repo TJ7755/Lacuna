@@ -23,7 +23,7 @@ import { gradeQuestionAttempt } from '../questions/grading';
 import { deriveConceptApplicationSchedules } from '../questions/conceptPractice';
 import { markJevAttempt } from './attempts';
 import { createJevEngine } from './engine';
-import { HOSTED_ACCESS_STORAGE_KEY } from '../ai/session/hostedTransport';
+import { JEV_CONSENT_VERSION } from './types';
 
 beforeEach(async () => {
   localStorage.clear();
@@ -98,7 +98,6 @@ async function fixture(
   return { attempt: await submitQuestionSetPaper(attempt.id, attempt.revisionId), concept };
 }
 function engineWith(decide: (request: { maxMarks?: number }) => Promise<Response>) {
-  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
   const fetcher = vi.fn(async (url, init) => {
     if (url.endsWith('/session'))
       return Response.json({ token: 'session', expiresAt: Date.now() + 60_000 });
@@ -119,7 +118,7 @@ function engineWith(decide: (request: { maxMarks?: number }) => Promise<Response
     fetcher,
     cache: { get: async () => undefined, put: async () => {} },
   });
-  engine.enable(1);
+  engine.enable(JEV_CONSENT_VERSION);
   return { engine, fetcher };
 }
 const result = (value: number | null) =>
@@ -349,14 +348,12 @@ it.each([2, null])(
     ]);
   },
 );
-it('does not mark when off, without consent or without a code', async () => {
+it('does not mark when off or without current consent', async () => {
   const { attempt } = await fixture();
   const fetcher = vi.fn();
   const engine = createJevEngine({ fetcher });
   await markJevAttempt(attempt.id, engine);
   engine.enable(0);
-  await markJevAttempt(attempt.id, engine);
-  engine.enable(1);
   await markJevAttempt(attempt.id, engine);
   expect(fetcher).not.toHaveBeenCalled();
   expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
@@ -568,7 +565,6 @@ it('abandons submitted lines encountered during backoff instead of queueing them
   const { attempt } = await fixture();
   const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-21T10:00:00Z'));
   try {
-    localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
     let failing = true;
     const fetcher = vi.fn(async (url, init) =>
       url.endsWith('/session')
@@ -589,7 +585,7 @@ it('abandons submitted lines encountered during backoff instead of queueing them
       fetcher,
       cache: { get: async () => undefined, put: async () => {} },
     });
-    engine.enable(1);
+    engine.enable(JEV_CONSENT_VERSION);
     await engine.markTyped({ cardId: 'c', prompt: 'Q', expected: 'A', answer: 'B' });
     expect(engine.status()).toMatchObject({ state: 'paused', reason: 'service-disabled' });
     const calls = fetcher.mock.calls.length;
@@ -662,8 +658,7 @@ it('does not mark criteria when an attempt is submitted', async () => {
   const fetcher = vi.fn(async () => Response.json({}));
   vi.stubGlobal('fetch', fetcher);
   const { jevEngine } = await import('./engine');
-  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
-  jevEngine.enable(1);
+  jevEngine.enable(JEV_CONSENT_VERSION);
   try {
     const { attempt } = await fixture();
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -786,7 +781,7 @@ it.each([1, null])(
       const marking = markJevAttempt(attempt.id, engine, 'a1', 10_000);
       await vi.waitFor(() => expect(release).toBeTypeOf('function'));
       engine.disable();
-      engine.enable(1);
+      engine.enable(JEV_CONSENT_VERSION);
       release();
       await marking;
       expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);

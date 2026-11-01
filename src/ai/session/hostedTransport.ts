@@ -17,7 +17,7 @@ export class HostedTransportError extends Error {
   ) {
     super(
       {
-        access: 'Your AI access code has expired or was revoked.',
+        access: 'Your AI session has expired or was rejected.',
         quota: 'AI limit reached. Try again later.',
         'rate-limit': 'Too many attempts. Try again later.',
         unavailable: 'Built-in AI is unavailable. Try again later.',
@@ -32,7 +32,7 @@ function endpoint(path: string): string {
   return `${window.electronAPI?.isElectron === true ? HOSTED_SERVICE_ORIGIN : ''}/api/ai/${path}`;
 }
 
-/** Only the marking endpoint can report monthly exhaustion; unlabelled 429s use short backoff. */
+/** Only known endpoint limits can supply a long reset; unlabelled 429s use short backoff. */
 export function hostedLimitError(
   response: Response,
   source: 'session' | 'marking',
@@ -40,17 +40,24 @@ export function hostedLimitError(
   const retryAfter = response.headers.get('Retry-After') ?? '';
   const seconds = /^\d+$/.test(retryAfter) ? Number(retryAfter) : NaN;
   const limit = response.headers.get('X-Lacuna-AI-Limit');
-  const monthly = source === 'marking' && limit === 'monthly-tokens';
+  const monthly =
+    source === 'marking' && (limit === 'monthly-tokens' || limit === 'monthly-requests');
+  const daily = source === 'marking' && limit === 'installation-day';
+  const short =
+    source === 'marking' &&
+    (limit === 'installation-minute' ||
+      limit === 'installation-concurrent' ||
+      limit === 'global-concurrent');
   const maximum = monthly
     ? 31 * 86_400
-    : limit === 'session-day'
+    : daily || limit === 'session-day'
       ? 86_400
-      : limit === 'session-minute'
+      : short || limit === 'session-minute'
         ? 60
         : 0;
   const validReset = Number.isSafeInteger(seconds) && seconds > 0 && seconds <= maximum;
   return new HostedTransportError(
-    monthly && validReset ? 'quota' : 'rate-limit',
+    (monthly || daily) && validReset ? 'quota' : 'rate-limit',
     Date.now() + (validReset ? seconds : 60) * 1000,
   );
 }

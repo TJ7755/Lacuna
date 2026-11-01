@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { resolvePackagedExecutable } from '../../scripts/electron-performance/executable';
+import { createCourse } from '../e2e/fixtures/lacunaApp';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const require = createRequire(import.meta.url);
@@ -53,10 +54,8 @@ test('Electron keeps Jev access without the AI chat interface', async () => {
       }
       await route.fulfill({
         status: 200,
-        headers: { ...cors, 'Content-Type': 'application/x-ndjson; charset=utf-8' },
-        body:
-          '{"type":"text_delta","text":"Electron hosted reply."}\n' +
-          '{"type":"completed","finishReason":"stop"}\n',
+        headers: { ...cors, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'jev-1.14.0', value: 1, confidence: 0.99, inputTokens: 12 }),
       });
     });
     await page.waitForLoadState('domcontentloaded');
@@ -70,14 +69,33 @@ test('Electron keeps Jev access without the AI chat interface', async () => {
     await page.getByRole('switch', { name: 'Mark my answers automatically' }).click();
     await page.getByRole('checkbox', { name: /I understand/ }).check();
     await page.getByRole('button', { name: 'Turn on', exact: true }).click();
-    await page
-      .getByLabel('Access code')
-      .fill('fixture-access-code-with-at-least-thirty-two-characters');
-    await page.getByRole('button', { name: 'Connect', exact: true }).click();
     await expect(page.getByLabel('Access code')).toHaveCount(0);
     await expect(page.getByRole('switch', { name: 'Mark my answers automatically' })).toBeChecked();
+    expect(requests).toEqual([]);
+    await page.evaluate(() => {
+      localStorage.setItem('lacuna.answerInput', 'type');
+      window.location.hash = '#/';
+    });
+    await page.reload();
+    await createCourse(page, 'Jev public beta');
+    const courseId = new URL(page.url()).hash.split('/')[2];
+    await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
+    await page.getByRole('button', { name: 'New card', exact: true }).first().click();
+    await page.getByRole('textbox', { name: 'Front', exact: true }).fill('What do plants absorb?');
+    await page.getByRole('textbox', { name: 'Back', exact: true }).fill('Carbon dioxide');
+    await page.getByRole('button', { name: 'Add card', exact: true }).click();
+    await expect(page).not.toHaveURL(/\/cards\/new$/);
+    await page.evaluate((id) => {
+      window.location.hash = `#/course/${id}/learn?mode=simple`;
+    }, courseId);
+    await page.getByRole('textbox', { name: 'Your answer', exact: true }).fill('CO2');
+    await page.getByRole('button', { name: 'Check answer', exact: true }).click();
+    await expect(page.getByRole('main', { name: 'Session report' })).toBeVisible();
     expect(requests.some((url) => url.endsWith('/session'))).toBe(true);
+    expect(requests.filter((url) => url.endsWith('/jev'))).toHaveLength(1);
     expect(requests.some((url) => url.endsWith('/inference'))).toBe(false);
+    await page.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect(page.getByRole('main', { name: 'Session report' })).toHaveCount(0);
   } finally {
     await app?.close();
     await rm(profile, { recursive: true, force: true });

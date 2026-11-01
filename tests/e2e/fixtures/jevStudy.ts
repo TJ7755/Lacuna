@@ -30,9 +30,9 @@ export async function seed(enabled: boolean, globalTyping = false) {
   }
   localStorage.setItem(
     'lacuna.jevSettings',
-    JSON.stringify({ enabled, acceptedConsentVersion: 1 }),
+    JSON.stringify({ enabled, acceptedConsentVersion: 2 }),
   );
   if (globalTyping) localStorage.setItem('lacuna.answerInput', 'type');
-  localStorage.setItem('lacuna.aiHostedAccess', 'browser-test-only');
+  localStorage.setItem('lacuna.jevInstallation', 'a'.repeat(64));
   return { lessonId: lesson.id, cardIds };
 }

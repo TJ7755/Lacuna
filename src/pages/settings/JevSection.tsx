@@ -1,6 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
-import { Field, Input } from '../../components/ui/Field';
 import { CheckIcon } from '../../components/ui/icons';
 import {
   JEV_CONSENT_VERSION,
@@ -19,10 +18,9 @@ import { cn } from '../../components/ui/cn';
 
 const PAUSE_MESSAGES: Record<JevPauseReason, string> = {
   offline: 'Paused while offline. It resumes automatically.',
-  'no-access-code': 'Paused until an access code is entered.',
-  'access-code-rejected': 'Paused: the access code was not accepted.',
+  'session-rejected': 'Paused: the session was not accepted. It will try again later.',
   'service-disabled': 'Paused: the service is unavailable. It will try again later.',
-  'limit-reached': 'Paused: this month’s safety limit has been reached.',
+  'limit-reached': 'Paused: the automatic marking allowance has been reached.',
   'rate-limited': 'Paused: too many requests.',
   error: 'Paused after an error. It will try again later.',
 };
@@ -53,12 +51,9 @@ export function JevSection() {
   const status = useJevStatus();
   const jev = useJevController();
   const [consentOpen, setConsentOpen] = useState(false);
+  const [quotaId, setQuotaId] = useState<string | null>(null);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
   const on = settings.enabled && settings.acceptedConsentVersion === JEV_CONSENT_VERSION;
-  const needsCode =
-    on &&
-    (!jev.hasAccessCode() ||
-      (status.state === 'paused' &&
-        (status.reason === 'no-access-code' || status.reason === 'access-code-rejected')));
   const message = on ? jevStatusMessage(status) : null;
 
   return (
@@ -70,9 +65,16 @@ export function JevSection() {
         </SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm leading-6 text-ink-soft">
-        Marks typed flashcard answers and written practice answers for you, using the Jev decision
-        model from {JEV_PROVIDER.name}. When it is not sure, you mark as usual, and you can always
-        undo or change its mark.
+        Jev is an experimental public beta for marking typed flashcard answers and written practice
+        answers, using the decision model from {JEV_PROVIDER.name}. Its accuracy is still being
+        evaluated. It can give wrong marks and diagnoses. Check its decisions; you can always undo
+        or change its mark.
+      </p>
+
+      <p className="mb-5 text-sm leading-6 text-ink-soft">
+        The standard beta allowance is 100 marking requests per installation each UTC day, with
+        short-term limits to keep the service available. A written-answer request can include
+        several mark-scheme lines. You can still mark answers yourself when the allowance runs out.
       </p>
 
       <SettingRow
@@ -95,12 +97,51 @@ export function JevSection() {
         />
       </SettingRow>
 
-      {needsCode && <JevAccessCodeForm connect={jev.connectAccessCode} />}
-
       {message && (
         <p role="status" className="mt-3 text-sm text-ink-faint">
           {message}
         </p>
+      )}
+
+      {on && (
+        <div className="mt-4">
+          <Button
+            type="button"
+            onClick={async () => {
+              let id: string | null;
+              try {
+                id = await jev.quotaId();
+              } catch {
+                id = null;
+              }
+              if (!id) {
+                setCopyMessage('Could not read the quota ID. Try again.');
+                return;
+              }
+              setQuotaId(id);
+              try {
+                await navigator.clipboard.writeText(id);
+                setCopyMessage(
+                  'Quota ID copied. Share it with the maintainer to request a higher beta allowance.',
+                );
+              } catch {
+                setCopyMessage('Could not copy automatically. Select and copy the quota ID below.');
+              }
+            }}
+          >
+            Copy quota ID
+          </Button>
+          {copyMessage && (
+            <p role="status" className="mt-2 text-sm text-ink-faint">
+              {copyMessage}
+            </p>
+          )}
+          {quotaId && (
+            <code aria-label="Quota ID" className="mt-2 block break-all text-xs text-ink-soft">
+              {quotaId}
+            </code>
+          )}
+        </div>
       )}
 
       <JevConsentDialog
@@ -112,57 +153,5 @@ export function JevSection() {
         }}
       />
     </SettingsCard>
-  );
-}
-
-function JevAccessCodeForm({
-  connect,
-}: {
-  connect: (code: string) => Promise<{ ok: true } | { ok: false; message: string }>;
-}) {
-  const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    const trimmed = code.trim();
-    if (!trimmed || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await connect(trimmed);
-      if (result.ok) setCode('');
-      else setError(result.message);
-    } catch {
-      setError('Could not check the access code. Try again.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form
-      className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start"
-      onSubmit={(e) => void submit(e)}
-    >
-      <Field
-        className="min-w-0 flex-1"
-        label="Access code"
-        hint="Your automatic marking access code. Stored only on this device."
-        error={error}
-      >
-        <Input
-          type="password"
-          autoComplete="off"
-          spellCheck={false}
-          value={code}
-          onChange={(event) => setCode(event.target.value)}
-        />
-      </Field>
-      <Button type="submit" className="sm:mt-7" disabled={busy || code.trim() === ''}>
-        {busy ? 'Connecting…' : 'Connect'}
-      </Button>
-    </form>
   );
 }

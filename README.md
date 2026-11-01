@@ -42,7 +42,8 @@ and importing it at the new address. The previous address remains available.
 
 Study data lives in IndexedDB without an account. Optional device sync uses encrypted relay
 payloads. Optional Jev automatic marking sends answers, questions and mark schemes to TypeSafe AI
-after you accept its consent warning. Export a full JSON backup from
+only after you opt in and accept its personal-data and experimental-accuracy warnings. It is a public
+beta with per-installation allowances; manual marking remains available. Export a full JSON backup from
 **Settings → Full backup & recovery** before moving devices or replacing data.
 
 The [contributor guide](CONTRIBUTING.md) covers the complete validation matrix, relay and companion

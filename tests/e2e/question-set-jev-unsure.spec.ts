@@ -69,9 +69,9 @@ async function openSet(page: Page, diagnostic = false) {
   await page.evaluate(() => {
     localStorage.setItem(
       'lacuna.jevSettings',
-      JSON.stringify({ enabled: true, acceptedConsentVersion: 1 }),
+      JSON.stringify({ enabled: true, acceptedConsentVersion: 2 }),
     );
-    localStorage.setItem('lacuna.aiHostedAccess', 'browser-test-only');
+    localStorage.setItem('lacuna.jevInstallation', 'a'.repeat(64));
   });
   await page.goto(`/#/course/${courseId}/question-sets/${content.id}`);
   await page.reload();

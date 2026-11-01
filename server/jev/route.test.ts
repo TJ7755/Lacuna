@@ -1,6 +1,5 @@
-import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { exchangeCredential, loadAccessConfiguration } from '../ai/access';
+import { createJevSession, jevInstallationId } from './access';
 import type routeHandler from '../../api/ai/jev';
 let route: typeof routeHandler;
 
@@ -11,12 +10,8 @@ vi.mock('@vercel/functions', () => ({
   },
 }));
 
-const credential = 'a'.repeat(40);
+const credential = 'a'.repeat(64);
 function configured() {
-  vi.stubEnv(
-    'AI_ACCESS_CREDENTIAL_HASHES',
-    JSON.stringify({ tester: createHash('sha256').update(credential).digest('hex') }),
-  );
   vi.stubEnv('AI_SESSION_SIGNING_KEY', 's'.repeat(40));
   vi.stubEnv('TYPESAFE_API_KEY', 'test-key');
   vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://redis.example');
@@ -33,7 +28,10 @@ function request(
   },
   authenticated = true,
 ) {
-  const token = exchangeCredential(credential, loadAccessConfiguration(process.env)!)!.token;
+  const token = createJevSession(
+    jevInstallationId(credential)!,
+    process.env.AI_SESSION_SIGNING_KEY!,
+  )!.token;
   return new Request('https://lacuna.example/api/ai/jev', {
     method: 'POST',
     headers: {
@@ -96,6 +94,9 @@ it('fails closed on missing configuration, a kill switch and absent access sessi
   vi.stubEnv('JEV_SERVICE_DISABLED', '1');
   expect((await route.fetch(request())).status).toBe(503);
   vi.stubEnv('JEV_SERVICE_DISABLED', '0');
+  vi.stubEnv('JEV_MAINTAINER_INSTALLATION_IDS', '["invalid"]');
+  expect((await route.fetch(request())).status).toBe(503);
+  vi.stubEnv('JEV_MAINTAINER_INSTALLATION_IDS', '[]');
   expect((await route.fetch(request(undefined, false))).status).toBe(401);
   expect(fetcher).not.toHaveBeenCalled();
 });
@@ -123,107 +124,57 @@ it('caps structured fields and rejects free-form instructions, future purposes a
   expect(fetcher).not.toHaveBeenCalled();
 });
 
-it('refuses only once its background-refreshed monthly total exceeds the fuse', async () => {
+it.each([
+  [-1, 'installation-day'],
+  [-2, 'installation-minute'],
+  [-3, 'installation-concurrent'],
+  [-4, 'monthly-tokens'],
+  [-5, 'monthly-requests'],
+  [-6, 'global-concurrent'],
+])('refuses denied quota admission %s before any provider call', async (code, label) => {
   configured();
-  const fetcher = vi.fn(async (url, init) =>
-    url === 'https://redis.example'
-      ? Response.json({ result: JSON.parse(init.body)[0] === 'GET' ? '50000001' : 1 })
-      : providerResponse(init),
-  );
+  const fetcher = vi.fn(async () => Response.json({ result: [code, 1000] }));
   vi.stubGlobal('fetch', fetcher);
-  expect(
-    (
-      await route.fetch(
-        request({
-          purpose: 'typed-equivalence',
-          prompt: 'Q',
-          expected: 'A',
-          answer: 'A',
-          model: 'jev-latest',
-        }),
-      )
-    ).status,
-  ).toBe(400);
-  expect(fetcher).not.toHaveBeenCalled();
-  expect((await route.fetch(request())).status).toBe(200);
-  await Promise.all(background.tasks);
-  const calls = fetcher.mock.calls.length;
   const response = await route.fetch(request());
   expect(response.status).toBe(429);
-  expect(response.headers.get('X-Lacuna-AI-Limit')).toBe('monthly-tokens');
-  const now = new Date();
-  const reset = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
-  expect(
-    Math.abs(Number(response.headers.get('Retry-After')) - (reset - Date.now()) / 1000),
-  ).toBeLessThanOrEqual(1);
-  expect(fetcher).toHaveBeenCalledTimes(calls);
+  expect(response.headers.get('X-Lacuna-AI-Limit')).toBe(label);
+  expect(Number(response.headers.get('Retry-After'))).toBeGreaterThan(0);
+  expect(fetcher.mock.calls).toHaveLength(1);
 });
-it('records calls and actual usage after the response, independently of free chat', async () => {
+it('does not call TypeSafe before authoritative admission succeeds', async () => {
   configured();
-  vi.stubEnv('AI_SERVICE_DISABLED', '1');
-  const fetcher = vi.fn(async (url, init) =>
-    url === 'https://redis.example'
-      ? Response.json({ result: JSON.parse(init.body)[0] === 'GET' ? null : 1 })
-      : providerResponse(init),
-  );
-  vi.stubGlobal('fetch', fetcher);
-  const response = await route.fetch(request());
-  expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({ inputTokens: 123, value: 1 });
-  await Promise.all(background.tasks);
-  const commands = fetcher.mock.calls
-    .filter(([url]) => url === 'https://redis.example')
-    .map(([, init]) => JSON.parse(init.body));
-  expect(commands).toHaveLength(2);
-  expect(commands[0][0]).toBe('GET');
-  expect(commands[1][0]).toBe('EVAL');
-  expect(commands[1].join(' ')).toContain('lacuna:jev:month:');
-  expect(commands[1].join(' ')).toContain('lacuna:jev:day:');
-  expect(commands[1]).toContain(123);
-});
-it('returns a validated verdict while every Redis request is still pending', async () => {
-  configured();
-  let released = false;
-  const releases: Array<(response: Response) => void> = [];
+  let admit!: (response: Response) => void;
   const fetcher = vi.fn(async (url, init) => {
     if (url !== 'https://redis.example') return providerResponse(init);
-    if (released) return Response.json({ result: 0 });
-    return new Promise<Response>((resolve) => {
-      releases.push(resolve);
-    });
+    if (JSON.parse(init.body)[2] === 9)
+      return new Promise<Response>((resolve) => {
+        admit = resolve;
+      });
+    return Response.json({ result: 1 });
   });
   vi.stubGlobal('fetch', fetcher);
   const pending = route.fetch(request());
-  try {
-    await vi.waitFor(() =>
-      expect(fetcher.mock.calls.some(([url]) => url !== 'https://redis.example')).toBe(true),
-    );
-    const response = await Promise.race([
-      pending,
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 0)),
-    ]);
-    expect(response?.status).toBe(200);
-    expect(await response!.json()).toMatchObject({ value: 1 });
-    expect(background.tasks).toHaveLength(2);
-  } finally {
-    released = true;
-    releases.forEach((resolve) => resolve(Response.json({ result: 0 })));
-    await pending;
-  }
+  await vi.waitFor(() => expect(admit).toBeTypeOf('function'));
+  expect(fetcher.mock.calls.every(([url]) => url === 'https://redis.example')).toBe(true);
+  admit(Response.json({ result: [1, 0] }));
+  const response = await pending;
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ inputTokens: 123, value: 1 });
+  await Promise.all(background.tasks);
 });
-it('keeps marking available when Redis background work fails', async () => {
+it('fails closed when Redis admission fails', async () => {
   configured();
-  const fetcher = vi.fn(async (url, init) => {
-    if (url === 'https://redis.example') throw new Error('Redis offline');
-    return providerResponse(init);
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const fetcher = vi.fn(async () => {
+    throw new Error('Redis offline');
   });
   vi.stubGlobal('fetch', fetcher);
-  expect((await route.fetch(request())).status).toBe(200);
-  await Promise.all(background.tasks);
-  expect((await route.fetch(request())).status).toBe(200);
-  expect(fetcher.mock.calls.filter(([, init]) => JSON.parse(init.body)[0] === 'GET')).toHaveLength(
-    1,
-  );
+  try {
+    expect((await route.fetch(request())).status).toBe(503);
+    expect(fetcher.mock.calls).toHaveLength(1);
+  } finally {
+    log.mockRestore();
+  }
 });
 it('reports TypeSafe and total handler timings without settlement or secrets', async () => {
   configured();
@@ -232,7 +183,7 @@ it('reports TypeSafe and total handler timings without settlement or secrets', a
   const fetcher = vi.fn(async (url, init) => {
     if (url === 'https://redis.example') {
       if (JSON.parse(init.body)[0] === 'EVAL') clock += 20;
-      return Response.json({ result: 0 });
+      return Response.json({ result: JSON.parse(init.body)[2] === 9 ? [1, 0] : 1 });
     }
     clock += 190;
     return providerResponse(init);
@@ -240,7 +191,7 @@ it('reports TypeSafe and total handler timings without settlement or secrets', a
   vi.stubGlobal('fetch', fetcher);
   try {
     const response = await route.fetch(request());
-    expect(response.headers.get('Server-Timing')).toBe('typesafe;dur=190.0, total;dur=190.0');
+    expect(response.headers.get('Server-Timing')).toBe('typesafe;dur=190.0, total;dur=210.0');
     expect(response.headers.get('Timing-Allow-Origin')).toBeNull();
   } finally {
     timing.mockRestore();
@@ -251,7 +202,9 @@ it.each([false, true])(
   async (diagnostic) => {
     configured();
     const fetcher = vi.fn(async (url, init) =>
-      url === 'https://redis.example' ? Response.json({ result: 0 }) : providerResponse(init),
+      url === 'https://redis.example'
+        ? Response.json({ result: JSON.parse(init.body)[2] === 9 ? [1, 0] : 1 })
+        : providerResponse(init),
     );
     vi.stubGlobal('fetch', fetcher);
     const allocation = {
@@ -292,7 +245,7 @@ it.each([false, true])(
     expect(fetcher.mock.calls.filter(([url]) => url !== 'https://redis.example')).toHaveLength(1);
     expect(
       fetcher.mock.calls.filter(([, init]) => JSON.parse(init.body)[0] === 'EVAL'),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
   },
 );
 
@@ -303,8 +256,9 @@ it.each(['http', 'network', 'json', 'schema'] as const)(
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url) => {
-        if (url === 'https://redis.example') return Response.json({ result: 0 });
+      vi.fn(async (url, init) => {
+        if (url === 'https://redis.example')
+          return Response.json({ result: JSON.parse(init.body)[2] === 9 ? [1, 0] : 1 });
         if (kind === 'http') return new Response('private provider body', { status: 429 });
         if (kind === 'network') throw new TypeError('private network details');
         if (kind === 'json') return new Response('private invalid JSON');

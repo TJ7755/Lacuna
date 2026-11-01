@@ -1,6 +1,5 @@
-import { exchangeCredential, loadAccessConfiguration } from '../../server/ai/access.js';
-import { aiHeaders, allowedOrigin, clientAddress, readBoundedBody } from '../../server/ai/http.js';
-import { createSessionExchangeLimiter } from '../../server/ai/quota.js';
+import { aiHeaders, allowedOrigin, readBoundedBody } from '../../server/ai/http.js';
+import { createJevSession, jevInstallationId, loadJevSigningKey } from '../../server/jev/access.js';
 
 export default {
   async fetch(request: Request): Promise<Response> {
@@ -10,50 +9,21 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
     if (request.method !== 'POST')
       return new Response('Method not allowed.', { status: 405, headers });
-    if (process.env.AI_SERVICE_DISABLED === '1')
-      return new Response('AI is unavailable.', { status: 503, headers });
-    const configuration = loadAccessConfiguration(process.env);
-    if (
-      !configuration ||
-      !process.env.UPSTASH_REDIS_REST_URL ||
-      !process.env.UPSTASH_REDIS_REST_TOKEN
-    ) {
-      return new Response('AI is unavailable.', { status: 503, headers });
-    }
-    const limiter = createSessionExchangeLimiter(
-      process.env.UPSTASH_REDIS_REST_URL,
-      process.env.UPSTASH_REDIS_REST_TOKEN,
-    );
-    let decision: Awaited<ReturnType<typeof limiter.check>>;
-    try {
-      decision = await limiter.check(clientAddress(request));
-    } catch {
-      return new Response('AI is unavailable.', { status: 503, headers });
-    }
-    if (!decision.allowed) {
-      headers.set('X-Lacuna-AI-Limit', decision.limit);
-      headers.set(
-        'Retry-After',
-        String(Math.max(1, Math.ceil((decision.retryAt - Date.now()) / 1000))),
-      );
-      return new Response('Too many attempts. Try again after the limit resets.', {
-        status: 429,
-        headers,
-      });
-    }
+    const key = loadJevSigningKey(process.env);
+    if (!key || process.env.JEV_SERVICE_DISABLED === '1' || process.env.AI_SERVICE_DISABLED === '1')
+      return new Response('Jev is unavailable.', { status: 503, headers });
     const body = await readBoundedBody(request);
-    if (body === null) return new Response('AI request is too large.', { status: 413, headers });
+    if (body === null) return new Response('Jev request is too large.', { status: 413, headers });
     let credential: unknown;
     try {
-      credential = body ? (JSON.parse(body) as { credential?: unknown }).credential : null;
+      const value: unknown = JSON.parse(body);
+      credential =
+        value && typeof value === 'object' ? (value as { credential?: unknown }).credential : null;
     } catch {
       return new Response('Invalid request.', { status: 400, headers });
     }
-    if (typeof credential !== 'string')
-      return new Response('Invalid request.', { status: 400, headers });
-    const session = exchangeCredential(credential, configuration);
-    if (!session)
-      return new Response('Access code is invalid or revoked.', { status: 401, headers });
-    return Response.json(session, { headers });
+    const id = jevInstallationId(credential);
+    if (!id) return new Response('Invalid installation credential.', { status: 400, headers });
+    return Response.json(createJevSession(id, key), { headers });
   },
 };

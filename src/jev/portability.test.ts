@@ -5,14 +5,13 @@ import { createCard, createCourse, recordReview } from '../db/repository';
 import { exportDatabase, importBackup } from '../db/portability';
 import { encodeSnapshot, decodeSnapshot } from '../sync/snapshot';
 import { mergeSnapshots } from '../sync/mergeSnapshots';
-import { createJevEngine, JEV_SETTINGS_STORAGE_KEY } from './engine';
-import { HOSTED_ACCESS_STORAGE_KEY } from '../ai/session/hostedTransport';
+import { createJevEngine, JEV_SETTINGS_STORAGE_KEY, JEV_INSTALLATION_STORAGE_KEY } from './engine';
+import { JEV_CONSENT_VERSION } from './types';
 it('exports mark evidence but excludes device consent and credentials from backup and sync', async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
-  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'private-access-code-sentinel');
   localStorage.setItem('lacuna.answerInput', 'reveal');
   const engine = createJevEngine();
-  engine.enable(1);
+  engine.enable(JEV_CONSENT_VERSION);
   expect(localStorage.getItem(JEV_SETTINGS_STORAGE_KEY)).toContain('acceptedConsentVersion');
   const course = await createCourse('Review evidence');
   const card = await createCard(course.id, 'front_back', 'Q', 'A');
@@ -48,11 +47,11 @@ it('exports mark evidence but excludes device consent and credentials from backu
   expect((await exportDatabase()).reviewHistory?.[0].input).toBe('typed');
   const serialised = JSON.stringify(merged);
   for (const excluded of [
-    'private-access-code-sentinel',
+    localStorage.getItem(JEV_INSTALLATION_STORAGE_KEY)!,
     'lacuna.answerInput',
     JEV_SETTINGS_STORAGE_KEY,
     'acceptedConsentVersion',
-    HOSTED_ACCESS_STORAGE_KEY,
+    JEV_INSTALLATION_STORAGE_KEY,
   ])
     expect(serialised).not.toContain(excluded);
   localStorage.clear();

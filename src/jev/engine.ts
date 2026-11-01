@@ -1,6 +1,5 @@
 import {
   createHostedTransport,
-  HOSTED_ACCESS_STORAGE_KEY,
   HostedTransportError,
   hostedLimitError,
 } from '../ai/session/hostedTransport';
@@ -32,15 +31,8 @@ import {
 } from './types';
 
 export const JEV_SETTINGS_STORAGE_KEY = 'lacuna.jevSettings';
+export const JEV_INSTALLATION_STORAGE_KEY = 'lacuna.jevInstallation';
 const off: JevSettings = { enabled: false, acceptedConsentVersion: null };
-const connectionMessages: Record<HostedTransportError['kind'], string> = {
-  access: 'That access code was not recognised.',
-  unavailable: 'Automatic marking is unavailable right now. Try again later.',
-  invalid: 'Automatic marking is unavailable right now. Try again later.',
-  quota: 'The automatic marking limit has been reached.',
-  'rate-limit': 'Too many access-code attempts.',
-  network: 'Could not reach Lacuna. Check your connection.',
-};
 class Pause extends Error {
   constructor(readonly reason: JevPauseReason) {
     super(reason);
@@ -59,9 +51,10 @@ export function createJevEngine(
   const transport = createHostedTransport(fetcher);
   const cache = options.cache ?? jevDecisionCache;
   const listeners = new Set<() => void>();
-  const readCode = () => {
+  const readCredential = () => {
     try {
-      return storage?.getItem(HOSTED_ACCESS_STORAGE_KEY)?.trim() || '';
+      const credential = storage?.getItem(JEV_INSTALLATION_STORAGE_KEY) ?? '';
+      return /^[a-f0-9]{64}$/.test(credential) ? credential : '';
     } catch {
       return '';
     }
@@ -74,7 +67,10 @@ export function createJevEngine(
         (value.acceptedConsentVersion === null || Number.isInteger(value.acceptedConsentVersion))
       ) {
         return {
-          enabled: value.enabled && value.acceptedConsentVersion === JEV_CONSENT_VERSION,
+          enabled:
+            value.enabled &&
+            value.acceptedConsentVersion === JEV_CONSENT_VERSION &&
+            !!readCredential(),
           acceptedConsentVersion: value.acceptedConsentVersion,
         };
       }
@@ -91,10 +87,12 @@ export function createJevEngine(
   let retryAt: number | null = null;
   let backoffStep = 0;
   let generation = new AbortController();
-  let session: { code: string; token: string; expiresAt: number } | null = null;
-  let exchange: { code: string; promise: Promise<{ token: string; expiresAt: number }> } | null =
-    null;
-  let warmedSession: { code: string; expiresAt: number | null } | null = null;
+  let session: { credential: string; token: string; expiresAt: number } | null = null;
+  let exchange: {
+    credential: string;
+    promise: Promise<{ token: string; expiresAt: number }>;
+  } | null = null;
+  let warmedSession: { credential: string; expiresAt: number | null } | null = null;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
   const publish = (notify = true) => {
     clearTimeout(retryTimer);
@@ -106,13 +104,11 @@ export function createJevEngine(
     }
     const next: JevStatus = !settings.enabled
       ? { state: 'off' }
-      : !readCode()
-        ? { state: 'paused', reason: 'no-access-code', lastUsedAt }
-        : globalThis.navigator?.onLine === false
-          ? { state: 'paused', reason: 'offline', lastUsedAt }
-          : pause && waiting
-            ? { state: 'paused', reason: pause, lastUsedAt, retryAt }
-            : { state: 'ready', lastUsedAt };
+      : globalThis.navigator?.onLine === false
+        ? { state: 'paused', reason: 'offline', lastUsedAt }
+        : pause && waiting
+          ? { state: 'paused', reason: pause, lastUsedAt, retryAt }
+          : { state: 'ready', lastUsedAt };
     if (JSON.stringify(next) !== JSON.stringify(status)) status = next;
     if (notify) listeners.forEach((listener) => listener());
   };
@@ -124,7 +120,8 @@ export function createJevEngine(
   };
   const save = () => {
     try {
-      storage?.setItem(JEV_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      if (!storage) throw new Error('Storage unavailable');
+      storage.setItem(JEV_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
     } catch {
       settings = off;
       stop();
@@ -134,7 +131,7 @@ export function createJevEngine(
   const eligible = () =>
     settings.enabled &&
     settings.acceptedConsentVersion === JEV_CONSENT_VERSION &&
-    !!readCode() &&
+    !!readCredential() &&
     globalThis.navigator?.onLine !== false &&
     (!pause || (retryAt !== null && Date.now() >= retryAt));
   const reason = (error: unknown): JevPauseReason =>
@@ -143,7 +140,7 @@ export function createJevEngine(
       : error instanceof HostedTransportError
         ? (
             {
-              access: 'access-code-rejected',
+              access: 'session-rejected',
               quota: 'limit-reached',
               'rate-limit': 'rate-limited',
               unavailable: 'service-disabled',
@@ -155,7 +152,6 @@ export function createJevEngine(
           ? 'offline'
           : 'error';
   const failed = (failure: JevPauseReason, resetAt: number | null = null) => {
-    if (pause === 'access-code-rejected') return;
     consecutiveFailures++;
     if (failure === 'error' && consecutiveFailures < 3) {
       if (pause !== 'service-disabled') {
@@ -165,20 +161,24 @@ export function createJevEngine(
       failure = 'service-disabled';
     }
     pause = failure;
-    if (failure === 'error' || failure === 'service-disabled') {
+    if (failure === 'error' || failure === 'service-disabled' || failure === 'session-rejected') {
       retryAt = Date.now() + [60_000, 300_000, 900_000][Math.min(backoffStep, 2)];
       backoffStep++;
     } else if (failure === 'limit-reached' || failure === 'rate-limited') {
       retryAt = resetAt ?? Date.now() + 60_000;
     } else retryAt = null;
-    if (failure === 'access-code-rejected') session = null;
+    if (failure === 'session-rejected') {
+      session = null;
+      warmedSession = null;
+    }
     publish();
   };
   async function token(signal: AbortSignal) {
-    const code = readCode();
-    if (session?.code === code && session.expiresAt > Date.now() + 5000) return session.token;
-    if (!exchange || exchange.code !== code) {
-      const pending = { code, promise: transport.exchange(code, generation.signal) };
+    const credential = readCredential();
+    if (session?.credential === credential && session.expiresAt > Date.now() + 5000)
+      return session.token;
+    if (!exchange || exchange.credential !== credential) {
+      const pending = { credential, promise: transport.exchange(credential, generation.signal) };
       exchange = pending;
       void pending.promise
         .finally(() => {
@@ -188,7 +188,7 @@ export function createJevEngine(
     }
     const result = await exchange.promise;
     signal.throwIfAborted();
-    session = { ...result, code };
+    session = { ...result, credential };
     return result.token;
   }
   async function guarded<T>(
@@ -228,7 +228,7 @@ export function createJevEngine(
       }
       consecutiveFailures = 0;
       backoffStep = 0;
-      if (pause === 'error' || pause === 'service-disabled') {
+      if (pause === 'error' || pause === 'service-disabled' || pause === 'session-rejected') {
         pause = null;
         retryAt = null;
       }
@@ -294,7 +294,7 @@ export function createJevEngine(
     if (!response.ok)
       throw new Pause(
         response.status === 401
-          ? 'access-code-rejected'
+          ? 'session-rejected'
           : response.status === 503
             ? 'service-disabled'
             : 'error',
@@ -399,7 +399,20 @@ export function createJevEngine(
   const controller = {
     enable(version: number) {
       if (version !== JEV_CONSENT_VERSION) return;
-      settings = { enabled: true, acceptedConsentVersion: version };
+      try {
+        if (!storage) throw new Error('Storage unavailable');
+        if (!readCredential()) {
+          const bytes = crypto.getRandomValues(new Uint8Array(32));
+          const credential = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(
+            '',
+          );
+          storage.setItem(JEV_INSTALLATION_STORAGE_KEY, credential);
+        }
+        settings = { enabled: true, acceptedConsentVersion: version };
+      } catch {
+        settings = off;
+        stop();
+      }
       save();
     },
     disable() {
@@ -407,43 +420,21 @@ export function createJevEngine(
       settings = { ...settings, enabled: false };
       save();
     },
-    hasAccessCode: () => !!readCode(),
-    async connectAccessCode(code: string): Promise<{ ok: true } | { ok: false; message: string }> {
-      if (!settings.enabled || settings.acceptedConsentVersion !== JEV_CONSENT_VERSION)
-        return { ok: false, message: connectionMessages.invalid };
-      const signal = generation.signal;
-      try {
-        const result = await transport.exchange(code.trim(), signal);
-        signal.throwIfAborted();
-        if (!storage) throw new HostedTransportError('invalid');
-        storage.setItem(HOSTED_ACCESS_STORAGE_KEY, code.trim());
-        session = { ...result, code: code.trim() };
-        pause = null;
-        retryAt = null;
-        backoffStep = 0;
-        consecutiveFailures = 0;
-        publish();
-        return { ok: true };
-      } catch (error) {
-        if (!signal.aborted) {
-          failed(reason(error), error instanceof HostedTransportError ? error.retryAt : null);
-        }
-        return {
-          ok: false,
-          message:
-            connectionMessages[error instanceof HostedTransportError ? error.kind : 'network'] +
-            (error instanceof HostedTransportError && error.retryAt !== null
-              ? ` Try again after ${new Date(error.retryAt).toLocaleString('en-GB')}.`
-              : ''),
-        };
-      }
+    async quotaId(): Promise<string | null> {
+      if (!settings.enabled) return null;
+      const credential = readCredential();
+      if (!credential) return null;
+      const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(credential));
+      return settings.enabled && readCredential() === credential
+        ? Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join('')
+        : null;
     },
   };
   const changed = (event: StorageEvent) => {
     if (
       event.key !== null &&
       event.key !== JEV_SETTINGS_STORAGE_KEY &&
-      event.key !== HOSTED_ACCESS_STORAGE_KEY
+      event.key !== JEV_INSTALLATION_STORAGE_KEY
     )
       return;
     settings = readSettings();
@@ -470,13 +461,13 @@ export function createJevEngine(
     },
     marker: () => {
       if (!eligible()) return null;
-      const code = readCode();
-      const expiresAt = session?.code === code ? session.expiresAt : null;
+      const credential = readCredential();
+      const expiresAt = session?.credential === credential ? session.expiresAt : null;
       if (
         (expiresAt === null || expiresAt <= Date.now() + 5000) &&
-        (warmedSession?.code !== code || warmedSession.expiresAt !== expiresAt)
+        (warmedSession?.credential !== credential || warmedSession.expiresAt !== expiresAt)
       ) {
-        warmedSession = { code, expiresAt };
+        warmedSession = { credential, expiresAt };
         void token(generation.signal).catch(() => {});
       }
       return markTyped;
