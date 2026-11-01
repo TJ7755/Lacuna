@@ -1,7 +1,7 @@
 import { Button } from '../components/ui/Button';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
-import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
+import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useNavigation } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -253,9 +253,7 @@ export function Dashboard() {
 
       <PageLoadingBoundary className={emptyToday ? 'order-1' : undefined}>
         {!rows ? (
-          <p role="status" className="text-sm text-ink-soft">
-            Loading Today…
-          </p>
+          <PageLoading />
         ) : rows.length === 0 ? (
           <EmptyState
             hasArchivedCourses={courses?.some((course) => course.archived) ?? false}
