@@ -4,6 +4,14 @@
 // CardImportDialog with the same parsing engine. SharedCourseImport handles course
 // files, codes and QR scanning for the Import and Share pages.
 
+import {
+  ACCEPTED_FILE_TYPES,
+  FORMAT_HELP,
+  MAX_IMPORT_CHARS,
+  MAX_IMPORT_ROWS,
+  detectPanelFormat,
+  parsePanelInput,
+} from './unifiedImportPlanning';
 import { ShareCodeImport } from './ShareCodeImport';
 import { useShareCodeImport } from './useShareCodeImport';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -14,7 +22,6 @@ import { type ParsedCard } from '../../db/import';
 import {
   FORMAT_LABELS,
   detectFormat,
-  parseImportAuto,
   type ImportFormat,
   type UnifiedImportOptions,
 } from '../../db/importEngine';
@@ -45,51 +52,6 @@ interface UnifiedImportPanelProps {
   /** Called when an Anki .apkg file is parsed and confirmed. */
   onApkgImport?: (result: ApkgImportResult) => void | Promise<void>;
 }
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const MAX_IMPORT_ROWS = 5000;
-const MAX_IMPORT_CHARS = 500_000;
-
-const ACCEPTED_FILE_TYPES = [
-  '.csv',
-  '.tsv',
-  '.txt',
-  '.json',
-  '.md',
-  '.markdown',
-  '.html',
-  '.xml',
-  '.apkg',
-  'text/csv',
-  'text/plain',
-  'text/tab-separated-values',
-  'application/json',
-  'text/markdown',
-  'text/html',
-  'application/octet-stream',
-].join(',');
-
-// ---------------------------------------------------------------------------
-// Format help text
-// ---------------------------------------------------------------------------
-
-const FORMAT_HELP: Record<ImportFormat, string> = {
-  csv: 'Comma-separated values. Each row is a card: first column is the front, second is the back, and an optional third column is tags.',
-  tsv: 'Tab-separated values. Each row is a card: first column is the front, second is the back.',
-  'markdown-table':
-    'A Markdown table with headers. Columns named "front"/"back" (or "question"/"answer", "q"/"a", "term"/"definition") are used automatically.',
-  'markdown-list':
-    'A Markdown list where each item or pair of items is a card. Supports Q:/A: prefixes, ordered pairs, and blank-line separated blocks.',
-  json: 'A JSON array of objects. Recognised keys (front/back, question/answer, etc.) are used automatically; otherwise the first two string values become front and back.',
-  'share-code':
-    'A Lacuna share code (starts with LAC). Paste the full code and it will be decoded automatically.',
-  'plain-text':
-    'Plain text with Q:/A: prefixes, separator-based pairs (using —, |, or tab), or blank-line separated blocks.',
-  unknown: 'Paste or upload your cards. The format will be detected automatically.',
-};
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -135,10 +97,7 @@ export function UnifiedImportPanel({
   const [apkgError, setApkgError] = useState<string | null>(null);
 
   // Auto-detect format (only when text is short enough for fast detection).
-  const detection = useMemo(() => {
-    if (text.length > 100_000) return { format: 'plain-text' as ImportFormat, confidence: 0.4 };
-    return detectFormat(text);
-  }, [text]);
+  const detection = useMemo(() => detectPanelFormat(text), [text]);
   const effectiveFormat = formatOverride ?? detection.format;
 
   // Parse cards using the unified engine.
@@ -147,10 +106,7 @@ export function UnifiedImportPanel({
     [formatOverride],
   );
 
-  const result = useMemo(() => {
-    const trimmed = text.length > MAX_IMPORT_CHARS ? text.slice(0, MAX_IMPORT_CHARS) : text;
-    return parseImportAuto(trimmed, options);
-  }, [text, options]);
+  const result = useMemo(() => parsePanelInput(text, options), [text, options]);
 
   // Duplicate detection against existing cards in the target deck.
   const [duplicateCount, setDuplicateCount] = useState(0);
