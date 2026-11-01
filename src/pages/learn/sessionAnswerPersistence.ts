@@ -1,32 +1,22 @@
+import type { SessionState } from './sessionMachine';
 import { db, makeId } from '../../db/schema';
-import type { SessionCardOutcome, SessionEvent } from '../../course/sessionSummary';
+import type { SessionEvent } from '../../course/sessionSummary';
 import { performanceForReviewUnit } from '../../db/backingDecks';
 import { upsertLessonCardExposure } from '../../db/lessonRepository';
 import { undoReview, type RecordReviewArgs, type ReviewUndo } from '../../db/reviewRepository';
-import type { Card, LessonCardExposure, UserPerformance } from '../../db/types';
-import type { CooldownMap } from '../../fsrs/cooldown';
-import type { RevisionSessionState } from '../../course/revisionSession';
+import type { LessonCardExposure, UserPerformance } from '../../db/types';
 import { persistAnswer } from './answerSteps';
 
 /** What undoing the most recent answer needs to restore (DB + in-session state). */
 export interface AnswerSnapshot {
+  machine: SessionState;
   input?: 'typed' | 'reveal';
   responseTimeSec: number;
   retainOnCompletion: boolean;
   undo: ReviewUndo;
-  cooldowns: CooldownMap;
-  eventsLen: number;
   deckId: string;
   deckReviews: number;
-  outcomeBefore?: SessionCardOutcome;
-  revision: RevisionSessionState;
-  simple?: {
-    queue: Card[];
-    mastered: Set<string>;
-    wrong: Set<string>;
-    cardIds: string[];
-    exposureAdded: LessonCardExposure | null;
-  };
+  simple?: { exposureAdded: LessonCardExposure | null };
 }
 
 /** Persist a Simple review and its introduction exposure as one reversible write. */
