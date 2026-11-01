@@ -549,6 +549,11 @@ test('keeps lessons and anchored practice rows apart during a checkpoint drag pr
   await add.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(add).toBeHidden();
   const checkpoint = path.getByRole('button', { name: 'Edit checkpoint: My test', exact: true });
+  // Its workload estimate arrives later and moves the path; measure once it has settled.
+  await expect(
+    page.getByLabel('Estimated assessment workload').getByText('My test: estimated remaining work'),
+  ).toBeVisible();
+  await checkpoint.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   const start = (await checkpoint.boundingBox())!;
   const target = (await path.locator('[data-path-lesson="A"] [data-path-row]').boundingBox())!;
   const x = start.x + 12;
@@ -682,6 +687,9 @@ for (const input of [
           name: 'Edit checkpoint: Edge scrolling test',
           exact: true,
         });
+        const checkpointSource = (
+          (await publisherRecords(page)).courseAssessments as { id: string; kind: string }[]
+        ).find((assessment) => assessment.kind === 'checkpoint')!.id;
         for (const anchor of input.near ? ['G', 'F', 'E', 'D', 'C', 'B', 'A'] : ['B', 'A']) {
           await row.press('Alt+ArrowUp');
           await expect
@@ -692,6 +700,19 @@ for (const input of [
               }[];
               return records.find((assessment) => assessment.kind === 'checkpoint')?.afterLessonId;
             })
+            .toBe(anchor);
+          // The next press reads the rendered order, so wait for the path to show this move.
+          await expect
+            .poll(() =>
+              path.locator('[data-path-source]').evaluateAll((rows, id) => {
+                const sources = rows.map((item) => item.getAttribute('data-path-source') ?? '');
+                const index = sources.indexOf(id);
+                return sources
+                  .slice(0, index)
+                  .reverse()
+                  .find((source) => /^[A-H]$/.test(source));
+              }, checkpointSource),
+            )
             .toBe(anchor);
         }
       }
