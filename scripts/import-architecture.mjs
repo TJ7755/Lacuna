@@ -23,9 +23,9 @@ export const domainDirectories = [
 
 const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const declarationExtension = /\.d\.[cm]?ts$/;
-export const sourcePath = (root, file) => relative(root, file).split(sep).join('/');
+const sourcePath = (root, file) => relative(root, file).split(sep).join('/');
 
-export function createResolver(root, { runtime = false } = {}) {
+function createResolver(root, { runtime = false } = {}) {
   const configFile = join(root, 'tsconfig.app.json');
   const config = existsSync(configFile)
     ? ts.readConfigFile(configFile, ts.sys.readFile).config
@@ -151,7 +151,7 @@ function valueSpecifiers(clause) {
   return clause.elements.length === 0 || clause.elements.some((element) => !element.isTypeOnly);
 }
 
-export function importGraph(root) {
+function importGraph(root) {
   const resolveImport = createResolver(root, { runtime: true });
   const graph = new Map();
   const walk = (directory) => {
@@ -217,7 +217,7 @@ export function importGraph(root) {
 
 // Tarjan's strongly connected components: every internal edge in a cyclic
 // component lies on a cycle. Track the exact edge set, not a folder-wide waiver.
-export function cyclicEdges(graph, root) {
+function cyclicEdges(graph, root) {
   const indices = new Map();
   const low = new Map();
   const stack = [];

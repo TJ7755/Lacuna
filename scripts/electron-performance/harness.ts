@@ -71,7 +71,7 @@ export async function runPackagedInteractionSuite(options: {
   return result;
 }
 
-export function assertPackagedInteractionSample(sample: PackagedInteractionSample): void {
+function assertPackagedInteractionSample(sample: PackagedInteractionSample): void {
   if (!sample.packaged || sample.rendererProtocol !== 'app:' || sample.viteResourceCount !== 0) {
     throw new Error(`${sample.scenario} did not run against the packaged app renderer.`);
   }

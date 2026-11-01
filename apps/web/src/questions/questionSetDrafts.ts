@@ -8,7 +8,6 @@ import {
 } from './questionSetDraftMaintenance';
 
 export {
-  QUESTION_SET_DRAFT_PREFIX,
   QuestionSetDraftConflictError,
   QuestionSetDraftCorruptError,
   questionSetDraftKey,

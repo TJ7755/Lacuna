@@ -19,7 +19,6 @@ import {
   type JevAllocationInput,
 } from '../../../web/src/jev/protocol.js';
 
-export { JEV_MODEL } from '../../../web/src/jev/protocol.js';
 const probability = z.number().min(0).max(1);
 // Official wire contract, checked 21 October 2026:
 // https://docs.typesafe.ai/api.md, /primitives/choice.md and /primitives/score.md

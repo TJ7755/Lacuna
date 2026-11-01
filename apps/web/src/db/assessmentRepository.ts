@@ -10,8 +10,6 @@ import type { CourseAssessment } from '@lacuna/core/db/types';
 import { validateAssessmentStructure } from './assessmentValidation';
 import { validatePaperAssessmentDates } from '../specifications/assessment';
 
-export { validateAssessmentStructure } from './assessmentValidation';
-
 async function validateAssessmentReferences(assessment: CourseAssessment): Promise<void> {
   const [lessons, cards, links, course, concepts] = await Promise.all([
     db.lessons.toArray(),
