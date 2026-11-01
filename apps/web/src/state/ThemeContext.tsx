@@ -1,3 +1,4 @@
+import { createStoredValue, oneOf } from './localSetting';
 import {
   createContext,
   useCallback,
@@ -11,7 +12,10 @@ import {
 export type Theme = 'dark' | 'light' | 'auto';
 type ResolvedTheme = 'dark' | 'light';
 
-const STORAGE_KEY = 'lacuna-theme';
+const storedTheme = createStoredValue<Theme>({
+  key: 'lacuna-theme',
+  parse: oneOf<Theme>(['dark', 'light', 'auto'], 'dark'),
+});
 
 function systemPrefersDark(): boolean {
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
@@ -28,8 +32,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function readStoredTheme(): Theme {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark' || stored === 'auto') return stored;
+    return storedTheme.read();
   } catch {
     // Ignore storage access errors and fall back to the default.
   }
@@ -55,7 +58,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, theme);
+      storedTheme.write(theme);
     } catch {
       // Persistence is best-effort.
     }
