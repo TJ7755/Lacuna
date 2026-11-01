@@ -255,3 +255,149 @@ it('retains completed lessons as inactive topic inventory without reopening thei
     expect.objectContaining({ conceptId: card.conceptId, dueCards: 0, newCards: 0 }),
   ]);
 });
+
+it('serves a technique-only question without fabricating a Concept and stops the sitting after an assisted answer', async () => {
+  const course = await createCourse('Techniques', {
+    schedulingMode: 'steady',
+    learnFirst: false,
+    autoPractice: false,
+  });
+  await createQuestionSet({
+    id: 'skills-only',
+    courseId: course.id,
+    title: 'Graph evidence',
+    lessonIds: [],
+    assessmentIds: [],
+    questions: ['q1', 'q2'].map((id) => ({
+      id,
+      prompt: `Interpret ${id}`,
+      parts: [],
+      answer: {
+        maxMarks: 1,
+        response: { kind: 'written' },
+        prerequisiteConceptIds: [],
+        allocations: [
+          {
+            id: `${id}-a`,
+            criterion: 'Uses the trend',
+            maxMarks: 1,
+            dimension: 'application',
+            targetConceptIds: [],
+            techniqueTags: {
+              taxonomyId: 'science-techniques',
+              taxonomyVersion: 1,
+              techniqueIds: ['graph-interpretation'],
+              provenance: { source: 'author' },
+            },
+          },
+        ],
+      },
+    })),
+  });
+  const sittingStartedAt = Date.now() - 10;
+  const { result, rerender } = renderHook(
+    ({ refreshKey }) => useCourseStudyFlow(course.id, refreshKey, true, null, sittingStartedAt),
+    { initialProps: { refreshKey: 0 } },
+  );
+  await waitFor(() =>
+    expect(result.current?.decision).toMatchObject({
+      kind: 'step',
+      step: { kind: 'exam-questions', techniqueId: 'graph-interpretation' },
+    }),
+  );
+  expect(result.current?.snapshot.questionOptions?.[0].conceptId).toBeUndefined();
+  await act(async () => {
+    const { startExamSkillPractice } = await import('../questions/examSkillPractice');
+    let { attempt } = await startExamSkillPractice(course.id, 'graph-interpretation', {
+      study: { sittingStartedAt, scopeConceptIds: [], scopeLessonIds: [] },
+    });
+    const question = attempt.receipt.questions[0];
+    attempt = await recordQuestionSetAssistance(attempt.id, attempt.revisionId, {
+      nodeId: question.id,
+      kind: 'answer-revealed',
+      occurredAt: Date.now(),
+    });
+    attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, question.id);
+    attempt = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
+      decisions: [
+        { allocationId: question.answer!.allocations[0].id, status: 'awarded', marks: 0 },
+      ],
+      annotations: [],
+      corrections: [],
+      reflection: { reasons: [], note: '' },
+      activeNodeId: question.id,
+      activeAllocationId: null,
+    });
+    await completeQuestionSetAttempt(attempt.id, attempt.revisionId);
+  });
+  rerender({ refreshKey: 1 });
+  await waitFor(() => expect(result.current?.generation).toBe(1));
+  expect(result.current?.snapshot.questionOptions).toEqual([]);
+  expect(['complete', 'empty']).toContain(result.current?.decision.kind);
+  expect(await db.concepts.count()).toBe(0);
+});
+
+it('keeps an equally urgent Concept before its tagged technique but resumes unfinished technique work first', async () => {
+  const course = await createCourse('Ordering', {
+    schedulingMode: 'steady',
+    learnFirst: false,
+    autoPractice: false,
+  });
+  const concept = await createConcept(course.id, 'Membranes', { id: 'z-membranes' });
+  await createQuestionSet({
+    id: 'ordering-set',
+    courseId: course.id,
+    title: 'Evidence',
+    lessonIds: [],
+    assessmentIds: [],
+    questions: ['q1', 'q2'].map((id) => ({
+      id,
+      prompt: id,
+      parts: [],
+      answer: {
+        maxMarks: 1,
+        response: { kind: 'written' },
+        prerequisiteConceptIds: [],
+        allocations: [
+          {
+            id: `${id}-a`,
+            criterion: 'Explains',
+            maxMarks: 1,
+            dimension: 'application',
+            targetConceptIds: [concept.id],
+            techniqueTags: {
+              taxonomyId: 'science-techniques',
+              taxonomyVersion: 1,
+              techniqueIds: ['causal-link'],
+              provenance: { source: 'author' },
+            },
+          },
+        ],
+      },
+    })),
+  });
+  const { result, rerender } = renderHook(
+    ({ refreshKey }) => useCourseStudyFlow(course.id, refreshKey),
+    { initialProps: { refreshKey: 0 } },
+  );
+  await waitFor(() => expect(result.current?.snapshot.questionOptions).toHaveLength(2));
+  expect(result.current?.snapshot.questionOptions?.[0]).toMatchObject({ conceptId: concept.id });
+  await act(async () => {
+    const { startExamSkillPractice } = await import('../questions/examSkillPractice');
+    await startExamSkillPractice(course.id, 'causal-link');
+  });
+  rerender({ refreshKey: 1 });
+  await waitFor(() => expect(result.current?.generation).toBe(1));
+  expect(result.current?.snapshot.questionOptions?.[0]).toMatchObject({
+    techniqueId: 'causal-link',
+    unfinished: true,
+  });
+  expect(result.current?.decision).toMatchObject({
+    kind: 'step',
+    step: {
+      kind: 'exam-questions',
+      techniqueId: 'causal-link',
+      label: 'Resume: Link cause and effect',
+    },
+  });
+});

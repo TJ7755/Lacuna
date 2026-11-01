@@ -6,7 +6,7 @@ import {
   paperSpecificationReference,
 } from '../specifications/paperFixture.testFixtures';
 import { makeCard, makeCourse, makeLesson } from './path.testFixtures';
-import { questionStudyScope } from './questionStudyScope';
+import { questionStudyScope, questionStudyLessonScope } from './questionStudyScope';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -157,4 +157,31 @@ it('keeps a Concept accessible when an open course gains a Card without lesson m
       ],
     }),
   ).not.toContain('no-card');
+});
+
+it('keeps lesson-only skill questions behind lesson access and introduction without requiring a fabricated Concept', () => {
+  const input = fixture({ learnFirst: true, unlockMode: 'open' });
+  input.exposures = [];
+  expect(questionStudyLessonScope({ ...input, completions: [] })).toEqual([]);
+  expect(questionStudyLessonScope({ ...input, completions: [{ lessonId: 'first' }] })).toEqual([
+    'first',
+  ]);
+  expect(
+    questionStudyLessonScope({
+      ...input,
+      course: { ...input.course, learnFirst: false },
+      completions: [],
+    }),
+  ).toEqual(['first', 'second']);
+  expect(
+    questionStudyLessonScope({
+      ...input,
+      course: {
+        ...input.course,
+        unlockMode: 'linear',
+        linearCadence: { anchorDate: 500, intervalDays: 1 },
+      },
+      completions: [{ lessonId: 'first' }, { lessonId: 'second' }],
+    }),
+  ).toEqual(['first']);
 });

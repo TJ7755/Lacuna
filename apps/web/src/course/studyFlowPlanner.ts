@@ -1,4 +1,4 @@
-import type { CourseStudyFlowSnapshot } from './studyFlowSnapshot';
+import type { CourseStudyFlowSnapshot, StudyQuestionTarget } from './studyFlowSnapshot';
 import type { AssessmentPracticeOption } from './assessmentPractice';
 import { SCIENCE_TECHNIQUES } from '@lacuna/core/questions/techniqueTags';
 
@@ -14,15 +14,15 @@ export type StudyFlowStep =
       label: string;
       assessmentId?: string;
     }
-  | {
+  | (StudyQuestionTarget & {
       kind: 'exam-questions';
       nodeKey: string;
       label: string;
-      conceptId: string;
+      scopeLessonIds?: string[];
       scopeConceptIds: string[];
       allowFamiliar?: boolean;
       reason?: string;
-    };
+    });
 
 export type StudyFlowDecision =
   | { kind: 'step'; step: StudyFlowStep }
@@ -112,8 +112,13 @@ export function planNextStudyStep(
   const questionStep: StudyFlowStep | undefined = question
     ? {
         kind: 'exam-questions',
-        nodeKey: `questions-${question.conceptId}`,
-        conceptId: question.conceptId,
+        nodeKey: question.techniqueId
+          ? `questions-technique-${question.techniqueId}`
+          : `questions-${question.conceptId}`,
+        ...(question.techniqueId
+          ? { techniqueId: question.techniqueId }
+          : { conceptId: question.conceptId }),
+        scopeLessonIds: snapshot.questionScopeLessonIds,
         scopeConceptIds: snapshot.questionScopeConceptIds ?? [],
         label: question.unfinished ? `Resume: ${question.name}` : `Practise: ${question.name}`,
         reason: question.needs?.techniques.length
