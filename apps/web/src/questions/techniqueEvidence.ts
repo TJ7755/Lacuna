@@ -165,14 +165,20 @@ export function deriveConceptDiagnosticEvidence(
     for (const [categoryId, answers] of categories) {
       let demonstratedCount = 0;
       let gapCount = 0;
-      let lastObservedAt = 0;
+      let lastObservedAt = -Infinity;
       let latestOutcome: DiagnosticCategoryEvidence['latestOutcome'] = 'demonstrated';
       for (const answer of answers.values()) {
         if (answer.gap) gapCount++;
         else demonstratedCount++;
-        if (answer.at > lastObservedAt || (answer.at === lastObservedAt && answer.gap)) {
-          lastObservedAt = answer.at;
-          latestOutcome = answer.gap ? 'gap' : 'demonstrated';
+      }
+      for (const observation of observations) {
+        if (observation.categoryId !== categoryId) continue;
+        if (
+          observation.at > lastObservedAt ||
+          (observation.at === lastObservedAt && observation.gap)
+        ) {
+          lastObservedAt = observation.at;
+          latestOutcome = observation.gap ? 'gap' : 'demonstrated';
         }
       }
       evidence.push({ categoryId, demonstratedCount, gapCount, lastObservedAt, latestOutcome });

@@ -189,7 +189,7 @@ it('retains the latest criterion need while counting a mixed-outcome answer cons
     demonstratedCount: 0,
     gapCount: 1,
     lastObservedAt: 5_001,
-    latestOutcome: 'gap',
+    latestOutcome: 'demonstrated',
   });
   expect(deriveConceptPracticeNeeds([attempt], [set]).get(concept.id)).toEqual({
     knowledge: false,
