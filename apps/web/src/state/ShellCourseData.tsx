@@ -1,3 +1,4 @@
+import { useCourseDataClock } from './useExamClock';
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
@@ -42,6 +43,7 @@ export function ShellCourseDataProvider({
   includeDashboard?: boolean;
   children: ReactNode;
 }) {
+  const clock = useCourseDataClock();
   const data = useLiveQuery(async (): Promise<ShellCourseData> => {
     const [
       records,
@@ -210,7 +212,7 @@ export function ShellCourseDataProvider({
         ),
       },
     };
-  }, [includeDashboard]);
+  }, [includeDashboard, clock]);
 
   return <ShellCourseDataContext.Provider value={data}>{children}</ShellCourseDataContext.Provider>;
 }
