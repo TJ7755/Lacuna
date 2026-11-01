@@ -13,7 +13,7 @@ test.beforeAll(async () => {
       contents: `
         import { createRoot } from 'react-dom/client';
         import { LazyMotion, domAnimation } from 'motion/react';
-        import { ToastProvider, useToast } from './src/components/ui/Toast';
+        import { ToastProvider, useToast } from './apps/web/src/components/ui/Toast';
         function Controls() {
           const { notify } = useToast();
           return <>

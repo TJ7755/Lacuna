@@ -12,7 +12,7 @@ async function importSchoolScience(
   await openImport(page);
   const examDate = Date.now() + 90 * 86_400_000;
   const payload = {
-    v: 5,
+    v: 6,
     by: 'Teacher',
     at: 1000,
     li: 'local-order-science',

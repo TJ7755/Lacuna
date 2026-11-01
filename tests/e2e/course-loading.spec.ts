@@ -13,11 +13,17 @@ for (const width of [1280, 375]) {
       version: 1,
       assets: [],
       payload: {
-        v: 2,
+        v: 6,
         at: 1000,
         li: 'loading-biology',
+        concepts: [{ id: 'concept-loading', n: 'Question' }],
+        questions: [],
+        questionSets: [],
+        questionSetPracticeNodes: [],
         course: { n: 'Loading biology', o: 0, c: 0, e: 0, um: 'open' },
-        lessons: [{ n: 'Cells', notes: [], cards: [{ k: 0, f: 'Question', b: 'Answer' }] }],
+        lessons: [
+          { n: 'Cells', notes: [], cards: [{ k: 0, f: 'Question', b: 'Answer', co: 'concept-loading' }] },
+        ],
       },
     });
     let finish: (status: number) => void = () => {};

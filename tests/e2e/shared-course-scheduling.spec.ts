@@ -14,9 +14,13 @@ for (const width of [1280, 390]) {
       buffer: Buffer.from(JSON.stringify({
         format: 'lacuna-course', version: 1, assets: [],
         payload: {
-          v: 2, at: 1_700_000_000_000,
+          v: 6, at: 1_700_000_000_000,
+          concepts: [{ id: 'concept-scheduling', n: 'Cells' }],
+          questions: [],
+          questionSets: [],
+          questionSetPracticeNodes: [],
           course: { n: 'Biology scheduling', o: 0, c: 1000, e: 1_900_000_000_000, um: 'open' },
-          lessons: [{ n: 'Cells', notes: [], cards: [{ k: 0, f: 'Question', b: 'Answer' }] }],
+          lessons: [{ n: 'Cells', notes: [], cards: [{ k: 0, f: 'Question', b: 'Answer', co: 'concept-scheduling' }] }],
         },
       })),
     });

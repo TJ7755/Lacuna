@@ -18,7 +18,14 @@ async function importRevision(page: Page, revision: number) {
         version: 1,
         assets: [],
         payload: {
-          v: 2,
+          v: 6,
+          concepts: Array.from({ length: revision === 1 ? 63 : 5 }, (_, index) => ({
+            id: `toast-layout-concept-${index}`,
+            n: `Cell question ${index + 1}`,
+          })),
+          questions: [],
+          questionSets: [],
+          questionSetPracticeNodes: [],
           li: 'toast-layout-biology',
           rv: revision,
           at: revision * 1000,
@@ -33,6 +40,7 @@ async function importRevision(page: Page, revision: number) {
                 k: 0,
                 f: `Cell question ${index + 1}`,
                 b: revision === 1 ? 'Original answer' : 'Updated answer',
+                co: `toast-layout-concept-${index}`,
               })),
             },
           ],

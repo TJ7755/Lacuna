@@ -21,16 +21,31 @@ for (const width of [1280, 390]) {
     const minted = await handle(new Request(`${RELAY_URL}/shares`, { method: 'POST' }));
     const { shareId } = (await minted.json()) as { shareId: string };
     const payload = {
-      v: 2,
+      v: 6,
       at: 1000,
       li: 'share-arrival-biology',
       rv: 1,
+      concepts: ['Cells', 'Enzymes'].map((name, index) => ({
+        id: `arrival-concept-${index}`,
+        n: `Question about ${name}`,
+      })),
+      questions: [],
+      questionSets: [],
+      questionSetPracticeNodes: [],
       course: { n: 'Shared biology', o: 0, c: 1000, um: 'open', sm: 1 },
       lessons: ['Cells', 'Enzymes'].map((name, index) => ({
         i: `arrival-lesson-${index}`,
         n: name,
         notes: [],
-        cards: [{ id: `arrival-card-${index}`, k: 0, f: `Question about ${name}`, b: 'Answer' }],
+        cards: [
+          {
+            id: `arrival-card-${index}`,
+            k: 0,
+            f: `Question about ${name}`,
+            b: 'Answer',
+            co: `arrival-concept-${index}`,
+          },
+        ],
       })),
     };
     const file = JSON.stringify({ format: 'lacuna-course', version: 1, assets: [], payload });
@@ -454,17 +469,31 @@ test('updates a synthetic library revision 17 through a Gaps class link at revis
   const source = (await minted.json()) as { shareId: string };
   const publish = async (revision: number) => {
     const payload = {
-      v: 2,
+      v: 6,
       at: 1000,
       li: 'controlled-library-biology',
       rv: revision,
+      concepts: [
+        { id: 'controlled-concept', n: 'What is a cell?' },
+      ],
+      questions: [],
+      questionSets: [],
+      questionSetPracticeNodes: [],
       course: { n: 'Controlled biology', o: 0, c: 1000, um: 'open', sm: 1 },
       lessons: [
         {
           i: 'source-lesson',
           n: 'Cells',
           notes: [],
-          cards: [{ id: 'source-card', k: 0, f: 'What is a cell?', b: 'A living unit' }],
+          cards: [
+            {
+              id: 'source-card',
+              k: 0,
+              f: 'What is a cell?',
+              b: 'A living unit',
+              co: 'controlled-concept',
+            },
+          ],
         },
       ],
     };
