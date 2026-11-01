@@ -1,10 +1,6 @@
 // High-level data operations that combine the FSRS engine with persistence.
 // Components call these rather than touching Dexie tables directly.
 
-import { assessmentTiming } from '../fsrs/assessmentTiming';
-import { makeExamDateContext, resolveCardExamDate } from '../fsrs/examDate';
-import { hydrateCourse, finalAssessmentForCourse } from './assessmentMigration';
-import { simContext } from '../fsrs/forwardSim';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 import { isLeech } from '@lacuna/core/fsrs/leech';
 import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
@@ -146,10 +142,6 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
       'rw',
       [
         db.cards,
-        db.lessons,
-        db.courseAssessments,
-        db.lessonCards,
-        db.concepts,
         db.courses,
         db.schedulingUnits,
         db.sessionHistory,
@@ -225,30 +217,6 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           state: memory.state,
           history: [...cardBefore.history, log],
         };
-
-        if (cardBefore.courseId) {
-          const courseRecord = await db.courses.get(cardBefore.courseId);
-          if (courseRecord) {
-            const assessments = await db.courseAssessments
-              .where('courseId')
-              .equals(courseRecord.id)
-              .toArray();
-            const course = hydrateCourse(
-              courseRecord,
-              finalAssessmentForCourse(courseRecord.id, assessments),
-            );
-            const lessons = await db.lessons.where('courseId').equals(course.id).toArray();
-            const links = await db.lessonCards.toArray();
-            const concepts = await db.concepts.where('courseId').equals(course.id).toArray();
-            const context = makeExamDateContext(course, lessons, assessments, links, concepts);
-            updatedCard.due = assessmentTiming(
-              updatedCard,
-              now,
-              resolveCardExamDate(updatedCard, context, now),
-              simContext(deck, engine),
-            ).due;
-          }
-        }
 
         const action = deck.leechAction ?? 'suspend';
         const threshold = deck.leechThreshold;

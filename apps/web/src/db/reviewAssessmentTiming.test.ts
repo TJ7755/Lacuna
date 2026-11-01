@@ -8,10 +8,11 @@ import {
   recordReview,
   undoReview,
 } from './repository';
+import { dueCards } from '../fsrs/eligibility';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 
 describe('assessment due persistence', () => {
-  it('uses the lesson assessment, persists the cap, replays once and restores due on undo', async () => {
+  it('preserves ordinary due after the lesson assessment without admitting the card early; replay and undo remain intact', async () => {
     const now = Date.now();
     const examDate = now + 1000;
     const course = await createCourse('Timing', { examDate: now + 100000 });
@@ -33,8 +34,10 @@ describe('assessment due persistence', () => {
       now,
     };
     const result = await recordReview(args);
-    expect(result.card.due).toBe(now);
-    expect((await db.cards.get(card.id))?.due).toBe(now);
+    expect(result.card.due).toBe(ordinary);
+    expect((await db.cards.get(card.id))?.due).toBe(ordinary);
+    expect(dueCards([result.card], now)).toEqual([]);
+    expect(dueCards([result.card], examDate)).toEqual([]);
     expect((await recordReview(args)).recorded).toBe(false);
     await undoReview({
       ...result,

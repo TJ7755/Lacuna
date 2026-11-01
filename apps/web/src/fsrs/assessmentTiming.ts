@@ -1,27 +1,22 @@
-import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card } from '@lacuna/core/db/types';
-import { rAtExamIfReviewedNow, type SimContext } from './forwardSim';
+import { rAtExam, rAtExamIfReviewedNow, type SimContext } from './forwardSim';
 
 /** FSRS's reference retention; a model target, not a guarantee of human recall. */
 export const ASSESSMENT_TARGET_RECALL = 0.9;
 
-/** Reserve one day for preparation; imminent assessments make the card due now. */
-export const ASSESSMENT_PREPARATION_LEAD_MS = MS_PER_DAY;
-
 export interface AssessmentTiming {
   due: number | null;
-  /** Predicted recall following an expected-grade review at due; absent without a future exam. */
+  /** Exam recall, including one expected-grade review only if due falls before the exam. */
   predictedRecall: number | null;
-  /** Whether that projected review reaches the target; null without a future exam. */
+  /** Whether projected exam recall reaches the target; null without a future exam. */
   feasible: boolean | null;
 }
 
 /**
- * Preserve earlier ordinary reviews, including overdue dates, and cap later ones
- * at the preparation deadline. Exams less than one day away make reviews due now.
- * The lead is a preparation policy, not a promise of 90% recall: the existing
- * curve reports feasibility after an expected-grade review at max(now, due).
- * Projection does not change persisted memory.
+ * Informational only: preserve the ordinary FSRS due date exactly.
+ * Project one expected-grade review at max(now, due) only when due is before
+ * the assessment. Otherwise use current memory without inventing a review after
+ * the exam. The 90% reference target is a model prediction, not a guarantee.
  */
 export function assessmentTiming(
   card: Card,
@@ -32,14 +27,11 @@ export function assessmentTiming(
   if (examDate === undefined || !Number.isFinite(examDate) || examDate <= now) {
     return { due: card.due, predictedRecall: null, feasible: null };
   }
-  const preparationDeadline = Math.max(now, examDate - ASSESSMENT_PREPARATION_LEAD_MS);
-  const due = Math.min(card.due ?? Infinity, preparationDeadline);
-  const predictedRecall = rAtExamIfReviewedNow(
-    card,
-    ctx.expectedGrade,
-    examDate,
-    Math.max(now, due),
-    ctx,
-  );
+  const due = card.due;
+  const reviewAt = due === null ? undefined : Math.max(now, due);
+  const predictedRecall =
+    reviewAt !== undefined && reviewAt < examDate
+      ? rAtExamIfReviewedNow(card, ctx.expectedGrade, examDate, reviewAt, ctx)
+      : rAtExam(card, examDate, now, ctx.decay);
   return { due, predictedRecall, feasible: predictedRecall >= ASSESSMENT_TARGET_RECALL };
 }
