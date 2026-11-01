@@ -12,7 +12,7 @@ function sourceFiles(dir: string): string[] {
 
 describe('database layer boundary', () => {
   it('never imports the UI layer', () => {
-    const offenders = sourceFiles('src/db').filter((file) =>
+    const offenders = sourceFiles('apps/web/src/db').filter((file) =>
       /from\s+['"](\.\.\/)+(components|pages)\//.test(readFileSync(file, 'utf8')),
     );
     expect(offenders).toEqual([]);
