@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, test } from 'vitest';
 import { budget, guardRequest, worstCost } from './spend';
 test('floors currency budgets and fails closed', () => {
   expect(budget('0.005375999', 'jev-1.14.0', 100).requests).toBe(1);
