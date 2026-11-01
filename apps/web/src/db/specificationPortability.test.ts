@@ -153,7 +153,7 @@ describe('specification backup portability', () => {
     expect(validateBackup(malformed)).toBe(false);
   });
 
-  it('validates and restores the v29 snapshot captured before the default v30 upgrade', async () => {
+  it('captures the v29 snapshot before upgrade and refuses direct old-format restoration', async () => {
     const backup = await linkedLibrary();
     const name = `lacuna-specification-snapshot-${Date.now()}`;
     const media: MediaAsset[] = [
@@ -195,11 +195,15 @@ describe('specification backup portability', () => {
       });
       expect(captured).toMatchObject({ app: 'lacuna-v13', version: 13 });
       expect(captured!.assets.map((asset) => asset.kind)).toEqual(media.map((asset) => asset.kind));
-      expect(validateBackup(captured)).toBe(true);
-      await importBackup(captured!, 'replace');
-      expect(await db.courses.toArray()).toEqual(backup.courses);
-      expect(await db.concepts.toArray()).toEqual(backup.concepts);
-      expect(await db.assets.bulkGet(media.map((asset) => asset.hash))).toEqual(media);
+      expect(captured!.courses).toEqual(backup.courses);
+      expect(captured!.concepts).toEqual(backup.concepts);
+      expect(captured!.courseAssessments).toEqual(backup.courseAssessments);
+      expect(validateBackup(captured)).toBe(false);
+      const before = await exportDatabase();
+      await expect(importBackup(captured!, 'replace')).rejects.toThrow(
+        /Unsupported old backup version/,
+      );
+      expect(await exportDatabase()).toEqual({ ...before, exportedAt: expect.any(Number) });
     } finally {
       await new Dexie(name).delete();
     }

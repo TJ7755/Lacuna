@@ -1,13 +1,9 @@
 import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import Dexie from 'dexie';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { db } from './schema';
 import { exportDatabase, importBackup, readBackupFile } from './portability';
-import { recordReview } from './repository';
-import { hydrateCardsWithHistory } from './reviewHistoryRead';
-import { waitForSessionHistory } from './portability.testFixtures';
 import type { BackupFile, ReviewLog } from '@lacuna/core/db/types';
 
 interface CorpusCase {
@@ -58,134 +54,24 @@ async function seedProfile(fixture: CorpusCase) {
   db.close({ disableAutoOpen: false });
 }
 
-function assertRelationships(backup: BackupFile, fixture: CorpusCase) {
-  const expected = fixture.expected;
-  expect(backup.courses).toEqual([
-    expect.objectContaining({ id: expected.courseId, name: 'Synthetic biology' }),
-  ]);
-  expect(backup.lessons).toEqual([
-    expect.objectContaining({ id: expected.lessonId, courseId: expected.courseId, name: 'Cells' }),
-  ]);
-  expect(backup.notes).toEqual([
-    expect.objectContaining({
-      lessonId: expected.lessonId,
-      content: 'Synthetic teaching content.',
-    }),
-  ]);
-  expect(backup.lessonCards).toEqual([
-    expect.objectContaining({ lessonId: expected.lessonId, cardId: expected.cardId }),
-  ]);
-  expect(backup.cards).toEqual([
-    expect.objectContaining({
-      id: expected.cardId,
-      courseId: expected.courseId,
-      primaryLessonId: expected.lessonId,
-      schedulingUnitId: expected.schedulingUnitId,
-      back: 'Nucleus',
-      history: [],
-    }),
-  ]);
-  expect(backup.concepts).toContainEqual(
-    expect.objectContaining({
-      id: backup.cards[0].conceptId,
-      scope: 'course',
-      courseId: expected.courseId,
-    }),
+it('refuses backup-v10 without replacing the current database', async () => {
+  await db.open();
+  await db.courses.add({
+    id: 'retained-course',
+    name: 'Retained course',
+    createdAt: 1,
+    updatedAt: 1,
+  } as never);
+  const before = await exportDatabase();
+  const fixture = loadCase('backup-v10');
+  await expect(
+    readBackupFile(new File([JSON.stringify(fixture.backup)], 'backup-v10.json')),
+  ).rejects.toThrow(/Unsupported old backup version/);
+  await expect(importBackup(fixture.backup as BackupFile, 'replace')).rejects.toThrow(
+    /Unsupported old backup version/,
   );
-  expect(backup.courseAssessments).toEqual([
-    expect.objectContaining({ id: 'corpus-final', courseId: expected.courseId, kind: 'final' }),
-  ]);
-  expect(backup.schedulingUnits).toContainEqual(
-    expect.objectContaining({
-      id: expected.schedulingUnitId,
-      kind: 'lesson',
-      courseId: expected.courseId,
-      lessonId: expected.lessonId,
-    }),
-  );
-  expect(backup.reviewHistory).toContainEqual(
-    expect.objectContaining({
-      ...expected.historicalReview,
-      cardId: expected.cardId,
-      schedulingUnitId: expected.schedulingUnitId,
-    }),
-  );
-  expect(backup.assets).toHaveLength(1);
-  const asset = backup.assets[0];
-  expect(asset).toMatchObject({
-    hash: expected.assetHash,
-    mimeType: 'image/png',
-    width: 1,
-    height: 1,
-  });
-  expect(createHash('sha256').update(Buffer.from(asset.data, 'base64')).digest('hex')).toBe(
-    expected.assetHash,
-  );
-  expect(backup.cards[0].front).toBe(`Cell ![diagram](lacuna-asset://${expected.assetHash})`);
-}
-
-it.each(['backup-v10'])(
-  '%s continues review and retains canonical evidence through export and restore',
-  async (name) => {
-    const fixture = loadCase(name);
-    if (fixture.backup) {
-      await db.open();
-      const backup = await readBackupFile(
-        new File([JSON.stringify(fixture.backup)], `${name}.json`),
-      );
-      await importBackup(backup, 'replace');
-    } else {
-      await seedProfile(fixture);
-    }
-
-    const migrated = await exportDatabase();
-    assertRelationships(migrated, fixture);
-    expect(migrated.reviewHistory).toHaveLength(1);
-    const card = (await db.cards.get(fixture.expected.cardId))!;
-    expect((await hydrateCardsWithHistory([card]))[0].history).toEqual([
-      fixture.expected.historicalReview,
-    ]);
-    const unit = (await db.schedulingUnits.get(fixture.expected.schedulingUnitId))!;
-    const eventId = `continued-${name}`;
-    const review = await recordReview({
-      card,
-      deck: unit,
-      eventId,
-      sessionId: `session-${name}`,
-      sessionKind: 'lesson',
-      grade: 3,
-      responseTimeSec: 3,
-      distracted: false,
-      correct: true,
-      now: 1700172800000,
-    });
-    expect(review.recorded).toBe(true);
-    expect(review.card.reps).toBe(2);
-    await waitForSessionHistory(eventId);
-
-    const exported = JSON.parse(JSON.stringify(await exportDatabase())) as BackupFile;
-    await readBackupFile(new File([JSON.stringify(exported)], 'exported.json'));
-    assertRelationships(exported, fixture);
-    expect(exported.reviewHistory).toHaveLength(2);
-    expect(exported.reviewHistory).toContainEqual(
-      expect.objectContaining({ eventId, cardId: card.id, sessionKind: 'lesson', grade: 3 }),
-    );
-
-    await db.delete();
-    await db.open();
-    await importBackup(exported, 'replace');
-    db.close();
-    await db.open();
-    const restored = JSON.parse(JSON.stringify(await exportDatabase())) as BackupFile;
-    assertRelationships(restored, fixture);
-    expect(restored.cards).toEqual(exported.cards);
-    expect(restored.reviewHistory).toEqual(exported.reviewHistory);
-    expect(restored.sessionHistory).toEqual(exported.sessionHistory);
-    expect(restored.assets).toEqual(exported.assets);
-    expect(restored.lessonCards).toEqual(exported.lessonCards);
-    expect((await hydrateCardsWithHistory(await db.cards.toArray()))[0].history).toHaveLength(2);
-  },
-);
+  expect(await exportDatabase()).toEqual({ ...before, exportedAt: expect.any(Number) });
+});
 
 it.each(['profile-v20', 'profile-v25'])(
   '%s is refused without altering the historical profile',
