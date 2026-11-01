@@ -3,6 +3,10 @@ import type { MediaAsset } from '@lacuna/core/db/types';
 import { makeId } from '../utils/id';
 import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 
+/**
+ * Kept exported: narrowing changes compiled output without behavioural benefit.
+ * @public
+ */
 export const QUESTION_SET_DRAFT_PREFIX = 'questionSetDraft:';
 
 export interface QuestionSetDraft {

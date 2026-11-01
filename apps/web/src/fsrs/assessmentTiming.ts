@@ -60,6 +60,10 @@ export function assessmentReviewGain(
   );
 }
 
+/**
+ * Kept exported: narrowing changes compiled output without behavioural benefit.
+ * @public
+ */
 export const MIN_ASSESSMENT_REVIEW_GAIN = 0.01;
 
 export function worthwhileAssessmentPractice(
