@@ -323,7 +323,7 @@ jobs:
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         with:
-          cache-dependency-path: tooling/handwriting-maths/bun.lock
+          cache-dependency-path: bun.lock
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun run test
@@ -349,7 +349,7 @@ jobs:
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         with:
-          cache-dependency-path: relay/bun.lock
+          cache-dependency-path: bun.lock
         if: needs.changes.outputs.relay != 'false'
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.relay != 'false'

@@ -42,7 +42,7 @@ jobs:
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         with:
-          cache-dependency-path: relay/bun.lock
+          cache-dependency-path: bun.lock
       - run: bun install --frozen-lockfile
         working-directory: relay
       - run: bun audit --audit-level=high
@@ -62,7 +62,7 @@ jobs:
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         with:
-          cache-dependency-path: tooling/handwriting-maths/bun.lock
+          cache-dependency-path: bun.lock
       - run: bun install --frozen-lockfile
         working-directory: tooling/handwriting-maths
       - run: bun audit --audit-level=high

@@ -14,18 +14,16 @@ Check before installing:
 bun --revision
 ```
 
-The repository's `bun.lock` files are authoritative. Do not use npm or Yarn, and do not regenerate a
+The root `bun.lock` is authoritative for every workspace. Do not use npm or Yarn, and do not regenerate a
 lockfile with a different Bun release.
 
 ```bash
 git clone https://github.com/TJ7755/Lacuna.git
 cd Lacuna
 bun install --frozen-lockfile
-(cd relay && bun install --frozen-lockfile)
-(cd tooling/handwriting-maths && bun install --frozen-lockfile)
 ```
 
-The standalone AI MCP tool intentionally uses the root installation: it has no separate lockfile and
+The standalone AI MCP tool intentionally uses the root installation: it is a Bun workspace and
 CI does not install from that directory. Run its checks from the repository root after the root
 install has completed.
 
