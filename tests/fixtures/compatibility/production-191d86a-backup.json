@@ -1,7 +1,7 @@
 {
   "app": "lacuna-v15",
   "version": 15,
-  "exportedAt": 1793553258913,
+  "exportedAt": 1793555969441,
   "cards": [
     {
       "id": "old-card",
@@ -206,14 +206,14 @@
   "tombstones": [],
   "concepts": [
     {
-      "id": "fb33ee7c-6b6f-4828-98dd-02259d392679",
+      "id": "d3e2a590-b26f-49de-9633-03183a976aad",
       "scope": "course",
       "scopeKey": "course:course-1",
       "courseId": "course-1",
       "name": "Transport",
       "provisional": false,
-      "createdAt": 1793553258901,
-      "updatedAt": 1793553258901
+      "createdAt": 1793555969427,
+      "updatedAt": 1793555969427
     }
   ],
   "questions": [],
@@ -241,7 +241,15 @@
                 "criterion": "Explains",
                 "maxMarks": 5,
                 "dimension": "application",
-                "targetConceptIds": ["fb33ee7c-6b6f-4828-98dd-02259d392679"]
+                "targetConceptIds": ["d3e2a590-b26f-49de-9633-03183a976aad"],
+                "techniqueTags": {
+                  "taxonomyId": "science-techniques",
+                  "taxonomyVersion": 1,
+                  "techniqueIds": ["causal-link"],
+                  "provenance": {
+                    "source": "author"
+                  }
+                }
               }
             ],
             "prerequisiteConceptIds": []
@@ -250,14 +258,14 @@
         }
       ],
       "contentVersion": 1,
-      "contentRevisionId": "8f505e59-26cb-47bf-97d6-bd62c1e44933",
+      "contentRevisionId": "1568188e-b562-4e92-9844-7629c53267df",
       "createdAt": 100,
       "updatedAt": 100
     }
   ],
   "questionSetAttempts": [
     {
-      "id": "9a8250dc-d5b1-48a0-9750-fabc824d5517",
+      "id": "54458210-99e2-423d-9432-3eebe7c049c0",
       "courseId": "course-1",
       "questionSetId": "historical-set",
       "receipt": {
@@ -281,7 +289,15 @@
                   "criterion": "Explains",
                   "maxMarks": 5,
                   "dimension": "application",
-                  "targetConceptIds": ["fb33ee7c-6b6f-4828-98dd-02259d392679"]
+                  "targetConceptIds": ["d3e2a590-b26f-49de-9633-03183a976aad"],
+                  "techniqueTags": {
+                    "taxonomyId": "science-techniques",
+                    "taxonomyVersion": 1,
+                    "techniqueIds": ["causal-link"],
+                    "provenance": {
+                      "source": "author"
+                    }
+                  }
                 }
               ],
               "prerequisiteConceptIds": []
@@ -290,7 +306,7 @@
           }
         ],
         "contentVersion": 1,
-        "contentRevisionId": "8f505e59-26cb-47bf-97d6-bd62c1e44933",
+        "contentRevisionId": "1568188e-b562-4e92-9844-7629c53267df",
         "createdAt": 100,
         "updatedAt": 100
       },
@@ -327,7 +343,7 @@
       "revealedQuestionIds": ["historical-question"],
       "activeNodeId": "historical-question",
       "activeAllocationId": null,
-      "revisionId": "9d52ce5d-13fe-470d-896d-0f5d917e1705",
+      "revisionId": "b4452bfb-2579-473d-8f85-1f03512430fc",
       "createdAt": 200,
       "updatedAt": 230,
       "completedAt": 230,

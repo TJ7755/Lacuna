@@ -179,6 +179,12 @@ try {
                 maxMarks: 5,
                 dimension: 'application',
                 targetConceptIds: [concept.id],
+                techniqueTags: {
+                  taxonomyId: 'science-techniques',
+                  taxonomyVersion: 1,
+                  techniqueIds: ['causal-link'],
+                  provenance: { source: 'author' },
+                },
               },
             ],
           },
