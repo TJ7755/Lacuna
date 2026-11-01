@@ -82,6 +82,15 @@ describe('optimised weights persistence', () => {
     );
   });
 
+  it('does not rewrite card memory when the scheduling parameters are unchanged', async () => {
+    const course = await createCourse('Unchanged');
+    const card = { ...cardWithHistory(course.id, [3]), courseId: course.id };
+    await db.cards.put(card);
+    const before = await db.cards.get(card.id);
+    await updateCourse(course.id, { fsrsParameters: structuredClone(course.fsrsParameters) });
+    expect(await db.cards.get(card.id)).toEqual(before);
+  });
+
   it('applied weights persist on the deck and feed the scheduler', async () => {
     const deck = await createCourse('Trainer deck');
     const card = cardWithHistory(deck.id, [3, 3, 4, 3, 2, 3, 4, 3]);

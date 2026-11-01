@@ -120,8 +120,6 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
         db.schedulingUnits,
         db.coursePerformance,
         db.schedulingPerformance,
-        db.cards,
-        db.reviewHistory,
       ],
       async () => {
         await db.courses.add(record);
@@ -178,10 +176,22 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
         db.schedulingUnits,
         db.coursePerformance,
         db.schedulingPerformance,
-        db.cards,
-        db.reviewHistory,
+        ...(changes.fsrsParameters === undefined ? [] : [db.cards, db.reviewHistory]),
       ],
       async () => {
+        const previousParameters =
+          changes.fsrsParameters === undefined
+            ? undefined
+            : (await db.courses.get(id))?.fsrsParameters;
+        const parametersChanged =
+          changes.fsrsParameters !== undefined &&
+          JSON.stringify(
+            Object.entries(changes.fsrsParameters).sort(([a], [b]) => a.localeCompare(b)),
+          ) !==
+            JSON.stringify(
+              previousParameters &&
+                Object.entries(previousParameters).sort(([a], [b]) => a.localeCompare(b)),
+            );
         if (setsReference || setsData) {
           const course = await db.courses.get(id);
           if (!course) throw new Error('The course could not be found.');
@@ -200,7 +210,7 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
         }
         await db.courses.update(id, stampUpdatedAt(validatedChanges));
         await syncCourseSchedulingUnits(id);
-        if (changes.fsrsParameters !== undefined) {
+        if (parametersChanged) {
           const cards = await db.cards.where('courseId').equals(id).toArray();
           const history = mergeReviewHistoryEntries(
             await db.reviewHistory.where('courseId').equals(id).toArray(),
