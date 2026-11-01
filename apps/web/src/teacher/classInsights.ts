@@ -24,7 +24,7 @@ export function pupilScore(report: DailyEvidence): number | null {
   return mean(report.events.map(eventScore));
 }
 
-export interface ItemAnswer {
+interface ItemAnswer {
   report: DailyEvidence;
   event: DailyEvidenceEvent;
   score: number | null;

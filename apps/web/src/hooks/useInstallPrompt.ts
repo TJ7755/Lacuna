@@ -14,7 +14,7 @@ interface BeforeInstallPromptEvent extends Event {
  *   the user must perform themselves, so the UI has to teach it rather than offer it.
  * - `unavailable`: no supported install route on this device.
  */
-export type InstallMethod = 'prompt' | 'manual-ios' | 'unavailable';
+type InstallMethod = 'prompt' | 'manual-ios' | 'unavailable';
 
 /**
  * Every browser on iOS is WebKit underneath and none of them implement

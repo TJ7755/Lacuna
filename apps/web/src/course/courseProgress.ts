@@ -35,7 +35,7 @@ export interface CourseProgressInput {
   now?: number;
 }
 
-export type ProgressForecast =
+type ProgressForecast =
   /** One assessment, measured at its own date. */
   | { kind: 'assessment'; date: number; daysRemaining: number; value: number; securedCards: number }
   /** The whole course: each card at its next applicable test or paper. */

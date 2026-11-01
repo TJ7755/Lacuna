@@ -24,7 +24,7 @@ export interface SessionState {
   revision: RevisionSessionState;
 }
 
-export interface ReviewEffect {
+interface ReviewEffect {
   type: 'persist-review';
   review: RecordReviewArgs;
   simple: boolean;

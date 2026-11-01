@@ -25,7 +25,7 @@ export function markSchemeSyntaxSpecification(): string {
   ].join('\n');
 }
 
-export interface CompiledMarkSchemeLine {
+interface CompiledMarkSchemeLine {
   kind: 'compiled';
   /** One-based source line number. */
   lineNumber: number;
@@ -45,7 +45,7 @@ export interface MarkSchemeCompileError {
   message: string;
 }
 
-export type MarkSchemeCompileEntry = CompiledMarkSchemeLine | MarkSchemeCompileError;
+type MarkSchemeCompileEntry = CompiledMarkSchemeLine | MarkSchemeCompileError;
 
 export interface MarkSchemeCompileResult {
   /** Nonblank source lines, preserved in source order as either a value or an error. */

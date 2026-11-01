@@ -14,7 +14,7 @@ import {
 } from './questionSetDrafts';
 import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 
-export type QuestionSetDraftSessionPhase =
+type QuestionSetDraftSessionPhase =
   'idle' | 'loading' | 'saving' | 'publishing' | 'error' | 'disposed';
 
 export interface QuestionSetDraftSessionSnapshot {

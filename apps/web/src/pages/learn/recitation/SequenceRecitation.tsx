@@ -21,7 +21,7 @@ import {
   type RecitationState,
 } from './recitationFlow';
 
-export interface RecitationCheck {
+interface RecitationCheck {
   results: { itemId: string; correct: boolean }[];
   responseTimeSec: number;
   masteredItemIds: string[];

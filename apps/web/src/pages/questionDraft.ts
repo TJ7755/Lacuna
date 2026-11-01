@@ -4,7 +4,7 @@ import { serialiseMarkScheme } from '../items/markSchemeCompiler';
 import type { QuestionConceptSet, QuestionDefinition } from '@lacuna/core/questions/types';
 import { clearDraft, draftKey, loadDraft, saveDraft } from '../utils/drafts';
 
-export type QuestionEditorKind = 'fixed' | 'generated';
+type QuestionEditorKind = 'fixed' | 'generated';
 export type QuestionAnswerKind = 'numeric' | 'working';
 
 export interface QuestionAuthoringState {
