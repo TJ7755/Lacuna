@@ -100,19 +100,3 @@ export function LandingHeader() {
     </nav>
   );
 }
-
-export function LandingClosing() {
-  return (
-    <section className="motion-closing" aria-labelledby="motion-closing-title">
-      <h2 id="motion-closing-title">Ready to make it stick?</h2>
-      <div className="motion-closing-actions">
-        <LandingCta>Start revising</LandingCta>
-        {!window.electronAPI?.isElectron && (
-          <Link className="motion-closing-download" to="/download">
-            Download for desktop <span aria-hidden="true">↗</span>
-          </Link>
-        )}
-      </div>
-    </section>
-  );
-}
