@@ -11,9 +11,9 @@ import type {
   PracticeNode,
 } from '@lacuna/core/db/types';
 import { isAvailable } from '../fsrs/eligibility';
-import { rAtExam } from '../fsrs/forwardSim';
-import { decayOf } from '../fsrs/fsrs';
-import { MASTERY_R } from '@lacuna/core/fsrs/params';
+import { simContext } from '../fsrs/forwardSim';
+import { makeEngine } from '../fsrs/fsrs';
+import { worthwhileAssessmentPractice } from '../fsrs/assessmentTiming';
 import { daysUntil } from '../utils/datetime';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { isLessonUnlocked, lessonEffectiveReleaseDates } from './path';
@@ -128,12 +128,19 @@ export function assessmentPracticePool(
       .filter((card) => resolvedCardIds.has(card.id))
       .map((card) => card.id),
   );
-  const decay = decayOf(context.course.fsrsParameters);
+  const ctx = simContext(context.course, makeEngine(context.course.fsrsParameters));
   return reachedAndExposed.filter(
     (card) =>
       assessmentCardIds.has(card.id) &&
       isAvailable(card, now) &&
-      rAtExam(card, examDate, now, decay) < MASTERY_R,
+      (card.state === 0 ||
+        worthwhileAssessmentPractice(
+          card,
+          examDate,
+          now,
+          context.course.practiceUrgentWindowDays,
+          ctx,
+        )),
   );
 }
 /** Future assessments intersecting this exact Practice context, ordered by date. */

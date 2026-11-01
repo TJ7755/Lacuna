@@ -34,7 +34,7 @@ describe('createCourse', () => {
     expect(course.autoPractice).toBe(true);
     expect(course.practiceThresholdMinutesFar).toBe(8);
     expect(course.practiceThresholdMinutesNear).toBe(4);
-    expect(course.practiceUrgentWindowDays).toBe(7);
+    expect(course.practiceUrgentWindowDays).toBe(14);
     expect(course.practiceMaxGap).toBe(2);
     // New courses default to edit mode (see src/course/lessonViewMode.ts).
     expect(course.lessonViewMode).toBe('edit');

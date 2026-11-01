@@ -24,6 +24,19 @@ import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 export type { FSRS } from 'ts-fsrs';
 
+export type SchedulingMemory = Pick<
+  Card,
+  | 'due'
+  | 'stability'
+  | 'difficulty'
+  | 'lastReviewed'
+  | 'scheduledDays'
+  | 'learningSteps'
+  | 'reps'
+  | 'lapses'
+  | 'state'
+>;
+
 /** Build an FSRS-6 scheduler from a deck's persisted parameter set. */
 export function makeEngine(params: FsrsParameters): FSRS {
   return fsrs({
@@ -47,7 +60,7 @@ export function decayOf(params: FsrsParameters): number {
  * (epoch ms). A never-reviewed card becomes a fresh empty card so ts-fsrs applies
  * the correct initial-stability/difficulty path.
  */
-export function toTsCard(card: Card, now: number): TsCard {
+export function toTsCard(card: SchedulingMemory, now: number): TsCard {
   if (card.lastReviewed === null) {
     return createEmptyCard(new Date(now));
   }

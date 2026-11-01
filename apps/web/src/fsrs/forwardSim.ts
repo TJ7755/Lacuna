@@ -6,9 +6,9 @@
 // touches neither IndexedDB nor React, so every function here is unit-testable.
 
 import { Rating, type FSRS, type Grade as TsGrade } from 'ts-fsrs';
-import { toTsCard, decayOf } from './fsrs';
+import { toTsCard, decayOf, type SchedulingMemory } from './fsrs';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import type { Card, SchedulerConfig, Grade } from '@lacuna/core/db/types';
+import type { SchedulerConfig, Grade } from '@lacuna/core/db/types';
 
 /**
  * Curve factor for the FSRS-6 power-law forgetting curve.
@@ -68,7 +68,12 @@ export function simContext(deck: SchedulerConfig, engine: FSRS): SimContext {
  * A never-reviewed card has no stability, so its predicted retrievability is 0
  * (documented; also avoids a divide-by-zero in the curve).
  */
-export function rAtExam(card: Card, examDate: number, _now: number, decay: number): number {
+export function rAtExam(
+  card: SchedulingMemory,
+  examDate: number,
+  _now: number,
+  decay: number,
+): number {
   if (card.stability === null || card.lastReviewed === null) return 0;
   const days = Math.max(examDate - card.lastReviewed, 0) / MS_PER_DAY;
   return forgettingCurve(days, card.stability, decay);
@@ -82,7 +87,7 @@ export function rAtExam(card: Card, examDate: number, _now: number, decay: numbe
  * On exam day (no time remaining) a review leaves the card at R = 1.0.
  */
 export function rAtExamIfReviewedNow(
-  card: Card,
+  card: SchedulingMemory,
   grade: Grade,
   examDate: number,
   now: number,
@@ -103,7 +108,7 @@ export function rAtExamIfReviewedNow(
  * current exam-day R approaches 1, deltaR collapses toward 0.
  */
 export function deltaR(
-  card: Card,
+  card: SchedulingMemory,
   examDate: number,
   now: number,
   ctx: SimContext,

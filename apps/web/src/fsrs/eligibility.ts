@@ -10,11 +10,11 @@
 //    will introduce). It deliberately does not change the dashboard denominator, so
 //    the deck's exam-day trajectory stays honest while a session paces new material.
 
-import { MASTERY_R, MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { resolveCardExamDate, type ExamDateContext } from './examDate';
-import { rAtExam } from './forwardSim';
-import { decayOf } from './fsrs';
-import { cardSchedulingHorizon } from './horizon';
+import { simContext } from './forwardSim';
+import { worthwhileAssessmentPractice } from './assessmentTiming';
+import { makeEngine } from './fsrs';
 import type { Card, Course, SchedulerConfig } from '@lacuna/core/db/types';
 import { cardReviewTimestamps, type ReviewActivity } from './heatmap';
 
@@ -99,15 +99,17 @@ export function eligiblePracticePool(
   now: number = Date.now(),
 ): Card[] {
   if (course.archived) return [];
-  const decay = decayOf(course.fsrsParameters);
+  const ctx = simContext(course, makeEngine(course.fsrsParameters));
   return scope.filter((card) => {
     if (!isAvailable(card, now)) return false;
     const examDate = resolveCardExamDate(card, examDateContext, now);
     if (examDate === undefined || examDate < now) {
       return card.state === 0 || (card.due !== null && card.due <= now);
     }
-    const horizon = cardSchedulingHorizon(card, course, examDateContext, now);
-    return rAtExam(card, horizon, now, decay) < MASTERY_R;
+    return (
+      card.state === 0 ||
+      worthwhileAssessmentPractice(card, examDate, now, course.practiceUrgentWindowDays, ctx)
+    );
   });
 }
 

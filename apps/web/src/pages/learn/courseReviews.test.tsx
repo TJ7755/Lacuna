@@ -105,7 +105,7 @@ it.each(['steady', 'exam'] as const)(
   async (schedulingMode) => {
     const course = await createCourse('Biology', {
       schedulingMode,
-      examDate: schedulingMode === 'exam' ? NOW + 30 * DAY : undefined,
+      examDate: schedulingMode === 'exam' ? NOW + 7 * DAY : undefined,
     });
     const weak = await createCourseCard(course.id, 'front_back', 'Weak', 'Answer');
     const secure = await createCourseCard(course.id, 'front_back', 'Secure', 'Answer');
