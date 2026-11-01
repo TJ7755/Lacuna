@@ -1,4 +1,4 @@
-import { createRelayClient, relayRoutes, type RelayEndpoint } from '@lacuna/protocol/relay/index';
+import { createRelayClient, shareRoutes as relayRoutes } from '@lacuna/protocol/relay/index';
 import { z } from 'zod';
 import { decodeSharePayload, SHARE_PAYLOAD_MAX_BYTES } from './payloadCodec';
 import { normaliseRelayUrl } from '../sync/relay';
@@ -108,13 +108,16 @@ function requireFetch(fetchImpl?: typeof fetch): typeof fetch {
 async function shareFetch(
   fetcher: typeof fetch,
   relayUrl: string,
-  endpoint: RelayEndpoint,
+  endpoint: keyof typeof relayRoutes,
   params: Record<string, string>,
   init: Omit<RequestInit, 'method'>,
   operation: ShareLinkOperation,
 ): Promise<Response> {
   try {
-    return await createRelayClient(relayUrl, fetcher).request(endpoint, { ...init, params });
+    return await createRelayClient(relayRoutes, relayUrl, fetcher).request(endpoint, {
+      ...init,
+      params,
+    });
   } catch {
     throw new ShareLinkError(
       'Could not reach the share link service. Check your connection and try again.',

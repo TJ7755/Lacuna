@@ -1,4 +1,4 @@
-import { createRelayClient } from '@lacuna/protocol/relay/index';
+import { createRelayClient, syncRoutes } from '@lacuna/protocol/relay/index';
 
 // P5 transport seam. This module knows how to move opaque bytes, but not how
 // snapshots are encoded, encrypted, or merged. The manual provider is a
@@ -132,13 +132,14 @@ export async function pullRelaySlot(
   if (typeof fetcher !== 'function') {
     throw new RelayConfigurationError('This device does not provide fetch for relay sync.');
   }
-  const response = await createRelayClient(normaliseRelayUrl(relayUrl), fetcher).request(
-    'channelRead',
-    {
-      params: { id: requireChannelId(channelId), slot },
-      cache: 'no-store',
-    },
-  );
+  const response = await createRelayClient(
+    syncRoutes,
+    normaliseRelayUrl(relayUrl),
+    fetcher,
+  ).request('channelRead', {
+    params: { id: requireChannelId(channelId), slot },
+    cache: 'no-store',
+  });
   if (response.status === 404) return null;
   if (!response.ok) throw await httpError('pull', response);
 
@@ -176,7 +177,7 @@ export class HttpRelayProvider implements RelayProvider {
 
   async push(slot: RelaySlot, bytes: Uint8Array, ifMatch: string): Promise<RelayPushResult> {
     const generation = normaliseGeneration(requireGeneration(ifMatch));
-    const response = await createRelayClient(this.relayUrl, this.fetchImpl).request(
+    const response = await createRelayClient(syncRoutes, this.relayUrl, this.fetchImpl).request(
       'channelWrite',
       {
         params: { id: this.channelId, slot },
@@ -202,7 +203,7 @@ export class HttpRelayProvider implements RelayProvider {
   }
 
   async purge(): Promise<void> {
-    const response = await createRelayClient(this.relayUrl, this.fetchImpl).request(
+    const response = await createRelayClient(syncRoutes, this.relayUrl, this.fetchImpl).request(
       'channelDelete',
       {
         params: { id: this.channelId },

@@ -10,39 +10,44 @@ export const relayLimits = {
   aiMailbox: 1024 * 1024,
   insight: INSIGHT_MAX_ENVELOPE_BYTES,
 } as const;
-export const relayIdSchema = z.string().regex(/^[0-9a-f]{32}$/);
-export const relayTokenSchema = z.string().regex(/^[0-9a-f]{64}$/);
-export const relayErrorSchema = z.object({ error: z.string().min(1) }).strict();
-const empty = z.null();
-const bytes = z.instanceof(Uint8Array);
-const publicKey = z.string().regex(/^[A-Za-z0-9_-]{80,100}$/);
-const client = z
-  .object({
-    name: z.string().trim().min(1).max(100),
-    version: z.string().trim().min(1).max(100).optional(),
-  })
-  .strict();
-const timestamp = z.number().finite().nonnegative();
-const sessionId = z.string().regex(/^[A-HJ-KM-NP-TV-Z2-9]{20}$/);
-const envelope = z.unknown().transform((value, ctx) => {
-  try {
-    return parseInsightEnvelope(value);
-  } catch {
-    ctx.addIssue({ code: 'custom', message: 'Invalid insight envelope' });
-    return z.NEVER;
-  }
-});
-const page = z
-  .object({
-    v: z.literal(2),
-    envelopes: z.array(z.object({ slotId: relayIdSchema, envelope }).strict()).max(16),
-    cursor: z.string().min(1).max(2048).nullable(),
-  })
-  .strict()
-  .superRefine((value, ctx) => {
-    if (new Set(value.envelopes.map((row) => row.slotId)).size !== value.envelopes.length)
-      ctx.addIssue({ code: 'custom', message: 'Duplicate insights slot' });
-  });
+// Pure initialisers let feature clients discard schemas for unrelated relay operations.
+export const relayIdSchema = /*#__PURE__*/ (() => z.string().regex(/^[0-9a-f]{32}$/))();
+export const relayTokenSchema = /*#__PURE__*/ (() => z.string().regex(/^[0-9a-f]{64}$/))();
+export const relayErrorSchema = /*#__PURE__*/ (() =>
+  z.object({ error: z.string().min(1) }).strict())();
+const empty = /*#__PURE__*/ (() => z.null())();
+const bytes = /*#__PURE__*/ (() => z.instanceof(Uint8Array))();
+const publicKey = /*#__PURE__*/ (() => z.string().regex(/^[A-Za-z0-9_-]{80,100}$/))();
+const client = /*#__PURE__*/ (() =>
+  z
+    .object({
+      name: z.string().trim().min(1).max(100),
+      version: z.string().trim().min(1).max(100).optional(),
+    })
+    .strict())();
+const timestamp = /*#__PURE__*/ (() => z.number().finite().nonnegative())();
+const sessionId = /*#__PURE__*/ (() => z.string().regex(/^[A-HJ-KM-NP-TV-Z2-9]{20}$/))();
+const envelope = /*#__PURE__*/ (() =>
+  z.unknown().transform((value, ctx) => {
+    try {
+      return parseInsightEnvelope(value);
+    } catch {
+      ctx.addIssue({ code: 'custom', message: 'Invalid insight envelope' });
+      return z.NEVER;
+    }
+  }))();
+const page = /*#__PURE__*/ (() =>
+  z
+    .object({
+      v: z.literal(2),
+      envelopes: z.array(z.object({ slotId: relayIdSchema, envelope }).strict()).max(16),
+      cursor: z.string().min(1).max(2048).nullable(),
+    })
+    .strict()
+    .superRefine((value, ctx) => {
+      if (new Set(value.envelopes.map((row) => row.slotId)).size !== value.envelopes.length)
+        ctx.addIssue({ code: 'custom', message: 'Duplicate insights slot' });
+    }))();
 const errors = {
   400: relayErrorSchema,
   401: relayErrorSchema,
@@ -58,29 +63,31 @@ const errors = {
   500: relayErrorSchema,
   503: relayErrorSchema,
 };
-export const relayRequestHeadersSchema = z
-  .object({
-    authorization: z.string().optional(),
-    'content-length': z
-      .string()
-      .regex(/^[0-9]+$/)
-      .optional(),
-    'content-type': z.string().optional(),
-    'if-match': z.string().min(1).optional(),
-    'x-lacuna-pairing-code': z.string().optional(),
-    'x-insights-revision': z
-      .string()
-      .regex(/^[1-9][0-9]*$/)
-      .optional(),
-  })
-  .passthrough();
-export const relayResponseHeadersSchema = z
-  .object({
-    etag: z.string().min(1).optional(),
-    'x-lacuna-generation': z.string().min(1).optional(),
-    'content-type': z.string().optional(),
-  })
-  .passthrough();
+export const relayRequestHeadersSchema = /*#__PURE__*/ (() =>
+  z
+    .object({
+      authorization: z.string().optional(),
+      'content-length': z
+        .string()
+        .regex(/^[0-9]+$/)
+        .optional(),
+      'content-type': z.string().optional(),
+      'if-match': z.string().min(1).optional(),
+      'x-lacuna-pairing-code': z.string().optional(),
+      'x-insights-revision': z
+        .string()
+        .regex(/^[1-9][0-9]*$/)
+        .optional(),
+    })
+    .passthrough())();
+export const relayResponseHeadersSchema = /*#__PURE__*/ (() =>
+  z
+    .object({
+      etag: z.string().min(1).optional(),
+      'x-lacuna-generation': z.string().min(1).optional(),
+      'content-type': z.string().optional(),
+    })
+    .passthrough())();
 function route<
   const P extends string,
   const K extends string,
@@ -107,16 +114,22 @@ function route<
     responses: { ...errors, [status]: response } as typeof errors & Record<Status, S>,
   };
 }
-const mintChannel = z.object({ channelId: relayIdSchema, writeToken: relayTokenSchema }).strict();
-const mintShare = z.object({ shareId: relayIdSchema, writeToken: relayTokenSchema }).strict();
-const receipt = z.object({ generation: z.string().min(1) }).strict();
-const code = z.object({ code: z.string().regex(/^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{8}$/) }).strict();
-export const relayRoutes = {
-  channelCreate: route('/channel', 'POST', 'channel', mintChannel, 201),
-  channelDelete: route('/c/:id', 'DELETE', 'item', empty, 204),
-  channelRead: route('/c/:id/:slot', 'GET', 'slot', bytes),
-  channelWrite: route('/c/:id/:slot', 'PUT', 'slot', empty, 204, bytes, relayLimits.channel),
-  shareCreate: route(
+const mintChannel = /*#__PURE__*/ (() =>
+  z.object({ channelId: relayIdSchema, writeToken: relayTokenSchema }).strict())();
+const mintShare = /*#__PURE__*/ (() =>
+  z.object({ shareId: relayIdSchema, writeToken: relayTokenSchema }).strict())();
+const receipt = /*#__PURE__*/ (() => z.object({ generation: z.string().min(1) }).strict())();
+const code = /*#__PURE__*/ (() =>
+  z.object({ code: z.string().regex(/^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{8}$/) }).strict())();
+export const channelCreateRoute = /*#__PURE__*/ (() =>
+  route('/channel', 'POST', 'channel', mintChannel, 201))();
+export const channelDeleteRoute = /*#__PURE__*/ (() =>
+  route('/c/:id', 'DELETE', 'item', empty, 204))();
+export const channelReadRoute = /*#__PURE__*/ (() => route('/c/:id/:slot', 'GET', 'slot', bytes))();
+export const channelWriteRoute = /*#__PURE__*/ (() =>
+  route('/c/:id/:slot', 'PUT', 'slot', empty, 204, bytes, relayLimits.channel))();
+export const shareCreateRoute = /*#__PURE__*/ (() =>
+  route(
     '/shares',
     'POST',
     'share-collection',
@@ -124,33 +137,30 @@ export const relayRoutes = {
     201,
     z.object({ sourceShareId: relayIdSchema }).strict().optional(),
     relayLimits.shareCreate,
-  ),
-  shareDelete: route('/shares/:id', 'DELETE', 'share-item', empty, 204),
-  shareVerify: {
-    ...route('/shares/:id', 'HEAD', 'share-item', empty, 204),
-    responses: { ...errors, 204: empty, 401: empty, 404: empty, 410: empty },
-  },
-  shareRead: route('/shares/:id/:slot', 'GET', 'share-slot', bytes),
-  shareWrite: route(
-    '/shares/:id/:slot',
-    'PUT',
-    'share-slot',
-    empty,
-    204,
-    bytes,
-    relayLimits.sharePayload,
-  ),
-  classCodeCreate: {
-    ...route('/shares/:id/class-code', 'POST', 'share-class-code', code, 201),
-    responses: { ...errors, 200: code, 201: code },
-  },
-  classCodeLookup: route(
+  ))();
+export const shareDeleteRoute = /*#__PURE__*/ (() =>
+  route('/shares/:id', 'DELETE', 'share-item', empty, 204))();
+export const shareVerifyRoute = /*#__PURE__*/ (() => ({
+  ...route('/shares/:id', 'HEAD', 'share-item', empty, 204),
+  responses: { ...errors, 204: empty, 401: empty, 404: empty, 410: empty },
+}))();
+export const shareReadRoute = /*#__PURE__*/ (() =>
+  route('/shares/:id/:slot', 'GET', 'share-slot', bytes))();
+export const shareWriteRoute = /*#__PURE__*/ (() =>
+  route('/shares/:id/:slot', 'PUT', 'share-slot', empty, 204, bytes, relayLimits.sharePayload))();
+export const classCodeCreateRoute = /*#__PURE__*/ (() => ({
+  ...route('/shares/:id/class-code', 'POST', 'share-class-code', code, 201),
+  responses: { ...errors, 200: code, 201: code },
+}))();
+export const classCodeLookupRoute = /*#__PURE__*/ (() =>
+  route(
     '/class-codes/:code',
     'GET',
     'class-code',
     z.object({ shareId: relayIdSchema }).strict(),
-  ),
-  aiCreate: route(
+  ))();
+export const aiCreateRoute = /*#__PURE__*/ (() =>
+  route(
     '/ai/sessions',
     'POST',
     'ai-session-collection',
@@ -165,8 +175,9 @@ export const relayRoutes = {
     201,
     z.object({ browserPublicKey: publicKey }).strict(),
     relayLimits.aiJson,
-  ),
-  aiClaim: route(
+  ))();
+export const aiClaimRoute = /*#__PURE__*/ (() =>
+  route(
     '/ai/claim',
     'POST',
     'ai-claim',
@@ -181,43 +192,85 @@ export const relayRoutes = {
     200,
     z.object({ terminalPublicKey: publicKey, client }).strict(),
     relayLimits.aiJson,
-  ),
-  aiPeer: route(
+  ))();
+export const aiPeerRoute = /*#__PURE__*/ (() =>
+  route(
     '/ai/s/:id/peer',
     'GET',
     'ai-peer',
     z.object({ terminalPublicKey: publicKey, client, expiresAt: timestamp }).strict(),
-  ),
-  aiRead: route('/ai/s/:id/:mailbox', 'GET', 'ai-mailbox', z.union([bytes, receipt])),
-  aiWrite: route(
-    '/ai/s/:id/:mailbox',
+  ))();
+export const aiReadRoute = /*#__PURE__*/ (() =>
+  route('/ai/s/:id/:mailbox', 'GET', 'ai-mailbox', z.union([bytes, receipt])))();
+export const aiWriteRoute = /*#__PURE__*/ (() =>
+  route('/ai/s/:id/:mailbox', 'PUT', 'ai-mailbox', receipt, 200, bytes, relayLimits.aiMailbox))();
+export const aiDeleteRoute = /*#__PURE__*/ (() =>
+  route('/ai/s/:id', 'DELETE', 'ai-session', empty, 204))();
+export const insightReadRoute = /*#__PURE__*/ (() =>
+  route('/insights/:id/:day', 'GET', 'insight', page))();
+export const insightWriteRoute = /*#__PURE__*/ (() => ({
+  ...route(
+    '/insights/:id/:day/:slotId',
     'PUT',
-    'ai-mailbox',
-    receipt,
-    200,
-    bytes,
-    relayLimits.aiMailbox,
+    'insight',
+    empty,
+    204,
+    envelope,
+    relayLimits.insight,
   ),
-  aiDelete: route('/ai/s/:id', 'DELETE', 'ai-session', empty, 204),
-  insightRead: route('/insights/:id/:day', 'GET', 'insight', page),
-  insightWrite: {
-    ...route(
-      '/insights/:id/:day/:slotId',
-      'PUT',
-      'insight',
-      empty,
-      204,
-      envelope,
-      relayLimits.insight,
-    ),
-    responses: { ...errors, 204: empty, 409: empty },
-  },
-  maintenance: route(
+  responses: { ...errors, 204: empty, 409: empty },
+}))();
+export const maintenanceRoute = /*#__PURE__*/ (() =>
+  route(
     '/ai/maintenance',
     'GET',
     'ai-maintenance',
     z.record(z.string(), z.number().int().nonnegative()),
-  ),
+  ))();
+export const syncRoutes = {
+  channelCreate: channelCreateRoute,
+  channelDelete: channelDeleteRoute,
+  channelRead: channelReadRoute,
+  channelWrite: channelWriteRoute,
+} as const;
+export const shareRoutes = {
+  shareCreate: shareCreateRoute,
+  shareDelete: shareDeleteRoute,
+  shareVerify: shareVerifyRoute,
+  shareRead: shareReadRoute,
+  shareWrite: shareWriteRoute,
+  classCodeCreate: classCodeCreateRoute,
+  classCodeLookup: classCodeLookupRoute,
+} as const;
+export const aiRoutes = {
+  aiCreate: aiCreateRoute,
+  aiClaim: aiClaimRoute,
+  aiPeer: aiPeerRoute,
+  aiRead: aiReadRoute,
+  aiWrite: aiWriteRoute,
+  aiDelete: aiDeleteRoute,
+} as const;
+export const relayRoutes = {
+  channelCreate: channelCreateRoute,
+  channelDelete: channelDeleteRoute,
+  channelRead: channelReadRoute,
+  channelWrite: channelWriteRoute,
+  shareCreate: shareCreateRoute,
+  shareDelete: shareDeleteRoute,
+  shareVerify: shareVerifyRoute,
+  shareRead: shareReadRoute,
+  shareWrite: shareWriteRoute,
+  classCodeCreate: classCodeCreateRoute,
+  classCodeLookup: classCodeLookupRoute,
+  aiCreate: aiCreateRoute,
+  aiClaim: aiClaimRoute,
+  aiPeer: aiPeerRoute,
+  aiRead: aiReadRoute,
+  aiWrite: aiWriteRoute,
+  aiDelete: aiDeleteRoute,
+  insightRead: insightReadRoute,
+  insightWrite: insightWriteRoute,
+  maintenance: maintenanceRoute,
 } as const;
 export type RelayEndpoint = keyof typeof relayRoutes;
 export function matchRelayRoute(url: string, method?: string) {
@@ -253,10 +306,14 @@ export function relayResponseSchema(
 ): z.ZodType | undefined {
   return (relayRoutes[endpoint].responses as Record<number, z.ZodType>)[status];
 }
-export function createRelayClient(baseUrl: string, fetchImpl: typeof fetch = globalThis.fetch) {
+export function createRelayClient<Routes extends Partial<typeof relayRoutes>>(
+  routes: Routes,
+  baseUrl: string,
+  fetchImpl: typeof fetch = globalThis.fetch,
+) {
   const fetcher = fetchImpl.bind(globalThis);
   return {
-    async request<K extends RelayEndpoint>(
+    async request<K extends keyof Routes & RelayEndpoint>(
       endpoint: K,
       options: Omit<RequestInit, 'method'> & {
         params?: Record<string, string>;
@@ -264,7 +321,7 @@ export function createRelayClient(baseUrl: string, fetchImpl: typeof fetch = glo
         json?: RelayRequestBody<K>;
       } = {},
     ) {
-      const definition = relayRoutes[endpoint];
+      const definition = routes[endpoint]!;
       const { params = {}, query = {}, json, ...init } = options;
       if (json !== undefined) {
         definition.request.parse(json);

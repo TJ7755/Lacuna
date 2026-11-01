@@ -1,4 +1,4 @@
-import { createRelayClient } from '@lacuna/protocol/relay/index';
+import { createRelayClient, syncRoutes } from '@lacuna/protocol/relay/index';
 // P6 pairing helpers. The UI owns when secrets are shown or requested; this module
 // owns validation, relay minting, keybag handling and the common sync hand-off.
 
@@ -275,7 +275,7 @@ async function mintChannel(
   const trimmedSecret = mintSecret.trim();
   const headers: Record<string, string> = {};
   if (trimmedSecret !== '') headers.Authorization = `Bearer ${trimmedSecret}`;
-  const response = await createRelayClient(relayUrl, fetcher).request('channelCreate', {
+  const response = await createRelayClient(syncRoutes, relayUrl, fetcher).request('channelCreate', {
     headers,
   });
   if (response.status === 401) throw new SyncPairingError('The relay mint secret was rejected.');

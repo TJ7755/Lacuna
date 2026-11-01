@@ -1,6 +1,6 @@
 import {
   createRelayClient as createProtocolClient,
-  relayRoutes,
+  aiRoutes as relayRoutes,
 } from '@lacuna/protocol/relay/index';
 import { DEFAULT_RELAY_URL } from '../sync/pairing';
 import { bindFetch, normaliseRelayUrl } from '../sync/relay';
@@ -120,7 +120,7 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
   if (typeof fetcher !== 'function') {
     throw new RelayClientConfigurationError('This device does not provide fetch for the AI relay.');
   }
-  const client = createProtocolClient(relayUrl, bindFetch(fetcher));
+  const client = createProtocolClient(relayRoutes, relayUrl, bindFetch(fetcher));
   const recoveryTiming = {
     now: options.recovery?.now ?? (() => performance.now()),
     wait: options.recovery?.wait ?? wait,
@@ -304,7 +304,7 @@ async function readPushGeneration(response: Response): Promise<string> {
 }
 
 async function recoverPushGeneration(
-  client: ReturnType<typeof createProtocolClient>,
+  client: ReturnType<typeof createProtocolClient<typeof relayRoutes>>,
   mailboxParams: Record<string, string>,
   browserToken: string,
   attemptedBody: ArrayBuffer,
