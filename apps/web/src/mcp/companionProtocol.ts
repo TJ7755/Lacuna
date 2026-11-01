@@ -115,8 +115,7 @@ export function isAiCompanionRequest(value: unknown): value is AiCompanionReques
   if (item.type === 'ai_hello') {
     return (
       Object.keys(item).length === 3 &&
-      (item.protocolVersion === LEGACY_AI_COMPANION_PROTOCOL_VERSION ||
-        item.protocolVersion === AI_COMPANION_PROTOCOL_VERSION) &&
+      item.protocolVersion === AI_COMPANION_PROTOCOL_VERSION &&
       typeof item.token === 'string' &&
       /^[a-f0-9]{64}$/.test(item.token)
     );
@@ -174,7 +173,7 @@ export function isAiCompanionResponse(value: unknown): value is AiCompanionRespo
   if (!item) return false;
   if (item.type === 'ai_ready') {
     if (item.protocolVersion === LEGACY_AI_COMPANION_PROTOCOL_VERSION) {
-      return Object.keys(item).length === 3 && typeof item.appVersion === 'string';
+      return false;
     }
     const capabilities = record(item.capabilities);
     return (

@@ -5,7 +5,6 @@ import { AiCompanionOperationError } from '../../web/src/ai/companionErrors.js';
 import {
   AI_COMPANION_PROTOCOL_VERSION,
   CompanionLineDecoder,
-  LEGACY_AI_COMPANION_PROTOCOL_VERSION,
   encodeCompanionMessage,
   isAiCompanionResponse,
   type AiCompanionProtocolVersion,
@@ -13,8 +12,6 @@ import {
 } from '../../web/src/mcp/companionEntry.js';
 import { readCompanionConnectionFile, type CompanionConnectionFile } from './connectionFile.js';
 import { appConnectionError } from './aiAppOperationErrors.js';
-
-class AiProtocolFallbackError extends Error {}
 
 /** Allocated by LocalAiAppClient; socket callbacks and requests share this one ledger. */
 
@@ -58,12 +55,7 @@ export function createAiAppTransport(
         commitState: 'not_started',
       });
     }
-    try {
-      await connectSocketWithProtocol(connection, AI_COMPANION_PROTOCOL_VERSION);
-    } catch (error) {
-      if (!(error instanceof AiProtocolFallbackError)) throw error;
-      await connectSocketWithProtocol(connection, LEGACY_AI_COMPANION_PROTOCOL_VERSION);
-    }
+    await connectSocketWithProtocol(connection, AI_COMPANION_PROTOCOL_VERSION);
   }
 
   async function connectSocketWithProtocol(
@@ -74,14 +66,9 @@ export function createAiAppTransport(
       const socket = net.createConnection(connection.endpoint);
       const decoder = new CompanionLineDecoder();
       let ready = false;
-      const fallbackAllowed = protocolVersion === AI_COMPANION_PROTOCOL_VERSION;
       const timeout = setTimeout(
         () =>
-          fail(
-            fallbackAllowed
-              ? new AiProtocolFallbackError()
-              : appConnectionError('Timed out while connecting to the running Lacuna application.'),
-          ),
+          fail(appConnectionError('Timed out while connecting to the running Lacuna application.')),
         connectTimeoutMs,
       );
       const fail = (error: Error) => {
@@ -120,22 +107,16 @@ export function createAiAppTransport(
             if (!ready) {
               if (response.type !== 'ai_ready') {
                 fail(
-                  fallbackAllowed
-                    ? new AiProtocolFallbackError()
-                    : appConnectionError(
-                        response.type === 'fatal'
-                          ? 'The running Lacuna application rejected the AI companion handshake.'
-                          : 'Lacuna returned an invalid AI companion handshake.',
-                      ),
+                  appConnectionError(
+                    response.type === 'fatal'
+                      ? 'The running Lacuna application rejected the AI companion handshake.'
+                      : 'Lacuna returned an invalid AI companion handshake.',
+                  ),
                 );
                 return;
               }
               if (response.protocolVersion !== protocolVersion) {
-                fail(
-                  fallbackAllowed
-                    ? new AiProtocolFallbackError()
-                    : appConnectionError('Lacuna returned an incompatible AI companion protocol.'),
-                );
+                fail(appConnectionError('Lacuna returned an incompatible AI companion protocol.'));
                 return;
               }
               ready = true;
@@ -161,11 +142,7 @@ export function createAiAppTransport(
           }
         } catch (error) {
           if (!ready) {
-            fail(
-              fallbackAllowed
-                ? new AiProtocolFallbackError()
-                : appConnectionError('Lacuna returned an invalid AI companion handshake.'),
-            );
+            fail(appConnectionError('Lacuna returned an invalid AI companion handshake.'));
           } else {
             fail(error instanceof Error ? error : new Error('Invalid response from Lacuna.'));
           }
@@ -174,11 +151,9 @@ export function createAiAppTransport(
       socket.once('close', () => {
         if (!ready)
           fail(
-            fallbackAllowed
-              ? new AiProtocolFallbackError()
-              : appConnectionError(
-                  'The running Lacuna application closed the AI companion connection.',
-                ),
+            appConnectionError(
+              'The running Lacuna application closed the AI companion connection.',
+            ),
           );
         if (state.socket === socket) close();
       });

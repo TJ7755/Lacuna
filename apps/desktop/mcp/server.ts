@@ -1,12 +1,10 @@
 // Stable lifecycle façade for Lacuna's Electron MCP runtime. Data-tool behaviour lives in
 // dataBridge.ts; authenticated local data and AI sockets live in companionBroker.ts.
 // Disposable --mcp-companion and --ai-companion processes forward stdio clients to that
-// broker, while the embedded stdio server remains for legacy cold-start clients.
+// broker without exposing the data-owning process over stdio.
 
 import { app, type BrowserWindow } from 'electron';
 import log from 'electron-log';
-import { McpServer } from '@modelcontextprotocol/server';
-import { serveStdio, type StdioServerHandle } from '@modelcontextprotocol/server/stdio';
 import {
   TOOL_CONTRACT_REGISTRY,
   MCP_TOOL_SURFACE_VERSION,
@@ -28,7 +26,6 @@ export interface McpStatus {
 
 let dataBridge: DataBridge | null = null;
 let companionBroker: CompanionBroker | null = null;
-let stdioHandle: StdioServerHandle | null = null;
 let companionLaunchCommands: Pick<McpStatus, 'companion' | 'aiCompanion'> | null = null;
 let started = false;
 let startPromise: Promise<void> | null = null;
@@ -92,7 +89,7 @@ export function getMcpStatus(): McpStatus {
 }
 
 /**
- * Starts the data bridge, authenticated companion broker and legacy stdio transport.
+ * Starts the data bridge, authenticated companion broker.
  * `getWindow` remains dynamic: every dispatch observes the current Electron window.
  */
 export function startMcpServer(getWindow: () => BrowserWindow | null): Promise<void> {
@@ -118,17 +115,6 @@ async function acquireRuntime(getWindow: () => BrowserWindow | null): Promise<vo
     );
     companionBroker = broker;
     await broker.start();
-    stdioHandle = serveStdio(
-      () => {
-        const server = new McpServer({ name: 'lacuna', version: app.getVersion() });
-        bridge.registerTools(server);
-        return server;
-      },
-      {
-        legacy: 'serve',
-        onerror: (error) => log.error('MCP stdio transport failed', error),
-      },
-    );
     started = true;
   } catch (error) {
     const cleanupErrors = await disposeRuntime();
@@ -155,7 +141,7 @@ export async function stopMcpServer(): Promise<void> {
       return;
     }
   }
-  if (!started && !dataBridge && !companionBroker && !stdioHandle) return;
+  if (!started && !dataBridge && !companionBroker) return;
   const cleanupErrors = await disposeRuntime();
   if (cleanupErrors.length > 0) {
     throw new AggregateError(cleanupErrors, 'MCP runtime cleanup failed.');
@@ -165,8 +151,6 @@ export async function stopMcpServer(): Promise<void> {
 async function disposeRuntime(): Promise<unknown[]> {
   const bridge = dataBridge;
   const broker = companionBroker;
-  const stdio = stdioHandle;
-  stdioHandle = null;
   companionBroker = null;
   dataBridge = null;
   companionLaunchCommands = null;
@@ -179,11 +163,6 @@ async function disposeRuntime(): Promise<unknown[]> {
   }
   try {
     await broker?.stop();
-  } catch (error) {
-    errors.push(error);
-  }
-  try {
-    await stdio?.close();
   } catch (error) {
     errors.push(error);
   }

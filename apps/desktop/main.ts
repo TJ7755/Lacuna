@@ -424,8 +424,7 @@ if (installationInProgress) {
     registerWindowControlHandlers(ipcMain, () => mainWindow);
 
     // Starts the data-owning MCP bridge and authenticated local companion broker alongside
-    // the renderer. The embedded stdio transport remains for legacy cold-start clients;
-    // new clients launch the disposable --mcp-companion process instead.
+    // the renderer. Clients launch a disposable companion process.
     //
     // The specifier is built from a variable, not a string literal, so tsc does not
     // statically resolve and pull electron/mcp/server.ts (and, transitively, the whole

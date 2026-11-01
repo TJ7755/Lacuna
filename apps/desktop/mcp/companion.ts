@@ -243,7 +243,7 @@ export function startMcpCompanion(): StdioServerHandle {
       return server;
     },
     {
-      legacy: 'serve',
+      legacy: 'reject',
       onerror: (error) => log.error('MCP companion stdio failed', error),
     },
   );
