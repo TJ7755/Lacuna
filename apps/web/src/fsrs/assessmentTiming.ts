@@ -1,4 +1,5 @@
 import type { Card } from '@lacuna/core/db/types';
+import { isUpcomingExamDate } from './examDate';
 import { rAtExam, rAtExamIfReviewedNow, type SimContext } from './forwardSim';
 
 /** FSRS's reference retention; a model target, not a guarantee of human recall. */
@@ -24,7 +25,7 @@ export function assessmentTiming(
   examDate: number | undefined,
   ctx: SimContext,
 ): AssessmentTiming {
-  if (examDate === undefined || !Number.isFinite(examDate) || examDate <= now) {
+  if (!isUpcomingExamDate(examDate, now) || !Number.isFinite(examDate)) {
     return { due: card.due, predictedRecall: null, feasible: null };
   }
   const due = card.due;
