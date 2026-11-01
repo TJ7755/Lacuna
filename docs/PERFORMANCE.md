@@ -37,3 +37,44 @@ CPU-throttled image measurements belong on a runner without competing functional
 [CI projects](../tests/config/playwright.web.ci.config.ts). Isolation removes contention, not product
 regressions. New opportunities and unresolved regressions belong in issues, not an accumulating
 priority list in this procedure.
+
+## Web return stress checks
+
+These checks run against disposable local servers and stores. They require no Vercel, Blob or
+production credentials. Do not point them at a deployed service. Run one browser benchmark at a
+time; check `uptime` and available memory first on shared machines. Use GitHub Actions for repeated
+or CPU-throttled runs rather than competing with other local builds.
+
+### Relay
+
+```sh
+bun run stress:relay
+STRESS_CONCURRENCY=16 STRESS_ITERATIONS=50 STRESS_PAYLOAD_BYTES=65536 bun run stress:relay
+```
+
+The relay harness invokes the real handler with an in-memory store. It exercises sync, sharing,
+class codes and AI session mailboxes, and writes `artifacts/stress/relay.json`. Compare throughput,
+p50/p95/p99 latency and status counts at the same concurrency and payload size. Expected contention
+conflicts and rate-limit responses are separate from unexpected errors; the behavioural probes must
+pass even when the throughput number looks healthy. An in-process store measures handler overhead
+and contention semantics, not Blob latency or deployment capacity. The relay v2 integration must use
+its shared protocol when that branch lands; do not preserve a parallel legacy wire format.
+
+### Large libraries
+
+```sh
+bun run stress:web
+```
+
+This extends `perf:audit:heavy` on the production assets with budget enforcement. The fixture uses
+real browser IndexedDB, thousands of cards and many courses. Keep the generated JSON report with
+the tested commit and runner identity. The report records navigation, readable study/review results,
+backup/import work, resources and renderer responsiveness. Read the budget definitions beside the
+harness before changing a threshold. A threshold is a regression ceiling, not a claimed measurement
+or a guarantee for every Chromebook. Record an observed baseline from the same runner and workload;
+do not compare CPU-throttled runs with unthrottled ones.
+
+The performance workflow runs a smaller workload on relevant pull requests and the full workload
+on demand through `workflow_dispatch`. Download its artefacts to inspect failed measurements and
+retain the first green full report as the named baseline. Cheap checks do not replace the full run
+before the web return. Existing `perf:check` and first-interaction checks remain part of validation.
