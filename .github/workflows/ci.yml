@@ -1,30 +1,26 @@
 name: CI
-run-name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && format('CI metadata {0}', github.sha) || format('CI validation {0}', github.sha) }}
+run-name: CI validation ${{ github.sha }}
 
 on:
   push:
     branches: [master, main]
   pull_request:
     # Validate every stack layer, including PRs based on ordinary topic branches.
-    # Retargets validate the new merge commit. Metadata edits reuse successful
-    # validation of that exact merge commit without cancelling it.
-    types: [opened, synchronize, reopened, ready_for_review, edited]
+    # Title/body edits start no run. Reopen after retargeting to validate the new merge.
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
   actions: read
 
-# Retries have their own group so an older run cannot cancel newer validation.
-# Metadata edits must not cancel validation. Reused results require the exact tested merge commit.
-# Only an explicit title/body edit without a base change is metadata-only; unknown
-# edited payloads fail closed by running CI.
+# Retries cannot cancel newer validation. Master pushes supersede older pushes.
+# Base retargets require reopening the PR (or pushing a commit) to validate the new merge.
 concurrency:
-  group: ci-${{ github.run_attempt > 1 && format('retry-{0}', github.run_id) || github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && format('metadata-{0}', github.run_id) || github.event.pull_request.number || github.sha }}
-  cancel-in-progress: ${{ github.run_attempt == 1 && github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body)) }}
+  group: ci-${{ github.run_attempt > 1 && format('retry-{0}', github.run_id) || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.run_attempt == 1 && (github.event_name == 'pull_request' || github.event_name == 'push') }}
 
 jobs:
   documentation:
-    if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,60 +39,27 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      docs_only: ${{ steps.metadata.outputs.docs_only || steps.scope.outputs.docs_only }}
-      app: ${{ steps.metadata.outputs.app || steps.scope.outputs.app }}
-      electron: ${{ steps.metadata.outputs.electron || steps.scope.outputs.electron }}
-      windows_native: ${{ steps.metadata.outputs.windows_native || steps.scope.outputs.windows_native }}
-      relay: ${{ steps.metadata.outputs.relay || steps.scope.outputs.relay }}
-      tooling: ${{ steps.metadata.outputs.tooling || steps.scope.outputs.tooling }}
-      sites: ${{ steps.metadata.outputs.sites || steps.scope.outputs.sites }}
-      docs: ${{ steps.metadata.outputs.docs || steps.scope.outputs.docs }}
-      handwriting: ${{ steps.metadata.outputs.handwriting || steps.scope.outputs.handwriting }}
-      python: ${{ steps.metadata.outputs.python || steps.scope.outputs.python }}
-      ai_mcp: ${{ steps.metadata.outputs.ai_mcp || steps.scope.outputs.ai_mcp }}
-      lint: ${{ steps.metadata.outputs.lint || steps.scope.outputs.lint }}
-      web_tests: ${{ steps.metadata.outputs.web_tests || steps.scope.outputs.web_tests }}
+      docs_only: ${{ steps.scope.outputs.docs_only }}
+      app: ${{ steps.scope.outputs.app }}
+      electron: ${{ steps.scope.outputs.electron }}
+      windows_native: ${{ steps.scope.outputs.windows_native }}
+      relay: ${{ steps.scope.outputs.relay }}
+      tooling: ${{ steps.scope.outputs.tooling }}
+      sites: ${{ steps.scope.outputs.sites }}
+      docs: ${{ steps.scope.outputs.docs }}
+      handwriting: ${{ steps.scope.outputs.handwriting }}
+      python: ${{ steps.scope.outputs.python }}
+      ai_mcp: ${{ steps.scope.outputs.ai_mcp }}
+      lint: ${{ steps.scope.outputs.lint }}
+      web_tests: ${{ steps.scope.outputs.web_tests }}
       web_specs: ${{ steps.scope.outputs.web_specs }}
     steps:
-      - id: metadata
-        if: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title != null || github.event.changes.body != null) }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          VALIDATION_TITLE: CI validation ${{ github.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          run_id=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$HEAD_SHA&event=pull_request&per_page=100" |
-            jq -r --arg title "$VALIDATION_TITLE" --arg head "$HEAD_SHA" --arg base "$BASE_SHA" --argjson pr "$PR_NUMBER" '
-              [.workflow_runs[] | select(
-                .display_title == $title and .event == "pull_request" and .head_sha == $head and
-                any(.pull_requests[]; .number == $pr and .head.sha == $head and .base.sha == $base)
-              )] | first | .id // empty')
-          if [ -z "$run_id" ]; then
-            echo "No validation run exists for this merge commit. Reopen the PR or push a commit to validate it."
-            exit 1
-          fi
-          gh run watch "$run_id" --repo "$GH_REPO" --exit-status --interval 10
-          # Recheck the identity after waiting; only a real validation run may grant reuse.
-          gh api "repos/$GH_REPO/actions/runs/$run_id" |
-            jq -e --arg title "$VALIDATION_TITLE" --arg head "$HEAD_SHA" --arg base "$BASE_SHA" --argjson pr "$PR_NUMBER" '
-              .conclusion == "success" and .status == "completed" and
-              .display_title == $title and .event == "pull_request" and .head_sha == $head and
-              any(.pull_requests[]; .number == $pr and .head.sha == $head and .base.sha == $base)' > /dev/null
-          echo "Reused successful validation: https://github.com/$GH_REPO/actions/runs/$run_id" >> "$GITHUB_STEP_SUMMARY"
-          echo "docs_only=true" >> "$GITHUB_OUTPUT"
-          for area in app electron windows_native relay tooling sites docs handwriting python ai_mcp lint web_tests; do echo "$area=false" >> "$GITHUB_OUTPUT"; done
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         with:
           fetch-depth: 0
           persist-credentials: false
       - id: scope
         shell: bash
-        if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -270,7 +233,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Verify test jobs passed
-        if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         env:
           SCOPE_RESULT: ${{ needs.changes.result }}
           APP: ${{ needs.changes.outputs.app }}
@@ -301,15 +263,6 @@ jobs:
             echo "Tests did not pass: documentation=$DOCUMENTATION_RESULT unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT python=$PYTHON_RESULT macos-electron=$MACOS_ELECTRON_RESULT app=$APP sites=$SITES"
             exit 1
           fi
-
-      - name: Require successful reused validation
-        if: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title != null || github.event.changes.body != null) }}
-        env:
-          SCOPE_RESULT: ${{ needs.changes.result }}
-        shell: bash
-        run: |
-          [ "$SCOPE_RESULT" = success ]
-          echo "Exact merge commit passed validation; see the changes job for its run." >> "$GITHUB_STEP_SUMMARY"
 
   handwriting:
     needs: changes
@@ -677,7 +630,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Require all browser jobs
-        if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         env:
           SCOPE_RESULT: ${{ needs.changes.result }}
           APP: ${{ needs.changes.outputs.app }}
@@ -715,15 +667,6 @@ jobs:
             echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT timing=$TIMING_RESULT mobile=$MOBILE_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
             exit 1
           fi
-
-      - name: Require successful reused validation
-        if: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title != null || github.event.changes.body != null) }}
-        env:
-          SCOPE_RESULT: ${{ needs.changes.result }}
-        shell: bash
-        run: |
-          [ "$SCOPE_RESULT" = success ]
-          echo "Exact merge commit passed validation; see the changes job for its run." >> "$GITHUB_STEP_SUMMARY"
 
   electron-ai:
     name: electron-ai

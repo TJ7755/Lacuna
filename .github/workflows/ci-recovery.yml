@@ -21,18 +21,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Check for incomplete job records without installing dependencies
+        id: stale
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        shell: bash
+        run: |
+          pending=$(gh api "repos/$GH_REPO/actions/runs/$RUN_ID/jobs?filter=latest&per_page=100" --paginate --slurp |
+            jq '[.[].jobs[] | select(.status != "completed")] | length')
+          echo "found=$([ "$pending" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       # workflow_run is privileged: execute only the default-branch workflow commit, never PR code.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: steps.stale.outputs.found == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - if: steps.stale.outputs.found == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.22.1'
           package-manager-cache: false
-      - uses: ./.github/actions/setup-bun
-      - run: bun install --frozen-lockfile --ignore-scripts
+      - if: steps.stale.outputs.found == 'true'
+        uses: ./.github/actions/setup-bun
+      - if: steps.stale.outputs.found == 'true'
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Retry a successfully finished job with a stale running record
+        if: steps.stale.outputs.found == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
