@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     import pyarrow as pa
 
 
-# VALIDATION_PLAN.md phase 3: test whether v2's frozen coefficients transfer to users
+# the frozen cohort validation phase 3: test whether v2's frozen coefficients transfer to users
 # whose data never touched the fit, instead of always refitting on whatever cohort is
 # passed in. Path resolved relative to this module, not the CWD, so the candidate works
 # from any invocation directory.
@@ -54,7 +54,7 @@ class HalfLifeLogisticFrozenCandidate:
     `fit`/`fit_batches` are no-ops: they consume no training data and always return the
     coefficients baked into `coefficients/half-life-logistic-v2.json`. Prediction is
     otherwise identical to `half_life_v2` (routed weight, fractional-day FSRS baseline).
-    Used to test cohort transfer (VALIDATION_PLAN.md phase 3): does the fit on users
+    Used to test cohort transfer (the frozen cohort validation phase 3): does the fit on users
     1-100 hold up on users whose data never touched it, without any refitting.
     """
 

@@ -14,11 +14,11 @@ including after resolving symbolic links, with this shape:
 { "relayUrl": "http://127.0.0.1:4999", "writeToken": "<64 lowercase hexadecimal digits>" }
 ```
 
-Use the relay that owns the existing share. No relay or token is inferred from its public URL.
+Use the relay that owns the existing share. Specify the owning relay explicitly.
 Keep this file outside every checkout, restrict access to its owner and inject environment
 credentials through your secret manager. Never paste tokens into command arguments, commit them,
 include them in review evidence or enable shell tracing. HTTP is accepted only for loopback relays;
-remote relays require HTTPS. The command suppresses private exception/relay response text.
+remote relays require HTTPS. Keep private response text out of publication evidence.
 
 Use the catalogue course id for `--course-id`; it is an operator label, not a rewritten payload
 identity. With the variables below pointing to external files and a synthetic stable link:
@@ -28,10 +28,8 @@ bun scripts/library-publish.ts --artefact "$FROZEN_ARTEFACT" --course-id synthet
   --share "$STABLE_SHARE_URL" --credentials "$LACUNA_OWNER_FILE" --dry-run
 ```
 
-Dry-run validates, checks ownership, reads both slots and reports `sha256`, `currentSha256` and
-which slots would change. It writes nothing, including local files. Review that exact frozen
-artefact and record its hash in your private approval evidence. For a real run supply that hash;
-a missing or mismatched approval hash fails before writing:
+Review the dry-run plan and record the exact frozen artefact hash in private approval evidence.
+Supply that hash for publication:
 
 ```bash
 bun scripts/library-publish.ts --artefact "$FROZEN_ARTEFACT" --course-id synthetic \
@@ -39,19 +37,9 @@ bun scripts/library-publish.ts --artefact "$FROZEN_ARTEFACT" --course-id synthet
   --approved-sha256 "$APPROVED_SHA256" > "$PUBLICATION_RECORD"
 ```
 
-Serialise publishers for each share. The existing protocol writes payload then manifest, with
-separate generation/compare-and-swap checks; it is not a two-slot transaction. A failure can leave
-a new payload with an old/missing manifest, or an accepted write whose response was lost. Errors
-identify the failing phase and do not claim rollback. Stop other publishers, run dry-run with the
-same frozen artefact and inspect the plan before retrying. Matching payload bytes are not resent;
-only a missing/outdated manifest is repaired. A 412 conflict is never automatically overwritten.
-If another publisher advanced the revision, investigate that publication rather than forcing an
-older artefact over it. Verification failures may occur after both slots are live: inspect them
-before retrying, and do not treat the failed run as publication evidence.
-
-Skipping unchanged bytes does not renew a share. Ordinary share expiry is unchanged; official
-publications use the relay retention policy below after deployment. No production relay was used
-to validate this command.
+Serialise publishers for each share. After a failed publication, stop other publishers,
+repeat the dry-run and inspect both published slots before retrying. Investigate revision
+conflicts rather than overwriting another publication.
 
 ## Hosting
 
@@ -107,14 +95,6 @@ CSP and security headers remain in place.
 
 ## Official publication retention
 
-The policy includes the 26 official catalogue publications, including Religious Studies 8062,
-Combined Science 1SC0 and J250, and the 19 new science links.
-The relay keeps these publications readable while their ownership and payload
-objects exist, using the reviewed allow-list in `apps/relay/src/officialPublications.ts`. The public
-catalogue does not grant retention, and ordinary shares still expire after 90 days without a write.
-No timer, download or unchanged-publication retry renews a share. The additions take effect only
-when this relay change is deployed; catalogue deployment alone does not activate retention.
-
 The relay operator owns additions and removal. Before adding a share ID, verify ownership using
 the publication command's dry-run with the existing private credentials, verify the approved
 payload/hash, and review the exact ID in a relay PR. Deploy it before the ordinary expiry window
@@ -122,15 +102,11 @@ ends. Never accept an ID from a public request or automatically copy all catalog
 this allow-list. The relay configuration deliberately contains public IDs, not write tokens.
 
 To withdraw a publication, remove its catalogue entry and use the existing authorised share DELETE
-with its write token. Retention does not defeat deletion, preserve Gaps reports beyond their own
-retention, or recreate deleted bytes. Remove the ID from the relay policy in the same withdrawal;
-removing only the policy restores ordinary age-based expiry and can make an old share immediately
-unreadable. Removing only a catalogue entry does not withdraw the underlying publication.
+with its write token. Remove the ID from the relay policy in the same withdrawal.
 
 After deployment, check all listed payload/manifest reads and compare the publication hashes.
-Monitor the existing daily maintenance result and investigate failed reads; no renewal job is
-required. If an expired share's objects still exist, deploying the reviewed allow-list restores
-availability without changing its URL or bytes. If cleanup has already removed its ownership or
-payload, the allow-list cannot recover it: stop, recover from the approved artefact and private
-ownership records through an operator-reviewed recovery, and verify the subscriber identity impact
-before publishing. Do not mint a replacement and claim the old link was repaired.
+Monitor daily maintenance and investigate failed reads. For an expired share, verify retained
+objects and ownership privately before deploying a reviewed retention-policy correction.
+If recovery fails, stop and recover from the approved artefact and private ownership records
+through an operator-reviewed recovery. Verify subscriber identity impact before publication.
+Do not mint a replacement and claim the old link was repaired.

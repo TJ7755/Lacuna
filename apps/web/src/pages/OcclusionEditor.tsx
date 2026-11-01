@@ -3,7 +3,7 @@ import { fieldLabelClassName, inputFrameClassName } from '../components/ui/Field
 // derives ordinary front/back FSRS cards, one per masked region). Mirrors
 // SequenceEditor's shape closely: the route decides create vs edit mode, a sticky
 // action bar drives save/cancel, and deletion (edit mode only) uses the app's
-// undo-toast idiom via DangerZoneSection. See design/arc6/plan.md (chosen
+// undo-toast idiom via DangerZoneSection. See the occlusion editor source (chosen
 // direction: D1 adapted) and design/arc6/mockups-occlusion.html.
 // Route: course/:courseId/occlusion/new, course/:courseId/occlusion/:occlusionId/edit,
 // and the lesson-scoped course/:courseId/lesson/:lessonId/occlusion/new variant.

@@ -14,29 +14,12 @@ durations are displayed individually and must not be summed. Keep traces local b
 they may contain paths and library content.
 
 Generate the comparison table with `node scripts/performance-heavy/summarise.mjs <report.json> ...`.
-Repeated timing cells show median / slowest observed; single measurements are labelled `n=1`.
-The maximum of three samples is an observed maximum, not an estimated worst-case bound or p99.
-Timings cover the action, an asserted visible result and two animation frames, and include
-Playwright overhead and normal application animations. The first dashboard load starts a new
-document without an application HTTP cache; later loads are warm reloads. This is not an
-operating-system cold boot or a packaged Electron startup measurement.
-
-CPU throttling does not reproduce a particular processor, graphics card or storage device.
-JavaScript heap samples are taken at operation boundaries and are not total browser memory or
-a continuously observed peak. On Linux the runner also samples whole-guest available memory,
-swap usage, major page faults and the kernel OOM-kill counter every 500 ms during measurements.
-Those include the OS, test runner and Chromium. Fixture generation is outside that sampling window.
-
 For short repeated runs, use a new disposable directory and stable port:
 
 ```sh
 PERF_PROFILE_DIR=/private/tmp/lacuna-heavy-profile PERF_PORT=4173 PERF_MODE=quick \
   PERF_RATES=1 PERF_REPETITIONS=5 bun run perf:audit:heavy
 ```
-
-The answer and grading timings assert readable content, including effective ancestor opacity, and
-wait through two animation frames. These measurements are therefore not directly comparable with
-reports made by older harness versions that only waited for a button or outgoing Card to disappear.
 
 ## Disposable Linux VM
 

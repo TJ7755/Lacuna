@@ -17,29 +17,6 @@ protection against force pushes/deletion, including administrators. Require aggr
 they enforce all component jobs, rather than copying a transient shard count into protection.
 After changing settings, re-read the API response and compare names with the actual workflows.
 
-Aggregate jobs such as `test` and `browser-smoke` are scheduled after their dependencies finish;
-their check runs can therefore appear later than other required checks. CI consumers must compare
-the complete live protection context list with checks for the current candidate, treating missing
-contexts as pending. All currently reported checks passing does not establish that every required
-check exists or passed. Workflow cancellation suppresses the aggregate jobs rather than reporting
-a second failure for superseded work; a failed or independently cancelled dependency in an active
-run still fails its aggregate. Do not publish early green or skipped placeholders under required names.
-On pull requests `browser-smoke` requires the release smoke spec plus any changed top-level web
-specs; on master pushes it requires the full functional, timing, mobile and standalone browser
-suites, so release tagging still waits for them. `electron-ai` likewise runs the Windows Electron AI
-suite on master pushes and only acknowledges its required name on pull requests.
-
-If a successful CI or Security workflow retains a running job record after every step, including
-`Complete job`, succeeded, [CI recovery](../../.github/workflows/ci-recovery.yml) requests one real
-job rerun. This handles stale GitHub reporting, not slow tests. It runs trusted default-branch code
-and never writes check conclusions or changes branch protection. Fork runs, failed workflows,
-unfinished steps, obsolete branch commits, unsafe legacy workflow concurrency, multiple incomplete
-job records and repeated recovery are excluded. CI retries use a separate concurrency group, so an
-older retry cannot cancel validation for a newer commit even if the branch advances during recovery.
-Recovery inspects the workflow definition at the tested commit recorded in its run title, not the
-PR head commit; older runs without that record need manual inspection. A failed
-recovery needs operator inspection; it does not authorise an administrative merge.
-
 To inspect or recover a completed run manually using the same guards:
 
 ```bash

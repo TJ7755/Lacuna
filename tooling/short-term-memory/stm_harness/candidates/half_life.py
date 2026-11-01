@@ -167,7 +167,7 @@ def _features(context: PredictionContext) -> tuple[float, ...] | None:
 
 
 def _features_from_key(key: tuple[int, int, int, int, bool, int]) -> tuple[float, ...]:
-    # Train/serve mismatch (VALIDATION_PLAN.md phase 2, item 4; frozen for v1, documented
+    # Train/serve mismatch (the frozen cohort validation phase 2, item 4; frozen for v1, documented
     # rather than changed): `fit_batches` groups training examples into `LAG_BIN_COUNT`
     # log-scale lag bins (`_lag_bin`) and fits against each bin's *centre*
     # (`(lag + 0.5) / LAG_BIN_COUNT`, computed here), not the exact log-scaled lag of the

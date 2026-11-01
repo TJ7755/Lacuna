@@ -1,6 +1,6 @@
 # Lacuna
 
-> Free, local-first revision app for exam students. Flashcards with FSRS-6 spaced repetition planned around the exam date, connected notes and lessons, and automatically marked exam-style questions. No account needed.
+> Revision resources for exam students.
 
 ## Courses
 
