@@ -132,35 +132,36 @@ describe('domain storage portability', () => {
     });
   });
 
-  it('rebuilds target units when importing an earlier v21 projection without metadata', async () => {
+  it('rejects an old projection without metadata before replacement', async () => {
     const course = await createCourse('Biology');
     const lesson = await createLesson(course.id, 'Cells');
     const deckId = await ensureLessonBackingDeck(course.id, lesson.id);
-    const card = await createCard(deckId, 'front_back', 'Q', 'A', [], {
+    await createCard(deckId, 'front_back', 'Q', 'A', [], {
       courseId: course.id,
       primaryLessonId: lesson.id,
     });
     const current = await exportDatabase();
     const legacyProjectionBackup = {
       ...current,
+      app: 'lacuna-v14',
+      version: 14,
       schedulingUnits: current.schedulingUnits!.map(({ createdAt: _createdAt, ...unit }) => unit),
     } as BackupFile;
 
-    await reset();
-    await importBackup(legacyProjectionBackup, 'replace');
-
-    expect(await db.cards.get(card.id)).toMatchObject({ schedulingUnitId: lesson.id });
-    expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({
-      kind: 'lesson',
-      createdAt: lesson.createdAt,
+    await expect(importBackup(legacyProjectionBackup, 'replace')).rejects.toThrow(
+      'Unsupported old backup version',
+    );
+    expect(await exportDatabase()).toMatchObject({
+      cards: current.cards,
+      schedulingUnits: current.schedulingUnits,
     });
   });
 
-  it('reconstructs target projections and stamps lesson cards when importing an older backup', async () => {
+  it('rejects an older backup without target projections before replacement', async () => {
     const course = await createCourse('Biology');
     const lesson = await createLesson(course.id, 'Cells');
     const deckId = await ensureLessonBackingDeck(course.id, lesson.id);
-    const card = await createCard(deckId, 'front_back', 'Q', 'A', [], {
+    await createCard(deckId, 'front_back', 'Q', 'A', [], {
       courseId: course.id,
       primaryLessonId: lesson.id,
     });
@@ -172,11 +173,12 @@ describe('domain storage portability', () => {
       ...oldBackup
     } = current;
 
-    await reset();
-    await importBackup(oldBackup, 'replace');
-
-    expect(await db.cards.get(card.id)).toMatchObject({ schedulingUnitId: lesson.id });
-    expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({ kind: 'lesson' });
-    expect(await db.schedulingPerformance.get(lesson.id)).toBeDefined();
+    await expect(
+      importBackup({ ...oldBackup, app: 'lacuna-v14', version: 14 }, 'replace'),
+    ).rejects.toThrow('Unsupported old backup version');
+    expect(await exportDatabase()).toMatchObject({
+      cards: current.cards,
+      schedulingUnits: current.schedulingUnits,
+    });
   });
 });
