@@ -60,6 +60,10 @@ const INITIAL_ASSET_BUDGET = {
   landingScriptRequests: 9,
 } as const;
 
+// Optional renderers must remain split; a new monolithic dependency must not hide
+// behind the initial-entry budget. The lesson capture remains full-resolution RGB.
+const OPTIONAL_ASSET_BUDGET = { javascriptChunkBytes: 700_000, lessonCaptureBytes: 250_000 };
+
 const PUBLIC_ASSET_BUDGET = {
   comparison: {
     javascriptBytes: 1_652_000,
@@ -356,6 +360,9 @@ async function measureBuildOutput() {
       bytes: initialCss.reduce((total, asset) => total + asset.bytes, 0),
       gzipBytes: initialCss.reduce((total, asset) => total + asset.gzipBytes, 0),
     },
+    optionalAssets: allAssets.filter(
+      (asset) => asset.name.endsWith('.js') || /^lesson-.*\.png$/.test(asset.name),
+    ),
     largestAssets: allAssets.sort((a, b) => b.bytes - a.bytes).slice(0, 12),
   };
 }
@@ -418,6 +425,13 @@ function assertInitialAssetBudget(build: BuildOutput): void {
   ] as const;
   for (const [label, actual, maximum] of checks) {
     if (actual > maximum) failures.push(`${label}: ${actual} > ${maximum}`);
+  }
+
+  for (const asset of build.optionalAssets) {
+    const maximum = asset.name.endsWith('.js')
+      ? OPTIONAL_ASSET_BUDGET.javascriptChunkBytes
+      : OPTIONAL_ASSET_BUDGET.lessonCaptureBytes;
+    if (asset.bytes > maximum) failures.push(`${asset.name} bytes: ${asset.bytes} > ${maximum}`);
   }
 
   const optionalPreloads = [...build.initialJavaScript.assets, ...build.initialCss.assets]

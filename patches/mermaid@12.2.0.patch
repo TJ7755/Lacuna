@@ -1,0 +1,13 @@
+diff --git a/dist/chunks/mermaid.core/chunk-EJLWFMJV.mjs b/dist/chunks/mermaid.core/chunk-EJLWFMJV.mjs
+index 0b633d96227bf1a39e767d7f0fa3107cafb127a4..0557cf08d8ced9895b80cc384395a52791a79028 100644
+--- a/dist/chunks/mermaid.core/chunk-EJLWFMJV.mjs
++++ b/dist/chunks/mermaid.core/chunk-EJLWFMJV.mjs
+@@ -87,7 +87,7 @@ var registerDefaultLayoutLoaders = /* @__PURE__ */ __name(() => {
+         name: "cose-bilkent",
+         loader: /* @__PURE__ */ __name(async () => await import("./cose-bilkent-JH36ORCC.mjs"), "loader")
+       },
+-      ...elkLayoutLoaders()
++      // Lacuna uses the built-in dagre fallback for ELK layout requests.
+     ] : []
+   ]);
+ }, "registerDefaultLayoutLoaders");

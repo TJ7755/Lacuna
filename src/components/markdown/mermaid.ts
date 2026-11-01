@@ -234,12 +234,6 @@ async function loadSanitizer(): Promise<SanitizerApi | null> {
   return null;
 }
 
-// Start fetching optional rendering dependencies before the first diagram is mounted.
-if (typeof window !== 'undefined') {
-  void importMermaid();
-  void importSanitizer();
-}
-
 /**
  * Scrub rendered diagram SVG before it reaches the document. Mermaid already
  * runs at `securityLevel: strict`, but the diagram source is user-authored (and
