@@ -38,7 +38,7 @@ export interface UpdateAgentMemoryInput {
   expiresAt?: number;
 }
 
-export type AgentMemorySearchScope =
+type AgentMemorySearchScope =
   { kind: 'all' } | { kind: 'global' } | { kind: 'course'; courseId: string };
 
 export interface AgentMemorySearch {

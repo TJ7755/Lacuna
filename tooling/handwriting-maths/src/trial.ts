@@ -16,12 +16,6 @@ export type Arm = 'canvas' | 'keyboard' | 'palette';
 
 export const ARMS: readonly Arm[] = ['canvas', 'keyboard', 'palette'];
 
-export const ARM_LABELS: Record<Arm, string> = {
-  canvas: 'Write it',
-  keyboard: 'Type it',
-  palette: 'Buttons',
-};
-
 /** One planned trial, before it is attempted. */
 export interface PlannedTrial {
   arm: Arm;
@@ -91,7 +85,7 @@ export interface ArmSummary {
   medianCorrections: number;
 }
 
-export const summariseArm = (arm: Arm, trials: readonly Trial[]): ArmSummary => {
+const summariseArm = (arm: Arm, trials: readonly Trial[]): ArmSummary => {
   const forArm = trials.filter((trial) => trial.arm === arm);
   const correct = forArm.filter((trial) => trial.correct);
   return {

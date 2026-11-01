@@ -21,7 +21,7 @@ export interface MachineMarkedAnswer {
   checkerDisputes?: CheckerDisputeReport[];
 }
 
-export type { LearnModeType, LearnSessionRequest } from '../../course/learnSessionRequest';
+export type { LearnModeType } from '../../course/learnSessionRequest';
 
 export const FILTER_LABELS: Record<string, string> = {
   due: 'due cards',

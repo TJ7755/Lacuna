@@ -28,7 +28,7 @@ import type {
 } from '@lacuna/core/db/types';
 
 export { sampleReviewTrajectory } from './reviewTrajectory';
-export type { ReviewTrajectorySampleArgs } from './reviewTrajectory';
+
 // ---------------------------------------------------------------------------
 // Reviews
 // ---------------------------------------------------------------------------

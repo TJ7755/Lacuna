@@ -59,10 +59,26 @@ export const TARGET_EXPRESSIONS: readonly string[] = [
  *  with no `x` or `y`, making three of the eight targets unenterable and invalidating
  *  those trials. `palette covers every target` below is the guard against a repeat. */
 export const PALETTE_KEYS: readonly string[] = [
-  '7', '8', '9', '+', '(',
-  '4', '5', '6', '-', ')',
-  '1', '2', '3', '*', '^',
-  '0', '.', '=', '/', 'x',
+  '7',
+  '8',
+  '9',
+  '+',
+  '(',
+  '4',
+  '5',
+  '6',
+  '-',
+  ')',
+  '1',
+  '2',
+  '3',
+  '*',
+  '^',
+  '0',
+  '.',
+  '=',
+  '/',
+  'x',
   'y',
 ];
 
@@ -72,8 +88,3 @@ const byLabel = new Map(SYMBOLS.map((symbol) => [symbol.label, symbol]));
  *  contribute nothing rather than throwing: the layout stage must survive a recogniser
  *  that has been given templates this table does not know about. */
 export const labelToOutput = (label: string): string => byLabel.get(label)?.output ?? '';
-
-/** Map a sequence of recognised labels onto an expression string. Layout (stage 4)
- *  handles superscripts separately; this is the flat case. */
-export const labelsToExpression = (labels: readonly string[]): string =>
-  labels.map((label) => byLabel.get(label)?.output ?? '').join('');

@@ -66,10 +66,6 @@ export interface AiRendererReply {
   result: AiBridgeResult;
 }
 
-export interface AiRendererDisconnect {
-  channelId: string;
-}
-
 function record(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object'
     ? (value as Record<string, unknown>)

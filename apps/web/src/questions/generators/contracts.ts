@@ -8,7 +8,7 @@ export type QuestionGeneratorErrorCode =
   | 'exhausted-constraint-space'
   | 'audit-failed';
 
-export interface GeneratorConfigurationField {
+interface GeneratorConfigurationField {
   readonly key: string;
   readonly label: string;
   readonly kind: 'integer' | 'boolean';
@@ -48,7 +48,7 @@ export interface ResolvedGeneratedQuestion {
   readonly renderedExplanation: string;
 }
 
-export interface GeneratorAuditInstance {
+interface GeneratorAuditInstance {
   readonly seed: string;
   readonly generatorFingerprint: string;
   readonly resolved: ResolvedGeneratedQuestion;

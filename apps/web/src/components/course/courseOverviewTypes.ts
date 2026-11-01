@@ -5,7 +5,7 @@ import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
 import type { LessonReorderInteraction } from './useLessonPathReorder';
 import type { CourseAddKind } from './AddCourseControl';
 
-export interface LessonNodeDetail {
+interface LessonNodeDetail {
   cardCount: number;
   dueCount: number;
   masteryPct: number;

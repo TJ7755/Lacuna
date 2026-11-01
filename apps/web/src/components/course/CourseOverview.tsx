@@ -12,8 +12,6 @@ import type { CourseOverviewProps } from './courseOverviewTypes';
 import { renderCoursePathRows } from './CoursePathRows';
 import { Button } from '../ui/Button';
 
-export type { LessonNodeDetail } from './courseOverviewTypes';
-
 const CARD = 'rounded-3xl bg-surface card-surface';
 
 /**
