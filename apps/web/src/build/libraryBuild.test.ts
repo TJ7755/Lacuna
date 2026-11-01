@@ -72,3 +72,16 @@ it('hosts the static library separately with no network or worker capability', a
   expect(policy).toContain("worker-src 'none'");
   expect(policy).toContain("frame-ancestors 'none'");
 });
+
+it('consolidates the hosted Library catalogue on the main-domain course hierarchy', async () => {
+  const config = JSON.parse(await readFile('apps/library/vercel.json', 'utf8'));
+  expect(config.redirects).toEqual([
+    { source: '/', destination: 'https://getlacuna.app/courses/', permanent: true },
+    { source: '/index.html', destination: 'https://getlacuna.app/courses/', permanent: true },
+    {
+      source: '/courses/:path*',
+      destination: 'https://getlacuna.app/courses/:path*',
+      permanent: true,
+    },
+  ]);
+});

@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import packageJson from './package.json' with { type: 'json' };
 import { settingsStaticClosurePlugin } from './scripts/settings-static-closure.ts';
+import { topicPagesPlugin } from './scripts/course-topics.ts';
 import { publicPagePrerenderPlugin } from './scripts/public-page-prerender.ts';
 import { appShellPrecachePlugin } from './scripts/app-shell-precache.ts';
 
@@ -92,6 +93,7 @@ export default defineConfig({
     tailwindcss(),
     settingsStaticClosurePlugin(),
     publicPagePrerenderPlugin(),
+    topicPagesPlugin(),
     appShellPrecachePlugin(),
     VitePWA({
       registerType: 'autoUpdate',
