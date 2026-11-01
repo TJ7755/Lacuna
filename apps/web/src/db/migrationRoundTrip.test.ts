@@ -8,6 +8,8 @@ import { assertValidBackup } from './backupValidation';
 import { exportDatabase, importBackup } from './portability';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { emptyQuestionSchedule, scheduleQuestionReview } from '../questions/scheduler';
+import { deriveTechniqueSchedules } from '../questions/techniqueSchedule';
+import { listConceptPractice } from '../questions/conceptPractice';
 import { deriveConceptApplicationSchedules } from '../questions/conceptPractice';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 import { schemaV27 } from './migrationFixtures';
@@ -295,6 +297,25 @@ it.each(['database', 'backup'])(
         snapshot.recordedAt,
       ).schedule,
     );
+    expect([...deriveTechniqueSchedules([historicalAttempt])]).toEqual([
+      [
+        'causal-link',
+        scheduleQuestionReview(
+          emptyQuestionSchedule(),
+          1,
+          snapshot.schedulerConfig,
+          snapshot.recordedAt,
+        ).schedule,
+      ],
+    ]);
+    const [sittingItem] = await listConceptPractice('course-1', 240, undefined, {
+      sittingStartedAt: 190,
+    });
+    expect(sittingItem).toMatchObject({
+      conceptId,
+      studyEligible: false,
+      eligibleTechniqueIds: [],
+    });
     const currentAttempt = structuredClone(historicalAttempt);
     currentAttempt.id = 'current-fractional-attempt';
     currentAttempt.firstMarking![0].gradeMappingVersion = 'fractional-hard-v2';
