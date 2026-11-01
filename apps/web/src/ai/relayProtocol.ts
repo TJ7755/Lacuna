@@ -43,7 +43,7 @@ export const relayPairingCodeSchema = z
   .string()
   .regex(/^[A-HJ-KM-NP-TV-Z2-9]{4}(?:-[A-HJ-KM-NP-TV-Z2-9]{4}){4}$/);
 export const relayTokenSchema = z.string().regex(/^[0-9a-f]{64}$/);
-const relayTimestampSchema = z.number().int().nonnegative().finite();
+export const relayTimestampSchema = z.number().int().nonnegative().finite();
 const relayRevisionSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const relayGenerationSchema = z
   .string()
@@ -107,7 +107,7 @@ export const relayCreateSessionResponseSchema = z
   })
   .strict();
 
-const relayClaimRequestSchema = z
+export const relayClaimRequestSchema = z
   .object({
     terminalPublicKey: relayPublicKeySchema,
     client: aiClientIdentitySchema,
@@ -157,7 +157,7 @@ const relayBrowserMessageBase = {
   instructions: aiInstructionBundleSchema,
 };
 
-const relayBrowserMessageSchema = z.discriminatedUnion('delivery', [
+export const relayBrowserMessageSchema = z.discriminatedUnion('delivery', [
   z.object({ ...relayBrowserMessageBase, delivery: z.literal('queued') }).strict(),
   z
     .object({
