@@ -1,11 +1,11 @@
+import { loadSessionSource } from './loadSessionSource';
 import type { JevMarkProvenance } from '../../jev/types';
 import { useLeaveFlowWith } from '../../utils/editorOrigin';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
 import { pauseAssetGc } from '../../db/assets';
-import { getSchedulingUnit, performanceForReviewUnits } from '../../db/backingDecks';
-import { getCourse } from '../../db/read';
+import { performanceForReviewUnits } from '../../db/backingDecks';
 import { dailyReviewCounts } from '../../db/reviewHistoryRead';
 import type {
   Card,
@@ -16,24 +16,14 @@ import type {
   ReviewSessionKind,
   RevisionPlan,
   SchedulerConfig,
-  SchedulingUnitRecord,
   UserPerformance,
 } from '../../db/types';
 import { buryCard, setCardFlag, suspendCard } from '../../db/cardRepository';
 import { markLessonComplete, upsertLessonCardExposure } from '../../db/lessonRepository';
 import { listNotes } from '../../db/noteRepository';
-import { refreshRevisionPlan, startRevisionWindow } from '../../db/revisionPlanRepository';
-import {
-  directLessonStudyPool,
-  lessonStudyPool,
-  practiceCardScope,
-  practiceScopeVersion,
-} from '../../course/studyPools';
-import { revisionProjection } from '../../course/revisionProjection';
 import { emptyPerformance } from '../../fsrs/grading';
 import type { CooldownMap } from '../../fsrs/cooldown';
 import { progressHeading } from '../../fsrs/objective';
-import { makeExamDateContext } from '../../fsrs/examDate';
 import {
   makeSessionContext,
   sessionComplete,
@@ -41,8 +31,7 @@ import {
   sessionProgress,
   sessionServePool,
 } from '../../fsrs/session';
-import type { SessionContext, SessionUnit } from '../../fsrs/session';
-import { studyPool } from '../../fsrs/eligibility';
+import type { SessionContext } from '../../fsrs/session';
 import { startOfDay } from '../../utils/datetime';
 import { MS_PER_DAY } from '../../fsrs/params';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
@@ -67,14 +56,7 @@ import { useAnswerInput } from '../../state/answerInput';
 import { resolveAnswerMode, reviewAnswerInput } from '../../utils/resolveAnswerMode';
 import { shuffledSimpleQueue } from './recitation/recitationFlow';
 import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
-import {
-  prepareSimpleSessionQueue,
-  loadLessonSessionSource,
-  loadGlobalSessionSource,
-  loadCourseSessionSource,
-  resolveCourseSessionSelection,
-  prepareCourseSessionPool,
-} from './sessionPool';
+import { prepareSimpleSessionQueue } from './sessionPool';
 import { resolveLearnSessionScope } from './sessionScope';
 import {
   persistRecitationReview,
@@ -923,192 +905,44 @@ export function useLearnSession({
         if (measureStartup) performance.mark(`lacuna:study-load:${stage}`);
       };
       markLoad('load-start');
-      let units: StudyUnit[];
-      let sessionUnits: Array<SchedulingUnitRecord | SessionUnit>;
-      let cards: Card[];
-      // Set for lesson sessions so notes always precede the Simple-mode pass.
-      let firstStudyLessonId: string | undefined;
-      let firstStudyLessonName: string | undefined;
-
-      if (lessonId) {
-        const lesson: Lesson | undefined = await db.lessons.get(lessonId);
-        if (!lesson) {
-          if (onFlowExit) onFlowExit();
-          else void navigate('/');
-          return;
-        }
-        const course = await getCourse(lesson.courseId);
-        if (!course) {
-          if (onFlowExit) onFlowExit();
-          else void navigate('/');
-          return;
-        }
-        setResolvedCourseId(course.id);
-        const {
-          courseLessons,
-          examDates,
-          links,
-          courseLinks,
-          concepts,
-          allCourseCards,
-          lessonExposures,
-          linkedCardIds,
-          membership,
-        } = await loadLessonSessionSource(course.id, lessonId);
-        lessonHasMembersRef.current = membership.length > 0;
-        const examDateContext = makeExamDateContext(
-          course,
-          courseLessons,
-          examDates,
-          courseLinks,
-          concepts,
-        );
-        const schedulingUnit = (await getSchedulingUnit(course.id, lessonId)) ?? course;
-        cards = standaloneSimple
-          ? course.archived
-            ? []
-            : membership
-          : course.learnFirst === false
-            ? directLessonStudyPool(lessonId, allCourseCards, links, schedulingUnit)
-            : lessonStudyPool(lessonId, allCourseCards, links, lessonExposures);
-        units = [course];
-        sessionUnits = [
-          {
-            config: schedulingUnit,
-            scope: { kind: 'lesson', courseId: course.id, lessonId, linkedCardIds },
-            examDateContext,
-          },
-        ];
-        reviewKindRef.current = 'course';
-        if (!standaloneSimple) {
-          ratchetCourseIdRef.current = course.id;
-          ratchetLessonIdRef.current = lessonId;
-          lessonExposureIdRef.current = lessonId;
-        }
-        setUnitDisplayName(lesson.name);
-        firstStudyLessonId = standaloneSimple ? undefined : lessonId;
-        firstStudyLessonName = lesson.name;
-      } else if (courseId) {
-        const course = await getCourse(courseId);
-        if (!course) {
-          if (onFlowExit) onFlowExit();
-          else void navigate('/');
-          return;
-        }
-        const poolRequest = {
-          standaloneSimple,
-          requestScopeLessonIds,
-          requestSpecificationPointId,
-          practiceNodeKeyParam,
-          requestAssessmentId,
-          filterParams,
-          examPractice,
-          catchUpPractice,
-        };
-        const source = await loadCourseSessionSource(courseId, standaloneSimple);
-        const { allCards, courseLinks, courseExposures } = source;
-        const selection = resolveCourseSessionSelection(course, source, poolRequest);
-        const { practiceNode, selectedAssessment } = selection;
-        if (requestAssessmentId && !selectedAssessment) {
-          if (onFlowExit) onFlowExit();
-          else void navigate(`/course/${courseId}`);
-          return;
-        }
-        let activeRevisionPlan: RevisionPlan | null = null;
-        if (plannedRevision && requestPlanId && requestWindowId && selectedAssessment) {
-          const refreshed = await refreshRevisionPlan(requestPlanId, revisionProjection);
-          if (
-            refreshed.assessmentId !== selectedAssessment.id ||
-            refreshed.courseId !== course.id ||
-            !refreshed.windows.some((window) => window.id === requestWindowId)
-          ) {
-            throw new Error('The revision plan does not match this assessment window.');
-          }
-          activeRevisionPlan = await startRevisionWindow(requestPlanId, requestWindowId);
-          const activeWindow = activeRevisionPlan.windows.find(
-            (window) => window.id === requestWindowId,
-          );
-          revisionPlanRef.current = activeRevisionPlan;
-          revisionInitialRevision.current = activeRevisionPlan.revision;
-          revisionWindowStartedAt.current = activeWindow?.startedAt ?? Date.now();
-          const budgetSeconds = (activeWindow?.budgetMinutes ?? 0) * 60;
-          setRevisionWindowBudgetSeconds(budgetSeconds);
-          setRevisionSecondsRemaining(
-            Math.max(0, budgetSeconds - (Date.now() - revisionWindowStartedAt.current) / 1000),
-          );
-          setRevisionNextWindowDay(
-            activeRevisionPlan.windows.find(
-              (window) => window.status === 'scheduled' && window.id !== requestWindowId,
-            )?.day,
-          );
-        }
-        const prepared: ReturnType<typeof prepareCourseSessionPool> & { scopeTitle?: string } =
-          requestSpecificationPointId === undefined
-            ? prepareCourseSessionPool(course, source, selection, poolRequest, activeRevisionPlan)
-            : (await import('./specificationSessionPool')).prepareSpecificationSessionPool(
-                course,
-                source,
-                selection,
-                { ...poolRequest, requestSpecificationPointId },
-                activeRevisionPlan,
-              );
-        cards = prepared.cards;
-        const { examDateContext } = prepared;
-        const schedulingUnit = (await getSchedulingUnit(course.id)) ?? course;
-        const practiceConfig: SessionSchedulingConfig = {
-          ...schedulingUnit,
-          // Introductions have already rationed new cards for traditional courses.
-          // Direct-FSRS courses need the scheduler to enforce the same course-wide cap.
-          newCardsPerDay:
-            course.learnFirst === false || catchUpPractice
-              ? schedulingUnit.newCardsPerDay
-              : undefined,
-        };
-        if (course.learnFirst === false && !plannedRevision && !standaloneSimple) {
-          cards = studyPool(cards, practiceConfig, Date.now(), undefined, allCards);
-        }
-        units = [course];
-        sessionUnits = [
-          {
-            config: practiceConfig,
-            scope: { kind: 'course', courseId },
-            examDateContext,
-          },
-        ];
-        reviewKindRef.current = 'course';
-        if (!standaloneSimple) ratchetCourseIdRef.current = course.id;
-        setUnitDisplayName(prepared.scopeTitle ?? selectedAssessment?.name ?? course.name);
-        // The milestone is measured against the node's fixed lesson prefix, exactly as
-        // the study-flow snapshot checks it; the wider live pool above is only what is
-        // studied. Without a prefix there is no safe fingerprint, so nothing is recorded.
-        if (practiceNodeKeyParam && requestMilestoneLessonIds) {
-          const milestoneScope = practiceCardScope(
-            allCards,
-            courseLinks,
-            courseExposures,
-            {
-              reachedLessonIds: new Set(requestMilestoneLessonIds),
-              practiceNode,
-              requireExposure: course.learnFirst !== false,
-            },
-            Date.now(),
-            course.leechThreshold,
-          );
-          practiceSessionRef.current = {
-            nodeKey: practiceNodeKeyParam,
-            courseId,
-            scopeVersion: practiceScopeVersion(milestoneScope),
-            scopeCards: milestoneScope,
-            course,
-            examDateContext,
-          };
-        }
-      } else {
-        const source = await loadGlobalSessionSource();
-        units = source.schedulingUnits;
-        sessionUnits = source.sessionUnits;
-        cards = source.cards;
+      const source = await loadSessionSource({
+        lessonId,
+        courseId,
+        standaloneSimple,
+        requestScopeLessonIds,
+        requestSpecificationPointId,
+        practiceNodeKeyParam,
+        requestAssessmentId,
+        filterParams,
+        examPractice,
+        catchUpPractice,
+        plannedRevision,
+        requestPlanId,
+        requestWindowId,
+        requestMilestoneLessonIds,
+      });
+      if (cancelled) return;
+      if ('redirect' in source) {
+        if (onFlowExit) onFlowExit();
+        else void navigate(source.redirect);
+        return;
       }
+      const { units, sessionUnits, firstStudyLessonId, firstStudyLessonName } = source;
+      let { cards } = source;
+      setResolvedCourseId(source.resolvedCourseId);
+      lessonHasMembersRef.current = source.lessonHasMembers;
+      reviewKindRef.current = source.reviewKind;
+      ratchetCourseIdRef.current = source.ratchetCourseId;
+      ratchetLessonIdRef.current = source.ratchetLessonId;
+      lessonExposureIdRef.current = source.lessonExposureId;
+      setUnitDisplayName(source.unitDisplayName);
+      revisionPlanRef.current = source.revisionPlan;
+      revisionInitialRevision.current = source.revisionInitialRevision;
+      revisionWindowStartedAt.current = source.revisionWindowStartedAt;
+      setRevisionWindowBudgetSeconds(source.revisionWindowBudgetSeconds);
+      setRevisionSecondsRemaining(source.revisionSecondsRemaining);
+      setRevisionNextWindowDay(source.revisionNextWindowDay);
+      practiceSessionRef.current = source.practiceSession;
       if (cancelled) return;
 
       markLoad('pool-ready');
