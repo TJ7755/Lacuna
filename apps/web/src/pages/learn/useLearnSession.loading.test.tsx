@@ -45,6 +45,33 @@ async function seedCurricularPractice() {
 }
 
 describe('useLearnSession pool preparation', () => {
+  it('serves future-due cards in an explicit early review of a direct-FSRS course', async () => {
+    const course = await createCourse('Early review', { learnFirst: false });
+    const card = await createCard(course.id, 'front_back', 'Question', 'Answer');
+    await db.cards.update(card.id, {
+      reps: 4,
+      state: 2,
+      due: Date.now() + 86_400_000,
+      stability: 100,
+      difficulty: 5,
+      lastReviewed: Date.now() - 86_400_000,
+    });
+    const session = renderHook(() =>
+      useLearnSession(
+        sessionParams({
+          courseId: course.id,
+          earlyReview: true,
+          mode: 'early-review',
+        }),
+      ),
+    );
+    try {
+      await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
+    } finally {
+      session.unmount();
+    }
+  });
+
   it('defers a pending media sweep until the study session is disabled', async () => {
     const course = await createCourse('Media maintenance', { learnFirst: false });
     const card = await createCard(course.id, 'front_back', 'Question', 'Answer');

@@ -22,6 +22,7 @@ interface StudyStepTransitionProps {
   /** The topic the next step practises, highlighted among the priorities. */
   nextConceptId?: string;
   canReviewDueCards: boolean;
+  onReviewMoreCards?: () => void;
   canReviewEarlierMaterial?: boolean;
   onReviewEarlierMaterial?: () => void;
   breakPending: boolean;
@@ -54,6 +55,7 @@ export function StudyStepTransition({
   nextReason,
   nextConceptId,
   canReviewDueCards,
+  onReviewMoreCards,
   canReviewEarlierMaterial,
   onReviewEarlierMaterial,
   breakPending,
@@ -181,6 +183,11 @@ export function StudyStepTransition({
               {breakPending && (
                 <Button variant="ghost" size="md" onClick={onDeferBreak}>
                   Dismiss break
+                </Button>
+              )}
+              {onReviewMoreCards && (
+                <Button variant="ghost" onClick={onReviewMoreCards}>
+                  Review more cards
                 </Button>
               )}
               {canReviewEarlierMaterial && (

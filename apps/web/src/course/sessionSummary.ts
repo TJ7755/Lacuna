@@ -42,6 +42,7 @@ export interface SessionSummary {
   simpleMode?: boolean;
   /** Visual mode identifier for the session report UI. */
   mode?:
+    | 'early-review'
     | 'fsrs'
     | 'simple'
     | 'cram'

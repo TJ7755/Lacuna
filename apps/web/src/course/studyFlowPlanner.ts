@@ -10,7 +10,7 @@ export type StudyFlowStep =
   | {
       kind: 'practice';
       nodeKey: string;
-      mode: 'curricular' | 'recurring' | 'assessment' | 'exam' | 'catch-up';
+      mode: 'curricular' | 'recurring' | 'assessment' | 'exam' | 'catch-up' | 'early-review';
       label: string;
       assessmentId?: string;
     }
@@ -171,3 +171,10 @@ export function planNextStudyStep(
   if (hasLockedLesson) return { kind: 'blocked', reason: 'curriculum-locked' };
   return hasCurriculum || snapshot.cardCount > 0 ? { kind: 'complete' } : { kind: 'empty' };
 }
+
+export const EARLY_REVIEW_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = {
+  kind: 'practice',
+  nodeKey: 'early-review',
+  mode: 'early-review',
+  label: 'Review any cards',
+};

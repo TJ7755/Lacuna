@@ -38,7 +38,7 @@ import { daysUntil } from '../utils/datetime';
 import type { Card, SchedulerConfig, SchedulingUnitRecord } from '@lacuna/core/db/types';
 
 /** Due review uses objective ordering but finishes when no scheduled reviews are due. */
-export type SessionMode = 'objective' | 'cram' | 'due';
+export type SessionMode = 'objective' | 'cram' | 'due' | 'early-review';
 
 /**
  * Which cards belong to a session unit, and the key under which its context is
@@ -218,7 +218,7 @@ function unitServePool(
   const pool =
     mode === 'due'
       ? dueCards(cards, now)
-      : mode === 'cram'
+      : mode === 'cram' || mode === 'early-review'
         ? availableCards(cards, now)
         : courseBudget
           ? courseBudgetedStudyPool(cards, deck, now, courseBudget)
@@ -411,9 +411,9 @@ export function sessionComplete(
   ctx: SessionContext,
   now: number = Date.now(),
 ): boolean {
-  if (ctx.mode === 'due' || ctx.initialReviewCounts) {
+  if (ctx.mode === 'due' || ctx.mode === 'early-review' || ctx.initialReviewCounts) {
     if (sessionServePool(cards, ctx, now).length === 0) return true;
-    if (ctx.mode === 'due') return false;
+    if (ctx.mode === 'due' || ctx.mode === 'early-review') return false;
   }
   if (ctx.decks.size === 1) {
     const unit = ctx.decks.values().next().value as SessionDeckContext;

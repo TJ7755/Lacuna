@@ -84,6 +84,7 @@ export interface UseLearnSessionParams {
   /** An explicitly requested pass, independent of curricular introductions and practice. */
   standaloneSimple?: boolean;
   /** Optional revision below a future exam target, without a curricular scope. */
+  earlyReview?: boolean;
   examPractice?: boolean;
   catchUpPractice?: boolean;
   mode: LearnModeType;
@@ -122,6 +123,7 @@ export function useLearnSession({
   reviewSessionKind,
   isSimpleMode,
   standaloneSimple = false,
+  earlyReview = false,
   examPractice = false,
   catchUpPractice = false,
   mode,
@@ -869,6 +871,7 @@ export function useLearnSession({
         practiceNodeKeyParam,
         requestAssessmentId,
         filterParams,
+        earlyReview,
         examPractice,
         catchUpPractice,
         plannedRevision,
@@ -973,6 +976,7 @@ export function useLearnSession({
     mode,
     isGlobal,
     standaloneSimple,
+    earlyReview,
     examPractice,
     catchUpPractice,
     practiceNodeKeyParam,

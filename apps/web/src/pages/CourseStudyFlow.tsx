@@ -22,6 +22,7 @@ import {
 } from '../state/activeStudyFlow';
 import {
   DUE_REVIEW_STEP,
+  EARLY_REVIEW_STEP,
   STUDY_REVIEW_BLOCK_SIZE,
   CATCH_UP_STEP,
   EXAM_PRACTICE_STEP,
@@ -90,6 +91,7 @@ function CourseStudyFlowInner() {
   const [catchUpFinished, setCatchUpFinished] = useState(false);
   const entryAssessmentId = searchParams.get('assessmentId');
   const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
+    if (searchParams.get('review') === 'early') return EARLY_REVIEW_STEP;
     if (searchParams.get('review') === 'earlier') return CATCH_UP_STEP;
     if (searchParams.get('review') === 'due') return DUE_REVIEW_STEP;
     if (searchParams.get('review') === 'exam') return EXAM_PRACTICE_STEP;
@@ -377,6 +379,11 @@ function CourseStudyFlowInner() {
         canReviewEarlierMaterial={
           !planningNextStep && !catchUpIsNext && (flow?.snapshot.catchUpEligibleCount ?? 0) > 0
         }
+        onReviewMoreCards={() => {
+          if (pomodoro.breakPending) pomodoro.deferBreak();
+          setCurrentStep(EARLY_REVIEW_STEP);
+          setTransition(null);
+        }}
         onReviewEarlierMaterial={() => {
           if (pomodoro.breakPending) pomodoro.deferBreak();
           setCurrentStep(CATCH_UP_STEP);

@@ -3,6 +3,7 @@ import type { ReviewSessionKind } from '@lacuna/core/db/types';
 
 /** The distinct visual identity of the current learn session. */
 export type LearnModeType =
+  | 'early-review'
   | 'fsrs'
   | 'simple'
   | 'cram'
@@ -26,7 +27,7 @@ export type LearnSessionRequest =
       reviewLimit?: number;
       /** Additional authored boundary; it can only narrow ordinary practice eligibility. */
       specificationPointId?: string;
-      mode: 'curricular' | 'recurring' | 'exam' | 'catch-up';
+      mode: 'curricular' | 'recurring' | 'exam' | 'catch-up' | 'early-review';
       assessmentId?: never;
     }
   | {
@@ -118,6 +119,7 @@ export function resolveLearnSessionRequest({
       : dueReviewRequest ||
           (request?.kind === 'practice' &&
             (request.specificationPointId !== undefined ||
+              request.mode === 'early-review' ||
               request.mode === 'exam' ||
               request.mode === 'catch-up'))
         ? false
@@ -125,6 +127,7 @@ export function resolveLearnSessionRequest({
 
   let mode: LearnModeType = 'fsrs';
   if (isSimpleMode) mode = 'simple';
+  else if (request?.kind === 'practice' && request.mode === 'early-review') mode = 'early-review';
   else if (plannedRevision) mode = 'cram';
   else if (filterParams.length > 0) {
     mode = 'filtered';
@@ -156,6 +159,7 @@ export function resolveLearnSessionRequest({
     reviewSessionKind,
     isSimpleMode,
     standaloneSimple,
+    earlyReview: request?.kind === 'practice' && request.mode === 'early-review',
     examPractice: request?.kind === 'practice' && request.mode === 'exam',
     catchUpPractice: request?.kind === 'practice' && request.mode === 'catch-up',
     mode,

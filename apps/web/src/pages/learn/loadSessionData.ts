@@ -76,7 +76,11 @@ export async function loadSessionData(request: SessionDataRequest) {
     sessionUnits.length === 1 && 'config' in sessionUnits[0] ? sessionUnits[0].config : null;
   const context = makeSessionContext(
     sessionUnits,
-    !plannedRevision && !isSimpleMode && filterParams.includes('due') ? 'due' : 'objective',
+    mode === 'early-review'
+      ? 'early-review'
+      : !plannedRevision && !isSimpleMode && filterParams.includes('due')
+        ? 'due'
+        : 'objective',
     plannedRevision || isSimpleMode ? undefined : cards,
   );
   request.markLoad('context-ready');

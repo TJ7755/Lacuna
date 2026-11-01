@@ -80,6 +80,7 @@ export async function loadSessionSource(
     practiceNodeKeyParam,
     requestAssessmentId,
     filterParams,
+    earlyReview,
     examPractice,
     catchUpPractice,
     plannedRevision,
@@ -174,6 +175,7 @@ export async function loadSessionSource(
       practiceNodeKeyParam,
       requestAssessmentId,
       filterParams,
+      earlyReview,
       examPractice,
       catchUpPractice,
     };
@@ -231,7 +233,7 @@ export async function loadSessionSource(
       newCardsPerDay:
         course.learnFirst === false || catchUpPractice ? schedulingUnit.newCardsPerDay : undefined,
     };
-    if (course.learnFirst === false && !plannedRevision && !standaloneSimple) {
+    if (course.learnFirst === false && !plannedRevision && !standaloneSimple && !earlyReview) {
       cards = studyPool(cards, practiceConfig, Date.now(), undefined, allCards);
     }
     units = [course];

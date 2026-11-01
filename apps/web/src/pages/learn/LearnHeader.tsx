@@ -49,6 +49,8 @@ function computeHeaderInfo({
   const filterPart = filterLabels.join(', ');
 
   switch (mode) {
+    case 'early-review':
+      return { title: `${deckName} · Review any cards`, subtitle: tagPart };
     case 'simple':
       return {
         // Name what is being studied; the mode's own name is only a fallback.

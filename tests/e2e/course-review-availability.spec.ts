@@ -30,7 +30,9 @@ for (const exam of [false, true]) {
   }, testInfo) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    await page.setViewportSize({ width: 1440, height: 1100 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addInitScript(() => localStorage.setItem('lacuna-motion-speed', '0'));
     await enterWithWelcomeCourse(page);
     await createCourse(page, 'Biology');
     const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
@@ -143,11 +145,19 @@ for (const exam of [false, true]) {
       await expect(
         preview.getByRole('button', { name: 'Practise for exam', exact: true }),
       ).toBeVisible();
-      await preview.getByRole('button', { name: 'Start session', exact: true }).click();
-      await expect(page).toHaveURL(/#\/course\/[^/]+\/study$/);
+      await expect(
+        preview.getByRole('button', { name: 'Review any cards', exact: true }),
+      ).toBeVisible();
+      await preview
+        .getByRole('button', { name: 'Review any cards', exact: true })
+        .scrollIntoViewIfNeeded();
+      await page.screenshot({ path: testInfo.outputPath('early-review-choice-desktop.png') });
+      await preview.getByRole('button', { name: 'Review any cards', exact: true }).click();
+      await expect(page).toHaveURL(/review=early/);
       await expect(page.locator('[data-study-card-id="review-future"]:not([inert])')).toBeVisible();
       await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
       await page.getByRole('button', { name: 'Yes', exact: true }).click();
+      await page.screenshot({ path: testInfo.outputPath('early-review-session-desktop.png') });
       await expect
         .poll(() =>
           page.evaluate(

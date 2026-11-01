@@ -219,6 +219,16 @@ function CourseStudyOptions({
                 Review earlier material
               </Button>
             )}
+            <Button
+              variant="ghost"
+              className="justify-start"
+              onClick={() => start('?review=early')}
+            >
+              Review any cards
+            </Button>
+            <p className="px-3 text-sm text-ink-soft">
+              Review before cards are due, with normal scheduling.
+            </p>
             {canPractiseForExam && (
               <Button
                 variant="ghost"

@@ -18,6 +18,7 @@ import {
   examPracticePool,
   practiceCardScope,
 } from '../../course/studyPools';
+import { availableCards } from '../../fsrs/eligibility';
 import { makeExamDateContext } from '../../fsrs/examDate';
 import { finalAssessmentForCourse, hydrateCourse } from '../../db/assessmentMigration';
 import type { SessionUnit } from '../../fsrs/session';
@@ -89,6 +90,7 @@ export interface CoursePoolRequest {
   practiceNodeKeyParam: string | null;
   requestAssessmentId: string | undefined;
   filterParams: CardFilter[];
+  earlyReview?: boolean;
   examPractice: boolean;
   catchUpPractice: boolean;
 }
@@ -168,6 +170,7 @@ export function prepareCourseSessionPool(
     standaloneSimple,
     practiceNodeKeyParam,
     filterParams,
+    earlyReview,
     examPractice,
     catchUpPractice,
   }: CoursePoolRequest,
@@ -186,7 +189,7 @@ export function prepareCourseSessionPool(
   // Optional passes need scheduling context, but no curricular eligibility planning.
   const dueReview = !selectedAssessment && !practiceNodeKeyParam && filterParams.includes('due');
   const fullScope =
-    standaloneSimple || dueReview || examPractice
+    standaloneSimple || dueReview || examPractice || earlyReview
       ? allCards
       : selectedAssessment
         ? resolveAssessmentCoverage(
@@ -216,40 +219,44 @@ export function prepareCourseSessionPool(
         courseAssessments: [],
       }
     : makeExamDateContext(course, courseLessons, examDates, courseLinks, concepts);
-  const cards = catchUpPractice
-    ? catchUpPracticePool(
-        allCards,
-        course,
-        courseLessons,
-        courseLinks,
-        examDateContext,
-        reachedLessonIds,
-        Date.now(),
-        earlierCourseLessonIds(course, courseLessons, examDates, manualNodes),
-      )
-    : standaloneSimple
-      ? course.archived
-        ? []
-        : allCards
-      : selectedAssessment
-        ? activeRevisionPlan
-          ? allCards.filter((card) => activeRevisionPlan.scope.eligibleCardIds.includes(card.id))
-          : assessmentPracticePool(selectedAssessment, {
-              course,
-              concepts,
-              assessments: examDates,
-              practiceNodes: manualNodes,
-              lessons: courseLessons,
-              cards: allCards,
-              links: courseLinks,
-              exposures: courseExposures,
-              reachedLessonIds,
-            })
-        : dueReview
-          ? dueReviewPool(fullScope, course)
-          : examPractice
-            ? examPracticePool(fullScope, course, examDateContext)
-            : eligiblePracticePool(fullScope, course, examDateContext);
+  const cards = earlyReview
+    ? course.archived
+      ? []
+      : availableCards(fullScope)
+    : catchUpPractice
+      ? catchUpPracticePool(
+          allCards,
+          course,
+          courseLessons,
+          courseLinks,
+          examDateContext,
+          reachedLessonIds,
+          Date.now(),
+          earlierCourseLessonIds(course, courseLessons, examDates, manualNodes),
+        )
+      : standaloneSimple
+        ? course.archived
+          ? []
+          : allCards
+        : selectedAssessment
+          ? activeRevisionPlan
+            ? allCards.filter((card) => activeRevisionPlan.scope.eligibleCardIds.includes(card.id))
+            : assessmentPracticePool(selectedAssessment, {
+                course,
+                concepts,
+                assessments: examDates,
+                practiceNodes: manualNodes,
+                lessons: courseLessons,
+                cards: allCards,
+                links: courseLinks,
+                exposures: courseExposures,
+                reachedLessonIds,
+              })
+          : dueReview
+            ? dueReviewPool(fullScope, course)
+            : examPractice
+              ? examPracticePool(fullScope, course, examDateContext)
+              : eligiblePracticePool(fullScope, course, examDateContext);
   return { cards, examDateContext };
 }
 
