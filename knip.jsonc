@@ -17,6 +17,8 @@
   "workspaces": {
     ".": {
       "ignoreDependencies": [
+        // Web styles load Tailwind through the CSS import in apps/web/src/index.css.
+        "tailwindcss",
         // Electron preparation invokes the compiler by filename.
         "@typescript/native",
         // Root runtime declaration is required by Electron packaging; desktop imports it.
@@ -38,8 +40,8 @@
       ],
 
       "entry": [
-        // Vercel invokes this through ignoreCommand rather than a module import.
-        "scripts/vercel-ignore-build.mjs",
+        // Manually invoked generator preserves the historical production compatibility fixtures.
+        "scripts/generate-production-compatibility.ts",
         // MCP consent smoke commands are invoked manually.
         "scripts/mcp-smoke.mjs",
         "scripts/mcp-smoke-click-allow.mjs",
