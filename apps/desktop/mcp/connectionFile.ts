@@ -1,0 +1,158 @@
+import { createHash, randomBytes } from 'node:crypto';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { MCP_COMPANION_PROTOCOL_VERSION } from '../../web/src/mcp/companionEntry.js';
+
+const HOST_USER_DATA_ARGUMENT = '--lacuna-host-user-data-dir=';
+const APP_VERSION_ARGUMENT = '--lacuna-app-version=';
+
+export interface CompanionConnectionFile {
+  protocolVersion: typeof MCP_COMPANION_PROTOCOL_VERSION;
+  endpoint: string;
+  token: string;
+  aiToken: string;
+  pid: number;
+  appVersion: string;
+  createdAt: number;
+}
+
+export function companionStateDirectory(userDataPath: string): string {
+  return path.join(userDataPath, 'mcp');
+}
+
+export function companionConnectionFilePath(userDataPath: string): string {
+  return path.join(companionStateDirectory(userDataPath), 'connection.json');
+}
+
+const UNIX_SOCKET_PATH_LIMIT = 104;
+
+export function companionEndpoint(userDataPath: string, platform = process.platform): string {
+  if (platform === 'win32') return `\\\\.\\pipe\\LOCAL\\lacuna-${randomBytes(16).toString('hex')}`;
+  // The owner-only state directory stops other local users squatting the path, which they
+  // can do in a shared /tmp. Unix socket paths are limited to 104 bytes on macOS (108 on
+  // Linux), so a very long profile path falls back to the per-user name in the temp folder.
+  const owned = path.join(companionStateDirectory(userDataPath), 'companion.sock');
+  if (Buffer.byteLength(owned) < UNIX_SOCKET_PATH_LIMIT) return owned;
+  const digest = createHash('sha256').update(userDataPath).digest('hex').slice(0, 20);
+  return path.join(os.tmpdir(), `lacuna-mcp-${process.getuid?.() ?? 'user'}-${digest}.sock`);
+}
+
+export interface CompanionLaunchEnvironment {
+  appPath: string;
+  execPath: string;
+  isPackaged: boolean;
+  platform: NodeJS.Platform;
+  appVersion: string;
+  userDataPath: string;
+  companionUserDataPath: string;
+  portableExecutableFile?: string;
+  appImageFile?: string;
+}
+
+export function companionLaunchCommand(
+  environment: CompanionLaunchEnvironment,
+  mode: '--mcp-companion' | '--ai-companion',
+): { command: string; args: string[]; env?: Record<string, string> } {
+  const requiresWrapper =
+    (environment.platform === 'win32' && environment.portableExecutableFile) ||
+    (environment.platform === 'linux' && environment.appImageFile);
+  if (mode === '--ai-companion' && !requiresWrapper) {
+    return {
+      command: environment.execPath,
+      args: [
+        path.join(
+          environment.appPath,
+          'apps',
+          'desktop',
+          'dist-electron',
+          'mcp',
+          'aiCompanionEntry.js',
+        ),
+        `${HOST_USER_DATA_ARGUMENT}${environment.userDataPath}`,
+        `${APP_VERSION_ARGUMENT}${environment.appVersion}`,
+      ],
+      env: { ELECTRON_RUN_AS_NODE: '1' },
+    };
+  }
+  const command =
+    environment.platform === 'win32' && environment.portableExecutableFile
+      ? environment.portableExecutableFile
+      : environment.platform === 'linux' && environment.appImageFile
+        ? path.resolve(environment.appImageFile)
+        : environment.execPath;
+  return {
+    command,
+    args: [
+      ...(environment.isPackaged ? [mode] : [environment.appPath, mode]),
+      `${HOST_USER_DATA_ARGUMENT}${environment.userDataPath}`,
+      `--user-data-dir=${environment.companionUserDataPath}`,
+    ],
+  };
+}
+
+export function companionHostUserDataPath(argv: string[], fallback: string): string {
+  const argument = argv.find((value) => value.startsWith(HOST_USER_DATA_ARGUMENT));
+  const value = argument?.slice(HOST_USER_DATA_ARGUMENT.length);
+  return value || fallback;
+}
+
+export function companionAppVersion(argv: string[], fallback: string): string {
+  const argument = argv.find((value) => value.startsWith(APP_VERSION_ARGUMENT));
+  const value = argument?.slice(APP_VERSION_ARGUMENT.length);
+  return value || fallback;
+}
+
+export function companionProcessUserDataPath(): string {
+  return path.join(os.tmpdir(), `lacuna-electron-companion-${randomBytes(16).toString('hex')}`);
+}
+
+export async function writeCompanionConnectionFile(
+  userDataPath: string,
+  appVersion: string,
+): Promise<CompanionConnectionFile> {
+  const directory = companionStateDirectory(userDataPath);
+  await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+  if (process.platform !== 'win32') await fs.chmod(directory, 0o700);
+  const connection: CompanionConnectionFile = {
+    protocolVersion: MCP_COMPANION_PROTOCOL_VERSION,
+    endpoint: companionEndpoint(userDataPath),
+    token: randomBytes(32).toString('hex'),
+    aiToken: randomBytes(32).toString('hex'),
+    pid: process.pid,
+    appVersion,
+    createdAt: Date.now(),
+  };
+  const file = companionConnectionFilePath(userDataPath);
+  const temporary = `${file}.${process.pid}.tmp`;
+  await fs.writeFile(temporary, JSON.stringify(connection), { encoding: 'utf8', mode: 0o600 });
+  await fs.rename(temporary, file);
+  if (process.platform !== 'win32') await fs.chmod(file, 0o600);
+  return connection;
+}
+
+export async function readCompanionConnectionFile(
+  userDataPath: string,
+): Promise<CompanionConnectionFile> {
+  const raw = await fs.readFile(companionConnectionFilePath(userDataPath), 'utf8');
+  const value = JSON.parse(raw) as Partial<CompanionConnectionFile>;
+  if (
+    value.protocolVersion !== MCP_COMPANION_PROTOCOL_VERSION ||
+    typeof value.endpoint !== 'string' ||
+    typeof value.token !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(value.token) ||
+    typeof value.pid !== 'number' ||
+    typeof value.aiToken !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(value.aiToken) ||
+    value.aiToken === value.token ||
+    typeof value.appVersion !== 'string' ||
+    typeof value.createdAt !== 'number'
+  ) {
+    throw new Error('Lacuna MCP connection metadata is invalid or incompatible.');
+  }
+  return value as CompanionConnectionFile;
+}
+
+export async function removeCompanionConnectionFile(userDataPath: string): Promise<void> {
+  await fs.rm(companionConnectionFilePath(userDataPath), { force: true });
+}

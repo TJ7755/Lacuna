@@ -57,9 +57,10 @@ export function createResolver(root, { runtime = false } = {}) {
       host,
       cache,
     ).resolvedModule;
-    if (!resolved || resolved.isExternalLibraryImport) return;
-    const file = resolve(resolved.resolvedFileName);
-    const local = sourcePath(join(root, 'src'), file);
+    if (!resolved) return;
+    let file = resolve(resolved.resolvedFileName);
+    if (file.startsWith(join(root, 'packages') + sep) && sourceExtension.test(file)) return file;
+    const local = sourcePath(join(root, 'apps/web/src'), file);
     if (!local.startsWith('../') && !local.startsWith('/') && sourceExtension.test(file))
       return file;
   };
@@ -97,7 +98,10 @@ export const domainUiRule = {
     const root = context.cwd;
     const importer = context.filename;
     const importerPath = sourcePath(root, importer);
-    if (!domainDirectories.some((directory) => importerPath.startsWith(`src/${directory}/`)))
+    if (
+      !importerPath.startsWith('packages/') &&
+      !domainDirectories.some((directory) => importerPath.startsWith(`apps/web/src/${directory}/`))
+    )
       return {};
     const resolveImport = createResolver(root);
     const check = (node, source) => {
@@ -107,7 +111,12 @@ export const domainUiRule = {
           : source?.value;
       if (typeof specifier !== 'string') return;
       const target = resolveImport(specifier, importer);
-      if (target && /^src\/(?:pages|components|teacher)\//.test(sourcePath(root, target))) {
+      if (
+        target &&
+        (/^apps\/web\/src\/(?:pages|components|teacher)\//.test(sourcePath(root, target)) ||
+          (importerPath.startsWith('packages/') &&
+            !sourcePath(root, target).startsWith('packages/')))
+      ) {
         const permitted = context.options[0]?.integrationTests ?? [];
         if (
           !permitted.some(
@@ -201,7 +210,8 @@ export function importGraph(root) {
       }
     }
   };
-  walk(join(root, 'src'));
+  walk(join(root, 'apps/web/src'));
+  if (existsSync(join(root, 'packages'))) walk(join(root, 'packages'));
   return graph;
 }
 

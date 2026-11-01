@@ -80,24 +80,26 @@ function importsRule(message, forbiddenTarget) {
 }
 
 export const relayImportsRule = importsRule(
-  'Use relay/shared/insights/index instead of relay internals ({{target}}).',
+  'Use apps/relay/shared/insights/index instead of relay internals ({{target}}).',
   (_importer, target) =>
-    target.startsWith('relay/src/') ||
-    (target.startsWith('relay/shared/') && target !== 'relay/shared/insights/index.ts'),
+    target.startsWith('apps/relay/src/') ||
+    (target.startsWith('packages/protocol/src/insights/') &&
+      target !== 'packages/protocol/src/insights/index.ts') ||
+    (target.startsWith('apps/relay/shared/') && target !== 'apps/relay/shared/insights/index.ts'),
 );
 
 export const appImportsRule = importsRule(
   'Use a declared app entry point instead of app internals ({{target}}).',
   (importer, target) => {
-    if (!target.startsWith('src/')) return false;
-    if (importer.startsWith('api/')) return target !== 'src/jev/apiEntry.ts';
-    if (!importer.startsWith('electron/mcp/')) return false;
+    if (!target.startsWith('apps/web/src/')) return false;
+    if (importer.startsWith('apps/ai/api/')) return target !== 'apps/web/src/jev/apiEntry.ts';
+    if (!importer.startsWith('apps/desktop/mcp/')) return false;
     return ![
-      'src/mcp/contractEntry.ts',
-      'src/mcp/bridgeEntry.ts',
-      'src/mcp/companionEntry.ts',
-      'src/ai/protocol.ts',
-      'src/ai/companionErrors.ts',
+      'apps/web/src/mcp/contractEntry.ts',
+      'apps/web/src/mcp/bridgeEntry.ts',
+      'apps/web/src/mcp/companionEntry.ts',
+      'apps/web/src/ai/protocol.ts',
+      'apps/web/src/ai/companionErrors.ts',
     ].includes(target);
   },
 );
@@ -105,6 +107,7 @@ export const appImportsRule = importsRule(
 export const trainingImportsRule = importsRule(
   'Use the runtime-owned coefficient asset instead of training internals ({{target}}).',
   (importer, target) =>
-    ['src/', 'server/', 'electron/', 'api/'].some((area) => importer.startsWith(area)) &&
-    target.startsWith('tooling/short-term-memory/'),
+    ['apps/web/src/', 'apps/ai/server/', 'apps/desktop/', 'apps/ai/api/'].some((area) =>
+      importer.startsWith(area),
+    ) && target.startsWith('tooling/short-term-memory/'),
 );

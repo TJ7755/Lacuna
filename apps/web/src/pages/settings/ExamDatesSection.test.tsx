@@ -1,0 +1,246 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { domAnimation, LazyMotion } from 'motion/react';
+import { ExamDatesSection } from './ExamDatesSection';
+import type { Card, CourseAssessment, Lesson } from '@lacuna/core/db/types';
+
+const motion = vi.hoisted(() => ({ multiplier: 0 }));
+
+async function finishRunningAnimations(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+  const animations = Array.from(document.querySelectorAll('*')).flatMap((element) =>
+    element.getAnimations(),
+  );
+  animations.forEach((animation) => animation.finish());
+  await Promise.allSettled(animations.map((animation) => animation.finished));
+}
+
+let mockExamDates: CourseAssessment[] | undefined;
+let mockLessons: Lesson[] | undefined;
+let mockCards: Card[] | undefined;
+
+vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => [] }));
+vi.mock('../../components/ui/Toast', () => ({ useToast: () => ({ notify: vi.fn() }) }));
+
+vi.mock('../../state/useCourseData', () => ({
+  useCourseAssessments: () => mockExamDates,
+  useLessons: () => mockLessons,
+  useCourseCards: () => mockCards,
+}));
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['normal', vi.fn()],
+  speedMultiplier: () => motion.multiplier,
+}));
+
+const createCourseAssessment = vi.fn().mockResolvedValue(undefined);
+const updateCourseAssessment = vi.fn().mockResolvedValue(undefined);
+const deleteCourseAssessment = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('../../db/assessmentRepository', () => ({
+  createCourseAssessment: (...args: unknown[]) => createCourseAssessment(...args),
+  updateCourseAssessment: (...args: unknown[]) => updateCourseAssessment(...args),
+  deleteCourseAssessment: (...args: unknown[]) => deleteCourseAssessment(...args),
+}));
+
+const mockLesson: Lesson = {
+  id: 'lesson-1',
+  courseId: 'course-1',
+  name: 'Lesson one',
+  orderIndex: 0,
+  isExtension: false,
+  createdAt: Date.now(),
+  updatedAt: 1,
+};
+
+const mockExamDate: CourseAssessment = {
+  id: 'exam-1',
+  courseId: 'course-1',
+  name: 'Mock exam',
+  kind: 'checkpoint',
+  examDate: Date.now() + 1000,
+  afterLessonId: 'lesson-1',
+  coverageMode: 'prefix',
+  excludedCardIds: [],
+  createdAt: Date.now(),
+  updatedAt: 1,
+};
+
+const mockCard = {
+  id: 'card-1',
+  conceptId: 'concept-card-1',
+  courseId: 'course-1',
+  primaryLessonId: 'lesson-1',
+  front: 'Question',
+  back: 'Answer',
+  type: 'front_back',
+  deckId: 'deck-1',
+  schedulingUnitId: 'deck-1',
+  tags: [],
+  createdAt: Date.now(),
+  updatedAt: 1,
+  state: 0,
+  stability: null,
+  difficulty: null,
+  due: null,
+  scheduledDays: 0,
+  learningSteps: 0,
+  lastReviewed: null,
+  reps: 0,
+  lapses: 0,
+  history: [],
+} as Card;
+
+describe('ExamDatesSection', () => {
+  beforeEach(() => {
+    mockExamDates = [mockExamDate];
+    mockLessons = [mockLesson];
+    mockCards = [mockCard];
+    createCourseAssessment.mockClear();
+    updateCourseAssessment.mockClear();
+    deleteCourseAssessment.mockClear();
+    motion.multiplier = 0;
+  });
+
+  it('lists existing exam dates', () => {
+    render(<ExamDatesSection courseId="course-1" />);
+    const row = screen.getByText('Mock exam').closest('.rounded-2xl');
+    expect(row).toBeInTheDocument();
+    expect(row).not.toHaveStyle({ opacity: '1' });
+    expect(screen.getByRole('button', { name: 'Add checkpoint' }).parentElement).not.toHaveStyle({
+      opacity: '1',
+    });
+  });
+
+  it('deletes an exam date after confirmation', async () => {
+    render(<ExamDatesSection courseId="course-1" />);
+    fireEvent.click(screen.getByLabelText('Delete Mock exam'));
+    expect(deleteCourseAssessment).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Yes'));
+    await waitFor(() => expect(deleteCourseAssessment).toHaveBeenCalledWith('exam-1'));
+  });
+
+  it('opens the add form and creates a new exam date', async () => {
+    render(<ExamDatesSection courseId="course-1" />);
+    fireEvent.click(screen.getByText('Add checkpoint'));
+    fireEvent.change(screen.getByPlaceholderText('e.g. Mock exam'), {
+      target: { value: 'Final' },
+    });
+    fireEvent.click(screen.getByText('Save'));
+    await waitFor(() =>
+      expect(createCourseAssessment).toHaveBeenCalledWith(
+        'course-1',
+        'Final',
+        expect.any(Number),
+        expect.objectContaining({
+          afterLessonId: 'lesson-1',
+          coverageMode: 'prefix',
+          excludedCardIds: [],
+        }),
+      ),
+    );
+  });
+
+  it('moves focus into the editor while the add control crosses over', () => {
+    render(<ExamDatesSection courseId="course-1" />);
+    const add = screen.getByRole('button', { name: 'Add checkpoint' });
+    add.focus();
+    fireEvent.click(add);
+
+    expect(screen.getByPlaceholderText('e.g. Mock exam')).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Add checkpoint' })).toHaveFocus();
+  });
+
+  it('focuses the current assessment editor rather than an outgoing StepSwap editor', async () => {
+    motion.multiplier = 1;
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockExamDates = [
+      mockExamDate,
+      { ...mockExamDate, id: 'exam-2', name: 'Second mock', createdAt: Date.now() + 1 },
+    ];
+    render(
+      <LazyMotion features={domAnimation}>
+        <ExamDatesSection courseId="course-1" />
+      </LazyMotion>,
+    );
+    fireEvent.click(screen.getByLabelText('Edit Mock exam'));
+    expect(screen.getByDisplayValue('Mock exam')).toHaveFocus();
+
+    fireEvent.click(screen.getByLabelText('Edit Second mock'));
+
+    expect(screen.getByDisplayValue('Second mock')).toHaveFocus();
+    await waitFor(() => expect(screen.queryByDisplayValue('Mock exam')).not.toBeInTheDocument());
+    expect(warning).not.toHaveBeenCalledWith(expect.stringContaining('pointerEvents'));
+    await finishRunningAnimations();
+    warning.mockRestore();
+  });
+
+  it('returns focus to Add checkpoint after deleting the assessment being edited', async () => {
+    render(<ExamDatesSection courseId="course-1" />);
+    fireEvent.click(screen.getByLabelText('Edit Mock exam'));
+    expect(screen.getByDisplayValue('Mock exam')).toHaveFocus();
+    fireEvent.click(screen.getByLabelText('Delete Mock exam'));
+    fireEvent.click(screen.getByText('Yes'));
+
+    await waitFor(() => expect(deleteCourseAssessment).toHaveBeenCalledWith('exam-1'));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Add checkpoint' })).toHaveFocus(),
+    );
+    await waitFor(() => expect(screen.queryByDisplayValue('Mock exam')).not.toBeInTheDocument());
+  });
+
+  it('brings a newly created assessment row in through the list transition', async () => {
+    motion.multiplier = 1;
+    const view = render(<ExamDatesSection courseId="course-1" />);
+    mockExamDates = [
+      mockExamDate,
+      { ...mockExamDate, id: 'exam-2', name: 'Second mock', createdAt: Date.now() + 1 },
+    ];
+
+    view.rerender(<ExamDatesSection courseId="course-1" />);
+
+    expect(screen.getByText('Second mock').closest('[style*="opacity"]')).toHaveStyle({
+      opacity: '0',
+    });
+    await finishRunningAnimations();
+  });
+
+  it('edits the sole final with the same assessment editor and offers no delete action', () => {
+    mockExamDates = [{ ...mockExamDate, id: 'final-1', kind: 'final', name: 'Final assessment' }];
+    render(<ExamDatesSection courseId="course-1" />);
+    expect(screen.queryByLabelText('Delete Final assessment')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Edit Final assessment'));
+    expect(screen.getByText('Path position')).toBeInTheDocument();
+    expect(screen.getByText('Coverage')).toBeInTheDocument();
+  });
+
+  it('changes the final assessment to steady retention without retaining its date', async () => {
+    mockExamDates = [{ ...mockExamDate, id: 'final-1', kind: 'final', name: 'Final exam' }];
+    render(<ExamDatesSection courseId="course-1" />);
+
+    fireEvent.click(screen.getByLabelText('Edit Final exam'));
+    fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(updateCourseAssessment).toHaveBeenCalledWith(
+        'final-1',
+        expect.objectContaining({
+          schedulingMode: 'steady',
+          examDate: undefined,
+          timeZone: undefined,
+        }),
+      ),
+    );
+  });
+
+  it('opens the final assessment editor when the lifecycle decision requests a new date', () => {
+    mockExamDates = [{ ...mockExamDate, id: 'final-1', kind: 'final', name: 'Final exam' }];
+    render(<ExamDatesSection courseId="course-1" editFinalOnMount />);
+
+    expect(screen.getByDisplayValue('Final exam')).toBeInTheDocument();
+    expect(screen.getByText('Path position')).toBeInTheDocument();
+  });
+});

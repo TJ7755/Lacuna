@@ -1,9 +1,9 @@
-import type { AiClientIdentity, AiInstructionBundle } from '../../../src/ai/protocol.js';
+import type { AiClientIdentity, AiInstructionBundle } from '../../../apps/web/src/ai/protocol.js';
 import type {
   RelayBrowserMailbox,
   RelayTerminalMailbox,
   RelayToolResponse,
-} from '../../../src/ai/relayProtocol.js';
+} from '../../../apps/web/src/ai/relayProtocol.js';
 
 export type TerminalRelayReconnectReason = 'write_outcome_unknown' | 'terminal_writer_changed';
 

@@ -1,5 +1,5 @@
-import { createCourse, createLesson, createLessonCard } from '../../../src/db/repository';
-import { db } from '../../../src/db/schema';
+import { createCourse, createLesson, createLessonCard } from '../../../apps/web/src/db/repository';
+import { db } from '../../../apps/web/src/db/schema';
 
 export async function seed(automatic: boolean) {
   localStorage.setItem(

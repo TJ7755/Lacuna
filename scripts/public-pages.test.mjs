@@ -26,7 +26,7 @@ test('homepage selects one entry before fetching modules and keeps critical styl
       const document = view.document.implementation.createHTMLDocument();
       if (app) document.documentElement.setAttribute('data-app-starting', '');
       runInNewContext(selection, { document });
-      const root = app ? 'index.html' : 'src/landingBootstrap.ts';
+      const root = app ? 'index.html' : 'apps/web/src/landingBootstrap.ts';
       assert.equal(
         document.querySelector('script[type="module"]')?.getAttribute('src'),
         `/${manifest[root].file}`,
@@ -147,7 +147,7 @@ test('sitemap uses canonical public URLs and robots advertises it', () => {
 });
 
 test('source crawl files advertise precisely the active catalogue course URLs', async () => {
-  const { libraryCourses } = await import('../src/library/catalogue.ts');
+  const { libraryCourses } = await import('../apps/web/src/library/catalogue.ts');
   for (const path of ['public/sitemap.xml', 'public/llms.txt']) {
     const source = readFileSync(path, 'utf8');
     const ids = [...source.matchAll(/https:\/\/getlacuna\.app\/courses\/([a-z0-9-]+)\//g)].map(
@@ -158,7 +158,7 @@ test('source crawl files advertise precisely the active catalogue course URLs', 
 });
 
 test('course pages ship the complete catalogue content and metadata without JavaScript', async () => {
-  const { libraryCourses } = await import('../src/library/catalogue.ts');
+  const { libraryCourses } = await import('../apps/web/src/library/catalogue.ts');
   const { Window } = await import('happy-dom');
   const view = new Window();
   try {

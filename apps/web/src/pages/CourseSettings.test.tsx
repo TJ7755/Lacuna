@@ -1,0 +1,638 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, within } from '@testing-library/react';
+import * as React from 'react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import type * as ReactRouterDom from 'react-router-dom';
+import { CourseSettings } from './CourseSettings';
+import type { Card, Course } from '@lacuna/core/db/types';
+
+const mockMotion = vi.hoisted(() => ({ multiplier: 1 }));
+const mockNavigate = vi.fn();
+const mockUpdateCourse = vi.fn().mockResolvedValue(undefined);
+const mockUpdateCourseAssessment = vi.fn().mockResolvedValue(undefined);
+const mockDeleteCourse = vi.fn().mockResolvedValue(undefined);
+const mockSnapshotCourse = vi.fn().mockResolvedValue({ course: 'snapshot' });
+const mockRestoreCourse = vi.fn().mockResolvedValue(undefined);
+const mockNotify = vi.fn();
+const mockOptimiserReset = vi.fn();
+const mockOptimiserRun = vi.fn();
+
+vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => [] }));
+
+let mockCourse: Course | null | undefined;
+let mockCards: Card[] | undefined;
+let mockAssessmentsPending = false;
+
+vi.mock('../state/useLessonOrderData', () => ({
+  useLessonOrderData: () =>
+    mockCourse ? { course: mockCourse, lessons: [], unavailableReason: undefined } : undefined,
+}));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
+  function TestMemoryRouter(props: React.ComponentProps<typeof actual.MemoryRouter>) {
+    return React.createElement(actual.MemoryRouter, {
+      ...props,
+    });
+  }
+  return {
+    ...actual,
+    MemoryRouter: TestMemoryRouter,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+vi.mock('../state/useCourseData', () => ({
+  useCourse: () => mockCourse,
+  useCourseCards: () => mockCards,
+  useCourseReviewHistory: () => [],
+  useCourseAssessments: () =>
+    mockAssessmentsPending
+      ? undefined
+      : mockCourse
+        ? [
+            {
+              id: 'final-1',
+              courseId: mockCourse.id,
+              name: 'Final exam',
+              kind: 'final',
+              examDate: mockCourse.examDate,
+              afterLessonId: null,
+              coverageMode: 'prefix',
+              excludedCardIds: [],
+              createdAt: mockCourse.createdAt,
+              updatedAt: mockCourse.createdAt,
+            },
+          ]
+        : [],
+  useLessons: () => [],
+  usePracticeNodes: () => [],
+}));
+
+vi.mock('../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['fast'],
+  speedMultiplier: () => mockMotion.multiplier,
+}));
+
+vi.mock('../db/courseRepository', () => ({
+  updateCourse: (id: string, changes: Record<string, unknown>) => mockUpdateCourse(id, changes),
+  deleteCourse: (id: string) => mockDeleteCourse(id),
+  snapshotCourse: (id: string) => mockSnapshotCourse(id),
+  restoreCourse: (snapshot: unknown) => mockRestoreCourse(snapshot),
+}));
+vi.mock('../db/assessmentRepository', () => ({
+  createCourseAssessment: vi.fn().mockResolvedValue(undefined),
+  updateCourseAssessment: (id: string, changes: Record<string, unknown>) =>
+    mockUpdateCourseAssessment(id, changes),
+  deleteCourseAssessment: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('../db/lessonRepository', () => ({
+  updateLesson: vi.fn().mockResolvedValue(undefined),
+  deleteLesson: vi.fn().mockResolvedValue(undefined),
+  reorderLessons: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../components/ui/Toast', () => ({
+  useToast: () => ({ notify: mockNotify }),
+}));
+
+vi.mock('../state/useOptimiser', () => ({
+  useOptimiser: () => ({
+    status: 'idle',
+    progress: 0,
+    result: null,
+    error: null,
+    run: mockOptimiserRun,
+    reset: mockOptimiserReset,
+  }),
+}));
+
+vi.mock('../state/optimiseSetting', () => ({
+  useAutoOptimiseDefault: () => [true, vi.fn()],
+  optimiseEnabledForDeck: () => true,
+}));
+
+const course: Course = {
+  id: 'course-1',
+  name: 'Original course',
+  description: '',
+  createdAt: Date.now(),
+  updatedAt: 1,
+  examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
+  timeZone: 'UTC',
+  fsrsVersion: 6,
+  fsrsParameters: {
+    requestRetention: 0.9,
+    w: Array(21).fill(0),
+    enable_fuzz: true,
+    maximum_interval: 36500,
+    learning_steps: ['1m', '10m'],
+    relearning_steps: ['10m'],
+  },
+  examObjective: 'expectedMarks',
+  unlockMode: 'semi-linear',
+  autoPractice: true,
+  practiceThresholdMinutesFar: 30,
+  practiceThresholdMinutesNear: 15,
+  practiceUrgentWindowDays: 7,
+  practiceMaxGap: 5,
+};
+
+function renderPage(path = '/course/course-1/settings') {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route path="/course/:courseId/settings" element={<CourseSettings />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  mockAssessmentsPending = false;
+  mockMotion.multiplier = 1;
+  mockCourse = course;
+  mockCards = [];
+  mockUpdateCourse.mockClear();
+  mockUpdateCourseAssessment.mockClear();
+  mockDeleteCourse.mockClear();
+  mockSnapshotCourse.mockClear();
+  mockRestoreCourse.mockClear();
+  mockNotify.mockClear();
+  mockNavigate.mockClear();
+  mockOptimiserReset.mockClear();
+  mockOptimiserRun.mockClear();
+});
+
+function openSettings(title: string) {
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${title}`) }));
+}
+
+describe('CourseSettings', () => {
+  it('hides scheduler internals in the plain view without changing course settings', () => {
+    localStorage.setItem('lacuna.advancedDetails', 'false');
+    const plain = renderPage();
+    expect(screen.queryByLabelText('Target retention')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Advanced scheduling/ })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/New cards per day/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Assessments' })).toBeInTheDocument();
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    plain.unmount();
+    localStorage.setItem('lacuna.advancedDetails', 'true');
+    renderPage();
+    expect(screen.getByLabelText('Target retention')).toHaveValue('0.9');
+    openSettings('Advanced scheduling');
+    expect(screen.getByLabelText(/Learning steps/)).toHaveValue('1m, 10m');
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+  });
+
+  it('describes securing as many topics as possible rather than guaranteeing every card', () => {
+    mockMotion.multiplier = 0;
+    mockCourse = { ...mockCourse!, examObjective: 'securedTopics' };
+    renderPage();
+    expect(
+      screen.getByText('Brings as many cards as possible to 90% recall by exam day.'),
+    ).toBeVisible();
+  });
+
+  it('exposes common edits directly and keeps secondary settings collapsed with reduced motion', async () => {
+    mockMotion.multiplier = 0;
+    renderPage();
+    expect(screen.queryByLabelText('Course name')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Study goal and dates' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Daily workload' })).toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.getByLabelText(/New cards per day/)).toBeVisible());
+    expect(screen.getByLabelText('Target retention')).toBeVisible();
+    expect(screen.queryByLabelText('Course name')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Learning steps/)).not.toBeInTheDocument();
+    for (const title of ['Course details', 'Lessons', 'Auto-practice', 'Advanced scheduling']) {
+      expect(screen.getByRole('button', { name: new RegExp(`^${title}`) })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
+    }
+    openSettings('Course details');
+    expect(screen.getByLabelText('Course name')).toHaveValue('Original course');
+    expect(screen.getByRole('button', { name: /^Course details/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    fireEvent.change(screen.getByLabelText('Course name'), {
+      target: { value: 'Draft course name' },
+    });
+    openSettings('Course details');
+    expect(screen.queryByLabelText('Course name')).not.toBeInTheDocument();
+    openSettings('Course details');
+    expect(screen.getByLabelText('Course name')).toHaveValue('Draft course name');
+  });
+
+  it('opens the final assessment editor from its deep link', () => {
+    renderPage('/course/course-1/settings?editFinalExam=1');
+    expect(screen.getByRole('button', { name: 'Date and time' })).toBeInTheDocument();
+  });
+
+  it('requires the existing confirmation before archiving', async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Archive course' }));
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Archive course' }));
+    await vi.waitFor(() =>
+      expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: true }),
+    );
+    await vi.waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'));
+  });
+
+  it('keeps workload drafts local until blur', () => {
+    renderPage();
+    const input = screen.getByLabelText(/New cards per day/);
+    fireEvent.change(input, { target: { value: '20' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+    fireEvent.blur(input);
+    expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { newCardsPerDay: 20 });
+  });
+
+  it('waits for the course before rendering its controls', () => {
+    mockCourse = undefined;
+    renderPage();
+    expect(screen.queryByDisplayValue('Original course')).not.toBeInTheDocument();
+  });
+
+  it('does not flash an exam placeholder when the hydrated course already supplies its date', () => {
+    mockAssessmentsPending = true;
+    const { container } = renderPage();
+    expect(screen.getByRole('heading', { name: 'Course settings' })).toBeInTheDocument();
+    expect(container.querySelector('.animate-pulse')).not.toBeInTheDocument();
+  });
+
+  it('shows a not-found state when the course is missing', () => {
+    mockCourse = null;
+    renderPage();
+    expect(screen.getByText('This course could not be found.')).toBeInTheDocument();
+  });
+
+  it('populates fields from the course', () => {
+    renderPage();
+    openSettings('Course details');
+    openSettings('Advanced scheduling');
+    expect(screen.getByDisplayValue('Original course')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Learn first' })).toBeChecked();
+  });
+
+  it('can start new cards directly in spaced repetition', () => {
+    renderPage();
+    openSettings('Advanced scheduling');
+    fireEvent.click(screen.getByRole('switch', { name: 'Learn first' }));
+    expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { learnFirst: false });
+  });
+
+  it('does not repeat the course name beneath the settings title', () => {
+    renderPage();
+    openSettings('Course details');
+
+    expect(screen.queryByText('Original course')).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue('Original course')).toBeInTheDocument();
+  });
+
+  it('uses cards to group related course settings', () => {
+    renderPage();
+    openSettings('Course details');
+
+    const goal = screen.getByRole('heading', { name: 'Study goal and dates' }).closest('section');
+    expect(goal).toHaveClass('rounded-3xl', 'bg-surface');
+    expect(goal).not.toHaveClass('border');
+  });
+
+  it('does not reset the optimiser when the same course rerenders', () => {
+    const view = renderPage();
+    openSettings('Advanced scheduling');
+    mockOptimiserReset.mockClear();
+
+    view.rerender(
+      <MemoryRouter initialEntries={['/course/course-1/settings']}>
+        <Routes>
+          <Route path="/course/:courseId/settings" element={<CourseSettings />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(mockOptimiserReset).not.toHaveBeenCalled();
+  });
+
+  it('renders the grouped section headings and no "Save changes" bar', () => {
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Study goal and dates' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Assessments' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Daily workload' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^Lessons/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^Auto-practice/ })).toBeInTheDocument();
+    // "Danger zone" has no separate group heading — DangerZoneSection labels itself —
+    // so assert on its presence rather than a specific role.
+    expect(screen.getAllByText('Danger zone').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Save changes')).not.toBeInTheDocument();
+  });
+
+  it('offers detaching only on a locked shared copy', () => {
+    const { unmount } = renderPage();
+    expect(screen.queryByRole('heading', { name: 'Shared course' })).not.toBeInTheDocument();
+    unmount();
+    mockCourse = {
+      ...course,
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    };
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Shared course' })).toBeInTheDocument();
+  });
+
+  it('edits the final date through the shared assessment editor', () => {
+    mockCourse = {
+      ...course,
+      examDate: Date.UTC(2026, 5, 10, 14, 30),
+      timeZone: 'UTC',
+    };
+    renderPage();
+
+    fireEvent.click(screen.getByLabelText('Edit Final exam'));
+    fireEvent.click(screen.getByRole('button', { name: 'Date and time' }));
+    fireEvent.click(screen.getByRole('button', { name: '20 June 2026' }));
+
+    expect(screen.getByRole('button', { name: 'Date and time' })).toHaveTextContent('20 Jun 2026');
+    expect(mockUpdateCourseAssessment).not.toHaveBeenCalled();
+  });
+
+  it('commits the course name on blur, not on every keystroke', () => {
+    renderPage();
+    openSettings('Course details');
+    const nameInput = screen.getByDisplayValue('Original course');
+    fireEvent.change(nameInput, { target: { value: 'Renamed course' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.blur(nameInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ name: 'Renamed course' }),
+    );
+  });
+
+  it('commits the exam board on blur, not on every keystroke', () => {
+    renderPage();
+    openSettings('Course details');
+    const input = screen.getByLabelText('Exam board');
+    fireEvent.change(input, { target: { value: 'AQA' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.blur(input);
+    expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { examBoard: 'AQA' });
+  });
+
+  it('commits the specification on blur, not on every keystroke', () => {
+    renderPage();
+    openSettings('Course details');
+    const input = screen.getByLabelText('Specification');
+    fireEvent.change(input, { target: { value: '7136' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.blur(input);
+    expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { specification: '7136' });
+  });
+
+  it('clears optional course provenance to undefined', () => {
+    mockCourse = { ...course, examBoard: 'AQA', specification: '7136' };
+    renderPage();
+    openSettings('Course details');
+
+    const examBoardInput = screen.getByLabelText('Exam board');
+    fireEvent.change(examBoardInput, { target: { value: '' } });
+    fireEvent.blur(examBoardInput);
+
+    const specificationInput = screen.getByLabelText('Specification');
+    fireEvent.change(specificationInput, { target: { value: '   ' } });
+    fireEvent.blur(specificationInput);
+
+    expect(mockUpdateCourse).toHaveBeenNthCalledWith(1, 'course-1', { examBoard: undefined });
+    expect(mockUpdateCourse).toHaveBeenNthCalledWith(2, 'course-1', { specification: undefined });
+  });
+
+  it('commits the retention slider once when the drag ends, not on every tick', () => {
+    renderPage();
+    const slider = screen.getByLabelText('Target retention');
+    fireEvent.change(slider, { target: { value: '0.91' } });
+    fireEvent.change(slider, { target: { value: '0.92' } });
+    fireEvent.change(slider, { target: { value: '0.93' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(slider, { target: { value: '0.93' } });
+    expect(mockUpdateCourse).toHaveBeenCalledTimes(1);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({
+        fsrsParameters: expect.objectContaining({ requestRetention: 0.93 }),
+      }),
+    );
+  });
+
+  it('commits the exam objective immediately on change', () => {
+    renderPage();
+    const objective = screen.getByRole('group', { name: 'Exam objective' });
+    expect(within(objective).getByRole('button', { name: 'Best overall recall' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(within(objective).getByRole('button', { name: 'Secure topics' }));
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ examObjective: 'securedTopics' }),
+    );
+  });
+
+  it('commits unlock mode immediately when a radio option is picked', () => {
+    renderPage();
+    openSettings('Lessons');
+    fireEvent.click(screen.getByText('Linear'));
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ unlockMode: 'linear' }),
+    );
+  });
+
+  it('switching unlock mode shows/hides linear cadence inputs', () => {
+    renderPage();
+    openSettings('Lessons');
+    expect(screen.queryByText('Days between lessons')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Linear'));
+    expect(screen.getByText('Days between lessons')).toBeInTheDocument();
+  });
+
+  it('commits linear cadence interval days on blur, not on every keystroke', () => {
+    renderPage();
+    openSettings('Lessons');
+    fireEvent.click(screen.getByText('Linear'));
+    mockUpdateCourse.mockClear();
+
+    const intervalInput = screen.getByLabelText(/Days between lessons/);
+    fireEvent.change(intervalInput, { target: { value: '14' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.blur(intervalInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ linearCadence: expect.objectContaining({ intervalDays: 14 }) }),
+    );
+  });
+
+  it('falls back to the current value when a practice field is left blank on blur', () => {
+    renderPage();
+    openSettings('Auto-practice');
+    const maxGapInput = screen.getByDisplayValue('5');
+    fireEvent.change(maxGapInput, { target: { value: '' } });
+    fireEvent.blur(maxGapInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ practiceMaxGap: 5 }),
+    );
+  });
+
+  it('accepts a zero value for the far/near thresholds and urgent window on blur', () => {
+    renderPage();
+    openSettings('Auto-practice');
+    const farInput = screen.getByLabelText(/Threshold \(exam not near\)/);
+    fireEvent.change(farInput, { target: { value: '0' } });
+    fireEvent.blur(farInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ practiceThresholdMinutesFar: 0 }),
+    );
+
+    const nearInput = screen.getByLabelText(/Threshold \(exam near\)/);
+    fireEvent.change(nearInput, { target: { value: '0' } });
+    fireEvent.blur(nearInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ practiceThresholdMinutesNear: 0 }),
+    );
+
+    const urgentInput = screen.getByLabelText(/Urgent window/);
+    fireEvent.change(urgentInput, { target: { value: '0' } });
+    fireEvent.blur(urgentInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ practiceUrgentWindowDays: 0 }),
+    );
+  });
+
+  it('falls back to the current value when the maximum lesson gap is set to zero on blur', () => {
+    renderPage();
+    openSettings('Auto-practice');
+    const maxGapInput = screen.getByDisplayValue('5');
+    fireEvent.change(maxGapInput, { target: { value: '0' } });
+    fireEvent.blur(maxGapInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ practiceMaxGap: 5 }),
+    );
+  });
+
+  it('round-trips a valid practice field edit on blur', () => {
+    renderPage();
+    openSettings('Auto-practice');
+    const maxGapInput = screen.getByDisplayValue('5');
+    fireEvent.change(maxGapInput, { target: { value: '9' } });
+    fireEvent.blur(maxGapInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ practiceMaxGap: 9 }),
+    );
+  });
+
+  it('commits auto-practice immediately on toggle', () => {
+    renderPage();
+    openSettings('Auto-practice');
+    fireEvent.click(screen.getByLabelText('Auto-practice'));
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ autoPractice: false }),
+    );
+  });
+
+  it('does not duplicate the course authoring mode inside settings', () => {
+    renderPage();
+    expect(screen.queryByText('Lesson view')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('How lessons in this course open by default.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('rejects an invalid learning steps format on blur without committing', () => {
+    renderPage();
+    openSettings('Advanced scheduling');
+    const learningStepsInput = screen.getByDisplayValue('1m, 10m');
+    fireEvent.change(learningStepsInput, { target: { value: 'not-a-step' } });
+    fireEvent.blur(learningStepsInput);
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid learning steps format'),
+      'negative',
+    );
+    expect(mockUpdateCourse).not.toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({
+        fsrsParameters: expect.objectContaining({ learning_steps: ['not-a-step'] }),
+      }),
+    );
+  });
+
+  it('does not let a second fsrs-nested commit revert an earlier one before the live query resolves', () => {
+    // mockCourse is a static fixture for the whole test (see beforeEach) — it never
+    // re-resolves between the two commits below, mirroring a real useLiveQuery update
+    // arriving after both fields have already committed. Regression test for the stale
+    // `course.fsrsParameters` closure bug: each fsrs-nested field must patch from a
+    // shared local draft, not from `course.fsrsParameters`, or the second commit would
+    // silently overwrite the first back to its pre-edit value.
+    renderPage();
+    openSettings('Advanced scheduling');
+
+    const maxIntervalInput = screen.getByDisplayValue('36500');
+    fireEvent.change(maxIntervalInput, { target: { value: '100' } });
+    fireEvent.blur(maxIntervalInput);
+
+    const learningStepsInput = screen.getByDisplayValue('1m, 10m');
+    fireEvent.change(learningStepsInput, { target: { value: '2m, 20m' } });
+    fireEvent.blur(learningStepsInput);
+
+    expect(mockUpdateCourse).toHaveBeenCalledTimes(2);
+    const [, lastPatch] = mockUpdateCourse.mock.calls[mockUpdateCourse.mock.calls.length - 1];
+    expect(lastPatch.fsrsParameters).toEqual(
+      expect.objectContaining({ maximum_interval: 100, learning_steps: ['2m', '20m'] }),
+    );
+  });
+
+  it('confirms, snapshots and deletes the course, then navigates away with an undo toast', async () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Delete course'));
+    fireEvent.click(screen.getByText('Delete course'));
+    await vi.waitFor(() => expect(mockSnapshotCourse).toHaveBeenCalledWith('course-1'));
+    await vi.waitFor(() => expect(mockDeleteCourse).toHaveBeenCalledWith('course-1'));
+    await vi.waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'));
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.stringContaining('deleted'),
+      'neutral',
+      expect.objectContaining({ actionLabel: 'Undo' }),
+    );
+  });
+
+  it('restores the course from its snapshot when the undo toast action fires', async () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Delete course'));
+    fireEvent.click(screen.getByText('Delete course'));
+    await vi.waitFor(() => expect(mockDeleteCourse).toHaveBeenCalledWith('course-1'));
+    const [, , options] = mockNotify.mock.calls[mockNotify.mock.calls.length - 1];
+    options.onAction();
+    await vi.waitFor(() => expect(mockRestoreCourse).toHaveBeenCalledWith({ course: 'snapshot' }));
+  });
+});

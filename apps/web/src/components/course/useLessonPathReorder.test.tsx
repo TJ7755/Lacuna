@@ -1,0 +1,324 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Lesson } from '@lacuna/core/db/types';
+import { moveLessonIds, useLessonPathReorder } from './useLessonPathReorder';
+
+const reorderLessons = vi.fn().mockResolvedValue(undefined);
+const hapticStrong = vi.fn();
+
+vi.mock('../../db/lessonRepository', () => ({
+  reorderLessons: (...args: unknown[]) => reorderLessons(...args),
+}));
+
+vi.mock('../../utils/haptic', () => ({
+  hapticStrong: () => hapticStrong(),
+}));
+
+const lessons: Lesson[] = ['One', 'Two', 'Three'].map((name, index) => ({
+  id: `lesson-${index + 1}`,
+  courseId: 'course-1',
+  name,
+  orderIndex: index,
+  isExtension: false,
+  createdAt: 1,
+  updatedAt: 1,
+}));
+
+function touch(target: EventTarget, identifier: number, clientX: number, clientY: number): Touch {
+  return { identifier, clientX, clientY, target } as Touch;
+}
+
+function touchEvent(
+  type: 'touchstart' | 'touchmove' | 'touchend' | 'touchcancel',
+  touches: Touch[],
+  changedTouches: Touch[] = touches,
+): TouchEvent {
+  return new TouchEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    touches,
+    changedTouches,
+  });
+}
+
+function Harness({
+  enabled = true,
+  onError = vi.fn(),
+  onOpen = vi.fn(),
+  registerRefs = true,
+}: {
+  enabled?: boolean;
+  onError?: (message: string) => void;
+  onOpen?: (lessonId: string) => void;
+  registerRefs?: boolean;
+}) {
+  const reorder = useLessonPathReorder({
+    courseId: 'course-1',
+    lessons,
+    enabled,
+    onError,
+  });
+  return (
+    <>
+      {lessons.map((lesson) => {
+        const interaction = reorder.interactionFor(lesson.id);
+        return (
+          <button
+            key={lesson.id}
+            ref={registerRefs ? interaction.registerElement : null}
+            onPointerDown={interaction.onPointerDown}
+            onPointerMove={interaction.onPointerMove}
+            onPointerUp={interaction.onPointerUp}
+            onPointerCancel={interaction.onPointerCancel}
+            onClickCapture={interaction.onClickCapture}
+            onClick={() => onOpen(lesson.id)}
+            onKeyDown={interaction.onKeyDown}
+            style={{
+              transform: interaction.offset
+                ? `translate(${interaction.offset.x}px, ${interaction.offset.y}px)`
+                : undefined,
+            }}
+            data-lifted={interaction.lifted || undefined}
+            data-drop-marker={interaction.dropMarker}
+          >
+            {lesson.name}
+          </button>
+        );
+      })}
+      <output>{reorder.announcement}</output>
+    </>
+  );
+}
+
+describe('moveLessonIds', () => {
+  it('moves a lesson against the remaining lesson positions', () => {
+    expect(moveLessonIds(['a', 'b', 'c'], 'a', 2)).toEqual(['b', 'c', 'a']);
+    expect(moveLessonIds(['a', 'b', 'c'], 'c', 0)).toEqual(['c', 'a', 'b']);
+    expect(moveLessonIds(['a', 'b', 'c'], 'b', 1)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('clamps boundaries and ignores an unknown lesson', () => {
+    expect(moveLessonIds(['a', 'b', 'c'], 'b', -4)).toEqual(['b', 'a', 'c']);
+    expect(moveLessonIds(['a', 'b', 'c'], 'b', 99)).toEqual(['a', 'c', 'b']);
+    const ids = ['a', 'b'];
+    expect(moveLessonIds(ids, 'missing', 0)).toBe(ids);
+  });
+});
+
+describe('useLessonPathReorder', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    reorderLessons.mockReset();
+    reorderLessons.mockResolvedValue(undefined);
+    hapticStrong.mockClear();
+  });
+
+  it.each(['mouse', 'pen'])(
+    'starts a %s drag on movement without waiting for a hold',
+    async (pointerType) => {
+      render(<Harness />);
+      const first = screen.getByRole('button', { name: 'One' });
+      const second = screen.getByRole('button', { name: 'Two' });
+      [first, second, screen.getByRole('button', { name: 'Three' })].forEach((element, index) => {
+        vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
+          left: 0,
+          top: index * 100,
+          width: 56,
+          height: 56,
+          right: 56,
+          bottom: index * 100 + 56,
+        } as DOMRect);
+      });
+      fireEvent.pointerDown(first, {
+        pointerType,
+        button: 0,
+        pointerId: 7,
+        clientX: 10,
+        clientY: 10,
+      });
+      expect(first).not.toHaveAttribute('data-lifted');
+      fireEvent.pointerMove(first, { pointerType, pointerId: 7, clientX: 30, clientY: 250 });
+      expect(first).toHaveAttribute('data-lifted', 'true');
+      expect(first).toHaveStyle({ transform: 'translate(20px, 240px)' });
+      expect(second).toHaveStyle({ transform: 'translate(0px, -100px)' });
+      await act(async () => fireEvent.pointerUp(first, { pointerId: 7 }));
+      expect(reorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-3', 'lesson-1']);
+    },
+  );
+
+  it('uses captured lesson positions when refs detach during a pointer drag', async () => {
+    const { rerender } = render(<Harness />);
+    const first = screen.getByRole('button', { name: 'One' });
+    const second = screen.getByRole('button', { name: 'Two' });
+    [first, second, screen.getByRole('button', { name: 'Three' })].forEach((element, index) => {
+      vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        top: index * 100,
+        width: 56,
+        height: 56,
+        right: 56,
+        bottom: index * 100 + 56,
+      } as DOMRect);
+    });
+    fireEvent.pointerDown(first, {
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 7,
+      clientX: 10,
+      clientY: 10,
+    });
+    rerender(<Harness registerRefs={false} />);
+    fireEvent.pointerMove(first, {
+      pointerType: 'mouse',
+      pointerId: 7,
+      clientX: 30,
+      clientY: 150,
+    });
+    expect(second).toHaveStyle({ transform: 'translate(0px, -100px)' });
+    await act(async () => fireEvent.pointerUp(first, { pointerId: 7 }));
+    expect(reorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1', 'lesson-3']);
+  });
+
+  it('keeps a stationary press available as a normal click', async () => {
+    const onOpen = vi.fn();
+    render(<Harness onOpen={onOpen} />);
+    const first = screen.getByRole('button', { name: 'One' });
+    fireEvent.pointerDown(first, { button: 0, pointerId: 8, clientX: 0, clientY: 0 });
+    await act(async () => vi.advanceTimersByTime(350));
+    expect(first).not.toHaveAttribute('data-lifted');
+    fireEvent.pointerUp(first, { pointerId: 8 });
+    fireEvent.click(first);
+    expect(onOpen).toHaveBeenCalledOnce();
+    expect(reorderLessons).not.toHaveBeenCalled();
+  });
+
+  it('clears lifted state on Escape without suppressing the next intentional click', async () => {
+    const onOpen = vi.fn();
+    render(<Harness onOpen={onOpen} />);
+    const first = screen.getByRole('button', { name: 'One' });
+    fireEvent.pointerDown(first, { button: 0, pointerId: 10, clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(first, { pointerId: 10, clientX: 0, clientY: 20 });
+
+    expect(first).toHaveAttribute('data-lifted', 'true');
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(first).not.toHaveAttribute('data-lifted');
+    expect(screen.getByText('One move cancelled.')).toBeInTheDocument();
+    expect(reorderLessons).not.toHaveBeenCalled();
+    fireEvent.click(first);
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('suppresses the compatibility click even after a long activated drag', async () => {
+    const onOpen = vi.fn();
+    render(<Harness onOpen={onOpen} />);
+    const first = screen.getByRole('button', { name: 'One' });
+    fireEvent.pointerDown(first, { button: 0, pointerId: 12, clientX: 0, clientY: 0 });
+    await act(async () => vi.advanceTimersByTime(350));
+    await act(async () => vi.advanceTimersByTime(5_000));
+    await act(async () => {
+      fireEvent.pointerMove(first, { pointerId: 12, clientX: 0, clientY: 100 });
+      fireEvent.pointerUp(first, { pointerId: 12, clientX: 0, clientY: 100 });
+      await Promise.resolve();
+    });
+
+    fireEvent.click(first);
+    expect(onOpen).not.toHaveBeenCalled();
+
+    // A new physical click sequence is intentional, not the compatibility
+    // click from the drop, so it clears the one-shot suppression.
+    fireEvent.pointerDown(first, { button: 0, pointerId: 13, clientX: 0, clientY: 0 });
+    fireEvent.pointerUp(first, { pointerId: 13, clientX: 0, clientY: 0 });
+    fireEvent.click(first);
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('leaves pre-activation touch movement available for vertical scrolling', async () => {
+    render(<Harness />);
+    const first = screen.getByRole('button', { name: 'One' });
+    const startTouch = touch(first, 20, 0, 0);
+    first.dispatchEvent(touchEvent('touchstart', [startTouch]));
+    const scrollMove = touchEvent('touchmove', [touch(first, 20, 0, 20)]);
+    first.dispatchEvent(scrollMove);
+
+    expect(scrollMove.defaultPrevented).toBe(false);
+    await act(async () => vi.advanceTimersByTime(350));
+    expect(hapticStrong).not.toHaveBeenCalled();
+  });
+
+  it('claims touch movement only after the long-press activates dragging', async () => {
+    render(<Harness />);
+    const first = screen.getByRole('button', { name: 'One' });
+    first.dispatchEvent(touchEvent('touchstart', [touch(first, 21, 0, 0)]));
+    await act(async () => vi.advanceTimersByTime(350));
+    const dragMove = touchEvent('touchmove', [touch(first, 21, 0, 100)]);
+    await act(async () => {
+      first.dispatchEvent(dragMove);
+      first.dispatchEvent(touchEvent('touchend', [], [touch(first, 21, 0, 100)]));
+      await Promise.resolve();
+    });
+
+    expect(dragMove.defaultPrevented).toBe(true);
+    expect(hapticStrong).toHaveBeenCalledOnce();
+    expect(reorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-3', 'lesson-1']);
+  });
+
+  it('clears lifted and drop state on pointer cancellation', async () => {
+    const onOpen = vi.fn();
+    render(<Harness onOpen={onOpen} />);
+    const first = screen.getByRole('button', { name: 'One' });
+    const third = screen.getByRole('button', { name: 'Three' });
+    fireEvent.pointerDown(first, { button: 0, pointerId: 11, clientX: 0, clientY: 0 });
+    await act(async () => vi.advanceTimersByTime(350));
+    fireEvent.pointerMove(first, { pointerId: 11, clientX: 0, clientY: 100 });
+
+    expect(third).toHaveAttribute('data-drop-marker', 'after');
+    fireEvent.pointerCancel(first, { pointerId: 11 });
+
+    expect(first).not.toHaveAttribute('data-lifted');
+    expect(third).not.toHaveAttribute('data-drop-marker');
+    expect(reorderLessons).not.toHaveBeenCalled();
+    fireEvent.click(first);
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('supports Alt+Arrow keyboard moves and announces the result', async () => {
+    render(<Harness />);
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Two' }), {
+        key: 'ArrowUp',
+        altKey: true,
+      });
+      await Promise.resolve();
+    });
+    expect(reorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1', 'lesson-3']);
+    expect(screen.getByText('Two moved to position 1 of 3.')).toBeInTheDocument();
+  });
+
+  it('does not reorder outside Edit mode', async () => {
+    render(<Harness enabled={false} />);
+    const first = screen.getByRole('button', { name: 'One' });
+    fireEvent.pointerDown(first, { button: 0, pointerId: 9, clientX: 0, clientY: 0 });
+    await act(async () => vi.advanceTimersByTime(350));
+    fireEvent.keyDown(first, { key: 'ArrowDown', altKey: true });
+
+    expect(hapticStrong).not.toHaveBeenCalled();
+    expect(reorderLessons).not.toHaveBeenCalled();
+  });
+
+  it('reports persistence failures', async () => {
+    const onError = vi.fn();
+    reorderLessons.mockRejectedValueOnce(new Error('write failed'));
+    render(<Harness onError={onError} />);
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Two' }), {
+        key: 'ArrowDown',
+        altKey: true,
+      });
+      await Promise.resolve();
+    });
+    expect(onError).toHaveBeenCalledWith('Lesson order could not be saved.');
+    expect(screen.getByText('Lesson order could not be saved.')).toBeInTheDocument();
+  });
+});

@@ -12,7 +12,7 @@ dist/
 
 # Electron
 /release/
-electron/dist-electron/
+apps/desktop/dist-electron/
 
 .env*
 !.env.example

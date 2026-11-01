@@ -1,0 +1,64 @@
+import type { Grade } from '@lacuna/core/db/types';
+import type { SelfMarkSummary } from '@lacuna/core/questions/questionSets';
+
+export interface QuestionStudySummary {
+  kind: 'question';
+  score: SelfMarkSummary;
+  marking: 'Self-marked' | 'Jev-marked' | 'Mixed marking';
+}
+
+export type StudyStepSummary = SessionSummary | QuestionStudySummary;
+export type SessionCardOutcome = 'correct' | 'wrong';
+
+/** A single answered card within a Learn session, retained for the end report. */
+export interface SessionEvent {
+  /** Absent on events persisted before distinct-card reporting. */
+  cardId?: string;
+  grade: Grade;
+  correct: boolean;
+  responseTimeSec: number;
+  distracted: boolean;
+}
+
+/** Aggregated outcome of a Learn session, shown in the report. */
+export interface SessionSummary {
+  events: SessionEvent[];
+  /** Objective-aware progress (0..1) before and after the session. */
+  masteryBefore: number;
+  masteryAfter: number;
+  /** Heading describing what the progress figures mean for this deck's objective. */
+  objectiveLabel: string;
+  focusFraction: number;
+  reachedGoal: boolean;
+  /** True when the session ended because the daily review limit was reached. */
+  limitReached: boolean;
+  /** True when the session ended because the session time limit was reached. */
+  timeLimitReached?: boolean;
+  /** True when the session stopped at the daily review goal with work possibly remaining. */
+  dailyGoalReached?: boolean;
+  /** A bounded Study recall block ended; this does not establish its recall objective. */
+  blockComplete?: boolean;
+  /** True for the first-pass YES/NO loop, whose answers also update FSRS. */
+  simpleMode?: boolean;
+  /** Visual mode identifier for the session report UI. */
+  mode?:
+    | 'fsrs'
+    | 'simple'
+    | 'cram'
+    | 'filtered'
+    | 'filtered-due'
+    | 'filtered-new'
+    | 'filtered-leech'
+    | 'filtered-flagged'
+    | 'filtered-suspended';
+  revision?: {
+    cardsCovered: number;
+    cardsImproved: number;
+    cardsParked: number;
+    workNotReached: number;
+    predictedReadiness?: number;
+    readinessUncertainty?: number;
+    nextWindowDay?: string;
+    replanExplanation?: string;
+  };
+}

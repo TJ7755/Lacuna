@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { Lesson, LineageIdMapping } from '../../src/db/types';
+import type { Lesson, LineageIdMapping } from '@lacuna/core/db/types';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const fontScale of [1, 1.35]) {
@@ -37,9 +37,8 @@ for (const fontScale of [1, 1.35]) {
             const course = tx.objectStore('courses').get(courseId);
             const lessons = tx.objectStore('lessons').getAll();
             lessons.onsuccess = () => {
-              const lesson = lessons.result.find(
-                (row: Lesson) => row.courseId === courseId,
-              ) as Lesson | undefined;
+              const lesson = lessons.result.find((row: Lesson) => row.courseId === courseId) as
+                Lesson | undefined;
               if (!course.result || !lesson) {
                 tx.abort();
                 reject(new Error('Merge layout Course or Lesson was not saved.'));
@@ -70,7 +69,8 @@ for (const fontScale of [1, 1.35]) {
                     releaseDate: lesson.releaseDate,
                     examDate: lesson.examDate,
                     timeZone: lesson.timeZone,
-                    sessionFilter: lesson.sessionFilter === 'new' ? undefined : lesson.sessionFilter,
+                    sessionFilter:
+                      lesson.sessionFilter === 'new' ? undefined : lesson.sessionFilter,
                     answerMode: lesson.answerMode,
                     orderIndex: lesson.orderIndex,
                   },

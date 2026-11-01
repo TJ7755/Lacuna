@@ -11,6 +11,10 @@
     "noEmit": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*.ts", "../../src/ai/relayProtocol.ts", "../../src/ai/relayCrypto.ts"],
+  "include": [
+    "src/**/*.ts",
+    "../../apps/web/src/ai/relayProtocol.ts",
+    "../../apps/web/src/ai/relayCrypto.ts"
+  ],
   "exclude": ["src/endToEnd.test.ts"]
 }

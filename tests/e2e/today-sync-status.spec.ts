@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import type { SyncState } from '../../src/db/types';
+import type { SyncState } from '@lacuna/core/db/types';
 import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 async function setSyncState(page: Page, state: SyncState) {

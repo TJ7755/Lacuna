@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import { Window } from 'happy-dom';
 import { expect, it, vi } from 'vitest';
@@ -5,7 +7,10 @@ import { publicPagePrerenderPlugin } from './public-page-prerender';
 
 vi.mock('vite', () => ({
   createServer: async () => ({
-    ssrLoadModule: async () => ({ render: () => '<main>Landing</main>' }),
+    ssrLoadModule: async (module: string) => {
+      expect(existsSync(resolve(module.slice(1)))).toBe(true);
+      return { render: () => '<main>Landing</main>' };
+    },
     close: async () => {},
   }),
 }));

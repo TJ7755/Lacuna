@@ -1,0 +1,153 @@
+// The single source of truth for a deck's exam objective.
+//
+// The whole point of this module is that the scheduler's sort metric and the
+// predicted readiness are *both* derived from `deck.examObjective`, so they never
+// disagree. Anything that ranks cards or reports progress must go through here.
+//
+//  - "expectedMarks" (default): maximise the sum of predicted exam-day
+//    retrievability. Greedily, that means reviewing the card with the largest
+//    Delta-R, so the scheduler sorts by Delta-R and the bar shows the *mean*
+//    predicted R across the deck.
+//  - "securedTopics": maximise how many cards are at or above 0.90 on exam day.
+//    The scheduler prioritises cards a review would push across the 0.90 line,
+//    cheapest (closest to the line) first; the bar shows the fraction of cards
+//    already at or above 0.90.
+
+import { makeEngine } from './fsrs';
+import { deltaR, rAtExam, rAtExamIfReviewedNow, simContext, type SimContext } from './forwardSim';
+import { averagePredictedRetrievability, masteryFraction } from './progress';
+import { cardSchedulingHorizon } from './horizon';
+import { availableCards } from './eligibility';
+import { MASTERY_R } from '@lacuna/core/fsrs/params';
+import type { ExamDateContext } from './examDate';
+import type { Card, SchedulerConfig, ExamObjective } from '@lacuna/core/db/types';
+
+/**
+ * Below this Delta-R, a further review is deemed to add no meaningful marks, so
+ * an "expectedMarks" session is considered complete.
+ */
+const EXPECTED_MARKS_EPSILON = 5e-3;
+
+/** Pre-built scoring context for a deck (engine + decay + objective). */
+export interface ObjectiveContext {
+  objective: ExamObjective;
+  // Any SchedulerConfig (a Deck or a Course).
+  deck: SchedulerConfig;
+  ctx: SimContext;
+  /** Per-card course exam dates. Omitted for legacy Deck scheduling. */
+  examDateContext?: ExamDateContext;
+}
+
+/** Build a scoring context once per session/render (one FSRS engine per deck).
+ *  Accepts any SchedulerConfig (a Deck or a Course). */
+export function makeObjectiveContext(
+  deck: SchedulerConfig,
+  examDateContext?: ExamDateContext,
+): ObjectiveContext {
+  return {
+    objective: deck.examObjective,
+    deck,
+    ctx: simContext(deck, makeEngine(deck.fsrsParameters)),
+    examDateContext,
+  };
+}
+
+/**
+ * Predicted-readiness value (0..1) for the deck's objective, used by dashboard
+ * bars and session reports. Active-session completion is measured separately.
+ */
+export function progressValue(
+  cards: Card[],
+  deck: SchedulerConfig,
+  now: number = Date.now(),
+  examDateContext?: ExamDateContext,
+): number {
+  const available = availableCards(cards, now);
+  return deck.examObjective === 'securedTopics'
+    ? masteryFraction(available, deck, now, examDateContext)
+    : averagePredictedRetrievability(available, deck, now, examDateContext);
+}
+
+/** A short noun for compact headers, e.g. "62% predicted recall" / "62% secured". */
+export function progressNoun(deck: SchedulerConfig): string {
+  return deck.examObjective === 'securedTopics' ? 'secured' : 'predicted recall';
+}
+
+/**
+ * A heading for the deck/summary panels. Names what `progressValue` computes for
+ * the deck's objective: mean predicted recall, or the share of Cards at 90%.
+ */
+export function progressHeading(deck: SchedulerConfig): string {
+  return deck.examObjective === 'securedTopics'
+    ? 'Cards at 90% predicted recall'
+    : 'Predicted recall';
+}
+
+/**
+ * Scheduler sort key for a card under the deck's objective. Higher = serve sooner.
+ */
+export function scoreCard(card: Card, oc: ObjectiveContext, now: number = Date.now()): number {
+  const { deck, ctx } = oc;
+  const horizon = cardSchedulingHorizon(card, deck, oc.examDateContext, now);
+
+  if (oc.objective === 'expectedMarks') {
+    // Greedy maximisation of Sigma R: serve the largest expected lift first.
+    return deltaR(card, horizon, now, ctx);
+  }
+
+  // securedTopics: rank cards by whether reviewing now secures them (>= 0.90),
+  // cheapest to secure first.
+  const rNo = rAtExam(card, horizon, now, ctx.decay);
+  if (rNo >= MASTERY_R) return -1; // already secured: nothing to gain, lowest priority
+  const rYes = rAtExamIfReviewedNow(card, ctx.expectedGrade, horizon, now, ctx);
+  if (rYes >= MASTERY_R) {
+    // Securable now. A higher current rNo means it is closer to the line and so
+    // cheaper to secure; rank those first. The +1 keeps every securable card
+    // above every not-yet-securable one.
+    return 1 + rNo;
+  }
+  // Cannot be secured by a single review yet: make the most progress available.
+  return rYes;
+}
+
+export interface ScoredCard {
+  card: Card;
+  score: number;
+}
+
+/** Score descending by objective; an optional session policy breaks exact ties only. */
+export function sortByObjective(
+  cards: Card[],
+  oc: ObjectiveContext,
+  now: number = Date.now(),
+  tieBreak?: (a: Card, b: Card) => number,
+): ScoredCard[] {
+  return cards
+    .map((card) => ({ card, score: scoreCard(card, oc, now) }))
+    .sort((a, b) => b.score - a.score || (tieBreak?.(a.card, b.card) ?? 0));
+}
+
+/**
+ * Whether the session goal for the deck's objective has been reached.
+ *  - securedTopics: every card is at or above 0.90 on exam day.
+ *  - expectedMarks: no card offers a meaningful further gain in Sigma R.
+ */
+export function isObjectiveComplete(
+  cards: Card[],
+  oc: ObjectiveContext,
+  now: number = Date.now(),
+): boolean {
+  if (cards.length === 0) return true;
+  if (oc.objective === 'securedTopics') {
+    return masteryFraction(cards, oc.deck, now, oc.examDateContext) >= 1;
+  }
+  const bestGain = cards.reduce(
+    (best, card) =>
+      Math.max(
+        best,
+        deltaR(card, cardSchedulingHorizon(card, oc.deck, oc.examDateContext, now), now, oc.ctx),
+      ),
+    0,
+  );
+  return bestGain < EXPECTED_MARKS_EPSILON;
+}

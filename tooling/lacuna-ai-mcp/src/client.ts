@@ -17,7 +17,7 @@ export {
   type TerminalAiClientOptions,
 } from './terminalContracts.js';
 import { randomUUID } from 'node:crypto';
-import type { AiClientIdentity, JsonValue } from '../../../src/ai/protocol.js';
+import type { AiClientIdentity, JsonValue } from '../../../apps/web/src/ai/protocol.js';
 import {
   AI_RELAY_EMPTY_GENERATION,
   AI_RELAY_PROTOCOL_VERSION,
@@ -25,7 +25,7 @@ import {
   type RelayBrowserMailbox,
   type RelayTerminalEvent,
   type RelayTerminalMailbox,
-} from '../../../src/ai/relayProtocol.js';
+} from '../../../apps/web/src/ai/relayProtocol.js';
 
 export const DEFAULT_AI_RELAY_URL = 'https://relay.getlacuna.app';
 const DEFAULT_WAIT_MS = 25_000;

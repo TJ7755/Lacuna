@@ -2,12 +2,15 @@ import { spawnSync } from 'node:child_process';
 import { buildSync } from 'esbuild';
 
 const commands = [
-  [process.execPath, ['node_modules/@typescript/native/bin/tsc', '-p', 'electron/tsconfig.json']],
   [
     process.execPath,
-    ['node_modules/@typescript/native/bin/tsc', '-p', 'electron/tsconfig.preload.json'],
+    ['node_modules/@typescript/native/bin/tsc', '-p', 'apps/desktop/tsconfig.json'],
   ],
-  [process.execPath, ['electron/mcp/build.mjs']],
+  [
+    process.execPath,
+    ['node_modules/@typescript/native/bin/tsc', '-p', 'apps/desktop/tsconfig.preload.json'],
+  ],
+  [process.execPath, ['apps/desktop/mcp/build.mjs']],
 ];
 
 for (const [command, args] of commands) {
@@ -17,10 +20,10 @@ for (const [command, args] of commands) {
 }
 
 buildSync({
-  entryPoints: ['electron/preload.ts'],
+  entryPoints: ['apps/desktop/preload.ts'],
   platform: 'node',
   format: 'cjs',
   target: 'node22',
-  outfile: 'electron/dist-electron/preload.cjs',
+  outfile: 'apps/desktop/dist-electron/preload.cjs',
   sourcemap: true,
 });

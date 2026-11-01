@@ -95,7 +95,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run electron:prepare
       - run: bun run build:assets
-      - run: bunx electron-builder --mac --dir --config electron/electron-builder.yml --publish never
+      - run: bunx electron-builder --mac --dir --config apps/desktop/electron-builder.yml --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - run: bun run test:e2e:electron-macos-smoke

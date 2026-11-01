@@ -1,0 +1,204 @@
+import { useState } from 'react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useVirtualList } from './useVirtualList';
+
+const resizeObservers: ResizeObserverMock[] = [];
+
+function notifyResize(target: Element, size: Partial<ResizeObserverEntry>) {
+  for (const observer of resizeObservers) {
+    if (observer.targets.has(target)) {
+      observer.callback([{ target, ...size } as ResizeObserverEntry], observer);
+    }
+  }
+}
+
+class ResizeObserverMock implements ResizeObserver {
+  readonly targets = new Set<Element>();
+  constructor(readonly callback: ResizeObserverCallback) {
+    resizeObservers.push(this);
+  }
+  disconnect = vi.fn(() => this.targets.clear());
+  observe = vi.fn((target: Element) => {
+    this.targets.add(target);
+  });
+  unobserve = vi.fn((target: Element) => {
+    this.targets.delete(target);
+  });
+}
+
+function Fixture({ itemCount = 100 }: { itemCount?: number }) {
+  const [, rerender] = useState(0);
+  const virtual = useVirtualList({ itemCount, estimateSize: 100, enabled: true });
+  return (
+    <div data-testid="scroll-root" style={{ height: 300, overflowY: 'auto' }}>
+      <div data-testid="layout">
+        <div
+          ref={virtual.containerRef}
+          data-testid="list"
+          data-top="100"
+          style={{ height: virtual.totalHeight }}
+        >
+          {virtual.virtualItems.map((item) => (
+            <div
+              key={item.key}
+              ref={virtual.measureRef(item.index)}
+              data-testid={`item-${item.index}`}
+            />
+          ))}
+        </div>
+      </div>
+      <button type="button" onClick={() => rerender((value) => value + 1)}>
+        Rerender
+      </button>
+    </div>
+  );
+}
+
+describe('useVirtualList', () => {
+  beforeEach(() => {
+    resizeObservers.length = 0;
+    vi.stubGlobal('ResizeObserver', ResizeObserverMock);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.dataset.testid === 'scroll-root') {
+        return {
+          top: 0,
+          bottom: 300,
+          height: 300,
+          left: 0,
+          right: 500,
+          width: 500,
+          x: 0,
+          y: 0,
+          toJSON() {},
+        };
+      }
+      const top = Number(this.dataset.top ?? 0);
+      return {
+        top,
+        bottom: top + 100,
+        height: Number(this.dataset.height ?? 100),
+        left: 0,
+        right: 500,
+        width: 500,
+        x: 0,
+        y: top,
+        toJSON() {},
+      };
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('updates its range when the nearest scrolling ancestor scrolls', async () => {
+    render(<Fixture />);
+    await screen.findByTestId('item-0');
+    const list = screen.getByTestId('list');
+    list.dataset.top = '-700';
+    act(() => {
+      screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
+    });
+    await waitFor(() => expect(screen.getByTestId('item-8')).toBeInTheDocument());
+  });
+
+  it('keeps only trailing overscan rows when the viewport is below the entire list', async () => {
+    render(<Fixture />);
+    const list = await screen.findByTestId('list');
+    list.dataset.top = '-11000';
+    act(() => {
+      screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('item-99')).toBeInTheDocument());
+    expect(screen.queryAllByTestId(/^item-/)).toHaveLength(3);
+    expect(screen.queryByTestId('item-0')).not.toBeInTheDocument();
+  });
+
+  it('does not render a viewport of rows for a lesson far below the viewport', async () => {
+    render(<Fixture />);
+    await screen.findByTestId('item-5');
+    const list = await screen.findByTestId('list');
+    list.dataset.top = '5000';
+    act(() => {
+      screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
+    });
+
+    await waitFor(() => expect(screen.queryAllByTestId(/^item-/)).toHaveLength(3));
+    expect(screen.queryByTestId('item-3')).not.toBeInTheDocument();
+    list.dataset.top = '100';
+    act(() => {
+      screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
+    });
+    await waitFor(() => expect(screen.getByTestId('item-4')).toBeInTheDocument());
+  });
+
+  it('updates an off-screen lesson when surrounding layout changes without scrolling', async () => {
+    render(<Fixture />);
+    await screen.findByTestId('item-5');
+    const list = screen.getByTestId('list');
+    list.dataset.top = '5000';
+    act(() => {
+      notifyResize(screen.getByTestId('layout'), {
+        contentRect: { height: 15000 } as DOMRectReadOnly,
+      });
+    });
+
+    await waitFor(() => expect(screen.queryAllByTestId(/^item-/)).toHaveLength(3));
+    expect(screen.queryByTestId('item-3')).not.toBeInTheDocument();
+  });
+
+  it('uses the visible part of the viewport when a lesson starts part-way down it', async () => {
+    render(<Fixture />);
+    await screen.findByTestId('item-5');
+    const list = await screen.findByTestId('list');
+    list.dataset.top = '250';
+    act(() => {
+      screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
+    });
+
+    await waitFor(() => expect(screen.queryAllByTestId(/^item-/)).toHaveLength(4));
+    expect(screen.queryByTestId('item-4')).not.toBeInTheDocument();
+  });
+
+  it('recalculates layout when ResizeObserver reports a changed row height', async () => {
+    render(<Fixture />);
+    const list = await screen.findByTestId('list');
+    const initialHeight = Number((list as HTMLElement).style.height.replace('px', ''));
+    act(() => {
+      notifyResize(screen.getByTestId('item-0'), {
+        contentRect: { height: 220 } as DOMRectReadOnly,
+      });
+    });
+    await waitFor(() => {
+      expect(Number((list as HTMLElement).style.height.replace('px', ''))).toBe(
+        initialHeight + 120,
+      );
+    });
+  });
+  it('retains mounted row measurements after the card count changes', async () => {
+    const { rerender } = render(<Fixture itemCount={100} />);
+    const row = await screen.findByTestId('item-0');
+    row.dataset.height = '220';
+    const list = screen.getByTestId('list');
+    rerender(<Fixture itemCount={101} />);
+    await waitFor(() => expect(list.style.height).toBe('10220px'));
+  });
+
+  it('includes padding and borders in observed row heights', async () => {
+    render(<Fixture />);
+    const list = await screen.findByTestId('list');
+    const initialHeight = parseFloat(list.style.height);
+    act(() => {
+      notifyResize(screen.getByTestId('item-0'), {
+        contentRect: { height: 180 } as DOMRectReadOnly,
+        borderBoxSize: [{ blockSize: 220, inlineSize: 500 }],
+      });
+    });
+    await waitFor(() => expect(parseFloat(list.style.height)).toBe(initialHeight + 120));
+  });
+});

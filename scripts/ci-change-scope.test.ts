@@ -18,14 +18,14 @@ describe('isDocsOnly', () => {
   });
 
   it('rejects a mixed list', () => {
-    expect(isDocsOnly(['docs/SPEC.md', 'src/App.tsx'])).toBe(false);
+    expect(isDocsOnly(['docs/SPEC.md', 'apps/web/src/App.tsx'])).toBe(false);
   });
 
   it('rejects code, manifests, prompts and workflows', () => {
-    expect(isDocsOnly(['src/App.tsx'])).toBe(false);
+    expect(isDocsOnly(['apps/web/src/App.tsx'])).toBe(false);
     expect(isDocsOnly(['package.json'])).toBe(false);
     expect(isDocsOnly(['tooling/lacuna-ai-mcp/prompts/system.md'])).toBe(false);
-    expect(isDocsOnly(['src/pages/quizlet/README.md'])).toBe(false);
+    expect(isDocsOnly(['apps/web/src/pages/quizlet/README.md'])).toBe(false);
     expect(isDocsOnly(['public/landing.md'])).toBe(false);
     expect(isDocsOnly(['.github/workflows/ci.yml'])).toBe(false);
   });
@@ -48,9 +48,9 @@ describe('isDocsOnly', () => {
 describe('area scope', () => {
   it('keeps app, root configuration, workflows, shared contracts and unknown paths full', () => {
     for (const path of [
-      'src/App.tsx',
-      'src/fsrs/coefficients/model.json',
-      'src/fsrs/halfLifeLogisticModel.ts',
+      'apps/web/src/App.tsx',
+      'apps/web/src/fsrs/coefficients/model.json',
+      'apps/web/src/fsrs/halfLifeLogisticModel.ts',
       'eslint.config.js',
       'scripts/relay-imports.mjs',
       'scripts/relayImports.test.ts',
@@ -59,13 +59,13 @@ describe('area scope', () => {
       '.github/workflows/ci.yml',
       'tooling/handwriting-maths/package.json',
       'tooling/handwriting-maths/bun.lock',
-      'relay/package.json',
-      'gaps/vercel.json',
-      'library/vercel.json',
-      'relay/vercel.json',
+      'apps/relay/package.json',
+      'apps/gaps/vercel.json',
+      'apps/library/vercel.json',
+      'apps/relay/vercel.json',
       'tooling/short-term-memory/uv.lock',
-      'relay/shared/insights/index.ts',
-      'relay/scripts/security-bun.mjs',
+      'apps/relay/shared/insights/index.ts',
+      'apps/relay/scripts/security-bun.mjs',
       'tooling/short-term-memory/coefficients/half-life-logistic-v3.json',
       'tooling/short-term-memory/tests/fixtures/model-port-v3.json',
       'new-area/file.ts',
@@ -78,11 +78,11 @@ describe('area scope', () => {
       ).toBe(true);
     }
     expect(classifyPaths([]).app).toBe(true);
-    expect(classifyPaths(['docs/a.md', '../relay/src/a.ts']).electron).toBe(true);
+    expect(classifyPaths(['docs/a.md', '../apps/relay/src/a.ts']).electron).toBe(true);
   });
 
   it('selects relay consumers without unrelated native or training work', () => {
-    expect(classifyPaths(['relay/src/relay.ts'])).toMatchObject({
+    expect(classifyPaths(['apps/relay/src/relay.ts'])).toMatchObject({
       app: true,
       relay: true,
       ai_mcp: true,
@@ -109,7 +109,7 @@ describe('area scope', () => {
       app: true,
       electron: true,
     });
-    for (const site of ['gaps', 'library', 'courses', 'compare']) {
+    for (const site of ['apps/gaps', 'apps/library', 'courses', 'compare']) {
       expect(classifyPaths([`${site}/index.html`])).toMatchObject({
         sites: true,
         lint: true,
@@ -119,7 +119,11 @@ describe('area scope', () => {
       });
     }
     expect(
-      classifyPaths(['docs/a.md', 'library/index.html', 'tooling/handwriting-maths/src/main.ts']),
+      classifyPaths([
+        'docs/a.md',
+        'apps/library/index.html',
+        'tooling/handwriting-maths/src/main.ts',
+      ]),
     ).toMatchObject({ docs: true, docs_only: false, sites: true, handwriting: true, app: false });
     expect(classifyPaths(['docs/a.md'])).toMatchObject({
       docs_only: true,
@@ -174,20 +178,20 @@ describe('area scope', () => {
       web_tests: true,
       app: false,
     });
-    expect(classifyPaths([spec, 'relay/src/relay.ts'])).toMatchObject({
+    expect(classifyPaths([spec, 'apps/relay/src/relay.ts'])).toMatchObject({
       relay: true,
       app: true,
       web_tests: true,
       electron: false,
     });
-    expect(classifyPaths([spec, 'src/App.tsx']).electron).toBe(true);
+    expect(classifyPaths([spec, 'apps/web/src/App.tsx']).electron).toBe(true);
     expect(classifyPaths(parseNameStatus(`D\0${spec}\0`)).app).toBe(false);
     expect(classifyPaths(parseNameStatus(`R100\0${spec}\0tests/e2e/new.spec.ts\0`)).app).toBe(
       false,
     );
     for (const endpoints of [
       [spec, 'tests/e2e/fixtures/shared.ts'],
-      ['src/old.ts', spec],
+      ['apps/web/src/old.ts', spec],
       [spec, 'unknown/file'],
     ]) {
       expect(classifyPaths(parseNameStatus(`R100\0${endpoints.join('\0')}\0`)).electron).toBe(true);
@@ -196,17 +200,19 @@ describe('area scope', () => {
 
   it('includes deleted files and both rename/copy endpoints, preserving spaces', () => {
     const paths = parseNameStatus(
-      'D\0relay/shared/insights/index.ts\0R100\0src/old.ts\0docs/new.md\0C75\0library/a b.html\0gaps/new.html\0',
+      'D\0apps/relay/shared/insights/index.ts\0R100\0apps/web/src/old.ts\0docs/new.md\0C75\0apps/library/a b.html\0apps/gaps/new.html\0',
     );
     expect(paths).toEqual([
-      'relay/shared/insights/index.ts',
-      'src/old.ts',
+      'apps/relay/shared/insights/index.ts',
+      'apps/web/src/old.ts',
       'docs/new.md',
-      'library/a b.html',
-      'gaps/new.html',
+      'apps/library/a b.html',
+      'apps/gaps/new.html',
     ]);
     expect(classifyPaths(paths).electron).toBe(true);
-    expect(classifyPaths(parseNameStatus('R100\0docs/a.md\0relay/src/a.ts\0')).relay).toBe(true);
+    expect(classifyPaths(parseNameStatus('R100\0docs/a.md\0apps/relay/src/a.ts\0')).relay).toBe(
+      true,
+    );
     expect(
       classifyPaths(parseNameStatus('D\0tooling/handwriting-maths/src/main.ts\0')).handwriting,
     ).toBe(true);
@@ -220,10 +226,10 @@ describe('area scope', () => {
 describe('Windows native evidence', () => {
   it('requires native evidence for security, managed-device, packaging and dependency changes', () => {
     for (const path of [
-      'electron/main.ts',
-      'src/electron/runtime.ts',
-      'src/mcp/bridge/protocol.ts',
-      'electron/electron-builder.yml',
+      'apps/desktop/main.ts',
+      'apps/web/src/electron/runtime.ts',
+      'apps/web/src/mcp/bridge/protocol.ts',
+      'apps/desktop/electron-builder.yml',
       'scripts/windows-release-upgrade.mjs',
       'scripts/prepare-electron-build.mjs',
       'package.json',
@@ -237,7 +243,7 @@ describe('Windows native evidence', () => {
   });
 
   it('acknowledges renderer CSS and docs while retaining web validation and rename risk', () => {
-    expect(classifyPaths(['src/index.css', 'docs/desktop.md'])).toMatchObject({
+    expect(classifyPaths(['apps/web/src/index.css', 'docs/desktop.md'])).toMatchObject({
       app: true,
       sites: true,
       lint: true,
@@ -245,15 +251,16 @@ describe('Windows native evidence', () => {
     });
     expect(classifyPaths(['docs/desktop.md']).windows_native).toBe(false);
     expect(
-      classifyPaths(parseNameStatus('R100\0electron/preload.ts\0src/old.css\0')).windows_native,
+      classifyPaths(parseNameStatus('R100\0electron/preload.ts\0apps/web/src/old.css\0'))
+        .windows_native,
     ).toBe(true);
     for (const paths of [
       [],
       ['unknown/file'],
-      ['src/../electron/main.ts'],
-      ['src/index.css', 'bun.lock'],
-      ['tooling/lacuna-ai-mcp/src/client.ts', 'src/index.css'],
-      ['src/index.css', 'tooling/lacuna-ai-mcp/src/client.ts'],
+      ['apps/web/src/../electron/main.ts'],
+      ['apps/web/src/index.css', 'bun.lock'],
+      ['tooling/lacuna-ai-mcp/src/client.ts', 'apps/web/src/index.css'],
+      ['apps/web/src/index.css', 'tooling/lacuna-ai-mcp/src/client.ts'],
     ]) {
       expect(classifyPaths(paths).windows_native).toBe(true);
     }

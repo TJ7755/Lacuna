@@ -1,0 +1,407 @@
+import 'fake-indexeddb/auto';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { db } from '../../db/schema';
+import { encodeShareDirect, type SharePayload, type SharePayloadV2 } from '../../db/share';
+import { importLineageFirstTime, mergeLineageUpdate } from '../../db/mergeImport';
+import type { ToolContext } from '../types';
+import { validateAndRun } from '../registry';
+import * as tools from './lineage';
+
+// Arc 7 §7.7/§7.9 Task 10: MCP tools for the lineage merge path. Fixtures mirror
+// src/db/mergeImport.test.ts's own (payload literals bypassing UI-side building, matching
+// the real wire shape: `li`/`rv` at the payload level, `i` on ShareLesson, `oi` on
+// ShareNote, ShareCard's `id` doubling as the originating card id).
+
+function coursePayload(overrides: Partial<SharePayloadV2> = {}): SharePayloadV2 {
+  return {
+    v: 2,
+    by: 'Ms Teacher',
+    at: 1000,
+    course: { n: 'Biology', o: 0, c: 1000, e: 2_000_000, um: 'open' },
+    lessons: [],
+    li: 'lineage-1',
+    rv: 1,
+    ...overrides,
+  } as SharePayloadV2;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- fixture literal, mirrors mergeImport.test.ts's own untyped lessonOne helper.
+function lessonOne(overrides: Partial<any> = {}) {
+  return {
+    i: 'lesson-1',
+    n: 'Cells',
+    notes: [{ oi: 'note-1', n: 'Intro', c: 'Cells are the basic unit of life.' }],
+    cards: [{ id: 'card-1', k: 0 as const, f: 'What is a cell?', b: 'The basic unit of life.' }],
+    ...overrides,
+  };
+}
+
+const ctx: ToolContext = { grant: null, agentId: 'test-agent' };
+
+describe('mcp lineage tools', () => {
+  let courseId: string;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
+    courseId = course.id;
+    await db.courses.update(courseId, { 'distributedCopy.autoAcceptUpdates': false });
+  });
+
+  describe('lacuna.diff_lineage_update', () => {
+    it('recovers missing membership read-only and reports differences as conflicts', async () => {
+      await db.lineageIdMappings.delete('lineage-1');
+      const code = await encodeShareDirect(
+        coursePayload({ rv: 22, lessons: [lessonOne({ n: 'Publisher cells' })] }),
+      );
+      const result = await tools.diffLineageUpdate.handler({ courseId, shareCode: code }, ctx);
+      expect(result.data.diff.creates).toEqual({ lessons: [], notes: [], cards: [] });
+      expect(result.data.diff.conflicts).toHaveLength(1);
+      expect(await db.lineageIdMappings.get('lineage-1')).toBeUndefined();
+      expect((await db.lessons.get('lesson-1'))?.name).toBe('Cells');
+    });
+
+    it.each([4, 5, 6] as const)(
+      'rejects authored Question Sets in v%i until lineage preview supports them',
+      async (version) => {
+        const code = await encodeShareDirect({
+          ...coursePayload(),
+          v: version,
+          ...(version >= 5 ? { questionSetPracticeNodes: [] } : {}),
+          concepts: [],
+          questions: [],
+          questionSets: [
+            {
+              id: 'set-1',
+              courseId: 'source-course',
+              title: 'Paper',
+              lessonIds: [],
+              assessmentIds: [],
+              questions: [
+                {
+                  id: 'question-1',
+                  prompt: 'Answer.',
+                  parts: [],
+                  answer: {
+                    maxMarks: 1,
+                    response: { kind: 'written' },
+                    allocations: [
+                      {
+                        id: 'allocation-1',
+                        criterion: 'Answer.',
+                        maxMarks: 1,
+                        dimension: 'knowledge',
+                        targetConceptIds: [],
+                      },
+                    ],
+                    prerequisiteConceptIds: [],
+                  },
+                },
+              ],
+              contentVersion: 1,
+              contentRevisionId: 'revision-1',
+              createdAt: 1,
+              updatedAt: 1,
+            },
+          ],
+        } as SharePayload);
+        const result = await validateAndRun(
+          tools.diffLineageUpdate,
+          { courseId, shareCode: code },
+          ctx,
+        );
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.error.kind).toBe('validation');
+          expect(result.error.message).toMatch(/Question Sets/);
+        }
+      },
+    );
+
+    it('previews prerequisite changes using stable ids without writes', async () => {
+      const second = { i: 'atp', n: 'ATP', pr: ['lesson-1'], notes: [], cards: [] };
+      await mergeLineageUpdate(courseId, coursePayload({ rv: 2, lessons: [lessonOne(), second] }));
+      const code = await encodeShareDirect(
+        coursePayload({ rv: 3, lessons: [lessonOne(), { ...second, pr: [] }] }),
+      );
+      const result = await tools.diffLineageUpdate.handler({ courseId, shareCode: code }, ctx);
+      expect(result.data.diff.updates.lessons).toEqual([{ id: 'atp', prerequisiteLessonIds: [] }]);
+      expect((await db.lessons.get('atp'))?.prerequisiteLessonIds).toEqual(['lesson-1']);
+    });
+
+    it('classifies a teacher update without writing anything', async () => {
+      const code = await encodeShareDirect(
+        coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells (revised)' })] }),
+      );
+      const res = await tools.diffLineageUpdate.handler({ courseId, shareCode: code }, ctx);
+
+      expect(res.data.counts).toMatchObject({
+        createLessons: 0,
+        updateLessons: 1,
+        conflicts: 0,
+      });
+      expect(res.data.diff.updates.lessons).toEqual([{ id: 'lesson-1', name: 'Cells (revised)' }]);
+
+      // Read-only: the local lesson is untouched and no review row was queued.
+      const lesson = await db.lessons.get('lesson-1');
+      expect(lesson?.name).toBe('Cells');
+      expect(await db.pendingMergeReviews.where('courseId').equals(courseId).count()).toBe(0);
+      expect((await db.courses.get(courseId))?.distributedCopy?.revision).toBe(1);
+    });
+
+    it('previews answer mode and structured content changes the real merge applies', async () => {
+      const lesson = lessonOne({
+        i: 'lesson-2',
+        am: 'type',
+        notes: [],
+        cards: [
+          {
+            id: 'card-2',
+            k: 0 as const,
+            f: 'x = ?',
+            b: '4',
+            am: 'reveal',
+            p: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+          },
+        ],
+      });
+      const payload = coursePayload({ lessons: [lessonOne(), lesson] });
+      await mergeLineageUpdate(courseId, { ...payload, rv: 2 } as SharePayload);
+      const unchanged = await tools.diffLineageUpdate.handler(
+        { courseId, shareCode: await encodeShareDirect({ ...payload, rv: 3 } as SharePayload) },
+        ctx,
+      );
+      expect(unchanged.data.counts).toMatchObject({ updateLessons: 0, updateCards: 0 });
+
+      const revised = coursePayload({
+        rv: 3,
+        lessons: [
+          lessonOne(),
+          {
+            ...lesson,
+            am: 'reveal',
+            cards: [
+              {
+                ...lesson.cards[0],
+                am: 'type',
+                p: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '5' } },
+              },
+            ],
+          },
+        ],
+      });
+      const res = await tools.diffLineageUpdate.handler(
+        { courseId, shareCode: await encodeShareDirect(revised) },
+        ctx,
+      );
+      expect(res.data.diff.updates.lessons).toEqual([{ id: 'lesson-2', answerMode: 'reveal' }]);
+      expect(res.data.diff.updates.cards).toEqual([
+        {
+          id: 'card-2',
+          answerMode: 'type',
+          payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '5' } },
+        },
+      ]);
+    });
+
+    it('reports a conflict when the student has edited an entity the teacher also changed', async () => {
+      await db.notes.update('note-1', { content: 'My own rewritten notes.' });
+      const code = await encodeShareDirect(
+        coursePayload({
+          rv: 2,
+          lessons: [
+            lessonOne({ notes: [{ oi: 'note-1', n: 'Intro', c: 'Teacher rewrote this too.' }] }),
+          ],
+        }),
+      );
+      const res = await tools.diffLineageUpdate.handler({ courseId, shareCode: code }, ctx);
+      expect(res.data.counts.conflicts).toBe(1);
+      expect(res.data.diff.conflicts[0]).toMatchObject({ entityId: 'note-1', kind: 'note' });
+      // Still untouched — this is only a preview.
+      expect((await db.notes.get('note-1'))?.content).toBe('My own rewritten notes.');
+    });
+
+    it('rejects an unknown courseId with not_found', async () => {
+      const code = await encodeShareDirect(coursePayload({ rv: 2, lessons: [lessonOne()] }));
+      const result = await validateAndRun(
+        tools.diffLineageUpdate,
+        { courseId: 'missing', shareCode: code },
+        ctx,
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('not_found');
+    });
+
+    it('rejects a share code that does not carry a lineage', async () => {
+      const code = await encodeShareDirect({
+        v: 2,
+        by: 'Someone',
+        at: 1000,
+        course: { n: 'Plain course', o: 0, c: 1000, e: 2_000_000, um: 'open' },
+        lessons: [],
+      } as SharePayload);
+      const result = await validateAndRun(
+        tools.diffLineageUpdate,
+        { courseId, shareCode: code },
+        ctx,
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('validation');
+    });
+
+    it('keeps v6 baseline-less recovery read-only and matches explicit MCP review acceptance', async () => {
+      await db.lineageIdMappings.delete('lineage-1');
+      const lesson = lessonOne({ n: 'Publisher cells' });
+      const code = await encodeShareDirect({
+        ...coursePayload({ rv: 22 }),
+        v: 6,
+        lessons: [
+          {
+            ...lesson,
+            cards: lesson.cards.map((card) => ({
+              ...card,
+              co: 'concept:lineage-card:card-1',
+            })),
+          },
+        ],
+        concepts: [{ id: 'concept:lineage-card:card-1', n: 'Cell' }],
+        questions: [],
+        questionSets: [],
+        questionSetPracticeNodes: [],
+      });
+      const preview = await tools.diffLineageUpdate.handler({ courseId, shareCode: code }, ctx);
+      expect(preview.data.counts).toMatchObject({
+        createLessons: 0,
+        createNotes: 0,
+        createCards: 0,
+        conflicts: 1,
+      });
+      expect(await db.lineageIdMappings.get('lineage-1')).toBeUndefined();
+      expect((await db.lessons.get('lesson-1'))?.name).toBe('Cells');
+      const result = await tools.applyLineageUpdate.handler(
+        {
+          courseId,
+          shareCode: code,
+          decisions: { accept: [{ kind: 'lesson', entityId: 'lesson-1' }] },
+        },
+        ctx,
+      );
+      expect(result.data.merge).toMatchObject({
+        createdLessons: 0,
+        createdNotes: 0,
+        createdCards: 0,
+        conflictCount: 1,
+      });
+      expect(result.data.queuedForReview).toBe(false);
+      expect(await db.lessons.where('courseId').equals(courseId).count()).toBe(1);
+      expect((await db.lessons.get('lesson-1'))?.name).toBe('Publisher cells');
+      expect((await db.lineageIdMappings.get('lineage-1'))?.lessonSnapshots['lesson-1'].name).toBe(
+        'Publisher cells',
+      );
+    });
+
+    it('is declared read-tier', () => {
+      expect(tools.diffLineageUpdate.requiredScope).toBe('read');
+    });
+  });
+
+  describe('lacuna.apply_lineage_update', () => {
+    it('rejects a lineage with locally tracked Question Sets before applying it', async () => {
+      await db.lineageIdMappings.update('lineage-1', { questionSetIds: ['set-1'] });
+      const code = await encodeShareDirect(coursePayload({ rv: 2, lessons: [lessonOne()] }));
+      const result = await validateAndRun(
+        tools.applyLineageUpdate,
+        { courseId, shareCode: code },
+        ctx,
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.kind).toBe('validation');
+        expect(result.error.message).toMatch(/Question Sets/);
+      }
+      expect((await db.courses.get(courseId))?.distributedCopy?.revision).toBe(1);
+    });
+
+    it('is declared write-tier', () => {
+      expect(tools.applyLineageUpdate.requiredScope).toBe('write');
+    });
+
+    it("applies creates immediately and matches mergeLineageUpdate's own outcome on the same fixture", async () => {
+      const payload = coursePayload({
+        rv: 2,
+        lessons: [lessonOne(), lessonOne({ i: 'lesson-2', n: 'Genetics', notes: [], cards: [] })],
+      });
+      const code = await encodeShareDirect(payload);
+      const res = await tools.applyLineageUpdate.handler({ courseId, shareCode: code }, ctx);
+
+      expect(res.data.merge.createdLessons).toBe(1);
+      expect(res.data.merge.queuedForReview).toBe(false);
+      expect(res.data.queuedForReview).toBe(false);
+      expect(await db.lessons.get('lesson-2')).toBeDefined();
+    });
+
+    it("queues a teacher update for review when autoAcceptUpdates is false, matching mergeLineageUpdate's own outcome shape", async () => {
+      const payload = coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells (revised)' })] });
+      const code = await encodeShareDirect(payload);
+      const res = await tools.applyLineageUpdate.handler({ courseId, shareCode: code }, ctx);
+
+      expect(res.data.merge).toMatchObject({
+        appliedUpdates: 0,
+        appliedRemovals: 0,
+        queuedForReview: true,
+        conflictCount: 0,
+      });
+      expect(res.data.queuedForReview).toBe(true);
+      expect((await db.lessons.get('lesson-1'))?.name).toBe('Cells'); // untouched until reviewed
+
+      const review = await db.pendingMergeReviews.where('courseId').equals(courseId).first();
+      expect(review?.id).toBe(res.data.reviewId);
+    });
+
+    it('pre-resolves a queued update via decisions.accept, matching acceptMergeReviewItems', async () => {
+      const payload = coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells (revised)' })] });
+      const code = await encodeShareDirect(payload);
+      const res = await tools.applyLineageUpdate.handler(
+        {
+          courseId,
+          shareCode: code,
+          decisions: { accept: [{ kind: 'lesson', entityId: 'lesson-1' }] },
+        },
+        ctx,
+      );
+
+      expect(res.data.queuedForReview).toBe(false);
+      expect((await db.lessons.get('lesson-1'))?.name).toBe('Cells (revised)');
+      expect(await db.pendingMergeReviews.where('courseId').equals(courseId).count()).toBe(0);
+    });
+
+    it('pre-resolves a queued removal via decisions.reject, keeping the local copy and clearing the queue entry', async () => {
+      const payload = coursePayload({ rv: 2, lessons: [lessonOne({ cards: [] })] });
+      const code = await encodeShareDirect(payload);
+      const res = await tools.applyLineageUpdate.handler(
+        {
+          courseId,
+          shareCode: code,
+          decisions: { reject: [{ kind: 'card', entityId: 'card-1' }] },
+        },
+        ctx,
+      );
+
+      expect(res.data.queuedForReview).toBe(false);
+      expect(await db.cards.get('card-1')).toBeDefined();
+      expect(await db.pendingMergeReviews.where('courseId').equals(courseId).count()).toBe(0);
+    });
+
+    it('rejects an unknown courseId with not_found', async () => {
+      const code = await encodeShareDirect(coursePayload({ rv: 2, lessons: [lessonOne()] }));
+      const result = await validateAndRun(
+        tools.applyLineageUpdate,
+        { courseId: 'missing', shareCode: code },
+        ctx,
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('not_found');
+    });
+  });
+});

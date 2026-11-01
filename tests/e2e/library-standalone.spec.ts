@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { libraryCourses } from '../../src/library/catalogue';
+import { libraryCourses } from '../../apps/web/src/library/catalogue';
 
 /** Waits until the page's layout stops moving, so screenshots show settled motion. */
 async function settle(page: Page) {
@@ -57,8 +57,9 @@ for (const width of [1280, 390, 320]) {
       await covers.click();
       const sheet = page.getByRole('dialog', { name: 'Physics' });
       const course = libraryCourses.find((item) => item.code === code)!;
-      await expect(sheet.getByRole('link', { name: 'Open in Lacuna', exact: true }))
-        .toHaveAttribute('href', course.shareUrl!);
+      await expect(
+        sheet.getByRole('link', { name: 'Open in Lacuna', exact: true }),
+      ).toHaveAttribute('href', course.shareUrl!);
       await page.keyboard.press('Escape');
     }
     await search.fill('  cAmBrIdGe 0625  ');
@@ -119,7 +120,9 @@ for (const width of [1280, 390, 320]) {
     await expect(page.getByText(/review/i)).toHaveCount(0);
     await settle(page);
     await page.getByRole('radio', { name: 'Cambridge', exact: true }).click();
-    await expect(covers).toHaveCount(libraryCourses.filter((course) => course.board === 'Cambridge').length);
+    await expect(covers).toHaveCount(
+      libraryCourses.filter((course) => course.board === 'Cambridge').length,
+    );
     await settle(page);
     await page.getByRole('radio', { name: 'All', exact: true }).click();
     await expect(covers).toHaveCount(courseCount);
@@ -151,7 +154,9 @@ for (const width of [1280, 390, 320]) {
       const report = sheet.getByRole('link', { name: 'Report a mistake' });
       await expect(report).toBeFocused();
       const reportUrl = new URL((await report.getAttribute('href'))!);
-      expect(reportUrl.origin + reportUrl.pathname).toBe('https://github.com/TJ7755/Lacuna/issues/new');
+      expect(reportUrl.origin + reportUrl.pathname).toBe(
+        'https://github.com/TJ7755/Lacuna/issues/new',
+      );
       expect([...reportUrl.searchParams.keys()]).toEqual(['title', 'body']);
       expect(reportUrl.searchParams.get('body')).toMatch(
         /^Course: [a-z0-9-]+\nRevision: \d+\nItem reference: note: cells & tissues #3$/,

@@ -1,0 +1,111 @@
+import { expectAppDestination } from '../../../../tests/helpers/expectAppDestination';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
+import { ArchivedCourses } from './ArchivedCourses';
+import type { Course } from '@lacuna/core/db/types';
+
+const { mockUpdateCourse, mockNotify } = vi.hoisted(() => ({
+  mockUpdateCourse: vi.fn(),
+  mockNotify: vi.fn(),
+}));
+let courses: Course[] | undefined;
+
+vi.mock('../state/useCourseData', () => ({ useCourses: () => courses }));
+vi.mock('../db/courseRepository', () => ({ updateCourse: mockUpdateCourse }));
+vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: mockNotify }) }));
+
+const archived = {
+  id: 'course-1',
+  name: 'Finished biology',
+  archived: true,
+  examDate: Date.now() - 1_000,
+  createdAt: 1,
+} as Course;
+
+beforeEach(() => {
+  localStorage.clear();
+  courses = [archived, { ...archived, id: 'active', name: 'Active chemistry', archived: false }];
+  mockUpdateCourse.mockReset().mockResolvedValue(undefined);
+  mockNotify.mockReset();
+});
+
+describe('ArchivedCourses', () => {
+  it('tells someone with nothing archived where archiving happens', () => {
+    courses = [{ ...archived, archived: false }];
+    render(<ArchivedCourses />, { wrapper: MemoryRouter });
+    expect(screen.getByRole('heading', { name: 'No archived courses' })).toBeInTheDocument();
+    expect(screen.getByText(/archive from Today/)).toBeInTheDocument();
+    const empty = screen.getByRole('heading', { name: 'No archived courses' }).parentElement;
+    expect(empty).toHaveClass('rounded-3xl', 'bg-surface');
+    expect(empty).not.toHaveClass('border-t');
+    expectAppDestination(screen.getByRole('link', { name: 'Back to Today' }), '/');
+  });
+
+  it('moves focus to the next restoration action when a restored course disappears', async () => {
+    const next = { ...archived, id: 'course-2', name: 'Finished chemistry' };
+    courses = [archived, next];
+    const { rerender } = render(<ArchivedCourses />, { wrapper: MemoryRouter });
+    const restore = screen.getByRole('button', { name: 'Unarchive Finished biology' });
+    restore.focus();
+    fireEvent.click(restore);
+    await waitFor(() => expect(mockUpdateCourse).toHaveBeenCalled());
+    courses = [next];
+    rerender(<ArchivedCourses />);
+    expect(screen.getByRole('button', { name: 'Unarchive Finished chemistry' })).toHaveFocus();
+  });
+
+  it('returns focus to the heading when the last archived course disappears', async () => {
+    const { rerender } = render(<ArchivedCourses />, { wrapper: MemoryRouter });
+    const restore = screen.getByRole('button', { name: 'Unarchive Finished biology' });
+    restore.focus();
+    fireEvent.click(restore);
+    await waitFor(() => expect(mockUpdateCourse).toHaveBeenCalled());
+    courses = [];
+    rerender(<ArchivedCourses />);
+    expect(screen.getByRole('heading', { name: 'Archived' })).toHaveFocus();
+  });
+
+  it('uses an open page header with contained course cards', () => {
+    render(<ArchivedCourses />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('banner')).not.toHaveClass('bg-surface');
+    expect(screen.getByRole('listitem')).toHaveClass('bg-surface');
+  });
+
+  it('lists only archived courses and restores one explicitly', async () => {
+    render(<ArchivedCourses />, { wrapper: MemoryRouter });
+    expect(screen.getByText('Finished biology')).toBeInTheDocument();
+    expect(screen.queryByText('Active chemistry')).not.toBeInTheDocument();
+    expectAppDestination(
+      screen.getByRole('link', { name: 'Open Finished biology' }),
+      '/course/course-1',
+    );
+    expect(screen.queryByText('Course library')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unarchive Finished biology' }));
+    await waitFor(() =>
+      expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: false }),
+    );
+    expect(JSON.parse(localStorage.getItem('lacuna.handledFinalExams')!)).toEqual({
+      'course-1': archived.examDate,
+    });
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith('Finished biology restored', 'positive', {
+        actionLabel: 'Open',
+        onAction: expect.any(Function),
+      }),
+    );
+  });
+
+  it('does not suppress lifecycle handling when restoration fails', async () => {
+    mockUpdateCourse.mockRejectedValue(new Error('write failed'));
+    render(<ArchivedCourses />, { wrapper: MemoryRouter });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unarchive Finished biology' }));
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith('Could not restore Finished biology', 'negative'),
+    );
+    expect(localStorage.getItem('lacuna.handledFinalExams')).toBe('{}');
+  });
+});

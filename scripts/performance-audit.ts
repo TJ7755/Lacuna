@@ -2,9 +2,9 @@ import 'fake-indexeddb/auto';
 import { gzipSync } from 'node:zlib';
 import { readFile, readdir } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
-import { defaultFsrsParameters } from '../src/fsrs/params';
-import { makeSessionContext, selectNext, sessionComplete } from '../src/fsrs/session';
-import type { Card, SchedulingUnitRecord } from '../src/db/types';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
+import { makeSessionContext, selectNext, sessionComplete } from '../apps/web/src/fsrs/session';
+import type { Card, SchedulingUnitRecord } from '@lacuna/core/db/types';
 
 class AuditStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -39,8 +39,8 @@ if (!globalThis.localStorage) {
 }
 
 const [{ createCourse, recordReview, sampleReviewTrajectory }, { db }] = await Promise.all([
-  import('../src/db/repository'),
-  import('../src/db/schema'),
+  import('../apps/web/src/db/repository'),
+  import('../apps/web/src/db/schema'),
 ]);
 
 const NOW = Date.UTC(2026, 7, 12, 12);
@@ -352,7 +352,7 @@ async function measureBuildOutput() {
   return {
     available: true as const,
     initialJavaScript: pageScripts('index.html'),
-    landingJavaScript: pageScripts('src/landingBootstrap.ts'),
+    landingJavaScript: pageScripts('apps/web/src/landingBootstrap.ts'),
     documentJavaScript: documentScripts,
     publicPages,
     initialCss: {

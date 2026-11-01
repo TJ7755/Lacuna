@@ -1,0 +1,41 @@
+// Review heatmap data: a contribution-style calendar of reviews per day, built
+// from the review logs already stored on each card. Pure and timezone-correct:
+// reviews are bucketed by *local* calendar day (via startOfDay), which is what a
+// user expects from an Anki-style heatmap.
+
+import { startOfDay } from '../utils/datetime';
+import type { Card } from '@lacuna/core/db/types';
+
+/** Canonical review timestamps without the full per-attempt scheduling records. */
+export type ReviewActivity = ReadonlyMap<string, readonly number[]>;
+
+export function cardReviewTimestamps(card: Card, activity?: ReviewActivity): readonly number[] {
+  return activity === undefined
+    ? card.history.map((log) => log.timestamp)
+    : (activity.get(card.id) ?? []);
+}
+
+/** Every review timestamp across the given cards (one per logged review). */
+export function reviewTimestamps(cards: Card[], activity?: ReviewActivity): number[] {
+  const out: number[] = [];
+  for (const card of cards)
+    for (const timestamp of cardReviewTimestamps(card, activity)) out.push(timestamp);
+  return out;
+}
+
+/** Count reviews per local calendar day. */
+export function bucketReviewsByDay(timestamps: number[]): Map<number, number> {
+  const buckets = new Map<number, number>();
+  for (const t of timestamps) {
+    const day = startOfDay(t);
+    buckets.set(day, (buckets.get(day) ?? 0) + 1);
+  }
+  return buckets;
+}
+
+/** DST-safe helper: add/subtract days from a local-midnight epoch. */
+export function addDays(dayStart: number, days: number): number {
+  const d = new Date(dayStart);
+  d.setDate(d.getDate() + days);
+  return startOfDay(d.getTime());
+}

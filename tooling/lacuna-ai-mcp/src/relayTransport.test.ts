@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { RelayBrowserMailbox, RelayTerminalMailbox } from '../../../src/ai/relayProtocol';
+import type {
+  RelayBrowserMailbox,
+  RelayTerminalMailbox,
+} from '../../../apps/web/src/ai/relayProtocol';
 import { HttpTerminalRelayTransport } from './relayTransport';
 import {
   PUBLIC_KEY,

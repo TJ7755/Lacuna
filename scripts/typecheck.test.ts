@@ -27,7 +27,7 @@ describe('web typechecking', () => {
         config.compilerOptions.types = [];
         write(`tsconfig.${name}.json`, JSON.stringify(config));
       }
-      const sources = ['src/probe.ts', 'vite.config.ts', 'tests/e2e/probe.ts'];
+      const sources = ['apps/web/src/probe.ts', 'vite.config.ts', 'tests/e2e/probe.ts'];
       for (const source of sources) write(source, 'export const probe: number = "invalid";\n');
       write('outside.ts', 'export const excluded: number = "invalid";\n');
       const before = readdirSync(directory, { recursive: true }).sort();

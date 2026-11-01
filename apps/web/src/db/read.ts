@@ -1,0 +1,474 @@
+import { courseLessonOrderPreference } from '../course/lessonOrder';
+// Plain, React-free read-side query module over Dexie.
+//
+// This is the non-React counterpart to src/state/useData.ts / useCourseData.ts: the
+// hooks keep using useLiveQuery for the UI, while this module is for callers with no
+// React tree — chiefly the MCP tool surface (src/mcp/tools/read.ts), but usable
+// by any non-React caller. Every function is a plain async function built directly on
+// Dexie (see src/db/diagnostics.ts for the established non-hook style of touching the
+// database) and the existing pure analytics modules — no scoring/eligibility logic is
+// reimplemented here, only composed.
+//
+// Cards carry their courseId/primaryLessonId directly (see src/db/types.ts), so
+// course-scoped card queries read the cards table's courseId index without needing to
+// resolve a course's hidden backing decks; those decks exist only to give the FSRS
+// engine a UserPerformance/calibration home per lesson (see ensureLessonDeck/
+// ensureCourseBankDeck in repository.ts) and are irrelevant to read-side queries.
+
+import { db } from './schema';
+export { hydrateCardsWithHistory } from './reviewHistoryRead';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
+import type {
+  Card,
+  Course,
+  CourseAssessment,
+  Lesson,
+  LessonCardLink,
+  Occlusion,
+  RevisionPlan,
+  Sequence,
+} from '@lacuna/core/db/types';
+import { finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
+import { gatherCounts, type DiagnosticBundle } from './diagnostics';
+import { listNotes as repositoryListNotes } from './noteRepository';
+import { listSequences as repositoryListSequences } from './sequenceRepository';
+import { listOcclusions as repositoryListOcclusions } from './occlusionRepository';
+import { availableCards, dueReviewPool } from '../fsrs/eligibility';
+import { makeObjectiveContext, progressValue, scoreCard, sortByObjective } from '../fsrs/objective';
+import { isLeech } from '@lacuna/core/fsrs/leech';
+import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
+import { makeExamDateContext } from '../fsrs/examDate';
+import {
+  courseDueReviewCards,
+  courseHeaderStats,
+  type CourseHeaderStats,
+} from '../course/headerStats';
+import { performanceForCourseBackingDecks } from './backingDecks';
+import {
+  resolveAssessmentCoverage,
+  type AssessmentValidationIssue,
+  type AssessmentSpecificationContext,
+} from '../course/assessmentCoverage';
+
+// ---------------------------------------------------------------------------
+// Courses / lessons
+// ---------------------------------------------------------------------------
+
+/** Every course, ordered by creation time (mirrors useCourses). */
+export async function listCourses(): Promise<Course[]> {
+  const [records, assessments] = await db.transaction('r', [db.courses, db.courseAssessments], () =>
+    Promise.all([db.courses.orderBy('createdAt').toArray(), db.courseAssessments.toArray()]),
+  );
+  return records.map((record) =>
+    hydrateCourse(record, finalAssessmentForCourse(record.id, assessments)),
+  );
+}
+
+/** A single course, or null if it does not exist. */
+export async function getCourse(courseId: string): Promise<Course | null> {
+  const [record, assessments] = await db.transaction('r', [db.courses, db.courseAssessments], () =>
+    Promise.all([
+      db.courses.get(courseId),
+      db.courseAssessments.where('courseId').equals(courseId).toArray(),
+    ]),
+  );
+  return record ? hydrateCourse(record, finalAssessmentForCourse(courseId, assessments)) : null;
+}
+
+/** A course's lessons, ordered by path position (mirrors useLessons). */
+export async function listLessons(courseId: string): Promise<Lesson[]> {
+  return db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
+}
+
+/** Count a Course's lessons without materialising their records. */
+export async function countLessonsForCourse(courseId: string): Promise<number> {
+  return db.lessons.where('courseId').equals(courseId).count();
+}
+
+/** A single lesson, or null if it does not exist. */
+export async function getLesson(lessonId: string): Promise<Lesson | null> {
+  return (await db.lessons.get(lessonId)) ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Cards
+// ---------------------------------------------------------------------------
+
+/** Every card belonging to a course (mirrors useCourseCards). */
+export async function listCardsForCourse(courseId: string): Promise<Card[]> {
+  return hydrateCardsWithHistory(await db.cards.where('courseId').equals(courseId).toArray());
+}
+
+/** Count a Course's cards without loading Card bodies or review history. */
+export async function countCardsForCourse(courseId: string): Promise<number> {
+  return db.cards.where('courseId').equals(courseId).count();
+}
+
+/**
+ * Stored Card rows for compact content queries that do not expose review history.
+ * Callers needing canonical review history must use `listCardsForCourse` instead.
+ */
+export async function listCardRecordsForCourse(courseId: string): Promise<Card[]> {
+  return db.cards.where('courseId').equals(courseId).toArray();
+}
+
+/**
+ * Cards taught in a lesson: those whose primaryLessonId is the lesson, plus any
+ * additionally linked via LessonCardLink, de-duplicated by card id. Mirrors
+ * useLessonCards exactly (LessonCardLink is display-only, never an FSRS duplicate).
+ */
+export async function listCardsForLesson(lessonId: string): Promise<Card[]> {
+  const [links, primaryCards] = await Promise.all([
+    db.lessonCards.where('lessonId').equals(lessonId).toArray(),
+    db.cards.where('primaryLessonId').equals(lessonId).toArray(),
+  ]);
+  const linkedCardIds = links.map((link) => link.cardId);
+  const linkedCards =
+    linkedCardIds.length > 0 ? await db.cards.where('id').anyOf(linkedCardIds).toArray() : [];
+  const hydrated = await hydrateCardsWithHistory([...primaryCards, ...linkedCards]);
+  const seen = new Set<string>();
+  const result: Card[] = [];
+  for (const card of hydrated) {
+    if (!seen.has(card.id)) {
+      seen.add(card.id);
+      result.push(card);
+    }
+  }
+  return result;
+}
+
+/** A single card, or null if it does not exist. */
+export async function getCard(cardId: string): Promise<Card | null> {
+  const card = await db.cards.get(cardId);
+  if (!card) return null;
+  return (await hydrateCardsWithHistory([card]))[0];
+}
+
+/**
+ * Scheduled reviews due now for a course, matching its dashboard and study entry.
+ * Ranked by the course objective and capped at `limit` when given.
+ */
+export async function listDueCards(
+  courseId: string,
+  limit?: number,
+  now: number = Date.now(),
+): Promise<Card[]> {
+  const course = await getCourse(courseId);
+  if (!course) return [];
+  const [cards, lessons, assessments, links, concepts] = await Promise.all([
+    listCardsForCourse(courseId),
+    listLessons(courseId),
+    listCourseAssessments(courseId),
+    db.lessonCards.toArray(),
+    db.concepts.where('courseId').equals(courseId).toArray(),
+  ]);
+  const examDateContext = makeExamDateContext(course, lessons, assessments, links, concepts);
+  const servable = dueReviewPool(cards, course, now);
+  const oc = makeObjectiveContext(course, examDateContext);
+  const sorted = sortByObjective(servable, oc, now).map((s) => s.card);
+  return typeof limit === 'number' ? sorted.slice(0, limit) : sorted;
+}
+
+/** A card ranked as weak: leeches first, then ascending objective score (worst first). */
+export interface WeakCard {
+  card: Card;
+  /** Whether the card has lapsed past the course's (or default) leech threshold. */
+  leech: boolean;
+  /** The course's objective score for this card (src/fsrs/objective.ts's scoreCard). Lower is weaker. */
+  score: number;
+}
+
+/**
+ * The course's weakest available cards: leeches (see src/fsrs/leech.ts) ranked
+ * first, then every other card ascending by objective score (src/fsrs/objective.ts),
+ * so the lowest-scoring, least-secured cards surface first. Capped at `limit` when given.
+ */
+export async function getWeakCards(
+  courseId: string,
+  limit?: number,
+  now: number = Date.now(),
+): Promise<WeakCard[]> {
+  const course = await getCourse(courseId);
+  if (!course) return [];
+  const [cards, lessons, assessments, links, concepts] = await Promise.all([
+    listCardsForCourse(courseId),
+    listLessons(courseId),
+    listCourseAssessments(courseId),
+    db.lessonCards.toArray(),
+    db.concepts.where('courseId').equals(courseId).toArray(),
+  ]);
+  const examDateContext = makeExamDateContext(course, lessons, assessments, links, concepts);
+  const oc = makeObjectiveContext(course, examDateContext);
+  const scored: WeakCard[] = availableCards(cards, now).map((card) => ({
+    card,
+    leech: isLeech(card, course.leechThreshold),
+    score: scoreCard(card, oc, now),
+  }));
+  scored.sort((a, b) => {
+    if (a.leech !== b.leech) return a.leech ? -1 : 1;
+    return a.score - b.score;
+  });
+  return typeof limit === 'number' ? scored.slice(0, limit) : scored;
+}
+
+// ---------------------------------------------------------------------------
+// Course stats
+// ---------------------------------------------------------------------------
+
+export interface CourseStats {
+  /** Header stats plus the due count every course header shows (courseDueReviewCards). */
+  header: CourseHeaderStats & { dueCardCount: number };
+  /** Total lessons on the course path (extension lessons included; contrast CourseSummary in useCourseData.ts). */
+  lessonCount: number;
+  /** Total cards belonging to the course. */
+  cardCount: number;
+  studyStats: StudyStats;
+}
+
+/**
+ * Bundled stats for a course: nearest-exam/mastery/due-count header stats
+ * (src/course/headerStats.ts) plus the study forecast (src/fsrs/stats.ts), both
+ * scoped to this course's own cards. Returns null if the course does not exist.
+ */
+export async function getCourseStats(
+  courseId: string,
+  now: number = Date.now(),
+): Promise<CourseStats | null> {
+  const course = await getCourse(courseId);
+  if (!course) return null;
+  const [lessons, cards, assessments, concepts] = await Promise.all([
+    listLessons(courseId),
+    listCardsForCourse(courseId),
+    listCourseAssessments(courseId),
+    db.concepts.where('courseId').equals(courseId).toArray(),
+  ]);
+  const perf = await performanceForCourseBackingDecks(courseId, cards);
+  const lessonIds = lessons.map((lesson) => lesson.id);
+  const [links, exposures] = lessonIds.length
+    ? await Promise.all([
+        db.lessonCards.where('lessonId').anyOf(lessonIds).toArray(),
+        db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray(),
+      ])
+    : [[], []];
+  const examDateContext = makeExamDateContext(course, lessons, assessments, links, concepts);
+  const mastery = progressValue(availableCards(cards, now), course, now, examDateContext);
+  const header = {
+    ...courseHeaderStats(course, assessments, mastery, now),
+    dueCardCount: courseDueReviewCards({
+      course,
+      lessons,
+      assessments,
+      cards,
+      links,
+      exposures,
+      now,
+    }).length,
+  };
+  const deckSeconds = buildDeckSecondsMap(perf);
+  const studyStats = computeStudyStats(cards, deckSeconds, now);
+  return { header, lessonCount: lessons.length, cardCount: cards.length, studyStats };
+}
+
+// ---------------------------------------------------------------------------
+// Sequences / occlusions / notes
+// ---------------------------------------------------------------------------
+
+/** All sequences for a course, ordered by createdAt ascending. Re-exports repository.ts's implementation. */
+export const listSequences = repositoryListSequences;
+
+/** A single sequence, or null if it does not exist. */
+export async function getSequence(sequenceId: string): Promise<Sequence | null> {
+  return (await db.sequences.get(sequenceId)) ?? null;
+}
+
+/** All occlusions for a course, ordered by createdAt ascending. Re-exports occlusionRepository.ts's implementation. */
+export const listOcclusions = repositoryListOcclusions;
+
+/** A single occlusion, or null if it does not exist. */
+export async function getOcclusion(occlusionId: string): Promise<Occlusion | null> {
+  return (await db.occlusions.get(occlusionId)) ?? null;
+}
+
+/** All notes for a lesson, ordered by orderIndex ascending. Re-exports repository.ts's implementation. */
+export const listNotes = repositoryListNotes;
+
+// ---------------------------------------------------------------------------
+// Practice / assessments
+// ---------------------------------------------------------------------------
+
+/** All assessments for a course, ordered by date ascending (mirrors useCourseAssessments). */
+export async function listCourseAssessments(courseId: string): Promise<CourseAssessment[]> {
+  return db.courseAssessments.where('courseId').equals(courseId).sortBy('examDate');
+}
+
+export async function getRevisionPlanForAssessment(
+  assessmentId: string,
+): Promise<RevisionPlan | null> {
+  return (await db.revisionPlans.where('assessmentId').equals(assessmentId).first()) ?? null;
+}
+
+export async function listRevisionPlansForCourse(courseId: string): Promise<RevisionPlan[]> {
+  return db.revisionPlans.where('courseId').equals(courseId).sortBy('updatedAt');
+}
+
+export interface CourseAssessmentDetails {
+  assessment: CourseAssessment;
+  placementIndex: number;
+  coveredLessonIds: string[];
+  cardIds: string[];
+  validation: {
+    valid: boolean;
+    needsAuthorConfirmation: boolean;
+    issues: AssessmentValidationIssue[];
+  };
+}
+
+function assessmentDetails(
+  assessment: CourseAssessment,
+  lessons: Lesson[],
+  cards: Card[],
+  links: LessonCardLink[],
+  preferredLessonIds?: readonly string[],
+  specificationContext?: AssessmentSpecificationContext,
+): CourseAssessmentDetails {
+  const resolved = resolveAssessmentCoverage(
+    assessment,
+    lessons,
+    cards,
+    links,
+    preferredLessonIds,
+    specificationContext,
+  );
+  return {
+    assessment,
+    placementIndex: resolved.placementIndex,
+    coveredLessonIds: resolved.coveredLessons.map((lesson) => lesson.id),
+    cardIds: resolved.cards.map((card) => card.id),
+    validation: resolved.validation,
+  };
+}
+
+async function assessmentScope(courseId: string) {
+  // Coverage uses card membership, never review history. Keep the persisted cards
+  // unhydrated so listing assessments does not allocate an entire review log.
+  const [lessons, cards, course, concepts] = await Promise.all([
+    listLessons(courseId),
+    db.cards.where('courseId').equals(courseId).toArray(),
+    db.courses.get(courseId),
+    db.concepts.where('courseId').equals(courseId).toArray(),
+  ]);
+  const links = lessons.length
+    ? await db.lessonCards
+        .where('lessonId')
+        .anyOf(lessons.map((lesson) => lesson.id))
+        .toArray()
+    : [];
+  return {
+    lessons,
+    cards,
+    links,
+    preferredLessonIds: course && courseLessonOrderPreference(course),
+    specificationContext: { course, concepts },
+  };
+}
+
+/** Full persisted semantics plus authoritative resolved scope for one assessment. */
+export async function getCourseAssessmentDetails(
+  assessmentId: string,
+): Promise<CourseAssessmentDetails | null> {
+  return db.transaction(
+    'r',
+    [db.courseAssessments, db.lessons, db.cards, db.lessonCards, db.courses, db.concepts],
+    async () => {
+      const assessment = await db.courseAssessments.get(assessmentId);
+      if (!assessment) return null;
+      const { lessons, cards, links, preferredLessonIds, specificationContext } =
+        await assessmentScope(assessment.courseId);
+      return assessmentDetails(
+        assessment,
+        lessons,
+        cards,
+        links,
+        preferredLessonIds,
+        specificationContext,
+      );
+    },
+  );
+}
+
+/** Every assessment and its resolved scope, ordered by assessment date. */
+export async function listCourseAssessmentDetails(
+  courseId: string,
+): Promise<CourseAssessmentDetails[]> {
+  return db.transaction(
+    'r',
+    [db.courseAssessments, db.lessons, db.cards, db.lessonCards, db.courses, db.concepts],
+    async () => {
+      const assessments = await listCourseAssessments(courseId);
+      if (assessments.length === 0) return [];
+      const { lessons, cards, links, preferredLessonIds, specificationContext } =
+        await assessmentScope(courseId);
+      return assessments.map((assessment) =>
+        assessmentDetails(
+          assessment,
+          lessons,
+          cards,
+          links,
+          preferredLessonIds,
+          specificationContext,
+        ),
+      );
+    },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostics
+// ---------------------------------------------------------------------------
+
+/** Course-scoped record counts, for a course-level diagnostic summary. */
+export interface CourseDiagnosticsSummary {
+  courseId: string;
+  lessons: number;
+  cards: number;
+  notes: number;
+  lessonCards: number;
+  practiceNodes: number;
+  courseAssessments: number;
+  assessments: CourseAssessmentDetails[];
+  sequences: number;
+}
+
+/**
+ * Record counts for a diagnostic summary: whole-database counts (same shape as
+ * src/db/diagnostics.ts's gatherCounts) when no courseId is given, or counts scoped
+ * to a single course otherwise.
+ */
+export async function diagnosticsSummary(
+  courseId?: string,
+): Promise<DiagnosticBundle['data'] | CourseDiagnosticsSummary> {
+  if (!courseId) return gatherCounts();
+
+  const lessons = await listLessons(courseId);
+  const lessonIds = lessons.map((lesson) => lesson.id);
+  const [cards, notes, lessonCards, practiceNodes, assessments, sequences] = await Promise.all([
+    db.cards.where('courseId').equals(courseId).count(),
+    lessonIds.length ? db.notes.where('lessonId').anyOf(lessonIds).count() : 0,
+    lessonIds.length ? db.lessonCards.where('lessonId').anyOf(lessonIds).count() : 0,
+    db.practiceNodes.where('courseId').equals(courseId).count(),
+    listCourseAssessmentDetails(courseId),
+    db.sequences.where('courseId').equals(courseId).count(),
+  ]);
+
+  return {
+    courseId,
+    lessons: lessons.length,
+    cards,
+    notes,
+    lessonCards,
+    practiceNodes,
+    courseAssessments: assessments.length,
+    assessments,
+    sequences,
+  };
+}

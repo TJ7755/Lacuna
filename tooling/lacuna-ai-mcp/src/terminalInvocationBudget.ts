@@ -1,4 +1,4 @@
-import type { RelayBrowserMailbox } from '../../../src/ai/relayProtocol.js';
+import type { RelayBrowserMailbox } from '../../../apps/web/src/ai/relayProtocol.js';
 import type { ConnectedTerminalRelay, TerminalRelayTransport } from './terminalContracts.js';
 
 class TerminalInvocationBoundaryError extends Error {

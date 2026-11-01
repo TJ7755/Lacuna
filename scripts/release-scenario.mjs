@@ -22,10 +22,10 @@ const temporaryProfile = await mkdtemp(join(tmpdir(), 'lacuna-release-scenario-'
 await mkdir(reportDir, { recursive: true });
 
 const testFiles = [
-  'src/release/canonicalScenario.test.ts',
-  'src/components/import/ShareCodeImportPanel.test.tsx',
-  'src/components/import/UnifiedImportPanel.test.tsx',
-  'src/pages/settings/DataPortabilitySection.test.tsx',
+  'apps/web/src/release/canonicalScenario.test.ts',
+  'apps/web/src/components/import/ShareCodeImportPanel.test.tsx',
+  'apps/web/src/components/import/UnifiedImportPanel.test.tsx',
+  'apps/web/src/pages/settings/DataPortabilitySection.test.tsx',
 ];
 const startedAt = new Date().toISOString();
 let output = '';
@@ -38,8 +38,14 @@ try {
       env: { ...process.env, LACUNA_RELEASE_PROFILE: temporaryProfile },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-    child.stdout.on('data', (chunk) => { process.stdout.write(chunk); output += chunk; });
-    child.stderr.on('data', (chunk) => { process.stderr.write(chunk); output += chunk; });
+    child.stdout.on('data', (chunk) => {
+      process.stdout.write(chunk);
+      output += chunk;
+    });
+    child.stderr.on('data', (chunk) => {
+      process.stderr.write(chunk);
+      output += chunk;
+    });
     child.once('error', reject);
     child.once('exit', (code) => resolveExit(code ?? 1));
   });
@@ -52,9 +58,20 @@ try {
     finishedAt: new Date().toISOString(),
     isolatedProfile: { kind: 'disposable-fake-indexeddb', destroyed: true },
     evidence: [
-      { kind: 'programmatic-scenario', subject: 'MCP construction, share/backup counts, non-mutating preview, exact restore and reload persistence' },
-      { kind: 'gui-automation', subject: 'Both share-code import surfaces and full-backup preview rendering' },
-      { kind: 'human-inspection', subject: 'Visual, physical and platform-dependent checklist items', status: 'not-run' },
+      {
+        kind: 'programmatic-scenario',
+        subject:
+          'MCP construction, share/backup counts, non-mutating preview, exact restore and reload persistence',
+      },
+      {
+        kind: 'gui-automation',
+        subject: 'Both share-code import surfaces and full-backup preview rendering',
+      },
+      {
+        kind: 'human-inspection',
+        subject: 'Visual, physical and platform-dependent checklist items',
+        status: 'not-run',
+      },
     ],
     testFiles,
     output,

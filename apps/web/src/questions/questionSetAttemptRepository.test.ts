@@ -1,0 +1,616 @@
+import 'fake-indexeddb/auto';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createCourse } from '../db/repository';
+import { createLesson } from '../db/lessonRepository';
+import { deleteCourse, restoreCourse, snapshotCourse } from '../db/courseRepository';
+import { db } from '../db/schema';
+import { exportDatabase, importBackup } from '../db/portability';
+import { assetUrl, ASSET_GC_GRACE_MS, collectOrphanedAssets, storeImageBlob } from '../db/assets';
+import { createConcept } from './repository';
+import { createQuestionSet, deleteQuestionSet, updateQuestionSet } from './questionSetRepository';
+import {
+  completeQuestionSetAttempt,
+  getQuestionSetAttempt,
+  listRemovedQuestionSetAttempts,
+  listQuestionSetAttempts,
+  recordQuestionSetAssistance,
+  saveQuestionSetMarking,
+  saveQuestionSetResponseDraft,
+  startQuestionSetAttempt,
+  submitPracticeQuestion,
+  submitQuestionSetPaper,
+} from './questionSetAttemptRepository';
+import { feedbackAvailable } from '@lacuna/core/questions/questionSetAttempts';
+import { parseQuestionSetAttemptRecord } from './questionSetAttemptCodec';
+import type { QuestionSet, SelfMarkDecision } from '@lacuna/core/questions/questionSets';
+import { conceptPracticeFingerprint } from './conceptPractice';
+
+/** A sweep after the grace period, so fresh test assets are eligible for collection. */
+const afterGrace = () => Date.now() + ASSET_GC_GRACE_MS;
+
+async function setFixture(): Promise<Awaited<ReturnType<typeof createQuestionSet>>> {
+  const course = await createCourse('Biology');
+  const lesson = await createLesson(course.id, 'Cells');
+  const concept = await createConcept(course.id, 'Nucleus');
+  const content: QuestionSet = {
+    id: 'set-1',
+    courseId: course.id,
+    title: 'Cells',
+    lessonIds: [lesson.id],
+    assessmentIds: [],
+    questions: [
+      {
+        id: 'q1',
+        prompt: 'Describe the nucleus.',
+        parts: [],
+        answer: {
+          maxMarks: 1,
+          response: { kind: 'written' },
+          prerequisiteConceptIds: [],
+          allocations: [
+            {
+              id: 'a1',
+              criterion: 'Control',
+              maxMarks: 1,
+              dimension: 'knowledge',
+              targetConceptIds: [concept.id],
+            },
+          ],
+        },
+      },
+      {
+        id: 'q2',
+        prompt: 'Choose.',
+        parts: [],
+        answer: {
+          maxMarks: 1,
+          response: {
+            kind: 'multiple-choice',
+            selection: 'single',
+            options: [
+              { id: 'o1', content: 'A' },
+              { id: 'o2', content: 'B' },
+            ],
+            correctOptionIds: ['o2'],
+          },
+          prerequisiteConceptIds: [],
+          allocations: [
+            {
+              id: 'a2',
+              criterion: 'Correct option',
+              maxMarks: 1,
+              dimension: 'application',
+              targetConceptIds: [],
+            },
+          ],
+        },
+      },
+    ],
+  };
+  return createQuestionSet(content, 100);
+}
+
+function smallSet(courseId: string, id: string, title: string): QuestionSet {
+  return {
+    id,
+    courseId,
+    title,
+    lessonIds: [],
+    assessmentIds: [],
+    questions: [
+      {
+        id: `${id}-q`,
+        prompt: 'Explain the idea.',
+        parts: [],
+        answer: {
+          maxMarks: 1,
+          response: { kind: 'written' },
+          prerequisiteConceptIds: [],
+          allocations: [
+            {
+              id: `${id}-a`,
+              criterion: 'Explains it.',
+              maxMarks: 1,
+              dimension: 'knowledge',
+              targetConceptIds: [],
+            },
+          ],
+        },
+      },
+    ],
+  };
+}
+
+describe('Question Set attempt repository', () => {
+  beforeEach(async () => {
+    db.close();
+    await db.delete();
+    await db.open();
+  });
+
+  it('lists removed-set attempts for one course while retaining their receipts', async () => {
+    const removedSet = await setFixture();
+    const older = await startQuestionSetAttempt(removedSet.id, 'practice', 200);
+    const newer = await startQuestionSetAttempt(removedSet.id, 'paper', 300);
+    await deleteQuestionSet(removedSet.id, 400);
+
+    const live = await createQuestionSet(
+      smallSet(removedSet.courseId, 'live-set', 'Still available'),
+      410,
+    );
+    const liveAttempt = await startQuestionSetAttempt(live.id, 'practice', 420);
+
+    const foreignCourse = await createCourse('Chemistry');
+    const foreignSet = await createQuestionSet(
+      smallSet(foreignCourse.id, 'foreign-set', 'Other course'),
+      430,
+    );
+    const foreignAttempt = await startQuestionSetAttempt(foreignSet.id, 'practice', 440);
+    await deleteQuestionSet(foreignSet.id, 450);
+
+    const records = await listRemovedQuestionSetAttempts(removedSet.courseId);
+
+    expect(records.map((record) => record.id)).toEqual([newer.id, older.id]);
+    expect(records.map((record) => record.receipt.title)).toEqual(['Cells', 'Cells']);
+    expect(records.map((record) => record.id)).not.toContain(liveAttempt.id);
+    expect(records.map((record) => record.id)).not.toContain(foreignAttempt.id);
+    expect(await listQuestionSetAttempts(removedSet.id)).toHaveLength(2);
+  });
+
+  it('pins an immutable receipt and submitted original after authored content changes and deletion', async () => {
+    const set = await setFixture();
+    let attempt = await startQuestionSetAttempt(set.id, 'practice', 200);
+    attempt = await saveQuestionSetResponseDraft(
+      attempt.id,
+      attempt.revisionId,
+      'q1',
+      { kind: 'written', text: 'Original' },
+      'q1',
+      210,
+    );
+    attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, 'q1', 220);
+    const changed = { ...set, title: 'Changed cells' };
+    await updateQuestionSet(set.id, changed, {
+      expectedContentRevisionId: set.contentRevisionId,
+      now: 230,
+    });
+    await deleteQuestionSet(set.id, 240);
+
+    const retained = await getQuestionSetAttempt(attempt.id);
+    expect(retained?.receipt.title).toBe('Cells');
+    expect(retained?.responses[0].submitted).toEqual({ kind: 'written', text: 'Original' });
+    expect(feedbackAvailable(retained!, 'q1')).toBe(true);
+    await expect(
+      saveQuestionSetResponseDraft(
+        attempt.id,
+        attempt.revisionId,
+        'q1',
+        { kind: 'written', text: 'Rewrite' },
+        'q1',
+        250,
+      ),
+    ).rejects.toThrow('immutable');
+  });
+
+  it('keeps Paper feedback hidden until every original response is captured', async () => {
+    const set = await setFixture();
+    let attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
+    attempt = await saveQuestionSetResponseDraft(
+      attempt.id,
+      attempt.revisionId,
+      'q1',
+      { kind: 'written', text: 'Answer' },
+      'q2',
+      210,
+    );
+    expect(feedbackAvailable(attempt, 'q1')).toBe(false);
+    attempt = await submitQuestionSetPaper(attempt.id, attempt.revisionId, 220);
+    expect(attempt.status).toBe('marking');
+    expect(feedbackAvailable(attempt, 'q1')).toBe(true);
+    expect(attempt.responses.every((response) => response.submittedAt === 220)).toBe(true);
+  });
+
+  it('distinguishes an explicit zero from unresolved and resumes the active criterion', async () => {
+    const set = await setFixture();
+    let attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
+    attempt = await submitQuestionSetPaper(attempt.id, attempt.revisionId, 220);
+    attempt = await saveQuestionSetMarking(
+      attempt.id,
+      attempt.revisionId,
+      {
+        decisions: [
+          { allocationId: 'a1', status: 'awarded', marks: 0 },
+          { allocationId: 'a2', status: 'unsure' },
+        ],
+        annotations: [],
+        corrections: [{ nodeId: 'q1', content: 'Corrected', updatedAt: 230 }],
+        reflection: { reasons: ['forgotten-knowledge'], note: 'Review this.' },
+        activeNodeId: 'q2',
+        activeAllocationId: 'a2',
+      },
+      230,
+    );
+    expect(attempt.activeAllocationId).toBe('a2');
+    await expect(completeQuestionSetAttempt(attempt.id, attempt.revisionId, 240)).rejects.toThrow(
+      'Resolve every',
+    );
+    attempt = await saveQuestionSetMarking(
+      attempt.id,
+      attempt.revisionId,
+      {
+        decisions: [
+          { allocationId: 'a1', status: 'awarded', marks: 0 },
+          { allocationId: 'a2', status: 'awarded', marks: 0 },
+        ],
+        annotations: [],
+        corrections: attempt.corrections,
+        reflection: attempt.reflection,
+        activeNodeId: 'q2',
+        activeAllocationId: 'a2',
+      },
+      250,
+    );
+    attempt = await completeQuestionSetAttempt(attempt.id, attempt.revisionId, 260);
+    expect(attempt.status).toBe('complete');
+    expect(attempt.completedAt).toBe(260);
+  });
+
+  it.each(['whole-set', 'selected-question'] as const)(
+    'round-trips %s attempts and immutable scope through replacement and merge backups',
+    async (scope) => {
+      const set = await setFixture();
+      const attempt = await startQuestionSetAttempt(
+        set.id,
+        scope === 'whole-set' ? 'paper' : 'practice',
+        200,
+        scope === 'whole-set'
+          ? undefined
+          : {
+              questionSetId: set.id,
+              questionId: set.questions[0].id,
+              novelty: 'unseen',
+              fingerprint: conceptPracticeFingerprint(set.questions[0]),
+            },
+      );
+      const backup = await exportDatabase();
+      expect(backup.app).toBe('lacuna-v15');
+      expect(backup.questionSetAttempts).toEqual([attempt]);
+      if (scope === 'selected-question') {
+        expect(attempt.practiceScope).toBe('question');
+        const changedScope = structuredClone(backup);
+        delete changedScope.questionSetAttempts![0].practiceScope;
+        changedScope.questionSetAttempts![0].revisionId = 'conflicting-scope';
+        changedScope.questionSetAttempts![0].updatedAt++;
+        await expect(importBackup(changedScope, 'merge')).rejects.toThrow(
+          'conflicting immutable identity',
+        );
+        expect(await getQuestionSetAttempt(attempt.id)).toEqual(attempt);
+        expect(() => parseQuestionSetAttemptRecord({ ...attempt, mode: 'paper' })).toThrow(
+          'Question practice scope',
+        );
+      }
+      await db.questionSetAttempts.clear();
+      await importBackup(JSON.parse(JSON.stringify(backup)), 'replace');
+      expect(await getQuestionSetAttempt(attempt.id)).toEqual(attempt);
+      await db.questionSetAttempts.clear();
+      await importBackup(backup, 'merge');
+      expect(await getQuestionSetAttempt(attempt.id)).toEqual(attempt);
+    },
+  );
+
+  it('cascades and restores attempts with their Course', async () => {
+    const set = await setFixture();
+    const attempt = await startQuestionSetAttempt(set.id, 'practice', 200);
+    const snapshot = await snapshotCourse(set.courseId);
+    await deleteCourse(set.courseId);
+    expect(await getQuestionSetAttempt(attempt.id)).toBeNull();
+    await restoreCourse(snapshot!);
+    expect(await getQuestionSetAttempt(attempt.id)).toEqual(attempt);
+  });
+
+  it('rejects malformed nested evidence and inconsistent lifecycle state at the storage boundary', async () => {
+    const set = await setFixture();
+    const attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
+    expect(() =>
+      parseQuestionSetAttemptRecord({
+        ...attempt,
+        responses: [...attempt.responses, attempt.responses[0]],
+      }),
+    ).toThrow(/responses/i);
+    expect(() =>
+      parseQuestionSetAttemptRecord({
+        ...attempt,
+        responses: attempt.responses.map((row) =>
+          row.nodeId === 'q2'
+            ? { ...row, draft: { kind: 'multiple-choice', selectedOptionIds: ['missing'] } }
+            : row,
+        ),
+      }),
+    ).toThrow(/responses/i);
+    expect(() =>
+      parseQuestionSetAttemptRecord({
+        ...attempt,
+        decisions: [{ allocationId: 'a1', status: 'awarded', marks: 0 }],
+      }),
+    ).toThrow(/decisions/i);
+    expect(() =>
+      parseQuestionSetAttemptRecord({
+        ...attempt,
+        annotations: [{ id: 'note-1', nodeId: 'missing', start: 3, comment: '', createdAt: 210 }],
+      }),
+    ).toThrow(/annotations/i);
+    expect(() =>
+      parseQuestionSetAttemptRecord({
+        ...attempt,
+        corrections: [{ nodeId: 'missing', content: '', updatedAt: 210 }],
+      }),
+    ).toThrow(/corrections/i);
+    expect(() =>
+      parseQuestionSetAttemptRecord({ ...attempt, revealedQuestionIds: ['q1'] }),
+    ).toThrow(/Paper submission/i);
+    expect(() =>
+      parseQuestionSetAttemptRecord({ ...attempt, status: 'complete', completedAt: 220 }),
+    ).toThrow(/lifecycle|unresolved/i);
+  });
+
+  it('retains media owned only by a deleted authored-set attempt receipt', async () => {
+    const initial = await setFixture();
+    const image = await storeImageBlob(
+      new Blob(['receipt'], { type: 'image/png' }),
+      'image/png',
+      1,
+      1,
+    );
+    const content = {
+      ...initial,
+      questions: initial.questions.map((question) => ({
+        ...question,
+        prompt: `${question.prompt}\n\n![diagram](${assetUrl(image.hash)})`,
+      })),
+    };
+    const revised = await updateQuestionSet(initial.id, content, {
+      expectedContentRevisionId: initial.contentRevisionId,
+      now: 150,
+    });
+    await startQuestionSetAttempt(revised.id, 'practice', 200);
+    await deleteQuestionSet(revised.id, 220);
+    expect(await collectOrphanedAssets(afterGrace())).toBe(0);
+    expect(await db.assets.get(image.hash)).toBeDefined();
+  });
+
+  it('recovery merge unions concurrent Practice submissions, reveals and assistance', async () => {
+    const set = await setFixture();
+    let base = await startQuestionSetAttempt(set.id, 'practice', 200);
+    base = await saveQuestionSetResponseDraft(
+      base.id,
+      base.revisionId,
+      'q1',
+      { kind: 'written', text: 'First' },
+      'q1',
+      210,
+    );
+    base = await saveQuestionSetResponseDraft(
+      base.id,
+      base.revisionId,
+      'q2',
+      { kind: 'multiple-choice', selectedOptionIds: ['o2'] },
+      'q2',
+      220,
+    );
+
+    let local = await submitPracticeQuestion(base.id, base.revisionId, 'q1', 230);
+    local = await recordQuestionSetAssistance(
+      local.id,
+      local.revisionId,
+      { nodeId: 'q1', kind: 'related-knowledge', occurredAt: 225 },
+      231,
+    );
+    const localBackup = await exportDatabase();
+
+    await db.questionSetAttempts.put(base);
+    const incoming = await submitPracticeQuestion(base.id, base.revisionId, 'q2', 240);
+    await recordQuestionSetAssistance(
+      incoming.id,
+      incoming.revisionId,
+      { nodeId: 'q2', kind: 'answer-revealed', occurredAt: 235 },
+      241,
+    );
+    const backup = await exportDatabase();
+
+    await db.questionSetAttempts.put(local);
+    await importBackup(backup, 'merge');
+    const merged = (await getQuestionSetAttempt(base.id))!;
+    expect(merged.responses.every((response) => response.submitted)).toBe(true);
+    expect(merged.revealedQuestionIds).toEqual(['q1', 'q2']);
+    expect(merged.status).toBe('marking');
+    expect(merged.assistance).toHaveLength(2);
+    await importBackup(localBackup, 'merge');
+    expect(await getQuestionSetAttempt(base.id)).toEqual(merged);
+    await importBackup(backup, 'merge');
+    expect(await getQuestionSetAttempt(base.id)).toEqual(merged);
+  });
+
+  it('refuses to start an attempt for an authored set whose Course is missing', async () => {
+    const set = await setFixture();
+    await db.courses.delete(set.courseId);
+    await expect(startQuestionSetAttempt(set.id, 'practice', 200)).rejects.toThrow('Course');
+    expect(await db.questionSetAttempts.count()).toBe(0);
+  });
+});
+
+describe('first application evidence', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+  it('records only the presented question as exposed when a set is opened', async () => {
+    const set = await setFixture();
+    const attempt = await startQuestionSetAttempt(set.id, 'practice', 200);
+    expect(attempt.shownQuestionIds).toEqual(['q1']);
+    expect(attempt.responses.find((row) => row.nodeId === 'q2')?.submitted).toBeUndefined();
+  });
+
+  it('freezes original criterion marks separately from later corrections and marking', async () => {
+    const set = await setFixture();
+    let attempt = await startQuestionSetAttempt(set.id, 'practice', 200);
+    attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, 'q1', 210);
+    attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, 'q2', 220);
+    const input = {
+      decisions: [
+        { allocationId: 'a1', status: 'awarded' as const, marks: 0 },
+        { allocationId: 'a2', status: 'awarded' as const, marks: 1 },
+      ],
+      annotations: [],
+      corrections: [],
+      reflection: { reasons: [], note: '' },
+      activeNodeId: 'q1',
+      activeAllocationId: 'a1',
+    };
+    attempt = await saveQuestionSetMarking(attempt.id, attempt.revisionId, input, 230);
+    attempt = await completeQuestionSetAttempt(attempt.id, attempt.revisionId, 240);
+    expect(attempt.firstMarking?.[0].decisions).toEqual([input.decisions[0]]);
+    const first = structuredClone(attempt.firstMarking);
+    attempt = await saveQuestionSetMarking(
+      attempt.id,
+      attempt.revisionId,
+      {
+        ...input,
+        decisions: input.decisions.map((row) => ({ ...row, marks: 1 })),
+        corrections: [{ nodeId: 'q1', content: 'Corrected after feedback', updatedAt: 250 }],
+      },
+      250,
+    );
+    expect(attempt.firstMarking).toEqual(first);
+    expect(attempt.firstMarking?.[0].gradeMappingVersion).toBe('full-good-otherwise-again-v1');
+  });
+});
+
+it.each(['awarded', 'unsure'] as const)(
+  'round-trips Jev %s provenance through the attempt codec, backup, import and sync',
+  async (status) => {
+    await Promise.all(db.tables.map((table) => table.clear()));
+    const set = await setFixture();
+    let attempt = await startQuestionSetAttempt(set.id, 'paper');
+    attempt = await submitQuestionSetPaper(attempt.id, attempt.revisionId);
+    const markedBy = {
+      by: 'jev' as const,
+      model: 'jev-1.14.0',
+      confidence: 0.96,
+      markedAt: Date.now(),
+    };
+    attempt = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
+      ...attempt,
+      decisions: [
+        {
+          allocationId: 'a1',
+          markedBy,
+          ...(status === 'unsure' ? { status } : { status, marks: 1 }),
+        },
+      ],
+    });
+    expect(parseQuestionSetAttemptRecord(attempt).decisions[0]).toMatchObject({ markedBy });
+    const backup = await exportDatabase();
+    const { mergeSnapshots } = await import('../sync/mergeSnapshots');
+    const synced = mergeSnapshots(backup, structuredClone(backup));
+    await importBackup(synced, 'replace');
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions[0]).toMatchObject({ markedBy });
+    await importBackup(backup, 'merge');
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions[0]).toMatchObject({ markedBy });
+  },
+);
+
+describe('guarded Jev decisions', () => {
+  beforeEach(async () => {
+    await Promise.all(db.tables.map((table) => table.clear()));
+  });
+
+  it.each(['awarded', 'unsure'] as const)(
+    'retries a stale %s write without replacing a learner decision',
+    async (status) => {
+      const { applyJevAllocationDecision } = await import('./questionSetAttemptRepository');
+      const set = await setFixture();
+      let attempt = await startQuestionSetAttempt(set.id, 'paper');
+      attempt = await submitQuestionSetPaper(attempt.id, attempt.revisionId);
+      const decision: SelfMarkDecision = {
+        allocationId: 'a1',
+        ...(status === 'unsure' ? { status } : { status, marks: 1 }),
+        markedBy: { by: 'jev', model: 'jev-1.14.0', confidence: 0.5, markedAt: 123 },
+      };
+      const positioned = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
+        ...attempt,
+        activeNodeId: 'q2',
+        activeAllocationId: 'a2',
+      });
+      expect(
+        await applyJevAllocationDecision(
+          attempt.id,
+          attempt.revisionId,
+          'q1',
+          decision,
+          () => true,
+        ),
+      ).toBe(true);
+      const saved = (await getQuestionSetAttempt(attempt.id))!;
+      expect(saved.decisions).toEqual([decision]);
+      expect(saved.activeNodeId).toBe(positioned.activeNodeId);
+      expect(saved.activeAllocationId).toBe(positioned.activeAllocationId);
+      const learner = await saveQuestionSetMarking(saved.id, saved.revisionId, {
+        ...saved,
+        decisions: [{ allocationId: 'a1', status: 'awarded', marks: 0 }],
+      });
+      expect(
+        await applyJevAllocationDecision(saved.id, saved.revisionId, 'q1', decision, () => true),
+      ).toBe(false);
+      expect(await getQuestionSetAttempt(saved.id)).toEqual(learner);
+    },
+  );
+
+  it.each([
+    'disabled',
+    'no provenance',
+    'unsubmitted',
+    'wrong node',
+    'complete',
+    'undone',
+  ] as const)('rejects an unsure write when %s without changing the record', async (guard) => {
+    const { applyJevAllocationDecision } = await import('./questionSetAttemptRepository');
+    const set = await setFixture();
+    let attempt = await startQuestionSetAttempt(set.id, 'paper');
+    if (guard !== 'unsubmitted')
+      attempt = await submitQuestionSetPaper(attempt.id, attempt.revisionId);
+    if (guard === 'complete') {
+      attempt = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
+        ...attempt,
+        decisions: ['a1', 'a2'].map((allocationId) => ({
+          allocationId,
+          status: 'awarded',
+          marks: 1,
+        })),
+      });
+      attempt = await completeQuestionSetAttempt(attempt.id, attempt.revisionId);
+    }
+    if (guard === 'undone') {
+      attempt.undoneAt = attempt.updatedAt;
+      await db.questionSetAttempts.put(attempt);
+    }
+    const decision: SelfMarkDecision = {
+      allocationId: 'a1',
+      status: 'unsure',
+      ...(guard === 'no provenance'
+        ? {}
+        : {
+            markedBy: { by: 'jev' as const, model: 'jev-1.14.0', confidence: 0.5, markedAt: 123 },
+          }),
+    };
+    expect(
+      await applyJevAllocationDecision(
+        attempt.id,
+        attempt.revisionId,
+        guard === 'wrong node' ? 'q2' : 'q1',
+        decision,
+        () => guard !== 'disabled',
+      ),
+    ).toBe(false);
+    expect(await getQuestionSetAttempt(attempt.id)).toEqual(attempt);
+  });
+});

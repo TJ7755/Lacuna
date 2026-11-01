@@ -1,9 +1,0 @@
-{
-  "extends": "../tsconfig.server.json",
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "rootDir": "..",
-    "noEmitOnError": true
-  }
-}

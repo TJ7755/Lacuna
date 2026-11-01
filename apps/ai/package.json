@@ -1,0 +1,16 @@
+{
+  "name": "@lacuna/ai",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@lacuna/core": "workspace:*",
+    "@lacuna/protocol": "workspace:*",
+    "@vercel/functions": "^3.10.3",
+    "ai": "^7.0.151",
+    "zod": "4.6.7",
+    "@ai-sdk/gateway": "^4.0.124",
+    "@ai-sdk/google": "^4.0.104",
+    "@ai-sdk/openai-compatible": "^3.0.77"
+  }
+}

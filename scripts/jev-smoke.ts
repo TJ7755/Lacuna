@@ -1,5 +1,5 @@
 // Run manually with TYPESAFE_API_KEY in the environment. Makes two paid requests.
-import { callJevDecision } from '../server/jev/provider';
+import { callJevDecision } from '../apps/ai/server/jev/provider';
 const key = process.env.TYPESAFE_API_KEY;
 if (!key) throw new Error('TYPESAFE_API_KEY is required.');
 for (const request of [

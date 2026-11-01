@@ -1,12 +1,12 @@
-import { sealInsightEnvelope, type InsightsRecipient } from '../../src/insights/envelope';
-import { isoDayLabel, isoDayStartMs } from '../../relay/shared/insights/index';
+import { sealInsightEnvelope, type InsightsRecipient } from '../../apps/web/src/insights/envelope';
+import { isoDayLabel, isoDayStartMs } from '@lacuna/protocol/insights/index';
 import { expect, test } from '@playwright/test';
-import { createHandler } from '../../relay/src/relay';
-import { MemoryStore } from '../../relay/src/store';
-import { sealGapsConnection } from '../../src/teacher/connectionFile';
+import { createHandler } from '../../apps/relay/src/relay';
+import { MemoryStore } from '../../apps/relay/src/store';
+import { sealGapsConnection } from '../../apps/web/src/teacher/connectionFile';
 import { openSidebarItem } from './fixtures/gaps';
-import { formatClassCode } from '../../src/insights/classCode';
-import { DEFAULT_RELAY_URL } from '../../src/sync/pairingConfig';
+import { formatClassCode } from '../../apps/web/src/insights/classCode';
+import { DEFAULT_RELAY_URL } from '../../apps/web/src/sync/pairingConfig';
 
 test.skip(process.env.LACUNA_BROWSER_SITE !== 'gaps', 'Requires the standalone Gaps build');
 const phrase = 'several separate words for the school trial';
@@ -369,8 +369,8 @@ for (const width of [1280, 390]) {
     await page.getByRole('button', { name: 'Download class recovery file', exact: true }).click();
     const download = await downloading;
     const { readFile } = await import('node:fs/promises');
-    const { parseClassRecoveryFile } = await import('../../src/teacher/classRecoveryFile');
-    const { openGapsConnection } = await import('../../src/teacher/connectionFile');
+    const { parseClassRecoveryFile } = await import('../../apps/web/src/teacher/classRecoveryFile');
+    const { openGapsConnection } = await import('../../apps/web/src/teacher/connectionFile');
     const text = await readFile((await download.path())!, 'utf8');
     const saved = parseClassRecoveryFile(text);
     const recoveryCode = '0123456789ABCDEFGHJKMNPQ';

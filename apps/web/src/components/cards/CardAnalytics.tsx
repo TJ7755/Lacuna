@@ -1,0 +1,288 @@
+import { useMemo } from 'react';
+import { m as motion } from 'motion/react';
+import {
+  Area,
+  CartesianGrid,
+  ComposedChart,
+  ReferenceDot,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { useChartColours } from '../analytics/useChartColours';
+import { forgettingCurve } from '../../fsrs/forwardSim';
+import { decayOf } from '../../fsrs/fsrs';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import { schedulingHorizon } from '../../fsrs/horizon';
+import { useAdvancedDetails } from '../../state/advancedDetails';
+import type { Card, Grade, SchedulerConfig } from '@lacuna/core/db/types';
+
+interface CardAnalyticsProps {
+  card: Card;
+  schedulingConfig: SchedulerConfig;
+  motionMultiplier?: number;
+}
+
+export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: CardAnalyticsProps) {
+  const [advancedDetails] = useAdvancedDetails();
+  const m = motionMultiplier ?? 1;
+  const c = useChartColours();
+  const now = Date.now();
+  const hasActiveExam = schedulingConfig.examDate !== undefined && schedulingConfig.examDate >= now;
+  const targetDate = schedulingHorizon(schedulingConfig, now);
+  const decay = decayOf(schedulingConfig.fsrsParameters);
+
+  const curveData = useMemo(() => {
+    if (card.stability === null || card.lastReviewed === null) return [];
+    const start = card.lastReviewed;
+    const end = targetDate + 14 * MS_PER_DAY;
+    const points: { t: number; r: number }[] = [];
+    for (let t = start; t <= end; t += MS_PER_DAY) {
+      const days = (t - card.lastReviewed) / MS_PER_DAY;
+      const r = forgettingCurve(days, card.stability, decay);
+      points.push({ t, r: Math.round(r * 100) });
+    }
+    return points;
+  }, [card, decay, targetDate]);
+
+  const reviewDots = useMemo(() => {
+    const dots: { x: number; y: number; grade: Grade }[] = [];
+    for (const log of card.history) {
+      const r = log.retrievabilityAtReview ?? 0;
+      dots.push({ x: log.timestamp, y: Math.round(r * 100), grade: log.grade });
+    }
+    return dots;
+  }, [card.history]);
+
+  const gradeCounts = useMemo(() => {
+    const counts: Record<Grade, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    for (const log of card.history) {
+      counts[log.grade] = (counts[log.grade] ?? 0) + 1;
+    }
+    return counts;
+  }, [card.history]);
+
+  const vitalStats = (() => {
+    const stats: { label: string; value: string }[] = [];
+    if (advancedDetails && card.stability !== null) {
+      stats.push({ label: 'Stability', value: `${card.stability.toFixed(1)}d` });
+    }
+    if (advancedDetails && card.difficulty !== null) {
+      stats.push({ label: 'Difficulty', value: card.difficulty.toFixed(1) });
+    }
+    if (card.stability !== null && card.lastReviewed !== null) {
+      const days = (now - card.lastReviewed) / MS_PER_DAY;
+      const r = forgettingCurve(days, card.stability, decay);
+      stats.push({
+        label: advancedDetails ? 'Current R' : 'Predicted recall now',
+        value: `${(r * 100).toFixed(0)}%`,
+      });
+    }
+    if (card.stability !== null && card.lastReviewed !== null) {
+      const days = Math.max(targetDate - card.lastReviewed, 0) / MS_PER_DAY;
+      const r = forgettingCurve(days, card.stability, decay);
+      stats.push({
+        label: advancedDetails
+          ? hasActiveExam
+            ? 'Predicted exam R'
+            : 'Predicted target R'
+          : hasActiveExam
+            ? 'Predicted exam-day recall'
+            : 'Predicted target-day recall',
+        value: `${(r * 100).toFixed(0)}%`,
+      });
+    }
+    stats.push({ label: 'Total reviews', value: String(card.reps) });
+    stats.push({
+      label: advancedDetails ? 'Lapses' : 'Times forgotten in review',
+      value: String(card.lapses),
+    });
+    if (card.due !== null) {
+      const dueStr = new Date(card.due).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+      });
+      stats.push({ label: 'Due', value: dueStr });
+    }
+    if (card.lastReviewed !== null) {
+      const days = Math.floor((now - card.lastReviewed) / MS_PER_DAY);
+      stats.push({ label: 'Days since review', value: `${days}d` });
+    }
+    if (card.history.length > 0) {
+      const meanTime =
+        card.history.reduce((sum, log) => sum + log.responseTimeSec, 0) / card.history.length;
+      stats.push({
+        label: advancedDetails ? 'Mean response time' : 'Average answer time',
+        value: `${meanTime.toFixed(1)}s`,
+      });
+      const correct = card.history.filter((log) => log.grade > 1).length;
+      stats.push({
+        label: 'Accuracy',
+        value: `${Math.round((correct / card.history.length) * 100)}%`,
+      });
+    }
+    return stats;
+  })();
+
+  const axisProps = {
+    stroke: c.inkFaint,
+    tick: { fill: c.inkFaint, fontSize: 11 },
+    tickLine: false,
+  };
+
+  const tooltipStyle = {
+    background: c.surface,
+    border: `1px solid ${c.line}`,
+    borderRadius: 10,
+    color: c.ink,
+    fontSize: 13,
+  } as const;
+
+  const hasData = curveData.length > 0;
+
+  const gradeLabels: Record<Grade, string> = { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' };
+  const gradeColours: Record<Grade, string> = {
+    1: 'hsl(6 62% 48%)',
+    2: 'hsl(32 90% 48%)',
+    3: c.positive,
+    4: c.accent,
+  };
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h4 className="mb-2 font-display text-lg tracking-tight">
+          {advancedDetails ? 'Forgetting curve' : 'Predicted recall over time'}
+        </h4>
+        {!advancedDetails && (
+          <p className="mb-3 text-sm text-ink-soft">
+            Estimated chance of remembering this card, based on your reviews.
+          </p>
+        )}
+        {hasData ? (
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={curveData} margin={{ top: 28, right: 12, bottom: 0, left: -8 }}>
+                <defs>
+                  <linearGradient id={`card-traj-${card.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={c.accent} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={c.accent} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={c.line} vertical={false} />
+                <XAxis
+                  dataKey="t"
+                  type="number"
+                  domain={[curveData[0].t, curveData[curveData.length - 1].t]}
+                  tickFormatter={(v: number) =>
+                    new Date(v).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                  }
+                  {...axisProps}
+                />
+                <YAxis domain={[0, 100]} unit="%" {...axisProps} width={44} />
+                <Tooltip
+                  separator=": "
+                  contentStyle={tooltipStyle}
+                  labelFormatter={(value) =>
+                    new Date(Number(value)).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  }
+                  formatter={(v) => [`${v}%`, 'Predicted recall']}
+                  cursor={{ stroke: c.line }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="r"
+                  isAnimationActive={false}
+                  stroke={c.accent}
+                  strokeWidth={2}
+                  fill={`url(#card-traj-${card.id})`}
+                  dot={false}
+                />
+                <ReferenceLine
+                  x={schedulingConfig.examDate}
+                  stroke={c.positive}
+                  strokeDasharray="4 4"
+                  label={{
+                    value: 'Exam',
+                    position: 'top',
+                    fill: c.ink,
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
+                />
+                {reviewDots.map((dot, index) => (
+                  <ReferenceDot
+                    key={index}
+                    x={dot.x}
+                    y={dot.y}
+                    r={4}
+                    fill={gradeColours[dot.grade]}
+                    stroke="none"
+                  />
+                ))}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="text-sm text-ink-faint">
+            {advancedDetails
+              ? 'This card has not been reviewed yet. Study it to see a forgetting curve.'
+              : 'This card has not been reviewed yet. Study it to see a recall estimate.'}
+          </p>
+        )}
+      </div>
+
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        {vitalStats.map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.16 * m, delay: i * 0.03 * m }}
+            className="rounded-2xl bg-ink/[0.04] p-3"
+          >
+            <div className="text-sm text-ink-soft">{stat.label}</div>
+            <div className="mt-1 font-display text-lg tracking-tight">{stat.value}</div>
+          </motion.div>
+        ))}
+      </div>
+
+      {card.history.length > 0 && (
+        <div>
+          <h4 className="mb-2 font-display text-lg tracking-tight">
+            {advancedDetails ? 'Grade distribution' : 'Review ratings'}
+          </h4>
+          <div className="flex items-end gap-3">
+            {([1, 2, 3, 4] as Grade[]).map((g) => {
+              const count = gradeCounts[g];
+              const max = Math.max(...Object.values(gradeCounts));
+              const maxBarHeight = 80;
+              const heightPx = max > 0 ? Math.round((count / max) * maxBarHeight) : 0;
+              return (
+                <div key={g} className="flex flex-1 flex-col items-center gap-1">
+                  <div className="text-xs font-medium text-ink-soft">{count}</div>
+                  <div className="flex w-full items-end" style={{ height: maxBarHeight }}>
+                    <motion.div
+                      initial={{ scaleY: 0 }}
+                      animate={{ scaleY: heightPx / maxBarHeight }}
+                      transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
+                      className="h-full w-full origin-bottom rounded-t-md"
+                      style={{ backgroundColor: gradeColours[g] }}
+                    />
+                  </div>
+                  <div className="text-[11px] text-ink-faint">{gradeLabels[g]}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

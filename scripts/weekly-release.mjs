@@ -10,8 +10,10 @@ const root = resolve(import.meta.dirname, '..');
 // Paths that end up in the desktop packages. Relay, server and API changes deploy separately,
 // and docs, tests, tooling and CI changes alone never justify a release.
 const shippedPaths = [
-  /^src\//,
-  /^electron\//,
+  /^packages\/core\//,
+  /^packages\/protocol\//,
+  /^apps\/web\/src\//,
+  /^apps\/desktop\//,
   /^public\//,
   /^index\.html$/,
   /^package\.json$/,

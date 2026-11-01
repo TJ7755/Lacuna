@@ -64,7 +64,7 @@ explanation steps do not establish uncued transfer.
 
 `science-techniques` version 1 supports several defined techniques on one marking criterion.
 The supported identities and their definitions belong to
-[the technique registry](../../src/questions/techniqueTags.ts). `science-explanations` version 1
+[the technique registry](../../packages/core/src/questions/techniqueTags.ts). `science-explanations` version 1
 keeps its original single-skill meaning; existing tags and receipts are not rewritten.
 
 ```json

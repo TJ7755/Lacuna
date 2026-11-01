@@ -22,15 +22,25 @@ async function run(command, args, options = {}) {
   const child = spawn(command, args, { windowsHide: true, ...options });
   let stdout = '';
   let stderr = '';
-  child.stdout?.on('data', (chunk) => { stdout += chunk.toString(); });
-  child.stderr?.on('data', (chunk) => { stderr += chunk.toString(); });
+  child.stdout?.on('data', (chunk) => {
+    stdout += chunk.toString();
+  });
+  child.stderr?.on('data', (chunk) => {
+    stderr += chunk.toString();
+  });
   const exitCode = await new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       child.kill();
       reject(new Error(`${path.basename(command)} exceeded the three-minute limit.`));
     }, 180_000);
-    child.once('error', (error) => { clearTimeout(timeout); reject(error); });
-    child.once('exit', (code) => { clearTimeout(timeout); resolve(code); });
+    child.once('error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.once('exit', (code) => {
+      clearTimeout(timeout);
+      resolve(code);
+    });
   });
   return { exitCode, stdout: stdout.trim(), stderr: stderr.trim() };
 }
@@ -73,30 +83,51 @@ const executable = path.join(installDirectory, 'Lacuna.exe');
 let companion;
 
 try {
-  const digest = createHash('sha256').update(await readFile(baselineInstaller)).digest('hex');
-  assert.equal(digest, baselineSha256, 'The historical installer does not match its published SHA-256.');
+  const digest = createHash('sha256')
+    .update(await readFile(baselineInstaller))
+    .digest('hex');
+  assert.equal(
+    digest,
+    baselineSha256,
+    'The historical installer does not match its published SHA-256.',
+  );
   await processSnapshot('before baseline installation');
   await install(baselineInstaller, installDirectory, 'baseline installation');
   const installedBaselineVersion = await installedVersion(executable);
   report.stages.push({ stage: 'baseline version', version: installedBaselineVersion });
   assert.equal(installedBaselineVersion, `${baselineVersion}.0`);
 
-  const entry = path.join(installDirectory, 'resources', 'app.asar', 'electron', 'dist-electron', 'mcp', 'aiCompanionEntry.js');
-  companion = spawn(executable, [
-    entry,
-    `--lacuna-host-user-data-dir=${profile}`,
-    `--lacuna-app-version=${baselineVersion}`,
-  ], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
-    stdio: ['pipe', 'ignore', 'pipe'],
-    windowsHide: true,
-  });
+  const entry = path.join(
+    installDirectory,
+    'resources',
+    'app.asar',
+    'electron',
+    'dist-electron',
+    'mcp',
+    'aiCompanionEntry.js',
+  );
+  companion = spawn(
+    executable,
+    [entry, `--lacuna-host-user-data-dir=${profile}`, `--lacuna-app-version=${baselineVersion}`],
+    {
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+      stdio: ['pipe', 'ignore', 'pipe'],
+      windowsHide: true,
+    },
+  );
   let companionStderr = '';
-  companion.stderr.on('data', (chunk) => { companionStderr += chunk.toString(); });
-  companion.on('error', (error) => { companionStderr += String(error); });
+  companion.stderr.on('data', (chunk) => {
+    companionStderr += chunk.toString();
+  });
+  companion.on('error', (error) => {
+    companionStderr += String(error);
+  });
   await new Promise((resolve) => setTimeout(resolve, 3_000));
-  assert.equal(companion.exitCode === null && companion.signalCode === null, true,
-    `The baseline companion exited early: ${companionStderr}`);
+  assert.equal(
+    companion.exitCode === null && companion.signalCode === null,
+    true,
+    `The baseline companion exited early: ${companionStderr}`,
+  );
   report.companionPid = companion.pid;
   await processSnapshot('before upgrade with live companion');
   await install(currentInstaller, installDirectory, 'upgrade');
@@ -104,11 +135,18 @@ try {
   const installedTargetVersion = await installedVersion(executable);
   report.stages.push({ stage: 'target version', version: installedTargetVersion });
   assert.equal(installedTargetVersion, `${packageJson.version}.0`);
-  for (let attempt = 0; attempt < 10 && companion.exitCode === null && companion.signalCode === null; attempt += 1) {
+  for (
+    let attempt = 0;
+    attempt < 10 && companion.exitCode === null && companion.signalCode === null;
+    attempt += 1
+  ) {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  assert.equal(companion.exitCode !== null || companion.signalCode !== null, true,
-    'The installer left the old companion running.');
+  assert.equal(
+    companion.exitCode !== null || companion.signalCode !== null,
+    true,
+    'The installer left the old companion running.',
+  );
   report.result = 'passed';
 } catch (error) {
   report.result = 'failed';
@@ -120,6 +158,11 @@ try {
 } finally {
   companion?.kill();
   await mkdir(reportDirectory, { recursive: true });
-  await writeFile(path.join(reportDirectory, 'installed-upgrade.json'), `${JSON.stringify(report, null, 2)}\n`);
-  await rm(workspace, { recursive: true, force: true, maxRetries: 3, retryDelay: 1_000 }).catch(() => undefined);
+  await writeFile(
+    path.join(reportDirectory, 'installed-upgrade.json'),
+    `${JSON.stringify(report, null, 2)}\n`,
+  );
+  await rm(workspace, { recursive: true, force: true, maxRetries: 3, retryDelay: 1_000 }).catch(
+    () => undefined,
+  );
 }

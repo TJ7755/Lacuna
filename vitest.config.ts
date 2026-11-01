@@ -1,17 +1,17 @@
 import { configDefaults, defineConfig } from 'vitest/config';
 
 const nodeTests = [
-  'src/fsrs/**/*.test.ts',
-  'src/course/**/*.test.ts',
-  'src/questions/generators/**/*.test.ts',
-  'server/**/*.test.ts',
+  'apps/web/src/fsrs/**/*.test.ts',
+  'apps/web/src/course/**/*.test.ts',
+  'apps/web/src/questions/generators/**/*.test.ts',
+  'apps/ai/server/**/*.test.ts',
   'scripts/**/*.test.ts',
 ];
 
 // These tests also exercise browser-backed preferences through the repository.
 const browserStorageTests = [
-  'src/course/localLessonOrder.test.ts',
-  'src/fsrs/optimise.persistence.test.ts',
+  'apps/web/src/course/localLessonOrder.test.ts',
+  'apps/web/src/fsrs/optimise.persistence.test.ts',
 ];
 export default defineConfig({
   test: {
@@ -32,7 +32,7 @@ export default defineConfig({
       {
         test: {
           name: 'browser',
-          include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+          include: ['apps/web/src/**/*.test.ts', 'apps/web/src/**/*.test.tsx'],
           exclude: [...configDefaults.exclude, ...nodeTests],
           setupFiles: ['./tests/setup.ts'],
         },
@@ -52,34 +52,64 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       include: [
-        'src/course/path.ts',
-        'src/course/pathConstruction.ts',
-        'src/course/pathGates.ts',
-        'src/course/pathPlacement.ts',
-        'src/course/pathProgress.ts',
-        'src/course/pathRules.ts',
-        'src/course/pathTypes.ts',
-        'src/course/unlock.ts',
-        'src/fsrs/session.ts',
-        'src/db/lineageDiff.ts',
+        'apps/web/src/course/path.ts',
+        'apps/web/src/course/pathConstruction.ts',
+        'apps/web/src/course/pathGates.ts',
+        'apps/web/src/course/pathPlacement.ts',
+        'apps/web/src/course/pathProgress.ts',
+        'apps/web/src/course/pathRules.ts',
+        'apps/web/src/course/pathTypes.ts',
+        'apps/web/src/course/unlock.ts',
+        'apps/web/src/fsrs/session.ts',
+        'apps/web/src/db/lineageDiff.ts',
       ],
       thresholds: {
         perFile: true,
-        'src/course/path.ts': { statements: 95, branches: 94, functions: 99, lines: 95 },
-        'src/course/pathConstruction.ts': {
+        'apps/web/src/course/path.ts': { statements: 95, branches: 94, functions: 99, lines: 95 },
+        'apps/web/src/course/pathConstruction.ts': {
           statements: 95,
           branches: 94,
           functions: 99,
           lines: 95,
         },
-        'src/course/pathGates.ts': { statements: 95, branches: 94, functions: 99, lines: 95 },
-        'src/course/pathPlacement.ts': { statements: 95, branches: 94, functions: 99, lines: 95 },
-        'src/course/pathProgress.ts': { statements: 95, branches: 94, functions: 99, lines: 95 },
-        'src/course/pathRules.ts': { statements: 95, branches: 94, functions: 99, lines: 95 },
-        'src/course/pathTypes.ts': { statements: 95, branches: 94, functions: 99, lines: 95 },
-        'src/course/unlock.ts': { statements: 98, branches: 98, functions: 99, lines: 98 },
-        'src/fsrs/session.ts': { statements: 94, branches: 81, functions: 99, lines: 95 },
-        'src/db/lineageDiff.ts': { statements: 80, branches: 82, functions: 99, lines: 80 },
+        'apps/web/src/course/pathGates.ts': {
+          statements: 95,
+          branches: 94,
+          functions: 99,
+          lines: 95,
+        },
+        'apps/web/src/course/pathPlacement.ts': {
+          statements: 95,
+          branches: 94,
+          functions: 99,
+          lines: 95,
+        },
+        'apps/web/src/course/pathProgress.ts': {
+          statements: 95,
+          branches: 94,
+          functions: 99,
+          lines: 95,
+        },
+        'apps/web/src/course/pathRules.ts': {
+          statements: 95,
+          branches: 94,
+          functions: 99,
+          lines: 95,
+        },
+        'apps/web/src/course/pathTypes.ts': {
+          statements: 95,
+          branches: 94,
+          functions: 99,
+          lines: 95,
+        },
+        'apps/web/src/course/unlock.ts': { statements: 98, branches: 98, functions: 99, lines: 98 },
+        'apps/web/src/fsrs/session.ts': { statements: 94, branches: 81, functions: 99, lines: 95 },
+        'apps/web/src/db/lineageDiff.ts': {
+          statements: 80,
+          branches: 82,
+          functions: 99,
+          lines: 80,
+        },
       },
     },
   },

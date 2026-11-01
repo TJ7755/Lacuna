@@ -8,10 +8,10 @@ Use the [school notice](gaps-school-notice.md) and the
 
 Use the separate `lacuna-gaps` project for `gaps.getlacuna.app` and its
 `teach.getlacuna.app` redirect. Do not change the learner project's build command.
-Confirm team `tj7755`, production branch `master`, Root Directory `gaps`, and
+Confirm team `tj7755`, production branch `master`, Root Directory `apps/gaps`, and
 inclusion of source files outside that directory. Keep the frozen-lockfile
-install/build commands in [gaps/vercel.json](../gaps/vercel.json); they run from
-the repository parent and produce `gaps/dist`. Use the repository's pinned Bun.
+install/build commands in [apps/gaps/vercel.json](../apps/gaps/vercel.json); they run from
+the repository root (`cd ../..`) and produce `apps/gaps/dist`. Use the repository's pinned Bun.
 
 Keep the remote Ignored Build Step skipping automatic previews:
 
@@ -80,7 +80,7 @@ reports are not an attendance count. Preserve self-reported/unknown evidence.
 
 ## Verify retention maintenance
 
-`relay/vercel.json` schedules `/api/ai/maintenance` at **03:00 UTC daily**. The
+`apps/relay/vercel.json` schedules `/api/ai/maintenance` at **03:00 UTC daily**. The
 existing job also maintains sync, shares and AI records. It requires a production
 `CRON_SECRET` on `lacuna-relay`; Vercel supplies it in the cron's bearer header.
 Keep it a server-only Secret, never a browser variable or repository file.

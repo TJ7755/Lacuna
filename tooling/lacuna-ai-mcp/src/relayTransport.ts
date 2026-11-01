@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
-import type { AiClientIdentity, JsonValue } from '../../../src/ai/protocol.js';
+import type { AiClientIdentity, JsonValue } from '../../../apps/web/src/ai/protocol.js';
 import {
   createRelayKeyPair,
   deriveRelayEncryptionKey,
   openRelayJson,
   sealRelayJson,
   type RelayKeyPair,
-} from '../../../src/ai/relayCrypto.js';
+} from '../../../apps/web/src/ai/relayCrypto.js';
 import {
   relayBrowserMailboxSchema,
   relayClaimResponseSchema,
@@ -15,8 +15,8 @@ import {
   relayTerminalMailboxSchema,
   type RelayEnvelope,
   type RelayTerminalMailbox,
-} from '../../../src/ai/relayProtocol.js';
-import { normaliseRelayUrl } from '../../../src/sync/relay.js';
+} from '../../../apps/web/src/ai/relayProtocol.js';
+import { normaliseRelayUrl } from '../../../apps/web/src/sync/relay.js';
 import {
   TerminalRelayReconnectRequiredError,
   type ConnectedTerminalRelay,
@@ -105,7 +105,10 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
     return connection;
   }
 
-  async readBrowserMailbox(connection: ConnectedTerminalRelay, signal?: AbortSignal): Promise<{
+  async readBrowserMailbox(
+    connection: ConnectedTerminalRelay,
+    signal?: AbortSignal,
+  ): Promise<{
     generation: string;
     mailbox: ReturnType<typeof relayBrowserMailboxSchema.parse>;
   } | null> {

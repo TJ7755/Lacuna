@@ -1,12 +1,12 @@
 import { vi } from 'vitest';
-import { buildAiInstructionBundle } from '../../../src/ai/instructions';
-import type { AiClientIdentity } from '../../../src/ai/protocol';
+import { buildAiInstructionBundle } from '../../../apps/web/src/ai/instructions';
+import type { AiClientIdentity } from '../../../apps/web/src/ai/protocol';
 import {
   AI_RELAY_EMPTY_GENERATION,
   AI_RELAY_PROTOCOL_VERSION,
   type RelayBrowserMailbox,
   type RelayTerminalMailbox,
-} from '../../../src/ai/relayProtocol';
+} from '../../../apps/web/src/ai/relayProtocol';
 import {
   DEFAULT_AI_RELAY_URL,
   TerminalRelayReconnectRequiredError,

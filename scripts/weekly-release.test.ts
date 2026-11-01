@@ -33,12 +33,19 @@ function git(tags: string, changed: string) {
 const quiet = () => {};
 
 describe('weekly release', () => {
+  it.each(['packages/core/src/db/types.ts', 'packages/protocol/src/insights/index.ts'])(
+    'ships shared runtime changes in %s',
+    (path) => {
+      expect(shipsChanges([path])).toBe(true);
+    },
+  );
+
   it('prepares shipped changes using notes generated between the release tag and exact head', async () => {
     const directory = repository();
     const requests: unknown[] = [];
     const version = await main({
       directory,
-      git: git('v0.2.14', 'src/app.tsx\ndocs/x.md'),
+      git: git('v0.2.14', 'apps/web/src/app.tsx\ndocs/x.md'),
       fetchRelease: async () => published,
       generateNotes: async (input: unknown) => {
         requests.push(input);
@@ -51,11 +58,13 @@ describe('weekly release', () => {
     expect(readFileSync(join(directory, 'docs/releases/0.2.15.md'), 'utf8')).toBe(
       "## Lacuna 0.2.15 Beta\n\n## What's Changed\n* Fixed a crash by @tester in https://github.com/TJ7755/Lacuna/pull/600\n",
     );
-    expect(requests).toEqual([{
-      tag_name: 'v0.2.15',
-      previous_tag_name: 'v0.2.14',
-      target_commitish: 'c'.repeat(40),
-    }]);
+    expect(requests).toEqual([
+      {
+        tag_name: 'v0.2.15',
+        previous_tag_name: 'v0.2.14',
+        target_commitish: 'c'.repeat(40),
+      },
+    ]);
   });
 
   it('skips when only unshipped paths changed', async () => {
@@ -71,12 +80,16 @@ describe('weekly release', () => {
 
   it('leaves the checkout unchanged when generating notes fails', async () => {
     const directory = repository();
-    await expect(main({
-      directory,
-      git: git('v0.2.14', 'src/app.tsx'),
-      generateNotes: async () => { throw new Error('GitHub unavailable'); },
-      log: quiet,
-    })).rejects.toThrow('GitHub unavailable');
+    await expect(
+      main({
+        directory,
+        git: git('v0.2.14', 'apps/web/src/app.tsx'),
+        generateNotes: async () => {
+          throw new Error('GitHub unavailable');
+        },
+        log: quiet,
+      }),
+    ).rejects.toThrow('GitHub unavailable');
     expect(readFileSync(join(directory, 'package.json'), 'utf8')).toContain('"0.2.14"');
     expect(existsSync(join(directory, 'scripts/windows-release-baseline.json'))).toBe(false);
     expect(existsSync(join(directory, 'docs/releases/0.2.15.md'))).toBe(false);
@@ -84,12 +97,12 @@ describe('weekly release', () => {
 
   it('skips while the current version is still awaiting its tag', async () => {
     const directory = repository();
-    expect(await main({ directory, git: git('', 'src/app.tsx'), log: quiet })).toBeNull();
+    expect(await main({ directory, git: git('', 'apps/web/src/app.tsx'), log: quiet })).toBeNull();
   });
 
   it('bumps only the patch number', () => {
     expect(nextPatch('0.2.9')).toBe('0.2.10');
-    expect(shipsChanges(['electron/main.ts'])).toBe(true);
-    expect(shipsChanges(['docs/a.md', 'tests/b.spec.ts', 'server/c.ts'])).toBe(false);
+    expect(shipsChanges(['apps/desktop/main.ts'])).toBe(true);
+    expect(shipsChanges(['docs/a.md', 'tests/b.spec.ts', 'apps/ai/server/c.ts'])).toBe(false);
   });
 });

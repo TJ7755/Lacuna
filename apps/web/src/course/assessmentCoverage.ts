@@ -1,0 +1,226 @@
+import type { Card, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
+import { lessonCardMembershipForLessons } from './lessonMembership';
+import { resolveLessonOrder } from './lessonOrder';
+import type { Concept } from '@lacuna/core/questions/types';
+import {
+  specificationAssessmentPointIds,
+  type AssessmentSpecificationCourse,
+} from '../specifications/assessment';
+export { lessonOrder } from './lessonOrder';
+
+export interface AssessmentSpecificationContext {
+  course?: AssessmentSpecificationCourse;
+  concepts?: readonly Concept[];
+}
+
+export type AssessmentValidationCode =
+  | 'missing-placement-lesson'
+  | 'cross-course-placement-lesson'
+  | 'empty-custom-coverage'
+  | 'duplicate-custom-lesson'
+  | 'missing-covered-lesson'
+  | 'cross-course-covered-lesson'
+  | 'missing-excluded-card'
+  | 'cross-course-excluded-card'
+  | 'excluded-card-not-covered'
+  | 'invalid-specification-coverage';
+
+export interface AssessmentValidationIssue {
+  code: AssessmentValidationCode;
+  referenceId?: string;
+  message: string;
+}
+
+export interface ResolvedAssessmentCoverage {
+  placementIndex: number;
+  coveredLessons: Lesson[];
+  cards: Card[];
+  validation: {
+    valid: boolean;
+    needsAuthorConfirmation: boolean;
+    issues: AssessmentValidationIssue[];
+  };
+}
+
+/**
+ * Resolve placement and coverage. A learner preference changes prefixes, while
+ * published custom membership and exclusions stay intact. Without a preference,
+ * authoring validation also enforces anchor and exclusion consistency. Explicit
+ * lesson membership is independent of path placement.
+ */
+export function resolveAssessmentCoverage(
+  assessment: CourseAssessment,
+  lessons: Lesson[],
+  cards: Card[],
+  links: LessonCardLink[],
+  preferredLessonIds?: readonly string[],
+  specificationContext?: AssessmentSpecificationContext,
+): ResolvedAssessmentCoverage {
+  const issues: AssessmentValidationIssue[] = [];
+  const orderedLessons = resolveLessonOrder(
+    lessons.filter((lesson) => lesson.courseId === assessment.courseId),
+    preferredLessonIds,
+  );
+  const lessonsById = new Map(lessons.map((lesson) => [lesson.id, lesson]));
+  const cardsById = new Map(cards.map((card) => [card.id, card]));
+
+  let placementIndex = -1;
+  if (assessment.afterLessonId !== null) {
+    const anchor = lessonsById.get(assessment.afterLessonId);
+    if (!anchor) {
+      issues.push({
+        code: 'missing-placement-lesson',
+        referenceId: assessment.afterLessonId,
+        message: `Assessment placement lesson ${assessment.afterLessonId} could not be found.`,
+      });
+    } else if (anchor.courseId !== assessment.courseId) {
+      issues.push({
+        code: 'cross-course-placement-lesson',
+        referenceId: anchor.id,
+        message: `Assessment placement lesson ${anchor.id} belongs to another course.`,
+      });
+    } else {
+      placementIndex = orderedLessons.findIndex((lesson) => lesson.id === anchor.id);
+    }
+  }
+
+  // A final assessment with no explicit anchor is placed after the last lesson (it
+  // covers everything taught so far), matching legacy migration semantics and the
+  // editor copy. A checkpoint with no anchor legitimately means "before all lessons",
+  // so this only applies to finals.
+  if (assessment.kind === 'final' && assessment.afterLessonId === null) {
+    placementIndex = orderedLessons.length - 1;
+  }
+
+  let coveredLessons: Lesson[];
+  let specificationCards: Card[] | undefined;
+  if (assessment.coverageMode === 'specification') {
+    specificationCards = [];
+    try {
+      const points = new Set(
+        specificationAssessmentPointIds(assessment, specificationContext?.course),
+      );
+      if (!specificationContext?.concepts) {
+        throw new Error('Specification coverage requires Course Concepts.');
+      }
+      const conceptIds = new Set(
+        specificationContext.concepts
+          .filter(
+            (concept) =>
+              concept.scope === 'course' &&
+              concept.courseId === assessment.courseId &&
+              concept.specificationPointIds?.some((point) => points.has(point)),
+          )
+          .map((concept) => concept.id),
+      );
+      specificationCards = cards.filter(
+        (card) => card.courseId === assessment.courseId && conceptIds.has(card.conceptId),
+      );
+    } catch (error) {
+      issues.push({
+        code: 'invalid-specification-coverage',
+        message: error instanceof Error ? error.message : 'Invalid specification coverage.',
+      });
+    }
+    const memberIds = new Set(specificationCards.map((card) => card.id));
+    const lessonIds = new Set(
+      specificationCards.flatMap((card) => (card.primaryLessonId ? [card.primaryLessonId] : [])),
+    );
+    for (const link of links) if (memberIds.has(link.cardId)) lessonIds.add(link.lessonId);
+    coveredLessons = orderedLessons.filter((lesson) => lessonIds.has(lesson.id));
+  } else if (assessment.coverageMode === 'prefix') {
+    coveredLessons = orderedLessons.slice(0, placementIndex + 1);
+  } else {
+    if (assessment.lessonIds.length === 0) {
+      issues.push({
+        code: 'empty-custom-coverage',
+        message: 'Custom assessment coverage must contain at least one lesson.',
+      });
+    }
+    const seen = new Set<string>();
+    coveredLessons = [];
+    for (const lessonId of assessment.lessonIds) {
+      if (seen.has(lessonId)) {
+        issues.push({
+          code: 'duplicate-custom-lesson',
+          referenceId: lessonId,
+          message: `Custom assessment coverage contains lesson ${lessonId} more than once.`,
+        });
+        continue;
+      }
+      seen.add(lessonId);
+      const lesson = lessonsById.get(lessonId);
+      if (!lesson) {
+        issues.push({
+          code: 'missing-covered-lesson',
+          referenceId: lessonId,
+          message: `Covered lesson ${lessonId} could not be found.`,
+        });
+      } else if (lesson.courseId !== assessment.courseId) {
+        issues.push({
+          code: 'cross-course-covered-lesson',
+          referenceId: lessonId,
+          message: `Covered lesson ${lessonId} belongs to another course.`,
+        });
+      } else {
+        coveredLessons.push(lesson);
+      }
+    }
+    const indices = new Map(orderedLessons.map((lesson, index) => [lesson.id, index]));
+    coveredLessons.sort((left, right) => indices.get(left.id)! - indices.get(right.id)!);
+  }
+
+  const coveredLessonIds = new Set(coveredLessons.map((lesson) => lesson.id));
+  const coveredCards =
+    specificationCards ??
+    lessonCardMembershipForLessons(coveredLessonIds, cards, links).filter(
+      (card) => card.courseId === assessment.courseId,
+    );
+  const coveredCardIds = new Set(coveredCards.map((card) => card.id));
+  for (const cardId of assessment.excludedCardIds) {
+    const card = cardsById.get(cardId);
+    if (!card) {
+      issues.push({
+        code: 'missing-excluded-card',
+        referenceId: cardId,
+        message: `Excluded card ${cardId} could not be found.`,
+      });
+    } else if (card.courseId !== assessment.courseId) {
+      issues.push({
+        code: 'cross-course-excluded-card',
+        referenceId: cardId,
+        message: `Excluded card ${cardId} belongs to another course.`,
+      });
+    } else if (preferredLessonIds === undefined && !coveredCardIds.has(cardId)) {
+      issues.push({
+        code: 'excluded-card-not-covered',
+        referenceId: cardId,
+        message: `Excluded card ${cardId} is not covered by the assessment.`,
+      });
+    }
+  }
+
+  const excludedIds = new Set(assessment.excludedCardIds);
+  return {
+    placementIndex,
+    coveredLessons,
+    cards: coveredCards.filter((card) => !excludedIds.has(card.id)),
+    validation: {
+      valid: issues.length === 0,
+      needsAuthorConfirmation:
+        assessment.needsAuthorConfirmation === true ||
+        issues.some((issue) =>
+          [
+            'missing-placement-lesson',
+            'cross-course-placement-lesson',
+            'missing-covered-lesson',
+            'cross-course-covered-lesson',
+            'missing-excluded-card',
+            'cross-course-excluded-card',
+            'invalid-specification-coverage',
+          ].includes(issue.code),
+        ),
+      issues,
+    },
+  };
+}

@@ -1,10 +1,10 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import type { Card, CourseAssessment, CourseRecord, Lesson } from '../../src/db/types';
-import type { ReviewHistoryEntry } from '../../src/db/reviewHistory';
+import type { Card, CourseAssessment, CourseRecord, Lesson } from '@lacuna/core/db/types';
+import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import {
   paperSpecification,
   paperSpecificationReference,
-} from '../../src/specifications/paperFixture.testFixtures';
+} from '../../apps/web/src/specifications/paperFixture.testFixtures';
 import { chooseScheduledStudy, enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 

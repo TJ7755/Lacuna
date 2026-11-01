@@ -4,15 +4,15 @@ import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
-import { callJevAllocationBatch, callJevDecision } from '../server/jev/provider';
+import { callJevAllocationBatch, callJevDecision } from '../apps/ai/server/jev/provider';
 import {
   JEV_MODEL,
   JEV_ALLOCATION_CONFIDENCE_THRESHOLDS,
   jevDecisionResultSchema,
   jevAllocationBatchResultSchema,
   jevAllocationInputSchema,
-} from '../src/jev/protocol';
-import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD } from '../src/jev/diagnosis';
+} from '../apps/web/src/jev/protocol';
+import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD } from '@lacuna/core/jev/diagnosis';
 import { hash, validateLabels } from './jev-evaluation/labels';
 import { cases, policy, strata, type EvaluationCase } from './jev-evaluation/pack';
 import { summarise, type Observation } from './jev-evaluation/metrics';
@@ -24,15 +24,15 @@ const sources = [
   'scripts/jev-evaluation/labels.ts',
   'scripts/jev-evaluation/metrics.ts',
   'scripts/jev-evaluation/README.md',
-  'server/jev/provider.ts',
-  'server/jev/diagnosis.ts',
-  'src/jev/protocol.ts',
-  'src/jev/diagnosis.ts',
-  'src/jev/answerParts.ts',
-  'src/questions/techniqueTags.ts',
+  'apps/ai/server/jev/provider.ts',
+  'apps/ai/server/jev/diagnosis.ts',
+  'apps/web/src/jev/protocol.ts',
+  'packages/core/src/jev/diagnosis.ts',
+  'apps/web/src/jev/answerParts.ts',
+  'packages/core/src/questions/techniqueTags.ts',
   'bun.lock',
   '.bun-version',
-  'relay/scripts/security-bun.json',
+  'apps/relay/scripts/security-bun.json',
 ];
 async function identity(evaluationCases = cases, executionPolicy = policy) {
   const sourceHashes = Object.fromEntries(
@@ -107,7 +107,7 @@ async function main(args: string[]) {
       'Use export --out NEW_DIRECTORY, or validate/live --labels FILE; live also requires --allow-paid --out NEW_DIRECTORY.',
     );
   const pin = JSON.parse(
-    await readFile(new URL('relay/scripts/security-bun.json', root), 'utf8'),
+    await readFile(new URL('apps/relay/scripts/security-bun.json', root), 'utf8'),
   ) as { revision: string };
   if (execFileSync(process.execPath, ['--revision'], { encoding: 'utf8' }).trim() !== pin.revision)
     throw new Error('Use the repository-pinned Bun revision.');

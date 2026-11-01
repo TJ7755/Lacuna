@@ -1,6 +1,6 @@
 name: Managed-device failure
 description: Report installation, policy, proxy, antivirus or school-device compatibility failure
-title: "[Managed device]: "
+title: '[Managed device]: '
 labels:
   - bug
 body:
@@ -8,7 +8,7 @@ body:
     id: failure
     attributes:
       label: Failure
-      description: "Describe what the learner attempted and what failed: install, launch, update, relay access, native AI, backup or another workflow."
+      description: 'Describe what the learner attempted and what failed: install, launch, update, relay access, native AI, backup or another workflow.'
     validations:
       required: true
   - type: textarea

@@ -13,8 +13,8 @@ runs:
     - name: Restore verified Bun download
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
-        path: relay/node_modules/.cache/security-runtime/downloads
-        key: bun-runtime-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.bun-version', 'relay/scripts/security-bun.json') }}
+        path: apps/relay/node_modules/.cache/security-runtime/downloads
+        key: bun-runtime-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.bun-version', 'apps/relay/scripts/security-bun.json') }}
     - name: Restore Bun package downloads
       # Extracting the many-file package cache costs more than installing on Windows.
       # Keep the small checksum-verified runtime cache on every platform.
@@ -27,7 +27,7 @@ runs:
           bun-packages-v4-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-dependency-path }}-
     - name: Install the checksum-verified security revision
       shell: bash
-      run: node relay/scripts/security-bun.mjs --install
+      run: node apps/relay/scripts/security-bun.mjs --install
     - name: Use the restored package download directory
       shell: bash
       run: |

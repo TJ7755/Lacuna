@@ -56,14 +56,14 @@ to validate this command.
 ## Hosting
 
 Create a separate Vercel project named `lacuna-library`, connected to this repository.
-Set its Root Directory to `library`, production branch to `master`, and enable
+Set its Root Directory to `apps/library`, production branch to `master`, and enable
 **Include source files outside of the Root Directory in the Build Step**. That setting
 allows the entry to reuse Lacuna's fonts, styles and React components
 ([Vercel monorepo guidance](https://vercel.com/docs/monorepos/monorepo-faq#can-i-share-source-files-between-projects-are-shared-packages-supported)).
 
-[library/vercel.json](../library/vercel.json) supplies the install/build commands and
+[apps/library/vercel.json](../apps/library/vercel.json) supplies the install/build commands and
 `dist` output directory. Assign `library.getlacuna.app` to that project's Production
-environment. Keep the main Lacuna and Gaps projects, domains and build settings unchanged.
+environment. Apply the other workspace root changes in the [deployment procedure](maintenance/workspaces.md). Keep domains unchanged.
 The code prepares hosting; it does not create the project or publish a deployment.
 
 ## Official publication retention
@@ -71,7 +71,7 @@ The code prepares hosting; it does not create the project or publish a deploymen
 The policy includes the 26 official catalogue publications, including Religious Studies 8062,
 Combined Science 1SC0 and J250, and the 19 new science links.
 The relay keeps these publications readable while their ownership and payload
-objects exist, using the reviewed allow-list in `relay/src/officialPublications.ts`. The public
+objects exist, using the reviewed allow-list in `apps/relay/src/officialPublications.ts`. The public
 catalogue does not grant retention, and ordinary shares still expire after 90 days without a write.
 No timer, download or unchanged-publication retry renews a share. The additions take effect only
 when this relay change is deployed; catalogue deployment alone does not activate retention.

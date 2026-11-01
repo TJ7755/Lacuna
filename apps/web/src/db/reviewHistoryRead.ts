@@ -1,0 +1,135 @@
+import { db } from './schema';
+import { addDays } from '../fsrs/heatmap';
+import { startOfDay } from '../utils/datetime';
+import {
+  cardsWithReviewHistory,
+  resolveReviewHistoryCollisions,
+  reviewHistoryEntriesForCard,
+  type ReviewHistoryEntry,
+} from '@lacuna/core/db/reviewHistory';
+import type { Card } from '@lacuna/core/db/types';
+
+/** Count every persisted review attempt in the user's current local calendar day. */
+export async function dailyReviewCounts(
+  kind: 'course' | 'scheduling-unit',
+  now: number = Date.now(),
+): Promise<Map<string, number>> {
+  const dayStart = startOfDay(now);
+  const entries = await db.reviewHistory
+    .where('timestamp')
+    .between(dayStart, addDays(dayStart, 1), true, false)
+    .toArray();
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    const unitId = kind === 'course' ? entry.courseId : entry.schedulingUnitId;
+    if (unitId) counts.set(unitId, (counts.get(unitId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function sortReviewHistory(entries: ReviewHistoryEntry[]): ReviewHistoryEntry[] {
+  return entries.sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id));
+}
+
+/**
+ * Merge canonical rows with card projections for compatibility reads. A canonical
+ * event row suppresses only the matching projection for the same card/event;
+ * legacy-only projection rows remain visible until the compatibility window closes.
+ */
+function mergeReviewHistoryForRead(
+  canonical: readonly ReviewHistoryEntry[],
+  cards: Card[],
+): ReviewHistoryEntry[] {
+  const canonicalEvents = new Set(
+    canonical
+      .filter((entry) => entry.eventId)
+      .map((entry) => `${entry.cardId}\u0000${entry.eventId}`),
+  );
+  const projections = cards.flatMap((card) =>
+    reviewHistoryEntriesForCard({
+      ...card,
+      history: (Array.isArray(card.history) ? card.history : []).filter(
+        (review) => !review.eventId || !canonicalEvents.has(`${card.id}\u0000${review.eventId}`),
+      ),
+    }),
+  );
+  if (projections.length === 0) {
+    // These rows came from IndexedDB, so primary keys are already unique. Only
+    // cross-card event ownership can require collision repair on a canonical-only read.
+    const owners = new Map<string, string>();
+    let collision = false;
+    for (const entry of canonical) {
+      if (!entry.eventId) continue;
+      const owner = owners.get(entry.eventId);
+      if (owner && owner !== entry.cardId) {
+        collision = true;
+        break;
+      }
+      owners.set(entry.eventId, entry.cardId);
+    }
+    if (!collision) return [...canonical];
+  }
+  return resolveReviewHistoryCollisions([...canonical, ...projections]);
+}
+
+/** Resolve an explicitly supplied canonical result without consulting projections. */
+function resolveExplicitReviewHistory(
+  entries: readonly ReviewHistoryEntry[],
+): ReviewHistoryEntry[] {
+  return resolveReviewHistoryCollisions([...entries]);
+}
+
+/**
+ * Read review events for a card set. When `reviewHistory` is omitted, the adapter
+ * retains legacy-only projection rows for compatibility. When it is supplied,
+ * including as an explicit empty array, that canonical result is authoritative.
+ */
+export async function listReviewHistoryForCards(
+  cards: Card[],
+  reviewHistory?: readonly ReviewHistoryEntry[],
+): Promise<ReviewHistoryEntry[]> {
+  if (cards.length === 0) return [];
+  const canonical =
+    reviewHistory ??
+    (await db.transaction('r', db.reviewHistory, async () => {
+      // anyOf uses an IndexedDB cursor callback for every event. Exact-key getAll
+      // reads share one transaction and preserve that cursor's index/key order.
+      const cardIds = [...new Set(cards.map((card) => card.id))].sort();
+      const histories = await Promise.all(
+        cardIds.map((id) => db.reviewHistory.where('cardId').equals(id).toArray()),
+      );
+      return histories.flat();
+    }));
+  const entries =
+    reviewHistory === undefined
+      ? mergeReviewHistoryForRead(canonical, cards)
+      : resolveExplicitReviewHistory(
+          canonical.filter((entry) => cards.some((card) => card.id === entry.cardId)),
+        );
+  return sortReviewHistory(entries);
+}
+
+/** Read all review events through the canonical adapter, with legacy compatibility fallback. */
+export async function listAllReviewHistory(): Promise<ReviewHistoryEntry[]> {
+  const canonical = await db.reviewHistory.toArray();
+  return sortReviewHistory(mergeReviewHistoryForRead(canonical, await db.cards.toArray()));
+}
+
+/** Read one course's review events through the canonical adapter. */
+export async function listReviewHistoryForCourse(courseId: string): Promise<ReviewHistoryEntry[]> {
+  const [canonical, cards] = await Promise.all([
+    db.reviewHistory.where('courseId').equals(courseId).toArray(),
+    db.cards.where('courseId').equals(courseId).toArray(),
+  ]);
+  return sortReviewHistory(mergeReviewHistoryForRead(canonical, cards));
+}
+
+/** Hydrate cards from review history. An explicitly supplied empty canonical result clears history. */
+export async function hydrateCardsWithHistory(
+  cards: Card[],
+  reviewHistory?: readonly ReviewHistoryEntry[],
+): Promise<Card[]> {
+  if (cards.length === 0) return [];
+  const entries = await listReviewHistoryForCards(cards, reviewHistory);
+  return cardsWithReviewHistory(cards, entries);
+}

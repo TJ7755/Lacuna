@@ -1,0 +1,212 @@
+import type * as Recharts from 'recharts';
+import { cloneElement, type ReactElement } from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import { forgettingCurve } from '../../fsrs/forwardSim';
+import { decayOf } from '../../fsrs/fsrs';
+import { CardAnalytics } from './CardAnalytics';
+
+vi.mock('../analytics/useChartColours', () => ({
+  useChartColours: () => ({
+    accent: 'blue',
+    ink: 'black',
+    inkFaint: 'grey',
+    line: 'silver',
+    positive: 'green',
+    surface: 'white',
+  }),
+}));
+
+vi.mock('recharts', async (importOriginal) => ({
+  ...(await importOriginal<typeof Recharts>()),
+  // Happy DOM has no layout; keep the real chart and supply its measured size.
+  ResponsiveContainer: ({ children }: { children: ReactElement }) =>
+    cloneElement(children as ReactElement<{ width: number; height: number }>, {
+      width: 800,
+      height: 192,
+    }),
+}));
+
+const NOW = Date.UTC(2026, 7, 31, 12);
+
+function makeCard(): Card {
+  return {
+    id: 'card-1',
+    conceptId: 'concept-1',
+    deckId: 'deck-1',
+    schedulingUnitId: 'deck-1',
+    type: 'front_back',
+    front: 'Question',
+    back: 'Answer',
+    stability: 4,
+    difficulty: 5,
+    lastReviewed: NOW - MS_PER_DAY,
+    reps: 1,
+    lapses: 0,
+    state: 2,
+    due: NOW + MS_PER_DAY,
+    scheduledDays: 1,
+    learningSteps: 0,
+    history: [],
+    createdAt: NOW - MS_PER_DAY,
+    updatedAt: NOW,
+  };
+}
+
+function makeSchedulingConfig(examDate: number): LegacyDeckRecord {
+  return {
+    id: 'deck-1',
+    name: 'Course',
+    examDate,
+    createdAt: NOW - MS_PER_DAY,
+    fsrsVersion: FSRS_VERSION,
+    fsrsParameters: defaultFsrsParameters(),
+    examObjective: 'expectedMarks',
+  };
+}
+
+afterEach(() => {
+  localStorage.removeItem('lacuna.advancedDetails');
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
+
+describe('CardAnalytics', () => {
+  it('keeps recall and review evidence readable without exposing scheduler internals', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(NOW);
+    localStorage.setItem('lacuna.advancedDetails', 'false');
+    const card = makeCard();
+    const { container } = render(
+      <CardAnalytics
+        card={card}
+        schedulingConfig={makeSchedulingConfig(NOW + 6 * MS_PER_DAY)}
+        motionMultiplier={0}
+      />,
+    );
+
+    expect(screen.queryByText('Stability')).not.toBeInTheDocument();
+    expect(screen.queryByText('Difficulty')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Predicted recall over time' })).toBeInTheDocument();
+    const recallNow = screen.getByText('Predicted recall now').parentElement!;
+    expect(recallNow).toHaveTextContent('97%');
+    expect(screen.getByText('Predicted exam-day recall')).toBeInTheDocument();
+    expect(screen.getByText('Total reviews').parentElement).toHaveTextContent('1');
+    expect(screen.getByText('Times forgotten in review').parentElement).toHaveTextContent('0');
+    expect(screen.getByText('Due').parentElement).toHaveTextContent('1 Sept');
+
+    localStorage.setItem('lacuna.advancedDetails', 'true');
+    fireEvent(window, new StorageEvent('storage', { key: 'lacuna.advancedDetails' }));
+    expect(screen.getByText('Stability').parentElement).toHaveTextContent('4.0d');
+    expect(screen.getByText('Difficulty').parentElement).toHaveTextContent('5.0');
+    expect(screen.getByText('Current R').parentElement).toHaveTextContent('97%');
+    expect(screen.getByRole('heading', { name: 'Forgetting curve' })).toBeInTheDocument();
+    expect(container).not.toHaveTextContent('Predicted recall now');
+  });
+
+  it('keeps the exam label above the plot with readable text', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(NOW);
+    render(
+      <CardAnalytics
+        card={{ ...makeCard(), stability: 60 }}
+        schedulingConfig={makeSchedulingConfig(NOW + 6 * MS_PER_DAY)}
+        motionMultiplier={0}
+      />,
+    );
+    const label = screen.getByText('Exam').closest('text')!;
+    const grid = document.querySelectorAll('.recharts-cartesian-grid-horizontal line');
+    const plotTop = Math.min(...Array.from(grid, (line) => Number(line.getAttribute('y1'))));
+    expect(Number(label.getAttribute('y'))).toBeLessThan(plotTop);
+    expect(Number(label.getAttribute('y'))).toBeGreaterThanOrEqual(12);
+    expect(label).toHaveAttribute('fill', 'black');
+    expect(label).toHaveAttribute('font-size', '12');
+  });
+
+  it('labels a passed exam as a maintenance target', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+
+    render(
+      <CardAnalytics card={makeCard()} schedulingConfig={makeSchedulingConfig(NOW - MS_PER_DAY)} />,
+    );
+
+    expect(screen.getByText('Predicted target R')).toBeInTheDocument();
+    expect(screen.queryByText('Predicted exam R')).not.toBeInTheDocument();
+  });
+});
+
+// Exercise Recharts' real pointer, payload and active-dot selection together.
+describe('forgetting curve hover', () => {
+  it.each([false, true])(
+    'shows the hovered date and recall with review history: %s',
+    async (withHistory) => {
+      const card = makeCard();
+      if (withHistory) {
+        card.history = [
+          {
+            timestamp: card.lastReviewed!,
+            grade: 3,
+            responseTimeSec: 12,
+            distracted: false,
+            stabilityBefore: 2,
+            stabilityAfter: 4,
+            difficultyBefore: 5,
+            difficultyAfter: 5,
+            retrievabilityAtReview: 0.8,
+          },
+        ];
+      }
+      vi.spyOn(Date, 'now').mockReturnValue(NOW);
+      const { container } = render(
+        <CardAnalytics
+          card={card}
+          schedulingConfig={makeSchedulingConfig(NOW + 6 * MS_PER_DAY)}
+          motionMultiplier={0}
+        />,
+      );
+      if (withHistory) {
+        const marker = container.querySelector('.recharts-reference-dot circle')!;
+        expect(Number(marker.getAttribute('cx'))).toBeCloseTo(36, 0);
+        const lines = container.querySelectorAll('.recharts-cartesian-grid-horizontal line');
+        const ys = Array.from(lines, (line) => Number(line.getAttribute('y1')));
+        const top = Math.min(...ys);
+        const bottom = Math.max(...ys);
+        expect(Number(marker.getAttribute('cy'))).toBeCloseTo(top + (bottom - top) * 0.2, 0);
+      }
+      const chart = container.querySelector('.recharts-wrapper')!;
+      vi.spyOn(chart, 'getBoundingClientRect').mockReturnValue({
+        x: 0,
+        y: 0,
+        left: 0,
+        top: 0,
+        right: 800,
+        bottom: 192,
+        width: 800,
+        height: 192,
+        toJSON: () => ({}),
+      });
+      Object.defineProperty(chart, 'offsetWidth', { value: 800, configurable: true });
+      Object.defineProperty(chart, 'offsetHeight', { value: 192, configurable: true });
+      // Plot spans x=36..788 and 21 days. Hover day 7, then day 14.
+      for (const [days, expectedDate] of [
+        [7, '6 Sept 2026'],
+        [14, '13 Sept 2026'],
+      ] as const) {
+        const x = 36 + (752 * days) / 21;
+        fireEvent.mouseMove(chart, { clientX: x, clientY: 70 });
+        await waitFor(() => {
+          const tooltip = container.querySelector('.recharts-tooltip-wrapper')!;
+          expect(tooltip).toHaveTextContent(expectedDate);
+          expect(tooltip).toHaveTextContent('Predicted recall');
+          const recall = Math.round(
+            forgettingCurve(days, card.stability!, decayOf(defaultFsrsParameters())) * 100,
+          );
+          expect(tooltip).toHaveTextContent(`${recall}%`);
+          const dot = container.querySelector('.recharts-active-dot circle')!;
+          expect(Number(dot.getAttribute('cx'))).toBeCloseTo(x, 0);
+        });
+      }
+    },
+  );
+});

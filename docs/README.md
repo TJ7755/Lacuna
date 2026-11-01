@@ -6,6 +6,7 @@ Inspect source, callers and tests before changing behaviour.
 Operational procedures:
 
 - [Desktop and AI setup](desktop.md)
+- [Workspace deployment migration](maintenance/workspaces.md)
 - [Release](maintenance/release.md), [repository controls](maintenance/governance.md),
   [TLS maintenance](maintenance/tls-trust.md) and [security reporting](../SECURITY.md)
 - [Library publication](library.md)

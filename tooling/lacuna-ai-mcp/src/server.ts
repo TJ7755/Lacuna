@@ -9,8 +9,8 @@ import {
   boundedJsonValueSchema,
   type JsonValue,
   type AiClientIdentity,
-} from '../../../src/ai/protocol.js';
-import { relayPairingCodeSchema } from '../../../src/ai/relayProtocol.js';
+} from '../../../apps/web/src/ai/protocol.js';
+import { relayPairingCodeSchema } from '../../../apps/web/src/ai/relayProtocol.js';
 import type {
   ConnectedTerminalRelay,
   TerminalToolResponse,
