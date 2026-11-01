@@ -2,7 +2,7 @@ import type { Card, RevisionPlan } from '@lacuna/core/db/types';
 import { isAvailable } from '../fsrs/eligibility';
 import { isUpcomingExamDate } from '../fsrs/examDate';
 import { revisionPlanDays } from './revisionPlan';
-import { assessmentTiming } from '../fsrs/assessmentTiming';
+import { assessmentRecallBelowTarget, assessmentTiming } from '../fsrs/assessmentTiming';
 import type { SimContext } from '../fsrs/forwardSim';
 
 export interface RemainingWorkEstimate {
@@ -72,7 +72,10 @@ export function estimateRemainingWork(
           mean:
             predictions.reduce((sum, prediction) => sum + (prediction.predictedRecall ?? 0), 0) /
             predictions.length,
-          belowTarget: predictions.filter((prediction) => prediction.feasible === false).length,
+          belowTarget: context
+            ? cards.filter((card) => assessmentRecallBelowTarget(card, deadline, now, context))
+                .length
+            : 0,
           cards: predictions.length,
         }
       : null,

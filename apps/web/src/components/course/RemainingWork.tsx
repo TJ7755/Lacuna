@@ -90,10 +90,10 @@ export function RemainingWork({ courseId }: { courseId: string }) {
           )}
           {estimate.recall && (
             <p>
-              Mean predicted exam recall: {Math.round(estimate.recall.mean * 100)}%.{' '}
-              {estimate.recall.belowTarget} of {estimate.recall.cards} cards below the{' '}
-              {Math.round(ASSESSMENT_TARGET_RECALL * 100)}% reference target. Allows one review only
-              when already due before the assessment, assuming a Good answer.
+              Mean predicted exam recall: {Math.round(estimate.recall.mean * 100)}%. Allows one
+              review only when already due before the assessment, assuming a Good answer. With
+              current memory, {estimate.recall.belowTarget} of {estimate.recall.cards} cards below
+              the {Math.round(ASSESSMENT_TARGET_RECALL * 100)}% reference target.
             </p>
           )}
           <p className="text-ink-faint">

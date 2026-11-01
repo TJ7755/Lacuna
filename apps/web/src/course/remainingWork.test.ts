@@ -53,6 +53,14 @@ describe('remaining assessment workload', () => {
       makeCard({ id: 'secure', lastReviewed: NOW, due: NOW + 10 * DAY, stability: 1000 }),
       makeCard({ id: 'unstarted', due: null }),
       makeCard({ id: 'weak', lastReviewed: NOW, due: NOW + 10 * DAY, stability: 0.01 }),
+      makeCard({
+        id: 'scheduled',
+        lastReviewed: NOW - DAY,
+        due: NOW,
+        stability: 1,
+        difficulty: 5,
+        state: 2,
+      }),
       makeCard({ id: 'excluded', suspended: true }),
     ];
     const before = structuredClone(cards);
@@ -62,7 +70,7 @@ describe('remaining assessment workload', () => {
       makeEngine(fsrsParameters),
     );
     const result = estimateRemainingWork(cards, NOW, NOW + DAY, undefined, context);
-    expect(result?.recall).toMatchObject({ cards: 3, belowTarget: 2 });
+    expect(result?.recall).toMatchObject({ cards: 4, belowTarget: 3 });
     expect(result?.recall?.mean).toBeGreaterThan(0.3);
     expect(result?.recall?.mean).toBeLessThan(0.9);
     expect(cards).toEqual(before);
