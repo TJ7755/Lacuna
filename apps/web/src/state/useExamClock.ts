@@ -29,14 +29,13 @@ export function useExamClock(
 
 export function useCourseDataClock(): number {
   const dates = useLiveQuery(async () => {
-    const [courses, lessons, assessments, cards] = await Promise.all([
-      db.courses.toArray(),
+    const [lessons, assessments, cards] = await Promise.all([
       db.lessons.toArray(),
       db.courseAssessments.toArray(),
       db.cards.toArray(),
     ]);
     return {
-      exams: [...courses, ...lessons, ...assessments].map((row) => row.examDate),
+      exams: [...lessons, ...assessments].map((row) => row.examDate),
       burials: cards.map((card) => card.buriedUntil),
     };
   }, []);
