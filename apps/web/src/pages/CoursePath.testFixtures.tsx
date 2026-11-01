@@ -327,8 +327,6 @@ export {
   mockCreateLesson,
   mockUpdateCourse,
   mockCreatePracticeNode,
-  mockUpdatePracticeNode,
-  mockDeletePracticeNode,
   mockCreateCourseAssessment,
   mockUpdateCourseAssessment,
   mockDeleteCourseAssessment,

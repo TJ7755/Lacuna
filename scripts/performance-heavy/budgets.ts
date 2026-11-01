@@ -1,5 +1,5 @@
 // Route baselines: GitHub Ubuntu run 41317899236, initial-only accounting on relay v2.
-export const routeAssetBudgets: Record<string, { javascriptBytes: number; cssBytes: number }> = {
+const routeAssetBudgets: Record<string, { javascriptBytes: number; cssBytes: number }> = {
   'route-assets-today': { javascriptBytes: 1_670_000, cssBytes: 155_000 },
   'route-assets-course': { javascriptBytes: 1_530_000, cssBytes: 174_000 },
   'route-assets-learn': { javascriptBytes: 3_200_000, cssBytes: 196_000 },
@@ -24,7 +24,7 @@ export const elapsedBudgetsMs: Record<string, number> = {
 
 // GitHub Ubuntu run 41317378155 observed 1,397 ms for the cold Today-to-course
 // interaction; full run 41317388148 observed 493–688 ms. Keep other inputs strict.
-export const inputBudgetsMs: Record<string, number> = { 'course-open': 1_500 };
+const inputBudgetsMs: Record<string, number> = { 'course-open': 1_500 };
 
 interface Sample {
   name: string;
