@@ -19,7 +19,7 @@ interface RankedQuestion {
   lastShownAt: number | null;
 }
 
-export interface QuestionExposureSummary {
+interface QuestionExposureSummary {
   exposureCount: number;
   lastShownAt: number | null;
 }

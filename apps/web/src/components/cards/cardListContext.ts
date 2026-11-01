@@ -5,7 +5,7 @@ import { restoreCards, type CardSnapshot } from '../../db/cardRepository';
 import type { SchedulerConfig } from '@lacuna/core/db/types';
 
 /** A destination available to an explicitly legacy card-move action. */
-export interface CardMoveTarget {
+interface CardMoveTarget {
   id: string;
   name: string;
 }

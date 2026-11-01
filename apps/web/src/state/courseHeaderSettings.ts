@@ -8,7 +8,7 @@ import { createLocalSetting, parseJson } from './localSetting';
 // date makes the countdown matter, an open-ended course makes it noise — so the header
 // offers them all and lets the reader keep the two or three they act on.
 
-export type CourseStatId = 'due' | 'unmapped' | 'mastery' | 'exam' | 'lessons';
+type CourseStatId = 'due' | 'unmapped' | 'mastery' | 'exam' | 'lessons';
 
 export interface CourseStatPill {
   id: CourseStatId;

@@ -25,7 +25,7 @@ import {
   type QuestionSetRecord,
 } from '@lacuna/core/questions/questionSetCodec';
 
-export interface QuestionBackupCollections {
+interface QuestionBackupCollections {
   concepts: Concept[];
   questions: QuestionDefinition[];
   questionConcepts: QuestionConceptSet[];

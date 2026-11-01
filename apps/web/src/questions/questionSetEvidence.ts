@@ -10,7 +10,7 @@ export interface EvidenceMarks {
   unresolvedAvailable: number;
 }
 
-export interface QuestionSetEvidencePartition {
+interface QuestionSetEvidencePartition {
   attempts: number;
   completed: number;
   provisional: number;
@@ -25,7 +25,7 @@ export interface QuestionSetEvidencePartition {
   };
 }
 
-export interface QuestionSetEvidenceBySet {
+interface QuestionSetEvidenceBySet {
   questionSetId: string;
   /** Null when only retained attempt receipts remain. */
   title: string | null;

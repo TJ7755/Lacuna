@@ -16,7 +16,7 @@ export interface AnswerComparisonOptions {
 }
 
 /** One word from the expected answer, tagged with whether the typed answer matched it. */
-export interface ComparisonWord {
+interface ComparisonWord {
   /** The original (unnormalised) word, for display. */
   text: string;
   matched: boolean;

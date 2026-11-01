@@ -13,7 +13,7 @@ export interface AssessmentSpecificationContext {
   concepts?: readonly Concept[];
 }
 
-export type AssessmentValidationCode =
+type AssessmentValidationCode =
   | 'missing-placement-lesson'
   | 'cross-course-placement-lesson'
   | 'empty-custom-coverage'

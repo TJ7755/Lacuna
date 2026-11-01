@@ -18,7 +18,7 @@ export interface ToolExecutionRequest {
   grant: McpGrant;
 }
 
-export interface ToolReceiptSeed {
+interface ToolReceiptSeed {
   callId: string;
   toolName: string;
   requiredScope: McpGrant['scope'];

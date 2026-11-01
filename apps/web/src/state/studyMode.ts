@@ -1,6 +1,6 @@
 import { createLocalSetting } from './localSetting';
 
-export type StudyMode = 'fsrs' | 'simple';
+type StudyMode = 'fsrs' | 'simple';
 
 const setting = createLocalSetting<StudyMode>({
   key: 'lacuna.studyMode',
