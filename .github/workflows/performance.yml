@@ -72,3 +72,13 @@ jobs:
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bun run stress:relay
+        env:
+          STRESS_CONCURRENCY: ${{ github.event_name == 'workflow_dispatch' && '32' || '2' }}
+          STRESS_ITERATIONS: ${{ github.event_name == 'workflow_dispatch' && '100' || '2' }}
+      - name: Preserve relay measurements
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: relay-performance-${{ github.sha }}
+          path: artifacts/stress/*.json
+          retention-days: 30
