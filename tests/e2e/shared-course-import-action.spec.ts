@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
+import { currentSharePayload } from './fixtures/currentSharePayload';
 
 for (const width of [1280, 390]) {
   test(`confirms a 164-lesson import before its lesson list at ${width}px`, async ({
@@ -12,8 +13,8 @@ for (const width of [1280, 390]) {
       format: 'lacuna-course',
       version: 1,
       assets: [],
-      payload: {
-        v: 2,
+      payload: currentSharePayload({
+        v: 6,
         at: Date.now(),
         course: { n: 'Large biology', o: 0, c: 0, e: 0, um: 'open' },
         lessons: Array.from({ length: 164 }, (_, i) => ({
@@ -21,7 +22,7 @@ for (const width of [1280, 390]) {
           notes: [],
           cards: [{ k: 0, f: `Question ${i + 1}`, b: 'Answer' }],
         })),
-      },
+      }),
     };
     await page.getByLabel('Import file', { exact: true }).setInputFiles({
       name: 'Large biology.lacuna',

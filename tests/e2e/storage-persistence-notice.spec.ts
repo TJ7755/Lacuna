@@ -5,7 +5,8 @@ for (const state of ['non-persistent', 'persisted', 'unsupported'] as const) {
   test(`${state} storage keeps startup clear and offers guidance only in Settings`, async ({
     page,
   }, testInfo) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+    // Phones are not a product target (CONTRIBUTING.md); check the desktop first screen.
+    await page.setViewportSize({ width: 1280, height: 800 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript((state) => {
       Object.defineProperty(navigator, 'storage', {
@@ -28,7 +29,7 @@ for (const state of ['non-persistent', 'persisted', 'unsupported'] as const) {
     const study = queue.getByRole('button', { name: /^Study / }).first();
     await expect(study).toBeVisible();
     const bounds = (await study.boundingBox())!;
-    expect(bounds.y + bounds.height).toBeLessThanOrEqual(844);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(800);
     expect(
       await study.evaluate((button) => {
         const box = button.getBoundingClientRect();
@@ -38,7 +39,7 @@ for (const state of ['non-persistent', 'persisted', 'unsupported'] as const) {
     ).toBe(true);
     if (state === 'non-persistent') {
       await page.screenshot({
-        path: testInfo.outputPath('today-phone.png'),
+        path: testInfo.outputPath('today-desktop.png'),
         animations: 'disabled',
       });
     }

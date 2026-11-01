@@ -196,9 +196,10 @@ export default defineConfig({
               includeDependenciesRecursively: false,
             },
             {
-              // Keep the extracted maths with the chart rather than emitting another payload file.
+              // The retry entry needs its own chunk. Shared chart maths must stay out of it:
+              // otherwise the first attempt imports this chunk and a retry fetches nothing new.
               name: 'ForecastChartRecovery',
-              test: /[\\/]src[\\/]components[\\/]dashboard[\\/](?:ForecastChartRecovery\.ts|ForecastChart\.tsx\?flow-retry|forecastChartMaths\.ts)$/,
+              test: /[\\/]src[\\/]components[\\/]dashboard[\\/](?:ForecastChartRecovery\.ts|ForecastChart\.tsx\?flow-retry)$/,
               includeDependenciesRecursively: false,
             },
             {
