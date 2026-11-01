@@ -36,9 +36,6 @@ const CLASS_CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const SHARE_ID_BYTES = 16;
 const WRITE_TOKEN_BYTES = 32;
 
-/** Unwritten-slot sentinel. Not a Blob ETag. */
-export const EMPTY_SHARE_ETAG = '"0"';
-
 export interface ShareCleanupResult {
   sharesDeleted: number;
   shareObjectsDeleted: number;

@@ -244,12 +244,8 @@ export const relayTerminalMailboxSchema = z
   })
   .strict();
 
-export type RelayCreateSessionRequest = z.infer<typeof relayCreateSessionRequestSchema>;
 export type RelayCreatedSession = z.infer<typeof relayCreateSessionResponseSchema>;
-export type RelayClaimRequest = z.infer<typeof relayClaimRequestSchema>;
-export type RelayClaimResponse = z.infer<typeof relayClaimResponseSchema>;
 export type RelayPeer = z.infer<typeof relayPeerResponseSchema>;
-export type RelayMailboxWriteResponse = z.infer<typeof relayMailboxWriteResponseSchema>;
 export type RelayEnvelope = z.infer<typeof relayEnvelopeSchema>;
 export type RelayBrowserMessage = z.infer<typeof relayBrowserMessageSchema>;
 export type RelayBrowserMailbox = z.infer<typeof relayBrowserMailboxSchema>;
