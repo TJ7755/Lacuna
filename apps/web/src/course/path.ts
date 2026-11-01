@@ -14,10 +14,4 @@ export {
   pathPosition,
 } from './pathProgress';
 export { KNOWN_NODE_TYPES } from './pathTypes';
-export type {
-  LessonStatus,
-  PathNode,
-  PathProgress,
-  PracticePathNode,
-  QuestionSetPathNode,
-} from './pathTypes';
+export type { PathNode, PracticePathNode, QuestionSetPathNode } from './pathTypes';

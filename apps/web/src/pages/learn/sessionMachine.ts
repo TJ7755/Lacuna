@@ -43,7 +43,7 @@ export interface SessionTransition {
   effects: SessionEffect[];
 }
 
-export interface Selection {
+interface Selection {
   simple: boolean;
   context: SessionContext | null;
   now: number;

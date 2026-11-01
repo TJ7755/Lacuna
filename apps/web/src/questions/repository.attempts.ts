@@ -322,5 +322,3 @@ export async function undoQuestionAttempt(
     return { attempt: undone, question: updatedQuestion };
   });
 }
-
-export type QuestionSchedulerGrade = Grade;

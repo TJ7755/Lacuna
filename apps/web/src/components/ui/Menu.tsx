@@ -15,7 +15,7 @@ import { cn } from './cn';
 import { ChevronDownIcon, ChevronLeftIcon } from './icons';
 import { expandingActionSpring, MOTION_EASING } from './motion';
 
-export interface MenuItem {
+interface MenuItem {
   /** Visible label. Also the accessible name, so write it as the action it performs. */
   label: string;
   onSelect?: () => void;

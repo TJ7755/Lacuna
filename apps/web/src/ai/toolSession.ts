@@ -23,10 +23,8 @@ import type {
   AiToolWriteGrant,
 } from './toolSession/types';
 export type {
-  AiToolActivityState,
   AiToolApprovalRecord,
   AiToolDecisionResult,
-  AiToolEffects,
   AiToolInvokeRequest,
   AiToolInvokeResult,
   AiToolLedgerEntry,

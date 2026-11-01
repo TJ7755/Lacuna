@@ -144,7 +144,7 @@ export const resample = (points: Point[], count = RESAMPLE_POINTS): Point[] => {
  *
  *  Uniform rather than per-axis scaling: `-` and `1` differ almost entirely in aspect
  *  ratio, and non-uniform scaling would map them onto each other. */
-export const scaleToUnit = (points: Point[]): Point[] => {
+const scaleToUnit = (points: Point[]): Point[] => {
   if (points.length === 0) return [];
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
@@ -156,7 +156,7 @@ export const scaleToUnit = (points: Point[]): Point[] => {
 };
 
 /** Translate so the centroid sits at the origin. */
-export const translateToOrigin = (points: Point[]): Point[] => {
+const translateToOrigin = (points: Point[]): Point[] => {
   if (points.length === 0) return [];
   const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
   const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;

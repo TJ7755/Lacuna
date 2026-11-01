@@ -7,7 +7,7 @@ import type {
   AiRunState,
 } from '../protocol';
 
-export type AiSessionConnection =
+type AiSessionConnection =
   | { status: 'disconnected'; reason?: string }
   | { status: 'pairing'; code: string; expiresAt: number }
   | { status: 'hosted'; lastActivityAt: number }
@@ -37,7 +37,7 @@ export type AiConversationItem =
   | { kind: 'receipt'; id: string; receipt: AiActionReceipt }
   | { kind: 'error'; id: string; error: AiBridgeError; createdAt: number };
 
-export interface AiActivityView {
+interface AiActivityView {
   runId: string;
   status: 'working' | 'awaiting_approval' | 'stop_requested' | 'failed' | 'completed';
   summary: string;
@@ -58,7 +58,7 @@ export interface AiSessionSnapshot {
   queuedFollowUp: string | null;
 }
 
-export type AiSessionCommandError =
+type AiSessionCommandError =
   | { kind: 'unavailable'; message: string }
   | { kind: 'conflict'; message: string }
   | { kind: 'internal'; message: string };

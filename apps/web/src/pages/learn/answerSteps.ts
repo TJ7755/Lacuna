@@ -7,7 +7,7 @@ import {
 import type { UserPerformance } from '@lacuna/core/db/types';
 import { updatePerformance } from '../../fsrs/grading';
 export { answerCorrect, answerFeedback, answerGrade, sessionStopAfterAnswer } from './answerPolicy';
-export type { AnswerInput, AnswerResult, SessionStop } from './answerPolicy';
+export type { AnswerInput, AnswerResult } from './answerPolicy';
 /**
  * Record a review, then return the unit's performance calibrated on it. A correct
  * answer updates the cached performance in place; when the event had already been

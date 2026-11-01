@@ -24,7 +24,7 @@ export interface AiToolWriteGrant {
   label?: string;
 }
 
-export interface ExactApprovalBinding {
+interface ExactApprovalBinding {
   connectionId: string;
   runId: string;
   callId: string;

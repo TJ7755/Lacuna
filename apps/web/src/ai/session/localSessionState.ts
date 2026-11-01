@@ -9,7 +9,7 @@ export interface LocalMessage extends AiUserMessage {
   runId?: string;
 }
 
-export interface PendingClaim {
+interface PendingClaim {
   channelId: string;
   connectionId: string;
   leaseMs: number;
