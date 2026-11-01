@@ -23,11 +23,11 @@ type FileRecord = {
 
 const LOCALE = /(?:^|[\\/])locales[\\/][^\\/]+\.pak$/i;
 const WINDOWS_PACKAGE_BUDGET = {
-  archiveBytes: 19_000_000,
-  payloadBytes: 19_000_000,
-  // Includes the library, settings InfoPopover and shared feedback renderer chunks.
+  archiveBytes: 17_000_000,
+  payloadBytes: 17_000_000,
+  // Includes the optional maths and highlighting renderer chunks.
   // Archive and payload byte limits still apply.
-  payloadFileCount: 712,
+  payloadFileCount: 715,
   sourceMapBytes: 0,
   buildOnlyAssetBytes: 10_000,
   localeBytes: 1_300_000,
