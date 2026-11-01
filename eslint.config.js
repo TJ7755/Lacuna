@@ -153,8 +153,6 @@ export default [
             { from: 'apps/web/src/shareLinks/verifyOwner.test.ts', to: 'apps/relay/src/store.ts' },
             { from: 'apps/web/src/teacher/connectionStore.test.ts', to: 'apps/relay/src/relay.ts' },
             { from: 'apps/web/src/teacher/connectionStore.test.ts', to: 'apps/relay/src/store.ts' },
-            { from: 'tests/e2e/fixtures/aiRelay.ts', to: 'apps/relay/src/relay.ts' },
-            { from: 'tests/e2e/fixtures/aiRelay.ts', to: 'apps/relay/src/store.ts' },
             { from: 'tests/e2e/gaps-artefact-labels.spec.ts', to: 'apps/relay/src/relay.ts' },
             { from: 'tests/e2e/gaps-artefact-labels.spec.ts', to: 'apps/relay/src/store.ts' },
             { from: 'tests/e2e/gaps-course-connection.spec.ts', to: 'apps/relay/src/relay.ts' },
