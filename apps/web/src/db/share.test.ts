@@ -17,12 +17,14 @@ import { reset, v1Payload, v2Payload } from './share.testFixtures';
 describe('share code formats and validation', () => {
   beforeEach(reset);
 
-  it('refuses a v1 deck share code at decode and import', async () => {
-    const payload = v1Payload();
+  it.each([1, 2, 3, 4, 5])('refuses v%s before decode or import writes', async (v) => {
+    const payload = { ...v1Payload(), v } as Parameters<typeof importSharePayload>[0];
+    const before = await Promise.all(db.tables.map((table) => table.toArray()));
     const code = await encodeShareDirect(payload);
     await expect(decodeShare(code)).rejects.toThrow(V1_SHARE_CODE_MESSAGE);
     await expect(decodeShareDirect(code)).rejects.toThrow(V1_SHARE_CODE_MESSAGE);
     await expect(importSharePayload(payload)).rejects.toThrow(V1_SHARE_CODE_MESSAGE);
+    expect(await Promise.all(db.tables.map((table) => table.toArray()))).toEqual(before);
   });
 
   it('round-trips a course using the legacy LAC0 plain base64 format', async () => {

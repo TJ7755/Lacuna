@@ -28,7 +28,7 @@ import { assertValidCardPayload } from '../items/payloadValidation';
 import { emptyQuestionSchedule } from '../questions/scheduler';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { importSharedQuestionSets } from '../questions/questionSetShare';
-import { V1_SHARE_CODE_MESSAGE, assertShareSpecificationAssessments } from './sharePayload';
+import { parseSharePayload, assertShareSpecificationAssessments } from './sharePayload';
 import type {
   ShareCard,
   SharePayload,
@@ -586,8 +586,5 @@ export async function importSharePayload(
   payload: SharePayload,
   scheduling?: ImportCourseScheduling,
 ): Promise<ImportShareResult> {
-  if (payload.v !== 6) {
-    throw new Error(V1_SHARE_CODE_MESSAGE);
-  }
-  return importCourseSharePayload(payload, scheduling);
+  return importCourseSharePayload(parseSharePayload(payload) as SharePayloadV6, scheduling);
 }

@@ -304,23 +304,11 @@ export function parseSharePayload(payload: unknown): SharePayload {
   if (!parse.success) {
     throw new Error('This share code is from an unsupported version of Lacuna.');
   }
-  if (parse.data.v === 1) {
-    throw new Error(V1_SHARE_CODE_MESSAGE);
-  }
   assertShareLessonPrerequisites(parse.data.lessons);
-  assertShareSpecificationAssessments(parse.data as Exclude<SharePayload, SharePayloadV1>);
-  if (parse.data.v === 4 || parse.data.v === 5 || parse.data.v === 6) {
-    return {
-      ...parse.data,
-      questionSets: parse.data.questionSets.map(parseQuestionSetRecord),
-      ...(parse.data.v === 5 || parse.data.v === 6
-        ? {
-            questionSetPracticeNodes: parse.data.questionSetPracticeNodes.map(
-              parseQuestionSetPracticeNode,
-            ),
-          }
-        : {}),
-    } as SharePayloadV4 | SharePayloadV5 | SharePayloadV6;
-  }
-  return parse.data;
+  assertShareSpecificationAssessments(parse.data as SharePayloadV6);
+  return {
+    ...parse.data,
+    questionSets: parse.data.questionSets.map(parseQuestionSetRecord),
+    questionSetPracticeNodes: parse.data.questionSetPracticeNodes.map(parseQuestionSetPracticeNode),
+  } as SharePayloadV6;
 }
