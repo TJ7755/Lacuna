@@ -65,6 +65,8 @@ async function mint(path: string) {
   return (await request('mint', path, 'POST', undefined, auth(secret), [201])).json();
 }
 async function worker() {
+  const clientAddress = `198.18.${Math.floor(address / 250)}.${++address % 250}`;
+  const clientHeaders = { 'x-vercel-forwarded-for': clientAddress };
   const channel = await mint('/channel');
   const share = await mint('/shares');
   const channelPath = `/c/${channel.channelId}/state`;
@@ -101,7 +103,7 @@ async function worker() {
       JSON.stringify({ browserPublicKey: Buffer.alloc(65, 1).toString('base64url') }),
       {
         ...jsonHeaders,
-        'x-vercel-forwarded-for': `198.18.${Math.floor(address / 250)}.${++address % 250}`,
+        ...clientHeaders,
       },
       [201],
     )
@@ -145,7 +147,7 @@ async function worker() {
     etag = written.response.headers.get('ETag')!;
     const read = await request('sync-read', channelPath);
     assert.equal(read.bytes.byteLength, payload.length);
-    await request('class-code-lookup', `/class-codes/${code}`);
+    await request('class-code-lookup', `/class-codes/${code}`, 'GET', undefined, clientHeaders);
     await request('share-read', `${sharePath}/payload`);
     const message = await request(
       'ai-mailbox-write',
