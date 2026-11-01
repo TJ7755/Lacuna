@@ -5,6 +5,18 @@
     ".": {
       "ignoreDependencies": ["@typescript/native", "tailwindcss"],
       "entry": [
+        // Vercel invokes this through ignoreCommand rather than a module import.
+        "scripts/vercel-ignore-build.mjs",
+        // Standalone evaluation and MCP consent smoke commands are invoked manually.
+        "scripts/jev-evaluation.ts",
+        "scripts/mcp-smoke.mjs",
+        "scripts/mcp-smoke-click-allow.mjs",
+        // Manually invoked performance runners and their alternate Playwright configuration.
+        "scripts/electron-performance/startup.ts",
+        "scripts/performance-course-loading/run.mjs",
+        "tests/performance/playwright.study-load.config.ts",
+        // Playwright specs pass these paths to esbuild entryPoints at runtime.
+        "tests/e2e/fixtures/{jevStudy,reportContinuation,studyFirstGrade,studyImageAdvance,studySessionLoad}.ts",
         "scripts/{ai-benchmark,jev-smoke,question-bank,library-publish}.ts",
         "scripts/performance-heavy/{fixture,run}.ts",
         "scripts/performance-heavy/{summarise,trace-summary}.mjs",
