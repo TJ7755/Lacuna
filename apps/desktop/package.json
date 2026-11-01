@@ -4,8 +4,6 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "@lacuna/core": "workspace:*",
-    "@lacuna/protocol": "workspace:*",
     "zod": "4.6.7",
     "@modelcontextprotocol/server": "2.4.0",
     "electron-log": "^5.4.4",

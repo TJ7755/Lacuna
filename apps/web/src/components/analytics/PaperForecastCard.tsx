@@ -15,11 +15,13 @@ const percent = (value: number) => `${Math.round(value * 100)}%`;
  */
 export function PaperForecastCard({
   papers,
+  informational = false,
   objectiveLabel,
   timeZone,
   onSelect,
 }: {
   papers: PaperForecast[];
+  informational?: boolean;
   objectiveLabel: string;
   timeZone?: string;
   onSelect: (assessmentId: string) => void;
@@ -29,11 +31,12 @@ export function PaperForecastCard({
     <SectionCard aria-labelledby={titleId} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h2 id={titleId} className="font-display text-2xl">
-          Forecast by paper
+          {informational ? 'Later paper forecasts' : 'Forecast by paper'}
         </h2>
         <p className="text-sm text-ink-soft">
-          Your cards are tested on different dates, so each date is measured on its own if you stop
-          reviewing now. Choose a paper to see its exam-day chart.
+          {informational
+            ? 'If you stop reviewing now, these overlapping papers measure the same cards again at their later dates. They do not change your current study target. Choose a paper to see its chart.'
+            : 'Your cards are tested on different dates, so each date is measured on its own if you stop reviewing now. Choose a paper to see its exam-day chart.'}
         </p>
       </div>
       <div className="overflow-x-auto">
@@ -53,7 +56,7 @@ export function PaperForecastCard({
           </thead>
           <tbody className="divide-y divide-line">
             {papers.map((paper) => (
-              <tr key={paper.date ?? 'undated'}>
+              <tr key={paper.assessments.map(({ id }) => id).join(',') || paper.date || 'undated'}>
                 <th scope="row" className="py-3 pr-3 font-normal">
                   {paper.date === undefined ? (
                     <span className="text-ink-soft">
@@ -90,7 +93,10 @@ export function PaperForecastCard({
           papers.reduce((total, paper) => total + paper.cardCount, 0),
           'card',
         )}{' '}
-        in total, matching the headline. Unreviewed cards count as forgotten.
+        {informational
+          ? 'across these papers; shared cards can count more than once.'
+          : 'in total, matching the headline.'}{' '}
+        Unreviewed cards count as forgotten.
       </p>
     </SectionCard>
   );
