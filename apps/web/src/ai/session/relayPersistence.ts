@@ -22,7 +22,7 @@ import { restoreState as restoreToolSessionState } from '../toolSession/state';
 import type { AiToolSessionState } from '../toolSession';
 import type { AiSessionSnapshot } from './types';
 
-export const AI_RELAY_SESSION_STORAGE_KEY = 'lacuna-ai-relay-session-v1';
+const AI_RELAY_SESSION_STORAGE_KEY = 'lacuna-ai-relay-session-v1';
 const PROTOCOL_UPDATED_REASON = 'Reconnect the terminal after the AI protocol update.';
 
 export interface RelaySessionStorage {

@@ -12,7 +12,7 @@ export interface ReplacementParticipant {
   clear(): void | Promise<void>;
 }
 
-export class ReplacementInvalidatedError extends Error {
+class ReplacementInvalidatedError extends Error {
   constructor() {
     super('A manual database replacement has invalidated this write.');
     this.name = 'ReplacementInvalidatedError';

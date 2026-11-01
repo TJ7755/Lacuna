@@ -1,5 +1,5 @@
 /** Consecutive correct answers that earn a small celebration. */
-export const STREAK_STEP = 5;
+const STREAK_STEP = 5;
 
 /** The next run length after an answer: a correct answer extends it, anything else resets it. */
 export function nextRun(run: number, correct: boolean): number {

@@ -207,7 +207,7 @@ export function revisionReplanReasons(
   return REPLAN_ORDER.filter((reason) => reasons.has(reason));
 }
 
-export function explainRevisionReplan(reasons: readonly RevisionReplanReason[]): string {
+function explainRevisionReplan(reasons: readonly RevisionReplanReason[]): string {
   const labels: Record<RevisionReplanReason, string> = {
     'assessment-coverage-changed': 'assessment coverage changed',
     'assessment-deadline-changed': 'the assessment deadline moved',
@@ -411,7 +411,7 @@ export function appendCompletedSession(
     : [...sessions, session];
 }
 
-export function makeReplan(
+function makeReplan(
   revision: number,
   reasons: RevisionReplanReason[],
   appliedAt: number,

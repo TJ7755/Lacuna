@@ -24,7 +24,7 @@ export const MOTION_EASING = {
 
 export type MotionEasing = keyof typeof MOTION_EASING;
 
-export function motionDuration(tier: MotionTier, multiplier: number): number {
+function motionDuration(tier: MotionTier, multiplier: number): number {
   return MOTION_DURATION[tier] * multiplier;
 }
 

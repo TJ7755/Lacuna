@@ -7,7 +7,7 @@ import Dexie, {
 } from 'dexie';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
-export const REVIEW_ACTIVITY_TABLE = 'reviewActivity';
+const REVIEW_ACTIVITY_TABLE = 'reviewActivity';
 
 export interface ReviewActivityRow {
   cardId: string;

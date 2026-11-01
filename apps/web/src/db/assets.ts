@@ -15,7 +15,7 @@ import { db } from './database';
 import type { BackupAsset, MediaAsset } from '@lacuna/core/db/types';
 
 export const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
-export const SUPPORTED_AUDIO_MIME_TYPES = new Set([
+const SUPPORTED_AUDIO_MIME_TYPES = new Set([
   'audio/mpeg',
   'audio/mp4',
   'audio/ogg',

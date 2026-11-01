@@ -6,8 +6,8 @@ import {
   type RelayEnvelope,
 } from './relayProtocol';
 
-export const AI_RELAY_AAD = 'lacuna-ai-relay-v1';
-export const AI_RELAY_NONCE_BYTES = 12;
+const AI_RELAY_AAD = 'lacuna-ai-relay-v1';
+const AI_RELAY_NONCE_BYTES = 12;
 
 const ECDH_ALGORITHM = { name: 'ECDH', namedCurve: 'P-256' } as const;
 const AES_ALGORITHM = 'AES-GCM';
@@ -22,7 +22,7 @@ export interface RelayKeyPair {
   privateKey: string;
 }
 
-export class RelayCryptoError extends Error {
+class RelayCryptoError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'RelayCryptoError';

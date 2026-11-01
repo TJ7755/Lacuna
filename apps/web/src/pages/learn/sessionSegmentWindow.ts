@@ -1,4 +1,4 @@
-export const SESSION_SEGMENT_MIN_WIDTH = 16;
+const SESSION_SEGMENT_MIN_WIDTH = 16;
 const MAX_VISIBLE_SEGMENTS = 17;
 
 export function sessionSegmentWindow(total: number, currentIndex: number, width: number) {

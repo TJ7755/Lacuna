@@ -44,7 +44,7 @@ interface ConfirmInlineSwapProps extends ConfirmInlineProps {
   swapClassName?: string;
 }
 
-export function inlineConfirmTiming(multiplier: number) {
+function inlineConfirmTiming(multiplier: number) {
   return motionTransition('feedback', multiplier);
 }
 

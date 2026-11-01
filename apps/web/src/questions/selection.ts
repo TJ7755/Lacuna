@@ -24,7 +24,7 @@ export interface QuestionExposureSummary {
   lastShownAt: number | null;
 }
 
-export function questionExposureSummaries(
+function questionExposureSummaries(
   attempts: readonly QuestionAttempt[],
 ): ReadonlyMap<string, QuestionExposureSummary> {
   const summaries = new Map<string, QuestionExposureSummary>();

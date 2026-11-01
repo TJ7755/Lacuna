@@ -11,7 +11,7 @@ import {
 export const MCP_COMPANION_PROTOCOL_VERSION = 1;
 export const LEGACY_AI_COMPANION_PROTOCOL_VERSION = 1;
 export const AI_COMPANION_PROTOCOL_VERSION = 2;
-export const MCP_COMPANION_MAX_MESSAGE_BYTES = 10 * 1024 * 1024;
+const MCP_COMPANION_MAX_MESSAGE_BYTES = 10 * 1024 * 1024;
 
 export type AiCompanionProtocolVersion =
   typeof LEGACY_AI_COMPANION_PROTOCOL_VERSION | typeof AI_COMPANION_PROTOCOL_VERSION;
@@ -76,7 +76,7 @@ function record(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
-export function isMcpClientIdentity(value: unknown): value is McpClientIdentity {
+function isMcpClientIdentity(value: unknown): value is McpClientIdentity {
   const item = record(value);
   return (
     !!item &&

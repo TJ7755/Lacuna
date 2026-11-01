@@ -1,7 +1,7 @@
 export type RendererEnvironment = 'development' | 'production';
 
 export const VITE_RENDERER_ORIGIN = 'http://localhost:5173';
-export const APP_RENDERER_ORIGIN = 'app://.';
+const APP_RENDERER_ORIGIN = 'app://.';
 const APP_RENDERER_HOST = '.';
 // Remove the legacy origin from this allowlist and the CSP only after the migration has shipped
 // in a released desktop build and older supported builds have had time to update. Refs #677.

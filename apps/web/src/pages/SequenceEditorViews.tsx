@@ -129,7 +129,7 @@ export function SequenceOptions({
   );
 }
 /** A labelled row of chips backed by native radios, so arrow keys choose. */
-export function ChipChoice({
+function ChipChoice({
   legend,
   name,
   value,

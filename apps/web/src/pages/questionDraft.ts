@@ -30,7 +30,7 @@ export interface QuestionDraftData {
   timestamp: number;
 }
 
-export const DEFAULT_GENERATOR_CONFIG: Record<string, string | number | boolean> = {
+const DEFAULT_GENERATOR_CONFIG: Record<string, string | number | boolean> = {
   minimumRootMagnitude: 1,
   maximumRootMagnitude: 5,
   maximumLeadingCoefficient: 2,

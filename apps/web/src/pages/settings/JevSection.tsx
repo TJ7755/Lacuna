@@ -25,7 +25,7 @@ const PAUSE_MESSAGES: Record<JevPauseReason, string> = {
   error: 'Paused after an error. It will try again later.',
 };
 
-export function jevStatusMessage(status: JevStatus, now = Date.now()): string | null {
+function jevStatusMessage(status: JevStatus, now = Date.now()): string | null {
   const last =
     status.state === 'paused' && status.lastUsedAt !== null
       ? ` Last used ${formatRelativeTime(status.lastUsedAt, now)}.`

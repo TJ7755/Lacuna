@@ -25,7 +25,7 @@ export interface RelayProvider {
 
 export type RelayOperation = 'pull' | 'push' | 'purge';
 
-export class RelayError extends Error {
+class RelayError extends Error {
   readonly operation: RelayOperation;
   readonly status?: number;
 

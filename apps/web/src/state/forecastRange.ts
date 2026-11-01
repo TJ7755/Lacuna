@@ -5,7 +5,7 @@ export type ForecastRange = 'fortnight' | 'month' | 'quarter';
 const DAYS: Record<ForecastRange, number> = { fortnight: 14, month: 30, quarter: 90 };
 
 /** Today sits this far across the forecast chart: the past takes the rest of the window. */
-export const FORECAST_PAST_SHARE = 0.6;
+const FORECAST_PAST_SHARE = 0.6;
 
 /** Whole days shown before and after today for a range. */
 export function forecastWindow(range: ForecastRange): { past: number; future: number } {

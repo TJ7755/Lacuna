@@ -21,7 +21,7 @@ interface Piece {
 }
 
 /** Deterministic scatter so a burst looks the same in tests and on every replay. */
-export function burstPieces(count: number, spread: number, seed = 1): Piece[] {
+function burstPieces(count: number, spread: number, seed = 1): Piece[] {
   let state = seed;
   const random = () => {
     state = (state * 16807) % 2147483647;

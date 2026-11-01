@@ -10,7 +10,7 @@ import { db } from './database';
 import type { SyncState, Tombstone } from '@lacuna/core/db/types';
 
 export const TOMBSTONE_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
-export const SYNC_STATE_KEY = 'syncState';
+const SYNC_STATE_KEY = 'syncState';
 
 export type SnapshotTable =
   | 'cards'
