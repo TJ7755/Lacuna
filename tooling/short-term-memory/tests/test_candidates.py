@@ -298,7 +298,7 @@ def test_half_life_frozen_loads_shipped_artefact_and_consumes_no_training_data()
 
 
 def test_routed_short_term_weight_v3_post_success_decays_by_one_day():
-    # the predeclared cohort routing decision v3 success/first-review/no-history path: full weight
+    # https://github.com/TJ7755/Lacuna/blob/920000fe23c5effad9c08210efdc59aaff002813/tooling/short-term-memory/ROUTING_DECISION_RULE.md v3 success/first-review/no-history path: full weight
     # through 21,600 s (6 hours), 0 from 86,400 s (1 day).
     assert routed_short_term_weight_v3(21_600, previous_recalled=True) == pytest.approx(1.0)
     assert routed_short_term_weight_v3(21_601, previous_recalled=True) < 1.0
@@ -318,7 +318,7 @@ def test_routed_short_term_weight_v3_post_success_decays_by_one_day():
 
 def test_routed_short_term_weight_v3_post_failure_decays_by_five_days():
     # v3 failure path: full weight through 345,600 s (4 days), 0 from 432,000 s (5 days) —
-    # the last bucket both transfer cohorts supported per the predeclared cohort routing decision.
+    # the last bucket both transfer cohorts supported per https://github.com/TJ7755/Lacuna/blob/920000fe23c5effad9c08210efdc59aaff002813/tooling/short-term-memory/ROUTING_DECISION_RULE.md.
     assert routed_short_term_weight_v3(345_600, previous_recalled=False) == pytest.approx(1.0)
     assert routed_short_term_weight_v3(345_601, previous_recalled=False) < 1.0
     assert routed_short_term_weight_v3(431_999, previous_recalled=False) > 0.0

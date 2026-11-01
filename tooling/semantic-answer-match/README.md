@@ -1,10 +1,7 @@
 # Semantic answer-match prototype (exploratory)
 
-Offline prototype harness: does a
-small classifier over frozen sentence embeddings beat plain string comparison
-(`src/utils/answerComparison.ts`) at recognising a correct paraphrase of a short,
-canonical typed answer? This is not a committed feature and this directory is not imported
-by the app, same convention as `tooling/short-term-memory`.
+Research question: can semantic matching recognise correct paraphrases of short,
+canonical typed answers more accurately than plain string comparison?
 
 ## Workflow
 

@@ -2,10 +2,7 @@
 
 **Status: in progress. No result yet.**
 
-This is exploratory work with no integration
-commitment: it has no arc number, it is not imported by the browser or Electron builds,
-and it does not touch `src/`. The deliverable is knowledge. A well-documented negative
-result is a valid outcome, and is the expected one for the recognition half.
+This research carries no integration commitment. A negative result is a valid outcome.
 
 ## The question
 
@@ -38,7 +35,7 @@ term is not the difficulty; **ShareAlike** is. If a trained model is a derivativ
 training data — unsettled, but assume it may be — then weights trained on those two
 datasets carry NC and SA obligations that the repository's MIT licence tells downstream
 forkers do not exist. For this prototype it does not matter, because nothing ships. If
-handwriting input is ever promoted into `src/`, retrain on HASYv2 (ODbL) or on
+handwriting input is ever integrated into the application, retrain on HASYv2 (ODbL) or on
 self-collected strokes.
 
 **These are the wrong writers.** All four corpora are adults writing general mathematics
@@ -62,8 +59,8 @@ Smoke test of the instrument, not evidence. Median seconds over correct entries:
 | Written | 5.66 | 8 | 0 |
 | Typed | 6.84 | 8 | 7 |
 
-Three palette trials were discarded, not scored as failures: the keypad shipped without
-`x` and `y` keys, so `2x+6=14`, `x^2+3` and `y=2x^2` were unenterable by construction.
+Three palette trials were discarded because the tested instrument could not enter
+their target expressions.
 
 **The one finding worth carrying forward is the cost of `^`.** Splitting each method by
 whether the target contains a superscript:
@@ -81,11 +78,8 @@ to fix, and it is expensive even for someone who knows where every key is.
 
 **Why this understates the case for handwriting, and overstates it.** Understates:
 the participant is a fast touch-typist, so the typed arm was at its best and still lost.
-Overstates, and more seriously: the canvas arm produces no string. Its correctness is
-self-reported and it is timed on *writing the expression*, whereas the typed and button
-arms are timed on producing an exact string a machine accepted. Those are not the same
-task, and the canvas figure is therefore a lower bound. It becomes comparable only once
-stages 2 and 4 exist and the retained ink can be scored.
+The writing timings used self-reported correctness; the typing timings required
+machine-accepted strings. Treat these as different tasks, not comparable recognition results.
 
 n = 1, one session, no repetition, no counterbalancing across participants. Treat every
 number above as a direction to test, not a result.

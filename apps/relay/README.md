@@ -42,9 +42,7 @@ procedures are in [Gaps trial operations](../../docs/gaps-trial-operations.md).
 
 ## Environment
 
-On Vercel, connect a **private** Blob store to the project. The platform
-injects `BLOB_STORE_ID`, `VERCEL_OIDC_TOKEN` and `BLOB_WEBHOOK_PUBLIC_KEY`.
-`@vercel/blob` reads them automatically.
+On Vercel, connect a **private** Blob store to the project.
 
 Set `RELAY_MINT_SECRET` only when an operator needs a mint-rate-limit bypass.
 
@@ -71,8 +69,7 @@ In the Vercel dashboard: the relay project → **Settings** → **Environment Va
 production deployment. Redeploy after adding or rotating it.
 
 To run the same functions **off Vercel** against a Blob store, set
-`BLOB_READ_WRITE_TOKEN` instead. The SDK uses OIDC when those variables are
-present, and falls back to the token when they are not. Do not commit a token.
+`BLOB_READ_WRITE_TOKEN` instead. Do not commit a token.
 
 ## Deploy
 
@@ -82,15 +79,10 @@ This directory is its own Vercel project. Do not deploy it as part of the app.
 2. Create a private Blob store in the `lhr1` region and connect it to that
    project.
 3. Leave the runtime as Node.js on Fluid Compute. Do not set `runtime = 'edge'`.
-4. Framework preset **Other**. The only function file is `api/index.ts`.
-   Public paths are rewritten onto `/api` in `vercel.json`. A non-framework
-   Vercel project does not treat `api/[...path].ts` as a catch-all — that
-   file matches one path segment, so `/c/:id/:slot` never reaches the
-   handler. Do not put the handler back in a bracketed filename.
-5. Set `CRON_SECRET` on the project so daily maintenance can authenticate and run. A missing
-   value fails closed.
-6. Optionally set `RELAY_MINT_SECRET` on the project (see Environment) to keep a private bypass.
-   Minting works without it via the public path.
+4. Select framework preset **Other**. Keep the handler named `api/index.ts`; do not
+   rename it to a bracketed filename.
+5. Set `CRON_SECRET` on the project for daily maintenance.
+6. Optionally set `RELAY_MINT_SECRET` for an operator bypass.
 7. Deploy.
 
 Deploy protocol v2 clients and relay together. Deployments are paused until approximately
@@ -137,3 +129,11 @@ smoke-tested this way.
 
 The operator procedure, withdrawal and expired-link recovery are in
 [the library procedure](../../docs/library.md#official-publication-retention).
+
+## Concurrency measurement provenance
+
+On 15 August 2026, 25 production relay trials in `lhr1` found exactly one winning
+first write per channel: ten trials with two writers and fifteen with three.
+Every subsequent read returned the winner's body. This measured atomic creation;
+it is not a documented Blob guarantee or proof of atomicity. Remeasure after
+relevant Blob changes or before expanding multi-writer use.

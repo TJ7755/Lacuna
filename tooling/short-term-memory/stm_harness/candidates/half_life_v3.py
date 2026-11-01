@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 class HalfLifeLogisticV3Candidate:
     """Identical fit to `half_life`/`half_life_v2`; only the routing boundaries differ.
 
-    v3 is the predeclared, conservative re-route from the predeclared cohort routing decision, applied
+    v3 is the predeclared, conservative re-route from https://github.com/TJ7755/Lacuna/blob/920000fe23c5effad9c08210efdc59aaff002813/tooling/short-term-memory/ROUTING_DECISION_RULE.md, applied
     after the 201-300 transfer result: the success/first-review/no-previous-outcome path
     moves fully onto FSRS-6 much sooner than v2, and the failure path is retained only
     through the last bucket both transfer cohorts (101-200, 201-300) supported. The fit

@@ -113,7 +113,7 @@ def routed_short_term_weight(
     )
 
 
-# v3 routing (the predeclared cohort routing decision, applied 2026-07-17): the predeclared, conservative
+# v3 routing (https://github.com/TJ7755/Lacuna/blob/920000fe23c5effad9c08210efdc59aaff002813/tooling/short-term-memory/ROUTING_DECISION_RULE.md, applied 2026-07-17): the predeclared, conservative
 # re-route triggered by the 201-300 transfer result. Success/first-review/no-previous-outcome
 # path moves fully onto FSRS-6 much sooner than v2 (full weight through 21,600 s / 6 hours,
 # zero by 86,400 s / 1 day). The failure path keeps the logistic model competitive for far
@@ -132,7 +132,7 @@ def routed_short_term_weight_v3(
     previous_recalled: bool | None,
     is_first_predictive_review: bool = False,
 ) -> float:
-    """Outcome-conditional short-term weight (v3, the predeclared cohort routing decision)."""
+    """Outcome-conditional short-term weight (v3, https://github.com/TJ7755/Lacuna/blob/920000fe23c5effad9c08210efdc59aaff002813/tooling/short-term-memory/ROUTING_DECISION_RULE.md)."""
     return _routed_short_term_weight(
         elapsed_seconds,
         previous_recalled,
