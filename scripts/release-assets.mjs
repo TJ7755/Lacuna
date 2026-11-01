@@ -14,8 +14,8 @@ export const digest = (bytes, algorithm, encoding = 'hex') =>
 export function releaseAssets(version) {
   assert.match(
     version,
-    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/,
-    'Use a numeric release version, e.g. 0.2.11',
+    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-beta\.nightly\.[1-9]\d*\.[1-9]\d*)?$/,
+    'Use a numeric release version or a numbered nightly',
   );
   return [
     `Lacuna-Setup-${version}.exe`,

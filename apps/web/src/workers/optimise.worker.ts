@@ -12,6 +12,7 @@ export interface OptimiseRequest {
   cards: Card[];
   reviewHistory?: ReviewHistoryEntry[];
   requestRetention: number;
+  initialW?: number[];
 }
 
 export type OptimiseMessage =
@@ -27,10 +28,11 @@ const ctx = globalThis as unknown as {
 ctx.onmessage = (event: MessageEvent<OptimiseRequest>) => {
   void (async () => {
     try {
-      const { cards, reviewHistory, requestRetention } = event.data;
+      const { cards, reviewHistory, requestRetention, initialW } = event.data;
       const binding = await getBindingOptimiser();
       const result = await optimiseParameters(cards, {
         reviewHistory,
+        initialW,
         requestRetention,
         computeParameters: binding.computeParameters,
         createItem: (reviews) =>

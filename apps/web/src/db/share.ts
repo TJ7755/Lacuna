@@ -30,21 +30,12 @@
 //        references and lesson-card links. PracticeNode remains device-local.
 //   v3 = v2 content plus stable Concepts and application Question definitions.
 
-import type { SharePayload } from './sharePayload';
+import { parseSharePayload, type SharePayload } from './sharePayload';
 import { buildCourseSharePayload } from './shareCoursePayload';
 import { encodeShare, encodeShareQR } from './shareTransport';
 
 export { parseSharePayload, V1_SHARE_CODE_MESSAGE } from './sharePayload';
-export type {
-  ShareLesson,
-  SharePayload,
-  SharePayloadV1,
-  SharePayloadV2,
-  SharePayloadV3,
-  SharePayloadV4,
-  SharePayloadV5,
-  SharePayloadV6,
-} from './sharePayload';
+export type { ShareLesson, SharePayload, SharePayloadV6 } from './sharePayload';
 export { buildCourseSharePayload } from './shareCoursePayload';
 export { applyImportedCourseScheduling, importSharePayload } from './shareCourseImport';
 export type { ImportCourseScheduling } from './shareCourseImport';
@@ -74,8 +65,10 @@ export interface ShareSummary {
 }
 
 /** Count the cards a payload would create (reversible pairs count as two). */
-export function summariseShare(payload: SharePayload): ShareSummary {
-  if (payload.v !== 1) {
+export function summariseShare(input: SharePayload): ShareSummary {
+  const payload = parseSharePayload(input);
+  if (payload.v !== 6) throw new Error('Unsupported old share version.');
+  {
     let cardCount = 0;
     let omittedImages = false;
     const lessonNames: string[] = [];
@@ -91,10 +84,7 @@ export function summariseShare(payload: SharePayload): ShareSummary {
       cardCount += card.k === 2 ? 2 : 1;
       if (card.i === 1) omittedImages = true;
     }
-    if (
-      payload.v !== 2 &&
-      payload.questions.some((question) => question.k === 0 && question.i === 1)
-    ) {
+    if (payload.questions.some((question) => question.k === 0 && question.i === 1)) {
       omittedImages = true;
     }
     return {
@@ -107,24 +97,9 @@ export function summariseShare(payload: SharePayload): ShareSummary {
       courseName: payload.course.n,
       lessonCount: payload.lessons.length,
       noteCount: payload.lessons.reduce((count, lesson) => count + lesson.notes.length, 0),
-      questionCount: payload.v !== 2 ? payload.questions.length : 0,
+      questionCount: payload.questions.length,
     };
   }
-
-  let cardCount = 0;
-  const deckNames: string[] = [];
-  for (const deck of payload.decks) {
-    deckNames.push(deck.n);
-    for (const card of deck.cards) cardCount += card.k === 2 ? 2 : 1;
-  }
-  return {
-    kind: 'deck',
-    deckCount: payload.decks.length,
-    cardCount,
-    exportedAt: payload.at,
-    deckNames,
-    omittedImages: payload.decks.some((d) => d.cards.some((c) => c.i === 1)),
-  };
 }
 
 /** Build a share code for the given course. */

@@ -2,7 +2,6 @@
 export {
   AI_COMPANION_PROTOCOL_VERSION,
   CompanionLineDecoder,
-  LEGACY_AI_COMPANION_PROTOCOL_VERSION,
   MCP_COMPANION_PROTOCOL_VERSION,
   encodeCompanionMessage,
   isAiCompanionRequest,

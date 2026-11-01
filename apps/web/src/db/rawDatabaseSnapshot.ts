@@ -5,6 +5,7 @@ import type {
   BackupFile,
   MediaAsset,
   LegacyFolder,
+  LegacyDeck,
   Course,
   CourseAssessment,
   Lesson,
@@ -26,7 +27,6 @@ import type {
   AgentMemory,
 } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
-import type { LegacyDeck } from './migrations';
 import type { LegacyAssessmentRecord } from './assessmentMigration';
 import { encodeBackupAssets } from './assetCodec';
 import type {

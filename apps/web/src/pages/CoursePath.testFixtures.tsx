@@ -112,7 +112,7 @@ vi.mock('dexie-react-hooks', () => ({
     if (source.includes('lessonCompletions')) return live.completions;
     if (source.includes('practiceMilestones')) return live.milestones;
     if (source.includes('lessonCards')) return live.links;
-    return [];
+    return undefined;
   },
 }));
 
@@ -327,8 +327,6 @@ export {
   mockCreateLesson,
   mockUpdateCourse,
   mockCreatePracticeNode,
-  mockUpdatePracticeNode,
-  mockDeletePracticeNode,
   mockCreateCourseAssessment,
   mockUpdateCourseAssessment,
   mockDeleteCourseAssessment,

@@ -55,7 +55,7 @@ const mockImportLineageFirstTime = vi.fn();
 
 vi.mock('../../db/mergeImport', () => ({
   isLineagePayload: (payload: Record<string, unknown>) =>
-    payload.v === 2 && typeof payload.li === 'string' && typeof payload.rv === 'number',
+    payload.v === 6 && typeof payload.li === 'string' && typeof payload.rv === 'number',
   findCourseForLineage: () =>
     mockFindCourseForLineage ? mockFindCourseForLineage() : Promise.resolve(undefined),
   importLineageFirstTime: (...args: unknown[]) => mockImportLineageFirstTime(...args),
@@ -132,7 +132,7 @@ describe('SharedCourseImport with course codes and files', () => {
         finish = resolve;
       }),
     );
-    const file = { payload: { v: 2 }, assets: [] };
+    const file = { payload: { v: 6 }, assets: [] };
     mockDecodeCourseFile.mockResolvedValue(file);
     render(<SharedCourseImport />);
     fireEvent.change(screen.getByLabelText('Share link or code to import'), {
@@ -144,7 +144,7 @@ describe('SharedCourseImport with course codes and files', () => {
     });
     await screen.findByText('Ready to import');
     await act(async () => {
-      finish({ v: 2 } as Awaited<ReturnType<typeof decodeShare>>);
+      finish({ v: 6 } as Awaited<ReturnType<typeof decodeShare>>);
     });
     fireEvent.click(screen.getByText('Add to my courses'));
     await waitFor(() =>
@@ -170,7 +170,7 @@ describe('SharedCourseImport with course codes and files', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
     await screen.findByText('Ready to import');
     await act(async () => {
-      finish({ payload: { v: 2 }, assets: [] });
+      finish({ payload: { v: 6 }, assets: [] });
     });
     fireEvent.click(screen.getByText('Add to my courses'));
     await waitFor(() =>
@@ -180,7 +180,7 @@ describe('SharedCourseImport with course codes and files', () => {
   });
 
   it('previews a chosen course file without importing until confirmed', async () => {
-    const file = { format: 'lacuna-course', version: 1, payload: { v: 2 }, assets: [] };
+    const file = { format: 'lacuna-course', version: 1, payload: { v: 6 }, assets: [] };
     mockDecodeCourseFile.mockResolvedValue(file);
     render(<SharedCourseImport />);
     fireEvent.change(screen.getByLabelText('Course file to import'), {
@@ -201,7 +201,7 @@ describe('SharedCourseImport with course codes and files', () => {
   });
 
   it('clears an earlier preview when the next course file is corrupt', async () => {
-    mockDecodeCourseFile.mockResolvedValueOnce({ payload: { v: 2 }, assets: [] });
+    mockDecodeCourseFile.mockResolvedValueOnce({ payload: { v: 6 }, assets: [] });
     mockDecodeCourseFile.mockRejectedValueOnce(
       new Error('The course file contains corrupt media.'),
     );
@@ -252,7 +252,7 @@ describe('SharedCourseImport with course codes and files', () => {
     }
 
     it('a plain (non-distributed) import is unaffected', async () => {
-      mockDecodedPayload = { v: 2 };
+      mockDecodedPayload = { v: 6 };
       await inspectCode();
       expect(screen.getByText('Ready to import')).toBeInTheDocument();
       expect(screen.getByText('Test Course').closest('p')).toHaveTextContent(
@@ -265,7 +265,7 @@ describe('SharedCourseImport with course codes and files', () => {
     });
 
     it('preserves lineage tracking on the first import of a published course', async () => {
-      mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 1 };
+      mockDecodedPayload = { v: 6, li: 'lineage-1', rv: 1 };
       mockImportLineageFirstTime.mockResolvedValue({
         course: { ...mockCourse, id: 'shared-copy' },
       });
@@ -280,7 +280,7 @@ describe('SharedCourseImport with course codes and files', () => {
     });
 
     it('routes to the merge importer when the payload lineage matches a local course', async () => {
-      mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 2 };
+      mockDecodedPayload = { v: 6, li: 'lineage-1', rv: 2 };
       const distributedCourse: Course = {
         ...mockCourse,
         id: 'course-2',
@@ -320,7 +320,7 @@ describe('SharedCourseImport with course codes and files', () => {
     });
 
     it('reports queued changes from a merge that needs review', async () => {
-      mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 2 };
+      mockDecodedPayload = { v: 6, li: 'lineage-1', rv: 2 };
       const distributedCourse: Course = {
         ...mockCourse,
         id: 'course-2',
@@ -354,7 +354,7 @@ describe('SharedCourseImport with course codes and files', () => {
     });
 
     it('guards against re-importing a code whose revision is not newer than the local copy', async () => {
-      mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 1 };
+      mockDecodedPayload = { v: 6, li: 'lineage-1', rv: 1 };
       const distributedCourse: Course = {
         ...mockCourse,
         id: 'course-2',

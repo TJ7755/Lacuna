@@ -1,3 +1,4 @@
+import { storedString } from '../../state/localSetting';
 import type { SessionCardOutcome, SessionEvent } from '../../course/sessionSummary';
 
 const STORAGE_PREFIX = 'lacuna.simpleSession.v1:';
@@ -147,7 +148,7 @@ export function saveSimpleSession(scope: SimpleSessionScope, input: SaveSimpleSe
     ...(input.recitations?.size ? { recitations: Object.fromEntries(input.recitations) } : {}),
   };
   try {
-    localStorage.setItem(simpleSessionStorageKey(scope), JSON.stringify(stored));
+    storedString(simpleSessionStorageKey(scope)).write(JSON.stringify(stored));
   } catch {
     // Resume is a convenience. A storage quota or privacy setting must not stop study.
   }
@@ -160,7 +161,7 @@ export function loadSimpleSession(
   const key = simpleSessionStorageKey(scope);
   let stored: StoredSimpleSession | null = null;
   try {
-    const raw = localStorage.getItem(key);
+    const raw = storedString(key).read();
     if (raw === null) return null;
     stored = parseStored(JSON.parse(raw));
   } catch {
@@ -168,7 +169,7 @@ export function loadSimpleSession(
   }
   if (!stored) {
     try {
-      localStorage.removeItem(key);
+      storedString(key).remove();
     } catch {
       // Nothing useful can be done if storage is unavailable.
     }
@@ -197,7 +198,7 @@ export function loadSimpleSession(
 
 export function clearSimpleSession(scope: SimpleSessionScope): void {
   try {
-    localStorage.removeItem(simpleSessionStorageKey(scope));
+    storedString(simpleSessionStorageKey(scope)).remove();
   } catch {
     // Nothing useful can be done if storage is unavailable.
   }

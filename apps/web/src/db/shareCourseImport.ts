@@ -28,16 +28,8 @@ import { assertValidCardPayload } from '../items/payloadValidation';
 import { emptyQuestionSchedule } from '../questions/scheduler';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { importSharedQuestionSets } from '../questions/questionSetShare';
-import { V1_SHARE_CODE_MESSAGE, assertShareSpecificationAssessments } from './sharePayload';
-import type {
-  ShareCard,
-  SharePayload,
-  SharePayloadV2,
-  SharePayloadV3,
-  SharePayloadV4,
-  SharePayloadV5,
-  SharePayloadV6,
-} from './sharePayload';
+import { parseSharePayload, assertShareSpecificationAssessments } from './sharePayload';
+import type { ShareCard, SharePayload, SharePayloadV6 } from './sharePayload';
 
 function unpackCard(sc: ShareCard): ParsedCard[] {
   const attributes = {
@@ -94,7 +86,7 @@ export async function applyImportedCourseScheduling(
 
 /** Import a single-course payload directly into the course model. */
 async function importCourseSharePayload(
-  payload: SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5 | SharePayloadV6,
+  payload: SharePayloadV6,
   scheduling?: ImportCourseScheduling,
 ): Promise<ImportShareResult> {
   assertShareLessonPrerequisites(payload.lessons);
@@ -205,7 +197,7 @@ async function importCourseSharePayload(
 
       const importedAt = Date.now();
       const conceptIdMap = new Map<string, string>();
-      if (payload.v !== 2) {
+      {
         const importedConcepts: Concept[] = payload.concepts.map((concept, index) => {
           // Keep native generator identities reproducible after remapping, including
           // when every Card for an item/region is removed and later regenerated.
@@ -273,14 +265,14 @@ async function importCourseSharePayload(
           unpackCard(shareCard).map((draft) => ({
             draft: {
               ...draft,
-              ...(payload.v !== 2 ? { conceptId: conceptIdMap.get(shareCard.co ?? '') } : {}),
+              conceptId: conceptIdMap.get(shareCard.co ?? ''),
             },
             sequenceItemId: shareCard.si,
             occlusionRegionId: shareCard.oc,
             sourceCardId: shareCard.id,
           })),
         );
-        if (payload.v !== 2 && drafts.some(({ draft }) => !draft.conceptId)) {
+        if (drafts.some(({ draft }) => !draft.conceptId)) {
           throw new Error('A shared Card references a missing Concept.');
         }
         if (drafts.length === 0) continue;
@@ -312,12 +304,12 @@ async function importCourseSharePayload(
         unpackCard(shareCard).map((draft) => ({
           draft: {
             ...draft,
-            ...(payload.v !== 2 ? { conceptId: conceptIdMap.get(shareCard.co ?? '') } : {}),
+            conceptId: conceptIdMap.get(shareCard.co ?? ''),
           },
           sourceCardId: shareCard.id,
         })),
       );
-      if (payload.v !== 2 && bankDrafts.some(({ draft }) => !draft.conceptId)) {
+      if (bankDrafts.some(({ draft }) => !draft.conceptId)) {
         throw new Error('A shared Card references a missing Concept.');
       }
       if (bankDrafts.length > 0) {
@@ -442,7 +434,7 @@ async function importCourseSharePayload(
       });
       if (importedOcclusions.length > 0) await db.occlusions.bulkAdd(importedOcclusions);
 
-      if (payload.v !== 2) {
+      {
         const importedQuestions: QuestionDefinition[] = [];
         const importedQuestionConcepts: QuestionConceptSet[] = [];
         for (let index = 0; index < payload.questions.length; index += 1) {
@@ -517,7 +509,7 @@ async function importCourseSharePayload(
           await db.questionConcepts.bulkAdd(importedQuestionConcepts);
         }
       }
-      if (payload.v === 4 || payload.v === 5 || payload.v === 6) {
+      {
         const importedSets = importSharedQuestionSets({
           records: payload.questionSets,
           sharedLessons: payload.lessons,
@@ -529,7 +521,7 @@ async function importCourseSharePayload(
           makeId,
         });
         if (importedSets.length > 0) await db.questionSets.bulkAdd(importedSets);
-        if (payload.v === 5 || payload.v === 6) {
+        {
           const importedSetIds = new Map(
             payload.questionSets.map((set, index) => [set.id, importedSets[index].id]),
           );
@@ -571,7 +563,7 @@ async function importCourseSharePayload(
     courses: 1,
     lessons: payload.lessons.length,
     cards: cardCount,
-    questions: payload.v !== 2 ? payload.questions.length : 0,
+    questions: payload.questions.length,
     courseIds: [importedCourseId],
   };
 }
@@ -586,8 +578,5 @@ export async function importSharePayload(
   payload: SharePayload,
   scheduling?: ImportCourseScheduling,
 ): Promise<ImportShareResult> {
-  if (payload.v === 1) {
-    throw new Error(V1_SHARE_CODE_MESSAGE);
-  }
-  return importCourseSharePayload(payload, scheduling);
+  return importCourseSharePayload(parseSharePayload(payload) as SharePayloadV6, scheduling);
 }

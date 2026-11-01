@@ -13,7 +13,7 @@ import { recordReview } from './reviewRepository';
 import { createNoteAnnotation } from './noteRepository';
 import { createCourse, snapshotCourse, restoreCourse } from './courseRepository';
 import { exportDatabase, importBackup, validateBackup } from './portability';
-import { buildCourseSharePayload, importSharePayload, type SharePayloadV5 } from './share';
+import { buildCourseSharePayload, importSharePayload, type SharePayloadV6 } from './share';
 import { buildCourseFile, decodeCourseFile } from './courseFile';
 import { mergeSnapshots } from '../sync/mergeSnapshots';
 import { resolveCourseLessonOrder } from '../course/lessonOrder';
@@ -26,9 +26,9 @@ import {
   submitPracticeQuestion,
 } from '../questions/questionSetAttemptRepository';
 
-function payload(revision = 1): SharePayloadV5 {
+function payload(revision = 1): SharePayloadV6 {
   return {
-    v: 5,
+    v: 6,
     by: 'Teacher',
     at: 1000 * revision,
     li: 'science',

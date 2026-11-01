@@ -123,6 +123,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
             'src/shareLinks/client.ts',
             'src/shareLinks/payloadCodec.ts',
             'src/state/ThemeContext.tsx',
+            'src/state/localSetting.ts',
             'src/components/course/coursePageLayout.ts',
             'src/components/ui/SectionCard.tsx',
             'src/components/ui/buttonStyles.ts',

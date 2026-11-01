@@ -6,7 +6,7 @@ import { createLesson } from './lessonRepository';
 import { cardsForSequence, createSequence, updateSequence } from './sequenceRepository';
 import { cardsForOcclusion, createOcclusion, updateOcclusion } from './occlusionRepository';
 import { importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
-import type { SharePayloadV5 } from './share';
+import type { SharePayloadV6 } from './share';
 import { setConceptSpecificationPoints } from '../questions/repository.concepts';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
 
@@ -18,13 +18,13 @@ beforeEach(async () => {
   await db.transaction('rw', db.tables, () => Promise.all(db.tables.map((table) => table.clear())));
 });
 
-function publishedPayload(kind: 'sequence' | 'occlusion'): SharePayloadV5 {
+function publishedPayload(kind: 'sequence' | 'occlusion'): SharePayloadV6 {
   const conceptId =
     kind === 'sequence'
       ? 'concept:sequence:sequence-1:item-1'
       : 'concept:occlusion:occlusion-1:region-1';
   return {
-    v: 5,
+    v: 6,
     by: 'Teacher',
     at: 1_000,
     li: `generated-${kind}`,

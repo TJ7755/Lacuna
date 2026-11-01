@@ -40,6 +40,10 @@ export async function getCurrentDbVersion(name: string): Promise<number> {
 
 // This floor applies to installed databases only; backup and share compatibility
 // remains governed by their import validators. Never run a removed upgrader on old data.
+/**
+ * Kept exported: narrowing changes compiled output without behavioural benefit.
+ * @public
+ */
 export const MINIMUM_SCHEMA_VERSION = 27;
 
 export class UnsupportedSchemaError extends Error {

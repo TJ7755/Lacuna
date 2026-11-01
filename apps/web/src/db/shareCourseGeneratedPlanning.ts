@@ -74,7 +74,7 @@ export function planSharedOcclusions({
     primaryLessonId: typeof shareOcc.pl === 'number' ? (lessonIds[shareOcc.pl] ?? null) : null,
     name: shareOcc.n || 'Shared occlusion',
     assetHash: shareOcc.ah,
-    ...(payload.v !== 2 && shareOcc.regionConceptIds
+    ...(shareOcc.regionConceptIds
       ? {
           regionConceptIds: Object.fromEntries(
             Object.entries(shareOcc.regionConceptIds).map(([regionId, conceptId]) => {

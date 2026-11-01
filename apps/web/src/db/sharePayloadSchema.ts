@@ -144,17 +144,6 @@ const ShareCardSchema = z
     }
   });
 
-const ShareDeckSchema = z.object({
-  n: z.string().min(1),
-  o: z.union([z.literal(0), z.literal(1)]),
-  c: z.number(),
-  e: z.number(),
-  r: z.number().optional(),
-  p: z.number().optional(),
-  l: z.string().optional(),
-  cards: z.array(ShareCardSchema),
-});
-
 /** A single note in a v2 (course) share payload. */
 const ShareNoteSchema = z.object({
   n: z.string(), // name
@@ -322,15 +311,8 @@ const ShareOcclusionSchema = z.object({
   pl: z.number().optional(), // index into the payload's lessons array (primaryLessonId)
 });
 
-const SharePayloadV1Schema = z.object({
-  v: z.literal(1),
-  by: z.union([z.string(), z.null()]).optional(),
-  at: z.number(),
-  decks: z.array(ShareDeckSchema),
-});
-
-const SharePayloadV2Schema = z.object({
-  v: z.literal(2),
+const ShareCoursePayloadSchema = z.object({
+  v: z.literal(6),
   by: z.union([z.string(), z.null()]).optional(),
   at: z.number(),
   course: ShareCourseSchema,
@@ -392,29 +374,9 @@ const ShareQuestionSchema = z.discriminatedUnion('k', [
   ShareGeneratedQuestionSchema,
 ]);
 
-const SharePayloadV3Schema = SharePayloadV2Schema.omit({ v: true }).extend({
-  v: z.literal(3),
+export const SharePayloadSchema = ShareCoursePayloadSchema.extend({
   concepts: z.array(ShareConceptSchema),
   questions: z.array(ShareQuestionSchema),
-});
-
-const SharePayloadV4Schema = SharePayloadV3Schema.omit({ v: true }).extend({
-  v: z.literal(4),
   questionSets: z.array(z.unknown()),
-});
-
-const SharePayloadV5Schema = SharePayloadV4Schema.omit({ v: true }).extend({
-  v: z.literal(5),
   questionSetPracticeNodes: z.array(z.unknown()),
 });
-
-const SharePayloadV6Schema = SharePayloadV5Schema.extend({ v: z.literal(6) });
-
-export const SharePayloadSchema = z.discriminatedUnion('v', [
-  SharePayloadV1Schema,
-  SharePayloadV2Schema,
-  SharePayloadV3Schema,
-  SharePayloadV4Schema,
-  SharePayloadV5Schema,
-  SharePayloadV6Schema,
-]);

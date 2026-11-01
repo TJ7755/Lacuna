@@ -1,5 +1,5 @@
 {
-  "ignoreCommand": "node scripts/vercel-ignore-build.mjs lacuna",
+  "git": { "deploymentEnabled": false },
   "framework": "vite",
   "installCommand": "node apps/relay/scripts/security-bun.mjs install --frozen-lockfile",
   "buildCommand": "node apps/relay/scripts/security-bun.mjs run build",

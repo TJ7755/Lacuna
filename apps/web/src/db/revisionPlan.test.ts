@@ -11,6 +11,7 @@ import {
   createLesson,
   createLessonCard,
   updateCourseAssessment,
+  updateCourse,
   upsertLessonCardExposure,
 } from './repository';
 import {
@@ -72,6 +73,23 @@ async function fixture() {
 
 describe('revision plan lifecycle', () => {
   beforeEach(reset);
+
+  it('refreshes model and scheduling evidence when fitted parameters change', async () => {
+    const f = await fixture();
+    const projection = { projectionMode: 'memory-model' as const, memoryModelVersion: 'model' };
+    const plan = await createOrResumeRevisionPlan(f.assessment.id, 20, projection, f.now);
+    const params = { ...f.course.fsrsParameters, w: [...f.course.fsrsParameters.w] };
+    params.w[20] *= 1.1;
+    await updateCourse(f.course.id, { fsrsParameters: params });
+    const refreshed = await refreshRevisionPlan(plan.id, projection, f.now);
+    expect(refreshed.input.projection.memoryModelVersion).not.toBe(
+      plan.input.projection.memoryModelVersion,
+    );
+    expect(refreshed.input.reviewEvidenceVersion).not.toBe(plan.input.reviewEvidenceVersion);
+    expect(refreshed.replans.at(-1)?.reasons).toContain('memory-model-changed');
+    const resumed = await refreshRevisionPlan(plan.id, refreshed.input.projection, f.now);
+    expect(resumed.input.projection).toEqual(refreshed.input.projection);
+  });
 
   it('creates one plan per assessment with inherited daily windows and a frozen scope', async () => {
     const f = await fixture();

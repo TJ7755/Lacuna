@@ -80,7 +80,6 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
       };
     }
   }
-  if (payload.v === 1) return { summary, raw };
   const final = payload.exams?.find((exam) => exam.k === 'f');
   const suggestedDate = (final ? final.sm !== 1 : payload.course?.sm !== 1)
     ? (final?.e ?? payload.course?.e)

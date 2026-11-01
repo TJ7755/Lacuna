@@ -154,7 +154,20 @@ export function ExamSkillPracticePanel({
             <span className="min-w-0 flex-1 basis-48">
               {skill.name}{' '}
               <span className="text-sm text-ink-soft">
+                ·{' '}
+                {skill.readiness === 'unassessed'
+                  ? 'Not yet assessed'
+                  : skill.due
+                    ? 'Due now'
+                    : 'Scheduled'}{' '}
                 · {skill.unseenCount} unseen / {skill.availableCount} available
+                {skill.estimatedRecall !== null && skill.estimatedRecall !== undefined && (
+                  <>
+                    {' '}
+                    · {Math.round(skill.estimatedRecall * 100)}% estimated recall
+                    {skill.examDate ? ' at exam' : ' now'}
+                  </>
+                )}
               </span>
             </span>
             <Button
@@ -180,7 +193,20 @@ export function ExamSkillPracticePanel({
               <option value="">Choose a skill</option>
               {available.map((skill) => (
                 <option key={skill.techniqueId} value={skill.techniqueId}>
-                  {skill.name} · {skill.unseenCount} unseen / {skill.availableCount} available
+                  {skill.name} ·{' '}
+                  {skill.readiness === 'unassessed'
+                    ? 'Not yet assessed'
+                    : skill.due
+                      ? 'Due now'
+                      : 'Scheduled'}{' '}
+                  · {skill.unseenCount} unseen / {skill.availableCount} available
+                  {skill.estimatedRecall !== null && skill.estimatedRecall !== undefined && (
+                    <>
+                      {' '}
+                      · {Math.round(skill.estimatedRecall * 100)}% estimated recall
+                      {skill.examDate ? ' at exam' : ' now'}
+                    </>
+                  )}
                 </option>
               ))}
             </Select>

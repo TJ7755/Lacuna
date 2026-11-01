@@ -13,8 +13,13 @@ async function reset() {
 
 function emptyBackup(overrides: Partial<BackupFile> = {}): BackupFile {
   return {
-    app: 'lacuna-v12',
-    version: 12,
+    app: 'lacuna-v15',
+    version: 15,
+    schedulingUnits: [],
+    coursePerformance: [],
+    schedulingPerformance: [],
+    questionSetAttempts: [],
+    practiceNodes: [],
     exportedAt: 1,
     cards: [],
     assets: [],
@@ -49,11 +54,14 @@ describe('backup tombstones', () => {
     expect(await db.tombstones.toArray()).toEqual(expect.arrayContaining(tombstones));
   });
 
-  it('imports a v9 backup with no tombstones array', async () => {
+  it('rejects a v9 backup without changing tombstones', async () => {
+    await db.tombstones.add({ table: 'cards', recordId: 'kept', deletedAt: 10 });
+    const before = await exportDatabase();
     const v9 = emptyBackup({ app: 'lacuna', version: 9, tombstones: undefined });
-    expect(validateBackup(v9)).toBe(true);
-    await importBackup(v9, 'replace');
-    expect(await db.tombstones.count()).toBe(0);
+    expect(validateBackup(v9)).toBe(false);
+    await expect(importBackup(v9, 'replace')).rejects.toThrow('Unsupported old backup');
+    const after = await exportDatabase();
+    expect({ ...after, exportedAt: 0 }).toEqual({ ...before, exportedAt: 0 });
   });
 
   it('unions incoming tombstones on merge without applying them as deletes', async () => {

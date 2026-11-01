@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { createStoredValue } from './localSetting';
+
 // A device-local accent-colour control. The chosen accent is applied as a
 // `data-accent` attribute on the document root; index.css then switches the
 // --accent custom properties (with separate light/dark variants) to match.
@@ -37,12 +39,15 @@ interface AccentValue {
 
 const AccentContext = createContext<AccentValue | null>(null);
 
+const storedAccent = createStoredValue({ key: STORAGE_KEY, parse: (raw) => raw });
+const voltAdoption = createStoredValue({ key: VOLT_ADOPTION_KEY, parse: (raw) => raw });
+
 function readStored(): string {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = storedAccent.read();
     // Amber was saved automatically by the previous default. Adopt Volt once,
     // then honour a deliberate return to Amber and all other saved accents.
-    if (stored === 'amber' && !localStorage.getItem(VOLT_ADOPTION_KEY)) return DEFAULT_ACCENT;
+    if (stored === 'amber' && !voltAdoption.read()) return DEFAULT_ACCENT;
     if (stored && ACCENTS.some((a) => a.key === stored)) return stored;
   } catch {
     // Ignore storage access errors and fall back to the default.
@@ -56,8 +61,8 @@ export function AccentProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.accent = accent;
     try {
-      localStorage.setItem(STORAGE_KEY, accent);
-      localStorage.setItem(VOLT_ADOPTION_KEY, '1');
+      storedAccent.write(accent);
+      voltAdoption.write('1');
     } catch {
       // Persistence is best-effort.
     }

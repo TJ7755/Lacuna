@@ -44,19 +44,6 @@ export interface ShareCard {
   co?: string;
 }
 
-/** A single deck in a v1 share payload, with compact keys. */
-interface ShareDeck {
-  n: string; // name
-  o: 0 | 1; // objective: 0 expectedMarks, 1 securedTopics
-  c: number; // createdAt (date created)
-  e: number; // examDate (date due)
-  r?: number; // requestRetention
-  p?: number; // newCardsPerDay
-  lf?: 0; // skip lesson introductions; absent means learn first
-  l?: string; // colour
-  cards: ShareCard[];
-}
-
 /** A single note in a v2 share payload. */
 export interface ShareNote {
   n: string; // name
@@ -167,41 +154,6 @@ export interface ShareOcclusion {
   pl?: number; // index into the payload's lessons array (primaryLessonId)
 }
 
-/** The decoded contents of a v1 (flat deck list) share code. */
-export interface SharePayloadV1 {
-  v: 1;
-  /** Literal creator/project display label; not verified authorship or approval. */
-  by?: string | null;
-  /** Exported-at epoch ms. */
-  at: number;
-  decks: ShareDeck[];
-}
-
-/** The decoded contents of a v2 (single course) share code. */
-export interface SharePayloadV2 {
-  v: 2;
-  /** Literal creator/project display label; not verified authorship or approval. */
-  by?: string | null;
-  /** Exported-at epoch ms. */
-  at: number;
-  course: ShareCourse;
-  lessons: ShareLesson[];
-  exams?: ShareExam[];
-  bankCards?: ShareCard[];
-  links?: Array<{ l: number; c: string }>;
-  /** Overlapping-cloze sequences belonging to the course. Optional so existing v2
-   *  codes without sequences still parse. */
-  sequences?: ShareSequence[];
-  /** Image occlusions belonging to the course. Optional so existing v2 codes without
-   *  occlusions still parse. */
-  occlusions?: ShareOcclusion[];
-  /** Lineage id, present iff the exporting course has published at least once
-   *  (mirrors Course.distribution.lineageId, Arc 7). */
-  li?: string;
-  /** Revision number, present iff `li` is present (Course.distribution.revision). */
-  rv?: number;
-}
-
 interface ShareConcept {
   id: string;
   n: string;
@@ -241,41 +193,38 @@ export type ShareQuestion =
       gc: unknown;
     };
 
-export interface SharePayloadV3 extends Omit<SharePayloadV2, 'v'> {
-  v: 3;
+export interface SharePayloadV6 {
+  v: 6;
+  /** Literal creator/project display label; not verified authorship or approval. */
+  by?: string | null;
+  /** Exported-at epoch ms. */
+  at: number;
+  course: ShareCourse;
+  lessons: ShareLesson[];
+  exams?: ShareExam[];
+  bankCards?: ShareCard[];
+  links?: Array<{ l: number; c: string }>;
+  /** Overlapping-cloze sequences belonging to the course. */
+  sequences?: ShareSequence[];
+  /** Image occlusions belonging to the course. */
+  occlusions?: ShareOcclusion[];
+  /** Lineage id, present iff the exporting course has published at least once
+   *  (mirrors Course.distribution.lineageId, Arc 7). */
+  li?: string;
+  /** Revision number, present iff `li` is present (Course.distribution.revision). */
+  rv?: number;
   concepts: ShareConcept[];
   questions: ShareQuestion[];
-}
-
-export interface SharePayloadV4 extends Omit<SharePayloadV3, 'v'> {
-  v: 4;
   questionSets: QuestionSetRecord[];
-}
-
-export interface SharePayloadV5 extends Omit<SharePayloadV4, 'v'> {
-  v: 5;
   questionSetPracticeNodes: QuestionSetPracticeNode[];
 }
 
-export interface SharePayloadV6 extends Omit<SharePayloadV5, 'v'> {
-  v: 6;
-}
-
-/** The decoded contents of a share code, either a flat deck list or a single course. */
-export type SharePayload =
-  | SharePayloadV1
-  | SharePayloadV2
-  | SharePayloadV3
-  | SharePayloadV4
-  | SharePayloadV5
-  | SharePayloadV6;
+export type SharePayload = SharePayloadV6;
 
 export const V1_SHARE_CODE_MESSAGE =
-  'This share code is a v1 deck share code and can no longer be imported.';
+  'This share code is from an unsupported old version of Lacuna. Export a new share from the current release.';
 
-export function assertShareSpecificationAssessments(
-  payload: Exclude<SharePayload, SharePayloadV1>,
-): void {
+export function assertShareSpecificationAssessments(payload: SharePayloadV6): void {
   const assessments = (payload.exams ?? []).map((exam) => ({
     coverageMode: exam.m === 's' ? ('specification' as const) : ('prefix' as const),
     specificationPaperId: exam.specificationPaperId,
@@ -291,27 +240,24 @@ export function assertShareSpecificationAssessments(
 }
 
 export function parseSharePayload(payload: unknown): SharePayload {
+  if (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'v' in payload &&
+    typeof payload.v === 'number' &&
+    payload.v < 6
+  ) {
+    throw new Error(V1_SHARE_CODE_MESSAGE);
+  }
   const parse = SharePayloadSchema.safeParse(payload);
   if (!parse.success) {
     throw new Error('This share code is from an unsupported version of Lacuna.');
   }
-  if (parse.data.v === 1) {
-    throw new Error(V1_SHARE_CODE_MESSAGE);
-  }
   assertShareLessonPrerequisites(parse.data.lessons);
-  assertShareSpecificationAssessments(parse.data as Exclude<SharePayload, SharePayloadV1>);
-  if (parse.data.v === 4 || parse.data.v === 5 || parse.data.v === 6) {
-    return {
-      ...parse.data,
-      questionSets: parse.data.questionSets.map(parseQuestionSetRecord),
-      ...(parse.data.v === 5 || parse.data.v === 6
-        ? {
-            questionSetPracticeNodes: parse.data.questionSetPracticeNodes.map(
-              parseQuestionSetPracticeNode,
-            ),
-          }
-        : {}),
-    } as SharePayloadV4 | SharePayloadV5 | SharePayloadV6;
-  }
-  return parse.data;
+  assertShareSpecificationAssessments(parse.data as SharePayloadV6);
+  return {
+    ...parse.data,
+    questionSets: parse.data.questionSets.map(parseQuestionSetRecord),
+    questionSetPracticeNodes: parse.data.questionSetPracticeNodes.map(parseQuestionSetPracticeNode),
+  } as SharePayloadV6;
 }

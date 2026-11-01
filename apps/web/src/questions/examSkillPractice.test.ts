@@ -74,7 +74,7 @@ it('selects explicitly authored applicable techniques independently of knowledge
     assessmentIds: [],
     questions: [question('outside', [])],
   });
-  expect(await listExamSkillPractice(course.id)).toEqual([
+  expect(await listExamSkillPractice(course.id)).toMatchObject([
     {
       techniqueId: 'graph-interpretation',
       name: 'Interpret a graph',
@@ -82,6 +82,9 @@ it('selects explicitly authored applicable techniques independently of knowledge
       unseenCount: 2,
     },
   ]);
+  expect(
+    await listExamSkillPractice(course.id, Date.now(), { scopeConceptIds: [], scopeLessonIds: [] }),
+  ).toMatchObject([{ techniqueId: 'graph-interpretation', availableCount: 1 }]);
   const first = (await startExamSkillPractice(course.id, 'graph-interpretation')).attempt;
   const second = (await startExamSkillPractice(course.id, 'graph-interpretation')).attempt;
   expect(new Set([first.receipt.questions[0].id, second.receipt.questions[0].id])).toEqual(
@@ -127,7 +130,7 @@ it('counts generated question capacity once and skips saved family variants', as
     },
   });
   await importQuestionBank(bank, course.id);
-  expect(await listExamSkillPractice(course.id)).toEqual([
+  expect(await listExamSkillPractice(course.id)).toMatchObject([
     {
       techniqueId: 'calculation-setup',
       name: 'Set up a calculation',

@@ -322,7 +322,7 @@ export function createHalfLifeLogisticModel(
   if (!loaded.valid || !Number.isFinite(decay) || decay >= 0) return undefined;
   const coefficients = personalisedValues(loaded.coefficients.values, localFit);
   return {
-    version: loaded.coefficients.version,
+    version: `${MODEL_NAME}-${versionHash(coefficients)}:decay:${decay}`,
     validate({ card, now, assessmentAt }) {
       const cardReason = cardValidationReason(card);
       if (cardReason) return { valid: false, reason: cardReason };

@@ -8,6 +8,7 @@ import { createConcept } from './repository';
 import { createQuestionSet } from './questionSetRepository';
 import {
   completeQuestionSetAttempt,
+  recordQuestionSetAssistance,
   saveQuestionSetMarking,
   startQuestionSetAttempt,
   submitPracticeQuestion,
@@ -532,4 +533,50 @@ it('excludes pure knowledge from application selection and replays only applicab
   );
   expect(await db.cards.get(card.id)).toEqual(card);
   expect(await db.reviewHistory.count()).toBe(0);
+});
+
+it('stops automatic Study from repeating a submitted concept in one sitting while retaining manual practice', async () => {
+  const { course, concept } = await fixture();
+  let { attempt } = await startConceptPractice(course.id, concept.id, { now: 200 });
+  const question = attempt.receipt.questions[0];
+  attempt = await recordQuestionSetAssistance(
+    attempt.id,
+    attempt.revisionId,
+    { nodeId: question.id, kind: 'answer-revealed', occurredAt: 205 },
+    205,
+  );
+  attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, question.id, 210);
+  attempt = await saveQuestionSetMarking(
+    attempt.id,
+    attempt.revisionId,
+    {
+      decisions: [
+        { allocationId: question.answer!.allocations[0].id, status: 'awarded', marks: 0 },
+      ],
+      annotations: [],
+      corrections: [],
+      reflection: { reasons: [], note: '' },
+      activeNodeId: question.id,
+      activeAllocationId: null,
+    },
+    220,
+  );
+  await completeQuestionSetAttempt(attempt.id, attempt.revisionId, 230);
+  const [item] = await listConceptPractice(course.id, 240, undefined, { sittingStartedAt: 190 });
+  expect(item).toMatchObject({
+    due: true,
+    unseenCount: 1,
+    studyEligible: false,
+    studyUnseenCount: 0,
+  });
+  await expect(
+    startConceptPractice(course.id, concept.id, {
+      now: 240,
+      mode: 'mixed',
+      study: { sittingStartedAt: 190 },
+    }),
+  ).rejects.toThrow(/No questions/);
+  expect(
+    (await startConceptPractice(course.id, concept.id, { now: 250 })).selection.questionId,
+  ).not.toBe(question.id);
 });

@@ -35,8 +35,18 @@ const PARAMS = defaultFsrsParameters();
 
 function backup(overrides: Partial<BackupFile> = {}): BackupFile {
   return {
-    app: 'lacuna',
-    version: 10,
+    app: 'lacuna-v15',
+    version: 15,
+    schedulingUnits: [],
+    coursePerformance: [],
+    schedulingPerformance: [],
+    concepts: [],
+    questions: [],
+    questionConcepts: [],
+    questionAttempts: [],
+    questionSets: [],
+    questionSetAttempts: [],
+    practiceNodes: [],
     exportedAt: 1,
     cards: [],
     assets: [],
@@ -269,12 +279,31 @@ describe('manualMerge', () => {
     expect(importBackup).not.toHaveBeenCalled();
   });
 
+  it.each([1, 10, 14])('rejects version %s before entering replacement', async (version) => {
+    await expect(
+      manualMerge(
+        backup({
+          app: (version < 12 ? 'lacuna' : `lacuna-v${version}`) as BackupFile['app'],
+          version,
+        }),
+      ),
+    ).rejects.toMatchObject({
+      name: 'ManualMergeError',
+      databaseModified: false,
+      message:
+        'This file is not a valid Lacuna backup. version: Unsupported old backup version. Export a new backup from the current Lacuna release.',
+    });
+    expect(replace).not.toHaveBeenCalled();
+    expect(takeAutoBackup).not.toHaveBeenCalled();
+    expect(importBackup).not.toHaveBeenCalled();
+  });
+
   it('rejects an invalid file before any write', async () => {
     await expect(manualMerge({ app: 'not-lacuna' } as unknown as BackupFile)).rejects.toMatchObject(
       {
         name: 'ManualMergeError',
         databaseModified: false,
-        message: 'This file is not a valid Lacuna backup.',
+        message: expect.stringContaining('This file is not a valid Lacuna backup.'),
       },
     );
     expect(takeAutoBackup).not.toHaveBeenCalled();
@@ -343,7 +372,7 @@ describe('manualMerge', () => {
       courses: { kept: 1, added: 1, removed: 0 },
       lessons: { kept: 1, added: 1, removed: 0 },
       reviewEvents: { kept: 1, added: 1, removed: 0 },
-      concepts: { kept: 1, added: 1, removed: 0 },
+      concepts: { kept: 0, added: 0, removed: 0 },
       questions: { kept: 0, added: 0, removed: 0 },
       questionConcepts: { kept: 0, added: 0, removed: 0 },
       questionAttempts: { kept: 0, added: 0, removed: 0 },
@@ -472,7 +501,7 @@ describe('summariseMerge', () => {
       courses: { kept: 1, added: 1, removed: 0 },
       lessons: { kept: 1, added: 0, removed: 0 },
       reviewEvents: { kept: 1, added: 1, removed: 0 },
-      concepts: { kept: 1, added: 1, removed: 1 },
+      concepts: { kept: 0, added: 0, removed: 0 },
       questions: { kept: 0, added: 0, removed: 0 },
       questionConcepts: { kept: 0, added: 0, removed: 0 },
       questionAttempts: { kept: 0, added: 0, removed: 0 },

@@ -13,11 +13,10 @@ inclusion of source files outside that directory. Keep the frozen-lockfile
 install/build commands in [apps/gaps/vercel.json](../apps/gaps/vercel.json); they run from
 the repository root (`cd ../..`) and produce `apps/gaps/dist`. Use the repository's pinned Bun.
 
-Keep the remote Ignored Build Step skipping automatic previews:
-
-```sh
-if [ "$VERCEL_ENV" = "production" ]; then exit 1; else exit 0; fi
-```
+Git-triggered deployments are disabled. Clear the old dashboard Ignored Build Step override.
+Production builds run in GitHub Actions and upload prebuilt output; there are no PR previews.
+Follow the enable gate and manual dispatch procedure in
+[workspace deployments](maintenance/workspaces.md#github-built-production-deployments).
 
 Inspect the linked project and team before deployment; a link to `lacuna` is the
 wrong target. Stage with `bunx vercel deploy --prod --skip-domain`, verify the
@@ -98,8 +97,8 @@ shared with other projects, and the subscription charge is separate from usage
 consuming that credit. Do not attribute all account costs to Gaps.
 
 Compare builds, functions and Blob usage, rather than counting encrypted reports
-alone. Keep automatic PR previews skipped as configured; production builds still
-run. Do not add paid monitoring, databases or account-wide pause rules for this
+alone. Keep Git-triggered deployments disabled; production builds run on GitHub when
+the deployment enable variable is set. Do not add paid monitoring, databases or account-wide pause rules for this
 trial without a concrete need and the owner's choice about effects on other apps.
 Check [current Blob pricing](https://vercel.com/docs/vercel-blob/usage-and-pricing)
 and [Pro credit rules](https://vercel.com/docs/plans/pro-plan) when reviewing them.

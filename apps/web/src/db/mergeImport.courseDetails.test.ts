@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import type { SharePayloadV2 } from './share';
+import type { SharePayloadV6 } from './share';
 import { importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
 import { coursePayload, lessonOne } from './mergeImport.testFixtures';
 
@@ -11,11 +11,12 @@ describe('mergeImport: course details', () => {
     await db.open();
   });
 
-  const course = (overrides: Partial<SharePayloadV2['course']> = {}): SharePayloadV2['course'] => ({
+  const course = (overrides: Partial<SharePayloadV6['course']> = {}): SharePayloadV6['course'] => ({
     n: 'Biology',
     d: 'Cells and genes',
     o: 0,
     c: 1000,
+    sm: 1,
     um: 'open',
     ...overrides,
   });

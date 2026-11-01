@@ -3,10 +3,13 @@
 Read [CONTRIBUTING](../CONTRIBUTING.md) for validation and independent review requirements.
 Inspect source, callers and tests before changing behaviour.
 
+Scheduling contracts: [Technique practice scheduling](technique-scheduling.md).
+
 Operational procedures:
 
 - [Desktop and AI setup](desktop.md)
-- [Workspace deployment migration](maintenance/workspaces.md)
+- [Workspace deployment migration](maintenance/workspaces.md) and
+  [return to Vercel checklist](maintenance/vercel-return.md)
 - [Release](maintenance/release.md), [repository controls](maintenance/governance.md),
   [TLS maintenance](maintenance/tls-trust.md) and [security reporting](../SECURITY.md)
 - [Library publication](library.md)

@@ -9,7 +9,6 @@ import {
   MAX_BACKUP_FILE_BYTES,
   validateBackup,
   BACKUP_VERSION,
-  PRE_V22_BACKUP_MESSAGE,
 } from './portability';
 import type { BackupFile } from '@lacuna/core/db/types';
 import {
@@ -47,20 +46,16 @@ describe('backup export, replacement and file boundary', () => {
 
   it('refuses a backup that still carries Deck rows', async () => {
     const backup = preV22Backup({ decks: [{ id: 'old-deck' }] as BackupFile['decks'] });
-    await expect(importBackup(backup, 'replace')).rejects.toThrow(PRE_V22_BACKUP_MESSAGE);
-    await expect(readBackupFile(new File([JSON.stringify(backup)], 'old.json'))).rejects.toThrow(
-      PRE_V22_BACKUP_MESSAGE,
-    );
+    await expect(importBackup(backup, 'replace')).rejects.toThrow('Unsupported old backup version');
+    await expect(readBackupFile(new File([JSON.stringify(backup)], 'old.json'))).rejects.toThrow();
   });
 
   it('refuses a backup that still carries Folder rows', async () => {
     const backup = preV22Backup({
       folders: [{ id: 'old-folder', name: 'Chemistry', parentId: null, createdAt: 1 }],
     });
-    await expect(importBackup(backup, 'merge')).rejects.toThrow(PRE_V22_BACKUP_MESSAGE);
-    await expect(readBackupFile(new File([JSON.stringify(backup)], 'old.json'))).rejects.toThrow(
-      PRE_V22_BACKUP_MESSAGE,
-    );
+    await expect(importBackup(backup, 'merge')).rejects.toThrow('Unsupported old backup version');
+    await expect(readBackupFile(new File([JSON.stringify(backup)], 'old.json'))).rejects.toThrow();
   });
 
   it('still accepts a current-shaped file with empty decks and folders arrays', async () => {

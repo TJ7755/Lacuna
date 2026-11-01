@@ -40,6 +40,7 @@ function render(value, action, changes = {}, cancelled = false, attempt = 1) {
       run_id: 9001,
       run_attempt: attempt,
       sha: 'push-sha',
+      ref: 'refs/heads/master',
       event: { action, changes, pull_request: action ? { number: 42 } : {} },
     },
     always: () => true,
@@ -63,180 +64,21 @@ test('stacked pull requests receive validation on any base branch', () => {
   }
 });
 
-test('metadata edits reuse validation without cancelling CI or bypassing required contexts', () => {
-  for (const changes of [
-    { title: { from: 'Old title' } },
-    { body: { from: null } },
-    { title: {}, body: {} },
-  ]) {
-    assert.equal(render(workflow['run-name'], 'edited', changes), 'CI metadata push-sha');
-    assert.equal(render(workflow.concurrency.group, 'edited', changes), 'ci-metadata-9001');
-    assert.equal(render(workflow.concurrency['cancel-in-progress'], 'edited', changes), 'false');
-    assert.equal(workflow.jobs.changes.if, undefined);
-    assert.equal(render(workflow.jobs.documentation.if, 'edited', changes), 'false');
-    const metadata = workflow.jobs.changes.steps.find((step) => step.id === 'metadata');
-    assert.equal(render(metadata.if, 'edited', changes), 'true');
-    assert.equal(metadata.env.VALIDATION_TITLE, 'CI validation ${{ github.sha }}');
-    assert.equal(metadata.env.HEAD_SHA, '${{ github.event.pull_request.head.sha }}');
-    assert.match(metadata.run, /head_sha=\$HEAD_SHA/);
-    for (const step of workflow.jobs.changes.steps.filter((step) => step.id !== 'metadata')) {
-      assert.equal(render(step.if, 'edited', changes), 'false', step.id ?? step.uses);
-    }
-    for (const job of ['test', 'browser-smoke']) {
-      assert.equal(render(workflow.jobs[job].if, 'edited', changes), 'true', job);
-      assert.equal(render(workflow.jobs[job].steps[0].if, 'edited', changes), 'false', job);
-    }
-    for (const job of required) {
-      assert.equal(render(workflow.jobs[job].name, 'edited', changes), job);
-    }
-  }
-});
-
-test('metadata reuse requires a successful validation run for the exact merge commit', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-reuse-'));
-  try {
-    const step = workflow.jobs.changes.steps.find((step) => step.id === 'metadata');
-    const gh = join(directory, 'gh');
-    writeFileSync(
-      gh,
-      `#!/bin/bash
-if [ "$1" = api ] && [[ "$2" == *"/runs?"* ]]; then
-  printf '%s' "$RUNS"
-elif [ "$1" = api ]; then
-  printf '%s' "$DETAIL"
-else
-  printf '%s\\n' "$*" > "$WATCH_ARGS"
-  exit "$WATCH_STATUS"
-fi
-`,
-      { mode: 0o755 },
-    );
-    const run = (runs, status = '0', conclusion = 'success', detail = {}) => {
-      const output = join(directory, 'output');
-      const summary = join(directory, 'summary');
-      writeFileSync(output, '');
-      writeFileSync(summary, '');
-      const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', step.run], {
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          PATH: `${directory}:${process.env.PATH}`,
-          GH_REPO: 'owner/repo',
-          HEAD_SHA: 'head',
-          VALIDATION_TITLE: 'CI validation current-merge',
-          RUNS: JSON.stringify({ workflow_runs: runs }),
-          WATCH_ARGS: join(directory, 'watch'),
-          WATCH_STATUS: status,
-          DETAIL: JSON.stringify({ ...valid, status: 'completed', conclusion, ...detail }),
-          BASE_SHA: 'base',
-          PR_NUMBER: '42',
-          GITHUB_OUTPUT: output,
-          GITHUB_STEP_SUMMARY: summary,
-        },
-      });
-      return { ...result, output: readFileSync(output, 'utf8') };
-    };
-    const valid = {
-      id: 42,
-      display_title: 'CI validation current-merge',
-      event: 'pull_request',
-      head_sha: 'head',
-      pull_requests: [{ number: 42, head: { sha: 'head' }, base: { sha: 'base' } }],
-    };
-    assert.equal(run([valid]).status, 0);
-    assert.match(run([valid]).output, /^docs_only=true\napp=false\n/);
-    assert.match(
-      readFileSync(join(directory, 'watch'), 'utf8'),
-      /run watch 42 --repo owner\/repo --exit-status/,
-    );
-    assert.match(readFileSync(join(directory, 'watch'), 'utf8'), /--interval 10/);
-    for (const runs of [
-      [],
-      [{ id: 1, display_title: 'CI validation older-merge' }],
-      [{ id: 2, display_title: 'CI metadata current-merge' }],
-    ]) {
-      const result = run(runs);
-      assert.notEqual(result.status, 0);
-      assert.equal(result.output, '');
-    }
-    for (const conclusion of ['skipped', 'neutral', 'cancelled', 'failure', '']) {
-      const result = run([valid], '0', conclusion);
-      assert.notEqual(result.status, 0);
-      assert.equal(result.output, '');
-    }
-    for (const detail of [
-      { display_title: 'CI validation older-merge' },
-      { display_title: 'CI metadata current-merge' },
-      { head_sha: 'other' },
-      { event: 'push' },
-      { pull_requests: [] },
-      { pull_requests: [{ number: 43, head: { sha: 'head' }, base: { sha: 'base' } }] },
-      { pull_requests: [{ number: 42, head: { sha: 'head' }, base: { sha: 'old-base' } }] },
-      { status: 'in_progress' },
-    ]) {
-      if (!detail.status) assert.notEqual(run([{ ...valid, ...detail }]).status, 0);
-      const result = run([valid], '0', 'success', detail);
-      assert.notEqual(result.status, 0);
-      assert.equal(result.output, '');
-    }
-    const failed = run([valid], '1');
-    assert.notEqual(failed.status, 0);
-    assert.equal(failed.output, '');
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
-});
-
-test('metadata aggregate gates reject missing, failed or cancelled reuse', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-reuse-gates-'));
-  try {
-    for (const job of ['test', 'browser-smoke']) {
-      const step = workflow.jobs[job].steps.find(
-        (step) => step.name === 'Require successful reused validation',
-      );
-      for (const status of ['success', 'failure', 'cancelled', 'skipped', '']) {
-        const result = spawnSync('bash', ['-e', '-c', step.run], {
-          encoding: 'utf8',
-          env: {
-            ...process.env,
-            SCOPE_RESULT: status,
-            GITHUB_STEP_SUMMARY: join(directory, 'summary'),
-          },
-        });
-        assert.equal(result.status, status === 'success' ? 0 : 1, `${job}: ${status}`);
-      }
-    }
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
-});
-
-test('retargets, code events and unknown edits retain the real gates and concurrency', () => {
-  assert.ok(workflow.on.pull_request.types.includes('edited'));
-  for (const [action, changes] of [
-    ['opened', {}],
-    ['synchronize', {}],
-    ['reopened', {}],
-    ['ready_for_review', {}],
-    ['edited', { base: { ref: { from: 'redesign/parent' } } }],
-    ['edited', { base: { ref: { from: 'redesign/parent' } }, body: {} }],
-    ['edited', {}],
-    [undefined, {}],
-  ]) {
-    assert.equal(render(workflow['run-name'], action, changes), 'CI validation push-sha');
-    assert.equal(
-      render(workflow.concurrency.group, action, changes),
-      action ? 'ci-42' : 'ci-push-sha',
-    );
-    assert.equal(
-      render(workflow.concurrency['cancel-in-progress'], action, changes),
-      String(Boolean(action)),
-    );
-    for (const job of ['documentation', 'test', 'browser-smoke']) {
-      assert.equal(render(workflow.jobs[job].if, action, changes), 'true', job);
-    }
-    for (const job of required) assert.equal(render(workflow.jobs[job].name, action, changes), job);
-  }
+test('metadata edits start no run and code events retain required contexts', () => {
+  assert.deepEqual(workflow.on.pull_request.types, [
+    'opened',
+    'synchronize',
+    'reopened',
+    'ready_for_review',
+  ]);
+  assert.equal(
+    workflow.jobs.changes.steps.some((step) => step.id === 'metadata'),
+    false,
+  );
+  for (const job of required) assert.equal(workflow.jobs[job].name, job);
+  assert.equal(render(workflow.concurrency.group, 'synchronize'), 'ci-42');
+  assert.equal(render(workflow.concurrency.group, undefined), 'ci-refs/heads/master');
+  assert.equal(render(workflow.concurrency['cancel-in-progress'], undefined), 'true');
 });
 
 test('aggregate gates run after dependency failures but do not run after workflow cancellation', () => {
@@ -294,7 +136,7 @@ test('documentation-only changes resolve required names without running heavy st
 // Pull requests require the browser smoke job; other events require the full browser suites.
 const eventBrowserResults = {
   pull_request: ['PR_RESULT'],
-  push: ['RESULT', 'TIMING_RESULT', 'MOBILE_RESULT', 'STANDALONE_RESULT'],
+  push: ['RESULT', 'TIMING_RESULT', 'STANDALONE_RESULT'],
 };
 const gateCases = (job) =>
   job === 'browser-smoke'
@@ -407,7 +249,7 @@ test('browser consumers use the same pinned browser image and shared production 
     /"@playwright\/test": \["@playwright\/test@([^"\s]+)"/,
   )[1];
   const jobs = workflow.jobs;
-  const consumers = ['browser-pr', 'browser-tests', 'browser-timing', 'browser-mobile'];
+  const consumers = ['browser-pr', 'browser-tests', 'browser-timing'];
   const producer = jobs.production.steps.find((step) =>
     step.uses?.startsWith('actions/upload-artifact@'),
   );
@@ -695,7 +537,6 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
               PRODUCTION_RESULT: 'APP',
               RESULT: 'APP',
               TIMING_RESULT: 'APP',
-              MOBILE_RESULT: 'APP',
               STANDALONE_RESULT: 'SITES',
             };
       for (const [dependency, area] of Object.entries(dependencies)) {
@@ -743,12 +584,11 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'browser-tests',
     'browser-standalone',
     'browser-timing',
-    'browser-mobile',
     'electron-ai',
     'electron-macos-smoke',
   ];
   // Pull requests run the browser smoke job; master commits retain the full browser suites.
-  const postMerge = ['browser-tests', 'browser-standalone', 'browser-timing', 'browser-mobile'];
+  const postMerge = ['browser-tests', 'browser-standalone', 'browser-timing'];
   const web = ['production', 'browser-pr'];
   const all = workers.filter((name) => !postMerge.includes(name));
   for (const [paths, expected] of [
@@ -969,7 +809,6 @@ test('narrow web specs remain registered with the selected browser projects and 
           join(directory, 'tests/config', config),
           '--list',
           '--reporter=json',
-          ...(config === 'playwright.web.config.ts' ? ['--project=webkit-mobile'] : []),
         ],
         {
           env: { ...process.env, CI: 'true' },
@@ -983,7 +822,10 @@ test('narrow web specs remain registered with the selected browser projects and 
       assert.deepEqual(report.errors, []);
       for (const suite of report.suites) registered.add(suite.file);
     }
-    for (const spec of specs) assert.ok(registered.has(spec), spec);
+    for (const spec of specs) {
+      if (spec === 'mobile-pwa-smoke.spec.ts') continue;
+      assert.ok(registered.has(spec), spec);
+    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -996,12 +838,7 @@ test('narrow web specs remain registered with the selected browser projects and 
 });
 
 test('web spec scope is wired through metadata and fails closed for missing typecheck flags', () => {
-  assert.equal(
-    workflow.jobs.changes.outputs.web_tests,
-    '${{ steps.metadata.outputs.web_tests || steps.scope.outputs.web_tests }}',
-  );
-  const metadata = workflow.jobs.changes.steps.find((step) => step.id === 'metadata');
-  assert.match(metadata.run, /for area in .* web_tests; do/);
+  assert.equal(workflow.jobs.changes.outputs.web_tests, '${{ steps.scope.outputs.web_tests }}');
   const steps = workflow.jobs.typecheck.steps;
   for (const flag of ['false', 'true', '', 'unknown']) {
     const context = { needs: { changes: { outputs: { app: 'false', web_tests: flag } } } };
@@ -1089,4 +926,25 @@ test('release prerequisites match CI and Security runs by workflow file, not run
     assert.match(text, /\.path == \$path/, name);
     assert.doesNotMatch(text, /\.name == \$workflow/, name);
   }
+});
+
+test('master push cancellation leaves scheduled security and retries isolated', () => {
+  const security = parse(readFileSync('.github/workflows/security.yml', 'utf8'));
+  assert.equal(render(security.concurrency.group, undefined), 'security-refs/heads/master');
+  assert.equal(render(security.concurrency['cancel-in-progress'], undefined), 'true');
+  assert.equal(render(security.concurrency['cancel-in-progress'], 'synchronize'), 'false');
+  assert.equal(render(security.concurrency.group, undefined, {}, false, 2), 'security-retry-9001');
+  assert.equal(
+    render(security.concurrency['cancel-in-progress'], undefined, {}, false, 2),
+    'false',
+  );
+});
+
+test('recovery bootstraps only after API inspection finds incomplete records', () => {
+  const recovery = parse(readFileSync('.github/workflows/ci-recovery.yml', 'utf8'));
+  const [probe, ...steps] = recovery.jobs.recover.steps;
+  assert.equal(probe.id, 'stale');
+  assert.match(probe.run, /gh api/);
+  assert.doesNotMatch(probe.run, /bun install|checkout|setup-node/);
+  for (const step of steps) assert.equal(step.if, "steps.stale.outputs.found == 'true'");
 });

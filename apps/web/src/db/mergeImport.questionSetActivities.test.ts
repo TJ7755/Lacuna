@@ -242,7 +242,7 @@ describe('mergeImport: ordered Question Set activity lineage', () => {
   );
 });
 
-describe.each([5, 6] as const)(
+describe.each([6] as const)(
   'lineage recovery preserves protected V%i authoring baselines',
   (version) => {
     beforeEach(async () => {

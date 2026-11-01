@@ -65,3 +65,30 @@ export function questionStudyScope(input: {
     )
     .map((concept) => concept.id);
 }
+
+/** Lesson-only skill questions still require an accessible, introduced lesson. */
+export function questionStudyLessonScope(
+  input: Parameters<typeof questionStudyScope>[0] & {
+    completions: readonly { lessonId: string }[];
+  },
+): string[] {
+  if (input.course.archived) return [];
+  const reached = currentAssessmentPracticeContext(input).reachedLessonIds;
+  const prior = earlierCourseLessonIds(
+    input.course,
+    input.lessons,
+    input.assessments,
+    input.practiceNodes,
+  );
+  const introduced = new Set([
+    ...input.exposures.map((row) => row.lessonId),
+    ...input.completions.map((row) => row.lessonId),
+    ...prior,
+  ]);
+  return input.lessons
+    .filter(
+      (lesson) =>
+        reached.has(lesson.id) && (input.course.learnFirst === false || introduced.has(lesson.id)),
+    )
+    .map((lesson) => lesson.id);
+}

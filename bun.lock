@@ -121,7 +121,6 @@
       "name": "lacuna-relay",
       "version": "0.1.0",
       "dependencies": {
-        "@lacuna/core": "workspace:*",
         "@lacuna/protocol": "workspace:*",
         "@vercel/blob": "^2.8.2",
       },

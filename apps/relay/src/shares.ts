@@ -8,7 +8,7 @@ import { relayCorsHeaders } from './cors.js';
 import { insightDayExpiresAt } from '@lacuna/protocol/insights/index';
 import { courseSource, shareLive, SHARE_ID_RE } from './shareSource.js';
 
-export { shareLive, SHARE_ID_RE } from './shareSource.js';
+export { shareLive } from './shareSource.js';
 
 /**
  * Teacher-published course snapshots behind a stable link. A share is an
@@ -30,7 +30,7 @@ export const SHARE_PAYLOAD_MAX_BYTES = relayLimits.sharePayload;
 /** The polling manifest is a small JSON document, never course content. */
 export const SHARE_META_MAX_BYTES = relayLimits.shareMeta;
 
-export const SHORT_CLASS_CODE_RE = /^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{8}$/;
+const SHORT_CLASS_CODE_RE = /^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{8}$/;
 const CLASS_CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
 const SHARE_ID_BYTES = 16;

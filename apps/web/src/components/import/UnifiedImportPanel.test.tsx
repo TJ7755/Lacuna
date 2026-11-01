@@ -55,7 +55,7 @@ const mockImportLineageFirstTime = vi.fn();
 
 vi.mock('../../db/mergeImport', () => ({
   isLineagePayload: (payload: Record<string, unknown>) =>
-    payload.v === 2 && typeof payload.li === 'string' && typeof payload.rv === 'number',
+    payload.v === 6 && typeof payload.li === 'string' && typeof payload.rv === 'number',
   findCourseForLineage: () =>
     mockFindCourseForLineage ? mockFindCourseForLineage() : Promise.resolve(undefined),
   importLineageFirstTime: (...args: unknown[]) => mockImportLineageFirstTime(...args),
@@ -129,7 +129,7 @@ async function readCode() {
 
 describe('UnifiedImportPanel share-code merge routing (Arc 7 §7.5)', () => {
   it('a plain (non-distributed) import is unaffected', async () => {
-    mockDecodedPayload = { v: 2 };
+    mockDecodedPayload = { v: 6 };
     await readCode();
     expect(screen.getByText('Ready to import')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Add to my courses'));
@@ -140,7 +140,7 @@ describe('UnifiedImportPanel share-code merge routing (Arc 7 §7.5)', () => {
 
   it('preserves lineage tracking on the first import of a published course', async () => {
     const onShareImport = vi.fn();
-    mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 1 };
+    mockDecodedPayload = { v: 6, li: 'lineage-1', rv: 1 };
     mockImportLineageFirstTime.mockResolvedValue({ course: { ...mockCourse, id: 'shared-copy' } });
 
     render(<UnifiedImportPanel onImport={vi.fn()} showShareImport onShareImport={onShareImport} />);
@@ -160,7 +160,7 @@ describe('UnifiedImportPanel share-code merge routing (Arc 7 §7.5)', () => {
   });
 
   it('routes to the merge importer when the payload lineage matches a local course', async () => {
-    mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 2 };
+    mockDecodedPayload = { v: 6, li: 'lineage-1', rv: 2 };
     const distributedCourse: Course = {
       ...mockCourse,
       id: 'course-2',
@@ -195,7 +195,7 @@ describe('UnifiedImportPanel share-code merge routing (Arc 7 §7.5)', () => {
   });
 
   it('reports queued changes from a merge that needs review', async () => {
-    mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 2 };
+    mockDecodedPayload = { v: 6, li: 'lineage-1', rv: 2 };
     const distributedCourse: Course = {
       ...mockCourse,
       id: 'course-2',
@@ -224,7 +224,7 @@ describe('UnifiedImportPanel share-code merge routing (Arc 7 §7.5)', () => {
   });
 
   it('guards against re-importing a code whose revision is not newer than the local copy', async () => {
-    mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 1 };
+    mockDecodedPayload = { v: 6, li: 'lineage-1', rv: 1 };
     const distributedCourse: Course = {
       ...mockCourse,
       id: 'course-2',

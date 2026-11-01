@@ -10,7 +10,7 @@ import { earlierCourseLessonIds } from '../course/courseEntry';
 import { exportDatabase, importBackup, validateBackup } from './portability';
 import { buildCourseSharePayload } from './share';
 import { importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
-import type { SharePayloadV5 } from './share';
+import type { SharePayloadV6 } from './share';
 import { mergeSnapshots } from '../sync/mergeSnapshots';
 import { createOrResumeRevisionPlan } from './revisionPlanRepository';
 import { createLessonCard } from './cardRepository';
@@ -99,8 +99,8 @@ it('round-trips through backup and sync without publishing the entry preference'
 });
 
 it('retains the local entry point through locked publisher updates', async () => {
-  const payload: SharePayloadV5 = {
-    v: 5,
+  const payload: SharePayloadV6 = {
+    v: 6,
     by: 'Teacher',
     at: 1000,
     li: 'science',

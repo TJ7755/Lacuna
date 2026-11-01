@@ -2,7 +2,7 @@ import {
   specificationAssessmentPointIds,
   validatePaperAssessmentDates,
 } from '../specifications/assessment';
-import { assertShareSpecificationAssessments } from './sharePayload';
+import { parseSharePayload, assertShareSpecificationAssessments } from './sharePayload';
 import { earlierCourseLessonIds } from '../course/courseEntry';
 /**
  * Classroom-distribution merge importer.
@@ -46,7 +46,6 @@ import {
 } from './backingDecks';
 import { clearTombstone, stampUpdatedAt } from './mutationStamp';
 import { assertValidCardPayload } from '../items/payloadValidation';
-import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
 import { planLineageMerge } from './lineageMergePlanning';
 import { courseDetailChanges, courseSource } from './mergeImportCourseDetails';
 import {
@@ -82,7 +81,6 @@ import {
   isGeneratedShareCard,
   isLineagePayload,
   lessonSnapshot,
-  lineageCardConceptId,
   noteSnapshot,
   reverseCardId,
   shareCardKindToType,
@@ -141,9 +139,10 @@ async function lineageIdsInUse(payload: LineagePayload): Promise<boolean> {
  * content snapshots are written so the next re-import can diff against this state.
  */
 export async function importLineageFirstTime(
-  payload: SharePayload,
+  input: SharePayload,
   scheduling?: ImportCourseScheduling,
 ): Promise<{ course: Course }> {
+  const payload = parseSharePayload(input);
   if (!isLineagePayload(payload)) {
     throw new Error('Payload does not carry a course lineage (missing li/rv).');
   }
@@ -269,20 +268,9 @@ export async function importLineageFirstTime(
         if (!shareCard.id) throw new Error('Lineage payload card is missing its originating id.');
         const type = shareCardKindToType(shareCard.k);
         assertValidCardPayload(type, shareCard.p);
-        const conceptId = payload.v !== 2 ? shareCard.co : lineageCardConceptId(shareCard.id);
+        const conceptId = shareCard.co;
         if (!conceptId) {
           throw new Error(`A shared Card references a missing Concept: ${shareCard.id}.`);
-        }
-        if (payload.v === 2) {
-          newConcepts.push(
-            buildCardConcept({
-              id: conceptId,
-              courseId: course.id,
-              schedulingUnitId: deckId,
-              name: conceptNameForCard(type, shareCard.f, shareCard.b ?? ''),
-              now: cardCreatedAt,
-            }),
-          );
         }
         const base = {
           conceptId,
@@ -354,12 +342,9 @@ export async function importLineageFirstTime(
     await applyOcclusions(payload, course.id, lessonIdByIndex, mapping);
     await syncLineageLinks(tx, payload, course.id);
     await applyLineageQuestions(payload, course.id, mapping);
-    if (payload.v === 4 || payload.v === 5 || payload.v === 6)
-      await applyLineageAssessments(payload, course.id, mapping, true);
-    if (payload.v === 4 || payload.v === 5 || payload.v === 6)
-      await applyLineageQuestionSets(payload, course.id, mapping);
-    if (payload.v === 5 || payload.v === 6)
-      await applyLineageQuestionSetPracticeNodes(payload, course.id, mapping);
+    await applyLineageAssessments(payload, course.id, mapping, true);
+    await applyLineageQuestionSets(payload, course.id, mapping);
+    await applyLineageQuestionSetPracticeNodes(payload, course.id, mapping);
     await assertStoredQuestionSetActivities(course.id);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
     await syncCourseSchedulingUnits(course.id);
@@ -395,8 +380,9 @@ export interface MergeLineageResult {
  */
 export async function mergeLineageUpdate(
   courseId: string,
-  payload: SharePayload,
+  input: SharePayload,
 ): Promise<MergeLineageResult> {
+  const payload = parseSharePayload(input);
   if (!isLineagePayload(payload)) {
     throw new Error('Payload does not carry a course lineage (missing li/rv).');
   }
@@ -415,7 +401,7 @@ export async function mergeLineageUpdate(
     const mapping = existingMapping ?? emptyMapping(payload.li, courseId);
     await prepareLineageMapping(payload, courseId, mapping);
     const previousConceptIds = await upsertLineageConcepts(payload, courseId, mapping);
-    const conceptIdByCard = payload.v !== 2 ? incomingCardConceptIds(payload) : undefined;
+    const conceptIdByCard = incomingCardConceptIds(payload);
 
     const [existingLessons, courseCards] = await Promise.all([
       db.lessons.where('courseId').equals(courseId).toArray(),
@@ -543,12 +529,9 @@ export async function mergeLineageUpdate(
       }
     }
     await applyLineageQuestions(payload, courseId, mapping);
-    if (payload.v === 4 || payload.v === 5 || payload.v === 6)
-      await applyLineageAssessments(payload, courseId, mapping);
-    if (payload.v === 4 || payload.v === 5 || payload.v === 6)
-      await applyLineageQuestionSets(payload, courseId, mapping);
-    if (payload.v === 5 || payload.v === 6)
-      await applyLineageQuestionSetPracticeNodes(payload, courseId, mapping);
+    await applyLineageAssessments(payload, courseId, mapping);
+    await applyLineageQuestionSets(payload, courseId, mapping);
+    await applyLineageQuestionSetPracticeNodes(payload, courseId, mapping);
     await assertStoredQuestionSetActivities(courseId);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
 

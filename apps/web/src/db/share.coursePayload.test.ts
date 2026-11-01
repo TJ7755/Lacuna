@@ -87,7 +87,7 @@ describe('course share payload content', () => {
     await db.cards.update(card.id, { payload: itemPayload });
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
+
     expect(payload.lessons[0].cards[0].p).toEqual(itemPayload);
 
     await reset();
@@ -106,7 +106,7 @@ describe('course share payload content', () => {
     ]);
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
+
     expect(payload.lessons[0].cards[0]).toEqual({
       id: card.id,
       k: 0,
@@ -123,18 +123,17 @@ describe('course share payload content', () => {
     const lesson = await createLesson(course.id, 'Future items');
     await createLessonCard(course.id, lesson.id, 'front_back', 'Future question', 'Fallback');
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
+
     const futurePayload = { v: 2, kind: 'proof-tree', nodes: [{ statement: 'A' }] };
     payload.lessons[0].cards[0].p = futurePayload;
 
     const decoded = await decodeShareDirect(await encodeShareDirect(payload));
-    if (decoded.v === 1) throw new Error('expected a course payload');
+
     expect(decoded.lessons[0].cards[0].p).toEqual(futurePayload);
 
     const unknownKind = { v: 1, kind: 'proof-tree', nodes: [{ statement: 'B' }] };
     decoded.lessons[0].cards[0].p = unknownKind;
     const decodedUnknownKind = await decodeShareDirect(await encodeShareDirect(decoded));
-    if (decodedUnknownKind.v === 1) throw new Error('expected a course payload');
     expect(decodedUnknownKind.lessons[0].cards[0].p).toEqual(unknownKind);
 
     await reset();
@@ -147,7 +146,7 @@ describe('course share payload content', () => {
     const lesson = await createLesson(course.id, 'Broken items');
     await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Fallback');
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
+
     Object.assign(payload.lessons[0].cards[0], { p: { v: 1, kind: 'numeric' } });
 
     await expect(decodeShareDirect(await encodeShareDirect(payload))).rejects.toThrow(
@@ -174,7 +173,7 @@ describe('course share payload content', () => {
     );
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
+
     expect(payload.lessons[0].notes[0].i).toBe(1);
     expect(payload.lessons[0].cards[0].i).toBe(1);
 
@@ -189,7 +188,6 @@ describe('course share payload content', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'Front', 'Back');
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.li).toBeUndefined();
     expect(payload.rv).toBeUndefined();
@@ -209,7 +207,6 @@ describe('course share payload content', () => {
     await linkCardToLesson(lesson.id, bankCard.id);
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.li).toBe('lin_1');
     expect(payload.rv).toBe(3);

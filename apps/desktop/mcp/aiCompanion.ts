@@ -192,7 +192,7 @@ export function startAiCompanion(options?: AiCompanionOptions): StdioServerHandl
       return server;
     },
     {
-      legacy: 'serve',
+      legacy: 'reject',
       onerror: (error) => log.error('Local AI companion stdio failed', error),
     },
   );

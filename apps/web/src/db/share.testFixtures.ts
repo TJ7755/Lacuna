@@ -1,5 +1,5 @@
 import { db } from './schema';
-import type { SharePayload, SharePayloadV1 } from './share';
+import type { SharePayloadV6 } from './share';
 
 export async function reset() {
   await Promise.all([
@@ -24,7 +24,7 @@ export async function reset() {
   ]);
 }
 
-export function v1Payload(): SharePayloadV1 {
+export function v1Payload(): unknown {
   return {
     v: 1,
     by: null,
@@ -33,14 +33,24 @@ export function v1Payload(): SharePayloadV1 {
   };
 }
 
-export function v2Payload(
+export function currentPayload(
   cards: Array<{ k: 0 | 1 | 2 | 3; f: string; b?: string }> = [{ k: 0, f: 'Q', b: 'A' }],
-): SharePayload {
+): SharePayloadV6 {
   return {
-    v: 2,
+    v: 6,
+    concepts: cards.map((card, index) => ({ id: `concept-${index}`, n: card.f })),
+    questions: [],
+    questionSets: [],
+    questionSetPracticeNodes: [],
     by: null,
     at: Date.now(),
     course: { n: 'Shared', o: 0, c: 0, e: 0, um: 'open' },
-    lessons: [{ n: 'Lesson', notes: [], cards }],
+    lessons: [
+      {
+        n: 'Lesson',
+        notes: [],
+        cards: cards.map((card, index) => ({ ...card, co: `concept-${index}` })),
+      },
+    ],
   };
 }

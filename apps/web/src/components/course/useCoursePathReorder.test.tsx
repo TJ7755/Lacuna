@@ -197,7 +197,7 @@ it.each(['semi-linear', 'linear'] as const)(
 
 it('moves and manages only learner checkpoints on a locked path using local lesson anchors', async () => {
   const { course } = await importLineageFirstTime({
-    v: 5,
+    v: 6,
     by: 'Teacher',
     at: 1000,
     li: 'science',

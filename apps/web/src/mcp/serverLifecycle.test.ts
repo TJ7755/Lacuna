@@ -138,8 +138,8 @@ describe('Electron MCP server lifecycle façade', () => {
 
     expect(mocks.bridgeStart).toHaveBeenCalledOnce();
     expect(mocks.brokerStart).toHaveBeenCalledOnce();
-    expect(mocks.serveStdio).toHaveBeenCalledOnce();
-    expect(mocks.bridgeRegister).toHaveBeenCalledOnce();
+    expect(mocks.serveStdio).not.toHaveBeenCalled();
+    expect(mocks.bridgeRegister).not.toHaveBeenCalled();
     expect(server.getMcpStatus()).toMatchObject({
       running: true,
       clients: [{ connectionId: 'client-1' }],
@@ -151,11 +151,11 @@ describe('Electron MCP server lifecycle façade', () => {
 
     expect(mocks.bridgeStop).toHaveBeenCalledOnce();
     expect(mocks.brokerStop).toHaveBeenCalledOnce();
-    expect(mocks.closeStdio).toHaveBeenCalledOnce();
+    expect(mocks.closeStdio).not.toHaveBeenCalled();
     expect(server.getMcpStatus().running).toBe(false);
   });
 
-  it.each(['broker', 'stdio'] as const)(
+  it.each(['broker'] as const)(
     'cleans up a partial start when the %s transport fails',
     async (failure) => {
       const server = await import('../../../desktop/mcp/server');
@@ -192,7 +192,7 @@ describe('Electron MCP server lifecycle façade', () => {
     expect(mocks.brokerStart).toHaveBeenCalledOnce();
     releaseBroker?.();
     await Promise.all([first, second]);
-    expect(mocks.serveStdio).toHaveBeenCalledOnce();
+    expect(mocks.serveStdio).not.toHaveBeenCalled();
   });
 
   it('cleans up when bridge startup itself fails', async () => {
@@ -212,17 +212,15 @@ describe('Electron MCP server lifecycle façade', () => {
   it('attempts every normal teardown and resets status when cleanup rejects', async () => {
     const server = await import('../../../desktop/mcp/server');
     const brokerError = new Error('broker cleanup failed');
-    const stdioError = new Error('stdio cleanup failed');
     mocks.brokerStop.mockRejectedValueOnce(brokerError);
-    mocks.closeStdio.mockRejectedValueOnce(stdioError);
     await server.startMcpServer(() => null);
 
     const stopped = server.stopMcpServer();
 
-    await expect(stopped).rejects.toMatchObject({ errors: [brokerError, stdioError] });
+    await expect(stopped).rejects.toMatchObject({ errors: [brokerError] });
     expect(mocks.bridgeStop).toHaveBeenCalledOnce();
     expect(mocks.brokerStop).toHaveBeenCalledOnce();
-    expect(mocks.closeStdio).toHaveBeenCalledOnce();
+    expect(mocks.closeStdio).not.toHaveBeenCalled();
     expect(server.getMcpStatus().running).toBe(false);
     await expect(server.stopMcpServer()).resolves.toBeUndefined();
   });

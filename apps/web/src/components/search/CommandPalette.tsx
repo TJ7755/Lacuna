@@ -1,3 +1,4 @@
+import { storedString } from '../../state/localSetting';
 import { searchHelp } from '../../pages/help/searchHelp';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import {
@@ -181,7 +182,7 @@ function CommandPaletteDialog({
   const [active, setActive] = useState(0);
   const [showHints] = useState(() => {
     try {
-      return localStorage.getItem(HINTS_SEEN_KEY) !== 'true';
+      return storedString(HINTS_SEEN_KEY).read() !== 'true';
     } catch {
       return true;
     }
@@ -189,7 +190,7 @@ function CommandPaletteDialog({
 
   useEffect(() => {
     try {
-      localStorage.setItem(HINTS_SEEN_KEY, 'true');
+      storedString(HINTS_SEEN_KEY).write('true');
     } catch {
       // Storage restrictions must not prevent search from opening.
     }

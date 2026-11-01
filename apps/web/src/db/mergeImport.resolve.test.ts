@@ -1,7 +1,7 @@
+import { coursePayload } from './mergeImport.testFixtures';
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import type { SharePayload } from './share';
 import {
   acceptAllMergeReview,
   acceptMergeReviewItems,
@@ -14,19 +14,6 @@ import {
 // Arc 7 §7.5 Task 7: review resolution. Payloads are plain object literals matching the
 // wire shape (see mergeImport.test.ts), so these tests exercise the resolution functions
 // against real `pendingMergeReviews` rows produced by `mergeLineageUpdate`.
-
-function coursePayload(overrides: Partial<SharePayload & { v: 2 }> = {}): SharePayload {
-  return {
-    v: 2,
-    by: 'Ms Teacher',
-    at: 1000,
-    course: { n: 'Biology', o: 0, c: 1000, e: 2_000_000, um: 'open' },
-    lessons: [],
-    li: 'lineage-1',
-    rv: 1,
-    ...overrides,
-  } as SharePayload;
-}
 
 function lessonOne(overrides: Partial<Record<string, unknown>> = {}) {
   return {

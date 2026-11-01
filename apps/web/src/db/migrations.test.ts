@@ -1,48 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
-import { FSRS_VERSION, defaultFsrsParameters } from '@lacuna/core/fsrs/params';
-import {
-  buildLessonCardExposureBackfill,
-  migrateCardRecord,
-  migrateDeckRecord,
-} from './migrations';
+import { buildLessonCardExposureBackfill, migrateCardRecord } from './migrations';
 import type { ReviewLog } from '@lacuna/core/db/types';
-
-describe('migrateDeckRecord', () => {
-  it('re-tags an old deck to fsrs_version 6 and reseeds default FSRS-6 parameters', () => {
-    // A deck as stored under the old 17-parameter schema: no FSRS-6 fields at all.
-    const legacy = {
-      id: 'd1',
-      name: 'Old deck',
-      examDate: 1000,
-      createdAt: 0,
-    };
-    const migrated = migrateDeckRecord(legacy);
-    expect(migrated.fsrsVersion).toBe(6);
-    expect(migrated.fsrsParameters).toEqual(defaultFsrsParameters());
-    expect(migrated.fsrsParameters.w).toHaveLength(21);
-    expect(migrated.examObjective).toBe('expectedMarks');
-    // Existing data is preserved.
-    expect(migrated.name).toBe('Old deck');
-    expect(migrated.examDate).toBe(1000);
-  });
-
-  it('does not overwrite an already-current deck’s parameters', () => {
-    const tuned = defaultFsrsParameters();
-    tuned.w[20] = 0.25;
-    const migrated = migrateDeckRecord({
-      id: 'd2',
-      name: 'Current',
-      examDate: 1,
-      createdAt: 0,
-      fsrsVersion: FSRS_VERSION,
-      fsrsParameters: tuned,
-      examObjective: 'securedTopics',
-    });
-    expect(migrated.fsrsParameters.w[20]).toBe(0.25);
-    expect(migrated.examObjective).toBe('securedTopics');
-  });
-});
 
 describe('migrateCardRecord', () => {
   it('derives reps/lapses/state from history and adds new fields', () => {

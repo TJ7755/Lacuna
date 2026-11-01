@@ -42,7 +42,7 @@ const CHANNEL_ID_BYTES = 16;
 const WRITE_TOKEN_BYTES = 32;
 const CHANNEL_ID_RE = /^[0-9a-f]{32}$/;
 
-export type Slot = 'state' | 'keybag';
+type Slot = 'state' | 'keybag';
 
 export interface HandlerOptions {
   now?: () => number;

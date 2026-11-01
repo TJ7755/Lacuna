@@ -1,4 +1,3 @@
-import { makeId } from './schema';
 import { migrateCardRecord, type LegacyCard } from './migrations';
 import type { BackupFile, MediaAsset } from '@lacuna/core/db/types';
 import {
@@ -6,14 +5,9 @@ import {
   projectCardsForStorage,
   type ReviewHistoryEntry,
 } from '@lacuna/core/db/reviewHistory';
-import {
-  buildCourseAssessmentMigration,
-  courseToRecord,
-  finalAssessmentForCourse,
-  type LegacyCourseRecord,
-} from './assessmentMigration';
+import { finalAssessmentForCourse } from './assessmentMigration';
 import { backupAssetToMediaAsset, extractMarkdownAssets } from './assets';
-import { adaptLegacyBackup } from './legacyBackupAdapter';
+import { projectBackupScheduling } from './backupSchedulingProjection';
 import { normaliseQuestionBackup } from '../questions/backup';
 import { mergeQuestionCollections } from '../questions/merge';
 import { parseQuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
@@ -89,25 +83,10 @@ export async function prepareBackup(backup: BackupFile, mode: ImportMode) {
     })),
   );
   const importedAssets = [...assets.map(backupAssetToMediaAsset), ...extractedAssets];
-  const rawCourses = backup.courses ?? [];
-  const currentAssessments = backup.courseAssessments;
-  const assessmentMigration = currentAssessments
-    ? {
-        courses: rawCourses.map((course) =>
-          'examDate' in course ? courseToRecord(course as LegacyCourseRecord) : course,
-        ),
-        assessments: currentAssessments,
-      }
-    : buildCourseAssessmentMigration(
-        rawCourses as LegacyCourseRecord[],
-        backup.lessons ?? [],
-        backup.courseExamDates ?? [],
-        makeId,
-      );
-  const adaptation = adaptLegacyBackup(backup, {
-    courses: assessmentMigration.courses,
+  const adaptation = projectBackupScheduling(backup, {
+    courses: backup.courses ?? [],
     lessons: backup.lessons ?? [],
-    courseAssessments: assessmentMigration.assessments,
+    courseAssessments: backup.courseAssessments ?? [],
     cards: migratedCards,
   });
   const { cards, courses, courseAssessments, ...storageProjection } = adaptation;

@@ -63,7 +63,7 @@ describe('companion protocol', () => {
     };
     const aiHello = {
       type: 'ai_hello',
-      protocolVersion: MCP_COMPANION_PROTOCOL_VERSION,
+      protocolVersion: AI_COMPANION_PROTOCOL_VERSION,
       token: 'b'.repeat(64),
     };
 
@@ -100,7 +100,7 @@ describe('companion protocol', () => {
         protocolVersion: LEGACY_AI_COMPANION_PROTOCOL_VERSION,
         token: 'b'.repeat(64),
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isAiCompanionRequest({
         type: 'ai_hello',

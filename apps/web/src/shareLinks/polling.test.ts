@@ -1,9 +1,10 @@
+import { coursePayload } from '../db/mergeImport.testFixtures';
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../db/schema';
 import { createCourse } from '../db/courseRepository';
 import { sha256Blob } from '../db/assets';
-import type { ShareLesson, SharePayloadV2, SharePayloadV5 } from '../db/share';
+import type { ShareLesson, SharePayloadV6 } from '../db/share';
 import type { BackupAsset } from '@lacuna/core/db/types';
 import { importLineageFirstTime } from '../db/mergeImport';
 import { recordShareImport } from './linkStore';
@@ -11,19 +12,6 @@ import { encodeSharePayload } from './payloadCodec';
 import { pollShareUpdates } from './polling';
 
 const SHARE_ID = 'a'.repeat(32);
-
-function coursePayload(overrides: Partial<SharePayloadV2> = {}): SharePayloadV2 {
-  return {
-    v: 2,
-    by: 'Ms Teacher',
-    at: 1000,
-    course: { n: 'Biology', o: 0, c: 1000, e: 2_000_000, um: 'open' },
-    lessons: [],
-    li: 'lineage-1',
-    rv: 1,
-    ...overrides,
-  };
-}
 
 function lessonOne(overrides: Partial<ShareLesson> = {}): ShareLesson {
   return {
@@ -48,7 +36,7 @@ function manifestBytes(revision: number): Uint8Array {
   );
 }
 
-function courseFileText(payload: SharePayloadV2 | SharePayloadV5): string {
+function courseFileText(payload: SharePayloadV6): string {
   return JSON.stringify({ format: 'lacuna-course', version: 1, payload, assets: [] });
 }
 
@@ -115,9 +103,9 @@ describe('pollShareUpdates', () => {
   });
 
   it('applies published specification corrections through the course-file parser', async () => {
-    const first: SharePayloadV5 = {
+    const first: SharePayloadV6 = {
       ...coursePayload(),
-      v: 5,
+      v: 6,
       course: {
         ...coursePayload().course,
         specificationRef: { specificationId: 'pearson-4bi1-2028' },
@@ -137,7 +125,7 @@ describe('pollShareUpdates', () => {
     const { course } = await importLineageFirstTime(first);
     recordShareImport(SHARE_ID, course.id);
     const reference = { specificationId: 'uninstalled-spec', routeIds: ['new-route'] };
-    const revised: SharePayloadV5 = {
+    const revised: SharePayloadV6 = {
       ...first,
       at: 2_000,
       rv: 2,

@@ -20,7 +20,11 @@ function artefact(revision = 1) {
       version: 1,
       assets: [],
       payload: {
-        v: 2,
+        v: 6,
+        concepts: [{ id: 'concept-1', n: 'Concept' }],
+        questions: [],
+        questionSets: [],
+        questionSetPracticeNodes: [],
         at: 1000,
         li: 'synthetic-lineage',
         rv: revision,
@@ -32,7 +36,7 @@ function artefact(revision = 1) {
             o: 0,
             c: 1,
             notes: [{ oi: 'note-1', n: 'Note', c: 'Text' }],
-            cards: [{ id: 'card-1', k: 0, f: `Front ${revision}`, b: 'Back' }],
+            cards: [{ id: 'card-1', co: 'concept-1', k: 0, f: `Front ${revision}`, b: 'Back' }],
           },
         ],
       },
@@ -368,11 +372,11 @@ it('rejects invalid artefacts and credentials without writing or disclosing secr
   expect(writes).toEqual([]);
 });
 
-it('derives practice counts from validated Question sets without inventing legacy statistics', async () => {
+it('derives practice counts from validated current Question sets', async () => {
   const f = await fixture();
   const file = JSON.parse(f.text);
-  file.payload.v = 4;
-  file.payload.concepts = [];
+  file.payload.v = 6;
+  file.payload.concepts = [{ id: 'concept-1', n: 'Concept' }];
   file.payload.questions = [];
   file.payload.questionSets = [
     {
@@ -413,9 +417,10 @@ it('derives practice counts from validated Question sets without inventing legac
     counts: { practiceSets: 1, practiceMarks: 3 },
   });
   await writeFile(f.input, f.text);
-  expect(
-    (await runPublication([...f.args, '--dry-run'], {}, f.fetchImpl)).counts,
-  ).not.toHaveProperty('practiceMarks');
+  expect((await runPublication([...f.args, '--dry-run'], {}, f.fetchImpl)).counts).toHaveProperty(
+    'practiceMarks',
+    0,
+  );
 });
 
 it('approves the original hash, uploads compressed bytes and verifies decoded bytes on retries', async () => {
