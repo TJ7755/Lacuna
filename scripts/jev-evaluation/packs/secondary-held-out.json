@@ -1,0 +1,458 @@
+[
+  {
+    "id": "secondary-held-out-1-strong",
+    "questionId": "secondary-held-out-1",
+    "subject": "Chemistry",
+    "course": "chemistry4ch1",
+    "specification": {
+      "code": "4CH1 1.3",
+      "title": "States of matter"
+    },
+    "answerType": "multi-mark",
+    "stratum": "strong",
+    "request": {
+      "prompt": "A drop of liquid evaporates from a dish below its boiling point. Explain this using particles.",
+      "criterion": "Award one mark each for particles having a range of energies; sufficiently energetic surface particles escaping; and escape occurring below boiling without the whole liquid boiling. Credit equivalent wording without duplicate credit.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 3,
+      "answer": "Particles have different energies. Some at the surface have enough energy to escape into the gas, so evaporation can occur below boiling without the entire liquid boiling."
+    }
+  },
+  {
+    "id": "secondary-held-out-1-partial",
+    "questionId": "secondary-held-out-1",
+    "subject": "Chemistry",
+    "course": "chemistry4ch1",
+    "specification": {
+      "code": "4CH1 1.3",
+      "title": "States of matter"
+    },
+    "answerType": "multi-mark",
+    "stratum": "partial",
+    "request": {
+      "prompt": "A drop of liquid evaporates from a dish below its boiling point. Explain this using particles.",
+      "criterion": "Award one mark each for particles having a range of energies; sufficiently energetic surface particles escaping; and escape occurring below boiling without the whole liquid boiling. Credit equivalent wording without duplicate credit.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 3,
+      "answer": "Particles leave the surface and become gas."
+    }
+  },
+  {
+    "id": "secondary-held-out-1-wrong",
+    "questionId": "secondary-held-out-1",
+    "subject": "Chemistry",
+    "course": "chemistry4ch1",
+    "specification": {
+      "code": "4CH1 1.3",
+      "title": "States of matter"
+    },
+    "answerType": "multi-mark",
+    "stratum": "wrong",
+    "request": {
+      "prompt": "A drop of liquid evaporates from a dish below its boiling point. Explain this using particles.",
+      "criterion": "Award one mark each for particles having a range of energies; sufficiently energetic surface particles escaping; and escape occurring below boiling without the whole liquid boiling. Credit equivalent wording without duplicate credit.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 3,
+      "answer": "All particles must reach the same energy and the boiling point before any can leave the liquid."
+    }
+  },
+  {
+    "id": "secondary-held-out-1-blank",
+    "questionId": "secondary-held-out-1",
+    "subject": "Chemistry",
+    "course": "chemistry4ch1",
+    "specification": {
+      "code": "4CH1 1.3",
+      "title": "States of matter"
+    },
+    "answerType": "multi-mark",
+    "stratum": "blank",
+    "request": {
+      "prompt": "A drop of liquid evaporates from a dish below its boiling point. Explain this using particles.",
+      "criterion": "Award one mark each for particles having a range of energies; sufficiently energetic surface particles escaping; and escape occurring below boiling without the whole liquid boiling. Credit equivalent wording without duplicate credit.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 3,
+      "answer": ""
+    }
+  },
+  {
+    "id": "secondary-held-out-1-off-topic",
+    "questionId": "secondary-held-out-1",
+    "subject": "Chemistry",
+    "course": "chemistry4ch1",
+    "specification": {
+      "code": "4CH1 1.3",
+      "title": "States of matter"
+    },
+    "answerType": "multi-mark",
+    "stratum": "off-topic",
+    "request": {
+      "prompt": "A drop of liquid evaporates from a dish below its boiling point. Explain this using particles.",
+      "criterion": "Award one mark each for particles having a range of energies; sufficiently energetic surface particles escaping; and escape occurring below boiling without the whole liquid boiling. Credit equivalent wording without duplicate credit.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 3,
+      "answer": "The dish has a circular rim."
+    }
+  },
+  {
+    "id": "secondary-held-out-1-ambiguous",
+    "questionId": "secondary-held-out-1",
+    "subject": "Chemistry",
+    "course": "chemistry4ch1",
+    "specification": {
+      "code": "4CH1 1.3",
+      "title": "States of matter"
+    },
+    "answerType": "multi-mark",
+    "stratum": "ambiguous",
+    "request": {
+      "prompt": "A drop of liquid evaporates from a dish below its boiling point. Explain this using particles.",
+      "criterion": "Award one mark each for particles having a range of energies; sufficiently energetic surface particles escaping; and escape occurring below boiling without the whole liquid boiling. Credit equivalent wording without duplicate credit.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 3,
+      "answer": "Some leave because they can, although I might mean drops spilling out."
+    }
+  },
+  {
+    "id": "secondary-held-out-2-strong",
+    "questionId": "secondary-held-out-2",
+    "subject": "Physics",
+    "course": "physics0972",
+    "specification": {
+      "code": "0972 2.3.1",
+      "title": "Conduction"
+    },
+    "answerType": "short-answer",
+    "stratum": "strong",
+    "request": {
+      "prompt": "Two equal-length rods have one end held at the same high temperature. The far end of rod P warms sooner than rod Q. State which rod is the better thermal conductor.",
+      "criterion": "Award one mark for rod P. No explanation is required.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 1,
+      "answer": "Rod P."
+    }
+  },
+  {
+    "id": "secondary-held-out-2-partial",
+    "questionId": "secondary-held-out-2",
+    "subject": "Physics",
+    "course": "physics0972",
+    "specification": {
+      "code": "0972 2.3.1",
+      "title": "Conduction"
+    },
+    "answerType": "short-answer",
+    "stratum": "partial",
+    "request": {
+      "prompt": "Two equal-length rods have one end held at the same high temperature. The far end of rod P warms sooner than rod Q. State which rod is the better thermal conductor.",
+      "criterion": "Award one mark for rod P. No explanation is required.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 1,
+      "answer": "The one whose far end heats sooner."
+    }
+  },
+  {
+    "id": "secondary-held-out-2-wrong",
+    "questionId": "secondary-held-out-2",
+    "subject": "Physics",
+    "course": "physics0972",
+    "specification": {
+      "code": "0972 2.3.1",
+      "title": "Conduction"
+    },
+    "answerType": "short-answer",
+    "stratum": "wrong",
+    "request": {
+      "prompt": "Two equal-length rods have one end held at the same high temperature. The far end of rod P warms sooner than rod Q. State which rod is the better thermal conductor.",
+      "criterion": "Award one mark for rod P. No explanation is required.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 1,
+      "answer": "Rod Q."
+    }
+  },
+  {
+    "id": "secondary-held-out-2-blank",
+    "questionId": "secondary-held-out-2",
+    "subject": "Physics",
+    "course": "physics0972",
+    "specification": {
+      "code": "0972 2.3.1",
+      "title": "Conduction"
+    },
+    "answerType": "short-answer",
+    "stratum": "blank",
+    "request": {
+      "prompt": "Two equal-length rods have one end held at the same high temperature. The far end of rod P warms sooner than rod Q. State which rod is the better thermal conductor.",
+      "criterion": "Award one mark for rod P. No explanation is required.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 1,
+      "answer": ""
+    }
+  },
+  {
+    "id": "secondary-held-out-2-off-topic",
+    "questionId": "secondary-held-out-2",
+    "subject": "Physics",
+    "course": "physics0972",
+    "specification": {
+      "code": "0972 2.3.1",
+      "title": "Conduction"
+    },
+    "answerType": "short-answer",
+    "stratum": "off-topic",
+    "request": {
+      "prompt": "Two equal-length rods have one end held at the same high temperature. The far end of rod P warms sooner than rod Q. State which rod is the better thermal conductor.",
+      "criterion": "Award one mark for rod P. No explanation is required.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 1,
+      "answer": "The rods are equal in length."
+    }
+  },
+  {
+    "id": "secondary-held-out-2-ambiguous",
+    "questionId": "secondary-held-out-2",
+    "subject": "Physics",
+    "course": "physics0972",
+    "specification": {
+      "code": "0972 2.3.1",
+      "title": "Conduction"
+    },
+    "answerType": "short-answer",
+    "stratum": "ambiguous",
+    "request": {
+      "prompt": "Two equal-length rods have one end held at the same high temperature. The far end of rod P warms sooner than rod Q. State which rod is the better thermal conductor.",
+      "criterion": "Award one mark for rod P. No explanation is required.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 1,
+      "answer": "P or Q, depending on which one is warmer."
+    }
+  },
+  {
+    "id": "secondary-held-out-3-strong",
+    "questionId": "secondary-held-out-3",
+    "subject": "History",
+    "course": "history0977",
+    "specification": {
+      "code": "0977 Option B 2",
+      "title": "To what extent was the League of Nations a success?"
+    },
+    "answerType": "multi-mark",
+    "stratum": "strong",
+    "request": {
+      "prompt": "Explain two reasons why the League of Nations struggled to stop aggression in the 1930s. For each, connect the weakness to its practical effect.",
+      "criterion": "Award up to four marks for each of two distinct reasons: identification, accurate supporting detail, explanation of its practical effect and a developed connection to failure to deter aggression. Accept lack of its own army, absence of major powers, limited sanctions, decision-making delays or members prioritising national interests. Do not duplicate reasons. This original eight-mark allocation is not an exam-board mark scheme.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 8,
+      "answer": "The League had no army of its own, so enforcing decisions depended on members providing forces. Governments reluctant to risk war could refuse, leaving threats without credible military backing and reducing deterrence. The USA never joined, leaving an important economy outside sanctions. Aggressors could seek trade outside the League, reducing economic pressure and making sanctions less likely to force withdrawal."
+    }
+  },
+  {
+    "id": "secondary-held-out-3-partial",
+    "questionId": "secondary-held-out-3",
+    "subject": "History",
+    "course": "history0977",
+    "specification": {
+      "code": "0977 Option B 2",
+      "title": "To what extent was the League of Nations a success?"
+    },
+    "answerType": "multi-mark",
+    "stratum": "partial",
+    "request": {
+      "prompt": "Explain two reasons why the League of Nations struggled to stop aggression in the 1930s. For each, connect the weakness to its practical effect.",
+      "criterion": "Award up to four marks for each of two distinct reasons: identification, accurate supporting detail, explanation of its practical effect and a developed connection to failure to deter aggression. Accept lack of its own army, absence of major powers, limited sanctions, decision-making delays or members prioritising national interests. Do not duplicate reasons. This original eight-mark allocation is not an exam-board mark scheme.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 8,
+      "answer": "It had no army and the USA was not a member."
+    }
+  },
+  {
+    "id": "secondary-held-out-3-wrong",
+    "questionId": "secondary-held-out-3",
+    "subject": "History",
+    "course": "history0977",
+    "specification": {
+      "code": "0977 Option B 2",
+      "title": "To what extent was the League of Nations a success?"
+    },
+    "answerType": "multi-mark",
+    "stratum": "wrong",
+    "request": {
+      "prompt": "Explain two reasons why the League of Nations struggled to stop aggression in the 1930s. For each, connect the weakness to its practical effect.",
+      "criterion": "Award up to four marks for each of two distinct reasons: identification, accurate supporting detail, explanation of its practical effect and a developed connection to failure to deter aggression. Accept lack of its own army, absence of major powers, limited sanctions, decision-making delays or members prioritising national interests. Do not duplicate reasons. This original eight-mark allocation is not an exam-board mark scheme.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 8,
+      "answer": "The League commanded every national army automatically and the USA enforced a complete blockade of all aggressors."
+    }
+  },
+  {
+    "id": "secondary-held-out-3-blank",
+    "questionId": "secondary-held-out-3",
+    "subject": "History",
+    "course": "history0977",
+    "specification": {
+      "code": "0977 Option B 2",
+      "title": "To what extent was the League of Nations a success?"
+    },
+    "answerType": "multi-mark",
+    "stratum": "blank",
+    "request": {
+      "prompt": "Explain two reasons why the League of Nations struggled to stop aggression in the 1930s. For each, connect the weakness to its practical effect.",
+      "criterion": "Award up to four marks for each of two distinct reasons: identification, accurate supporting detail, explanation of its practical effect and a developed connection to failure to deter aggression. Accept lack of its own army, absence of major powers, limited sanctions, decision-making delays or members prioritising national interests. Do not duplicate reasons. This original eight-mark allocation is not an exam-board mark scheme.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 8,
+      "answer": ""
+    }
+  },
+  {
+    "id": "secondary-held-out-3-off-topic",
+    "questionId": "secondary-held-out-3",
+    "subject": "History",
+    "course": "history0977",
+    "specification": {
+      "code": "0977 Option B 2",
+      "title": "To what extent was the League of Nations a success?"
+    },
+    "answerType": "multi-mark",
+    "stratum": "off-topic",
+    "request": {
+      "prompt": "Explain two reasons why the League of Nations struggled to stop aggression in the 1930s. For each, connect the weakness to its practical effect.",
+      "criterion": "Award up to four marks for each of two distinct reasons: identification, accurate supporting detail, explanation of its practical effect and a developed connection to failure to deter aggression. Accept lack of its own army, absence of major powers, limited sanctions, decision-making delays or members prioritising national interests. Do not duplicate reasons. This original eight-mark allocation is not an exam-board mark scheme.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 8,
+      "answer": "International meetings need interpreters."
+    }
+  },
+  {
+    "id": "secondary-held-out-3-ambiguous",
+    "questionId": "secondary-held-out-3",
+    "subject": "History",
+    "course": "history0977",
+    "specification": {
+      "code": "0977 Option B 2",
+      "title": "To what extent was the League of Nations a success?"
+    },
+    "answerType": "multi-mark",
+    "stratum": "ambiguous",
+    "request": {
+      "prompt": "Explain two reasons why the League of Nations struggled to stop aggression in the 1930s. For each, connect the weakness to its practical effect.",
+      "criterion": "Award up to four marks for each of two distinct reasons: identification, accurate supporting detail, explanation of its practical effect and a developed connection to failure to deter aggression. Accept lack of its own army, absence of major powers, limited sanctions, decision-making delays or members prioritising national interests. Do not duplicate reasons. This original eight-mark allocation is not an exam-board mark scheme.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 8,
+      "answer": "They could not act because others were absent, but I cannot identify who or what action."
+    }
+  },
+  {
+    "id": "secondary-held-out-4-strong",
+    "questionId": "secondary-held-out-4",
+    "subject": "Religious Studies",
+    "course": "religiousstudies8062",
+    "specification": {
+      "code": "8062 3.1.2",
+      "title": "Christianity: practices"
+    },
+    "answerType": "multi-mark",
+    "stratum": "strong",
+    "request": {
+      "prompt": "Explain two ways prayer may support a Christian facing a difficult decision.",
+      "criterion": "Award up to three marks for each distinct way: identify a relevant function of prayer; develop it with a concrete example; explain how it supports decision-making. Accept seeking guidance, reflection, strength, trust or shared prayer. Do not require claims of guaranteed answers or quotations. Credit diverse Christian perspectives.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 6,
+      "answer": "Prayer may help a Christian seek God’s guidance before choosing whether to admit a mistake; reflecting on honesty may clarify the choice. Praying with a congregation may provide strength when deciding to care for a relative, because shared concern helps the person feel supported in carrying out a demanding choice."
+    }
+  },
+  {
+    "id": "secondary-held-out-4-partial",
+    "questionId": "secondary-held-out-4",
+    "subject": "Religious Studies",
+    "course": "religiousstudies8062",
+    "specification": {
+      "code": "8062 3.1.2",
+      "title": "Christianity: practices"
+    },
+    "answerType": "multi-mark",
+    "stratum": "partial",
+    "request": {
+      "prompt": "Explain two ways prayer may support a Christian facing a difficult decision.",
+      "criterion": "Award up to three marks for each distinct way: identify a relevant function of prayer; develop it with a concrete example; explain how it supports decision-making. Accept seeking guidance, reflection, strength, trust or shared prayer. Do not require claims of guaranteed answers or quotations. Credit diverse Christian perspectives.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 6,
+      "answer": "Prayer can offer guidance and comfort."
+    }
+  },
+  {
+    "id": "secondary-held-out-4-wrong",
+    "questionId": "secondary-held-out-4",
+    "subject": "Religious Studies",
+    "course": "religiousstudies8062",
+    "specification": {
+      "code": "8062 3.1.2",
+      "title": "Christianity: practices"
+    },
+    "answerType": "multi-mark",
+    "stratum": "wrong",
+    "request": {
+      "prompt": "Explain two ways prayer may support a Christian facing a difficult decision.",
+      "criterion": "Award up to three marks for each distinct way: identify a relevant function of prayer; develop it with a concrete example; explain how it supports decision-making. Accept seeking guidance, reflection, strength, trust or shared prayer. Do not require claims of guaranteed answers or quotations. Credit diverse Christian perspectives.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 6,
+      "answer": "Prayer guarantees every Christian receives an audible instruction that removes the need for any choice."
+    }
+  },
+  {
+    "id": "secondary-held-out-4-blank",
+    "questionId": "secondary-held-out-4",
+    "subject": "Religious Studies",
+    "course": "religiousstudies8062",
+    "specification": {
+      "code": "8062 3.1.2",
+      "title": "Christianity: practices"
+    },
+    "answerType": "multi-mark",
+    "stratum": "blank",
+    "request": {
+      "prompt": "Explain two ways prayer may support a Christian facing a difficult decision.",
+      "criterion": "Award up to three marks for each distinct way: identify a relevant function of prayer; develop it with a concrete example; explain how it supports decision-making. Accept seeking guidance, reflection, strength, trust or shared prayer. Do not require claims of guaranteed answers or quotations. Credit diverse Christian perspectives.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 6,
+      "answer": ""
+    }
+  },
+  {
+    "id": "secondary-held-out-4-off-topic",
+    "questionId": "secondary-held-out-4",
+    "subject": "Religious Studies",
+    "course": "religiousstudies8062",
+    "specification": {
+      "code": "8062 3.1.2",
+      "title": "Christianity: practices"
+    },
+    "answerType": "multi-mark",
+    "stratum": "off-topic",
+    "request": {
+      "prompt": "Explain two ways prayer may support a Christian facing a difficult decision.",
+      "criterion": "Award up to three marks for each distinct way: identify a relevant function of prayer; develop it with a concrete example; explain how it supports decision-making. Accept seeking guidance, reflection, strength, trust or shared prayer. Do not require claims of guaranteed answers or quotations. Credit diverse Christian perspectives.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 6,
+      "answer": "A hymn can have several verses."
+    }
+  },
+  {
+    "id": "secondary-held-out-4-ambiguous",
+    "questionId": "secondary-held-out-4",
+    "subject": "Religious Studies",
+    "course": "religiousstudies8062",
+    "specification": {
+      "code": "8062 3.1.2",
+      "title": "Christianity: practices"
+    },
+    "answerType": "multi-mark",
+    "stratum": "ambiguous",
+    "request": {
+      "prompt": "Explain two ways prayer may support a Christian facing a difficult decision.",
+      "criterion": "Award up to three marks for each distinct way: identify a relevant function of prayer; develop it with a concrete example; explain how it supports decision-making. Accept seeking guidance, reflection, strength, trust or shared prayer. Do not require claims of guaranteed answers or quotations. Credit diverse Christian perspectives.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 6,
+      "answer": "It helps them decide somehow, unless they were only speaking to themselves."
+    }
+  }
+]

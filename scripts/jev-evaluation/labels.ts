@@ -43,12 +43,14 @@ export function validateLabels(bundle: unknown, identity: string, evaluationCase
       if (!item || label.mark > item.request.maxMarks)
         throw new Error('Unknown case or out-of-range reference mark.');
       if (
-        !item.request.answer.trim() &&
+        (!item.request.answer.trim() || !item.request.diagnostic) &&
         [label.knowledge, label.application, label['causal-link']].some(
           (value) => value !== 'insufficient-evidence',
         )
       )
-        throw new Error('Blank answers cannot establish diagnostic gaps.');
+        throw new Error(
+          'Blank answers and marking-only cases require insufficient diagnostic evidence.',
+        );
     }
   }
   const { reviews, adjudication } = parsed;

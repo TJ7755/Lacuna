@@ -1,7 +1,9 @@
-# Bounded Jev enzyme evaluation
+# Bounded Jev evaluation
 
-Offline preparation and opt-in execution for [#905](https://github.com/TJ7755/Lacuna/issues/905).
-Independent reference marking and bounded live results supply the evaluation evidence. Results
+Offline preparation and disabled paid execution for [#905](https://github.com/TJ7755/Lacuna/issues/905).
+**Policy v5 refuses every paid call before reading credentials or creating results because a reliable
+monetary ceiling is not enforceable.** Offline export and independent reference validation remain available.
+Independent reference marking and future bounded live results supply the evaluation evidence. Results
 record agreement against those references, source versions, uncertainty, usage and latency.
 The default pack contains four original 4BI1 temperature/pH explanation questions and six evaluation-written
 answers per question: strong, partial, wrong, blank, off-topic and ambiguous. These are authoring
@@ -26,8 +28,10 @@ For fresh held-out material, pass `--cases CASES.json` to **every** export, vali
 command. This extends the same runner and metrics; it does not replace the acceptance policy.
 The JSON array uses the existing `EvaluationCase` shape in `pack.ts`: unique `id`, `questionId`,
 `answerType`, `stratum` and a validated allocation `request`. Packs are bounded to 1,000 cases.
-The request's mark count must be one or two and match its answer type; larger allocations remain
-outside this screening protocol and are rejected before export or execution. The exported identity
+The request's mark count must match its answer type: one mark is short-answer and larger
+allocations are multi-mark. The acceptance policy now admits original extended answers up to
+nine marks. This extends evaluation coverage only: it does not lower provider
+confidence thresholds or qualify extended answers for pupil-facing diagnosis. The exported identity
 binds the complete pack, policy and implementation; changed material requires a new independent reference record.
 Each pack allows at most one request per case, sequentially, stopping at the first failure.
 
@@ -73,19 +77,15 @@ invalid marks/categories, missing provenance and unresolved disagreements before
 
 ## Live operation
 
-After independent reference marking, provide `TYPESAFE_API_KEY`
-through the environment. Never put it in command arguments, committed files or logs.
+Paid execution is disabled pending an enforceable monetary bound. The retained `live` command
+validates independent references and then refuses before reading credentials, creating output or
+calling the provider. A request count, restricted key or operator attestation does not enable it.
 
-```sh
-bun scripts/jev-evaluation.ts live --labels LABELS.json --allow-paid --out artifacts/jev-evaluation-live-v1
-```
-
-The default pack makes at most 24 sequential requests, no retries, 30 seconds each, with no redirects or
-local cache. It uses the existing single/allocation-batch provider entry points and stops after the
-first failed call. New output paths prevent accidental overwrite. Results are saved before the first
-call and after each case; interruption retains an in-flight request with unknown usage. Source
-changes invalidate the run. Provider error bodies and credentials are never saved. Upstream caching
-is unknown; reruns are explicit, separate invocations and may incur further cost.
+The retained execution implementation describes a future bounded run: sequential calls, no retries,
+30 seconds per request, no redirects or local cache, stopping on the first failure. It would save
+results before and after requests and preserve unknown usage after interruptions. These behaviours
+do not constitute a monetary cap. Enabling paid execution requires a provider budget integration
+or reviewed worst-case pricing and enforceable token bounds, with new validation and review.
 
 Reports preserve reviews, disagreement/adjudication, provider decisions and per-case failures. They
 show mark agreement/overmarks/undermarks among decided marks, errors over one mark, abstention,
@@ -98,7 +98,7 @@ Multi-mark allocation now asks for an explicit mark-level Choice rather than rou
 Score. The selected level must be a highest-probability authored option; its effective confidence is
 the lower of the provider confidence and that option's probability. Marking and diagnostic cutoffs
 remain separate. The marking policy uses 0.55 for one- and two-mark allocations and retains 0.85
-for unsupported larger allocations. A marking pilot is separate from diagnostic qualification;
+for three- to nine-mark evaluation allocations. A marking pilot is separate from diagnostic qualification;
 mark agreement does not establish the accuracy of practice advice. Neither a model confidence nor a development-set pass establishes accuracy on
 fresh answers; the versioned candidate must pass the held-out screen before any access decision.
 
@@ -109,8 +109,9 @@ cases. Policy v2 additionally requires an observed mark-abstention rate of at mo
 answer type. That screen is stricter than the requested overall average. These are provisional screening criteria, not
 calibrated guarantees. The default 24-case feasibility pack
 cannot meet the sample minima and must report undersampling. Shared-question dependence makes the
-intervals descriptive, not independent population estimates. Handwriting, typed recall, extended
-responses and other subjects are unsupported. Access decisions use the recorded scope and sampling evidence.
+intervals descriptive, not independent population estimates. Handwriting and typed recall remain unsupported. Extended responses and other subjects may be
+evaluated for mark agreement; this does not qualify their diagnosis. Access decisions use the
+recorded scope and sampling evidence. Reports never gate releases or access.
 
 Direct-provider runs do not verify pupil-facing hosted throttling, errors, abstention or manual
 fallback/overrides. Complete those workflow checks separately before accepting #905. Synthetic
@@ -122,5 +123,38 @@ silently relabel them or reuse inspected validation material to certify a tuned 
 Policy v4 accepts contextual failure to fit as failed binding, without supplying absent mechanisms.
 Genuinely ambiguous literal/metaphorical readings give insufficient evidence in affected diagnostic
 categories. Review reference consistency under these conventions before rebinding a packet identity.
-Marking cutoffs distinguish one-mark, two-mark and unsupported larger allocations; the exported
+Marking cutoffs distinguish one-mark, two-mark and three- to nine-mark evaluation allocations; the exported
 manifest records the actual policy used. Client checks and cache identity use the same policy.
+
+## Named packs and scope
+
+Use `--pack NAME` consistently for export, validation and live execution. The legacy enzyme pack
+remains the default. `secondary-development` and `secondary-held-out` each contain 24 original
+cases across Chemistry (4CH1), Physics (0972), History (0977) and Religious Studies (8062),
+with 1-, 3-, 6- and 8-mark allocations and all six authoring strata. They are marking-only packs;
+independent content review and reference marks remain pending. Named development and held-out material is original evaluation writing;
+specification references contain codes and titles only. Every new pack needs independent content
+review and reference marking before live use. Authored answer strata are sampling labels, never
+reference marks. Non-science material measures marking only: the science diagnosis taxonomy has
+not been extended to other subjects. Diagnostic agreement must not be inferred from those cases.
+
+Subject, mark-band and stratum breakdowns report counts and Wilson 95% uncertainty. Small cells
+remain visible and undersampled. These intervals are descriptive because answers sharing a
+question are dependent. Do not select a candidate by held-out results or reuse an inspected pack
+as fresh held-out evidence. A changed pack or candidate requires a new bound reference identity.
+
+## Manual GitHub Actions operation
+
+The **Manual Jev evaluation** workflow has only `workflow_dispatch`; no schedule, push or pull
+request event can launch paid calls. Select the reviewed candidate ref, supply its pack name,
+a repository-relative independent reference JSON path at that ref, and an integer maximum paid
+request count. The workflow validates references offline and then reaches the expected policy-v5
+refusal. It cannot currently produce live results or incur evaluation API spend. No API secret
+needs configuring while execution is disabled; this change creates or sets no secrets.
+
+`--max-requests` limits attempts in the retained execution implementation, not currency spend.
+The manual workflow stays disabled for paid execution until reliable monetary bounds exist.
+Its summary identifies the refusal when no results exist; optional artefact retention is ready
+for a future enabled run. Execution and reference errors fail the manual job. Offline export,
+reference validation and fixture tests need no API secret and may run in ordinary CI.
+No live evaluation was run to author these packs or this workflow.
