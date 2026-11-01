@@ -244,3 +244,21 @@ it.each([
       : undefined,
   );
 });
+
+it('expires diagnostic scheduling needs without deleting the diagnostic history', async () => {
+  const { set, concept } = await fixture({ single: true });
+  const { attempt } = await mark(set, ['gap'], 5_000);
+  const before = deriveConceptPracticeNeeds([attempt], [set], 5_000);
+  expect(before.get(concept.id)?.techniques).toContain('causal-link');
+  for (const days of [30, 60, 90, 365]) {
+    expect(
+      deriveConceptPracticeNeeds([attempt], [set], 5_000 + days * 86_400_000).get(concept.id)
+        ?.techniques,
+    ).toEqual([]);
+  }
+  expect(
+    deriveConceptDiagnosticEvidence([attempt], [set])
+      .get(concept.id)
+      ?.find((row) => row.categoryId === 'causal-link')?.gapCount,
+  ).toBe(1);
+});

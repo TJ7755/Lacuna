@@ -22,6 +22,7 @@ import {
   type ConceptPracticeNeeds,
   type DiagnosticCategoryEvidence,
 } from './techniqueEvidence';
+import { deriveTechniqueSchedules } from './techniqueSchedule';
 import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
 
 export { undoConceptPracticeAttempt } from './questionSetAttemptRepository';
@@ -128,11 +129,16 @@ export interface ConceptPracticeItem {
   unfinished?: boolean;
 }
 
-async function context(courseId: string) {
+async function context(courseId: string, now = Date.now()) {
   const data = await practiceContext(courseId);
   return {
     ...data,
-    needs: deriveConceptPracticeNeeds(data.attempts, data.sets),
+    needs: deriveConceptPracticeNeeds(
+      data.attempts,
+      data.sets,
+      now,
+      deriveTechniqueSchedules(data.attempts),
+    ),
     schedules: deriveConceptApplicationSchedules(data.attempts),
   };
 }
@@ -161,7 +167,7 @@ export async function listConceptPractice(
   now = Date.now(),
   scopeConceptIds?: readonly string[],
 ): Promise<ConceptPracticeItem[]> {
-  const data = await context(courseId);
+  const data = await context(courseId, now);
   const diagnosticEvidence = deriveConceptDiagnosticEvidence(data.attempts, data.sets);
   const scope = scopeConceptIds ? new Set(scopeConceptIds) : undefined;
   return data.concepts
@@ -245,7 +251,7 @@ export async function startConceptPractice(
     'rw',
     [db.courses, db.concepts, db.questionSets, db.questionSetAttempts],
     async () => {
-      const data = await context(courseId);
+      const data = await context(courseId, now);
       const course = await db.courses.get(courseId);
       if (!course || course.archived) throw new Error('This course is unavailable for practice.');
       const scope = options.scopeConceptIds ? new Set(options.scopeConceptIds) : undefined;
