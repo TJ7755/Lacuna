@@ -1,0 +1,84 @@
+name: Local performance budgets
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'apps/relay/**'
+      - 'packages/**'
+      - 'scripts/performance-*/**'
+      - 'scripts/performance-audit.ts'
+      - 'scripts/stress-relay*'
+      - 'tests/e2e/first-interaction-latency.spec.ts'
+      - 'tests/e2e/fixtures/interactionPerformance.ts'
+      - 'vite.config.ts'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/performance.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-bun
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run build:assets
+      - run: bun run perf:check
+      - run: bun run perf:audit:web-interactions
+        env:
+          LACUNA_BROWSER_PREBUILT: 'true'
+      - run: node scripts/performance-heavy/build.mjs
+      - name: Large-library production budgets
+        run: node artifacts/performance/run.mjs
+        env:
+          PERF_RATES: '1'
+          PERF_REPETITIONS: ${{ github.event_name == 'workflow_dispatch' && '3' || '1' }}
+          PERF_BURST_REVIEWS: ${{ github.event_name == 'workflow_dispatch' && '20' || '2' }}
+          PERF_MODE: ${{ github.event_name == 'workflow_dispatch' && 'full' || 'quick' }}
+          PERF_BUDGETS: '1'
+          PERF_OUTPUT: artifacts/performance/budgets.json
+          PERF_LABEL: github-ubuntu
+      - name: Preserve measurements and failures
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web-performance-${{ github.sha }}
+          path: |
+            artifacts/performance/*.json
+            artifacts/performance/*failure.png
+            test-results/
+          retention-days: 30
+
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-bun
+      - run: bun install --frozen-lockfile
+      - run: bun run stress:relay
+        env:
+          STRESS_CONCURRENCY: ${{ github.event_name == 'workflow_dispatch' && '32' || '2' }}
+          STRESS_ITERATIONS: ${{ github.event_name == 'workflow_dispatch' && '100' || '2' }}
+      - name: Preserve relay measurements
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: relay-performance-${{ github.sha }}
+          path: artifacts/stress/*.json
+          retention-days: 30
