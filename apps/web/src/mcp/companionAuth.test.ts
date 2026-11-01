@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { authoriseCompanionHello } from '../../../desktop/mcp/companionAuth';
-import { MCP_COMPANION_PROTOCOL_VERSION } from './companionProtocol';
+import { AI_COMPANION_PROTOCOL_VERSION, MCP_COMPANION_PROTOCOL_VERSION } from './companionProtocol';
 
 const dataToken = 'a'.repeat(64);
 const aiToken = 'b'.repeat(64);
@@ -15,13 +15,20 @@ describe('companion authentication', () => {
     };
     const aiHello = {
       type: 'ai_hello',
-      protocolVersion: MCP_COMPANION_PROTOCOL_VERSION,
+      protocolVersion: AI_COMPANION_PROTOCOL_VERSION,
       token: aiToken,
     };
 
     expect(authoriseCompanionHello(dataHello, 'data', dataToken)).toBe(true);
     expect(authoriseCompanionHello(dataHello, 'ai', aiToken)).toBe(false);
     expect(authoriseCompanionHello(aiHello, 'ai', aiToken)).toBe(true);
+    expect(
+      authoriseCompanionHello(
+        { ...aiHello, protocolVersion: MCP_COMPANION_PROTOCOL_VERSION },
+        'ai',
+        aiToken,
+      ),
+    ).toBe(false);
     expect(authoriseCompanionHello(aiHello, 'data', dataToken)).toBe(false);
     expect(authoriseCompanionHello({ ...dataHello, token: aiToken }, 'data', dataToken)).toBe(
       false,

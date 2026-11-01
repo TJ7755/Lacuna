@@ -1,5 +1,7 @@
 import { app } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { setTimeout as delay } from 'node:timers/promises';
 import net, { type Socket } from 'node:net';
 import log from 'electron-log';
 import { z } from 'zod';
@@ -38,7 +40,7 @@ function silenceStdoutNoise(): void {
   console.debug = toStderr;
 }
 
-class CompanionAppClient {
+export class CompanionAppClient {
   private socket: Socket | null = null;
   private connecting: Promise<void> | null = null;
   private appVersion: string | null = null;
@@ -125,6 +127,39 @@ class CompanionAppClient {
   }
 
   private async open(): Promise<void> {
+    try {
+      await this.openEndpoint();
+      return;
+    } catch {
+      // A stale connection file is not evidence that the host is running.
+    }
+    const env = { ...process.env };
+    delete env.ELECTRON_RUN_AS_NODE;
+    const host = spawn(
+      process.execPath,
+      [...(app.isPackaged ? [] : [app.getAppPath()]), `--user-data-dir=${this.hostUserDataPath}`],
+      { detached: true, stdio: 'ignore', env },
+    );
+    let launchError: Error | undefined;
+    host.once('error', (error) => {
+      launchError = error;
+    });
+    host.unref();
+    const deadline = Date.now() + 30_000;
+    do {
+      if (launchError) throw launchError;
+      await delay(200);
+      try {
+        await this.openEndpoint();
+        return;
+      } catch {
+        // Only the authenticated broker handshake establishes readiness.
+      }
+    } while (Date.now() < deadline);
+    throw new Error('Timed out waiting for the Lacuna companion broker.');
+  }
+
+  private async openEndpoint(): Promise<void> {
     let connection;
     try {
       connection = await readCompanionConnectionFile(this.hostUserDataPath);

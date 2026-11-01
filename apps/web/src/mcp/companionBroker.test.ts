@@ -139,7 +139,7 @@ afterEach(async () => {
 });
 
 describe('Electron MCP companion broker interface', () => {
-  it('binds tokens to purpose and preserves current and legacy AI handshakes', async () => {
+  it('binds tokens to purpose and authorises current AI handshakes and rejects legacy AI', async () => {
     const renderer = rendererWindow();
     const broker = new CompanionBroker(() => renderer.window, vi.fn());
     activeBrokers.push(broker);
@@ -178,19 +178,8 @@ describe('Electron MCP companion broker interface', () => {
       token: connection.aiToken,
     });
     await expect(legacy.next()).resolves.toEqual({
-      type: 'ai_ready',
-      protocolVersion: LEGACY_AI_COMPANION_PROTOCOL_VERSION,
-      appVersion: '0.2.3',
-    });
-    legacy.send({
-      type: 'ai_request',
-      id: 'renew-1',
-      request: { type: 'renew_lease', connectionId: 'connection-1', runId: 'run-1' },
-    });
-    await expect(legacy.next()).resolves.toMatchObject({
-      type: 'ai_result',
-      id: 'renew-1',
-      result: { ok: false, error: { kind: 'version_mismatch' } },
+      type: 'fatal',
+      error: { kind: 'forbidden', message: 'MCP companion authentication failed.' },
     });
   });
 
