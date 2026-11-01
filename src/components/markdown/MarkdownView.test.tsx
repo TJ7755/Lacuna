@@ -218,12 +218,13 @@ describe('MarkdownView — diagrams and note links', () => {
 });
 
 describe('MarkdownView \u2014 maths', () => {
-  it('emits KaTeX markup that the imported KaTeX stylesheet styles', () => {
+  it('emits KaTeX markup that the imported KaTeX stylesheet styles', async () => {
     // KaTeX 0.18 prefixed its layout classes (base -> katex-base). Markup from one
     // KaTeX version under another version's stylesheet loses fraction lines and sizing.
     const require = createRequire(import.meta.url);
     const css = readFileSync(require.resolve('katex/dist/katex.min.css'), 'utf8');
     const { container } = render(<MarkdownView source={'$\\frac{a}{b}$'} />);
+    await waitFor(() => expect(container.querySelector('.katex-html')).not.toBeNull());
     const classes = new Set(
       [...container.querySelectorAll('.katex-html *')].flatMap((el) => [...el.classList]),
     );
@@ -232,5 +233,15 @@ describe('MarkdownView \u2014 maths', () => {
       (name) => !css.includes(`.${name}`) && css.includes(`.katex-${name}`),
     );
     expect(unstyled).toEqual([]);
+  });
+});
+
+describe('MarkdownView optional syntax highlighting', () => {
+  it('upgrades the cached readable code once highlighting loads', async () => {
+    const { container } = render(<MarkdownView source={'```js\nconst count = 1;\n```'} />);
+    expect(container.querySelector('code')?.textContent).toContain('const count = 1;');
+    await waitFor(() =>
+      expect(container.querySelector('.hljs-keyword')).toHaveTextContent('const'),
+    );
   });
 });
