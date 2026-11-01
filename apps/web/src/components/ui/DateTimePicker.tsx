@@ -1,3 +1,4 @@
+import { dateTimePickerGridAction } from './dateTimePickerGridAction';
 import { scaledSpring } from './motion';
 import { dateTimePickerDayAction } from './dateTimePickerDayAction';
 import { buttonClassName } from './buttonStyles';
@@ -283,64 +284,30 @@ export function DateTimePicker({
 
   const handleMonthKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      let next = monthFocusIndex;
-      switch (e.key) {
-        case 'ArrowLeft':
-          next -= 1;
-          break;
-        case 'ArrowRight':
-          next += 1;
-          break;
-        case 'ArrowUp':
-          next -= 3;
-          break;
-        case 'ArrowDown':
-          next += 3;
-          break;
-        case 'Enter':
-        case ' ':
-          e.preventDefault();
-          selectMonth(monthFocusIndex);
-          return;
-        default:
-          return;
-      }
+      const action = dateTimePickerGridAction(monthFocusIndex, 12, e.key);
+      if (!action) return;
       e.preventDefault();
-      next = Math.max(0, Math.min(11, next));
-      setMonthFocusIndex(next);
-      monthRefs.current[next]?.focus();
+      if (action.kind === 'select') {
+        selectMonth(action.index);
+        return;
+      }
+      setMonthFocusIndex(action.index);
+      monthRefs.current[action.index]?.focus();
     },
     [monthFocusIndex, selectMonth],
   );
 
   const handleYearKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      let next = yearFocusIndex;
-      switch (e.key) {
-        case 'ArrowLeft':
-          next -= 1;
-          break;
-        case 'ArrowRight':
-          next += 1;
-          break;
-        case 'ArrowUp':
-          next -= 3;
-          break;
-        case 'ArrowDown':
-          next += 3;
-          break;
-        case 'Enter':
-        case ' ':
-          e.preventDefault();
-          selectYear(yearFocusIndex);
-          return;
-        default:
-          return;
-      }
+      const action = dateTimePickerGridAction(yearFocusIndex, yearRange.length, e.key);
+      if (!action) return;
       e.preventDefault();
-      next = Math.max(0, Math.min(yearRange.length - 1, next));
-      setYearFocusIndex(next);
-      yearRefs.current[next]?.focus();
+      if (action.kind === 'select') {
+        selectYear(action.index);
+        return;
+      }
+      setYearFocusIndex(action.index);
+      yearRefs.current[action.index]?.focus();
     },
     [selectYear, yearFocusIndex, yearRange.length],
   );
