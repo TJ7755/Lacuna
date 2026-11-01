@@ -9,7 +9,7 @@ import { PathEditorPopover } from './PathEditorPopover';
 import './path-editor.css';
 
 /** Menus restore their trigger before opening an editor; use its containing path row. */
-export function pathEditorSource(): HTMLElement | null {
+function pathEditorSource(): HTMLElement | null {
   const active = document.activeElement;
   if (!(active instanceof HTMLElement) || active === document.body) return null;
   return (

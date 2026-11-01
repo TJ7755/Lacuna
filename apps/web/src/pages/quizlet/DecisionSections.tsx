@@ -3,7 +3,7 @@ import { parseImport } from '../../db/import';
 import { Arrow, Cta, SectionHeading } from './ComparisonUi';
 import { faqs, sources } from './comparisonContent';
 
-export function Portability() {
+function Portability() {
   const [text, setText] = useState(
     'Enzyme\tA biological catalyst\nActive site\tWhere the substrate binds\nDenaturation\tA change in a protein’s shape',
   );
@@ -79,7 +79,7 @@ export function Portability() {
     </div>
   );
 }
-export function OfflinePanel() {
+function OfflinePanel() {
   const [offline, setOffline] = useState(false);
   return (
     <div className="qc-offline-panel">
@@ -139,7 +139,7 @@ export function OfflinePanel() {
     </div>
   );
 }
-export function CostPanel() {
+function CostPanel() {
   return (
     <div className="qc-cost-panel">
       <div className="qc-price">
@@ -199,7 +199,7 @@ export function FitGuide() {
     </div>
   );
 }
-export function Faq() {
+function Faq() {
   return (
     <div className="qc-faq-list">
       {faqs.map(([question, answer]) => (
@@ -214,7 +214,7 @@ export function Faq() {
     </div>
   );
 }
-export function SourceNotes() {
+function SourceNotes() {
   return (
     <details className="qc-source-notes">
       <summary>

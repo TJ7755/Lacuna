@@ -133,7 +133,7 @@ export const linkCardToLessonContract = {
   requiredScope: 'write',
 } satisfies ToolContract;
 
-export const sequenceItemSchema = z.object({
+const sequenceItemSchema = z.object({
   id: z
     .string()
     .describe('Stable id for this item — anchors the card(s) generated from it across edits.'),

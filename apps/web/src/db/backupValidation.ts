@@ -16,7 +16,7 @@ const optionalCollections = Object.fromEntries(
 // Loose objects validate known fields whilst retaining additive metadata. Older
 // supported exports lack some collections and mutation timestamps; import already
 // backfills those. Deck/Folder rows remain subject to the existing pre-v22 refusal.
-export const backupSchema = z
+const backupSchema = z
   .looseObject({
     ...optionalCollections,
     app: z.enum(['lacuna', 'lacuna-v12', 'lacuna-v13', 'lacuna-v14', 'lacuna-v15']),

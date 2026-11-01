@@ -58,7 +58,7 @@ export interface RelayClientOptions {
 
 export type RelayClientOperation = 'create' | 'peer' | 'pull' | 'push' | 'revoke';
 
-export class RelayClientError extends Error {
+class RelayClientError extends Error {
   readonly operation: RelayClientOperation;
   readonly status?: number;
 
@@ -70,7 +70,7 @@ export class RelayClientError extends Error {
   }
 }
 
-export class RelayClientConfigurationError extends RelayClientError {
+class RelayClientConfigurationError extends RelayClientError {
   constructor(message: string) {
     super(message, { operation: 'create' });
     this.name = 'RelayClientConfigurationError';

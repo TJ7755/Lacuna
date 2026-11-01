@@ -25,7 +25,7 @@ interface HastParent {
 }
 
 /** Match `[[target]]` or `[[target|label]]`. Targets cannot contain `]` or `|`. */
-export const WIKILINK_RE = /\[\[([^\]|]+?)(?:\|([^\]]+?))?\]\]/g;
+const WIKILINK_RE = /\[\[([^\]|]+?)(?:\|([^\]]+?))?\]\]/g;
 
 export interface WikilinkPart {
   target: string;

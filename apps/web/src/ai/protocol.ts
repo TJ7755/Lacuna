@@ -4,16 +4,16 @@ import { z } from 'zod';
 export const LACUNA_AI_PROTOCOL_VERSION = 1 as const;
 
 export const MAX_AI_IDENTIFIER_LENGTH = 160;
-export const MAX_AI_CLIENT_NAME_LENGTH = 100;
-export const MAX_AI_CLIENT_VERSION_LENGTH = 100;
+const MAX_AI_CLIENT_NAME_LENGTH = 100;
+const MAX_AI_CLIENT_VERSION_LENGTH = 100;
 export const MAX_AI_MESSAGE_LENGTH = 50_000;
 export const MAX_AI_ACTIVITY_LENGTH = 1_000;
-export const MAX_AI_INSTRUCTIONS_LENGTH = 200_000;
+const MAX_AI_INSTRUCTIONS_LENGTH = 200_000;
 export const MAX_AI_TOOL_INPUT_BYTES = 64 * 1024;
 export const MIN_AI_WAIT_MS = 250;
 export const MAX_AI_WAIT_MS = 25_000;
-export const MIN_AI_LEASE_MS = 5_000;
-export const MAX_AI_LEASE_MS = 15 * 60_000;
+const MIN_AI_LEASE_MS = 5_000;
+const MAX_AI_LEASE_MS = 15 * 60_000;
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -122,7 +122,7 @@ export const aiEntityReferenceSchema = z
 
 export type AiEntityReference = z.infer<typeof aiEntityReferenceSchema>;
 
-export const aiActivityUpdateSchema = z.discriminatedUnion('status', [
+const aiActivityUpdateSchema = z.discriminatedUnion('status', [
   z
     .object({
       status: z.literal('working'),
@@ -140,7 +140,7 @@ export const aiActivityUpdateSchema = z.discriminatedUnion('status', [
 
 export type AiActivityUpdate = z.infer<typeof aiActivityUpdateSchema>;
 
-export const aiAssistantReplySchema = z
+const aiAssistantReplySchema = z
   .object({
     content: requiredText(MAX_AI_MESSAGE_LENGTH),
     sources: z.array(aiEntityReferenceSchema).max(100).optional(),

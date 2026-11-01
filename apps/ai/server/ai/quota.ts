@@ -48,7 +48,7 @@ export interface AiQuotaLimits {
   globalConcurrent: number;
 }
 
-export const DEFAULT_AI_QUOTA_LIMITS: AiQuotaLimits = {
+const DEFAULT_AI_QUOTA_LIMITS: AiQuotaLimits = {
   userDaily: 200,
   userMonthly: 3_000,
   globalDaily: 400,

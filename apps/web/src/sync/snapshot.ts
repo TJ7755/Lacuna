@@ -51,7 +51,7 @@ const GZIP_MAGIC = [0x1f, 0x8b] as const;
  * it reaches here, so this only stops a paired device's bug from exhausting
  * memory; it sits far above any library the app can hold comfortably.
  */
-export const SNAPSHOT_MAX_INFLATED_BYTES = 512 * 1024 * 1024;
+const SNAPSHOT_MAX_INFLATED_BYTES = 512 * 1024 * 1024;
 
 export interface EncodedSnapshot {
   /** Bytes to seal: gzip-compressed JSON when the platform can compress. */

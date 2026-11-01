@@ -11,7 +11,7 @@ export interface QuestionBankSummary {
   typicalSeconds: number | null;
 }
 
-export const RECENT_MARKS = 5;
+const RECENT_MARKS = 5;
 
 function countedAttempts(attempts: readonly QuestionAttempt[]): QuestionAttempt[] {
   return attempts
@@ -62,7 +62,7 @@ export function summariseQuestion(
   };
 }
 
-export function formatTypicalTime(seconds: number): string {
+function formatTypicalTime(seconds: number): string {
   return seconds < 60 ? `${Math.max(1, Math.round(seconds))} s` : `${Math.round(seconds / 60)} min`;
 }
 

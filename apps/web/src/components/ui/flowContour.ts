@@ -1,4 +1,4 @@
-export const FLOW_CORNER_EXPONENT = 2 ** 1.5;
+const FLOW_CORNER_EXPONENT = 2 ** 1.5;
 
 export interface FlowPoint {
   x: number;
@@ -7,7 +7,7 @@ export interface FlowPoint {
 const clamp = (value: number, low: number, high: number) => Math.max(low, Math.min(high, value));
 
 /** Sample the continuous corners of the measured expanding shell. */
-export function flowOutline(
+function flowOutline(
   width: number,
   height: number,
   radius: number,

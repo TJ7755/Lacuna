@@ -17,7 +17,7 @@ export interface CompanionConnectionFile {
   createdAt: number;
 }
 
-export function companionStateDirectory(userDataPath: string): string {
+function companionStateDirectory(userDataPath: string): string {
   return path.join(userDataPath, 'mcp');
 }
 

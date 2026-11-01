@@ -9,7 +9,7 @@ export interface ReturningState {
   returning?: boolean;
 }
 
-export function scrollKey(location: { pathname: string; search: string }): string {
+function scrollKey(location: { pathname: string; search: string }): string {
   return `${location.pathname}${location.search}`;
 }
 

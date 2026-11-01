@@ -40,7 +40,7 @@ export function glyphLoad(minutes: number): number {
  * The day count's size as a fraction of the glyph. Two digits sit at 0.375; longer counts
  * shrink so they stay inside the ring's 26.5-unit opening rather than running into the stroke.
  */
-export function glyphDaysScale(days: number): number {
+function glyphDaysScale(days: number): number {
   const digits = String(days).length;
   return digits <= 2 ? 0.375 : digits === 3 ? 0.32 : 0.24;
 }

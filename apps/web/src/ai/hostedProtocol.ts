@@ -30,7 +30,7 @@ const messageSchema = z.discriminatedUnion('role', [
     .strict(),
 ]);
 
-export const hostedRequestSchema = z
+const hostedRequestSchema = z
   .object({
     version: z.literal(HOSTED_PROTOCOL_VERSION),
     conversationId: identifier,
@@ -78,7 +78,7 @@ export const hostedRequestSchema = z
 
 export type HostedRequest = z.infer<typeof hostedRequestSchema>;
 
-export const hostedEventSchema = z.discriminatedUnion('type', [
+const hostedEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('text_delta'), text: z.string().min(1).max(4_000) }).strict(),
   z
     .object({
