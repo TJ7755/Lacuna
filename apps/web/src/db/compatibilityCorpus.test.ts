@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import Dexie from 'dexie';
 import { afterEach, beforeEach, expect, it } from 'vitest';
-import { db, capturePreMigrationSnapshot } from './schema';
+import { db } from './schema';
 import { exportDatabase, importBackup, readBackupFile } from './portability';
 import { recordReview } from './repository';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
@@ -56,9 +56,6 @@ async function seedProfile(fixture: CorpusCase) {
     legacy.close();
   }
   db.close({ disableAutoOpen: false });
-  // Use the production restore-point writer before crossing destructive upgrades.
-  await capturePreMigrationSnapshot('lacuna', 31);
-  await db.open();
 }
 
 function assertRelationships(backup: BackupFile, fixture: CorpusCase) {
@@ -127,7 +124,7 @@ function assertRelationships(backup: BackupFile, fixture: CorpusCase) {
   expect(backup.cards[0].front).toBe(`Cell ![diagram](lacuna-asset://${expected.assetHash})`);
 }
 
-it.each(['profile-v20', 'profile-v25', 'backup-v10'])(
+it.each(['backup-v10'])(
   '%s continues review and retains canonical evidence through export and restore',
   async (name) => {
     const fixture = loadCase(name);
@@ -187,5 +184,28 @@ it.each(['profile-v20', 'profile-v25', 'backup-v10'])(
     expect(restored.assets).toEqual(exported.assets);
     expect(restored.lessonCards).toEqual(exported.lessonCards);
     expect((await hydrateCardsWithHistory(await db.cards.toArray()))[0].history).toHaveLength(2);
+  },
+);
+
+it.each(['profile-v20', 'profile-v25'])(
+  '%s is refused without altering the historical profile',
+  async (name) => {
+    const fixture = loadCase(name);
+    await seedProfile(fixture);
+    await expect(db.open()).rejects.toThrow(/27/);
+    const source = new Dexie('lacuna');
+    await source.open();
+    try {
+      expect(source.verno).toBe(fixture.indexedDbVersion);
+      for (const [table, rows] of Object.entries(fixture.rows!)) {
+        expect(await source.table(table).count()).toBe(rows.length);
+      }
+      const card = await source.table('cards').get(fixture.expected.cardId);
+      expect(card).toMatchObject(
+        fixture.rows!.cards.find((row) => row.id === fixture.expected.cardId)!,
+      );
+    } finally {
+      source.close();
+    }
   },
 );
