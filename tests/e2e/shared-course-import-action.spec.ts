@@ -13,13 +13,20 @@ for (const width of [1280, 390]) {
       version: 1,
       assets: [],
       payload: {
-        v: 2,
+        v: 6,
         at: Date.now(),
+        concepts: Array.from({ length: 164 }, (_, i) => ({
+          id: `concept-large-${i + 1}`,
+          n: `Question ${i + 1}`,
+        })),
+        questions: [],
+        questionSets: [],
+        questionSetPracticeNodes: [],
         course: { n: 'Large biology', o: 0, c: 0, e: 0, um: 'open' },
         lessons: Array.from({ length: 164 }, (_, i) => ({
           n: `Biology lesson ${i + 1}`,
           notes: [],
-          cards: [{ k: 0, f: `Question ${i + 1}`, b: 'Answer' }],
+          cards: [{ k: 0, f: `Question ${i + 1}`, b: 'Answer', co: `concept-large-${i + 1}` }],
         })),
       },
     };
