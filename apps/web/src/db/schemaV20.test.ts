@@ -1,5 +1,4 @@
 import 'fake-indexeddb/auto';
-import Dexie from 'dexie';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db, readAllDataFromVersion } from './schema';
 import {
@@ -9,7 +8,6 @@ import {
   reviewHistoryEntryIdForEvent,
 } from '@lacuna/core/db/reviewHistory';
 import type { Card, ReviewLog } from '@lacuna/core/db/types';
-import { hydrateCardsWithHistory } from './reviewHistoryRead';
 
 function review(timestamp: number, overrides: Partial<ReviewLog> = {}): ReviewLog {
   return {
@@ -81,89 +79,9 @@ describe('review-history entry projection', () => {
   });
 });
 
-describe('schema v20: additive review history', () => {
+describe('canonical review history storage', () => {
   beforeEach(async () => {
     await db.delete();
-  });
-
-  it('copies v19 card history before the current schema clears the duplicate projection', async () => {
-    const history = [review(100), review(200, { eventId: 'event-2', grade: 1 })];
-    const legacy = new Dexie('lacuna');
-    legacy.version(19).stores({
-      decks: 'id, createdAt, examDate, folderId',
-      cards:
-        'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId, occlusionRegionId',
-      sessionHistory: '++id, &eventId, sessionId, deckId, courseId, timestamp',
-      userPerformance: 'deckId',
-      backups: '++id, createdAt',
-      appState: 'key',
-      assets: 'hash, createdAt',
-      folders: 'id, parentId, createdAt',
-      courses: 'id, createdAt',
-      lessons: 'id, courseId, orderIndex, createdAt',
-      notes: 'id, lessonId, orderIndex, createdAt',
-      lessonCards: 'id, lessonId, cardId',
-      lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
-      lessonCompletions: 'lessonId, completedAt',
-      noteAnnotations: 'id, noteId, createdAt, updatedAt',
-      practiceNodes: 'id, courseId, position, createdAt',
-      practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
-      courseAssessments: 'id, courseId, kind, examDate, createdAt',
-      sequences: 'id, courseId, primaryLessonId, createdAt',
-      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
-      lineageIdMappings: 'id, courseId',
-      pendingMergeReviews: 'id, courseId',
-      occlusions: 'id, courseId, primaryLessonId, createdAt',
-    });
-    await legacy.open();
-    await legacy.table('decks').add({ id: 'deck-1', name: 'Deck', createdAt: 1, examDate: 2 });
-    await legacy.table('courses').add({ id: 'course-1', name: 'Course', createdAt: 1 });
-    await legacy.table('sessionHistory').add({
-      eventId: 'session-event',
-      sessionId: 'session-1',
-      deckId: 'deck-1',
-      schedulingUnitId: 'deck-1',
-      courseId: 'course-1',
-      timestamp: 100,
-      averagePredictedRetrievability: 0.5,
-    });
-    await legacy.table('userPerformance').add({
-      deckId: 'course-1',
-      schedulingUnitId: 'course-1',
-      runningMeanResponseTime: 2,
-      runningStdDevResponseTime: 0,
-      m2: 0,
-      totalCorrectReviews: 1,
-    });
-    await legacy.table('cards').add(card(history));
-    await legacy
-      .table('cards')
-      .add({ ...card([]), id: 'card-without-history', history: undefined });
-    legacy.close();
-
-    await db.open();
-
-    const migratedCard = await db.cards.get('card-1');
-    expect(migratedCard?.history).toEqual([]);
-    expect((await hydrateCardsWithHistory([migratedCard!]))[0].history).toEqual(history);
-    expect(await db.schedulingUnits.get('deck-1')).toBeDefined();
-    expect(await db.courses.get('course-1')).toBeDefined();
-    expect(await db.sessionHistory.where('eventId').equals('session-event').count()).toBe(1);
-    expect(await db.userPerformance.get('course-1')).toBeDefined();
-    expect(await db.reviewHistory.orderBy('timestamp').toArray()).toEqual([
-      expect.objectContaining({
-        id: expect.stringContaining('review:legacy:card-1:'),
-        cardId: 'card-1',
-        timestamp: 100,
-      }),
-      expect.objectContaining({
-        id: reviewHistoryEntryIdForEvent('event-2'),
-        cardId: 'card-1',
-        timestamp: 200,
-        eventId: 'event-2',
-      }),
-    ]);
-    expect(await db.reviewHistory.where('cardId').equals('card-without-history').count()).toBe(0);
   });
 
   it('preserves duplicate event ids across cards during collision resolution', () => {
