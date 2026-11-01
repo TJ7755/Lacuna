@@ -180,6 +180,19 @@ export function CourseAnalytics() {
         )
       )}
 
+      {report.laterPapers.length > 0 && (
+        <PaperForecastCard
+          papers={report.laterPapers}
+          informational
+          objectiveLabel={progressHeading(course)}
+          timeZone={report.timeZone}
+          onSelect={(id) => {
+            selectScope(id);
+            scopeSelect.current?.focus();
+          }}
+        />
+      )}
+
       {report.lessons.length > 0 && (
         <Rise index={3}>
           <LessonStrip lessons={report.lessons} />

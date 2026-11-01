@@ -68,11 +68,6 @@ export function progressValue(
     : averagePredictedRetrievability(available, deck, now, examDateContext);
 }
 
-/** A short noun for compact headers, e.g. "62% predicted recall" / "62% secured". */
-export function progressNoun(deck: SchedulerConfig): string {
-  return deck.examObjective === 'securedTopics' ? 'secured' : 'predicted recall';
-}
-
 /**
  * A heading for the deck/summary panels. Names what `progressValue` computes for
  * the deck's objective: mean predicted recall, or the share of Cards at 90%.

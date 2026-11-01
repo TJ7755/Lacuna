@@ -25,11 +25,7 @@ import { LINEAGE_TOOLS } from './tools/lineage';
 import { QUESTION_TOOLS } from './tools/questions';
 import { MEMORY_TOOLS } from './tools/memories';
 
-export {
-  MCP_TOOL_SURFACE_VERSION,
-  suggestToolNames,
-  unknownToolMessage,
-} from './contracts/registry';
+export { MCP_TOOL_SURFACE_VERSION, unknownToolMessage } from './contracts/registry';
 
 /**
  * Versions the *tool contract* (names, input/output shapes), independent of Dexie's
