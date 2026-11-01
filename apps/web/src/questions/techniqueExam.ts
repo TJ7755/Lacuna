@@ -1,3 +1,4 @@
+import { isUpcomingExamDate } from '../fsrs/examDate';
 import type { CourseAssessment, CourseRecord, Lesson } from '@lacuna/core/db/types';
 import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import type { Concept } from '@lacuna/core/questions/types';
@@ -17,11 +18,7 @@ export function techniqueExamDate(
   const ordered = resolveLessonOrder([...lessons], preferredLessonIds);
   const dates = assessments
     .filter((assessment) => {
-      if (
-        assessment.examDate === undefined ||
-        assessment.examDate <= now ||
-        assessment.needsAuthorConfirmation
-      )
+      if (!isUpcomingExamDate(assessment.examDate, now) || assessment.needsAuthorConfirmation)
         return false;
       return sets.some((set) => {
         if (set.courseId !== assessment.courseId) return false;

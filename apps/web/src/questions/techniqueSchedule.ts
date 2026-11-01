@@ -1,3 +1,4 @@
+import { isUpcomingExamDate } from '../fsrs/examDate';
 import { exposedQuestions } from './questionExposure';
 import type { FsrsParameters } from '@lacuna/core/db/types';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
@@ -131,8 +132,7 @@ export function techniquePracticeStatus(
   now: number,
   examDate?: number,
 ) {
-  const target =
-    examDate !== undefined && Number.isFinite(examDate) && examDate > now ? examDate : undefined;
+  const target = isUpcomingExamDate(examDate, now) ? examDate : undefined;
   const estimatedRecall =
     schedule.stability !== null && schedule.lastReviewed !== null
       ? forgettingCurve(
