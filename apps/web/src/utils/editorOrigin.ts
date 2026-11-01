@@ -42,11 +42,6 @@ export function originFrom(
   };
 }
 
-/** `originFrom` for the current page. */
-export function useOriginHere(label: string): EditorOriginState {
-  return originFrom(useLocation(), label);
-}
-
 export interface ReturnTarget {
   /** Where the return goes, for an href. */
   to: string;

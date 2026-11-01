@@ -15,7 +15,7 @@ export const MAX_AI_WAIT_MS = 25_000;
 const MIN_AI_LEASE_MS = 5_000;
 const MAX_AI_LEASE_MS = 15 * 60_000;
 
-export type JsonPrimitive = string | number | boolean | null;
+type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
 function isJsonValue(value: unknown, ancestors: Set<object> = new Set()): value is JsonValue {
@@ -138,16 +138,12 @@ const aiActivityUpdateSchema = z.discriminatedUnion('status', [
     .strict(),
 ]);
 
-export type AiActivityUpdate = z.infer<typeof aiActivityUpdateSchema>;
-
 const aiAssistantReplySchema = z
   .object({
     content: requiredText(MAX_AI_MESSAGE_LENGTH),
     sources: z.array(aiEntityReferenceSchema).max(100).optional(),
   })
   .strict();
-
-export type AiAssistantReply = z.infer<typeof aiAssistantReplySchema>;
 
 const connectionRequestSchema = z
   .object({
@@ -222,7 +218,7 @@ export function isAiBridgeRequest(value: unknown): value is AiBridgeRequest {
   return aiBridgeRequestSchema.safeParse(value).success;
 }
 
-export interface AiConnection {
+interface AiConnection {
   type: 'connection';
   connectionId: string;
   client: AiClientIdentity;
@@ -307,8 +303,6 @@ export const aiApprovalStateSchema = z
  * never represented by a bearer token exposed to the terminal client.
  */
 export type AiApprovalState = z.infer<typeof aiApprovalStateSchema>;
-export type AiApprovalKind = AiApprovalState['kind'];
-export type AiApprovalStatus = AiApprovalState['status'];
 
 export function isAiApprovalState(value: unknown): value is AiApprovalState {
   return aiApprovalStateSchema.safeParse(value).success;
@@ -330,7 +324,7 @@ export type AiRunState =
   | (AiRunBase & { status: 'completed'; completedAt: number })
   | (AiRunBase & { status: 'expired'; expiredAt: number });
 
-export type AiConnectionState =
+type AiConnectionState =
   | { status: 'connected'; connection: AiConnection; lastActivityAt: number }
   | { status: 'quiet'; connection: AiConnection; lastActivityAt: number }
   | { status: 'disconnected'; disconnectedAt: number };
@@ -348,7 +342,7 @@ export const aiActionReceiptSchema = z
 
 export type AiActionReceipt = z.infer<typeof aiActionReceiptSchema>;
 
-export type AiBridgeSuccess =
+type AiBridgeSuccess =
   | AiConnection
   | AiInstructionBundle
   | { type: 'message_claim'; message: AiClaimedMessage | null }
@@ -422,32 +416,3 @@ export function isAiBridgeError(value: unknown): value is AiBridgeError {
 
 export type AiBridgeResult =
   { ok: true; data: AiBridgeSuccess } | { ok: false; error: AiBridgeError };
-
-/**
- * The sole page-JavaScript seam. Expected failures resolve as `AiBridgeResult`; implementations
- * catch unexpected exceptions and sanitise them to `internal` rather than leaking a stack.
- */
-export interface LacunaAiBridge {
-  readonly protocolVersion: typeof LACUNA_AI_PROTOCOL_VERSION;
-  request(request: AiBridgeRequest): Promise<AiBridgeResult>;
-}
-
-/**
- * Stop takes effect when `stop_requested` is persisted. Calls admitted before that point may still
- * commit and must report their real outcome; acknowledgement coordinates presentation only.
- */
-export const AI_STOP_SEMANTICS = {
-  enforcementState: 'stop_requested',
-  acknowledgementIsPermission: false,
-  admittedCallsMayComplete: true,
-} as const;
-
-/**
- * Approval decisions remain server-held. Destructive approval is bound to one exact validated call,
- * is consumed once, and never becomes a session-wide destructive grant or terminal bearer token.
- */
-export const AI_APPROVAL_SEMANTICS = {
-  terminalBearerTokens: false,
-  destructiveApprovalIsOneShot: true,
-  binding: ['connectionId', 'runId', 'callId', 'toolName', 'target', 'validatedInput'] as const,
-} as const;

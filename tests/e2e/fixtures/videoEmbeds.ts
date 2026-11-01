@@ -75,7 +75,7 @@ export async function authorVideoEmbedNote(page: Page, navigateToApp = true): Pr
   await expectVideoEmbedDocuments(page);
 }
 
-export async function expectVideoEmbedDocuments(page: Page): Promise<void> {
+async function expectVideoEmbedDocuments(page: Page): Promise<void> {
   for (const { url, provider, marker } of fixtureDocuments) {
     const document = page.frameLocator(`iframe[src="${url}"]`);
     await expect(document.locator(`[data-video-provider="${provider}"]`)).toHaveText(marker);

@@ -31,7 +31,7 @@ export const DEFAULT_STAT_PILLS: CourseStatPill[] = [
   { id: 'lessons', label: 'Lessons reached', visible: false },
 ];
 
-export const DEFAULTS: CourseHeaderSettings = { statPills: DEFAULT_STAT_PILLS };
+const DEFAULTS: CourseHeaderSettings = { statPills: DEFAULT_STAT_PILLS };
 
 const setting = createLocalSetting<CourseHeaderSettings>({
   key: 'lacuna.courseHeaderSettings',
