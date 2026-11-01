@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, vi } from 'vitest';
 import type { SyncState } from '@lacuna/core/db/types';
 
-export const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
 beforeAll(() => Reflect.deleteProperty(Element.prototype, 'animate'));
 afterAll(() => {
   if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
@@ -106,7 +106,7 @@ export const credentials = {
   writeToken: 'bb'.repeat(32),
 };
 
-export const session = {
+const session = {
   credentials,
   pairingCode: 'pairing-code',
   result: {
@@ -160,15 +160,12 @@ beforeEach(() => {
 export {
   readSyncStateMock,
   setupFirstDeviceMock,
-  joinFromPairingCodeMock,
   joinWithPassphraseMock,
   syncWithPassphraseMock,
   syncWithCredentialsMock,
   unlockSyncStateMock,
   unpairMock,
   deleteChannelMock,
-  validateRecoveryPassphraseMock,
-  encodePairingCodeMock,
   readRememberedCredentialsMock,
   forgetRememberedCredentialsMock,
   publishUnlockedCredentialsMock,

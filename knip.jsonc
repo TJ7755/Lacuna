@@ -1,6 +1,11 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreBinaries": ["check", "fmt"],
+  // Bun subprocess arguments are repository-relative commands, not module imports.
+  "ignoreIssues": {
+    "scripts/jev-evaluation.test.ts": ["unresolved"],
+    "scripts/question-bank.test.ts": ["unresolved"],
+  },
   "workspaces": {
     ".": {
       "ignoreDependencies": ["@typescript/native", "tailwindcss"],
