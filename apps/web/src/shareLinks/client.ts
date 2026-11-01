@@ -9,7 +9,7 @@ export { DEFAULT_RELAY_URL };
 export const SHARE_ID_RE = /^[0-9a-f]{32}$/;
 const WRITE_TOKEN_RE = /^[0-9a-f]{64}$/;
 
-export type ShareSlot = 'payload' | 'meta' | 'teacher';
+type ShareSlot = 'payload' | 'meta' | 'teacher';
 export type ShareLinkOperation = 'mint' | 'publish' | 'fetch' | 'remove' | 'verify';
 
 export class ShareLinkError extends Error {
