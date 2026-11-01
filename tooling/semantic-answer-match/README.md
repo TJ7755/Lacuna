@@ -20,13 +20,6 @@ by the app, same convention as `tooling/short-term-memory`.
    uv run match-harness ingest data/raw/llm_batches data/raw/examples.jsonl
    ```
 
-   This validates every line of every batch file against the schema in
-   `match_harness/schema.py`, drops cross-batch duplicate prompts (a chat model has no
-   memory of what a previous message already asked for, so repeats across batches are
-   expected, not a bug), and writes one clean, merged dataset. It reports invalid lines and
-   duplicates to stderr rather than silently dropping them — if a batch has a formatting
-   problem, re-generate that one batch rather than hand-editing the JSON.
-
 3. **Inspect the summary line** (`N accepted, N invalid lines, N duplicates dropped`)
    before treating a batch as usable. A high invalid-line count usually means the model
    drifted from the requested format partway through a long completion — regenerate with a
@@ -42,16 +35,6 @@ family, not the human-judged set Appendix A.1 Step 4 asks for; its labels have n
 reviewed by a person. And it is a stress test, not a representative sample — every case is
 chosen to be hard, so its error rates are a worst case and not what production traffic
 would look like.
-
-### Cascade metric
-
-The shipping architecture under consideration is not "classifier instead of
-`compareAnswer()`" but a cascade: `compareAnswer()` runs first and an accept is final; the
-classifier is only consulted when `compareAnswer()` rejects, and it can only overturn a
-rejection into an acceptance, never the reverse. Because `compareAnswer()`'s accepts are
-already near-perfectly safe (negative recall ~0.997 — it almost never accepts a wrong
-answer), essentially all of the risk a shipped cascade would carry comes from the
-classifier's overturns.
 
 ## Why a chat session and not the API
 

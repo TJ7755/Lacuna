@@ -20,7 +20,7 @@ lockfile with a different Bun release.
 ```bash
 git clone https://github.com/TJ7755/Lacuna.git
 cd Lacuna
-bun install --frozen-lockfile
+node apps/relay/scripts/security-bun.mjs install --frozen-lockfile
 ```
 
 The standalone AI MCP tool intentionally uses the root installation: it is a Bun workspace and
@@ -56,7 +56,7 @@ Electron, relay or AI change requires the complete matrix below.
 
 ```bash
 # Root
-bun install --frozen-lockfile
+node apps/relay/scripts/security-bun.mjs install --frozen-lockfile
 bun run typecheck
 bun run lint
 bun run test:ci:unit
@@ -97,6 +97,13 @@ On macOS and Linux, record which package targets were built. Unsigned macOS outp
 successful signing or notarisation. Keep the release artefact allowlist intact.
 
 Run `bun run docs:check` locally after documentation changes.
+
+## Documentation policy
+
+Keep repository documentation for procedures, policy, provenance and other non-code material.
+Code behaviour belongs in owning source comments and tests. Trim behavioural descriptions from
+mixed documents; preserve build-consumed data and move genuinely needed invariants beside their
+implementation. Check readers and links before removing a document.
 
 ## Behaviour and review policy
 

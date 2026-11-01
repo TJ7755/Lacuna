@@ -1,18 +1,6 @@
 # Lacuna relay
 
-Opaque storage for device sync, AI sessions, course sharing and Gaps reports.
-Protocol v2 is defined in the [shared route table](../../packages/protocol/src/relay.ts).
-The [single request handler](src/relay.ts) dispatches that contract to the existing storage operations.
-Requests, responses, errors, status codes and limits are shared with the typed client.
-
-This is a hard cut: `/api` aliases and deprecated pairing-code paths are removed.
-Deploy the relay and web client together when service resumes; edge desktop clients update silently.
-There is no v1 compatibility handler or separate ciphertext format negotiation. Existing opaque
-ciphertext and Blob compare-and-swap generations remain unchanged.
-
-Canonical paths cover `/channel`, `/c/:id/:slot`, `/shares`, `/class-codes`, `/insights`
-and `/ai`. One catch-all rewrite preserves the path for routing in code. The authenticated
-nightly cron calls `/ai/maintenance` at 03:00 UTC.
+Deploy the relay and web client together when service resumes.
 
 Production is available at `https://relay.getlacuna.app`, attached to the existing
 `lacuna-relay` Vercel project and its private Blob store. The legacy
@@ -50,7 +38,7 @@ for pairing and mailbox behaviour.
 ## Daily maintenance
 
 Enable the Gaps mailbox with `RELAY_INSIGHTS_ENABLED=1`; the reporting boundaries and operator
-procedures are in [Gaps](../../docs/gaps.md).
+procedures are in [Gaps trial operations](../../docs/gaps-trial-operations.md).
 
 ## Environment
 
@@ -58,8 +46,7 @@ On Vercel, connect a **private** Blob store to the project. The platform
 injects `BLOB_STORE_ID`, `VERCEL_OIDC_TOKEN` and `BLOB_WEBHOOK_PUBLIC_KEY`.
 `@vercel/blob` reads them automatically.
 
-`RELAY_MINT_SECRET` is an optional mint-rate-limit bypass. Leaving it unset allows public,
-rate-limited minting; setting it does not disable the public path.
+Set `RELAY_MINT_SECRET` only when an operator needs a mint-rate-limit bypass.
 
 To give an operator bypass, generate a value and set it on the Vercel project. Do not commit it.
 
@@ -70,7 +57,7 @@ openssl rand -hex 32
 In the Vercel dashboard: the relay project → **Settings** → **Environment
 Variables** → name `RELAY_MINT_SECRET`, paste the generated value, apply to
 Production (and Preview if you mint from previews). Redeploy after setting
-or removing it. With the variable absent the relay still mints publicly.
+or removing it.
 
 Set a separate `CRON_SECRET` for daily maintenance. This is required even when
 `RELAY_MINT_SECRET` is unset. Generate another independent value:
@@ -109,10 +96,6 @@ This directory is its own Vercel project. Do not deploy it as part of the app.
 Deploy protocol v2 clients and relay together. Deployments are paused until approximately
 22 November 2026; this change does not deploy or alter Vercel settings.
 
-The app sets `Cross-Origin-Embedder-Policy: require-corp`, so the relay must
-stay on a separate origin. CORS and `Cross-Origin-Resource-Policy: cross-origin`
-are set on every response, including errors.
-
 ## Verify
 
 Replace `$HOST` with the deployment URL.
@@ -146,45 +129,11 @@ curl -sS -D - -X DELETE "$HOST/c/$ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-A first `PUT` without `If-Match` is `428`. A `PUT` whose ETag has moved on is
-`412`. `GET` on an empty slot is `404`.
-
 Use the production host. Vercel preview deployments are behind Deployment
 Protection and redirect unauthenticated requests to SSO, so they cannot be
 smoke-tested this way.
 
-## Concurrency
-
-On 15 August 2026 this was measured against the production relay
-(`lacuna-relay.vercel.app`, private Blob store `lacuna-sync`, region
-`lhr1`). Twenty-five rounds of concurrent first writes, each against a
-freshly minted channel, all with `If-Match: "0"` and distinct bodies:
-
-- Ten rounds of two concurrent PUTs: 10/10 exactly one 204, the other 412.
-- Fifteen rounds of three concurrent PUTs: 15/15 exactly one 204, the
-  other two 412.
-- Multi-winner rounds: 0. No-winner rounds: 0.
-- In every round the body subsequently returned by GET was the winner's.
-  No silent clobber.
-- The winning racer varied unpredictably across rounds, so the requests
-  were genuinely concurrent rather than serialised by client-side jitter.
-
-That is evidence that, on Vercel Blob as of that date, `allowOverwrite:
-false` behaved as an atomic create. It is not a documented platform
-guarantee. Vercel could change the behaviour without notice. Twenty-five
-rounds argue against a wide race window; they are not a proof of
-atomicity. Do not read this as "the race is closed". Re-measure if Blob
-behaviour changes, or if a multi-writer scenario beyond two devices is
-ever contemplated.
-
-## Caps
-
-Vercel Functions still reject inbound request bodies above 4.5 MB at the
-platform. A real snapshot that large cannot transit this `PUT`. That ceiling
-is accepted. Do not add client-direct Blob upload here.
-
 ## Official library publication retention
 
 The operator procedure, withdrawal and expired-link recovery are in
-[the library procedure](../../docs/library.md#official-publication-retention). Catalogue changes do
-not silently change the relay's retention authority.
+[the library procedure](../../docs/library.md#official-publication-retention).

@@ -21,45 +21,6 @@ Two separable halves, deliberately:
    half that feeds Arc 11 §11.3's palette design. It is also the half most likely to get
    dropped once the recognition work gets interesting, hence this paragraph.
 
-The harness therefore has three arms entering identical target expressions: canvas,
-plain keyboard, and a palette of symbol buttons.
-
-## Pipeline
-
-Recognition is four stages, not one. The plan's original framing ("$1 recogniser over a
-per-symbol template set") describes only stage 3.
-
-1. **Stroke capture** — pointer events, resampled and normalised.
-2. **Stroke grouping** — deciding which strokes form one symbol. `x`, `=` and often `4`
-   are multi-stroke. Temporal and spatial clustering.
-3. **Symbol recognition** — see the two arms below.
-4. **Layout parsing** — baseline detection and superscript, producing a linear string
-   (`x^2+3`). Fraction bars are out of scope for the first pass; `/` covers them.
-
-Stages 2 and 4 are hand-written regardless of how stage 3 is solved, and are where
-prototypes of this kind usually stall. They are not the afterthought.
-
-### Two arms for stage 3
-
-- **$P point-cloud recogniser** (`src/dollarP.ts`) — template matching, no ML, no
-  weights, no build step. Uses stroke data (order, direction, count) that a bitmap
-  classifier discards. Its lever is **per-user calibration**: ~19 symbols drawn once
-  each, tuned to one specific hand.
-- **A small CNN** — generalises across writers with no calibration, but discards the
-  temporal signal and is a weights dependency.
-
-$P rather than $1 proper because $1 is single-stroke only and cannot represent `=`.
-
-The comparison is the point. "Does 30 seconds of per-user calibration beat a generic
-pretrained model on a child's handwriting?" is not obvious in either direction, and
-neither arm alone answers it.
-
-## Symbol set
-
-Scoped to 11+, not GCSE: digits `0`–`9`, `x`, `y`, `+`, `-`, `*`, `/`, `=`, `(`, `)`,
-`.` — 19 classes, plus the superscript *relation* from stage 4. No roots, no `pi`, no
-trigonometry. Arc 11 §11.9 already parks the wider key-stage question.
-
 ## Datasets and licences
 
 Read this section before training anything that might ship.
@@ -70,15 +31,6 @@ Read this section before training anything that might ship.
 | [CROHME](http://www.iapr-tc11.org/mediawiki/index.php/CROHME:_Competition_on_Recognition_of_Online_Handwritten_Mathematical_Expressions) | ~8.8k expressions, 111 classes, with segmentation and layout ground truth | InkML + MathML | CC BY-NC-SA 4.0 |
 | [HASYv2](https://arxiv.org/pdf/1701.08380) | 150k+ instances, 369 classes | 32x32 images | ODbL |
 | MNIST | 70k digits | images | effectively unencumbered |
-
-Two consequences:
-
-- **Stages 2 and 4 are measurable.** CROHME ships per-symbol segmentation and layout
-  ground truth, so stroke grouping and superscript detection get real numbers against a
-  public benchmark rather than an impression formed on the author's own scribbles.
-- **Both arms train on the same public strokes.** InkML is trajectory data, so
-  MathWriting's isolated symbols serve the $P template arm and the CNN arm alike. The
-  comparison is controlled.
 
 **Licence caveat, recorded here so it is not discovered late.** Lacuna is MIT.
 MathWriting and CROHME are CC BY-NC-SA 4.0. Lacuna sells nothing, so the NonCommercial
