@@ -182,6 +182,12 @@ export default defineConfig({
           // catalogue download motion/router code, or the landing page download the app.
           groups: [
             {
+              // Keep the extracted maths with the chart rather than emitting another payload file.
+              name: 'ForecastChartRecovery',
+              test: /[\\/]src[\\/]components[\\/]dashboard[\\/](?:ForecastChartRecovery\.ts|ForecastChart\.tsx\?flow-retry|forecastChartMaths\.ts)$/,
+              includeDependenciesRecursively: false,
+            },
+            {
               name: 'study-entrance',
               test: /[\\/]src[\\/]components[\\/]learn[\\/](?:StudyEntrance|StudyFlowMessage)\.tsx$/,
               includeDependenciesRecursively: false,
