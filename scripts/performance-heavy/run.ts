@@ -394,7 +394,7 @@ try {
             await cold.goto(`${origin}${hash}`);
             await expect(cold.locator(selector).first()).toBeVisible();
             const assets = await cold.evaluate(() => {
-              const resources = performance.getEntriesByType(
+              const resources = globalThis.performance.getEntriesByType(
                 'resource',
               ) as PerformanceResourceTiming[];
               return {
