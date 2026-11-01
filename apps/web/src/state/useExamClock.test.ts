@@ -4,11 +4,10 @@ import { useExamClock } from './useExamClock';
 
 afterEach(() => vi.useRealTimers());
 
-it('refreshes at equality, then schedules the next upcoming deadline without writes', () => {
+it('refreshes at exam equality and the next deadline, then cleans up', () => {
   vi.useFakeTimers();
   vi.setSystemTime(1000);
   const { result, unmount } = renderHook(() => useExamClock([900, 1100, 1300]));
-  expect(result.current).toBe(1000);
   act(() => vi.advanceTimersByTime(100));
   expect(result.current).toBe(1100);
   act(() => vi.advanceTimersByTime(200));
@@ -17,7 +16,7 @@ it('refreshes at equality, then schedules the next upcoming deadline without wri
   expect(vi.getTimerCount()).toBe(0);
 });
 
-it('reschedules when dates change and refreshes ordinary time at least once a minute', () => {
+it('reschedules changed dates without polling between boundaries', () => {
   vi.useFakeTimers();
   vi.setSystemTime(1000);
   const { result, rerender, unmount } = renderHook(({ dates }) => useExamClock(dates), {
@@ -27,6 +26,23 @@ it('reschedules when dates change and refreshes ordinary time at least once a mi
   act(() => vi.advanceTimersByTime(200));
   expect(result.current).toBe(1200);
   act(() => vi.advanceTimersByTime(60_000));
-  expect(result.current).toBe(61_200);
+  expect(result.current).toBe(1200);
   unmount();
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it('refreshes at burial expiry and local midnight without database writes', () => {
+  vi.useFakeTimers();
+  const start = new Date(2026, 10, 1, 23, 58).getTime();
+  const midnight = new Date(2026, 10, 2).getTime();
+  vi.setSystemTime(start);
+  const { result, unmount } = renderHook(() => useExamClock([], [start + 30_000]));
+  act(() => vi.advanceTimersByTime(30_000));
+  expect(result.current).toBe(start + 30_000);
+  act(() => vi.advanceTimersByTime(90_000));
+  expect(result.current).toBe(midnight);
+  act(() => vi.advanceTimersByTime(60_000));
+  expect(result.current).toBe(midnight);
+  unmount();
+  expect(vi.getTimerCount()).toBe(0);
 });
