@@ -121,7 +121,6 @@ vi.mock('../state/useCourseData', () => ({
   useLessons: () => pathState.mockLessons,
   useCourseAssessments: () => pathState.mockAssessments,
   useCourseCards: () => pathState.mockCourseCards,
-  useCoursePerformance: () => pathState.mockPerformance,
   usePracticeNodes: () => pathState.mockPracticeNodes,
   usePendingMergeReview: () => pathState.mockPendingMerge,
 }));
