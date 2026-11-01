@@ -66,6 +66,45 @@ allows the entry to reuse Lacuna's fonts, styles and React components
 environment. Apply the other workspace root changes in the [deployment procedure](maintenance/workspaces.md). Keep domains unchanged.
 The code prepares hosting; it does not create the project or publish a deployment.
 
+## Main-domain specification-topic pages
+
+`bun run build:assets` (also used by the production web build) runs the
+`topicPagesPlugin` build hook in `scripts/course-topics.ts`. Its reviewed public sample snapshot
+is `apps/web/src/pages/courses/topic-samples.json`; update it alongside catalogue/publication
+changes, retaining the source revision and publication identity. Never fetch mutable share
+payloads during a production build. Run the generation tests and inspect a rendered sample
+before committing a snapshot update.
+
+Refresh with `python3 scripts/extract-topic-samples.py` (Bun and Python 3 required).
+The extractor checks published revisions and records publication URLs and decoded artefact
+SHA-256 hashes in `topic-sample-sources.json`. The current snapshot includes 18 courses and
+51 complete topics. Five physics publications lack complete mapped original samples; their
+subject pages link to the published course.
+
+The main web build publishes a static course hierarchy at `https://getlacuna.app/courses/`:
+board, qualification/subject, then specification topic. Subject slugs include the qualification,
+subject and specification code, so similarly named qualifications remain distinct. Topic URLs
+include their stable specification identifier. Keep these identifiers stable when editing labels;
+changing a published URL requires a permanent redirect from its old address.
+
+Pages use the published Library catalogue, original course material and specification references.
+Only Lacuna’s original flashcards and practice questions are eligible for samples. Specification
+codes and titles identify coverage; specification body text, assessment guidance and past-paper
+questions must never become public sample copy. Publication of a catalogue entry does not grant
+permission to copy an exam board’s content.
+
+The build emits complete HTML, canonical and Open Graph metadata, structured data, `sitemap.xml`
+and copies the existing `public/robots.txt`. Topic pages need no learner application bundle. Their import links open the
+published course in the web app; the static page does not import into a learner’s database itself.
+The existing `/courses/<catalogue-id>/` course addresses remain available.
+
+Library hosting now permanently redirects `/` and `/index.html` to the main course index, and
+passes `/courses/…` addresses to the same path on the main domain. The standalone Library build
+remains available for local development. These changes are repository configuration only: no
+Vercel project, DNS record or deployed publication is changed by editing or merging them. Deploy
+the main-domain build containing the hierarchy before deploying the Library redirects. Existing
+CSP and security headers remain in place.
+
 ## Official publication retention
 
 The policy includes the 26 official catalogue publications, including Religious Studies 8062,

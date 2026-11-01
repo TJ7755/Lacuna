@@ -146,15 +146,20 @@ test('sitemap uses canonical public URLs and robots advertises it', () => {
   );
 });
 
-test('source crawl files advertise precisely the active catalogue course URLs', async () => {
+test('crawl files advertise the active catalogue and generated hierarchy', async () => {
   const { libraryCourses } = await import('../apps/web/src/library/catalogue.ts');
-  for (const path of ['public/sitemap.xml', 'public/llms.txt']) {
-    const source = readFileSync(path, 'utf8');
-    const ids = [...source.matchAll(/https:\/\/getlacuna\.app\/courses\/([a-z0-9-]+)\//g)].map(
-      (match) => match[1],
-    );
-    assert.deepEqual([...new Set(ids)].sort(), libraryCourses.map(({ id }) => id).sort(), path);
+  const sitemap = readFileSync('dist/sitemap.xml', 'utf8');
+  for (const { id } of libraryCourses) {
+    assert.ok(sitemap.includes(`<loc>https://getlacuna.app/courses/${id}/</loc>`), id);
   }
+  for (const [, path] of sitemap.matchAll(/<loc>https:\/\/getlacuna\.app(\/[^<]*)<\/loc>/g)) {
+    assert.ok(existsSync(`dist${path}index.html`), `Sitemap destination missing: ${path}`);
+  }
+  const llms = readFileSync('public/llms.txt', 'utf8');
+  const ids = [...llms.matchAll(/https:\/\/getlacuna\.app\/courses\/([a-z0-9-]+)\//g)].map(
+    (match) => match[1],
+  );
+  assert.deepEqual([...new Set(ids)].sort(), libraryCourses.map(({ id }) => id).sort());
 });
 
 test('course pages ship the complete catalogue content and metadata without JavaScript', async () => {

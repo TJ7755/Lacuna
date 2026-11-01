@@ -53,3 +53,20 @@
 .course-back {
   justify-self: start;
 }
+
+.course-board-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+}
+.course-board-links li + li {
+  margin-top: 0;
+}
+.course-board-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}

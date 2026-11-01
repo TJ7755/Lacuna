@@ -1,0 +1,110 @@
+[
+  {
+    "courseId": "biology4bi1",
+    "revision": 44,
+    "shareUrl": "https://getlacuna.app/#/s/6fb10671c70197caeff8616f80697ac5",
+    "sha256": "1dd911100f866fa2086d5ed025d17fd551c48163002be02bd1daa0e4befd0497"
+  },
+  {
+    "courseId": "chemistry4ch1",
+    "revision": 43,
+    "shareUrl": "https://getlacuna.app/#/s/daf16de2b88b97fa236948559ede6c4c",
+    "sha256": "0f6682d7d41e401794d44db76a1963a43afee9738e3f7d4ea708c7969d5502e1"
+  },
+  {
+    "courseId": "physics0972",
+    "revision": 28,
+    "shareUrl": "https://getlacuna.app/#/s/52fe58acd2fcece40c1d10ffbf08276f",
+    "sha256": "0e10a3f839b574ec150979220117935d2b94cccce5de522f715bacc3f0d3e4a2"
+  },
+  {
+    "courseId": "history0977",
+    "revision": 21,
+    "shareUrl": "https://getlacuna.app/#/s/31178fee8489ffcf1748c1dc5c570be5",
+    "sha256": "13b17291070044fe1fa1793b9593f1dbc05c1aacacd51f95dd8f298a8abd71cb"
+  },
+  {
+    "courseId": "religiousstudies8062",
+    "revision": 22,
+    "shareUrl": "https://getlacuna.app/#/s/e85fc39e709074d58669c2d8bfd723bb",
+    "sha256": "d890a6907b28a773038c1500dbc51b21b4bbb3b75bddcb98af090a9d15c20d93"
+  },
+  {
+    "courseId": "biology8461",
+    "revision": 22,
+    "shareUrl": "https://getlacuna.app/#/s/9a44358aa0d59d1f1fbd02b30c38b746",
+    "sha256": "35b7791a8443902cda2b98bc4123e15d0b97faa1d929b53103774f1de18f5380"
+  },
+  {
+    "courseId": "chemistry8462",
+    "revision": 10,
+    "shareUrl": "https://getlacuna.app/#/s/40aab20ad7ab21811e1059b47522cc3a",
+    "sha256": "19af44df276572c08afd13e6f713e89ac90f44299c30a536915fe447d3f4f28d"
+  },
+  {
+    "courseId": "physics8463",
+    "revision": 9,
+    "shareUrl": "https://getlacuna.app/#/s/e0da40253700207827f2b26455bd9ed6",
+    "sha256": "d70bc4fe3a9d70e5669e62406c42629c52c988110a48845bdfa102e4173558a8"
+  },
+  {
+    "courseId": "biology0610",
+    "revision": 15,
+    "shareUrl": "https://getlacuna.app/#/s/819c37db9ae88c45631f51348b7b44f2",
+    "sha256": "19891187a26e85e9636c8236e57437217a9b98e20b65dfef8204b5a6aabdd15a"
+  },
+  {
+    "courseId": "chemistry0620",
+    "revision": 10,
+    "shareUrl": "https://getlacuna.app/#/s/40d06cbdd6fc0170da1faa1e1192e3fb",
+    "sha256": "d9a76dde275c1d273d96ad631ec129c4a45d1414b44f9e87f23a2cc12817d5c9"
+  },
+  {
+    "courseId": "biology0970",
+    "revision": 15,
+    "shareUrl": "https://getlacuna.app/#/s/4e756f914aea44bfe8312b2e9cb83843",
+    "sha256": "1e4eb737341636f253471c49bdcd7211ac5d3144d58f70504767398fd3872279"
+  },
+  {
+    "courseId": "chemistry0971",
+    "revision": 10,
+    "shareUrl": "https://getlacuna.app/#/s/6d31d711f32f4c3ee59884e86d2a7d7f",
+    "sha256": "026f480b0c14bfa279c0560c36b5707f7356e418ea40586cd2c87b545f619fb2"
+  },
+  {
+    "courseId": "biology1bi0",
+    "revision": 17,
+    "shareUrl": "https://getlacuna.app/#/s/f59cf55a906edfede13902ca7bfda358",
+    "sha256": "b2faf8d8dab6dd07e7a9af4a413da3c84a8f95f3bcc299b89f935ba53911e752"
+  },
+  {
+    "courseId": "chemistry1ch0",
+    "revision": 10,
+    "shareUrl": "https://getlacuna.app/#/s/79c53406f469e40ec6949746d6879167",
+    "sha256": "611a1be0b314f244e0062823da66c406aa50fdd317c75a7446e0a384f9b8c65e"
+  },
+  {
+    "courseId": "biologyj247",
+    "revision": 16,
+    "shareUrl": "https://getlacuna.app/#/s/b9079bf89fcc37a4dfaa4f665c8ea236",
+    "sha256": "6d547d916a6b1f9d3d638891383d247560f2db91d540d24478622b67d8ec6ebb"
+  },
+  {
+    "courseId": "chemistryj248",
+    "revision": 10,
+    "shareUrl": "https://getlacuna.app/#/s/96fbd96735ce0d4efe7d05675eb6cb72",
+    "sha256": "fed4a2c07de7ce24db0ec359bcf58de64c3fa78b3faedd8ca4ff7af1b9b608d3"
+  },
+  {
+    "courseId": "biologyj257",
+    "revision": 16,
+    "shareUrl": "https://getlacuna.app/#/s/405b448b4804d48c3bd80a4d3ccfd85d",
+    "sha256": "bb5829be35be6728c1fc4177871288f76c6bc16e1b3f3569bc0f155c12b4fcda"
+  },
+  {
+    "courseId": "chemistryj258",
+    "revision": 10,
+    "shareUrl": "https://getlacuna.app/#/s/ae447daf5e1b587fd7e725dd1db8ec27",
+    "sha256": "96f2e99e893c75739a7a559299b63edcfd0d618dc3d48d0ed58ae1a23fbe7bdc"
+  }
+]
