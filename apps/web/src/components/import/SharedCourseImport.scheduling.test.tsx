@@ -5,7 +5,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { SharedCourseImport } from './SharedCourseImport';
 import { db } from '../../db/schema';
 import { mergeLineageUpdate } from '../../db/mergeImport';
-import type { SharePayloadV2 } from '../../db/share';
+import type { SharePayloadV6 } from '../../db/share';
 import {
   chooseStudyTarget,
   finishOnboarding,
@@ -41,9 +41,13 @@ vi.mock('../ui/DateTimePicker', () => ({
 
 const teacherDate = 1_900_000_000_000;
 const learnerDate = 1_950_000_000_000;
-function payload(): SharePayloadV2 {
+function payload(): SharePayloadV6 {
   return {
-    v: 2,
+    v: 6,
+    concepts: [{ id: 'ui-concept', n: 'Cells' }],
+    questions: [],
+    questionSets: [],
+    questionSetPracticeNodes: [],
     at: 1000,
     li: 'ui-scheduling',
     rv: 1,
@@ -53,12 +57,12 @@ function payload(): SharePayloadV2 {
         i: 'ui-lesson',
         n: 'Cells',
         notes: [],
-        cards: [{ id: 'ui-card', k: 0, f: 'Question', b: 'Answer' }],
+        cards: [{ id: 'ui-card', co: 'ui-concept', k: 0, f: 'Question', b: 'Answer' }],
       },
     ],
   };
 }
-const courseFile = (source: SharePayloadV2) =>
+const courseFile = (source: SharePayloadV6) =>
   new File(
     [
       JSON.stringify({
@@ -87,7 +91,18 @@ it('imports with the onboarding exam date over a teacher suggestion, without ask
     getLocalTimeZone() === 'Pacific/Kiritimati' ? 'Etc/GMT+12' : 'Pacific/Kiritimati';
   const source = {
     ...payload(),
-    exams: [{ n: 'Final', k: 'f' as const, e: teacherDate, tz: teacherZone }],
+    exams: [
+      {
+        id: 'final',
+        n: 'Final',
+        k: 'f' as const,
+        a: null,
+        m: 'p' as const,
+        c: 1000,
+        e: teacherDate,
+        tz: teacherZone,
+      },
+    ],
   };
   fireEvent.change(input, { target: { value: `LAC0${btoa(JSON.stringify(source))}` } });
   fireEvent.click(screen.getByRole('button', { name: 'Read code' }));

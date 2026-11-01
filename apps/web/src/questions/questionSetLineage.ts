@@ -1,5 +1,5 @@
 import { db } from '../db/schema';
-import type { SharePayloadV4, SharePayloadV5, SharePayloadV6 } from '../db/share';
+import type { SharePayloadV6 } from '../db/share';
 import type { LineageIdMapping } from '@lacuna/core/db/types';
 import { parseQuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import {
@@ -8,7 +8,7 @@ import {
   assertQuestionSetPracticeNodeReferences,
 } from '../db/questionSetPracticeNode';
 
-type QuestionSetLineagePayload = (SharePayloadV4 | SharePayloadV5 | SharePayloadV6) & {
+type QuestionSetLineagePayload = SharePayloadV6 & {
   li: string;
   rv: number;
 };
@@ -122,7 +122,7 @@ export async function applyLineageQuestionSets(
 
 /** Apply authored path placement with the same adopted IDs and local-edit guard as sets. */
 export async function applyLineageQuestionSetPracticeNodes(
-  payload: (SharePayloadV5 | SharePayloadV6) & { li: string; rv: number },
+  payload: SharePayloadV6 & { li: string; rv: number },
   courseId: string,
   mapping: LineageIdMapping,
 ): Promise<void> {

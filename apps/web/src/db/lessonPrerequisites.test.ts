@@ -14,7 +14,7 @@ import {
   buildCourseSharePayload,
   importSharePayload,
   parseSharePayload,
-  type SharePayloadV2,
+  type SharePayloadV6,
 } from './share';
 import {
   acceptAllMergeReview,
@@ -36,9 +36,13 @@ beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
 });
 
-function published(rv = 1): SharePayloadV2 {
+function published(rv = 1): SharePayloadV6 {
   return {
-    v: 2,
+    v: 6,
+    concepts: [],
+    questions: [],
+    questionSets: [],
+    questionSetPracticeNodes: [],
     by: 'Lacuna Biology Project',
     at: 1000 + rv,
     li: 'biology-source',

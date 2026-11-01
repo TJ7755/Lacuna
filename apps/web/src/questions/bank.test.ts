@@ -5,7 +5,7 @@ import familyExample from '../../../../docs/question-bank/examples/numeric-famil
 import { createCourse } from '../db/repository';
 import { db } from '../db/schema';
 import { importLineageFirstTime, mergeLineageUpdate } from '../db/mergeImport';
-import type { SharePayloadV4 } from '../db/share';
+import type { SharePayloadV6 } from '../db/share';
 import {
   declarativeFamilyCapacity,
   exportQuestionBank,
@@ -22,9 +22,10 @@ beforeEach(async () => {
   await db.open();
 });
 
-function publishedBiologyPayload(overrides: Partial<SharePayloadV4> = {}): SharePayloadV4 {
+function publishedBiologyPayload(overrides: Partial<SharePayloadV6> = {}): SharePayloadV6 {
   return {
-    v: 4,
+    v: 6,
+    questionSetPracticeNodes: [],
     by: 'Biology publisher',
     at: 1_000,
     course: { n: 'Biology', o: 0, c: 1_000, e: 2_000_000, um: 'open' },

@@ -12,7 +12,7 @@ import type { QuestionAttempt, QuestionDefinition } from '@lacuna/core/questions
  * (established by the Phase 0 contract tests), so a teacher can aggregate copies
  * without a local id-mapping layer.
  *
- * The keys follow the compact `SharePayloadV3` wire convention, and `v` carries the
+ * The keys follow the compact `SharePayloadV6` wire convention, and `v` carries the
  * schema version, so the relay (#590) and the teacher's merge (#592) can reject
  * unfamiliar versions instead of guessing. Cells carry only what the privacy module
  * (#588) needs as its numerator and denominator, and the summary is capped at the

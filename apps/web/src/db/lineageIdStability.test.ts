@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import type { ShareLesson, SharePayloadV3 } from './share';
+import type { ShareLesson, SharePayloadV6 } from './share';
 import { importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
 
 // Spike for the class-insights plan (issues #588-#594): the on-device summariser will
@@ -27,9 +27,11 @@ function lesson(overrides: Partial<ShareLesson> = {}): ShareLesson {
   };
 }
 
-function insightPayload(overrides: Partial<SharePayloadV3> = {}): SharePayloadV3 {
+function insightPayload(overrides: Partial<SharePayloadV6> = {}): SharePayloadV6 {
   return {
-    v: 3,
+    v: 6,
+    questionSets: [],
+    questionSetPracticeNodes: [],
     by: 'Ms Teacher',
     at: 1000,
     course: { n: 'Biology', o: 0, c: 1000, e: 2_000_000, um: 'open' },
@@ -109,7 +111,7 @@ describe('lineage identity: Concept and Question ids are stable across copies', 
             pr: [],
             f: 'What surrounds the cell?',
             p: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '1' } },
-            e: '',
+            e: 'The envelope surrounds the cell.',
           },
         ],
       }),

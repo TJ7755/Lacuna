@@ -80,10 +80,10 @@ describe('mergeImport: merge apply', () => {
 
     expect(result.createdCards).toBe(1);
     const card = (await db.cards.get('card-2'))!;
-    expect(card.conceptId).toBe('concept:lineage-card:card-2');
+    expect(card.conceptId).toBe('concept-card-2');
     expect(await db.concepts.get(card.conceptId)).toMatchObject({
       courseId,
-      name: 'The nucleus.',
+      name: 'What contains DNA?',
     });
   });
 

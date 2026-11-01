@@ -12,13 +12,15 @@ import {
   V1_SHARE_CODE_MESSAGE,
 } from './share';
 import { bytesToBase45 } from './base45';
-import { reset, v1Payload, v2Payload } from './share.testFixtures';
+import { reset, v1Payload, currentPayload } from './share.testFixtures';
 
 describe('share code formats and validation', () => {
   beforeEach(reset);
 
   it.each([1, 2, 3, 4, 5])('refuses v%s before decode or import writes', async (v) => {
-    const payload = { ...v1Payload(), v } as Parameters<typeof importSharePayload>[0];
+    const payload = { ...(v1Payload() as Record<string, unknown>), v } as Parameters<
+      typeof importSharePayload
+    >[0];
     const before = await Promise.all(db.tables.map((table) => table.toArray()));
     const code = await encodeShareDirect(payload);
     await expect(decodeShare(code)).rejects.toThrow(V1_SHARE_CODE_MESSAGE);
@@ -28,10 +30,10 @@ describe('share code formats and validation', () => {
   });
 
   it('round-trips a course using the legacy LAC0 plain base64 format', async () => {
-    const payload = v2Payload();
+    const payload = currentPayload();
     const decoded = await decodeShareDirect('LAC0' + btoa(JSON.stringify(payload)));
-    expect(decoded.v).toBe(2);
-    if (decoded.v === 1) throw new Error('expected a course payload');
+    expect(decoded.v).toBe(6);
+
     expect(decoded.lessons[0].cards[0].f).toBe('Q');
   });
 
@@ -53,7 +55,7 @@ describe('share code formats and validation', () => {
 
     const decoded = await decodeShare(recompressed);
     expect(decoded.v).toBe(6);
-    if (decoded.v === 1) throw new Error('expected a course payload');
+
     expect(decoded.lessons[0].cards[0].f).toBe('Q');
   });
 
@@ -63,7 +65,11 @@ describe('share code formats and validation', () => {
 
   it('rejects a payload with a valid prefix but malformed nested structure', async () => {
     const malformed = {
-      v: 2,
+      v: 6,
+      concepts: [],
+      questions: [],
+      questionSets: [],
+      questionSetPracticeNodes: [],
       by: null,
       at: Date.now(),
       course: { n: 'Bad course', o: 0, c: 0, e: 0 },
@@ -74,7 +80,11 @@ describe('share code formats and validation', () => {
 
   it('rejects a working item with no mark-scheme lines', async () => {
     const malformed = {
-      v: 2,
+      v: 6,
+      concepts: [],
+      questions: [],
+      questionSets: [],
+      questionSetPracticeNodes: [],
       by: null,
       at: Date.now(),
       course: { n: 'Malformed item', o: 0, c: 0, e: 0, um: 'open' },
@@ -118,7 +128,11 @@ describe('share code formats and validation', () => {
 
   it('decodes li/rv and originating ids, and tolerates their absence (schema validation)', async () => {
     const publishedPayload = {
-      v: 2 as const,
+      v: 6 as const,
+      concepts: [],
+      questions: [],
+      questionSets: [],
+      questionSetPracticeNodes: [],
       by: null,
       at: Date.now(),
       course: { n: 'Course', o: 0 as const, c: 0, e: 0, um: 'linear' as const },
@@ -135,7 +149,7 @@ describe('share code formats and validation', () => {
     };
     const code = await encodeShareDirect(publishedPayload);
     const decoded = await decodeShare(code);
-    if (decoded.v === 1) throw new Error('expected a course payload');
+
     expect(decoded.li).toBe('lin_abc');
     expect(decoded.rv).toBe(2);
     expect(decoded.lessons[0].i).toBe('lesson-orig-id');
@@ -144,14 +158,17 @@ describe('share code formats and validation', () => {
 
     // A plain payload with none of the new fields still parses cleanly.
     const plainPayload = {
-      v: 2 as const,
+      v: 6 as const,
+      concepts: [],
+      questions: [],
+      questionSets: [],
+      questionSetPracticeNodes: [],
       by: null,
       at: Date.now(),
       course: { n: 'Course', o: 0 as const, c: 0, e: 0, um: 'linear' as const },
       lessons: [{ n: 'Lesson 1', notes: [], cards: [{ k: 0 as const, f: 'Q', b: 'A' }] }],
     };
     const plainDecoded = await decodeShare(await encodeShareDirect(plainPayload));
-    if (plainDecoded.v === 1) throw new Error('expected a course payload');
     expect(plainDecoded.li).toBeUndefined();
     expect(plainDecoded.rv).toBeUndefined();
     expect(plainDecoded.lessons[0].i).toBeUndefined();
@@ -173,7 +190,7 @@ describe('share code formats and validation', () => {
     expect(qrCode.startsWith('LAC2')).toBe(true);
 
     const payload = await decodeShare(qrCode);
-    if (payload.v === 1) throw new Error('expected a course payload');
+
     expect(payload.lessons).toHaveLength(1);
     expect(payload.lessons[0].cards).toHaveLength(2);
     const fronts = payload.lessons[0].cards.map((c) => c.f);
@@ -194,7 +211,7 @@ describe('share code formats and validation', () => {
     expect(qrCode.startsWith('LAC2')).toBe(true);
 
     const decoded = await decodeShareDirect(qrCode);
-    if (decoded.v === 1) throw new Error('expected a course payload');
+
     expect(decoded.lessons).toHaveLength(1);
     expect(decoded.lessons[0].cards[0].f).toBe('Q');
   });
