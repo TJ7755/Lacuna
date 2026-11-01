@@ -4,7 +4,7 @@ directories:
   output: release
 files:
   - dist/**/*
-  - apps/desktop/dist-apps/desktop/**/*
+  - apps/desktop/dist-electron/**/*
   # Desktop skips Workbox, but sw.js remains the stale-chunk reachability probe.
   - '!dist/{workbox-*.js,robots.txt,sitemap.xml,llms.txt}'
   - '!dist/courses/**/*.html'
