@@ -102,7 +102,7 @@ for (const exam of [false, true]) {
                       ...assessment,
                       name: 'Biology exam',
                       schedulingMode: 'exam',
-                      examDate: now + 30 * day,
+                      examDate: now + 7 * day, // Inside the default early-practice window.
                       timeZone: 'UTC',
                     });
                 }

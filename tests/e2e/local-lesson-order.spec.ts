@@ -12,7 +12,7 @@ async function importSchoolScience(
   await openImport(page);
   const examDate = Date.now() + 90 * 86_400_000;
   const payload = {
-    v: 5,
+    v: 6,
     by: 'Teacher',
     at: 1000,
     li: 'local-order-science',
@@ -133,6 +133,12 @@ async function importSchoolScience(
     .getByRole('button', { name: 'School science', exact: true })
     .click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
+  // Workload estimates arrive after the path and push it down; drags measure afterwards.
+  await expect(
+    page
+      .getByLabel('Estimated assessment workload')
+      .getByText('Final exam: estimated remaining work'),
+  ).toBeVisible();
   return page.url();
 }
 
@@ -250,7 +256,8 @@ for (const input of [
       await expect(row('C')).toHaveAttribute('aria-disabled', 'true');
       await clickLocked('C');
       await expect(page).toHaveURL(courseUrl);
-      await row('C').scrollIntoViewIfNeeded();
+      // Keep the held row clear of the edges, where lifting it would start edge scrolling.
+      await row('C').evaluate((element) => element.scrollIntoView({ block: 'center' }));
       const start = (await row('C').boundingBox())!;
       const first = (await row('A').boundingBox())!;
       const x = Math.round(start.x + start.width / 2);
@@ -402,7 +409,13 @@ for (const input of [
         exact: true,
       });
       await expect(row).toHaveAttribute('aria-roledescription', 'sortable path row');
-      await row.scrollIntoViewIfNeeded();
+      await expect(
+        page
+          .getByLabel('Estimated assessment workload')
+          .getByText('My mock - updated: estimated remaining work'),
+      ).toBeVisible();
+      // Keep the held row clear of the edges, where lifting it would start edge scrolling.
+      await row.evaluate((element) => element.scrollIntoView({ block: 'center' }));
       const start = (await row.boundingBox())!;
       const target = (await path.locator('[data-path-source="activity"]').boundingBox())!;
       const startRow = (await row.locator('xpath=ancestor::li').boundingBox())!;
@@ -536,6 +549,11 @@ test('keeps lessons and anchored practice rows apart during a checkpoint drag pr
   await add.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(add).toBeHidden();
   const checkpoint = path.getByRole('button', { name: 'Edit checkpoint: My test', exact: true });
+  // Its workload estimate arrives later and moves the path; measure once it has settled.
+  await expect(
+    page.getByLabel('Estimated assessment workload').getByText('My test: estimated remaining work'),
+  ).toBeVisible();
+  await checkpoint.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   const start = (await checkpoint.boundingBox())!;
   const target = (await path.locator('[data-path-lesson="A"] [data-path-row]').boundingBox())!;
   const x = start.x + 12;
@@ -669,6 +687,9 @@ for (const input of [
           name: 'Edit checkpoint: Edge scrolling test',
           exact: true,
         });
+        const checkpointSource = (
+          (await publisherRecords(page)).courseAssessments as { id: string; kind: string }[]
+        ).find((assessment) => assessment.kind === 'checkpoint')!.id;
         for (const anchor of input.near ? ['G', 'F', 'E', 'D', 'C', 'B', 'A'] : ['B', 'A']) {
           await row.press('Alt+ArrowUp');
           await expect
@@ -679,6 +700,19 @@ for (const input of [
               }[];
               return records.find((assessment) => assessment.kind === 'checkpoint')?.afterLessonId;
             })
+            .toBe(anchor);
+          // The next press reads the rendered order, so wait for the path to show this move.
+          await expect
+            .poll(() =>
+              path.locator('[data-path-source]').evaluateAll((rows, id) => {
+                const sources = rows.map((item) => item.getAttribute('data-path-source') ?? '');
+                const index = sources.indexOf(id);
+                return sources
+                  .slice(0, index)
+                  .reverse()
+                  .find((source) => /^[A-H]$/.test(source));
+              }, checkpointSource),
+            )
             .toBe(anchor);
         }
       }

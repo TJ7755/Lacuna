@@ -8,7 +8,7 @@ test.beforeAll(async () => {
     stdin: {
       contents: `
         import { createRoot } from 'react-dom/client';
-        import { ForecastChart } from './src/components/dashboard/ForecastChart';
+        import { ForecastChart } from './apps/web/src/components/dashboard/ForecastChart';
         const now = Date.UTC(2026, 9, 8);
         const day = 86400000;
         createRoot(document.getElementById('fixture')).render(
