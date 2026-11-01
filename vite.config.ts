@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import packageJson from './package.json' with { type: 'json' };
 import { settingsStaticClosurePlugin } from './scripts/settings-static-closure.ts';
+import { topicPagesPlugin } from './scripts/course-topics.ts';
 import { publicPagePrerenderPlugin } from './scripts/public-page-prerender.ts';
 import { appShellPrecachePlugin } from './scripts/app-shell-precache.ts';
 
@@ -92,6 +93,7 @@ export default defineConfig({
     tailwindcss(),
     settingsStaticClosurePlugin(),
     publicPagePrerenderPlugin(),
+    topicPagesPlugin(),
     appShellPrecachePlugin(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -182,9 +184,25 @@ export default defineConfig({
           // catalogue download motion/router code, or the landing page download the app.
           groups: [
             {
+              // These scheduling helpers are shared by the same study entry points.
+              name: 'study-eligibility',
+              test: /[\\/]src[\\/]fsrs[\\/](?:eligibility|horizon|assessmentTiming)\.ts$/,
+              includeDependenciesRecursively: false,
+            },
+            {
               // Keep the extracted maths with the chart rather than emitting another payload file.
               name: 'ForecastChartRecovery',
               test: /[\\/]src[\\/]components[\\/]dashboard[\\/](?:ForecastChartRecovery\.ts|ForecastChart\.tsx\?flow-retry|forecastChartMaths\.ts)$/,
+              includeDependenciesRecursively: false,
+            },
+            {
+              name: 'dexie',
+              test: /[\\/]node_modules[\\/](?:dexie|dexie-react-hooks)[\\/]/,
+              includeDependenciesRecursively: false,
+            },
+            {
+              name: 'database',
+              test: /[\\/]src[\\/](?:utils[\\/]id|db[\\/](?:database|schema|reviewActivityProjection|schemaFloor|assessmentMigration|backingDecks|schedulingUnitBuilder|reviewHistory|mutationStamp|preMigrationSnapshots))\.ts$/,
               includeDependenciesRecursively: false,
             },
             {
@@ -204,7 +222,7 @@ export default defineConfig({
             },
             {
               name: 'concept-practice',
-              test: /[\\/]src[\\/](?:questions[\\/](?:conceptPractice|techniqueEvidence)|state[\\/]useCourseConceptPractice)\.ts$/,
+              test: /[\\/]src[\\/](?:questions[\\/](?:conceptPractice|techniqueEvidence|grading)|state[\\/]useCourseConceptPractice)\.ts$/,
               includeDependenciesRecursively: false,
             },
             {

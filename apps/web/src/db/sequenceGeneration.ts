@@ -95,7 +95,7 @@ export interface GeneratedCardPayload {
 }
 
 /** A single field-level change to an existing generated card. Never includes FSRS/scheduling fields. */
-export interface GeneratedCardUpdate {
+interface GeneratedCardUpdate {
   id: string;
   front?: string;
   back?: string;

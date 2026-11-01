@@ -3,7 +3,7 @@
 Merging a version bump with release notes into master is the maintainer's publication decision.
 The [tag workflow](../../.github/workflows/release-tag.yml) and
 [release workflow](../../.github/workflows/release.yml) own automation, job names and asset lists.
-Without the matching notes file the build remains a draft. Windows/Linux-only unsigned limited
+Windows/Linux-only unsigned limited
 betas are supported; macOS packages are a separate local step, not an implicit publication blocker.
 
 ## Routine release
@@ -16,32 +16,25 @@ betas are supported; macOS packages are a separate local step, not an implicit p
 4. If building or verification fails, fix the cause and rerun the failed release workflow.
    `gh workflow run release.yml --ref v<version>` restarts the existing tag's build.
 
-The [weekly workflow](../../.github/workflows/weekly-release.yml) uses
-[weekly-release](../../scripts/weekly-release.mjs) to propose eligible patch releases, which
-publish Windows and Linux only; weekly releases need no macOS build. It prefers a GitHub App with
-Contents and Pull requests write permissions, installed on this repository, through the
-`RELEASE_APP_ID`/`RELEASE_APP_PRIVATE_KEY` secrets. Without them it uses `RELEASE_TOKEN`,
-currently the maintainer's `gh` token (maintainer decision, 24 October 2026), so release pull
-requests appear as the maintainer's. That token stops working if it is revoked, including when
-signing in to `gh` on many devices displaces it. Keep these secrets in the `release` environment,
-which admits only `master`, never as repository secrets. Enable Allow
-auto-merge. A regular `GITHUB_TOKEN` PR does not start the CI chain; do not replace these tokens
-without accounting for that boundary. The weekly run fails while neither credential is set.
+For weekly releases, provision a GitHub App with Contents and Pull requests write
+permissions using `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`, or provision
+`RELEASE_TOKEN`. Keep credentials in the `release` environment restricted to
+`master`, and enable Allow auto-merge. Review credential validity after revocation
+or changes to maintainer authentication.
 
 ## Inspect and publish
 
 Use the pinned tools from [CONTRIBUTING](../../CONTRIBUTING.md) and authenticated `gh`; set `GH_PATH`
-if needed. The helper uses existing credentials and never runs an installer over a working profile.
+if needed.
 
-- `bun run release draft <version>` waits for exact-commit CI/Security and native builds, reuses
-  only the correctly positioned tag, and prints a draft URL without publishing.
-- `bun run release verify <version>` checks a draft or published release without publishing.
-- `bun run release publish <version> --windows-linux-only --notes path/to/notes.md` freshly verifies
-  every official asset and publishes the beta. It rejects extra assets; a draft containing local
-  macOS packages needs the separate manual verification below.
+- Prepare a draft: `bun run release draft <version>`.
+- Verify the candidate: `bun run release verify <version>`.
+- Publish the verified Windows/Linux beta:
+  `bun run release publish <version> --windows-linux-only --notes path/to/notes.md`.
+- Verify local macOS packages separately using the procedure below.
 
-Retained reports are under `artifacts/releases/`. Publication repeats verification and rejects
-assets replaced during verification. Failure or an expired wait is not permission to bypass a gate.
+Retain reports from `artifacts/releases/`. Do not bypass gates after a failure or
+expired wait.
 Only exact tag/commit provenance is acceptable; `git describe` or a nearby checkout is insufficient.
 Attestations and checksums identify bytes and their build source, not application signing.
 
@@ -82,8 +75,7 @@ shasum -a 256 \
 Upload those six files explicitly with `gh release upload` to the matching draft after Actions has
 created it. The local manifest provides integrity, not GitHub build provenance. Verify the GitHub
 assets and their manifest separately with `gh attestation verify PATH_TO_ASSET -R TJ7755/Lacuna`
-and the appropriate SHA-256 tool. Release automation preserves local macOS assets and refuses to
-replace a published release. Never broaden uploads to `release/**`: it contains intermediates and
+and the appropriate SHA-256 tool. Never replace a published release. Never broaden uploads to `release/**`: it contains intermediates and
 unpacked applications. The exact allowlists live in the workflow and
 [release asset verifier](../../scripts/release-assets.mjs).
 

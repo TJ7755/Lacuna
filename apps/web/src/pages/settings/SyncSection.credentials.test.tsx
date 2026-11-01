@@ -24,7 +24,7 @@ describe('SyncSection credentials', () => {
     screen.getByRole('button', { name: 'Sync now' }).focus();
     fireEvent.click(screen.getByRole('button', { name: 'Sync now' }));
     await waitFor(() => expect(passphrase).toHaveAttribute('aria-invalid', 'true'));
-    expect(passphrase).toHaveFocus();
+    await waitFor(() => expect(passphrase).toHaveFocus());
     expect(passphrase).toHaveAccessibleDescription('Incorrect recovery passphrase.');
   });
 

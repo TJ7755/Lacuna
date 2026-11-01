@@ -75,11 +75,13 @@
     "build:gaps:assets": "vite build --config vite.gaps.config.ts",
     "dev:library": "vite --config vite.library.config.ts",
     "build:library": "bun run typecheck:web && bun run build:library:assets",
-    "build:library:assets": "vite build --config vite.library.config.ts"
+    "build:library:assets": "vite build --config vite.library.config.ts",
+    "stress:relay": "bun apps/relay/scripts/stress.ts",
+    "stress:web": "PERF_RATES=1 PERF_REPETITIONS=3 PERF_BURST_REVIEWS=10 PERF_BUDGETS=1 PERF_DIAGNOSTICS=1 bun run perf:audit:heavy"
   },
   "dependencies": {
     "electron-log": "^5.4.4",
-    "electron-updater": "^6.8.9"
+    "electron-updater": "^6.8.11"
   },
   "overrides": {
     "nanoid": "3.3.18",
@@ -99,7 +101,7 @@
     "@ai-sdk/openai-compatible": "^3.0.80",
     "@electron/asar": "4.3.1",
     "@eslint/js": "^10.0.0",
-    "@modelcontextprotocol/client": "2.3.1",
+    "@modelcontextprotocol/client": "2.4.0",
     "@modelcontextprotocol/server": "2.4.0",
     "@napi-rs/wasm-runtime": "1.2.6",
     "@open-spaced-repetition/binding": "^0.5.0",
@@ -110,8 +112,8 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/sql.js": "^1.4.11",
-    "@typescript-eslint/eslint-plugin": "^8.72.0",
-    "@typescript-eslint/parser": "^8.72.0",
+    "@typescript-eslint/eslint-plugin": "^8.72.1",
+    "@typescript-eslint/parser": "^8.72.1",
     "@typescript/native": "npm:typescript@^7.0.2",
     "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.8.2",
@@ -124,7 +126,7 @@
     "dexie-react-hooks": "^4.4.0",
     "dompurify": "^3.4.17",
     "electron": "^44.9.1",
-    "electron-builder": "^26.17.0",
+    "electron-builder": "^26.18.0",
     "esbuild": "^0.28.2",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
@@ -136,8 +138,8 @@
     "happy-dom": "^21.0.3",
     "highlight.js": "^11.10.0",
     "html5-qrcode": "^2.3.8",
-    "katex": "^0.19.0",
-    "knip": "6.42.1",
+    "katex": "^0.19.1",
+    "knip": "6.43.0",
     "mathjs": "^15.2.0",
     "mermaid": "^12.2.0",
     "motion": "14.1.0",

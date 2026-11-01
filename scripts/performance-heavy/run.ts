@@ -1,3 +1,4 @@
+import { checkPerformanceReport } from './budgets';
 import { chromium, expect as baseExpect } from '@playwright/test';
 import { clickToReadable } from './latency';
 import {
@@ -19,7 +20,8 @@ const repetitions = Number(process.env.PERF_REPETITIONS ?? 3);
 const burstReviews = Number(process.env.PERF_BURST_REVIEWS ?? 0);
 const smoke = process.env.PERF_SMOKE === '1';
 const quick = process.env.PERF_MODE === 'quick';
-const diagnostics = process.env.PERF_DIAGNOSTICS === '1';
+const budgets = process.env.PERF_BUDGETS === '1';
+const diagnostics = budgets || process.env.PERF_DIAGNOSTICS === '1';
 const traceDirectory = process.env.PERF_TRACE_DIR;
 const profileDir = process.env.PERF_PROFILE_DIR ? resolve(process.env.PERF_PROFILE_DIR) : undefined;
 const port = Number(process.env.PERF_PORT ?? (profileDir ? 4173 : 0));
@@ -237,6 +239,12 @@ try {
           reducedMotion: 'no-preference',
           serviceWorkers: 'block',
         });
+    await context.route('**/*', (route) => {
+      const url = new URL(route.request().url());
+      return url.origin === origin || url.protocol === 'data:' || url.protocol === 'blob:'
+        ? route.continue()
+        : route.abort('blockedbyclient');
+    });
     activeContext = context;
     report.browser = context.browser()?.version();
     const page = await context.newPage();
@@ -372,6 +380,67 @@ try {
     }
 
     try {
+      if (budgets) {
+        for (const [name, hash, selector] of [
+          ['today', '/', 'h1'],
+          ['course', '/#/course/heavy-course-0', 'h1'],
+          ['learn', '/#/course/heavy-course-0/learn', '[data-study-card-id]'],
+        ]) {
+          const cold = await context.newPage();
+          try {
+            const coldCdp = await context.newCDPSession(cold);
+            await coldCdp.send('Network.enable');
+            await coldCdp.send('Network.setCacheDisabled', { cacheDisabled: true });
+            // Initial route cost excludes speculative idle route warm-up. Interaction
+            // measurements below retain the application's real prefetch behaviour.
+            await cold.addInitScript(() => {
+              window.requestIdleCallback = () => 0;
+              window.cancelIdleCallback = () => {};
+            });
+            await cold.goto(`${origin}${hash}`);
+            if (name === 'today') {
+              await expect(cold.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+            } else {
+              await expect(cold.locator(selector).first()).toBeVisible();
+            }
+            await cold.waitForLoadState('networkidle');
+            const assets = await cold.evaluate(() => {
+              const resources = globalThis.performance.getEntriesByType(
+                'resource',
+              ) as PerformanceResourceTiming[];
+              const files = [
+                ...new Map(
+                  resources
+                    .filter((resource) => /\.(js|css)$/.test(new URL(resource.name).pathname))
+                    .map((resource) => [
+                      new URL(resource.name).pathname,
+                      {
+                        path: new URL(resource.name).pathname,
+                        decodedBytes: resource.decodedBodySize,
+                      },
+                    ]),
+                ).values(),
+              ].sort((a, b) => a.path.localeCompare(b.path));
+              return {
+                accounting:
+                  'unique completed JS/CSS resources after readiness and network idle; speculative idle prefetch disabled',
+                files,
+                javascriptBytes: files
+                  .filter((file) => file.path.endsWith('.js'))
+                  .reduce((sum, file) => sum + file.decodedBytes, 0),
+                cssBytes: files
+                  .filter((file) => file.path.endsWith('.css'))
+                  .reduce((sum, file) => sum + file.decodedBytes, 0),
+              };
+            });
+            expect(assets.javascriptBytes).toBeGreaterThan(0);
+            expect(assets.cssBytes).toBeGreaterThan(0);
+            samples.push({ name: `route-assets-${name}`, ...assets });
+          } finally {
+            await cold.close();
+          }
+        }
+      }
       for (let iteration = 0; iteration < repetitions; iteration += 1) {
         await measure('dashboard-load', iteration, async () => {
           await page.goto(`${origin}/`);
@@ -387,21 +456,32 @@ try {
         });
         await page.keyboard.press('Escape');
         await measure('course-open', iteration, async () => {
-          await page.getByText('Heavy course 0', { exact: true }).first().click();
+          const interaction = await clickToReadable(
+            page,
+            page.getByText('Heavy course 0', { exact: true }).first(),
+            'h1',
+            'Heavy course 0',
+          );
           await expect(
             page.getByRole('heading', { name: 'Heavy course 0', exact: true }),
           ).toBeVisible();
           await expect(
             page.getByRole('button', { name: 'Heavy lesson 0', exact: true }),
           ).toBeVisible();
+          return interaction;
         });
         await measure('cards-open', iteration, async () => {
-          await page
-            .getByRole('navigation', { name: 'Course sections' })
-            .getByRole('link', { name: 'Cards', exact: true })
-            .click();
+          const interaction = await clickToReadable(
+            page,
+            page
+              .getByRole('navigation', { name: 'Course sections' })
+              .getByRole('link', { name: 'Cards', exact: true }),
+            'h1',
+            'Cards',
+          );
           await expect(page.getByRole('searchbox', { name: 'Search all cards' })).toBeVisible();
           await expect(page.getByText(/Recall item 0-/).first()).toBeVisible();
+          return interaction;
         });
         await measure('cards-search', iteration, async () => {
           await page
@@ -479,9 +559,10 @@ try {
       let backupPath: string | undefined;
       if (!quick)
         await measure('backup-export', 0, async () => {
-          const downloadPromise = page.waitForEvent('download', { timeout: 120_000 });
-          await page.getByRole('button', { name: 'Full backup Complete database' }).click();
-          const download = await downloadPromise;
+          const [download] = await Promise.all([
+            page.waitForEvent('download', { timeout: 120_000 }),
+            page.getByRole('button', { name: 'Download full backup', exact: true }).click(),
+          ]);
           const path = await download.path();
           if (!path || (await download.failure())) throw new Error('Backup download failed');
           backupPath = path;
@@ -522,7 +603,15 @@ try {
       activeRunProfile = undefined;
     }
   }
-  report.completed = true;
+  report.completed = process.exitCode !== 1;
+  if (budgets) {
+    const failures = checkPerformanceReport(report);
+    report.budgetFailures = failures;
+    if (failures.length) {
+      console.error(failures.join('\n'));
+      process.exitCode = 1;
+    }
+  }
 } finally {
   await mkdir(resolve(output, '..'), { recursive: true });
   await writeFile(output, JSON.stringify(report, null, 2) + '\n');

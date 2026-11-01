@@ -46,7 +46,7 @@ class Fsrs6Predictor(ReplayGuard):
     def __init__(self, user_id: int, *, fractional_retrievability: bool = False):
         super().__init__(user_id)
         self.cards: dict[int, MemoryState] = {}
-        # Runtime mirror switch (VALIDATION_PLAN.md, phase 2 item 4): the blended
+        # Runtime mirror switch (the frozen cohort validation, phase 2 item 4): the blended
         # candidates in half_life.py/half_life_v2.py set this True so their internal
         # FSRS baseline queries retrievability with the same fractional elapsed days
         # as src/fsrs/halfLifeLogisticModel.ts's `predict()`, instead of the whole-day

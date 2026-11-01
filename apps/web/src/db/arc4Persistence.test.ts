@@ -46,7 +46,7 @@ describe('Arc 4 persistence', () => {
     ]);
   });
 
-  it('upgrades v11 reviewed cards into primary-lesson exposures only', async () => {
+  it('refuses v11 without adding lesson exposures or changing reviewed cards', async () => {
     await db.delete();
     const legacy = new Dexie('lacuna');
     legacy.version(11).stores({
@@ -109,11 +109,17 @@ describe('Arc 4 persistence', () => {
     });
     legacy.close();
 
-    await db.open();
-
-    expect(await db.lessonCardExposures.toArray()).toEqual([
-      { lessonId: 'primary', cardId: 'reviewed', taughtAt: 200, updatedAt: 200 },
-    ]);
+    await expect(db.open()).rejects.toThrow('older than the supported v27 minimum');
+    await legacy.open();
+    expect(legacy.verno).toBe(11);
+    expect(legacy.tables.map((table) => table.name)).not.toContain('lessonCardExposures');
+    expect(await legacy.table('cards').get('reviewed')).toMatchObject({
+      primaryLessonId: 'primary',
+      state: 2,
+      lastReviewed: 200,
+    });
+    expect(await legacy.table('lessonCards').get('link')).toMatchObject({ lessonId: 'linked' });
+    legacy.close();
   });
 
   it('removes a linked lesson exposure when the link is removed', async () => {

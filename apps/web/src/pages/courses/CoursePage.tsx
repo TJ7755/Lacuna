@@ -2,6 +2,7 @@ import { courseCodes, libraryCourses, type LibraryCourse } from '../../library/c
 import { CourseProvenance } from '../../library/CourseProvenance';
 import { Header, SectionHeading } from '../quizlet/ComparisonUi';
 import { LIBRARY_ORIGIN } from '../../config/origins';
+import { courseBoardPath, courseSubjectPath } from './topic-paths';
 import '../quizlet/QuizletComparison.css';
 import '../quizlet/ComparisonResponsive.css';
 import './CoursePage.css';
@@ -48,6 +49,11 @@ export function CoursePage({ course }: { course?: LibraryCourse }) {
               )}
             </div>
             <CourseProvenance course={course} />
+            {course.shareUrl && (
+              <a className="course-back" href={courseSubjectPath(course)}>
+                Explore specification topics
+              </a>
+            )}
             <section>
               <SectionHeading title="What it covers" />
               <ol>
@@ -75,6 +81,20 @@ export function CoursePage({ course }: { course?: LibraryCourse }) {
         ) : (
           <>
             <h1>Revision courses</h1>
+            <nav aria-label="Browse specification topics by exam board">
+              <h2>Specification topics by exam board</h2>
+              <ul className="course-board-links">
+                {[...new Map(libraryCourses.map((entry) => [entry.board, entry])).values()].map(
+                  (entry) => (
+                    <li key={entry.board}>
+                      <a className="course-back" href={courseBoardPath(entry)}>
+                        {entry.board}
+                      </a>
+                    </li>
+                  ),
+                )}
+              </ul>
+            </nav>
             {libraryCourses.map((entry) => (
               <section className="course-index-entry" key={entry.id}>
                 <h2>

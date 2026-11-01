@@ -1,0 +1,38 @@
+// Historical schema fixture: v27, before Question Sets and specification links.
+export const schemaV27 = {
+  cards:
+    'id, courseId, primaryLessonId, schedulingUnitId, conceptId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+  sessionHistory: '++id, &eventId, sessionId, deckId, courseId, schedulingUnitId, timestamp',
+  userPerformance: 'deckId',
+  backups: '++id, createdAt',
+  appState: 'key',
+  assets: 'hash, createdAt',
+  courses: 'id, createdAt',
+  lessons: 'id, courseId, orderIndex, createdAt',
+  notes: 'id, lessonId, orderIndex, createdAt',
+  lessonCards: 'id, lessonId, cardId',
+  lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+  lessonCompletions: 'lessonId, completedAt',
+  noteAnnotations: 'id, noteId, createdAt, updatedAt',
+  practiceNodes: 'id, courseId, position, createdAt',
+  practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+  courseAssessments: 'id, courseId, kind, examDate, createdAt',
+  sequences: 'id, courseId, primaryLessonId, createdAt',
+  revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+  lineageIdMappings: 'id, courseId',
+  pendingMergeReviews: 'id, courseId',
+  occlusions: 'id, courseId, primaryLessonId, createdAt',
+  reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, schedulingUnitId, timestamp',
+  schedulingUnits: 'id, kind, courseId, lessonId',
+  coursePerformance: 'courseId',
+  schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
+  tombstones: '[table+recordId], deletedAt',
+  concepts: 'id, scopeKey, courseId, updatedAt',
+  questions: 'id, courseId, primaryLessonId, kind, due, authoringUpdatedAt',
+  questionConcepts:
+    'questionId, courseId, *targetConceptIds, *prerequisiteConceptIds, authoringUpdatedAt',
+  questionAttempts:
+    'id, questionId, courseId, status, shownAt, sessionId, [questionId+shownAt], [courseId+shownAt], updatedAt',
+  agentMemories: 'id, courseId, status, updatedAt, *tags',
+  reviewActivity: 'cardId',
+};

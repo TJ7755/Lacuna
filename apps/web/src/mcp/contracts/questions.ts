@@ -1,15 +1,11 @@
 import { z } from 'zod';
 import type { ToolContract } from '../types';
 
-export const courseIdSchema = z.string().trim().min(1).describe('The id of the Course.');
-export const conceptIdSchema = z.string().trim().min(1).describe('The id of a Concept.');
-export const questionIdSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .describe('The id of a Question definition.');
-export const authoredTextSchema = z.string().trim().min(1);
-export const requiredGeneratorConfigSchema = z.unknown().refine((value) => value !== undefined, {
+const courseIdSchema = z.string().trim().min(1).describe('The id of the Course.');
+const conceptIdSchema = z.string().trim().min(1).describe('The id of a Concept.');
+const questionIdSchema = z.string().trim().min(1).describe('The id of a Question definition.');
+const authoredTextSchema = z.string().trim().min(1);
+const requiredGeneratorConfigSchema = z.unknown().refine((value) => value !== undefined, {
   message: 'generatorConfig is required.',
 });
 

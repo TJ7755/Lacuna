@@ -25,11 +25,7 @@ import type {
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { findBackingDeck, findBackingDecks } from '../db/backingDecks';
 
-export {
-  computeCourseSummaries,
-  type CourseSummary,
-  type CourseSummaryProgress,
-} from './courseSummaries';
+export { computeCourseSummaries, type CourseSummary } from './courseSummaries';
 export { useSidebarData, useCourseDashboardData } from './ShellCourseData';
 
 // ---------------------------------------------------------------------------

@@ -2,9 +2,7 @@
 
 [![CI](https://github.com/TJ7755/Lacuna/actions/workflows/ci.yml/badge.svg)](https://github.com/TJ7755/Lacuna/actions/workflows/ci.yml)
 
-Lacuna is a local-first revision app built around FSRS-6. Organise material into courses,
-lessons and notes, then practise recall Cards towards an exam date. A separate Questions
-mode supports automatically marked application problems with independent evidence and scheduling.
+Lacuna is a revision app for secondary students.
 
 ## Product direction
 
@@ -36,15 +34,10 @@ delivery plan and evidence needed to assess progress.
 
 ## Using Lacuna
 
-Use Lacuna at [getlacuna.app](https://getlacuna.app). Browser study data is local to each
-origin: moving from the previous Vercel address requires exporting a full backup there
-and importing it at the new address. The previous address remains available.
+Use Lacuna at [getlacuna.app](https://getlacuna.app). Before moving from the previous Vercel address, export a full backup there
+and import it at the new address.
 
-Study data lives in IndexedDB without an account. Optional device sync uses encrypted relay
-payloads. Optional Jev automatic marking sends answers, questions and mark schemes to TypeSafe AI
-only after you opt in and accept its personal-data and experimental-accuracy warnings. It is a public
-beta with per-installation allowances; manual marking remains available. Export a full JSON backup from
-**Settings → Full backup & recovery** before moving devices or replacing data.
+Export a full JSON backup from **Settings → Full backup & recovery** before moving devices or replacing data.
 
 The [contributor guide](CONTRIBUTING.md) covers the complete validation matrix, relay and companion
 installations, regression tests and review policy.

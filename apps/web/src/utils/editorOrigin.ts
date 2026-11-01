@@ -10,7 +10,7 @@ import type { ReturningState } from '../components/layout/scrollMemory';
  * Deliberately additive: a page opened without it (a deep link, a refresh, which
  * drops router state) falls back to the destination its route implies.
  */
-export interface EditorOrigin {
+interface EditorOrigin {
   /** Path, query and hash of the page to return to. */
   path: string;
   /** Label shown on the back link for that destination. */
@@ -40,11 +40,6 @@ export function originFrom(
       idx: historyIndex(),
     },
   };
-}
-
-/** `originFrom` for the current page. */
-export function useOriginHere(label: string): EditorOriginState {
-  return originFrom(useLocation(), label);
 }
 
 export interface ReturnTarget {

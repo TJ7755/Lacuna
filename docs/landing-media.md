@@ -1,15 +1,8 @@
-# Landing media
+# Landing media maintenance
 
-## Static product previews
-
-The landing page uses the local WebP images in `public/landing/films/student.webp` and
-`public/landing/films/gaps.webp`. These show the revision dashboard and a fictional class report.
-They do not offer video playback or request files from Vercel Blob. Keep the image dimensions and
-descriptive alternative text when replacing a preview, and verify the layout and navigation.
-
-The landing video players, external media origin, local proxies and Vercel film rewrites have been
-removed to avoid video transfer charges. Do not reintroduce hosted playback without a maintainer
-cost decision. Learners’ own media and embedded videos are unaffected.
+When replacing previews in `public/landing/films/`, preserve image dimensions and
+descriptive alternative text, then verify layout and navigation. Do not introduce
+hosted playback without a maintainer cost decision.
 
 ## Preserve the production archive
 

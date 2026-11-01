@@ -2,7 +2,7 @@ import { PillToggleGroup } from '../cards/PillToggleGroup';
 import { Select } from '../ui/Select';
 import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 // Region list and detail pane for the occlusion editor (Task 10, D1 adapted —
-// design/arc6/plan.md): role chips, inline pairing, and a detail pane for
+// the occlusion editor source): role chips, inline pairing, and a detail pane for
 // role/answer text/back note. Region names default to "Box 1…n" (labels) and
 // "Region 1…n" (features) so the list stays navigable without typing.
 
@@ -13,7 +13,7 @@ import type { OcclusionRegion } from '@lacuna/core/db/types';
 
 /** Display-only names — never persisted — derived from a region's position among
  *  same-role regions, matching the chosen mockup (design/arc6/mockups-occlusion.html). */
-export function occlusionRegionNames(regions: OcclusionRegion[]): Map<string, string> {
+function occlusionRegionNames(regions: OcclusionRegion[]): Map<string, string> {
   const names = new Map<string, string>();
   let labelIndex = 0;
   let featureIndex = 0;

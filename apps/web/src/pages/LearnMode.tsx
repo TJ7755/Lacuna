@@ -224,8 +224,8 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
     manual: manualRestoredCardId === current?.id,
     onHold: () => cardTransitionRef.current?.cancel(),
     m,
-    onMarked: (correct, provenance) =>
-      answerWithUndo(correct, 'keyboard', 0, provenance ?? undefined, true),
+    onMarked: (correct, provenance, grade) =>
+      answerWithUndo(grade ?? correct, 'keyboard', 0, provenance ?? undefined, true),
   });
 
   const typedJudgement = useMemo(() => typedAnswerJudgement(typedAutoMark), [typedAutoMark]);

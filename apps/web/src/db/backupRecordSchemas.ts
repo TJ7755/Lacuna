@@ -72,7 +72,7 @@ export const schedule = {
   scheduledDays: number,
   learningSteps: number,
 };
-export const review = object({
+const review = object({
   input: z.enum(['typed', 'reveal']).optional(),
   markedBy: jevMarkProvenanceSchema.optional(),
   eventId: id.optional(),
@@ -167,7 +167,7 @@ const distribution = object({
   shareId: id.optional(),
   shareRevision: number.optional(),
 });
-export const course = object({
+const course = object({
   creator: text.optional(),
   ...scheduler,
   ...timestamps,
@@ -224,7 +224,7 @@ export const course = object({
     }
   }
 });
-export const assessment = object({
+const assessment = object({
   ...timestamps,
   id,
   courseId: id,

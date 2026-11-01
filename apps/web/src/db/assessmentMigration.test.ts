@@ -177,7 +177,7 @@ describe('course assessment migration', () => {
     );
   });
 
-  it('upgrades v13 data through the copy step and removes the legacy store', async () => {
+  it('refuses v13 without removing the legacy assessment store', async () => {
     await db.delete();
     const legacy = new Dexie('lacuna');
     legacy.version(13).stores({
@@ -210,25 +210,16 @@ describe('course assessment migration', () => {
     ]);
     legacy.close();
 
-    await db.open();
-
-    const storedCourse = await db.courses.get('course');
-    expect(storedCourse).not.toHaveProperty('examDate');
-    expect(storedCourse).not.toHaveProperty('timeZone');
-    const assessments = await db.courseAssessments.where('courseId').equals('course').toArray();
-    expect(assessments.filter((assessment) => assessment.kind === 'final')).toHaveLength(1);
-    expect(assessments.find((assessment) => assessment.id === 'scoped')).toEqual(
-      expect.objectContaining({
-        kind: 'checkpoint',
-        coverageMode: 'custom',
-        lessonIds: ['first'],
-        afterLessonId: 'first',
-        excludedCardIds: ['card'],
-      }),
-    );
-    expect(assessments.find((assessment) => assessment.id === 'unscoped')).toEqual(
-      expect.objectContaining({ coverageMode: 'prefix', afterLessonId: 'last' }),
-    );
-    expect(db.tables.map((table) => table.name)).not.toContain('courseExamDates');
+    await expect(db.open()).rejects.toThrow('older than the supported v27 minimum');
+    await legacy.open();
+    expect(legacy.verno).toBe(13);
+    expect(await legacy.table('courses').get('course')).toEqual(legacyCourse('course', 9_000));
+    expect(await legacy.table('courseExamDates').count()).toBe(2);
+    expect(await legacy.table('courseExamDates').get('scoped')).toMatchObject({
+      lessonIds: ['first'],
+      excludedCardIds: ['card'],
+    });
+    expect(legacy.tables.map((table) => table.name)).not.toContain('courseAssessments');
+    legacy.close();
   });
 });

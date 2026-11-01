@@ -1,6 +1,6 @@
-export type CardVerdict = 'correct' | 'error' | 'ambiguous' | 'duplicate' | 'insufficient_evidence';
+type CardVerdict = 'correct' | 'error' | 'ambiguous' | 'duplicate' | 'insufficient_evidence';
 
-export interface BenchmarkCard {
+interface BenchmarkCard {
   cardId: string;
   front: string;
   back: string;

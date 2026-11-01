@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { verifyRevision } from '../apps/relay/scripts/security-bun.mjs';
 
-export const root = fileURLToPath(new URL('../', import.meta.url));
+const root = fileURLToPath(new URL('../', import.meta.url));
 export const installations = ['.', 'apps/relay', 'tooling/handwriting-maths'];
 export const git = (...args) =>
   execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });

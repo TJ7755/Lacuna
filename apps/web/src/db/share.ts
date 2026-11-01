@@ -47,12 +47,11 @@ export type {
 } from './sharePayload';
 export { buildCourseSharePayload } from './shareCoursePayload';
 export { applyImportedCourseScheduling, importSharePayload } from './shareCourseImport';
-export type { ImportCourseScheduling, ImportShareResult } from './shareCourseImport';
+export type { ImportCourseScheduling } from './shareCourseImport';
 export {
   decodeShare,
   decodeShareDirect,
   encodeShareDirect,
-  encodeShareQR,
   encodeShareQRDirect,
 } from './shareTransport';
 

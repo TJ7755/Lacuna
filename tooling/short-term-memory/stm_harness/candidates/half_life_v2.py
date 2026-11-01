@@ -32,7 +32,7 @@ class HalfLifeLogisticV2Candidate:
     """Identical fit to `half_life`; only the short-term/FSRS blend weight differs.
 
     v1 decays a single, outcome-independent weight from day six to day seven. v2 routes
-    the handover on the previous review's outcome (phase 2, VALIDATION_PLAN.md): a later
+    the handover on the previous review's outcome (phase 2, the frozen cohort validation): a later
     handover after a failure (unchanged from v1), a much earlier one after a success or on
     a first predictive review. The fit machinery is reused as-is from `half_life` so the
     two candidates cannot drift apart on the logistic coefficients themselves.

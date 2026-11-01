@@ -22,8 +22,7 @@ if [ "$VERCEL_ENV" = "production" ]; then exit 1; else exit 0; fi
 Inspect the linked project and team before deployment; a link to `lacuna` is the
 wrong target. Stage with `bunx vercel deploy --prod --skip-domain`, verify the
 returned deployment with `bunx vercel curl`, then promote that exact production
-deployment. Keep protection enabled for generated URLs. Hosting the teacher
-workspace does not activate pupil delivery.
+deployment. Keep protection enabled for generated URLs.
 
 Before moving a hostname, preserve its old project, branch assignment and ready
 deployment for rollback. Use Vercel's project-domain move endpoint with the
@@ -35,10 +34,7 @@ Retain `/sw.js` with `no-store` throughout the migration window so returning
 installations can retire their old worker. Before the move, verify preview and
 production using both a fresh profile and an existing installation. Check the
 bare root, old hashes, preserved course data, sharing, missing assets returning
-errors rather than HTML, and the main site's study and desktop behaviour. The
-existing installation must update its registration; delayed updates may require
-a reload. The migration browser fixture proves local takeover, not remote domain
-assignment or production update timing.
+errors rather than HTML, and the main site's study and desktop behaviour.
 
 Use the [frozen activation record](https://github.com/TJ7755/Lacuna/blob/30d7e808f9b056afcfd61702c6de7d4ee204e759/docs/review-evidence/gaps-trial-activation/README.md)
 for initial source, deployment and fallback identities. For later teacher
@@ -50,8 +46,7 @@ Ask school IT whether shared PCs or pooled tablets clear browser storage at logo
 and verify with synthetic data on the devices pupils and teachers will use. A
 persistence grant does not protect against a managed profile wipe. Rehearse pupil
 backup or sync to a retained device through Lacuna Settings, and teacher recovery
-from a file and code kept outside that profile. A wipe can reset local consent and
-queued reports as well as study history; missing reports do not prove no study.
+from a file and code kept outside that profile. Missing reports do not prove no study.
 Record reproducible device-policy failures with the Managed-device failure issue
 template, without pupil records or credentials.
 
@@ -80,9 +75,7 @@ reports are not an attendance count. Preserve self-reported/unknown evidence.
 
 ## Verify retention maintenance
 
-`apps/relay/vercel.json` schedules `/api/ai/maintenance` at **03:00 UTC daily**. The
-existing job also maintains sync, shares and AI records. It requires a production
-`CRON_SECRET` on `lacuna-relay`; Vercel supplies it in the cron's bearer header.
+Provision production `CRON_SECRET` on `lacuna-relay` for scheduled maintenance.
 Keep it a server-only Secret, never a browser variable or repository file.
 After adding or changing it, deploy the reviewed relay source: a saved variable
 does not update a running deployment.
@@ -92,12 +85,9 @@ or an unauthenticated manual request does not prove cleanup ran. An authorised
 manual run verifies the handler now, but does not prove the next timer fired.
 Do not weaken authorisation to make a health check green.
 
-Reports expire logically 84 days after the end of their reporting day. The job
-scans up to 500 insight objects per invocation with a persistent cursor, so
-physical deletion can lag. Inspect only aggregate deletion counts and operational
-errors. Investigate non-200 runs, repeated timeouts or a growing scan backlog;
-do not promise deletion at an exact wall-clock time. Never bulk-delete a shared
-store to clear a trial problem.
+Inspect aggregate deletion counts and operational errors. Investigate non-200 runs,
+repeated timeouts or a growing backlog. Never bulk-delete a shared store to clear
+a trial problem. Do not promise deletion at an exact wall-clock time.
 
 ## Keep spending visible
 
@@ -135,13 +125,11 @@ Set production `RELAY_INSIGHTS_ENABLED=0` on `lacuna-relay` and
 Changing a saved variable does not change an already deployed build: deploy the
 reviewed source with those disabled values, or roll back to verified production
 deployments that captured disabled gates. Stop relay admission first, then pupil
-delivery. The relay gate disables report reads as well as uploads; retained
-ciphertext remains stored. Failed uploads retain the existing encrypted retry packet.
+delivery.
 
 Use `bunx vercel rollback` with the exact selected production deployment URL and
 the verified team scope. The activation record retains the initial fallback
 deployments; for later releases, check compatibility before reverting learner code.
 Disabling the saved values as well prevents a later automatic build from silently
-reactivating reporting. Rollback disables collection; it does not erase retained
-reports, teacher keys or pupil data. Keep the teacher hostname, retirement worker
-and existing storage intact.
+reactivating reporting. Preserve reports, teacher keys, pupil recovery material, the teacher hostname,
+retirement worker and existing storage.

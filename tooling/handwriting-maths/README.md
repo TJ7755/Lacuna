@@ -2,10 +2,7 @@
 
 **Status: in progress. No result yet.**
 
-This is exploratory work with no integration
-commitment: it has no arc number, it is not imported by the browser or Electron builds,
-and it does not touch `src/`. The deliverable is knowledge. A well-documented negative
-result is a valid outcome, and is the expected one for the recognition half.
+This research carries no integration commitment. A negative result is a valid outcome.
 
 ## The question
 
@@ -21,45 +18,6 @@ Two separable halves, deliberately:
    half that feeds Arc 11 §11.3's palette design. It is also the half most likely to get
    dropped once the recognition work gets interesting, hence this paragraph.
 
-The harness therefore has three arms entering identical target expressions: canvas,
-plain keyboard, and a palette of symbol buttons.
-
-## Pipeline
-
-Recognition is four stages, not one. The plan's original framing ("$1 recogniser over a
-per-symbol template set") describes only stage 3.
-
-1. **Stroke capture** — pointer events, resampled and normalised.
-2. **Stroke grouping** — deciding which strokes form one symbol. `x`, `=` and often `4`
-   are multi-stroke. Temporal and spatial clustering.
-3. **Symbol recognition** — see the two arms below.
-4. **Layout parsing** — baseline detection and superscript, producing a linear string
-   (`x^2+3`). Fraction bars are out of scope for the first pass; `/` covers them.
-
-Stages 2 and 4 are hand-written regardless of how stage 3 is solved, and are where
-prototypes of this kind usually stall. They are not the afterthought.
-
-### Two arms for stage 3
-
-- **$P point-cloud recogniser** (`src/dollarP.ts`) — template matching, no ML, no
-  weights, no build step. Uses stroke data (order, direction, count) that a bitmap
-  classifier discards. Its lever is **per-user calibration**: ~19 symbols drawn once
-  each, tuned to one specific hand.
-- **A small CNN** — generalises across writers with no calibration, but discards the
-  temporal signal and is a weights dependency.
-
-$P rather than $1 proper because $1 is single-stroke only and cannot represent `=`.
-
-The comparison is the point. "Does 30 seconds of per-user calibration beat a generic
-pretrained model on a child's handwriting?" is not obvious in either direction, and
-neither arm alone answers it.
-
-## Symbol set
-
-Scoped to 11+, not GCSE: digits `0`–`9`, `x`, `y`, `+`, `-`, `*`, `/`, `=`, `(`, `)`,
-`.` — 19 classes, plus the superscript *relation* from stage 4. No roots, no `pi`, no
-trigonometry. Arc 11 §11.9 already parks the wider key-stage question.
-
 ## Datasets and licences
 
 Read this section before training anything that might ship.
@@ -71,22 +29,13 @@ Read this section before training anything that might ship.
 | [HASYv2](https://arxiv.org/pdf/1701.08380) | 150k+ instances, 369 classes | 32x32 images | ODbL |
 | MNIST | 70k digits | images | effectively unencumbered |
 
-Two consequences:
-
-- **Stages 2 and 4 are measurable.** CROHME ships per-symbol segmentation and layout
-  ground truth, so stroke grouping and superscript detection get real numbers against a
-  public benchmark rather than an impression formed on the author's own scribbles.
-- **Both arms train on the same public strokes.** InkML is trajectory data, so
-  MathWriting's isolated symbols serve the $P template arm and the CNN arm alike. The
-  comparison is controlled.
-
 **Licence caveat, recorded here so it is not discovered late.** Lacuna is MIT.
 MathWriting and CROHME are CC BY-NC-SA 4.0. Lacuna sells nothing, so the NonCommercial
 term is not the difficulty; **ShareAlike** is. If a trained model is a derivative of its
 training data — unsettled, but assume it may be — then weights trained on those two
 datasets carry NC and SA obligations that the repository's MIT licence tells downstream
 forkers do not exist. For this prototype it does not matter, because nothing ships. If
-handwriting input is ever promoted into `src/`, retrain on HASYv2 (ODbL) or on
+handwriting input is ever integrated into the application, retrain on HASYv2 (ODbL) or on
 self-collected strokes.
 
 **These are the wrong writers.** All four corpora are adults writing general mathematics
@@ -110,8 +59,8 @@ Smoke test of the instrument, not evidence. Median seconds over correct entries:
 | Written | 5.66 | 8 | 0 |
 | Typed | 6.84 | 8 | 7 |
 
-Three palette trials were discarded, not scored as failures: the keypad shipped without
-`x` and `y` keys, so `2x+6=14`, `x^2+3` and `y=2x^2` were unenterable by construction.
+Three palette trials were discarded because the tested instrument could not enter
+their target expressions.
 
 **The one finding worth carrying forward is the cost of `^`.** Splitting each method by
 whether the target contains a superscript:
@@ -129,11 +78,8 @@ to fix, and it is expensive even for someone who knows where every key is.
 
 **Why this understates the case for handwriting, and overstates it.** Understates:
 the participant is a fast touch-typist, so the typed arm was at its best and still lost.
-Overstates, and more seriously: the canvas arm produces no string. Its correctness is
-self-reported and it is timed on *writing the expression*, whereas the typed and button
-arms are timed on producing an exact string a machine accepted. Those are not the same
-task, and the canvas figure is therefore a lower bound. It becomes comparable only once
-stages 2 and 4 exist and the retained ink can be scored.
+The writing timings used self-reported correctness; the typing timings required
+machine-accepted strings. Treat these as different tasks, not comparable recognition results.
 
 n = 1, one session, no repetition, no counterbalancing across participants. Treat every
 number above as a direction to test, not a result.

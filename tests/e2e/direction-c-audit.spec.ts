@@ -1,3 +1,6 @@
+// Accessibility review invariants: preserve keyboard focus, native IME editing, reduced
+// motion and recovery choices; hidden controls must not accept input. Use manual
+// assistive-technology checks alongside browser coverage.
 import { expect, test } from '@playwright/test';
 import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 

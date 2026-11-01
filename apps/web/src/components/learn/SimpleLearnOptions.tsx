@@ -40,12 +40,6 @@ export function SimpleLearnOptions({
   );
 }
 
-/** The same scope picker, shown directly inside Other ways. */
-export function SimpleLearnPractice({ courseId }: { courseId: string }) {
-  const [lessonId, setLessonId] = useState('');
-  return <SimpleLearnFields courseId={courseId} lessonId={lessonId} onLessonChange={setLessonId} />;
-}
-
 function SimpleLearnFields({
   courseId,
   lessonId,

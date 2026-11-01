@@ -7,8 +7,24 @@ import { CoursePage } from './CoursePage';
 import { courseMetadata } from './content';
 import { LIBRARY_ORIGIN } from '../../config/origins';
 import { renderHead } from './entry-server';
+import { courseBoardPath } from './topic-paths';
 
 describe('public course catalogue', () => {
+  it('makes every exam-board topic index discoverable from the course catalogue', () => {
+    render(<CoursePage />);
+    const navigation = screen.getByRole('navigation', {
+      name: 'Browse specification topics by exam board',
+    });
+    const boards = [...new Map(libraryCourses.map((course) => [course.board, course])).values()];
+    expect(within(navigation).getAllByRole('link')).toHaveLength(boards.length);
+    for (const course of boards) {
+      expect(within(navigation).getByRole('link', { name: course.board })).toHaveAttribute(
+        'href',
+        courseBoardPath(course),
+      );
+    }
+  });
+
   it.each([undefined, ...libraryCourses])(
     'links to the library from the index and every course: %s',
     (course) => {
@@ -65,8 +81,8 @@ describe('public course catalogue', () => {
     }
   });
 
-  it('advertises every course in both source crawl files', () => {
-    for (const path of ['public/sitemap.xml', 'public/llms.txt']) {
+  it('advertises every course in the source crawl guide', () => {
+    for (const path of ['public/llms.txt']) {
       const source = readFileSync(path, 'utf8');
       expect(source).toContain('https://getlacuna.app/courses/');
       for (const course of libraryCourses) {

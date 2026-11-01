@@ -1,6 +1,6 @@
 import type { AiBridgeError } from './protocol';
 
-export type AiCompanionErrorKind =
+type AiCompanionErrorKind =
   | 'app_unavailable'
   | 'renderer_unavailable'
   | 'not_connected'
@@ -13,7 +13,7 @@ export type AiCompanionErrorKind =
   | 'tool'
   | 'internal';
 
-export type AiCommitState = 'not_started' | 'unknown' | 'committed';
+type AiCommitState = 'not_started' | 'unknown' | 'committed';
 
 export interface AiCompanionErrorDetails {
   kind: AiCompanionErrorKind;

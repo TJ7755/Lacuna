@@ -27,13 +27,13 @@ import { focusComposerField, useComposerKeyboard, type ComposerField } from './u
 import { QuestionComposerRow } from './QuestionComposerRow';
 import { issueMessage, nodeMarks } from './presentation';
 
-export function composerLabel(rows: QuestionSetAuthoringNode[], row: QuestionSetAuthoringNode) {
+function composerLabel(rows: QuestionSetAuthoringNode[], row: QuestionSetAuthoringNode) {
   return [
     ...row.parentIds.map((id) => rows.find((candidate) => candidate.id === id)!.label),
     row.label,
   ].join(' ');
 }
-export function issueRowId(content: QuestionSet, issue: QuestionSetIssue) {
+function issueRowId(content: QuestionSet, issue: QuestionSetIssue) {
   const indices = [...issue.path.matchAll(/(?:questions|parts|subparts)\[(\d+)\]/g)].map((match) =>
     Number(match[1]),
   );

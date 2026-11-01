@@ -1,7 +1,6 @@
 # Offline short-term memory harness
 
-This directory contains the Arc 3 offline dataset, candidate and evaluation tooling. It is an
-independent Python project and is not imported by the browser or Electron builds. Arc 3 Task 6
+This directory contains the Arc 3 offline dataset, candidate and evaluation tooling. Arc 3 Task 6
 selected a compact short-term model; see [frozen benchmark](https://github.com/TJ7755/Lacuna/blob/fcfd3c6008fb35730fef609083b732fe360baa62/tooling/short-term-memory/BENCHMARK.md).
 
 ## Dataset and licence
@@ -36,9 +35,3 @@ remain private; the local `.gitignore` excludes `data/` and `reports/`.
 
 The Hugging Face repository is gated. Before acquisition, sign in, accept its access terms,
 and authenticate with `hf auth login` or set `HF_TOKEN`.
-
-The source contains undocumented `state=4` events. Construction excludes those individual events,
-counts them and retains the rest of each affected card. This matches the upstream benchmark's
-exclusion of manual/rescheduled and non-rescheduling filtered-deck events. Durations above 60,000
-ms are retained but winsorised to 60,000 ms, also with explicit counts, because deleting slow
-reviews would bias the outcomes. Ratings, lags and order are never rewritten.
