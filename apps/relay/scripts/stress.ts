@@ -250,4 +250,4 @@ const report = {
 };
 await mkdir('artifacts/stress', { recursive: true });
 await writeFile('artifacts/stress/relay.json', JSON.stringify(report, null, 2) + '\n');
-console.log(JSON.stringify(report, null, 2));
+process.stdout.write(JSON.stringify(report, null, 2) + '\n');
