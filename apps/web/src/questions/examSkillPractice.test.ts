@@ -82,6 +82,9 @@ it('selects explicitly authored applicable techniques independently of knowledge
       unseenCount: 2,
     },
   ]);
+  expect(
+    await listExamSkillPractice(course.id, Date.now(), { scopeConceptIds: [], scopeLessonIds: [] }),
+  ).toMatchObject([{ techniqueId: 'graph-interpretation', availableCount: 1 }]);
   const first = (await startExamSkillPractice(course.id, 'graph-interpretation')).attempt;
   const second = (await startExamSkillPractice(course.id, 'graph-interpretation')).attempt;
   expect(new Set([first.receipt.questions[0].id, second.receipt.questions[0].id])).toEqual(

@@ -132,19 +132,7 @@ export function useCourseStudyFlow(
                 lessonCardsById.get(node.id)?.some((card) => card.conceptId === item.conceptId),
             )?.id
           : undefined,
-      }))
-      .sort(
-        (a, b) =>
-          Number(Boolean(b.unfinished)) - Number(Boolean(a.unfinished)) ||
-          Number(
-            Boolean(b.needs?.knowledge || b.needs?.techniques.length || b.needs?.application),
-          ) -
-            Number(
-              Boolean(a.needs?.knowledge || a.needs?.techniques.length || a.needs?.application),
-            ) ||
-          (a.examDate ?? Infinity) - (b.examDate ?? Infinity) ||
-          (a.conceptId ?? '').localeCompare(b.conceptId ?? ''),
-      );
+      }));
     snapshot.questionOptions.push(
       ...(records.examSkillPractice ?? [])
         .filter((item) => (item.studyEligible && item.unseenCount > 0) || item.unfinished)
@@ -154,6 +142,17 @@ export function useCourseStudyFlow(
           examDate: item.examDate,
           unfinished: item.unfinished,
         })),
+    );
+    snapshot.questionOptions.sort(
+      (a, b) =>
+        Number(Boolean(b.unfinished)) - Number(Boolean(a.unfinished)) ||
+        Number(Boolean(b.needs?.knowledge || b.needs?.techniques.length || b.needs?.application)) -
+          Number(
+            Boolean(a.needs?.knowledge || a.needs?.techniques.length || a.needs?.application),
+          ) ||
+        (a.examDate ?? Infinity) - (b.examDate ?? Infinity) ||
+        Number(Boolean(a.techniqueId)) - Number(Boolean(b.techniqueId)) ||
+        (a.conceptId ?? a.techniqueId ?? '').localeCompare(b.conceptId ?? b.techniqueId ?? ''),
     );
     snapshot.questionPracticeExhausted =
       Boolean(

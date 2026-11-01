@@ -59,7 +59,17 @@ export async function listExamSkillPractice(
   const params = course?.fsrsParameters ?? defaultFsrsParameters();
   const sim = { fsrs: makeEngine(params), decay: decayOf(params), expectedGrade: 3 as const };
   return SCIENCE_TECHNIQUES.flatMap(({ id, name }) => {
-    const available = data.candidates.filter((row) => techniques(row.question).includes(id));
+    const scope = options.scopeConceptIds ? new Set(options.scopeConceptIds) : undefined;
+    const available = data.candidates.filter(
+      (row) =>
+        techniques(row.question).includes(id) &&
+        withinQuestionStudyScope(row.question, scope) &&
+        (options.scopeLessonIds === undefined ||
+          answers(row.question).some(({ answer }) =>
+            answer.allocations.some((allocation) => allocation.targetConceptIds.length > 0),
+          ) ||
+          row.set.lessonIds.every((lessonId) => options.scopeLessonIds?.includes(lessonId))),
+    );
     if (!available.length) return [];
     const schedule = schedules.get(id) ?? emptyQuestionSchedule();
     const examDate = techniqueExamDate(
