@@ -4,12 +4,6 @@ import {
   listConcepts as repoListConcepts,
 } from '../../../questions/repository';
 import { McpToolException, type ToolResult } from '../../types';
-export {
-  authoredTextSchema,
-  conceptIdSchema,
-  courseIdSchema,
-  questionIdSchema,
-} from '../../contracts/questions';
 
 export function ok<T>(data: T): ToolResult<T> {
   return { data };

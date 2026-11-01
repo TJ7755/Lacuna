@@ -7,8 +7,6 @@ import {
 import type { ToolDefinition } from '../../types';
 import { ok, validation } from './shared';
 
-export { requiredGeneratorConfigSchema } from '../../contracts/questions';
-
 export function auditGenerator(request: {
   generatorKey: string;
   generatorVersion: number;
