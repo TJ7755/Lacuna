@@ -1,3 +1,6 @@
+import type { QuestionScheduleState } from '@lacuna/core/questions/types';
+import { MS_PER_DAY, defaultFsrsParameters } from '@lacuna/core/fsrs/params';
+import { emptyQuestionSchedule, scheduleQuestionReview } from './scheduler';
 import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD, type JevDiagnosis } from '@lacuna/core/jev/diagnosis';
 import type { JevAssessmentReceipt } from '@lacuna/core/jev/provenance';
 import {
@@ -120,6 +123,8 @@ function eligibleDiagnosticObservations(
 export function deriveConceptPracticeNeeds(
   attempts: readonly QuestionSetAttemptRecord[],
   sets: readonly QuestionSetRecord[],
+  now = Date.now(),
+  schedules: ReadonlyMap<TechniqueId, QuestionScheduleState> = new Map(),
 ): ReadonlyMap<string, ConceptPracticeNeeds> {
   const needs = new Map<string, ConceptPracticeNeeds>();
   for (const [conceptId, observations] of eligibleDiagnosticObservations(attempts, sets)) {
@@ -133,6 +138,26 @@ export function deriveConceptPracticeNeeds(
       )
         categories.set(observation.categoryId, observation);
     }
+    if (now !== undefined)
+      for (const [category, observation] of categories) {
+        if (!observation.gap) continue;
+        const schedule =
+          category !== 'knowledge' && category !== 'application'
+            ? schedules.get(category)
+            : undefined;
+        const fallback = scheduleQuestionReview(
+          emptyQuestionSchedule(),
+          3,
+          defaultFsrsParameters(),
+          observation.at,
+        ).schedule;
+        const interval = Math.max(
+          MS_PER_DAY,
+          (schedule?.due ?? fallback.due ?? observation.at + MS_PER_DAY) -
+            (schedule?.lastReviewed ?? observation.at),
+        );
+        if (now >= observation.at + interval) categories.delete(category);
+      }
     needs.set(conceptId, {
       knowledge: categories.get('knowledge')?.gap === true,
       application: categories.get('application')?.gap === true,

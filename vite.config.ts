@@ -233,7 +233,7 @@ export default defineConfig({
             },
             {
               name: 'course-sequencing',
-              test: /[\\/]src[\\/]course[\\/](?:lessonOrder|assessmentCoverage)\.ts$/,
+              test: /[\\/]src[\\/](?:course[\\/](?:lessonOrder|assessmentCoverage)|fsrs[\\/]examDate)\.ts$/,
             },
             {
               name: 'web-runtime',
