@@ -26,8 +26,10 @@ export function questionStudyEligible(
     lastPracticeAt >= sittingStartedAt
   )
     return false;
+  const ordinaryDue = timing.ordinaryDue ?? (schedule.due === null || schedule.due <= now);
+  if (ordinaryDue) return true;
   if (!isUpcomingExamDate(examDate, now) || examDate - now > windowDays * MS_PER_DAY) {
-    return timing.ordinaryDue ?? (schedule.due === null || schedule.due <= now);
+    return false;
   }
   return worthwhileAssessmentPractice(schedule, examDate, now, windowDays, ctx);
 }

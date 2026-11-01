@@ -71,3 +71,16 @@ it('retains ordinary due regardless of target while keeping new unassessed work 
     }),
   ).toBe(true);
 });
+
+it('retains diagnostic ordinary-due overrides inside the urgency window', () => {
+  const timing = { now, examDate: now + MS_PER_DAY, windowDays: 14, ctx, ordinaryDue: true };
+  const aboveTarget = { ...memory, stability: 1000 };
+  expect(questionStudyEligible(aboveTarget, timing)).toBe(true);
+  expect(
+    questionStudyEligible(aboveTarget, {
+      ...timing,
+      lastPracticeAt: now,
+      sittingStartedAt: now,
+    }),
+  ).toBe(false);
+});
