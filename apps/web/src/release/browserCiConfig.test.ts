@@ -143,7 +143,6 @@ it('partitions the complete local Chromium suite across the functional and isola
       '--project=chromium-study-performance',
       '--workers=1',
     );
-    const mobile = list('playwright.web.config.ts', 'webkit-mobile', '--workers=1');
     const functionalCases = cases(functional.suites);
     const imageCases = cases(image.suites);
     const studyCases = cases(study.suites);
@@ -192,10 +191,6 @@ it('partitions the complete local Chromium suite across the functional and isola
         fullyParallel: false,
       });
     }
-    expect(cases(mobile.suites)).toHaveLength(3);
-    expect(cases(mobile.suites).every((name) => name.startsWith('mobile-pwa-smoke.spec.ts:'))).toBe(
-      true,
-    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

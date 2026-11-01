@@ -1,0 +1,60 @@
+name: Nightly release
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: nightly-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      # Fail rather than skip: a green run without credentials would hide that no release was made.
+      - name: Choose the release credentials
+        id: credentials
+        env:
+          APP_ID: ${{ secrets.RELEASE_APP_ID }}
+          APP_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [ -n "$APP_ID" ] && [ -n "$APP_KEY" ]; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$APP_ID" ] || [ -n "$APP_KEY" ]; then
+            echo "::warning::Only one of RELEASE_APP_ID and RELEASE_APP_PRIVATE_KEY is set; the app is not used."
+          fi
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Set RELEASE_APP_ID and RELEASE_APP_PRIVATE_KEY, or RELEASE_TOKEN; see docs/maintenance/release.md."
+            exit 1
+          fi
+
+      - id: app
+        if: steps.credentials.outputs.app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN }}
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.1'
+          package-manager-cache: false
+
+      - name: Dispatch a nightly for changed master
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN }}
+        run: node scripts/nightly-release.mjs

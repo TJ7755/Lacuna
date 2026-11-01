@@ -1,0 +1,93 @@
+name: Vercel production
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      project:
+        description: Project to deploy from master
+        required: true
+        type: choice
+        options: [lacuna, lacuna-relay, lacuna-gaps, lacuna-library]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: vercel-production
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    if: vars.VERCEL_DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.scope.outputs.matrix }}
+      changed: ${{ steps.scope.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select changed projects
+        id: scope
+        env:
+          BEFORE: ${{ github.event.before }}
+          DEPLOY_PROJECT: ${{ inputs.project }}
+        run: |
+          if [ -n "$DEPLOY_PROJECT" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            node scripts/vercel-deploy-scope.mjs < /dev/null >> "$GITHUB_OUTPUT"
+          else
+            git diff --no-ext-diff --name-status -z -M "$BEFORE" "$GITHUB_SHA" -- | node scripts/vercel-deploy-scope.mjs >> "$GITHUB_OUTPUT"
+          fi
+
+  verify:
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.1'
+          package-manager-cache: false
+      - name: Require CI and Security for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/deploy-prerequisites.mjs
+
+  deploy:
+    needs: [changes, verify]
+    if: needs.changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    env:
+      VERCEL_ORG_ID: team_S5RiOYfmJn9YcDscx8KDbUFf
+      VERCEL_PROJECT_ID: ${{ matrix.id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.1'
+          package-manager-cache: false
+      - uses: ./.github/actions/setup-bun
+      - name: Install pinned Vercel CLI
+        run: bun install --global vercel@65.0.0
+      - name: Pull production settings
+        run: vercel pull --yes --environment=production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Build on GitHub
+        run: vercel build --prod
+      - name: Deploy prebuilt production output
+        run: vercel deploy --prebuilt --prod
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

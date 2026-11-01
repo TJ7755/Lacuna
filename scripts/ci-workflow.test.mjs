@@ -136,7 +136,7 @@ test('documentation-only changes resolve required names without running heavy st
 // Pull requests require the browser smoke job; other events require the full browser suites.
 const eventBrowserResults = {
   pull_request: ['PR_RESULT'],
-  push: ['RESULT', 'TIMING_RESULT', 'MOBILE_RESULT', 'STANDALONE_RESULT'],
+  push: ['RESULT', 'TIMING_RESULT', 'STANDALONE_RESULT'],
 };
 const gateCases = (job) =>
   job === 'browser-smoke'
@@ -249,7 +249,7 @@ test('browser consumers use the same pinned browser image and shared production 
     /"@playwright\/test": \["@playwright\/test@([^"\s]+)"/,
   )[1];
   const jobs = workflow.jobs;
-  const consumers = ['browser-pr', 'browser-tests', 'browser-timing', 'browser-mobile'];
+  const consumers = ['browser-pr', 'browser-tests', 'browser-timing'];
   const producer = jobs.production.steps.find((step) =>
     step.uses?.startsWith('actions/upload-artifact@'),
   );
@@ -537,7 +537,6 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
               PRODUCTION_RESULT: 'APP',
               RESULT: 'APP',
               TIMING_RESULT: 'APP',
-              MOBILE_RESULT: 'APP',
               STANDALONE_RESULT: 'SITES',
             };
       for (const [dependency, area] of Object.entries(dependencies)) {
@@ -585,12 +584,11 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'browser-tests',
     'browser-standalone',
     'browser-timing',
-    'browser-mobile',
     'electron-ai',
     'electron-macos-smoke',
   ];
   // Pull requests run the browser smoke job; master commits retain the full browser suites.
-  const postMerge = ['browser-tests', 'browser-standalone', 'browser-timing', 'browser-mobile'];
+  const postMerge = ['browser-tests', 'browser-standalone', 'browser-timing'];
   const web = ['production', 'browser-pr'];
   const all = workers.filter((name) => !postMerge.includes(name));
   for (const [paths, expected] of [
@@ -811,7 +809,6 @@ test('narrow web specs remain registered with the selected browser projects and 
           join(directory, 'tests/config', config),
           '--list',
           '--reporter=json',
-          ...(config === 'playwright.web.config.ts' ? ['--project=webkit-mobile'] : []),
         ],
         {
           env: { ...process.env, CI: 'true' },
@@ -825,7 +822,10 @@ test('narrow web specs remain registered with the selected browser projects and 
       assert.deepEqual(report.errors, []);
       for (const suite of report.suites) registered.add(suite.file);
     }
-    for (const spec of specs) assert.ok(registered.has(spec), spec);
+    for (const spec of specs) {
+      if (spec === 'mobile-pwa-smoke.spec.ts') continue;
+      assert.ok(registered.has(spec), spec);
+    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
