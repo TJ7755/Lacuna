@@ -188,6 +188,11 @@ export default defineConfig({
               includeDependenciesRecursively: false,
             },
             {
+              name: 'database',
+              test: /[\\/]src[\\/](?:utils[\\/]id|db[\\/](?:database|schema|schemaFloor|assessmentMigration|backingDecks|schedulingUnitBuilder|reviewHistory|mutationStamp|preMigrationSnapshots))\.ts$/,
+              includeDependenciesRecursively: false,
+            },
+            {
               name: 'study-entrance',
               test: /[\\/]src[\\/]components[\\/]learn[\\/](?:StudyEntrance|StudyFlowMessage)\.tsx$/,
               includeDependenciesRecursively: false,
