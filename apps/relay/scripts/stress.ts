@@ -30,7 +30,7 @@ async function request(
   name: string,
   path: string,
   method = 'GET',
-  body?: BodyInit,
+  body?: RequestInit['body'],
   headers: Record<string, string> = {},
   expected = [200],
 ) {
