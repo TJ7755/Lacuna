@@ -6,6 +6,8 @@ import { pathToFileURL } from 'node:url';
 import { setTimeout } from 'node:timers/promises';
 import { releaseAssets, verifyAssets } from './release-assets.mjs';
 
+import { matchesReleaseVersion } from './nightly-release.mjs';
+
 const repository = 'TJ7755/Lacuna';
 const root = resolve(import.meta.dirname, '..');
 
@@ -174,9 +176,8 @@ export async function main(args, { execute, reportDirectory, env = process.env }
 
   git('fetch', '--no-tags', remote, `refs/tags/${tag}`);
   sha = git('rev-parse', 'FETCH_HEAD^{commit}');
-  assert.equal(
-    JSON.parse(git('show', `${sha}:package.json`)).version,
-    version,
+  assert(
+    matchesReleaseVersion(JSON.parse(git('show', `${sha}:package.json`)).version, version),
     'Tag/package version mismatch',
   );
   await waitFor(['ci', 'security'], [branch]);

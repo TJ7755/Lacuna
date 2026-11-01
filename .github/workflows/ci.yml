@@ -188,7 +188,7 @@ jobs:
 
       - name: Verify CI predicates and browser diagnostics without browsers
         if: matrix.shard == 1
-        run: node --test scripts/vercel-ignore-build.test.mjs scripts/local-checks.test.mjs scripts/security-runtime.test.mjs scripts/ci-workflow.test.mjs scripts/ci-recover-stale-jobs.test.mjs scripts/browser-ci-summary.test.mjs scripts/ci-browser-shards.test.mjs scripts/ci-wait-for-production.test.mjs
+        run: node --test scripts/vercel-deploy-scope.test.mjs scripts/deploy-prerequisites.test.mjs scripts/nightly-release.test.mjs scripts/local-checks.test.mjs scripts/security-runtime.test.mjs scripts/ci-workflow.test.mjs scripts/ci-recover-stale-jobs.test.mjs scripts/browser-ci-summary.test.mjs scripts/ci-browser-shards.test.mjs scripts/ci-wait-for-production.test.mjs
       # Each shard spends most of its time importing modules and creating DOM
       # environments, so use every runner core rather than the one-worker local default.
       - run: bun run test:ci:unit -- --shard=${{ matrix.shard }}/8 --maxWorkers=100%
@@ -446,7 +446,7 @@ jobs:
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
 
   # Pull requests run the release smoke spec and any changed web specs. The full
-  # functional, timing, mobile and standalone suites gate master commits.
+  # functional, timing and standalone suites gate master commits.
   browser-pr:
     needs: changes
     if: github.event_name == 'pull_request' && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
@@ -617,58 +617,10 @@ jobs:
             test-results/
           if-no-files-found: ignore
 
-  browser-mobile:
-    needs: changes
-    if: github.event_name != 'pull_request' && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
-    runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
-      options: --ipc=host
-    env:
-      LACUNA_BROWSER_PREBUILT: 'true'
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: '24.22.1'
-          package-manager-cache: false
-      - uses: ./.github/actions/setup-bun
-      - run: bun install --frozen-lockfile
-      - name: Require the current production gate
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: node scripts/ci-wait-for-production.mjs
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: browser-web-dist
-          path: dist/
-      - run: bun run test:e2e:web -- --project=webkit-mobile --workers=1
-      - name: Preserve mobile browser test evidence
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: browser-results-webkit-mobile
-          path: |
-            playwright-report/
-            test-results/
-          if-no-files-found: ignore
-
   # Keep the existing branch-protection check name and require every browser job.
   browser-smoke:
     name: browser-smoke
-    needs:
-      [
-        changes,
-        production,
-        browser-pr,
-        browser-tests,
-        browser-timing,
-        browser-mobile,
-        browser-standalone,
-      ]
+    needs: [changes, production, browser-pr, browser-tests, browser-timing, browser-standalone]
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
@@ -685,7 +637,6 @@ jobs:
           PRODUCTION_RESULT: ${{ needs.production.result }}
           PR_RESULT: ${{ needs.browser-pr.result }}
           RESULT: ${{ needs.browser-tests.result }}
-          MOBILE_RESULT: ${{ needs.browser-mobile.result }}
           TIMING_RESULT: ${{ needs.browser-timing.result }}
           STANDALONE_RESULT: ${{ needs.browser-standalone.result }}
         run: |
@@ -705,10 +656,9 @@ jobs:
             echo "- Functional shards: $RESULT"
             echo "- Isolated timing projects: $TIMING_RESULT"
             echo "- Standalone sites: $STANDALONE_RESULT"
-            echo "- Mobile WebKit: $MOBILE_RESULT"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$MOBILE_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$FULL_WEB"; then
-            echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT timing=$TIMING_RESULT mobile=$MOBILE_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
+          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$FULL_WEB"; then
+            echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT timing=$TIMING_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
             exit 1
           fi
 

@@ -19,7 +19,7 @@ betas are supported; macOS packages are a separate local step, not an implicit p
 The [weekly workflow](../../.github/workflows/weekly-release.yml) uses
 [weekly-release](../../scripts/weekly-release.mjs) to propose eligible patch releases, which
 publish Windows and Linux only; weekly releases need no macOS build. It prefers a GitHub App with
-Contents and Pull requests write permissions, installed on this repository, through the
+Contents, Pull requests and Actions write permissions, installed on this repository, through the
 `RELEASE_APP_ID`/`RELEASE_APP_PRIVATE_KEY` secrets. Without them it uses `RELEASE_TOKEN`,
 currently the maintainer's `gh` token (maintainer decision, 24 October 2026), so release pull
 requests appear as the maintainer's. That token stops working if it is revoked, including when
@@ -102,3 +102,28 @@ Action pins use full commit SHAs with version comments. For updates, verify the 
 and peeled commit for annotated tags, run the existing workflow policy checks, and retain native
 build/draft verification where release actions change. GitHub enforcement is inspected through
 [repository governance](governance.md), not inferred from this file.
+
+## Nightly desktop updates
+
+The [nightly workflow](../../.github/workflows/nightly-release.yml) runs at 02:17 UTC and may also
+be dispatched manually. It reads master and skips when its commit matches the most recently
+published release, including pre-releases. Drafts do not suppress retries. It uses the existing
+`release` environment's App credentials or `RELEASE_TOKEN`. The App needs Actions write permission
+for workflow dispatch; a fine-grained token needs Contents and Actions write permissions. After
+changing App permissions, approve the installation's updated permissions. Protection and signing policy remain
+unchanged. The normal release workflow still requires successful CI and Security on the exact
+source commit before building, attesting, verifying and publishing Windows/Linux packages.
+
+Nightlies use the next patch's `beta.nightly.<Unix-seconds>.<Actions-run-ID>` prerelease, for example
+`0.2.19-beta.nightly.1793498400.12345` from master at `0.2.18`. They change the package version only
+in the build workspace; tags point to the original master commit. Numeric identifiers order runs,
+and the Thursday `0.2.19` named release sorts after all its nightlies. The `beta` channel prefix is
+intentional: electron-updater treats custom channels as isolated, which would strand users on a
+`nightly` channel instead of returning them to the weekly release. All desktop users retain
+`allowPrerelease = true`. Builds emit the existing `latest.yml`/`latest-linux.yml` metadata; the
+GitHub updater falls back to these for prereleases. Nightly notes identify the source commit;
+Thursday's existing weekly workflow still opens the version/changelog pull request.
+
+No release environment settings or credentials need changing. Actual feed discovery and silent
+installation still need post-publication evidence from a disposable installation; CI cannot
+establish discovery from a private draft.

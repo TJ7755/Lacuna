@@ -226,7 +226,7 @@ describe('release configuration', () => {
       'bun run test:coverage',
       'bun run test:coverage:recovery',
       'bun run release:scenario',
-      'bun run test:e2e:web',
+      'bunx playwright test -c tests/config/playwright.web.ci.config.ts',
       'bun run build:assets',
       'bun run perf:check',
     ]) {
