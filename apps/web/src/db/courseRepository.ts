@@ -1,4 +1,3 @@
-import { replayCards } from '../sync/snapshotReviews';
 import { mergeReviewHistoryEntries } from '@lacuna/core/db/reviewHistory';
 import Dexie from 'dexie';
 import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
@@ -167,6 +166,10 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
     ) {
       throw new Error('Course examDate and timeZone are derived, read-only assessment values.');
     }
+    const replay =
+      changes.fsrsParameters === undefined
+        ? undefined
+        : await Dexie.waitFor(import('../sync/snapshotReviews'));
     await db.transaction(
       'rw',
       [
@@ -219,7 +222,7 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
           const units = await db.schedulingUnits.where('courseId').equals(id).toArray();
           const course = await db.courses.get(id);
           if (course) {
-            const replayed = replayCards(cards, history, units, [course]);
+            const replayed = replay!.replayCards(cards, history, units, [course]);
             await db.cards.bulkPut(
               replayed.map((card, index) =>
                 stampUpdatedAt({ ...card, history: cards[index].history }),
