@@ -17,7 +17,6 @@ const packagedRuntimeDependencies = ['electron-log', 'electron-updater'] as cons
 const buildOnlyDependencies = [
   '@ai-sdk/gateway',
   '@ai-sdk/google',
-  '@types/dompurify',
   '@ai-sdk/openai-compatible',
   '@modelcontextprotocol/client',
   '@modelcontextprotocol/server',

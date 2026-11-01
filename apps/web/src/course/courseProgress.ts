@@ -7,7 +7,7 @@ import type {
   LessonCardLink,
 } from '@lacuna/core/db/types';
 import { dueReviewPool, isAvailable } from '../fsrs/eligibility';
-import { makeExamDateContext, resolveCardExamDate } from '../fsrs/examDate';
+import { isUpcomingExamDate, makeExamDateContext, resolveCardExamDate } from '../fsrs/examDate';
 import { progressValue } from '../fsrs/objective';
 import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import { predictedRetrievabilityAtHorizon } from '../fsrs/progress';
@@ -93,6 +93,8 @@ export interface CourseProgressReport {
   study: { reviewed: number; taughtNotReviewed: number; notStarted: number };
   dueCards: number;
   forecast: ProgressForecast;
+  /** Informational overlapping assessments; never used for scheduling or headline totals. */
+  laterPapers: PaperForecast[];
   /** Partitions `cards`: lesson rows, then an `OTHER_CARDS_ROW` when any card has no row. */
   lessons: LessonProgress[];
 }
@@ -104,7 +106,7 @@ export function selectableAssessments(
   now: number,
 ): CourseAssessment[] {
   const rank = (assessment: CourseAssessment) =>
-    assessment.examDate === undefined ? 1 : assessment.examDate >= now ? 0 : 2;
+    assessment.examDate === undefined ? 1 : isUpcomingExamDate(assessment.examDate, now) ? 0 : 2;
   return assessments
     .filter((assessment) => assessment.courseId === courseId)
     .sort(
@@ -161,7 +163,7 @@ export function buildCourseProgress(input: CourseProgressInput): CourseProgressR
   );
   // A selected assessment has one horizon; nearer papers and lesson overrides cannot replace it.
   const target =
-    assessment?.examDate !== undefined && assessment.examDate >= now
+    assessment && isUpcomingExamDate(assessment.examDate, now)
       ? { ...course, examDate: assessment.examDate }
       : undefined;
   const measure = (cards: Card[]) =>
@@ -193,7 +195,7 @@ export function buildCourseProgress(input: CourseProgressInput): CourseProgressR
   else {
     const dates = counted.map((card) => {
       const date = resolveCardExamDate(card, examDateContext, now);
-      return date !== undefined && date >= now ? date : undefined;
+      return isUpcomingExamDate(date, now) ? date : undefined;
     });
     const shared = new Set(dates);
     const sharedDate = shared.size === 1 ? dates[0] : undefined;
@@ -250,7 +252,38 @@ export function buildCourseProgress(input: CourseProgressInput): CourseProgressR
   const other = counted.filter((card) => !rowIds.has(card.primaryLessonId ?? ''));
   if (other.length > 0) lessons.push(row(OTHER_CARDS_ROW, 'Other cards', other));
 
+  const laterPapers: PaperForecast[] = assessment
+    ? []
+    : selectableAssessments(input.assessments, course.id, now).flatMap((paper) => {
+        const date = paper.examDate;
+        if (!isUpcomingExamDate(date, now)) return [];
+        const covered = resolveAssessmentCoverage(
+          paper,
+          courseLessons,
+          courseCards,
+          input.links,
+          courseLessonOrderPreference(course),
+          { course, concepts: input.concepts },
+        );
+        const ids = new Set(covered.cards.map((card) => card.id));
+        const cards = counted.filter((card) => ids.has(card.id));
+        const overlapsEarlierTarget = cards.some((card) => {
+          const nearest = resolveCardExamDate(card, examDateContext, now);
+          return nearest !== undefined && nearest < date;
+        });
+        if (!overlapsEarlierTarget) return [];
+        return [
+          {
+            date,
+            assessments: [{ id: paper.id, name: paper.name }],
+            cardCount: cards.length,
+            value: progressValue(cards, { ...course, examDate: date }, now),
+          },
+        ];
+      });
+
   return {
+    laterPapers,
     ...(assessment ? { assessment } : {}),
     ...((assessment?.timeZone ?? course.timeZone)
       ? { timeZone: assessment?.timeZone ?? course.timeZone }

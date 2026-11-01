@@ -21,14 +21,9 @@ import type {
   PracticeNode,
   Sequence,
   SchedulingUnitRecord,
-  UserPerformance,
 } from '@lacuna/core/db/types';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
-import {
-  findBackingDeck,
-  findBackingDecks,
-  performanceForCourseBackingDecks,
-} from '../db/backingDecks';
+import { findBackingDeck, findBackingDecks } from '../db/backingDecks';
 
 export {
   computeCourseSummaries,
@@ -147,17 +142,6 @@ export function useCourseBankBackingDecks(
         ? findBackingDecks(courseId, lessonIds)
         : new Map<string | null, SchedulingUnitRecord>(),
     [courseId, lessonIds],
-  );
-}
-
-/** Load calibration rows for a course without exposing its backing deck ids. */
-export function useCoursePerformance(
-  courseId: string | undefined,
-  cards: Card[] | undefined,
-): UserPerformance[] | undefined {
-  return useLiveQuery(
-    () => (courseId && cards ? performanceForCourseBackingDecks(courseId, cards) : []),
-    [courseId, cards],
   );
 }
 
