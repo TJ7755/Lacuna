@@ -123,7 +123,7 @@ it('rejects fractional, negative and excessive criterion marks', () => {
     expect(deriveTechniqueSchedules([attempt('a', marks)]).size).toBe(0);
 });
 
-it('exam timing never postpones ordinary due and remains fixed as time advances', () => {
+it('exam timing preserves ordinary due even when it falls after the assessment', () => {
   for (let days = 1; days <= 100; days++) {
     const now = 1_800_000_000_000;
     const exam = now + days * 86_400_000;
@@ -135,10 +135,10 @@ it('exam timing never postpones ordinary due and remains fixed as time advances'
     };
     const first = techniquePracticeStatus(schedule, defaultFsrsParameters(), now, exam);
     const later = techniquePracticeStatus(schedule, defaultFsrsParameters(), now + 1, exam);
-    expect(first.dueAt).toBe(exam - 1);
+    expect(first.dueAt).toBe(schedule.due);
     expect(later.dueAt).toBe(first.dueAt);
     expect(techniquePracticeStatus(schedule, defaultFsrsParameters(), exam - 1, exam).due).toBe(
-      true,
+      false,
     );
     expect(techniquePracticeStatus(schedule, defaultFsrsParameters(), exam, exam).dueAt).toBe(
       schedule.due,

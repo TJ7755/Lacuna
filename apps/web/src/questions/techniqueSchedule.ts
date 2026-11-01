@@ -141,11 +141,6 @@ export function techniquePracticeStatus(
           decayOf(params),
         )
       : null;
-  const dueAt =
-    schedule.due === null
-      ? null
-      : target === undefined
-        ? schedule.due
-        : Math.min(schedule.due, target - 1);
+  const dueAt = schedule.due;
   return { dueAt, due: dueAt === null || dueAt <= now, estimatedRecall };
 }
