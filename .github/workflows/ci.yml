@@ -126,6 +126,11 @@ jobs:
         if: needs.changes.outputs.lint != 'false'
       - run: bun run lint
         if: needs.changes.outputs.lint != 'false'
+      - name: Check unused code and files
+        if: needs.changes.outputs.lint != 'false'
+        run: |
+          bun run knip
+          bun run knip:files
 
   test-unit:
     needs: changes
