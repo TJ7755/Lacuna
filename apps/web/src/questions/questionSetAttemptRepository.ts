@@ -346,7 +346,7 @@ export function completeQuestionSetAttempt(
           questionId: question.id,
           recordedAt: now,
           source: 'self-mark',
-          gradeMappingVersion: 'full-good-otherwise-again-v1',
+          gradeMappingVersion: 'fractional-hard-v2',
           schedulerVersion: QUESTION_SCHEDULER_VERSION,
           schedulerConfig: clone(schedulerConfig),
           schedulerConfigFingerprint: questionSchedulerConfigFingerprint(schedulerConfig),

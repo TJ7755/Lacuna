@@ -101,6 +101,32 @@ it('freezes first self marks, replays partial credit once and excludes undo and 
   expect(deriveConceptApplicationSchedules([attempt]).get(concept.id)).toBeUndefined();
   attempt = await completeQuestionSetAttempt(attempt.id, attempt.revisionId, 230);
   expect(deriveConceptApplicationSchedules([attempt]).get(concept.id)?.reps).toBe(1);
+  const snapshot = attempt.firstMarking![0];
+  const allocation = attempt.receipt.questions[0].answer!.allocations[0];
+  for (let available = 1; available <= 12; available++) {
+    for (let earned = 0; earned <= available; earned++) {
+      const evidence = structuredClone(attempt);
+      evidence.receipt.questions[0].answer!.allocations[0].maxMarks = available;
+      evidence.firstMarking![0].decisions[0] = {
+        allocationId: allocation.id,
+        status: 'awarded',
+        marks: earned,
+      };
+      for (const version of ['full-good-otherwise-again-v1', 'fractional-hard-v2'] as const) {
+        evidence.firstMarking![0].gradeMappingVersion = version;
+        const grade =
+          earned === available
+            ? 3
+            : version === 'fractional-hard-v2' && earned / available >= 0.6
+              ? 2
+              : 1;
+        expect(deriveConceptApplicationSchedules([evidence]).get(concept.id)).toEqual(
+          scheduleQuestionReview(emptyQuestionSchedule(), grade, snapshot.schedulerConfig, 230)
+            .schedule,
+        );
+      }
+    }
+  }
   const first = structuredClone(attempt);
   expect(deriveConceptApplicationSchedules([attempt]).get(concept.id)).toEqual(
     scheduleQuestionReview(

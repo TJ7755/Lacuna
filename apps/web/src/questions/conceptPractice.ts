@@ -1,3 +1,4 @@
+import { gradeQuestionAttempt } from './grading';
 import {
   answers,
   practiceContext,
@@ -71,7 +72,18 @@ export function deriveConceptApplicationSchedules(
       }
     for (const [conceptId, total] of totals) {
       if (total.unresolved || !total.available) continue;
-      const grade = total.earned === total.available ? 3 : 1;
+      const grade =
+        snapshot.gradeMappingVersion === 'fractional-hard-v2'
+          ? gradeQuestionAttempt({
+              marksEarned: total.earned,
+              marksAvailable: total.available,
+              hasUndeterminedVerdict: total.unresolved,
+              hasUnresolvedDispute: false,
+            })
+          : total.earned === total.available
+            ? 3
+            : 1;
+      if (grade === null) continue;
       schedules.set(
         conceptId,
         scheduleQuestionReview(

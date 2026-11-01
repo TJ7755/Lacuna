@@ -481,7 +481,7 @@ describe('first application evidence', () => {
       250,
     );
     expect(attempt.firstMarking).toEqual(first);
-    expect(attempt.firstMarking?.[0].gradeMappingVersion).toBe('full-good-otherwise-again-v1');
+    expect(attempt.firstMarking?.[0].gradeMappingVersion).toBe('fractional-hard-v2');
   });
 });
 
