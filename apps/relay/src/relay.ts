@@ -1,6 +1,13 @@
+import { readBoundedBytes } from './requestBody.js';
+import {
+  matchRelayRoute,
+  matchRelayInvalidSlot,
+  relayResponseSchema,
+  relayLimits,
+} from '@lacuna/protocol/relay/index';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canonicalEtag, type BlobStore } from './store.js';
-import { handleAiRelayRoute, matchAiRelayPath, type AiRelayRoute } from './aiRelay.js';
+import { handleAiRelayRoute, type AiRelayRoute } from './aiRelay.js';
 import { handleAiMaintenanceRoute } from './aiMaintenance.js';
 import { consumeRatePermit } from './rateLimit.js';
 import { CHANNEL_TTL_MS } from './channelMaintenance.js';
@@ -20,7 +27,7 @@ export { CHANNEL_TTL_MS } from './channelMaintenance.js';
 export { EMPTY_SHARE_ETAG, SHARE_META_MAX_BYTES, SHARE_PAYLOAD_MAX_BYTES } from './shares.js';
 
 /** Snapshots carry inline assets. Arc 8 §13.3: start at 25 MB and name the cap. */
-export const MAX_BODY_BYTES = 25 * 1024 * 1024;
+export const MAX_BODY_BYTES = relayLimits.channel;
 
 /**
  * A channel with no write for this long is treated as gone. Matches the app's
@@ -44,7 +51,7 @@ export interface HandlerOptions {
 export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
   const now = opts.now ?? Date.now;
 
-  return async function handle(request: Request): Promise<Response> {
+  async function dispatch(request: Request): Promise<Response> {
     try {
       if (request.method === 'OPTIONS') {
         return empty(204, request);
@@ -98,6 +105,38 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
       }
     } catch (err) {
       console.error('relay internal error:', describeInternalError(err));
+      return json(500, request, { error: 'internal error' });
+    }
+  }
+
+  return async function handle(request: Request): Promise<Response> {
+    if (request.method === 'OPTIONS') return empty(204, request);
+    const matched = matchRelayRoute(request.url, request.method);
+    if (!matched) {
+      if (matchRelayInvalidSlot(request.url)) return json(400, request, { error: 'invalid slot' });
+      return json(matchRelayRoute(request.url) ? 405 : 404, request, {
+        error: matchRelayRoute(request.url) ? 'method not allowed' : 'not found',
+      });
+    }
+    const response = await dispatch(request);
+    for (const [name, value] of corsHeaders(request)) {
+      if (!response.headers.has(name)) response.headers.set(name, value);
+    }
+    const schema = relayResponseSchema(matched.endpoint, response.status);
+    if (!schema) return json(500, request, { error: 'internal error' });
+    try {
+      const contentType = response.headers.get('Content-Type') ?? '';
+      const body: unknown =
+        response.body === null || response.status === 204 || request.method === 'HEAD'
+          ? null
+          : contentType.includes('application/json')
+            ? await response.clone().json()
+            : response.headers.get('Content-Type') === null
+              ? null
+              : new Uint8Array(await response.clone().arrayBuffer());
+      schema.parse(body);
+      return response;
+    } catch {
       return json(500, request, { error: 'internal error' });
     }
   };
@@ -244,7 +283,8 @@ async function putSlot(
     return json(400, request, { error: 'invalid if-match' });
   }
 
-  const body = new Uint8Array(await request.arrayBuffer());
+  const body = await readBoundedBytes(request, MAX_BODY_BYTES);
+  if (body === null) return json(413, request, { error: 'payload too large' });
   if (body.byteLength !== length) {
     return json(400, request, { error: 'length mismatch' });
   }
@@ -335,91 +375,11 @@ export type Route =
   | { kind: 'share-slot-invalid' }
   | { kind: 'unknown' };
 
-/**
- * Resolve a relay route from the URL the handler actually sees.
- *
- * After a Vercel rewrite to `/api`, unused path params become query params
- * (`/c/:id/:slot` → `/api?id=&slot=`). We also stamp `__path` on every rewrite
- * so `POST /channel` is not lost when the pathname collapses to `/api`. If
- * `request.url` still carries the original public path, the pathname wins.
- */
+/** Only the function entry point accepts the catch-all rewrite hint. */
 export function parseRoute(url: string): Route {
-  const parsed = new URL(url, 'http://relay.invalid');
-  const fromPath = matchPath(parsed.pathname);
-  if (fromPath) return fromPath;
-
-  const hinted = parsed.searchParams.get('__path');
-  if (hinted) {
-    const fromHint = matchPath(hinted);
-    if (fromHint) return fromHint;
-  }
-
-  return matchRewriteQuery(parsed.searchParams) ?? { kind: 'unknown' };
-}
-
-function matchPath(pathname: string): Route | null {
-  const parts = pathname.split('/').filter(Boolean);
-  if (parts[0] === 'api') parts.shift();
-
-  if (parts.length === 2 && parts[0] === 'ai' && parts[1] === 'maintenance') {
-    return { kind: 'ai-maintenance' };
-  }
-
-  const aiRoute = matchAiRelayPath(parts);
-  if (aiRoute) return aiRoute;
-
-  if (parts[0] === 'insights' && (parts.length === 3 || parts.length === 4)) {
-    return {
-      kind: 'insight',
-      id: parts[1]!,
-      day: parts[2]!,
-      ...(parts[3] ? { slotId: parts[3] } : {}),
-    };
-  }
-
-  if (parts.length === 1 && parts[0] === 'channel') return { kind: 'channel' };
-  if (parts.length === 2 && parts[0] === 'c' && parts[1] !== undefined) {
-    return { kind: 'item', id: parts[1] };
-  }
-  if (parts.length === 3 && parts[0] === 'c' && parts[1] !== undefined && parts[2] !== undefined) {
-    const slot = parts[2];
-    if (slot === 'state' || slot === 'keybag') {
-      return { kind: 'slot', id: parts[1], slot };
-    }
-    return { kind: 'slot-invalid' };
-  }
-  if (parts.length === 2 && parts[0] === 'class-codes')
-    return { kind: 'class-code', code: parts[1]! };
-  if (parts.length === 3 && parts[0] === 'shares' && parts[2] === 'class-code')
-    return { kind: 'share-class-code', id: parts[1]! };
-  if (parts.length === 1 && parts[0] === 'shares') return { kind: 'share-collection' };
-  if (parts.length === 2 && parts[0] === 'shares' && parts[1] !== undefined) {
-    return { kind: 'share-item', id: parts[1] };
-  }
-  if (
-    parts.length === 3 &&
-    parts[0] === 'shares' &&
-    parts[1] !== undefined &&
-    parts[2] !== undefined
-  ) {
-    const slot = parts[2];
-    if (slot === 'payload' || slot === 'meta' || slot === 'teacher') {
-      return { kind: 'share-slot', id: parts[1], slot };
-    }
-    return { kind: 'share-slot-invalid' };
-  }
-  return null;
-}
-
-function matchRewriteQuery(params: URLSearchParams): Route | null {
-  const id = params.get('id');
-  const slot = params.get('slot');
-  if (id && slot) {
-    if (slot === 'state' || slot === 'keybag') return { kind: 'slot', id, slot };
-    return { kind: 'slot-invalid' };
-  }
-  if (id) return { kind: 'item', id };
-  return null;
+  const match = matchRelayRoute(url);
+  if (!match) return { kind: matchRelayInvalidSlot(url) ?? 'unknown' };
+  return { kind: match.definition.kind, ...match.params } as Route;
 }
 
 /** Operator-facing error text. Strips hex that could be a channel id or token. */

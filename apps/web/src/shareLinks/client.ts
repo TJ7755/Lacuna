@@ -1,3 +1,4 @@
+import { createRelayClient, shareRoutes as relayRoutes } from '@lacuna/protocol/relay/index';
 import { z } from 'zod';
 import { decodeSharePayload, SHARE_PAYLOAD_MAX_BYTES } from './payloadCodec';
 import { normaliseRelayUrl } from '../sync/relay';
@@ -61,10 +62,7 @@ export function parseShareManifest(bytes: Uint8Array): ShareManifest {
   return parsed.data;
 }
 
-const MintResponseSchema = z.object({
-  shareId: z.string().regex(SHARE_ID_RE),
-  writeToken: z.string().regex(WRITE_TOKEN_RE),
-});
+const MintResponseSchema = relayRoutes.shareCreate.responses[201];
 
 /**
  * Accept a bare share code or a full `/#/s/<code>` link and return the code.
@@ -109,12 +107,17 @@ function requireFetch(fetchImpl?: typeof fetch): typeof fetch {
  */
 async function shareFetch(
   fetcher: typeof fetch,
-  url: string,
-  init: RequestInit,
+  relayUrl: string,
+  endpoint: keyof typeof relayRoutes,
+  params: Record<string, string>,
+  init: Omit<RequestInit, 'method'>,
   operation: ShareLinkOperation,
 ): Promise<Response> {
   try {
-    return await fetcher(url, init);
+    return await createRelayClient(relayRoutes, relayUrl, fetcher).request(endpoint, {
+      ...init,
+      params,
+    });
   } catch {
     throw new ShareLinkError(
       'Could not reach the share link service. Check your connection and try again.',
@@ -154,9 +157,10 @@ export async function mintShare(
   const fetcher = requireFetch(fetchImpl);
   const response = await shareFetch(
     fetcher,
-    `${relayFor(relayUrl, 'mint')}/shares`,
+    relayFor(relayUrl, 'mint'),
+    'shareCreate',
+    {},
     {
-      method: 'POST',
       signal: options.signal,
       body: options.body ? JSON.stringify(options.body) : undefined,
     },
@@ -204,9 +208,10 @@ export async function verifyShareOwner(options: VerifyShareOwnerOptions): Promis
   try {
     const response = await shareFetch(
       fetcher,
-      `${relay}/shares/${shareId}`,
+      relay,
+      'shareVerify',
+      { id: shareId },
       {
-        method: 'HEAD',
         headers: { Authorization: `Bearer ${writeToken}` },
         signal: controller.signal,
         cache: 'no-store',
@@ -250,9 +255,10 @@ export async function putShareBytes(
   const writeToken = requireWriteToken(options.writeToken, 'publish');
   const response = await shareFetch(
     fetcher,
-    `${relay}/shares/${shareId}/${slot}`,
+    relay,
+    'shareWrite',
+    { id: shareId, slot },
     {
-      method: 'PUT',
       signal: options.signal,
       credentials: 'omit',
       redirect: 'error',
@@ -295,9 +301,10 @@ export async function getShareBytes(
   const shareId = requireShareId(options.shareId, 'fetch');
   const response = await shareFetch(
     fetcher,
-    `${relay}/shares/${shareId}/${options.slot}`,
+    relay,
+    'shareRead',
+    { id: shareId, slot: options.slot },
     {
-      method: 'GET',
       signal: options.signal,
       credentials: 'omit',
       redirect: 'error',
@@ -370,9 +377,10 @@ export async function deleteShare(options: DeleteShareOptions): Promise<void> {
   const writeToken = requireWriteToken(options.writeToken, 'remove');
   const response = await shareFetch(
     fetcher,
-    `${relay}/shares/${shareId}`,
+    relay,
+    'shareDelete',
+    { id: shareId },
     {
-      method: 'DELETE',
       headers: { Authorization: `Bearer ${writeToken}` },
     },
     'remove',
@@ -422,9 +430,10 @@ export async function requestShortClassCode(options: VerifyShareOwnerOptions): P
   const token = requireWriteToken(options.writeToken, 'publish');
   const response = await shareFetch(
     requireFetch(options.fetchImpl),
-    `${relay}/shares/${shareId}/class-code`,
+    relay,
+    'classCodeCreate',
+    { id: shareId },
     {
-      method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       signal: options.signal,
       cache: 'no-store',
@@ -434,9 +443,7 @@ export async function requestShortClassCode(options: VerifyShareOwnerOptions): P
     'publish',
   );
   if (!response.ok) throw await shareHttpError('publish', response);
-  const parsed = z
-    .object({ code: z.string().regex(/^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{8}$/) })
-    .parse(await response.json());
+  const parsed = relayRoutes.classCodeCreate.responses[201].parse(await response.json());
   return parsed.code;
 }
 
@@ -455,9 +462,10 @@ export async function resolveShortClassCode(options: {
     }
     response = await shareFetch(
       requireFetch(options.fetchImpl),
-      `${relay}/class-codes/${encodeURIComponent(options.code)}`,
+      relay,
+      'classCodeLookup',
+      { code: options.code },
       {
-        method: 'GET',
         signal: options.signal,
         cache: 'no-store',
         credentials: 'omit',
@@ -475,5 +483,5 @@ export async function resolveShortClassCode(options: {
       { operation: 'fetch', status: response.status },
     );
   if (!response.ok) throw await shareHttpError('fetch', response);
-  return z.object({ shareId: z.string().regex(SHARE_ID_RE) }).parse(await response.json()).shareId;
+  return relayRoutes.classCodeLookup.responses[200].parse(await response.json()).shareId;
 }

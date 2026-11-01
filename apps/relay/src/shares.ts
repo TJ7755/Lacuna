@@ -1,3 +1,5 @@
+import { readBoundedBytes } from './requestBody.js';
+import { relayLimits, relayRoutes } from '@lacuna/protocol/relay/index';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canonicalEtag, type BlobStore } from './store.js';
 import { consumeRatePermit } from './rateLimit.js';
@@ -23,10 +25,10 @@ export type ShareSlot = 'payload' | 'meta' | 'teacher';
  * Vercel's ~4.5 MB inbound ceiling. Larger courses keep the manual
  * `.lacuna` file path; the 413 message says so.
  */
-export const SHARE_PAYLOAD_MAX_BYTES = 4 * 1024 * 1024;
+export const SHARE_PAYLOAD_MAX_BYTES = relayLimits.sharePayload;
 
 /** The polling manifest is a small JSON document, never course content. */
-export const SHARE_META_MAX_BYTES = 8 * 1024;
+export const SHARE_META_MAX_BYTES = relayLimits.shareMeta;
 
 export const SHORT_CLASS_CODE_RE = /^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{8}$/;
 const CLASS_CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -77,7 +79,7 @@ export async function handleShareMint(
         const { done, value } = await reader.read();
         if (done) break;
         length += value.byteLength;
-        if (length > 128) {
+        if (length > relayLimits.shareCreate) {
           await reader.cancel();
           return shareJson(413, request, { error: 'payload too large' });
         }
@@ -89,7 +91,7 @@ export async function handleShareMint(
     }
     if (length > 0) {
       try {
-        const parsed: unknown = JSON.parse(body);
+        const parsed: unknown = relayRoutes.shareCreate.request.parse(JSON.parse(body));
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
         const fields = parsed as Record<string, unknown>;
         if (
@@ -348,7 +350,14 @@ async function putShareSlot(
     return shareJson(400, request, { error: 'invalid if-match' });
   }
 
-  const body = new Uint8Array(await request.arrayBuffer());
+  const body = await readBoundedBytes(request, cap);
+  if (body === null)
+    return shareJson(413, request, {
+      error:
+        slot === 'payload'
+          ? 'Course file too large for a share link. Send the course file instead.'
+          : 'payload too large',
+    });
   if (body.byteLength !== length) {
     return shareJson(400, request, { error: 'length mismatch' });
   }

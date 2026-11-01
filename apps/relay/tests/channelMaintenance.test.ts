@@ -9,7 +9,7 @@ const secret = 'cron-secret';
 
 function maintenance(handle: ReturnType<typeof createHandler>): Promise<Response> {
   return handle(
-    new Request('https://relay.example/api/ai/maintenance', {
+    new Request('https://relay.example/ai/maintenance', {
       headers: { Authorization: `Bearer ${secret}` },
     }),
   );

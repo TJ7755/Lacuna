@@ -550,12 +550,11 @@ describe('encrypted insight mailbox', () => {
     expect((await f.read()).status).toBe(404);
   });
 
-  it('matches public, API-alias and rewritten paths', () => {
+  it('matches public and rewritten paths', () => {
     const id = 'a'.repeat(32),
       slotId = 'b'.repeat(32);
     for (const path of [
       `/insights/${id}/${day}/${slotId}`,
-      `/api/insights/${id}/${day}/${slotId}`,
       `/api?__path=/insights/${id}/${day}/${slotId}`,
     ]) {
       expect(parseRoute(`https://relay.example${path}`)).toEqual({

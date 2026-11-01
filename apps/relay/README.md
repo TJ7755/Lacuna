@@ -1,7 +1,18 @@
 # Lacuna relay
 
 Opaque storage for device sync, AI sessions, course sharing and Gaps reports.
-Read the [request handler](src/relay.ts) and its tests for runtime behaviour.
+Protocol v2 is defined in the [shared route table](../../packages/protocol/src/relay.ts).
+The [single request handler](src/relay.ts) dispatches that contract to the existing storage operations.
+Requests, responses, errors, status codes and limits are shared with the typed client.
+
+This is a hard cut: `/api` aliases and deprecated pairing-code paths are removed.
+Deploy the relay and web client together when service resumes; edge desktop clients update silently.
+There is no v1 compatibility handler or separate ciphertext format negotiation. Existing opaque
+ciphertext and Blob compare-and-swap generations remain unchanged.
+
+Canonical paths cover `/channel`, `/c/:id/:slot`, `/shares`, `/class-codes`, `/insights`
+and `/ai`. One catch-all rewrite preserves the path for routing in code. The authenticated
+nightly cron calls `/ai/maintenance` at 03:00 UTC.
 
 Production is available at `https://relay.getlacuna.app`, attached to the existing
 `lacuna-relay` Vercel project and its private Blob store. The legacy
@@ -33,13 +44,13 @@ continue to serve it. The app preview's Vercel Deployment Protection is separate
 ## AI terminal pairing
 
 The short-lived pairing code is a capability; do not paste it into an untrusted task.
-Read [the AI handler](src/aiRelay.ts) and [the client transport](../src/ai/session/relay.ts)
+Read [the AI handler](src/aiRelay.ts) and [the client transport](../web/src/ai/relayClient.ts)
 for pairing and mailbox behaviour.
 
 ## Daily maintenance
 
 Enable the Gaps mailbox with `RELAY_INSIGHTS_ENABLED=1`; the reporting boundaries and operator
-procedures are in [Gaps](../docs/gaps.md).
+procedures are in [Gaps](../../docs/gaps.md).
 
 ## Environment
 
@@ -80,7 +91,7 @@ present, and falls back to the token when they are not. Do not commit a token.
 
 This directory is its own Vercel project. Do not deploy it as part of the app.
 
-1. Create a new Vercel project with **root directory** `relay`.
+1. Create a new Vercel project with **root directory** `apps/relay`.
 2. Create a private Blob store in the `lhr1` region and connect it to that
    project.
 3. Leave the runtime as Node.js on Fluid Compute. Do not set `runtime = 'edge'`.
@@ -95,8 +106,8 @@ This directory is its own Vercel project. Do not deploy it as part of the app.
    Minting works without it via the public path.
 7. Deploy.
 
-Deploy source-linked share support in the relay before deploying the link-based Gaps UI.
-An older relay cannot create a usable linked class; the Gaps client rejects that response.
+Deploy protocol v2 clients and relay together. Deployments are paused until approximately
+22 November 2026; this change does not deploy or alter Vercel settings.
 
 The app sets `Cross-Origin-Embedder-Policy: require-corp`, so the relay must
 stay on a separate origin. CORS and `Cross-Origin-Resource-Policy: cross-origin`
@@ -175,5 +186,5 @@ is accepted. Do not add client-direct Blob upload here.
 ## Official library publication retention
 
 The operator procedure, withdrawal and expired-link recovery are in
-[the library procedure](../docs/library.md#official-publication-retention). Catalogue changes do
+[the library procedure](../../docs/library.md#official-publication-retention). Catalogue changes do
 not silently change the relay's retention authority.

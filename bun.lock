@@ -199,6 +199,9 @@
     "packages/protocol": {
       "name": "@lacuna/protocol",
       "version": "0.0.0",
+      "dependencies": {
+        "zod": "4.6.7",
+      },
     },
     "tooling/handwriting-maths": {
       "name": "lacuna-handwriting-maths",

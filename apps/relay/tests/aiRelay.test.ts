@@ -58,10 +58,15 @@ describe('AI relay', () => {
       browserToken: string;
     };
     const claimed = await handle(
-      jsonRequest(`/ai/s/${browser.pairingCode}/claim`, 'POST', {
-        terminalPublicKey: TERMINAL_PUBLIC_KEY,
-        client: { name: 'OpenCode' },
-      }),
+      jsonRequest(
+        '/ai/claim',
+        'POST',
+        {
+          terminalPublicKey: TERMINAL_PUBLIC_KEY,
+          client: { name: 'OpenCode' },
+        },
+        { 'X-Lacuna-Pairing-Code': browser.pairingCode },
+      ),
     );
     const terminal = (await claimed.json()) as { terminalToken: string };
     const mailbox = new Uint8Array([1, 2, 3]);
@@ -114,10 +119,15 @@ describe('AI relay', () => {
 
     now += 2_000;
     const claimed = await handle(
-      jsonRequest(`/ai/s/${browser.pairingCode}/claim`, 'POST', {
-        terminalPublicKey: TERMINAL_PUBLIC_KEY,
-        client: { name: 'OpenCode', version: '1.2.3' },
-      }),
+      jsonRequest(
+        '/ai/claim',
+        'POST',
+        {
+          terminalPublicKey: TERMINAL_PUBLIC_KEY,
+          client: { name: 'OpenCode', version: '1.2.3' },
+        },
+        { 'X-Lacuna-Pairing-Code': browser.pairingCode },
+      ),
     );
     expect(claimed.status).toBe(200);
     const terminal = (await claimed.json()) as {
@@ -144,10 +154,15 @@ describe('AI relay', () => {
     });
 
     const secondClaim = await handle(
-      jsonRequest(`/ai/s/${browser.sessionId}/claim`, 'POST', {
-        terminalPublicKey: base64Url(new Uint8Array(65).fill(3)),
-        client: { name: 'Other agent' },
-      }),
+      jsonRequest(
+        '/ai/claim',
+        'POST',
+        {
+          terminalPublicKey: base64Url(new Uint8Array(65).fill(3)),
+          client: { name: 'Other agent' },
+        },
+        { 'X-Lacuna-Pairing-Code': browser.sessionId },
+      ),
     );
     expect(secondClaim.status).toBe(409);
   });
@@ -491,10 +506,15 @@ describe('AI relay', () => {
 
     now += AI_PAIRING_TTL_MS;
     const expiredClaim = await handle(
-      jsonRequest(`/ai/s/${browser.sessionId}/claim`, 'POST', {
-        terminalPublicKey: TERMINAL_PUBLIC_KEY,
-        client: { name: 'OpenCode' },
-      }),
+      jsonRequest(
+        '/ai/claim',
+        'POST',
+        {
+          terminalPublicKey: TERMINAL_PUBLIC_KEY,
+          client: { name: 'OpenCode' },
+        },
+        { 'X-Lacuna-Pairing-Code': browser.sessionId },
+      ),
     );
     expect(expiredClaim.status).toBe(404);
 
