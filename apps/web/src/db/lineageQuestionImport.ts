@@ -10,7 +10,7 @@ import type {
 import { db } from './schema';
 import { jsonValuesEqual } from '@lacuna/core/db/lineageDiff';
 import type { LineagePayload } from './lineageImportModel';
-import type { SharePayloadV3 } from './share';
+import type { SharePayloadV6 } from './share';
 import type { LineageIdMapping } from '@lacuna/core/db/types';
 
 export async function upsertLineageConcepts(
@@ -18,7 +18,6 @@ export async function upsertLineageConcepts(
   courseId: string,
   mapping: LineageIdMapping,
 ): Promise<string[]> {
-  if (payload.v === 2) return [];
   const previousIds = [...(mapping.conceptIds ?? [])];
   const conceptIds = new Set(payload.concepts.map((concept) => concept.id));
   if (conceptIds.size !== payload.concepts.length) {
@@ -76,7 +75,7 @@ function lessonIdFromShareIndex(payload: LineagePayload, index: number | undefin
 
 function questionSemanticChanged(
   existing: QuestionDefinition,
-  incoming: SharePayloadV3['questions'][number],
+  incoming: SharePayloadV6['questions'][number],
   existingSet: QuestionConceptSet | undefined,
 ): boolean {
   if (existingSet?.targetConceptIds[0] !== incoming.t) return true;
@@ -113,7 +112,6 @@ export async function applyLineageQuestions(
   courseId: string,
   mapping: LineageIdMapping,
 ): Promise<void> {
-  if (payload.v === 2) return;
   const previousIds = new Set(mapping.questionIds ?? []);
   const incomingIds = new Set(payload.questions.map((question) => question.id));
   const removedIds = [...previousIds].filter((id) => !incomingIds.has(id));

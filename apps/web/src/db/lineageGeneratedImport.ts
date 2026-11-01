@@ -72,9 +72,7 @@ export async function applyOcclusions(
       primaryLessonId: typeof shareOcc.pl === 'number' ? lessonIdByIndex(shareOcc.pl) : null,
       name: shareOcc.n || 'Shared occlusion',
       assetHash: shareOcc.ah,
-      ...(payload.v !== 2 && shareOcc.regionConceptIds
-        ? { regionConceptIds: shareOcc.regionConceptIds }
-        : {}),
+      ...(shareOcc.regionConceptIds ? { regionConceptIds: shareOcc.regionConceptIds } : {}),
       regions: shareOcc.regions.map((region) => ({
         id: region.id,
         role: region.r === 1 ? ('feature' as const) : ('label' as const),

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import type { SharePayloadV2 } from './share';
+import type { SharePayloadV6 } from './share';
 import { findCourseForLineage, importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
 import { detachCourse, setCourseAutoAcceptUpdates } from './courseRepository';
 import { exportDatabase, importBackup } from './portability';
@@ -9,20 +9,32 @@ import { mergeSnapshots } from '../sync/mergeSnapshots';
 import { manualMerge } from '../sync/manualMerge';
 import { recordReview } from './repository';
 
-function payload(revision = 1): SharePayloadV2 {
+function payload(revision = 1): SharePayloadV6 {
   return {
-    v: 2,
+    v: 6,
+    concepts: [{ id: 'preferences-concept', n: 'Question' }],
+    questions: [],
+    questionSets: [],
+    questionSetPracticeNodes: [],
     by: 'Teacher',
     at: revision * 1000,
     li: 'preferences-lineage',
     rv: revision,
-    course: { n: 'Biology', o: 0, c: 1000, um: 'open' },
+    course: { n: 'Biology', o: 0, c: 1000, sm: 1, um: 'open' },
     lessons: [
       {
         i: 'preferences-lesson',
         n: revision === 1 ? 'Cells' : 'Cells revised',
         notes: [{ oi: 'preferences-note', n: 'Intro', c: `Teacher notes ${revision}` }],
-        cards: [{ id: 'preferences-card', k: 0, f: 'Question', b: `Answer ${revision}` }],
+        cards: [
+          {
+            id: 'preferences-card',
+            co: 'preferences-concept',
+            k: 0,
+            f: 'Question',
+            b: `Answer ${revision}`,
+          },
+        ],
       },
     ],
   };

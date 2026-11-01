@@ -1,22 +1,33 @@
-import type {
-  ShareLesson,
-  SharePayloadV2,
-  SharePayloadV3,
-  SharePayloadV4,
-  SharePayloadV5,
-} from './share';
+import type { ShareLesson, SharePayloadV6 } from './share';
 
-export function coursePayload(overrides: Partial<SharePayloadV2> = {}): SharePayloadV2 {
-  return {
-    v: 2,
+export function coursePayload(overrides: Partial<SharePayloadV6> = {}): SharePayloadV6 {
+  const payload: SharePayloadV6 = {
+    v: 6,
     by: 'Ms Teacher',
     at: 1000,
     course: { n: 'Biology', o: 0, c: 1000, e: 2_000_000, um: 'open' },
     lessons: [],
+    concepts: [],
+    questions: [],
+    questionSets: [],
+    questionSetPracticeNodes: [],
     li: 'lineage-1',
     rv: 1,
     ...overrides,
   };
+  const concepts = [...payload.concepts];
+  const completeCard = (card: ShareLesson['cards'][number], index: number) => {
+    const co = card.co ?? `concept-${card.id ?? index}`;
+    if (!concepts.some((concept) => concept.id === co)) concepts.push({ id: co, n: card.f });
+    return { ...card, co };
+  };
+  payload.lessons = payload.lessons.map((lesson, lessonIndex) => ({
+    ...lesson,
+    cards: lesson.cards.map((card, index) => completeCard(card, lessonIndex * 1000 + index)),
+  }));
+  if (payload.bankCards) payload.bankCards = payload.bankCards.map(completeCard);
+  payload.concepts = concepts;
+  return payload;
 }
 
 export function lessonOne(overrides: Partial<ShareLesson> = {}): ShareLesson {
@@ -29,9 +40,9 @@ export function lessonOne(overrides: Partial<ShareLesson> = {}): ShareLesson {
   };
 }
 
-export function questionPayloadV3(overrides: Partial<SharePayloadV3> = {}): SharePayloadV3 {
+export function questionPayloadV3(overrides: Partial<SharePayloadV6> = {}): SharePayloadV6 {
   return {
-    v: 3,
+    v: 6,
     by: 'Ms Teacher',
     at: 1000,
     course: { n: 'Mathematics', o: 0, c: 1000, e: 2_000_000, um: 'open' },
@@ -58,6 +69,8 @@ export function questionPayloadV3(overrides: Partial<SharePayloadV3> = {}): Shar
         ],
       },
     ],
+    questionSets: [],
+    questionSetPracticeNodes: [],
     concepts: [{ id: 'concept-quadratic', n: 'Solve a quadratic equation' }],
     questions: [
       {
@@ -78,11 +91,11 @@ export function questionPayloadV3(overrides: Partial<SharePayloadV3> = {}): Shar
   };
 }
 
-export function questionPayloadV4(overrides: Partial<SharePayloadV4> = {}): SharePayloadV4 {
+export function questionPayloadV4(overrides: Partial<SharePayloadV6> = {}): SharePayloadV6 {
   const base = questionPayloadV3();
   return {
     ...base,
-    v: 4,
+    v: 6,
     questionSets: [
       {
         id: 'set-quadratics',
@@ -121,10 +134,10 @@ export function questionPayloadV4(overrides: Partial<SharePayloadV4> = {}): Shar
   };
 }
 
-export function questionPayloadV5(overrides: Partial<SharePayloadV5> = {}): SharePayloadV5 {
+export function questionPayloadV5(overrides: Partial<SharePayloadV6> = {}): SharePayloadV6 {
   return {
     ...questionPayloadV4(),
-    v: 5,
+    v: 6,
     questionSetPracticeNodes: [
       {
         id: 'activity-quadratics',

@@ -121,7 +121,7 @@ export interface CourseDistributedCopy {
   locked: boolean;
   /** Whether non-conflicting updates apply automatically on re-import. Defaults to true for new shared-course imports. */
   autoAcceptUpdates: boolean;
-  /** Optional "shared by" display string, mirrors `by` in `SharePayloadV2`. */
+  /** Optional "shared by" display string, mirrors `by` in `SharePayloadV6`. */
   sourceLabel?: string;
   /** The teacher's course details as last imported. A later update applies a changed
    *  detail only where the local value still matches this, so a learner's own rename

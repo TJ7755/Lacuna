@@ -43,7 +43,11 @@ it('runs the operator command against a local relay and emits a verified public 
       version: 1,
       assets: [],
       payload: {
-        v: 2,
+        v: 6,
+        concepts: [],
+        questions: [],
+        questionSets: [],
+        questionSetPracticeNodes: [],
         at: 1000,
         li: 'cli-lineage',
         rv: 1,
