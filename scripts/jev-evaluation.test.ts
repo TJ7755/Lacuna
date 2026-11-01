@@ -337,7 +337,7 @@ test('blind CLI export is reproducible, unmarked and refuses overwrites; incompl
   expect(invalid.stderr).not.toContain('UNEXPECTED_NETWORK');
 });
 
-test('refuses paid execution without an enforceable monetary bound even with valid references', () => {
+test('runs capped paid execution with synthetic transport and valid references', () => {
   const directory = temporary();
   expect(
     spawnSync('bun', ['scripts/jev-evaluation.ts', 'export', '--out', join(directory, 'packet')], {
@@ -421,6 +421,8 @@ test('refuses paid execution without an enforceable monetary bound even with val
         '--labels',
         external ? freshLabelPath : join(directory, 'labels.json'),
         '--allow-paid',
+        '--cap-usd',
+        '1',
         '--out',
         output,
       ],
@@ -431,8 +433,12 @@ test('refuses paid execution without an enforceable monetary bound even with val
       },
     );
     expect(run.stderr).not.toContain('synthetic-test-value');
-    expect(run.status).toBe(1);
-    expect(() => readFileSync(join(output, 'results.json'))).toThrow();
+    expect(run.status).toBe(mode.includes('success') ? 0 : 1);
+    const result = JSON.parse(readFileSync(join(output, 'results.json'), 'utf8'));
+    expect(result.spend.accountedNanoUsd).toBeLessThanOrEqual(result.spend.capNanoUsd);
+    expect(result.spend.ledger.length).toBe(
+      mode.includes('success') ? (external ? 2 : cases.length) : 1,
+    );
   }
 });
 

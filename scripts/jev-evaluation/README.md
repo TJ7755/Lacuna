@@ -1,8 +1,6 @@
 # Bounded Jev evaluation
 
-Offline preparation and disabled paid execution for [#905](https://github.com/TJ7755/Lacuna/issues/905).
-**Policy v5 refuses every paid call before reading credentials or creating results because a reliable
-monetary ceiling is not enforceable.** Offline export and independent reference validation remain available.
+Manual capped live evaluation for [#905](https://github.com/TJ7755/Lacuna/issues/905).
 Independent reference marking and future bounded live results supply the evaluation evidence. Results
 record agreement against those references, source versions, uncertainty, usage and latency.
 The default pack contains four original 4BI1 temperature/pH explanation questions and six evaluation-written
@@ -77,15 +75,23 @@ invalid marks/categories, missing provenance and unresolved disagreements before
 
 ## Live operation
 
-Paid execution is disabled pending an enforceable monetary bound. The retained `live` command
-validates independent references and then refuses before reading credentials, creating output or
-calling the provider. A request count, restricted key or operator attestation does not enable it.
+Run manually with `live --pack PACK --labels LABELS.json --allow-paid --cap-usd 0.01 --out NEW_DIRECTORY`.
+The workflow accepts the chosen pack, reference file, USD cap and optional tighter request count.
+Configure the repository Actions secret `TYPESAFE_API_KEY`; never commit a key. No scheduled or
+pull-request event runs paid evaluation.
 
-The retained execution implementation describes a future bounded run: sequential calls, no retries,
-30 seconds per request, no redirects or local cache, stopping on the first failure. It would save
-results before and after requests and preserve unknown usage after interruptions. These behaviours
-do not constitute a monetary cap. Enabling paid execution requires a provider budget integration
-or reviewed worst-case pricing and enforceable token bounds, with new validation and review.
+Policy v6 pins exact model IDs jev-1.14.0 and jev-1.13.0 at $42 per billion input tokens,
+with free output, reviewed against https://docs.typesafe.ai/models on 1 November 2026.
+The models.md web fetch failed; the current model page agrees with the historical evidence.
+Without the long-context header the provider enforces 64,000 input tokens per request.
+The actual fetch boundary rejects that header case-insensitively and rejects unknown models.
+This is a provider context bound, not a claim that bytes equal tokens. Each request reserves
+$0.002688. The request budget is floor(cap / worst request cost), further limited by pack and
+request count. Reservations are never recycled. The ledger records projected spend, reported
+actual spend and conservative accounted spend; absent or invalid usage retains the full reservation.
+A provider pricing or context-contract change requires review before running again.
+Calls remain sequential with no retries, redirects or local cache, stopping at the first failure.
+Results are saved before and after each request, including the reservation before transport.
 
 Reports preserve reviews, disagreement/adjudication, provider decisions and per-case failures. They
 show mark agreement/overmarks/undermarks among decided marks, errors over one mark, abstention,

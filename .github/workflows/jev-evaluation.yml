@@ -12,10 +12,16 @@ on:
         required: true
         type: string
       max_requests:
-        description: Maximum paid requests (not a guaranteed currency limit)
+        description: Additional maximum paid request count
         required: true
         type: number
         default: 1
+
+      cap_usd:
+        description: Hard USD spend cap for this run
+        required: true
+        type: string
+        default: '0.01'
 
 permissions:
   contents: read
@@ -45,13 +51,15 @@ jobs:
         run: |
           test -f "$LABELS"
           bun scripts/jev-evaluation.ts validate --pack "$PACK" --labels "$LABELS"
-      - name: Verify paid execution refuses without monetary bounds
+      - name: Run capped live evaluation
         env:
           PACK: ${{ inputs.pack }}
           LABELS: ${{ inputs.labels }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          CAP_USD: ${{ inputs.cap_usd }}
           MAX_REQUESTS: ${{ inputs.max_requests }}
         run: |
-          bun scripts/jev-evaluation.ts live --pack "$PACK" --labels "$LABELS" --max-requests "$MAX_REQUESTS" --allow-paid --out artifacts/jev-manual
+          bun scripts/jev-evaluation.ts live --pack "$PACK" --labels "$LABELS" --cap-usd "$CAP_USD" --max-requests "$MAX_REQUESTS" --allow-paid --out artifacts/jev-manual
       - name: Publish report summary
         if: always()
         run: |
@@ -60,8 +68,8 @@ jobs:
           const path = 'artifacts/jev-manual/results.json';
           const heading = '# Jev evaluation report\n\nManual evidence only; agreement is reported and does not gate access or releases.\n\n';
           const body = existsSync(path)
-            ? '```json\n' + JSON.stringify(JSON.parse(readFileSync(path, 'utf8')).report, null, 2) + '\n```\n'
-            : 'No result file was produced. Policy v5 disables paid execution until reliable monetary bounds exist. Check reference validation and runner errors.\n';
+            ? '```json\n' + JSON.stringify((({ report, spend }) => ({ report, spend }))(JSON.parse(readFileSync(path, 'utf8'))), null, 2) + '\n```\n'
+            : 'No result file was produced. No paid request is authorised without valid references and a sufficient currency cap. Check reference validation and runner errors.\n';
           appendFileSync(process.env.GITHUB_STEP_SUMMARY, heading + body);
           JS
       - name: Retain evaluation evidence

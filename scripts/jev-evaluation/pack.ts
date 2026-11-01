@@ -107,7 +107,7 @@ export const cases: EvaluationCase[] = questions
   .sort((a, b) => a.id.localeCompare(b.id));
 
 export const policy = {
-  version: 5,
+  version: 6,
   scope:
     'Original typed allocations across declared subjects, 1–9 marks; evaluation-written answers, never learner data. Science diagnosis only.',
   provenance:

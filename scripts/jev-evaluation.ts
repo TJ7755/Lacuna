@@ -1,3 +1,4 @@
+import { budget, guardRequest, worstCost, pricing } from './jev-evaluation/spend';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve, join, dirname } from 'node:path';
@@ -21,6 +22,7 @@ const root = new URL('../', import.meta.url);
 const sources = [
   'scripts/jev-evaluation.ts',
   'scripts/jev-evaluation/pack.ts',
+  'scripts/jev-evaluation/spend.ts',
   'scripts/jev-evaluation/labels.ts',
   'scripts/jev-evaluation/metrics.ts',
   'scripts/jev-evaluation/README.md',
@@ -114,6 +116,7 @@ async function main(args: string[]) {
       labels: { type: 'string' },
       cases: { type: 'string' },
       pack: { type: 'string' },
+      'cap-usd': { type: 'string' },
       'max-requests': { type: 'string' },
       'allow-paid': { type: 'boolean' },
     },
@@ -201,10 +204,8 @@ async function main(args: string[]) {
     values['max-requests'] === undefined ? evaluationCases.length : Number(values['max-requests']);
   if (!Number.isSafeInteger(maxRequests) || maxRequests < 1 || maxRequests > evaluationCases.length)
     throw new Error('Invalid paid request cap.');
-  if (executionPolicy.version >= 5)
-    throw new Error(
-      'Paid evaluation is disabled: a reliable monetary spend bound is not yet enforceable. A request cap does not bound currency spend.',
-    );
+  const spend = budget(values['cap-usd'], JEV_MODEL, maxRequests);
+  const ledger: { id: string; reservedNanoUsd: number; actualNanoUsd: number | null }[] = [];
   const key = process.env.TYPESAFE_API_KEY;
   if (!key) throw new Error('TYPESAFE_API_KEY must be supplied through the environment.');
   await createOutput(values.out);
@@ -244,6 +245,16 @@ async function main(args: string[]) {
             ),
           ),
         ],
+        spend: {
+          ...spend,
+          pricing,
+          ledger,
+          projectedNanoUsd: spend.requests * worstCost,
+          accountedNanoUsd: ledger.reduce(
+            (sum, row) => sum + (row.actualNanoUsd ?? row.reservedNanoUsd),
+            0,
+          ),
+        },
         observations,
         report: summarise(labels.gold, observations, evaluationCases),
         scope:
@@ -254,10 +265,12 @@ async function main(args: string[]) {
   };
   await save();
   for (const [index, item] of evaluationCases.entries()) {
-    if (index >= maxRequests) break;
+    if (index >= spend.requests) break;
     if (index >= executionPolicy.maximumRequests)
       throw new Error('Evaluation request bound exceeded.');
     const observation = observations[index];
+    const entry = { id: item.id, reservedNanoUsd: worstCost, actualNanoUsd: null as number | null };
+    ledger.push(entry);
     observation.status = 'in-flight';
     await save();
     const started = performance.now();
@@ -265,6 +278,7 @@ async function main(args: string[]) {
     let attempted = false;
     const fetcher: typeof fetch = async (url, options) => {
       if (attempted) throw new Error('Retries are forbidden.');
+      guardRequest(url, options, JEV_MODEL);
       attempted = true;
       const response = await fetch(url, { ...options, cache: 'no-store', redirect: 'error' });
       observation.httpStatus = response.status;
@@ -316,6 +330,8 @@ async function main(args: string[]) {
             ? 'http-error'
             : 'invalid-response';
     }
+    if (observation.inputTokens !== null && observation.inputTokens <= 64000)
+      entry.actualNanoUsd = observation.inputTokens * 42;
     observation.latencyMs = Math.round(performance.now() - started);
     await save();
     if (observation.status !== 'ok') break;
