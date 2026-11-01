@@ -69,7 +69,10 @@ function fixture(overrides = {}, jobOverrides = {}) {
 test('recovers the observed completed-workflow/running-job mismatch using one real rerun', () => {
   for (const path of ['.github/workflows/ci.yml', '.github/workflows/security.yml']) {
     const f = fixture({ path });
-    assert.match(f.invoke(), /Requested one retry/);
+    assert.match(
+      f.invoke({ definition: parse(readFileSync(path, 'utf8')) }),
+      /Requested one retry/,
+    );
     assert.deepEqual(f.writes, ['repos/owner/repo/actions/jobs/7/rerun']);
   }
 });

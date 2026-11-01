@@ -71,7 +71,9 @@ export function recoverStaleJob({ repository, runId, api = githubApi }) {
   if (file.encoding !== 'base64')
     throw new Error('Cannot inspect the candidate workflow definition');
   const definition = parse(Buffer.from(file.content, 'base64').toString('utf8'));
-  const isolatedPrefix = "ci-${{ github.run_attempt > 1 && format('retry-{0}', github.run_id) || ";
+  const prefix = run.path === '.github/workflows/security.yml' ? 'security' : 'ci';
+  const isolatedPrefix =
+    `${prefix}-` + "${{ github.run_attempt > 1 && format('retry-{0}', github.run_id) || ";
   if (
     (definition.concurrency && !definition.concurrency.group?.startsWith(isolatedPrefix)) ||
     Object.values(definition.jobs ?? {}).some((candidate) => candidate.concurrency)
