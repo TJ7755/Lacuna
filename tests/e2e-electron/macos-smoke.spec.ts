@@ -136,23 +136,15 @@ test('macOS packaged Electron launches, stores a course and completes a study st
   }
 });
 
-test('macOS packaged landing films hand off to the external browser', async () => {
+test('macOS packaged landing previews load as local images', async () => {
   test.skip(process.platform !== 'darwin', 'This smoke gate runs on macOS.');
   const executablePath = await resolvePackagedExecutable({
     appDir: process.env.LACUNA_ELECTRON_APP_DIR,
   });
-  const profile = await realpath(await mkdtemp(path.join(tmpdir(), 'lacuna-film-handoff-')));
+  const profile = await realpath(await mkdtemp(path.join(tmpdir(), 'lacuna-landing-previews-')));
   const app = await electron.launch({ executablePath, args: [`--user-data-dir=${profile}`] });
   try {
     expect(await app.evaluate(({ app }) => app.isPackaged)).toBe(true);
-    await app.evaluate(({ shell }) => {
-      const urls: string[] = [];
-      (globalThis as typeof globalThis & { filmUrls: string[] }).filmUrls = urls;
-      // Capture the operating-system hand-off after the real window security handler.
-      shell.openExternal = async (url) => {
-        urls.push(url);
-      };
-    });
     const page = await app.firstWindow();
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.waitForLoadState('domcontentloaded');
@@ -161,14 +153,15 @@ test('macOS packaged landing films hand off to the external browser', async () =
       window.location.hash = '/landing';
     });
     for (const film of Object.values(landingFilms)) {
-      await page.getByRole('button', { name: `Watch ${film.title}, ${film.duration}` }).click();
+      const preview = page.getByRole('img', { name: film.description });
+      await preview.scrollIntoViewIfNeeded();
+      await expect(preview).toBeVisible();
+      await expect
+        .poll(() => preview.evaluate((node) => (node as HTMLImageElement).naturalWidth))
+        .toBeGreaterThan(0);
     }
-    await expect
-      .poll(() =>
-        app.evaluate(() => (globalThis as typeof globalThis & { filmUrls: string[] }).filmUrls),
-      )
-      .toEqual(Object.values(landingFilms).map((film) => film.externalSrc));
-    await expect(page.locator('video')).toHaveCount(0);
+    await expect(page.locator('.landing-film video')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Watch/ })).toHaveCount(0);
     expect(app.windows()).toHaveLength(1);
   } finally {
     await app.close();
