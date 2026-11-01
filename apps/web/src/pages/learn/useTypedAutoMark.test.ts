@@ -157,6 +157,33 @@ describe('useTypedAutoMark', () => {
     expect(onMarked).toHaveBeenCalledWith(false, provenance);
   });
 
+  it('passes partial Hard with provenance under Exact', async () => {
+    jev.marker = vi.fn().mockResolvedValue({
+      outcome: 'incorrect',
+      provenance,
+      feedback: {
+        kind: 'partial',
+        parts: [
+          { start: 0, end: 1, covered: true },
+          { start: 1, end: 2, covered: true },
+          { start: 2, end: 3, covered: false },
+        ],
+      },
+    });
+    const { result, onMarked } = setup('Lyon', { answerStrictness: 'exact' });
+    await act(async () => {
+      vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
+    });
+    act(() => {
+      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
+    });
+    expect(result.current).toMatchObject({ state: 'marked', correct: false });
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(onMarked).toHaveBeenCalledWith(false, provenance, 2);
+  });
+
   it('leaves grading to the learner when the marker is unsure', async () => {
     jev.marker = vi.fn().mockResolvedValue({ outcome: 'unsure' });
     const { result, onMarked } = setup('Lyon');
