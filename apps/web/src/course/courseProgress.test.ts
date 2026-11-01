@@ -262,3 +262,15 @@ it('forecasts overlapping later papers without changing the nearest-target headl
   expect(report.forecast.papers.reduce((sum, paper) => sum + paper.cardCount, 0)).toBe(5);
   expect(selected.laterPapers).toEqual([]);
 });
+
+it('expires an assessment at its exact deadline in both selected and later forecasts', () => {
+  const input = fixture();
+  const final = input.assessments.find(({ id }) => id === 'final')!;
+  const now = final.examDate!;
+  const report = buildCourseProgress({ ...input, now });
+  expect(report.laterPapers).toEqual([]);
+  expect(buildCourseProgress({ ...input, now, assessmentId: 'final' }).forecast).toEqual({
+    kind: 'past',
+    date: now,
+  });
+});
