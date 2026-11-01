@@ -57,8 +57,7 @@ class codes and AI session mailboxes, and writes `artifacts/stress/relay.json`. 
 p50/p95/p99 latency and status counts at the same concurrency and payload size. Expected contention
 conflicts and rate-limit responses are separate from unexpected errors; the behavioural probes must
 pass even when the throughput number looks healthy. An in-process store measures handler overhead
-and contention semantics, not Blob latency or deployment capacity. The relay v2 integration must use
-its shared protocol when that branch lands; do not preserve a parallel legacy wire format.
+and contention semantics, not Blob latency or deployment capacity. The relay workload uses the shared v2 protocol and canonical routes. There is no v1 compatibility.
 
 ### Large libraries
 
@@ -89,3 +88,10 @@ route result, including requested prefetches, with the browser cache disabled. R
 allow approximately 10% headroom. The existing deterministic entry-graph budgets remain separate.
 Course and Cards input-to-readable were 480 / 318 ms; reveal and next card were 428 / 164 ms.
 All timing and long-task ceilings passed this quick run. Full backup/import evidence is separate.
+
+The full [run 41317388148](https://github.com/TJ7755/Lacuna/actions/runs/41317388148)
+on candidate `3dd19891` completed the same fixture with three repetitions and 20 burst reviews.
+Backup export took 5,654 ms, preview 1,225 ms and replacement 18,800 ms. Course input-to-readable
+samples were 688, 513 and 493 ms. This run passed timing and long-task ceilings but failed the
+provisional learn-route asset ceiling. Earlier route samples raced background prefetch and are
+retained above as historical observations, not a stable initial-asset baseline.
