@@ -26,7 +26,7 @@ import {
 } from './objective';
 import { selectNextCard, type CooldownMap } from './cooldown';
 import { studyPool, availableCards, dueCards, isAvailable } from './eligibility';
-import { schedulingHorizon } from './horizon';
+import { cardSchedulingHorizon } from './horizon';
 import {
   courseBudgetedStudyPool,
   courseNewCardBudget,
@@ -141,13 +141,6 @@ export function makeSessionContext(
     );
   }
   return context;
-}
-
-/** Exam-proximity urgency: nearer exams weigh more. Smooth and always positive.
- * Uses the scheduling horizon so a passed exam falls back to its rolling
- * maintenance horizon rather than reading as maximally urgent forever. */
-function urgency(deck: SchedulerConfig, now: number = Date.now()): number {
-  return 1 / (1 + daysUntil(schedulingHorizon(deck, now), now));
 }
 
 /**
@@ -365,13 +358,14 @@ export function selectNext(
     const scores = deckCards.map((c) => scoreCard(c, oc, now));
     const min = scores.reduce((a, b) => Math.min(a, b), Infinity);
     const max = scores.reduce((a, b) => Math.max(a, b), -Infinity);
-    const w = urgency(deck, now);
     const span = max - min;
     const degenerate = Math.abs(span) < 1e-9;
     const values = new Map<string, number>();
     deckCards.forEach((c, i) => {
       const normalised = degenerate ? 0.5 : (scores[i] - min) / span;
-      values.set(c.id, w * normalised);
+      const horizon = cardSchedulingHorizon(c, deck, oc.examDateContext, now);
+      const weight = 1 / (1 + daysUntil(horizon, now));
+      values.set(c.id, weight * normalised);
     });
     perUnitPriority.set(unitKey(scope), values);
   }

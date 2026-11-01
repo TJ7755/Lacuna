@@ -1,3 +1,4 @@
+import { isUpcomingExamDate } from '../fsrs/examDate';
 import { courseLessonOrderPreference } from './lessonOrder';
 import { lessonCardMembershipForLessons } from './lessonMembership';
 import type {
@@ -83,7 +84,7 @@ export function assessmentPracticePool(
 ): Card[] {
   const now = context.now ?? Date.now();
   const examDate = assessment.examDate;
-  if (context.course.archived || examDate === undefined || examDate <= now) return [];
+  if (context.course.archived || !isUpcomingExamDate(examDate, now)) return [];
   const knownCardIds = new Set([
     ...context.exposures.map((exposure) => exposure.cardId),
     ...lessonCardMembershipForLessons(
@@ -144,9 +145,8 @@ export function assessmentPracticeOptions(
   const now = context.now ?? Date.now();
   const triggerCardIds = new Set(triggerScope.map((card) => card.id));
   return context.assessments
-    .filter(
-      (assessment): assessment is CourseAssessment & { examDate: number } =>
-        assessment.examDate !== undefined && assessment.examDate > now,
+    .filter((assessment): assessment is CourseAssessment & { examDate: number } =>
+      isUpcomingExamDate(assessment.examDate, now),
     )
     .sort(
       (left, right) =>

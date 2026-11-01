@@ -44,6 +44,10 @@ function makeCard(overrides: Partial<Card> = {}): Card {
 }
 
 describe('schedulingHorizon', () => {
+  it('uses maintenance at the exact deadline', () => {
+    const now = 1_000_000_000_000;
+    expect(schedulingHorizon(makeDeck({ examDate: now }), now)).toBe(now + 7 * MS_PER_DAY);
+  });
   it('targets the exam date while it is in the future', () => {
     const now = Date.now();
     const examDate = now + 3 * MS_PER_DAY;
@@ -98,7 +102,7 @@ describe('cardSchedulingHorizon', () => {
     expect(cardSchedulingHorizon(card, deck, examDateContext, now)).toBe(lessonExamDate);
   });
 
-  it('uses the rolling maintenance horizon when the resolved card date has passed', () => {
+  it('falls through an expired lesson date to the course default', () => {
     const now = Date.now();
     const deck = makeDeck({ examDate: now + 30 * MS_PER_DAY });
     const card = makeCard({ primaryLessonId: 'lesson1' });
@@ -122,9 +126,7 @@ describe('cardSchedulingHorizon', () => {
       courseAssessments: [],
     };
 
-    expect(cardSchedulingHorizon(card, deck, examDateContext, now)).toBe(
-      now + MAINTENANCE_HORIZON_DAYS * MS_PER_DAY,
-    );
+    expect(cardSchedulingHorizon(card, deck, examDateContext, now)).toBe(deck.examDate);
   });
 });
 
