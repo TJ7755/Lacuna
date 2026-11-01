@@ -1,6 +1,8 @@
 import type { Card, RevisionPlan } from '@lacuna/core/db/types';
 import { isAvailable } from '../fsrs/eligibility';
 import { revisionPlanDays } from './revisionPlan';
+import { assessmentTiming } from '../fsrs/assessmentTiming';
+import type { SimContext } from '../fsrs/forwardSim';
 
 export interface RemainingWorkEstimate {
   overdue: number;
@@ -11,6 +13,7 @@ export interface RemainingWorkEstimate {
   coverage: number | null;
   budgetSource: 'plan' | 'observed' | 'unknown';
   usesDefaultTiming: boolean;
+  recall: { mean: number; belowTarget: number; cards: number } | null;
 }
 
 /** Counts one currently known attempt per card, without simulating future reviews. */
@@ -19,6 +22,7 @@ export function estimateRemainingWork(
   now: number,
   deadline: number,
   plan?: RevisionPlan,
+  context?: SimContext,
 ): RemainingWorkEstimate | null {
   if (!Number.isFinite(deadline) || deadline <= now) return null;
   const cards = sourceCards.filter((card) => isAvailable(card, now));
@@ -58,7 +62,19 @@ export function estimateRemainingWork(
     ? recent.reduce((sum, review) => sum + review.responseTimeSec, 0) / 60 / 14
     : undefined;
   const capacity = planBudget ?? (observed === undefined ? undefined : days * observed);
+  const predictions = context
+    ? cards.map((card) => assessmentTiming(card, now, deadline, context))
+    : [];
   return {
+    recall: predictions.length
+      ? {
+          mean:
+            predictions.reduce((sum, prediction) => sum + (prediction.predictedRecall ?? 0), 0) /
+            predictions.length,
+          belowTarget: predictions.filter((prediction) => prediction.feasible === false).length,
+          cards: predictions.length,
+        }
+      : null,
     overdue,
     dueBeforeAssessment: scheduled.length - overdue,
     unstarted,

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, ReviewLog, RevisionPlan } from '@lacuna/core/db/types';
 import { estimateRemainingWork } from './remainingWork';
+import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
+import { simContext } from '../fsrs/forwardSim';
+import { makeEngine } from '../fsrs/fsrs';
 const NOW = Date.parse('2026-11-01T12:00:00Z');
 const DAY = 86_400_000;
 function makeCard(over: Partial<Card> & Pick<Card, 'id'>): Card {
@@ -45,6 +48,26 @@ function review(timestamp: number): ReviewLog {
 }
 
 describe('remaining assessment workload', () => {
+  it('reports reference-target shortfalls without inventing reviews or changing due dates', () => {
+    const cards = [
+      makeCard({ id: 'secure', lastReviewed: NOW, due: NOW + 10 * DAY, stability: 1000 }),
+      makeCard({ id: 'unstarted', due: null }),
+      makeCard({ id: 'weak', lastReviewed: NOW, due: NOW + 10 * DAY, stability: 0.01 }),
+      makeCard({ id: 'excluded', suspended: true }),
+    ];
+    const before = structuredClone(cards);
+    const fsrsParameters = defaultFsrsParameters();
+    const context = simContext(
+      { fsrsParameters } as Parameters<typeof simContext>[0],
+      makeEngine(fsrsParameters),
+    );
+    const result = estimateRemainingWork(cards, NOW, NOW + DAY, undefined, context);
+    expect(result?.recall).toMatchObject({ cards: 3, belowTarget: 2 });
+    expect(result?.recall?.mean).toBeGreaterThan(0.3);
+    expect(result?.recall?.mean).toBeLessThan(0.9);
+    expect(cards).toEqual(before);
+    expect(estimateRemainingWork(cards, NOW, NOW, undefined, context)).toBeNull();
+  });
   it('counts overdue, future reviews and new cards once, excluding unavailable cards', () => {
     const cards = [
       makeCard({ id: 'new' }),

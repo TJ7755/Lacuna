@@ -5,6 +5,9 @@ import { hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
 import { estimateRemainingWork } from '../../course/remainingWork';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
 import { courseLessonOrderPreference } from '../../course/lessonOrder';
+import { ASSESSMENT_TARGET_RECALL } from '../../fsrs/assessmentTiming';
+import { simContext } from '../../fsrs/forwardSim';
+import { makeEngine } from '../../fsrs/fsrs';
 
 export function RemainingWork({ courseId }: { courseId: string }) {
   const [now, setNow] = useState(Date.now);
@@ -29,6 +32,7 @@ export function RemainingWork({ courseId }: { courseId: string }) {
     ]);
     if (!course) return [];
     const cards = await hydrateCardsWithHistory(rawCards);
+    const context = simContext(course, makeEngine(course.fsrsParameters));
     return assessments
       .filter((assessment) => assessment.examDate !== undefined && assessment.examDate > now)
       .sort((a, b) => a.examDate! - b.examDate!)
@@ -47,6 +51,7 @@ export function RemainingWork({ courseId }: { courseId: string }) {
           now,
           assessment.examDate!,
           plans.find((plan) => plan.assessmentId === assessment.id && plan.status === 'active'),
+          context,
         );
         return estimate ? [{ assessment, estimate }] : [];
       });
@@ -80,6 +85,14 @@ export function RemainingWork({ courseId }: { courseId: string }) {
           {estimate.coverage !== null && estimate.coverage < 1 && (
             <p>
               Your current pace may leave some work unfinished. Consider setting aside more time.
+            </p>
+          )}
+          {estimate.recall && (
+            <p>
+              Mean predicted exam recall: {Math.round(estimate.recall.mean * 100)}%.{' '}
+              {estimate.recall.belowTarget} of {estimate.recall.cards} cards below the{' '}
+              {Math.round(ASSESSMENT_TARGET_RECALL * 100)}% reference target. Allows one review only
+              when already due before the assessment, assuming a Good answer.
             </p>
           )}
           <p className="text-ink-faint">

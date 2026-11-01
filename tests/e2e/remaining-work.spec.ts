@@ -81,6 +81,11 @@ test('Today and course show a read-only workload estimate and a calm budget warn
     await expect(estimate).toContainText('Estimated workload coverage: 0%');
     await expect(estimate).toContainText('Your current pace may leave some work unfinished.');
     await expect(estimate).toContainText('An estimate, not a guarantee of recall.');
+    await expect(estimate).toContainText('Mean predicted exam recall: 0%');
+    await expect(estimate).toContainText('30 of 30 cards below the 90% reference target.');
+    await expect(estimate).toContainText(
+      'Allows one review only when already due before the assessment',
+    );
     await estimate.scrollIntoViewIfNeeded();
     const path = testInfo.outputPath(`${name}-remaining-work-desktop.png`);
     await page.screenshot({ path, animations: 'disabled' });
