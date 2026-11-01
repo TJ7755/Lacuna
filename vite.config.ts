@@ -206,7 +206,7 @@ export default defineConfig({
             },
             {
               name: 'concept-practice',
-              test: /[\\/]src[\\/](?:questions[\\/](?:conceptPractice|techniqueEvidence)|state[\\/]useCourseConceptPractice)\.ts$/,
+              test: /[\\/]src[\\/](?:questions[\\/](?:conceptPractice|techniqueEvidence|grading)|state[\\/]useCourseConceptPractice)\.ts$/,
               includeDependenciesRecursively: false,
             },
             {

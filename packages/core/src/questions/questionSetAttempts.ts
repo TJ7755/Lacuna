@@ -57,7 +57,7 @@ export interface QuestionSetFirstMarking {
   questionId: string;
   recordedAt: number;
   source: 'self-mark';
-  gradeMappingVersion: 'full-good-otherwise-again-v1';
+  gradeMappingVersion: 'full-good-otherwise-again-v1' | 'fractional-hard-v2';
   schedulerVersion: 'fsrs-6-question-v1';
   schedulerConfig: FsrsParameters;
   schedulerConfigFingerprint: string;

@@ -7,10 +7,9 @@ export interface QuestionGradeEvidence {
   hasUnresolvedDispute: boolean;
 }
 
-/**
- * Questions use conservative binary FSRS evidence. Hard is a successful recall,
- * so partial work must not use it and quietly lengthen the interval.
- */
+/** Minimum awarded proportion for Hard; full marks remain Good. */
+export const PRACTICE_HARD_THRESHOLD = 0.6;
+
 export function gradeQuestionAttempt(evidence: QuestionGradeEvidence): Grade | null {
   if (evidence.hasUndeterminedVerdict || evidence.hasUnresolvedDispute) return null;
   if (
@@ -22,5 +21,6 @@ export function gradeQuestionAttempt(evidence: QuestionGradeEvidence): Grade | n
   ) {
     return null;
   }
-  return evidence.marksEarned === evidence.marksAvailable ? 3 : 1;
+  if (evidence.marksEarned === evidence.marksAvailable) return 3;
+  return evidence.marksEarned / evidence.marksAvailable >= PRACTICE_HARD_THRESHOLD ? 2 : 1;
 }

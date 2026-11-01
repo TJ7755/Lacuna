@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Card } from '@lacuna/core/db/types';
+import type { Card, Grade } from '@lacuna/core/db/types';
 import { markdownAnswerCorrect, markdownPlainText } from '../../components/markdown/MarkdownView';
 import { answerComparisonOptions, type AnswerStrictness } from '../../state/answerStrictness';
 import { renderClozeFront } from '../../utils/cloze';
@@ -23,6 +23,7 @@ export type TypedAutoMark =
   | {
       state: 'marked';
       correct: boolean;
+      grade?: Grade;
       provenance: JevMarkProvenance | null;
       feedback?: JevTypedFeedback;
       expected?: string;
@@ -82,7 +83,7 @@ export function useTypedAutoMark({
   /** Undo leaves the restored answer with the learner instead of grading it again. */
   manual?: boolean;
   m: number;
-  onMarked: (correct: boolean, provenance: JevMarkProvenance | null) => void;
+  onMarked: (correct: boolean, provenance: JevMarkProvenance | null, grade?: Grade) => void;
   onHold?: () => void;
 }): TypedAutoMark {
   const marker = useJevTypedMarker();
@@ -191,6 +192,8 @@ export function useTypedAutoMark({
               : {
                   state: 'marked',
                   correct: verdict.outcome === 'correct',
+                  grade:
+                    verdict.outcome === 'incorrect' ? jevPartialGrade(verdict.feedback) : undefined,
                   provenance: verdict.provenance,
                   feedback: verdict.feedback,
                   expected: expectedText,
@@ -231,7 +234,10 @@ export function useTypedAutoMark({
     dismissAt.current ??= performance.now() + TYPED_AUTO_MARK_HOLD_MS * Math.max(m, 0.3);
     if (holding) return;
     const timer = window.setTimeout(
-      () => onMarkedRef.current(mark.correct, mark.provenance),
+      () =>
+        mark.grade === undefined
+          ? onMarkedRef.current(mark.correct, mark.provenance)
+          : onMarkedRef.current(mark.correct, mark.provenance, mark.grade),
       Math.max(0, dismissAt.current - performance.now()),
     );
     return () => window.clearTimeout(timer);
@@ -239,4 +245,17 @@ export function useTypedAutoMark({
 
   if (marker === null) return OFF;
   return active ? mark : IDLE;
+}
+
+/** Partial recall requires a known majority of expected parts, never a guess. */
+export function jevPartialGrade(feedback: JevTypedFeedback | undefined): Grade | undefined {
+  if (!feedback) return undefined;
+  if (feedback.kind === 'imprecise') return 2;
+  if (feedback.kind !== 'partial') return undefined;
+  const parts = feedback.parts;
+  return parts.length > 0 &&
+    parts.every((part) => part.covered !== null) &&
+    parts.filter((part) => part.covered === true).length > parts.length / 2
+    ? 2
+    : undefined;
 }

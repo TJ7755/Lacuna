@@ -86,7 +86,7 @@ const firstMarkingSnapshot = z
     questionId: z.string().min(1),
     recordedAt: z.number().int().nonnegative(),
     source: z.literal('self-mark'),
-    gradeMappingVersion: z.literal('full-good-otherwise-again-v1'),
+    gradeMappingVersion: z.enum(['full-good-otherwise-again-v1', 'fractional-hard-v2']),
     schedulerVersion: z.literal('fsrs-6-question-v1'),
     schedulerConfigFingerprint: z.string().min(1),
     schedulerConfig: z
