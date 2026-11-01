@@ -1,3 +1,4 @@
+import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
 import { earlierLessonIds } from './courseEntry';
 import { catchUpPracticePool } from './catchUpPractice';
 import type {
@@ -36,6 +37,9 @@ export interface StudyFlowPracticeState {
   active: boolean;
 }
 
+export type StudyQuestionTarget =
+  { conceptId: string; techniqueId?: never } | { techniqueId: TechniqueId; conceptId?: never };
+
 export interface CourseStudyFlowSnapshot {
   courseId: string;
   /** Routing history, including declared school coverage; never a mastery judgement. */
@@ -54,15 +58,17 @@ export interface CourseStudyFlowSnapshot {
   /** Cards behind recurringPracticeEligibleCount, for lesson-level due counts. */
   dueReviewCardIds: ReadonlySet<string>;
   assessmentOptions: AssessmentPracticeOption[];
-  questionOptions?: Array<{
-    conceptId: string;
-    name: string;
-    repairLessonId?: string;
-    examDate?: number;
-    needs?: ConceptPracticeNeeds;
-    unfinished?: boolean;
-  }>;
+  questionOptions?: Array<
+    StudyQuestionTarget & {
+      name: string;
+      repairLessonId?: string;
+      examDate?: number;
+      needs?: ConceptPracticeNeeds;
+      unfinished?: boolean;
+    }
+  >;
   questionScopeConceptIds?: string[];
+  questionScopeLessonIds?: string[];
   questionPracticeExhausted?: boolean;
 }
 

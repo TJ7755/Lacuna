@@ -72,6 +72,22 @@ function candidates(sets: QuestionSetRecord[]): Candidate[] {
   );
 }
 
+export function withinQuestionStudyScope(
+  question: QuestionSetQuestion,
+  ids: ReadonlySet<string> | undefined,
+): boolean {
+  return (
+    !ids ||
+    answers(question).every(({ answer }) =>
+      answer.allocations.every((allocation) =>
+        [...allocation.targetConceptIds, ...answer.prerequisiteConceptIds].every((id) =>
+          ids.has(id),
+        ),
+      ),
+    )
+  );
+}
+
 function familyKey(set: QuestionSetRecord, questionId: string): string {
   const family = set.bank?.family;
   return family

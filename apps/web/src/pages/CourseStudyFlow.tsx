@@ -112,6 +112,7 @@ function CourseStudyFlowInner() {
     refreshKey,
     currentStep === null || transition !== null,
     previousStep,
+    flowIdentity?.startedAt,
   );
   // Reaching a session objective need not empty the broader catch-up pool.
   const flow = useMemo(
@@ -398,8 +399,11 @@ function CourseStudyFlowInner() {
         key={scene}
         courseId={courseId}
         conceptId={displayStep.conceptId}
+        techniqueId={displayStep.techniqueId}
+        scopeLessonIds={displayStep.scopeLessonIds}
         scopeConceptIds={displayStep.scopeConceptIds}
         allowFamiliar={displayStep.allowFamiliar}
+        sittingStartedAt={flowIdentity?.startedAt}
         onComplete={handleQuestionFinished}
         onExit={finishFlow}
       />
