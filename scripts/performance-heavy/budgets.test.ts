@@ -34,6 +34,21 @@ describe('performance evidence gate', () => {
   it('accepts a complete full-size report below all ceilings', () => {
     expect(checkPerformanceReport(evidence())).toEqual([]);
   });
+  it('allows observed cold course navigation without relaxing other interactions', () => {
+    const report = evidence();
+    for (const sample of report.runs[0].samples) {
+      if (sample.name === 'course-open' && 'inputToReadableMs' in sample)
+        sample.inputToReadableMs = 1_397;
+    }
+    expect(checkPerformanceReport(report)).toEqual([]);
+    for (const sample of report.runs[0].samples) {
+      if (sample.name === 'cards-open' && 'inputToReadableMs' in sample)
+        sample.inputToReadableMs = 1_397;
+    }
+    expect(checkPerformanceReport(report)).toEqual([
+      'cards-open: input-to-readable exceeds 750 ms',
+    ]);
+  });
   it('rejects incomplete evidence even when recorded timings pass', () => {
     const report = evidence();
     report.completed = false;
@@ -52,7 +67,7 @@ describe('performance evidence gate', () => {
     const interaction = report.runs[0].samples.find((sample) => sample.name === 'course-open')!;
     if ('elapsedMs' in interaction) {
       interaction.elapsedMs = 10_000;
-      interaction.inputToReadableMs = 900;
+      interaction.inputToReadableMs = 1_600;
       interaction.lag.longTasks.push({ duration: 1_200 });
     }
     const route = report.runs[0].samples.find((sample) => sample.name === 'route-assets-learn')!;

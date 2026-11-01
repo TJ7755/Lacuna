@@ -391,19 +391,42 @@ try {
             const coldCdp = await context.newCDPSession(cold);
             await coldCdp.send('Network.enable');
             await coldCdp.send('Network.setCacheDisabled', { cacheDisabled: true });
+            // Initial route cost excludes speculative idle route warm-up. Interaction
+            // measurements below retain the application's real prefetch behaviour.
+            await cold.addInitScript(() => {
+              window.requestIdleCallback = () => 0;
+              window.cancelIdleCallback = () => {};
+            });
             await cold.goto(`${origin}${hash}`);
             await expect(cold.locator(selector).first()).toBeVisible();
+            await cold.waitForLoadState('networkidle');
             const assets = await cold.evaluate(() => {
               const resources = globalThis.performance.getEntriesByType(
                 'resource',
               ) as PerformanceResourceTiming[];
+              const files = [
+                ...new Map(
+                  resources
+                    .filter((resource) => /\.(js|css)$/.test(new URL(resource.name).pathname))
+                    .map((resource) => [
+                      new URL(resource.name).pathname,
+                      {
+                        path: new URL(resource.name).pathname,
+                        decodedBytes: resource.decodedBodySize,
+                      },
+                    ]),
+                ).values(),
+              ].sort((a, b) => a.path.localeCompare(b.path));
               return {
-                javascriptBytes: resources
-                  .filter((r) => new URL(r.name).pathname.endsWith('.js'))
-                  .reduce((sum, r) => sum + r.decodedBodySize, 0),
-                cssBytes: resources
-                  .filter((r) => new URL(r.name).pathname.endsWith('.css'))
-                  .reduce((sum, r) => sum + r.decodedBodySize, 0),
+                accounting:
+                  'unique completed JS/CSS resources after readiness and network idle; speculative idle prefetch disabled',
+                files,
+                javascriptBytes: files
+                  .filter((file) => file.path.endsWith('.js'))
+                  .reduce((sum, file) => sum + file.decodedBytes, 0),
+                cssBytes: files
+                  .filter((file) => file.path.endsWith('.css'))
+                  .reduce((sum, file) => sum + file.decodedBytes, 0),
               };
             });
             expect(assets.javascriptBytes).toBeGreaterThan(0);
