@@ -107,13 +107,6 @@ export const relayCreateSessionResponseSchema = z
   })
   .strict();
 
-export const relayClaimRequestSchema = z
-  .object({
-    terminalPublicKey: relayPublicKeySchema,
-    client: aiClientIdentitySchema,
-  })
-  .strict();
-
 export const relayClaimResponseSchema = z
   .object({
     sessionId: relaySessionIdSchema,
