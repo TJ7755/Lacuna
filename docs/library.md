@@ -94,7 +94,7 @@ questions must never become public sample copy. Publication of a catalogue entry
 permission to copy an exam board’s content.
 
 The build emits complete HTML, canonical and Open Graph metadata, structured data, `sitemap.xml`
-and `robots.txt`. Topic pages need no learner application bundle. Their import links open the
+and copies the existing `public/robots.txt`. Topic pages need no learner application bundle. Their import links open the
 published course in the web app; the static page does not import into a learner’s database itself.
 The existing `/courses/<catalogue-id>/` course addresses remain available.
 

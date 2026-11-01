@@ -164,11 +164,6 @@ export function topicPagesPlugin(): Plugin {
         for (const [path, source] of pages)
           this.emitFile({ type: 'asset', fileName: `${path.slice(1)}index.html`, source });
         this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: topicSitemap(pages) });
-        this.emitFile({
-          type: 'asset',
-          fileName: 'robots.txt',
-          source: `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml\n`,
-        });
       },
     },
   };
