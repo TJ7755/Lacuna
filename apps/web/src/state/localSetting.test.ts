@@ -1,7 +1,7 @@
 import { useLayoutEffect } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createLocalSetting, oneOf, parseJson } from './localSetting';
+import { createLocalSetting, createStoredValue, oneOf, parseJson } from './localSetting';
 import { writeAnswerStrictness } from './answerStrictness';
 import { writeAudioSettings } from './audioSettings';
 import { writeCourseCardDetail } from './courseCardDetail';
@@ -121,4 +121,18 @@ it('observes preference changes between the initial read and subscribing', () =>
     return value;
   });
   expect(result.current[0]).toBe('blue');
+});
+
+describe('stored value compatibility', () => {
+  it.each(['dark', 'light', 'auto'] as const)('retains the existing %s theme', (theme) => {
+    localStorage.setItem('lacuna-theme', theme);
+    const stored = createStoredValue({
+      key: 'lacuna-theme',
+      parse: oneOf(['dark', 'light', 'auto'] as const, 'dark'),
+    });
+    expect(stored.read()).toBe(theme);
+    expect(localStorage.getItem('lacuna-theme')).toBe(theme);
+    stored.write(theme);
+    expect(localStorage.getItem('lacuna-theme')).toBe(theme);
+  });
 });

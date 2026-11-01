@@ -25,15 +25,27 @@ export interface LocalSetting<T> {
   use(): [T, (value: T) => void];
 }
 
+/** Typed persistence without subscriptions, for providers with their own lifecycle. */
+export function createStoredValue<T>({
+  key,
+  parse,
+  serialise = String,
+}: Pick<LocalSettingOptions<T>, 'key' | 'parse' | 'serialise'>) {
+  return {
+    read: (): T => parse(localStorage.getItem(key)),
+    write: (value: T): void => localStorage.setItem(key, serialise(value)),
+  };
+}
+
 export function createLocalSetting<T>({
   key,
   event,
   parse,
   serialise = String,
 }: LocalSettingOptions<T>): LocalSetting<T> {
-  const read = () => parse(localStorage.getItem(key));
+  const { read, write: persist } = createStoredValue({ key, parse, serialise });
   const write = (value: T) => {
-    localStorage.setItem(key, serialise(value));
+    persist(value);
     window.dispatchEvent(new CustomEvent(event, { detail: value }));
   };
   const subscribe = (onChange: () => void) => {
