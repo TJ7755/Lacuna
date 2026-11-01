@@ -10,7 +10,7 @@ import { MOTION_EASING } from '../../components/ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 /** Card surface shared by every settings section: a flat surface with a hairline border. */
-export const SETTINGS_CARD_CLASS = `${SECTION_CARD_SURFACE_CLASS} mb-5 p-6 md:p-7`;
+const SETTINGS_CARD_CLASS = `${SECTION_CARD_SURFACE_CLASS} mb-5 p-6 md:p-7`;
 
 /** Section headings sit in ink with only the icon tinted, so cards read calmly. */
 export const SETTINGS_HEADING_ROW_CLASS =
@@ -20,7 +20,7 @@ export const SETTINGS_HEADING_ROW_CLASS =
 const MAX_STAGGER_STEPS = 8;
 
 /** How far each card's arrival is delayed behind the one before it, in seconds. */
-export const ARRIVAL_STEP = 0.04;
+const ARRIVAL_STEP = 0.04;
 
 export function arrivalDelay(index: number, multiplier: number): number {
   return Math.min(index, MAX_STAGGER_STEPS) * ARRIVAL_STEP * multiplier;

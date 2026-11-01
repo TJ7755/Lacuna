@@ -3,7 +3,7 @@ import { cn } from './cn';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { scaledSpring } from './motion';
 
-export type ProgressVariant = 'accent' | 'positive' | 'negative' | 'warning' | 'simple';
+type ProgressVariant = 'accent' | 'positive' | 'negative' | 'warning' | 'simple';
 
 const variantClass: Record<ProgressVariant, string> = {
   accent: 'bg-accent',

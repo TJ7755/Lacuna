@@ -109,7 +109,7 @@ export function itemPayloadIsValid(payload: unknown): boolean {
 }
 
 /** Throw a stable validation error rather than allowing malformed data into IndexedDB. */
-export function assertValidItemPayload(payload: unknown): void {
+function assertValidItemPayload(payload: unknown): void {
   if (!itemPayloadIsValid(payload)) {
     throw new Error('Invalid structured item payload.');
   }

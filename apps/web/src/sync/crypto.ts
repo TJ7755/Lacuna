@@ -8,16 +8,16 @@
 // before they reach a real channel.
 
 export const CHANNEL_KEY_BYTES = 32;
-export const NONCE_BYTES = 12;
-export const SALT_BYTES = 16;
+const NONCE_BYTES = 12;
+const SALT_BYTES = 16;
 export const FORMAT_VERSION = 1;
 export const GCM_TAG_BITS = 128;
-export const GCM_TAG_BYTES = 16;
-export const KEY_CONFIRMATION_BYTES = 16;
+const GCM_TAG_BYTES = 16;
+const KEY_CONFIRMATION_BYTES = 16;
 export const KDF_ID_PBKDF2_SHA256 = 1;
 // 256-bit key-encryption key derived from the passphrase. The same length as
 // the channel key for AES-GCM, but distinct material.
-export const KEK_BYTES = 32;
+const KEK_BYTES = 32;
 
 // PBKDF2_ITERATIONS is the wrap constant. It may rise later when OWASP
 // raises the PBKDF2-HMAC-SHA-256 recommendation.

@@ -19,12 +19,12 @@ interface RankedQuestion {
   lastShownAt: number | null;
 }
 
-export interface QuestionExposureSummary {
+interface QuestionExposureSummary {
   exposureCount: number;
   lastShownAt: number | null;
 }
 
-export function questionExposureSummaries(
+function questionExposureSummaries(
   attempts: readonly QuestionAttempt[],
 ): ReadonlyMap<string, QuestionExposureSummary> {
   const summaries = new Map<string, QuestionExposureSummary>();

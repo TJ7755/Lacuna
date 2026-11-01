@@ -18,7 +18,7 @@ interface MailboxOptions {
   signal?: AbortSignal;
 }
 
-export class InsightsMailboxError extends Error {
+class InsightsMailboxError extends Error {
   constructor(
     message: string,
     readonly status?: number,

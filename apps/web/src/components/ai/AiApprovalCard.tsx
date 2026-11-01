@@ -5,7 +5,7 @@ import { Button } from '../ui/Button';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 
 /** "lacuna.delete_course" reads as "Delete course". */
-export function actionName(toolName: string): string {
+function actionName(toolName: string): string {
   const words = toolName.replace(/^lacuna\./, '').replace(/_/g, ' ');
   return words.charAt(0).toUpperCase() + words.slice(1);
 }

@@ -12,7 +12,7 @@ import {
 } from './responseTimeCost';
 
 export type MemoryModelFallbackReason = 'missing' | 'corrupt' | 'unsupported';
-export type ReviewOutcome = 'success' | 'failure';
+type ReviewOutcome = 'success' | 'failure';
 
 export interface RecallPrediction {
   probability: number;
@@ -20,16 +20,16 @@ export interface RecallPrediction {
   standardDeviation?: number;
 }
 
-export type MemoryModelValidation =
+type MemoryModelValidation =
   { valid: true } | { valid: false; reason: Exclude<MemoryModelFallbackReason, 'missing'> };
 
-export interface MemoryModelCardInput {
+interface MemoryModelCardInput {
   card: Card;
   now: number;
   assessmentAt: number;
 }
 
-export interface MemoryModelOutcomeInput extends MemoryModelCardInput {
+interface MemoryModelOutcomeInput extends MemoryModelCardInput {
   cardAfterFsrs: Card;
   outcome: ReviewOutcome;
   grade: Grade;
@@ -54,7 +54,7 @@ export interface SuccessGradeCoefficient {
   probability: number;
 }
 
-export interface SimulatedOutcome {
+interface SimulatedOutcome {
   outcome: ReviewOutcome;
   grade: Grade;
   conditionalProbability: number;
@@ -216,7 +216,7 @@ export interface CramAllocatorInput {
   responseTimeCoefficients?: ResponseTimeCoefficients;
 }
 
-export interface AllocatedCard {
+interface AllocatedCard {
   card: Card;
   simulation: OutcomeSimulation;
   responseTime: ResponseTimeEstimate;

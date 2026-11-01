@@ -4,7 +4,7 @@ import { serialiseMarkScheme } from '../items/markSchemeCompiler';
 import type { QuestionConceptSet, QuestionDefinition } from '@lacuna/core/questions/types';
 import { clearDraft, draftKey, loadDraft, saveDraft } from '../utils/drafts';
 
-export type QuestionEditorKind = 'fixed' | 'generated';
+type QuestionEditorKind = 'fixed' | 'generated';
 export type QuestionAnswerKind = 'numeric' | 'working';
 
 export interface QuestionAuthoringState {
@@ -30,7 +30,7 @@ export interface QuestionDraftData {
   timestamp: number;
 }
 
-export const DEFAULT_GENERATOR_CONFIG: Record<string, string | number | boolean> = {
+const DEFAULT_GENERATOR_CONFIG: Record<string, string | number | boolean> = {
   minimumRootMagnitude: 1,
   maximumRootMagnitude: 5,
   maximumLeadingCoefficient: 2,

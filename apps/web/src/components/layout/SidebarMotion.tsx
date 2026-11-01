@@ -18,7 +18,7 @@ const SidebarMotionContext = createContext({
 });
 export const useSidebarMotion = () => useContext(SidebarMotionContext);
 
-export function sidebarWidthTransition(multiplier: number) {
+function sidebarWidthTransition(multiplier: number) {
   return `${0.28 * multiplier}s cubic-bezier(${MOTION_EASING.standard.join(',')})`;
 }
 

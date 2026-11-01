@@ -27,7 +27,7 @@ import type { QuestionAttempt, QuestionDefinition } from '@lacuna/core/questions
 export const INSIGHTS_SCHEMA_VERSION = 1 as const;
 
 /** One aggregate cell keyed by a lineage identity shared across all course copies. */
-export interface InsightsCell {
+interface InsightsCell {
   /** The shared Concept id, or `questionId:vN:criterion:lineIndex` for a mark-scheme criterion. */
   i: string;
   /** Numerator: retained card reviews, or marks earned across the scored attempts. */

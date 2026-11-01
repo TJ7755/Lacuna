@@ -6,7 +6,7 @@ import { createLocalSetting, oneOf } from './localSetting';
  *  - `aloud`: the learner recites without typing, then reveals the source.
  * Either way the learner marks which lines were wrong.
  */
-export type RecitationInput = 'type' | 'aloud';
+type RecitationInput = 'type' | 'aloud';
 
 const setting = createLocalSetting<RecitationInput>({
   key: 'lacuna.recitationInput',

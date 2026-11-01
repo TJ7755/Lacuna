@@ -58,7 +58,7 @@ export interface Expression {
   variables: string[];
 }
 
-export interface ExpressionParseError {
+interface ExpressionParseError {
   message: string;
   /** One-based character position when mathjs reports one. */
   position?: number;

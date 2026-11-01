@@ -12,7 +12,7 @@ import { countOf } from '../utils/plural';
 /** A new card is introduced and then recalled at least twice in its first session. */
 const NEW_CARD_REVIEW_EQUIVALENTS = 3;
 
-export interface StudySessionPlanStep {
+interface StudySessionPlanStep {
   key: string;
   title: string;
   detail?: string;

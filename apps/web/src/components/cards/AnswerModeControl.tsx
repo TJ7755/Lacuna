@@ -8,7 +8,7 @@ import { PillToggleGroup } from './PillToggleGroup';
 import { Select } from '../ui/Select';
 import { useToast } from '../ui/Toast';
 
-export function AnswerModeChoices({
+function AnswerModeChoices({
   value,
   onChange,
   disabled = false,

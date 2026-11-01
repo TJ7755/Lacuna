@@ -10,7 +10,7 @@ export interface AiSettings {
   provider: 'external' | 'hosted';
 }
 
-export const DEFAULT_AI_SETTINGS: AiSettings = {
+const DEFAULT_AI_SETTINGS: AiSettings = {
   enabled: false,
   misconceptionFirstEnabled: true,
   provider: 'external',

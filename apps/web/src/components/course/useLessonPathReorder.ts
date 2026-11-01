@@ -15,7 +15,7 @@ import { hapticStrong } from '../../utils/haptic';
 
 const EARLY_MOVE_LIMIT_PX = 8;
 
-export type LessonDropMarker = 'before' | 'after' | undefined;
+type LessonDropMarker = 'before' | 'after' | undefined;
 
 export interface LessonReorderInteraction {
   enabled: boolean;

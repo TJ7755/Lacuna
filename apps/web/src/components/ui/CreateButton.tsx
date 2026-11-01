@@ -4,7 +4,7 @@ import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { expandingActionSpring } from './motion';
 import { cn } from './cn';
 
-export const createButtonClassName =
+const createButtonClassName =
   'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-surface-raised px-4 text-sm font-semibold text-ink ring-1 ring-inset ring-line-strong active:bg-ink/5 disabled:opacity-40';
 
 export const CreateButton = forwardRef<HTMLButtonElement, ComponentProps<typeof motion.button>>(

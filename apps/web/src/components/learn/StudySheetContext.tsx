@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
-export interface StudySheetOptions {
+interface StudySheetOptions {
   /** False when the opener already offers Other ways beside its Study button. */
   otherWays?: boolean;
   anchor?: HTMLElement;

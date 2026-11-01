@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { quotaCommand } from '../ai/quota.js';
 
-export const DEFAULT_JEV_MONTHLY_INPUT_TOKEN_LIMIT = 50_000_000;
+const DEFAULT_JEV_MONTHLY_INPUT_TOKEN_LIMIT = 50_000_000;
 export const DEFAULT_JEV_MONTHLY_REQUEST_LIMIT = 100_000;
-export const JEV_INSTALLATION_LIMITS = { daily: 100, minute: 20, concurrent: 2 };
-export const JEV_MAINTAINER_LIMITS = { daily: 1000, minute: 60, concurrent: 4 };
-export const JEV_GLOBAL_CONCURRENT_LIMIT = 20;
+const JEV_INSTALLATION_LIMITS = { daily: 100, minute: 20, concurrent: 2 };
+const JEV_MAINTAINER_LIMITS = { daily: 1000, minute: 60, concurrent: 4 };
+const JEV_GLOBAL_CONCURRENT_LIMIT = 20;
 // Jev 1.14 has a documented 64k-token total request context without long-context mode.
-export const JEV_REQUEST_INPUT_TOKEN_RESERVATION = 65_536;
+const JEV_REQUEST_INPUT_TOKEN_RESERVATION = 65_536;
 const LEASE_MS = 60_000;
 const RESERVE = `
 local now = tonumber(ARGV[1])

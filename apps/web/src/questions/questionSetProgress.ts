@@ -5,7 +5,7 @@ import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSe
 import { summariseSelfMarking } from '@lacuna/core/questions/questionSets';
 
 /** The history shows this many of the most recent completed attempts. */
-export const SCORE_HISTORY_LENGTH = 5;
+const SCORE_HISTORY_LENGTH = 5;
 
 export interface QuestionSetProgress {
   /** Completed attempts' scores as whole percentages, oldest first, at most five. */

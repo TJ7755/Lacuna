@@ -198,7 +198,7 @@ const VERDICTS: Record<string, string> = {
 };
 
 /** The short line a judgement opens with, or null when it would add nothing. */
-export function typedVerdictText(
+function typedVerdictText(
   judgement: Extract<TypedAnswerJudgement, { state: 'judged' }>,
 ): string | null {
   return VERDICTS[`${judgement.outcome}:${judgement.feedback.kind ?? ''}`] ?? null;

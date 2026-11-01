@@ -5,7 +5,7 @@ import { SCIENCE_TECHNIQUES, type TechniqueId } from '@lacuna/core/questions/tec
 // aggregates that select practice. Knowledge, application and each technique stay separate
 // counts of marked answers; nothing here becomes a percentage, a mark or Card recall.
 
-export interface QuestionEvidenceRow {
+interface QuestionEvidenceRow {
   id: 'knowledge' | 'application' | TechniqueId;
   name: string;
   /** Answers, counted once per topic, that showed this category without a gap. */

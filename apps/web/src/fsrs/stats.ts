@@ -16,7 +16,7 @@ export const DEFAULT_REVIEW_SECONDS = 8;
 /** Number of days shown in the forecast, starting today. */
 export const FORECAST_DAYS = 7;
 
-export interface DeckForecastSlice {
+interface DeckForecastSlice {
   /** The source ID used to group cards: courseId where set, otherwise deckId. */
   sourceId: string;
   dueCount: number;
@@ -24,7 +24,7 @@ export interface DeckForecastSlice {
   minutes: number;
 }
 
-export interface DayForecast {
+interface DayForecast {
   /** Local midnight epoch for the day. */
   dayStart: number;
   /** How many cards come due that day (overdue cards fold into today). */

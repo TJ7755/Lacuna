@@ -20,10 +20,7 @@ const globalScopeSchema = z.object({ kind: z.literal('global') }).strict();
 const courseScopeSchema = z
   .object({ kind: z.literal('course'), courseId: identifierSchema })
   .strict();
-export const memoryScopeSchema = z.discriminatedUnion('kind', [
-  globalScopeSchema,
-  courseScopeSchema,
-]);
+const memoryScopeSchema = z.discriminatedUnion('kind', [globalScopeSchema, courseScopeSchema]);
 const tagSchema = z.enum(AGENT_MEMORY_TAGS);
 const statusSchema = z.enum(AGENT_MEMORY_STATUSES);
 const basisSchema = z.enum(AGENT_MEMORY_BASES);
