@@ -9,8 +9,39 @@ import { ASSESSMENT_TARGET_RECALL } from '../../fsrs/assessmentTiming';
 import { simContext } from '../../fsrs/forwardSim';
 import { makeEngine } from '../../fsrs/fsrs';
 import { isUpcomingExamDate } from '../../fsrs/examDate';
+import type { useCoursePathRecords } from '../../state/useCourseStudyFlowRecords';
 
-export function RemainingWork({ courseId }: { courseId: string }) {
+type RemainingWorkRecords = Pick<
+  NonNullable<ReturnType<typeof useCoursePathRecords>>,
+  'course' | 'assessments' | 'lessons' | 'cards' | 'links' | 'concepts'
+>;
+
+async function readRemainingWorkRecords(courseId: string): Promise<RemainingWorkRecords> {
+  const [course, assessments, lessons, rawCards, links, concepts] = await Promise.all([
+    db.courses.get(courseId),
+    db.courseAssessments.where('courseId').equals(courseId).toArray(),
+    db.lessons.where('courseId').equals(courseId).toArray(),
+    db.cards.where('courseId').equals(courseId).toArray(),
+    db.lessonCards.toArray(),
+    db.concepts.where('courseId').equals(courseId).toArray(),
+  ]);
+  return {
+    course: course ?? null,
+    assessments,
+    lessons,
+    cards: await hydrateCardsWithHistory(rawCards),
+    links,
+    concepts,
+  };
+}
+
+export function RemainingWork({
+  courseId,
+  records,
+}: {
+  courseId: string;
+  records?: RemainingWorkRecords;
+}) {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const refresh = () => setNow(Date.now());
@@ -22,17 +53,12 @@ export function RemainingWork({ courseId }: { courseId: string }) {
     };
   }, []);
   const estimates = useLiveQuery(async () => {
-    const [course, assessments, lessons, rawCards, links, concepts, plans] = await Promise.all([
-      db.courses.get(courseId),
-      db.courseAssessments.where('courseId').equals(courseId).toArray(),
-      db.lessons.where('courseId').equals(courseId).toArray(),
-      db.cards.where('courseId').equals(courseId).toArray(),
-      db.lessonCards.toArray(),
-      db.concepts.where('courseId').equals(courseId).toArray(),
+    const [source, plans] = await Promise.all([
+      records ?? readRemainingWorkRecords(courseId),
       db.revisionPlans.where('courseId').equals(courseId).toArray(),
     ]);
+    const { course, assessments, lessons, cards, links, concepts } = source;
     if (!course) return [];
-    const cards = await hydrateCardsWithHistory(rawCards);
     const context = simContext(course, makeEngine(course.fsrsParameters));
     return assessments
       .filter((assessment) => isUpcomingExamDate(assessment.examDate, now))
@@ -56,7 +82,7 @@ export function RemainingWork({ courseId }: { courseId: string }) {
         );
         return estimate ? [{ assessment, estimate }] : [];
       });
-  }, [courseId, now]);
+  }, [courseId, now, records]);
   if (!estimates?.length) return null;
   return (
     <div className="flex flex-col gap-2" aria-label="Estimated assessment workload">

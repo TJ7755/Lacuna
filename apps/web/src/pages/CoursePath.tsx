@@ -292,7 +292,7 @@ export function CoursePath() {
         </Link>
       )}
       {archived && <ArchivedCourseRestoreNotice />}
-      {!archived && <RemainingWork courseId={course.id} />}
+      {!archived && <RemainingWork courseId={course.id} records={records} />}
       <CourseOverview
         summary={(cardClassName) =>
           hasStudyContent && (
