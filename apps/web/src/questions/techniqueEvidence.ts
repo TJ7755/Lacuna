@@ -156,13 +156,7 @@ export function deriveConceptPracticeNeeds(
           (schedule?.due ?? fallback.due ?? observation.at + MS_PER_DAY) -
             (schedule?.lastReviewed ?? observation.at),
         );
-        if (
-          now >= observation.at + interval ||
-          (schedule?.lastReviewed !== null &&
-            schedule?.lastReviewed !== undefined &&
-            schedule.lastReviewed > observation.at)
-        )
-          categories.delete(category);
+        if (now >= observation.at + interval) categories.delete(category);
       }
     needs.set(conceptId, {
       knowledge: categories.get('knowledge')?.gap === true,
