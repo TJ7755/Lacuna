@@ -84,6 +84,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "mermaid@12.2.0": "patches/mermaid@12.2.0.patch",
+  },
   "overrides": {
     "@emnapi/core": "1.10.0",
     "@emnapi/runtime": "1.10.0",

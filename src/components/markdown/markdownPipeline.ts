@@ -3,8 +3,6 @@ import type ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkBreaks from 'remark-breaks';
-import rehypeKatex from 'rehype-katex';
-import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { rehypeWikilinks } from './wikilinks';
@@ -88,8 +86,6 @@ export const REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
   rehypeWikilinks,
   [rehypeSanitize, RESTRICTED_SCHEMA],
   rehypeLinkedImages,
-  rehypeKatex,
-  [rehypeHighlight, { detect: true, ignoreMissing: true }],
 ];
 
 // ── Video embed plugin ────────────────────────────────────────────────────────
@@ -293,6 +289,4 @@ export const EMBED_REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
   [rehypeSanitize, EMBED_SCHEMA],
   rehypeLinkedImages,
   rehypeStripUnsourcedIframes,
-  rehypeKatex,
-  [rehypeHighlight, { detect: true, ignoreMissing: true }],
 ];

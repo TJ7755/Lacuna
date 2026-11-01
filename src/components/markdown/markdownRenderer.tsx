@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import { cachedAssetImageSize } from '../../db/assetCache';
+import { answerMathPlugin, type OptionalMarkdownPlugins } from './optionalMarkdown';
 import { REMARK_PLUGINS, REHYPE_PLUGINS, EMBED_REHYPE_PLUGINS } from './markdownPipeline';
 
 type MarkdownProps = ComponentProps<typeof ReactMarkdown>;
@@ -129,9 +130,10 @@ export function renderMarkdownToHtml(
   prepared: string,
   allowEmbeds: boolean,
   enlargeImages: boolean,
+  optional: OptionalMarkdownPlugins = {},
 ): string {
   // Prefix embed-mode keys so the same source never collides across render modes.
-  const cacheKey = `${enlargeImages ? '\x00I\x00' : ''}${allowEmbeds ? '\x00E\x00' : ''}${prepared}`;
+  const cacheKey = `${optional.math ? 'M' : ''}${optional.highlight ? 'H' : ''}\x00${enlargeImages ? '\x00I\x00' : ''}${allowEmbeds ? '\x00E\x00' : ''}${prepared}`;
   const now = Date.now();
   const cached = HTML_CACHE.get(cacheKey);
   if (cached !== undefined) {
@@ -140,7 +142,13 @@ export function renderMarkdownToHtml(
     return cached.html;
   }
 
-  const rehypePlugins = allowEmbeds ? EMBED_REHYPE_PLUGINS : REHYPE_PLUGINS;
+  const rehypePlugins: MarkdownProps['rehypePlugins'] = [
+    ...(allowEmbeds ? EMBED_REHYPE_PLUGINS! : REHYPE_PLUGINS!),
+    ...(optional.math ? [optional.math] : [answerMathPlugin]),
+  ];
+
+  if (optional.highlight)
+    rehypePlugins.push([optional.highlight, { detect: true, ignoreMissing: true }]);
 
   const html = renderToStaticMarkup(
     <ReactMarkdown

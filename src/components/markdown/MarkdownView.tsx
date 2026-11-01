@@ -7,7 +7,7 @@ import { cn } from '../ui/cn';
 import { ASSET_PROTOCOL } from '../../db/assets';
 import { resolveAssetMarkdownCached, resolveCachedAssetMarkdown } from '../../db/assetCache';
 import { readAudioSettings } from '../../state/audioSettings';
-import 'katex/dist/katex.min.css';
+import { useOptionalMarkdown } from './optionalMarkdown';
 import { MarkdownImageViewer } from './MarkdownImageViewer';
 import { ContentDisclosure } from '../ui/ContentDisclosure';
 import { prepareNumericAnswer, renderMarkdownToHtml } from './markdownRenderer';
@@ -101,6 +101,8 @@ export const MarkdownView = memo(function MarkdownView({
     };
   }, [source]);
 
+  const optionalPlugins = useOptionalMarkdown(resolved);
+
   const html = useMemo(() => {
     let prepared =
       clozeMode === 'front'
@@ -109,11 +111,19 @@ export const MarkdownView = memo(function MarkdownView({
           ? renderClozeBack(resolved)
           : resolved;
     if (literalNumericAnswer) prepared = prepareNumericAnswer(prepared);
-    const rendered = renderMarkdownToHtml(prepared, allowEmbeds, enlargeImages);
+    const rendered = renderMarkdownToHtml(prepared, allowEmbeds, enlargeImages, optionalPlugins);
     return typedAnswerFeedback
       ? typedAnswerFeedbackHtml(rendered, typedAnswerFeedback, clozeMode === 'back')
       : rendered;
-  }, [resolved, clozeMode, literalNumericAnswer, allowEmbeds, enlargeImages, typedAnswerFeedback]);
+  }, [
+    resolved,
+    clozeMode,
+    literalNumericAnswer,
+    allowEmbeds,
+    enlargeImages,
+    typedAnswerFeedback,
+    optionalPlugins,
+  ]);
 
   useEffect(() => {
     const players = containerRef.current?.querySelectorAll('audio') ?? [];

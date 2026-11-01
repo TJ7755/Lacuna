@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
-test('renders Mermaid notes with safe fallback and theme updates', async ({ page }) => {
+test('renders Mermaid notes with ELK layout fallback, safe errors and theme updates', async ({
+  page,
+}) => {
   await enterWithWelcomeCourse(page);
   await page.getByRole('button', { name: 'Expand Welcome to Lacuna' }).click();
   await page.getByRole('link', { name: 'Core concepts & rendering' }).click();
@@ -14,7 +16,7 @@ test('renders Mermaid notes with safe fallback and theme updates', async ({ page
     .fill(
       [
         '```mermaid',
-        'flowchart TD',
+        'flowchart-elk TD',
         '  A[Recall] --> B[Review]',
         '```',
         '',

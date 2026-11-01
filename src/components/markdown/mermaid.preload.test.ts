@@ -36,13 +36,12 @@ function diagram(): HTMLElement {
   return container;
 }
 
-describe('Mermaid dependency preloading', () => {
-  it('loads both browser dependencies before a diagram mounts without rendering', async () => {
+describe('Mermaid dependency loading', () => {
+  it('loads browser dependencies only when a diagram mounts', async () => {
     const { renderMermaidDiagrams } = await import('./mermaid');
-    await vi.waitFor(() => {
-      expect(loadRenderer).toHaveBeenCalledOnce();
-      expect(loadPurifier).toHaveBeenCalledOnce();
-    });
+    await renderMermaidDiagrams(document.createElement('div'));
+    expect(loadRenderer).not.toHaveBeenCalled();
+    expect(loadPurifier).not.toHaveBeenCalled();
     expect(initialise).not.toHaveBeenCalled();
     expect(render).not.toHaveBeenCalled();
     expect(sanitise).not.toHaveBeenCalled();
