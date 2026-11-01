@@ -91,7 +91,7 @@ import {
   persistSessionPracticeMilestone,
   type PracticeSession,
 } from './sessionCompletionPersistence';
-import { transitionSimpleAnswer } from '../../course/simpleSession';
+import { advanceSimpleSession } from './simpleSessionMachine';
 import {
   createRevisionSessionState,
   snapshotRevisionSessionState,
@@ -1486,16 +1486,16 @@ export function useLearnSession({
         { cardId: cardNow.id, grade, correct, responseTimeSec: t, distracted },
       ];
 
-      const nextSimple = transitionSimpleAnswer(
+      const transition = advanceSimpleSession(
         {
           queue: simpleQueue.current,
           mastered: simpleMastered.current,
           wrong: simpleWrong.current,
           outcomes: sessionCardOutcomesRef.current,
         },
-        updated,
-        correct,
+        { type: 'answer-recorded', card: updated, correct },
       );
+      const nextSimple = transition.state;
       simpleQueue.current = nextSimple.queue;
       simpleMastered.current = nextSimple.mastered;
       simpleWrong.current = nextSimple.wrong;
@@ -1504,14 +1504,19 @@ export function useLearnSession({
       }
       sessionCardOutcomesRef.current = nextSimple.outcomes;
       setSessionCardOutcomes(nextSimple.outcomes);
-      persistSimpleResume(nextSimple.outcomes);
       pendingReviewEventId.current = null;
-
-      const remaining = simpleQueue.current.filter((c) => !simpleMastered.current.has(c.id)).length;
-      if (remaining === 0) {
-        finish(!updated.suspended);
-      } else {
-        serveNext();
+      for (const effect of transition.effects) {
+        switch (effect.type) {
+          case 'persist-resume':
+            persistSimpleResume(nextSimple.outcomes);
+            break;
+          case 'finish':
+            finish(effect.completed);
+            break;
+          case 'serve-next':
+            serveNext();
+            break;
+        }
       }
       return { undoAvailable: lastAnswer.current !== null };
     },
