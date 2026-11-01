@@ -400,35 +400,15 @@ describe('relay', () => {
     expect(put.status).toBe(404);
   });
 
-  it('accepts the /api prefix Vercel serves', async () => {
+  it('rejects the removed /api prefix', async () => {
     const ctx = await minted();
-    const mintedOnApi = await ctx.handle(
+    const response = await ctx.handle(
       new Request('http://relay.test/api/channel', {
         method: 'POST',
-        headers: { Origin: ORIGIN, Authorization: `Bearer ${MINT_SECRET}` },
-      }),
-    );
-    expect(mintedOnApi.status).toBe(201);
-    const body = (await mintedOnApi.json()) as { channelId: string; writeToken: string };
-    const put = await ctx.handle(
-      putRequest(
-        body.channelId,
-        'state',
-        body.writeToken,
-        EMPTY_SLOT_ETAG,
-        new Uint8Array([7]),
-        '/api',
-      ),
-    );
-    expect(put.status).toBe(204);
-    const got = await ctx.handle(
-      new Request(`http://relay.test/api/c/${body.channelId}/state`, {
-        method: 'GET',
         headers: { Origin: ORIGIN },
       }),
     );
-    expect(got.status).toBe(200);
-    expect(new Uint8Array(await got.arrayBuffer())).toEqual(new Uint8Array([7]));
+    expect(response.status).toBe(404);
   });
 
   it('mints and reads through a rewritten /api URL', async () => {
@@ -456,7 +436,7 @@ describe('relay', () => {
     );
     expect(put.status).toBe(204);
     const got = await ctx.handle(
-      new Request(`http://relay.test/api?id=${body.channelId}&slot=state`, {
+      new Request(`http://relay.test/api?__path=/c/${body.channelId}/state`, {
         method: 'GET',
         headers: { Origin: ORIGIN },
       }),

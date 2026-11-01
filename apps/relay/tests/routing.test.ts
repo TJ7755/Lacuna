@@ -7,118 +7,24 @@ import { MemoryStore, type PutOptions } from '../src/store.js';
 
 const relayRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const PUBLIC_PATHS = ['/channel', '/c/:id', '/c/:id/:slot'] as const;
-const API_ALIASES = ['/api/channel', '/api/c/:id', '/api/c/:id/:slot'] as const;
-const AI_PUBLIC_PATHS = ['/ai/sessions', '/ai/claim', '/ai/s/:id', '/ai/s/:id/:action'] as const;
-const AI_API_ALIASES = [
-  '/api/ai/sessions',
-  '/api/ai/claim',
-  '/api/ai/s/:id',
-  '/api/ai/s/:id/:action',
-] as const;
-const AI_MAINTENANCE_PATHS = ['/ai/maintenance', '/api/ai/maintenance'] as const;
-const SHARE_PUBLIC_PATHS = ['/shares', '/shares/:id', '/shares/:id/:slot'] as const;
-const SHARE_API_ALIASES = ['/api/shares', '/api/shares/:id', '/api/shares/:id/:slot'] as const;
-
 afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe('parseRoute', () => {
-  it('matches the public Arc 8 paths and their /api aliases', () => {
+describe('v2 routing', () => {
+  it('uses canonical paths and only the function entry-point rewrite hint', () => {
     expect(parseRoute('https://relay.example/channel')).toEqual({ kind: 'channel' });
-    expect(parseRoute('https://relay.example/api/channel')).toEqual({ kind: 'channel' });
-    expect(parseRoute('https://relay.example/c/aabbccddeeff00112233445566778899')).toEqual({
-      kind: 'item',
-      id: 'aabbccddeeff00112233445566778899',
-    });
-    expect(parseRoute('https://relay.example/c/aabbccddeeff00112233445566778899/state')).toEqual({
-      kind: 'slot',
-      id: 'aabbccddeeff00112233445566778899',
-      slot: 'state',
-    });
-    expect(
-      parseRoute('https://relay.example/api/c/aabbccddeeff00112233445566778899/keybag'),
-    ).toEqual({
-      kind: 'slot',
-      id: 'aabbccddeeff00112233445566778899',
-      slot: 'keybag',
-    });
-    expect(parseRoute('https://relay.example/c/aabbccddeeff00112233445566778899/notes')).toEqual({
-      kind: 'slot-invalid',
-    });
-    expect(parseRoute('https://relay.example/ai/sessions')).toEqual({
-      kind: 'ai-session-collection',
-    });
-    expect(parseRoute('https://relay.example/ai/s/ABCD-EFGH-JKMN-PQRS-TVWZ/claim')).toEqual({
-      kind: 'ai-claim',
-      id: 'ABCDEFGHJKMNPQRSTVWZ',
-    });
-    expect(parseRoute('https://relay.example/shares')).toEqual({ kind: 'share-collection' });
-    expect(parseRoute('https://relay.example/api/shares')).toEqual({ kind: 'share-collection' });
-    expect(parseRoute('https://relay.example/shares/aabbccddeeff00112233445566778899')).toEqual({
-      kind: 'share-item',
-      id: 'aabbccddeeff00112233445566778899',
-    });
-    expect(
-      parseRoute('https://relay.example/shares/aabbccddeeff00112233445566778899/payload'),
-    ).toEqual({
-      kind: 'share-slot',
-      id: 'aabbccddeeff00112233445566778899',
-      slot: 'payload',
-    });
-    expect(
-      parseRoute('https://relay.example/api/shares/aabbccddeeff00112233445566778899/meta'),
-    ).toEqual({
-      kind: 'share-slot',
-      id: 'aabbccddeeff00112233445566778899',
-      slot: 'meta',
-    });
-    expect(
-      parseRoute('https://relay.example/shares/aabbccddeeff00112233445566778899/notes'),
-    ).toEqual({ kind: 'share-slot-invalid' });
-  });
-
-  it('recovers a route after a rewrite that collapses the pathname to /api', () => {
     expect(parseRoute('https://relay.example/api?__path=/channel')).toEqual({ kind: 'channel' });
-    expect(parseRoute('https://relay.example/api?__path=/api/channel')).toEqual({
-      kind: 'channel',
-    });
-    expect(
-      parseRoute('https://relay.example/api?__path=/c/aabbccddeeff00112233445566778899'),
-    ).toEqual({ kind: 'item', id: 'aabbccddeeff00112233445566778899' });
-    expect(
-      parseRoute('https://relay.example/api?__path=/c/aabbccddeeff00112233445566778899/state'),
-    ).toEqual({
-      kind: 'slot',
-      id: 'aabbccddeeff00112233445566778899',
-      slot: 'state',
-    });
-    expect(
-      parseRoute('https://relay.example/api?id=aabbccddeeff00112233445566778899&slot=keybag'),
-    ).toEqual({
-      kind: 'slot',
-      id: 'aabbccddeeff00112233445566778899',
-      slot: 'keybag',
-    });
-    expect(parseRoute('https://relay.example/api?id=aabbccddeeff00112233445566778899')).toEqual({
-      kind: 'item',
-      id: 'aabbccddeeff00112233445566778899',
-    });
-    expect(parseRoute('https://relay.example/api')).toEqual({ kind: 'unknown' });
-    expect(parseRoute('https://relay.example/api/x/y/z')).toEqual({ kind: 'unknown' });
-    expect(parseRoute('https://relay.example/api?__path=/ai/sessions')).toEqual({
-      kind: 'ai-session-collection',
-    });
-    expect(
-      parseRoute('https://relay.example/api?__path=/ai/s/ABCDEFGHJKMNPQRSTVWZ/browser'),
-    ).toEqual({
-      kind: 'ai-mailbox',
-      id: 'ABCDEFGHJKMNPQRSTVWZ',
-      mailbox: 'browser',
-    });
-    expect(parseRoute('https://relay.example/api/ai/maintenance')).toEqual({
-      kind: 'ai-maintenance',
+    for (const path of [
+      '/api/channel',
+      '/api?__path=/api/channel',
+      '/api?id=abc&slot=state',
+      '/ai/s/ABCDEFGHJKMNPQRSTVWZ/claim',
+    ]) {
+      expect(parseRoute(`https://relay.example${path}`)).toEqual({ kind: 'unknown' });
+    }
+    expect(parseRoute('https://relay.example/shares?__path=/channel')).toEqual({
+      kind: 'share-collection',
     });
   });
 });
@@ -129,7 +35,7 @@ describe('AI maintenance route', () => {
     const handle = createHandler(new MemoryStore());
 
     const response = await handle(
-      new Request('https://relay.example/api/ai/maintenance', {
+      new Request('https://relay.example/ai/maintenance', {
         headers: { Authorization: 'Bearer configured-nowhere' },
       }),
     );
@@ -162,7 +68,7 @@ describe('AI maintenance route', () => {
     await store.put(`ai/${recentOrphanId}/terminal`, new Uint8Array([2]), { exclusive: true });
 
     const response = await handle(
-      new Request('https://relay.example/api/ai/maintenance', {
+      new Request('https://relay.example/ai/maintenance', {
         headers: { Authorization: 'Bearer test-cron-secret' },
       }),
     );
@@ -203,7 +109,7 @@ describe('AI maintenance route', () => {
     });
 
     const cleanup = await handle(
-      new Request('https://relay.example/api/ai/maintenance', {
+      new Request('https://relay.example/ai/maintenance', {
         headers: { Authorization: 'Bearer test-cron-secret' },
       }),
     );
@@ -217,41 +123,11 @@ describe('AI maintenance route', () => {
 });
 
 describe('vercel routing contract', () => {
-  it('sends every multi-segment public path to api/index.ts, not a catch-all file', () => {
-    const config = JSON.parse(readFileSync(join(relayRoot, 'vercel.json'), 'utf8')) as {
-      rewrites: Array<{ source: string; destination: string }>;
-      crons?: Array<{ path: string; schedule: string }>;
-    };
-
+  it('uses one catch-all rewrite and the canonical authenticated cron path', () => {
+    const config = JSON.parse(readFileSync(join(relayRoot, 'vercel.json'), 'utf8'));
     expect(existsSync(join(relayRoot, 'api/index.ts'))).toBe(true);
-    expect(existsSync(join(relayRoot, 'api/[...path].ts'))).toBe(false);
-    expect(existsSync(join(relayRoot, 'api/[[...path]].ts'))).toBe(false);
-
-    for (const source of [
-      ...PUBLIC_PATHS,
-      ...API_ALIASES,
-      ...AI_PUBLIC_PATHS,
-      ...AI_API_ALIASES,
-      ...AI_MAINTENANCE_PATHS,
-      ...SHARE_PUBLIC_PATHS,
-      ...SHARE_API_ALIASES,
-      '/insights/:id/:day',
-      '/insights/:id/:day/:slotId',
-      '/api/insights/:id/:day',
-      '/api/insights/:id/:day/:slotId',
-    ]) {
-      const rewrite = config.rewrites.find((entry) => entry.source === source);
-      expect(rewrite, `missing rewrite for ${source}`).toBeTruthy();
-      const dest = new URL(rewrite!.destination, 'https://relay.example');
-      expect(['/api', '/api/index']).toContain(dest.pathname);
-      expect(dest.searchParams.get('__path')).toBe(source);
-    }
-
-    const slotRewrite = config.rewrites.find((entry) => entry.source === '/c/:id/:slot');
-    expect(slotRewrite).toBeTruthy();
-    const slotDest = new URL(slotRewrite!.destination, 'https://relay.example');
-    expect(slotDest.pathname.split('/').filter(Boolean)).toHaveLength(1);
-    expect(config.crons).toEqual([{ path: '/api/ai/maintenance', schedule: '0 3 * * *' }]);
+    expect(config.rewrites).toEqual([{ source: '/:path*', destination: '/api?__path=/:path*' }]);
+    expect(config.crons).toEqual([{ path: '/ai/maintenance', schedule: '0 3 * * *' }]);
   });
 });
 

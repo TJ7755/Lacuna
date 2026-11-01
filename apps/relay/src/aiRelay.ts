@@ -1,3 +1,4 @@
+import { relayLimits } from '@lacuna/protocol/relay/index';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { decodeAiSessionMetadata, type AiSessionMetadata } from './aiSessionMetadata.js';
 import { canonicalEtag, type BlobStore } from './store.js';
@@ -5,8 +6,8 @@ import { relayCorsHeaders } from './cors.js';
 
 export const AI_PAIRING_TTL_MS = 10 * 60 * 1000;
 export const AI_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
-const MAX_AI_MAILBOX_BYTES = 1024 * 1024;
-const MAX_AI_JSON_BYTES = 4 * 1024;
+const MAX_AI_MAILBOX_BYTES = relayLimits.aiMailbox;
+const MAX_AI_JSON_BYTES = relayLimits.aiJson;
 const GENERATION_HEADER = 'X-Lacuna-Generation';
 const PAIRING_CODE_HEADER = 'X-Lacuna-Pairing-Code';
 const SESSION_ID_RE = /^[A-HJ-KM-NP-TV-Z2-9]{20}$/;
@@ -20,32 +21,10 @@ type AiMailbox = 'browser' | 'terminal';
 export type AiRelayRoute =
   | { kind: 'ai-session-collection' }
   | { kind: 'ai-session'; id: string }
-  | { kind: 'ai-claim'; id?: string }
+  | { kind: 'ai-claim' }
   | { kind: 'ai-peer'; id: string }
   | { kind: 'ai-mailbox'; id: string; mailbox: AiMailbox }
   | { kind: 'ai-invalid' };
-
-export function matchAiRelayPath(parts: string[]): AiRelayRoute | null {
-  if (parts[0] !== 'ai') return null;
-  if (parts.length === 2 && parts[1] === 'sessions') {
-    return { kind: 'ai-session-collection' };
-  }
-  if (parts.length === 2 && parts[1] === 'claim') return { kind: 'ai-claim' };
-  if (parts.length < 3 || parts[1] !== 's' || parts[2] === undefined) {
-    return { kind: 'ai-invalid' };
-  }
-  const id = normaliseSessionId(parts[2]);
-  if (id === null) return { kind: 'ai-invalid' };
-  if (parts.length === 3) return { kind: 'ai-session', id };
-  if (parts.length !== 4 || parts[3] === undefined) return { kind: 'ai-invalid' };
-  // Deprecated path form (kept for installed clients): puts the pairing capability in the request path, and so in access logs.
-  if (parts[3] === 'claim') return { kind: 'ai-claim', id };
-  if (parts[3] === 'peer') return { kind: 'ai-peer', id };
-  if (parts[3] === 'browser' || parts[3] === 'terminal') {
-    return { kind: 'ai-mailbox', id, mailbox: parts[3] };
-  }
-  return { kind: 'ai-invalid' };
-}
 
 export async function handleAiRelayRoute(
   store: BlobStore,
@@ -57,12 +36,7 @@ export async function handleAiRelayRoute(
     case 'ai-session-collection':
       return createSession(store, request, now);
     case 'ai-claim':
-      return claimSession(
-        store,
-        request,
-        route.id ?? request.headers.get(PAIRING_CODE_HEADER) ?? '',
-        now,
-      );
+      return claimSession(store, request, request.headers.get(PAIRING_CODE_HEADER) ?? '', now);
     case 'ai-peer':
       return readPeer(store, request, route.id, now);
     case 'ai-mailbox':

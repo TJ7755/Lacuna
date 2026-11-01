@@ -5,7 +5,7 @@ import { CHANNEL_TTL_MS } from '../src/channelMaintenance.js';
 
 afterEach(() => vi.unstubAllEnvs());
 
-it.each(['shares', 'api/shares', 'api?__path=/shares'])(
+it.each(['shares', 'api?__path=/shares'])(
   'checks %s ownership without writing, deleting or returning course bytes',
   async (route) => {
     vi.stubEnv('RELAY_MINT_SECRET', 'owner-check-test');

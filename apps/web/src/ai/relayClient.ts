@@ -1,10 +1,12 @@
+import {
+  createRelayClient as createProtocolClient,
+  relayRoutes,
+} from '@lacuna/protocol/relay/index';
 import { DEFAULT_RELAY_URL } from '../sync/pairing';
 import { bindFetch, normaliseRelayUrl } from '../sync/relay';
 import {
   relayCreateSessionRequestSchema,
-  relayCreateSessionResponseSchema,
   relayMailboxWriteResponseSchema,
-  relayPeerResponseSchema,
   relaySessionIdSchema,
   relayTokenSchema,
   type RelayCreatedSession,
@@ -118,7 +120,7 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
   if (typeof fetcher !== 'function') {
     throw new RelayClientConfigurationError('This device does not provide fetch for the AI relay.');
   }
-  const fetchImpl = bindFetch(fetcher);
+  const client = createProtocolClient(relayUrl, bindFetch(fetcher));
   const recoveryTiming = {
     now: options.recovery?.now ?? (() => performance.now()),
     wait: options.recovery?.wait ?? wait,
@@ -130,31 +132,30 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
       if (!request.success) {
         throw new RelayClientProtocolError('The browser public key is invalid.', 'create');
       }
-      const response = await fetchImpl(`${relayUrl}/ai/sessions`, {
-        method: 'POST',
+      const response = await client.request('aiCreate', {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request.data),
       });
       if (!response.ok) throw await httpError('create', response);
-      return parseJsonResponse(response, relayCreateSessionResponseSchema, 'create');
+      return parseJsonResponse(response, relayRoutes.aiCreate.responses[201], 'create');
     },
 
     async peer(credentials) {
       const session = requireCredentials(credentials, 'peer');
-      const response = await fetchImpl(`${relayUrl}/ai/s/${session.sessionId}/peer`, {
-        method: 'GET',
+      const response = await client.request('aiPeer', {
+        params: { id: session.sessionId },
         cache: 'no-store',
         headers: bearer(session.browserToken),
       });
       if (response.status === 404) return null;
       if (!response.ok) throw await httpError('peer', response);
-      return parseJsonResponse(response, relayPeerResponseSchema, 'peer');
+      return parseJsonResponse(response, relayRoutes.aiPeer.responses[200], 'peer');
     },
 
     async pull(credentials) {
       const session = requireCredentials(credentials, 'pull');
-      const response = await fetchImpl(`${relayUrl}/ai/s/${session.sessionId}/terminal`, {
-        method: 'GET',
+      const response = await client.request('aiRead', {
+        params: { id: session.sessionId, mailbox: 'terminal' },
         cache: 'no-store',
         headers: bearer(session.browserToken),
       });
@@ -170,11 +171,11 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
       const session = requireCredentials(credentials, 'push');
       const generation = requireRequestGeneration(ifMatch);
       const body = copyBytes(bytes);
-      const mailboxUrl = `${relayUrl}/ai/s/${session.sessionId}/browser`;
+      const mailboxParams = { id: session.sessionId, mailbox: 'browser' };
       let response: Response;
       try {
-        response = await fetchImpl(mailboxUrl, {
-          method: 'PUT',
+        response = await client.request('aiWrite', {
+          params: mailboxParams,
           headers: {
             ...bearer(session.browserToken),
             'Content-Type': 'application/octet-stream',
@@ -184,8 +185,8 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
         });
       } catch {
         return recoverPushGeneration(
-          fetchImpl,
-          mailboxUrl,
+          client,
+          mailboxParams,
           session.browserToken,
           body,
           recoveryTiming,
@@ -194,8 +195,8 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
       if (response.status === 412) throw new RelayStaleGenerationError(generation);
       if (response.status >= 500) {
         return recoverPushGeneration(
-          fetchImpl,
-          mailboxUrl,
+          client,
+          mailboxParams,
           session.browserToken,
           body,
           recoveryTiming,
@@ -216,8 +217,8 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
       } catch (error) {
         if (!(error instanceof RelayPushOutcomeUnknownError)) throw error;
         return recoverPushGeneration(
-          fetchImpl,
-          mailboxUrl,
+          client,
+          mailboxParams,
           session.browserToken,
           body,
           recoveryTiming,
@@ -228,8 +229,8 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
 
     async revoke(credentials) {
       const session = requireCredentials(credentials, 'revoke');
-      const response = await fetchImpl(`${relayUrl}/ai/s/${session.sessionId}`, {
-        method: 'DELETE',
+      const response = await client.request('aiDelete', {
+        params: { id: session.sessionId },
         headers: bearer(session.browserToken),
       });
       if (response.status === 404) return;
@@ -303,8 +304,8 @@ async function readPushGeneration(response: Response): Promise<string> {
 }
 
 async function recoverPushGeneration(
-  fetchImpl: typeof fetch,
-  mailboxUrl: string,
+  client: ReturnType<typeof createProtocolClient>,
+  mailboxParams: Record<string, string>,
   browserToken: string,
   attemptedBody: ArrayBuffer,
   timing: { now: () => number; wait: (milliseconds: number) => Promise<void> },
@@ -318,7 +319,6 @@ async function recoverPushGeneration(
   } catch {
     throw new RelayPushOutcomeUnknownError(status);
   }
-  const recoveryUrl = `${mailboxUrl}?digest=${digest}`;
 
   for (const offsetMs of RECOVERY_READ_OFFSETS_MS) {
     const delayMs = startedAt + offsetMs - timing.now();
@@ -332,8 +332,9 @@ async function recoverPushGeneration(
       Math.min(RECOVERY_READ_TIMEOUT_MS, remainingMs),
     );
     try {
-      const response = await fetchImpl(recoveryUrl, {
-        method: 'GET',
+      const response = await client.request('aiRead', {
+        params: mailboxParams,
+        query: { digest },
         cache: 'no-store',
         headers: bearer(browserToken),
         signal: controller.signal,
