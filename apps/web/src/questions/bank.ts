@@ -4,11 +4,9 @@ export type { QuestionBank } from '@lacuna/core/questions/bankSchema';
 export {
   declarativeFamilyCapacity,
   materialiseQuestionBank,
-  materialiseValidatedQuestionBank,
   parseQuestionBank,
   parseQuestionBankAsync,
   resolveFamilyVariant,
-  sameBankContent,
 } from './bankMaterialisation';
 
 // Keep file-only tooling free of IndexedDB initialisation.

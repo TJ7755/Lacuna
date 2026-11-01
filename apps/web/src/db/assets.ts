@@ -3,8 +3,6 @@ export {
   encodeBackupAssets,
   backupAssetToMediaAsset,
   ASSET_PROTOCOL,
-  bytesToBase64,
-  base64ToBytes,
   toBlob,
   blobToArrayBuffer,
   sha256Blob,

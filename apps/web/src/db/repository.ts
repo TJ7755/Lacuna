@@ -1,12 +1,7 @@
 // Compatibility exports for high-level persistence operations.
 // New callers should import the owning repository rather than touching Dexie tables directly.
 
-export {
-  createPracticeNode,
-  updatePracticeNode,
-  deletePracticeNode,
-  savePracticeMilestoneProgress,
-} from './practiceNodeRepository';
+export { createPracticeNode, savePracticeMilestoneProgress } from './practiceNodeRepository';
 export {
   cardsForSequence,
   createSequence,
@@ -16,21 +11,11 @@ export {
   snapshotSequence,
   restoreSequence,
 } from './sequenceRepository';
-export type { SequenceSnapshot } from './sequenceRepository';
-export { agentMemoryRepository, AgentMemoryRepository } from './agentMemoryRepository';
-export type {
-  AgentMemorySearch,
-  AgentMemorySearchScope,
-  CreateAgentMemoryInput,
-  DeletedAgentMemory,
-  UpdateAgentMemoryInput,
-} from './agentMemoryRepository';
+
 export {
   createNote,
   updateNote,
   deleteNote,
-  listNotes,
-  reorderNotes,
   createNoteAnnotation,
   updateNoteAnnotation,
   deleteNoteAnnotation,
@@ -59,7 +44,6 @@ export {
   ensureLessonDeck,
   normaliseCardText,
   removeTagFromCards,
-  replaceReviewHistoryForCards,
   rescheduleCards,
   restoreCards,
   setCardFlag,
@@ -69,7 +53,7 @@ export {
   unsuspendCard,
   updateCard,
 } from './cardRepository';
-export type { CardSnapshot, RescheduleOptions } from './cardRepository';
+export type { CardSnapshot } from './cardRepository';
 
 export * from './reviewRepository';
 
