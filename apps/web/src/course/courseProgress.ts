@@ -93,6 +93,8 @@ export interface CourseProgressReport {
   study: { reviewed: number; taughtNotReviewed: number; notStarted: number };
   dueCards: number;
   forecast: ProgressForecast;
+  /** Informational overlapping assessments; never used for scheduling or headline totals. */
+  laterPapers: PaperForecast[];
   /** Partitions `cards`: lesson rows, then an `OTHER_CARDS_ROW` when any card has no row. */
   lessons: LessonProgress[];
 }
@@ -250,7 +252,38 @@ export function buildCourseProgress(input: CourseProgressInput): CourseProgressR
   const other = counted.filter((card) => !rowIds.has(card.primaryLessonId ?? ''));
   if (other.length > 0) lessons.push(row(OTHER_CARDS_ROW, 'Other cards', other));
 
+  const laterPapers: PaperForecast[] = assessment
+    ? []
+    : selectableAssessments(input.assessments, course.id, now).flatMap((paper) => {
+        const date = paper.examDate;
+        if (date === undefined || date <= now) return [];
+        const covered = resolveAssessmentCoverage(
+          paper,
+          courseLessons,
+          courseCards,
+          input.links,
+          courseLessonOrderPreference(course),
+          { course, concepts: input.concepts },
+        );
+        const ids = new Set(covered.cards.map((card) => card.id));
+        const cards = counted.filter((card) => ids.has(card.id));
+        const overlapsEarlierTarget = cards.some((card) => {
+          const nearest = resolveCardExamDate(card, examDateContext, now);
+          return nearest !== undefined && nearest < date;
+        });
+        if (!overlapsEarlierTarget) return [];
+        return [
+          {
+            date,
+            assessments: [{ id: paper.id, name: paper.name }],
+            cardCount: cards.length,
+            value: progressValue(cards, { ...course, examDate: date }, now),
+          },
+        ];
+      });
+
   return {
+    laterPapers,
     ...(assessment ? { assessment } : {}),
     ...((assessment?.timeZone ?? course.timeZone)
       ? { timeZone: assessment?.timeZone ?? course.timeZone }
