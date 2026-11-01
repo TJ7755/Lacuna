@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { FileMatcher } from 'app-builder-lib/out/fileMatcher.js';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { coursePaths } from '../src/pages/courses/content';
+import { coursePaths } from '../apps/web/src/pages/courses/content';
 
 const root = resolve(import.meta.dirname, '..');
 const config = parse(readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8')) as {
@@ -19,14 +19,12 @@ const fileStats = statSync(import.meta.filename);
 const included = (file: string) => filter(resolve(root, file), fileStats);
 
 describe('desktop package files', () => {
-  it.each([
-    'dist/workbox-runtime.js',
-    'dist/robots.txt',
-    'dist/sitemap.xml',
-    'dist/llms.txt',
-  ])('excludes hosted-web-only output %s through the real packager filter', (file) => {
-    expect(included(file)).toBe(false);
-  });
+  it.each(['dist/workbox-runtime.js', 'dist/robots.txt', 'dist/sitemap.xml', 'dist/llms.txt'])(
+    'excludes hosted-web-only output %s through the real packager filter',
+    (file) => {
+      expect(included(file)).toBe(false);
+    },
+  );
 
   it('retains the service-worker entry used by desktop stale-chunk recovery', () => {
     expect(included('dist/sw.js')).toBe(true);

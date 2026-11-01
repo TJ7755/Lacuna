@@ -1,4 +1,4 @@
-import { coursePaths } from '../src/pages/courses/content.ts';
+import { coursePaths } from '../apps/web/src/pages/courses/content.ts';
 import { createServer, type Plugin, type ViteDevServer } from 'vite';
 
 interface PublicPage {

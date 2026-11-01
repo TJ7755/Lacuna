@@ -1,0 +1,277 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { act, render, screen, fireEvent } from '@testing-library/react';
+import { LessonManagementSection } from './LessonManagementSection';
+import type { Lesson } from '../../db/types';
+import type { CourseRecord } from '../../db/types';
+
+let mockLessons: Lesson[] | undefined;
+let mockCourse: CourseRecord;
+let unavailableReason: string | undefined;
+
+vi.mock('../../state/useLessonOrderData', () => ({
+  useLessonOrderData: () => ({ course: mockCourse, lessons: mockLessons, unavailableReason }),
+}));
+
+const updateLesson = vi.fn().mockResolvedValue(undefined);
+const deleteLesson = vi.fn().mockResolvedValue(undefined);
+const reorderLessons = vi.fn().mockResolvedValue(undefined);
+const setLocalLessonOrder = vi.fn().mockResolvedValue(undefined);
+const notify = vi.fn();
+const createLesson = vi.fn().mockResolvedValue({
+  id: 'lesson-new',
+  courseId: 'course-1',
+  name: 'Lesson 3',
+  orderIndex: 2,
+  isExtension: false,
+  createdAt: Date.now(),
+  updatedAt: 1,
+});
+
+vi.mock('../../db/lessonRepository', () => ({
+  updateLesson: (...args: unknown[]) => updateLesson(...args),
+  deleteLesson: (...args: unknown[]) => deleteLesson(...args),
+  reorderLessons: (...args: unknown[]) => reorderLessons(...args),
+  setLocalLessonOrder: (...args: unknown[]) => setLocalLessonOrder(...args),
+  createLesson: (...args: unknown[]) => createLesson(...args),
+}));
+
+vi.mock('../../components/ui/Toast', () => ({
+  useToast: () => ({ notify }),
+}));
+
+const lessonOne: Lesson = {
+  id: 'lesson-1',
+  courseId: 'course-1',
+  name: 'Lesson one',
+  orderIndex: 0,
+  isExtension: false,
+  createdAt: Date.now(),
+  updatedAt: 1,
+};
+const lessonTwo: Lesson = {
+  id: 'lesson-2',
+  courseId: 'course-1',
+  name: 'Lesson two',
+  orderIndex: 1,
+  isExtension: false,
+  createdAt: Date.now(),
+  updatedAt: 1,
+};
+
+describe('LessonManagementSection', () => {
+  beforeEach(() => {
+    mockLessons = [lessonOne, lessonTwo];
+    mockCourse = { id: 'course-1' } as CourseRecord;
+    unavailableReason = undefined;
+    setLocalLessonOrder.mockClear();
+    updateLesson.mockClear();
+    deleteLesson.mockClear();
+    reorderLessons.mockClear();
+    createLesson.mockClear();
+    notify.mockClear();
+  });
+
+  it('lists lessons in order', () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    expect(screen.getByText('Lesson one')).toBeInTheDocument();
+    expect(screen.getByText('Lesson two')).toBeInTheDocument();
+  });
+
+  it('moves and resets a locked copy while hiding content authoring', async () => {
+    mockCourse.distributedCopy = {
+      lineageId: 'science',
+      revision: 1,
+      locked: true,
+      autoAcceptUpdates: false,
+    };
+    mockCourse.localLessonOrder = ['lesson-1', 'lesson-2'];
+    render(<LessonManagementSection courseId="course-1" />);
+    expect(
+      screen.queryByRole('button', { name: /^Rename|^Delete|Add lesson/i }),
+    ).not.toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByLabelText('Move Lesson one down')));
+    expect(setLocalLessonOrder).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1']);
+    expect(reorderLessons).not.toHaveBeenCalled();
+    await act(async () =>
+      fireEvent.click(screen.getByRole('button', { name: 'Use publisher order' })),
+    );
+    expect(setLocalLessonOrder).toHaveBeenLastCalledWith('course-1');
+  });
+
+  it('explains suspended ordering, disables moves and still allows reset', async () => {
+    mockCourse.distributedCopy = {
+      lineageId: 'science',
+      revision: 1,
+      locked: true,
+      autoAcceptUpdates: false,
+    };
+    mockCourse.localLessonOrder = ['lesson-2', 'lesson-1'];
+    unavailableReason = 'Local lesson order is unavailable while this course is archived.';
+    render(<LessonManagementSection courseId="course-1" />);
+    expect(screen.getByRole('status')).toHaveTextContent('Saved lesson order is suspended.');
+    expect(screen.getByRole('status')).toHaveTextContent(unavailableReason);
+    expect(screen.getByLabelText('Move Lesson one down')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Use publisher order' })).toBeEnabled();
+    setLocalLessonOrder.mockRejectedValueOnce(new Error('Storage unavailable'));
+    await act(async () =>
+      fireEvent.click(screen.getByRole('button', { name: 'Use publisher order' })),
+    );
+    expect(notify).toHaveBeenCalledWith('Storage unavailable', 'negative');
+  });
+
+  it('reorders lessons on move down', () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    fireEvent.click(screen.getByLabelText('Move Lesson one down'));
+    expect(reorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1']);
+  });
+
+  it('gives every reorder action a 44px target and visible keyboard focus', () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    for (const button of screen.getAllByRole('button', { name: /^Move Lesson/ })) {
+      expect(button).toHaveClass('min-h-11', 'min-w-11');
+      expect(button).toHaveClass('focus-visible:ring-2');
+    }
+    expect(screen.getByRole('button', { name: 'Move Lesson one up' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Move Lesson two down' })).toBeDisabled();
+  });
+
+  it('names the inline editor and restores focus when Escape cancels it', () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    const trigger = screen.getByRole('button', { name: 'Rename Lesson one' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const input = screen.getByRole('textbox', { name: 'Lesson name' });
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(trigger).toHaveFocus();
+    expect(updateLesson).not.toHaveBeenCalled();
+  });
+
+  it('selects the name on rename and saves once on Enter then blur', async () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Lesson one' }));
+    const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'Lesson name' });
+    fireEvent.focus(input);
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, 'Lesson one'.length]);
+    fireEvent.change(input, { target: { value: 'Atoms' } });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' });
+      fireEvent.blur(input);
+    });
+    expect(updateLesson).toHaveBeenCalledOnce();
+    expect(updateLesson).toHaveBeenCalledWith('lesson-1', { name: 'Atoms' });
+  });
+
+  it('keeps the field open after a failed rename and skips unchanged names', async () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Lesson one' }));
+    let input = screen.getByRole('textbox', { name: 'Lesson name' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(updateLesson).not.toHaveBeenCalled();
+
+    updateLesson.mockRejectedValueOnce(new Error('Disk full'));
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Lesson one' }));
+    input = screen.getByRole('textbox', { name: 'Lesson name' });
+    fireEvent.change(input, { target: { value: 'Atoms' } });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' });
+    });
+    expect(notify).toHaveBeenCalledWith('Disk full', 'negative');
+    expect(screen.getByRole('textbox', { name: 'Lesson name' })).toHaveValue('Atoms');
+  });
+
+  it('deletes a lesson after confirmation', async () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    fireEvent.click(screen.getByLabelText('Delete Lesson one'));
+    expect(deleteLesson).not.toHaveBeenCalled();
+    const prompt = screen.getByRole('status');
+    expect(prompt).toHaveTextContent('Delete Lesson one?');
+    expect(prompt.closest('[data-lesson-delete-confirmation]')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete lesson' })).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Delete lesson' }));
+      await vi.waitFor(() => {
+        expect(deleteLesson).toHaveBeenCalledWith('lesson-1');
+      });
+      await Promise.resolve(deleteLesson.mock.results[0]?.value);
+    });
+    await vi.waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Delete lesson' })).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Delete Lesson one')).toBeInTheDocument();
+    });
+  });
+
+  it('returns focus to the lesson delete button when deletion is cancelled', () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    fireEvent.click(screen.getByLabelText('Delete Lesson one'));
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByLabelText('Delete Lesson one')).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Delete lesson' })).not.toBeInTheDocument();
+  });
+
+  it('renames a lesson on blur', async () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    fireEvent.click(screen.getByLabelText('Rename Lesson one'));
+    const input = screen.getByDisplayValue('Lesson one');
+    fireEvent.change(input, { target: { value: 'Renamed lesson' } });
+    await act(async () => {
+      fireEvent.blur(input);
+      await vi.waitFor(() => {
+        expect(updateLesson).toHaveBeenCalledWith('lesson-1', { name: 'Renamed lesson' });
+      });
+      await Promise.resolve(updateLesson.mock.results[0]?.value);
+    });
+    await vi.waitFor(() => {
+      expect(screen.queryByDisplayValue('Renamed lesson')).not.toBeInTheDocument();
+    });
+  });
+
+  it('creates a lesson from the add form', async () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    fireEvent.click(screen.getByRole('button', { name: /add lesson/i }));
+    const input = screen.getByPlaceholderText('e.g. Elasticity');
+    fireEvent.change(input, { target: { value: 'Lesson 3' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /create lesson/i }));
+      await vi.waitFor(() => {
+        expect(createLesson).toHaveBeenCalledWith('course-1', 'Lesson 3');
+      });
+      await Promise.resolve(createLesson.mock.results[0]?.value);
+    });
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button', { name: /add lesson/i })).toBeInTheDocument();
+    });
+  });
+
+  it.each(['rename', 'reorder', 'delete'] as const)(
+    'reports rejected %s writes and keeps the action retryable',
+    async (action) => {
+      const write =
+        action === 'rename' ? updateLesson : action === 'reorder' ? reorderLessons : deleteLesson;
+      write.mockRejectedValueOnce(new Error('Storage unavailable'));
+      render(<LessonManagementSection courseId="course-1" />);
+      let retry: HTMLElement;
+      if (action === 'rename') {
+        fireEvent.click(screen.getByRole('button', { name: 'Rename Lesson one' }));
+        retry = screen.getByRole('textbox', { name: 'Lesson name' });
+        fireEvent.change(retry, { target: { value: 'Renamed lesson' } });
+        fireEvent.keyDown(retry, { key: 'Enter' });
+      } else if (action === 'reorder') {
+        retry = screen.getByRole('button', { name: 'Move Lesson one down' });
+        fireEvent.click(retry);
+      } else {
+        fireEvent.click(screen.getByRole('button', { name: 'Delete Lesson one' }));
+        retry = screen.getByRole('button', { name: 'Delete lesson' });
+        fireEvent.click(retry);
+      }
+      await vi.waitFor(() =>
+        expect(notify).toHaveBeenCalledWith('Storage unavailable', 'negative'),
+      );
+      expect(retry).toBeInTheDocument();
+      if (action === 'rename') fireEvent.keyDown(retry, { key: 'Enter' });
+      else fireEvent.click(retry);
+      await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(2));
+    },
+  );
+});

@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { materialiseQuestionBank, parseQuestionBank } from '../src/questions/bank';
-import { auditQuestionClassifications } from '../src/questions/classificationAudit';
+import { materialiseQuestionBank, parseQuestionBank } from '../apps/web/src/questions/bank';
+import { auditQuestionClassifications } from '../apps/web/src/questions/classificationAudit';
 
 const [command, input, output] = process.argv.slice(2);
 try {
@@ -21,7 +21,7 @@ try {
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     let report;
     if (value?.format === 'lacuna-course') {
-      const { decodeCourseFile } = await import('../src/db/courseFile');
+      const { decodeCourseFile } = await import('../apps/web/src/db/courseFile');
       const { payload } = await decodeCourseFile(text);
       report = {
         artefact: {

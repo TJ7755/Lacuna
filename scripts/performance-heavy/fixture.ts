@@ -1,12 +1,12 @@
-import { db } from '../../src/db/schema';
-import type { Card, CourseRecord, Lesson } from '../../src/db/types';
-import { defaultFsrsParameters } from '../../src/fsrs/params';
+import { db } from '../../apps/web/src/db/schema';
+import type { Card, CourseRecord, Lesson } from '../../apps/web/src/db/types';
+import { defaultFsrsParameters } from '../../apps/web/src/fsrs/params';
 import {
   schedulingUnitFromCourse,
   schedulingUnitFromLesson,
-} from '../../src/db/schedulingUnitBuilder';
-import { buildCardConcept } from '../../src/questions/concepts';
-import { reviewHistoryEntriesForCard } from '../../src/db/reviewHistory';
+} from '../../apps/web/src/db/schedulingUnitBuilder';
+import { buildCardConcept } from '../../apps/web/src/questions/concepts';
+import { reviewHistoryEntriesForCard } from '../../apps/web/src/db/reviewHistory';
 
 /** Only injected into a disposable Playwright context, before loading the application. */
 export async function counts() {

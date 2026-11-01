@@ -1,8 +1,8 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import type { CourseAssessment, Lesson } from '../../src/db/types';
-import type { Concept } from '../../src/questions/types';
-import type { QuestionSet } from '../../src/questions/questionSets';
-import type { QuestionSetAttemptRecord } from '../../src/questions/questionSetAttempts';
+import type { CourseAssessment, Lesson } from '../../apps/web/src/db/types';
+import type { Concept } from '../../apps/web/src/questions/types';
+import type { QuestionSet } from '../../apps/web/src/questions/questionSets';
+import type { QuestionSetAttemptRecord } from '../../apps/web/src/questions/questionSetAttempts';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 

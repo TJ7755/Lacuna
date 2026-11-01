@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import { SCIENCE_TECHNIQUES } from '../../src/questions/techniqueTags';
+import { SCIENCE_TECHNIQUES } from '../../apps/web/src/questions/techniqueTags';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 const examples = 'docs/question-bank/examples';

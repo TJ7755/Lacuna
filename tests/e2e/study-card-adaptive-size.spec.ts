@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import type { Card, Lesson } from '../../src/db/types';
+import type { Card, Lesson } from '../../apps/web/src/db/types';
 import { createCourse, skipOnboarding } from './fixtures/lacunaApp';
 
 const directory = 'artifacts/study-card-adaptive-size';

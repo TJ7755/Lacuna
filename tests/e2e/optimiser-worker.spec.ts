@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { checkParameters } from 'ts-fsrs';
-import type { OptimiseMessage } from '../../src/workers/optimise.worker';
+import type { OptimiseMessage } from '../../apps/web/src/workers/optimise.worker';
 
 const root = resolve(import.meta.dirname, '../..');
 

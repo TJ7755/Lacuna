@@ -1,0 +1,414 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AiSession, AiSessionSnapshot } from '../../ai/session/types';
+import { AiPanel } from './AiPanel';
+
+function sessionWith(patch: Partial<AiSessionSnapshot> = {}): AiSession {
+  const snapshot: AiSessionSnapshot = {
+    revision: 0,
+    connection: { status: 'disconnected' },
+    conversationId: null,
+    items: [],
+    run: null,
+    activity: null,
+    approval: null,
+    draft: '',
+    queuedFollowUp: null,
+    ...patch,
+  };
+  return {
+    subscribe: () => () => {},
+    getSnapshot: () => snapshot,
+    activate: vi.fn(),
+    dispose: vi.fn(),
+    pair: vi.fn().mockResolvedValue({
+      ok: true,
+      data: { code: 'ABCD-EFGH-JKMN-PQRS-TVWZ', expiresAt: Date.now() + 60_000 },
+    }),
+    send: vi.fn().mockResolvedValue({ ok: true, data: { messageId: 'message-1' } }),
+    stop: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
+    decide: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
+    resetConnection: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
+  };
+}
+
+beforeEach(() => {
+  localStorage.removeItem('lacuna.aiPrivacyNoticeDismissed');
+  Object.defineProperty(window, 'electronAPI', {
+    configurable: true,
+    value: undefined,
+  });
+  Object.defineProperty(navigator, 'userAgent', {
+    configurable: true,
+    value: 'Mozilla/5.0',
+  });
+});
+
+describe('AiPanel', () => {
+  it('remembers dismissal of the built-in AI privacy notice after reopening', () => {
+    const session = {
+      ...sessionWith({ connection: { status: 'hosted', lastActivityAt: 1 } }),
+      provider: 'hosted' as const,
+    };
+    const view = render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByText("Don't share personal information with AI.")).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss privacy notice' }));
+    expect(screen.queryByText("Don't share personal information with AI.")).not.toBeInTheDocument();
+
+    view.unmount();
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+    expect(screen.queryByText("Don't share personal information with AI.")).not.toBeInTheDocument();
+  });
+
+  it('shows the privacy notice before connecting built-in AI', () => {
+    render(<AiPanel session={{ ...sessionWith(), provider: 'hosted' }} onClose={vi.fn()} />);
+    expect(screen.getByText("Don't share personal information with AI.")).toBeVisible();
+  });
+
+  it('waits for the native companion in Electron instead of starting relay pairing', () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: { isElectron: true, ai: { listen: vi.fn() } },
+    });
+    const session = sessionWith();
+
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByText('Waiting for AI client')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'AI client setup prompt' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Connect AI client' })).not.toBeInTheDocument();
+    expect(session.pair).not.toHaveBeenCalled();
+  });
+
+  it('keeps the local setup path when the Electron preload failed to load', () => {
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 Electron/42.3.3',
+    });
+    const session = sessionWith();
+
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByText(/desktop app connects locally/i)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/desktop integration failed to load/i);
+    expect(screen.queryByRole('button', { name: 'Connect AI client' })).not.toBeInTheDocument();
+    expect(session.pair).not.toHaveBeenCalled();
+  });
+
+  it('starts pairing from the disconnected state and prevents messages', async () => {
+    const session = sessionWith();
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Connect AI client' }));
+    await waitFor(() => expect(session.pair).toHaveBeenCalledOnce());
+    expect(screen.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
+  });
+
+  it('keeps completed messages visible when the terminal disconnects', () => {
+    render(
+      <AiPanel
+        session={sessionWith({
+          connection: { status: 'disconnected', reason: 'Terminal disconnected' },
+          conversationId: 'conversation-1',
+          items: [
+            {
+              kind: 'user',
+              id: 'message-1',
+              content: 'Explain the testing effect.',
+              createdAt: 1,
+              delivery: 'completed',
+            },
+            {
+              kind: 'assistant',
+              id: 'assistant-1',
+              content: 'Retrieval strengthens later access more than passive rereading.',
+              createdAt: 2,
+              sources: [],
+            },
+          ],
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Explain the testing effect.', { exact: true })).toBeVisible();
+    expect(
+      screen.getByText('Retrieval strengthens later access more than passive rereading.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Connect AI client' })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
+  });
+
+  it('shows the short-lived code while pairing', () => {
+    render(
+      <AiPanel
+        session={sessionWith({
+          connection: {
+            status: 'pairing',
+            code: 'ABCD-EFGH-JKMN-PQRS-TVWZ',
+            expiresAt: Date.now() + 60_000,
+          },
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('ABCD-EFGH-JKMN-PQRS-TVWZ')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy instruction' })).toHaveFocus();
+    expect(screen.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();
+  });
+
+  it('sends a message from the composer and clears it', async () => {
+    const session = sessionWith({
+      connection: {
+        status: 'connected',
+        connectionId: 'connection-1',
+        client: { name: 'OpenCode' },
+        lastActivityAt: 1,
+      },
+      conversationId: 'conversation-1',
+    });
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    const composer = screen.getByRole('textbox', { name: 'Message AI' });
+    fireEvent.change(composer, { target: { value: 'Make a transfer question.' } });
+    fireEvent.keyDown(composer, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(session.send).toHaveBeenCalledWith('Make a transfer question.');
+      expect(composer).toHaveValue('');
+    });
+  });
+
+  it('keeps the conversation visible while working and stops the explicit run', () => {
+    const session = sessionWith({
+      connection: {
+        status: 'connected',
+        connectionId: 'connection-1',
+        client: { name: 'Terminal agent' },
+        lastActivityAt: 1,
+      },
+      conversationId: 'conversation-1',
+      items: [
+        {
+          kind: 'assistant',
+          id: 'assistant-1',
+          content: 'Your current weak point is distinguishing stability from difficulty.',
+          createdAt: 2,
+          sources: [],
+        },
+      ],
+      run: {
+        runId: 'run-1',
+        conversationId: 'conversation-1',
+        messageId: 'message-1',
+        claimedAt: 1,
+        leaseExpiresAt: 10_000,
+        status: 'active',
+      },
+      activity: {
+        runId: 'run-1',
+        status: 'working',
+        summary: 'Comparing your recent answers',
+        updatedAt: 3,
+      },
+    });
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByText(/Your current weak point/)).toBeInTheDocument();
+    expect(screen.getAllByText('Comparing your recent answers')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(session.stop).toHaveBeenCalledWith('run-1');
+  });
+
+  it('lets the user clear a connected terminal without hiding Stop or close', async () => {
+    const session = sessionWith({
+      connection: {
+        status: 'connected',
+        connectionId: 'connection-1',
+        client: { name: 'Terminal agent' },
+        lastActivityAt: 1,
+      },
+      run: {
+        runId: 'run-1',
+        conversationId: 'conversation-1',
+        messageId: 'message-1',
+        claimedAt: 1,
+        leaseExpiresAt: 10_000,
+        status: 'active',
+      },
+      activity: {
+        runId: 'run-1',
+        status: 'working',
+        summary: 'Waiting for the terminal',
+        updatedAt: 2,
+      },
+    });
+    const onClose = vi.fn();
+    render(<AiPanel session={session} onClose={onClose} />);
+
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Close AI' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect AI client' }));
+
+    await waitFor(() => expect(session.resetConnection).toHaveBeenCalledOnce());
+    expect(session.stop).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('explains the boundary of a completed Stop request', () => {
+    render(
+      <AiPanel
+        session={sessionWith({
+          connection: {
+            status: 'connected',
+            connectionId: 'connection-1',
+            client: { name: 'Terminal agent' },
+            lastActivityAt: 1,
+          },
+          activity: {
+            runId: 'run-1',
+            status: 'completed',
+            summary: 'Stopped',
+            detail: 'Further AI bridge actions are blocked. Completed changes remain.',
+            updatedAt: 3,
+          },
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText('Further AI bridge actions are blocked. Completed changes remain.'),
+    ).toBeVisible();
+  });
+
+  it.each([
+    ['active', false, 'Stop'],
+    ['stop_requested', true, 'Stop requested'],
+  ] as const)(
+    'keeps Stop controlled by the %s run state when activity is completed',
+    (status, disabled, label) => {
+      const session = sessionWith({
+        connection: {
+          status: 'connected',
+          connectionId: 'connection-1',
+          client: { name: 'Terminal agent' },
+          lastActivityAt: 1,
+        },
+        run:
+          status === 'active'
+            ? {
+                runId: 'run-1',
+                conversationId: 'conversation-1',
+                messageId: 'message-1',
+                claimedAt: 1,
+                leaseExpiresAt: 10_000,
+                status,
+              }
+            : {
+                runId: 'run-1',
+                conversationId: 'conversation-1',
+                messageId: 'message-1',
+                claimedAt: 1,
+                leaseExpiresAt: 10_000,
+                status,
+                stopRequestedAt: 2,
+              },
+        activity: {
+          runId: 'run-1',
+          status: 'completed',
+          summary: 'Stopped',
+          updatedAt: 3,
+        },
+      });
+      render(<AiPanel session={session} onClose={vi.fn()} />);
+
+      const stop = screen.getByRole('button', { name: label });
+      if (disabled) {
+        expect(stop).toBeDisabled();
+      } else {
+        expect(stop).toBeEnabled();
+      }
+      fireEvent.click(stop);
+      expect(session.stop).toHaveBeenCalledTimes(disabled ? 0 : 1);
+    },
+  );
+
+  it.each([
+    ['active', 'AI is responding'],
+    ['stop_requested', 'Stopping response'],
+  ] as const)('shows an accessible progress indicator for a %s run', (status, label) => {
+    render(
+      <AiPanel
+        session={sessionWith({
+          connection: {
+            status: 'connected',
+            connectionId: 'connection-1',
+            client: { name: 'Terminal agent' },
+            lastActivityAt: 1,
+          },
+          run:
+            status === 'active'
+              ? {
+                  runId: 'run-1',
+                  conversationId: 'conversation-1',
+                  messageId: 'message-1',
+                  claimedAt: 1,
+                  leaseExpiresAt: 10_000,
+                  status,
+                }
+              : {
+                  runId: 'run-1',
+                  conversationId: 'conversation-1',
+                  messageId: 'message-1',
+                  claimedAt: 1,
+                  leaseExpiresAt: 10_000,
+                  status,
+                  stopRequestedAt: 2,
+                },
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(label);
+  });
+
+  it('presents the exact pending approval as the initial focus target', async () => {
+    const session = sessionWith({
+      connection: {
+        status: 'connected',
+        connectionId: 'connection-1',
+        client: { name: 'Terminal agent' },
+        lastActivityAt: 1,
+      },
+      approval: {
+        approvalId: 'approval-1',
+        kind: 'destructive_call',
+        toolName: 'lacuna.delete_course',
+        targetLabel: 'Mechanics',
+        summary: 'Delete the Mechanics course and its learning content.',
+        requestedAt: 2,
+        status: 'pending',
+      },
+    });
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByRole('heading', { name: 'Delete course' })).toBeInTheDocument();
+    expect(screen.getByText('Mechanics')).toBeInTheDocument();
+    expect(screen.getByText('Approves this change only.')).toBeInTheDocument();
+    expect(screen.queryByText('Permission required')).toBeNull();
+    const detailsTrigger = screen.getByRole('button', { name: 'Technical details' });
+    expect(detailsTrigger).toHaveAttribute('aria-expanded', 'false');
+    const reject = screen.getByRole('button', { name: 'Reject' });
+    await waitFor(() => expect(reject).toHaveFocus());
+    fireEvent.click(reject);
+    expect(session.decide).toHaveBeenCalledWith('approval-1', false);
+  });
+});

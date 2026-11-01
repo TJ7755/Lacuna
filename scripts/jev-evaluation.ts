@@ -4,15 +4,15 @@ import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
-import { callJevAllocationBatch, callJevDecision } from '../server/jev/provider';
+import { callJevAllocationBatch, callJevDecision } from '../apps/ai/server/jev/provider';
 import {
   JEV_MODEL,
   JEV_ALLOCATION_CONFIDENCE_THRESHOLDS,
   jevDecisionResultSchema,
   jevAllocationBatchResultSchema,
   jevAllocationInputSchema,
-} from '../src/jev/protocol';
-import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD } from '../src/jev/diagnosis';
+} from '../apps/web/src/jev/protocol';
+import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD } from '../apps/web/src/jev/diagnosis';
 import { hash, validateLabels } from './jev-evaluation/labels';
 import { cases, policy, strata, type EvaluationCase } from './jev-evaluation/pack';
 import { summarise, type Observation } from './jev-evaluation/metrics';

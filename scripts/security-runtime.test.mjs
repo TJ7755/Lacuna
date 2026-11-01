@@ -16,7 +16,11 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { parse } from 'yaml';
 import { zipSync } from 'fflate';
-import { extractArchive, verifyArchive, verifyRevision } from '../relay/scripts/security-bun.mjs';
+import {
+  extractArchive,
+  verifyArchive,
+  verifyRevision,
+} from '../apps/relay/scripts/security-bun.mjs';
 
 const root = new URL('../', import.meta.url);
 const version = readFileSync(new URL('.bun-version', root), 'utf8').trim();
@@ -116,7 +120,7 @@ test('a tampered cached Bun archive fails before extraction or installation', ()
     mkdirSync(scripts, { recursive: true });
     mkdirSync(downloads, { recursive: true });
     copyFileSync(
-      new URL('../relay/scripts/security-bun.mjs', import.meta.url),
+      new URL('../apps/relay/scripts/security-bun.mjs', import.meta.url),
       join(scripts, 'security-bun.mjs'),
     );
     writeFileSync(

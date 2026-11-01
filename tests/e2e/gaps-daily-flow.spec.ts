@@ -3,11 +3,11 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { expect, test, type Page } from '@playwright/test';
-import { createHandler } from '../../relay/src/relay';
-import { MemoryStore } from '../../relay/src/store';
-import { DAY_MS, completedIsoDayLabel } from '../../relay/shared/insights/index';
+import { createHandler } from '../../apps/relay/src/relay';
+import { MemoryStore } from '../../apps/relay/src/store';
+import { DAY_MS, completedIsoDayLabel } from '../../apps/relay/shared/insights/index';
 import { createCourse, enterFreshLacuna, openImport } from './fixtures/lacunaApp';
-import { parseClassCode } from '../../src/insights/classCode';
+import { parseClassCode } from '../../apps/web/src/insights/classCode';
 import { addLessonCard, reviewOnlyCard, readAll } from './fixtures/syncConvergence';
 
 test.skip(

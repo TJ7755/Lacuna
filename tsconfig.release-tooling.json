@@ -8,7 +8,7 @@
   },
   "include": [
     "tests/e2e/**/*.ts",
-    "tests/e2e-electron/**/*.ts",
+    "tests/e2e-apps/desktop/**/*.ts",
     "tests/config/playwright.*.config.ts",
     "tests/performance/playwright.*.config.ts",
     "scripts/performance-audit.ts",

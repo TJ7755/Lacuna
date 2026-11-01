@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { MockLanguageModelV4 } from 'ai/test';
-import { decodeHostedEvents } from '../src/ai/hostedProtocol';
-import { AI_TEACHING_INSTRUCTION_VERSION } from '../src/ai/instructions';
-import { createHostedSpikeResponse, toModelMessages } from '../server/ai/spike';
+import { decodeHostedEvents } from '../apps/web/src/ai/hostedProtocol';
+import { AI_TEACHING_INSTRUCTION_VERSION } from '../apps/web/src/ai/instructions';
+import { createHostedSpikeResponse, toModelMessages } from '../apps/ai/server/ai/spike';
 
 const request = {
   version: 1,

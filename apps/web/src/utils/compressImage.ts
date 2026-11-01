@@ -1,0 +1,78 @@
+const MAX_DIMENSION = 1280;
+const QUALITY = 0.8;
+
+async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
+  const url = URL.createObjectURL(blob);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const timeout = window.setTimeout(() => {
+      URL.revokeObjectURL(url);
+      reject(new Error('That file could not be read as an image.'));
+    }, 30000);
+    img.onload = () => {
+      window.clearTimeout(timeout);
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      window.clearTimeout(timeout);
+      URL.revokeObjectURL(url);
+      reject(new Error('That file could not be read as an image.'));
+    };
+    img.src = url;
+  });
+}
+
+function scaleToFit(w: number, h: number, max: number) {
+  if (w <= max && h <= max) return { width: w, height: h };
+  const ratio = Math.min(max / w, max / h);
+  // Extreme aspect ratios must still leave a drawable pixel on the shorter edge.
+  return { width: Math.max(1, Math.round(w * ratio)), height: Math.max(1, Math.round(h * ratio)) };
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Could not process the image.'));
+      },
+      mimeType,
+      QUALITY,
+    );
+  });
+}
+
+export interface CompressImageOptions {
+  /** Longest-edge ceiling in pixels. Defaults to {@link MAX_DIMENSION} (1280), the
+   *  ceiling every existing caller (card images) relies on. Image occlusion diagrams
+   *  pass a higher ceiling (2560, see src/db/occlusionImage.ts) so small printed labels
+   *  survive compression legibly (§6.10.4). */
+  maxDimension?: number;
+}
+
+/** Compress an image blob using a canvas on the main thread. */
+export async function compressImageBlob(
+  blob: Blob,
+  options?: CompressImageOptions,
+): Promise<{ blob: Blob; width: number; height: number }> {
+  const bitmap = await loadImageFromBlob(blob);
+  const { width, height } = scaleToFit(
+    bitmap.width,
+    bitmap.height,
+    options?.maxDimension ?? MAX_DIMENSION,
+  );
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not process the image.');
+  ctx.drawImage(bitmap, 0, 0, width, height);
+
+  // JPEG discards alpha; other supported transparent raster formats need PNG too.
+  const preservesTransparency = ['image/png', 'image/webp', 'image/gif'].includes(blob.type);
+  const mimeType = preservesTransparency ? 'image/png' : 'image/jpeg';
+  const compressed = await canvasToBlob(canvas, mimeType);
+  return { blob: compressed, width, height };
+}

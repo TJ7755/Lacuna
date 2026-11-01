@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import type { QuestionSetRecord } from '../../src/questions/questionSetCodec';
-import { parseQuestionBank } from '../../src/questions/bank';
+import type { QuestionSetRecord } from '../../apps/web/src/questions/questionSetCodec';
+import { parseQuestionBank } from '../../apps/web/src/questions/bank';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 test('authors criterion techniques separately from knowledge and preserves classification through reload and publication', async ({

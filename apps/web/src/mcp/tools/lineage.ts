@@ -1,0 +1,356 @@
+// Classroom-distribution merge tools. Two additive
+// tools sitting on top of the merge machinery `src/db/mergeImport.ts` (Task 5) and
+// `src/db/lineageDiff.ts` (Task 3) already own:
+//
+// - `lacuna.diff_lineage_update` — read-tier, no-write preview. Gathers the course's
+//   current lessons/notes/cards via read-only Dexie queries, adapts them to
+//   `lineageDiff.ts`'s pure input shapes exactly as `mergeLineageUpdate` does, and calls
+//   the same exported `diffLineage` + `detectStudentEdits` classification it uses —
+//   never a second, independent classifier. The two small field-adapter functions below
+//   (`toShareLessonInput`/`toExisting*`) are intentionally duplicated from
+//   `mergeImport.ts` rather than imported: they are mechanical type coercions, not
+//   classification logic, exactly the same shape as `lacuna.diff_import_preview`
+//   (`src/mcp/tools/import.ts`) independently gathering existing cards via `read.ts`
+//   rather than reusing `import_cards`' internals. Only `detectStudentEdits` itself
+//   (the one piece of real classification logic outside `lineageDiff.ts`) is imported,
+//   via a one-line export `mergeImport.ts` added for this purpose.
+// - `lacuna.apply_lineage_update` — write-tier, consent-gated. Calls `mergeLineageUpdate`
+//   directly (never a parallel apply path), then optionally resolves specific queued
+//   items via the existing `acceptMergeReviewItems`/`rejectMergeReviewItems` review-
+//   resolution functions when the caller supplies `decisions` — the same functions the
+//   in-app `MergeReviewPanel` calls, so an agent's outcome matches the UI path exactly.
+
+import type { z } from 'zod';
+import { db } from '../../db/schema';
+import { prepareLineageMapping } from '../../db/lineageIntegrity';
+import * as read from '../../db/read';
+import { decodeShare } from '../../db/share';
+import {
+  acceptMergeReviewItems,
+  detectStudentEdits,
+  isLineagePayload,
+  mergeLineageUpdate,
+  rejectMergeReviewItems,
+  type MergeLineageResult,
+  type MergeReviewItemRef,
+} from '../../db/mergeImport';
+import {
+  diffLineage,
+  type ExistingCard,
+  type ExistingLesson,
+  type ExistingNote,
+  type LineageDiffInput,
+  type LineageDiffResult,
+  type ShareCardInput,
+  type ShareLessonInput,
+  type ShareNoteInput,
+} from '../../db/lineageDiff';
+import type { Card, ItemPayload, Lesson, LineageIdMapping, Note } from '../../db/types';
+import { applyLineageUpdateContract, diffLineageUpdateContract } from '../contracts/lineage';
+import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
+
+function ok<T>(data: T): ToolResult<T> {
+  return { data };
+}
+
+function notFound(kind: string, id: string): never {
+  throw new McpToolException({ kind: 'not_found', message: `${kind} "${id}" was not found.` });
+}
+
+// ---------------------------------------------------------------------------
+// Field adapters — mirrors src/db/mergeImport.ts's own (unexported) toShareLessonInput/
+// toExistingLesson/toExistingNote/toExistingCard. Deliberately duplicated, see the module
+// doc comment above.
+// ---------------------------------------------------------------------------
+
+function toShareLessonInput(
+  lesson: Extract<Awaited<ReturnType<typeof decodeShare>>, { v: 2 }>['lessons'][number],
+): ShareLessonInput {
+  if (!lesson.i)
+    throw new McpToolException({
+      kind: 'validation',
+      message: 'Lineage payload lesson is missing its originating id.',
+    });
+  return {
+    i: lesson.i,
+    pr: lesson.pr,
+    n: lesson.n,
+    d: lesson.d,
+    x: lesson.x,
+    rd: lesson.rd,
+    ed: lesson.ed,
+    tz: lesson.tz,
+    sf: lesson.sf,
+    am: lesson.am,
+    notes: lesson.notes.map((note): ShareNoteInput => {
+      if (!note.oi)
+        throw new McpToolException({
+          kind: 'validation',
+          message: 'Lineage payload note is missing its originating id.',
+        });
+      return { i: note.oi, n: note.n, c: note.c };
+    }),
+    // Sequence- and occlusion-generated cards are regenerated, never diffed (as in mergeImport.ts).
+    cards: lesson.cards
+      .filter((card) => card.si === undefined && card.oc === undefined)
+      .map(toShareCardInput),
+  };
+}
+
+function toShareCardInput(
+  card: Extract<
+    Awaited<ReturnType<typeof decodeShare>>,
+    { v: 2 }
+  >['lessons'][number]['cards'][number],
+): ShareCardInput {
+  if (!card.id)
+    throw new McpToolException({
+      kind: 'validation',
+      message: 'Lineage payload card is missing its originating id.',
+    });
+  return {
+    i: card.id,
+    k: card.k,
+    f: card.f,
+    b: card.b,
+    g: card.g,
+    p: card.p as ItemPayload | undefined,
+    am: card.am,
+  };
+}
+
+function toExistingLesson(lesson: Lesson): ExistingLesson {
+  return {
+    id: lesson.id,
+    prerequisiteLessonIds: lesson.prerequisiteLessonIds,
+    name: lesson.name,
+    description: lesson.description,
+    isExtension: lesson.isExtension,
+    releaseDate: lesson.releaseDate,
+    examDate: lesson.examDate,
+    timeZone: lesson.timeZone,
+    sessionFilter: lesson.sessionFilter === 'new' ? undefined : lesson.sessionFilter,
+    answerMode: lesson.answerMode,
+    orderIndex: lesson.orderIndex,
+  };
+}
+
+function toExistingNote(note: Note): ExistingNote {
+  return {
+    id: note.id,
+    lessonId: note.lessonId,
+    name: note.name,
+    content: note.content,
+    orderIndex: note.orderIndex,
+  };
+}
+
+function toExistingCard(card: Card): ExistingCard {
+  return {
+    id: card.id,
+    lessonId: card.primaryLessonId ?? null,
+    type: card.type,
+    front: card.front,
+    back: card.back,
+    tags: card.tags,
+    payload: card.payload,
+    answerMode: card.answerMode,
+  };
+}
+
+/** Empty membership/snapshot registry for a lineage this course has not merged before —
+ *  mirrors `mergeImport.ts`'s own `emptyMapping`, needed here only as a fallback default. */
+function emptyMapping(lineageId: string, courseId: string): LineageIdMapping {
+  return {
+    id: lineageId,
+    courseId,
+    lessonIds: [],
+    noteIds: [],
+    cardIds: [],
+    sequenceIds: [],
+    lessonSnapshots: {},
+    noteSnapshots: {},
+    cardSnapshots: {},
+  };
+}
+
+function assertQuestionSetLineagePreviewSupported(
+  payload: Awaited<ReturnType<typeof decodeShare>>,
+  mapping: LineageIdMapping,
+): void {
+  if (
+    ((payload.v === 4 || payload.v === 5 || payload.v === 6) && payload.questionSets.length > 0) ||
+    (mapping.questionSetIds?.length ?? 0) > 0 ||
+    ((payload.v === 5 || payload.v === 6) && payload.questionSetPracticeNodes.length > 0) ||
+    (mapping.questionSetPracticeNodeIds?.length ?? 0) > 0
+  ) {
+    throw new McpToolException({
+      kind: 'validation',
+      message: 'Lineage preview and apply do not yet support authored Question Sets.',
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// lacuna.diff_lineage_update
+// ---------------------------------------------------------------------------
+
+interface LineageDiffSummary {
+  counts: {
+    createLessons: number;
+    createNotes: number;
+    createCards: number;
+    updateLessons: number;
+    updateNotes: number;
+    updateCards: number;
+    removeLessons: number;
+    removeNotes: number;
+    removeCards: number;
+    conflicts: number;
+  };
+  diff: LineageDiffResult;
+}
+
+function summariseDiff(diff: LineageDiffResult): LineageDiffSummary {
+  return {
+    counts: {
+      createLessons: diff.creates.lessons.length,
+      createNotes: diff.creates.notes.length,
+      createCards: diff.creates.cards.length,
+      updateLessons: diff.updates.lessons.length,
+      updateNotes: diff.updates.notes.length,
+      updateCards: diff.updates.cards.length,
+      removeLessons: diff.removals.lessonIds.length,
+      removeNotes: diff.removals.noteIds.length,
+      removeCards: diff.removals.cardIds.length,
+      conflicts: diff.conflicts.length,
+    },
+    diff,
+  };
+}
+
+const diffLineageUpdate: ToolDefinition<
+  z.infer<typeof diffLineageUpdateContract.inputSchema>,
+  LineageDiffSummary
+> = {
+  ...diffLineageUpdateContract,
+  async handler({ courseId, shareCode }) {
+    const course = await read.getCourse(courseId);
+    if (!course) notFound('Course', courseId);
+
+    const payload = await decodeShare(shareCode);
+    if (!isLineagePayload(payload)) {
+      throw new McpToolException({
+        kind: 'validation',
+        message: 'Share code does not carry a course lineage.',
+      });
+    }
+    if (!course.distributedCopy || course.distributedCopy.lineageId !== payload.li) {
+      throw new McpToolException({
+        kind: 'conflict',
+        message: `Course "${courseId}" is not an imported copy of this lineage.`,
+      });
+    }
+
+    const [existingLessons, courseCards] = await Promise.all([
+      db.lessons.where('courseId').equals(courseId).toArray(),
+      db.cards.where('courseId').equals(courseId).toArray(),
+    ]);
+    const lessonIds = existingLessons.map((l) => l.id);
+    const existingNotes = lessonIds.length
+      ? await db.notes.where('lessonId').anyOf(lessonIds).toArray()
+      : [];
+
+    const mapping =
+      (await db.lineageIdMappings.get(payload.li)) ?? emptyMapping(payload.li, courseId);
+    assertQuestionSetLineagePreviewSupported(payload, mapping);
+    await prepareLineageMapping(payload, courseId, mapping);
+    const studentEdits = detectStudentEdits(mapping, existingLessons, existingNotes, courseCards);
+
+    const diffInput: LineageDiffInput = {
+      incoming: {
+        lessons: payload.lessons.map(toShareLessonInput),
+        bankCards: (payload.bankCards ?? []).map(toShareCardInput),
+      },
+      existing: {
+        lessons: existingLessons.map(toExistingLesson),
+        notes: existingNotes.map(toExistingNote),
+        cards: courseCards
+          .filter((card) => !card.sequenceItemId && !card.occlusionRegionId)
+          .map(toExistingCard),
+      },
+      mapping: {
+        id: mapping.id,
+        courseId: mapping.courseId,
+        lessonIds: mapping.lessonIds,
+        noteIds: mapping.noteIds,
+        cardIds: mapping.cardIds,
+        sequenceIds: mapping.sequenceIds,
+      },
+      studentEdits,
+    };
+
+    return ok(summariseDiff(diffLineage(diffInput)));
+  },
+};
+
+// ---------------------------------------------------------------------------
+// lacuna.apply_lineage_update
+// ---------------------------------------------------------------------------
+
+interface ApplyLineageUpdateResult {
+  merge: MergeLineageResult;
+  queuedForReview: boolean;
+  reviewId: string | null;
+}
+
+const applyLineageUpdate: ToolDefinition<
+  z.infer<typeof applyLineageUpdateContract.inputSchema>,
+  ApplyLineageUpdateResult
+> = {
+  ...applyLineageUpdateContract,
+  async handler({ courseId, shareCode, decisions }) {
+    const course = await read.getCourse(courseId);
+    if (!course) notFound('Course', courseId);
+
+    const payload = await decodeShare(shareCode);
+    if (!isLineagePayload(payload)) {
+      throw new McpToolException({
+        kind: 'validation',
+        message: 'Share code does not carry a course lineage.',
+      });
+    }
+
+    const mapping =
+      (await db.lineageIdMappings.get(payload.li)) ?? emptyMapping(payload.li, courseId);
+    assertQuestionSetLineagePreviewSupported(payload, mapping);
+
+    const merge = await mergeLineageUpdate(courseId, payload);
+
+    let review = merge.queuedForReview
+      ? await db.pendingMergeReviews.where('courseId').equals(courseId).first()
+      : undefined;
+
+    if (review && decisions) {
+      if (decisions.accept?.length) {
+        await acceptMergeReviewItems(review.id, decisions.accept as MergeReviewItemRef[]);
+      }
+      if (decisions.reject?.length) {
+        await rejectMergeReviewItems(review.id, decisions.reject as MergeReviewItemRef[]);
+      }
+      review = await db.pendingMergeReviews.get(review.id);
+    }
+
+    return ok({ merge, queuedForReview: review !== undefined, reviewId: review?.id ?? null });
+  },
+};
+
+/** The lineage-merge MCP tools, in §7.6's inventory order. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- see src/mcp/tools/read.ts's READ_TOOLS comment.
+export const LINEAGE_TOOLS: readonly ToolDefinition<any, any>[] = [
+  diffLineageUpdate,
+  applyLineageUpdate,
+];
+
+// Also export individually for direct handler-level unit tests.
+export { diffLineageUpdate, applyLineageUpdate };

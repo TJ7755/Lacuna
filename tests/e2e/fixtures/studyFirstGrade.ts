@@ -1,5 +1,5 @@
 import { seed as seedHeavy } from '../../../scripts/performance-heavy/fixture';
-import { db } from '../../../src/db/schema';
+import { db } from '../../../apps/web/src/db/schema';
 
 export async function seed() {
   await seedHeavy(true);

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import type { QuestionSet } from '../../src/questions/questionSets';
+import type { QuestionSet } from '../../apps/web/src/questions/questionSets';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 async function openSet(page: Page, single = false) {

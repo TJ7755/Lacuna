@@ -4,7 +4,7 @@ import sharp from 'sharp';
 
 const sourcePath = fileURLToPath(new URL('../public/icon.svg', import.meta.url));
 const outputDirectory = fileURLToPath(new URL('../public/icons/', import.meta.url));
-const electronAssetDirectory = fileURLToPath(new URL('../electron/assets/', import.meta.url));
+const electronAssetDirectory = fileURLToPath(new URL('../apps/desktop/assets', import.meta.url));
 const background = '#0a0a0b';
 
 await Promise.all([

@@ -78,7 +78,7 @@ describe('area scope', () => {
       ).toBe(true);
     }
     expect(classifyPaths([]).app).toBe(true);
-    expect(classifyPaths(['docs/a.md', '../relay/src/a.ts']).electron).toBe(true);
+    expect(classifyPaths(['docs/a.md', '../apps/relay/src/a.ts']).electron).toBe(true);
   });
 
   it('selects relay consumers without unrelated native or training work', () => {

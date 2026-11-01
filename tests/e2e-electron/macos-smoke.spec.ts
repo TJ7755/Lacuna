@@ -9,7 +9,7 @@ import {
 } from '../../scripts/electron-performance/packaged-app';
 import { waitForSeededDashboard } from '../../scripts/electron-performance/renderer-interactions';
 import type { RunningPackagedApp } from '../../scripts/electron-performance/types';
-import { landingFilms } from '../../src/components/landing/films';
+import { landingFilms } from '../../apps/web/src/components/landing/films';
 
 async function courseStored(page: Page, courseName: string): Promise<boolean> {
   return page.evaluate(

@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { LIBRARY_ORIGIN } from '../../src/config/origins';
-import { libraryCourses } from '../../src/library/catalogue';
+import { LIBRARY_ORIGIN } from '../../apps/web/src/config/origins';
+import { libraryCourses } from '../../apps/web/src/library/catalogue';
 import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 
 const librarySelector = `a[href="${LIBRARY_ORIGIN}"]`;

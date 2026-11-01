@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { JevAllocationInput } from '../../src/jev/protocol';
+import type { JevAllocationInput } from '../../apps/web/src/jev/protocol';
 
 // Original evaluation material. Never import this module into practice or provider prompts.
 const questions = [

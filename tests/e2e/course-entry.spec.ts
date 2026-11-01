@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
-import type { Card, Course } from '../../src/db/types';
-import type { ReviewHistoryEntry } from '../../src/db/reviewHistory';
+import type { Card, Course } from '../../apps/web/src/db/types';
+import type { ReviewHistoryEntry } from '../../apps/web/src/db/reviewHistory';
 import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 

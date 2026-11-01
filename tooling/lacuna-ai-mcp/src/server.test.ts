@@ -1,8 +1,8 @@
 import { Client } from '@modelcontextprotocol/client';
 import { InMemoryTransport } from '@modelcontextprotocol/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AiClientIdentity, JsonValue } from '../../../src/ai/protocol';
-import { buildAiInstructionBundle } from '../../../src/ai/instructions';
+import type { AiClientIdentity, JsonValue } from '../../../apps/web/src/ai/protocol';
+import { buildAiInstructionBundle } from '../../../apps/web/src/ai/instructions';
 import type { WaitForMessageResult } from './client';
 import { createLacunaAiMcpServer, type TerminalAiToolClient } from './server';
 
@@ -17,9 +17,9 @@ class FakeAiClient implements TerminalAiToolClient {
       [FakeAiClient.connectionAuth]: { terminalToken: 'must-not-leak' },
     }),
   );
-  readonly waitForMessage = vi.fn(
-    async (_timeoutMs?: number): Promise<WaitForMessageResult> => ({ type: 'empty' }),
-  );
+  readonly waitForMessage = vi.fn(async (_timeoutMs?: number): Promise<WaitForMessageResult> => ({
+    type: 'empty',
+  }));
   readonly reply = vi.fn(async (_runId: string, _messageId: string, _content: string) => {});
   readonly invokeTool = vi.fn(
     async (

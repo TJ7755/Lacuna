@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { vi } from 'vitest';
-import type { JsonValue } from '../../../src/ai/protocol';
-import type { RelayEnvelope } from '../../../src/ai/relayProtocol';
+import type { JsonValue } from '../../../apps/web/src/ai/protocol';
+import type { RelayEnvelope } from '../../../apps/web/src/ai/relayProtocol';
 import {
   HttpTerminalRelayTransport,
   type HttpTerminalRelayTransportOptions,

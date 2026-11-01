@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
-import type { ReviewHistoryEntry } from '../../src/db/reviewHistory';
+import type { ReviewHistoryEntry } from '../../apps/web/src/db/reviewHistory';
 
 test('authors, persists and studies a card through the keyboard', async ({ page }, testInfo) => {
   const identity = `${testInfo.workerIndex}-${Date.now()}`;
@@ -48,11 +48,15 @@ test('authors, persists and studies a card through the keyboard', async ({ page 
   await page.keyboard.press('Y');
 
   await expect(
-    page.getByRole('main', { name: 'Study progress' }).getByRole('img', { name: 'Completed', exact: true }),
+    page
+      .getByRole('main', { name: 'Study progress' })
+      .getByRole('img', { name: 'Completed', exact: true }),
   ).toBeVisible();
   await expect(page.getByText(/^1 card reviewed/)).toHaveCount(0);
-  await expect.poll(async () => {
-    const reviews = await readAll<ReviewHistoryEntry>(page, 'reviewHistory');
-    return reviews.filter((review) => review.cardId === cardId).length;
-  }).toBe(1);
+  await expect
+    .poll(async () => {
+      const reviews = await readAll<ReviewHistoryEntry>(page, 'reviewHistory');
+      return reviews.filter((review) => review.cardId === cardId).length;
+    })
+    .toBe(1);
 });

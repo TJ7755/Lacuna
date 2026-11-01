@@ -1,0 +1,140 @@
+// Single write-stamp and tombstone helpers for schema v23.
+// Every content mutation must go through these rather than calling Date.now()
+// at the call site. recordTombstone / clearTombstone must run inside the
+// caller's existing Dexie transaction — opening a second transaction here
+// could commit a tombstone whose delete later rolls back.
+
+import type { Transaction } from 'dexie';
+import { migrateLegacyRelayUrl } from '../sync/pairingConfig';
+import { db } from './database';
+import type { SyncState, Tombstone } from './types';
+
+export const TOMBSTONE_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+export const SYNC_STATE_KEY = 'syncState';
+
+export type SnapshotTable =
+  | 'cards'
+  | 'courses'
+  | 'lessons'
+  | 'notes'
+  | 'lessonCards'
+  | 'lessonCardExposures'
+  | 'lessonCompletions'
+  | 'practiceNodes'
+  | 'practiceMilestones'
+  | 'courseAssessments'
+  | 'sequences'
+  | 'revisionPlans'
+  | 'occlusions'
+  | 'schedulingUnits'
+  | 'coursePerformance'
+  | 'schedulingPerformance'
+  | 'concepts'
+  | 'questions'
+  | 'questionConcepts'
+  | 'questionAttempts'
+  | 'questionSets'
+  | 'questionSetAttempts'
+  | 'lineageIdMappings'
+  | 'pendingMergeReviews'
+  | 'agentMemories';
+
+/** Compound LessonCardExposure key as a single tombstone record id. */
+export function lessonCardExposureId(lessonId: string, cardId: string): string {
+  return `${lessonId}:${cardId}`;
+}
+
+export function stampUpdatedAt<T extends object>(
+  record: T,
+  now = Date.now(),
+): T & { updatedAt: number } {
+  return { ...record, updatedAt: now };
+}
+
+export async function recordTombstone(
+  tx: Transaction,
+  table: SnapshotTable,
+  recordId: string,
+  deletedAt = Date.now(),
+): Promise<void> {
+  const row: Tombstone = { table, recordId, deletedAt };
+  await tx.table('tombstones').put(row);
+}
+
+export async function recordTombstones(
+  tx: Transaction,
+  table: SnapshotTable,
+  recordIds: readonly string[],
+  deletedAt = Date.now(),
+): Promise<void> {
+  if (recordIds.length === 0) return;
+  const rows: Tombstone[] = recordIds.map((recordId) => ({ table, recordId, deletedAt }));
+  await tx.table('tombstones').bulkPut(rows);
+}
+
+export async function clearTombstone(
+  tx: Transaction,
+  table: SnapshotTable,
+  recordId: string,
+): Promise<void> {
+  await tx.table('tombstones').delete([table, recordId]);
+}
+
+export async function clearTombstones(
+  tx: Transaction,
+  table: SnapshotTable,
+  recordIds: readonly string[],
+): Promise<void> {
+  if (recordIds.length === 0) return;
+  await tx.table('tombstones').bulkDelete(recordIds.map((recordId) => [table, recordId]));
+}
+
+export async function readSyncState(): Promise<SyncState | undefined> {
+  return db.transaction('rw', db.appState, async () => {
+    const entry = await db.appState.get(SYNC_STATE_KEY);
+    if (
+      !entry ||
+      entry.value === null ||
+      entry.value === undefined ||
+      typeof entry.value !== 'object'
+    ) {
+      return undefined;
+    }
+    const state = entry.value as SyncState;
+    const relayUrl =
+      typeof state.relayUrl === 'string' ? migrateLegacyRelayUrl(state.relayUrl) : state.relayUrl;
+    if (relayUrl !== state.relayUrl) {
+      const migrated = { ...state, relayUrl };
+      await writeSyncState(migrated);
+      return migrated;
+    }
+    return state;
+  });
+}
+
+export async function writeSyncState(state: SyncState): Promise<void> {
+  await db.appState.put({ key: SYNC_STATE_KEY, value: state });
+}
+
+/** Serialise a read-modify-write of syncState so concurrent updates cannot restore stale fields. */
+export async function updateSyncState(
+  update: (current: SyncState | undefined) => SyncState | undefined,
+): Promise<void> {
+  await db.transaction('rw', db.appState, async () => {
+    const current = await readSyncState();
+    const next = update(current);
+    if (next !== undefined) await writeSyncState(next);
+  });
+}
+
+/** Forget this device's sync pairing, keeping any teacher share-link credentials in the same row. */
+export async function clearSyncState(): Promise<void> {
+  await db.transaction('rw', db.appState, async () => {
+    const shareLinks = (await readSyncState())?.shareLinks;
+    if (shareLinks && Object.keys(shareLinks).length > 0) {
+      await writeSyncState({ shareLinks });
+    } else {
+      await db.appState.delete(SYNC_STATE_KEY);
+    }
+  });
+}

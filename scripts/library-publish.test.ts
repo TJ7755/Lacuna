@@ -3,9 +3,9 @@ import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { createHandler } from '../relay/src/relay';
-import { MemoryStore } from '../relay/src/store';
-import { getShareBytes, mintShare, parseShareManifest } from '../src/shareLinks/client';
+import { createHandler } from '../apps/relay/src/relay';
+import { MemoryStore } from '../apps/relay/src/store';
+import { getShareBytes, mintShare, parseShareManifest } from '../apps/web/src/shareLinks/client';
 import { runPublication } from './library-publish';
 
 const directories: string[] = [];
@@ -211,29 +211,32 @@ it.each(['payload', 'meta'] as const)(
   },
 );
 
-it.each([false, true])('rejects changed verification bytes after the manifest write (compressed: %s)', async (compressed) => {
-  const f = await fixture();
-  if (compressed) {
-    f.text += ' '.repeat(4_300_000);
-    f.hash = createHash('sha256').update(f.text).digest('hex');
-    await writeFile(f.input, f.text);
-  }
-  let published = false;
-  const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
-    const response = await f.fetchImpl(url, init);
-    if (init?.method === 'PUT' && String(url).endsWith('/meta')) published = true;
-    if (published && init?.method === 'GET' && String(url).endsWith('/payload')) {
-      return new Response('corrupt', { headers: { ETag: '"changed"' } });
+it.each([false, true])(
+  'rejects changed verification bytes after the manifest write (compressed: %s)',
+  async (compressed) => {
+    const f = await fixture();
+    if (compressed) {
+      f.text += ' '.repeat(4_300_000);
+      f.hash = createHash('sha256').update(f.text).digest('hex');
+      await writeFile(f.input, f.text);
     }
-    return response;
-  }) as typeof fetch;
-  await expect(
-    runPublication([...f.args, '--approved-sha256', f.hash], {}, fetchImpl),
-  ).rejects.toThrow(/verification.*not verified/);
-  expect(
-    await runPublication([...f.args, '--approved-sha256', f.hash], {}, f.fetchImpl),
-  ).toMatchObject({ status: 'skipped' });
-});
+    let published = false;
+    const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+      const response = await f.fetchImpl(url, init);
+      if (init?.method === 'PUT' && String(url).endsWith('/meta')) published = true;
+      if (published && init?.method === 'GET' && String(url).endsWith('/payload')) {
+        return new Response('corrupt', { headers: { ETag: '"changed"' } });
+      }
+      return response;
+    }) as typeof fetch;
+    await expect(
+      runPublication([...f.args, '--approved-sha256', f.hash], {}, fetchImpl),
+    ).rejects.toThrow(/verification.*not verified/);
+    expect(
+      await runPublication([...f.args, '--approved-sha256', f.hash], {}, f.fetchImpl),
+    ).toMatchObject({ status: 'skipped' });
+  },
+);
 
 it('refuses changed bytes at the same revision, lineage forks and rollback', async () => {
   const f = await fixture();
@@ -427,19 +430,34 @@ it('approves the original hash, uploads compressed bytes and verifies decoded by
     return f.fetchImpl(url, init);
   }) as typeof fetch;
   expect(await runPublication([...f.args, '--dry-run'], {}, fetchImpl)).toMatchObject({
-    status: 'dry-run', sha256, byteSize: Buffer.byteLength(original),
+    status: 'dry-run',
+    sha256,
+    byteSize: Buffer.byteLength(original),
   });
   expect(writes).toEqual([]);
-  await expect(runPublication([...f.args, '--approved-sha256', f.hash], {}, fetchImpl)).rejects.toThrow(/matching the exact frozen bytes/);
+  await expect(
+    runPublication([...f.args, '--approved-sha256', f.hash], {}, fetchImpl),
+  ).rejects.toThrow(/matching the exact frozen bytes/);
   const args = [...f.args, '--approved-sha256', sha256];
   const result = await runPublication(args, {}, fetchImpl);
-  expect(result).toMatchObject({ status: 'published', sha256, byteSize: Buffer.byteLength(original), compressedByteSize: writes[0] });
+  expect(result).toMatchObject({
+    status: 'published',
+    sha256,
+    byteSize: Buffer.byteLength(original),
+    compressedByteSize: writes[0],
+  });
   expect(writes[0]).toBeLessThan(4 * 1024 * 1024);
   const payload = await getShareBytes({ ...f, slot: 'payload' });
   expect(Buffer.from(payload!.bytes).toString()).toBe(original);
   const meta = await getShareBytes({ ...f, slot: 'meta' });
-  expect(parseShareManifest(meta!.bytes)).toMatchObject({ payloadEncoding: 'deflate-raw-v1', byteSize: writes[0] });
+  expect(parseShareManifest(meta!.bytes)).toMatchObject({
+    payloadEncoding: 'deflate-raw-v1',
+    byteSize: writes[0],
+  });
   expect(await runPublication(args, {}, fetchImpl)).toMatchObject({ status: 'skipped', sha256 });
-  expect(await runPublication([...f.args, '--dry-run'], {}, fetchImpl)).toMatchObject({ currentSha256: sha256, changes: { payload: false, manifest: false } });
+  expect(await runPublication([...f.args, '--dry-run'], {}, fetchImpl)).toMatchObject({
+    currentSha256: sha256,
+    changes: { payload: false, manifest: false },
+  });
   expect(writes).toHaveLength(1);
 });

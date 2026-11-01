@@ -1,9 +1,9 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import type { CourseRecord } from '../../src/db/types';
+import type { CourseRecord } from '../../apps/web/src/db/types';
 import {
   paperSpecification,
   paperSpecificationReference,
-} from '../../src/specifications/paperFixture.testFixtures';
+} from '../../apps/web/src/specifications/paperFixture.testFixtures';
 import { chooseScheduledStudy, enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 

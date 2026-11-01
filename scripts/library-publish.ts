@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { decodeCourseFile } from '../src/db/courseFile';
-import { summariseSelfMarking } from '../src/questions/questionSets';
-import { summariseShare } from '../src/db/share';
+import { decodeCourseFile } from '../apps/web/src/db/courseFile';
+import { summariseSelfMarking } from '../apps/web/src/questions/questionSets';
+import { summariseShare } from '../apps/web/src/db/share';
 import {
   getShareBytes,
   parseShareManifest,
@@ -14,13 +14,13 @@ import {
   StaleShareGenerationError,
   verifyShareOwner,
   type ShareManifest,
-} from '../src/shareLinks/client';
+} from '../apps/web/src/shareLinks/client';
 import {
   encodeSharePayload,
   MAX_DECOMPRESSED_SHARE_BYTES,
   SharePayloadError,
-} from '../src/shareLinks/payloadCodec';
-import { normaliseRelayUrl } from '../src/sync/relay';
+} from '../apps/web/src/shareLinks/payloadCodec';
+import { normaliseRelayUrl } from '../apps/web/src/sync/relay';
 
 const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 const encode = (text: string) => new TextEncoder().encode(text);

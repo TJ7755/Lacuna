@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
-import type { Card, Lesson } from '../../src/db/types';
+import type { Card, Lesson } from '../../apps/web/src/db/types';
 
 const viewports = [
   { width: 1280, height: 800 },

@@ -4,7 +4,7 @@ import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } f
 import { constants } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { verifyRevision } from '../relay/scripts/security-bun.mjs';
+import { verifyRevision } from '../apps/relay/scripts/security-bun.mjs';
 
 export const root = fileURLToPath(new URL('../', import.meta.url));
 export const installations = ['.', 'relay', 'tooling/handwriting-maths'];

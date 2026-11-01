@@ -6,8 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { expect, it } from 'vitest';
-import { createHandler } from '../relay/src/relay';
-import { MemoryStore } from '../relay/src/store';
+import { createHandler } from '../apps/relay/src/relay';
+import { MemoryStore } from '../apps/relay/src/store';
 
 it('runs the operator command against a local relay and emits a verified public record', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'lacuna-publish-cli-'));

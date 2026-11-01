@@ -1,8 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Browser, type Page, type Route, type TestInfo } from '@playwright/test';
-import { openGapsConnection, parseGapsConnectionFile } from '../../src/teacher/connectionFile';
-import { createHandler } from '../../relay/src/relay.js';
-import { MemoryStore } from '../../relay/src/store.js';
+import {
+  openGapsConnection,
+  parseGapsConnectionFile,
+} from '../../apps/web/src/teacher/connectionFile';
+import { createHandler } from '../../apps/relay/src/relay.js';
+import { MemoryStore } from '../../apps/relay/src/store.js';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 import { addLessonCard, editOnlyCard } from './fixtures/syncConvergence';
 

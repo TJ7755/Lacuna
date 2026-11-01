@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { type RelayBrowserMailbox } from '../../../src/ai/relayProtocol';
+import { type RelayBrowserMailbox } from '../../../apps/web/src/ai/relayProtocol';
 import { TerminalAiClient } from './client';
 import { FakeTransport, ConcurrentCallTransport, queuedMailbox } from './client.testHarness';
 

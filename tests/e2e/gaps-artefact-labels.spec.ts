@@ -1,7 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { createHandler } from '../../relay/src/relay';
-import { MemoryStore } from '../../relay/src/store';
-import { DEFAULT_RELAY_URL } from '../../src/sync/pairingConfig';
+import { createHandler } from '../../apps/relay/src/relay';
+import { MemoryStore } from '../../apps/relay/src/store';
+import { DEFAULT_RELAY_URL } from '../../apps/web/src/sync/pairingConfig';
 import { openSidebarItem } from './fixtures/gaps';
 
 test.afterEach(() => {

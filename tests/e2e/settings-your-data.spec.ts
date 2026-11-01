@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
-import type { BackupSnapshot } from '../../src/db/types';
+import type { BackupSnapshot } from '../../apps/web/src/db/types';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 import { SYNC_CHANNEL_ID, SYNC_WRITE_TOKEN } from './fixtures/syncRelay';

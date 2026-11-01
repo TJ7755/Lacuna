@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { expect, type Locator, type Page, type Route } from '@playwright/test';
-import { createHandler } from '../../../relay/src/relay.js';
-import { MemoryStore } from '../../../relay/src/store.js';
+import { createHandler } from '../../../apps/relay/src/relay.js';
+import { MemoryStore } from '../../../apps/relay/src/store.js';
 import { TerminalAiClient } from '../../../tooling/lacuna-ai-mcp/src/client.js';
 import { HttpTerminalRelayTransport } from '../../../tooling/lacuna-ai-mcp/src/relayTransport.js';
 import { importWelcomeCourse, skipOnboarding } from './lacunaApp';

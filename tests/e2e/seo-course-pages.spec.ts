@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { libraryCourses } from '../../src/library/catalogue';
+import { libraryCourses } from '../../apps/web/src/library/catalogue';
 
 const biologyCourse = libraryCourses.find((course) => course.id === 'biology4bi1')!;
 

@@ -1,7 +1,7 @@
-import { createCourse } from '../../../src/db/courseRepository';
-import { createLesson } from '../../../src/db/lessonRepository';
-import { createCard } from '../../../src/db/cardRepository';
-import { db } from '../../../src/db/schema';
+import { createCourse } from '../../../apps/web/src/db/courseRepository';
+import { createLesson } from '../../../apps/web/src/db/lessonRepository';
+import { createCard } from '../../../apps/web/src/db/cardRepository';
+import { db } from '../../../apps/web/src/db/schema';
 
 /** Synthetic answers only: the browser tests intercept both hosted endpoints. */
 export async function seed(enabled: boolean, globalTyping = false) {
