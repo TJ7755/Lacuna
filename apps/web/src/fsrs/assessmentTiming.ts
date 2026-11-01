@@ -39,7 +39,7 @@ export function assessmentTiming(
 }
 
 /** Current memory only: do not assume a future scheduled review has happened. */
-export function assessmentRecallBelowTarget(
+function assessmentRecallBelowTarget(
   card: SchedulingMemory,
   examDate: number,
   now: number,

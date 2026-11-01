@@ -112,23 +112,3 @@ export async function restoreQuestion(snapshot: QuestionSnapshot): Promise<void>
     },
   );
 }
-
-export async function remediationCardsForQuestion(questionId: string) {
-  const set = await db.questionConcepts.get(questionId);
-  if (!set) return [];
-  const orderedConceptIds = [...set.targetConceptIds, ...set.prerequisiteConceptIds];
-  const cards =
-    orderedConceptIds.length === 0
-      ? []
-      : await db.cards.where('conceptId').anyOf(orderedConceptIds).toArray();
-  return orderedConceptIds.flatMap((conceptId) => {
-    const candidates = cards
-      .filter((card) => card.conceptId === conceptId && !card.suspended)
-      .sort((left, right) => {
-        if (left.due === null && right.due !== null) return -1;
-        if (left.due !== null && right.due === null) return 1;
-        return (left.due ?? 0) - (right.due ?? 0) || left.id.localeCompare(right.id);
-      });
-    return candidates.slice(0, 1);
-  });
-}

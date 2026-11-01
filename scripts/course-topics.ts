@@ -7,7 +7,7 @@ import {
 } from '../apps/web/src/pages/courses/topic-paths.ts';
 import samples from '../apps/web/src/pages/courses/topic-samples.json' with { type: 'json' };
 
-export interface TopicSample {
+interface TopicSample {
   id: string;
   title: string;
   points: { code: string; title: string }[];

@@ -2,7 +2,7 @@ import type { BackupAsset, MediaAsset } from '@lacuna/core/db/types';
 
 export const ASSET_PROTOCOL = 'lacuna-asset://';
 
-export function bytesToBase64(bytes: Uint8Array): string {
+function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   const chunk = 0x8000;
   for (let i = 0; i < bytes.length; i += chunk) {
