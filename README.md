@@ -8,22 +8,27 @@ mode supports automatically marked application problems with independent evidenc
 
 ## Product direction
 
-Our aim is to be the best in the world at personalised GCSE science revision: choosing
-what each student needs to practise next to improve their exam performance.
+Our aim is to be the best tool for secondary students to follow their lessons and practise for
+every test they sit, from school-based tests to their GCSEs, all in one place.
 
-**GCSE science revision that adapts to what you know, how you answer and when your exams are.**
+**Everything you learn at school in one place, from this week's lesson to your final exams.**
 
-That ambition covers the complete revision process across biology, chemistry and physics,
-boards and tiers:
+Tools such as Quizlet and Anki organise revision deck by deck. Lacuna tracks the whole picture:
+what has been taught, what each student knows and which tests are coming up, so it can choose
+what to practise next across all of it.
 
-- **Knowledge:** learn missing material and remember it until the exam.
-- **Application:** use that knowledge in unfamiliar situations.
-- **Exam technique:** interpret questions, construct explanations, use evidence and show working.
-- **Preparation:** allocate practice across papers, deadlines, school teaching order and available time.
+That ambition covers:
 
-Every feature should help choose, deliver or assess the next useful practice. Diagnosing lost
-marks is one part of this direction; the broader goal is to answer: **what should I practise
-next for my GCSE science exams?**
+- **Lessons:** follow what is taught in class, in the order the school teaches it.
+- **School tests:** prepare for end-of-topic tests, mocks and other school assessments on their own dates.
+- **GCSEs:** build towards the final exams across subjects, boards and tiers.
+- **Knowledge:** learn missing material and remember it for as long as it is needed.
+- **Application and exam technique:** use knowledge in unfamiliar situations, construct
+  explanations, use evidence and show working.
+- **Planning:** allocate practice across subjects, tests, deadlines and available time.
+
+Every feature should help choose, deliver or assess the next useful practice. The question
+Lacuna should answer is: **what should I practise next, given everything I am studying?**
 
 This is our direction, not a claim that every capability has shipped or that superiority has
 been demonstrated. The [focus tracker](https://github.com/TJ7755/Lacuna/issues/902) owns the
