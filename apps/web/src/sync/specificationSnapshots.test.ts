@@ -47,8 +47,11 @@ function concept(specificationPointIds: string[], updatedAt: number): Concept {
 
 function snapshot(overrides: Partial<BackupFile> = {}): BackupFile {
   return {
-    app: 'lacuna-v14',
-    version: 14,
+    app: 'lacuna-v15',
+    version: 15,
+    schedulingUnits: [],
+    coursePerformance: [],
+    schedulingPerformance: [],
     exportedAt: 1,
     cards: [],
     assets: [],

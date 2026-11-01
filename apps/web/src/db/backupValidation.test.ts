@@ -38,7 +38,7 @@ describe('backup record validation', () => {
     },
   );
 
-  it('accepts current exports and supported older records without rewriting unknown fields', async () => {
+  it('accepts current exports and rejects older records before import', async () => {
     const course = await createCourse('Older backup');
     const lesson = await createLesson(course.id, 'Lesson');
     await createLessonCard(course.id, lesson.id, 'front_back', 'Q', 'A');
@@ -56,10 +56,13 @@ describe('backup record validation', () => {
       cards: current.cards.map(({ conceptId: _conceptId, updatedAt: _updatedAt, ...row }) => row),
       futureMetadata: { retained: true },
     };
-    expect(validateBackup(older)).toBe(true);
-    const parsed = await readBackupFile(new File([JSON.stringify(older)], 'older.json'));
-    expect(parsed).toEqual(JSON.parse(JSON.stringify(older)));
-    await importBackup(parsed, 'replace');
+    expect(validateBackup(older)).toBe(false);
+    await expect(readBackupFile(new File([JSON.stringify(older)], 'older.json'))).rejects.toThrow(
+      /Unsupported old backup version/,
+    );
+    await expect(importBackup(older as unknown as typeof current, 'replace')).rejects.toThrow(
+      /Unsupported old backup version/,
+    );
     expect(await db.lessons.get(lesson.id)).toMatchObject({ name: 'Lesson' });
   });
 

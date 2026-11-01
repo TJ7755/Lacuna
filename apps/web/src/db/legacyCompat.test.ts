@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { bytesToBase45 } from './base45';
 import { ensureLessonBackingDeck } from './backingDecks';
-import { exportDatabase, importBackup, PRE_V22_BACKUP_MESSAGE } from './portability';
+import { exportDatabase, importBackup } from './portability';
 import { reviewHistoryEntriesForCard } from '@lacuna/core/db/reviewHistory';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { createCard, createCourse, createLesson } from './repository';
@@ -70,7 +70,7 @@ describe('legacy storage compatibility net', () => {
         } as never,
         'replace',
       ),
-    ).rejects.toThrow(PRE_V22_BACKUP_MESSAGE);
+    ).rejects.toThrow(/Unsupported old backup version/);
   });
 
   it('round-trips a current Course backup without changing review identity, order or performance', async () => {

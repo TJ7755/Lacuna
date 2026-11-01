@@ -123,7 +123,7 @@ describe('backup assessments', () => {
     );
   });
 
-  it('imports the explicit legacy courseExamDates boundary and preserves checkpoint ids', async () => {
+  it('rejects the legacy courseExamDates boundary without changing the database', async () => {
     const course = await createCourse('Legacy course', { examDate: 1_900_000_000_000 });
     const lesson = await createLesson(course.id, 'Lesson 1');
     const checkpoint = await createCourseAssessment(course.id, 'Mid-term', 1_800_000_000_000, {
@@ -154,13 +154,9 @@ describe('backup assessments', () => {
       courseAssessments: undefined,
     };
 
-    await importBackup(legacy, 'replace');
-
-    const restored = await db.courseAssessments.where('courseId').equals(course.id).toArray();
-    expect(restored.filter((assessment) => assessment.kind === 'final')).toHaveLength(1);
-    expect(restored.find((assessment) => assessment.id === checkpoint.id)).toEqual(
-      expect.objectContaining({ coverageMode: 'custom', lessonIds: [lesson.id] }),
-    );
+    await expect(importBackup(legacy, 'replace')).rejects.toThrow('Unsupported old backup');
+    const after = await exportDatabase();
+    expect({ ...after, exportedAt: 0 }).toEqual({ ...current, exportedAt: 0 });
   });
 
   it('adds a missing checkpoint in merge mode', async () => {

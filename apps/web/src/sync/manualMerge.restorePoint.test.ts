@@ -112,12 +112,14 @@ describe('manualMerge restore-point guarantee', () => {
     expect(await db.backups.count()).toBe(1);
   });
 
-  it('keeps the safety snapshot when the incoming format needs migration', async () => {
+  it('rejects unsupported incoming formats before creating a safety snapshot', async () => {
     const remote = await exportDatabase();
 
-    await manualMerge({ ...remote, app: 'lacuna', version: 10 }, { kind: 'peer' });
+    await expect(
+      manualMerge({ ...remote, app: 'lacuna', version: 10 }, { kind: 'peer' }),
+    ).rejects.toThrow();
 
-    expect(await db.backups.count()).toBe(1);
+    expect(await db.backups.count()).toBe(0);
   });
 
   it('keeps the safety snapshot when current-format records still need normalisation', async () => {

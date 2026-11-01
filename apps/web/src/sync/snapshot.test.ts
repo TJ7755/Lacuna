@@ -24,8 +24,18 @@ import {
 
 function backup(overrides: Partial<BackupFile> = {}): BackupFile {
   return {
-    app: 'lacuna',
-    version: 10,
+    app: 'lacuna-v15',
+    version: 15,
+    concepts: [],
+    questions: [],
+    questionConcepts: [],
+    questionAttempts: [],
+    questionSets: [],
+    questionSetAttempts: [],
+    practiceNodes: [],
+    schedulingUnits: [],
+    coursePerformance: [],
+    schedulingPerformance: [],
     exportedAt: 1,
     cards: [],
     assets: [],
