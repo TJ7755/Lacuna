@@ -111,3 +111,47 @@ for (const viewport of [
     );
   });
 }
+
+test('Later overlapping paper forecasts retain the current target on desktop', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openCourseProgress(page);
+  await page.evaluate(async (day) => {
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('lacuna');
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction('courseAssessments', 'readwrite');
+        const store = transaction.objectStore('courseAssessments');
+        const existing = store.get('topic-test');
+        existing.onsuccess = () =>
+          store.put({
+            ...existing.result,
+            id: 'later-paper',
+            name: 'Later paper',
+            examDate: Date.now() + 30 * day,
+          });
+        transaction.oncomplete = () => {
+          database.close();
+          resolve();
+        };
+        transaction.onerror = () => reject(transaction.error);
+      };
+    });
+  }, DAY_MS);
+  await page.reload();
+  const later = page.getByRole('region', { name: 'Later paper forecasts' });
+  await expect(later).toContainText('They do not change your current study target.');
+  await expect(later.getByRole('button', { name: 'Show Later paper' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Forecast by paper', exact: true })).toContainText(
+    'in total, matching the headline.',
+  );
+  await capture(page, testInfo, 'desktop-later-paper-forecasts', later);
+  await later.getByRole('button', { name: 'Show Later paper' }).click();
+  await expect(page).toHaveURL(/assessment=later-paper/);
+  await expect(page.getByRole('heading', { name: 'Exam-day forecast' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Later paper forecasts' })).toHaveCount(0);
+});

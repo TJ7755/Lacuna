@@ -243,3 +243,34 @@ it('keeps questions linked to a covered lesson when an assessment is selected', 
   expect(near.questions.map((question) => question.id)).toEqual(['q-a', 'q-b-linked-a']);
   expect(near.attempts.map((attempt) => attempt.questionId)).toEqual(['q-a', 'q-b-linked-a']);
 });
+
+it('forecasts overlapping later papers without changing the nearest-target headline', () => {
+  const input = fixture();
+  const report = buildCourseProgress(input);
+  const selected = buildCourseProgress({ ...input, assessmentId: 'final' });
+  expect(report.laterPapers).toHaveLength(1);
+  expect(report.laterPapers[0]).toMatchObject({
+    assessments: [{ id: 'final', name: 'Final paper' }],
+    cardCount: selected.cardCount,
+  });
+  expect(selected.forecast.kind).toBe('assessment');
+  if (selected.forecast.kind !== 'assessment') throw new Error('Expected assessment');
+  expect(report.laterPapers[0].value).toBe(selected.forecast.value);
+  expect(report.cardCount).toBe(5);
+  expect(report.forecast.kind).toBe('applicable');
+  if (report.forecast.kind !== 'applicable') throw new Error('Expected applicable forecast');
+  expect(report.forecast.papers.reduce((sum, paper) => sum + paper.cardCount, 0)).toBe(5);
+  expect(selected.laterPapers).toEqual([]);
+});
+
+it('expires an assessment at its exact deadline in both selected and later forecasts', () => {
+  const input = fixture();
+  const final = input.assessments.find(({ id }) => id === 'final')!;
+  const now = final.examDate!;
+  const report = buildCourseProgress({ ...input, now });
+  expect(report.laterPapers).toEqual([]);
+  expect(buildCourseProgress({ ...input, now, assessmentId: 'final' }).forecast).toEqual({
+    kind: 'past',
+    date: now,
+  });
+});
