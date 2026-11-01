@@ -1,4 +1,5 @@
-import { relayLimits } from '@lacuna/protocol/relay/index';
+import { readBoundedBytes } from './requestBody.js';
+import { relayLimits, relayRoutes } from '@lacuna/protocol/relay/index';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canonicalEtag, type BlobStore } from './store.js';
 import { consumeRatePermit } from './rateLimit.js';
@@ -90,7 +91,7 @@ export async function handleShareMint(
     }
     if (length > 0) {
       try {
-        const parsed: unknown = JSON.parse(body);
+        const parsed: unknown = relayRoutes.shareCreate.request.parse(JSON.parse(body));
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
         const fields = parsed as Record<string, unknown>;
         if (
@@ -349,7 +350,14 @@ async function putShareSlot(
     return shareJson(400, request, { error: 'invalid if-match' });
   }
 
-  const body = new Uint8Array(await request.arrayBuffer());
+  const body = await readBoundedBytes(request, cap);
+  if (body === null)
+    return shareJson(413, request, {
+      error:
+        slot === 'payload'
+          ? 'Course file too large for a share link. Send the course file instead.'
+          : 'payload too large',
+    });
   if (body.byteLength !== length) {
     return shareJson(400, request, { error: 'length mismatch' });
   }

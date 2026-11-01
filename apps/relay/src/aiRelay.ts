@@ -1,4 +1,4 @@
-import { relayLimits } from '@lacuna/protocol/relay/index';
+import { relayLimits, relayRoutes } from '@lacuna/protocol/relay/index';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { decodeAiSessionMetadata, type AiSessionMetadata } from './aiSessionMetadata.js';
 import { canonicalEtag, type BlobStore } from './store.js';
@@ -55,7 +55,12 @@ async function createSession(
 ): Promise<Response> {
   if (request.method !== 'POST') return json(405, request, { error: 'method not allowed' });
   const body = await readJson(request);
-  if (!isObject(body) || !isPublicKey(body.browserPublicKey) || Object.keys(body).length !== 1) {
+  if (
+    !relayRoutes.aiCreate.request.safeParse(body).success ||
+    !isObject(body) ||
+    !isPublicKey(body.browserPublicKey) ||
+    Object.keys(body).length !== 1
+  ) {
     return json(400, request, { error: 'invalid request' });
   }
 
@@ -105,7 +110,8 @@ async function claimSession(
     return json(409, request, { error: 'session already claimed' });
   }
   const body = await readJson(request);
-  if (!isClaim(body)) return json(400, request, { error: 'invalid request' });
+  if (!relayRoutes.aiClaim.request.safeParse(body).success || !isClaim(body))
+    return json(400, request, { error: 'invalid request' });
 
   const terminalToken = randomBytes(32).toString('hex');
   const claimedAt = now();
