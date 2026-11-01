@@ -64,7 +64,7 @@ function comparableToolName(name: string): string {
     .replace(/banks?/g, 'card');
 }
 
-export function suggestToolNames(name: string, limit = 3): string[] {
+function suggestToolNames(name: string, limit = 3): string[] {
   if (name.length > MCP_TOOL_NAME_MAX_LENGTH) return [];
   const wanted = comparableToolName(name);
   const maximumDistance = Math.max(2, Math.floor(wanted.length * 0.35));
