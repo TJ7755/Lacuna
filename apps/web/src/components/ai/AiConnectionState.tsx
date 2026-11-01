@@ -9,7 +9,7 @@ const TERMINAL_SETUP_URL = 'https://github.com/TJ7755/Lacuna#optional-desktop-ai
 const RENDERER_STATUS_POLL_MS = 1_000;
 type AiRendererStatus = 'ready' | 'waiting' | 'unavailable';
 
-export interface AiPairingState {
+interface AiPairingState {
   code: string;
   expiresAt: number;
 }
