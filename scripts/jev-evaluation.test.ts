@@ -269,11 +269,11 @@ test.each([
   }
 });
 
-test('rejects unsupported allocations above two marks before creating a reference packet', () => {
+test('rejects unsupported allocations above nine marks before creating a reference packet', () => {
   const directory = temporary();
   const item = cases.find((row) => row.request.maxMarks === 2)!;
   const path = join(directory, 'unsupported.json');
-  writeFileSync(path, JSON.stringify([{ ...item, request: { ...item.request, maxMarks: 3 } }]));
+  writeFileSync(path, JSON.stringify([{ ...item, request: { ...item.request, maxMarks: 10 } }]));
   const result = spawnSync(
     'bun',
     ['scripts/jev-evaluation.ts', 'export', '--cases', path, '--out', join(directory, 'packet')],
@@ -337,7 +337,7 @@ test('blind CLI export is reproducible, unmarked and refuses overwrites; incompl
   expect(invalid.stderr).not.toContain('UNEXPECTED_NETWORK');
 });
 
-test('synthetic transport exercises both provider entry points, records real usage fields and stops on HTTP errors without retries', () => {
+test('refuses paid execution without an enforceable monetary bound even with valid references', () => {
   const directory = temporary();
   expect(
     spawnSync('bun', ['scripts/jev-evaluation.ts', 'export', '--out', join(directory, 'packet')], {
@@ -409,8 +409,6 @@ test('synthetic transport exercises both provider entry points, records real usa
   );
   for (const mode of ['success', 'fresh-success', 'http-error', 'timeout']) {
     const external = mode === 'fresh-success';
-    const error = mode === 'http-error' || mode === 'timeout';
-    const count = external ? externalCases.length : cases.length;
     const output = join(directory, mode);
     const run = spawnSync(
       'bun',
@@ -433,57 +431,61 @@ test('synthetic transport exercises both provider entry points, records real usa
       },
     );
     expect(run.stderr).not.toContain('synthetic-test-value');
-    expect(run.status).toBe(error ? 1 : 0);
-    const result = JSON.parse(readFileSync(join(output, 'results.json'), 'utf8'));
-    expect(result.report.telemetry.attempted).toBe(error ? 1 : count);
-    expect(result.observations[0].status).toBe(error ? mode : 'ok');
-    expect(result.report.telemetry.knownInputTokens).toBe(error ? 0 : 9 * count);
-    expect(result.report.telemetry.unknownInputTokenRequests).toBe(error ? 1 : 0);
-    expect(result.observations.filter((row: Observation) => row.status === 'not-run')).toHaveLength(
-      error ? count - 1 : 0,
-    );
-    if (external) {
-      expect(result.observations.map((row: Observation) => row.id)).toEqual(
-        externalCases.map(({ id }) => id),
-      );
-      expect(result.report.overall.count).toBe(2);
-      expect(result.report.byAnswerType['short-answer'].count).toBe(1);
-      expect(result.report.byAnswerType['multi-mark'].count).toBe(1);
-      const edited = externalCases.map((item, index) =>
-        index
-          ? item
-          : {
-              ...item,
-              request: { ...item.request, answer: 'Changed after independent labelling' },
-            },
-      );
-      writeFileSync(externalPath, JSON.stringify(edited));
-      const stale = spawnSync(
-        'bun',
-        [
-          '--preload',
-          preload,
-          'scripts/jev-evaluation.ts',
-          'live',
-          '--cases',
-          externalPath,
-          '--labels',
-          freshLabelPath,
-          '--allow-paid',
-          '--out',
-          join(directory, 'stale'),
-        ],
-        {
-          encoding: 'utf8',
-          timeout: 10_000,
-          env: { ...process.env, TYPESAFE_API_KEY: 'synthetic-test-value' },
-        },
-      );
-      expect(stale.status).toBe(1);
-      expect(() => readFileSync(join(directory, 'stale/results.json'))).toThrow();
-    }
-    expect(readFileSync(join(output, 'results.json'), 'utf8')).not.toContain(
-      'synthetic-test-value',
-    );
+    expect(run.status).toBe(1);
+    expect(() => readFileSync(join(output, 'results.json'))).toThrow();
   }
+});
+
+test('reports subject and mark-band agreement with Wilson uncertainty', () => {
+  const item: EvaluationCase = {
+    ...cases[0],
+    subject: 'history',
+    request: { ...cases[0].request, maxMarks: 6, diagnostic: undefined },
+  };
+  const report = summarise(
+    [labels[0]],
+    [
+      {
+        id: item.id,
+        status: 'ok',
+        latencyMs: 1,
+        inputTokens: 0,
+        outputTokens: 0,
+        httpStatus: 200,
+        result: { value: 0, confidence: 1, model: 'jev-1.14.0' },
+      },
+    ],
+    [item],
+  );
+  expect(report.bySubject.history.markAgreement.count).toBe(1);
+  expect(report.byMarkBand['5–6'].markAgreement.lower95).toBeGreaterThan(0);
+  expect(report.bySubject.history.categories.knowledge.abstention.total).toBe(0);
+});
+
+test.each(['secondary-development', 'secondary-held-out'])(
+  'exports original %s without reference marks',
+  (pack) => {
+    const output = join(temporary(), 'packet');
+    const run = spawnSync(
+      'bun',
+      ['scripts/jev-evaluation.ts', 'export', '--pack', pack, '--out', output],
+      { encoding: 'utf8', timeout: 10_000 },
+    );
+    expect(run.status, run.stderr).toBe(0);
+    const material = JSON.parse(
+      readFileSync(`scripts/jev-evaluation/packs/${pack}.json`, 'utf8'),
+    ) as EvaluationCase[];
+    expect(material).toHaveLength(24);
+    expect(new Set(material.map((item) => item.subject)).size).toBe(4);
+    expect(new Set(material.map((item) => item.request.maxMarks))).toEqual(new Set([1, 3, 6, 8]));
+    expect(material.every((item) => item.request.diagnostic === undefined)).toBe(true);
+  },
+);
+
+test('rejects diagnostic reference claims for marking-only cases', () => {
+  const item = { ...cases[0], request: { ...cases[0].request, diagnostic: undefined } };
+  const label = { ...labels[0], knowledge: 'gap' };
+  expect(() =>
+    validateLabels({ reviews: [envelope(0, [label])] }, 'fixture-identity', [item]),
+  ).toThrow(/marking-only/);
 });
