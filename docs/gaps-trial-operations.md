@@ -92,12 +92,9 @@ or an unauthenticated manual request does not prove cleanup ran. An authorised
 manual run verifies the handler now, but does not prove the next timer fired.
 Do not weaken authorisation to make a health check green.
 
-Reports expire logically 84 days after the end of their reporting day. The job
-scans up to 500 insight objects per invocation with a persistent cursor, so
-physical deletion can lag. Inspect only aggregate deletion counts and operational
-errors. Investigate non-200 runs, repeated timeouts or a growing scan backlog;
-do not promise deletion at an exact wall-clock time. Never bulk-delete a shared
-store to clear a trial problem.
+Inspect aggregate deletion counts and operational errors. Investigate non-200 runs,
+repeated timeouts or a growing backlog. Never bulk-delete a shared store to clear
+a trial problem. Do not promise deletion at an exact wall-clock time.
 
 ## Keep spending visible
 

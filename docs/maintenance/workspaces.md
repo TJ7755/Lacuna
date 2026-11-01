@@ -1,10 +1,7 @@
 # Workspace deployment migration
 
-The root `bun.lock` and pinned Bun release own installation for all applications and packages.
-Run commands from the repository root; do not install or generate lockfiles in individual workspaces.
-Application sources live under `apps/`; shared domain code lives in `packages/core` and wire contracts
-in `packages/protocol`. Import shared contracts through `@lacuna/core` and `@lacuna/protocol` exports.
-The former root source-directory compatibility links are removed.
+Run installation from the repository root using
+`node apps/relay/scripts/security-bun.mjs install --frozen-lockfile`.
 
 ## Maintainer dashboard changes
 

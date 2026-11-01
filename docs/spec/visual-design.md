@@ -12,13 +12,6 @@ Learner-facing language describes the task and the evidence in plain words. Use 
 views; keep precise authoring terms in editors and the domain model. Recall forecasts describe
 predicted recall, not exam marks. Simpler wording must preserve the meaning of the measure.
 
-The device-local **Show advanced details** preference is available in Settings and onboarding.
-New learners start with it off; existing learners retain their detailed views until they choose
-otherwise. With it off, scheduler internals and tuning controls are absent from the page and
-accessibility tree. Useful study history, due dates and recall forecasts remain available. The
-preference changes presentation only; it never changes scheduling or study evidence. The Method
-page retains its full technical explanation.
-
 ## Lacuna Flow
 
 Lacuna Flow is the interaction language, not a separate product or visual theme.
@@ -29,9 +22,6 @@ queue input behind decoration. Keep reading surfaces still and use existing them
 Extend [shared timing and springs](../../apps/web/src/components/ui/motion.ts),
 [step transitions](../../apps/web/src/components/ui/StepSwap.tsx) and
 [motion preferences](../../apps/web/src/state/motionSpeed.ts) rather than creating another motion framework.
-[Flow study controls](../../apps/web/src/pages/learn/FlowGradeControls.tsx) own the measured reveal-to-grade
-liquid; its local blur fuses the control's own drops, not page backgrounds. Prefer transform and opacity for
-new movement; keep measured shape changes bounded to their owning control and verify them in use.
 Keep functional settings named for the choice they expose, such as motion speed.
 
 Retarget interrupted surfaces from their presented state. Preserve readable text, immediate

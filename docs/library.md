@@ -28,10 +28,8 @@ bun scripts/library-publish.ts --artefact "$FROZEN_ARTEFACT" --course-id synthet
   --share "$STABLE_SHARE_URL" --credentials "$LACUNA_OWNER_FILE" --dry-run
 ```
 
-Dry-run validates, checks ownership, reads both slots and reports `sha256`, `currentSha256` and
-which slots would change. It writes nothing, including local files. Review that exact frozen
-artefact and record its hash in your private approval evidence. For a real run supply that hash;
-a missing or mismatched approval hash fails before writing:
+Review the dry-run plan and record the exact frozen artefact hash in private approval evidence.
+Supply that hash for publication:
 
 ```bash
 bun scripts/library-publish.ts --artefact "$FROZEN_ARTEFACT" --course-id synthetic \
@@ -49,10 +47,6 @@ If another publisher advanced the revision, investigate that publication rather 
 older artefact over it. Verification failures may occur after both slots are live: inspect them
 before retrying, and do not treat the failed run as publication evidence.
 
-Skipping unchanged bytes does not renew a share. Ordinary share expiry is unchanged; official
-publications use the relay retention policy below after deployment. No production relay was used
-to validate this command.
-
 ## Hosting
 
 Create a separate Vercel project named `lacuna-library`, connected to this repository.
@@ -67,14 +61,6 @@ environment. Apply the other workspace root changes in the [deployment procedure
 The code prepares hosting; it does not create the project or publish a deployment.
 
 ## Official publication retention
-
-The policy includes the 26 official catalogue publications, including Religious Studies 8062,
-Combined Science 1SC0 and J250, and the 19 new science links.
-The relay keeps these publications readable while their ownership and payload
-objects exist, using the reviewed allow-list in `apps/relay/src/officialPublications.ts`. The public
-catalogue does not grant retention, and ordinary shares still expire after 90 days without a write.
-No timer, download or unchanged-publication retry renews a share. The additions take effect only
-when this relay change is deployed; catalogue deployment alone does not activate retention.
 
 The relay operator owns additions and removal. Before adding a share ID, verify ownership using
 the publication command's dry-run with the existing private credentials, verify the approved
