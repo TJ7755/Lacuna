@@ -8,6 +8,7 @@ import { courseLessonOrderPreference } from '../../course/lessonOrder';
 import { ASSESSMENT_TARGET_RECALL } from '../../fsrs/assessmentTiming';
 import { simContext } from '../../fsrs/forwardSim';
 import { makeEngine } from '../../fsrs/fsrs';
+import { isUpcomingExamDate } from '../../fsrs/examDate';
 
 export function RemainingWork({ courseId }: { courseId: string }) {
   const [now, setNow] = useState(Date.now);
@@ -34,7 +35,7 @@ export function RemainingWork({ courseId }: { courseId: string }) {
     const cards = await hydrateCardsWithHistory(rawCards);
     const context = simContext(course, makeEngine(course.fsrsParameters));
     return assessments
-      .filter((assessment) => assessment.examDate !== undefined && assessment.examDate > now)
+      .filter((assessment) => isUpcomingExamDate(assessment.examDate, now))
       .sort((a, b) => a.examDate! - b.examDate!)
       .flatMap((assessment) => {
         const coverage = resolveAssessmentCoverage(

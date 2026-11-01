@@ -1,5 +1,6 @@
 import type { Card, RevisionPlan } from '@lacuna/core/db/types';
 import { isAvailable } from '../fsrs/eligibility';
+import { isUpcomingExamDate } from '../fsrs/examDate';
 import { revisionPlanDays } from './revisionPlan';
 import { assessmentTiming } from '../fsrs/assessmentTiming';
 import type { SimContext } from '../fsrs/forwardSim';
@@ -24,7 +25,7 @@ export function estimateRemainingWork(
   plan?: RevisionPlan,
   context?: SimContext,
 ): RemainingWorkEstimate | null {
-  if (!Number.isFinite(deadline) || deadline <= now) return null;
+  if (!Number.isFinite(deadline) || !isUpcomingExamDate(deadline, now)) return null;
   const cards = sourceCards.filter((card) => isAvailable(card, now));
   const reviews = cards
     .flatMap((card) => card.history)
