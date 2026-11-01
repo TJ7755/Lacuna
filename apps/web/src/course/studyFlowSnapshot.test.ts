@@ -106,15 +106,15 @@ describe('buildCourseStudyFlowSnapshot', () => {
   it.each([MS_PER_DAY, 0, -MS_PER_DAY])(
     'keeps due recall separate while recommending available early exam practice (%ims)',
     (dueOffset) => {
-      const c = course();
+      const c = course({ examDate: NOW + 5 * MS_PER_DAY });
       const finalLesson = lesson('final', 0);
       const futureCard: Card = {
         ...card('future', 'final'),
         state: 2,
-        stability: 10,
+        stability: 0.5,
         difficulty: 5,
         reps: 1,
-        lastReviewed: NOW,
+        lastReviewed: NOW - MS_PER_DAY,
         due: NOW + dueOffset,
       };
       const snapshot = buildCourseStudyFlowSnapshot({
@@ -167,7 +167,7 @@ describe('buildCourseStudyFlowSnapshot', () => {
   );
 
   it('keeps exposed introductions in curricular practice without offering them as recurring reviews', () => {
-    const c = course({ newCardsPerDay: 1 });
+    const c = course({ newCardsPerDay: 1, examDate: NOW + 5 * MS_PER_DAY });
     const l = lesson('l1', 0);
     const cards = [card('new-1', 'l1'), card('new-2', 'l1')];
     const input = {
@@ -192,8 +192,8 @@ describe('buildCourseStudyFlowSnapshot', () => {
       cards: cards.map((card) => ({
         ...card,
         state: 2,
-        stability: 10,
-        lastReviewed: NOW,
+        stability: 0.5,
+        lastReviewed: NOW - MS_PER_DAY,
         due: NOW + MS_PER_DAY,
       })),
     });

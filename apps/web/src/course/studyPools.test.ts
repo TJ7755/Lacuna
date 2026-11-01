@@ -115,7 +115,7 @@ it('offers early practice only for an applicable future exam, respecting availab
     state: 2,
     due: NOW + MS_PER_DAY,
     stability: 0.1,
-    lastReviewed: NOW,
+    lastReviewed: NOW - MS_PER_DAY,
   });
   const cards = [
     weak,
@@ -289,7 +289,7 @@ describe('practice pools', () => {
       eligiblePracticePool([nearCard, farCard, suspended], course, context, NOW).map(
         (card) => card.id,
       ),
-    ).toEqual(['far']);
+    ).toEqual([]);
   });
 
   it('keeps a linked card horizon anchored to its primary lesson', () => {
@@ -311,9 +311,7 @@ describe('practice pools', () => {
       { reachedLessonIds: new Set(['l1']) },
       NOW,
     );
-    expect(eligiblePracticePool(scope, course, context, NOW).map((card) => card.id)).toEqual([
-      'linked',
-    ]);
+    expect(eligiblePracticePool(scope, course, context, NOW).map((card) => card.id)).toEqual([]);
   });
 
   it('measures readiness over the full scope, including unavailable cards', () => {

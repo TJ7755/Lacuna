@@ -13,7 +13,7 @@ const FALLBACK: PracticeDefaults = {
   autoPractice: true,
   practiceThresholdMinutesFar: 8,
   practiceThresholdMinutesNear: 4,
-  practiceUrgentWindowDays: 7,
+  practiceUrgentWindowDays: 14,
   practiceMaxGap: 2,
 };
 

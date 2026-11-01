@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MS_PER_DAY, defaultFsrsParameters } from '@lacuna/core/fsrs/params';
-import { assessmentTiming, ASSESSMENT_TARGET_RECALL } from './assessmentTiming';
+import {
+  assessmentTiming,
+  ASSESSMENT_TARGET_RECALL,
+  assessmentReviewGain,
+  worthwhileAssessmentPractice,
+} from './assessmentTiming';
 import { makeEngine, toTsCard } from './fsrs';
 import { forgettingCurve, simContext } from './forwardSim';
 import { card, course, NOW } from './session.testFixtures';
@@ -82,5 +87,47 @@ describe('assessment timing prediction', () => {
     expect(result.due).toBe(NOW);
     expect(result.predictedRecall).toBeLessThan(ASSESSMENT_TARGET_RECALL);
     expect(result.feasible).toBe(false);
+  });
+});
+
+describe('worthwhile early assessment practice', () => {
+  it('measures gains across the final fortnight and preserves final-day work', () => {
+    const ctx = context();
+    const c = card('weak', 'course', {
+      state: 2,
+      stability: 0.5,
+      difficulty: 5,
+      lastReviewed: NOW - 2 * MS_PER_DAY,
+      due: NOW + 20 * MS_PER_DAY,
+    });
+    const gains = [0.1, 1, 3, 7, 14].map((days) =>
+      assessmentReviewGain(c, NOW + days * MS_PER_DAY, NOW, ctx),
+    );
+
+    expect(gains.every((gain) => gain >= 0.01)).toBe(true);
+    expect(worthwhileAssessmentPractice(c, NOW + MS_PER_DAY / 10, NOW, 14, ctx)).toBe(true);
+    expect(worthwhileAssessmentPractice(c, NOW + 14 * MS_PER_DAY, NOW, 14, ctx)).toBe(true);
+    expect(worthwhileAssessmentPractice(c, NOW + 14 * MS_PER_DAY + 1, NOW, 14, ctx)).toBe(false);
+    expect(
+      worthwhileAssessmentPractice(
+        { ...c, lastReviewed: NOW - MS_PER_DAY / 2 },
+        NOW + MS_PER_DAY / 10,
+        NOW,
+        14,
+        ctx,
+      ),
+    ).toBe(true);
+    expect(
+      worthwhileAssessmentPractice({ ...c, lastReviewed: NOW }, NOW + MS_PER_DAY, NOW, 14, ctx),
+    ).toBe(false);
+    expect(
+      worthwhileAssessmentPractice(
+        { ...c, due: NOW, stability: 10000 },
+        NOW + 30 * MS_PER_DAY,
+        NOW,
+        14,
+        ctx,
+      ),
+    ).toBe(true);
   });
 });

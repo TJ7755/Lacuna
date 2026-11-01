@@ -1,9 +1,10 @@
+import { MASTERY_R, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card } from '@lacuna/core/db/types';
 import { isUpcomingExamDate } from './examDate';
 import { rAtExam, rAtExamIfReviewedNow, type SimContext } from './forwardSim';
 
 /** FSRS's reference retention; a model target, not a guarantee of human recall. */
-export const ASSESSMENT_TARGET_RECALL = 0.9;
+export const ASSESSMENT_TARGET_RECALL = MASTERY_R;
 
 export interface AssessmentTiming {
   due: number | null;
@@ -35,4 +36,44 @@ export function assessmentTiming(
       ? rAtExamIfReviewedNow(card, ctx.expectedGrade, examDate, reviewAt, ctx)
       : rAtExam(card, examDate, now, ctx.decay);
   return { due, predictedRecall, feasible: predictedRecall >= ASSESSMENT_TARGET_RECALL };
+}
+
+/** Current memory only: do not assume a future scheduled review has happened. */
+export function assessmentRecallBelowTarget(
+  card: Card,
+  examDate: number,
+  now: number,
+  ctx: SimContext,
+): boolean {
+  return isUpcomingExamDate(examDate, now) && rAtExam(card, examDate, now, ctx.decay) < MASTERY_R;
+}
+
+export function assessmentReviewGain(
+  card: Card,
+  examDate: number,
+  now: number,
+  ctx: SimContext,
+): number {
+  return (
+    rAtExamIfReviewedNow(card, ctx.expectedGrade, examDate, now, ctx) -
+    rAtExam(card, examDate, now, ctx.decay)
+  );
+}
+
+export const MIN_ASSESSMENT_REVIEW_GAIN = 0.01;
+
+export function worthwhileAssessmentPractice(
+  card: Card,
+  examDate: number,
+  now: number,
+  windowDays: number,
+  ctx: SimContext,
+): boolean {
+  if (card.due !== null && card.due <= now) return true;
+  return (
+    assessmentRecallBelowTarget(card, examDate, now, ctx) &&
+    examDate - now <= windowDays * MS_PER_DAY &&
+    (card.lastReviewed === null || now - card.lastReviewed >= MS_PER_DAY / 24) &&
+    assessmentReviewGain(card, examDate, now, ctx) >= MIN_ASSESSMENT_REVIEW_GAIN
+  );
 }

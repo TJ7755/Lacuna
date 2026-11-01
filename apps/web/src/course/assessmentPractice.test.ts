@@ -161,7 +161,7 @@ it('includes prior knowledge in whole-course assessment practice without inventi
   const cards = [card('old', 'l1'), card('current', 'l2'), card('future', 'l3')];
   const final = assessment(
     'final',
-    NOW + 100 * MS_PER_DAY,
+    NOW + 5 * MS_PER_DAY,
     lessons.map((item) => item.id),
   );
   expect(
