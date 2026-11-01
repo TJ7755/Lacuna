@@ -2,7 +2,6 @@ import { spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { landingFilms } from './components/landing/films';
 
 describe('Vercel configuration', () => {
   it('canonicalises course routes without an app-shell rewrite', async () => {
@@ -15,32 +14,7 @@ describe('Vercel configuration', () => {
     ]) {
       expect(config.redirects).toContainEqual({ source, destination, permanent: true });
     }
-    expect(
-      config.rewrites.every(({ source }: { source: string }) => source.startsWith('/films/')),
-    ).toBe(true);
-  });
-
-  it('uses the same exact film routes for the player, local proxy and deployed rewrites', async () => {
-    const config = JSON.parse(await readFile('vercel.json', 'utf8'));
-    expect(config.rewrites).toEqual(
-      Object.values(landingFilms).map(({ src, externalSrc }) => ({
-        source: src,
-        destination: externalSrc,
-      })),
-    );
-  });
-
-  it('keeps partial film responses out of the external rewrite cache', async () => {
-    const config = JSON.parse(await readFile('vercel.json', 'utf8'));
-    for (const film of Object.values(landingFilms)) {
-      expect(
-        config.headers.find((entry: { source: string }) => entry.source === film.src)?.headers ??
-          [],
-      ).toContainEqual({
-        key: 'x-vercel-enable-rewrite-caching',
-        value: '0',
-      });
-    }
+    expect(config.rewrites ?? []).toEqual([]);
   });
 
   it('typechecks the Vite configuration when Vercel supplies the library deployment configuration', async () => {

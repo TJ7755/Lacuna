@@ -34,30 +34,3 @@ test('enlarged text fits the phone without clipping the new sections', async ({ 
     expect(copyBounds.y + copyBounds.height).toBeLessThanOrEqual(bounds.y + bounds.height);
   }
 });
-
-for (const film of ['Lacuna', 'Gaps']) {
-  test(`${film} film loads on demand and plays the hosted 4K video`, async ({ page }) => {
-    const requests: string[] = [];
-    page.on('request', (request) => {
-      if (request.url().includes('.mp4')) requests.push(request.url());
-    });
-    await page.goto('/#/landing');
-    expect(requests).toEqual([]);
-    const play = page.getByRole('button', { name: new RegExp(`Watch ${film} in action`) });
-    await play.focus();
-    await play.press('Enter');
-    const video = page.getByLabel(`${film} in action`, { exact: true });
-    await expect(video).toBeVisible();
-    await expect(video).toBeFocused();
-    await expect
-      .poll(() => video.evaluate((node) => (node as HTMLVideoElement).currentTime), {
-        timeout: 30000,
-      })
-      .toBeGreaterThan(0);
-    expect(await video.evaluate((node) => (node as HTMLVideoElement).videoWidth)).toBe(3840);
-    expect(requests.length).toBeGreaterThan(0);
-    await video.press('Space');
-    await expect.poll(() => video.evaluate((node) => (node as HTMLVideoElement).paused)).toBe(true);
-    await page.screenshot({ path: `artifacts/landing-rework/${film.toLowerCase()}-playback.png` });
-  });
-}
