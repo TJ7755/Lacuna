@@ -1,3 +1,4 @@
+import { readBoundedBytes } from './requestBody.js';
 import {
   matchRelayRoute,
   matchRelayInvalidSlot,
@@ -116,56 +117,6 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
       return json(matchRelayRoute(request.url) ? 405 : 404, request, {
         error: matchRelayRoute(request.url) ? 'method not allowed' : 'not found',
       });
-    }
-    if (
-      matched.definition.maxBytes > 0 &&
-      Number(request.headers.get('Content-Length') ?? 0) <= matched.definition.maxBytes &&
-      request.body
-    ) {
-      const cap =
-        matched.definition.kind === 'share-slot' && matched.params.slot !== 'payload'
-          ? relayLimits.shareMeta
-          : matched.definition.maxBytes;
-      const copy = request.clone();
-      const reader = copy.body!.getReader();
-      const chunks: Uint8Array[] = [];
-      let size = 0;
-      try {
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          size += value.byteLength;
-          if (size > cap) {
-            void reader.cancel();
-            return json(413, request, {
-              error:
-                matched.definition.kind === 'share-slot' && matched.params.slot === 'payload'
-                  ? 'Course file too large for a share link. Send the course file instead.'
-                  : 'payload too large',
-            });
-          }
-          chunks.push(value);
-        }
-        const bytes = new Uint8Array(size);
-        let offset = 0;
-        for (const chunk of chunks) {
-          bytes.set(chunk, offset);
-          offset += chunk.byteLength;
-        }
-        const binary = ['slot', 'share-slot', 'ai-mailbox'].includes(matched.definition.kind);
-        const value: unknown = binary
-          ? bytes
-          : size === 0
-            ? undefined
-            : JSON.parse(new TextDecoder().decode(bytes));
-        if (!matched.definition.request.safeParse(value).success) {
-          return json(400, request, { error: 'invalid request' });
-        }
-      } catch {
-        return json(400, request, { error: 'invalid request' });
-      } finally {
-        reader.releaseLock();
-      }
     }
     const response = await dispatch(request);
     for (const [name, value] of corsHeaders(request)) {
@@ -332,7 +283,8 @@ async function putSlot(
     return json(400, request, { error: 'invalid if-match' });
   }
 
-  const body = new Uint8Array(await request.arrayBuffer());
+  const body = await readBoundedBytes(request, MAX_BODY_BYTES);
+  if (body === null) return json(413, request, { error: 'payload too large' });
   if (body.byteLength !== length) {
     return json(400, request, { error: 'length mismatch' });
   }
