@@ -95,7 +95,11 @@ describe('session machine operation sequences', () => {
         // Every transition leaves its input intact, including nested maps and sets.
         expect(before, message).toEqual(untouched);
         if (pick(4) === 0) {
-          state = transitionSession(state, { type: 'restore', snapshot: before }).state;
+          state = transitionSession(state, {
+            type: 'restore',
+            snapshot: before,
+            card: before.cards.find((card) => card.id === candidate.id)!,
+          }).state;
           expect(state, message).toEqual(untouched);
         } else {
           answered++;
@@ -182,12 +186,92 @@ describe('session machine operation sequences', () => {
         for (const id of state.revision.retryAt.keys())
           expect(state.revision.parked.has(id)).toBe(false);
         if (pick(3) === 0) {
-          state = transitionSession(state, { type: 'restore', snapshot }).state;
-          expect(state).toEqual(previous);
+          // Editing another card after an answer must survive undoing that answer.
+          const other = state.cards.find((card) => card.id !== candidate.id)!;
+          const edited = { ...other, front: `edited-${step}` };
+          state = transitionSession(state, { type: 'replace-card', card: edited }).state;
+          state = transitionSession(state, {
+            type: 'restore',
+            snapshot,
+            card: snapshot.cards.find((card) => card.id === candidate.id)!,
+          }).state;
+          expect(state).toEqual({
+            ...previous,
+            cards: previous.cards.map((card) => (card.id === edited.id ? edited : card)),
+          });
         }
       }
     },
   );
+
+  it.each(SEEDS)(
+    'removes suspended cards from the live pass without losing the stored pool (seed %i)',
+    (seed) => {
+      const pick = randomIndex(seed);
+      let state = initial(8);
+      const inventory = [...state.cardIds];
+      const removed = new Set<string>();
+      while (state.cardIds.length) {
+        const id = state.cardIds[pick(state.cardIds.length)];
+        const card = state.cards.find((card) => card.id === id)!;
+        const before = structuredClone(state);
+        const next = transitionSession(state, {
+          type: 'remove-card',
+          card: { ...card, suspended: true },
+          simple: true,
+        });
+        expect(state).toEqual(before);
+        state = next.state;
+        removed.add(id);
+        expect(state.cards.map((card) => card.id)).toEqual(inventory);
+        expect(state.cardIds).toEqual(inventory.filter((id) => !removed.has(id)));
+        expect(state.simple.queue.map((card) => card.id)).toEqual(state.cardIds);
+        expect(
+          state.cards
+            .filter((card) => card.suspended)
+            .map((card) => card.id)
+            .sort(),
+        ).toEqual([...removed].sort());
+      }
+    },
+  );
+
+  it('describes a graded write before accepting its acknowledgement', () => {
+    const state = initial(1);
+    const before = structuredClone(state);
+    const request = transitionSession(state, {
+      type: 'answer',
+      simple: false,
+      review: {
+        card: state.cards[0],
+        eventId: 'review',
+        sessionId: 'session',
+        sessionKind: 'practice',
+        deck: course('unit', 30),
+        kind: 'scheduling-unit',
+        correct: true,
+        responseTimeSec: 2,
+        distracted: false,
+        hintUsed: false,
+      },
+      grading: {
+        machineMarked: null,
+        manualGrade: 3,
+        correct: true,
+        responseTimeSec: 2,
+        hintUsed: false,
+        performance: undefined,
+      },
+    });
+    expect(state).toEqual(before);
+    expect(request.state).toEqual(before);
+    expect(request.effects).toMatchObject([
+      { type: 'persist-review', simple: false, review: { eventId: 'review', grade: 3 } },
+    ]);
+    // A rejected write has no acknowledgement: the pool, outcomes and event count stay intact.
+    expect(request.state.events).toHaveLength(0);
+    expect(request.state.outcomes.size).toBe(0);
+  });
 
   it.each(SEEDS)('counts only thinking time over arbitrary edit pauses (seed %i)', (seed) => {
     const pick = randomIndex(seed);

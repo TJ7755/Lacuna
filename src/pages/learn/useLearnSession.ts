@@ -1,109 +1,59 @@
-import { loadSessionSource } from './loadSessionSource';
-import type { JevMarkProvenance } from '../../jev/types';
-import { useLeaveFlowWith } from '../../utils/editorOrigin';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
-import { db, makeId } from '../../db/schema';
+import type { DistractionTracker } from '../../components/learn/useDistraction';
+import type { useToast } from '../../components/ui/Toast';
+import { createRevisionSessionState } from '../../course/revisionSession';
+import type { SessionCardOutcome, SessionSummary } from '../../course/sessionSummary';
 import { pauseAssetGc } from '../../db/assets';
-import { performanceForReviewUnits } from '../../db/backingDecks';
-import { dailyReviewCounts } from '../../db/reviewHistoryRead';
+import { buryCard, setCardFlag, suspendCard } from '../../db/cardRepository';
+import { markLessonComplete } from '../../db/lessonRepository';
+import { type OcclusionCardData } from '../../db/occlusionStudy';
+import { makeId } from '../../db/schema';
+import type { CardFilter } from '../../db/search';
+import { isLabelCardId } from '../../db/sequenceGeneration';
 import type {
   Card,
-  Grade,
   Lesson,
-  LessonCardExposure,
-  Sequence,
   ReviewSessionKind,
   RevisionPlan,
   SchedulerConfig,
+  Sequence,
   UserPerformance,
 } from '../../db/types';
-import { buryCard, setCardFlag, suspendCard } from '../../db/cardRepository';
-import { markLessonComplete, upsertLessonCardExposure } from '../../db/lessonRepository';
-import { listNotes } from '../../db/noteRepository';
-import { emptyPerformance } from '../../fsrs/grading';
-import type { CooldownMap } from '../../fsrs/cooldown';
 import { progressHeading } from '../../fsrs/objective';
-import {
-  makeSessionContext,
-  sessionComplete,
-  sessionCompletionProgress,
-  sessionProgress,
-  sessionServePool,
-} from '../../fsrs/session';
-import type { SessionContext } from '../../fsrs/session';
-import { startOfDay } from '../../utils/datetime';
 import { MS_PER_DAY } from '../../fsrs/params';
-import type { DistractionTracker } from '../../components/learn/useDistraction';
-import type { SessionCardOutcome, SessionEvent, SessionSummary } from '../../course/sessionSummary';
-import type { useToast } from '../../components/ui/Toast';
-import { linesModeSequencesByCard } from '../../db/linesModeCards';
-import { isLabelCardId } from '../../db/sequenceGeneration';
-import { occlusionDataByCard, type OcclusionCardData } from '../../db/occlusionStudy';
-import { filterSessionCardPool } from '../../db/search';
-import type { CardFilter } from '../../db/search';
-import { FILTER_LABELS } from './types';
-import type {
-  LearnModeType,
-  LessonNotesScreen,
-  Phase,
-  MachineMarkedAnswer,
-  StudyUnit,
-} from './types';
-import { hasMachineMarkedPayload, isUnrenderableItemPayload } from './sessionCardCapabilities';
-import { clearSimpleSession, saveSimpleSession } from './simpleSessionPersistence';
+import type { SessionContext } from '../../fsrs/session';
+import { sessionCompletionProgress, sessionProgress, sessionServePool } from '../../fsrs/session';
+import type { JevMarkProvenance } from '../../jev/types';
 import { useAnswerInput } from '../../state/answerInput';
+import { startOfDay } from '../../utils/datetime';
+import { useLeaveFlowWith } from '../../utils/editorOrigin';
 import { resolveAnswerMode, reviewAnswerInput } from '../../utils/resolveAnswerMode';
+import { answerCorrect, type AnswerInput, type AnswerResult } from './answerSteps';
+import { loadSessionData } from './loadSessionData';
+import { loadSessionSource } from './loadSessionSource';
 import { shuffledSimpleQueue } from './recitation/recitationFlow';
-import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
-import { prepareSimpleSessionQueue } from './sessionPool';
-import { resolveLearnSessionScope } from './sessionScope';
-import {
-  persistRecitationReview,
-  persistSimpleSessionAnswer,
-  undoSessionAnswer,
-  type AnswerSnapshot,
-} from './sessionAnswerPersistence';
+import { createSessionAnswerEffects, type AnswerResponse } from './sessionAnswerEffects';
+import { type AnswerSnapshot } from './sessionAnswerPersistence';
+import { hasMachineMarkedPayload, isUnrenderableItemPayload } from './sessionCardCapabilities';
 import {
   persistSessionCompletion,
   persistSessionPracticeMilestone,
   type PracticeSession,
 } from './sessionCompletionPersistence';
 import {
-  transitionSession,
-  afterScheduledAnswer,
-  snapshotSession,
-  transitionResponseTimer,
   transitionCompletion,
+  transitionResponseTimer,
+  transitionSession,
   type CompletionEvent,
-  type SessionState,
   type SessionEventInput,
+  type SessionState,
 } from './sessionMachine';
-import {
-  createRevisionSessionState,
-  snapshotRevisionSessionState,
-} from '../../course/revisionSession';
-import {
-  answerCorrect,
-  answerFeedback,
-  answerGrade,
-  persistAnswer,
-  type AnswerInput,
-  type AnswerResult,
-} from './answerSteps';
-
-/** One submitted answer, as the grading paths need it. */
-interface AnswerResponse {
-  retainUndo: boolean;
-  input?: 'typed' | 'reveal';
-  markedBy?: JevMarkProvenance;
-  correct: boolean;
-  manualGrade: Grade | null;
-  machineMarked: MachineMarkedAnswer | null;
-  /** Response time in seconds. */
-  t: number;
-  distracted: boolean;
-}
+import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
+import { emptySessionState, sessionCell, simpleSessionCell } from './sessionRuntime';
+import { resolveLearnSessionScope } from './sessionScope';
+import { clearSimpleSession, saveSimpleSession } from './simpleSessionPersistence';
+import type { LearnModeType, LessonNotesScreen, Phase, StudyUnit } from './types';
 
 export type { AnswerResult } from './answerSteps';
 
@@ -250,6 +200,7 @@ export function useLearnSession({
 
   useEffect(() => (enabled ? pauseAssetGc() : undefined), [enabled]);
 
+  const machineState = useRef<SessionState>(emptySessionState());
   const [phase, setPhase] = useState<Phase>('loading');
   // The unit a single-unit session is studying (null for the global session).
   const [singleDeck, setSingleDeck] = useState<StudyUnit | null>(null);
@@ -322,23 +273,25 @@ export function useLearnSession({
   // fixing a card never counts towards the invisible grade.
   const [editing, setEditing] = useState(false);
   // Simple mode: queue of cards that are still unlearned (wrong or unseen).
-  const simpleQueue = useRef<Card[]>([]);
-  const simpleMastered = useRef<Set<string>>(new Set());
-  const simpleWrong = useRef<Set<string>>(new Set());
+  const simpleQueue = useRef(simpleSessionCell(machineState, 'queue')).current;
+  const simpleMastered = useRef(simpleSessionCell(machineState, 'mastered')).current;
+  const simpleWrong = useRef(simpleSessionCell(machineState, 'wrong')).current;
   // Simple mode: in-progress recitation steps by sequence id, saved with the session.
   const simpleRecitations = useRef<Map<string, unknown>>(new Map());
   const [sessionCardIds, renderSessionCardIds] = useState<string[]>([]);
-  const sessionCardIdsRef = useRef<string[]>([]);
-  const setSessionCardIds = useCallback((value: string[] | ((previous: string[]) => string[])) => {
-    const next = typeof value === 'function' ? value(sessionCardIdsRef.current) : value;
-    sessionCardIdsRef.current = next;
-    renderSessionCardIds(next);
-  }, []);
+  const sessionCardIdsRef = useRef(sessionCell(machineState, 'cardIds')).current;
+  const setSessionCardIds = useCallback(
+    (value: string[] | ((previous: string[]) => string[])) => {
+      const next = typeof value === 'function' ? value(sessionCardIdsRef.current) : value;
+      sessionCardIdsRef.current = next;
+      renderSessionCardIds(next);
+    },
+    [sessionCardIdsRef],
+  );
   const [sessionCardOutcomes, setSessionCardOutcomes] = useState<Map<string, SessionCardOutcome>>(
     () => new Map(),
   );
-  const sessionCardOutcomesRef = useRef(sessionCardOutcomes);
-  sessionCardOutcomesRef.current = sessionCardOutcomes;
+  const sessionCardOutcomesRef = useRef(sessionCell(machineState, 'outcomes')).current;
   const [schedulerProgress, setSchedulerProgress] = useState(0);
   const [revisionSecondsRemaining, setRevisionSecondsRemaining] = useState(0);
   const [revisionWindowBudgetSeconds, setRevisionWindowBudgetSeconds] = useState(0);
@@ -369,7 +322,7 @@ export function useLearnSession({
 
   // Session-only mutable state held in refs so it never triggers re-renders mid-card
   // and so the stable callbacks below always read current values (no stale closures).
-  const cooldowns = useRef<CooldownMap>(new Map());
+  const cooldowns = useRef(sessionCell(machineState, 'cooldowns')).current;
   const perfRef = useRef<Map<string, UserPerformance>>(new Map());
   const schedulingUnitsRef = useRef<Map<string, StudyUnit>>(new Map());
   // Every session scores and enforces limits from the target scheduling projection.
@@ -384,7 +337,7 @@ export function useLearnSession({
   // Set only for lesson scope, so ratchetSessionUnlocks knows which single lesson to
   // evaluate (course/practice-scope completion instead sweeps every lesson).
   const ratchetLessonIdRef = useRef<string | null>(null);
-  const cardsRef = useRef<Card[]>([]);
+  const cardsRef = useRef(sessionCell(machineState, 'cards')).current;
   const createSimpleQueue = useCallback(
     (cards: Card[]) => shuffledSimpleQueue(cards, linesModeMapRef.current),
     [],
@@ -403,20 +356,20 @@ export function useLearnSession({
         : [],
     );
     return ids.length > 0 ? ids : [current.id];
-  }, [current, recitationSequence, isSimpleMode, recitationFocus]);
+  }, [current, recitationSequence, isSimpleMode, cardsRef, recitationFocus]);
   const lessonExposureIdRef = useRef<string | null>(null);
   const lessonHasMembersRef = useRef(false);
   const practiceSessionRef = useRef<PracticeSession | null>(null);
   const revisionPlanRef = useRef<RevisionPlan | null>(null);
   const revisionInitialRevision = useRef(0);
   const revisionWindowStartedAt = useRef(0);
-  const revisionSessionRef = useRef(createRevisionSessionState());
+  const revisionSessionRef = useRef(sessionCell(machineState, 'revision')).current;
   const timerStart = useRef(0);
   const responseTime = useRef(0);
   // Elapsed thinking time captured when the edit overlay opens during the question
   // phase, so the timer can be rebased (not reset) when the overlay closes.
   const pausedElapsed = useRef(0);
-  const events = useRef<SessionEvent[]>([]);
+  const events = useRef(sessionCell(machineState, 'events')).current;
   const progressBefore = useRef(0);
   const lastAnswer = useRef<AnswerSnapshot | null>(null);
   // Guards against a double key-press / click submitting the same card twice.
@@ -452,33 +405,12 @@ export function useLearnSession({
       mountedRef.current = false;
     };
   }, []);
-  const readSessionState = (): SessionState => ({
-    cards: cardsRef.current,
-    cardIds: sessionCardIdsRef.current,
-    simple: {
-      queue: simpleQueue.current,
-      mastered: simpleMastered.current,
-      wrong: simpleWrong.current,
-      outcomes: sessionCardOutcomesRef.current,
-    },
-    outcomes: sessionCardOutcomesRef.current,
-    events: events.current,
-    cooldowns: cooldowns.current,
-    revision: revisionSessionRef.current,
-  });
+  const readSessionState = () => machineState.current;
   const applySessionEvent = (event: SessionEventInput) => {
-    const transition = transitionSession(readSessionState(), event);
-    const next = transition.state;
-    cardsRef.current = next.cards;
-    simpleQueue.current = next.simple.queue;
-    simpleMastered.current = next.simple.mastered;
-    simpleWrong.current = next.simple.wrong;
-    cooldowns.current = next.cooldowns;
-    revisionSessionRef.current = next.revision;
-    events.current = next.events;
-    sessionCardOutcomesRef.current = next.outcomes;
-    setSessionCardOutcomes(next.outcomes);
-    setSessionCardIds(next.cardIds);
+    const transition = transitionSession(machineState.current, event);
+    machineState.current = transition.state;
+    setSessionCardOutcomes(transition.state.outcomes);
+    setSessionCardIds(transition.state.cardIds);
     return transition.effects;
   };
   const applySessionEventRef = useRef(applySessionEvent);
@@ -536,14 +468,14 @@ export function useLearnSession({
         recitations: simpleRecitations.current,
       });
     },
-    [isSimpleMode, simpleSessionScope],
+    [events, isSimpleMode, sessionCardOutcomesRef, simpleMastered, simpleQueue, simpleSessionScope],
   );
 
   const resetSimpleSessionOutcomes = useCallback(() => {
     const outcomes = new Map<string, SessionCardOutcome>();
     sessionCardOutcomesRef.current = outcomes;
     setSessionCardOutcomes(outcomes);
-  }, []);
+  }, [sessionCardOutcomesRef]);
 
   const objectiveLabel = useCallback(() => {
     if (isSimpleMode) return 'Cards correct in this pass';
@@ -625,7 +557,15 @@ export function useLearnSession({
     };
     completionPromise.current = commit();
     return completionPromise.current;
-  }, [isSimpleMode, notify, onStepFinished, requestWindowId, simpleSessionScope]);
+  }, [
+    cardsRef,
+    isSimpleMode,
+    notify,
+    onStepFinished,
+    requestWindowId,
+    revisionSessionRef,
+    simpleSessionScope,
+  ]);
 
   /** Settle completion produced by an answer, or allow exit when none is due. */
   const settleCompletion = useCallback(
@@ -694,7 +634,17 @@ export function useLearnSession({
         mode,
       });
     },
-    [objectiveLabel, distraction, cachedSessionProgress, isSimpleMode, mode, finaliseSummary],
+    [
+      distraction,
+      isSimpleMode,
+      cardsRef,
+      simpleMastered,
+      cachedSessionProgress,
+      finaliseSummary,
+      events,
+      objectiveLabel,
+      mode,
+    ],
   );
 
   useEffect(() => {
@@ -789,12 +739,17 @@ export function useLearnSession({
       serveNext();
     }
   }, [
-    cachedSessionProgress,
+    summary?.simpleMode,
+    simpleMastered,
+    simpleWrong,
+    simpleQueue,
     createSimpleQueue,
+    cardsRef,
+    events,
+    setSessionCardIds,
     resetSimpleSessionOutcomes,
     serveNext,
-    summary?.simpleMode,
-    setSessionCardIds,
+    cachedSessionProgress,
   ]);
 
   const preloadEnabled = enabled && (phase === 'question' || phase === 'answer');
@@ -822,7 +777,7 @@ export function useLearnSession({
       window.clearTimeout(timeout);
       stopPreloading?.();
     };
-  }, [current, preloadEnabled, isSimpleMode]);
+  }, [current, preloadEnabled, isSimpleMode, simpleQueue, cardsRef, cooldowns, simpleMastered]);
 
   // Stable ref so the initial-load effect never re-runs just because serveNext's
   // callback identity changed (which would reset phase and undo reveal/exit).
@@ -838,7 +793,7 @@ export function useLearnSession({
     }
     setLessonNotesScreen(null);
     serveNextRef.current();
-  }, [finish, lessonId]);
+  }, [cardsRef, finish, lessonId]);
 
   const finaliseSummaryRef = useRef(finaliseSummary);
   finaliseSummaryRef.current = finaliseSummary;
@@ -927,8 +882,6 @@ export function useLearnSession({
         else void navigate(source.redirect);
         return;
       }
-      const { units, sessionUnits, firstStudyLessonId, firstStudyLessonName } = source;
-      let { cards } = source;
       setResolvedCourseId(source.resolvedCourseId);
       lessonHasMembersRef.current = source.lessonHasMembers;
       reviewKindRef.current = source.reviewKind;
@@ -946,190 +899,58 @@ export function useLearnSession({
       if (cancelled) return;
 
       markLoad('pool-ready');
-      cards = filterSessionCardPool(cards, { tag: tagFilter, filters: filterParams });
-
-      if (isSimpleMode) {
-        const now = Date.now();
-        cards = cards.filter(
-          (card) => !card.suspended && !(card.buriedUntil && card.buriedUntil > now),
-        );
-      }
-
-      const perfs = await performanceForReviewUnits(
-        units.map((unit) => unit.id),
-        reviewKindRef.current,
-      );
-      const perfMap = new Map<string, UserPerformance>();
-      units.forEach((u, i) => perfMap.set(u.id, perfs[i] ?? emptyPerformance(u.id)));
-      perfRef.current = perfMap;
-      schedulingUnitsRef.current = new Map(units.map((u) => [u.id, u]));
-      schedulingConfigRef.current =
-        sessionUnits.length === 1 && 'config' in sessionUnits[0] ? sessionUnits[0].config : null;
-      const ctx = makeSessionContext(
-        sessionUnits,
-        !plannedRevision && !isSimpleMode && filterParams.includes('due') ? 'due' : 'objective',
-        plannedRevision || isSimpleMode ? undefined : cards,
-      );
-      markLoad('context-ready');
-      ctxRef.current = ctx;
-      cardsRef.current = cards;
-      const answerLessonIds = [
-        ...new Set(cards.flatMap((card) => (card.primaryLessonId ? [card.primaryLessonId] : []))),
-      ];
-      if (lessonId && !answerLessonIds.includes(lessonId)) answerLessonIds.push(lessonId);
-      const answerLessons = await db.lessons.bulkGet(answerLessonIds);
-      answerModeLessonsRef.current = new Map(
-        answerLessons.flatMap((lesson) => (lesson ? [[lesson.id, lesson]] : [])),
-      );
-      try {
-        linesModeMapRef.current = await linesModeSequencesByCard(cards);
-      } catch {
-        // Line-specific prompts and hints are non-critical; a failed lookup disables them.
-      }
-      try {
-        occlusionMapRef.current = await occlusionDataByCard(cards);
-      } catch {
-        // Diagram rendering and typed mode are non-critical to a session's grading path;
-        // a failed lookup leaves occlusion cards on their plain-text fallback.
-      }
-      if (cancelled) return;
-      markLoad('metadata-ready');
-      const initialProgress = sessionProgress(cards, ctx);
-      const serveableCards = plannedRevision || isSimpleMode ? cards : sessionServePool(cards, ctx);
-      const hasServeableCards = serveableCards.length > 0;
-      setSchedulerProgress(sessionCompletionProgress(cards, ctx, sessionCardOutcomesRef.current));
-      if (!isSimpleMode) setSessionCardIds(cards.map((card) => card.id));
-      sessionCardOutcomesRef.current = new Map();
-      setSessionCardOutcomes(sessionCardOutcomesRef.current);
-      if (!isSimpleMode) {
-        const reviewNow = Date.now();
-        reviewsDayStart.current = startOfDay(reviewNow);
-        reviewsByDeck.current = await dailyReviewCounts(reviewKindRef.current, reviewNow);
-        if (cancelled) return;
-      }
-      markLoad('progress-ready');
-      setLimitOverride(false);
-      setSingleDeck((prev) => {
-        const next = !isGlobal ? units[0] : null;
-        if (prev?.id === next?.id) return prev;
-        return next;
+      const data = await loadSessionData({
+        source,
+        tagFilter,
+        filterParams,
+        lessonId,
+        plannedRevision,
+        isSimpleMode,
+        isGlobal,
+        mode,
+        simpleSessionScope,
+        markLoad,
       });
-
-      if (isSimpleMode) {
-        const prepared = prepareSimpleSessionQueue(cards, simpleSessionScope, createSimpleQueue);
-        simpleQueue.current = prepared.queue;
-        setSessionCardIds(simpleQueue.current.map((card) => card.id));
-        simpleMastered.current = prepared.mastered;
-        simpleWrong.current = prepared.wrong;
-        events.current = prepared.events;
-        simpleRecitations.current = prepared.recitations;
-        sessionCardOutcomesRef.current = prepared.outcomes;
-        setSessionCardOutcomes(sessionCardOutcomesRef.current);
+      if (cancelled) return;
+      cardsRef.current = data.cards;
+      perfRef.current = data.performance;
+      schedulingUnitsRef.current = data.schedulingUnits;
+      schedulingConfigRef.current = data.schedulingConfig;
+      ctxRef.current = data.context;
+      answerModeLessonsRef.current = data.answerModeLessons;
+      linesModeMapRef.current = data.linesMode;
+      occlusionMapRef.current = data.occlusions;
+      progressBefore.current = data.progressBefore;
+      setSchedulerProgress(data.schedulerProgress);
+      reviewsDayStart.current = data.reviewsDayStart;
+      reviewsByDeck.current = data.reviewsByDeck;
+      setLimitOverride(false);
+      setSingleDeck((previous) => {
+        const next = !isGlobal ? source.units[0] : null;
+        return previous?.id === next?.id ? previous : next;
+      });
+      if (data.simple) {
+        simpleQueue.current = data.simple.queue;
+        simpleMastered.current = data.simple.mastered;
+        simpleWrong.current = data.simple.wrong;
+        events.current = data.simple.events;
+        simpleRecitations.current = data.simple.recitations;
       }
-
-      // A lesson always opens with its notes, including a cardless lesson. The
-      // Continue action owns cardless completion; card sessions continue into
-      // the Simple-mode queue below.
-      if (firstStudyLessonId && firstStudyLessonName) {
-        const lessonNotes = await listNotes(firstStudyLessonId);
-        if (cancelled) return;
-        // Nothing to read: start the cards rather than show an empty page to dismiss.
-        if (lessonNotes.length === 0 && cards.length > 0) {
-          serveNextRef.current();
-          return;
-        }
-        setLessonNotesScreen({ lessonName: firstStudyLessonName, notes: lessonNotes });
+      sessionCardOutcomesRef.current = data.simple?.outcomes ?? new Map();
+      setSessionCardOutcomes(sessionCardOutcomesRef.current);
+      setSessionCardIds((data.simple?.queue ?? data.cards).map((card) => card.id));
+      if (data.entry.type === 'notes') {
+        setLessonNotesScreen(data.entry.screen);
         setPhase('notes');
-        return;
-      }
-
-      if (units.length === 0 || !hasServeableCards) {
-        if (cancelled) return;
-        const isFiltered = filterParams.length > 0 || tagFilter !== null;
-        const practiceAlreadySecured =
-          !isFiltered &&
-          (practiceSessionRef.current?.scopeCards.length ?? 0) > 0 &&
-          cards.length === 0;
-        // Show an empty-state screen instead of navigating away so the user
-        // understands what happened and can choose what to do next.
-        const reportProgress = isFiltered ? 0 : initialProgress;
-        progressBefore.current = reportProgress;
-        const filterParts = [
-          ...(tagFilter ? [`tag "${tagFilter}"`] : []),
-          ...(filterParams.length > 0 ? filterParams.map((f) => FILTER_LABELS[f] ?? f) : []),
-        ];
-        const filterLabel = filterParts.join(' and ');
-        const filteredCardsUnavailable = isFiltered && cards.length > 0;
-        finaliseSummaryRef.current({
-          events: [],
-          masteryBefore: reportProgress,
-          masteryAfter: reportProgress,
-          objectiveLabel: isFiltered
-            ? filteredCardsUnavailable
-              ? `No eligible cards matching ${filterLabel} to study`
-              : `No cards matching ${filterLabel} to study`
-            : !isGlobal
-              ? cards.length > 0
-                ? 'No cards are currently eligible to study'
-                : progressHeading(units[0])
-              : cards.length > 0
-                ? 'No cards are currently eligible to study'
-                : 'Predicted readiness across all courses',
-          focusFraction: 1,
-          reachedGoal: practiceAlreadySecured,
-          limitReached: false,
-          mode,
-        });
-        return;
-      }
-
-      progressBefore.current = initialProgress;
-      if (!isSimpleMode) {
-        const cardUnitIds = new Set(serveableCards.map((card) => card.schedulingUnitId));
-        const activeUnits = isGlobal ? units.filter((unit) => cardUnitIds.has(unit.id)) : units;
-        const hasReached = (setting: 'maxReviewsPerDay' | 'dailyReviewGoal') =>
-          activeUnits.some((unit) => {
-            const config = isGlobal ? unit : schedulingConfigRef.current;
-            const threshold = config?.[setting];
-            return Boolean(threshold && (reviewsByDeck.current.get(unit.id) ?? 0) >= threshold);
-          });
-        const limitReached = hasReached('maxReviewsPerDay');
-        const goalReached = hasReached('dailyReviewGoal');
-        if (limitReached || goalReached) {
-          finaliseSummaryRef.current({
-            events: [],
-            masteryBefore: initialProgress,
-            masteryAfter: initialProgress,
-            objectiveLabel: isGlobal
-              ? 'Predicted readiness across all courses'
-              : progressHeading(units[0]),
-            focusFraction: 1,
-            reachedGoal: !limitReached && goalReached,
-            limitReached,
-            mode,
-          });
-          return;
-        }
-      }
-      if (!plannedRevision && !isSimpleMode && sessionComplete(cards, ctx)) {
-        finaliseSummaryRef.current({
-          events: [],
-          masteryBefore: progressBefore.current,
-          masteryAfter: progressBefore.current,
-          objectiveLabel: !isGlobal
-            ? progressHeading(units[0])
-            : 'Predicted readiness across all courses',
-          focusFraction: 1,
-          reachedGoal: true,
-          limitReached: false,
-          timeLimitReached: false,
-          mode,
-        });
+      } else if (data.entry.type === 'summary') {
+        finaliseSummaryRef.current(data.entry.summary);
       } else {
-        markLoad('serve-start');
-        sessionStartMs.current = revisionWindowStartedAt.current || Date.now();
+        if (!source.firstStudyLessonId || !source.firstStudyLessonName) {
+          markLoad('serve-start');
+          sessionStartMs.current = revisionWindowStartedAt.current || Date.now();
+        }
         serveNextRef.current();
-        markLoad('serve-end');
+        if (!source.firstStudyLessonId || !source.firstStudyLessonName) markLoad('serve-end');
       }
     })();
     return () => {
@@ -1207,427 +1028,71 @@ export function useLearnSession({
    * The unit an answer is recorded against. Global sessions key units by the card's
    * explicit schedulingUnitId; course and lesson scope use their sole resolved unit.
    */
-  const answerUnit = useCallback(
-    (card: Card): StudyUnit | undefined =>
-      isGlobal
-        ? card.schedulingUnitId
-          ? schedulingUnitsRef.current.get(card.schedulingUnitId)
-          : undefined
-        : schedulingUnitsRef.current.values().next().value,
-    [isGlobal],
-  );
-
-  /** Grade and record a Simple-mode answer, then advance the pass. */
-  const answerSimple = useCallback(
-    async (
-      cardNow: Card,
-      { correct, machineMarked, t, distracted, markedBy, retainUndo, input }: AnswerResponse,
-    ): Promise<AnswerResult> => {
-      const deck = answerUnit(cardNow);
-      if (!deck) return { undoAvailable: false };
-      const perf = perfRef.current.get(deck.id);
-      const hintUsed = hintStepRef.current > 0;
-      // The controls stay binary, while the invisible grade uses the same
-      // timing, calibration and hint rules as Practice. Machine-marked cards
-      // retain their mark-aware grade.
-      const grade = answerGrade({
-        machineMarked,
-        manualGrade: null,
-        correct,
-        responseTimeSec: t,
-        hintUsed,
-        performance: perf,
-      });
-
-      const simpleSnapshot = {
-        queue: [...simpleQueue.current],
-        mastered: new Set(simpleMastered.current),
-        wrong: new Set(simpleWrong.current),
-        cardIds: [...sessionCardIds],
-        exposureAdded: null as LessonCardExposure | null,
-      };
-      const machineSnapshot = snapshotSession(readSessionStateRef.current());
-      const eventsLen = events.current.length;
-      const outcomeBefore = sessionCardOutcomesRef.current.get(cardNow.id);
-      const eventId = pendingReviewEventId.current ?? makeId();
-      pendingReviewEventId.current = eventId;
-      const { result, nextPerf, perfBefore, exposureAdded } = await persistSimpleSessionAnswer(
-        deck.id,
-        perf,
-        () => ({
-          card: cardNow,
-          eventId,
-          sessionId: reviewSessionIdRef.current,
-          sessionKind: reviewSessionKind,
-          deck,
-          kind: reviewKindRef.current,
-          grade,
-          responseTimeSec: t,
-          distracted,
-          hintUsed,
-          correct,
-          marksEarned: machineMarked?.marksEarned,
-          marksAvailable: machineMarked?.marksAvailable,
-          lineVerdicts: machineMarked?.lineVerdicts,
-          checkerDisputes: machineMarked?.checkerDisputes,
-          markedBy,
-          input,
-        }),
-        () => lessonExposureIdRef.current,
-      );
-      simpleSnapshot.exposureAdded = exposureAdded;
-      if (nextPerf) perfRef.current.set(deck.id, nextPerf);
-      lastAnswer.current =
-        result.recorded && retainUndo
-          ? {
-              machine: machineSnapshot,
-              responseTimeSec: t,
-              input,
-              retainOnCompletion: true,
-              undo: {
-                eventId,
-                cardBefore: result.cardBefore,
-                perfBefore,
-                sessionHistoryId: result.sessionHistoryId,
-                deckId: deck.id,
-                kind: result.kind,
-                lastInteractedAtBefore: result.lastInteractedAtBefore,
-                updatedAtBefore: result.updatedAtBefore,
-                undoStateAfter: result.undoStateAfter,
-              },
-              cooldowns: new Map(cooldowns.current),
-              eventsLen,
-              deckId: deck.id,
-              deckReviews: reviewsByDeck.current.get(deck.id) ?? 0,
-              outcomeBefore,
-              revision: snapshotRevisionSessionState(revisionSessionRef.current),
-              simple: simpleSnapshot,
-            }
-          : null;
-      setCanUndo(result.recorded && retainUndo);
-      const effects = applySessionEventRef.current({
-        type: 'simple-recorded',
-        card: result.card,
-        event: { cardId: cardNow.id, grade, correct, responseTimeSec: t, distracted },
-      });
-      pendingReviewEventId.current = null;
-      for (const effect of effects) {
-        switch (effect.type) {
-          case 'persist-resume':
-            persistSimpleResume();
-            break;
-          case 'finish':
-            finish(...effect.stop);
-            break;
-          case 'serve-next':
-            serveNext();
-            break;
-        }
-      }
-      return { undoAvailable: lastAnswer.current !== null };
-    },
-    [answerUnit, finish, persistSimpleResume, reviewSessionKind, serveNext, sessionCardIds],
-  );
-
-  /** Item ids of a sequence's lines already mastered this session (a resumed pass). */
-  const recitationMasteredItemIds = useCallback(
-    (sequenceId: string) =>
-      new Set(
-        simpleQueue.current.flatMap((card) =>
-          card.sequenceItemId &&
-          simpleMastered.current.has(card.id) &&
-          linesModeMapRef.current.get(card.id)?.id === sequenceId
-            ? [card.sequenceItemId]
-            : [],
-        ),
-      ),
-    [],
-  );
-
-  /**
-   * Save a recitation's current step so leaving and returning resumes it. Null forgets a
-   * finished one without saving: its final check has already saved the session, and
-   * finishing the pass may have cleared it since.
-   */
-  const saveRecitationStep = useCallback(
-    (sequenceId: string, state: unknown) => {
-      if (!isSimpleMode) return;
-      if (state === null) {
-        simpleRecitations.current.delete(sequenceId);
-        return;
-      }
-      simpleRecitations.current.set(sequenceId, state);
-      persistSimpleResume();
-    },
-    [isSimpleMode, persistSimpleResume],
-  );
-
-  /**
-   * Record one self-marked check of a cumulative recitation (Simple mode, lines-mode
-   * sequences). Each queued line gets one review per session, on its first recall;
-   * `masteredItemIds` completes those lines ('all' once the recitation is finished), and
-   * the session moves on once the whole sequence is mastered.
-   */
-  const answerRecitation = useCallback(
-    async (
-      results: readonly { itemId: string; correct: boolean }[],
-      responseTimeSec: number,
-      masteredItemIds: readonly string[] | 'all',
-    ) => {
-      if (!recitationSequence || !isSimpleMode) return;
-      const cards = new Map<string, Card>();
-      for (const card of simpleQueue.current) {
-        if (
-          card.sequenceItemId &&
-          !isLabelCardId(card.sequenceItemId) &&
-          linesModeMapRef.current.get(card.id)?.id === recitationSequence.id
-        ) {
-          cards.set(card.sequenceItemId, card);
-        }
-      }
-      for (const { itemId, correct } of results) {
-        const card = cards.get(itemId);
-        const deck = card && answerUnit(card);
-        if (!card || !deck) continue;
-        // The bar follows each manual check, including retries; scheduling still
-        // records only the first recall and mastery waits for a completed chunk.
-        applySessionEventRef.current({ type: 'recitation-check', cardId: card.id, correct });
-        if (events.current.some((event) => event.cardId === card.id)) continue;
-        const recorded = await persistRecitationReview({
-          card,
-          sessionId: reviewSessionIdRef.current,
-          sessionKind: reviewSessionKind,
-          deck,
-          kind: reviewKindRef.current,
-          responseTimeSec,
-          correct,
-        });
-        applySessionEventRef.current({
-          type: 'recitation-recorded',
-          card: recorded.card,
-          event: recorded.event,
-        });
-        cards.set(recorded.card.sequenceItemId!, recorded.card);
-      }
-      if (masteredItemIds === 'all') simpleRecitations.current.delete(recitationSequence.id);
-      for (const itemId of masteredItemIds === 'all' ? [...cards.keys()] : masteredItemIds) {
-        const card = cards.get(itemId);
-        if (!card || simpleMastered.current.has(card.id)) continue;
-        applySessionEventRef.current({ type: 'recitation-mastered', cardIds: [card.id] });
-        if (lessonExposureIdRef.current) {
-          await upsertLessonCardExposure(lessonExposureIdRef.current, card.id);
-        }
-      }
-      persistSimpleResume();
-      if ([...cards.values()].every((card) => simpleMastered.current.has(card.id))) serveNext();
-    },
-    [
-      answerUnit,
-      isSimpleMode,
-      persistSimpleResume,
-      recitationSequence,
-      reviewSessionKind,
-      serveNext,
-    ],
-  );
-
-  /**
-   * Grade and record a scheduled answer: persist it, update cooldowns, revision
-   * bookkeeping and undo state, then stop the session or serve the next card.
-   */
-  const answerScheduled = useCallback(
-    async (
-      cardNow: Card,
-      {
-        correct,
-        manualGrade,
-        machineMarked,
-        t,
-        distracted,
-        markedBy,
-        retainUndo,
-        input,
-      }: AnswerResponse,
-    ): Promise<AnswerResult> => {
-      const ctx = ctxRef.current;
-      const deck = answerUnit(cardNow);
-      const schedulingConfig = isGlobal ? deck : schedulingConfigRef.current;
-      if (!ctx || !deck || !schedulingConfig) {
-        submitting.current = false;
-        return { undoAvailable: false };
-      }
-
-      const perf = perfRef.current.get(deck.id);
-      const hintUsed = hintStepRef.current > 0;
-      const grade = answerGrade({
-        machineMarked,
-        manualGrade,
-        correct,
-        responseTimeSec: t,
-        hintUsed,
-        performance: perf,
-      });
-
-      const cooldownsSnapshot = new Map(cooldowns.current);
-      const machineSnapshot = snapshotSession(readSessionStateRef.current());
-      const eventsLen = events.current.length;
-      const perfBefore = perf ?? null;
-      const outcomeBefore = sessionCardOutcomes.get(cardNow.id);
-      const eventId = pendingReviewEventId.current ?? makeId();
-      const revisionSnapshot = snapshotRevisionSessionState(revisionSessionRef.current);
-      pendingReviewEventId.current = eventId;
-
-      const { result, performance: nextPerf } = await persistAnswer(
-        {
-          card: cardNow,
-          eventId,
-          sessionId: reviewSessionIdRef.current,
-          sessionKind: reviewSessionKind,
-          revisionPlanId: revisionPlanRef.current?.id,
-          revisionWindowId: revisionPlanRef.current ? requestWindowId : undefined,
-          deck,
-          kind: reviewKindRef.current,
-          grade,
-          responseTimeSec: t,
-          distracted,
-          hintUsed,
-          correct,
-          marksEarned: machineMarked?.marksEarned,
-          marksAvailable: machineMarked?.marksAvailable,
-          lineVerdicts: machineMarked?.lineVerdicts,
-          checkerDisputes: machineMarked?.checkerDisputes,
-          markedBy,
-          input,
-        },
-        deck.id,
-        perf,
-      );
-      if (nextPerf) perfRef.current.set(deck.id, nextPerf);
-      const {
-        card: updated,
-        cardBefore,
-        recorded,
-        sessionHistoryId,
-        kind,
-        lastInteractedAtBefore,
-        updatedAtBefore,
-        undoStateAfter,
-      } = result;
-
-      const revisionWindowForAnswer = revisionPlanRef.current?.windows.find(
-        (candidate) => candidate.id === requestWindowId,
-      );
-      applySessionEventRef.current({
-        type: 'scheduled-recorded',
-        card: updated,
-        event: { cardId: cardNow.id, grade, correct, responseTimeSec: t, distracted },
-        eventId,
-        recorded,
-        deckId: deck.id,
-        global: isGlobal,
-        now: Date.now(),
-        hasRevisionPlan: revisionPlanRef.current !== null,
-        revisionWindowEndsAt:
-          revisionPlanRef.current && requestWindowId
-            ? revisionWindowForAnswer
-              ? revisionWindowStartedAt.current + revisionWindowForAnswer.budgetMinutes * 60_000
-              : Date.now()
-            : undefined,
-      });
-      const nextCards = cardsRef.current;
-      setSchedulerProgress(
-        sessionCompletionProgress(nextCards, ctx, sessionCardOutcomesRef.current),
-      );
-
-      const reviewNow = Date.now();
-      const reviewDayStart = startOfDay(reviewNow);
-      if (reviewDayStart !== reviewsDayStart.current) {
-        reviewsByDeck.current = await dailyReviewCounts(kind, reviewNow);
-        reviewsDayStart.current = reviewDayStart;
-      } else if (recorded) {
-        reviewsByDeck.current.set(deck.id, (reviewsByDeck.current.get(deck.id) ?? 0) + 1);
-      }
-      const deckReviews = reviewsByDeck.current.get(deck.id) ?? 0;
-
-      lastAnswer.current = recorded
-        ? {
-            machine: machineSnapshot,
-            responseTimeSec: t,
-            input,
-            retainOnCompletion: retainUndo,
-            undo: {
-              eventId,
-              cardBefore,
-              perfBefore,
-              sessionHistoryId,
-              deckId: deck.id,
-              kind,
-              lastInteractedAtBefore,
-              updatedAtBefore,
-              undoStateAfter,
-            },
-            cooldowns: cooldownsSnapshot,
-            eventsLen,
-            deckId: deck.id,
-            deckReviews,
-            outcomeBefore,
-            revision: revisionSnapshot,
-          }
-        : null;
-      setCanUndo(recorded);
-      // Course and lesson sessions hold a single unit; global sessions key
-      // the context by scheduling-unit id (see makeSessionContext).
-      const sessionDeck = isGlobal ? ctx.decks.get(deck.id) : ctx.decks.values().next().value;
-      const answerResult = answerFeedback({
-        recorded,
-        grade,
-        card: updated,
-        deck: sessionDeck?.deck ?? deck,
-        examDateContext: sessionDeck?.oc.examDateContext,
-      });
-
-      progressCacheRef.current.dirty = true;
-
-      const revisionWindow = revisionPlanRef.current?.windows.find(
-        (candidate) => candidate.id === requestWindowId,
-      );
-      const effects = afterScheduledAnswer(readSessionStateRef.current(), {
-        revision: revisionPlanRef.current !== null,
-        context: ctx,
-        practice: practiceSessionRef.current !== null,
-        deckReviews,
-        maxReviewsPerDay: schedulingConfig.maxReviewsPerDay,
-        dailyReviewGoal: schedulingConfig.dailyReviewGoal,
-        sessionTimeLimitMinutes: schedulingConfig.sessionTimeLimitMinutes,
-        limitOverride,
-        timeLimitOverride,
-        revisionWindowEndsAt: revisionWindow
-          ? revisionWindowStartedAt.current + revisionWindow.budgetMinutes * 60_000
-          : undefined,
-        sessionStartMs: sessionStartMs.current,
-        now: Date.now(),
-      });
-      for (const effect of effects) {
-        if (effect.type === 'finish') finish(...effect.stop);
-        else if (effect.type === 'serve-next') serveNext();
-        else if (effect.type === 'persist-practice' && !pendingCompletion.current)
-          await persistPracticeMilestone(nextCards, false);
-      }
-      return lastAnswer.current ? answerResult : { undoAvailable: false };
-    },
-    [
-      answerUnit,
-      finish,
-      serveNext,
-      limitOverride,
-      timeLimitOverride,
-      isGlobal,
-      persistPracticeMilestone,
-      sessionCardOutcomes,
-      reviewSessionKind,
-      requestWindowId,
-    ],
-  );
+  const {
+    answerSimple,
+    recitationMasteredItemIds,
+    saveRecitationStep,
+    answerRecitation,
+    answerScheduled,
+    undoLast,
+  } = createSessionAnswerEffects({
+    isGlobal,
+    schedulingUnitsRef,
+    perfRef,
+    hintStepRef,
+    readSessionStateRef,
+    pendingReviewEventId,
+    reviewSessionIdRef,
+    reviewSessionKind,
+    reviewKindRef,
+    lessonExposureIdRef,
+    lastAnswer,
+    reviewsByDeck,
+    setCanUndo,
+    applySessionEventRef,
+    persistSimpleResume,
+    finish,
+    serveNext,
+    simpleQueue,
+    simpleMastered,
+    simpleWrong,
+    setSessionCardOutcomes,
+    linesModeMapRef,
+    isSimpleMode,
+    simpleRecitations,
+    recitationSequence,
+    events,
+    ctxRef,
+    schedulingConfigRef,
+    submitting,
+    revisionPlanRef,
+    requestWindowId,
+    revisionWindowStartedAt,
+    cardsRef,
+    setSchedulerProgress,
+    sessionCardOutcomesRef,
+    reviewsDayStart,
+    progressCacheRef,
+    practiceSessionRef,
+    sessionStartMs,
+    pendingCompletion,
+    persistPracticeMilestone,
+    limitOverride,
+    timeLimitOverride,
+    completionPromise,
+    mountedRef,
+    applyCompletionEvent,
+    setSummary,
+    setCurrent,
+    setPhase,
+    onCardServedRef,
+    setHintStep,
+    timerStart,
+    distraction,
+    responseTime,
+    presentedAnswerInput,
+    notify,
+  });
 
   const answer = useCallback(
     async (
@@ -1678,105 +1143,59 @@ export function useLearnSession({
     [distraction, isSimpleMode, answerSimple, answerScheduled, recitationSequence],
   );
 
-  const undoLast = useCallback(
-    async (options?: { reveal?: boolean }) => {
-      const snap = lastAnswer.current;
-      const ctx = ctxRef.current;
-      if (!snap || !ctx || submitting.current || completionPromise.current) return;
-      submitting.current = true;
-      try {
-        await undoSessionAnswer(snap.undo, snap.simple?.exposureAdded);
-        if (!mountedRef.current) return;
-        applySessionEventRef.current({ type: 'restore', snapshot: snap.machine });
-        setSchedulerProgress(
-          sessionCompletionProgress(cardsRef.current, ctx, sessionCardOutcomesRef.current),
-        );
-        perfRef.current.set(snap.deckId, snap.undo.perfBefore ?? emptyPerformance(snap.deckId));
-        if (snap.simple) persistSimpleResume();
-        // Simple passes do not increment the scheduled daily review counter.
-        const prevReviews = snap.deckReviews - (snap.simple ? 0 : 1);
-        if (prevReviews > 0) reviewsByDeck.current.set(snap.deckId, prevReviews);
-        else reviewsByDeck.current.delete(snap.deckId);
-        applyCompletionEvent({ type: 'reset' });
-        setSummary(null);
-        lastAnswer.current = null;
-        setCanUndo(false);
-        progressCacheRef.current.dirty = true;
-        setCurrent(snap.undo.cardBefore);
-        setPhase(options?.reveal ? 'answer' : 'question');
-        onCardServedRef.current?.();
-        setHintStep(0);
-        pendingReviewEventId.current = null;
-        timerStart.current = performance.now();
-        distraction.beginCard();
-        responseTime.current = snap.responseTimeSec;
-        presentedAnswerInput.current = snap.input;
-        distraction.setAnswerVisible(options?.reveal === true);
-        return snap.undo.cardBefore;
-      } catch (err) {
-        notify(err instanceof Error ? err.message : 'Could not undo the last answer.', 'negative');
-      } finally {
-        submitting.current = false;
-      }
-    },
-    [distraction, notify, persistSimpleResume],
-  );
-
   /** Drop the current card from the live pool after a suspend/bury, then move on. */
-  const afterRemoval = useCallback(() => {
-    const ctx = ctxRef.current;
-    if (!ctx) return;
-    if (!mountedRef.current) return;
-    setCanUndo(false);
-    lastAnswer.current = null;
-    const removedId = currentRef.current?.id;
-    if (removedId) applySessionEventRef.current({ type: 'remove-card', cardId: removedId });
-    progressCacheRef.current.dirty = true;
-    setSchedulerProgress(
-      sessionCompletionProgress(cardsRef.current, ctx, sessionCardOutcomesRef.current),
-    );
-    const hasRemainingCards = isSimpleMode
-      ? simpleQueue.current.some((card) => !simpleMastered.current.has(card.id))
-      : sessionServePool(cardsRef.current, ctx).length > 0;
-    if (!hasRemainingCards) {
-      finish(false);
-      return;
-    }
-    serveNext();
-  }, [finish, isSimpleMode, serveNext]);
+  const afterRemoval = useCallback(
+    (updated: Card) => {
+      const ctx = ctxRef.current;
+      if (!ctx) return;
+      if (!mountedRef.current) return;
+      setCanUndo(false);
+      lastAnswer.current = null;
+      applySessionEventRef.current({ type: 'remove-card', card: updated, simple: isSimpleMode });
+      progressCacheRef.current.dirty = true;
+      setSchedulerProgress(
+        sessionCompletionProgress(cardsRef.current, ctx, sessionCardOutcomesRef.current),
+      );
+      const hasRemainingCards = isSimpleMode
+        ? simpleQueue.current.some((card) => !simpleMastered.current.has(card.id))
+        : sessionServePool(cardsRef.current, ctx).length > 0;
+      if (!hasRemainingCards) {
+        finish(false);
+        return;
+      }
+      serveNext();
+    },
+    [
+      cardsRef,
+      finish,
+      isSimpleMode,
+      serveNext,
+      sessionCardOutcomesRef,
+      simpleMastered,
+      simpleQueue,
+    ],
+  );
 
   const suspendCurrent = useCallback(async () => {
     if (!current) return;
     try {
       await suspendCard(current.id);
-      cardsRef.current = cardsRef.current.map((c) =>
-        c.id === current.id ? { ...c, suspended: true } : c,
-      );
-      if (isSimpleMode) {
-        simpleQueue.current = simpleQueue.current.filter((c) => c.id !== current.id);
-      }
-      afterRemoval();
+      afterRemoval({ ...current, suspended: true });
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Could not suspend the card.', 'negative');
     }
-  }, [current, afterRemoval, notify, isSimpleMode]);
+  }, [current, afterRemoval, notify]);
 
   const buryCurrent = useCallback(async () => {
     if (!current) return;
     try {
       const until = startOfDay(Date.now()) + MS_PER_DAY;
       await buryCard(current.id, until);
-      cardsRef.current = cardsRef.current.map((c) =>
-        c.id === current.id ? { ...c, buriedUntil: until } : c,
-      );
-      if (isSimpleMode) {
-        simpleQueue.current = simpleQueue.current.filter((c) => c.id !== current.id);
-      }
-      afterRemoval();
+      afterRemoval({ ...current, buriedUntil: until });
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Could not bury the card.', 'negative');
     }
-  }, [current, afterRemoval, notify, isSimpleMode]);
+  }, [current, afterRemoval, notify]);
 
   /** Open the in-session editor, pausing the response timer while it is open. */
   const openEdit = useCallback(() => {
@@ -1790,7 +1209,7 @@ export function useLearnSession({
       advanceTimer({ type: 'pause', now: performance.now() });
     }
     setEditing(true);
-  }, [current, phase]);
+  }, [cardsRef, current, phase]);
 
   /** Rebase the timer so editing time is excluded, then leave the overlay. */
   const resumeAfterEdit = useCallback(() => {
