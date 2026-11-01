@@ -147,7 +147,7 @@ describe('courseHeaderStats', () => {
   });
 
   it.each(['expectedMarks', 'securedTopics'] as const)(
-    'counts secured overdue cards for %s separately from exam practice',
+    'serves secured overdue cards for %s regardless of exam mastery',
     (examObjective) => {
       const course = makeCourse({ examDate: NOW + 60 * 60 * 1000, examObjective });
       const secured = makeCard('secured', {
@@ -160,7 +160,7 @@ describe('courseHeaderStats', () => {
       const weak = makeCard('weak', { ...secured, id: 'weak', stability: 0.5 });
       const cards = [secured, weak];
       const context = makeExamDateContext(course, [], []);
-      expect(eligiblePracticePool(cards, course, context, NOW)).toEqual([weak]);
+      expect(eligiblePracticePool(cards, course, context, NOW)).toEqual([secured, weak]);
       expect(dueCount(course, cards)).toBe(2);
       expect(computeCourseSummaries([course], [], cards, [], NOW)[course.id].eligible).toBe(2);
       expect(dueCount(course, [secured])).toBe(1);

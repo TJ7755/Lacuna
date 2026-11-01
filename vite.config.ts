@@ -182,6 +182,12 @@ export default defineConfig({
           // catalogue download motion/router code, or the landing page download the app.
           groups: [
             {
+              // These scheduling helpers are shared by the same study entry points.
+              name: 'study-eligibility',
+              test: /[\\/]src[\\/]fsrs[\\/](?:eligibility|horizon|assessmentTiming)\.ts$/,
+              includeDependenciesRecursively: false,
+            },
+            {
               // Keep the extracted maths with the chart rather than emitting another payload file.
               name: 'ForecastChartRecovery',
               test: /[\\/]src[\\/]components[\\/]dashboard[\\/](?:ForecastChartRecovery\.ts|ForecastChart\.tsx\?flow-retry|forecastChartMaths\.ts)$/,

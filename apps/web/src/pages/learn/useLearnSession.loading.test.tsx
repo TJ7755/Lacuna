@@ -443,7 +443,8 @@ describe('useLearnSession load identity', () => {
       });
     }
     await waitFor(() => expect(result.current.phase).toBe('finished'));
-    expect(result.current.summary?.events).toHaveLength(2);
+    // The first card was just reviewed in the previous node and is not due again.
+    expect(result.current.summary?.events).toHaveLength(1);
     expect(result.current.summary?.events.every((event) => event.grade === 4)).toBe(true);
     expect(await db.reviewHistory.filter((receipt) => receipt.grade === 1).count()).toBe(1);
   });
