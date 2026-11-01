@@ -1,3 +1,4 @@
+import { gradeQuestionAttempt } from './grading';
 import { isUpcomingExamDate } from '../fsrs/examDate';
 import { exposedQuestions } from './questionExposure';
 import type { FsrsParameters } from '@lacuna/core/db/types';
@@ -104,13 +105,17 @@ export function deriveTechniqueSchedules(
         }
       if (!resolved || available <= 0) continue;
       const grade =
-        earned === available
-          ? 3
-          : snapshot.gradeMappingVersion === 'full-good-otherwise-again-v1'
-            ? 1
-            : earned / available >= 0.6
-              ? 2
-              : 1;
+        snapshot.gradeMappingVersion === 'full-good-otherwise-again-v1'
+          ? earned === available
+            ? 3
+            : 1
+          : gradeQuestionAttempt({
+              marksEarned: earned,
+              marksAvailable: available,
+              hasUndeterminedVerdict: !resolved,
+              hasUnresolvedDispute: false,
+            });
+      if (grade === null) continue;
       schedules.set(
         technique,
         scheduleQuestionReview(

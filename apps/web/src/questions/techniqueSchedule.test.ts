@@ -164,3 +164,14 @@ it('previous active and drafted presentations cannot become independent evidence
     expect(deriveTechniqueSchedules([later, earlier]).size).toBe(0);
   }
 });
+
+it('uses shared fractional grading for new evidence while retaining historical binary grades', () => {
+  const historical = attempt('historical', 6);
+  historical.receipt.questions[0].answer!.allocations[0].maxMarks = 10;
+  historical.receipt.questions[0].answer!.maxMarks = 10;
+  const graded = structuredClone(historical);
+  graded.firstMarking![0].gradeMappingVersion = 'fractional-hard-v2';
+  const oldState = deriveTechniqueSchedules([historical]).get('graph-interpretation')!;
+  const newState = deriveTechniqueSchedules([graded]).get('graph-interpretation')!;
+  expect(newState.stability).toBeGreaterThan(oldState.stability!);
+});
