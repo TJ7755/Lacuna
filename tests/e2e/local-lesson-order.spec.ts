@@ -133,6 +133,12 @@ async function importSchoolScience(
     .getByRole('button', { name: 'School science', exact: true })
     .click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
+  // Workload estimates arrive after the path and push it down; drags measure afterwards.
+  await expect(
+    page
+      .getByLabel('Estimated assessment workload')
+      .getByText('Final exam: estimated remaining work'),
+  ).toBeVisible();
   return page.url();
 }
 
@@ -250,7 +256,8 @@ for (const input of [
       await expect(row('C')).toHaveAttribute('aria-disabled', 'true');
       await clickLocked('C');
       await expect(page).toHaveURL(courseUrl);
-      await row('C').scrollIntoViewIfNeeded();
+      // Keep the held row clear of the edges, where lifting it would start edge scrolling.
+      await row('C').evaluate((element) => element.scrollIntoView({ block: 'center' }));
       const start = (await row('C').boundingBox())!;
       const first = (await row('A').boundingBox())!;
       const x = Math.round(start.x + start.width / 2);
@@ -402,7 +409,13 @@ for (const input of [
         exact: true,
       });
       await expect(row).toHaveAttribute('aria-roledescription', 'sortable path row');
-      await row.scrollIntoViewIfNeeded();
+      await expect(
+        page
+          .getByLabel('Estimated assessment workload')
+          .getByText('My mock - updated: estimated remaining work'),
+      ).toBeVisible();
+      // Keep the held row clear of the edges, where lifting it would start edge scrolling.
+      await row.evaluate((element) => element.scrollIntoView({ block: 'center' }));
       const start = (await row.boundingBox())!;
       const target = (await path.locator('[data-path-source="activity"]').boundingBox())!;
       const startRow = (await row.locator('xpath=ancestor::li').boundingBox())!;
