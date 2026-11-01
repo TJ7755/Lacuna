@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { importWelcomeCourse } from '../../tests/e2e/fixtures/lacunaApp';
+import { importWelcomeCourse, skipOnboarding } from '../../tests/e2e/fixtures/lacunaApp';
 import type {
   BrowserProbeResult,
   InteractionScenario,
@@ -23,14 +23,9 @@ export async function waitForSeededDashboard(page: Page): Promise<void> {
   const openLacuna = page
     .getByRole('region', { name: 'Revision around your exam', exact: true })
     .getByRole('link', { name: 'Start revising', exact: true });
-  await openLacuna.or(dashboard).waitFor({ state: 'visible' });
-  if (!(await dashboard.isVisible().catch(() => false))) {
-    await openLacuna.click();
-    // A fresh profile enters through onboarding; Exit leaves it for Today.
-    const exit = page.getByRole('button', { name: 'Exit', exact: true });
-    await exit.or(dashboard).waitFor({ state: 'visible' });
-    if (await exit.isVisible().catch(() => false)) await exit.click();
-  }
+  // This harness creates a fresh profile: wait for its first-run redirect before entering.
+  await openLacuna.click();
+  await skipOnboarding(page);
   await dashboard.waitFor({ state: 'visible' });
   await page.waitForFunction(() => window.location.hash === '#/' || window.location.hash === '');
   const welcome = page

@@ -108,8 +108,8 @@ async function open(expectedVersion) {
     .getByRole('region', { name: 'Revision around your exam', exact: true })
     .getByRole('link', { name: 'Start revising', exact: true });
   const courses = page.getByRole('navigation', { name: 'Courses' });
-  await start.or(courses).waitFor({ state: 'visible', timeout: 60_000 });
-  if (await start.isVisible()) {
+  if (expectedVersion === pinned.version) {
+    await start.waitFor({ state: 'visible', timeout: 60_000 });
     await start.click();
     await skipOnboarding(page);
   }
