@@ -14,11 +14,11 @@ including after resolving symbolic links, with this shape:
 { "relayUrl": "http://127.0.0.1:4999", "writeToken": "<64 lowercase hexadecimal digits>" }
 ```
 
-Use the relay that owns the existing share. No relay or token is inferred from its public URL.
+Use the relay that owns the existing share. Specify the owning relay explicitly.
 Keep this file outside every checkout, restrict access to its owner and inject environment
 credentials through your secret manager. Never paste tokens into command arguments, commit them,
 include them in review evidence or enable shell tracing. HTTP is accepted only for loopback relays;
-remote relays require HTTPS. The command suppresses private exception/relay response text.
+remote relays require HTTPS. Keep private response text out of publication evidence.
 
 Use the catalogue course id for `--course-id`; it is an operator label, not a rewritten payload
 identity. With the variables below pointing to external files and a synthetic stable link:
@@ -37,15 +37,9 @@ bun scripts/library-publish.ts --artefact "$FROZEN_ARTEFACT" --course-id synthet
   --approved-sha256 "$APPROVED_SHA256" > "$PUBLICATION_RECORD"
 ```
 
-Serialise publishers for each share. The existing protocol writes payload then manifest, with
-separate generation/compare-and-swap checks; it is not a two-slot transaction. A failure can leave
-a new payload with an old/missing manifest, or an accepted write whose response was lost. Errors
-identify the failing phase and do not claim rollback. Stop other publishers, run dry-run with the
-same frozen artefact and inspect the plan before retrying. Matching payload bytes are not resent;
-only a missing/outdated manifest is repaired. A 412 conflict is never automatically overwritten.
-If another publisher advanced the revision, investigate that publication rather than forcing an
-older artefact over it. Verification failures may occur after both slots are live: inspect them
-before retrying, and do not treat the failed run as publication evidence.
+Serialise publishers for each share. After a failed publication, stop other publishers,
+repeat the dry-run and inspect both published slots before retrying. Investigate revision
+conflicts rather than overwriting another publication.
 
 ## Hosting
 

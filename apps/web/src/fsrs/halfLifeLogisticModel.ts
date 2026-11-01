@@ -25,7 +25,7 @@ const FEATURE_NAMES = [
 ] as const;
 const COUNT_CAP = 8;
 const FSRS_ONLY_SECONDS = 604_800;
-// Outcome-conditional handover (v3, ROUTING_DECISION_RULE.md): the predeclared, conservative
+// Outcome-conditional handover (v3, the predeclared cohort routing decision): the predeclared, conservative
 // re-route triggered by the 201-300 transfer result. After a previous success, no previous
 // outcome, or a first predictive review, weight moves fully onto FSRS-6 much sooner than v2:
 // full through 21,600 s (6 hours), 0 at 86,400 s (1 day). After a previous failure, the

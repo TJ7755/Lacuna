@@ -5,25 +5,9 @@ Server configuration on the learner web project:
 - `AI_SESSION_SIGNING_KEY`: at least 32 characters, server-only. Existing signing keys can be reused.
 - `TYPESAFE_API_KEY`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`: server-only provider
   and quota-store credentials.
-- `JEV_MONTHLY_INPUT_TOKEN_LIMIT`: defaults to 50,000,000. Zero or malformed values disable
-  service admission rather than making it unlimited.
-- `JEV_MONTHLY_REQUEST_LIMIT`: defaults to 100,000 admitted marking requests, including failed calls.
-  Zero or malformed values disable admission.
-- `JEV_MAINTAINER_INSTALLATION_IDS`: optional JSON array of approved quota IDs (64 lowercase hex
-  characters each). Missing means no elevated installations; malformed configuration refuses service.
-- `JEV_SERVICE_DISABLED=1`: stops session creation and marking. `AI_SERVICE_DISABLED=1` also stops
-  new session exchanges; use Jev's own switch to stop already-issued sessions.
-
-The old `AI_ACCESS_CREDENTIAL_HASHES` invitation registry is not used by the public Jev endpoints.
-Do not publish old invitation credentials. Deploy reviewed server configuration and client code
-together; saved environment changes do not update an existing deployment. Old clients using
-invitation codes must update and accept the new warning.
-
-To grant higher limits, the maintainer enables Jev, selects **Copy quota ID** in Settings and
-provides that ID privately to the operator. Add it to the server-only
-`JEV_MAINTAINER_INSTALLATION_IDS` array and redeploy. Repeat for each authorised installation.
-Removing the ID and redeploying restores standard limits, including for existing sessions.
-The client cannot select elevated limits. All maintainers share the global ceilings.
+To configure marking limits and emergency admission controls, inspect
+[the server configuration](../apps/ai/server/jev/). Keep credentials server-only and redeploy
+after changing configuration. Do not publish invitation credentials.
 
 For a manual paid smoke check, run `bun scripts/jev-smoke.ts` with `TYPESAFE_API_KEY` supplied
 privately in the environment. It makes one noul call and one score call. Automated tests use

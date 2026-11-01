@@ -35,15 +35,3 @@ family, not the human-judged set Appendix A.1 Step 4 asks for; its labels have n
 reviewed by a person. And it is a stress test, not a representative sample — every case is
 chosen to be hard, so its error rates are a worst case and not what production traffic
 would look like.
-
-## Why a chat session and not the API
-
-Generation is manual — a subscription ChatGPT session, not a scripted API call — because
-that's what the prompter already pays for at no marginal cost. This is why ingestion
-is a separate, explicit step rather than happening automatically: there is no generator to
-call from Python, only pasted output to validate.
-
-This also does not compromise Lacuna's local-first/no-cloud principle. That principle
-governs what the shipped app calls at runtime; it says nothing about how a training corpus
-gets assembled offline, on the prompter's own machine, before anything is frozen into a
-model artefact.

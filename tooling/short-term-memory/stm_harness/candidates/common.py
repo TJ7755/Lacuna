@@ -45,7 +45,7 @@ def short_term_weight(elapsed_seconds: int) -> float:
     return 1 - smoothstep
 
 
-# Outcome-conditional handover (phase 2, VALIDATION_PLAN.md). Phase 1's lag x
+# Outcome-conditional handover (phase 2, the frozen cohort validation). Phase 1's lag x
 # previous-outcome crossover analysis found the logistic model stays competitive with
 # FSRS-6 for longer after a failure than after a success, so the two paths get different
 # transition windows rather than sharing v1's single six-day boundary.
@@ -113,7 +113,7 @@ def routed_short_term_weight(
     )
 
 
-# v3 routing (ROUTING_DECISION_RULE.md, applied 2026-07-17): the predeclared, conservative
+# v3 routing (the predeclared cohort routing decision, applied 2026-07-17): the predeclared, conservative
 # re-route triggered by the 201-300 transfer result. Success/first-review/no-previous-outcome
 # path moves fully onto FSRS-6 much sooner than v2 (full weight through 21,600 s / 6 hours,
 # zero by 86,400 s / 1 day). The failure path keeps the logistic model competitive for far
@@ -132,7 +132,7 @@ def routed_short_term_weight_v3(
     previous_recalled: bool | None,
     is_first_predictive_review: bool = False,
 ) -> float:
-    """Outcome-conditional short-term weight (v3, ROUTING_DECISION_RULE.md)."""
+    """Outcome-conditional short-term weight (v3, the predeclared cohort routing decision)."""
     return _routed_short_term_weight(
         elapsed_seconds,
         previous_recalled,

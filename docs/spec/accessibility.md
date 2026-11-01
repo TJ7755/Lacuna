@@ -6,7 +6,7 @@ state and status do not rely on colour alone. Secondary text and action labels r
 across supported accents and themes. Mechanical checks live in
 [browser tests](../../tests/e2e/direction-c-audit.spec.ts), which check rendered hit areas.
 
-All workflows remain usable by keyboard and touch. The shell exposes Skip to content. Dialogs
+All workflows remain usable by keyboard and touch. Provide Skip to content. Dialogs must
 trap focus only while active; closing/departing controls are immediately inert and hidden from
 assistive technology. A new view restores useful focus without stealing a different control
 selected during pending work. Error feedback is associated with its field or recovery action.

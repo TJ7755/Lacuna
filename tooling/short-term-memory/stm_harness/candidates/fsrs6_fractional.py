@@ -17,7 +17,7 @@ class Fsrs6FractionalCandidate:
     `fractional_retrievability=True`, matching src/fsrs/halfLifeLogisticModel.ts's
     `predict()`. Comparing a fractional-day blend against a floored-day reference
     introduces a train/serve-style discrepancy in the benchmark itself (see
-    VALIDATION_PLAN.md phase 2 item 4). This candidate exposes the fractional-day
+    the frozen cohort validation phase 2 item 4). This candidate exposes the fractional-day
     FSRS-6 baseline as its own reference so the blend can be evaluated against the
     reference it can actually beat.
     """

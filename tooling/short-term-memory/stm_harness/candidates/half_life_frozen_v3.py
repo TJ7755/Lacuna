@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     import pyarrow as pa
 
 
-# ROUTING_DECISION_RULE.md: v3 changes routing boundaries only, not coefficients, so the
+# the predeclared cohort routing decision: v3 changes routing boundaries only, not coefficients, so the
 # frozen artefact is the same shipped v2 coefficients file as `half_life_frozen`.
 COEFFICIENTS_PATH = Path(__file__).resolve().parents[2] / "coefficients" / "half-life-logistic-v2.json"
 
@@ -52,7 +52,7 @@ class HalfLifeLogisticFrozenV3Candidate:
     coefficients baked into `coefficients/half-life-logistic-v2.json` (v3 does not change
     coefficients, only routing boundaries). Prediction is otherwise identical to
     `half_life_v3` (v3 routed weight, fractional-day FSRS baseline). Used to evaluate the
-    ROUTING_DECISION_RULE.md re-route on all three cohorts, frozen.
+    the predeclared cohort routing decision re-route on all three cohorts, frozen.
     """
 
     name = "half-life-logistic-frozen-v3"

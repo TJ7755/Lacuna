@@ -34,9 +34,8 @@ delivery plan and evidence needed to assess progress.
 
 ## Using Lacuna
 
-Use Lacuna at [getlacuna.app](https://getlacuna.app). Browser study data is local to each
-origin: moving from the previous Vercel address requires exporting a full backup there
-and importing it at the new address. The previous address remains available.
+Use Lacuna at [getlacuna.app](https://getlacuna.app). Before moving from the previous Vercel address, export a full backup there
+and import it at the new address.
 
 Export a full JSON backup from **Settings → Full backup & recovery** before moving devices or replacing data.
 

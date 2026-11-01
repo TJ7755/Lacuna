@@ -269,7 +269,7 @@ def test_half_life_v2_fit_matches_v1_coefficients_and_routes_by_previous_outcome
 
 
 def test_half_life_frozen_matches_v2_predictions_given_same_coefficients():
-    # VALIDATION_PLAN.md phase 3: the frozen candidate must predict exactly like
+    # the frozen cohort validation phase 3: the frozen candidate must predict exactly like
     # half_life_v2 when both use the same coefficients, since it reuses
     # HalfLifeLogisticV2Predictor unmodified.
     v2_fitted = HalfLifeLogisticV2Candidate().fit_batches([training_batch()])
@@ -298,7 +298,7 @@ def test_half_life_frozen_loads_shipped_artefact_and_consumes_no_training_data()
 
 
 def test_routed_short_term_weight_v3_post_success_decays_by_one_day():
-    # ROUTING_DECISION_RULE.md v3 success/first-review/no-history path: full weight
+    # the predeclared cohort routing decision v3 success/first-review/no-history path: full weight
     # through 21,600 s (6 hours), 0 from 86,400 s (1 day).
     assert routed_short_term_weight_v3(21_600, previous_recalled=True) == pytest.approx(1.0)
     assert routed_short_term_weight_v3(21_601, previous_recalled=True) < 1.0
@@ -318,7 +318,7 @@ def test_routed_short_term_weight_v3_post_success_decays_by_one_day():
 
 def test_routed_short_term_weight_v3_post_failure_decays_by_five_days():
     # v3 failure path: full weight through 345,600 s (4 days), 0 from 432,000 s (5 days) —
-    # the last bucket both transfer cohorts supported per ROUTING_DECISION_RULE.md.
+    # the last bucket both transfer cohorts supported per the predeclared cohort routing decision.
     assert routed_short_term_weight_v3(345_600, previous_recalled=False) == pytest.approx(1.0)
     assert routed_short_term_weight_v3(345_601, previous_recalled=False) < 1.0
     assert routed_short_term_weight_v3(431_999, previous_recalled=False) > 0.0
