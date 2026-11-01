@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { createStoredValue } from './localSetting';
+
 // A device-local base text-size control. The scale is applied as the root font-size, so
 // every rem-based size in the app grows or shrinks together. Mirrors ThemeContext.
 
 const STORAGE_KEY = 'lacuna-font-scale';
-const FONT_SCALE_USER_SET_KEY = 'lacuna-font-scale-user-set';
 
 const FONT_SCALE_MIN = 0.85;
 const FONT_SCALE_MAX = 1.35;
@@ -30,10 +31,17 @@ function clamp(value: number): number {
   return Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, value));
 }
 
+const storedScale = createStoredValue({
+  key: STORAGE_KEY,
+  parse: (raw) => {
+    const stored = Number(raw);
+    return stored ? clamp(stored) : FONT_SCALE_DEFAULT;
+  },
+});
+
 function readStored(): number {
   try {
-    const stored = Number(localStorage.getItem(STORAGE_KEY));
-    if (stored) return clamp(stored);
+    return storedScale.read();
   } catch {
     // Ignore storage access errors and fall back to the default.
   }
@@ -46,7 +54,7 @@ export function FontScaleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.style.fontSize = `${scale * 100}%`;
     try {
-      localStorage.setItem(STORAGE_KEY, String(scale));
+      storedScale.write(scale);
     } catch {
       // Persistence is best-effort.
     }
@@ -62,11 +70,6 @@ export function FontScaleProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setScale = useCallback((next: number) => {
-    try {
-      localStorage.setItem(FONT_SCALE_USER_SET_KEY, '1');
-    } catch {
-      // Persistence is best-effort.
-    }
     setScaleState(clamp(next));
   }, []);
 
