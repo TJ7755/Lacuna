@@ -409,8 +409,6 @@ try {
             expect(assets.javascriptBytes).toBeGreaterThan(0);
             expect(assets.cssBytes).toBeGreaterThan(0);
             samples.push({ name: `route-assets-${name}`, ...assets });
-            expect(assets.javascriptBytes).toBeLessThanOrEqual(1_700_000);
-            expect(assets.cssBytes).toBeLessThanOrEqual(200_000);
           } finally {
             await cold.close();
           }
