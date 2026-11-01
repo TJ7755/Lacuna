@@ -1,0 +1,81 @@
+name: Manual Jev evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      pack:
+        description: Named evaluation pack (see scripts/jev-evaluation/README.md)
+        required: true
+        type: string
+      labels:
+        description: Repository-relative independent reference record at the selected ref
+        required: true
+        type: string
+      max_requests:
+        description: Additional maximum paid request count
+        required: true
+        type: number
+        default: 1
+
+      cap_usd:
+        description: Hard USD spend cap for this run
+        required: true
+        type: string
+        default: '0.01'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jev-evaluation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.1'
+          package-manager-cache: false
+      - uses: ./.github/actions/setup-bun
+      - run: bun install --frozen-lockfile
+      - name: Validate independent reference record offline
+        env:
+          PACK: ${{ inputs.pack }}
+          LABELS: ${{ inputs.labels }}
+        run: |
+          test -f "$LABELS"
+          bun scripts/jev-evaluation.ts validate --pack "$PACK" --labels "$LABELS"
+      - name: Run capped live evaluation
+        env:
+          PACK: ${{ inputs.pack }}
+          LABELS: ${{ inputs.labels }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          CAP_USD: ${{ inputs.cap_usd }}
+          MAX_REQUESTS: ${{ inputs.max_requests }}
+        run: |
+          bun scripts/jev-evaluation.ts live --pack "$PACK" --labels "$LABELS" --cap-usd "$CAP_USD" --max-requests "$MAX_REQUESTS" --allow-paid --out artifacts/jev-manual
+      - name: Publish report summary
+        if: always()
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+          const path = 'artifacts/jev-manual/results.json';
+          const heading = '# Jev evaluation report\n\nManual evidence only; agreement is reported and does not gate access or releases.\n\n';
+          const body = existsSync(path)
+            ? '```json\n' + JSON.stringify((({ report, spend }) => ({ report, spend }))(JSON.parse(readFileSync(path, 'utf8'))), null, 2) + '\n```\n'
+            : 'No result file was produced. No paid request is authorised without valid references and a sufficient currency cap. Check reference validation and runner errors.\n';
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, heading + body);
+          JS
+      - name: Retain evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: jev-evaluation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/jev-manual/
+          if-no-files-found: ignore

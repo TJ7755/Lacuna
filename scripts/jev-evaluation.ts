@@ -1,3 +1,4 @@
+import { budget, guardRequest, worstCost, pricing } from './jev-evaluation/spend';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve, join, dirname } from 'node:path';
@@ -21,6 +22,7 @@ const root = new URL('../', import.meta.url);
 const sources = [
   'scripts/jev-evaluation.ts',
   'scripts/jev-evaluation/pack.ts',
+  'scripts/jev-evaluation/spend.ts',
   'scripts/jev-evaluation/labels.ts',
   'scripts/jev-evaluation/metrics.ts',
   'scripts/jev-evaluation/README.md',
@@ -63,12 +65,17 @@ async function createOutput(path: string) {
   await mkdir(path, { mode: 0o700 });
 }
 
-async function readCases(path?: string): Promise<EvaluationCase[]> {
+export async function readCases(path?: string): Promise<EvaluationCase[]> {
   const parsed = path
     ? z
         .array(
           z
             .strictObject({
+              subject: z.string().trim().min(1).optional(),
+              course: z.string().trim().min(1).optional(),
+              specification: z
+                .strictObject({ code: z.string().min(1), title: z.string().min(1) })
+                .optional(),
               id: z.string().trim().min(1),
               questionId: z.string().trim().min(1),
               answerType: z.enum(['short-answer', 'multi-mark']),
@@ -77,7 +84,7 @@ async function readCases(path?: string): Promise<EvaluationCase[]> {
             })
             .refine(
               (item) =>
-                item.request.maxMarks <= 2 &&
+                item.request.maxMarks <= 9 &&
                 item.answerType === (item.request.maxMarks === 1 ? 'short-answer' : 'multi-mark'),
             ),
         )
@@ -87,6 +94,16 @@ async function readCases(path?: string): Promise<EvaluationCase[]> {
     : cases;
   if (new Set(parsed.map((item) => item.id)).size !== parsed.length)
     throw new Error('Evaluation case identities must be unique.');
+  if (
+    parsed.some(
+      (item) =>
+        item.request.diagnostic &&
+        !['biology', 'chemistry', 'physics', 'science'].includes(
+          (item.subject ?? 'biology').toLowerCase(),
+        ),
+    )
+  )
+    throw new Error('Diagnosis is restricted to science evaluation cases.');
   return parsed;
 }
 
@@ -98,6 +115,9 @@ async function main(args: string[]) {
       out: { type: 'string' },
       labels: { type: 'string' },
       cases: { type: 'string' },
+      pack: { type: 'string' },
+      'cap-usd': { type: 'string' },
+      'max-requests': { type: 'string' },
       'allow-paid': { type: 'boolean' },
     },
   });
@@ -111,8 +131,19 @@ async function main(args: string[]) {
   ) as { revision: string };
   if (execFileSync(process.execPath, ['--revision'], { encoding: 'utf8' }).trim() !== pin.revision)
     throw new Error('Use the repository-pinned Bun revision.');
-  const evaluationCases = await readCases(values.cases);
-  const executionPolicy = { ...policy, maximumRequests: evaluationCases.length };
+  if (values.pack && values.cases) throw new Error('Choose --pack or --cases, never both.');
+  if (values.pack && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(values.pack))
+    throw new Error('Invalid pack name.');
+  const casesPath = values.pack
+    ? fileURLToPath(new URL(`scripts/jev-evaluation/packs/${values.pack}.json`, root))
+    : values.cases;
+  const evaluationCases = await readCases(casesPath);
+  const executionPolicy = {
+    ...policy,
+    maximumRequests: evaluationCases.length,
+    pack: values.pack ?? (values.cases ? 'custom' : 'enzymes-development'),
+    partition: values.pack?.includes('held-out') ? 'held-out' : 'development',
+  };
   const frozen = await identity(evaluationCases, executionPolicy);
   if (command === 'export') {
     if (!values.out) throw new Error('A new packet directory is required.');
@@ -169,6 +200,12 @@ async function main(args: string[]) {
   }
   if (!values['allow-paid'] || !values.out)
     throw new Error('Live calls require --allow-paid and a new output directory.');
+  const maxRequests =
+    values['max-requests'] === undefined ? evaluationCases.length : Number(values['max-requests']);
+  if (!Number.isSafeInteger(maxRequests) || maxRequests < 1 || maxRequests > evaluationCases.length)
+    throw new Error('Invalid paid request cap.');
+  const spend = budget(values['cap-usd'], JEV_MODEL, maxRequests);
+  const ledger: { id: string; reservedNanoUsd: number; actualNanoUsd: number | null }[] = [];
   const key = process.env.TYPESAFE_API_KEY;
   if (!key) throw new Error('TYPESAFE_API_KEY must be supplied through the environment.');
   await createOutput(values.out);
@@ -208,6 +245,16 @@ async function main(args: string[]) {
             ),
           ),
         ],
+        spend: {
+          ...spend,
+          pricing,
+          ledger,
+          projectedNanoUsd: spend.requests * worstCost,
+          accountedNanoUsd: ledger.reduce(
+            (sum, row) => sum + (row.actualNanoUsd ?? row.reservedNanoUsd),
+            0,
+          ),
+        },
         observations,
         report: summarise(labels.gold, observations, evaluationCases),
         scope:
@@ -218,9 +265,12 @@ async function main(args: string[]) {
   };
   await save();
   for (const [index, item] of evaluationCases.entries()) {
+    if (index >= spend.requests) break;
     if (index >= executionPolicy.maximumRequests)
       throw new Error('Evaluation request bound exceeded.');
     const observation = observations[index];
+    const entry = { id: item.id, reservedNanoUsd: worstCost, actualNanoUsd: null as number | null };
+    ledger.push(entry);
     observation.status = 'in-flight';
     await save();
     const started = performance.now();
@@ -228,6 +278,7 @@ async function main(args: string[]) {
     let attempted = false;
     const fetcher: typeof fetch = async (url, options) => {
       if (attempted) throw new Error('Retries are forbidden.');
+      guardRequest(url, options, JEV_MODEL);
       attempted = true;
       const response = await fetch(url, { ...options, cache: 'no-store', redirect: 'error' });
       observation.httpStatus = response.status;
@@ -279,11 +330,13 @@ async function main(args: string[]) {
             ? 'http-error'
             : 'invalid-response';
     }
+    if (observation.inputTokens !== null && observation.inputTokens <= 64000)
+      entry.actualNanoUsd = observation.inputTokens * 42;
     observation.latencyMs = Math.round(performance.now() - started);
     await save();
     if (observation.status !== 'ok') break;
   }
-  const finalCases = await readCases(values.cases);
+  const finalCases = await readCases(casesPath);
   if ((await identity(finalCases, executionPolicy)).identity !== frozen.identity) {
     sourceIntact = false;
     await save();

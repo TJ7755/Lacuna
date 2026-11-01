@@ -1,0 +1,458 @@
+[
+  {
+    "id": "secondary-development-1-strong",
+    "questionId": "secondary-development-1",
+    "subject": "Chemistry",
+    "course": "chemistry4ch1",
+    "specification": {
+      "code": "4CH1 1.3",
+      "title": "States of matter"
+    },
+    "answerType": "short-answer",
+    "stratum": "strong",
+    "request": {
+      "prompt": "A sealed syringe contains air. Its outlet is blocked and the plunger is pushed inward. Describe what happens to the average distance between the gas particles.",
+      "criterion": "Award one mark for a decrease in average distance between particles. Do not award for particles shrinking.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 1,
+      "answer": "The average distance between the particles decreases."
+    }
+  },
+  {
+    "id": "secondary-development-1-partial",
+    "questionId": "secondary-development-1",
+    "subject": "Chemistry",
+    "course": "chemistry4ch1",
+    "specification": {
+      "code": "4CH1 1.3",
+      "title": "States of matter"
+    },
+    "answerType": "short-answer",
+    "stratum": "partial",
+    "request": {
+      "prompt": "A sealed syringe contains air. Its outlet is blocked and the plunger is pushed inward. Describe what happens to the average distance between the gas particles.",
+      "criterion": "Award one mark for a decrease in average distance between particles. Do not award for particles shrinking.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 1,
+      "answer": "The gas takes up less space."
+    }
+  },
+  {
+    "id": "secondary-development-1-wrong",
+    "questionId": "secondary-development-1",
+    "subject": "Chemistry",
+    "course": "chemistry4ch1",
+    "specification": {
+      "code": "4CH1 1.3",
+      "title": "States of matter"
+    },
+    "answerType": "short-answer",
+    "stratum": "wrong",
+    "request": {
+      "prompt": "A sealed syringe contains air. Its outlet is blocked and the plunger is pushed inward. Describe what happens to the average distance between the gas particles.",
+      "criterion": "Award one mark for a decrease in average distance between particles. Do not award for particles shrinking.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 1,
+      "answer": "Each particle becomes smaller."
+    }
+  },
+  {
+    "id": "secondary-development-1-blank",
+    "questionId": "secondary-development-1",
+    "subject": "Chemistry",
+    "course": "chemistry4ch1",
+    "specification": {
+      "code": "4CH1 1.3",
+      "title": "States of matter"
+    },
+    "answerType": "short-answer",
+    "stratum": "blank",
+    "request": {
+      "prompt": "A sealed syringe contains air. Its outlet is blocked and the plunger is pushed inward. Describe what happens to the average distance between the gas particles.",
+      "criterion": "Award one mark for a decrease in average distance between particles. Do not award for particles shrinking.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 1,
+      "answer": ""
+    }
+  },
+  {
+    "id": "secondary-development-1-off-topic",
+    "questionId": "secondary-development-1",
+    "subject": "Chemistry",
+    "course": "chemistry4ch1",
+    "specification": {
+      "code": "4CH1 1.3",
+      "title": "States of matter"
+    },
+    "answerType": "short-answer",
+    "stratum": "off-topic",
+    "request": {
+      "prompt": "A sealed syringe contains air. Its outlet is blocked and the plunger is pushed inward. Describe what happens to the average distance between the gas particles.",
+      "criterion": "Award one mark for a decrease in average distance between particles. Do not award for particles shrinking.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 1,
+      "answer": "The syringe should have a clear scale."
+    }
+  },
+  {
+    "id": "secondary-development-1-ambiguous",
+    "questionId": "secondary-development-1",
+    "subject": "Chemistry",
+    "course": "chemistry4ch1",
+    "specification": {
+      "code": "4CH1 1.3",
+      "title": "States of matter"
+    },
+    "answerType": "short-answer",
+    "stratum": "ambiguous",
+    "request": {
+      "prompt": "A sealed syringe contains air. Its outlet is blocked and the plunger is pushed inward. Describe what happens to the average distance between the gas particles.",
+      "criterion": "Award one mark for a decrease in average distance between particles. Do not award for particles shrinking.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 1,
+      "answer": "They get smaller together, though I may mean the spaces."
+    }
+  },
+  {
+    "id": "secondary-development-2-strong",
+    "questionId": "secondary-development-2",
+    "subject": "Physics",
+    "course": "physics0972",
+    "specification": {
+      "code": "0972 2.3.1",
+      "title": "Conduction"
+    },
+    "answerType": "multi-mark",
+    "stratum": "strong",
+    "request": {
+      "prompt": "A metal spoon and a wooden spoon stand in the same hot water. Explain why the exposed metal handle warms more quickly.",
+      "criterion": "Award one mark each for energy transfer from the hot end towards the cooler handle; transfer through particle vibrations/interactions; and mobile electrons transferring energy through metal, unlike wood. Credit equivalent explanations, with no duplicate credit.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 3,
+      "answer": "Energy moves from the hot end to the cooler handle. Vibrating particles transfer energy to neighbours. Mobile electrons also transfer energy through metal, whereas wood lacks this mechanism."
+    }
+  },
+  {
+    "id": "secondary-development-2-partial",
+    "questionId": "secondary-development-2",
+    "subject": "Physics",
+    "course": "physics0972",
+    "specification": {
+      "code": "0972 2.3.1",
+      "title": "Conduction"
+    },
+    "answerType": "multi-mark",
+    "stratum": "partial",
+    "request": {
+      "prompt": "A metal spoon and a wooden spoon stand in the same hot water. Explain why the exposed metal handle warms more quickly.",
+      "criterion": "Award one mark each for energy transfer from the hot end towards the cooler handle; transfer through particle vibrations/interactions; and mobile electrons transferring energy through metal, unlike wood. Credit equivalent explanations, with no duplicate credit.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 3,
+      "answer": "Energy travels from the water towards the cooler handle. Metal conducts heat well."
+    }
+  },
+  {
+    "id": "secondary-development-2-wrong",
+    "questionId": "secondary-development-2",
+    "subject": "Physics",
+    "course": "physics0972",
+    "specification": {
+      "code": "0972 2.3.1",
+      "title": "Conduction"
+    },
+    "answerType": "multi-mark",
+    "stratum": "wrong",
+    "request": {
+      "prompt": "A metal spoon and a wooden spoon stand in the same hot water. Explain why the exposed metal handle warms more quickly.",
+      "criterion": "Award one mark each for energy transfer from the hot end towards the cooler handle; transfer through particle vibrations/interactions; and mobile electrons transferring energy through metal, unlike wood. Credit equivalent explanations, with no duplicate credit.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 3,
+      "answer": "Cold flows out of the metal and its electrons remain fixed, while wood has freely moving electrons."
+    }
+  },
+  {
+    "id": "secondary-development-2-blank",
+    "questionId": "secondary-development-2",
+    "subject": "Physics",
+    "course": "physics0972",
+    "specification": {
+      "code": "0972 2.3.1",
+      "title": "Conduction"
+    },
+    "answerType": "multi-mark",
+    "stratum": "blank",
+    "request": {
+      "prompt": "A metal spoon and a wooden spoon stand in the same hot water. Explain why the exposed metal handle warms more quickly.",
+      "criterion": "Award one mark each for energy transfer from the hot end towards the cooler handle; transfer through particle vibrations/interactions; and mobile electrons transferring energy through metal, unlike wood. Credit equivalent explanations, with no duplicate credit.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 3,
+      "answer": ""
+    }
+  },
+  {
+    "id": "secondary-development-2-off-topic",
+    "questionId": "secondary-development-2",
+    "subject": "Physics",
+    "course": "physics0972",
+    "specification": {
+      "code": "0972 2.3.1",
+      "title": "Conduction"
+    },
+    "answerType": "multi-mark",
+    "stratum": "off-topic",
+    "request": {
+      "prompt": "A metal spoon and a wooden spoon stand in the same hot water. Explain why the exposed metal handle warms more quickly.",
+      "criterion": "Award one mark each for energy transfer from the hot end towards the cooler handle; transfer through particle vibrations/interactions; and mobile electrons transferring energy through metal, unlike wood. Credit equivalent explanations, with no duplicate credit.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 3,
+      "answer": "The wooden spoon is brown."
+    }
+  },
+  {
+    "id": "secondary-development-2-ambiguous",
+    "questionId": "secondary-development-2",
+    "subject": "Physics",
+    "course": "physics0972",
+    "specification": {
+      "code": "0972 2.3.1",
+      "title": "Conduction"
+    },
+    "answerType": "multi-mark",
+    "stratum": "ambiguous",
+    "request": {
+      "prompt": "A metal spoon and a wooden spoon stand in the same hot water. Explain why the exposed metal handle warms more quickly.",
+      "criterion": "Award one mark each for energy transfer from the hot end towards the cooler handle; transfer through particle vibrations/interactions; and mobile electrons transferring energy through metal, unlike wood. Credit equivalent explanations, with no duplicate credit.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 3,
+      "answer": "It passes along faster because they move, but I cannot say whether I mean particles or the spoon."
+    }
+  },
+  {
+    "id": "secondary-development-3-strong",
+    "questionId": "secondary-development-3",
+    "subject": "History",
+    "course": "history0977",
+    "specification": {
+      "code": "0977 Option B 1",
+      "title": "Was the Treaty of Versailles fair?"
+    },
+    "answerType": "multi-mark",
+    "stratum": "strong",
+    "request": {
+      "prompt": "Explain two reasons why many Germans opposed the Treaty of Versailles in 1919.",
+      "criterion": "Award up to three marks for each of two distinct reasons: one for identifying a historically valid grievance; one for accurate supporting detail; one for explaining why it provoked opposition. Accept territorial losses, reparations, military restrictions, war guilt or exclusion from negotiations. Do not double-count two examples of the same grievance. This is an original analytic rubric, not an exam-board mark scheme.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 6,
+      "answer": "Many opposed reparations because Germany was required to pay for war damage, creating fears of a lasting burden on an already weakened economy. Military restrictions also caused resentment: the army was limited to 100,000 men, reducing national defence and pride."
+    }
+  },
+  {
+    "id": "secondary-development-3-partial",
+    "questionId": "secondary-development-3",
+    "subject": "History",
+    "course": "history0977",
+    "specification": {
+      "code": "0977 Option B 1",
+      "title": "Was the Treaty of Versailles fair?"
+    },
+    "answerType": "multi-mark",
+    "stratum": "partial",
+    "request": {
+      "prompt": "Explain two reasons why many Germans opposed the Treaty of Versailles in 1919.",
+      "criterion": "Award up to three marks for each of two distinct reasons: one for identifying a historically valid grievance; one for accurate supporting detail; one for explaining why it provoked opposition. Accept territorial losses, reparations, military restrictions, war guilt or exclusion from negotiations. Do not double-count two examples of the same grievance. This is an original analytic rubric, not an exam-board mark scheme.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 6,
+      "answer": "Germans disliked reparations and the army limit of 100,000 men."
+    }
+  },
+  {
+    "id": "secondary-development-3-wrong",
+    "questionId": "secondary-development-3",
+    "subject": "History",
+    "course": "history0977",
+    "specification": {
+      "code": "0977 Option B 1",
+      "title": "Was the Treaty of Versailles fair?"
+    },
+    "answerType": "multi-mark",
+    "stratum": "wrong",
+    "request": {
+      "prompt": "Explain two reasons why many Germans opposed the Treaty of Versailles in 1919.",
+      "criterion": "Award up to three marks for each of two distinct reasons: one for identifying a historically valid grievance; one for accurate supporting detail; one for explaining why it provoked opposition. Accept territorial losses, reparations, military restrictions, war guilt or exclusion from negotiations. Do not double-count two examples of the same grievance. This is an original analytic rubric, not an exam-board mark scheme.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 6,
+      "answer": "The treaty gave Germany a larger army and cancelled all demands for compensation, so Germans opposed its generosity."
+    }
+  },
+  {
+    "id": "secondary-development-3-blank",
+    "questionId": "secondary-development-3",
+    "subject": "History",
+    "course": "history0977",
+    "specification": {
+      "code": "0977 Option B 1",
+      "title": "Was the Treaty of Versailles fair?"
+    },
+    "answerType": "multi-mark",
+    "stratum": "blank",
+    "request": {
+      "prompt": "Explain two reasons why many Germans opposed the Treaty of Versailles in 1919.",
+      "criterion": "Award up to three marks for each of two distinct reasons: one for identifying a historically valid grievance; one for accurate supporting detail; one for explaining why it provoked opposition. Accept territorial losses, reparations, military restrictions, war guilt or exclusion from negotiations. Do not double-count two examples of the same grievance. This is an original analytic rubric, not an exam-board mark scheme.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 6,
+      "answer": ""
+    }
+  },
+  {
+    "id": "secondary-development-3-off-topic",
+    "questionId": "secondary-development-3",
+    "subject": "History",
+    "course": "history0977",
+    "specification": {
+      "code": "0977 Option B 1",
+      "title": "Was the Treaty of Versailles fair?"
+    },
+    "answerType": "multi-mark",
+    "stratum": "off-topic",
+    "request": {
+      "prompt": "Explain two reasons why many Germans opposed the Treaty of Versailles in 1919.",
+      "criterion": "Award up to three marks for each of two distinct reasons: one for identifying a historically valid grievance; one for accurate supporting detail; one for explaining why it provoked opposition. Accept territorial losses, reparations, military restrictions, war guilt or exclusion from negotiations. Do not double-count two examples of the same grievance. This is an original analytic rubric, not an exam-board mark scheme.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 6,
+      "answer": "Railways can carry large numbers of passengers."
+    }
+  },
+  {
+    "id": "secondary-development-3-ambiguous",
+    "questionId": "secondary-development-3",
+    "subject": "History",
+    "course": "history0977",
+    "specification": {
+      "code": "0977 Option B 1",
+      "title": "Was the Treaty of Versailles fair?"
+    },
+    "answerType": "multi-mark",
+    "stratum": "ambiguous",
+    "request": {
+      "prompt": "Explain two reasons why many Germans opposed the Treaty of Versailles in 1919.",
+      "criterion": "Award up to three marks for each of two distinct reasons: one for identifying a historically valid grievance; one for accurate supporting detail; one for explaining why it provoked opposition. Accept territorial losses, reparations, military restrictions, war guilt or exclusion from negotiations. Do not double-count two examples of the same grievance. This is an original analytic rubric, not an exam-board mark scheme.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 6,
+      "answer": "They lost things and were angry, although I may be describing the victors."
+    }
+  },
+  {
+    "id": "secondary-development-4-strong",
+    "questionId": "secondary-development-4",
+    "subject": "Religious Studies",
+    "course": "religiousstudies8062",
+    "specification": {
+      "code": "8062 3.1.1",
+      "title": "Christianity: beliefs and teachings"
+    },
+    "answerType": "multi-mark",
+    "stratum": "strong",
+    "request": {
+      "prompt": "Explain two different ways belief in life after death can influence a Christian’s choices. Develop each explanation and acknowledge that Christians may respond differently.",
+      "criterion": "Award up to four marks per distinct influence: one for a relevant belief, one for a concrete choice, one for explaining the connection, and one for a relevant qualification or differing Christian response. Accept resurrection, judgement, heaven or hell; do not require quotations. Do not award duplicate explanations. This original eight-mark allocation is a harness stress case, not an AQA question format.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 8,
+      "answer": "Belief in judgement may lead a Christian to help a neighbour because they see their treatment of others as accountable to God; some emphasise grace rather than earning salvation. Hope of resurrection may encourage care for a dying relative because death is not understood as the end, although Christians differ over details of the afterlife."
+    }
+  },
+  {
+    "id": "secondary-development-4-partial",
+    "questionId": "secondary-development-4",
+    "subject": "Religious Studies",
+    "course": "religiousstudies8062",
+    "specification": {
+      "code": "8062 3.1.1",
+      "title": "Christianity: beliefs and teachings"
+    },
+    "answerType": "multi-mark",
+    "stratum": "partial",
+    "request": {
+      "prompt": "Explain two different ways belief in life after death can influence a Christian’s choices. Develop each explanation and acknowledge that Christians may respond differently.",
+      "criterion": "Award up to four marks per distinct influence: one for a relevant belief, one for a concrete choice, one for explaining the connection, and one for a relevant qualification or differing Christian response. Accept resurrection, judgement, heaven or hell; do not require quotations. Do not award duplicate explanations. This original eight-mark allocation is a harness stress case, not an AQA question format.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 8,
+      "answer": "A Christian may help others because they believe in judgement. They may also believe in heaven."
+    }
+  },
+  {
+    "id": "secondary-development-4-wrong",
+    "questionId": "secondary-development-4",
+    "subject": "Religious Studies",
+    "course": "religiousstudies8062",
+    "specification": {
+      "code": "8062 3.1.1",
+      "title": "Christianity: beliefs and teachings"
+    },
+    "answerType": "multi-mark",
+    "stratum": "wrong",
+    "request": {
+      "prompt": "Explain two different ways belief in life after death can influence a Christian’s choices. Develop each explanation and acknowledge that Christians may respond differently.",
+      "criterion": "Award up to four marks per distinct influence: one for a relevant belief, one for a concrete choice, one for explaining the connection, and one for a relevant qualification or differing Christian response. Accept resurrection, judgement, heaven or hell; do not require quotations. Do not award duplicate explanations. This original eight-mark allocation is a harness stress case, not an AQA question format.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 8,
+      "answer": "Every Christian believes resurrection means becoming a different animal, so helping people prevents all future deaths."
+    }
+  },
+  {
+    "id": "secondary-development-4-blank",
+    "questionId": "secondary-development-4",
+    "subject": "Religious Studies",
+    "course": "religiousstudies8062",
+    "specification": {
+      "code": "8062 3.1.1",
+      "title": "Christianity: beliefs and teachings"
+    },
+    "answerType": "multi-mark",
+    "stratum": "blank",
+    "request": {
+      "prompt": "Explain two different ways belief in life after death can influence a Christian’s choices. Develop each explanation and acknowledge that Christians may respond differently.",
+      "criterion": "Award up to four marks per distinct influence: one for a relevant belief, one for a concrete choice, one for explaining the connection, and one for a relevant qualification or differing Christian response. Accept resurrection, judgement, heaven or hell; do not require quotations. Do not award duplicate explanations. This original eight-mark allocation is a harness stress case, not an AQA question format.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 8,
+      "answer": ""
+    }
+  },
+  {
+    "id": "secondary-development-4-off-topic",
+    "questionId": "secondary-development-4",
+    "subject": "Religious Studies",
+    "course": "religiousstudies8062",
+    "specification": {
+      "code": "8062 3.1.1",
+      "title": "Christianity: beliefs and teachings"
+    },
+    "answerType": "multi-mark",
+    "stratum": "off-topic",
+    "request": {
+      "prompt": "Explain two different ways belief in life after death can influence a Christian’s choices. Develop each explanation and acknowledge that Christians may respond differently.",
+      "criterion": "Award up to four marks per distinct influence: one for a relevant belief, one for a concrete choice, one for explaining the connection, and one for a relevant qualification or differing Christian response. Accept resurrection, judgement, heaven or hell; do not require quotations. Do not award duplicate explanations. This original eight-mark allocation is a harness stress case, not an AQA question format.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 8,
+      "answer": "Church buildings can have towers."
+    }
+  },
+  {
+    "id": "secondary-development-4-ambiguous",
+    "questionId": "secondary-development-4",
+    "subject": "Religious Studies",
+    "course": "religiousstudies8062",
+    "specification": {
+      "code": "8062 3.1.1",
+      "title": "Christianity: beliefs and teachings"
+    },
+    "answerType": "multi-mark",
+    "stratum": "ambiguous",
+    "request": {
+      "prompt": "Explain two different ways belief in life after death can influence a Christian’s choices. Develop each explanation and acknowledge that Christians may respond differently.",
+      "criterion": "Award up to four marks per distinct influence: one for a relevant belief, one for a concrete choice, one for explaining the connection, and one for a relevant qualification or differing Christian response. Accept resurrection, judgement, heaven or hell; do not require quotations. Do not award duplicate explanations. This original eight-mark allocation is a harness stress case, not an AQA question format.",
+      "explanation": "Original evaluation material. Independent content review and reference marking are required before live use. Award only supported rubric points; accept equivalent meaning.",
+      "maxMarks": 8,
+      "answer": "They might act better because of what comes next, but I mean next week or after death."
+    }
+  }
+]

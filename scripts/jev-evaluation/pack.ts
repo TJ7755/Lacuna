@@ -74,6 +74,9 @@ const questions = [
 
 export const strata = ['strong', 'partial', 'wrong', 'blank', 'off-topic', 'ambiguous'] as const;
 export type EvaluationCase = {
+  subject?: string;
+  course?: string;
+  specification?: { code: string; title: string };
   id: string;
   questionId: string;
   answerType: 'short-answer' | 'multi-mark';
@@ -104,8 +107,9 @@ export const cases: EvaluationCase[] = questions
   .sort((a, b) => a.id.localeCompare(b.id));
 
 export const policy = {
-  version: 4,
-  scope: 'Original typed 4BI1 enzyme explanations; evaluation-written answers, never learner data.',
+  version: 6,
+  scope:
+    'Original typed allocations across declared subjects, 1–9 marks; evaluation-written answers, never learner data. Science diagnosis only.',
   provenance:
     'Agent-authored original material; independent reference marking pending. No private practice pool was read.',
   diagnosticDefinition:
@@ -126,9 +130,8 @@ export const policy = {
   unsupported: [
     'handwriting',
     'typed-recall',
-    'extended-response',
-    'allocations above two marks',
-    'other subjects',
+    'allocations above nine marks',
+    'non-science diagnosis',
   ],
   uncertainty:
     'Wilson 95% intervals are descriptive at case level; shared-question dependence prevents population or transfer claims.',

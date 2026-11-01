@@ -58,6 +58,7 @@ export function summarise(gold: Label[], observations: Observation[], evaluation
     const under = decided.filter((row) => row.result!.value! < row.label.mark);
     const categories = Object.fromEntries(
       JEV_DIAGNOSTIC_CATEGORIES.map((category) => {
+        const diagnosticRows = subset.filter((row) => row.request.diagnostic !== undefined);
         const prediction = (row: (typeof rows)[number]) =>
           row.status === 'ok'
             ? row.result?.diagnosis?.decisions.find((decision) => decision.categoryId === category)
@@ -67,11 +68,11 @@ export function summarise(gold: Label[], observations: Observation[], evaluation
           category,
           {
             abstention: proportion(
-              subset.filter((row) => prediction(row) === 'insufficient-evidence').length,
-              subset.length,
+              diagnosticRows.filter((row) => prediction(row) === 'insufficient-evidence').length,
+              diagnosticRows.length,
             ),
             confidentErrors: proportion(
-              subset.filter((row) => {
+              diagnosticRows.filter((row) => {
                 const outcome = prediction(row);
                 return (
                   outcome !== undefined &&
@@ -79,12 +80,12 @@ export function summarise(gold: Label[], observations: Observation[], evaluation
                   outcome !== row.label[category]
                 );
               }).length,
-              subset.length,
+              diagnosticRows.length,
             ),
             outcomes: Object.fromEntries(
               JEV_DIAGNOSTIC_OUTCOMES.map((outcome) => {
-                const expected = subset.filter((row) => row.label[category] === outcome);
-                const predicted = subset.filter((row) => prediction(row) === outcome);
+                const expected = diagnosticRows.filter((row) => row.label[category] === outcome);
+                const predicted = diagnosticRows.filter((row) => prediction(row) === outcome);
                 const correct = predicted.filter((row) => row.label[category] === outcome).length;
                 return [
                   outcome,
@@ -201,6 +202,26 @@ export function summarise(gold: Label[], observations: Observation[], evaluation
   return {
     overall: metrics(rows),
     byAnswerType,
+    bySubject: Object.fromEntries(
+      [...new Set(rows.map((row) => row.subject ?? 'biology'))]
+        .sort()
+        .map((subject) => [
+          subject,
+          metrics(rows.filter((row) => (row.subject ?? 'biology') === subject)),
+        ]),
+    ),
+    byMarkBand: Object.fromEntries(
+      ['1–2', '3–4', '5–6', '7–9'].map((band, index) => [
+        band,
+        metrics(
+          rows.filter(
+            (row) =>
+              Math.floor((row.request.maxMarks - 1) / 2) === index ||
+              (index === 3 && row.request.maxMarks === 9),
+          ),
+        ),
+      ]),
+    ),
     byStratum: Object.fromEntries(
       strata.map((stratum) => [stratum, metrics(rows.filter((row) => row.stratum === stratum))]),
     ),
