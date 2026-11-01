@@ -34,7 +34,6 @@ jobs:
       - run: node scripts/check-docs.mjs
 
   # Documentation-only pull requests skip heavy work, never the entire workflow.
-  # Metadata edits skip heavy work only after the exact merge commit passes validation.
   # Documentation-only changes retain the normal lightweight validation path.
   changes:
     runs-on: ubuntu-latest
