@@ -102,7 +102,7 @@
     "@modelcontextprotocol/client": "2.3.1",
     "@modelcontextprotocol/server": "2.4.0",
     "@napi-rs/wasm-runtime": "1.2.6",
-    "@open-spaced-repetition/binding": "^0.6.0",
+    "@open-spaced-repetition/binding": "^0.5.0",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
