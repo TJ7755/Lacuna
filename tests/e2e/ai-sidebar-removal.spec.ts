@@ -46,10 +46,6 @@ for (const provider of ['external', 'hosted']) {
     await page.getByRole('switch', { name: 'Mark my answers automatically' }).click();
     await page.getByRole('checkbox', { name: /I understand/ }).check();
     await page.getByRole('button', { name: 'Turn on', exact: true }).click();
-    await page
-      .getByLabel('Access code')
-      .fill('fixture-access-code-with-at-least-thirty-two-characters');
-    await page.getByRole('button', { name: 'Connect', exact: true }).click();
     await expect(page.getByLabel('Access code')).toHaveCount(0);
     await expect(page.getByRole('switch', { name: 'Mark my answers automatically' })).toBeChecked();
     await info.attach('settings-with-jev-and-without-chat', {

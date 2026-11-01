@@ -12,7 +12,7 @@ import {
   startQuestionSetAttempt,
 } from '../questions/questionSetAttemptRepository';
 import { jevEngine } from '../jev/engine';
-import { HOSTED_ACCESS_STORAGE_KEY } from '../ai/session/hostedTransport';
+import { JEV_CONSENT_VERSION } from '../jev/types';
 import * as attemptRepository from '../questions/questionSetAttemptRepository';
 
 describe('QuestionSetPractice marking', () => {
@@ -58,8 +58,7 @@ describe('QuestionSetPractice marking', () => {
         });
       });
       vi.stubGlobal('fetch', fetcher);
-      localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
-      jevEngine.enable(1);
+      jevEngine.enable(JEV_CONSENT_VERSION);
       try {
         open(course.id, set.id, attempt.id);
         await screen.findByRole('heading', { name: mode === 'paper' ? 'Q2' : 'Q1 (b)' });

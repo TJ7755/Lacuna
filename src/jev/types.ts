@@ -7,7 +7,7 @@
  */
 
 /** Bump when the provider, its hosting region or the disclosure wording changes; users re-consent. */
-export const JEV_CONSENT_VERSION = 1;
+export const JEV_CONSENT_VERSION = 2;
 
 export const JEV_PROVIDER = {
   name: 'TypeSafe AI',
@@ -23,13 +23,7 @@ export interface JevSettings {
 }
 
 export type JevPauseReason =
-  | 'offline'
-  | 'no-access-code'
-  | 'access-code-rejected'
-  | 'service-disabled'
-  | 'limit-reached'
-  | 'rate-limited'
-  | 'error';
+  'offline' | 'session-rejected' | 'service-disabled' | 'limit-reached' | 'rate-limited' | 'error';
 
 export type JevStatus =
   | { state: 'off' }
@@ -100,9 +94,8 @@ export interface JevController {
   enable(acceptedConsentVersion: number): void;
   /** Stops all requests immediately and cancels queued work. */
   disable(): void;
-  /** Stores the shared hosted access code locally after a successful exchange. */
-  connectAccessCode(code: string): Promise<{ ok: true } | { ok: false; message: string }>;
-  hasAccessCode(): boolean;
+  /** Public identifier for an installation allowance; never exposes the installation secret. */
+  quotaId(): Promise<string | null>;
 }
 
 /**

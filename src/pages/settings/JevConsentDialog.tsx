@@ -12,7 +12,7 @@ interface JevConsentDialogProps {
   onCancel: () => void;
 }
 
-/** The warning shown before automatic tagging can be turned on. Nothing is sent until it is accepted. */
+/** The warning shown before automatic marking can be turned on. Nothing is sent until it is accepted. */
 export function JevConsentDialog({ open, onAccept, onCancel }: JevConsentDialogProps) {
   return (
     <AnimatePresence>
@@ -23,7 +23,7 @@ export function JevConsentDialog({ open, onAccept, onCancel }: JevConsentDialogP
 
 function JevConsentPanel({ onAccept, onCancel }: Omit<JevConsentDialogProps, 'open'>) {
   const [understood, setUnderstood] = useState(false);
-  const trapRef = useFocusTrap(true, { autoFocusSelector: '[data-jev-consent-cancel]' });
+  const trapRef = useFocusTrap(true, { autoFocusSelector: '[data-jev-consent-title]' });
   const warningId = useId();
   const detailsId = useId();
   const title = 'Before you turn on automatic marking';
@@ -43,7 +43,21 @@ function JevConsentPanel({ onAccept, onCancel }: Omit<JevConsentDialogProps, 'op
         }
       }}
     >
-      <h2 className="font-display text-xl text-ink">{title}</h2>
+      <h2
+        data-jev-consent-title=""
+        tabIndex={-1}
+        className="font-display text-xl text-ink"
+        onKeyDown={(event) => {
+          if (event.key === 'Tab' && event.shiftKey) {
+            event.preventDefault();
+            const buttons =
+              trapRef.current?.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
+            buttons?.item(buttons.length - 1)?.focus();
+          }
+        }}
+      >
+        {title}
+      </h2>
 
       <div
         id={warningId}
@@ -55,7 +69,8 @@ function JevConsentPanel({ onAccept, onCancel }: Omit<JevConsentDialogProps, 'op
         </p>
         <p className="mt-2 font-display text-xl font-semibold leading-snug sm:text-2xl">
           Your answers, with their questions and mark schemes, are sent to {JEV_PROVIDER.name} in
-          the {JEV_PROVIDER.region}. Do not write personal data in your answers or cards.
+          the {JEV_PROVIDER.region}. Do not include personal data about yourself or anyone else in
+          your answers, questions, cards or mark schemes.
         </p>
       </div>
 
@@ -63,6 +78,11 @@ function JevConsentPanel({ onAccept, onCancel }: Omit<JevConsentDialogProps, 'op
         id={detailsId}
         className="mt-5 flex list-disc flex-col gap-2 pl-5 text-sm leading-6 text-ink-soft"
       >
+        <li>
+          Jev is an experimental public beta. Its accuracy is still being evaluated across subjects
+          and answer types. Marks and diagnoses can be wrong, even when Jev is confident. Check its
+          decisions and mark answers yourself when needed.
+        </li>
         <li>
           Only answers that need judgement are sent: a typed flashcard answer that does not match
           word for word, or a written practice answer. Each goes with its question and the expected
@@ -73,8 +93,8 @@ function JevConsentPanel({ onAccept, onCancel }: Omit<JevConsentDialogProps, 'op
           indefinitely, so assume anything sent is stored.
         </li>
         <li>
-          Turning this off stops all requests straight away. You can undo or change any mark it
-          gives.
+          Turning this off stops new requests and cancels work in progress. It does not delete
+          anything already sent to {JEV_PROVIDER.name}. You can undo or change any mark it gives.
         </li>
         <li>
           <a
@@ -95,7 +115,8 @@ function JevConsentPanel({ onAccept, onCancel }: Omit<JevConsentDialogProps, 'op
           checked={understood}
           onChange={(event) => setUnderstood(event.target.checked)}
         />
-        I understand that my answers are sent to {JEV_PROVIDER.name} in the {JEV_PROVIDER.region}.
+        I understand that Jev can be wrong and sends my answers to {JEV_PROVIDER.name} in the{' '}
+        {JEV_PROVIDER.region}. I will not include anyone’s personal data.
       </label>
 
       <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

@@ -1,53 +1,78 @@
 # Desktop and automatic marking setup
 
-### Handing out beta access codes
+### Optional Jev public beta
 
-Generate a batch from the repository root:
+Jev is off by default. Anyone can enable it through **Settings → Integrations → Automatic
+marking**, accept the warning and start marking without an account or invitation code.
+The beta may give incorrect marks and diagnoses, including confident errors; reliability
+has not been established for every subject or answer type. Learners can change or undo
+marks and continue marking manually. The warning prohibits personal data about anyone
+in submitted answers, questions, cards or mark schemes; it is not an age restriction.
+Free-text input is not automatically anonymised. Turning Jev off cancels pending work
+and stops new requests; it does not delete text already received by the provider.
 
-```bash
-bun run ai:invites
-```
+Consent version 2 requires existing users to accept the updated warning. After acceptance,
+the app generates a random installation credential, stores it on this device and exchanges
+it for a one-hour session kept in memory. Neither the credential nor consent is included in
+backups, exports or sync. The server derives a quota ID from the credential; it does not use
+IP addresses or attach a learner profile to provider requests. Treat quota IDs as pseudonymous
+identifiers. Clearing browser storage or using a different installation creates a new allowance;
+these beta limits do not establish a person's identity.
 
-1. Open `credential-hashes.json`. Set the web project's server environment variable
-   `AI_ACCESS_CREDENTIAL_HASHES` to its complete contents and redeploy once for the batch.
-2. Keep `codes.csv` private. Send each tester just one unused `access_code`, and record
-   their name and the issue date in `issued_to` and `issued_on`. Do not send the whole CSV.
-3. The tester opens **Settings → Integrations → Automatic marking**, turns it on, accepts
-   the consent warning, pastes their code and clicks **Connect**. Existing access codes still work.
+Server configuration on the learner web project:
 
-When adding more codes, save the **current deployed** `AI_ACCESS_CREDENTIAL_HASHES` JSON
-to a file inside `.ai-invites/`, then include it:
+- `AI_SESSION_SIGNING_KEY`: at least 32 characters, server-only. Existing signing keys can be reused.
+- `TYPESAFE_API_KEY`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`: server-only provider
+  and quota-store credentials.
+- `JEV_MONTHLY_INPUT_TOKEN_LIMIT`: defaults to 50,000,000. Zero or malformed values disable
+  service admission rather than making it unlimited.
+- `JEV_MONTHLY_REQUEST_LIMIT`: defaults to 100,000 admitted marking requests, including failed calls.
+  Zero or malformed values disable admission.
+- `JEV_MAINTAINER_INSTALLATION_IDS`: optional JSON array of approved quota IDs (64 lowercase hex
+  characters each). Missing means no elevated installations; malformed configuration refuses service.
+- `JEV_SERVICE_DISABLED=1`: stops session creation and marking. `AI_SERVICE_DISABLED=1` also stops
+  new session exchanges; use Jev's own switch to stop already-issued sessions.
 
-```bash
-bun run ai:invites --count 20 --existing .ai-invites/current-hashes.json
-```
+The old `AI_ACCESS_CREDENTIAL_HASHES` invitation registry is not used by the public Jev endpoints.
+Do not publish old invitation credentials. Deploy reviewed server configuration and client code
+together; saved environment changes do not update an existing deployment. Old clients using
+invitation codes must update and accept the new warning.
 
-The new configuration preserves those entries and adds the new batch; the new CSV contains
-only the new codes. Replace the server variable with the combined JSON and redeploy.
-Omitting `--existing` creates an independent list: deploying it would revoke earlier codes.
-Do not reuse an old configuration containing revoked entries, as that would restore access.
-To revoke a tester, remove their `learner_id` entry from the deployed configuration and
-redeploy. Codes are reusable bearer credentials, not single-use invitations; distribute
-them privately and keep the CSV in secure storage. Hashes cannot recover lost codes.
+### Allowances and maintainer access
 
-### Optional Jev marking
+Standard installations receive 100 requests per UTC day, 20 per minute and 2 in flight.
+Approved maintainer installations receive 1,000 per UTC day, 60 per minute and 4 in flight.
+A written-answer request can contain several mark-scheme lines. Cached decisions do not use
+another hosted request. Session exchanges do not use an IP-based gate; sharing an institutional network does not
+share an installation's marking allowance.
 
-Jev requires the hosted access/session configuration and existing Upstash Redis variables
-above. It caches the one-hour access session in device memory. `AI_SERVICE_DISABLED` disables
-new shared session exchanges; already-issued sessions can still access Jev
-unless its own kill switch is set. There are no per-learner Jev quotas. Session verification
-uses a local signature check. The marking request never waits for Redis: each function instance
-checks its in-memory monthly total, refreshed in the background at most once per minute.
-It refuses only when that cached total exceeds the configured ceiling; `0` disables the fuse.
-A cold instance initially admits requests while its first refresh runs. About a minute of
-traffic may overshoot the ceiling across warm instances; cold starts and Redis outages can
-extend cross-instance staleness. This is an eventually consistent bug fuse, not a spending cap.
+To grant higher limits, the maintainer enables Jev, selects **Copy quota ID** in Settings and
+provides that ID privately to the operator. Add it to the server-only
+`JEV_MAINTAINER_INSTALLATION_IDS` array and redeploy. Repeat for each authorised installation.
+Removing the ID and redeploying restores standard limits, including for existing sessions.
+The client cannot select elevated limits. All maintainers share the global ceilings.
 
-Session throttles report their actual minute or UTC-day reset separately from the monthly
-Jev ceiling. Settings shows when marking can be retried; the next marking request after that
-time retries without background polling. Unlabelled or malformed 429 responses use a short
-backoff rather than claiming monthly exhaustion. Manual marking remains available throughout.
-The removed hosted chat endpoint returns HTTP 410 and cannot forward inference requests.
+Redis atomically checks daily/minute allowances, installation/global concurrency and monthly
+budgets before provider dispatch. Redis admission failures stop marking with manual fallback.
+The global concurrency limit is 20 and leases last 60 seconds, exceeding the provider timeout.
+The monthly input budget reserves 65,536 tokens per admitted request: the provider documents
+64k total request context, and Lacuna does not enable long context. Successful responses replace
+that reservation with reported input usage. Failed calls, missing usage, interrupted handlers
+and failed settlement retain the full reservation for the month. This deliberately favours
+stopping early over treating an unknown charge as free. Existing monthly actual usage is included.
+The cap can leave less than one maximum-size request unused; monthly budgets reset at UTC month start.
+
+At TypeSafe's published Jev 1.14 input price of $0.042 per million tokens, 50 million tokens
+correspond to $2.10 in inference. Output tokens are free. This is not a total hosting budget:
+Vercel, Redis, taxes and provider price changes remain separate. Recheck the
+[official model pricing and context limits](https://docs.typesafe.ai/models) when changing budgets.
+Monitor actual and reserved monthly tokens, admitted requests and settlement failures; do not log
+learner text or credentials. Repeated failed calls can consume the conservative budget quickly.
+
+Quota responses include their limit and actual reset time. Settings shows when marking can be
+retried; the next answer after that time retries without background polling. Unlabelled or malformed
+429 responses use a short backoff. Manual marking remains available throughout. The removed
+hosted chat endpoint returns HTTP 410 and cannot forward inference requests.
 
 TypeSafe is US-hosted. Its [privacy policy](https://typesafe.ai/legal/privacy-policy) states
 that inputs are not used for training or fine-tuning and are disclosed only to service providers.

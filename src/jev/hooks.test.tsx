@@ -1,12 +1,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { useJevController, useJevSettings, useJevStatus, useJevTypedMarker } from './index';
-import { HOSTED_ACCESS_STORAGE_KEY } from '../ai/session/hostedTransport';
+import { JEV_CONSENT_VERSION } from './types';
 afterEach(() => {
   localStorage.clear();
   vi.unstubAllGlobals();
 });
-it('exposes a null marker off and without a code, and updates consumers on enable and disable', () => {
+it('exposes a null marker off and updates consumers after public consent and opt-out', () => {
   const fetcher = vi.fn();
   vi.stubGlobal('fetch', fetcher);
   const hook = renderHook(() => ({
@@ -17,12 +17,7 @@ it('exposes a null marker off and without a code, and updates consumers on enabl
   }));
   expect(hook.result.current.marker).toBeNull();
   expect(fetcher).not.toHaveBeenCalled();
-  act(() => hook.result.current.controller.enable(1));
-  expect(hook.result.current.marker).toBeNull();
-  expect(hook.result.current.status).toMatchObject({ state: 'paused', reason: 'no-access-code' });
-  expect(fetcher).not.toHaveBeenCalled();
-  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
-  act(() => hook.result.current.controller.enable(1));
+  act(() => hook.result.current.controller.enable(JEV_CONSENT_VERSION));
   expect(hook.result.current.marker).toEqual(expect.any(Function));
   act(() => hook.result.current.controller.disable());
   expect(hook.result.current.marker).toBeNull();
@@ -34,7 +29,6 @@ it('exposes a null marker off and without a code, and updates consumers on enabl
 
 it('makes the subscribed marker available when backoff expires without a render or refresh', async () => {
   vi.useFakeTimers();
-  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
   let failing = true;
   const fetcher = vi.fn<typeof fetch>(async (url) =>
     String(url).endsWith('/session')
@@ -53,7 +47,7 @@ it('makes the subscribed marker available when backoff expires without a render 
     answer: 'Water molecules',
   };
   try {
-    act(() => jevEngine.enable(1));
+    act(() => jevEngine.enable(JEV_CONSENT_VERSION));
     for (let count = 0; count < 3; count++) {
       await act(async () => {
         await jevEngine.markTyped(answer);
