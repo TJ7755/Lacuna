@@ -1,3 +1,4 @@
+import { reviewHistoryEntriesForCard } from '@lacuna/core/db/reviewHistory';
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -53,9 +54,32 @@ describe('optimised weights persistence', () => {
     await Promise.all([
       db.schedulingUnits.clear(),
       db.cards.clear(),
+      db.reviewHistory.clear(),
       db.sessionHistory.clear(),
       db.userPerformance.clear(),
     ]);
+  });
+
+  it('replays persisted memory when course weights change and when defaults are restored', async () => {
+    const course = await createCourse('Replay');
+    const card = { ...cardWithHistory(course.id, [3, 3, 4, 3]), courseId: course.id };
+    const events = reviewHistoryEntriesForCard(card);
+    await db.cards.put(card);
+    await db.reviewHistory.bulkPut(events);
+    const params = { ...course.fsrsParameters, w: [...course.fsrsParameters.w] };
+    params.w[0] *= 1.5;
+    params.w[2] *= 1.5;
+    await updateCourse(course.id, { fsrsParameters: params });
+    const fitted = (await db.cards.get(card.id))!;
+    expect(fitted.stability).not.toBe(card.stability);
+    expect(await db.reviewHistory.count()).toBe(4);
+    await updateCourse(course.id, { fsrsParameters: course.fsrsParameters });
+    const restored = (await db.cards.get(card.id))!;
+    expect(restored.stability).not.toBe(fitted.stability);
+    expect(await db.reviewHistory.count()).toBe(4);
+    expect((await db.schedulingUnits.get(course.id))!.fsrsParameters).toEqual(
+      course.fsrsParameters,
+    );
   });
 
   it('applied weights persist on the deck and feed the scheduler', async () => {

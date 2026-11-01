@@ -1,3 +1,5 @@
+import { replayCards } from '../sync/snapshotReviews';
+import { mergeReviewHistoryEntries } from '@lacuna/core/db/reviewHistory';
 import Dexie from 'dexie';
 import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
 import { specificationAssessmentPointIds } from '../specifications/assessment';
@@ -118,6 +120,8 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
         db.schedulingUnits,
         db.coursePerformance,
         db.schedulingPerformance,
+        db.cards,
+        db.reviewHistory,
       ],
       async () => {
         await db.courses.add(record);
@@ -174,6 +178,8 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
         db.schedulingUnits,
         db.coursePerformance,
         db.schedulingPerformance,
+        db.cards,
+        db.reviewHistory,
       ],
       async () => {
         if (setsReference || setsData) {
@@ -194,6 +200,23 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
         }
         await db.courses.update(id, stampUpdatedAt(validatedChanges));
         await syncCourseSchedulingUnits(id);
+        if (changes.fsrsParameters !== undefined) {
+          const cards = await db.cards.where('courseId').equals(id).toArray();
+          const history = mergeReviewHistoryEntries(
+            await db.reviewHistory.where('courseId').equals(id).toArray(),
+            cards,
+          );
+          const units = await db.schedulingUnits.where('courseId').equals(id).toArray();
+          const course = await db.courses.get(id);
+          if (course) {
+            const replayed = replayCards(cards, history, units, [course]);
+            await db.cards.bulkPut(
+              replayed.map((card, index) =>
+                stampUpdatedAt({ ...card, history: cards[index].history }),
+              ),
+            );
+          }
+        }
       },
     );
   } catch (err) {

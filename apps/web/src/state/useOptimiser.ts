@@ -42,7 +42,12 @@ export function useOptimiser() {
   useEffect(() => terminate, [terminate]);
 
   const run = useCallback(
-    (cards: Card[], requestRetention: number, reviewHistory?: ReviewHistoryEntry[]) => {
+    (
+      cards: Card[],
+      requestRetention: number,
+      reviewHistory?: ReviewHistoryEntry[],
+      initialW?: number[],
+    ) => {
       terminate();
       if (mountedRef.current) {
         setState({ status: 'running', progress: 0, result: null, error: null });
@@ -75,7 +80,7 @@ export function useOptimiser() {
         }
         terminate();
       };
-      const request: OptimiseRequest = { cards, reviewHistory, requestRetention };
+      const request: OptimiseRequest = { cards, reviewHistory, requestRetention, initialW };
       worker.postMessage(request);
     },
     [terminate],
