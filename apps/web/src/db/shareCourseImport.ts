@@ -586,7 +586,7 @@ export async function importSharePayload(
   payload: SharePayload,
   scheduling?: ImportCourseScheduling,
 ): Promise<ImportShareResult> {
-  if (payload.v === 1) {
+  if (payload.v !== 6) {
     throw new Error(V1_SHARE_CODE_MESSAGE);
   }
   return importCourseSharePayload(payload, scheduling);

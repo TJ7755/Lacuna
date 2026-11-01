@@ -271,7 +271,7 @@ export type SharePayload =
   | SharePayloadV6;
 
 export const V1_SHARE_CODE_MESSAGE =
-  'This share code is a v1 deck share code and can no longer be imported.';
+  'This share code is from an unsupported old version of Lacuna. Export a new share from the current release.';
 
 export function assertShareSpecificationAssessments(
   payload: Exclude<SharePayload, SharePayloadV1>,
@@ -291,6 +291,15 @@ export function assertShareSpecificationAssessments(
 }
 
 export function parseSharePayload(payload: unknown): SharePayload {
+  if (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'v' in payload &&
+    typeof payload.v === 'number' &&
+    payload.v < 6
+  ) {
+    throw new Error(V1_SHARE_CODE_MESSAGE);
+  }
   const parse = SharePayloadSchema.safeParse(payload);
   if (!parse.success) {
     throw new Error('This share code is from an unsupported version of Lacuna.');
