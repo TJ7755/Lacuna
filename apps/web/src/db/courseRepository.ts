@@ -1,3 +1,4 @@
+import { mergeReviewHistoryEntries } from '@lacuna/core/db/reviewHistory';
 import Dexie from 'dexie';
 import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
 import { specificationAssessmentPointIds } from '../specifications/assessment';
@@ -165,6 +166,10 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
     ) {
       throw new Error('Course examDate and timeZone are derived, read-only assessment values.');
     }
+    const replay =
+      changes.fsrsParameters === undefined
+        ? undefined
+        : await Dexie.waitFor(import('../sync/snapshotReviews'));
     await db.transaction(
       'rw',
       [
@@ -174,8 +179,22 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
         db.schedulingUnits,
         db.coursePerformance,
         db.schedulingPerformance,
+        ...(changes.fsrsParameters === undefined ? [] : [db.cards, db.reviewHistory]),
       ],
       async () => {
+        const previousParameters =
+          changes.fsrsParameters === undefined
+            ? undefined
+            : (await db.courses.get(id))?.fsrsParameters;
+        const parametersChanged =
+          changes.fsrsParameters !== undefined &&
+          JSON.stringify(
+            Object.entries(changes.fsrsParameters).sort(([a], [b]) => a.localeCompare(b)),
+          ) !==
+            JSON.stringify(
+              previousParameters &&
+                Object.entries(previousParameters).sort(([a], [b]) => a.localeCompare(b)),
+            );
         if (setsReference || setsData) {
           const course = await db.courses.get(id);
           if (!course) throw new Error('The course could not be found.');
@@ -194,6 +213,23 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
         }
         await db.courses.update(id, stampUpdatedAt(validatedChanges));
         await syncCourseSchedulingUnits(id);
+        if (parametersChanged) {
+          const cards = await db.cards.where('courseId').equals(id).toArray();
+          const history = mergeReviewHistoryEntries(
+            await db.reviewHistory.where('courseId').equals(id).toArray(),
+            cards,
+          );
+          const units = await db.schedulingUnits.where('courseId').equals(id).toArray();
+          const course = await db.courses.get(id);
+          if (course) {
+            const replayed = replay!.replayCards(cards, history, units, [course]);
+            await db.cards.bulkPut(
+              replayed.map((card, index) =>
+                stampUpdatedAt({ ...card, history: cards[index].history }),
+              ),
+            );
+          }
+        }
       },
     );
   } catch (err) {

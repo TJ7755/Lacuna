@@ -1,3 +1,4 @@
+import { decayOf } from '../fsrs/fsrs';
 import { courseLessonOrderPreference } from '../course/lessonOrder';
 import { earlierCourseLessonIds } from '../course/courseEntry';
 import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
@@ -98,7 +99,14 @@ async function resolveCurrentRevisionInput(
       completions,
       reachedLessonIds,
       priorKnowledgeLessonIds: earlierCourseLessonIds(course, lessons, assessments, practiceNodes),
-      projection,
+      fsrsParameters: course.fsrsParameters,
+      projection:
+        projection.projectionMode === 'memory-model'
+          ? {
+              ...projection,
+              memoryModelVersion: `${projection.memoryModelVersion.replace(/:decay:[^:]+$/, '')}:decay:${decayOf(course.fsrsParameters)}`,
+            }
+          : projection,
       now,
     }),
   };

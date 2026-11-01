@@ -1,5 +1,6 @@
 import type {
   Card,
+  FsrsParameters,
   CourseAssessment,
   Lesson,
   LessonCardExposure,
@@ -36,6 +37,7 @@ export interface RevisionPlanContext {
   reachedLessonIds: ReadonlySet<string>;
   priorKnowledgeLessonIds?: ReadonlySet<string>;
   projection: RevisionProjection;
+  fsrsParameters?: FsrsParameters;
   now: number;
 }
 
@@ -148,14 +150,21 @@ export function resolveRevisionPlanInput(context: RevisionPlanContext): Resolved
     ...eligibleCardIds.map((id) => `eligible:${id}`),
     ...unavailableCardIds.map((id) => `unavailable:${id}`),
   ]);
-  const reviewEvidenceVersion = fingerprint(
-    eligibleOrUnavailable.flatMap((card) =>
+  const reviewEvidenceVersion = fingerprint([
+    ...(context.fsrsParameters
+      ? [
+          JSON.stringify(
+            Object.entries(context.fsrsParameters).sort(([a], [b]) => a.localeCompare(b)),
+          ),
+        ]
+      : []),
+    ...eligibleOrUnavailable.flatMap((card) =>
       card.history.map(
         (review) =>
           `${card.id}:${review.eventId ?? ''}:${review.timestamp}:${review.grade}:${review.correct ?? ''}`,
       ),
     ),
-  );
+  ]);
   const input: RevisionPlanInputSnapshot = {
     coverageVersion,
     deadlineAt,

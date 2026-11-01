@@ -190,6 +190,12 @@ export default defineConfig({
               includeDependenciesRecursively: false,
             },
             {
+              // Replay and its shared merge helpers form one lazy package asset.
+              name: 'snapshot-replay',
+              test: /[\\/]src[\\/](?:sync[\\/](?:snapshotReviews|snapshotRecords)|questions[\\/](?:questionSetAttemptMerge|backup)|db[\\/]scheduleEdits)\.ts$/,
+              includeDependenciesRecursively: false,
+            },
+            {
               // Keep the extracted maths with the chart rather than emitting another payload file.
               name: 'ForecastChartRecovery',
               test: /[\\/]src[\\/]components[\\/]dashboard[\\/](?:ForecastChartRecovery\.ts|ForecastChart\.tsx\?flow-retry|forecastChartMaths\.ts)$/,
