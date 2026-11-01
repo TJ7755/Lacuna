@@ -24,6 +24,19 @@ import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 export type { FSRS } from 'ts-fsrs';
 
+export type SchedulingMemory = Pick<
+  Card,
+  | 'due'
+  | 'stability'
+  | 'difficulty'
+  | 'lastReviewed'
+  | 'scheduledDays'
+  | 'learningSteps'
+  | 'reps'
+  | 'lapses'
+  | 'state'
+>;
+
 /** Build an FSRS-6 scheduler from a deck's persisted parameter set. */
 export function makeEngine(params: FsrsParameters): FSRS {
   return fsrs({
