@@ -108,3 +108,9 @@ With initial-only accounting, [run 41317899236](https://github.com/TJ7755/Lacuna
 recorded Today 1,514,030 JS / 141,005 CSS bytes, course 1,384,801 / 156,498 and learn
 2,899,273 / 177,820. These supersede the earlier prefetch-inclusive route baselines.
 The route ceilings use approximately 10% headroom; course JS is consequently tighter than before.
+
+The first green full [run 41318877608](https://github.com/TJ7755/Lacuna/actions/runs/41318877608)
+on candidate `e5863f4d` completed every budget with no failures. Initial-only JS/CSS bytes were
+Today 1,514,190 / 141,005, course 1,384,777 / 156,498 and learn 2,899,249 / 177,820.
+Full backup export took 6,089 ms, preview 1,588 ms and replacement 22,954 ms. Retain this report
+as the named full-workload baseline; compare equivalent runner and fixture settings.
