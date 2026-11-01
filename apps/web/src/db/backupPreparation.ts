@@ -13,7 +13,7 @@ import {
   type LegacyCourseRecord,
 } from './assessmentMigration';
 import { backupAssetToMediaAsset, extractMarkdownAssets } from './assets';
-import { adaptLegacyBackup } from './legacyBackupAdapter';
+import { projectBackupScheduling } from './backupSchedulingProjection';
 import { normaliseQuestionBackup } from '../questions/backup';
 import { mergeQuestionCollections } from '../questions/merge';
 import { parseQuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
@@ -104,7 +104,7 @@ export async function prepareBackup(backup: BackupFile, mode: ImportMode) {
         backup.courseExamDates ?? [],
         makeId,
       );
-  const adaptation = adaptLegacyBackup(backup, {
+  const adaptation = projectBackupScheduling(backup, {
     courses: assessmentMigration.courses,
     lessons: backup.lessons ?? [],
     courseAssessments: assessmentMigration.assessments,

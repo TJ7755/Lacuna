@@ -10,7 +10,7 @@ import type {
   CoursePerformance,
 } from '@lacuna/core/db/types';
 
-export interface LegacyBackupAdaptation {
+export interface BackupSchedulingProjection {
   cards: Card[];
   courses: CourseRecord[];
   courseAssessments: CourseAssessment[];
@@ -21,7 +21,7 @@ export interface LegacyBackupAdaptation {
   schedulingUnitByDeckId: Map<string, string>;
 }
 
-interface AdaptLegacyBackupOptions {
+interface BackupSchedulingOptions {
   courses: CourseRecord[];
   lessons: Lesson[];
   courseAssessments: CourseAssessment[];
@@ -46,10 +46,10 @@ function preferPayloadRows<T, K extends string>(
  * Rebuild or merge the scheduling projection for a current-shaped backup.
  * Deck-bearing files are refused before this runs.
  */
-export function adaptLegacyBackup(
+export function projectBackupScheduling(
   backup: BackupFile,
-  options: AdaptLegacyBackupOptions,
-): LegacyBackupAdaptation {
+  options: BackupSchedulingOptions,
+): BackupSchedulingProjection {
   const projection = buildDomainStorageMigration(
     options.courses,
     options.lessons,
