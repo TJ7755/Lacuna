@@ -8,6 +8,6 @@
   },
   "dependencies": {
     "zod": "4.6.7",
-    "ts-fsrs": "^5.2.3"
+    "ts-fsrs": "^6.0.0"
   }
 }
