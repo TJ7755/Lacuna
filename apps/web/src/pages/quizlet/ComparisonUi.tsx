@@ -35,7 +35,7 @@ export function Cta({
     </a>
   );
 }
-export function Jump({
+function Jump({
   to,
   children,
   className = '',

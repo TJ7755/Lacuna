@@ -18,7 +18,7 @@ const glyphs = [
 
 type RevisionGlyphKind = (typeof glyphs)[number];
 
-export function RevisionGlyph({ kind }: { kind: RevisionGlyphKind }) {
+function RevisionGlyph({ kind }: { kind: RevisionGlyphKind }) {
   return (
     <svg
       className={`revision-glyph revision-glyph-${kind}`}

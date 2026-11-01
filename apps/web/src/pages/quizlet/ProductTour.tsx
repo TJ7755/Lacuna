@@ -12,7 +12,7 @@ import recall from './captures/recall.png';
 import settings from './captures/settings.png';
 import { Arrow } from './ComparisonUi';
 
-export const screens = [
+const screens = [
   {
     key: 'course',
     label: 'Your course',
