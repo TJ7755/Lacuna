@@ -66,7 +66,7 @@ export function SettingsCard({
   );
 }
 
-export { SegmentedPills, type SegmentedOption } from '../../components/ui/SegmentedPills';
+export { SegmentedPills } from '../../components/ui/SegmentedPills';
 
 /** The app-wide pill switch; one implementation lives in components/ui/Toggle. */
 export { Toggle as PillSwitch } from '../../components/ui/Toggle';
@@ -94,5 +94,3 @@ export function SettingRow({
     </div>
   );
 }
-
-export { choiceChipClass } from '../../components/ui/choiceChip';

@@ -9,9 +9,9 @@ import { Button } from '../ui/Button';
 import { PlusIcon } from '../ui/icons';
 import type { QuestionAuthoringState } from '../../pages/questionDraft';
 
-export const questionInputClass = `${inputFrameClassName} min-h-11 w-full aria-[invalid=true]:border-negative`;
+const questionInputClass = `${inputFrameClassName} min-h-11 w-full aria-[invalid=true]:border-negative`;
 export const questionLabelClass = `${fieldLabelClassName} mb-2`;
-export const questionCardClass = 'rounded-3xl bg-surface card-surface';
+const questionCardClass = 'rounded-3xl bg-surface card-surface';
 
 /** A field's validation message, linked to its control by `id`. */
 export function FieldError({ id, message }: { id: string; message?: string }) {
