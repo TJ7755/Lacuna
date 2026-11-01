@@ -3,39 +3,14 @@
   "installCommand": "cd ../.. && node apps/relay/scripts/security-bun.mjs install --frozen-lockfile",
   "rewrites": [
     {
-      "source": "/insights/:id/:day/:slotId",
-      "destination": "/api?__path=/insights/:id/:day/:slotId"
-    },
-    { "source": "/insights/:id/:day", "destination": "/api?__path=/insights/:id/:day" },
-    {
-      "source": "/api/insights/:id/:day/:slotId",
-      "destination": "/api?__path=/api/insights/:id/:day/:slotId"
-    },
-    { "source": "/api/insights/:id/:day", "destination": "/api?__path=/api/insights/:id/:day" },
-    { "source": "/ai/maintenance", "destination": "/api?__path=/ai/maintenance" },
-    { "source": "/ai/sessions", "destination": "/api?__path=/ai/sessions" },
-    { "source": "/ai/claim", "destination": "/api?__path=/ai/claim" },
-    { "source": "/ai/s/:id", "destination": "/api?__path=/ai/s/:id" },
-    { "source": "/ai/s/:id/:action", "destination": "/api?__path=/ai/s/:id/:action" },
-    { "source": "/api/ai/maintenance", "destination": "/api?__path=/api/ai/maintenance" },
-    { "source": "/api/ai/sessions", "destination": "/api?__path=/api/ai/sessions" },
-    { "source": "/api/ai/claim", "destination": "/api?__path=/api/ai/claim" },
-    { "source": "/api/ai/s/:id", "destination": "/api?__path=/api/ai/s/:id" },
-    { "source": "/api/ai/s/:id/:action", "destination": "/api?__path=/api/ai/s/:id/:action" },
-    { "source": "/channel", "destination": "/api?__path=/channel" },
-    { "source": "/c/:id", "destination": "/api?__path=/c/:id" },
-    { "source": "/c/:id/:slot", "destination": "/api?__path=/c/:id/:slot" },
-    { "source": "/api/channel", "destination": "/api?__path=/api/channel" },
-    { "source": "/api/c/:id", "destination": "/api?__path=/api/c/:id" },
-    { "source": "/api/c/:id/:slot", "destination": "/api?__path=/api/c/:id/:slot" },
-    { "source": "/class-codes/:code", "destination": "/api?__path=/class-codes/:code" },
-    { "source": "/api/class-codes/:code", "destination": "/api?__path=/api/class-codes/:code" },
-    { "source": "/shares", "destination": "/api?__path=/shares" },
-    { "source": "/shares/:id", "destination": "/api?__path=/shares/:id" },
-    { "source": "/shares/:id/:slot", "destination": "/api?__path=/shares/:id/:slot" },
-    { "source": "/api/shares", "destination": "/api?__path=/api/shares" },
-    { "source": "/api/shares/:id", "destination": "/api?__path=/api/shares/:id" },
-    { "source": "/api/shares/:id/:slot", "destination": "/api?__path=/api/shares/:id/:slot" }
+      "source": "/:path*",
+      "destination": "/api?__path=/:path*"
+    }
   ],
-  "crons": [{ "path": "/api/ai/maintenance", "schedule": "0 3 * * *" }]
+  "crons": [
+    {
+      "path": "/ai/maintenance",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }

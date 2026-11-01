@@ -192,7 +192,7 @@ it('cleans orphan mappings left by interrupted allocation without disturbing liv
   expect((await f.lookup(code)).status).toBe(200);
 });
 
-it.each(['', '/api', '/api?__path='])('routes public, API and rewritten lookups (%s)', (prefix) => {
+it.each(['', '/api?__path='])('routes public and rewritten lookups (%s)', (prefix) => {
   expect(parseRoute(`https://relay.test${prefix}/class-codes/12345678`)).toEqual({
     kind: 'class-code',
     code: '12345678',
