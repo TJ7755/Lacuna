@@ -44,7 +44,6 @@ jobs:
         with:
           cache-dependency-path: bun.lock
       - run: bun install --frozen-lockfile
-        working-directory: apps/relay
       - run: bun audit --audit-level=high
         working-directory: apps/relay
 
@@ -64,7 +63,6 @@ jobs:
         with:
           cache-dependency-path: bun.lock
       - run: bun install --frozen-lockfile
-        working-directory: tooling/handwriting-maths
       - run: bun audit --audit-level=high
         working-directory: tooling/handwriting-maths
 

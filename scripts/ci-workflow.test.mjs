@@ -586,7 +586,7 @@ test('workspace installs cannot restore or save another workspace’s partial pa
     if (namespaces.has(workspace)) assert.deepEqual(namespace, namespaces.get(workspace));
     namespaces.set(workspace, namespace);
   }
-  assert.equal(namespaces.size, 3);
+  assert.equal(namespaces.size, 1);
   for (const [workspace, cacheKey] of namespaces) {
     for (const [other, otherCache] of namespaces) {
       if (workspace !== other)

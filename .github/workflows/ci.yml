@@ -138,7 +138,6 @@ jobs:
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
       - run: bun install --frozen-lockfile
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
-        working-directory: apps/relay
       - run: bun run typecheck
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
 
@@ -325,6 +324,7 @@ jobs:
         with:
           cache-dependency-path: bun.lock
       - run: bun install --frozen-lockfile
+        working-directory: .
       - run: bun run build
       - run: bun run test
 
@@ -353,7 +353,6 @@ jobs:
         if: needs.changes.outputs.relay != 'false'
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.relay != 'false'
-        working-directory: apps/relay
       - run: bun run typecheck
         if: needs.changes.outputs.relay != 'false'
         working-directory: apps/relay
@@ -389,7 +388,6 @@ jobs:
         if: needs.changes.outputs.ai_mcp != 'false'
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.ai_mcp != 'false'
-        working-directory: apps/relay
       - run: bun run typecheck
         if: needs.changes.outputs.ai_mcp != 'false'
         working-directory: tooling/lacuna-ai-mcp
@@ -468,8 +466,6 @@ jobs:
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
-      - run: bun install --frozen-lockfile
-        working-directory: apps/relay
       - name: Require the current production gate
         env:
           GH_TOKEN: ${{ github.token }}
@@ -516,8 +512,6 @@ jobs:
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
-      - run: bun install --frozen-lockfile
-        working-directory: apps/relay
       - name: Require the current production gate
         env:
           GH_TOKEN: ${{ github.token }}
@@ -568,8 +562,6 @@ jobs:
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
-      - run: bun install --frozen-lockfile
-        working-directory: apps/relay
       - name: Trust this checkout for source fingerprinting
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: ${{ matrix.command }}
@@ -605,8 +597,6 @@ jobs:
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
-      - run: bun install --frozen-lockfile
-        working-directory: apps/relay
       - name: Require the current production gate
         env:
           GH_TOKEN: ${{ github.token }}

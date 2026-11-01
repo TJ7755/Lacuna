@@ -90,7 +90,7 @@ describe('shared relay contract imports', () => {
     for (const probe of probes) {
       const [result] = await eslint.lintText(
         probeSource(probe.source, probe.filePath).replace(
-          /(?:\.\.\/)+apps\/relay\/shared\/insights\//g,
+          /(?:\.\.\/)+(?:apps\/)?relay\/shared\/insights\//g,
           relative(
             dirname(resolve(root, probe.filePath)),
             resolve(root, 'packages/protocol/src/insights'),

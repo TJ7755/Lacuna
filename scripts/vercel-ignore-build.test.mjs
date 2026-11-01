@@ -158,7 +158,7 @@ test('shallow history skips only when the complete comparison is available', (t)
   assert.deepEqual(f.results(f.base, {}, missingPrevious), [1, 1, 1, 1]);
   const detached = mkdtempSync(join(tmpdir(), 'lacuna-without-git-'));
   t.after(() => rmSync(detached, { recursive: true, force: true }));
-  for (const path of ['scripts', 'vercel.json', 'relay', 'gaps', 'library']) {
+  for (const path of ['scripts', 'vercel.json', 'apps']) {
     cpSync(join(shallow, path), join(detached, path), { recursive: true });
   }
   assert.deepEqual(f.results(f.base, {}, detached), [1, 1, 1, 1]);
