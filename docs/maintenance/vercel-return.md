@@ -42,7 +42,9 @@
   budgets, asset and first-interaction gates, and relay stress probes. Compare equivalent workloads
   with the retained baseline in the [performance procedure](../PERFORMANCE.md).
 - [ ] Rerun the schema-floor maintenance upgrade test against the final master SHA, following its
-  merged upgrade procedure. Retain the report with that SHA.
+  merged upgrade procedure. Retain the report with that SHA. Require the production DB/export
+  regression fixture result before approving the return; do not substitute a source compatibility
+  audit or relay unit tests for that evidence.
 - [ ] Fix failures before proceeding. If master changes, repeat the final checks on the new SHA.
 - [ ] Before any deployment, record the last good production deployment URL/ID and source SHA for
   each project: `lacuna`, `lacuna-relay`, `lacuna-gaps` and `lacuna-library`. Check that each is
@@ -75,10 +77,13 @@
 - [ ] In **GitHub → Settings → Secrets and variables → Actions → Variables**, edit
   `VERCEL_DEPLOY_ENABLED` to exactly `true`.
 - [ ] In **GitHub → Actions → Vercel production → Run workflow**, select branch `master` and
-  project `lacuna-relay`. Require success, then repeat for `lacuna`, `lacuna-gaps` and
-  `lacuna-library`. If relay v2 is incompatible with old cached clients, keep public access paused
-  during the handover, deploy relay before web, verify a cached client's refresh/recovery, and reopen
-  relay and web together. Do not leave mixed protocol versions live.
+  project `lacuna-relay`. Preserve its storage and credentials. Require success and verify canonical
+  sync, share, insights and AI endpoints with the previously deployed client before proceeding.
+  Then deploy `lacuna`, `lacuna-gaps` and `lacuna-library`, and verify the desktop rollout.
+- [ ] Before lifting the freeze, confirm compatibility against the actual production client and
+  any supported older clients. If that compatibility is unverified, keep public access paused;
+  resolve it before resuming service. Do not rely on service-worker registration to replace
+  open-tab or offline clients promptly.
 
 ## Verify the first production deployments
 
