@@ -85,14 +85,6 @@ bun run --cwd tooling/lacuna-ai-mcp build
 
 `bun run lint` covers `src`, `server`, `electron`, `tests`, `api`, `scripts`, `tooling` and the root config files, and fails on warnings. `tooling/lacuna-ai-mcp` and `relay` have their own flat configs and lint scripts.
 
-The native Electron check runs in CI on Windows for master pushes only, so run it on Windows before
-merging native, packaging or managed-device changes:
-
-```bash
-bun run test:e2e:electron-ai
-bun run electron:build:win
-```
-
 The configured Linux and macOS packages must also be built for release or packaging changes:
 
 ```bash

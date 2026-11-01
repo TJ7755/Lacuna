@@ -103,7 +103,7 @@ test('metadata reuse requires a successful validation run for the exact merge co
 if [ "$1" = api ] && [[ "$2" == *"/runs?"* ]]; then
   printf '%s' "$RUNS"
 elif [ "$1" = api ]; then
-  printf '%s' "$CONCLUSION"
+  printf '%s' "$DETAIL"
 else
   printf '%s\\n' "$*" > "$WATCH_ARGS"
   exit "$WATCH_STATUS"
@@ -111,7 +111,7 @@ fi
 `,
       { mode: 0o755 },
     );
-    const run = (runs, status = '0', conclusion = 'success') => {
+    const run = (runs, status = '0', conclusion = 'success', detail = {}) => {
       const output = join(directory, 'output');
       const summary = join(directory, 'summary');
       writeFileSync(output, '');
@@ -127,14 +127,22 @@ fi
           RUNS: JSON.stringify({ workflow_runs: runs }),
           WATCH_ARGS: join(directory, 'watch'),
           WATCH_STATUS: status,
-          CONCLUSION: conclusion,
+          DETAIL: JSON.stringify({ ...valid, status: 'completed', conclusion, ...detail }),
+          BASE_SHA: 'base',
+          PR_NUMBER: '42',
           GITHUB_OUTPUT: output,
           GITHUB_STEP_SUMMARY: summary,
         },
       });
       return { ...result, output: readFileSync(output, 'utf8') };
     };
-    const valid = { id: 42, display_title: 'CI validation current-merge' };
+    const valid = {
+      id: 42,
+      display_title: 'CI validation current-merge',
+      event: 'pull_request',
+      head_sha: 'head',
+      pull_requests: [{ number: 42, head: { sha: 'head' }, base: { sha: 'base' } }],
+    };
     assert.equal(run([valid]).status, 0);
     assert.match(run([valid]).output, /^docs_only=true\napp=false\n/);
     assert.match(
@@ -153,6 +161,21 @@ fi
     }
     for (const conclusion of ['skipped', 'neutral', 'cancelled', 'failure', '']) {
       const result = run([valid], '0', conclusion);
+      assert.notEqual(result.status, 0);
+      assert.equal(result.output, '');
+    }
+    for (const detail of [
+      { display_title: 'CI validation older-merge' },
+      { display_title: 'CI metadata current-merge' },
+      { head_sha: 'other' },
+      { event: 'push' },
+      { pull_requests: [] },
+      { pull_requests: [{ number: 43, head: { sha: 'head' }, base: { sha: 'base' } }] },
+      { pull_requests: [{ number: 42, head: { sha: 'head' }, base: { sha: 'old-base' } }] },
+      { status: 'in_progress' },
+    ]) {
+      if (!detail.status) assert.notEqual(run([{ ...valid, ...detail }]).status, 0);
+      const result = run([valid], '0', 'success', detail);
       assert.notEqual(result.status, 0);
       assert.equal(result.output, '');
     }
@@ -227,7 +250,7 @@ test('aggregate gates run after dependency failures but do not run after workflo
 test('documentation-only changes resolve required names without running heavy steps', () => {
   for (const name of required.filter((name) => !['test', 'browser-smoke'].includes(name))) {
     const job = workflow.jobs[name];
-    assert.equal(job.if, "needs.changes.result == 'success'", name);
+    if (name !== 'electron-ai') assert.equal(job.if, "needs.changes.result == 'success'", name);
     const [acknowledgement, ...heavySteps] = job.steps;
     assert.equal(
       acknowledgement.if,
@@ -236,7 +259,7 @@ test('documentation-only changes resolve required names without running heavy st
         : name === 'production'
           ? "(needs.changes.outputs.app == 'false' && needs.changes.outputs.sites == 'false')"
           : name === 'electron-ai'
-            ? "github.event_name == 'pull_request' || needs.changes.outputs.electron == 'false'"
+            ? "needs.changes.outputs.windows_native == 'false'"
             : `needs.changes.outputs.${{ 'ai-mcp': 'ai_mcp', typecheck: 'app' }[name] ?? name} == 'false'`,
       name,
     );
@@ -246,7 +269,12 @@ test('documentation-only changes resolve required names without running heavy st
     for (const step of heavySteps.filter(
       (step) =>
         step.name !== 'Verify standalone site contracts' &&
-        !(name === 'electron-ai' && step.name === 'Preserve Electron AI test evidence'),
+        !(
+          name === 'electron-ai' &&
+          ['Preserve Electron AI test evidence', 'Require Windows installer evidence'].includes(
+            step.name,
+          )
+        ),
     )) {
       assert.equal(
         step.if,
@@ -255,7 +283,7 @@ test('documentation-only changes resolve required names without running heavy st
           : name === 'production'
             ? "(needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')"
             : name === 'electron-ai'
-              ? "github.event_name != 'pull_request' && needs.changes.outputs.electron != 'false'"
+              ? "needs.changes.outputs.windows_native != 'false'"
               : `needs.changes.outputs.${{ 'ai-mcp': 'ai_mcp', typecheck: 'app' }[name] ?? name} != 'false'`,
         `${name}: ${step.uses ?? step.run}`,
       );
@@ -485,6 +513,24 @@ test('pull requests pass only plain changed web spec names to the browser smoke 
     });
     assert.equal(result.status, 0, result.stderr);
     assert.match(readFileSync(output, 'utf8'), /^web_specs=study-flip\.spec\.ts$/m);
+    writeFileSync(output, '');
+    const failed = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', step.run], {
+      cwd: directory,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        EVENT_NAME: 'pull_request',
+        BASE_SHA: 'missing-base',
+        HEAD_SHA: git('rev-parse', 'HEAD'),
+        GITHUB_OUTPUT: output,
+      },
+    });
+    assert.notEqual(failed.status, 0);
+    assert.equal(
+      readFileSync(output, 'utf8'),
+      '',
+      'Failed Git discovery must not publish skip flags',
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -701,15 +747,8 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'electron-ai',
     'electron-macos-smoke',
   ];
-  // Pull requests run the browser smoke job; the full browser suites and Windows Electron AI
-  // gate master commits.
-  const postMerge = [
-    'browser-tests',
-    'browser-standalone',
-    'browser-timing',
-    'browser-mobile',
-    'electron-ai',
-  ];
+  // Pull requests run the browser smoke job; master commits retain the full browser suites.
+  const postMerge = ['browser-tests', 'browser-standalone', 'browser-timing', 'browser-mobile'];
   const web = ['production', 'browser-pr'];
   const all = workers.filter((name) => !postMerge.includes(name));
   for (const [paths, expected] of [
@@ -764,16 +803,71 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
   assert.deepEqual(selected.sort(), workers.filter((name) => name !== 'browser-pr').sort());
 });
 
-test('installer upgrades gate master commits rather than pull requests', () => {
-  const predicate = workflow.jobs['windows-installed-upgrade'].if;
-  const select = (event_name, electron) =>
-    runInNewContext(predicate, {
-      github: { event_name },
-      needs: { changes: { outputs: { electron } } },
+test('Windows evidence is selected conservatively on PRs and pushes', () => {
+  const native = workflow.jobs['electron-ai'];
+  const upgrade = workflow.jobs['windows-installed-upgrade'];
+  assert.ok(native.needs.includes('windows-installed-upgrade'));
+  for (const event_name of ['pull_request', 'push']) {
+    for (const flag of ['true', 'false', '', undefined, 'unknown']) {
+      const context = {
+        github: { event_name },
+        needs: { changes: { outputs: { windows_native: flag } } },
+        always: () => true,
+      };
+      const affected = flag !== 'false';
+      assert.equal(runInNewContext(upgrade.if, context), affected);
+      assert.equal(
+        runInNewContext(native['runs-on'].slice(4, -3), context),
+        affected ? 'windows-latest' : 'ubuntu-latest',
+      );
+      assert.equal(runInNewContext(native.steps[0].if, context), !affected);
+      for (const step of native.steps.slice(1)) {
+        if (step.name === 'Require Windows installer evidence') continue;
+        assert.equal(
+          runInNewContext(step.if, context),
+          affected,
+          step.name ?? step.run ?? step.uses,
+        );
+      }
+    }
+  }
+});
+
+test('required Windows check rejects absent or failed installer evidence', () => {
+  const job = workflow.jobs['electron-ai'];
+  assert.equal(
+    render(job.if, 'synchronize', {}, true),
+    'true',
+    'A cancelled dependency must not turn the required check into a successful skip',
+  );
+  const step = job.steps.find((step) => step.name === 'Require Windows installer evidence');
+  for (const status of ['failure', 'cancelled', 'skipped', '']) {
+    const execution = spawnSync('bash', ['-e', '-c', step.run], {
+      env: {
+        ...process.env,
+        SCOPE_RESULT: status,
+        WINDOWS_NATIVE: 'false',
+        UPGRADE_RESULT: 'skipped',
+      },
     });
-  assert.equal(select('pull_request', 'true'), false);
-  assert.equal(select('push', 'true'), true);
-  assert.equal(select('push', 'false'), false);
+    assert.notEqual(execution.status, 0, `Scope result: ${status}`);
+  }
+  for (const flag of ['false', 'true', '', 'unknown']) {
+    for (const result of ['success', 'skipped', 'failure', 'cancelled', '']) {
+      const execution = spawnSync('bash', ['-e', '-c', step.run], {
+        env: {
+          ...process.env,
+          SCOPE_RESULT: 'success',
+          WINDOWS_NATIVE: flag,
+          UPGRADE_RESULT: result,
+        },
+      });
+      assert.equal(
+        execution.status,
+        result === 'success' || (flag === 'false' && result === 'skipped') ? 0 : 1,
+      );
+    }
+  }
 });
 
 test('site-only production runs the existing build, hosting and asset contracts', () => {
@@ -799,16 +893,8 @@ test('site-only production runs the existing build, hosting and asset contracts'
 test('Electron AI evidence survives native failures without widening execution scope', () => {
   const job = workflow.jobs['electron-ai'];
   const steps = job.steps;
-  for (const [event_name, runner] of [
-    ['pull_request', 'ubuntu-latest'],
-    ['push', 'windows-latest'],
-  ])
-    assert.equal(runInNewContext(job['runs-on'].slice(4, -3), { github: { event_name } }), runner);
   const evidence = steps.find((step) => step.name === 'Preserve Electron AI test evidence');
-  assert.equal(
-    evidence.if,
-    "always() && github.event_name != 'pull_request' && needs.changes.outputs.electron != 'false'",
-  );
+  assert.equal(evidence.if, "always() && needs.changes.outputs.windows_native != 'false'");
   assert.equal(evidence.uses, 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9');
   assert.deepEqual(evidence.with, {
     name: 'electron-ai-results',

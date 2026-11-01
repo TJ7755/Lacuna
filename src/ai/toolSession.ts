@@ -6,15 +6,10 @@ import { CREATE_COURSE_SCOPE_KEY, resolveToolScopes } from '../mcp/bridge/scopeR
 import type { McpGrant } from '../mcp/types';
 import { canonicalJson, defaultCreateId, defaultDigest } from './toolSession/digest';
 import { internalError, stoppedError, toolError, unavailableError } from './toolSession/errors';
-import { bindingMatches, ledgerKey, replay, storeLedger } from './toolSession/ledger';
-import { makeReceipt, summaryForTool, targetLabel } from './toolSession/receipts';
-import {
-  MAX_APPROVALS,
-  MAX_GRANTS,
-  MAX_LEDGER_ENTRIES,
-  normaliseJsonValue,
-  restoreState,
-} from './toolSession/state';
+import { bindingMatches, ledgerKey, replay } from './toolSession/ledger';
+import { recordExecution } from './toolSession/execution';
+import { targetLabel } from './toolSession/receipts';
+import { MAX_APPROVALS, MAX_GRANTS, MAX_LEDGER_ENTRIES, restoreState } from './toolSession/state';
 import type {
   AiToolActivityState,
   AiToolApprovalRecord,
@@ -25,7 +20,6 @@ import type {
   AiToolLedgerEntry,
   AiToolSessionDependencies,
   AiToolSessionState,
-  AiToolWireResponse,
   AiToolWriteGrant,
 } from './toolSession/types';
 export type {
@@ -481,94 +475,10 @@ export class AiToolSession {
       agentId: request.connectionId,
       grant,
     });
-    if (!outcome.ok) {
-      const safeError = outcome.error.kind === 'internal'
-        ? { ...outcome.error, message: 'The Lacuna domain tool failed.' }
-        : outcome.error;
-      const error = toolError(safeError);
-      const response: AiToolWireResponse = { ok: false, error };
-      storeLedger(
-        this.ledger,
-        request,
-        tool,
-        target,
-        inputDigest,
-        response,
-        undefined,
-        MAX_LEDGER_ENTRIES,
-      );
-      return {
-        response,
-        effects: {
-          activity: {
-            status: 'failed',
-            summary: error.kind === 'tool' ? error.error.message : error.message,
-            updatedAt: this.now(),
-          },
-        },
-      };
-    }
-    const result = normaliseJsonValue(outcome.result);
-    if (result === undefined) {
-      const response: AiToolWireResponse = {
-        ok: false,
-        error: internalError(new Error('Tool result is not JSON-safe.')),
-      };
-      storeLedger(
-        this.ledger,
-        request,
-        tool,
-        target,
-        inputDigest,
-        response,
-        undefined,
-        MAX_LEDGER_ENTRIES,
-      );
-      return {
-        response,
-        effects: {
-          activity: {
-            status: 'failed',
-            summary: 'Tool result was not JSON-safe.',
-            updatedAt: this.now(),
-          },
-        },
-      };
-    }
-    const receipt =
-      tool.requiredScope !== 'read'
-        ? makeReceipt({
-            callId: request.callId,
-            toolName: tool.name,
-            input,
-            result,
-            target,
-            completedAt: outcome.receipt.completedAt,
-            createId: this.createId,
-          })
-        : undefined;
-    const response: AiToolWireResponse = { ok: true, result };
-    storeLedger(
-      this.ledger,
-      request,
-      tool,
-      target,
-      inputDigest,
-      response,
-      receipt,
-      MAX_LEDGER_ENTRIES,
+    return recordExecution(
+      { request, tool, input, target, inputDigest, outcome },
+      { ledger: this.ledger, now: () => this.now(), createId: this.createId },
     );
-    return {
-      response,
-      effects: {
-        ...(receipt ? { receipt } : {}),
-        activity: {
-          status: 'completed',
-          summary: receipt?.summary ?? summaryForTool(tool.name),
-          updatedAt: outcome.receipt.completedAt,
-        },
-      },
-    };
   }
 
   private conflict(message: string): AiToolInvokeResult {

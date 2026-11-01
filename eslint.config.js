@@ -1,6 +1,6 @@
 import js from '@eslint/js';
 import { appImportsRule, relayImportsRule, trainingImportsRule } from './scripts/relay-imports.mjs';
-import { domainUiRule } from './scripts/import-architecture.mjs';
+import { domainDirectories, domainUiRule } from './scripts/import-architecture.mjs';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import prettier from 'eslint-config-prettier/flat';
@@ -77,9 +77,7 @@ export default [
     },
   },
   {
-    files: [
-      'src/{db,fsrs,sync,ai,mcp,questions,state,course}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}',
-    ],
+    files: [`src/{${domainDirectories.join(',')}}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}`],
     plugins: { architecture: { rules: { 'no-domain-ui': domainUiRule } } },
     rules: {
       'architecture/no-domain-ui': [

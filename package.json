@@ -13,6 +13,9 @@
     "url": "git+https://github.com/TJ7755/Lacuna.git"
   },
   "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "verify": "node scripts/verify.mjs",
+    "test:local-checks": "node --test --test-concurrency=1 scripts/local-checks.test.mjs",
     "knip": "knip",
     "knip:files": "knip --files",
     "prepare": "node scripts/install-git-hooks.mjs",

@@ -78,6 +78,9 @@ test('macOS packaged Electron launches, stores a course and completes a study st
       .getByRole('navigation', { name: 'Courses' })
       .getByRole('link', { name: 'Welcome to Lacuna' })
       .click();
+    await expect(
+      page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }),
+    ).toBeVisible();
     await page.getByRole('button', { name: 'Study', exact: true }).last().click();
     await page
       .getByRole('region', { name: 'Session preview' })

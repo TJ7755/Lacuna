@@ -2130,10 +2130,6 @@ export function useLearnSession({
     toggleFlagCurrent,
     suspendCurrent,
     buryCurrent,
-    events,
-    simpleQueue,
-    simpleMastered,
-    simpleWrong,
     persistSimpleResume,
   };
 }

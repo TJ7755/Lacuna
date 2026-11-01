@@ -20,6 +20,19 @@ import {
 } from '../onboarding/onboardingState';
 
 describe('Dashboard Today queue', () => {
+  it('waits silently for course data while keeping the toolbar available', () => {
+    const view = render(<Dashboard />);
+    expect(screen.queryByText(/Loading Today/)).not.toBeInTheDocument();
+    expect(view.container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New course' })).toBeEnabled();
+    expect(screen.queryByRole('heading', { name: 'No courses yet' })).not.toBeInTheDocument();
+
+    setCourseData([]);
+    view.rerender(<Dashboard />);
+    expect(view.container.querySelector('[aria-busy="true"]')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'No courses yet' })).toBeInTheDocument();
+  });
+
   it('ends a pending onboarding once the learner reaches Today', () => {
     localStorage.setItem('lacuna-onboarding', 'pending');
     setCourseData();

@@ -57,4 +57,70 @@ describe('mergeImport: course details', () => {
       description: 'Revised',
     });
   });
+
+  it('advances the teacher snapshot while retaining learner details across successive updates', async () => {
+    const { course: imported } = await importLineageFirstTime(
+      coursePayload({ course: course(), lessons: [lessonOne()] }),
+    );
+    await db.courses.update(imported.id, { name: 'My biology' });
+    await mergeLineageUpdate(
+      imported.id,
+      coursePayload({
+        rv: 2,
+        by: 'New teacher',
+        lessons: [lessonOne()],
+        course: course({ n: 'Biology A', d: 'Revised' }),
+      }),
+    );
+    expect((await db.courses.get(imported.id))?.distributedCopy?.source).toMatchObject({
+      name: 'Biology A',
+      description: 'Revised',
+      creator: 'New teacher',
+    });
+
+    await mergeLineageUpdate(
+      imported.id,
+      coursePayload({
+        rv: 3,
+        by: undefined,
+        lessons: [lessonOne()],
+        course: course({ n: 'Biology B', d: undefined }),
+      }),
+    );
+    const stored = (await db.courses.get(imported.id))!;
+    expect(stored.name).toBe('My biology');
+    expect(stored.description).toBe('');
+    expect(stored.creator).toBeUndefined();
+    expect(stored.distributedCopy?.source).toEqual({
+      name: 'Biology B',
+      description: '',
+      creator: undefined,
+      unlockMode: 'open',
+    });
+  });
+
+  it('takes teacher details when an older copy has no source snapshot', async () => {
+    const { course: imported } = await importLineageFirstTime(
+      coursePayload({ course: course(), lessons: [lessonOne()] }),
+    );
+    await db.courses.update(imported.id, {
+      name: 'Local name',
+      'distributedCopy.source': undefined,
+      'distributedCopy.autoAcceptUpdates': false,
+    });
+    await mergeLineageUpdate(
+      imported.id,
+      coursePayload({
+        rv: 2,
+        lessons: [lessonOne()],
+        course: course({ n: 'Biology A', d: 'Revised', um: 'linear' }),
+      }),
+    );
+    expect(await db.courses.get(imported.id)).toMatchObject({
+      name: 'Biology A',
+      description: 'Revised',
+      unlockMode: 'linear',
+      distributedCopy: { autoAcceptUpdates: false, revision: 2 },
+    });
+  });
 });

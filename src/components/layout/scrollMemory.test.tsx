@@ -1,7 +1,7 @@
 import { act, render } from '@testing-library/react';
 import { useRef } from 'react';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { clearScrollMemory, useScrollMemory } from './scrollMemory';
 
 let go: ReturnType<typeof useNavigate>;
@@ -10,7 +10,7 @@ function Shell() {
   const ref = useRef<HTMLElement>(null);
   useScrollMemory(ref);
   go = useNavigate();
-  return <main ref={ref} data-testid="main" />;
+  return <main ref={ref} data-testid="main" style={{ overflowAnchor: 'auto' }} />;
 }
 
 function scrollTo(main: HTMLElement, top: number) {
@@ -18,7 +18,10 @@ function scrollTo(main: HTMLElement, top: number) {
   main.dispatchEvent(new Event('scroll'));
 }
 
-afterEach(clearScrollMemory);
+afterEach(() => {
+  clearScrollMemory();
+  vi.useRealTimers();
+});
 
 function setup() {
   const view = render(
@@ -57,3 +60,26 @@ it('keeps its place when only the query changes', () => {
   act(() => void go('/course/c1/cards?q=atom'));
   expect(main.scrollTop).toBe(200);
 });
+
+it.each(['loaded', 'cancelled'])(
+  'restores browser anchoring after a lazy return is %s',
+  async (outcome) => {
+    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+    const main = setup();
+    scrollTo(main, 640);
+    act(() => void go('/course/c1/cards/x/edit'));
+    const scroll = main.scrollTo;
+    // The returning page cannot reach its saved position until its content loads.
+    main.scrollTo = () => {};
+    act(() => void go(-1));
+    expect(main.style.overflowAnchor).toBe('none');
+    if (outcome === 'loaded') {
+      main.scrollTo = scroll;
+      await act(() => vi.runAllTimers());
+      expect(main.scrollTop).toBe(640);
+    } else {
+      act(() => void go('/course/c2/cards'));
+    }
+    expect(main.style.overflowAnchor).toBe('auto');
+  },
+);

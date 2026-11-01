@@ -1,0 +1,233 @@
+{
+  "provenance": {
+    "kind": "synthetic",
+    "sourceCommit": "622dc87f16f8763a9dfc44adf9dc5381a543e1f6",
+    "sources": ["src/db/database.ts", "src/db/schemaV21.test.ts", "src/db/schemaV26.test.ts"],
+    "description": "Hand-authored rows and pinned schema declarations; not captured from a released build. FSRS fuzz disabled for repeatable continuation."
+  },
+  "indexedDbVersion": 25,
+  "stores": {
+    "cards": "id, courseId, primaryLessonId, schedulingUnitId, conceptId, type, lastReviewed, sequenceItemId, occlusionRegionId",
+    "sessionHistory": "++id, &eventId, sessionId, deckId, courseId, schedulingUnitId, timestamp",
+    "userPerformance": "deckId",
+    "backups": "++id, createdAt",
+    "appState": "key",
+    "assets": "hash, createdAt",
+    "courses": "id, createdAt",
+    "lessons": "id, courseId, orderIndex, createdAt",
+    "notes": "id, lessonId, orderIndex, createdAt",
+    "lessonCards": "id, lessonId, cardId",
+    "lessonCardExposures": "[lessonId+cardId], lessonId, cardId, taughtAt",
+    "lessonCompletions": "lessonId, completedAt",
+    "noteAnnotations": "id, noteId, createdAt, updatedAt",
+    "practiceNodes": "id, courseId, position, createdAt",
+    "practiceMilestones": "nodeKey, courseId, scopeVersion, updatedAt, completedAt",
+    "courseAssessments": "id, courseId, kind, examDate, createdAt",
+    "sequences": "id, courseId, primaryLessonId, createdAt",
+    "revisionPlans": "id, &assessmentId, courseId, status, updatedAt",
+    "lineageIdMappings": "id, courseId",
+    "pendingMergeReviews": "id, courseId",
+    "occlusions": "id, courseId, primaryLessonId, createdAt",
+    "reviewHistory": "id, cardId, deckId, courseId, primaryLessonId, schedulingUnitId, timestamp",
+    "schedulingUnits": "id, kind, courseId, lessonId",
+    "coursePerformance": "courseId",
+    "schedulingPerformance": "schedulingUnitId, courseId, lessonId",
+    "tombstones": "[table+recordId], deletedAt",
+    "concepts": "id, scopeKey, courseId, updatedAt",
+    "questions": "id, courseId, primaryLessonId, kind, due, authoringUpdatedAt",
+    "questionConcepts": "questionId, courseId, *targetConceptIds, *prerequisiteConceptIds, authoringUpdatedAt",
+    "questionAttempts": "id, questionId, courseId, status, shownAt, sessionId, [questionId+shownAt], [courseId+shownAt], updatedAt",
+    "agentMemories": "id, courseId, status, updatedAt, *tags"
+  },
+  "rows": {
+    "courses": [
+      {
+        "id": "corpus-course",
+        "name": "Synthetic biology",
+        "description": "",
+        "createdAt": 1,
+        "updatedAt": 1,
+        "fsrsVersion": 6,
+        "fsrsParameters": {
+          "w": [
+            0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796,
+            1.4835, 0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542
+          ],
+          "requestRetention": 0.9,
+          "enable_fuzz": false,
+          "maximum_interval": 36500,
+          "learning_steps": ["1m", "10m"],
+          "relearning_steps": ["10m"]
+        },
+        "examObjective": "expectedMarks",
+        "unlockMode": "open",
+        "autoPractice": true,
+        "practiceThresholdMinutesFar": 8,
+        "practiceThresholdMinutesNear": 4,
+        "practiceUrgentWindowDays": 14,
+        "practiceMaxGap": 2
+      }
+    ],
+    "lessons": [
+      {
+        "id": "corpus-lesson",
+        "courseId": "corpus-course",
+        "name": "Cells",
+        "orderIndex": 0,
+        "createdAt": 1,
+        "updatedAt": 1,
+        "isExtension": false
+      }
+    ],
+    "cards": [
+      {
+        "id": "corpus-card",
+        "deckId": "corpus-lesson",
+        "courseId": "corpus-course",
+        "primaryLessonId": "corpus-lesson",
+        "schedulingUnitId": "corpus-lesson",
+        "type": "front_back",
+        "front": "Cell ![diagram](lacuna-asset://431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460)",
+        "back": "Nucleus",
+        "stability": 2,
+        "difficulty": 5,
+        "lastReviewed": 1700000000000,
+        "reps": 1,
+        "lapses": 0,
+        "state": 2,
+        "due": 1700086400000,
+        "scheduledDays": 1,
+        "learningSteps": 0,
+        "history": [
+          {
+            "eventId": "corpus-historical-review",
+            "timestamp": 1700000000000,
+            "grade": 3,
+            "responseTimeSec": 2,
+            "distracted": false,
+            "stabilityBefore": null,
+            "stabilityAfter": 2,
+            "difficultyBefore": null,
+            "difficultyAfter": 5,
+            "retrievabilityAtReview": null
+          }
+        ],
+        "tags": ["synthetic"],
+        "suspended": false,
+        "buriedUntil": null,
+        "createdAt": 1,
+        "updatedAt": 1,
+        "conceptId": "corpus-concept"
+      }
+    ],
+    "assets": [
+      {
+        "hash": "431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460",
+        "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+        "mimeType": "image/png",
+        "width": 1,
+        "height": 1,
+        "createdAt": 1
+      }
+    ],
+    "sessionHistory": [],
+    "userPerformance": [],
+    "notes": [
+      {
+        "id": "corpus-note",
+        "lessonId": "corpus-lesson",
+        "name": "Cell notes",
+        "content": "Synthetic teaching content.",
+        "orderIndex": 0,
+        "createdAt": 1,
+        "updatedAt": 1
+      }
+    ],
+    "courseAssessments": [
+      {
+        "id": "corpus-final",
+        "courseId": "corpus-course",
+        "name": "Final",
+        "kind": "final",
+        "examDate": 1800000000000,
+        "afterLessonId": null,
+        "coverageMode": "prefix",
+        "excludedCardIds": [],
+        "createdAt": 1,
+        "updatedAt": 1
+      }
+    ],
+    "lessonCards": [
+      {
+        "id": "corpus-link",
+        "lessonId": "corpus-lesson",
+        "cardId": "corpus-card",
+        "orderIndex": 0,
+        "createdAt": 1,
+        "updatedAt": 1
+      }
+    ],
+    "schedulingUnits": [
+      {
+        "id": "corpus-lesson",
+        "kind": "lesson",
+        "courseId": "corpus-course",
+        "lessonId": "corpus-lesson",
+        "name": "Cells",
+        "fsrsVersion": 6,
+        "fsrsParameters": {
+          "w": [
+            0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796,
+            1.4835, 0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542
+          ],
+          "requestRetention": 0.9,
+          "enable_fuzz": false,
+          "maximum_interval": 36500,
+          "learning_steps": ["1m", "10m"],
+          "relearning_steps": ["10m"]
+        },
+        "examObjective": "expectedMarks",
+        "examDate": 1800000000000,
+        "createdAt": 1,
+        "updatedAt": 1
+      }
+    ],
+    "coursePerformance": [],
+    "schedulingPerformance": [],
+    "concepts": [
+      {
+        "id": "corpus-concept",
+        "scope": "course",
+        "provisional": false,
+        "scopeKey": "course:corpus-course",
+        "courseId": "corpus-course",
+        "name": "Nucleus",
+        "createdAt": 1,
+        "updatedAt": 1
+      }
+    ],
+    "questions": [],
+    "questionConcepts": [],
+    "questionAttempts": []
+  },
+  "expectedOutcome": "migrate-and-continue",
+  "expected": {
+    "cardId": "corpus-card",
+    "courseId": "corpus-course",
+    "lessonId": "corpus-lesson",
+    "schedulingUnitId": "corpus-lesson",
+    "historicalReview": {
+      "eventId": "corpus-historical-review",
+      "timestamp": 1700000000000,
+      "grade": 3,
+      "responseTimeSec": 2,
+      "distracted": false,
+      "stabilityBefore": null,
+      "stabilityAfter": 2,
+      "difficultyBefore": null,
+      "difficultyAfter": 5,
+      "retrievabilityAtReview": null
+    },
+    "assetHash": "431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460"
+  }
+}

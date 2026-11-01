@@ -97,7 +97,7 @@ describe('useLearnSession pool preparation', () => {
     const second = renderHook(() => useLearnSession(params));
     await waitFor(() => expect(second.result.current.phase).toBe('finished'));
     expect(second.result.current.summary?.[resultFlag]).toBe(true);
-    expect(second.result.current.events.current).toHaveLength(0);
+    expect(second.result.current.summary?.events).toEqual([]);
     if (setting === 'maxReviewsPerDay') {
       await act(async () => {
         expect(await second.result.current.confirmCompletion()).toBe(true);
@@ -201,10 +201,15 @@ describe('useLearnSession pool preparation', () => {
       await act(async () => {
         await result.current.answer(true);
       });
-      expect(result.current.events.current[0]).toMatchObject({ grade: 2, correct: true });
+      expect(await db.reviewHistory.where('cardId').equals(card.id).first()).toMatchObject({
+        grade: 2,
+        correct: true,
+      });
       expect((await db.cards.get(card.id))!.due).toBeGreaterThan(Date.now());
       await waitFor(() => expect(result.current.phase).toBe('finished'));
-      expect(result.current.events.current).toHaveLength(1);
+      expect(result.current.summary?.events).toEqual([
+        expect.objectContaining({ cardId: card.id, grade: 2, correct: true }),
+      ]);
     } finally {
       unmount();
       clock.mockRestore();
@@ -343,7 +348,7 @@ describe('useLearnSession load identity', () => {
     });
 
     expect(result.current.phase).not.toBe('loading');
-    expect(result.current.events.current).toHaveLength(1);
+    expect(result.current.sessionCardOutcomes.size).toBe(1);
     const progressAfterAnswer = result.current.schedulerProgress;
 
     rerender({
@@ -355,8 +360,16 @@ describe('useLearnSession load identity', () => {
     });
 
     expect(result.current.phase).not.toBe('loading');
-    expect(result.current.events.current).toHaveLength(1);
+    expect(result.current.sessionCardOutcomes.size).toBe(1);
     expect(result.current.schedulerProgress).toBe(progressAfterAnswer);
+    for (let attempts = 0; attempts < 6 && result.current.phase !== 'finished'; attempts += 1) {
+      act(() => result.current.reveal());
+      await act(async () => {
+        await result.current.answer(4);
+      });
+    }
+    await waitFor(() => expect(result.current.phase).toBe('finished'));
+    expect(result.current.summary?.events).toHaveLength((await db.reviewHistory.toArray()).length);
   });
 
   it('persists an empty requested lesson scope without a phantom empty-string id', () => {
@@ -411,9 +424,9 @@ describe('useLearnSession load identity', () => {
     });
     await waitFor(() => expect(result.current.phase).toBe('answer'));
     await act(async () => {
-      await result.current.answer(true);
+      await result.current.answer(1);
     });
-    expect(result.current.events.current).toHaveLength(1);
+    expect(result.current.sessionCardOutcomes.size).toBe(1);
 
     rerender({
       ...params,
@@ -421,8 +434,18 @@ describe('useLearnSession load identity', () => {
       practiceNodeKeyParam: otherNode.id,
     });
 
-    await waitFor(() => expect(result.current.events.current).toHaveLength(0));
+    await waitFor(() => expect(result.current.sessionCardOutcomes.size).toBe(0));
     await waitFor(() => expect(result.current.phase).toBe('question'));
+    for (let attempts = 0; attempts < 6 && result.current.phase !== 'finished'; attempts += 1) {
+      act(() => result.current.reveal());
+      await act(async () => {
+        await result.current.answer(4);
+      });
+    }
+    await waitFor(() => expect(result.current.phase).toBe('finished'));
+    expect(result.current.summary?.events).toHaveLength(2);
+    expect(result.current.summary?.events.every((event) => event.grade === 4)).toBe(true);
+    expect(await db.reviewHistory.filter((receipt) => receipt.grade === 1).count()).toBe(1);
   });
 });
 
