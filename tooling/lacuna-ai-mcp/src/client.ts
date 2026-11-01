@@ -9,7 +9,6 @@ import {
 } from './terminalContracts.js';
 export {
   TerminalRelayReconnectRequiredError,
-  type TerminalRelayReconnectReason,
   type ConnectedTerminalRelay,
   type TerminalRelayTransport,
   type WaitForMessageResult,

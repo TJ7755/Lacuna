@@ -24,7 +24,7 @@ import { handleInsight } from './insights.js';
 
 export { AI_PAIRING_TTL_MS, AI_SESSION_TTL_MS } from './aiRelay.js';
 export { CHANNEL_TTL_MS } from './channelMaintenance.js';
-export { EMPTY_SHARE_ETAG, SHARE_META_MAX_BYTES, SHARE_PAYLOAD_MAX_BYTES } from './shares.js';
+export { SHARE_META_MAX_BYTES, SHARE_PAYLOAD_MAX_BYTES } from './shares.js';
 
 /** Snapshots carry inline assets. Arc 8 §13.3: start at 25 MB and name the cap. */
 export const MAX_BODY_BYTES = relayLimits.channel;
@@ -42,7 +42,7 @@ const CHANNEL_ID_BYTES = 16;
 const WRITE_TOKEN_BYTES = 32;
 const CHANNEL_ID_RE = /^[0-9a-f]{32}$/;
 
-export type Slot = 'state' | 'keybag';
+type Slot = 'state' | 'keybag';
 
 export interface HandlerOptions {
   now?: () => number;

@@ -43,7 +43,7 @@ export const relayPairingCodeSchema = z
   .string()
   .regex(/^[A-HJ-KM-NP-TV-Z2-9]{4}(?:-[A-HJ-KM-NP-TV-Z2-9]{4}){4}$/);
 export const relayTokenSchema = z.string().regex(/^[0-9a-f]{64}$/);
-export const relayTimestampSchema = z.number().int().nonnegative().finite();
+const relayTimestampSchema = z.number().int().nonnegative().finite();
 const relayRevisionSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const relayGenerationSchema = z
   .string()
@@ -157,7 +157,7 @@ const relayBrowserMessageBase = {
   instructions: aiInstructionBundleSchema,
 };
 
-export const relayBrowserMessageSchema = z.discriminatedUnion('delivery', [
+const relayBrowserMessageSchema = z.discriminatedUnion('delivery', [
   z.object({ ...relayBrowserMessageBase, delivery: z.literal('queued') }).strict(),
   z
     .object({
