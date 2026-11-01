@@ -9,7 +9,7 @@ import type { Card, Course } from '@lacuna/core/db/types';
 
 /** A drawing exactly as seed.ts stores it, so the tests track any change to the bytes. */
 function seedSvg(name: string): string {
-  const source = readFileSync('src/db/seed.ts', 'utf8').replace(/\r\n/g, '\n');
+  const source = readFileSync('apps/web/src/db/seed.ts', 'utf8').replace(/\r\n/g, '\n');
   return new RegExp(`const ${name} = \`([\\s\\S]*?)\`;`).exec(source)![1];
 }
 

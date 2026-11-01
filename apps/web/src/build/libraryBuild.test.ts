@@ -59,9 +59,9 @@ it('builds only the library and its shared presentation, without learner startup
 }, 120_000);
 
 it('hosts the static library separately with no network or worker capability', async () => {
-  const config = JSON.parse(await readFile('library/vercel.json', 'utf8'));
+  const config = JSON.parse(await readFile('apps/library/vercel.json', 'utf8'));
   expect(config.buildCommand).toBe(
-    'cd .. && node relay/scripts/security-bun.mjs run build:library',
+    'cd ../.. && node apps/relay/scripts/security-bun.mjs run build:library',
   );
   expect(config.outputDirectory).toBe('dist');
   expect(config.rewrites).toBeUndefined();

@@ -164,7 +164,7 @@ describe('companion connection metadata', () => {
     ).toEqual({
       command: '/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
       args: [
-        path.join('/repo', 'electron', 'dist-electron', 'mcp', 'aiCompanionEntry.js'),
+        path.join('/repo', 'apps', 'desktop', 'dist-electron', 'mcp', 'aiCompanionEntry.js'),
         '--lacuna-host-user-data-dir=/tmp/lacuna-v022-manual.Q3lViI',
         '--lacuna-app-version=0.2.2',
       ],

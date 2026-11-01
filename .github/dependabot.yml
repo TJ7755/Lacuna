@@ -22,7 +22,7 @@ updates:
           - electron-builder
 
   - package-ecosystem: bun
-    directory: /relay
+    directory: /apps/relay
     schedule:
       interval: weekly
       day: monday

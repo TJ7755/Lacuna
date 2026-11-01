@@ -1,8 +1,20 @@
 import { ESLint } from 'eslint';
-import { resolve } from 'node:path';
+import { resolve, relative, dirname } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const root = resolve(import.meta.dirname, '..');
+const probeSource = (source: string, filePath: string) =>
+  source.replace(
+    /(?<=[\"'`])(?:\.\.\/)+(src|relay|tooling)\//g,
+    (_match, area: string) =>
+      relative(
+        dirname(resolve(root, filePath)),
+        resolve(
+          root,
+          area === 'src' ? 'apps/web/src' : area === 'relay' ? 'apps/relay' : 'tooling',
+        ),
+      ) + '/',
+  );
 
 describe('cross-runtime app entry points', () => {
   it('rejects deep app imports through the real lint configuration', async () => {
@@ -17,10 +29,10 @@ describe('cross-runtime app entry points', () => {
       ],
     });
     for (const filePath of [
-      'electron/mcp/probe.ts',
-      'electron/mcp/probe.test.ts',
-      'api/ai/probe.ts',
-      'api/ai/probe.mjs',
+      'apps/desktop/mcp/probe.ts',
+      'apps/desktop/mcp/probe.test.ts',
+      'apps/ai/api/ai/probe.ts',
+      'apps/ai/api/ai/probe.mjs',
     ]) {
       for (const source of [
         "import { GrantStore } from '../../src/mcp/grants';",
@@ -39,7 +51,7 @@ describe('cross-runtime app entry points', () => {
           !filePath.endsWith('.mjs') ||
           (!source.includes('type ') && !source.includes('import grants =')),
       )) {
-        const [result] = await eslint.lintText(source, { filePath });
+        const [result] = await eslint.lintText(probeSource(source, filePath), { filePath });
         expect(
           result.messages.filter((message) => message.fatal),
           source,
@@ -51,19 +63,22 @@ describe('cross-runtime app entry points', () => {
       }
     }
     for (const [filePath, target, forbidden] of [
-      ['electron/mcp/probe.ts', 'mcp/contractEntry.js', false],
-      ['electron/mcp/probe.ts', 'mcp/bridgeEntry', false],
-      ['electron/mcp/probe.ts', 'mcp/companionEntry.js?raw', false],
-      ['electron/mcp/probe.ts', 'ai/protocol', false],
-      ['electron/mcp/probe.ts', 'ai/companionErrors.js', false],
-      ['api/ai/probe.ts', 'ai/companionErrors.js', true],
-      ['api/ai/probe.ts', 'ai/protocol.js', true],
-      ['api/ai/probe.ts', 'jev/apiEntry.js', false],
-      ['api/ai/probe.ts', 'mcp/bridgeEntry', true],
-      ['electron/mcp/probe.ts', 'jev/apiEntry', true],
-      ['src/mcp/probe.ts', 'mcp/grants', false],
+      ['apps/desktop/mcp/probe.ts', 'mcp/contractEntry.js', false],
+      ['apps/desktop/mcp/probe.ts', 'mcp/bridgeEntry', false],
+      ['apps/desktop/mcp/probe.ts', 'mcp/companionEntry.js?raw', false],
+      ['apps/desktop/mcp/probe.ts', 'ai/protocol', false],
+      ['apps/desktop/mcp/probe.ts', 'ai/companionErrors.js', false],
+      ['apps/ai/api/ai/probe.ts', 'ai/companionErrors.js', true],
+      ['apps/ai/api/ai/probe.ts', 'ai/protocol.js', true],
+      ['apps/ai/api/ai/probe.ts', 'jev/apiEntry.js', false],
+      ['apps/ai/api/ai/probe.ts', 'mcp/bridgeEntry', true],
+      ['apps/desktop/mcp/probe.ts', 'jev/apiEntry', true],
+      ['apps/web/src/mcp/probe.ts', 'mcp/grants', false],
     ] as const) {
-      const [result] = await eslint.lintText(`export * from '../../src/${target}';`, { filePath });
+      const [result] = await eslint.lintText(
+        probeSource(`export * from '../../src/${target}';`, filePath),
+        { filePath },
+      );
       expect(result.messages.filter((message) => message.fatal)).toEqual([]);
       expect(
         result.messages.filter((message) => message.ruleId === 'app-contract/no-deep-imports'),

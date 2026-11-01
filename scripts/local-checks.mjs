@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { verifyRevision } from '../apps/relay/scripts/security-bun.mjs';
 
 export const root = fileURLToPath(new URL('../', import.meta.url));
-export const installations = ['.', 'relay', 'tooling/handwriting-maths'];
+export const installations = ['.', 'apps/relay', 'tooling/handwriting-maths'];
 export const git = (...args) =>
   execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 
@@ -136,7 +136,9 @@ export async function evidence(name, work) {
     report.source = source();
     const version = readFileSync(join(root, '.bun-version'), 'utf8').trim();
     const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
-    const pin = JSON.parse(readFileSync(join(root, 'relay/scripts/security-bun.json'), 'utf8'));
+    const pin = JSON.parse(
+      readFileSync(join(root, 'apps/relay/scripts/security-bun.json'), 'utf8'),
+    );
     if (version !== pin.version || manifest.packageManager !== `bun@${version}`) {
       throw new Error('Bun version, security pin and packageManager disagree');
     }

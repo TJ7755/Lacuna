@@ -19,7 +19,9 @@ import { describe, test } from 'node:test';
 import { setTimeout } from 'node:timers/promises';
 
 const repository = fileURLToPath(new URL('../', import.meta.url));
-const pin = JSON.parse(readFileSync(join(repository, 'relay/scripts/security-bun.json'), 'utf8'));
+const pin = JSON.parse(
+  readFileSync(join(repository, 'apps/relay/scripts/security-bun.json'), 'utf8'),
+);
 
 function fixture(t) {
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-local-checks-'));
@@ -32,8 +34,8 @@ function fixture(t) {
     'scripts/verify.mjs',
     'scripts/local-checks.mjs',
     'scripts/ci-change-scope.mjs',
-    'relay/scripts/security-bun.mjs',
-    'relay/scripts/security-bun.json',
+    'apps/relay/scripts/security-bun.mjs',
+    'apps/relay/scripts/security-bun.json',
     '.bun-version',
     'package.json',
     'CONTRIBUTING.md',
@@ -127,7 +129,7 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
     const installs = result.report.commands.slice(1);
     assert.deepEqual(
       installs.map(({ cwd }) => cwd),
-      ['.', 'relay', 'tooling/handwriting-maths'],
+      ['.', 'apps/relay', 'tooling/handwriting-maths'],
     );
     for (const command of installs) {
       assert.deepEqual(command.args, ['install', '--frozen-lockfile']);

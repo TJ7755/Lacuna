@@ -4,11 +4,15 @@ import { dirname } from 'node:path';
 
 /** Diagnostic-only observer; never included in the production application. */
 export function installLagProbe() {
-  const target = window as unknown as { __lacunaLag?: {
-    start: number; frames: number[]; longTasks: { start: number; duration: number }[];
-    events: { name: string; inputDelayMs: number; durationMs: number }[];
-    reset: () => void;
-  } };
+  const target = window as unknown as {
+    __lacunaLag?: {
+      start: number;
+      frames: number[];
+      longTasks: { start: number; duration: number }[];
+      events: { name: string; inputDelayMs: number; durationMs: number }[];
+      reset: () => void;
+    };
+  };
   if (target.__lacunaLag) return;
   let previous = performance.now();
   const state = {
@@ -16,10 +20,18 @@ export function installLagProbe() {
     frames: [] as number[],
     longTasks: [] as { start: number; duration: number }[],
     events: [] as { name: string; inputDelayMs: number; durationMs: number }[],
-    transactions: [] as { stores: string[]; mode: string; start: number; duration: number; outcome: string }[],
+    transactions: [] as {
+      stores: string[];
+      mode: string;
+      start: number;
+      duration: number;
+      outcome: string;
+    }[],
     reset() {
       state.start = previous = performance.now();
-      state.frames = []; state.longTasks = []; state.events = [];
+      state.frames = [];
+      state.longTasks = [];
+      state.events = [];
       state.transactions = [];
     },
   };
@@ -29,10 +41,14 @@ export function installLagProbe() {
     const transaction = originalTransaction.apply(this, args);
     const start = performance.now();
     const finish = (event: Event) => {
-      if (start >= state.start) state.transactions.push({
-        stores: Array.from(transaction.objectStoreNames), mode: transaction.mode,
-        start: start - state.start, duration: performance.now() - start, outcome: event.type,
-      });
+      if (start >= state.start)
+        state.transactions.push({
+          stores: Array.from(transaction.objectStoreNames),
+          mode: transaction.mode,
+          start: start - state.start,
+          duration: performance.now() - start,
+          outcome: event.type,
+        });
     };
     transaction.addEventListener('complete', finish, { once: true });
     transaction.addEventListener('abort', finish, { once: true });
@@ -60,8 +76,11 @@ export function installLagProbe() {
       for (const entry of list.getEntries()) {
         const event = entry as PerformanceEventTiming;
         if (event.startTime >= state.start)
-          state.events.push({ name: event.name, inputDelayMs: event.processingStart - event.startTime,
-            durationMs: event.duration });
+          state.events.push({
+            name: event.name,
+            inputDelayMs: event.processingStart - event.startTime,
+            durationMs: event.duration,
+          });
       }
     }).observe({ type: 'event', durationThreshold: 16 } as PerformanceObserverInit);
   }
@@ -69,12 +88,19 @@ export function installLagProbe() {
 
 export async function readLagProbe(page: Page) {
   return page.evaluate(() => {
-    const state = (window as unknown as { __lacunaLag?: {
-      frames: number[]; longTasks: { start: number; duration: number }[];
-      events: { name: string; inputDelayMs: number; durationMs: number }[];
-    } }).__lacunaLag;
+    const state = (
+      window as unknown as {
+        __lacunaLag?: {
+          frames: number[];
+          longTasks: { start: number; duration: number }[];
+          events: { name: string; inputDelayMs: number; durationMs: number }[];
+        };
+      }
+    ).__lacunaLag;
     if (!state) throw new Error('Lag observer is missing.');
-    return { ...state, reset: undefined,
+    return {
+      ...state,
+      reset: undefined,
       mountedCardRows: document.querySelectorAll('[data-card-id]').length,
       domElements: document.querySelectorAll('*').length,
       visibility: document.visibilityState,
@@ -86,13 +112,16 @@ export async function readLagProbe(page: Page) {
 
 export async function startDiagnosticTrace(cdp: CDPSession) {
   await cdp.send('Tracing.start', {
-    categories: 'devtools.timeline,v8,blink.user_timing,disabled-by-default-devtools.timeline,disabled-by-default-v8.cpu_profiler',
+    categories:
+      'devtools.timeline,v8,blink.user_timing,disabled-by-default-devtools.timeline,disabled-by-default-v8.cpu_profiler',
     transferMode: 'ReturnAsStream',
   });
 }
 
 export async function saveDiagnosticTrace(cdp: CDPSession, file: string) {
-  const complete = new Promise<{ stream?: string }>((resolve) => cdp.once('Tracing.tracingComplete', resolve));
+  const complete = new Promise<{ stream?: string }>((resolve) =>
+    cdp.once('Tracing.tracingComplete', resolve),
+  );
   await cdp.send('Tracing.end');
   const { stream } = await complete;
   if (!stream) throw new Error('Chromium did not return a trace stream.');

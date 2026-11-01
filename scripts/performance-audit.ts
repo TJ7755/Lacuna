@@ -352,7 +352,7 @@ async function measureBuildOutput() {
   return {
     available: true as const,
     initialJavaScript: pageScripts('index.html'),
-    landingJavaScript: pageScripts('src/landingBootstrap.ts'),
+    landingJavaScript: pageScripts('apps/web/src/landingBootstrap.ts'),
     documentJavaScript: documentScripts,
     publicPages,
     initialCss: {

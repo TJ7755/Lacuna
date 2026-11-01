@@ -35,9 +35,15 @@ try {
     throw new Error(`Unexpected local AI tool surface: ${names.join(', ')}`);
   }
   console.error(`AI SMOKE tools=${names.length}`);
-  console.error(`AI SMOKE connection=${JSON.stringify(data(await client.callTool({ name: 'lacuna.connect', arguments: {} })))}`);
-  console.error(`AI SMOKE wait=${JSON.stringify(data(await client.callTool({ name: 'lacuna.wait_for_message', arguments: { timeoutMs: 1_000 } })))}`);
-  console.error(`AI SMOKE disconnect=${JSON.stringify(data(await client.callTool({ name: 'lacuna.disconnect', arguments: {} })))}`);
+  console.error(
+    `AI SMOKE connection=${JSON.stringify(data(await client.callTool({ name: 'lacuna.connect', arguments: {} })))}`,
+  );
+  console.error(
+    `AI SMOKE wait=${JSON.stringify(data(await client.callTool({ name: 'lacuna.wait_for_message', arguments: { timeoutMs: 1_000 } })))}`,
+  );
+  console.error(
+    `AI SMOKE disconnect=${JSON.stringify(data(await client.callTool({ name: 'lacuna.disconnect', arguments: {} })))}`,
+  );
   console.error('AI SMOKE pass');
 } finally {
   await client.close();

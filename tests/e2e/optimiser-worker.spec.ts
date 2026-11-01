@@ -9,7 +9,7 @@ const root = resolve(import.meta.dirname, '../..');
 
 test('ships the browser trainer matching binding 0.5', () => {
   // SHA-256 of the official binding-wasm32-wasi@0.5.0 npm artefact.
-  const wasm = readFileSync(resolve(root, 'src/assets/fsrs-binding.wasm32-wasi.wasm'));
+  const wasm = readFileSync(resolve(root, 'apps/web/src/assets/fsrs-binding.wasm32-wasi.wasm'));
   expect(createHash('sha256').update(wasm).digest('hex')).toBe(
     'c1c843e8cbda3069c6933565087e8984b882ca7cd38652b2155af5a0c47d879f',
   );

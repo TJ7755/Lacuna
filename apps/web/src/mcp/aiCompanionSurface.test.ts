@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 describe('packaged local AI companion', () => {
   it('registers only the five AI-session tools', async () => {
-    const source = await readFile(path.join(process.cwd(), 'electron/mcp/aiCompanion.ts'), 'utf8');
+    const source = await readFile(
+      path.join(process.cwd(), 'apps/desktop/mcp/aiCompanion.ts'),
+      'utf8',
+    );
     const tools = [...source.matchAll(/server\.registerTool\(\s*'([^']+)'/g)].map(
       (match) => match[1],
     );
@@ -21,7 +24,10 @@ describe('packaged local AI companion', () => {
   });
 
   it('is included in the Electron companion bundle', async () => {
-    const buildSource = await readFile(path.join(process.cwd(), 'electron/mcp/build.mjs'), 'utf8');
+    const buildSource = await readFile(
+      path.join(process.cwd(), 'apps/desktop/mcp/build.mjs'),
+      'utf8',
+    );
     expect(buildSource).toContain("aiCompanion: path.join(__dirname, 'aiCompanion.ts')");
   });
 });

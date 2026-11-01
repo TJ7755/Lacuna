@@ -5,6 +5,37 @@
   "type": "module",
   "dependencies": {
     "@lacuna/core": "workspace:*",
-    "@lacuna/protocol": "workspace:*"
+    "@lacuna/protocol": "workspace:*",
+    "react": "^19.3.1",
+    "motion": "14.1.0",
+    "react-router-dom": "^7.18.4",
+    "react-dom": "^19.3.1",
+    "@vercel/analytics": "^2.0.1",
+    "zod": "4.6.7",
+    "dexie": "^4.4.7",
+    "yaml": "2.9.1",
+    "dexie-react-hooks": "^4.4.0",
+    "fflate": "^0.8.3",
+    "sql.js": "^1.15.1",
+    "ts-fsrs": "^5.2.3",
+    "@open-spaced-repetition/binding": "^0.5.0",
+    "@napi-rs/wasm-runtime": "1.2.5",
+    "mathjs": "^15.2.0",
+    "html5-qrcode": "^2.3.8",
+    "react-qr-code": "^2.2.0",
+    "recharts": "^3.10.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.0",
+    "remark-math": "^6.0.0",
+    "remark-breaks": "^4.0.0",
+    "rehype-katex": "^7.0.1",
+    "rehype-highlight": "^7.0.1",
+    "rehype-raw": "^7.0.0",
+    "rehype-sanitize": "^6.0.0",
+    "mermaid": "^12.2.0",
+    "dompurify": "^3.4.17"
+  },
+  "devDependencies": {
+    "happy-dom": "^21.0.3"
   }
 }

@@ -54,9 +54,9 @@ async function verify({ run, report }) {
   }
   if (scope.lint || scope.app) bun('lint');
   if (scope.relay) {
-    bun('typecheck', 'relay');
-    bun('lint', 'relay');
-    test('test', 'relay');
+    bun('typecheck', 'apps/relay');
+    bun('lint', 'apps/relay');
+    test('test', 'apps/relay');
   }
   if (scope.handwriting) {
     bun('build', 'tooling/handwriting-maths');

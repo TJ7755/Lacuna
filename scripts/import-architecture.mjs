@@ -59,10 +59,8 @@ export function createResolver(root, { runtime = false } = {}) {
     ).resolvedModule;
     if (!resolved) return;
     let file = resolve(resolved.resolvedFileName);
-    const web = join(root, 'apps/web/src');
-    if (file.startsWith(web + sep)) file = join(root, 'src', relative(web, file));
     if (file.startsWith(join(root, 'packages') + sep) && sourceExtension.test(file)) return file;
-    const local = sourcePath(join(root, 'src'), file);
+    const local = sourcePath(join(root, 'apps/web/src'), file);
     if (!local.startsWith('../') && !local.startsWith('/') && sourceExtension.test(file))
       return file;
   };
@@ -102,7 +100,7 @@ export const domainUiRule = {
     const importerPath = sourcePath(root, importer);
     if (
       !importerPath.startsWith('packages/') &&
-      !domainDirectories.some((directory) => importerPath.startsWith(`src/${directory}/`))
+      !domainDirectories.some((directory) => importerPath.startsWith(`apps/web/src/${directory}/`))
     )
       return {};
     const resolveImport = createResolver(root);
@@ -115,7 +113,7 @@ export const domainUiRule = {
       const target = resolveImport(specifier, importer);
       if (
         target &&
-        (/^src\/(?:pages|components|teacher)\//.test(sourcePath(root, target)) ||
+        (/^apps\/web\/src\/(?:pages|components|teacher)\//.test(sourcePath(root, target)) ||
           (importerPath.startsWith('packages/') &&
             !sourcePath(root, target).startsWith('packages/')))
       ) {
@@ -212,7 +210,7 @@ export function importGraph(root) {
       }
     }
   };
-  walk(join(root, 'src'));
+  walk(join(root, 'apps/web/src'));
   if (existsSync(join(root, 'packages'))) walk(join(root, 'packages'));
   return graph;
 }

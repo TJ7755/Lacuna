@@ -15,7 +15,9 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
   scripts?: Record<string, string>;
   devDependencies?: Record<string, string>;
 };
-const relayPackageJson = JSON.parse(readFileSync(resolve(root, 'relay/package.json'), 'utf8')) as {
+const relayPackageJson = JSON.parse(
+  readFileSync(resolve(root, 'apps/relay/package.json'), 'utf8'),
+) as {
   devDependencies?: Record<string, string>;
   overrides?: Record<string, string>;
 };
@@ -25,10 +27,10 @@ const handwritingPackageJson = JSON.parse(
 const aiMcpPackageJson = JSON.parse(
   readFileSync(resolve(root, 'tooling/lacuna-ai-mcp/package.json'), 'utf8'),
 ) as { devDependencies?: Record<string, string> };
-const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8').replace(
-  /\r\n/g,
-  '\n',
-);
+const builderConfig = readFileSync(
+  resolve(root, 'apps/desktop/electron-builder.yml'),
+  'utf8',
+).replace(/\r\n/g, '\n');
 const builder = parse(builderConfig) as {
   win: { target: { target: string; arch: string[] }[]; icon: string };
   linux: { target: { target: string; arch: string[] }[]; maintainer: string; icon: string };
@@ -37,11 +39,11 @@ const builder = parse(builderConfig) as {
   portable: { artifactName: string; splashImage: string };
 };
 const windowsInstallerInclude = readFileSync(
-  resolve(root, 'electron/windows-installer.nsh'),
+  resolve(root, 'apps/desktop/windows-installer.nsh'),
   'utf8',
 );
 const bunLock = readFileSync(resolve(root, 'bun.lock'), 'utf8');
-const relayBunLock = readFileSync(resolve(root, 'relay/bun.lock'), 'utf8');
+const relayBunLock = readFileSync(resolve(root, 'bun.lock'), 'utf8');
 const handwritingBunLock = readFileSync(
   resolve(root, 'tooling/handwriting-maths/bun.lock'),
   'utf8',
@@ -184,12 +186,12 @@ describe('release configuration', () => {
     expect(builder.nsis.artifactName).toBe('${productName}-Setup-${version}.${ext}');
     expect(builder.portable.artifactName).toBe('${productName}-Portable-${version}.${ext}');
     expect(builder.linux.maintainer).toMatch(/\S/);
-    expect(builder.linux.icon).toBe('electron/assets/icon.png');
-    expect(builder.mac.icon).toBe('electron/assets/icon.png');
+    expect(builder.linux.icon).toBe('apps/desktop/assets/icon.png');
+    expect(builder.mac.icon).toBe('apps/desktop/assets/icon.png');
   });
 
   it('prevents registered companions from racing a Windows upgrade', () => {
-    expect(builder.nsis.include).toBe('electron/windows-installer.nsh');
+    expect(builder.nsis.include).toBe('apps/desktop/windows-installer.nsh');
     expect(windowsInstallerInclude).toContain('!macro customCheckAppRunning');
     expect(windowsInstallerInclude).toContain('GetCurrentProcessId');
     expect(windowsInstallerInclude).toContain('installation-in-progress');
@@ -203,13 +205,13 @@ describe('release configuration', () => {
   });
 
   it('builds the Windows icon from the generated desktop artwork', () => {
-    expect(builder.win.icon).toBe('electron/assets/icon.png');
-    expect(existsSync(resolve(root, 'electron/assets/icon.ico'))).toBe(false);
+    expect(builder.win.icon).toBe('apps/desktop/assets/icon.png');
+    expect(existsSync(resolve(root, 'apps/desktop/assets/icon.ico'))).toBe(false);
   });
 
   it('shows immediate branded feedback while the Windows portable build extracts', () => {
-    expect(builder.portable.splashImage).toBe('electron/assets/portable-splash.bmp');
-    const splashPath = resolve(root, 'electron/assets/portable-splash.bmp');
+    expect(builder.portable.splashImage).toBe('apps/desktop/assets/portable-splash.bmp');
+    const splashPath = resolve(root, 'apps/desktop/assets/portable-splash.bmp');
     expect(existsSync(splashPath)).toBe(true);
 
     const splash = readFileSync(splashPath);

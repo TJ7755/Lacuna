@@ -22,12 +22,12 @@ const FORBIDDEN_SOURCE_ROOTS = [
 ];
 const RENDERER_ONLY_PACKAGES = ['dexie', 'react', 'ts-fsrs'];
 const PACKAGED_MCP_ENTRY_POINTS = [
-  'electron/mcp/server.ts',
-  'electron/mcp/dataBridge.ts',
-  'electron/mcp/companionBroker.ts',
-  'electron/mcp/companion.ts',
-  'electron/mcp/aiCompanion.ts',
-  'electron/mcp/aiCompanionEntry.ts',
+  'apps/desktop/mcp/server.ts',
+  'apps/desktop/mcp/dataBridge.ts',
+  'apps/desktop/mcp/companionBroker.ts',
+  'apps/desktop/mcp/companion.ts',
+  'apps/desktop/mcp/aiCompanion.ts',
+  'apps/desktop/mcp/aiCompanionEntry.ts',
 ] as const;
 // The Concept update description permits independent agent review. Existing inputs,
 // tool names, permission scopes and the breaking-change version remain unchanged.
@@ -219,7 +219,7 @@ describe('Electron MCP contract boundary', () => {
     const metafile = (
       await build({
         entryPoints: ['server', 'companion', 'aiCompanion', 'aiCompanionEntry'].map((name) =>
-          path.join(PROJECT_ROOT, `electron/mcp/${name}.ts`),
+          path.join(PROJECT_ROOT, `apps/desktop/mcp/${name}.ts`),
         ),
         outdir: path.join(PROJECT_ROOT, '.mcp-closure-probe'),
         bundle: true,
@@ -247,7 +247,7 @@ describe('Electron MCP contract boundary', () => {
     for (const name of ['server', 'companion', 'aiCompanion', 'aiCompanionEntry']) {
       const entry = [...outputs].find(
         ([, output]) =>
-          output.entryPoint && normalise(output.entryPoint) === `electron/mcp/${name}.ts`,
+          output.entryPoint && normalise(output.entryPoint) === `apps/desktop/mcp/${name}.ts`,
       );
       if (!entry) throw new Error(`Missing build entry: ${name}`);
       const inputs = new Set<string>();

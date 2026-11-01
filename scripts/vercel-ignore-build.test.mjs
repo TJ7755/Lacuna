@@ -30,13 +30,14 @@ function fixture(t) {
     'scripts/ci-change-scope.mjs',
     'scripts/vercel-ignore-build.mjs',
     'vercel.json',
-    'relay/vercel.json',
-    'gaps/vercel.json',
-    'library/vercel.json',
+    'apps/relay/vercel.json',
+    'apps/gaps/vercel.json',
+    'apps/library/vercel.json',
   ]) {
     write(path, readFileSync(join(source, path)));
   }
-  for (const path of ['src/main.ts', 'docs/guide.md', 'library/index.html']) write(path);
+  for (const path of ['apps/web/src/main.ts', 'docs/guide.md', 'apps/library/index.html'])
+    write(path);
   const commit = (message = 'Fixture change') => {
     git('add', '--all');
     git('commit', '--quiet', '-m', message);
@@ -45,7 +46,7 @@ function fixture(t) {
   const base = commit();
   const run = (project, previous = base, extra = {}, cwd) => {
     const root = cwd ?? directory;
-    const projectRoot = project === 'lacuna' ? root : join(root, project);
+    const projectRoot = project === 'lacuna' ? root : join(root, 'apps', project);
     const config = JSON.parse(readFileSync(join(projectRoot, 'vercel.json'), 'utf8'));
     const result = spawnSync(config.ignoreCommand, {
       cwd: projectRoot,
@@ -85,7 +86,7 @@ test('docs skip; a site change spares relay and accumulates across skipped commi
   f.write('docs/guide.md', 'documentation change\n');
   const docs = f.commit();
   assert.deepEqual(f.results(), [0, 0, 0, 0]);
-  f.write('library/index.html', 'site change\n');
+  f.write('apps/library/index.html', 'site change\n');
   const site = f.commit();
   assert.deepEqual(f.results(), [1, 0, 1, 1]);
   f.write('docs/guide.md', 'next documentation change\n');
@@ -106,9 +107,9 @@ test('an explicit intermediate commit defers deployment until the final batch co
 });
 
 for (const path of [
-  'relay/shared/protocol.ts',
-  'relay/scripts/security-bun.json',
-  'src/main.ts',
+  'apps/relay/shared/protocol.ts',
+  'apps/relay/scripts/security-bun.json',
+  'apps/web/src/main.ts',
   'package.json',
   'unrecognised/file',
 ]) {
@@ -122,11 +123,11 @@ for (const path of [
 
 test('moving source into docs and deleting source both require builds', (t) => {
   const f = fixture(t);
-  f.git('mv', 'src/main.ts', 'docs/moved.md');
+  f.git('mv', 'apps/web/src/main.ts', 'docs/moved.md');
   f.commit();
   assert.deepEqual(f.results(), [1, 1, 1, 1]);
   f.git('reset', '--hard', f.base);
-  f.git('rm', 'src/main.ts');
+  f.git('rm', 'apps/web/src/main.ts');
   f.commit();
   assert.deepEqual(f.results(), [1, 1, 1, 1]);
 });

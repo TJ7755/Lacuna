@@ -4,7 +4,7 @@ directories:
   output: release
 files:
   - dist/**/*
-  - electron/dist-electron/**/*
+  - apps/desktop/dist-apps/desktop/**/*
   # Desktop skips Workbox, but sw.js remains the stale-chunk reachability probe.
   - '!dist/{workbox-*.js,robots.txt,sitemap.xml,llms.txt}'
   - '!dist/courses/**/*.html'
@@ -32,10 +32,10 @@ win:
     - target: portable
       arch:
         - x64
-  icon: electron/assets/icon.png
+  icon: apps/desktop/assets/icon.png
 nsis:
   artifactName: '${productName}-Setup-${version}.${ext}'
-  include: electron/windows-installer.nsh
+  include: apps/desktop/windows-installer.nsh
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
@@ -43,7 +43,7 @@ nsis:
   createStartMenuShortcut: true
 portable:
   artifactName: '${productName}-Portable-${version}.${ext}'
-  splashImage: electron/assets/portable-splash.bmp
+  splashImage: apps/desktop/assets/portable-splash.bmp
 linux:
   target:
     - target: AppImage
@@ -54,13 +54,13 @@ linux:
         - x64
   category: Education
   maintainer: 'TJ7755 <tj7755@duck.com>'
-  icon: electron/assets/icon.png
+  icon: apps/desktop/assets/icon.png
 mac:
   target:
     - dmg
     - zip
   category: public.app-category.education
-  icon: electron/assets/icon.png
+  icon: apps/desktop/assets/icon.png
 publish:
   provider: github
   owner: TJ7755

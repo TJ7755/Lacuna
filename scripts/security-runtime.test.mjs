@@ -24,7 +24,7 @@ import {
 
 const root = new URL('../', import.meta.url);
 const version = readFileSync(new URL('.bun-version', root), 'utf8').trim();
-const pin = JSON.parse(readFileSync(new URL('relay/scripts/security-bun.json', root), 'utf8'));
+const pin = JSON.parse(readFileSync(new URL('apps/relay/scripts/security-bun.json', root), 'utf8'));
 const action = parse(readFileSync(new URL('.github/actions/setup-bun/action.yml', root), 'utf8'));
 
 test('Windows ZIP extraction uses native tar rather than Git tar interpreting a drive as a host', () => {
@@ -53,7 +53,7 @@ test('the Bun security guard rejects changed downloads and unreviewed revisions'
     /checksum mismatch/,
   );
   const verifiedInstall = action.runs.steps.findIndex(
-    (step) => step.run === 'node relay/scripts/security-bun.mjs --install',
+    (step) => step.run === 'node apps/relay/scripts/security-bun.mjs --install',
   );
   assert.ok(verifiedInstall >= 0, 'The verified runtime installation is mandatory');
   for (const [index, step] of action.runs.steps.entries()) {
@@ -77,7 +77,7 @@ test('every Bun workflow uses the security guard and manifests share its pin', (
   }
   for (const file of [
     'package.json',
-    'relay/package.json',
+    'apps/relay/package.json',
     'tooling/handwriting-maths/package.json',
   ]) {
     const manifest = JSON.parse(readFileSync(new URL(file, root), 'utf8'));
@@ -88,9 +88,9 @@ test('every Bun workflow uses the security guard and manifests share its pin', (
 test('Vercel builds use the verified Bun bootstrap instead of vulnerable bunx downloads', () => {
   for (const file of [
     'vercel.json',
-    'gaps/vercel.json',
-    'library/vercel.json',
-    'relay/vercel.json',
+    'apps/gaps/vercel.json',
+    'apps/library/vercel.json',
+    'apps/relay/vercel.json',
   ]) {
     const config = JSON.parse(readFileSync(new URL(file, root), 'utf8'));
     assert.match(

@@ -44,9 +44,9 @@ jobs:
         with:
           cache-dependency-path: bun.lock
       - run: bun install --frozen-lockfile
-        working-directory: relay
+        working-directory: apps/relay
       - run: bun audit --audit-level=high
-        working-directory: relay
+        working-directory: apps/relay
 
   audit-handwriting:
     runs-on: ubuntu-latest

@@ -242,12 +242,14 @@ export async function launchPackagedApp(
       `--remote-debugging-port=${port}`,
       `--user-data-dir=${profileDirectory}`,
       '--lang=en-GB',
-      ...(startupTraceFile ? [
-        '--trace-startup=devtools.timeline,v8,blink.user_timing,disabled-by-default-devtools.timeline',
-        `--trace-startup-file=${startupTraceFile}`,
-        '--trace-startup-duration=8',
-        '--trace-startup-format=json',
-      ] : []),
+      ...(startupTraceFile
+        ? [
+            '--trace-startup=devtools.timeline,v8,blink.user_timing,disabled-by-default-devtools.timeline',
+            `--trace-startup-file=${startupTraceFile}`,
+            '--trace-startup-duration=8',
+            '--trace-startup-format=json',
+          ]
+        : []),
     ],
     {
       env: environment,

@@ -77,7 +77,7 @@ describe('PWA assets', () => {
 
 describe('brand mark palette', () => {
   async function landingLime(): Promise<string> {
-    const css = await readFile(resolve(projectRoot, 'src/pages/Landing.css'), 'utf8');
+    const css = await readFile(resolve(projectRoot, 'apps/web/src/pages/Landing.css'), 'utf8');
     const colour = css.match(/--amber:\s*(#[0-9a-f]{6})/i)?.[1];
     if (!colour) throw new Error('Missing landing mark colour');
     return colour;
@@ -97,8 +97,8 @@ describe('brand mark palette', () => {
     'public/icons/icon-512.png',
     'public/icons/icon-maskable-512.png',
     'public/favicon.ico',
-    'electron/assets/icon.png',
-    'electron/assets/portable-splash.bmp',
+    'apps/desktop/assets/icon.png',
+    'apps/desktop/assets/portable-splash.bmp',
   ])('ships the same lime mark in %s', async (filename) => {
     const colour = await landingLime();
     const rgb = [1, 3, 5].map((offset) => parseInt(colour.slice(offset, offset + 2), 16));

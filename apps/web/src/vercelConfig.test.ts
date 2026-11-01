@@ -24,7 +24,7 @@ describe('Vercel configuration', () => {
       const source = (await readFile('vite.config.ts', 'utf8')).replace(
         /from '\.\/([^']+)'/g,
         (_match, path: string) =>
-          `from '${resolve(path === 'vercel.json' ? 'library/vercel.json' : path)}'`,
+          `from '${resolve(path === 'vercel.json' ? 'apps/library/vercel.json' : path)}'`,
       );
       const path = join(directory, 'vite.config.ts');
       await writeFile(path, source);
@@ -64,15 +64,15 @@ describe('Vercel configuration', () => {
     const manifest = JSON.parse(await readFile('package.json', 'utf8')) as {
       packageManager: string;
     };
-    const runtime = JSON.parse(await readFile('relay/scripts/security-bun.json', 'utf8')) as {
+    const runtime = JSON.parse(await readFile('apps/relay/scripts/security-bun.json', 'utf8')) as {
       version: string;
     };
 
     expect(manifest.packageManager).toBe(`bun@${runtime.version}`);
     expect(config.installCommand).toBe(
-      'node relay/scripts/security-bun.mjs install --frozen-lockfile',
+      'node apps/relay/scripts/security-bun.mjs install --frozen-lockfile',
     );
-    expect(config.buildCommand).toBe('node relay/scripts/security-bun.mjs run build');
+    expect(config.buildCommand).toBe('node apps/relay/scripts/security-bun.mjs run build');
   });
 
   it('does not rewrite missing hashed assets to the HTML app shell', async () => {
@@ -177,7 +177,7 @@ describe('Vercel configuration', () => {
       expect(source).not.toMatch(/fonts\.(?:googleapis|gstatic)\.com/);
     }
 
-    const styles = await readFile('src/styles/foundations.css', 'utf8');
+    const styles = await readFile('apps/web/src/styles/foundations.css', 'utf8');
     const faces = [...styles.matchAll(/font-family: '([^']+)';\s*src: url\('([^']+)'\)/g)];
     expect(faces.map(([, family]) => family)).toEqual(
       expect.arrayContaining(['Instrument Sans', 'Space Grotesk', 'JetBrains Mono']),

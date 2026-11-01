@@ -30,7 +30,7 @@ install has completed.
 ## Finding code and delegating work
 
 Use the small [entry-point index](docs/README.md), then read the owning source, callers and tests.
-Discover filenames before guessing paths: `rg --files src tests | rg 'apkg|share|lineage'`, then
+Discover filenames before guessing paths: `rg --files apps packages tests | rg 'apkg|share|lineage'`, then
 `rg -n 'symbol' <existing-directory>`. Read issue titles first, then selected bodies and their parent
 briefs; avoid dumping an entire issue queue or unrelated files into context.
 
@@ -69,10 +69,13 @@ bunx playwright install --with-deps chromium
 bun run test:e2e:web
 
 # Relay
-(cd relay && bun install --frozen-lockfile && bun run typecheck && bun run lint && bun run test)
+bun run --cwd apps/relay typecheck
+bun run --cwd apps/relay lint
+bun run --cwd apps/relay test
 
 # Handwriting maths tool
-(cd tooling/handwriting-maths && bun install --frozen-lockfile && bun run build && bun run test)
+bun run --cwd tooling/handwriting-maths build
+bun run --cwd tooling/handwriting-maths test
 
 # Standalone AI MCP tool (uses root node_modules)
 bun run --cwd tooling/lacuna-ai-mcp typecheck
@@ -81,7 +84,7 @@ bun run --cwd tooling/lacuna-ai-mcp test
 bun run --cwd tooling/lacuna-ai-mcp build
 ```
 
-`bun run lint` covers `src`, `server`, `electron`, `tests`, `api`, `scripts`, `tooling` and the root config files, and fails on warnings. `tooling/lacuna-ai-mcp` and `relay` have their own flat configs and lint scripts.
+`bun run lint` covers `apps`, `packages`, `tests`, `scripts`, `tooling` and the root config files, and fails on warnings. `tooling/lacuna-ai-mcp` and `apps/relay` have their own flat configs and lint scripts.
 
 The configured Linux and macOS packages must also be built for release or packaging changes:
 
@@ -162,7 +165,7 @@ Inspect GitHub enforcement through [governance](docs/maintenance/governance.md).
 
 Dependabot groups root runtime, Electron/release, test, relay, handwriting and GitHub Actions updates.
 Keep security fixes in their own small pull request where that makes the audit delta clearer. Review
-the lockfile, run `bun audit` for the root and relay, and record any remaining critical or high finding
+the lockfile, run `bun audit` from the root workspace installation, and record any remaining critical or high finding
 with an owner and review date. Never add a permanent blanket ignore.
 
 ## Commit and language conventions

@@ -7,10 +7,10 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
 };
-const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8').replace(
-  /\r\n/g,
-  '\n',
-);
+const builderConfig = readFileSync(
+  resolve(root, 'apps/desktop/electron-builder.yml'),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 const packagedRuntimeDependencies = ['electron-log', 'electron-updater'] as const;
 
@@ -68,9 +68,9 @@ describe('Electron package boundary', () => {
 
   it('packages runtime assets while excluding build artefacts and retaining licence files', () => {
     // Renderer fonts ship in dist/fonts; Electron no longer injects its own copies.
-    expect(builderConfig).not.toContain('electron/assets/fonts');
-    expect(builderConfig).not.toContain('electron/fonts.css');
-    expect(builderConfig).not.toContain('  - electron/assets/**/*');
+    expect(builderConfig).not.toContain('apps/desktop/assets/fonts');
+    expect(builderConfig).not.toContain('apps/desktop/fonts.css');
+    expect(builderConfig).not.toContain('  - apps/desktop/assets/**/*');
     expect(builderConfig).toContain("  - '!**/*.map'");
     expect(builderConfig).toContain("  - '!**/*.{ts,tsx,cts,mts,jsx,tsbuildinfo}'");
     expect(builderConfig).toContain(

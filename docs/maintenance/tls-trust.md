@@ -14,8 +14,8 @@ than silently changing the runtime. When updating Bun, review its certificate an
 behaviour, update all manifests and platform checksums together, and regenerate lockfiles only
 with the selected Bun release.
 
-For a fresh local checkout, run `node relay/scripts/security-bun.mjs --install` using a patched Node
-release. Run commands through `node relay/scripts/security-bun.mjs <arguments>` to use that exact
+For a fresh local checkout, run `node apps/relay/scripts/security-bun.mjs --install` using a patched Node
+release. Run commands through `node apps/relay/scripts/security-bun.mjs <arguments>` to use that exact
 Bun binary, or put its printed cache directory on `PATH`. Keep the same revision for lockfile work.
 
 ## Check protection

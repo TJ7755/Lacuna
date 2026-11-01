@@ -5,6 +5,13 @@
   "type": "module",
   "dependencies": {
     "@lacuna/core": "workspace:*",
-    "@lacuna/protocol": "workspace:*"
+    "@lacuna/protocol": "workspace:*",
+    "zod": "4.6.7",
+    "@modelcontextprotocol/server": "2.3.1",
+    "electron-log": "^5.4.4",
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

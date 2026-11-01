@@ -81,7 +81,7 @@ export const workbox = {
   ],
 };
 
-// Registration is gated by the page protocol in src/webBootstrap.ts so the
+// Registration is gated by the page protocol in apps/web/src/webBootstrap.ts so the
 // packaged app never tries to install a worker from app://.
 export const pwaInjectRegister = null;
 

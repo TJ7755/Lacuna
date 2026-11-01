@@ -50,18 +50,18 @@ export function classifyPaths(paths) {
     // Shared runtime, bootstrap, protocols and consumed training fixtures must stay full.
     if (
       /(^|\/)(package\.json|bun\.lock|uv\.lock|vercel\.json)$/.test(path) ||
-      path.startsWith('relay/shared/') ||
-      path.startsWith('relay/scripts/') ||
+      path.startsWith('apps/relay/shared/') ||
+      path.startsWith('apps/relay/scripts/') ||
       path.startsWith('tooling/short-term-memory/coefficients/') ||
       path.startsWith('tooling/short-term-memory/tests/fixtures/')
     )
       return fullScope();
-    if (/^src\/.+\.css$/.test(path)) {
+    if (/^apps\/web\/src\/.+\.css$/.test(path)) {
       // Stylesheets alone cannot alter native authority. Retain the existing broad
       // non-Windows checks, without clearing native risk from another changed path.
       Object.assign(scope, { ...fullScope(), windows_native: scope.windows_native });
-    } else if (path.startsWith('relay/')) {
-      // App unit/browser fixtures and the standalone MCP tests import relay/src directly.
+    } else if (path.startsWith('apps/relay/')) {
+      // App unit/browser fixtures and the standalone MCP tests import apps/relay/src directly.
       Object.assign(scope, { relay: true, app: true, sites: true, ai_mcp: true });
     } else if (path.startsWith('tooling/handwriting-maths/')) {
       Object.assign(scope, { tooling: true, handwriting: true, lint: true });
@@ -85,7 +85,9 @@ export function classifyPaths(paths) {
       // Fixtures can be shared with Electron; only web spec entry points are isolated.
       Object.assign(scope, { web_tests: true, sites: true, lint: true });
     } else if (
-      ['gaps/', 'library/', 'courses/', 'compare/'].some((prefix) => path.startsWith(prefix))
+      ['apps/gaps/', 'apps/library/', 'courses/', 'compare/'].some((prefix) =>
+        path.startsWith(prefix),
+      )
     ) {
       Object.assign(scope, { sites: true, lint: true });
     } else {

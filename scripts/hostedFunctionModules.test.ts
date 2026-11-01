@@ -7,7 +7,11 @@ import { expect, test } from 'vitest';
 
 test('hosted functions load after Vercel-style ESM transpilation', async () => {
   const root = resolve(import.meta.dirname, '..');
-  const entries = ['api/ai/session.ts', 'api/ai/inference.ts', 'api/ai/jev.ts'];
+  const entries = [
+    'apps/ai/api/ai/session.ts',
+    'apps/ai/api/ai/inference.ts',
+    'apps/ai/api/ai/jev.ts',
+  ];
   const traced = await build({
     entryPoints: entries.map((entry) => join(root, entry)),
     bundle: true,
@@ -30,14 +34,20 @@ test('hosted functions load after Vercel-style ESM transpilation', async () => {
       target: 'node24',
       logLevel: 'silent',
     });
-    const urls = entries.map((entry) =>
-      pathToFileURL(join(output, entry.replace(/\.ts$/, '.js'))).href,
+    const urls = entries.map(
+      (entry) => pathToFileURL(join(output, entry.replace(/\.ts$/, '.js'))).href,
     );
-    expect(() => execFileSync(process.execPath, [
-      '--input-type=module',
-      '-e',
-      `await Promise.all(${JSON.stringify(urls)}.map((url) => import(url)));`,
-    ], { cwd: root, encoding: 'utf8', timeout: 10_000 })).not.toThrow();
+    expect(() =>
+      execFileSync(
+        process.execPath,
+        [
+          '--input-type=module',
+          '-e',
+          `await Promise.all(${JSON.stringify(urls)}.map((url) => import(url)));`,
+        ],
+        { cwd: root, encoding: 'utf8', timeout: 10_000 },
+      ),
+    ).not.toThrow();
   } finally {
     rmSync(output, { recursive: true, force: true });
   }

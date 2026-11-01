@@ -5,7 +5,7 @@ import { expect, it } from 'vitest';
 it('runs SQLite with the WASM binary shipped to the Anki worker', async () => {
   // Fixture generation uses the package binary and can hide a mismatched bundled runtime.
   const SQL = await initSqlJs({
-    wasmBinary: new Uint8Array(readFileSync('src/assets/sql-wasm.wasm')).buffer,
+    wasmBinary: new Uint8Array(readFileSync('apps/web/src/assets/sql-wasm.wasm')).buffer,
   });
   const collection = new SQL.Database();
   try {

@@ -1,8 +1,8 @@
 {
-  "ignoreCommand": "node ../scripts/vercel-ignore-build.mjs library",
+  "ignoreCommand": "node ../../scripts/vercel-ignore-build.mjs library",
   "framework": "vite",
-  "installCommand": "cd .. && node relay/scripts/security-bun.mjs install --frozen-lockfile",
-  "buildCommand": "cd .. && node relay/scripts/security-bun.mjs run build:library",
+  "installCommand": "cd ../.. && node apps/relay/scripts/security-bun.mjs install --frozen-lockfile",
+  "buildCommand": "cd ../.. && node apps/relay/scripts/security-bun.mjs run build:library",
   "outputDirectory": "dist",
   "headers": [
     {

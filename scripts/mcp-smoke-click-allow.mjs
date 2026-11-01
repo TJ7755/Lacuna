@@ -3,11 +3,15 @@ import WebSocket from 'ws';
 
 function getJson(path) {
   return new Promise((resolve, reject) => {
-    http.get(`http://127.0.0.1:9223${path}`, (response) => {
-      let body = '';
-      response.on('data', (chunk) => { body += chunk; });
-      response.on('end', () => resolve(JSON.parse(body)));
-    }).on('error', reject);
+    http
+      .get(`http://127.0.0.1:9223${path}`, (response) => {
+        let body = '';
+        response.on('data', (chunk) => {
+          body += chunk;
+        });
+        response.on('end', () => resolve(JSON.parse(body)));
+      })
+      .on('error', reject);
   });
 }
 
@@ -15,7 +19,9 @@ let target;
 for (let attempt = 0; attempt < 80; attempt += 1) {
   try {
     const targets = await getJson('/json/list');
-    target = targets.find((candidate) => candidate.type === 'page' && candidate.url === 'http://localhost:5173/');
+    target = targets.find(
+      (candidate) => candidate.type === 'page' && candidate.url === 'http://localhost:5173/',
+    );
     if (target) break;
   } catch {
     // Electron may not have opened its debug endpoint yet.
@@ -41,7 +47,13 @@ socket.on('message', (raw) => {
 });
 function evaluate(expression) {
   const requestId = ++id;
-  socket.send(JSON.stringify({ id: requestId, method: 'Runtime.evaluate', params: { expression, returnByValue: true } }));
+  socket.send(
+    JSON.stringify({
+      id: requestId,
+      method: 'Runtime.evaluate',
+      params: { expression, returnByValue: true },
+    }),
+  );
   return new Promise((resolve) => pending.set(requestId, resolve));
 }
 
@@ -62,4 +74,5 @@ for (let attempt = 0; attempt < 240 && approvals < expectedApprovals; attempt +=
 }
 
 socket.close();
-if (approvals !== expectedApprovals) throw new Error(`Expected ${expectedApprovals} consent prompts, approved ${approvals}.`);
+if (approvals !== expectedApprovals)
+  throw new Error(`Expected ${expectedApprovals} consent prompts, approved ${approvals}.`);

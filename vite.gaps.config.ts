@@ -7,7 +7,7 @@ import tailwindcss from '@tailwindcss/vite';
 const repository = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
-  root: fileURLToPath(new URL('gaps', import.meta.url)),
+  root: fileURLToPath(new URL('apps/gaps', import.meta.url)),
   // Resolve shared fonts during development; copy only the explicit asset list below.
   publicDir: `${repository}public`,
   plugins: [
@@ -25,7 +25,7 @@ export default defineConfig({
         this.emitFile({
           type: 'asset',
           fileName: 'sw.js',
-          source: readFileSync(new URL('gaps/sw.js', import.meta.url)),
+          source: readFileSync(new URL('apps/gaps/sw.js', import.meta.url)),
         });
         const files = ['icon.svg'];
         for (const name of ['InstrumentSans', 'SpaceGrotesk', 'JetBrainsMono']) {
@@ -42,7 +42,7 @@ export default defineConfig({
     },
   ],
   resolve: {
-    alias: { '/src': `${repository}src` },
+    alias: { '/src': `${repository}apps/web/src` },
     dedupe: ['react', 'react-dom'],
   },
   server: {
@@ -50,7 +50,7 @@ export default defineConfig({
     // HTML uses an absolute source path so the deployed root stays index.html.
   },
   build: {
-    outDir: fileURLToPath(new URL('gaps/dist', import.meta.url)),
+    outDir: fileURLToPath(new URL('apps/gaps/dist', import.meta.url)),
     emptyOutDir: true,
     copyPublicDir: false,
   },

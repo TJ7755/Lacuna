@@ -132,7 +132,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
     expect(modules.join('\n')).not.toMatch(/node_modules\/(?:motion|react-router|ai|ts-fsrs)\//);
     const files = (await readdir(directory, { recursive: true })).sort();
     expect(await readFile(join(directory, 'sw.js'), 'utf8')).toBe(
-      await readFile('gaps/sw.js', 'utf8'),
+      await readFile('apps/gaps/sw.js', 'utf8'),
     );
     expect(files).not.toContain('manifest.json');
     expect(
@@ -175,7 +175,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
 }, 120_000);
 
 it('keeps the teacher hosting policy separate and makes retirement updates uncacheable', async () => {
-  const config = JSON.parse(await readFile('gaps/vercel.json', 'utf8')) as {
+  const config = JSON.parse(await readFile('apps/gaps/vercel.json', 'utf8')) as {
     installCommand: string;
     buildCommand: string;
     outputDirectory: string;
@@ -183,9 +183,11 @@ it('keeps the teacher hosting policy separate and makes retirement updates uncac
     headers: { source: string; headers: { key: string; value: string }[] }[];
   };
   expect(config.installCommand).toBe(
-    'cd .. && node relay/scripts/security-bun.mjs install --frozen-lockfile',
+    'cd ../.. && node apps/relay/scripts/security-bun.mjs install --frozen-lockfile',
   );
-  expect(config.buildCommand).toBe('cd .. && node relay/scripts/security-bun.mjs run build:gaps');
+  expect(config.buildCommand).toBe(
+    'cd ../.. && node apps/relay/scripts/security-bun.mjs run build:gaps',
+  );
   expect(config.outputDirectory).toBe('dist');
   expect(config.rewrites).toBeUndefined();
   expect(config.headers.find((entry) => entry.source === '/sw.js')?.headers).toContainEqual({

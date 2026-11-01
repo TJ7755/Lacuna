@@ -12,8 +12,8 @@ function stringLiterals(source: string, pattern: RegExp, label: string): string[
 
 describe('desktop updater contract', () => {
   it('keeps the CommonJS preload validator aligned with the shared type-only contract', () => {
-    const contract = readFileSync(resolve(root, 'electron/updaterContract.d.ts'), 'utf8');
-    const preload = readFileSync(resolve(root, 'electron/preload.ts'), 'utf8');
+    const contract = readFileSync(resolve(root, 'apps/desktop/updaterContract.d.ts'), 'utf8');
+    const preload = readFileSync(resolve(root, 'apps/desktop/preload.ts'), 'utf8');
 
     const phases = stringLiterals(contract, /export type UpdatePhase =([\s\S]*?);/, 'UpdatePhase');
     const validatedPhases = stringLiterals(

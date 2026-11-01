@@ -7,7 +7,7 @@ import { db } from './schema';
 import { seedArtworkFor } from './seedArtwork';
 
 function seedSource(): string {
-  return readFileSync('src/db/seed.ts', 'utf8').replace(/\r\n/g, '\n');
+  return readFileSync('apps/web/src/db/seed.ts', 'utf8').replace(/\r\n/g, '\n');
 }
 
 /** Every SVG the seed has ever stored, read from seed.ts so a changed drawing cannot slip by. */

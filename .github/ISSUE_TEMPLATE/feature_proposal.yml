@@ -1,6 +1,6 @@
 name: Feature proposal
 description: Propose a focused improvement to an existing learner or maintainer workflow
-title: "[Proposal]: "
+title: '[Proposal]: '
 labels:
   - enhancement
 body:

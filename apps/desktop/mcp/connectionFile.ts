@@ -61,7 +61,14 @@ export function companionLaunchCommand(
     return {
       command: environment.execPath,
       args: [
-        path.join(environment.appPath, 'electron', 'dist-electron', 'mcp', 'aiCompanionEntry.js'),
+        path.join(
+          environment.appPath,
+          'apps',
+          'desktop',
+          'dist-electron',
+          'mcp',
+          'aiCompanionEntry.js',
+        ),
         `${HOST_USER_DATA_ARGUMENT}${environment.userDataPath}`,
         `${APP_VERSION_ARGUMENT}${environment.appVersion}`,
       ],

@@ -1,6 +1,6 @@
 {
-  "ignoreCommand": "node ../scripts/vercel-ignore-build.mjs relay",
-  "installCommand": "node scripts/security-bun.mjs install --frozen-lockfile",
+  "ignoreCommand": "node ../../scripts/vercel-ignore-build.mjs relay",
+  "installCommand": "cd ../.. && node apps/relay/scripts/security-bun.mjs install --frozen-lockfile",
   "rewrites": [
     {
       "source": "/insights/:id/:day/:slotId",

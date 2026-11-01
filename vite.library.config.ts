@@ -7,7 +7,7 @@ import tailwindcss from '@tailwindcss/vite';
 const repository = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
-  root: fileURLToPath(new URL('library', import.meta.url)),
+  root: fileURLToPath(new URL('apps/library', import.meta.url)),
   publicDir: `${repository}public`,
   plugins: [
     react(),
@@ -35,12 +35,12 @@ export default defineConfig({
     },
   ],
   resolve: {
-    alias: { '/src': `${repository}src` },
+    alias: { '/src': `${repository}apps/web/src` },
     dedupe: ['react', 'react-dom'],
   },
   server: { fs: { allow: [repository] } },
   build: {
-    outDir: fileURLToPath(new URL('library/dist', import.meta.url)),
+    outDir: fileURLToPath(new URL('apps/library/dist', import.meta.url)),
     emptyOutDir: true,
     copyPublicDir: false,
   },

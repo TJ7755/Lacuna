@@ -26,7 +26,7 @@ test('homepage selects one entry before fetching modules and keeps critical styl
       const document = view.document.implementation.createHTMLDocument();
       if (app) document.documentElement.setAttribute('data-app-starting', '');
       runInNewContext(selection, { document });
-      const root = app ? 'index.html' : 'src/landingBootstrap.ts';
+      const root = app ? 'index.html' : 'apps/web/src/landingBootstrap.ts';
       assert.equal(
         document.querySelector('script[type="module"]')?.getAttribute('src'),
         `/${manifest[root].file}`,

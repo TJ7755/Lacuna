@@ -23,11 +23,11 @@ export default [
   {
     ignores: [
       '**/dist/**',
-      'electron/dist-electron/**',
+      'apps/desktop/dist-electron/**',
       '**/node_modules/**',
       '**/.venv/**',
       // Separate packages with their own manifests and configs.
-      'relay/**',
+      'apps/relay/**',
       'tooling/lacuna-ai-mcp/**',
     ],
   },
@@ -78,7 +78,7 @@ export default [
   },
   {
     files: [
-      `src/{${domainDirectories.join(',')}}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}`,
+      `apps/web/src/{${domainDirectories.join(',')}}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}`,
       'packages/**/*.{ts,tsx}',
     ],
     plugins: { architecture: { rules: { 'no-domain-ui': domainUiRule } } },
@@ -89,12 +89,12 @@ export default [
           // These integration tests deliberately exercise the UI projection of domain data.
           integrationTests: [
             {
-              from: 'src/db/lessonPrerequisites.test.ts',
-              to: 'src/components/import/mergeReviewRows.ts',
+              from: 'apps/web/src/db/lessonPrerequisites.test.ts',
+              to: 'apps/web/src/components/import/mergeReviewRows.ts',
             },
             {
-              from: 'src/db/sessionHistoryRead.test.ts',
-              to: 'src/components/analytics/prepare.ts',
+              from: 'apps/web/src/db/sessionHistoryRead.test.ts',
+              to: 'apps/web/src/components/analytics/prepare.ts',
             },
           ],
         },
@@ -115,11 +115,11 @@ export default [
   },
   {
     // Playwright page.evaluate callbacks and the WASI worker run in the browser.
-    files: ['scripts/**/*.mjs', 'src/**/*.mjs'],
+    files: ['scripts/**/*.mjs', 'apps/web/src/**/*.mjs'],
     languageOptions: { globals: { ...globals.node, ...globals.browser, ...globals.es2021 } },
   },
   {
-    files: ['gaps/sw.js'],
+    files: ['apps/gaps/sw.js'],
     languageOptions: { globals: globals.serviceworker },
   },
   {
@@ -129,7 +129,7 @@ export default [
   },
   {
     files: [
-      '{src,server,electron,tests,api,scripts,tooling}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}',
+      '{apps/web/src,apps/ai/server,apps/desktop,tests,apps/ai/api,scripts,tooling}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}',
       '*.config.ts',
     ],
     plugins: { 'relay-contract': { rules: { 'no-deep-imports': relayImportsRule } } },
@@ -139,43 +139,48 @@ export default [
         {
           // Exact integration edges for in-process relay fixtures, never a general test waiver.
           integrationTests: [
-            { from: 'src/insights/classKey.test.ts', to: 'relay/src/relay.ts' },
-            { from: 'src/insights/classKey.test.ts', to: 'relay/src/store.ts' },
-            { from: 'src/insights/classKey.test.ts', to: 'relay/src/channelMaintenance.ts' },
-            { from: 'src/insights/mailbox.test.ts', to: 'relay/src/relay.ts' },
-            { from: 'src/insights/mailbox.test.ts', to: 'relay/src/store.ts' },
-            { from: 'src/insights/outbox.test.ts', to: 'relay/src/relay.ts' },
-            { from: 'src/insights/outbox.test.ts', to: 'relay/src/store.ts' },
-            { from: 'src/shareLinks/verifyOwner.test.ts', to: 'relay/src/relay.ts' },
-            { from: 'src/shareLinks/verifyOwner.test.ts', to: 'relay/src/store.ts' },
-            { from: 'src/teacher/connectionStore.test.ts', to: 'relay/src/relay.ts' },
-            { from: 'src/teacher/connectionStore.test.ts', to: 'relay/src/store.ts' },
-            { from: 'tests/e2e/fixtures/aiRelay.ts', to: 'relay/src/relay.ts' },
-            { from: 'tests/e2e/fixtures/aiRelay.ts', to: 'relay/src/store.ts' },
-            { from: 'tests/e2e/gaps-artefact-labels.spec.ts', to: 'relay/src/relay.ts' },
-            { from: 'tests/e2e/gaps-artefact-labels.spec.ts', to: 'relay/src/store.ts' },
-            { from: 'tests/e2e/gaps-course-connection.spec.ts', to: 'relay/src/relay.ts' },
-            { from: 'tests/e2e/gaps-course-connection.spec.ts', to: 'relay/src/store.ts' },
-            { from: 'tests/e2e/gaps-daily-flow.spec.ts', to: 'relay/src/relay.ts' },
-            { from: 'tests/e2e/gaps-daily-flow.spec.ts', to: 'relay/src/store.ts' },
-            { from: 'tests/e2e/share-links.spec.ts', to: 'relay/src/relay.ts' },
-            { from: 'tests/e2e/share-links.spec.ts', to: 'relay/src/store.ts' },
-            { from: 'scripts/library-publish-cli.test.ts', to: 'relay/src/relay.ts' },
-            { from: 'scripts/library-publish-cli.test.ts', to: 'relay/src/store.ts' },
-            { from: 'scripts/library-publish.test.ts', to: 'relay/src/relay.ts' },
-            { from: 'scripts/library-publish.test.ts', to: 'relay/src/store.ts' },
+            { from: 'apps/web/src/insights/classKey.test.ts', to: 'apps/relay/src/relay.ts' },
+            { from: 'apps/web/src/insights/classKey.test.ts', to: 'apps/relay/src/store.ts' },
+            {
+              from: 'apps/web/src/insights/classKey.test.ts',
+              to: 'apps/relay/src/channelMaintenance.ts',
+            },
+            { from: 'apps/web/src/insights/mailbox.test.ts', to: 'apps/relay/src/relay.ts' },
+            { from: 'apps/web/src/insights/mailbox.test.ts', to: 'apps/relay/src/store.ts' },
+            { from: 'apps/web/src/insights/outbox.test.ts', to: 'apps/relay/src/relay.ts' },
+            { from: 'apps/web/src/insights/outbox.test.ts', to: 'apps/relay/src/store.ts' },
+            { from: 'apps/web/src/shareLinks/verifyOwner.test.ts', to: 'apps/relay/src/relay.ts' },
+            { from: 'apps/web/src/shareLinks/verifyOwner.test.ts', to: 'apps/relay/src/store.ts' },
+            { from: 'apps/web/src/teacher/connectionStore.test.ts', to: 'apps/relay/src/relay.ts' },
+            { from: 'apps/web/src/teacher/connectionStore.test.ts', to: 'apps/relay/src/store.ts' },
+            { from: 'tests/e2e/fixtures/aiRelay.ts', to: 'apps/relay/src/relay.ts' },
+            { from: 'tests/e2e/fixtures/aiRelay.ts', to: 'apps/relay/src/store.ts' },
+            { from: 'tests/e2e/gaps-artefact-labels.spec.ts', to: 'apps/relay/src/relay.ts' },
+            { from: 'tests/e2e/gaps-artefact-labels.spec.ts', to: 'apps/relay/src/store.ts' },
+            { from: 'tests/e2e/gaps-course-connection.spec.ts', to: 'apps/relay/src/relay.ts' },
+            { from: 'tests/e2e/gaps-course-connection.spec.ts', to: 'apps/relay/src/store.ts' },
+            { from: 'tests/e2e/gaps-daily-flow.spec.ts', to: 'apps/relay/src/relay.ts' },
+            { from: 'tests/e2e/gaps-daily-flow.spec.ts', to: 'apps/relay/src/store.ts' },
+            { from: 'tests/e2e/share-links.spec.ts', to: 'apps/relay/src/relay.ts' },
+            { from: 'tests/e2e/share-links.spec.ts', to: 'apps/relay/src/store.ts' },
+            { from: 'scripts/library-publish-cli.test.ts', to: 'apps/relay/src/relay.ts' },
+            { from: 'scripts/library-publish-cli.test.ts', to: 'apps/relay/src/store.ts' },
+            { from: 'scripts/library-publish.test.ts', to: 'apps/relay/src/relay.ts' },
+            { from: 'scripts/library-publish.test.ts', to: 'apps/relay/src/store.ts' },
           ],
         },
       ],
     },
   },
   {
-    files: ['{electron/mcp,api}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}'],
+    files: ['{apps/desktop/mcp,apps/ai/api}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}'],
     plugins: { 'app-contract': { rules: { 'no-deep-imports': appImportsRule } } },
     rules: { 'app-contract/no-deep-imports': 'error' },
   },
   {
-    files: ['{src,server,electron,api}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}'],
+    files: [
+      '{apps/web/src,apps/ai/server,apps/desktop,apps/ai/api}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}',
+    ],
     plugins: { 'training-contract': { rules: { 'no-deep-imports': trainingImportsRule } } },
     rules: {
       'training-contract/no-deep-imports': [
@@ -183,11 +188,11 @@ export default [
         {
           integrationTests: [
             {
-              from: 'src/fsrs/halfLifeLogisticModel.test.ts',
+              from: 'apps/web/src/fsrs/halfLifeLogisticModel.test.ts',
               to: 'tooling/short-term-memory/coefficients/half-life-logistic-v1.json',
             },
             {
-              from: 'src/fsrs/halfLifeLogisticModel.test.ts',
+              from: 'apps/web/src/fsrs/halfLifeLogisticModel.test.ts',
               to: 'tooling/short-term-memory/tests/fixtures/model-port-v3.json',
             },
           ],

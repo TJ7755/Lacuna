@@ -546,7 +546,7 @@ test('Windows skips the slow package cache while retaining verified runtime inst
   const runtime = steps.find((step) => step.name === 'Restore verified Bun download');
   assert.equal(runtime.if, undefined);
   const install = steps.find(
-    (step) => step.run === 'node relay/scripts/security-bun.mjs --install',
+    (step) => step.run === 'node apps/relay/scripts/security-bun.mjs --install',
   );
   assert.equal(install.if, undefined);
 });
@@ -754,25 +754,25 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
   for (const [paths, expected] of [
     [['docs/README.md'], []],
     [
-      ['relay/src/relay.ts'],
+      ['apps/relay/src/relay.ts'],
       ['typecheck', 'test-unit', 'test-coverage', 'relay', 'ai-mcp', ...web],
     ],
     [['tooling/handwriting-maths/src/main.ts'], ['lint', 'handwriting']],
     [['tooling/short-term-memory/stm_harness/contract.py'], ['lint', 'python-tools']],
-    [['library/index.html'], ['lint', ...web]],
+    [['apps/library/index.html'], ['lint', ...web]],
     [['tests/e2e/study-flip.spec.ts'], ['typecheck', 'lint', ...web]],
     [['tests/e2e/mobile-pwa-smoke.spec.ts'], ['typecheck', 'lint', ...web]],
     [['tests/e2e/gaps-standalone.spec.ts'], ['typecheck', 'lint', ...web]],
     [['tests/e2e/fixtures/videoEmbeds.ts'], all],
     [['tests/config/playwright.web.config.ts'], all],
-    [['tests/e2e/study-flip.spec.ts', 'src/App.tsx'], all],
+    [['tests/e2e/study-flip.spec.ts', 'apps/web/src/App.tsx'], all],
     [
-      ['docs/README.md', 'gaps/sw.js', 'tooling/handwriting-maths/src/main.ts'],
+      ['docs/README.md', 'apps/gaps/sw.js', 'tooling/handwriting-maths/src/main.ts'],
       ['lint', 'handwriting', ...web],
     ],
-    [['src/fsrs/coefficients/model.json'], all],
-    [['relay/shared/insights/index.ts'], all],
-    [['library/vercel.json'], all],
+    [['apps/web/src/fsrs/coefficients/model.json'], all],
+    [['apps/relay/shared/insights/index.ts'], all],
+    [['apps/library/vercel.json'], all],
     [['unknown/file'], all],
   ]) {
     const outputs = Object.fromEntries(
@@ -876,7 +876,7 @@ test('site-only production runs the existing build, hosting and asset contracts'
   );
   assert.equal(
     step.run,
-    'bun run test -- src/build src/release/pwaAssets.test.ts src/vercelConfig.test.ts',
+    'bun run test -- apps/web/src/build apps/web/src/release/pwaAssets.test.ts apps/web/src/vercelConfig.test.ts',
   );
   for (const [app, sites, expected] of [
     ['false', 'true', true],

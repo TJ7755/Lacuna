@@ -3,7 +3,9 @@ import ts from 'typescript';
 import { expect, it } from 'vitest';
 
 it('typechecks hosted API entrypoints with their nearest deployment configuration', () => {
-  const entrypoints = ['inference', 'session', 'jev'].map((name) => resolve(`api/ai/${name}.ts`));
+  const entrypoints = ['inference', 'session', 'jev'].map((name) =>
+    resolve(`apps/ai/api/ai/${name}.ts`),
+  );
   const configFile = ts.findConfigFile(entrypoints[0], ts.sys.fileExists);
   expect(configFile).toBeDefined();
   const config = ts.readConfigFile(configFile!, ts.sys.readFile);

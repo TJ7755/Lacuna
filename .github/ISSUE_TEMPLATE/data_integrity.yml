@@ -1,6 +1,6 @@
 name: Data-integrity incident
 description: Report lost, duplicated, corrupted or unexpectedly changed learner data
-title: "[Data integrity]: "
+title: '[Data integrity]: '
 labels:
   - bug
 body:
