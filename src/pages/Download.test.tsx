@@ -27,14 +27,13 @@ describe('desktop download selection', () => {
     render(<Download />, { wrapper: MemoryRouter });
 
     expect(
-      screen.queryByRole('link', { name: 'Download the Windows installer' }),
+      screen.queryByRole('link', { name: 'Download the Windows portable build' }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
     fireEvent.click(screen.getByRole('button', { name: 'Other Windows download' }));
-    expect(screen.getByRole('link', { name: 'Download the Windows installer' })).toHaveAttribute(
-      'href',
-      DOWNLOADS.windowsInstaller,
-    );
+    expect(
+      screen.getByRole('link', { name: 'Download the Windows portable build' }),
+    ).toHaveAttribute('href', DOWNLOADS.windowsPortable);
     fireEvent.click(screen.getByRole('button', { name: 'Linux' }));
     expect(
       screen.queryByRole('link', { name: 'Download the DEB package' }),
@@ -72,30 +71,30 @@ describe('desktop download selection', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Windows' }));
-    expect(screen.getByText('64-bit Windows · portable')).toBeVisible();
+    expect(screen.getByText('64-bit Windows · installer')).toBeVisible();
   });
 
-  it('recommends the no-admin portable build on Windows and explains its update trade-off', () => {
+  it('recommends the Windows installer with automatic updates and keeps portable optional', () => {
     vi.stubGlobal('navigator', {
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
     });
 
     render(<Download />, { wrapper: MemoryRouter });
 
-    expect(screen.getByText('64-bit Windows · portable')).toBeVisible();
+    expect(screen.getByText('64-bit Windows · installer')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
-    expect(screen.getByText(/no installer or administrator account/i)).toBeVisible();
+    expect(screen.getByText(/installer sets up Lacuna with automatic updates/i)).toBeVisible();
     expect(screen.getByText(/browser data is not copied/i)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Download for Windows' })).toHaveAttribute(
       'href',
-      DOWNLOADS.windowsPortable,
-    );
-    expect(screen.getByText(/It uses manual updates/)).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Other Windows download' }));
-    expect(screen.getByRole('link', { name: 'Download the Windows installer' })).toHaveAttribute(
-      'href',
       DOWNLOADS.windowsInstaller,
     );
+    fireEvent.click(screen.getByRole('button', { name: 'Other Windows download' }));
+    expect(
+      screen.getByRole('link', { name: 'Download the Windows portable build' }),
+    ).toHaveAttribute('href', DOWNLOADS.windowsPortable);
+    expect(screen.getByText(/no installer or administrator account/i)).toBeVisible();
+    expect(screen.getByText(/It uses manual updates/)).toBeVisible();
     expect(
       screen.getByText(
         (_, element) =>

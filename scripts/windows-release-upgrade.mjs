@@ -7,6 +7,7 @@ import { createServer } from 'node:http';
 import path from 'node:path';
 import { expect } from '@playwright/test';
 import { launchInstalledElectron } from './installed-electron-probe.mjs';
+import { importWelcomeCourse, skipOnboarding } from '../tests/e2e/fixtures/lacunaApp.ts';
 
 assert.equal(process.platform, 'win32', 'Run this probe on an isolated Windows runner.');
 const version = JSON.parse(await readFile('package.json', 'utf8')).version;
@@ -108,7 +109,10 @@ async function open(expectedVersion) {
     .getByRole('link', { name: 'Start revising', exact: true });
   const courses = page.getByRole('navigation', { name: 'Courses' });
   await start.or(courses).waitFor({ state: 'visible', timeout: 60_000 });
-  if (await start.isVisible()) await start.click();
+  if (await start.isVisible()) {
+    await start.click();
+    await skipOnboarding(page);
+  }
   await expect(courses).toBeVisible({ timeout: 60_000 });
   return page;
 }
@@ -159,6 +163,7 @@ try {
     (await page.evaluate(() => window.electronAPI.updater.getState())).availableVersion,
     version,
   );
+  await importWelcomeCourse(page);
   await expect.poll(async () => (await snapshot(page)).cards?.length ?? 0).toBeGreaterThan(0);
   await page
     .getByRole('navigation', { name: 'Courses' })

@@ -63,8 +63,8 @@ function DownloadButton({ href, children }: { href: string; children: ReactNode 
 function WindowsDownload() {
   return (
     <>
-      <DownloadButton href={DOWNLOADS.windowsPortable}>Download for Windows</DownloadButton>
-      <p className="download-compatibility">64-bit Windows · portable</p>
+      <DownloadButton href={DOWNLOADS.windowsInstaller}>Download for Windows</DownloadButton>
+      <p className="download-compatibility">64-bit Windows · installer</p>
     </>
   );
 }
@@ -93,8 +93,8 @@ function InstallationHelp({ platform }: { platform: DesktopPlatform | null }) {
       {platform === 'windows' && (
         <>
           <p>
-            The portable build needs no installer or administrator account. Keep it in a folder you
-            can access. It uses manual updates.
+            The installer sets up Lacuna with automatic updates. Managed computers may block
+            installers.
           </p>
           <p>
             Lacuna is not yet code-signed. If Windows blocks it, use More info → Run anyway only
@@ -102,10 +102,11 @@ function InstallationHelp({ platform }: { platform: DesktopPlatform | null }) {
           </p>
           <AlternativeDownload platform="Windows">
             <p>
-              <a className="download-inline-link" href={DOWNLOADS.windowsInstaller}>
-                Download the Windows installer
+              <a className="download-inline-link" href={DOWNLOADS.windowsPortable}>
+                Download the Windows portable build
               </a>{' '}
-              for automatic updates. Managed computers may block installers.
+              if you need no installer or administrator account. Keep it in a folder you can access.
+              It uses manual updates.
             </p>
           </AlternativeDownload>
         </>

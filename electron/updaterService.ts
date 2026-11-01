@@ -110,7 +110,7 @@ export function createDesktopUpdater(options: DesktopUpdaterOptions): DesktopUpd
     },
     restartAndInstall: () => {
       if (state.phase !== 'downloaded') return;
-      options.updater.quitAndInstall(false, true);
+      options.updater.quitAndInstall(options.platform === 'win32', true);
     },
   };
 
