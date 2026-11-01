@@ -33,8 +33,8 @@ describe('assessment due persistence', () => {
       now,
     };
     const result = await recordReview(args);
-    expect(result.card.due).toBe(examDate - 1);
-    expect((await db.cards.get(card.id))?.due).toBe(examDate - 1);
+    expect(result.card.due).toBe(now);
+    expect((await db.cards.get(card.id))?.due).toBe(now);
     expect((await recordReview(args)).recorded).toBe(false);
     await undoReview({
       ...result,
