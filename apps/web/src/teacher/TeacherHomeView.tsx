@@ -53,47 +53,6 @@ export function TeacherHomeView({ children }: { children?: ReactNode }) {
   );
 }
 
-export function TeacherJourney({
-  current,
-  onSelect,
-  disabled = false,
-}: {
-  current?: 1 | 2 | 3;
-  onSelect?(step: 2 | 3): void;
-  disabled?: boolean;
-}) {
-  return (
-    <ol className="teacher-journey" aria-label="Class steps">
-      {['Connect a class', 'Give pupils a code', 'Read daily results'].map((label, index) => (
-        <li key={label} aria-current={index + 1 === current ? 'step' : undefined}>
-          {onSelect && index > 0 ? (
-            <button
-              type="button"
-              disabled={disabled}
-              className={`${buttonClassName(index + 1 === current ? 'inverse' : 'secondary')} teacher-step-link`}
-              aria-label={index === 1 ? 'Share class code' : 'Daily results'}
-              aria-pressed={index + 1 === current}
-              onClick={() => onSelect(index === 1 ? 2 : 3)}
-            >
-              <span className="teacher-step" aria-hidden="true">
-                {index + 1}
-              </span>
-              <span>{label}</span>
-            </button>
-          ) : (
-            <>
-              <span className="teacher-step" aria-hidden="true">
-                {index + 1}
-              </span>
-              <span>{label}</span>
-            </>
-          )}
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 export function TeacherEmptyState({ standalone = false }: { standalone?: boolean }) {
   return (
     <SectionCard aria-labelledby="empty-heading">
