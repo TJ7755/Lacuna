@@ -66,10 +66,11 @@ export function resolveCardExamDate(
   ctx: ExamDateContext,
   now: number = Date.now(),
 ): number | undefined {
-  // 1. Lesson override wins outright (past or future).
+  // 1. An upcoming lesson override wins.
   if (card.primaryLessonId !== null && card.primaryLessonId !== undefined) {
     const lesson = ctx.lessonsById.get(card.primaryLessonId);
-    if (lesson?.examDate !== undefined) return lesson.examDate;
+    const examDate = lesson?.examDate;
+    if (isUpcomingExamDate(examDate, now)) return examDate;
   }
 
   // A specification-scoped final is one paper, not a course-wide fallback.
@@ -81,8 +82,7 @@ export function resolveCardExamDate(
   for (const assessment of ctx.courseAssessments) {
     if (
       (assessment.kind !== 'checkpoint' && !specificationFinal) ||
-      assessment.examDate === undefined ||
-      assessment.examDate < now
+      !isUpcomingExamDate(assessment.examDate, now)
     ) {
       continue;
     }
@@ -95,4 +95,9 @@ export function resolveCardExamDate(
 
   // 3. Course default.
   return specificationFinal ? undefined : ctx.courseExamDate;
+}
+
+/** An assessment is upcoming while now is strictly before its deadline; equality is expired. */
+export function isUpcomingExamDate(examDate: number | undefined, now: number): examDate is number {
+  return examDate !== undefined && examDate > now;
 }

@@ -167,3 +167,24 @@ it('breaks normalised multi-unit ties randomly without changing exam urgency', (
     random.mockRestore();
   }
 });
+
+describe('assessment urgency', () => {
+  it('prioritises the applicable card assessment over the unit default', () => {
+    const near = deck('near', 1);
+    const far = deck('far', 30);
+    const cards = [card('near-card', near.id), card('paper-card', far.id)];
+    const ctx = makeSessionContext([
+      near,
+      {
+        config: far,
+        scope: { kind: 'scheduling-unit', schedulingUnitId: far.id },
+        examDateContext: {
+          lessonsById: new Map(),
+          courseAssessments: [],
+          courseExamDate: NOW + MS_PER_DAY / 2,
+        },
+      },
+    ]);
+    expect(selectNext(cards, ctx, new Map(), NOW)?.id).toBe('paper-card');
+  });
+});

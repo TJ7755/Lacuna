@@ -100,12 +100,12 @@ describe('resolveCardExamDate', () => {
     expect(resolveCardExamDate(makeCard(), ctx, NOW)).toBe(lessonExam);
   });
 
-  it('uses the lesson override even when it is in the past', () => {
+  it('falls through an expired lesson override to the next checkpoint', () => {
     const lessonExam = NOW - 5 * MS_PER_DAY;
     const lesson = makeLesson({ examDate: lessonExam });
     const checkpoint = makeExamDate({ examDate: NOW + 10 * MS_PER_DAY });
     const ctx = makeExamDateContext(makeCourse(), [lesson], [checkpoint]);
-    expect(resolveCardExamDate(makeCard(), ctx, NOW)).toBe(lessonExam);
+    expect(resolveCardExamDate(makeCard(), ctx, NOW)).toBe(checkpoint.examDate);
   });
 
   it('chooses the nearest future checkpoint among several', () => {
@@ -224,7 +224,7 @@ describe('resolveCardExamDate', () => {
     const ctx = makeExamDateContext(course, [makeLesson()], [final, first], [], [concept]);
 
     expect(resolveCardExamDate(card, ctx, NOW)).toBe(first.examDate);
-    expect(resolveCardExamDate(card, ctx, first.examDate!)).toBe(first.examDate);
+    expect(resolveCardExamDate(card, ctx, first.examDate!)).toBe(final.examDate);
     expect(resolveCardExamDate(card, ctx, first.examDate! + 1)).toBe(final.examDate);
     const afterFinal = final.examDate! + 1;
     expect(resolveCardExamDate(card, ctx, afterFinal)).toBeUndefined();
