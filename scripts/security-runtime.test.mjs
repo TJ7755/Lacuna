@@ -95,10 +95,10 @@ test('Vercel builds use the verified Bun bootstrap instead of vulnerable bunx do
     const config = JSON.parse(readFileSync(new URL(file, root), 'utf8'));
     assert.match(
       config.installCommand,
-      /node (?:relay\/)?scripts\/security-bun\.mjs install --frozen-lockfile/,
+      /node (?:apps\/relay\/)?scripts\/security-bun\.mjs install --frozen-lockfile/,
     );
     if (config.buildCommand)
-      assert.match(config.buildCommand, /node relay\/scripts\/security-bun\.mjs run build/);
+      assert.match(config.buildCommand, /node apps\/relay\/scripts\/security-bun\.mjs run build/);
   }
   assert.equal(pin.version, version);
   assert.equal(pin.revision, `${version}+${pin.commit.slice(0, 9)}`);

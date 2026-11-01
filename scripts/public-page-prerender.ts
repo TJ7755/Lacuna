@@ -17,12 +17,12 @@ export function publicPagePrerenderPlugin(): Plugin {
   const pages: PublicPage[] = [
     {
       path: '/compare/quizlet/index.html',
-      module: '/src/pages/quizlet/entry-server.tsx',
+      module: '/apps/web/src/pages/quizlet/entry-server.tsx',
       placeholder: '<!--public-page-->',
     },
     {
       path: 'index.html',
-      module: '/src/pages/landing/entry-server.tsx',
+      module: '/apps/web/src/pages/landing/entry-server.tsx',
       placeholder: '<!--landing-page-->',
     },
   ];
@@ -146,7 +146,7 @@ export function publicPagePrerenderPlugin(): Plugin {
         });
         try {
           const { render, renderHead } = await server.ssrLoadModule(
-            '/src/pages/courses/entry-server.tsx',
+            '/apps/web/src/pages/courses/entry-server.tsx',
           );
           const html = String(template.source);
           for (const path of coursePaths) {

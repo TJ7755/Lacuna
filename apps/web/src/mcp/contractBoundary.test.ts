@@ -14,11 +14,11 @@ import { TOOL_REGISTRY } from './registry';
 
 const PROJECT_ROOT = process.cwd();
 const FORBIDDEN_SOURCE_ROOTS = [
-  'src/db/',
-  'src/fsrs/',
-  'src/items/',
-  'src/questions/',
-  'src/state/',
+  'packages/core/src/db/',
+  'packages/core/src/fsrs/',
+  'packages/core/src/items/',
+  'packages/core/src/questions/',
+  'apps/web/src/state/',
 ];
 const RENDERER_ONLY_PACKAGES = ['dexie', 'react', 'ts-fsrs'];
 const PACKAGED_MCP_ENTRY_POINTS = [
@@ -265,7 +265,7 @@ describe('Electron MCP contract boundary', () => {
         }
       }
       visit(entry[0]);
-      expect(inputs.has('src/ai/companionErrors.ts'), name).toBe(name.startsWith('ai'));
+      expect(inputs.has('apps/web/src/ai/companionErrors.ts'), name).toBe(name.startsWith('ai'));
       expect(
         [...inputs].filter((input) =>
           FORBIDDEN_SOURCE_ROOTS.some((root) => input.startsWith(root)),

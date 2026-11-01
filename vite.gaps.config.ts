@@ -42,7 +42,7 @@ export default defineConfig({
     },
   ],
   resolve: {
-    alias: { '/src': `${repository}apps/web/src` },
+    alias: { '/apps/web/src': `${repository}apps/web/src` },
     dedupe: ['react', 'react-dom'],
   },
   server: {

@@ -68,17 +68,20 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       .filter((chunk) => eager.has(chunk.fileName))
       .flatMap((chunk) => chunk.modules);
     expect(eagerModules.join('\n')).not.toMatch(
-      /node_modules\/dexie\/|src\/insights\/|src\/teacher\/TeacherKeySetup/,
+      /node_modules\/dexie\/|apps\/web\/src\/insights\/|apps\/web\/src\/teacher\/TeacherKeySetup/,
     );
     const localModules = modules
       .map((id) => relative(resolve('.'), id.split('?')[0]).replaceAll('\\', '/'))
-      .filter((id) => id.startsWith('src/'));
+      .filter((id) => id.startsWith('apps/web/src/') || id.startsWith('packages/'))
+      .map((id) => id.replace(/^apps\/web\//, ''));
     expect(localModules).toContain('src/teacher/main.tsx');
     expect(
       localModules.filter(
         (id) =>
           ![
             'src/teacher/main.tsx',
+            'packages/protocol/src/insights/insightsDay.ts',
+            'packages/protocol/src/insights/insightsProtocol.ts',
             'src/teacher/index.css',
             'src/teacher/gaps.css',
             'src/teacher/gapsUi.tsx',

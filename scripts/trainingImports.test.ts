@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '..');
 const probeSource = (source: string, filePath: string) =>
   source.replace(
-    /(?<=[\"'`])(?:\.\.\/)+(src|relay|tooling)\//g,
+    /(?<=["'`])(?:\.\.\/)+(src|relay|tooling)\//g,
     (_match, area: string) =>
       relative(
         dirname(resolve(root, filePath)),

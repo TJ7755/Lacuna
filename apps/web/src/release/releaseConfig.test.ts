@@ -43,11 +43,6 @@ const windowsInstallerInclude = readFileSync(
   'utf8',
 );
 const bunLock = readFileSync(resolve(root, 'bun.lock'), 'utf8');
-const relayBunLock = readFileSync(resolve(root, 'bun.lock'), 'utf8');
-const handwritingBunLock = readFileSync(
-  resolve(root, 'tooling/handwriting-maths/bun.lock'),
-  'utf8',
-);
 const ciWorkflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8').replace(
   /\r\n/g,
   '\n',
@@ -161,9 +156,10 @@ describe('release configuration', () => {
     expectDeclaredAtLeast(relayPackageJson.devDependencies?.vite, [8, 3, 0]);
     expect(relayPackageJson.overrides?.vite).toBeUndefined();
 
-    for (const lockfile of [bunLock, relayBunLock, handwritingBunLock]) {
-      expectResolvedAtLeastFrom(lockfile, 'vitest', [5, 0, 1]);
-      expectResolvedAtLeastFrom(lockfile, 'vite', [8, 3, 0]);
+    expectResolvedAtLeastFrom(bunLock, 'vitest', [5, 0, 1]);
+    expectResolvedAtLeastFrom(bunLock, 'vite', [8, 3, 0]);
+    for (const workspace of ['apps/relay', 'tooling/handwriting-maths']) {
+      expect(existsSync(resolve(root, workspace, 'bun.lock'))).toBe(false);
     }
     expectResolvedAtLeast('@vitest/coverage-v8', [5, 0, 1]);
     expect(existsSync(resolve(root, 'tooling/lacuna-ai-mcp/bun.lock'))).toBe(false);
@@ -250,7 +246,7 @@ describe('release configuration', () => {
     expect(exactCommitChecks).toContain('.head_branch == "main"');
     expect(exactCommitChecks).toContain('.conclusion == "success"');
     expect(verifyJob).not.toContain('bun install');
-    for (const workspace of ['relay', 'tooling/lacuna-ai-mcp']) {
+    for (const workspace of ['apps/relay', 'tooling/lacuna-ai-mcp']) {
       expect(ciWorkflow).toContain(`working-directory: ${workspace}`);
       expect(verifyJob).not.toContain(`working-directory: ${workspace}`);
     }
@@ -405,7 +401,7 @@ describe('release configuration', () => {
       const references = [...workflow.matchAll(/^\s+- uses: (\S+)(?: # (\S+))?$/gm)];
       expect(references.length).toBeGreaterThan(0);
       for (const [, reference, version] of references) {
-        if (reference === '.github/actions/setup-bun') {
+        if (reference === './.github/actions/setup-bun') {
           // This action is versioned with the checkout, rather than fetched from another repository.
           const action = readFileSync(
             resolve(root, '.github/actions/setup-bun/action.yml'),
@@ -500,7 +496,7 @@ describe('release configuration', () => {
 
     expect(securityWorkflow.match(/bun install --frozen-lockfile/g)).toHaveLength(3);
     expect(securityWorkflow.match(/bun audit --audit-level=high/g)).toHaveLength(3);
-    expect(securityWorkflow).toContain('working-directory: relay');
+    expect(securityWorkflow).toContain('working-directory: apps/relay');
     expect(securityWorkflow).toContain('working-directory: tooling/handwriting-maths');
     expect(securityWorkflow).not.toContain('continue-on-error: true');
     expect(securityWorkflow).not.toContain('|| true');
