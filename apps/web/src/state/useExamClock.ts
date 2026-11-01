@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/schema';
 import { isUpcomingExamDate } from '../fsrs/examDate';
 
 /** Refresh derived figures only when a time-dependent boundary changes. */
@@ -27,17 +25,12 @@ export function useExamClock(
   return now;
 }
 
-export function useCourseDataClock(): number {
-  const dates = useLiveQuery(async () => {
-    const [lessons, assessments, cards] = await Promise.all([
-      db.lessons.toArray(),
-      db.courseAssessments.toArray(),
-      db.cards.toArray(),
-    ]);
-    return {
-      exams: [...lessons, ...assessments].map((row) => row.examDate),
-      burials: cards.map((card) => card.buriedUntil),
-    };
-  }, []);
-  return useExamClock(dates?.exams ?? [], dates?.burials ?? []);
+/** Feed boundaries from the caller's existing live query, without another card read. */
+export function useCourseDataClock() {
+  const [boundaries, setBoundaries] = useState<{
+    exams: (number | undefined)[];
+    burials: (number | null | undefined)[];
+  }>({ exams: [], burials: [] });
+  const now = useExamClock(boundaries.exams, boundaries.burials);
+  return [now, setBoundaries] as const;
 }

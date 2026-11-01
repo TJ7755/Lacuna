@@ -307,7 +307,7 @@ export function useCourseAssessments(courseId: string | undefined): CourseAssess
  * courses, lessons, cards or exam dates change.
  */
 export function useCourseSummaries(): Record<string, CourseSummary> | undefined {
-  const clock = useCourseDataClock();
+  const [clock, setClockBoundaries] = useCourseDataClock();
   return useLiveQuery(async () => {
     const [records, lessons, cards, assessments, concepts, links] = await db.transaction(
       'r',
@@ -322,6 +322,10 @@ export function useCourseSummaries(): Record<string, CourseSummary> | undefined 
           db.lessonCards.toArray(),
         ]),
     );
+    setClockBoundaries({
+      exams: [...lessons, ...assessments].map((row) => row.examDate),
+      burials: cards.map((card) => card.buriedUntil),
+    });
     return computeCourseSummaries(
       hydrateCourses(records, assessments),
       lessons,

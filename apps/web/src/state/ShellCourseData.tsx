@@ -43,7 +43,7 @@ export function ShellCourseDataProvider({
   includeDashboard?: boolean;
   children: ReactNode;
 }) {
-  const clock = useCourseDataClock();
+  const [clock, setClockBoundaries] = useCourseDataClock();
   const data = useLiveQuery(async (): Promise<ShellCourseData> => {
     const [
       records,
@@ -109,6 +109,10 @@ export function ShellCourseDataProvider({
         ] as const;
       },
     );
+    setClockBoundaries({
+      exams: [...lessons, ...assessments].map((row) => row.examDate),
+      burials: cards.map((card) => card.buriedUntil),
+    });
     const courses = records.map((record) =>
       hydrateCourse(record, finalAssessmentForCourse(record.id, assessments)),
     );
