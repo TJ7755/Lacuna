@@ -1,3 +1,4 @@
+import type { SessionState } from './sessionMachine';
 import { db, makeId } from '../../db/schema';
 import type { SessionCardOutcome, SessionEvent } from '../../course/sessionSummary';
 import { performanceForReviewUnit } from '../../db/backingDecks';
@@ -10,6 +11,7 @@ import { persistAnswer } from './answerSteps';
 
 /** What undoing the most recent answer needs to restore (DB + in-session state). */
 export interface AnswerSnapshot {
+  machine: SessionState;
   input?: 'typed' | 'reveal';
   responseTimeSec: number;
   retainOnCompletion: boolean;
