@@ -63,15 +63,11 @@ ends. Never accept an ID from a public request or automatically copy all catalog
 this allow-list. The relay configuration deliberately contains public IDs, not write tokens.
 
 To withdraw a publication, remove its catalogue entry and use the existing authorised share DELETE
-with its write token. Retention does not defeat deletion, preserve Gaps reports beyond their own
-retention, or recreate deleted bytes. Remove the ID from the relay policy in the same withdrawal;
-removing only the policy restores ordinary age-based expiry and can make an old share immediately
-unreadable. Removing only a catalogue entry does not withdraw the underlying publication.
+with its write token. Remove the ID from the relay policy in the same withdrawal.
 
 After deployment, check all listed payload/manifest reads and compare the publication hashes.
-Monitor the existing daily maintenance result and investigate failed reads; no renewal job is
-required. If an expired share's objects still exist, deploying the reviewed allow-list restores
-availability without changing its URL or bytes. If cleanup has already removed its ownership or
-payload, the allow-list cannot recover it: stop, recover from the approved artefact and private
-ownership records through an operator-reviewed recovery, and verify the subscriber identity impact
-before publishing. Do not mint a replacement and claim the old link was repaired.
+Monitor daily maintenance and investigate failed reads. For an expired share, verify retained
+objects and ownership privately before deploying a reviewed retention-policy correction.
+If recovery fails, stop and recover from the approved artefact and private ownership records
+through an operator-reviewed recovery. Verify subscriber identity impact before publication.
+Do not mint a replacement and claim the old link was repaired.

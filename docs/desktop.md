@@ -10,23 +10,21 @@ To configure marking limits and emergency admission controls, inspect
 after changing configuration. Do not publish invitation credentials.
 
 For a manual paid smoke check, run `bun scripts/jev-smoke.ts` with `TYPESAFE_API_KEY` supplied
-privately in the environment. It makes one noul call and one score call. Automated tests use
-fixtures and never require the key.
+privately in the environment.
 
 ## Synthetic AI benchmark
 
 The [benchmark harness](../scripts/ai-benchmark.ts) compares Groq's GPT-OSS models with synthetic
 fixtures. Confirm that the key's organisation remains on the Free plan before running. A model
-name or API key does not establish billing status; there are no paid fallbacks or configurable
-endpoints. Keep credentials in a local ignored environment file, never in chat or command arguments.
+name or API key does not establish billing status. Keep credentials in a local ignored environment file, never in chat or command arguments.
 
 ```sh
 bun scripts/ai-benchmark.ts --dry-run
 bun --env-file=.env.groq.local scripts/ai-benchmark.ts --repetitions 2
 ```
 
-The environment file must set `GROQ_API_KEY` and `GROQ_FREE_PLAN_CONFIRMED=true`. Results go to
-ignored `artifacts/ai-benchmark/` with owner-only permissions. Mechanical scores and synthetic
+Set `GROQ_API_KEY` and `GROQ_FREE_PLAN_CONFIRMED=true` in the environment file.
+Inspect the results under `artifacts/ai-benchmark/`. Mechanical scores and synthetic
 read adapters do not establish subject accuracy, deployed database/approval behaviour or shared
 provider capacity. Inspect the full answers; keyword matches alone are not quality evidence.
 
