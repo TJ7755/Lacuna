@@ -1,3 +1,4 @@
+import { workflowState } from './release-workflow-state.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -11,19 +12,7 @@ import { matchesReleaseVersion } from './nightly-release.mjs';
 const repository = 'TJ7755/Lacuna';
 const root = resolve(import.meta.dirname, '..');
 
-export function workflowState(runs, path, sha, branches, events = ['push']) {
-  const run = runs
-    .filter(
-      (item) =>
-        item.path === path &&
-        item.head_sha === sha &&
-        events.includes(item.event) &&
-        branches.includes(item.head_branch),
-    )
-    .sort((a, b) => b.id - a.id)[0];
-  if (!run || run.status !== 'completed') return { state: 'pending', url: run?.html_url };
-  return { state: run.conclusion === 'success' ? 'success' : 'failed', url: run.html_url };
-}
+export { workflowState } from './release-workflow-state.mjs';
 
 export function publicationAssets(assets, version) {
   assert.deepEqual(
