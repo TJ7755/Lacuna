@@ -3,8 +3,5 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "dependencies": {
-    "@lacuna/core": "workspace:*",
-    "@lacuna/protocol": "workspace:*"
-  }
+  "dependencies": {}
 }

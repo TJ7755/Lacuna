@@ -36,6 +36,8 @@
     "dompurify": "^3.4.17"
   },
   "devDependencies": {
-    "happy-dom": "^21.0.3"
+    "happy-dom": "^21.0.3",
+    "unified": "^11.0.5",
+    "@types/hast": "^3.0.5"
   }
 }

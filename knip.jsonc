@@ -3,7 +3,28 @@
   "ignoreBinaries": ["check", "fmt"],
   "workspaces": {
     ".": {
-      "ignoreDependencies": ["@typescript/native", "tailwindcss"],
+      "ignoreDependencies": [
+        // Electron preparation invokes the compiler by filename; Tailwind loads through CSS.
+        "@typescript/native",
+        "tailwindcss",
+        // Root runtime declaration is required by Electron packaging; desktop imports it.
+        "electron-log",
+        // Root installation supplies the AI workspace provider adapters.
+        "@ai-sdk/gateway",
+        "@ai-sdk/google",
+        // Browser optimiser imports dynamic-wasi and its vendored worker imports the runtime.
+        "@napi-rs/wasm-runtime",
+        "@open-spaced-repetition/binding",
+        // Root installation supplies web analytics, relay storage and AI request lifetimes.
+        "@vercel/analytics",
+        "@vercel/blob",
+        "@vercel/functions",
+        // Web dynamic imports load sanitisation and QR scanning; verification imports mathjs/number.
+        "dompurify",
+        "html5-qrcode",
+        "mathjs",
+      ],
+
       "entry": [
         // Vercel invokes this through ignoreCommand rather than a module import.
         "scripts/vercel-ignore-build.mjs",
