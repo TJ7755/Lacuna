@@ -18,7 +18,8 @@ export function useExamClock(
       if (isUpcomingExamDate(date, current)) next = Math.min(next, date);
     }
     for (const expiry of burialExpiries) {
-      if (expiry != null && expiry > current) next = Math.min(next, expiry);
+      if (expiry !== null && expiry !== undefined && expiry > current)
+        next = Math.min(next, expiry);
     }
     const timer = setTimeout(() => setNow(Date.now()), Math.max(1, next - current));
     return () => clearTimeout(timer);
