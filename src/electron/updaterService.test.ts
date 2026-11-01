@@ -65,33 +65,45 @@ describe('createDesktopUpdater', () => {
     });
   });
 
-  it('publishes progress and installs only after the explicit command', () => {
-    const updater = fakeUpdater();
-    const controller = createDesktopUpdater(options(updater));
+  it.each([
+    ['win32', {}, true],
+    ['linux', { APPIMAGE: '/opt/Lacuna.AppImage' }, false],
+  ] as const)(
+    'installs downloaded %s updates only on command with the platform install mode',
+    (platform, environment, silent) => {
+      const updater = fakeUpdater();
+      const controller = createDesktopUpdater(options(updater, { platform, environment }));
+      controller.restartAndInstall();
+      expect(updater.quitAndInstall).not.toHaveBeenCalled();
 
-    listener(updater, 'update-available')({ version: '0.2.4' });
-    listener(
-      updater,
-      'download-progress',
-    )({
-      percent: 42,
-      transferred: 42,
-      total: 100,
-      bytesPerSecond: 10,
-    });
+      listener(updater, 'update-available')({ version: '0.2.4' });
+      listener(
+        updater,
+        'download-progress',
+      )({
+        percent: 42,
+        transferred: 42,
+        total: 100,
+        bytesPerSecond: 10,
+      });
 
-    expect(controller.getState()).toMatchObject({
-      phase: 'downloading',
-      availableVersion: '0.2.4',
-      progress: { percent: 42, transferred: 42, total: 100, bytesPerSecond: 10 },
-    });
-    expect(updater.quitAndInstall).not.toHaveBeenCalled();
+      expect(controller.getState()).toMatchObject({
+        phase: 'downloading',
+        availableVersion: '0.2.4',
+        progress: { percent: 42, transferred: 42, total: 100, bytesPerSecond: 10 },
+      });
+      controller.restartAndInstall();
+      expect(updater.quitAndInstall).not.toHaveBeenCalled();
 
-    listener(updater, 'update-downloaded')({ version: '0.2.4' });
-    expect(controller.getState()).toMatchObject({ phase: 'downloaded', availableVersion: '0.2.4' });
-    controller.restartAndInstall();
-    expect(updater.quitAndInstall).toHaveBeenCalledWith(false, true);
-  });
+      listener(updater, 'update-downloaded')({ version: '0.2.4' });
+      expect(controller.getState()).toMatchObject({
+        phase: 'downloaded',
+        availableVersion: '0.2.4',
+      });
+      controller.restartAndInstall();
+      expect(updater.quitAndInstall).toHaveBeenCalledExactlyOnceWith(silent, true);
+    },
+  );
 
   it('turns a failed check into a safe, actionable renderer error', async () => {
     const updater = fakeUpdater();
