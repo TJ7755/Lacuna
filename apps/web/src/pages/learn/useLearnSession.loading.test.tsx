@@ -56,15 +56,12 @@ describe('useLearnSession pool preparation', () => {
       difficulty: 5,
       lastReviewed: Date.now() - 86_400_000,
     });
-    const session = renderHook(() =>
-      useLearnSession(
-        sessionParams({
-          courseId: course.id,
-          earlyReview: true,
-          mode: 'early-review',
-        }),
-      ),
-    );
+    const params = sessionParams({
+      courseId: course.id,
+      earlyReview: true,
+      mode: 'early-review',
+    });
+    const session = renderHook(() => useLearnSession(params));
     try {
       await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
     } finally {
