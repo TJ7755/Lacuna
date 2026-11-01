@@ -121,11 +121,22 @@ export function transitionSession(
           },
         ],
       };
-    case 'restore':
+    case 'restore': {
+      const restored = snapshotSession(event.snapshot);
+      const cards = replace(state.cards, event.card);
+      const currentCards = new Map(cards.map((card) => [card.id, card]));
       return {
-        state: { ...snapshotSession(event.snapshot), cards: replace(state.cards, event.card) },
+        state: {
+          ...restored,
+          cards,
+          simple: {
+            ...restored.simple,
+            queue: restored.simple.queue.map((card) => currentCards.get(card.id) ?? card),
+          },
+        },
         effects: [],
       };
+    }
     case 'replace-card':
       return {
         state: {

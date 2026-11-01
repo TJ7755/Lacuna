@@ -45,6 +45,43 @@ const selection = {
 };
 
 describe('session machine operation sequences', () => {
+  it('serves current content after answering another card and undoing', () => {
+    let state = initial(2);
+    const before = snapshotSession(state);
+    const [answered, other] = state.cards;
+    state = transitionSession(state, {
+      type: 'simple-recorded',
+      card: answered,
+      event: {
+        cardId: answered.id,
+        grade: 3,
+        correct: true,
+        responseTimeSec: 2,
+        distracted: false,
+      },
+    }).state;
+    const edited = { ...other, front: 'Updated question' };
+    state = transitionSession(state, { type: 'replace-card', card: edited }).state;
+    state = transitionSession(state, { type: 'restore', snapshot: before, card: answered }).state;
+    state = transitionSession(state, {
+      type: 'simple-recorded',
+      card: answered,
+      event: {
+        cardId: answered.id,
+        grade: 3,
+        correct: true,
+        responseTimeSec: 2,
+        distracted: false,
+      },
+    }).state;
+    const next = transitionSession(state, { type: 'next', selection });
+    expect(next.effects).toContainEqual({
+      type: 'present-card',
+      card: edited,
+      invalidateProgress: false,
+    });
+  });
+
   it.each(SEEDS)(
     'conserves cards, outcomes and undo through random answers and recitations (seed %i)',
     (seed) => {
@@ -198,6 +235,10 @@ describe('session machine operation sequences', () => {
           expect(state).toEqual({
             ...previous,
             cards: previous.cards.map((card) => (card.id === edited.id ? edited : card)),
+            simple: {
+              ...previous.simple,
+              queue: previous.cards.map((card) => (card.id === edited.id ? edited : card)),
+            },
           });
         }
       }
