@@ -1,3 +1,4 @@
+import { storedString } from '../state/localSetting';
 import type { AnswerMode, CardType, ItemPayload } from '@lacuna/core/db/types';
 
 const DRAFT_PREFIX = 'lacuna:draft';
@@ -22,7 +23,7 @@ export function draftKey(scope: string, recordId: string): string {
 
 export function saveDraft<T>(key: string, data: T): void {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    storedString(key).write(JSON.stringify(data));
   } catch {
     // Silently fail if quota is exceeded.
   }
@@ -30,7 +31,7 @@ export function saveDraft<T>(key: string, data: T): void {
 
 export function loadDraft<T = DraftData>(key: string): T | null {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = storedString(key).read();
     if (!raw) return null;
     return JSON.parse(raw) as T;
   } catch {
@@ -40,7 +41,7 @@ export function loadDraft<T = DraftData>(key: string): T | null {
 
 export function clearDraft(key: string): void {
   try {
-    localStorage.removeItem(key);
+    storedString(key).remove();
   } catch {
     // Draft cleanup must not turn a successful repository write into a failed save.
   }

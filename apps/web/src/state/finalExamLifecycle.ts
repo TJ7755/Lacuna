@@ -1,3 +1,4 @@
+import { storedString } from './localSetting';
 import type { Course } from '@lacuna/core/db/types';
 import { createLocalSetting, oneOf } from './localSetting';
 
@@ -16,7 +17,7 @@ export const useAfterFinalExamPolicy = policySetting.use;
 
 function readHandledFinalExams(): Record<string, number> {
   try {
-    const parsed = JSON.parse(localStorage.getItem(HANDLED_KEY) ?? '{}') as unknown;
+    const parsed = JSON.parse(storedString(HANDLED_KEY).read() ?? '{}') as unknown;
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
     return Object.fromEntries(
       Object.entries(parsed).filter(
@@ -42,7 +43,7 @@ export function restoreHandledFinalExam(courseId: string, examDate: number | und
   const handled = readHandledFinalExams();
   if (examDate === undefined) delete handled[courseId];
   else handled[courseId] = examDate;
-  localStorage.setItem(HANDLED_KEY, JSON.stringify(handled));
+  storedString(HANDLED_KEY).write(JSON.stringify(handled));
 }
 
 export function finalExamHasPassed(course: Course, now: number = Date.now()): boolean {

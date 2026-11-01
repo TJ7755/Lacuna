@@ -1,3 +1,4 @@
+import { storedString } from '../../state/localSetting';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, animate, useIsPresent, useMotionValue } from 'motion/react';
 import { hapticMedium } from '../../utils/haptic';
@@ -83,7 +84,7 @@ export function FlipCard({
   const [showAudioFront, setShowAudioFront] = useState(false);
   const [hasSwiped, setHasSwiped] = useState(() => {
     try {
-      return localStorage.getItem('lacuna.learnHints') === '1';
+      return storedString('lacuna.learnHints').read() === '1';
     } catch {
       return false;
     }
@@ -208,7 +209,7 @@ export function FlipCard({
           hapticMedium();
           setHasSwiped(true);
           try {
-            localStorage.setItem('lacuna.learnHints', '1');
+            storedString('lacuna.learnHints').write('1');
           } catch {
             /* ignore */
           }

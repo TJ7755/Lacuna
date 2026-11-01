@@ -1,3 +1,4 @@
+import { storedString } from './localSetting';
 import { makeId } from '../utils/id';
 
 export interface ActiveStudyFlowIdentity {
@@ -47,14 +48,14 @@ function parseIdentity(value: unknown): ActiveStudyFlowIdentity | null {
 
 export function readActiveStudyFlow(): ActiveStudyFlowIdentity | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = storedString(STORAGE_KEY).read();
     if (!raw) return null;
     const identity = parseIdentity(JSON.parse(raw));
-    if (!identity) localStorage.removeItem(STORAGE_KEY);
+    if (!identity) storedString(STORAGE_KEY).remove();
     return identity;
   } catch {
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      storedString(STORAGE_KEY).remove();
     } catch {
       // Storage may be unavailable; there is nothing else to recover.
     }
@@ -70,7 +71,7 @@ export function startActiveStudyFlow(
   const identity = parseIdentity({ courseId, sessionId, startedAt: now, lastActiveAt: now });
   if (!identity) return null;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(identity));
+    storedString(STORAGE_KEY).write(JSON.stringify(identity));
   } catch {
     // The flow remains usable without device-local resume state.
   }
@@ -85,7 +86,7 @@ export function touchActiveStudyFlow(
   if (!current || current.courseId !== courseId || now < current.startedAt) return null;
   const identity = { ...current, lastActiveAt: now };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(identity));
+    storedString(STORAGE_KEY).write(JSON.stringify(identity));
   } catch {
     // The flow remains usable without device-local resume state.
   }
@@ -94,7 +95,7 @@ export function touchActiveStudyFlow(
 
 export function clearActiveStudyFlow(): void {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    storedString(STORAGE_KEY).remove();
   } catch {
     // Storage may be unavailable.
   }

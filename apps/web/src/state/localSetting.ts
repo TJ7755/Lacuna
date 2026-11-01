@@ -93,3 +93,12 @@ export function oneOf<T extends string>(values: readonly T[], fallback: T) {
   return (raw: string | null): T =>
     raw !== null && (values as readonly string[]).includes(raw) ? (raw as T) : fallback;
 }
+
+/** Raw records retain caller-owned decoding and error handling, including dynamic keys. */
+export function storedString(key: string) {
+  return {
+    ...createStoredValue<string | null>({ key, parse: (raw) => raw }),
+    remove: (): void => localStorage.removeItem(key),
+    isPresent: (): boolean => localStorage.getItem(key) !== null,
+  };
+}
