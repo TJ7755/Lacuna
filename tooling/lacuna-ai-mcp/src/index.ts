@@ -17,7 +17,7 @@ export function startLacunaAiMcpServer(): StdioServerHandle {
       return server;
     },
     {
-      legacy: 'serve',
+      legacy: 'reject',
       onerror: (error) => process.stderr.write(`Lacuna AI MCP stdio failed: ${error.message}\n`),
     },
   );

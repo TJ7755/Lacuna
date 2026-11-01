@@ -13,7 +13,6 @@ import {
 } from './backups';
 import { createCard, createCourse, createLesson } from './repository';
 import { assetUrl, storeImageBlob } from './assets';
-import { PRE_V22_BACKUP_MESSAGE } from './portability';
 import type { BackupFile, ItemPayload } from '@lacuna/core/db/types';
 
 const replace = vi.hoisted(() =>
@@ -95,8 +94,8 @@ describe('backups', () => {
         throw error;
       }
       // Same narrowing the restore UI uses: the specific refusal must reach the caller.
-      expect(error instanceof Error ? error.message : 'Restore failed.').toBe(
-        PRE_V22_BACKUP_MESSAGE,
+      expect(error instanceof Error ? error.message : 'Restore failed.').toContain(
+        'Unsupported old backup version',
       );
     }
     expect(await db.backups.count()).toBe(1);

@@ -227,7 +227,7 @@ describe('Question backup portability', () => {
     expect(await db.assets.count()).toBe(2);
   });
 
-  it('accepts historical v12 files and fails closed on unsupported future versions', () => {
+  it('rejects historical v12 files and fails closed on unsupported future versions', () => {
     expect(
       validateBackup({
         app: 'lacuna-v12',
@@ -243,7 +243,7 @@ describe('Question backup portability', () => {
         sessionHistory: [],
         userPerformance: [],
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       validateBackup({
         app: 'lacuna-v12',
@@ -274,7 +274,7 @@ describe('Question backup portability', () => {
         sessionHistory: [],
         userPerformance: [],
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('restores a deleted set newer than its tombstone so the next peer merge retains it', async () => {
@@ -329,7 +329,7 @@ describe('Question backup portability', () => {
   });
 
   it.each([10, 23])(
-    'converts structured Cards in a v%s backup/raw snapshot through the v24 adapter',
+    'rejects structured Cards in unsupported v%s backups without changing the database',
     async (version) => {
       const legacyCard = {
         id: 'structured-card',
@@ -369,14 +369,10 @@ describe('Question backup portability', () => {
         reviewHistory: [],
       };
 
-      await importBackup(oldBackup, 'replace');
-
-      expect(await db.cards.count()).toBe(0);
-      expect(await db.concepts.count()).toBe(1);
-      expect(await db.questions.toArray()).toEqual([
-        expect.objectContaining({ kind: 'fixed', prompt: 'Calculate 1 + 1' }),
-      ]);
-      expect(await db.questionConcepts.count()).toBe(1);
+      const before = await exportDatabase();
+      await expect(importBackup(oldBackup, 'replace')).rejects.toThrow('Unsupported old backup');
+      const after = await exportDatabase();
+      expect({ ...after, exportedAt: 0 }).toEqual({ ...before, exportedAt: 0 });
     },
   );
 

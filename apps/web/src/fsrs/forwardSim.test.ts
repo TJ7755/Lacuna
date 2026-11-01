@@ -50,6 +50,11 @@ function makeCard(partial: Partial<Card> = {}): Card {
 }
 
 describe('forgettingCurve', () => {
+  it('rejects non-negative decay rather than predicting increasing recall', () => {
+    expect(forgettingCurve(1, 10, 0)).toBe(0);
+    expect(forgettingCurve(1, 10, 0.5)).toBe(0);
+  });
+
   it('returns R = 0.90 exactly when t = S, for several decay values', () => {
     for (const decay of [-0.5, -0.1542, -0.2, -0.7, -0.1]) {
       for (const S of [1, 3.7, 10, 250]) {

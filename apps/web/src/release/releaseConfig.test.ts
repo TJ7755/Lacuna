@@ -226,7 +226,7 @@ describe('release configuration', () => {
       'bun run test:coverage',
       'bun run test:coverage:recovery',
       'bun run release:scenario',
-      'bun run test:e2e:web',
+      'bunx playwright test -c tests/config/playwright.web.ci.config.ts',
       'bun run build:assets',
       'bun run perf:check',
     ]) {
@@ -452,9 +452,7 @@ describe('release configuration', () => {
 
   it('requires documentation checks even when heavy jobs are skipped', () => {
     const documentation = workflowJob(ciWorkflow, 'documentation');
-    expect(documentation).toContain(
-      "if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}",
-    );
+    expect(parse(ciWorkflow).jobs.documentation.if).toBeUndefined();
     expect(documentation).not.toContain('docs_only');
     expect(documentation).toContain('node scripts/check-docs.mjs');
     expect(documentation).not.toContain('bun install');

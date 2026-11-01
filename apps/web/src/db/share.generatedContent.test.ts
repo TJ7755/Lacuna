@@ -26,7 +26,6 @@ describe('generated content sharing', () => {
 
     const code = await buildCourseShareCode(course.id);
     const payload = await decodeShare(code);
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.sequences).toHaveLength(1);
     expect(payload.sequences![0].n).toBe('Group 1 metals');
@@ -77,7 +76,6 @@ describe('generated content sharing', () => {
     );
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.sequences).toHaveLength(1);
     expect(payload.sequences![0].m).toBe('lines');
@@ -109,7 +107,6 @@ describe('generated content sharing', () => {
     );
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.sequences).toHaveLength(1);
     expect(payload.sequences![0].m).toBe('lines');
@@ -135,7 +132,6 @@ describe('generated content sharing', () => {
     );
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.sequences![0].pr).toBe('speech');
 
@@ -159,7 +155,6 @@ describe('generated content sharing', () => {
     ]);
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.sequences).toHaveLength(1);
     expect(payload.sequences![0].n).toBe('Group 1 metals');
@@ -207,7 +202,6 @@ describe('generated content sharing', () => {
     ]);
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.occlusions).toHaveLength(1);
     expect(payload.occlusions![0].n).toBe('Plant cell');
@@ -255,7 +249,6 @@ describe('generated content sharing', () => {
     ]);
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.occlusions).toHaveLength(1);
     expect(payload.occlusions![0].n).toBe('Plant cell');
@@ -267,7 +260,7 @@ describe('generated content sharing', () => {
     expect(all.filter((o) => o.name === 'Bank diagram')).toHaveLength(1);
   });
 
-  it('parses an old v2 payload with no sequences field', async () => {
+  it('rejects an old v2 payload with no sequences field', async () => {
     const legacyPayload = {
       v: 2 as const,
       by: null,
@@ -282,16 +275,9 @@ describe('generated content sharing', () => {
       lessons: [{ n: 'Lesson 1', notes: [], cards: [{ k: 0 as const, f: 'Q', b: 'A' }] }],
     };
 
-    const code = await encodeShareDirect(legacyPayload);
-    const payload = await decodeShare(code);
-    if (payload.v === 1) throw new Error('expected a course payload');
-    expect(payload.sequences).toBeUndefined();
-    expect(payload.occlusions).toBeUndefined();
-    expect(payload.lessons).toHaveLength(1);
-
-    const result = await importSharePayload(payload);
-    expect(result.courses).toBe(1);
-    expect(await db.sequences.count()).toBe(0);
-    expect(await db.occlusions.count()).toBe(0);
+    const code = await encodeShareDirect(
+      legacyPayload as unknown as Parameters<typeof encodeShareDirect>[0],
+    );
+    await expect(decodeShare(code)).rejects.toThrow('unsupported old version');
   });
 });

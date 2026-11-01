@@ -31,9 +31,11 @@ export function curveFactor(decay: number): number {
  * construction R = 0.90 exactly when t = S, for any decay.
  */
 export function forgettingCurve(t: number, S: number, decay: number): number {
-  if (!Number.isFinite(S) || S <= 0 || !Number.isFinite(t) || !Number.isFinite(decay)) return 0;
+  if (!Number.isFinite(S) || S <= 0 || !Number.isFinite(t) || !Number.isFinite(decay) || decay >= 0)
+    return 0;
   const elapsed = Math.max(t, 0);
-  return Math.pow(1 + curveFactor(decay) * (elapsed / S), decay);
+  const recall = Math.pow(1 + curveFactor(decay) * (elapsed / S), decay);
+  return Number.isFinite(recall) ? Math.min(1, Math.max(0, recall)) : 0;
 }
 
 /**

@@ -76,7 +76,7 @@ function combineStats(performances: UserPerformance[]) {
     : emptyPerformanceStats();
 }
 
-export function schedulingUnitFromLegacyDeck(deck: LegacyDeckRecord): SchedulingUnitRecord {
+function schedulingUnitFromLegacyDeck(deck: LegacyDeckRecord): SchedulingUnitRecord {
   return {
     id: deck.id,
     createdAt: deck.createdAt,

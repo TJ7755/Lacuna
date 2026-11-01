@@ -6,8 +6,9 @@ import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { performanceForCourseBackingDecks } from '../db/backingDecks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { retainedLiveQuery } from './retainedLiveQuery';
+import type { ExamSkillPracticeItem } from '../questions/examSkillPractice';
 import type { ConceptPracticeItem } from '../questions/conceptPractice';
-import { questionStudyScope } from '../course/questionStudyScope';
+import { questionStudyScope, questionStudyLessonScope } from '../course/questionStudyScope';
 import type {
   Course,
   Lesson,
@@ -27,6 +28,8 @@ interface CourseStudyFlowRecords {
   cards: Card[];
   concepts?: Concept[];
   questionPractice?: ConceptPracticeItem[];
+  examSkillPractice?: ExamSkillPracticeItem[];
+  questionScopeLessonIds?: string[];
   questionScopeConceptIds?: string[];
   assessments: CourseAssessment[];
   links: LessonCardLink[];
@@ -44,6 +47,7 @@ export function useCourseStudyFlowRecords(
   courseId: string | undefined,
   refreshKey = 0,
   enabled = true,
+  sittingStartedAt?: number,
 ) {
   const cache = useMemo(
     () => ({
@@ -62,11 +66,11 @@ export function useCourseStudyFlowRecords(
     if (!live) return cache.value;
     const value = {
       courseId: cache.courseId,
-      records: await readCourseStudyFlowRecords(cache.courseId, refreshKey),
+      records: await readCourseStudyFlowRecords(cache.courseId, refreshKey, sittingStartedAt),
     };
     if (version === cache.version) cache.value = value;
     return value;
-  }, [cache, refreshKey, live]);
+  }, [cache, refreshKey, live, sittingStartedAt]);
   return result?.courseId === courseId ? result?.records : undefined;
 }
 
@@ -78,6 +82,7 @@ export const useCoursePathRecords = retainedLiveQuery((courseId) =>
 async function readCourseStudyFlowRecords(
   courseId: string | undefined,
   refreshKey = 0,
+  sittingStartedAt?: number,
 ): Promise<CourseStudyFlowRecords> {
   if (!courseId) {
     return {
@@ -138,7 +143,7 @@ async function readCourseStudyFlowRecords(
     lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
     performanceForCourseBackingDecks(courseId, cards),
   ]);
-  const questionScopeConceptIds = questionStudyScope({
+  const questionContext = {
     course,
     lessons,
     cards,
@@ -147,11 +152,23 @@ async function readCourseStudyFlowRecords(
     assessments,
     practiceNodes,
     concepts,
-  });
+  };
+  const questionScopeConceptIds = questionStudyScope(questionContext);
+  const questionScopeLessonIds = questionStudyLessonScope({ ...questionContext, completions });
   const questionPractice =
     questionScopeConceptIds.length && questionSetCount > 0
       ? await import('../questions/conceptPractice').then(({ listConceptPractice }) =>
-          listConceptPractice(courseId, Date.now(), questionScopeConceptIds),
+          listConceptPractice(courseId, Date.now(), questionScopeConceptIds, { sittingStartedAt }),
+        )
+      : [];
+  const examSkillPractice =
+    questionSetCount > 0
+      ? await import('../questions/examSkillPractice').then(({ listExamSkillPractice }) =>
+          listExamSkillPractice(courseId, Date.now(), {
+            sittingStartedAt,
+            scopeConceptIds: questionScopeConceptIds,
+            scopeLessonIds: questionScopeLessonIds,
+          }),
         )
       : [];
   return {
@@ -160,6 +177,8 @@ async function readCourseStudyFlowRecords(
     cards,
     concepts,
     questionPractice,
+    examSkillPractice,
+    questionScopeLessonIds,
     questionScopeConceptIds,
     assessments,
     links,

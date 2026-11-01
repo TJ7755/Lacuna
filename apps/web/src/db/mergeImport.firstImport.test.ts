@@ -118,13 +118,13 @@ describe('mergeImport: first import of a lineage', () => {
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
     const card = (await db.cards.get('card-1'))!;
 
-    expect(card.conceptId).toBe('concept:lineage-card:card-1');
+    expect(card.conceptId).toBe('concept-card-1');
     expect(await db.concepts.get(card.conceptId)).toMatchObject({
       id: card.conceptId,
       scope: 'course',
       scopeKey: `course:${course.id}`,
       courseId: course.id,
-      name: 'The basic unit of life.',
+      name: 'What is a cell?',
       provisional: false,
     });
   });
@@ -142,7 +142,7 @@ describe('mergeImport: first import of a lineage', () => {
 
     const primary = (await db.cards.get('card-pair'))!;
     const reverse = (await db.cards.get('card-pair::rev'))!;
-    expect(primary.conceptId).toBe('concept:lineage-card:card-pair');
+    expect(primary.conceptId).toBe('concept-card-pair');
     expect(reverse.conceptId).toBe(primary.conceptId);
     expect(primary.id).not.toBe(reverse.id);
     expect(primary.scheduledDays).toBe(0);

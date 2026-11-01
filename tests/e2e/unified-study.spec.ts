@@ -4,12 +4,17 @@ import type { Concept } from '@lacuna/core/questions/types';
 import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
-import { readAll } from './fixtures/syncConvergence';
+import { addLessonCard, readAll } from './fixtures/syncConvergence';
 
 const MEMBRANE_ANSWER =
   'Damage to the membrane reduces its control over which substances enter and leave the cell.';
 
-async function seedQuestion(page: Page, courseId: string) {
+async function seedQuestion(
+  page: Page,
+  courseId: string,
+  techniqueOnly = false,
+  secondQuestion = false,
+) {
   const now = Date.now();
   const concept: Concept = {
     id: 'membrane-concept',
@@ -43,7 +48,7 @@ async function seedQuestion(page: Page, courseId: string) {
                 'Links membrane damage to loss of control over movement into and out of the cell.',
               maxMarks: 1,
               dimension: 'application',
-              targetConceptIds: [concept.id],
+              targetConceptIds: techniqueOnly ? [] : [concept.id],
               techniqueTags: {
                 taxonomyId: 'science-techniques',
                 taxonomyVersion: 1,
@@ -56,16 +61,24 @@ async function seedQuestion(page: Page, courseId: string) {
       },
     ],
   };
+  if (secondQuestion) {
+    const second = structuredClone(content.questions[0]);
+    second.id = 'membrane-second';
+    second.prompt =
+      'Explain how a different damaged membrane affects movement into and out of a cell.';
+    second.answer!.allocations[0].id = 'permeability-second';
+    content.questions.push(second);
+  }
   // Only authored content is seeded. The Study UI owns all attempt and marking writes.
   await page.evaluate(
-    ({ concept, set }) =>
+    ({ concept, set, techniqueOnly }) =>
       new Promise<void>((resolve, reject) => {
         const request = indexedDB.open('lacuna');
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           const database = request.result;
           const transaction = database.transaction(['concepts', 'questionSets'], 'readwrite');
-          transaction.objectStore('concepts').add(concept);
+          if (!techniqueOnly) transaction.objectStore('concepts').add(concept);
           transaction.objectStore('questionSets').add(set);
           transaction.oncomplete = () => {
             database.close();
@@ -79,6 +92,7 @@ async function seedQuestion(page: Page, courseId: string) {
       }),
     {
       concept,
+      techniqueOnly,
       set: {
         ...content,
         contentVersion: 1,
@@ -300,4 +314,82 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       );
     });
   }
+}
+
+for (const techniqueOnly of [false, true]) {
+  test(`desktop Study clears cards before ${techniqueOnly ? 'technique-only' : 'concept'} questions and prevents a sitting repeat`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.clock.install();
+    await enterFreshLacuna(page);
+    const courseUrl = await createCourse(page, 'Spaced question study', false);
+    const courseId = new URL(courseUrl).hash.split('/')[2];
+    await addLessonCard(page, courseId, 'Recall the membrane function');
+    await page.goto(courseUrl);
+    await page.getByRole('button', { name: 'Study', exact: true }).click();
+    const preview = page.getByRole('region', { name: 'Session preview', exact: true });
+    await preview.getByRole('button', { name: 'Start session', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Lesson 1', exact: true })).toBeVisible();
+    await page
+      .getByRole('button', { name: /Show answer/i })
+      .last()
+      .click();
+    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+    const handoff = page.getByRole('main', { name: 'Study progress', exact: true });
+    await handoff.getByRole('button', { name: 'Finish for now', exact: true }).click();
+    const [introduced] = await readAll<{ due: number }>(page, 'cards');
+    await page.clock.setSystemTime(new Date(introduced.due + 1));
+    await seedQuestion(page, courseId, techniqueOnly, true);
+    await page.goto(courseUrl);
+    await page.reload();
+    await page.getByRole('button', { name: 'Study', exact: true }).click();
+    await preview.getByRole('button', { name: 'Start session', exact: true }).click();
+    await expect(
+      page
+        .getByRole('main', { name: 'Study card', exact: true })
+        .getByText('Recall the membrane function', { exact: true })
+        .last(),
+    ).toBeVisible();
+    await page
+      .getByRole('button', { name: /Show answer/i })
+      .last()
+      .click();
+    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+    await expect(handoff).toBeVisible();
+    await expect(
+      handoff.getByRole('heading', {
+        name: techniqueOnly ? 'Practise: Link cause and effect' : 'Practise: Cell membranes',
+        exact: true,
+      }),
+    ).toBeVisible();
+    await capture(page, info, 'cards-cleared-questions-remain');
+    await handoff.getByRole('button', { name: 'Continue', exact: true }).click();
+    await page
+      .getByRole('textbox', { name: 'Your answer', exact: true })
+      .fill('I cannot yet explain the mechanism.');
+    await capture(page, info, 'embedded-spaced-question');
+    await page.getByRole('button', { name: 'Submit question', exact: true }).click();
+    const noMarks = page.getByRole('radio', { name: '0 / 1', exact: true });
+    await noMarks.focus();
+    await noMarks.press('Space');
+    await page.getByRole('button', { name: 'Finish attempt', exact: true }).click();
+    await expect(handoff).toBeVisible();
+    await expect(
+      handoff.getByRole('heading', { name: 'Nothing else is ready right now', exact: true }),
+    ).toBeVisible();
+    await expect(handoff.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
+    await capture(page, info, 'sitting-complete-with-unseen-question-remaining');
+    const attempts = await readAll<QuestionSetAttemptRecord>(page, 'questionSetAttempts');
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({
+      status: 'complete',
+      decisions: [{ status: 'awarded', marks: 0 }],
+    });
+    expect(attempts[0].receipt.questions).toHaveLength(1);
+    expect((await readAll<QuestionSet>(page, 'questionSets'))[0].questions).toHaveLength(2);
+    if (techniqueOnly) expect(attempts[0].conceptPractice).toBeUndefined();
+    await expect(page.getByRole('textbox', { name: 'Your answer', exact: true })).toHaveCount(0);
+  });
 }

@@ -1,6 +1,7 @@
 import { gradeQuestionAttempt } from './grading';
 import {
   answers,
+  withinQuestionStudyScope as withinConceptScope,
   practiceContext,
   unseenCapacity,
   selectPracticeQuestion,
@@ -12,7 +13,6 @@ import {
   type ConceptPracticeSelection,
   type QuestionSetAttemptRecord,
 } from '@lacuna/core/questions/questionSetAttempts';
-import type { QuestionSetQuestion } from '@lacuna/core/questions/questionSets';
 import { emptyQuestionSchedule, scheduleQuestionReview } from './scheduler';
 import type { QuestionScheduleState } from '@lacuna/core/questions/types';
 import {
@@ -22,6 +22,11 @@ import {
   type ConceptPracticeNeeds,
   type DiagnosticCategoryEvidence,
 } from './techniqueEvidence';
+import { deriveTechniqueSchedules, questionTechniqueIds } from './techniqueSchedule';
+import { latestQuestionPracticeExposure } from './questionPracticeExposure';
+import { questionStudyEligible } from './questionStudyEligibility';
+import { techniqueExamDate } from './techniqueExam';
+import { makeEngine, decayOf } from '../fsrs/fsrs';
 import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
 
 export { undoConceptPracticeAttempt } from './questionSetAttemptRepository';
@@ -98,22 +103,6 @@ export function deriveConceptApplicationSchedules(
   return schedules;
 }
 
-function withinConceptScope(
-  question: QuestionSetQuestion,
-  ids: ReadonlySet<string> | undefined,
-): boolean {
-  return (
-    !ids ||
-    answers(question).every(({ answer }) =>
-      answer.allocations.every((allocation) =>
-        [...allocation.targetConceptIds, ...answer.prerequisiteConceptIds].every((id) =>
-          ids.has(id),
-        ),
-      ),
-    )
-  );
-}
-
 export interface ConceptPracticeItem {
   conceptId: string;
   name: string;
@@ -126,13 +115,36 @@ export interface ConceptPracticeItem {
   diagnosticEvidence?: readonly DiagnosticCategoryEvidence[];
   techniqueIds?: TechniqueId[];
   unfinished?: boolean;
+  studyEligible?: boolean;
+  studyUnseenCount?: number;
+  lastPracticeAt?: number;
+  eligibleTechniqueIds?: TechniqueId[];
+  examDate?: number;
 }
 
-async function context(courseId: string) {
+async function context(courseId: string, now = Date.now()) {
   const data = await practiceContext(courseId);
+  const [course, assessments, lessons] = await Promise.all([
+    db.courses.get(courseId),
+    db.courseAssessments.where('courseId').equals(courseId).toArray(),
+    db.lessons.where('courseId').equals(courseId).toArray(),
+  ]);
+  const techniqueSchedules = deriveTechniqueSchedules(data.attempts);
   return {
+    course,
+    assessments,
+    lessons,
+    techniqueSchedules,
+    exposure: latestQuestionPracticeExposure(data.attempts),
+    sim: course
+      ? {
+          fsrs: makeEngine(course.fsrsParameters),
+          decay: decayOf(course.fsrsParameters),
+          expectedGrade: 3 as const,
+        }
+      : undefined,
     ...data,
-    needs: deriveConceptPracticeNeeds(data.attempts, data.sets),
+    needs: deriveConceptPracticeNeeds(data.attempts, data.sets, now, techniqueSchedules),
     schedules: deriveConceptApplicationSchedules(data.attempts),
   };
 }
@@ -156,12 +168,76 @@ function unfinishedPractice(
     .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))[0];
 }
 
+function studyCandidate(
+  data: Awaited<ReturnType<typeof context>>,
+  candidate: Awaited<ReturnType<typeof practiceContext>>['candidates'][number],
+  conceptId: string,
+  now: number,
+  sittingStartedAt?: number,
+) {
+  const examDate = techniqueExamDate(
+    [{ ...candidate.set, questions: [candidate.question] }],
+    data.assessments,
+    data.lessons,
+    now,
+    data.course?.localLessonOrder,
+    data.concepts,
+    data.course,
+  );
+  const ids = questionTechniqueIds(candidate.question).filter((id) =>
+    answers(candidate.question).some(({ answer }) =>
+      answer.allocations.some(
+        (allocation) =>
+          allocation.targetConceptIds.includes(conceptId) &&
+          allocation.techniqueTags?.provenance.source === 'author' &&
+          allocation.techniqueTags.techniqueIds.includes(id),
+      ),
+    ),
+  );
+  if (!data.course || !data.sim) return { eligible: false, techniques: [], examDate };
+  const timing = {
+    now,
+    examDate,
+    windowDays: data.course.practiceUrgentWindowDays,
+    ctx: data.sim,
+    sittingStartedAt,
+  };
+  const conceptLastPractice = data.exposure.concepts.get(conceptId);
+  const eligibleTechniques = ids.filter((id) =>
+    questionStudyEligible(data.techniqueSchedules.get(id) ?? emptyQuestionSchedule(), {
+      ...timing,
+      lastPracticeAt: Math.max(
+        conceptLastPractice ?? -Infinity,
+        data.exposure.techniques.get(id) ?? -Infinity,
+      ),
+    }),
+  );
+  const schedule = data.schedules.get(conceptId) ?? emptyQuestionSchedule();
+  const need = data.needs.get(conceptId);
+  return {
+    eligible:
+      ids.length > 0
+        ? eligibleTechniques.length > 0
+        : questionStudyEligible(schedule, {
+            ...timing,
+            lastPracticeAt: conceptLastPractice,
+            ordinaryDue:
+              schedule.due === null ||
+              schedule.due <= now ||
+              Boolean(need?.knowledge || need?.application || need?.techniques.length),
+          }),
+    techniques: eligibleTechniques,
+    examDate,
+  };
+}
+
 export async function listConceptPractice(
   courseId: string,
   now = Date.now(),
   scopeConceptIds?: readonly string[],
+  options: { sittingStartedAt?: number } = {},
 ): Promise<ConceptPracticeItem[]> {
-  const data = await context(courseId);
+  const data = await context(courseId, now);
   const diagnosticEvidence = deriveConceptDiagnosticEvidence(data.attempts, data.sets);
   const scope = scopeConceptIds ? new Set(scopeConceptIds) : undefined;
   return data.concepts
@@ -171,12 +247,28 @@ export async function listConceptPractice(
       const available = data.candidates.filter(
         (row) => row.conceptIds.includes(concept.id) && withinConceptScope(row.question, scope),
       );
+      const study = available.map((candidate) => ({
+        candidate,
+        ...studyCandidate(data, candidate, concept.id, now, options.sittingStartedAt),
+      }));
+      const studyUnseenCount = study.reduce(
+        (total, row) => total + (row.eligible ? unseenCapacity(row.candidate, data) : 0),
+        0,
+      );
+      const studyDates = study.flatMap((row) =>
+        row.eligible && row.examDate !== undefined ? [row.examDate] : [],
+      );
       const unseenCount = available.reduce((total, row) => total + unseenCapacity(row, data), 0);
       const availableCount = available.reduce((total, row) => total + row.capacity, 0);
       return {
         conceptId: concept.id,
         name: concept.name,
         schedule,
+        studyEligible: study.some((row) => row.eligible),
+        studyUnseenCount,
+        lastPracticeAt: data.exposure.concepts.get(concept.id),
+        eligibleTechniqueIds: [...new Set(study.flatMap((row) => row.techniques))],
+        examDate: studyDates.length ? Math.min(...studyDates) : undefined,
         due:
           schedule.due === null ||
           schedule.due <= now ||
@@ -235,6 +327,7 @@ export async function startConceptPractice(
     allowFamiliar?: boolean;
     now?: number;
     mode?: 'due' | 'mixed';
+    study?: { sittingStartedAt?: number };
     scopeConceptIds?: readonly string[];
     resume?: boolean;
     blueprint?: Partial<{ type: string; difficulty: string; context: string }>;
@@ -243,9 +336,16 @@ export async function startConceptPractice(
   const now = options.now ?? Date.now();
   return db.transaction(
     'rw',
-    [db.courses, db.concepts, db.questionSets, db.questionSetAttempts],
+    [
+      db.courses,
+      db.concepts,
+      db.questionSets,
+      db.questionSetAttempts,
+      db.courseAssessments,
+      db.lessons,
+    ],
     async () => {
-      const data = await context(courseId);
+      const data = await context(courseId, now);
       const course = await db.courses.get(courseId);
       if (!course || course.archived) throw new Error('This course is unavailable for practice.');
       const scope = options.scopeConceptIds ? new Set(options.scopeConceptIds) : undefined;
@@ -276,6 +376,13 @@ export async function startConceptPractice(
         (candidate) =>
           candidate.conceptIds.some((id) => ids.has(id)) &&
           withinConceptScope(candidate.question, scope) &&
+          (!options.study ||
+            candidate.conceptIds.some(
+              (id) =>
+                ids.has(id) &&
+                (!conceptId || id === conceptId) &&
+                studyCandidate(data, candidate, id, now, options.study?.sittingStartedAt).eligible,
+            )) &&
           Object.entries(options.blueprint ?? {}).every(
             ([key, value]) =>
               candidate.set.bank?.blueprint[key as 'type' | 'difficulty' | 'context'] === value,
@@ -309,7 +416,17 @@ export async function startConceptPractice(
         throw cause;
       }
       const selection: ConceptPracticeSelection = {
-        conceptId: conceptId ?? selected.candidate.conceptIds.filter((id) => ids.has(id)).sort()[0],
+        conceptId:
+          conceptId ??
+          selected.candidate.conceptIds
+            .filter(
+              (id) =>
+                ids.has(id) &&
+                (!options.study ||
+                  studyCandidate(data, selected.candidate, id, now, options.study.sittingStartedAt)
+                    .eligible),
+            )
+            .sort()[0],
         questionSetId: selected.set.id,
         questionId: selected.question.id,
         novelty: data.seen.has(selected.fingerprint) ? 'familiar' : 'unseen',

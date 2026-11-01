@@ -7,6 +7,11 @@ import { db } from './schema';
 import { assertValidBackup } from './backupValidation';
 import { exportDatabase, importBackup } from './portability';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
+import { emptyQuestionSchedule, scheduleQuestionReview } from '../questions/scheduler';
+import { deriveTechniqueSchedules } from '../questions/techniqueSchedule';
+import { listConceptPractice } from '../questions/conceptPractice';
+import { deriveConceptApplicationSchedules } from '../questions/conceptPractice';
+import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 import { schemaV27 } from './migrationFixtures';
 
 beforeEach(async () => {
@@ -16,7 +21,8 @@ afterEach(async () => {
   await db.delete();
 });
 
-it.each([27, 28, 29, 30])(
+// Synthetic supported-schema coverage; this is not a captured production profile.
+it.each([27, 28, 29, 30, 31])(
   'round-trips a v%i profile through the current schema and JSON backup',
   async (version) => {
     const legacy = new Dexie('lacuna');
@@ -143,9 +149,25 @@ it.each([27, 28, 29, 30])(
     await legacy
       .table('assets')
       .add({ hash, blob: image, mimeType: 'image/png', width: 192, height: 192, createdAt: 1 });
-    await legacy
-      .table('reviewHistory')
-      .add({ ...history[0], id: 'review-1', cardId: 'old-card', schedulingUnitId: 'lesson-1' });
+    const reviewRows = [
+      { ...history[0], id: 'review-1', cardId: 'old-card', schedulingUnitId: 'lesson-1' },
+      {
+        ...history[0],
+        id: 'review-2',
+        cardId: 'old-card',
+        schedulingUnitId: 'lesson-1',
+        timestamp: 200,
+        grade: 1,
+        responseTimeSec: 12.75,
+        distracted: true,
+        stabilityBefore: 2,
+        stabilityAfter: 0.5,
+        difficultyBefore: 5,
+        difficultyAfter: 6,
+        retrievabilityAtReview: 0.8,
+      },
+    ];
+    await legacy.table('reviewHistory').bulkAdd(reviewRows);
     legacy.close();
 
     await db.open();
@@ -163,8 +185,8 @@ it.each([27, 28, 29, 30])(
       lastReviewed: 100,
       reps: 1,
     });
-    expect(exported.reviewHistory).toHaveLength(1);
-    expect(exported.reviewHistory![0]).toMatchObject(history[0]);
+    expect(exported.reviewHistory).toHaveLength(2);
+    expect(exported.reviewHistory).toEqual(expect.arrayContaining(reviewRows));
     expect(exported.assets).toHaveLength(1);
     expect(exported.assets[0].data).toBe(Buffer.from(image).toString('base64'));
 
@@ -212,3 +234,109 @@ it('creates the complete current schema directly on a fresh install', async () =
   expect(await db.cards.count()).toBe(0);
   expect(await db.questionSets.count()).toBe(0);
 });
+
+// Deployment provenance is pinned in the generator. These contain fictional learner data
+// written with schema 31 and exported by SHA 191d86a, never by the current exporter.
+it.each(['database', 'backup'])(
+  'opens historical production %s without losing review timing',
+  async (route) => {
+    const fixtureRoot = 'tests/fixtures/compatibility/production-191d86a-';
+    const backup = JSON.parse(readFileSync(`${fixtureRoot}backup.json`, 'utf8'));
+    if (route === 'database') {
+      const profile = JSON.parse(readFileSync(`${fixtureRoot}db.json`, 'utf8'));
+      const historical = new Dexie('lacuna');
+      const tables = profile.tables as Record<
+        string,
+        { schema: string; rows: Record<string, unknown>[] }
+      >;
+      historical
+        .version(profile.version)
+        .stores(
+          Object.fromEntries(Object.entries(tables).map(([name, table]) => [name, table.schema])),
+        );
+      await historical.open();
+      for (const [name, table] of Object.entries(tables)) {
+        const rows = table.rows.map((row) =>
+          name === 'assets'
+            ? { ...row, blob: new Uint8Array(Object.values(row.blob as Record<string, number>)) }
+            : row,
+        );
+        await historical.table(name).bulkAdd(rows);
+      }
+      historical.close();
+      await db.open();
+    } else {
+      await db.open();
+      await importBackup(backup, 'replace');
+    }
+    db.close();
+    await db.open();
+    expect(db.verno).toBe(31);
+    expect(await db.cards.get('old-card')).toMatchObject({
+      front: backup.cards[0].front,
+      reps: 1,
+      stability: 2,
+    });
+    expect(await db.reviewHistory.orderBy('timestamp').toArray()).toMatchObject([
+      { id: 'review-1', grade: 3, responseTimeSec: 2, distracted: false },
+      { id: 'review-2', grade: 1, responseTimeSec: 12.75, distracted: true },
+    ]);
+    const historicalAttempt = parseQuestionSetAttemptRecord(
+      (await db.questionSetAttempts.toArray())[0],
+    );
+    const snapshot = historicalAttempt.firstMarking![0];
+    const conceptId =
+      historicalAttempt.receipt.questions[0].answer!.allocations[0].targetConceptIds[0];
+    expect(snapshot.gradeMappingVersion).toBe('full-good-otherwise-again-v1');
+    // Three out of five historically meant Again, even though new evidence earns Hard.
+    expect(deriveConceptApplicationSchedules([historicalAttempt]).get(conceptId)).toEqual(
+      scheduleQuestionReview(
+        emptyQuestionSchedule(),
+        1,
+        snapshot.schedulerConfig,
+        snapshot.recordedAt,
+      ).schedule,
+    );
+    expect([...deriveTechniqueSchedules([historicalAttempt])]).toEqual([
+      [
+        'causal-link',
+        scheduleQuestionReview(
+          emptyQuestionSchedule(),
+          1,
+          snapshot.schedulerConfig,
+          snapshot.recordedAt,
+        ).schedule,
+      ],
+    ]);
+    const [sittingItem] = await listConceptPractice('course-1', 240, undefined, {
+      sittingStartedAt: 190,
+    });
+    expect(sittingItem).toMatchObject({
+      conceptId,
+      studyEligible: false,
+      eligibleTechniqueIds: [],
+    });
+    const currentAttempt = structuredClone(historicalAttempt);
+    currentAttempt.id = 'current-fractional-attempt';
+    currentAttempt.firstMarking![0].gradeMappingVersion = 'fractional-hard-v2';
+    expect(deriveConceptApplicationSchedules([currentAttempt]).get(conceptId)).toEqual(
+      scheduleQuestionReview(
+        emptyQuestionSchedule(),
+        2,
+        snapshot.schedulerConfig,
+        snapshot.recordedAt,
+      ).schedule,
+    );
+    await db.questionSetAttempts.put(currentAttempt);
+    const exported = await exportDatabase();
+    await db.delete();
+    await db.open();
+    await importBackup(exported, 'replace');
+    const restored = (await db.questionSetAttempts.toArray()).map(parseQuestionSetAttemptRecord);
+    expect(restored.find((attempt) => attempt.id === historicalAttempt.id)).toEqual(
+      historicalAttempt,
+    );
+    expect(restored.find((attempt) => attempt.id === currentAttempt.id)).toEqual(currentAttempt);
+    expect(exported.assets[0].data).toBe(backup.assets[0].data);
+  },
+);

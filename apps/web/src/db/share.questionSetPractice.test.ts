@@ -87,12 +87,12 @@ describe('shared Question Set path activities', () => {
     ).rejects.toThrow('unmapped Set');
     expect(await db.courses.count()).toBe(before);
     const { questionSetIds: _ids, ...legacy } = node;
-    const oldShare = parseSharePayload({
-      ...shared,
-      v: 5,
-      questionSetPracticeNodes: [{ ...legacy, questionSetId: set.id }],
-    });
-    if (oldShare.v !== 5) throw new Error('Expected legacy share.');
-    expect(oldShare.questionSetPracticeNodes[0].questionSetIds).toEqual([set.id]);
+    expect(() =>
+      parseSharePayload({
+        ...shared,
+        v: 5,
+        questionSetPracticeNodes: [{ ...legacy, questionSetId: set.id }],
+      }),
+    ).toThrow('unsupported old version');
   });
 });

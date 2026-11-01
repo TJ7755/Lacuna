@@ -1,21 +1,4 @@
-// Schema migrations for upgrading existing user data to the FSRS-6 model.
-//
-// Pre-FSRS-6 decks stored only the 17-parameter FSRS-4.5 weights implicitly (the
-// app's params were a module constant, never persisted) and cards carried only
-// {stability, difficulty, lastReviewed}. These pure helpers add the new fields
-// without dropping any existing user data; they are exercised directly by the
-// migration unit test and also run inside the Dexie upgrade hook (see schema.ts).
-
-import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
-import type {
-  Card,
-  CardType,
-  LegacyDeck,
-  LegacyDeckRecord,
-  LessonCardExposure,
-} from '@lacuna/core/db/types';
-
-export type { LegacyDeck } from '@lacuna/core/db/types';
+import type { Card, CardType, LessonCardExposure } from '@lacuna/core/db/types';
 
 /**
  * A card as stored before FSRS-6: the new memory fields may be absent. `type` is
@@ -49,32 +32,6 @@ export type LegacyCard = Omit<
       | 'updatedAt'
     >
   > & { type: Card['type'] | 'typing'; schedulingUnitId?: string };
-
-/**
- * Bring a deck record up to the FSRS-6 schema. Decks tagged below FSRS-6 (or
- * with no parameters at all) are re-tagged `fsrsVersion = 6` and reseeded with
- * the default FSRS-6 parameter set; everything else about the deck is preserved.
- */
-export function migrateDeckRecord(deck: LegacyDeck): LegacyDeckRecord {
-  const needsReseed = (deck.fsrsVersion ?? 0) < FSRS_VERSION || !deck.fsrsParameters;
-  const baseParams = needsReseed ? defaultFsrsParameters() : deck.fsrsParameters!;
-  // Ensure new fields added in v0.0.3 are present even on decks with older FSRS parameters.
-  const fsrsParameters = {
-    ...baseParams,
-    enable_fuzz: baseParams.enable_fuzz ?? true,
-    maximum_interval: baseParams.maximum_interval ?? 36500,
-    learning_steps: baseParams.learning_steps ?? ['1m', '10m'],
-    relearning_steps: baseParams.relearning_steps ?? ['10m'],
-  };
-  return {
-    ...deck,
-    fsrsVersion: FSRS_VERSION,
-    fsrsParameters,
-    examObjective: deck.examObjective ?? 'expectedMarks',
-    dailyReviewGoal: deck.dailyReviewGoal ?? undefined,
-    sessionTimeLimitMinutes: deck.sessionTimeLimitMinutes ?? undefined,
-  };
-}
 
 /**
  * Bring a card record up to the FSRS-6 schema. The existing stability/difficulty

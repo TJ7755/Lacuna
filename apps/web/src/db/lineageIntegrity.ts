@@ -1,17 +1,9 @@
 import type { Table } from 'dexie';
 import { db } from './schema';
-import type {
-  SharePayloadV2,
-  SharePayloadV3,
-  SharePayloadV4,
-  SharePayloadV5,
-  SharePayloadV6,
-} from './share';
+import type { SharePayloadV6 } from './share';
 import type { LineageIdMapping, PendingMergeReview } from '@lacuna/core/db/types';
 
-type Payload = (
-  SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5 | SharePayloadV6
-) & {
+type Payload = SharePayloadV6 & {
   li: string;
   rv: number;
 };
@@ -161,15 +153,6 @@ export async function prepareLineageMapping(
     (row) => row.courseId,
     'cardIds',
   );
-  if (payload.v === 2) {
-    const concepts = await db.concepts.bulkGet(
-      cards
-        .filter((id) => !storedCards.has(id))
-        .map((id) => `concept:lineage-card:${encodeURIComponent(id)}`),
-    );
-    if (concepts.some(Boolean)) integrityError('A new source Card Concept ID is already in use.');
-    return;
-  }
   await check(
     db.concepts,
     payload.concepts.map((row) => row.id),
@@ -191,7 +174,6 @@ export async function prepareLineageMapping(
     (row) => row.courseId,
     'questionIds',
   );
-  if (payload.v === 3) return;
   mapping.assessmentIds = [
     ...new Set([
       ...(mapping.assessmentIds ?? []),
@@ -223,21 +205,19 @@ export async function prepareLineageMapping(
       integrityError(`The last imported Question Set revision is missing for ${id}.`);
     }
   }
-  if (payload.v === 5 || payload.v === 6) {
-    mapping.questionSetPracticeNodeIds = [
-      ...new Set([
-        ...(mapping.questionSetPracticeNodeIds ?? []),
-        ...Object.keys(mapping.questionSetPracticeNodeSnapshots ?? {}),
-      ]),
-    ];
-    await check(
-      db.practiceNodes,
-      payload.questionSetPracticeNodes.map((row) => row.id),
-      mapping.questionSetPracticeNodeIds ?? [],
-      (row) => row.courseId,
-      'questionSetPracticeNodeIds',
-    );
-  }
+  mapping.questionSetPracticeNodeIds = [
+    ...new Set([
+      ...(mapping.questionSetPracticeNodeIds ?? []),
+      ...Object.keys(mapping.questionSetPracticeNodeSnapshots ?? {}),
+    ]),
+  ];
+  await check(
+    db.practiceNodes,
+    payload.questionSetPracticeNodes.map((row) => row.id),
+    mapping.questionSetPracticeNodeIds ?? [],
+    (row) => row.courseId,
+    'questionSetPracticeNodeIds',
+  );
 }
 
 /** A pending decision is not authority to mutate an unrelated global ID. */

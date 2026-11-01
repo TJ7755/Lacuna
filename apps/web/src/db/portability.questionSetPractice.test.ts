@@ -220,10 +220,11 @@ describe('Question Set path activity portability', () => {
         version: 14,
         practiceNodes: [{ ...legacyNode, questionSetId: first.id }],
       } as unknown as BackupFile;
-      expect(validateBackup(legacy)).toBe(true);
-      await importBackup(legacy, 'replace');
-      expect((await db.practiceNodes.get(node.id))?.questionSetIds).toEqual([first.id]);
-      expect(await db.questionSetAttempts.toArray()).toEqual([attempt]);
+      expect(validateBackup(legacy)).toBe(false);
+      const before = await exportDatabase();
+      await expect(importBackup(legacy, 'replace')).rejects.toThrow('Unsupported old backup');
+      const after = await exportDatabase();
+      expect({ ...after, exportedAt: 0 }).toEqual({ ...before, exportedAt: 0 });
     },
   );
 

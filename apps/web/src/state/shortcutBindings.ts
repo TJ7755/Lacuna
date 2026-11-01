@@ -1,3 +1,4 @@
+import { storedString } from './localSetting';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const STORAGE_KEY = 'lacuna-shortcut-bindings';
@@ -103,7 +104,7 @@ export function bindingError(
 
 function readStoredBindings(): Partial<ShortcutBindings> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = storedString(STORAGE_KEY).read();
     if (raw) {
       const parsed: unknown = JSON.parse(raw);
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
@@ -123,7 +124,7 @@ function readStoredBindings(): Partial<ShortcutBindings> {
 
 function saveStoredBindings(bindings: ShortcutBindings) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(bindings));
+    storedString(STORAGE_KEY).write(JSON.stringify(bindings));
   } catch {
     // Persistence is best-effort.
   }

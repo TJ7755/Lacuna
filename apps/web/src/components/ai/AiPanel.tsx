@@ -1,3 +1,4 @@
+import { storedString } from '../../state/localSetting';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { AiSession } from '../../ai/session/types';
 import { Button } from '../ui/Button';
@@ -32,7 +33,7 @@ export function AiPanel({
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [privacyNoticeDismissed, setPrivacyNoticeDismissed] = useState(() => {
     try {
-      return localStorage.getItem(PRIVACY_NOTICE_DISMISSED_KEY) === 'true';
+      return storedString(PRIVACY_NOTICE_DISMISSED_KEY).read() === 'true';
     } catch {
       return false;
     }
@@ -255,7 +256,7 @@ export function AiPanel({
               onClick={() => {
                 setPrivacyNoticeDismissed(true);
                 try {
-                  localStorage.setItem(PRIVACY_NOTICE_DISMISSED_KEY, 'true');
+                  storedString(PRIVACY_NOTICE_DISMISSED_KEY).write('true');
                 } catch {
                   // Dismissal still works for this session when storage is unavailable.
                 }

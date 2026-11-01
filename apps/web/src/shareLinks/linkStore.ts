@@ -1,3 +1,4 @@
+import { storedString } from '../state/localSetting';
 import { db } from '../db/schema';
 import { SHARE_ID_RE } from './client';
 
@@ -17,7 +18,7 @@ function invalidShareId(): Error {
  *  read fresh from storage so background polling sees imports recorded elsewhere. */
 function readMapping(): Record<string, string> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = storedString(STORAGE_KEY).read();
     if (!raw) return {};
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
@@ -35,7 +36,7 @@ function readMapping(): Record<string, string> {
 
 function writeMapping(mapping: Record<string, string>): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(mapping));
+    storedString(STORAGE_KEY).write(JSON.stringify(mapping));
   } catch {
     // Storage can be unavailable (for example in private browsing mode). The mapping
     // is best-effort: polling simply has nothing to check until storage works again.

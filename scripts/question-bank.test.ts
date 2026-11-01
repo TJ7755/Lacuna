@@ -26,7 +26,8 @@ it('audits exact Course bytes and bank family templates without rewriting the so
       version: 1,
       assets: [],
       payload: {
-        v: 4,
+        v: 6,
+        questionSetPracticeNodes: [],
         at: 1,
         li: 'stable-lineage',
         rv: 7,

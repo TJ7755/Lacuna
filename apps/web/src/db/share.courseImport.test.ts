@@ -23,13 +23,13 @@ import {
   createFixedQuestion,
   createGeneratedQuestion,
 } from '../questions/repository';
-import { reset, v2Payload } from './share.testFixtures';
+import { reset, currentPayload } from './share.testFixtures';
 
 describe('ordinary course share imports', () => {
   beforeEach(reset);
 
   it('unpacks a legacy k:3 (typing) card as front_back for backward compatibility', async () => {
-    const payload = v2Payload([{ k: 3, f: 'What is the capital of Japan?', b: 'Tokyo' }]);
+    const payload = currentPayload([{ k: 3, f: 'What is the capital of Japan?', b: 'Tokyo' }]);
     await importSharePayload(payload);
     const cards = await db.cards.toArray();
     expect(cards).toHaveLength(1);
@@ -41,7 +41,6 @@ describe('ordinary course share imports', () => {
   it('round-trips a steady-retention target without inventing a date', async () => {
     const course = await createCourse('Spanish', { schedulingMode: 'steady' });
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.course.sm).toBe(1);
     expect(payload.course.e).toBeUndefined();
@@ -61,7 +60,7 @@ describe('ordinary course share imports', () => {
   it('rejects a received course with more than one final assessment', async () => {
     const course = await createCourse('Spanish', { schedulingMode: 'steady' });
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
+
     const final = payload.exams!.find((assessment) => assessment.k === 'f')!;
     payload.exams!.push({ ...final, id: `${final.id}-duplicate` });
 
@@ -105,7 +104,6 @@ describe('ordinary course share imports', () => {
     const code = await buildCourseShareCode(course.id);
     const payload = await decodeShare(code);
     expect(payload.v).toBe(6);
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.course.n).toBe('Biology');
     expect(payload.course.um).toBe('semi-linear');
@@ -195,7 +193,6 @@ describe('ordinary course share imports', () => {
       await db.courseAssessments.where('courseId').equals(course.id).toArray()
     ).find((assessment) => assessment.kind === 'final')!;
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     await reset();
     await importSharePayload(payload);
@@ -229,7 +226,6 @@ describe('ordinary course share imports', () => {
       excludedCardIds: [bankCard.id],
     });
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v === 1) throw new Error('expected a course payload');
 
     await reset();
     await importSharePayload(payload);

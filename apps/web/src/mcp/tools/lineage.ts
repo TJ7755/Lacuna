@@ -64,7 +64,7 @@ function notFound(kind: string, id: string): never {
 // ---------------------------------------------------------------------------
 
 function toShareLessonInput(
-  lesson: Extract<Awaited<ReturnType<typeof decodeShare>>, { v: 2 }>['lessons'][number],
+  lesson: Awaited<ReturnType<typeof decodeShare>>['lessons'][number],
 ): ShareLessonInput {
   if (!lesson.i)
     throw new McpToolException({
@@ -98,10 +98,7 @@ function toShareLessonInput(
 }
 
 function toShareCardInput(
-  card: Extract<
-    Awaited<ReturnType<typeof decodeShare>>,
-    { v: 2 }
-  >['lessons'][number]['cards'][number],
+  card: Awaited<ReturnType<typeof decodeShare>>['lessons'][number]['cards'][number],
 ): ShareCardInput {
   if (!card.id)
     throw new McpToolException({
@@ -179,9 +176,9 @@ function assertQuestionSetLineagePreviewSupported(
   mapping: LineageIdMapping,
 ): void {
   if (
-    ((payload.v === 4 || payload.v === 5 || payload.v === 6) && payload.questionSets.length > 0) ||
+    payload.questionSets.length > 0 ||
     (mapping.questionSetIds?.length ?? 0) > 0 ||
-    ((payload.v === 5 || payload.v === 6) && payload.questionSetPracticeNodes.length > 0) ||
+    payload.questionSetPracticeNodes.length > 0 ||
     (mapping.questionSetPracticeNodeIds?.length ?? 0) > 0
   ) {
     throw new McpToolException({

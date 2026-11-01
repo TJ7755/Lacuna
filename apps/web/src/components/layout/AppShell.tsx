@@ -1,3 +1,4 @@
+import { storedString } from '../../state/localSetting';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import {
   lazy,
@@ -75,7 +76,7 @@ export function AppShell() {
 
 function AppShellLayout() {
   const navigationCourses = useNavigationCourses();
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
+  const [collapsed, setCollapsed] = useState(() => storedString(COLLAPSE_KEY).read() === '1');
 
   // Sync sidebar collapsed state across tabs.
   useEffect(() => {
@@ -156,7 +157,7 @@ function AppShellLayout() {
   // Debounce sidebar collapse writes so rapid toggles / drag-resize don't hammer localStorage.
   useEffect(() => {
     const id = window.setTimeout(() => {
-      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
+      storedString(COLLAPSE_KEY).write(collapsed ? '1' : '0');
     }, 150);
     return () => window.clearTimeout(id);
   }, [collapsed]);

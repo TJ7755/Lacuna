@@ -351,6 +351,12 @@ describe('half-life-logistic-v3 runtime', () => {
     expect(readinessFromPredictions([{ probability: 0.8 }])).toBeNull();
   });
 
+  it('identifies the decay used by the composed memory model', () => {
+    expect(createHalfLifeLogisticModel(-0.2)?.version).not.toBe(
+      createHalfLifeLogisticModel(-0.3)?.version,
+    );
+  });
+
   it('changes the explained plan revision when the model version changes', () => {
     const changedCoefficients = structuredClone(frozenCoefficients);
     changedCoefficients.coefficients[0] += 0.001;

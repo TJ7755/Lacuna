@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { bytesToBase45 } from './base45';
 import { ensureLessonBackingDeck } from './backingDecks';
-import { exportDatabase, importBackup, PRE_V22_BACKUP_MESSAGE } from './portability';
+import { exportDatabase, importBackup } from './portability';
 import { reviewHistoryEntriesForCard } from '@lacuna/core/db/reviewHistory';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { createCard, createCourse, createLesson } from './repository';
@@ -13,7 +13,6 @@ import {
   encodeShareQRDirect,
   importSharePayload,
   V1_SHARE_CODE_MESSAGE,
-  type SharePayloadV1,
 } from './share';
 import type { ReviewLog } from '@lacuna/core/db/types';
 
@@ -70,7 +69,7 @@ describe('legacy storage compatibility net', () => {
         } as never,
         'replace',
       ),
-    ).rejects.toThrow(PRE_V22_BACKUP_MESSAGE);
+    ).rejects.toThrow(/Unsupported old backup version/);
   });
 
   it('round-trips a current Course backup without changing review identity, order or performance', async () => {
@@ -137,7 +136,7 @@ describe('legacy storage compatibility net', () => {
   it.each(['LAC0', 'LAC1', 'LAC2', 'LAC3'] as const)(
     'refuses a %s v1 deck share code',
     async (prefix) => {
-      const payload: SharePayloadV1 = {
+      const payload: unknown = {
         v: 1,
         by: null,
         at: 1_700_000_000_000,
@@ -158,12 +157,14 @@ describe('legacy storage compatibility net', () => {
           : prefix === 'LAC3'
             ? `LAC3${bytesToBase45(jsonBytes)}`
             : prefix === 'LAC1'
-              ? await encodeShareDirect(payload)
-              : await encodeShareQRDirect(payload);
+              ? await encodeShareDirect(payload as Parameters<typeof encodeShareDirect>[0])
+              : await encodeShareQRDirect(payload as Parameters<typeof encodeShareQRDirect>[0]);
       expect(code.startsWith(prefix)).toBe(true);
 
       await expect(decodeShareDirect(code)).rejects.toThrow(V1_SHARE_CODE_MESSAGE);
-      await expect(importSharePayload(payload)).rejects.toThrow(V1_SHARE_CODE_MESSAGE);
+      await expect(
+        importSharePayload(payload as Parameters<typeof importSharePayload>[0]),
+      ).rejects.toThrow(V1_SHARE_CODE_MESSAGE);
     },
   );
 

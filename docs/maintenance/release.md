@@ -16,11 +16,13 @@ betas are supported; macOS packages are a separate local step, not an implicit p
 4. If building or verification fails, fix the cause and rerun the failed release workflow.
    `gh workflow run release.yml --ref v<version>` restarts the existing tag's build.
 
-For weekly releases, provision a GitHub App with Contents and Pull requests write
-permissions using `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`, or provision
-`RELEASE_TOKEN`. Keep credentials in the `release` environment restricted to
-`master`, and enable Allow auto-merge. Review credential validity after revocation
-or changes to maintainer authentication.
+For weekly and nightly releases, provision a GitHub App with Contents, Pull requests and Actions
+write permissions using `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`, or provision
+`RELEASE_TOKEN` with Contents and Actions write permissions. Approve updated App installation
+permissions after changing them. Keep credentials in the `release` environment restricted to
+`master`, and enable Allow auto-merge. Review credential validity after revocation or changes
+to maintainer authentication.
+
 
 ## Inspect and publish
 
@@ -94,3 +96,11 @@ Action pins use full commit SHAs with version comments. For updates, verify the 
 and peeled commit for annotated tags, run the existing workflow policy checks, and retain native
 build/draft verification where release actions change. GitHub enforcement is inspected through
 [repository governance](governance.md), not inferred from this file.
+
+## Nightly desktop updates
+
+- Inspect scheduled nightly results in GitHub Actions; retain the source commit and build evidence.
+- To request a run manually, use `gh workflow run nightly-release.yml --ref master`.
+- Keep existing release environment protection and signing policy intact.
+- After publication, verify feed discovery and silent installation with a disposable installation;
+  do not use the maintainer's working profile or treat private-draft checks as feed evidence.

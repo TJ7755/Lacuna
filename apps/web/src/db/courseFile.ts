@@ -1,15 +1,7 @@
 import { z } from 'zod';
 import Dexie from 'dexie';
 import { db } from './schema';
-import {
-  buildCourseSharePayload,
-  parseSharePayload,
-  type SharePayloadV2,
-  type SharePayloadV3,
-  type SharePayloadV4,
-  type SharePayloadV5,
-  type SharePayloadV6,
-} from './share';
+import { buildCourseSharePayload, parseSharePayload, type SharePayloadV6 } from './share';
 import {
   assetsForBackup,
   backupAssetToMediaAsset,
@@ -41,7 +33,7 @@ const CourseFileSchema = z.object({
 export interface CourseFile {
   format: 'lacuna-course';
   version: 1;
-  payload: SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5 | SharePayloadV6;
+  payload: SharePayloadV6;
   assets: BackupAsset[];
 }
 
@@ -108,7 +100,6 @@ export async function decodeCourseFile(text: string): Promise<CourseFile> {
   if (!parsed.success)
     throw new Error('This course file is invalid or uses an unsupported version.');
   const payload = parseSharePayload(parsed.data.payload);
-  if (payload.v === 1) throw new Error('This course file uses an unsupported version.');
   const file: CourseFile = { ...parsed.data, payload };
   await validatedAssets(file);
   return file;

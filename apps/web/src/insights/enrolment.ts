@@ -1,3 +1,4 @@
+import { storedString } from '../state/localSetting';
 import { z } from 'zod';
 import { enrolmentStorageOptions } from './enrolmentStorage';
 import { createLocalSetting, parseJson } from '../state/localSetting';
@@ -105,6 +106,6 @@ export async function disconnectFromClass(courseId: string): Promise<void> {
   }
   createInsightsLastSentDaySetting(courseId).write(null);
   createInsightsLastPublishedAtSetting(courseId).write(null);
-  localStorage.removeItem(`lacuna.insights.attempt.${courseId}`);
+  storedString(`lacuna.insights.attempt.${courseId}`).remove();
   setting.write(null);
 }

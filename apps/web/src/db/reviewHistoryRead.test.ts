@@ -260,6 +260,12 @@ describe('review-history read adapter', () => {
 
     expect(events).toHaveLength(1);
     expect(events[0].cardId).toBe(biologyCard.id);
+    const cardReads = vi.spyOn(db.cards, 'where');
+    const supplied = { ...biologyCard, history: [review(100)] };
+    const reused = await listReviewHistoryForCourse(biology.id, [supplied]);
+    expect(reused.map((entry) => entry.timestamp)).toEqual([100, 200]);
+    expect(cardReads).not.toHaveBeenCalled();
+    cardReads.mockRestore();
     expect(await listAllReviewHistory()).toHaveLength(2);
   });
 

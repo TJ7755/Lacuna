@@ -7,7 +7,11 @@ export interface QuestionGradeEvidence {
   hasUnresolvedDispute: boolean;
 }
 
-/** Minimum awarded proportion for Hard; full marks remain Good. */
+/**
+ * Minimum awarded proportion for Hard; full marks remain Good.
+ * Kept exported: narrowing changes compiled output without behavioural benefit.
+ * @public
+ */
 export const PRACTICE_HARD_THRESHOLD = 0.6;
 
 export function gradeQuestionAttempt(evidence: QuestionGradeEvidence): Grade | null {

@@ -1,3 +1,4 @@
+import { storedString } from '../state/localSetting';
 import { useSyncExternalStore } from 'react';
 
 const STORAGE_KEY = 'lacuna.aiSettings';
@@ -21,7 +22,7 @@ let cachedSnapshot = { ...DEFAULT_AI_SETTINGS };
 
 function readPersistedAiSettings(): AiSettings {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = storedString(STORAGE_KEY).read();
     if (!raw) return { ...DEFAULT_AI_SETTINGS };
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     return {
@@ -44,7 +45,7 @@ export function readAiSettings(): AiSettings {
 export function writeAiSettings(patch: Partial<AiSettings>): void {
   const next = { ...readAiSettings(), ...patch };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    storedString(STORAGE_KEY).write(JSON.stringify(next));
     unsavedSettings = null;
   } catch {
     unsavedSettings = next;

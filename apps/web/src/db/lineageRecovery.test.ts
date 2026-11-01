@@ -7,7 +7,7 @@ import {
   importLineageFirstTime,
   mergeLineageUpdate,
 } from './mergeImport';
-import type { SharePayloadV2 } from './share';
+import type { SharePayloadV6 } from './share';
 import { syncCourseSchedulingUnits } from './backingDecks';
 import { createCourse, recordReview } from './repository';
 import { exportDatabase, importBackup } from './portability';
@@ -24,13 +24,17 @@ afterEach(async () => {
 it.each([1, 164])(
   'updates %i existing lessons after lineage bookkeeping is lost',
   async (count) => {
-    const payload: SharePayloadV2 = {
-      v: 2,
+    const payload: SharePayloadV6 = {
+      v: 6,
+      concepts: [],
+      questions: [],
+      questionSets: [],
+      questionSetPracticeNodes: [],
       by: 'Teacher',
       at: 1000,
       li: 'diagnostic-lineage',
       rv: 17,
-      course: { n: 'Example course', o: 0, c: 1000, um: 'open' },
+      course: { n: 'Example course', o: 0, c: 1000, sm: 1, um: 'open' },
       lessons: Array.from({ length: count }, (_, index) => ({
         i: `diagnostic-lesson-${index}`,
         n: `Lesson ${index}`,
@@ -46,20 +50,24 @@ it.each([1, 164])(
   },
 );
 
-function contentPayload(): SharePayloadV2 {
+function contentPayload(): SharePayloadV6 {
   return {
-    v: 2,
+    v: 6,
+    concepts: [{ id: 'concept-card', n: 'Source question' }],
+    questions: [],
+    questionSets: [],
+    questionSetPracticeNodes: [],
     by: 'Teacher',
     at: 1000,
     li: 'recovery-lineage',
     rv: 17,
-    course: { n: 'Biology', o: 0, c: 1000, um: 'open' },
+    course: { n: 'Biology', o: 0, c: 1000, sm: 1, um: 'open' },
     lessons: [
       {
         i: 'lesson',
         n: 'Cells',
         notes: [{ oi: 'note', n: 'Notes', c: 'Source notes' }],
-        cards: [{ id: 'card', k: 0, f: 'Source question', b: 'Source answer' }],
+        cards: [{ id: 'card', co: 'concept-card', k: 0, f: 'Source question', b: 'Source answer' }],
       },
     ],
   };

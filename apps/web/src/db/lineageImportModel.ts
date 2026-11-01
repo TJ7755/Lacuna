@@ -7,14 +7,7 @@ import type {
   ShareLessonInput,
   ShareNoteInput,
 } from '@lacuna/core/db/lineageDiff';
-import type {
-  SharePayload,
-  SharePayloadV2,
-  SharePayloadV3,
-  SharePayloadV4,
-  SharePayloadV5,
-  SharePayloadV6,
-} from './share';
+import type { SharePayload, SharePayloadV6 } from './share';
 import type {
   Card,
   CardType,
@@ -28,9 +21,7 @@ import type {
 } from '@lacuna/core/db/types';
 
 /** Narrowed view of the fields this module reads off a decoded course share payload. */
-export type LineagePayload = (
-  SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5 | SharePayloadV6
-) & {
+export type LineagePayload = SharePayloadV6 & {
   li: string;
   rv: number;
 };
@@ -39,7 +30,7 @@ export type ShareCard = LineagePayload['lessons'][number]['cards'][number];
 
 /** Type guard: a decoded payload actually carries a lineage (`li`/`rv`, §7.2). */
 export function isLineagePayload(payload: SharePayload): payload is LineagePayload {
-  return payload.v !== 1 && typeof payload.li === 'string' && typeof payload.rv === 'number';
+  return typeof payload.li === 'string' && typeof payload.rv === 'number';
 }
 
 /** `k` -> local `CardType`, mirroring `unpackCard`'s decode in `src/db/share.ts:771-784`
@@ -301,7 +292,6 @@ export function emptyMapping(lineageId: string, courseId: string): LineageIdMapp
 
 export function incomingCardConceptIds(payload: LineagePayload): Map<string, string> {
   const result = new Map<string, string>();
-  if (payload.v === 2) return result;
   for (const card of [
     ...payload.lessons.flatMap((lesson) => lesson.cards),
     ...(payload.bankCards ?? []),

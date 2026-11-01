@@ -228,8 +228,8 @@ export function OptimisationPanel({
                     </p>
                   ) : !optimiser.result.isOutOfSampleWin ? (
                     <p className="mb-3 text-sm text-negative">
-                      The fitted weights did not beat the defaults on unseen data. Keep the default
-                      weights for now.
+                      The fitted weights did not beat the current weights on unseen data. Keep the
+                      current weights for now.
                     </p>
                   ) : null}
                   <div className="flex flex-wrap gap-2">
@@ -271,7 +271,12 @@ export function OptimisationPanel({
                     variant="secondary"
                     size="sm"
                     onClick={() =>
-                      optimiser.run(cards, entity.fsrsParameters.requestRetention, reviewHistory)
+                      optimiser.run(
+                        cards,
+                        entity.fsrsParameters.requestRetention,
+                        reviewHistory,
+                        entity.fsrsParameters.w,
+                      )
                     }
                   >
                     Optimise now

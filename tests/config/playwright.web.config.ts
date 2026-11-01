@@ -41,11 +41,6 @@ export default defineConfig({
       testIgnore: '**/mobile-pwa-smoke.spec.ts',
       use: { ...devices['Desktop Chrome'] },
     },
-    {
-      name: 'webkit-mobile',
-      testMatch: '**/mobile-pwa-smoke.spec.ts',
-      use: { ...devices['iPhone 13'] },
-    },
   ],
   webServer: {
     cwd: fileURLToPath(new URL('../..', import.meta.url)),

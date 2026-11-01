@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../db/schema';
-import { encodeShareDirect, type SharePayload, type SharePayloadV2 } from '../../db/share';
+import { encodeShareDirect, type SharePayload, type SharePayloadV6 } from '../../db/share';
 import { importLineageFirstTime, mergeLineageUpdate } from '../../db/mergeImport';
 import type { ToolContext } from '../types';
 import { validateAndRun } from '../registry';
@@ -12,9 +12,13 @@ import * as tools from './lineage';
 // the real wire shape: `li`/`rv` at the payload level, `i` on ShareLesson, `oi` on
 // ShareNote, ShareCard's `id` doubling as the originating card id).
 
-function coursePayload(overrides: Partial<SharePayloadV2> = {}): SharePayloadV2 {
+function coursePayload(overrides: Partial<SharePayloadV6> = {}): SharePayloadV6 {
   return {
-    v: 2,
+    v: 6,
+    concepts: [{ id: 'concept-cells', n: 'Cells' }],
+    questions: [],
+    questionSets: [],
+    questionSetPracticeNodes: [],
     by: 'Ms Teacher',
     at: 1000,
     course: { n: 'Biology', o: 0, c: 1000, e: 2_000_000, um: 'open' },
@@ -22,7 +26,7 @@ function coursePayload(overrides: Partial<SharePayloadV2> = {}): SharePayloadV2 
     li: 'lineage-1',
     rv: 1,
     ...overrides,
-  } as SharePayloadV2;
+  } as SharePayloadV6;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- fixture literal, mirrors mergeImport.test.ts's own untyped lessonOne helper.
@@ -31,7 +35,15 @@ function lessonOne(overrides: Partial<any> = {}) {
     i: 'lesson-1',
     n: 'Cells',
     notes: [{ oi: 'note-1', n: 'Intro', c: 'Cells are the basic unit of life.' }],
-    cards: [{ id: 'card-1', k: 0 as const, f: 'What is a cell?', b: 'The basic unit of life.' }],
+    cards: [
+      {
+        id: 'card-1',
+        co: 'concept-cells',
+        k: 0 as const,
+        f: 'What is a cell?',
+        b: 'The basic unit of life.',
+      },
+    ],
     ...overrides,
   };
 }
@@ -62,14 +74,29 @@ describe('mcp lineage tools', () => {
       expect((await db.lessons.get('lesson-1'))?.name).toBe('Cells');
     });
 
-    it.each([4, 5, 6] as const)(
+    it.each([2, 3, 4, 5] as const)(
+      'rejects obsolete v%i without changing the database',
+      async (v) => {
+        const before = await Promise.all(db.tables.map((table) => table.toArray()));
+        const shareCode = await encodeShareDirect({
+          ...coursePayload(),
+          v,
+        } as unknown as SharePayload);
+        const result = await validateAndRun(tools.diffLineageUpdate, { courseId, shareCode }, ctx);
+        expect(result.ok).toBe(false);
+        if (!result.ok) expect(result.error.message).toMatch(/unsupported old version/);
+        expect(await Promise.all(db.tables.map((table) => table.toArray()))).toEqual(before);
+      },
+    );
+
+    it.each([6] as const)(
       'rejects authored Question Sets in v%i until lineage preview supports them',
       async (version) => {
         const code = await encodeShareDirect({
           ...coursePayload(),
           v: version,
           ...(version >= 5 ? { questionSetPracticeNodes: [] } : {}),
-          concepts: [],
+          concepts: [{ id: 'concept-cells', n: 'Cells' }],
           questions: [],
           questionSets: [
             {
@@ -158,6 +185,7 @@ describe('mcp lineage tools', () => {
         cards: [
           {
             id: 'card-2',
+            co: 'concept-cells',
             k: 0 as const,
             f: 'x = ?',
             b: '4',
@@ -235,7 +263,8 @@ describe('mcp lineage tools', () => {
 
     it('rejects a share code that does not carry a lineage', async () => {
       const code = await encodeShareDirect({
-        v: 2,
+        ...coursePayload(),
+        li: undefined,
         by: 'Someone',
         at: 1000,
         course: { n: 'Plain course', o: 0, c: 1000, e: 2_000_000, um: 'open' },

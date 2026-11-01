@@ -312,4 +312,32 @@ describe('backup history', () => {
 
     expect(await db.sessionHistory.toArray()).toEqual([expect.objectContaining(event)]);
   });
+  it('recovers session ownership from the Course and retains unresolved sessions', async () => {
+    const course = await createCourse('Recovered history');
+    const backup = await exportDatabase();
+    backup.sessionHistory = [
+      {
+        timestamp: 1000,
+        deckId: 'missing-unit',
+        courseId: course.id,
+        eventId: 'missing-review',
+        averagePredictedRetrievability: 0.6,
+      },
+      {
+        timestamp: 2000,
+        deckId: 'missing-unit',
+        courseId: 'missing-course',
+        averagePredictedRetrievability: 0.7,
+      },
+    ];
+
+    await importBackup(backup, 'replace');
+
+    const history = await db.sessionHistory.orderBy('timestamp').toArray();
+    expect(history).toEqual([
+      expect.objectContaining({ timestamp: 1000, schedulingUnitId: course.id }),
+      expect.objectContaining({ timestamp: 2000, deckId: 'missing-unit' }),
+    ]);
+    expect(history[1].schedulingUnitId).toBeUndefined();
+  });
 });

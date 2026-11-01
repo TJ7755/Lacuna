@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useCourseStudyFlowRecords } from './useCourseStudyFlowRecords';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
-import { makeExamDateContext, resolveCardExamDate } from '../fsrs/examDate';
+import { makeExamDateContext } from '../fsrs/examDate';
 import { buildPath } from '../course/path';
 import { lessonCardMembership } from '../course/lessonMembership';
 import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
@@ -37,8 +37,9 @@ export function useCourseStudyFlow(
   refreshKey = 0,
   enabled = true,
   previousStep?: StudyFlowStep | null,
+  sittingStartedAt?: number,
 ): CourseStudyFlowData | null | undefined {
-  const records = useCourseStudyFlowRecords(courseId, refreshKey, enabled);
+  const records = useCourseStudyFlowRecords(courseId, refreshKey, enabled, sittingStartedAt);
 
   return useMemo(() => {
     if (records === undefined) return undefined;
@@ -101,36 +102,28 @@ export function useCourseStudyFlow(
       practiceMilestones: records.milestones,
       now,
     });
-    const examContext = makeExamDateContext(
-      records.course,
-      records.lessons,
-      records.assessments,
-      records.links,
-      records.concepts,
-    );
-    const dates = new Map<string, number>();
     snapshot.hasStudyHistory ||=
       records.questionPractice?.some(
         (item) => item.schedule.lastReviewed !== null || item.unfinished || item.familiarCount > 0,
       ) ?? false;
-    for (const card of records.cards) {
-      const date = resolveCardExamDate(card, examContext, now);
-      if (date !== undefined && date > now)
-        dates.set(card.conceptId, Math.min(dates.get(card.conceptId) ?? Infinity, date));
-    }
+    snapshot.hasStudyHistory ||=
+      records.examSkillPractice?.some(
+        (item) => item.schedule.lastReviewed !== null || item.lastPracticeAt !== undefined,
+      ) ?? false;
+    snapshot.questionScopeLessonIds = records.questionScopeLessonIds;
     snapshot.questionScopeConceptIds = records.questionScopeConceptIds ?? [];
     snapshot.questionOptions = (records.questionPractice ?? [])
       .filter(
         (item) =>
-          (item.due || item.unfinished || dates.has(item.conceptId)) &&
-          (item.unseenCount > 0 || item.unfinished),
+          (item.studyEligible || item.unfinished) &&
+          ((item.studyUnseenCount ?? 0) > 0 || item.unfinished),
       )
       .map((item) => ({
         conceptId: item.conceptId,
         name: item.name,
         needs: item.needs,
         unfinished: item.unfinished,
-        examDate: dates.get(item.conceptId),
+        examDate: item.examDate,
         repairLessonId: item.needs?.knowledge
           ? nodes.find(
               (node) =>
@@ -139,22 +132,39 @@ export function useCourseStudyFlow(
                 lessonCardsById.get(node.id)?.some((card) => card.conceptId === item.conceptId),
             )?.id
           : undefined,
-      }))
-      .sort(
-        (a, b) =>
-          Number(Boolean(b.unfinished)) - Number(Boolean(a.unfinished)) ||
+      }));
+    snapshot.questionOptions.push(
+      ...(records.examSkillPractice ?? [])
+        .filter((item) => (item.studyEligible && item.unseenCount > 0) || item.unfinished)
+        .map((item) => ({
+          techniqueId: item.techniqueId,
+          name: item.name,
+          examDate: item.examDate,
+          unfinished: item.unfinished,
+        })),
+    );
+    snapshot.questionOptions.sort(
+      (a, b) =>
+        Number(Boolean(b.unfinished)) - Number(Boolean(a.unfinished)) ||
+        Number(Boolean(b.needs?.knowledge || b.needs?.techniques.length || b.needs?.application)) -
           Number(
-            Boolean(b.needs?.knowledge || b.needs?.techniques.length || b.needs?.application),
-          ) -
-            Number(
-              Boolean(a.needs?.knowledge || a.needs?.techniques.length || a.needs?.application),
-            ) ||
-          (a.examDate ?? Infinity) - (b.examDate ?? Infinity) ||
-          a.conceptId.localeCompare(b.conceptId),
-      );
+            Boolean(a.needs?.knowledge || a.needs?.techniques.length || a.needs?.application),
+          ) ||
+        (a.examDate ?? Infinity) - (b.examDate ?? Infinity) ||
+        Number(Boolean(a.techniqueId)) - Number(Boolean(b.techniqueId)) ||
+        (a.conceptId ?? a.techniqueId ?? '').localeCompare(b.conceptId ?? b.techniqueId ?? ''),
+    );
     snapshot.questionPracticeExhausted =
-      Boolean(records.questionPractice?.some((item) => item.availableCount > 0)) &&
-      !records.questionPractice?.some((item) => item.unseenCount > 0 || item.unfinished);
+      Boolean(
+        records.questionPractice?.some((item) => item.availableCount > 0) ||
+        records.examSkillPractice?.some((item) => item.availableCount > 0),
+      ) &&
+      !records.examSkillPractice?.some(
+        (item) => (item.studyEligible && item.unseenCount > 0) || item.unfinished,
+      ) &&
+      !records.questionPractice?.some(
+        (item) => (item.studyEligible && (item.studyUnseenCount ?? 0) > 0) || item.unfinished,
+      );
     return {
       course: records.course,
       snapshot,

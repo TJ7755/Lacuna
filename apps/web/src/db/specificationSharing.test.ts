@@ -9,7 +9,7 @@ import {
   encodeShareDirect,
   importSharePayload,
   parseSharePayload,
-  type SharePayloadV5,
+  type SharePayloadV6,
 } from './share';
 import { buildCourseFile, decodeCourseFile, withCourseFileAssets } from './courseFile';
 import { importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
@@ -51,9 +51,9 @@ async function authoredCourse() {
   return { course, card };
 }
 
-function publishedPayload(): SharePayloadV5 {
+function publishedPayload(): SharePayloadV6 {
   return {
-    v: 5,
+    v: 6,
     by: 'Teacher',
     at: 1_000,
     li: 'science-lineage',

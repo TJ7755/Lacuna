@@ -954,7 +954,7 @@ describe('local AI companion request lifecycle', () => {
     client.close();
   });
 
-  it('falls back to the v0.2.3 handshake without sending unsupported lease renewals', async () => {
+  it('rejects a v0.2.3 host without retrying a downgraded handshake', async () => {
     const connection = await writeCompanionConnectionFile(userDataPath, '0.2.3');
     const handshakes: number[] = [];
     let renewalCount = 0;
@@ -1061,14 +1061,8 @@ describe('local AI companion request lifecycle', () => {
     });
 
     const client = new LocalAiAppClient(100, userDataPath, 10);
-    await client.connect({ name: 'Codex' }, new AbortController().signal);
-    await client.waitForMessage(250, new AbortController().signal);
-    await new Promise((resolve) => setTimeout(resolve, 40));
-
-    expect(handshakes).toEqual([
-      AI_COMPANION_PROTOCOL_VERSION,
-      LEGACY_AI_COMPANION_PROTOCOL_VERSION,
-    ]);
+    await expect(client.connect({ name: 'Codex' }, new AbortController().signal)).rejects.toThrow();
+    expect(handshakes).toEqual([AI_COMPANION_PROTOCOL_VERSION]);
     expect(renewalCount).toBe(0);
     client.close();
   });

@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",
-    "@lacuna/core": "workspace:*",
     "@lacuna/protocol": "workspace:*"
   },
   "devDependencies": {

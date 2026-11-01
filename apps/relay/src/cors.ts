@@ -12,7 +12,7 @@ const DEFAULT_ORIGINS = [
 ];
 const LOOPBACK_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?$/;
 
-export function corsAllowOrigin(request: Request): string | null {
+function corsAllowOrigin(request: Request): string | null {
   const origin = request.headers.get('Origin');
   if (!origin) return '*';
   const extra = (process.env.RELAY_ALLOWED_ORIGINS ?? '').split(',').map((value) => value.trim());
