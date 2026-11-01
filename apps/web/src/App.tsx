@@ -10,6 +10,7 @@ import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { LandingTransition } from './components/layout/LandingTransition';
 import { seedWorkPending } from './db/seedFlags';
 import { db, ensurePreMigrationSnapshot, openDatabase, type DbOpenResult } from './db/schema';
+import { UnsupportedSchemaError } from './db/schemaFloor';
 import { stampMissingLessonViewModes } from './db/lessonViewModeMigration';
 import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
@@ -141,7 +142,7 @@ export function App() {
         }
         setInitError({
           ok: false,
-          reason: 'unknown',
+          reason: error instanceof UnsupportedSchemaError ? 'unsupported' : 'unknown',
           message:
             error instanceof Error
               ? error.message
