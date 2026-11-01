@@ -32,11 +32,13 @@ jobs:
       - name: Validate release tag
         shell: bash
         run: |
-          expected_tag="v$(node -p "require('./package.json').version")"
-          if [[ "$GITHUB_REF_NAME" != "$expected_tag" ]]; then
-            echo "Release tag $GITHUB_REF_NAME does not match package version $expected_tag"
-            exit 1
-          fi
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          import { matchesReleaseVersion } from './scripts/nightly-release.mjs';
+          const source = JSON.parse(readFileSync('package.json')).version;
+          assert(matchesReleaseVersion(source, process.env.GITHUB_REF_NAME.slice(1)), 'Release tag/package mismatch');
+          JS
           tag_commit="$(git rev-parse --verify "${GITHUB_REF}^{commit}")"
           if [[ "$tag_commit" != "$GITHUB_SHA" ]]; then
             echo "Release tag $GITHUB_REF_NAME resolves to $tag_commit, not workflow commit $GITHUB_SHA"
@@ -91,8 +93,19 @@ jobs:
       - uses: ./.github/actions/setup-bun
 
       - run: bun install --frozen-lockfile
+      - name: Set nightly package version
+        if: contains(github.ref_name, '-beta.nightly.')
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const file = 'package.json';
+          const pkg = JSON.parse(readFileSync(file));
+          pkg.version = process.env.GITHUB_REF_NAME.slice(1);
+          writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+          JS
       - run: bun run test:e2e:electron-ai
-      - run: bun run electron:build:win
+      - run: bun run electron:build:win --config.detectUpdateChannel=false
       - run: bun run perf:check:electron-package
       - run: bun run test:e2e:electron-package
         env:
@@ -173,7 +186,18 @@ jobs:
       - uses: ./.github/actions/setup-bun
 
       - run: bun install --frozen-lockfile
-      - run: bun run electron:build:linux
+      - name: Set nightly package version
+        if: contains(github.ref_name, '-beta.nightly.')
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const file = 'package.json';
+          const pkg = JSON.parse(readFileSync(file));
+          pkg.version = process.env.GITHUB_REF_NAME.slice(1);
+          writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+          JS
+      - run: bun run electron:build:linux --config.detectUpdateChannel=false
 
       - name: Verify Linux artefact allowlist
         shell: bash
@@ -292,6 +316,9 @@ jobs:
           notes="docs/releases/${GITHUB_REF_NAME#v}.md"
           if [[ -s "$notes" ]]; then
             echo "file=$notes" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF_NAME" == *-beta.nightly.* ]]; then
+            printf 'Nightly desktop build from %s. Windows and Linux beta.\n' "$GITHUB_SHA" > /tmp/nightly-notes.md
+            echo "file=/tmp/nightly-notes.md" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::$notes is missing, so the draft waits for manual publication."
           fi

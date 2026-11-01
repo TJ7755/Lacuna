@@ -130,8 +130,8 @@ an automatic split. Keep cohesive modules together when splitting would reduce c
 Lacuna is not currently being worked on for mobile. Design, polish and review effort goes to the
 desktop site, and mobile is not a priority until the desktop site is polished enough to justify it.
 Do not design phone-specific layouts or capture phone screenshots as review evidence. Existing
-phone-width tests stay and must keep passing, so a desktop change should not break the narrow layout,
-but they do not call for new mobile work.
+responsive code stays, but phone-width end-to-end tests are no longer required. Phones are not a
+product target.
 
 ## Stacked pull requests
 

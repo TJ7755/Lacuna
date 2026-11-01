@@ -1,5 +1,5 @@
 {
-  "ignoreCommand": "node ../../scripts/vercel-ignore-build.mjs relay",
+  "git": { "deploymentEnabled": false },
   "installCommand": "cd ../.. && node apps/relay/scripts/security-bun.mjs install --frozen-lockfile",
   "rewrites": [
     {
