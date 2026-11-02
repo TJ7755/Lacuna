@@ -153,7 +153,12 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
         ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
         : [],
       lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-      db.sessionHistory.where('courseId').equals(id).toArray(),
+      db.sessionHistory
+        .where('courseId')
+        .equals(id)
+        .or('schedulingUnitId')
+        .anyOf(targetIds)
+        .toArray(),
     ]);
   const noteAnnotations =
     notes.length > 0
