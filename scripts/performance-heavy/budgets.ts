@@ -23,8 +23,11 @@ export const elapsedBudgetsMs: Record<string, number> = {
 };
 
 // GitHub Ubuntu run 41317378155 observed 1,397 ms for the cold Today-to-course
-// interaction; full run 41317388148 observed 493–688 ms. Keep other inputs strict.
-const inputBudgetsMs: Record<string, number> = { 'course-open': 1_500 };
+// interaction; full run 41317388148 observed 493–688 ms. Cards measured 289–369 ms
+// in the 41317899236 calibration, but current runners report 544–692 ms with 948 ms
+// (run 41489215211) and 1,225 ms (run 41493533501) tails on the same fixture, so
+// cards-open takes the same 1,500 ms observed-runner ceiling. Keep learn inputs strict.
+const inputBudgetsMs: Record<string, number> = { 'course-open': 1_500, 'cards-open': 1_500 };
 
 interface Sample {
   name: string;

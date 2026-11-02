@@ -34,19 +34,19 @@ describe('performance evidence gate', () => {
   it('accepts a complete full-size report below all ceilings', () => {
     expect(checkPerformanceReport(evidence())).toEqual([]);
   });
-  it('allows observed cold course navigation without relaxing other interactions', () => {
+  it('allows observed route navigation without relaxing learn inputs', () => {
     const report = evidence();
     for (const sample of report.runs[0].samples) {
-      if (sample.name === 'course-open' && 'inputToReadableMs' in sample)
+      if (['course-open', 'cards-open'].includes(sample.name) && 'inputToReadableMs' in sample)
         sample.inputToReadableMs = 1_397;
     }
     expect(checkPerformanceReport(report)).toEqual([]);
     for (const sample of report.runs[0].samples) {
-      if (sample.name === 'cards-open' && 'inputToReadableMs' in sample)
+      if (sample.name === 'answer-reveal' && 'inputToReadableMs' in sample)
         sample.inputToReadableMs = 1_397;
     }
     expect(checkPerformanceReport(report)).toEqual([
-      'cards-open: input-to-readable exceeds 750 ms',
+      'answer-reveal: input-to-readable exceeds 750 ms',
     ]);
   });
   it('rejects incomplete evidence even when recorded timings pass', () => {
