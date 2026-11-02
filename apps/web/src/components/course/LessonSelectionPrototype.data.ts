@@ -1,5 +1,5 @@
 // Throwaway large-course fixture; never inserted into the database.
-export const prototypeTopics = [
+const prototypeTopics = [
   [
     'Cells and enzymes',
     [
