@@ -9,7 +9,7 @@ import {
 import type { Card, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import { DateTimePicker } from '../ui/DateTimePicker';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
-import { choiceChipClass } from '../ui/choiceChip';
+import { AssessmentLessonPicker } from './AssessmentLessonPicker';
 import { useToast } from '../ui/Toast';
 import {
   assessmentChanges,
@@ -211,6 +211,7 @@ export function AssessmentPathEditor({
       onClosed={onSaved}
       onDelete={assessment && kind !== 'final' ? remove : undefined}
       deleteNoun="checkpoint"
+      wide={draft.coverageMode === 'custom'}
     >
       <p className="path-editor-sentence">
         <input
@@ -290,31 +291,18 @@ export function AssessmentPathEditor({
         </p>
       )}
       <AnimatedDisclosure open={draft.coverageMode === 'custom'}>
-        <div className="mt-3 flex flex-wrap gap-2" aria-label="Covered lessons">
-          {orderedLessons.map((lesson) => (
-            <button
-              key={lesson.id}
-              type="button"
-              aria-pressed={draft.lessonIds.includes(lesson.id)}
-              className={choiceChipClass(draft.lessonIds.includes(lesson.id))}
-              onClick={() =>
-                changeCoverage({
-                  ...draft,
-                  lessonIds: draft.lessonIds.includes(lesson.id)
-                    ? draft.lessonIds.filter((id) => id !== lesson.id)
-                    : [...draft.lessonIds, lesson.id],
-                })
-              }
-            >
-              {lesson.name}
-            </button>
-          ))}
-        </div>
+        <AssessmentLessonPicker
+          lessons={orderedLessons}
+          lessonIds={draft.lessonIds}
+          onChange={(lessonIds) => changeCoverage({ ...draft, lessonIds })}
+        />
       </AnimatedDisclosure>
-      <p className="mt-3 text-sm text-ink-faint">
-        {resolved.coveredLessons.length} lesson{resolved.coveredLessons.length === 1 ? '' : 's'} ·{' '}
-        {resolved.cards.length} card{resolved.cards.length === 1 ? '' : 's'}
-      </p>
+      {draft.coverageMode !== 'custom' && (
+        <p className="mt-3 text-sm text-ink-faint">
+          {resolved.coveredLessons.length} lesson{resolved.coveredLessons.length === 1 ? '' : 's'} ·{' '}
+          {resolved.cards.length} card{resolved.cards.length === 1 ? '' : 's'}
+        </p>
+      )}
       {draft.excludedCardIds.length === 0 && candidates.cards.length > 0 && (
         <div>{exclusionButton(true)}</div>
       )}
