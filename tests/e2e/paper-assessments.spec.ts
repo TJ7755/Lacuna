@@ -5,7 +5,7 @@ import {
   paperSpecification,
   paperSpecificationReference,
 } from '../../apps/web/src/specifications/paperFixture.testFixtures';
-import { chooseScheduledStudy, enterFreshLacuna, openImport } from './fixtures/lacunaApp';
+import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 
 test.use({ timezoneId: 'Europe/London' });
@@ -93,6 +93,7 @@ async function importPaperCourse(page: Page) {
                   k: 0,
                   f: 'What does an enzyme do?',
                   b: 'Catalyses a reaction.',
+                  g: ['initial-review'],
                 },
               ],
             },
@@ -125,11 +126,13 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const course = await importPaperCourse(page);
-    await page.goto(`/#/course/${course.id}`);
-    await page.getByRole('button', { name: 'Study', exact: true }).click();
-    await chooseScheduledStudy(page);
+    // Leave the first paper's cell card unreviewed and eligible for its scoped revision later.
+    await page.goto(`/#/course/${course.id}/learn?tag=initial-review`);
     const studyCard = page.locator('[data-study-card-id]');
     await expect(studyCard).toBeVisible();
+    await expect(
+      studyCard.getByText('What does an enzyme do?', { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
     const reviewedCardId = await studyCard.getAttribute('data-study-card-id');
     await page.keyboard.press('Space');
     await page.keyboard.press('Y');
