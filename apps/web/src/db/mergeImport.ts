@@ -545,7 +545,11 @@ export async function mergeLineageUpdate(
       stampUpdatedAt({
         ...detailChanges,
         ...(course.schoolCoveredLessonIds === undefined && course.studyStartLessonId
-          ? { schoolCoveredLessonIds: [...earlierCourseLessonIds(course, existingLessons, [], [])] }
+          ? {
+              schoolCoveredLessonIds: [
+                ...earlierCourseLessonIds(course, [...existingLessons, ...created.lessons], [], []),
+              ],
+            }
           : {}),
         distributedCopy: {
           ...dc,

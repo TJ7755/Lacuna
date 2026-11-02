@@ -92,7 +92,12 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
   const noteIds = notes.map((note) => note.id);
   const [noteAnnotations, sessionHistory, reviewHistory] = await Promise.all([
     noteIds.length > 0 ? db.noteAnnotations.where('noteId').anyOf(noteIds).toArray() : [],
-    db.sessionHistory.where('courseId').equals(lesson.courseId).toArray(),
+    db.sessionHistory
+      .where('courseId')
+      .equals(lesson.courseId)
+      .or('schedulingUnitId')
+      .equals(id)
+      .toArray(),
     cards.length > 0
       ? db.reviewHistory
           .where('cardId')
@@ -323,6 +328,7 @@ export async function deleteLesson(id: string): Promise<void> {
       await db.lessonCards.where('lessonId').equals(id).delete();
       await db.lessonCardExposures.where('lessonId').equals(id).delete();
       await db.lessonCompletions.delete(id);
+      await db.sessionHistory.where('schedulingUnitId').equals(id).delete();
       if (bankDeckId) {
         const movedCards = await db.cards.where('primaryLessonId').equals(id).toArray();
         await db.cards

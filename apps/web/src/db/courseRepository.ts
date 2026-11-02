@@ -398,6 +398,9 @@ export async function deleteCourse(id: string): Promise<void> {
       // The course-level calibration profile and session history are keyed by the
       // course id itself for course/lesson-scoped reviews (see recordReview).
       await db.sessionHistory.where('courseId').equals(id).delete();
+      if (schedulingTargetIds.length > 0) {
+        await db.sessionHistory.where('schedulingUnitId').anyOf(schedulingTargetIds).delete();
+      }
       await removeCourseSchedulingUnits(id, lessonIds);
       await db.courses.delete(id);
 

@@ -190,6 +190,24 @@ describe('diffLineage', () => {
     expect(result.conflicts).toEqual([]);
   });
 
+  it('treats a reversible share card as matching its imported front_back pair', () => {
+    const input: LineageDiffInput = {
+      incoming: { lessons: [baseLesson({ cards: [{ i: 'card-1', k: 2, f: 'front', b: 'back' }] })] },
+      existing: {
+        lessons: [existingLesson()],
+        notes: [],
+        cards: [
+          { id: 'card-1', lessonId: 'lesson-1', type: 'front_back', front: 'front', back: 'back' },
+        ],
+      },
+      mapping: mapping({ lessonIds: ['lesson-1'], cardIds: ['card-1'] }),
+      studentEdits: new Set(),
+    };
+    const result = diffLineage(input);
+    expect(result.updates.cards).toEqual([]);
+    expect(result.conflicts).toEqual([]);
+  });
+
   it('never removes local lessons, notes or cards that the mapping does not track', () => {
     // Content the student created after import is absent from every payload. It is
     // not the teacher's to remove, so only mapped rows can become removals.

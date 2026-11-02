@@ -92,6 +92,39 @@ describe('deleteLesson', () => {
     expect(await db.lessonCards.where('lessonId').equals(lesson.id).count()).toBe(0);
   });
 
+  it('removes lesson-scoped session history for the deleted lesson', async () => {
+    const course = await createCourse('Lesson history test');
+    const lesson = await createLesson(course.id, 'L1');
+    const other = await createLesson(course.id, 'L2');
+    await db.sessionHistory.add({
+      eventId: 'event-lesson',
+      timestamp: 1,
+      deckId: lesson.id,
+      schedulingUnitId: lesson.id,
+      averagePredictedRetrievability: 0.5,
+    });
+    await db.sessionHistory.add({
+      eventId: 'event-course',
+      timestamp: 2,
+      deckId: course.id,
+      courseId: course.id,
+      averagePredictedRetrievability: 0.5,
+    });
+    await db.sessionHistory.add({
+      eventId: 'event-other',
+      timestamp: 3,
+      deckId: other.id,
+      schedulingUnitId: other.id,
+      averagePredictedRetrievability: 0.5,
+    });
+
+    await deleteLesson(lesson.id);
+
+    expect(await db.sessionHistory.where('schedulingUnitId').equals(lesson.id).count()).toBe(0);
+    expect(await db.sessionHistory.where('courseId').equals(course.id).count()).toBe(1);
+    expect(await db.sessionHistory.where('schedulingUnitId').equals(other.id).count()).toBe(1);
+  });
+
   it('unassigns cards (sets primaryLessonId to null) rather than deleting them', async () => {
     const course = await createCourse('Lesson delete test');
     const lesson = await createLesson(course.id, 'L1');

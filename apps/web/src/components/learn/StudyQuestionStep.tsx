@@ -1,6 +1,6 @@
 import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
 import { startExamSkillPractice } from '../../questions/examSkillPractice';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { startConceptPractice } from '../../questions/conceptPractice';
 import type { QuestionStudySummary } from '../../course/sessionSummary';
 import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
@@ -34,12 +34,11 @@ export function StudyQuestionStep({
   onComplete: (summary: QuestionStudySummary) => void;
   onExit: () => void;
 }) {
-  const pending = useRef<Promise<{ attempt: QuestionSetAttemptRecord }> | null>(null);
   const [attempt, setAttempt] = useState<QuestionSetAttemptRecord>();
   const [error, setError] = useState('');
   useEffect(() => {
     let cancelled = false;
-    pending.current ??= techniqueId
+    const promise = techniqueId
       ? startExamSkillPractice(courseId, techniqueId, {
           allowFamiliar,
           resume: true,
@@ -52,7 +51,7 @@ export function StudyQuestionStep({
           allowFamiliar,
           study: { sittingStartedAt },
         });
-    void pending.current
+    void promise
       .then((result) => {
         if (!cancelled) setAttempt(result.attempt);
       })

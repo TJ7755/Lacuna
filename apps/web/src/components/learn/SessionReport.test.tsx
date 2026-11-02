@@ -73,6 +73,22 @@ describe('SessionReport', () => {
     expect(screen.getByText('Cards reviewed').nextElementSibling).toHaveTextContent('2');
   });
 
+  it('averages response time across all answers instead of reporting 0.0s when none are correct', () => {
+    render(
+      <SessionReport
+        summary={{
+          ...mockSummary,
+          events: [
+            { grade: 1, correct: false, responseTimeSec: 2.0, distracted: false },
+            { grade: 1, correct: false, responseTimeSec: 4.0, distracted: false },
+          ],
+        }}
+        onReturn={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Mean time').nextElementSibling).toHaveTextContent('3.0s');
+  });
+
   it('shows the progress bar section', () => {
     render(<SessionReport summary={mockSummary} onReturn={vi.fn()} />);
     expect(screen.getByText('Expected marks')).toBeInTheDocument();
@@ -168,7 +184,7 @@ it('reports an empty session and a negative progress change without invalid stat
     />,
   );
   expect(screen.getByRole('heading', { name: 'Nice work' })).toBeInTheDocument();
-  expect(screen.getByText('0.0s')).toBeInTheDocument();
+  expect(screen.getByText('Mean time').nextElementSibling).toHaveTextContent('—');
   expect(screen.getByText('-10 percentage points')).toBeInTheDocument();
   expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '30');
   expect(screen.queryByRole('button', { name: 'Keep studying' })).not.toBeInTheDocument();
