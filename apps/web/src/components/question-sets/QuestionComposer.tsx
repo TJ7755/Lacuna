@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { makeId } from '../../utils/id';
 import {
@@ -25,7 +25,10 @@ import {
 } from './composerEditing';
 import { focusComposerField, useComposerKeyboard, type ComposerField } from './useComposerKeyboard';
 import { QuestionComposerRow } from './QuestionComposerRow';
+import { TechniqueClassifyBar } from './TechniqueClassifyBar';
 import { issueMessage, nodeMarks } from './presentation';
+import { effectiveCourseTechniques } from '@lacuna/core/questions/techniqueTags';
+import { referencedTechniqueIds, useCourseTechniques } from '../../questions/courseTechniques';
 
 function composerLabel(rows: QuestionSetAuthoringNode[], row: QuestionSetAuthoringNode) {
   return [
@@ -66,6 +69,12 @@ export function QuestionComposer({
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
   const { notify } = useToast();
+  const stored = useCourseTechniques(content.courseId);
+  // The draft may reference built-ins the saved sets do not yet, so it joins the catalogue too.
+  const catalogue = useMemo(
+    () => effectiveCourseTechniques(stored, referencedTechniqueIds([content])),
+    [stored, content],
+  );
   const focus = (id: string, field?: ComposerField) => focusComposerField(root.current, id, field);
   useLayoutEffect(() => {
     if (!initialised.current) {
@@ -194,6 +203,7 @@ export function QuestionComposer({
         <span>Question</span>
         <span>Mark scheme</span>
         <span>Marks</span>
+        <span>Techniques</span>
         <span />
       </div>
       <AnimatePresence initial={false}>
@@ -213,6 +223,7 @@ export function QuestionComposer({
                 .map((issue) => issueMessage(content, issue))}
               multiplier={multiplier}
               session={session}
+              catalogue={catalogue}
               onPrompt={(value) =>
                 session.update((set) => updateQuestionSetNodePrompt(set, row.id, value))
               }
@@ -269,6 +280,10 @@ export function QuestionComposer({
           + Part
         </button>
       </div>
+      {/* Generated families take their techniques from the source bank. */}
+      {!content.bank?.family && (
+        <TechniqueClassifyBar content={content} session={session} catalogue={catalogue} />
+      )}
     </div>
   );
 }

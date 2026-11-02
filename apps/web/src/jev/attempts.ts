@@ -9,12 +9,15 @@ import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSe
 import type { QuestionAnswer } from '@lacuna/core/questions/questionSets';
 import { jevEngine, type createJevEngine } from './engine';
 import type { JevAllocationMarking } from '@lacuna/core/jev/types';
+import { diagnosticRequestForTags, type JevDiagnosticRequest } from '@lacuna/core/jev/diagnosis';
 import {
   JEV_BATCH_MAX_ALLOCATIONS,
   JEV_BATCH_REQUEST_BYTE_LIMIT,
   type JevDecisionRequest,
 } from './protocol';
 
+const withDiagnostic = (diagnostic: JevDiagnosticRequest | undefined) =>
+  diagnostic ? { diagnostic } : {};
 const idle: JevAllocationMarking = { state: 'idle' };
 const progress = new Map<string, JevAllocationMarking>();
 const listeners = new Set<() => void>();
@@ -82,15 +85,7 @@ function candidates(attempt: QuestionSetAttemptRecord, only?: string) {
                 explanation: allocation.explanation ?? '',
                 maxMarks: allocation.maxMarks,
                 answer: submitted.text,
-                ...(allocation.techniqueTags?.techniqueIds.length
-                  ? {
-                      diagnostic: {
-                        taxonomyId: allocation.techniqueTags.taxonomyId,
-                        taxonomyVersion: allocation.techniqueTags.taxonomyVersion,
-                        techniqueIds: allocation.techniqueTags.techniqueIds,
-                      },
-                    }
-                  : {}),
+                ...withDiagnostic(diagnosticRequestForTags(allocation.techniqueTags)),
               } satisfies JevDecisionRequest,
             },
           ],

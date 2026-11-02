@@ -17,6 +17,7 @@ export function courseSource(
     ...(payload.course.specificationData === undefined
       ? {}
       : { specificationData: payload.course.specificationData }),
+    ...(payload.course.techniques === undefined ? {} : { techniques: payload.course.techniques }),
     ...(payload.course.examBoard === undefined ? {} : { examBoard: payload.course.examBoard }),
     ...(payload.course.specification === undefined
       ? {}
@@ -38,6 +39,7 @@ export function courseDetailChanges(
     creator: course.creator,
     specificationRef: course.specificationRef,
     specificationData: course.specificationData,
+    techniques: course.techniques,
     examBoard: course.examBoard,
     specification: course.specification,
   };
@@ -48,6 +50,7 @@ export function courseDetailChanges(
     'creator',
     'specificationRef',
     'specificationData',
+    'techniques',
     'examBoard',
     'specification',
   ] as const) {

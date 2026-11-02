@@ -175,3 +175,31 @@ it('uses shared fractional grading for new evidence while retaining historical b
   const newState = deriveTechniqueSchedules([graded]).get('graph-interpretation')!;
   expect(newState.stability).toBeGreaterThan(oldState.stability!);
 });
+
+it('schedules confirmed course techniques but never suggestions or Knowledge points', () => {
+  const withTags = (
+    id: string,
+    dimension: 'application' | 'knowledge',
+    techniqueIds: string[],
+    suggestedIds?: string[],
+  ) => {
+    const record = attempt(id);
+    record.receipt.questions[0]!.answer!.allocations[0] = {
+      ...record.receipt.questions[0]!.answer!.allocations[0]!,
+      dimension,
+      techniqueTags: {
+        taxonomyId: 'course',
+        taxonomyVersion: 1,
+        techniqueIds,
+        ...(suggestedIds ? { suggestedIds } : {}),
+        provenance: { source: 'jev', model: 'jev-1.14.0' },
+      },
+    };
+    return record;
+  };
+  const schedules = deriveTechniqueSchedules([
+    withTags('confirmed', 'application', ['custom-abcdefgh1'], ['causal-link']),
+    withTags('knowledge', 'knowledge', ['substitution']),
+  ]);
+  expect([...schedules.keys()]).toEqual(['custom-abcdefgh1']);
+});

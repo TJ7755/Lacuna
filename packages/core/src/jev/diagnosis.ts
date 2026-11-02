@@ -1,8 +1,11 @@
 import { z } from 'zod';
 import {
+  activeTechniqueIds,
+  builtInTechniqueIdSchema,
+  isBuiltInTechniqueId,
   SCIENCE_TECHNIQUES,
-  techniqueIdSchema,
   validTechniqueSelection,
+  type TechniqueTags,
 } from '@lacuna/core/questions/techniqueTags';
 
 export const JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD = 0.85;
@@ -13,10 +16,32 @@ export const jevDiagnosticRequestSchema = z
   .strictObject({
     taxonomyId: z.enum(['science-explanations', 'science-techniques']),
     taxonomyVersion: z.literal(1),
-    techniqueIds: z.array(techniqueIdSchema).min(1).max(SCIENCE_TECHNIQUES.length),
+    techniqueIds: z.array(builtInTechniqueIdSchema).min(1).max(SCIENCE_TECHNIQUES.length),
   })
   .refine(validTechniqueSelection, 'Unsupported or duplicate diagnostic techniques.');
 export type JevDiagnosticRequest = z.infer<typeof jevDiagnosticRequestSchema>;
+
+/**
+ * Jev can diagnose only built-in techniques, whose definitions the service holds. Course
+ * catalogue tags contribute their active built-in identities; custom techniques are omitted.
+ */
+export function diagnosticRequestForTags(
+  tags: TechniqueTags | undefined,
+): JevDiagnosticRequest | undefined {
+  if (!tags) return undefined;
+  if (tags.taxonomyId !== 'course')
+    return tags.techniqueIds.length
+      ? {
+          taxonomyId: tags.taxonomyId,
+          taxonomyVersion: tags.taxonomyVersion,
+          techniqueIds: tags.techniqueIds,
+        }
+      : undefined;
+  const techniqueIds = activeTechniqueIds(tags).filter(isBuiltInTechniqueId);
+  return techniqueIds.length
+    ? { taxonomyId: 'science-techniques', taxonomyVersion: 1, techniqueIds }
+    : undefined;
+}
 
 export function diagnosticCategories(request: JevDiagnosticRequest) {
   return ['knowledge', 'application', ...request.techniqueIds] as const;

@@ -12,6 +12,7 @@ import {
 } from '@lacuna/core/questions/questionSetCodec';
 import type { Specification } from '@lacuna/core/specifications/catalogue';
 import type { SpecificationReference } from '@lacuna/core/specifications/links';
+import type { CourseTechnique } from '@lacuna/core/questions/techniqueTags';
 
 import { SharePayloadSchema } from './sharePayloadSchema';
 
@@ -75,6 +76,8 @@ export interface ShareCourse {
   d?: string; // description
   specificationRef?: SpecificationReference;
   specificationData?: Specification;
+  /** The course's technique catalogue, so tagged questions keep their meaning. */
+  techniques?: CourseTechnique[];
   examBoard?: string;
   specification?: string;
   o: 0 | 1; // objective: 0 expectedMarks, 1 securedTopics

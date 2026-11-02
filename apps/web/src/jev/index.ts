@@ -21,3 +21,6 @@ export function useJevTypedMarker() {
 }
 export { useJevAllocationMarking, markJevAttempt } from './attempts';
 export { splitJevExpectedAnswer, type JevExpectedAnswerPart } from './answerParts';
+/** Technique classification is an explicit authoring action, never a background request. */
+export const classifyTechniques: typeof jevEngine.classifyTechniques = (request, signal) =>
+  jevEngine.classifyTechniques(request, signal);

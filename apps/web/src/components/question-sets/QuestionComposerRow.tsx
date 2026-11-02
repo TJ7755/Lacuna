@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { makeId } from '../../utils/id';
 import type { QuestionAnswer, QuestionResponse } from '@lacuna/core/questions/questionSets';
+import type { CourseTechnique } from '@lacuna/core/questions/techniqueTags';
 import type { QuestionSetAuthoringNode } from '../../questions/questionSetAuthoring';
 import type { QuestionSetDraftSession } from '../../questions/questionSetDraftSession';
 import { formatMarkSchemeLines, parseMarkSchemeLines } from '../../questions/markSchemeLines';
@@ -13,6 +14,7 @@ import { expandingActionSpring } from '../ui/motion';
 import { ComposerTextarea } from './ComposerTextarea';
 import { QuestionComposerExtras, type ComposerPanel } from './QuestionComposerExtras';
 import { QuestionSetResponseEditor } from './QuestionSetResponseEditor';
+import { QuestionTechniqueCell } from './QuestionTechniqueCell';
 import { emptyAnswer } from './presentation';
 
 export function QuestionComposerRow({
@@ -24,6 +26,7 @@ export function QuestionComposerRow({
   issues,
   multiplier,
   session,
+  catalogue,
   onPrompt,
   onAnswer,
   onFocus,
@@ -42,6 +45,7 @@ export function QuestionComposerRow({
   issues: string[];
   multiplier: number;
   session: QuestionSetDraftSession;
+  catalogue: readonly CourseTechnique[];
   onPrompt: (value: string) => void;
   onAnswer: (value: QuestionAnswer) => void;
   onFocus: () => void;
@@ -67,6 +71,8 @@ export function QuestionComposerRow({
   );
   const [panel, setPanel] = useState<ComposerPanel>(null);
   const [pending, setPending] = useState<QuestionResponse | null>(null);
+  const [techniquesPinned, setTechniquesPinned] = useState(false);
+  const draftContent = session.getSnapshot().draft!.content;
   const menu = useRef<MenuHandle>(null);
   useEffect(() => {
     if (canonical !== lastWritten.current) {
@@ -223,6 +229,22 @@ export function QuestionComposerRow({
               });
             }}
           />
+          <QuestionTechniqueCell
+            label={label}
+            nodeId={row.id}
+            answer={answer}
+            catalogue={catalogue}
+            courseId={draftContent.courseId}
+            session={session}
+            readOnlyReason={
+              draftContent.bank?.family
+                ? 'Generated questions take their techniques from the source bank. Import a newer bank version to change them.'
+                : undefined
+            }
+            pinned={techniquesPinned}
+            onPinnedChange={setTechniquesPinned}
+            multiplier={multiplier}
+          />
         </>
       )}
       <div className="qs-composer-menu">
@@ -254,7 +276,8 @@ export function QuestionComposerRow({
                   },
                   {
                     label: 'What it tests',
-                    onSelect: () => setPanel(panel === 'dimensions' ? null : 'dimensions'),
+                    description: 'Dimensions and exam techniques',
+                    onSelect: () => setTechniquesPinned(true),
                   },
                   {
                     label: 'Link to knowledge',
@@ -312,7 +335,7 @@ export function QuestionComposerRow({
             onChange={onAnswer}
             session={session}
             nodeId={row.id}
-            courseId={session.getSnapshot().draft!.content.courseId}
+            courseId={draftContent.courseId}
           />
         </div>
       </AnimatedDisclosure>

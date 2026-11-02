@@ -43,6 +43,10 @@ import { CourseSettingsArchive } from './settings/CourseSettingsArchive';
 import { CourseSettingsDisclosure } from './settings/CourseSettingsDisclosure';
 import { CourseInsightsSection } from './settings/CourseInsightsSection';
 import { CourseSpecificationSection } from './settings/CourseSpecificationSection';
+import {
+  CourseTechniquesSection,
+  courseTechniquesSummary,
+} from './settings/CourseTechniquesSection';
 
 /** Common edits lead; secondary settings expand in place. */
 export function CourseSettings() {
@@ -250,6 +254,15 @@ export function CourseSettings() {
                 <PracticeNodesSection courseId={course.id} />
               </div>
             </div>
+          </CourseSettingsDisclosure>
+          <CourseSettingsDisclosure
+            title="Exam techniques"
+            summary={courseTechniquesSummary(
+              course.techniques?.filter((technique) => !technique.archived).length,
+            )}
+            defaultOpen={searchParams.get('section') === 'techniques'}
+          >
+            <CourseTechniquesSection course={course} />
           </CourseSettingsDisclosure>
           <CourseSettingsDisclosure title="Auto-practice" summary={autoPractice ? 'On' : 'Off'}>
             <PracticeSettingsSection

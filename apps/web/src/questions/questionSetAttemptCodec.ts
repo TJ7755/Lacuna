@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { jevAssessmentReceiptSchema, jevMarkProvenanceSchema } from '@lacuna/core/jev/provenance';
-import { diagnosisMatchesRequest, type JevDiagnosticRequest } from '@lacuna/core/jev/diagnosis';
+import {
+  diagnosisMatchesRequest,
+  diagnosticRequestForTags,
+  type JevDiagnosticRequest,
+} from '@lacuna/core/jev/diagnosis';
 import { questionSchedulerConfigFingerprint } from './scheduler';
 import {
   parseQuestionSetRecord,
@@ -174,8 +178,8 @@ export function parseQuestionSetAttemptRecord(value: unknown): QuestionSetAttemp
     answer.allocations.forEach((row) => {
       allocationMax.set(row.id, row.maxMarks);
       allocationNode.set(row.id, nodeId);
-      if (row.techniqueTags?.techniqueIds.length)
-        diagnosticAllocations.set(row.id, row.techniqueTags);
+      const diagnostic = diagnosticRequestForTags(row.techniqueTags);
+      if (diagnostic) diagnosticAllocations.set(row.id, diagnostic);
     });
   };
   for (const question of record.receipt.questions) {

@@ -10,7 +10,8 @@ import {
   selectPracticeQuestion,
   unseenCapacity,
 } from './questionPracticeSelection';
-import { SCIENCE_TECHNIQUES, type TechniqueId } from '@lacuna/core/questions/techniqueTags';
+import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
+import { activeTechniques, courseTechniqueCatalogue } from './courseTechniques';
 import type { QuestionScheduleState } from '@lacuna/core/questions/types';
 import {
   deriveTechniqueSchedules,
@@ -58,7 +59,7 @@ export async function listExamSkillPractice(
   const exposure = latestQuestionPracticeExposure(data.attempts);
   const params = course?.fsrsParameters ?? defaultFsrsParameters();
   const sim = { fsrs: makeEngine(params), decay: decayOf(params), expectedGrade: 3 as const };
-  return SCIENCE_TECHNIQUES.flatMap(({ id, name }) => {
+  return activeTechniques(courseTechniqueCatalogue(course, data.sets)).flatMap(({ id, name }) => {
     const scope = options.scopeConceptIds ? new Set(options.scopeConceptIds) : undefined;
     const available = data.candidates.filter(
       (row) =>

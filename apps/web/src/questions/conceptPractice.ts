@@ -23,11 +23,12 @@ import {
   type DiagnosticCategoryEvidence,
 } from './techniqueEvidence';
 import { deriveTechniqueSchedules, questionTechniqueIds } from './techniqueSchedule';
+import { archivedTechniqueIds } from './courseTechniques';
 import { latestQuestionPracticeExposure } from './questionPracticeExposure';
 import { questionStudyEligible } from './questionStudyEligibility';
 import { techniqueExamDate } from './techniqueExam';
 import { makeEngine, decayOf } from '../fsrs/fsrs';
-import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
+import { activeTechniqueIds, type TechniqueId } from '@lacuna/core/questions/techniqueTags';
 
 export { undoConceptPracticeAttempt } from './questionSetAttemptRepository';
 export { questionPresentationFingerprint as conceptPracticeFingerprint } from './generators/declarative';
@@ -132,6 +133,7 @@ async function context(courseId: string, now = Date.now()) {
   const techniqueSchedules = deriveTechniqueSchedules(data.attempts);
   return {
     course,
+    archivedTechniques: archivedTechniqueIds(course),
     assessments,
     lessons,
     techniqueSchedules,
@@ -184,15 +186,16 @@ function studyCandidate(
     data.concepts,
     data.course,
   );
-  const ids = questionTechniqueIds(candidate.question).filter((id) =>
-    answers(candidate.question).some(({ answer }) =>
-      answer.allocations.some(
-        (allocation) =>
-          allocation.targetConceptIds.includes(conceptId) &&
-          allocation.techniqueTags?.provenance.source === 'author' &&
-          allocation.techniqueTags.techniqueIds.includes(id),
+  const ids = questionTechniqueIds(candidate.question).filter(
+    (id) =>
+      !data.archivedTechniques.has(id) &&
+      answers(candidate.question).some(({ answer }) =>
+        answer.allocations.some(
+          (allocation) =>
+            allocation.targetConceptIds.includes(conceptId) &&
+            activeTechniqueIds(allocation.techniqueTags).includes(id),
+        ),
       ),
-    ),
   );
   if (!data.course || !data.sim) return { eligible: false, techniques: [], examDate };
   const timing = {
@@ -289,7 +292,9 @@ export async function listConceptPractice(
                 answer.allocations.flatMap((allocation) =>
                   allocation.dimension !== 'knowledge' &&
                   allocation.targetConceptIds.includes(concept.id)
-                    ? (allocation.techniqueTags?.techniqueIds ?? [])
+                    ? activeTechniqueIds(allocation.techniqueTags).filter(
+                        (id) => !data.archivedTechniques.has(id),
+                      )
                     : [],
                 ),
               ),

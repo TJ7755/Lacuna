@@ -799,3 +799,48 @@ it('reuses a successful unsure verdict and its feedback without another request'
   expect(await engine.markTyped(answer)).toEqual({ outcome: 'unsure', feedback });
   expect(fetcher).toHaveBeenCalledTimes(2);
 });
+
+it.each([
+  { label: 'valid', points: [{ techniqueIds: ['causal-link'], suggestedIds: [] }], accepted: true },
+  { label: 'missing point', points: [], accepted: false },
+  {
+    label: 'technique not asked about',
+    points: [{ techniqueIds: [], suggestedIds: ['substitution'] }],
+    accepted: false,
+  },
+])(
+  'accepts technique classifications only for what was asked: $label',
+  async ({ points, accepted }) => {
+    const fetcher = vi.fn(async (url) =>
+      url.endsWith('/session')
+        ? Response.json({ token: 'session', expiresAt: Date.now() + 60_000 })
+        : Response.json({ model: 'jev-1.14.0', inputTokens: 40, points }),
+    );
+    const engine = createJevEngine({ fetcher, cache: emptyCache() });
+    engine.enable(JEV_CONSENT_VERSION);
+    const result = await engine.classifyTechniques({
+      purpose: 'technique-classification',
+      techniques: [{ id: 'causal-link', name: 'Link cause and effect' }],
+      points: [
+        { prompt: 'Explain.', criterion: 'Friction opposes motion', explanation: '', maxMarks: 1 },
+      ],
+    });
+    if (accepted) expect(result?.points).toEqual(points);
+    else expect(result).toBeNull();
+  },
+);
+
+it('rejects an invalid classification request without calling Jev or counting a failure', async () => {
+  const fetcher = vi.fn(async () => Response.json({}));
+  const engine = createJevEngine({ fetcher, cache: emptyCache() });
+  engine.enable(JEV_CONSENT_VERSION);
+  const request = {
+    purpose: 'technique-classification' as const,
+    techniques: [{ id: 'causal-link' as const, name: 'Link cause and effect' }],
+    points: [{ prompt: 'x'.repeat(12_001), criterion: 'Friction', explanation: '', maxMarks: 1 }],
+  };
+  for (let attempt = 0; attempt < 4; attempt += 1)
+    expect(await engine.classifyTechniques(request)).toBeNull();
+  expect(fetcher).not.toHaveBeenCalled();
+  expect(engine.status().state).toBe('ready');
+});

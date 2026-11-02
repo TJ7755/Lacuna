@@ -8,6 +8,7 @@ import { aiHeaders, allowedOrigin, readBoundedBody } from '../../server/ai/http.
 import {
   callJevDecision,
   callJevAllocationBatch,
+  callJevTechniqueClassification,
   JevProviderError,
 } from '../../server/jev/provider.js';
 import {
@@ -96,10 +97,13 @@ export default {
       const typesafeStarted = performance.now();
       let result;
       try {
+        const data = parsed.data;
         result =
-          'allocations' in parsed.data
-            ? await callJevAllocationBatch(parsed.data, key, signal)
-            : await callJevDecision(parsed.data, key, signal);
+          data.purpose === 'technique-classification'
+            ? await callJevTechniqueClassification(data, key, signal)
+            : 'allocations' in data
+              ? await callJevAllocationBatch(data, key, signal)
+              : await callJevDecision(data, key, signal);
       } finally {
         typesafeMs = performance.now() - typesafeStarted;
       }

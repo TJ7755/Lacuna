@@ -7,7 +7,7 @@ import { forgettingCurve } from '../fsrs/forwardSim';
 import { decayOf } from '../fsrs/fsrs';
 import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import type { QuestionSetQuestion } from '@lacuna/core/questions/questionSets';
-import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
+import { activeTechniqueIds, type TechniqueId } from '@lacuna/core/questions/techniqueTags';
 import type { QuestionScheduleState } from '@lacuna/core/questions/types';
 import { questionPresentationFingerprint } from './generators/declarative';
 import { emptyQuestionSchedule, scheduleQuestionReview } from './scheduler';
@@ -27,10 +27,7 @@ export function questionTechniqueIds(question: QuestionSetQuestion): TechniqueId
     ...new Set(
       nodes(question).flatMap(({ answer }) =>
         (answer?.allocations ?? []).flatMap((allocation) =>
-          allocation.dimension !== 'knowledge' &&
-          allocation.techniqueTags?.provenance.source === 'author'
-            ? allocation.techniqueTags.techniqueIds
-            : [],
+          allocation.dimension !== 'knowledge' ? activeTechniqueIds(allocation.techniqueTags) : [],
         ),
       ),
     ),
@@ -87,8 +84,7 @@ export function deriveTechniqueSchedules(
         for (const allocation of answer?.allocations ?? []) {
           if (
             allocation.dimension === 'knowledge' ||
-            allocation.techniqueTags?.provenance.source !== 'author' ||
-            !allocation.techniqueTags.techniqueIds.includes(technique)
+            !activeTechniqueIds(allocation.techniqueTags).includes(technique)
           )
             continue;
           const decision = decisions.get(allocation.id);
