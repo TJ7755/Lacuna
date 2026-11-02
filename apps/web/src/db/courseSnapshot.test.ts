@@ -99,6 +99,13 @@ describe('snapshotCourse / restoreCourse', () => {
       correct: true,
     });
     await waitForSessionHistory('event-course-snapshot');
+    await db.sessionHistory.add({
+      eventId: 'event-lesson-snapshot',
+      timestamp: Date.now(),
+      deckId: lesson1.id,
+      schedulingUnitId: lesson1.id,
+      averagePredictedRetrievability: 0.5,
+    });
     // Give a lesson some unlock state so restore fidelity can be asserted on it.
     const unlockedAt = Date.now();
     await db.lessons.update(lesson1.id, { unlockedAt });
@@ -108,7 +115,7 @@ describe('snapshotCourse / restoreCourse', () => {
     const snapshot = await snapshotCourse(course.id);
     expect(snapshot).not.toBeNull();
     expect(snapshot!.cards).toHaveLength(3); // two ordinary cards + one sequence card
-    expect(snapshot!.sessionHistory).toHaveLength(1);
+    expect(snapshot!.sessionHistory).toHaveLength(2);
     expect(snapshot!.sequences).toEqual([sequence]);
     expect(snapshot!.revisionPlans).toEqual([revisionPlan]);
 
@@ -132,6 +139,7 @@ describe('snapshotCourse / restoreCourse', () => {
     expect(await db.schedulingPerformance.get(lessonCard.schedulingUnitId)).toBeDefined();
     expect(await db.coursePerformance.get(course.id)).toBeDefined();
     expect(await db.sessionHistory.where('courseId').equals(course.id).count()).toBe(1);
+    expect(await db.sessionHistory.where('schedulingUnitId').equals(lesson1.id).count()).toBe(1);
     expect(await db.sequences.get(sequence.id)).toEqual(sequence);
     expect(await db.revisionPlans.get(revisionPlan.id)).toEqual(revisionPlan);
 
