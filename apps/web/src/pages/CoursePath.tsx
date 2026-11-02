@@ -11,7 +11,7 @@ import { localLessonOrderUnavailableReason } from '../course/lessonOrder';
 
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { AnimatePresence } from 'motion/react';
@@ -52,6 +52,15 @@ function prefetchLessonView(): void {
 }
 
 export const preloadCoursePath = useCoursePathRecords.preload;
+
+// Throwaway comparison route. Omitted from production builds and never saves assessments.
+const LessonSelectionPrototype = import.meta.env.DEV
+  ? lazy(() =>
+      import('../components/course/LessonSelectionPrototype').then((module) => ({
+        default: module.LessonSelectionPrototype,
+      })),
+    )
+  : null;
 
 export function CoursePath() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -143,6 +152,18 @@ export function CoursePath() {
   usePageShortcuts({
     s: dataLoaded && course && !archived ? () => openStudySheet(courseId) : undefined,
   });
+
+  if (
+    LessonSelectionPrototype &&
+    searchParams.has('variant') &&
+    (courseId === 'lesson-selection-prototype' || (dataLoaded && course))
+  ) {
+    return (
+      <Suspense fallback={<PageLoading />}>
+        <LessonSelectionPrototype lessons={lessons ?? []} title={course?.name} />
+      </Suspense>
+    );
+  }
 
   // Wait for course and lesson data before showing access-dependent actions.
   if (!dataLoaded) {

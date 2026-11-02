@@ -23,6 +23,7 @@
     "format:staged": "bun fmt --staged \"**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,json,jsonc,css,scss,html,yml,yaml}\"",
     "start": "vite",
     "dev": "vite",
+    "prototype:tests": "vite --host 127.0.0.1 --port 4317 --strictPort --open /#/course/lesson-selection-prototype?variant=A",
     "build": "bun run typecheck && vite build",
     "preview": "bun run build && vite preview",
     "typecheck": "bun run typecheck:web && bun run typecheck:server && bun run typecheck:electron",
