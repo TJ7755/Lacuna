@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { QuestionSet } from '@lacuna/core/questions/questionSets';
+import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
-async function openSet(page: Page, single = false) {
+async function openSet(page: Page, single = false, manyCards = false) {
   await enterFreshLacuna(page);
   await createCourse(page, 'Question-set keyboard');
   const courseId = new URL(page.url()).hash.split('/')[2];
@@ -63,7 +64,7 @@ async function openSet(page: Page, single = false) {
   };
   // Seed authored content through the real browser store; all attempt writes use the UI.
   await page.evaluate(
-    (record) =>
+    ({ record, manyCards }) =>
       new Promise<void>((resolve, reject) => {
         const request = indexedDB.open('lacuna');
         request.onerror = () => reject(request.error);
@@ -78,8 +79,20 @@ async function openSet(page: Page, single = false) {
               conceptId: id,
               type: 'front_back',
               front: `Related prompt ${id}`,
-              back: `Related answer ${id}`,
+              back: `Related answer ${id}${manyCards ? '\n\nA detailed explanation. '.repeat(100) : ''}`,
             });
+          }
+          if (manyCards) {
+            for (let index = 1; index < 20; index++) {
+              transaction.objectStore('cards').add({
+                id: `extra-${index}`,
+                courseId: record.courseId,
+                conceptId: 'a1',
+                type: 'front_back',
+                front: `Extra related prompt ${index}`,
+                back: `Extra related answer ${index}`,
+              });
+            }
           }
           transaction.oncomplete = () => {
             database.close();
@@ -92,11 +105,14 @@ async function openSet(page: Page, single = false) {
         };
       }),
     {
-      ...content,
-      contentVersion: 1,
-      contentRevisionId: 'keyboard-revision',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      record: {
+        ...content,
+        contentVersion: 1,
+        contentRevisionId: 'keyboard-revision',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+      manyCards,
     },
   );
   await page.goto(`/#/course/${courseId}/question-sets/${content.id}`);
@@ -133,18 +149,25 @@ for (const width of [1280, 320]) {
       .getByRole('button', { name: 'Save and finish later' })
       .boundingBox();
     expect(saveBounds!.x + saveBounds!.width).toBeLessThanOrEqual(width);
-    const toolbar = testInfo.outputPath(`toolbar-${width}.png`);
-    await page.screenshot({ path: toolbar });
-    await testInfo.attach('Marking toolbar', { path: toolbar, contentType: 'image/png' });
+    if (width === 1280) {
+      const toolbar = testInfo.outputPath('toolbar.png');
+      await page.screenshot({ path: toolbar });
+      await testInfo.attach('Marking toolbar', { path: toolbar, contentType: 'image/png' });
+    }
     await trigger.focus();
     await trigger.press('Enter');
     const dialog = page.getByRole('dialog', { name: 'Related cards' });
     await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('Related prompt a1');
+    await expect(dialog).not.toContainText('Related answer a1');
+    await dialog.getByRole('button', { name: 'Show answer', exact: true }).click();
     await expect(dialog).toContainText('Related answer a1');
     await expect(dialog).not.toContainText('Related answer a2');
-    const sheet = testInfo.outputPath(`related-cards-${width}.png`);
-    await page.screenshot({ path: sheet });
-    await testInfo.attach('Related cards sheet', { path: sheet, contentType: 'image/png' });
+    if (width === 1280) {
+      const sheet = testInfo.outputPath('related-cards.png');
+      await page.screenshot({ path: sheet });
+      await testInfo.attach('Related cards sheet', { path: sheet, contentType: 'image/png' });
+    }
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
@@ -154,9 +177,117 @@ for (const width of [1280, 320]) {
     await expect(page.getByRole('button', { name: /criterion 2 of 2/ })).toBeVisible();
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
     await trigger.click();
+    await expect(dialog).not.toContainText('Related answer a2');
+    await dialog.getByRole('button', { name: 'Show answer', exact: true }).click();
     await expect(dialog).toContainText('Related answer a2');
     await expect(dialog).not.toContainText('Related answer a1');
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
     await expect(trigger).toBeFocused();
+  });
+}
+
+async function readAttempt(page: Page) {
+  return page.evaluate(
+    () =>
+      new Promise<QuestionSetAttemptRecord>((resolve, reject) => {
+        const request = indexedDB.open('lacuna');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction('questionSetAttempts');
+          const read = transaction.objectStore('questionSetAttempts').getAll();
+          transaction.oncomplete = () => {
+            database.close();
+            resolve(read.result[0]);
+          };
+          transaction.onerror = () => {
+            database.close();
+            reject(transaction.error);
+          };
+        };
+      }),
+  );
+}
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  test(`consult related cards and return to the same draft (${reducedMotion})`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 960 });
+    await page.emulateMedia({ reducedMotion });
+    await openSet(page, false, true);
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
+    await answer.fill('My answer so far.');
+    const trigger = page.getByRole('button', { name: 'Use related cards', exact: true });
+    await expect(trigger).toHaveAccessibleDescription(
+      'Opening these cards records this answer as assisted.',
+    );
+    await expect(trigger).toBeInViewport({ ratio: 1 });
+    await expect(page.getByText('Related prompt a1')).toHaveCount(0);
+    const collapsed = testInfo.outputPath('help-collapsed.png');
+    await page.screenshot({ path: collapsed });
+    await testInfo.attach('Help beside the answer', { path: collapsed, contentType: 'image/png' });
+    await trigger.focus();
+    await trigger.press('Enter');
+    const dialog = page.getByRole('dialog', { name: 'Related cards' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: 'Related cards' })).toBeFocused();
+    await expect(dialog).toContainText('Card 1 of 20');
+    await expect(dialog).toContainText('Related prompt a1');
+    await expect(dialog).not.toContainText('Related answer a1');
+    expect((await readAttempt(page)).assistance).toEqual([
+      expect.objectContaining({ nodeId: 'part-a', kind: 'related-knowledge' }),
+    ]);
+    const reveal = dialog.getByRole('button', { name: 'Show answer', exact: true });
+    await reveal.focus();
+    await reveal.press('Enter');
+    await expect(dialog).toContainText('Related answer a1');
+    await expect(dialog.getByRole('button', { name: 'Return to answer' })).toBeInViewport({
+      ratio: 1,
+    });
+    const opened = testInfo.outputPath('help-opened.png');
+    await page.screenshot({ path: opened });
+    await testInfo.attach('Bounded consultation with a long answer', {
+      path: opened,
+      contentType: 'image/png',
+    });
+    await dialog.getByRole('button', { name: 'Next card', exact: true }).click();
+    await expect(dialog).toContainText('Card 2 of 20');
+    await expect(dialog).not.toContainText('Related answer a1');
+    await expect(dialog.getByRole('button', { name: 'Show answer', exact: true })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Previous card', exact: true }).click();
+    await expect(dialog).toContainText('Related prompt a1');
+    await expect(dialog).not.toContainText('Related answer a1');
+    await dialog.getByRole('button', { name: 'Return to answer', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(answer).toHaveValue('My answer so far.');
+    const saved = await readAttempt(page);
+    expect(saved.assistance).toHaveLength(1);
+    expect(saved.responses.find((row) => row.nodeId === 'part-a')?.draft).toEqual({
+      kind: 'written',
+      text: 'My answer so far.',
+    });
+    await trigger.press('Enter');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).not.toContainText('Related answer a1');
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await page.getByRole('button', { name: 'Next part', exact: true }).click();
+    await trigger.click();
+    await expect(dialog).toContainText('Related prompt a2');
+    await expect(dialog).not.toContainText('Related prompt a1');
+    await dialog.getByRole('button', { name: 'Return to answer', exact: true }).click();
+    await page.reload();
+    await expect(answer).toHaveValue('');
+    const restored = await readAttempt(page);
+    expect(restored.responses.find((row) => row.nodeId === 'part-a')?.draft).toEqual({
+      kind: 'written',
+      text: 'My answer so far.',
+    });
+    expect(restored.assistance.some((event) => event.nodeId === 'part-a')).toBe(true);
+    expect(restored.assistance.some((event) => event.nodeId === 'part-b')).toBe(true);
   });
 }
