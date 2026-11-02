@@ -23,7 +23,7 @@ type Phase =
 
 /**
  * Jev classifies when the author asks, once the set is written, rather than while they type.
- * Confident tags count at once, unsure ones wait in amber, and the author's own decisions are
+ * Confident tags count at once, unsure ones wait as outlined suggestions, and the author's own decisions are
  * never replaced.
  */
 export function TechniqueClassifyBar({
