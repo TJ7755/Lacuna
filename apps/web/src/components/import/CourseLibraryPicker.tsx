@@ -60,7 +60,7 @@ export function CourseLibraryPicker({
         onChange={(event) => onBrowseChange({ ...browse, query: event.target.value })}
       />
       <QualificationGuidance />
-      <ul className="import-library-subjects" aria-label="Library subjects">
+      <ul className="import-library-subjects scroll-edge-fade" aria-label="Library subjects">
         {subjects.map((subject) => {
           const courses = shown.filter((course) => course.subject === subject);
           if (courses.length === 0) return null;
