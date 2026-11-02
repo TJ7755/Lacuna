@@ -76,6 +76,10 @@ test('an imported long course title retains its full accessible name', async ({
     readFileSync(new URL('./fixtures/welcome-course.lacuna', import.meta.url), 'utf8'),
   );
   file.payload.course.n = wrappingName;
+  // The fixture's exam date is fixed; once it passes, a "Final exam passed" dialog opens over
+  // the imported course. Keep the exam ahead of the run, as importWelcomeCourse does.
+  file.payload.course.e = Date.now() + 60 * 86_400_000;
+  for (const exam of file.payload.exams) exam.e = file.payload.course.e;
   await openImport(page);
   await page.getByLabel('Import file', { exact: true }).setInputFiles({
     name: 'long-course.lacuna',
