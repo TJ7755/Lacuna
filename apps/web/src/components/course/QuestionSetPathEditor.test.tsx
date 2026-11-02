@@ -244,14 +244,14 @@ describe('QuestionSetPathEditor', () => {
         onClose={vi.fn()}
       />,
     );
-    fireEvent.click(await screen.findByRole('button', { name: 'Link lesson: Cells' }));
-    const picker = screen.getByRole('dialog', { name: 'Link lesson: Cells' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Cells' }));
+    const picker = screen.getByRole('dialog', { name: 'Cells' });
     expect(within(picker).getByRole('button', { name: 'Cells' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
     fireEvent.click(within(picker).getByRole('button', { name: 'Tissues' }));
-    expect(screen.getByRole('button', { name: 'Link lesson: Tissues' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Tissues' })).toHaveFocus();
     expect(createQuestionSetPracticeNode).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
     fireEvent.click(await screen.findByRole('radio', { name: /Cell structure/ }));
@@ -269,14 +269,14 @@ describe('QuestionSetPathEditor', () => {
   it('shows the last lesson when no insertion lesson is supplied', async () => {
     const { course } = await fixture();
     render(<QuestionSetPathEditor courseId={course.id} onClose={vi.fn()} />);
-    expect(await screen.findByRole('button', { name: 'Link lesson: Tissues' })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'Tissues' })).toBeEnabled();
   });
 
   it.each(['Done', 'Cancel'])('only saves an edited lesson link on Done (%s)', async (action) => {
     const { course, firstLesson, secondLesson, set } = await fixture();
     const node = activity(course.id, set.id, firstLesson.id);
     render(<QuestionSetPathEditor courseId={course.id} node={node} onClose={vi.fn()} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Link lesson: Cells' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cells' }));
     fireEvent.click(screen.getByRole('button', { name: 'Tissues' }));
     expect(updateQuestionSetPracticeNode).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: action }));

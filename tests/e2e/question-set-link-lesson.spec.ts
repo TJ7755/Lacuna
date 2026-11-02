@@ -5,7 +5,7 @@ test('links a path question set to the chosen lesson and retains it after reload
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'light' });
   await enterFreshLacuna(page);
   const courseUrl = await createCourse(page, 'History', false);
   await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
@@ -30,20 +30,18 @@ test('links a path question set to the chosen lesson and retains it after reload
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Practice questions', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'Add practice questions', exact: true });
-  const link = editor.getByRole('button', { name: 'Link lesson: Hitler’s foreign policy' });
+  const link = editor.getByRole('button', { name: 'Hitler’s foreign policy' });
   await expect(link).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('add-question-set.png') });
   await link.click();
-  const lessons = page.getByRole('dialog', { name: 'Link lesson: Hitler’s foreign policy' });
+  const lessons = page.getByRole('dialog', { name: 'Hitler’s foreign policy' });
   await expect(lessons.getByRole('button', { name: 'Hitler’s foreign policy' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
   await page.screenshot({ path: test.info().outputPath('link-lesson-picker.png') });
   await lessons.getByRole('button', { name: 'League of Nations', exact: true }).click();
-  await expect(
-    editor.getByRole('button', { name: 'Link lesson: League of Nations' }),
-  ).toBeFocused();
+  await expect(editor.getByRole('button', { name: 'League of Nations' })).toBeFocused();
   await editor.getByRole('button', { name: 'Choose a question set', exact: true }).click();
   const sets = page.getByRole('dialog', { name: 'Choose a question set', exact: true });
   await sets.getByRole('radio', { name: /4 markers/ }).check();
@@ -55,15 +53,15 @@ test('links a path question set to the chosen lesson and retains it after reload
   await page.reload();
   await activity.click();
   const edit = page.getByRole('dialog', { name: 'Edit practice questions', exact: true });
-  await expect(edit.getByRole('button', { name: 'Link lesson: League of Nations' })).toBeVisible();
-  await edit.getByRole('button', { name: 'Link lesson: League of Nations' }).click();
+  await expect(edit.getByRole('button', { name: 'League of Nations' })).toBeVisible();
+  await edit.getByRole('button', { name: 'League of Nations' }).click();
   await page
-    .getByRole('dialog', { name: 'Link lesson: League of Nations' })
+    .getByRole('dialog', { name: 'League of Nations' })
     .getByRole('button', { name: 'Lesson 1', exact: true })
     .click();
   await edit.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(edit).toBeHidden();
   await page.reload();
   await activity.click();
-  await expect(edit.getByRole('button', { name: 'Link lesson: Lesson 1' })).toBeVisible();
+  await expect(edit.getByRole('button', { name: 'Lesson 1' })).toBeVisible();
 });

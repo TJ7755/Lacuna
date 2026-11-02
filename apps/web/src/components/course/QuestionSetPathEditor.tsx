@@ -97,32 +97,32 @@ export function QuestionSetPathEditor({
           onClick={() => setPickerOpen(true)}
         >
           {title ?? (node && setId === singleSetId ? node.name : 'Choose a question set')}
-        </button>
+        </button>{' '}
+        for{' '}
+        <PathEditorPopover
+          label={linkedLesson?.name ?? 'Link lesson'}
+          disabled={multiple || !data?.lessons.length}
+        >
+          {(close) =>
+            data?.lessons.map((lesson) => (
+              <button
+                key={lesson.id}
+                type="button"
+                className="path-editor-option"
+                aria-pressed={lesson.id === anchor}
+                onClick={() => {
+                  setLessonId(lesson.id);
+                  setError('');
+                  close();
+                }}
+              >
+                {lesson.name}
+              </button>
+            ))
+          }
+        </PathEditorPopover>
         .
       </p>
-      <PathEditorPopover
-        quiet
-        label={linkedLesson ? `Link lesson: ${linkedLesson.name}` : 'Link lesson'}
-        disabled={multiple || !data?.lessons.length}
-      >
-        {(close) =>
-          data?.lessons.map((lesson) => (
-            <button
-              key={lesson.id}
-              type="button"
-              className="path-editor-option"
-              aria-pressed={lesson.id === anchor}
-              onClick={() => {
-                setLessonId(lesson.id);
-                setError('');
-                close();
-              }}
-            >
-              {lesson.name}
-            </button>
-          ))
-        }
-      </PathEditorPopover>
       {multiple && (
         <p className="mt-3 text-sm text-ink-faint">
           This activity contains {node.questionSetIds.length} question sets. Editing this selection
