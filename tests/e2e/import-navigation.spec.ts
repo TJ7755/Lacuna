@@ -7,20 +7,22 @@ for (const width of [1280, 390]) {
     await enterFreshLacuna(page);
     await openImport(page);
     const panel = page.locator('.import-panel');
+    const surface = page.locator('.flow-expansion').filter({ has: panel });
     await expect(panel).toBeVisible();
     await expect(page).toHaveURL(/#\/\?import=1$/);
     await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
     const checkBounds = async () => {
-      await expect.poll(async () => (await panel.boundingBox())!.x).toBeGreaterThanOrEqual(0);
+      // The surface stays on screen while longer steps scroll within it.
+      await expect.poll(async () => (await surface.boundingBox())!.x).toBeGreaterThanOrEqual(0);
       await expect
         .poll(async () => {
-          const bounds = (await panel.boundingBox())!;
+          const bounds = (await surface.boundingBox())!;
           return bounds.x + bounds.width;
         })
         .toBeLessThanOrEqual(width);
       await expect
         .poll(async () => {
-          const bounds = (await panel.boundingBox())!;
+          const bounds = (await surface.boundingBox())!;
           return bounds.y + bounds.height;
         })
         .toBeLessThanOrEqual(844);
@@ -49,6 +51,9 @@ for (const width of [1280, 390]) {
         await expect(search).toBeFocused();
         await search.fill('biology');
         await expect(panel.getByRole('button', { name: /^Biology/ }).first()).toBeVisible();
+        const lastCourse = panel.getByRole('button', { name: /^Biology/ }).last();
+        await lastCourse.click({ trial: true });
+        await expect(lastCourse).toBeInViewport();
         await checkBounds();
       }
       if (source === 'Lacuna course') {

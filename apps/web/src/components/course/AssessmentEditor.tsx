@@ -22,6 +22,7 @@ import { plainFront } from '../cards/lessonCardRow';
 import { useAssessmentSpecification } from '../../state/useAssessmentSpecification';
 import type { AssessmentSpecificationContext } from '../../course/assessmentCoverage';
 import { papersForSelection, pointsForSelection } from '@lacuna/core/specifications/selection';
+import { AssessmentLessonPicker } from './AssessmentLessonPicker';
 
 export interface AssessmentDraft {
   name: string;
@@ -175,15 +176,6 @@ export function AssessmentEditor({
     return result;
   }, [candidates, links]);
 
-  function toggleLesson(lessonId: string) {
-    onChange({
-      ...draft,
-      lessonIds: draft.lessonIds.includes(lessonId)
-        ? draft.lessonIds.filter((id) => id !== lessonId)
-        : [...draft.lessonIds, lessonId],
-    });
-  }
-
   function toggleExcludedCard(cardId: string) {
     onChange({
       ...draft,
@@ -321,25 +313,11 @@ export function AssessmentEditor({
       )}
 
       {draft.coverageMode === 'custom' && (
-        <fieldset>
-          <legend className={`mb-2 ${fieldLabelClassName}`}>Covered lessons</legend>
-          <div className="flex flex-wrap gap-2">
-            {lessons.map((lesson) => {
-              const active = draft.lessonIds.includes(lesson.id);
-              return (
-                <button
-                  key={lesson.id}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => toggleLesson(lesson.id)}
-                  className={choiceChipClass(active)}
-                >
-                  {lesson.name}
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
+        <AssessmentLessonPicker
+          lessons={lessons}
+          lessonIds={draft.lessonIds}
+          onChange={(lessonIds) => onChange({ ...draft, lessonIds })}
+        />
       )}
 
       <div className="rounded-2xl bg-ink/[0.04] px-3 py-2 text-xs text-ink-soft">

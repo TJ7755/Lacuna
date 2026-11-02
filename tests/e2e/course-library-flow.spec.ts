@@ -1,7 +1,104 @@
 import { expect, test } from '@playwright/test';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
 
-test.use({ viewport: { width: 1470, height: 956 }, deviceScaleFactor: 2, serviceWorkers: 'block' });
+test.use({
+  viewport: { width: 1470, height: 956 },
+  deviceScaleFactor: 2,
+  serviceWorkers: 'block',
+  video: 'on',
+});
+
+for (const { reducedMotion, height } of [
+  { reducedMotion: 'no-preference', height: 956 },
+  { reducedMotion: 'reduce', height: 956 },
+  { reducedMotion: 'no-preference', height: 600 },
+] as const) {
+  test(`subject expansion keeps the library frame and row widths steady (${reducedMotion}, ${height}px)`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 1470, height });
+    await page.emulateMedia({ reducedMotion });
+    await page.addInitScript(() => localStorage.setItem('lacuna-theme', 'light'));
+    await enterFreshLacuna(page);
+    await page.locator('main').getByRole('button', { name: 'New course', exact: true }).click();
+    await page.getByRole('button', { name: 'Course library', exact: true }).click();
+    const subjects = page.getByRole('list', { name: 'Library subjects', exact: true });
+    const biology = subjects.getByRole('button', { name: /^Biology \d+ courses$/ });
+    await expect(biology).toBeVisible();
+    // Finish entry before isolating the subject disclosure's motion.
+    await page.waitForTimeout(800);
+    const outerOverflow = await subjects.evaluate((list) => {
+      const scroller = list.closest<HTMLElement>('.overflow-y-auto')!;
+      return scroller.scrollHeight - scroller.clientHeight;
+    });
+    expect(outerOverflow, 'the library must not add a second scroller').toBeLessThanOrEqual(1);
+    await page.screenshot({ path: info.outputPath('library-subjects.png') });
+
+    for (const expanded of [true, false]) {
+      const frames = await biology.evaluate(async (button) => {
+        const list = button.closest('ul')!;
+        const surface = button.closest('.flow-expansion')!;
+        const sample = () => {
+          const { top, height } = surface.getBoundingClientRect();
+          return {
+            top,
+            height,
+            rowWidth: button.getBoundingClientRect().width,
+            gutter: list.getBoundingClientRect().width - list.clientWidth,
+          };
+        };
+        const frames = [sample()];
+        (button as HTMLButtonElement).click();
+        const started = performance.now();
+        await new Promise<void>((resolve) => {
+          const frame = () => {
+            frames.push(sample());
+            if (performance.now() - started < 800) requestAnimationFrame(frame);
+            else resolve();
+          };
+          requestAnimationFrame(frame);
+        });
+        return frames;
+      });
+      await info.attach(`subject-${expanded ? 'expanded' : 'collapsed'}-frames`, {
+        body: JSON.stringify(frames),
+        contentType: 'application/json',
+      });
+      if (expanded) await page.screenshot({ path: info.outputPath('library-biology.png') });
+      await expect(biology).toHaveAttribute('aria-expanded', String(expanded));
+      const range = (key: 'top' | 'height' | 'rowWidth') =>
+        Math.max(...frames.map((frame) => frame[key])) -
+        Math.min(...frames.map((frame) => frame[key]));
+      expect(
+        range('height'),
+        'subject expansion must not resize the surrounding panel',
+      ).toBeLessThan(1);
+      expect(range('top'), 'the panel must stay anchored').toBeLessThan(1);
+      expect(range('rowWidth'), 'a scrollbar must not squeeze the rows').toBeLessThan(1);
+      expect(Math.max(...frames.map((frame) => frame.gutter))).toBeLessThan(1);
+    }
+
+    await biology.click();
+    await page.waitForTimeout(800);
+    const courses = page.getByRole('list', { name: 'Biology courses', exact: true });
+    const lastCourse = courses.getByRole('button').last();
+    await biology.focus();
+    for (let index = 0; index < (await courses.getByRole('button').count()); index++) {
+      await page.keyboard.press('Tab');
+    }
+    await expect(lastCourse).toBeFocused();
+    await expect(lastCourse).toBeInViewport({ ratio: 1 });
+
+    await page.getByRole('searchbox', { name: 'Search the course library' }).fill('no-such-course');
+    const status = page.getByRole('status').filter({ hasText: 'No library course matches.' });
+    await expect(status).toBeInViewport({ ratio: 1 });
+    const gap = await status.evaluate((element) => {
+      const search = document.querySelector('#import-library-search')!;
+      return element.getBoundingClientRect().top - search.getBoundingClientRect().bottom;
+    });
+    expect(gap, 'empty search feedback must not follow a blank results viewport').toBeLessThan(120);
+  });
+}
 
 test('keeps the library coherent through a cold download and backtracking', async ({ page }) => {
   let release: () => void = () => {};

@@ -1,6 +1,6 @@
-name: Weekly release
+name: Daily release
 
-# Every Thursday, when shipped code on master has changed since the last release,
+# Every day at midnight UTC, when shipped code on master has changed since the last release,
 # bump the patch version and open the release pull request. It uses the release bot app's
 # token, or failing that the maintainer token in RELEASE_TOKEN, because pushes and pull
 # requests made with GITHUB_TOKEN start no workflows, so CI could never pass. Auto-merge
@@ -8,7 +8,7 @@ name: Weekly release
 # and publishes. Only master is ever read or released.
 on:
   schedule:
-    - cron: '53 7 * * 4'
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 permissions: {}
@@ -103,5 +103,5 @@ jobs:
           git commit -m "Release ${VERSION}"
           git push origin "$branch"
           gh pr create --base master --head "$branch" --title "Release ${VERSION}" \
-            --body "Weekly release. Merging publishes the Windows and Linux beta with docs/releases/${VERSION}.md as its notes."
+            --body "Daily release. Merging publishes the Windows and Linux beta with docs/releases/${VERSION}.md as its notes."
           gh pr merge "$branch" --auto --squash

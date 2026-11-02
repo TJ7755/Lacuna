@@ -26,6 +26,7 @@ export function PathEditorSurface({
   onDelete,
   deleteNoun,
   cancellable = false,
+  wide = false,
   children,
 }: {
   label: string;
@@ -34,6 +35,7 @@ export function PathEditorSurface({
   onDelete?: () => Promise<boolean>;
   deleteNoun?: string;
   cancellable?: boolean;
+  wide?: boolean;
   children: ReactNode;
 }) {
   const [source] = useState(pathEditorSource);
@@ -79,7 +81,9 @@ export function PathEditorSurface({
       const card = source?.closest('[data-path-card]')?.getBoundingClientRect();
       const width = narrow
         ? window.innerWidth - 16
-        : Math.min(Math.max(card?.width ?? origin.width, 520), 760, window.innerWidth - 32);
+        : wide
+          ? Math.min(1040, window.innerWidth - 32)
+          : Math.min(Math.max(card?.width ?? origin.width, 520), 760, window.innerWidth - 32);
       body.style.width = `${width}px`;
       const height = Math.min(body.scrollHeight, window.innerHeight - 32);
       const left = narrow
@@ -102,7 +106,7 @@ export function PathEditorSurface({
       observer.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, [origin, source]);
+  }, [origin, source, wide]);
 
   const collapsed = {
     left: origin.left,

@@ -3,6 +3,9 @@ Operational procedures: docs/README.md. Contribution and validation policy: CONT
 Do not use harness memory features or read, create or update MEMORIES.md.
 NEVER use computer use without explicit permission from the user. Using the preview browser and Playwright to capture images is permitted without additional permission.
 
+NEVER rebase when there are no merge conflicts. ONLY rebase when strictly necessary to resolve conflicts.
+NEVER update a branch in any way that triggers a new CI run unless STRICTLY necessary for explicitly requested changes, a concrete failure, conflict resolution or an enforced repository requirement. Being behind the base branch or wanting fresher CI is not sufficient reason.
+
 Carry a requested task end to end without asking at each step: branch, commit, push, open the pull request, fix CI and review findings, and merge once required checks pass, conversations are resolved and CONTRIBUTING.md's review requirements are met. After merging, clean up all merged local and remote topic branches and their associated worktrees once any uncommitted work is preserved. Retain default and protected branches, and branches still needed by open pull requests. Stop and ask only when a decision is genuinely the maintainer's (product direction, scope beyond the request, a trade-off the brief does not settle), or before an irreversible action outside the task, such as deleting unmerged branches or data you did not create, force-pushing shared branches, publishing a release or changing repository settings.
 
 Documentation policy: keep repository documentation for procedures, policy, provenance and other non-code material. Describe code behaviour in owning source comments and tests, not repository Markdown. Trim mixed documents; preserve build-consumed data and move genuinely needed invariants beside their implementation.

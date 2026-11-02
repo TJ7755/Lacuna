@@ -104,6 +104,28 @@
     }
   }
 
+  /* Unstyled targets need a contour for the shared hover/press layer to inherit.
+     Keep it on the control so pointer and keyboard feedback use the same shape;
+     component styles and radius utilities still own explicitly shaped controls. */
+  :where(
+    button,
+    a[href],
+    [role='button'],
+    [role='link'],
+    [role='menuitem'],
+    [role='tab'],
+    [role='option'],
+    [role='switch'],
+    summary,
+    label:has(input[type='radio'])
+  ) {
+    border-radius: 6px;
+  }
+  button,
+  :where([role='button']) {
+    border-radius: 10px;
+  }
+
   /* Consistent, theme-aware focus rings for keyboard navigation. */
   :focus-visible {
     outline: none;

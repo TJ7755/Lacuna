@@ -120,39 +120,45 @@ it('retains the local entry point through locked publisher updates', async () =>
   expect((await db.courses.get(course.id))?.distributedCopy?.locked).toBe(true);
 });
 
-it('includes lessons created by the same merge in the prior-material backfill', async () => {
-  const payload: SharePayloadV6 = {
-    v: 6,
-    by: 'Teacher',
-    at: 1000,
-    li: 'science-backfill',
-    rv: 1,
-    course: { n: 'Science', o: 0, c: 1000, sm: 1, um: 'semi-linear' },
-    lessons: ['A', 'B'].map((id) => ({ i: id, n: id, notes: [], cards: [] })),
-    exams: [{ id: 'final', n: 'Final', sm: 1, k: 'f', a: null, m: 'p', c: 1000 }],
-    concepts: [],
-    questions: [],
-    questionSets: [],
-    questionSetPracticeNodes: [],
-  };
-  const { course } = await importLineageFirstTime(payload);
-  // Simulate a legacy row that gained a start lesson before the covered snapshot
-  // existed: the merge backfill must cover lessons created by the same merge.
-  await db.courses.update(course.id, { studyStartLessonId: 'B' });
-  await mergeLineageUpdate(course.id, {
-    ...payload,
-    rv: 2,
-    at: 2000,
-    lessons: [
-      { i: 'pre', n: 'Prelude', notes: [], cards: [] },
-      { i: 'A', n: 'A', notes: [], cards: [] },
-      { i: 'B', n: 'B', notes: [], cards: [] },
-    ],
-  });
-  expect(new Set((await db.courses.get(course.id))?.schoolCoveredLessonIds)).toEqual(
-    new Set(['pre', 'A']),
-  );
-});
+it.each([
+  { autoAcceptUpdates: false, lessonIds: ['pre', 'A', 'B'] },
+  { autoAcceptUpdates: true, lessonIds: ['pre', 'A', 'B'] },
+  { autoAcceptUpdates: true, lessonIds: ['A', 'pre', 'B'] },
+])(
+  'includes merge-created lessons in prior material ($lessonIds, automatic: $autoAcceptUpdates)',
+  async ({ autoAcceptUpdates, lessonIds }) => {
+    const payload: SharePayloadV6 = {
+      v: 6,
+      by: 'Teacher',
+      at: 1000,
+      li: 'science-backfill',
+      rv: 1,
+      course: { n: 'Science', o: 0, c: 1000, sm: 1, um: 'semi-linear' },
+      lessons: ['A', 'B'].map((id) => ({ i: id, n: id, notes: [], cards: [] })),
+      exams: [{ id: 'final', n: 'Final', sm: 1, k: 'f', a: null, m: 'p', c: 1000 }],
+      concepts: [],
+      questions: [],
+      questionSets: [],
+      questionSetPracticeNodes: [],
+    };
+    const { course } = await importLineageFirstTime(payload);
+    // Simulate a legacy row that gained a start lesson before the covered snapshot
+    // existed: the merge backfill must cover lessons created by the same merge.
+    await db.courses.update(course.id, {
+      studyStartLessonId: 'B',
+      distributedCopy: { ...course.distributedCopy!, autoAcceptUpdates },
+    });
+    await mergeLineageUpdate(course.id, {
+      ...payload,
+      rv: 2,
+      at: 2000,
+      lessons: lessonIds.map((id) => ({ i: id, n: id, notes: [], cards: [] })),
+    });
+    expect(new Set((await db.courses.get(course.id))?.schoolCoveredLessonIds)).toEqual(
+      new Set(['pre', 'A']),
+    );
+  },
+);
 
 it('puts earlier unseen cards into the final exam revision schedule', async () => {
   const course = await createCourse('Science');

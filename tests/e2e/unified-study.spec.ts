@@ -133,7 +133,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       await addTest.getByRole('textbox', { name: 'Name', exact: true }).fill('Weekly biology test');
       await addTest.getByRole('button', { name: 'Done', exact: true }).click();
       await expect(addTest.getByRole('alert')).toContainText('at least one lesson');
-      await addTest.getByRole('button', { name: 'Lesson 1', exact: true }).click();
+      await addTest.getByRole('checkbox', { name: 'Lesson 1', exact: true }).check();
       await addTest.getByRole('button', { name: 'Done', exact: true }).click();
       await expect(addTest).toBeHidden();
       const [lesson] = await readAll<Lesson>(page, 'lessons');
