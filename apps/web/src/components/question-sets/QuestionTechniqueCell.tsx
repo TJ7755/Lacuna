@@ -166,7 +166,13 @@ export function QuestionTechniqueCell({
           </span>
         )}
         {/* A reserved slot, so a marker arriving never moves the names. */}
-        <span className="qs-technique-marker" aria-hidden="true">
+        <span
+          className="qs-technique-marker"
+          data-kind={
+            summary.pending > 0 ? 'unsure' : summary.knowledgeTagged > 0 ? 'warning' : undefined
+          }
+          aria-hidden="true"
+        >
           {summary.pending > 0 ? '?' : summary.knowledgeTagged > 0 ? '!' : ''}
         </span>
       </button>

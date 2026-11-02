@@ -182,8 +182,8 @@
   gap: 4px;
   width: 100%;
   min-height: 44px;
-  padding: 10px 6px;
-  border-radius: 10px;
+  padding: 10px 8px;
+  border-radius: 12px;
   font-size: 12px;
   line-height: 1.4;
   color: hsl(var(--ink-soft));
@@ -192,7 +192,7 @@
 }
 .qs-technique-trigger:hover,
 .qs-technique-trigger[data-open] {
-  background: hsl(var(--ink) / 0.05);
+  background: hsl(var(--ink) / 0.06);
   color: hsl(var(--ink));
 }
 .qs-technique-trigger:focus-visible {
@@ -205,8 +205,13 @@
   text-overflow: ellipsis;
 }
 .qs-technique-names .is-unsure,
-.qs-technique-more.is-unsure,
-.qs-technique-marker {
+.qs-technique-more.is-unsure {
+  color: hsl(var(--ink-faint));
+}
+.qs-technique-marker[data-kind='unsure'] {
+  color: hsl(var(--ink));
+}
+.qs-technique-marker[data-kind='warning'] {
   color: hsl(var(--warning-fg));
 }
 /* Reserved whether or not a marker shows, so the names never move. */
@@ -257,12 +262,25 @@
 }
 .qs-classify-status a,
 .qs-classify-status button {
-  color: hsl(var(--accent-ink));
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  color: hsl(var(--ink));
+  transition: background-color 150ms;
 }
-.qs-classify-status .is-warning {
+.qs-classify-status a:hover,
+.qs-classify-status button:hover {
+  background: hsl(var(--ink) / 0.06);
+}
+.qs-classify-status .is-warning,
+.qs-classify-status .is-warning button {
   color: hsl(var(--warning-fg));
+}
+.qs-classify-status .is-warning button:hover {
+  background: hsl(var(--warning) / 0.12);
 }
 @media (max-width: 1000px) {
   .qs-composer-header {

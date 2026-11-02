@@ -141,6 +141,7 @@ export function PointTechniques({
       {/* One fixed-height line: controls appear and go within it, never below it. */}
       <div className="qs-technique-meta">
         <select
+          className="lacuna-select"
           aria-label={`${name} tests`}
           value={point.dimension}
           data-warning={knowledgeTagged || undefined}
