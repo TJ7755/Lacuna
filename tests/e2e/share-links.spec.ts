@@ -8,6 +8,7 @@ import { createHandler } from '../../apps/relay/src/relay.js';
 import { MemoryStore } from '../../apps/relay/src/store.js';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 import { addLessonCard, editOnlyCard } from './fixtures/syncConvergence';
+import { currentSharePayload } from './fixtures/currentSharePayload';
 
 const RELAY_URL = 'https://relay.getlacuna.app';
 
@@ -20,8 +21,8 @@ for (const width of [1280, 390]) {
     const handle = createHandler(store);
     const minted = await handle(new Request(`${RELAY_URL}/shares`, { method: 'POST' }));
     const { shareId } = (await minted.json()) as { shareId: string };
-    const payload = {
-      v: 2,
+    const payload = currentSharePayload({
+      v: 6,
       at: 1000,
       li: 'share-arrival-biology',
       rv: 1,
@@ -32,7 +33,7 @@ for (const width of [1280, 390]) {
         notes: [],
         cards: [{ id: `arrival-card-${index}`, k: 0, f: `Question about ${name}`, b: 'Answer' }],
       })),
-    };
+    });
     const file = JSON.stringify({ format: 'lacuna-course', version: 1, assets: [], payload });
     const meta = JSON.stringify({
       v: 1,
@@ -453,8 +454,8 @@ test('updates a synthetic library revision 17 through a Gaps class link at revis
   const minted = await handle(new Request(`${relayUrl}/shares`, { method: 'POST' }));
   const source = (await minted.json()) as { shareId: string };
   const publish = async (revision: number) => {
-    const payload = {
-      v: 2,
+    const payload = currentSharePayload({
+      v: 6,
       at: 1000,
       li: 'controlled-library-biology',
       rv: revision,
@@ -467,7 +468,7 @@ test('updates a synthetic library revision 17 through a Gaps class link at revis
           cards: [{ id: 'source-card', k: 0, f: 'What is a cell?', b: 'A living unit' }],
         },
       ],
-    };
+    });
     const file = JSON.stringify({ format: 'lacuna-course', version: 1, assets: [], payload });
     for (const [slot, text] of Object.entries({
       payload: file,

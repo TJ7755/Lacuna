@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { currentSharePayload } from './fixtures/currentSharePayload';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -12,13 +13,13 @@ for (const width of [1280, 375]) {
       format: 'lacuna-course',
       version: 1,
       assets: [],
-      payload: {
-        v: 2,
+      payload: currentSharePayload({
+        v: 6,
         at: 1000,
         li: 'loading-biology',
         course: { n: 'Loading biology', o: 0, c: 0, e: 0, um: 'open' },
         lessons: [{ n: 'Cells', notes: [], cards: [{ k: 0, f: 'Question', b: 'Answer' }] }],
-      },
+      }),
     });
     let finish: (status: number) => void = () => {};
     let requests = 0;

@@ -301,11 +301,6 @@ export function Dashboard() {
                 {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
               </section>
             )}
-            <Suspense fallback={null}>
-              {rows.map((row) => (
-                <RemainingWork key={row.id} courseId={row.id} />
-              ))}
-            </Suspense>
             <TodayQueue
               rows={rows}
               delay={0}
@@ -319,6 +314,12 @@ export function Dashboard() {
                 setCourseMenu({ course, position, trigger });
               }}
             />
+            {/* After the queue, so Study actions stay on the first screen. */}
+            <Suspense fallback={null}>
+              {rows.map((row) => (
+                <RemainingWork key={row.id} courseId={row.id} />
+              ))}
+            </Suspense>
           </div>
         )}
       </PageLoadingBoundary>

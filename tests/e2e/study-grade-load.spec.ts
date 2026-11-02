@@ -206,7 +206,7 @@ test('rapid keyboard grades avoid a blank study area and background course hydra
     stdin: {
       contents: `
         export { seed } from './scripts/performance-heavy/fixture';
-        import { db } from './src/db/schema';
+        import { db } from './apps/web/src/db/schema';
         export async function snapshot(id) {
           await db.open();
           const card = await db.cards.get(id);

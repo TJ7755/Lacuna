@@ -13,7 +13,7 @@ for (const width of [1440, 390]) {
     await enterFreshLacuna(page);
     await openImport(page);
     const payload = {
-      v: 5,
+      v: 6,
       by: 'Teacher',
       at: 1000,
       li: 'three-year-science',

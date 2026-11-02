@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
+import { currentSharePayload } from './fixtures/currentSharePayload';
 
 const updateMessage = 'Updated the course — applied 5 updates and 58 removals.';
 
@@ -17,8 +18,8 @@ async function importRevision(page: Page, revision: number) {
         format: 'lacuna-course',
         version: 1,
         assets: [],
-        payload: {
-          v: 2,
+        payload: currentSharePayload({
+          v: 6,
           li: 'toast-layout-biology',
           rv: revision,
           at: revision * 1000,
@@ -36,7 +37,7 @@ async function importRevision(page: Page, revision: number) {
               })),
             },
           ],
-        },
+        }),
       }),
     ),
   });
