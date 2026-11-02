@@ -118,3 +118,42 @@ it('never offers deletion of the final assessment', () => {
   editor('final');
   expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
 });
+
+it('searches and bulk-selects lessons without hiding the selection, then prunes exclusions on removal', async () => {
+  render(
+    <ToastProvider>
+      <AssessmentPathEditor
+        courseId="course"
+        assessment={{
+          ...assessment,
+          coverageMode: 'custom',
+          lessonIds: ['l1'],
+          excludedCardIds: ['c1'],
+        }}
+        lessons={[...lessons, { ...lessons[0], id: 'l2', name: 'Bonding', orderIndex: 1 }]}
+        cards={[...cards, { ...cards[0], id: 'c2', primaryLessonId: 'l2' }]}
+        links={[]}
+        onSaved={vi.fn()}
+      />
+    </ToastProvider>,
+  );
+  const search = screen.getByRole('searchbox', { name: 'Search lessons' });
+  fireEvent.change(search, { target: { value: 'Bonding' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Select shown' }));
+  const selected = screen.getByRole('region', { name: 'Selected lessons' });
+  expect(within(selected).getByText('Atoms')).toBeVisible();
+  expect(within(selected).getByText('Bonding')).toBeVisible();
+  expect(screen.getByRole('status')).toHaveTextContent('2 of 2 lessons selected');
+  expect(updateCourseAssessment).not.toHaveBeenCalled();
+  const removeAtoms = screen.getByRole('button', { name: 'Remove Atoms' });
+  removeAtoms.focus();
+  fireEvent.click(removeAtoms);
+  expect(screen.getByRole('button', { name: 'Remove Bonding' })).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+  await waitFor(() =>
+    expect(updateCourseAssessment).toHaveBeenCalledWith(
+      'exam',
+      expect.objectContaining({ coverageMode: 'custom', lessonIds: ['l2'], excludedCardIds: [] }),
+    ),
+  );
+});

@@ -1,0 +1,144 @@
+.assessment-lessons {
+  margin-top: 16px;
+  border: 1px solid hsl(var(--line));
+  border-radius: 18px;
+  overflow: hidden;
+}
+.assessment-lessons-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  height: clamp(260px, 46dvh, 480px);
+}
+.assessment-lessons-library,
+.assessment-lessons-selection {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  padding: 16px 18px 0;
+}
+.assessment-lessons-selection {
+  border-left: 1px solid hsl(var(--line));
+  background: hsl(var(--paper) / 0.65);
+}
+.assessment-lessons-search {
+  width: 100%;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.assessment-lessons-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 56px;
+  flex-shrink: 0;
+}
+.assessment-lessons-heading h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.assessment-lessons-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 0 3px 3px;
+}
+.assessment-lessons-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 8px;
+  border-bottom: 1px solid hsl(var(--line) / 0.5);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.assessment-lessons-row:hover {
+  background: hsl(var(--ink) / 0.03);
+}
+.assessment-lessons-highlight {
+  position: absolute;
+  inset: 0;
+  background: hsl(var(--accent-soft) / 0.6);
+  pointer-events: none;
+}
+.assessment-lessons-row > :not(.assessment-lessons-highlight) {
+  position: relative;
+}
+.assessment-lessons-row input {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  accent-color: hsl(var(--accent-ink));
+}
+.assessment-lessons-number {
+  flex-shrink: 0;
+  color: hsl(var(--ink-faint));
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.assessment-lessons-row > span:last-child,
+.assessment-lessons-chosen > div > span:nth-child(2) {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.assessment-lessons-row:focus-within {
+  outline: 2px solid hsl(var(--accent-ink));
+  outline-offset: -2px;
+}
+.assessment-lessons-chosen {
+  overflow: hidden;
+}
+.assessment-lessons-chosen > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 0;
+  border-bottom: 1px solid hsl(var(--line) / 0.5);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.assessment-lessons-chosen > div > span:nth-child(2) {
+  flex: 1;
+}
+.assessment-lessons-chosen button {
+  flex-shrink: 0;
+}
+.assessment-lessons-empty {
+  padding: 20px 8px;
+  font-size: 13px;
+  color: hsl(var(--ink-faint));
+}
+.assessment-lessons-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid hsl(var(--line));
+  padding: 14px 20px;
+  font-size: 14px;
+}
+.assessment-lessons-count {
+  display: inline-block;
+  font-size: 22px;
+  font-weight: 600;
+}
+@media (max-width: 639px) {
+  .assessment-lessons-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .assessment-lessons-library,
+  .assessment-lessons-selection {
+    padding: 12px 8px 0;
+  }
+  .assessment-lessons-row {
+    gap: 6px;
+  }
+}

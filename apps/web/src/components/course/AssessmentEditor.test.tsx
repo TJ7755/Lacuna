@@ -118,7 +118,7 @@ describe('AssessmentEditor', () => {
     expect(
       screen.getByText('Custom assessment coverage must contain at least one lesson.'),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Atoms' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Atoms' }));
     expect(
       screen.queryByText('Custom assessment coverage must contain at least one lesson.'),
     ).not.toBeInTheDocument();
@@ -129,8 +129,8 @@ describe('AssessmentEditor', () => {
     render(<Harness />);
     fireEvent.change(screen.getByLabelText('Path position'), { target: { value: 'l1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Choose lessons' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Bonding' }));
-    expect(screen.getByRole('button', { name: 'Bonding', pressed: true })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Bonding' }));
+    expect(screen.getByRole('checkbox', { name: 'Bonding' })).toBeChecked();
     expect(screen.getByText(/1 lesson · 1 card/)).toBeInTheDocument();
   });
 
