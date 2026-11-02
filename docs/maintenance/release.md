@@ -16,7 +16,7 @@ betas are supported; macOS packages are a separate local step, not an implicit p
 4. If building or verification fails, fix the cause and rerun the failed release workflow.
    `gh workflow run release.yml --ref v<version>` restarts the existing tag's build.
 
-For weekly and nightly releases, provision a GitHub App with Contents, Pull requests and Actions
+For daily and nightly releases, provision a GitHub App with Contents, Pull requests and Actions
 write permissions using `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`, or provision
 `RELEASE_TOKEN` with Contents and Actions write permissions. Approve updated App installation
 permissions after changing them. Keep credentials in the `release` environment restricted to
