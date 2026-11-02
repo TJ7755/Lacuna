@@ -132,10 +132,20 @@
 }
 .import-library-subjects {
   display: grid;
+  align-content: start;
   gap: 6px;
-  max-height: min(420px, 55vh);
+  /* Reserve the browsing viewport so disclosures never resize the surrounding surface. */
+  height: min(420px, 55vh);
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* The shared edge fade indicates overflow without a scrollbar changing the row widths. */
+  scrollbar-width: none;
+}
+.import-library-subjects::-webkit-scrollbar {
+  display: none;
+}
+.import-library-subjects:empty {
+  height: 0;
 }
 .import-library-subject,
 .import-library-course {

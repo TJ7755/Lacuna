@@ -1,13 +1,24 @@
 import { expect, test } from '@playwright/test';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
 
-test.use({ viewport: { width: 1470, height: 956 }, deviceScaleFactor: 2, serviceWorkers: 'block' });
+test.use({
+  viewport: { width: 1470, height: 956 },
+  deviceScaleFactor: 2,
+  serviceWorkers: 'block',
+  video: 'on',
+});
 
-for (const reducedMotion of ['no-preference', 'reduce'] as const) {
-  test(`subject expansion keeps the library frame and row widths steady (${reducedMotion})`, async ({
+for (const { reducedMotion, height } of [
+  { reducedMotion: 'no-preference', height: 956 },
+  { reducedMotion: 'reduce', height: 956 },
+  { reducedMotion: 'no-preference', height: 600 },
+] as const) {
+  test(`subject expansion keeps the library frame and row widths steady (${reducedMotion}, ${height}px)`, async ({
     page,
   }, info) => {
+    await page.setViewportSize({ width: 1470, height });
     await page.emulateMedia({ reducedMotion });
+    await page.addInitScript(() => localStorage.setItem('lacuna-theme', 'light'));
     await enterFreshLacuna(page);
     await page.locator('main').getByRole('button', { name: 'New course', exact: true }).click();
     await page.getByRole('button', { name: 'Course library', exact: true }).click();
@@ -66,9 +77,21 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await page.waitForTimeout(800);
     const courses = page.getByRole('list', { name: 'Biology courses', exact: true });
     const lastCourse = courses.getByRole('button').last();
-    await lastCourse.focus();
+    await biology.focus();
+    for (let index = 0; index < (await courses.getByRole('button').count()); index++) {
+      await page.keyboard.press('Tab');
+    }
     await expect(lastCourse).toBeFocused();
     await expect(lastCourse).toBeInViewport({ ratio: 1 });
+
+    await page.getByRole('searchbox', { name: 'Search the course library' }).fill('no-such-course');
+    const status = page.getByRole('status').filter({ hasText: 'No library course matches.' });
+    await expect(status).toBeInViewport({ ratio: 1 });
+    const gap = await status.evaluate((element) => {
+      const search = document.querySelector('#import-library-search')!;
+      return element.getBoundingClientRect().top - search.getBoundingClientRect().bottom;
+    });
+    expect(gap, 'empty search feedback must not follow a blank results viewport').toBeLessThan(120);
   });
 }
 
