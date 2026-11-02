@@ -27,6 +27,11 @@ for (const { reducedMotion, height } of [
     await expect(biology).toBeVisible();
     // Finish entry before isolating the subject disclosure's motion.
     await page.waitForTimeout(800);
+    const outerOverflow = await subjects.evaluate((list) => {
+      const scroller = list.closest<HTMLElement>('.overflow-y-auto')!;
+      return scroller.scrollHeight - scroller.clientHeight;
+    });
+    expect(outerOverflow, 'the library must not add a second scroller').toBeLessThanOrEqual(1);
     await page.screenshot({ path: info.outputPath('library-subjects.png') });
 
     for (const expanded of [true, false]) {

@@ -135,7 +135,8 @@
   align-content: start;
   gap: 6px;
   /* Reserve the browsing viewport so disclosures never resize the surrounding surface. */
-  height: min(420px, 55vh);
+  /* Leave room for the surrounding controls in short windows, avoiding a second scroller. */
+  height: min(420px, 55vh, max(160px, calc(100dvh - 320px)));
   overflow-y: auto;
   overscroll-behavior: contain;
   /* The shared edge fade indicates overflow without a scrollbar changing the row widths. */
