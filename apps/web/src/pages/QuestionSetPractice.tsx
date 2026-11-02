@@ -492,6 +492,7 @@ function PracticeWorkspace({
             />
           )}
         </StepSwap>
+        {!marking && relatedKnowledge}
         <footer className="qs-attempt-footer">
           <QuestionSetPracticeNavigation
             rows={
@@ -588,7 +589,6 @@ function PracticeWorkspace({
             />
           )}
         </footer>
-        {!marking && <div className="qs-practice-secondary">{relatedKnowledge}</div>}
       </article>
     </div>
   );
