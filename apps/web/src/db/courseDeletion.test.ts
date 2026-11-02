@@ -96,6 +96,13 @@ describe('deleteCourse cascade', () => {
     expect(await db.coursePerformance.get(course.id)).toBeDefined();
     await waitForSessionHistory('event-delete-course');
     expect(await db.sessionHistory.where('deckId').equals(deckId).count()).toBe(1);
+    await db.sessionHistory.add({
+      eventId: 'event-delete-course-lesson',
+      timestamp: Date.now(),
+      deckId: lesson.id,
+      schedulingUnitId: lesson.id,
+      averagePredictedRetrievability: 0.5,
+    });
 
     await deleteCourse(course.id);
 
@@ -104,6 +111,7 @@ describe('deleteCourse cascade', () => {
     expect(await db.coursePerformance.get(course.id)).toBeUndefined();
     expect(await db.sessionHistory.where('deckId').equals(deckId).count()).toBe(0);
     expect(await db.sessionHistory.where('courseId').equals(course.id).count()).toBe(0);
+    expect(await db.sessionHistory.where('schedulingUnitId').equals(lesson.id).count()).toBe(0);
   });
 
   it('removes only both performance key spaces owned by the deleted course', async () => {

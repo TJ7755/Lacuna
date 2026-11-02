@@ -44,9 +44,8 @@ export function SessionReport({
   const distractions = events.filter((e) => e.distracted).length;
 
   const meanResponse = useMemo(() => {
-    const correctEvents = events.filter((e) => e.correct);
-    if (correctEvents.length === 0) return 0;
-    return correctEvents.reduce((s, e) => s + e.responseTimeSec, 0) / correctEvents.length;
+    if (events.length === 0) return null;
+    return events.reduce((s, e) => s + e.responseTimeSec, 0) / events.length;
   }, [events]);
 
   const gradeData = useMemo(() => {
@@ -147,7 +146,7 @@ export function SessionReport({
             <dl>
               <div>
                 <dt>Mean time</dt>
-                <dd>{meanResponse.toFixed(1)}s</dd>
+                <dd>{meanResponse === null ? '—' : `${meanResponse.toFixed(1)}s`}</dd>
               </div>
               <div>
                 <dt>Focus</dt>
