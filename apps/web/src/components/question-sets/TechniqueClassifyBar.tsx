@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import type { CourseTechnique } from '@lacuna/core/questions/techniqueTags';
+import type { JevPauseReason } from '@lacuna/core/jev/types';
 import { classifyTechniques, useJevSettings, useJevStatus } from '../../jev';
 import type { QuestionSetDraftSession } from '../../questions/questionSetDraftSession';
 import {
@@ -22,9 +23,9 @@ type Phase =
   | { kind: 'done'; ids: ReadonlySet<string>; stopped?: 'failed' | 'cancelled' };
 
 /**
- * Jev classifies when the author asks, once the set is written, rather than while they type.
- * Confident tags count at once, unsure ones wait as outlined suggestions, and the author's own decisions are
- * never replaced.
+ * Classify tags when the author asks, once the set is written, rather than while they type.
+ * Confident tags count at once, unsure ones wait as outlined suggestions, and the author's own
+ * decisions are never replaced.
  */
 export function TechniqueClassifyBar({
   content,
@@ -46,9 +47,9 @@ export function TechniqueClassifyBar({
   const blocked = !techniques.length ? (
     <AppLink to={`/course/${content.courseId}/settings?section=techniques`}>Add techniques</AppLink>
   ) : !settings.enabled ? (
-    'Jev is off'
+    <AppLink to="/settings#settings-jev">Turn on automatic marking</AppLink>
   ) : status.state === 'paused' ? (
-    'Jev is paused'
+    pausedReason(status.reason)
   ) : !hasPoints ? (
     'Nothing to classify'
   ) : null;
@@ -130,6 +131,12 @@ export function TechniqueClassifyBar({
       </div>
     </div>
   );
+}
+
+function pausedReason(reason: JevPauseReason) {
+  if (reason === 'offline') return 'Offline';
+  if (reason === 'limit-reached') return 'Daily limit reached';
+  return 'Unavailable right now';
 }
 
 function ClassificationResult({

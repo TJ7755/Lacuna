@@ -98,7 +98,7 @@ export function PointTechniques({
           className="qs-technique-chip"
           data-state={state}
           aria-pressed={state === 'on'}
-          aria-label={state === 'unsure' ? `Confirm ${label}, suggested by Jev` : label}
+          aria-label={state === 'unsure' ? `Confirm suggested ${label}` : label}
           title={title}
           disabled={readOnly}
           onClick={() => onDecide(id, state !== 'on')}
@@ -169,13 +169,13 @@ export function PointTechniques({
             <button
               type="button"
               className="qs-technique-link"
-              title="Let Jev decide this point"
+              title="Clear your choices so Classify decides this point"
               onClick={onReset}
             >
               Reset
             </button>
           ) : point.techniqueTags?.provenance.source === 'jev' ? (
-            <span title={`Jev (${point.techniqueTags.provenance.model})`}>Jev</span>
+            <span title="Tagged by Classify">Auto</span>
           ) : null}
         </span>
       </div>

@@ -86,7 +86,7 @@ export function CourseTechniquesSection({ course }: { course: CourseRecord }) {
                         variant="ghost"
                         size="sm"
                         aria-label={`Archive ${technique.name}`}
-                        title="Hidden from tagging, Jev and Study; past practice is kept"
+                        title="Hidden from tagging and Study; past practice is kept"
                         onClick={() =>
                           attempt(setCourseTechniqueArchived(course.id, technique.id, true))
                         }

@@ -250,7 +250,7 @@ test('classifies undecided points on request, keeps the author’s choices and l
   await evidence('technique-unsure-card');
   await card
     .getByRole('group', { name: 'Point 1 techniques' })
-    .getByRole('button', { name: 'Confirm Link cause and effect, suggested by Jev' })
+    .getByRole('button', { name: 'Confirm suggested Link cause and effect' })
     .click();
   await expect(trigger).toHaveAccessibleName(
     'Q1 techniques: Link cause and effect. One point tests Knowledge, so its techniques do not count',
