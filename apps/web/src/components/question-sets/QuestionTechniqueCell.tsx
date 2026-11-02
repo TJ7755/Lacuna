@@ -21,6 +21,9 @@ import { useAnchoredPopoverPosition } from '../../hooks/useAnchoredPopoverPositi
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { summariseTechniques, summaryText } from '../../questions/techniqueSummary';
 import { AppLink } from '../ui/AppLink';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { SettingsIcon } from '../ui/icons';
+import { motionTransition } from '../ui/motion';
 import { useToast } from '../ui/Toast';
 import { BuiltInPicker, PointTechniques } from './TechniquePointEditor';
 import { TechniqueForm } from './TechniqueForm';
@@ -63,7 +66,9 @@ export function QuestionTechniqueCell({
   const card = useRef<HTMLDivElement>(null);
   const timer = useRef<number | undefined>(undefined);
   const cardId = useId();
-  const { position, placement } = useAnchoredPopoverPosition(open, trigger, card);
+  const { position, placement } = useAnchoredPopoverPosition(open, trigger, card, {
+    keepPlacement: true,
+  });
   useFocusTrap(pinned, {}, card);
   const summary = summariseTechniques(answer.allocations, catalogue);
   const schedule = (next: boolean) => {
@@ -140,11 +145,6 @@ export function QuestionTechniqueCell({
           close();
         }}
       >
-        {summary.knowledgeTagged > 0 && (
-          <span className="qs-technique-flag" aria-hidden="true">
-            !
-          </span>
-        )}
         <span className="qs-technique-names" aria-hidden="true">
           {visible.length ? (
             visible.map((item, index) => (
@@ -154,7 +154,7 @@ export function QuestionTechniqueCell({
               </span>
             ))
           ) : (
-            <span className="qs-technique-empty">{answer.allocations.length ? 'None' : '–'}</span>
+            <span className="qs-technique-empty">–</span>
           )}
         </span>
         {hidden.length > 0 && (
@@ -165,11 +165,10 @@ export function QuestionTechniqueCell({
             +{hidden.length}
           </span>
         )}
-        {summary.pending > 0 && (
-          <span className="qs-technique-pending" aria-hidden="true">
-            ?
-          </span>
-        )}
+        {/* A reserved slot, so a marker arriving never moves the names. */}
+        <span className="qs-technique-marker" aria-hidden="true">
+          {summary.pending > 0 ? '?' : summary.knowledgeTagged > 0 ? '!' : ''}
+        </span>
       </button>
       {createPortal(
         <AnimatePresence>
@@ -187,14 +186,11 @@ export function QuestionTechniqueCell({
                 left: position?.left ?? 0,
                 visibility: position ? 'visible' : 'hidden',
               }}
-              initial={
-                multiplier > 0
-                  ? { opacity: 0, y: placement === 'bottom' ? -4 : 4, scale: 0.98 }
-                  : false
-              }
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={multiplier > 0 ? { opacity: 0, scale: 0.98 } : undefined}
-              transition={{ duration: 0.12 * multiplier, ease: [0.16, 1, 0.3, 1] }}
+              // Text is never scaled; the card lifts from the side of its trigger.
+              initial={multiplier > 0 ? { opacity: 0, y: placement === 'bottom' ? -4 : 4 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              exit={multiplier > 0 ? { opacity: 0 } : undefined}
+              transition={motionTransition('feedback', multiplier)}
               {...hoverHandlers}
               // Interacting with a hover card keeps it open until the author dismisses it.
               onPointerDown={() => {
@@ -211,7 +207,6 @@ export function QuestionTechniqueCell({
               }}
             >
               <TechniqueCard
-                label={label}
                 nodeId={nodeId}
                 answer={answer}
                 catalogue={catalogue}
@@ -220,6 +215,7 @@ export function QuestionTechniqueCell({
                 readOnlyReason={readOnlyReason}
                 pinned={pinned}
                 cardRef={card}
+                multiplier={multiplier}
               />
             </motion.div>
           )}
@@ -231,7 +227,6 @@ export function QuestionTechniqueCell({
 }
 
 function TechniqueCard({
-  label,
   nodeId,
   answer,
   catalogue,
@@ -240,8 +235,8 @@ function TechniqueCard({
   readOnlyReason,
   pinned,
   cardRef,
+  multiplier,
 }: {
-  label: string;
   nodeId: string;
   answer: QuestionAnswer;
   catalogue: readonly CourseTechnique[];
@@ -250,9 +245,10 @@ function TechniqueCard({
   readOnlyReason?: string;
   pinned: boolean;
   cardRef: RefObject<HTMLDivElement | null>;
+  multiplier: number;
 }) {
   const [creating, setCreating] = useState(false);
-  // Done, Create and the Knowledge fix remove the control that held focus; keep keyboard users
+  // Create and the Knowledge fix remove the control that held focus; keep keyboard users
   // inside the pinned card rather than dropping them to the top of the page.
   useEffect(() => {
     if (pinned && document.activeElement === document.body) cardRef.current?.focus();
@@ -292,25 +288,8 @@ function TechniqueCard({
     );
   return (
     <div className="qs-technique-card-body">
-      <header className="qs-technique-card-head">
-        <h3>Techniques · {label}</h3>
-        <AppLink to={`/course/${courseId}/settings?section=techniques`} tabIndex={0}>
-          Manage
-        </AppLink>
-      </header>
       {readOnlyReason && <p className="qs-muted">{readOnlyReason}</p>}
-      {!answer.allocations.length ? (
-        <p className="qs-muted">
-          Write the mark scheme first. Each line becomes a point you can tag.
-        </p>
-      ) : (
-        !available.length && (
-          <p className="qs-muted">
-            This course has no techniques yet. Create your own, or start from the built-in science
-            techniques.
-          </p>
-        )
-      )}
+      {!answer.allocations.length && <p className="qs-muted">Add a mark scheme first.</p>}
       {available.length > 0 &&
         answer.allocations.map((point, index) => (
           <PointTechniques
@@ -321,6 +300,7 @@ function TechniqueCard({
             catalogue={catalogue}
             available={available}
             readOnly={readOnly}
+            multiplier={multiplier}
             onDecide={(id, applies) => decide(point.id, id, applies)}
             onDimension={(dimension) => updatePoint(point.id, (row) => ({ ...row, dimension }))}
             onReset={() =>
@@ -331,50 +311,67 @@ function TechniqueCard({
             }
           />
         ))}
-      {!readOnly && pickingBuiltIns && unusedBuiltIns.length > 0 && (
-        <BuiltInPicker
-          techniques={unusedBuiltIns}
-          onAdd={addBuiltIn}
-          onDone={available.length ? () => setPickingBuiltIns(false) : undefined}
-        />
-      )}
-      {!readOnly &&
-        (creating ? (
-          <TechniqueForm
-            compact
-            submitLabel={answer.allocations.length === 1 ? 'Create and tag' : 'Create'}
-            onCancel={() => setCreating(false)}
-            onSubmit={async (input) => {
-              const technique = await createCourseTechnique(courseId, input);
-              // The technique is saved from here, so the form closes whatever happens next.
-              setCreating(false);
-              // With one point there is only one thing the author can have meant. If the draft
-              // refuses the tag, the new technique still shows as an unpressed chip to retry.
-              if (answer.allocations.length === 1) {
-                try {
-                  decide(answer.allocations[0].id, technique.id, true);
-                } catch {
-                  /* left untagged; the chip is visible */
+      {!readOnly && (
+        <>
+          <AnimatedDisclosure open={pickingBuiltIns && unusedBuiltIns.length > 0}>
+            <BuiltInPicker techniques={unusedBuiltIns} onAdd={addBuiltIn} />
+          </AnimatedDisclosure>
+          <AnimatedDisclosure open={creating}>
+            <TechniqueForm
+              compact
+              submitLabel="Create"
+              onCancel={() => setCreating(false)}
+              onSubmit={async (input) => {
+                const technique = await createCourseTechnique(courseId, input);
+                // The technique is saved from here, so the form closes whatever happens next.
+                setCreating(false);
+                // With one point there is only one thing the author can have meant. If the draft
+                // refuses the tag, the new technique still shows as an unpressed chip to retry.
+                if (answer.allocations.length === 1) {
+                  try {
+                    decide(answer.allocations[0].id, technique.id, true);
+                  } catch {
+                    /* left untagged; the chip is visible */
+                  }
                 }
-              }
-            }}
-          />
-        ) : (
-          <div className="qs-technique-footer">
-            <button type="button" className="qs-technique-add" onClick={() => setCreating(true)}>
-              + New technique…
+              }}
+            />
+          </AnimatedDisclosure>
+        </>
+      )}
+      {/* The footer never changes shape: its toggles open and close the sections above it. */}
+      <footer className="qs-technique-footer">
+        {!readOnly && (
+          <>
+            <button
+              type="button"
+              className="qs-technique-link"
+              aria-expanded={creating}
+              onClick={() => setCreating(!creating)}
+            >
+              + New
             </button>
-            {!pickingBuiltIns && unusedBuiltIns.length > 0 && (
+            {unusedBuiltIns.length > 0 && (
               <button
                 type="button"
-                className="qs-technique-add"
-                onClick={() => setPickingBuiltIns(true)}
+                className="qs-technique-link"
+                aria-expanded={pickingBuiltIns}
+                onClick={() => setPickingBuiltIns(!pickingBuiltIns)}
               >
-                + Built-in…
+                + Built-in
               </button>
             )}
-          </div>
-        ))}
+          </>
+        )}
+        <AppLink
+          to={`/course/${courseId}/settings?section=techniques`}
+          className="qs-technique-manage"
+          aria-label="Manage techniques"
+          title="Manage techniques"
+        >
+          <SettingsIcon width={16} height={16} />
+        </AppLink>
+      </footer>
     </div>
   );
 }

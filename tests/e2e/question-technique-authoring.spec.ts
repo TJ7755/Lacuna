@@ -36,8 +36,8 @@ test('builds a course catalogue in place, tags points separately from knowledge 
   // A new course starts with no techniques; the card offers the built-ins and a custom one.
   await card.getByRole('button', { name: 'Add Link cause and effect' }).click();
   await card.getByRole('button', { name: 'Add Compare like with like' }).click();
-  await card.getByRole('button', { name: 'Done' }).click();
-  await card.getByRole('button', { name: '+ New technique…' }).click();
+  await card.getByRole('button', { name: '+ Built-in' }).click();
+  await card.getByRole('button', { name: '+ New' }).click();
   await card.getByRole('textbox', { name: 'Name' }).fill('Quote the data');
   await card.getByRole('button', { name: 'Create', exact: true }).click();
   const first = card.getByRole('group', { name: 'Point 1 techniques' });
@@ -48,10 +48,11 @@ test('builds a course catalogue in place, tags points separately from knowledge 
     first.getByRole('button', { name: 'Link cause and effect', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
   // Knowledge points never feed technique memory, so the card offers the fix in place.
-  await expect(
-    card.getByText('This point tests Knowledge, so its techniques do not count.'),
-  ).toBeVisible();
-  await card.getByRole('button', { name: 'Mark as exam technique' }).click();
+  await expect(card.getByRole('combobox', { name: 'Point 1 tests' })).toHaveAttribute(
+    'data-warning',
+    'true',
+  );
+  await card.getByRole('button', { name: 'Count it' }).click();
   // The fix removes its own button; focus stays in the card.
   await expect(card).toBeFocused();
   await expect(card.getByRole('combobox', { name: 'Point 1 tests' })).toHaveValue('exam-execution');
@@ -73,8 +74,8 @@ test('builds a course catalogue in place, tags points separately from knowledge 
   await expect(
     first.getByRole('button', { name: 'Compare like with like', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
-  await expect(card.getByText('Set by you')).toBeVisible();
-  await expect(card.getByText('Not classified')).toBeVisible();
+  // Only the decided point offers Reset; the untouched one shows nothing.
+  await expect(card.getByRole('button', { name: 'Reset' })).toHaveCount(1);
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     await card.scrollIntoViewIfNeeded();
@@ -155,7 +156,7 @@ test('keeps a generated family’s techniques tied to its source template', asyn
   await page.getByRole('textbox', { name: 'Q1 question', exact: true }).press('Shift+F10');
   await page.getByRole('menuitem', { name: 'What it tests', exact: true }).click();
   const card = page.getByRole('dialog', { name: 'Q1 techniques' });
-  await expect(card.getByText(/take their techniques from the source bank/)).toBeVisible();
+  await expect(card.getByText('Set by the source bank')).toBeVisible();
   const chip = card.getByRole('button', { name: 'Substitute values', exact: true }).first();
   await expect(chip).toHaveAttribute('aria-pressed', 'true');
   await expect(chip).toBeDisabled();
@@ -212,7 +213,7 @@ test('classifies undecided points on request, keeps the author’s choices and l
   const bar = page.getByRole('region', { name: 'Classify techniques' });
   const classify = bar.getByRole('button', { name: 'Classify techniques' });
   await expect(classify).toBeDisabled();
-  await expect(bar.getByText('Add techniques to this course to classify.')).toBeVisible();
+  await expect(bar.getByRole('link', { name: 'Add techniques' })).toBeVisible();
 
   await page.getByRole('button', { name: /^Q1 techniques/ }).click();
   const card = page.getByRole('dialog', { name: 'Q1 techniques' });
@@ -222,15 +223,15 @@ test('classifies undecided points on request, keeps the author’s choices and l
   const third = card.getByRole('group', { name: 'Point 3 techniques' });
   await third.getByRole('button', { name: 'Link cause and effect', exact: true }).click();
   await third.getByRole('button', { name: 'Link cause and effect', exact: true }).click();
-  await expect(card.getByText('Set by you')).toBeVisible();
+  await expect(
+    card.getByRole('region', { name: /^Point 3:/ }).getByRole('button', { name: 'Reset' }),
+  ).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(card).toBeHidden();
 
-  await expect(
-    bar.getByText('Jev tags 2 points you have not decided.', { exact: false }),
-  ).toBeVisible();
+  await expect(classify).toBeEnabled();
   await classify.click();
-  await expect(bar.getByText(/Tagged 1 of 2 points\. Jev was unsure about 1 point/)).toBeVisible();
+  await expect(bar.getByRole('status')).toContainText('1/2 tagged · 1 unsure');
   await evidence('technique-classified');
   expect(requests).toHaveLength(1);
   expect(requests[0]!.points.map((point) => point.criterion)).toEqual([
@@ -238,8 +239,8 @@ test('classifies undecided points on request, keeps the author’s choices and l
     'Resultant force backwards, so it decelerates',
   ]);
   expect(requests[0]!.techniques.map((technique) => technique.id)).toEqual(['causal-link']);
-  await bar.getByRole('button', { name: 'Count it as exam technique' }).click();
-  await expect(bar.getByText(/test Knowledge/)).toHaveCount(0);
+  await bar.getByRole('button', { name: 'Count it' }).click();
+  await expect(bar.getByText(/not counted/)).toHaveCount(0);
 
   const trigger = page.getByRole('button', { name: /^Q1 techniques/ });
   await expect(trigger).toHaveAccessibleName(
@@ -256,6 +257,5 @@ test('classifies undecided points on request, keeps the author’s choices and l
   );
   await page.keyboard.press('Escape');
   // The summary follows the set as it stands, including choices made since the run.
-  await expect(bar.getByText('Tagged 2 of 2 points.', { exact: true })).toBeVisible();
-  await expect(bar.getByText(/One tagged point tests Knowledge/)).toBeVisible();
+  await expect(bar.getByRole('status')).toContainText('2/2 tagged · 1 not counted');
 });

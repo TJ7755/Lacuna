@@ -21,24 +21,15 @@
   gap: 12px;
   padding: 14px 16px 16px;
 }
-.qs-technique-card-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-.qs-technique-card-head h3 {
-  font-size: 13px;
-  font-weight: 600;
-}
-.qs-technique-card-head a,
-.qs-technique-meta button,
-.qs-technique-note button,
-.qs-technique-add {
+.qs-technique-link {
+  min-height: 30px;
   font-size: 12px;
   color: hsl(var(--accent-ink));
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+.qs-technique-link.is-warning {
+  color: hsl(var(--warning-fg));
 }
 .qs-technique-point {
   display: flex;
@@ -47,25 +38,25 @@
   padding-top: 12px;
   border-top: 1px solid hsl(var(--line) / 0.7);
 }
+.qs-technique-point:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
 .qs-technique-criterion {
   display: flex;
   gap: 8px;
   font-size: 13px;
   line-height: 1.45;
 }
-.qs-technique-criterion > span:nth-last-child(2) {
+.qs-technique-criterion > span:last-child {
   flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.qs-technique-index,
-.qs-technique-marks {
+.qs-technique-index {
   flex-shrink: 0;
   color: hsl(var(--ink-faint));
   font-variant-numeric: tabular-nums;
-}
-.qs-technique-marks {
-  font-size: 12px;
 }
 .qs-technique-chips {
   display: flex;
@@ -113,26 +104,24 @@
   outline-offset: 2px;
 }
 .qs-technique-dismiss {
-  min-width: 26px;
-  min-height: 30px;
-  font-size: 15px;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 30px;
   color: hsl(var(--warning-fg));
 }
-.qs-technique-note {
-  font-size: 12px;
-  line-height: 1.5;
-}
-.qs-technique-note.is-unsure,
-.qs-technique-note.is-warning {
-  color: hsl(var(--warning-fg));
-}
+/* One line, always: controls come and go within it so the card never jumps. */
 .qs-technique-meta {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px 10px;
+  gap: 10px;
+  height: 30px;
   font-size: 12px;
   color: hsl(var(--ink-faint));
+  white-space: nowrap;
+}
+.qs-technique-source {
+  margin-left: auto;
 }
 .qs-technique-meta select {
   min-height: 30px;
@@ -143,34 +132,33 @@
   color: hsl(var(--ink-soft));
   font-size: 12px;
 }
-.qs-technique-add {
-  align-self: flex-start;
-  min-height: 30px;
-}
-.qs-technique-builtins {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid hsl(var(--line) / 0.7);
-}
-.qs-technique-builtins-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  font-size: 12px;
-  color: hsl(var(--ink-soft));
+.qs-technique-meta select[data-warning] {
+  border-color: hsl(var(--warning));
+  color: hsl(var(--warning-fg));
 }
 .qs-technique-footer {
   display: flex;
+  align-items: center;
   gap: 16px;
+}
+.qs-technique-manage {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  border-radius: 8px;
+  color: hsl(var(--ink-faint));
+}
+.qs-technique-manage:hover {
+  color: hsl(var(--ink));
 }
 .qs-technique-form {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-top: 12px;
-  border-top: 1px solid hsl(var(--line) / 0.7);
+  /* Room for focus rings while the disclosure still clips its content. */
+  padding: 2px;
   font-size: 12px;
   color: hsl(var(--ink-soft));
 }

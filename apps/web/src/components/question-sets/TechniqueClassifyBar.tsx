@@ -14,15 +14,12 @@ import {
 } from '../../questions/techniqueClassification';
 import { AppLink } from '../ui/AppLink';
 import { Button } from '../ui/Button';
+import { StepSwap } from '../ui/StepSwap';
 
 type Phase =
   | { kind: 'idle' }
   | { kind: 'running'; done: number; total: number }
   | { kind: 'done'; ids: ReadonlySet<string>; stopped?: 'failed' | 'cancelled' };
-
-function plural(count: number, one: string, many = `${one}s`) {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 /**
  * Jev classifies when the author asks, once the set is written, rather than while they type.
@@ -47,18 +44,13 @@ export function TechniqueClassifyBar({
   const targets = classificationTargets(content);
   const hasPoints = content.questions.length > 0 && targets.length > 0;
   const blocked = !techniques.length ? (
-    <>
-      Add techniques to this course to classify.{' '}
-      <AppLink to={`/course/${content.courseId}/settings?section=techniques`}>
-        Manage techniques
-      </AppLink>
-    </>
+    <AppLink to={`/course/${content.courseId}/settings?section=techniques`}>Add techniques</AppLink>
   ) : !settings.enabled ? (
-    'Turn on Jev in Settings to classify.'
+    'Jev is off'
   ) : status.state === 'paused' ? (
-    'Jev is paused. Try again later.'
+    'Jev is paused'
   ) : !hasPoints ? (
-    'Every point has your own choices, or there are no mark schemes yet.'
+    'Nothing to classify'
   ) : null;
   const run = async () => {
     const work = new AbortController();
@@ -100,54 +92,42 @@ export function TechniqueClassifyBar({
     setPhase({ kind: 'done', ids });
   };
   const summary = phase.kind === 'done' ? classificationSummary(content, phase.ids) : null;
+  const running = phase.kind === 'running';
+  // The status keeps one line and the button one width, whatever state the run is in.
+  const statusKey = running ? 'running' : blocked ? 'blocked' : summary ? 'done' : 'idle';
   return (
     <div className="qs-classify-bar" role="region" aria-label="Classify techniques">
-      {phase.kind === 'running' ? (
-        <>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              controller.current?.abort();
-            }}
-          >
-            Stop
-          </Button>
-          <p role="status" className="qs-classify-status">
-            Jev is classifying… {phase.done} of {plural(phase.total, 'point')}
-          </p>
-        </>
-      ) : (
-        <>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={Boolean(blocked)}
-            onClick={() => void run()}
-          >
-            Classify techniques
-          </Button>
-          <div role="status" className="qs-classify-status">
-            {blocked ? (
-              <p>{blocked}</p>
-            ) : summary ? (
-              <ClassificationResult
-                summary={summary}
-                stopped={phase.kind === 'done' ? phase.stopped : undefined}
-                onCountKnowledge={() =>
-                  phase.kind === 'done' &&
-                  session.update((set) => countTaggedKnowledgeAsExamTechnique(set, phase.ids))
-                }
-              />
-            ) : (
-              <p>
-                Jev tags {plural(targets.length, 'point')} you have not decided. Your own choices
-                are kept.
-              </p>
-            )}
-          </div>
-        </>
-      )}
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={!running && Boolean(blocked)}
+        onClick={() => (running ? controller.current?.abort() : void run())}
+      >
+        <span className="qs-classify-label">
+          <span data-shown={!running || undefined}>Classify techniques</span>
+          <span data-shown={running || undefined}>Stop</span>
+        </span>
+      </Button>
+      <div role="status" className="qs-classify-status">
+        <StepSwap stepKey={statusKey}>
+          {phase.kind === 'running' ? (
+            <span className="tabular-nums">
+              {phase.done}/{phase.total}
+            </span>
+          ) : blocked ? (
+            blocked
+          ) : summary ? (
+            <ClassificationResult
+              summary={summary}
+              stopped={phase.kind === 'done' ? phase.stopped : undefined}
+              onCountKnowledge={() =>
+                phase.kind === 'done' &&
+                session.update((set) => countTaggedKnowledgeAsExamTechnique(set, phase.ids))
+              }
+            />
+          ) : null}
+        </StepSwap>
+      </div>
     </div>
   );
 }
@@ -161,31 +141,22 @@ function ClassificationResult({
   stopped?: 'failed' | 'cancelled';
   onCountKnowledge: () => void;
 }) {
+  const parts = [
+    stopped === 'failed' ? 'Failed' : stopped === 'cancelled' ? 'Stopped' : null,
+    `${summary.tagged}/${summary.classified} tagged`,
+    summary.unsure ? `${summary.unsure} unsure` : null,
+  ].filter(Boolean);
   return (
     <>
-      <p>
-        {stopped === 'failed'
-          ? 'Jev stopped before finishing. '
-          : stopped === 'cancelled'
-            ? 'Stopped. '
-            : ''}
-        {summary.classified
-          ? `Tagged ${summary.tagged} of ${plural(summary.classified, 'point')}.`
-          : 'No points were classified.'}
-        {summary.unsure > 0 &&
-          ` Jev was unsure about ${plural(summary.unsure, 'point')}: confirm the amber techniques.`}
-      </p>
+      {parts.join(' · ')}
       {summary.knowledge > 0 && (
-        <p className="is-warning">
-          {summary.knowledge === 1
-            ? 'One tagged point tests'
-            : `${summary.knowledge} tagged points test`}{' '}
-          Knowledge, so {summary.knowledge === 1 ? 'its techniques do' : 'their techniques do'} not
-          count.{' '}
+        <span className="is-warning" title="Knowledge points do not count towards techniques">
+          {' · '}
+          {summary.knowledge} not counted{' '}
           <button type="button" onClick={onCountKnowledge}>
-            Count {summary.knowledge === 1 ? 'it' : 'them'} as exam technique
+            Count {summary.knowledge === 1 ? 'it' : 'them'}
           </button>
-        </p>
+        </span>
       )}
     </>
   );

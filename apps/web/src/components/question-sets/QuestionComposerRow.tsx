@@ -236,11 +236,7 @@ export function QuestionComposerRow({
             catalogue={catalogue}
             courseId={draftContent.courseId}
             session={session}
-            readOnlyReason={
-              draftContent.bank?.family
-                ? 'Generated questions take their techniques from the source bank. Import a newer bank version to change them.'
-                : undefined
-            }
+            readOnlyReason={draftContent.bank?.family ? 'Set by the source bank' : undefined}
             pinned={techniquesPinned}
             onPinnedChange={setTechniquesPinned}
             multiplier={multiplier}
@@ -276,7 +272,6 @@ export function QuestionComposerRow({
                   },
                   {
                     label: 'What it tests',
-                    description: 'Dimensions and exam techniques',
                     onSelect: () => setTechniquesPinned(true),
                   },
                   {

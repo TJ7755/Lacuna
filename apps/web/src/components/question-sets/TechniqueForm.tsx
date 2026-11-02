@@ -21,7 +21,7 @@ export function TechniqueForm({
 }: {
   initial?: Pick<CourseTechnique, 'name' | 'description' | 'example'>;
   submitLabel: string;
-  /** The inline card asks for less up front; the example stays in course settings. */
+  /** The inline card asks for less and labels by placeholder; the example stays in settings. */
   compact?: boolean;
   onSubmit: (input: CourseTechniqueInput) => Promise<unknown>;
   onCancel: () => void;
@@ -57,13 +57,15 @@ export function TechniqueForm({
   };
   return (
     <form ref={form} className="qs-technique-form" onSubmit={submit} noValidate>
-      <label htmlFor={`${id}-name`}>Name</label>
+      <label htmlFor={`${id}-name`} className={compact ? 'sr-only' : undefined}>
+        Name
+      </label>
       <input
         id={`${id}-name`}
         value={name}
         maxLength={TECHNIQUE_NAME_MAX}
         autoComplete="off"
-        placeholder="e.g. Quote the data"
+        placeholder={compact ? 'Name' : undefined}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         onChange={(event) => {
@@ -72,22 +74,20 @@ export function TechniqueForm({
         }}
         autoFocus
       />
-      <label htmlFor={`${id}-description`}>
-        What a full-mark answer does <span className="qs-muted">(optional)</span>
+      <label htmlFor={`${id}-description`} className={compact ? 'sr-only' : undefined}>
+        Description
       </label>
       <textarea
         id={`${id}-description`}
         rows={2}
         value={description}
         maxLength={TECHNIQUE_TEXT_MAX}
-        placeholder="Helps Jev recognise the technique"
+        placeholder="What a full-mark answer does"
         onChange={(event) => setDescription(event.target.value)}
       />
       {!compact && (
         <>
-          <label htmlFor={`${id}-example`}>
-            Example <span className="qs-muted">(optional)</span>
-          </label>
+          <label htmlFor={`${id}-example`}>Example</label>
           <textarea
             id={`${id}-example`}
             rows={2}

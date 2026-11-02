@@ -11,6 +11,7 @@ import {
   useCourseTechniques,
 } from '../../questions/courseTechniques';
 import { TechniqueForm } from '../../components/question-sets/TechniqueForm';
+import { AnimatedDisclosure } from '../../components/ui/AnimatedDisclosure';
 import { Button } from '../../components/ui/Button';
 import { useToast } from '../../components/ui/Toast';
 
@@ -44,17 +45,7 @@ export function CourseTechniquesSection({ course }: { course: CourseRecord }) {
     );
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm text-ink-soft">
-        Tag marking points with these techniques in the question set editor, or press Classify there
-        to let Jev tag them. Practice on a technique is scheduled from the marks its tagged points
-        earn. Archiving keeps past practice but removes the technique from tagging, Jev and Study.
-      </p>
-      {!editable && (
-        <p className="text-sm text-ink-faint">
-          This course is locked, so its techniques are fixed.
-        </p>
-      )}
-      {active.length ? (
+      {active.length > 0 && (
         <ul className="flex flex-col divide-y divide-line">
           {active.map((technique) => (
             <li key={technique.id} className="py-3">
@@ -80,11 +71,6 @@ export function CourseTechniquesSection({ course }: { course: CourseRecord }) {
                     {technique.description && (
                       <p className="mt-0.5 text-sm text-ink-soft">{technique.description}</p>
                     )}
-                    {!technique.description && editable && (
-                      <p className="mt-0.5 text-sm text-ink-faint">
-                        No description. Adding one helps Jev classify it.
-                      </p>
-                    )}
                   </div>
                   {editable && (
                     <div className="flex shrink-0 gap-1">
@@ -100,6 +86,7 @@ export function CourseTechniquesSection({ course }: { course: CourseRecord }) {
                         variant="ghost"
                         size="sm"
                         aria-label={`Archive ${technique.name}`}
+                        title="Hidden from tagging, Jev and Study; past practice is kept"
                         onClick={() =>
                           attempt(setCourseTechniqueArchived(course.id, technique.id, true))
                         }
@@ -113,8 +100,6 @@ export function CourseTechniquesSection({ course }: { course: CourseRecord }) {
             </li>
           ))}
         </ul>
-      ) : (
-        <p className="text-sm text-ink-faint">This course has no techniques yet.</p>
       )}
       {editable &&
         (editing === 'new' ? (
@@ -135,7 +120,7 @@ export function CourseTechniquesSection({ course }: { course: CourseRecord }) {
         ))}
       {editable && unusedBuiltIns.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-ink">Built-in science techniques</h3>
+          <h3 className="mb-2 text-sm font-semibold text-ink">Built-in</h3>
           <div className="qs-technique-chips">
             {unusedBuiltIns.map((builtIn) => (
               <button
@@ -163,7 +148,7 @@ export function CourseTechniquesSection({ course }: { course: CourseRecord }) {
           >
             Archived ({archived.length})
           </button>
-          {showArchived && (
+          <AnimatedDisclosure open={showArchived}>
             <ul className="mt-2 flex flex-col gap-1">
               {archived.map((technique) => (
                 <li key={technique.id} className="flex items-center gap-3 text-sm">
@@ -183,7 +168,7 @@ export function CourseTechniquesSection({ course }: { course: CourseRecord }) {
                 </li>
               ))}
             </ul>
-          )}
+          </AnimatedDisclosure>
         </div>
       )}
     </div>
