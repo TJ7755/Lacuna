@@ -49,7 +49,7 @@ export function BuiltInPicker({
 
 /**
  * One marking point: its criterion, a chip per technique and a single line of controls.
- * Amber, dashed chips are Jev's unsure suggestions; colour and the accessible name carry the
+ * Outlined chips are Jev's unsure suggestions; the outline and the accessible name carry the
  * meaning, so no explanatory text is needed. Chips glide to their new places rather than jump
  * when a dismiss control comes or goes.
  */
