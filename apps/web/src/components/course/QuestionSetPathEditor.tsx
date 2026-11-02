@@ -10,6 +10,7 @@ import {
 import { QuestionSetPicker } from '../question-sets/QuestionSetPicker';
 import { listQuestionSets } from '../../questions/questionSetRepository';
 import { PathEditorSurface } from './PathEditorSurface';
+import { PathEditorPopover } from './PathEditorPopover';
 import '../question-sets/question-sets.css';
 
 export function QuestionSetPathEditor({
@@ -38,16 +39,18 @@ export function QuestionSetPathEditor({
   const singleSetId = node?.questionSetIds.length === 1 ? node.questionSetIds[0] : '';
   const multiple = !!node && node.questionSetIds.length !== 1;
   const [setId, setSetId] = useState(singleSetId);
+  const [lessonId, setLessonId] = useState(node?.afterLessonId ?? afterLessonId);
   const expectedUpdatedAt = useRef(node?.updatedAt).current;
   const [pickerOpen, setPickerOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState('');
   const sentence = useRef<HTMLParagraphElement>(null);
   const title = data?.sets.find((set) => set.id === setId)?.title;
+  const anchor = lessonId ?? data?.lessons.at(-1)?.id;
+  const linkedLesson = data?.lessons.find((lesson) => lesson.id === anchor);
   async function save() {
     if (multiple) return true;
     if (!node && !setId && data?.sets.length === 0) return true;
-    const anchor = node?.afterLessonId ?? afterLessonId ?? data?.lessons.at(-1)?.id;
     if (!setId || !anchor) {
       setError(!setId ? 'Choose a question set.' : 'Add a lesson before this activity.');
       sentence.current?.querySelector<HTMLElement>('input, button')?.focus();
@@ -97,6 +100,29 @@ export function QuestionSetPathEditor({
         </button>
         .
       </p>
+      <PathEditorPopover
+        quiet
+        label={linkedLesson ? `Link lesson: ${linkedLesson.name}` : 'Link lesson'}
+        disabled={multiple || !data?.lessons.length}
+      >
+        {(close) =>
+          data?.lessons.map((lesson) => (
+            <button
+              key={lesson.id}
+              type="button"
+              className="path-editor-option"
+              aria-pressed={lesson.id === anchor}
+              onClick={() => {
+                setLessonId(lesson.id);
+                setError('');
+                close();
+              }}
+            >
+              {lesson.name}
+            </button>
+          ))
+        }
+      </PathEditorPopover>
       {multiple && (
         <p className="mt-3 text-sm text-ink-faint">
           This activity contains {node.questionSetIds.length} question sets. Editing this selection

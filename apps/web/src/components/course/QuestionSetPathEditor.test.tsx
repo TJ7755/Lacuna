@@ -41,7 +41,7 @@ vi.mock('../../db/practiceNodeRepository', () => ({
 async function fixture() {
   const course = await createCourse('Biology');
   const firstLesson = await createLesson(course.id, 'Cells');
-  await createLesson(course.id, 'Tissues');
+  const secondLesson = await createLesson(course.id, 'Tissues');
   const content: QuestionSet = {
     id: 'set-1',
     courseId: course.id,
@@ -71,7 +71,7 @@ async function fixture() {
     ],
   };
   const set = await createQuestionSet(content, 100);
-  return { course, firstLesson, set };
+  return { course, firstLesson, secondLesson, set };
 }
 
 function activity(
@@ -233,6 +233,65 @@ describe('QuestionSetPathEditor', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
     expect(updateQuestionSetPracticeNode).not.toHaveBeenCalled();
     expect(deleteQuestionSetPracticeNode).not.toHaveBeenCalled();
+  });
+
+  it('shows the default lesson and saves a different lesson selected in the form', async () => {
+    const { course, firstLesson, secondLesson, set } = await fixture();
+    render(
+      <QuestionSetPathEditor
+        courseId={course.id}
+        afterLessonId={firstLesson.id}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Link lesson: Cells' }));
+    const picker = screen.getByRole('dialog', { name: 'Link lesson: Cells' });
+    expect(within(picker).getByRole('button', { name: 'Cells' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(within(picker).getByRole('button', { name: 'Tissues' }));
+    expect(screen.getByRole('button', { name: 'Link lesson: Tissues' })).toHaveFocus();
+    expect(createQuestionSetPracticeNode).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
+    fireEvent.click(await screen.findByRole('radio', { name: /Cell structure/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use question set' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() =>
+      expect(createQuestionSetPracticeNode).toHaveBeenCalledWith(
+        course.id,
+        set.id,
+        secondLesson.id,
+      ),
+    );
+  });
+
+  it('shows the last lesson when no insertion lesson is supplied', async () => {
+    const { course } = await fixture();
+    render(<QuestionSetPathEditor courseId={course.id} onClose={vi.fn()} />);
+    expect(await screen.findByRole('button', { name: 'Link lesson: Tissues' })).toBeEnabled();
+  });
+
+  it.each(['Done', 'Cancel'])('only saves an edited lesson link on Done (%s)', async (action) => {
+    const { course, firstLesson, secondLesson, set } = await fixture();
+    const node = activity(course.id, set.id, firstLesson.id);
+    render(<QuestionSetPathEditor courseId={course.id} node={node} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Link lesson: Cells' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tissues' }));
+    expect(updateQuestionSetPracticeNode).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: action }));
+    if (action === 'Done') {
+      await waitFor(() =>
+        expect(updateQuestionSetPracticeNode).toHaveBeenCalledWith(
+          node.id,
+          secondLesson.id,
+          set.id,
+          node.updatedAt,
+        ),
+      );
+    } else {
+      expect(updateQuestionSetPracticeNode).not.toHaveBeenCalled();
+    }
   });
 
   it('submits on Ctrl+Enter from a choice once the form is complete', async () => {
