@@ -31,7 +31,7 @@ export function shipsChanges(paths) {
 }
 
 /**
- * Prepares the weekly patch release on master: returns the new version, or null when the
+ * Prepares the daily patch release on master: returns the new version, or null when the
  * previous release is still in flight or nothing shipped has changed since it.
  */
 export async function main({
@@ -51,7 +51,7 @@ export async function main({
     .split('\n')
     .filter(Boolean);
   if (!shipsChanges(changed)) {
-    log(`Nothing shipped since ${tag}; no release this week.`);
+    log(`Nothing shipped since ${tag}; no release today.`);
     return null;
   }
   const next = nextPatch(version);
