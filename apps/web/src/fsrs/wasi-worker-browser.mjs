@@ -1,8 +1,14 @@
-// Vendored from @open-spaced-repetition/binding-wasm32-wasi@0.5.0
-// because the upstream package incorrectly declares `cpu: wasm32` and
-// fails to install on x64 VMs. Keep this in sync when updating the binding.
+// Vendored from @open-spaced-repetition/binding-wasm32-wasi@0.6.0 so production
+// builds can silence WASM stdout. Keep this and
+// ../assets/fsrs-binding.wasm32-wasi.wasm in sync when updating the binding.
 
-import { instantiateNapiModuleSync, MessageHandler, WASI } from '@napi-rs/wasm-runtime';
+import {
+  instantiateNapiModuleSync,
+  MessageHandler,
+  WASI,
+  emnapiAsyncWorkPlugin,
+  emnapiTSFNPlugin,
+} from '@napi-rs/wasm-runtime';
 
 const errorOutputs = [];
 
@@ -21,6 +27,11 @@ const handler = new MessageHandler({
     return instantiateNapiModuleSync(wasmModule, {
       childThread: true,
       wasi,
+      // The wasm links a "basic" emnapi archive (no C async-work /
+      // threadsafe-function implementations), so every thread that
+      // instantiates it must provide the JavaScript implementations
+      // through the emnapi plugins.
+      plugins: [emnapiAsyncWorkPlugin, emnapiTSFNPlugin],
       overwriteImports(importObject) {
         importObject.env = {
           ...importObject.env,
@@ -37,6 +48,27 @@ const handler = new MessageHandler({
   },
 });
 
+// When this wasm thread dies, raise the addon's crash flag before emnapi reports
+// it, so loader-thread waits on this thread trap instead of hanging. The loader
+// posts a view of the flag after instantiating the wasm or creating this worker.
+let addonCrashFlag;
+const beforeReportError = handler.beforeReportError;
+handler.beforeReportError = function (...args) {
+  if (addonCrashFlag !== undefined) {
+    try {
+      Atomics.store(addonCrashFlag, 0, 1);
+    } catch {
+      // The flag is best-effort; the original error is still reported below.
+    }
+  }
+  return beforeReportError.apply(this, args);
+};
+
 globalThis.onmessage = function (e) {
+  const data = e && e.data;
+  if (data && data.__napiRsAddonCrashFlag instanceof Int32Array) {
+    addonCrashFlag = data.__napiRsAddonCrashFlag;
+    return;
+  }
   handler.handle(e);
 };

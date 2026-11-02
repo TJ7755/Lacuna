@@ -48,7 +48,8 @@ it('builds only the library and its shared presentation, without learner startup
     const scriptBytes = await Promise.all(
       scripts.map(async (file) => gzipSync(await readFile(join(directory, file))).byteLength),
     );
-    expect(scriptBytes.reduce((total, bytes) => total + bytes, 0)).toBeLessThan(125_000);
+    // motion 14.9 added about 3 KB gzipped over 14.1.
+    expect(scriptBytes.reduce((total, bytes) => total + bytes, 0)).toBeLessThan(130_000);
     for (const name of ['InstrumentSans', 'SpaceGrotesk', 'JetBrainsMono']) {
       expect(files).toContain(`fonts/${name}-Variable.ttf`);
       expect(files).toContain(`fonts/${name}-OFL.txt`);
