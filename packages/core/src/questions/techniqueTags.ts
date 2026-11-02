@@ -58,8 +58,6 @@ export const SCIENCE_TECHNIQUES = [
 /** Built-in identities shared by every course, so their schedules survive re-enabling. */
 export const builtInTechniqueIdSchema = z.enum(SCIENCE_TECHNIQUES.map((skill) => skill.id));
 export type BuiltInTechniqueId = z.infer<typeof builtInTechniqueIdSchema>;
-/** @deprecated Legacy taxonomy identities; course catalogues use {@link TechniqueId}. */
-export const techniqueIdSchema = builtInTechniqueIdSchema;
 
 export function isBuiltInTechniqueId(id: string): id is BuiltInTechniqueId {
   return builtInTechniqueIdSchema.safeParse(id).success;
