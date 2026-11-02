@@ -280,3 +280,39 @@ it.each(['http', 'network', 'json', 'schema'] as const)(
     }
   },
 );
+it('classifies techniques through the same admission and rejects malformed catalogues', async () => {
+  configured();
+  const fetcher = vi.fn(async (url, init) =>
+    url === 'https://redis.example'
+      ? Response.json({ result: JSON.parse(init.body)[2] === 9 ? [1, 0] : 1 })
+      : providerResponse(init),
+  );
+  vi.stubGlobal('fetch', fetcher);
+  const body = {
+    purpose: 'technique-classification',
+    techniques: [{ id: 'causal-link', name: 'Link cause and effect' }],
+    points: [
+      { prompt: 'Explain.', criterion: 'Friction opposes motion', explanation: '', maxMarks: 1 },
+    ],
+  };
+  const response = await route.fetch(request(body));
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({
+    model: 'jev-1.14.0',
+    inputTokens: 123,
+    points: [{ techniqueIds: ['causal-link'], suggestedIds: [] }],
+  });
+  const providerCalls = () =>
+    fetcher.mock.calls.filter(([url]) => url !== 'https://redis.example').length;
+  expect(providerCalls()).toBe(1);
+  for (const invalid of [
+    { ...body, techniques: [{ id: 'invented', name: 'Invented' }] },
+    { ...body, techniques: [] },
+    { ...body, points: [] },
+    { ...body, model: 'other' },
+  ]) {
+    const rejected = await route.fetch(request(invalid));
+    expect(rejected.status).toBe(400);
+  }
+  expect(providerCalls()).toBe(1);
+});

@@ -9,6 +9,7 @@ import {
   validSpecificationCoverageSelector,
 } from '../specifications/linkSchemas';
 import { assertCourseSpecificationSelection } from '../specifications/data';
+import { courseTechniquesSchema } from '@lacuna/core/questions/techniqueTags';
 
 // ---------------------------------------------------------------------------
 // Zod runtime schema for share payloads
@@ -180,6 +181,7 @@ const ShareCourseSchema = z
     d: z.string().optional(), // description
     specificationRef: specificationRefSchema.optional(),
     specificationData: specificationDataSchema.optional(),
+    techniques: courseTechniquesSchema.optional(),
     examBoard: z.string().optional(),
     specification: z.string().optional(),
     o: z.union([z.literal(0), z.literal(1)]), // objective: 0 expectedMarks, 1 securedTopics

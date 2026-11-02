@@ -583,3 +583,58 @@ it.each([1, 8, 9])('asks coverage only for two to eight parts: %s', async (count
     count === 8 ? 10 : 2,
   );
 });
+
+it('classifies every point against every technique and applies the two thresholds', async () => {
+  const { callJevTechniqueClassification } = await import('./provider');
+  const scores: Record<string, number> = {
+    point_0_technique_0: 0.93,
+    point_0_technique_1: 0.55,
+    point_1_technique_0: 0.39,
+    point_1_technique_1: 0.8,
+  };
+  const fetcher = vi.fn().mockResolvedValue(
+    Response.json({
+      model: 'jev-1.14.0',
+      answers: Object.fromEntries(
+        Object.entries(scores).map(([key, noul]) => [key, { type: 'noul', noul }]),
+      ),
+      usage: { input_tokens: 210, output_tokens: 8 },
+    }),
+  );
+  const point = (criterion: string) => ({
+    prompt: 'A trolley travels 12 m in 4.8 s. Calculate its speed.',
+    criterion,
+    explanation: '',
+    maxMarks: 1,
+  });
+  const result = await callJevTechniqueClassification(
+    {
+      purpose: 'technique-classification',
+      techniques: [
+        { id: 'calculation-setup', name: 'Set up a calculation' },
+        { id: 'custom-abcdefgh1', name: 'Quote the data', description: 'Cite a table value.' },
+      ],
+      points: [point('Use speed = distance / time'), point('2.5 m/s')],
+    },
+    'key',
+    new AbortController().signal,
+    fetcher,
+  );
+  expect(result).toEqual({
+    model: 'jev-1.14.0',
+    inputTokens: 210,
+    points: [
+      { techniqueIds: ['calculation-setup'], suggestedIds: ['custom-abcdefgh1'] },
+      { techniqueIds: ['custom-abcdefgh1'], suggestedIds: [] },
+    ],
+  });
+  const wire = JSON.parse(fetcher.mock.calls[0][1].body);
+  expect(Object.keys(wire.questions)).toEqual(Object.keys(scores));
+  expect(wire.questions.point_1_technique_0.instructions.context).toBe('points[1]; techniques[0]');
+  // Identities stay on the server; the model sees only the content it judges.
+  expect(wire.state.techniques).toEqual([
+    { name: 'Set up a calculation' },
+    { name: 'Quote the data', description: 'Cite a table value.' },
+  ]);
+  expect(wire.state.points).toHaveLength(2);
+});

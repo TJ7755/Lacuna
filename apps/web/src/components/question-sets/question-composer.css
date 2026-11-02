@@ -28,7 +28,7 @@
 .qs-composer-captions,
 .qs-composer-row {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1fr) 64px 44px;
+  grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1fr) 64px minmax(96px, 136px) 44px;
   column-gap: 12px;
   padding: 8px 16px;
 }
@@ -43,6 +43,9 @@
 }
 .qs-composer-captions span:nth-child(4) {
   text-align: center;
+}
+.qs-composer-captions span:nth-child(5) {
+  padding-left: 6px;
 }
 .qs-composer-row {
   position: relative;
@@ -123,7 +126,7 @@
   grid-column: 2 / 4;
 }
 .qs-composer-menu {
-  grid-column: 5;
+  grid-column: 6;
   grid-row: 1;
   opacity: 0;
 }
@@ -133,7 +136,7 @@
   opacity: 1;
 }
 .qs-composer-inline {
-  grid-column: 2 / 5;
+  grid-column: 2 / 6;
 }
 .qs-composer-warning {
   padding: 2px 10px 6px;
@@ -167,6 +170,117 @@
 }
 .qs-composer-adders button:hover {
   background: hsl(var(--ink) / 0.05);
+}
+.qs-composer-techniques {
+  grid-column: 5;
+  grid-row: 1;
+}
+/* One quiet line per question; the card holds the detail. */
+.qs-technique-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: hsl(var(--ink-soft));
+  text-align: left;
+  white-space: nowrap;
+}
+.qs-technique-trigger:hover,
+.qs-technique-trigger[data-open] {
+  background: hsl(var(--ink) / 0.06);
+  color: hsl(var(--ink));
+}
+.qs-technique-trigger:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px hsl(var(--accent-ink));
+}
+.qs-technique-names {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qs-technique-names .is-unsure,
+.qs-technique-more.is-unsure {
+  color: hsl(var(--ink-faint));
+}
+.qs-technique-marker[data-kind='unsure'] {
+  color: hsl(var(--ink));
+}
+.qs-technique-marker[data-kind='warning'] {
+  color: hsl(var(--warning-fg));
+}
+/* Reserved whether or not a marker shows, so the names never move. */
+.qs-technique-marker {
+  flex-shrink: 0;
+  width: 1ch;
+  margin-left: auto;
+  font-weight: 700;
+  text-align: center;
+}
+.qs-technique-sep {
+  color: hsl(var(--ink-faint));
+}
+.qs-technique-empty {
+  color: hsl(var(--ink-faint));
+  opacity: 0.8;
+}
+.qs-technique-more {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--ink-faint));
+}
+.qs-classify-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 12px 16px 6px 84px;
+  padding-top: 16px;
+  border-top: 1px solid hsl(var(--line) / 0.6);
+}
+/* Both labels share one cell, so the button keeps the wider label's width. */
+.qs-classify-label {
+  display: inline-grid;
+}
+.qs-classify-label > span {
+  grid-area: 1 / 1;
+  visibility: hidden;
+}
+.qs-classify-label > span[data-shown] {
+  visibility: visible;
+}
+.qs-classify-status {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: hsl(var(--ink-soft));
+  white-space: nowrap;
+}
+.qs-classify-status a,
+.qs-classify-status button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  color: hsl(var(--ink));
+  transition: background-color 150ms;
+}
+.qs-classify-status a:hover,
+.qs-classify-status button:hover {
+  background: hsl(var(--ink) / 0.06);
+}
+.qs-classify-status .is-warning,
+.qs-classify-status .is-warning button {
+  color: hsl(var(--warning-fg));
+}
+.qs-classify-status .is-warning button:hover {
+  background: hsl(var(--warning) / 0.12);
 }
 @media (max-width: 1000px) {
   .qs-composer-header {
@@ -206,6 +320,15 @@
     grid-column: 3;
     grid-row: 2;
   }
+  .qs-composer-row .qs-composer-techniques {
+    grid-column: 2 / 4;
+    grid-row: 3;
+  }
+  .qs-composer-row .qs-technique-trigger {
+    min-height: 32px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
   .qs-composer-row .qs-composer-menu {
     grid-column: 4;
     grid-row: 1;
@@ -228,5 +351,11 @@
   }
   .qs-composer-adders {
     padding-left: 50px;
+  }
+  .qs-classify-bar {
+    margin-left: 50px;
+  }
+  .qs-classify-status {
+    white-space: normal;
   }
 }

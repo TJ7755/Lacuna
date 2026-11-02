@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import { jevDiagnosticRequestSchema, jevDiagnosisSchema } from '@lacuna/core/jev/diagnosis';
+import {
+  COURSE_TECHNIQUE_LIMIT,
+  courseTechniqueIdSchema,
+  TECHNIQUE_NAME_MAX,
+  TECHNIQUE_TEXT_MAX,
+} from '@lacuna/core/questions/techniqueTags';
 
 export const JEV_MODEL = 'jev-1.14.0';
 export const JEV_TYPED_CORRECT_THRESHOLD = 0.75;
@@ -46,7 +52,9 @@ export const jevTypedFeedbackSchema = z.strictObject({
     )
     .max(JEV_TYPED_MAX_PARTS),
 });
-const text = z.string().max(12_000);
+/** The longest free text one request field may carry. */
+export const JEV_TEXT_MAX = 12_000;
+const text = z.string().max(JEV_TEXT_MAX);
 // Only these purposes are executable; future purposes require a new validated branch.
 export const jevDecisionRequestSchema = z.discriminatedUnion('purpose', [
   z.strictObject({
@@ -89,9 +97,67 @@ export const jevAllocationBatchRequestSchema = z.strictObject({
   allocations: z.array(jevAllocationInputSchema).min(1).max(JEV_BATCH_MAX_ALLOCATIONS),
 });
 export type JevAllocationBatchRequest = z.infer<typeof jevAllocationBatchRequestSchema>;
+
+/**
+ * Technique classification asks, for every marking point and catalogue technique, whether
+ * earning the point requires the technique. At or above the active threshold the tag counts at
+ * once; between the thresholds it is suggested for the author to confirm; below, it is omitted.
+ */
+export const JEV_CLASSIFY_PROMPT_VERSION = 1;
+export const JEV_CLASSIFY_ACTIVE_THRESHOLD = 0.8;
+export const JEV_CLASSIFY_SUGGEST_THRESHOLD = 0.4;
+/** Points × techniques per request, so one request stays one bounded provider call. */
+export const JEV_CLASSIFY_MAX_QUESTIONS = 192;
+export const JEV_CLASSIFY_MAX_POINTS = 64;
+export const jevClassifyTechniqueSchema = z.strictObject({
+  id: courseTechniqueIdSchema,
+  name: z.string().trim().min(1).max(TECHNIQUE_NAME_MAX),
+  description: z.string().trim().min(1).max(TECHNIQUE_TEXT_MAX).optional(),
+  example: z.string().trim().min(1).max(TECHNIQUE_TEXT_MAX).optional(),
+});
+export const jevClassifyPointSchema = z.strictObject({
+  prompt: text.min(1),
+  criterion: text.min(1),
+  explanation: text,
+  maxMarks: z.number().int().positive().max(10_000),
+});
+export type JevClassifyPoint = z.infer<typeof jevClassifyPointSchema>;
+export const jevTechniqueClassificationRequestSchema = z
+  .strictObject({
+    purpose: z.literal('technique-classification'),
+    techniques: z.array(jevClassifyTechniqueSchema).min(1).max(COURSE_TECHNIQUE_LIMIT),
+    points: z.array(jevClassifyPointSchema).min(1).max(JEV_CLASSIFY_MAX_POINTS),
+  })
+  .refine(
+    (request) =>
+      new Set(request.techniques.map((technique) => technique.id)).size ===
+        request.techniques.length &&
+      request.techniques.length * request.points.length <= JEV_CLASSIFY_MAX_QUESTIONS,
+    'Duplicate techniques or too many classification questions.',
+  );
+export type JevTechniqueClassificationRequest = z.infer<
+  typeof jevTechniqueClassificationRequestSchema
+>;
+export const jevTechniqueClassificationResultSchema = z.strictObject({
+  model: z.literal(JEV_MODEL),
+  inputTokens: z.number().int().nonnegative(),
+  points: z
+    .array(
+      z.strictObject({
+        techniqueIds: z.array(courseTechniqueIdSchema).max(COURSE_TECHNIQUE_LIMIT),
+        suggestedIds: z.array(courseTechniqueIdSchema).max(COURSE_TECHNIQUE_LIMIT),
+      }),
+    )
+    .max(JEV_CLASSIFY_MAX_POINTS),
+});
+export type JevTechniqueClassificationResult = z.infer<
+  typeof jevTechniqueClassificationResultSchema
+>;
+
 export const jevMarkRequestSchema = z.union([
   jevDecisionRequestSchema,
   jevAllocationBatchRequestSchema,
+  jevTechniqueClassificationRequestSchema,
 ]);
 export const jevAllocationBatchResultSchema = z.strictObject({
   model: z.literal(JEV_MODEL),

@@ -112,10 +112,11 @@ export function planNextStudyStep(
   const questionStep: StudyFlowStep | undefined = question
     ? {
         kind: 'exam-questions',
-        nodeKey: question.techniqueId
-          ? `questions-technique-${question.techniqueId}`
-          : `questions-${question.conceptId}`,
-        ...(question.techniqueId
+        nodeKey:
+          question.techniqueId !== undefined
+            ? `questions-technique-${question.techniqueId}`
+            : `questions-${question.conceptId}`,
+        ...(question.techniqueId !== undefined
           ? { techniqueId: question.techniqueId }
           : { conceptId: question.conceptId }),
         scopeLessonIds: snapshot.questionScopeLessonIds,

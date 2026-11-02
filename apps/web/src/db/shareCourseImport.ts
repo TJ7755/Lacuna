@@ -171,6 +171,9 @@ async function importCourseSharePayload(
         ...(payload.course.specificationData === undefined
           ? {}
           : { specificationData: payload.course.specificationData }),
+        ...(payload.course.techniques === undefined
+          ? {}
+          : { techniques: payload.course.techniques }),
         ...(payload.course.examBoard === undefined ? {} : { examBoard: payload.course.examBoard }),
         ...(payload.course.specification === undefined
           ? {}

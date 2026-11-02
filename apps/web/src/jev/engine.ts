@@ -12,6 +12,10 @@ import {
   jevDecisionResultSchema,
   jevAllocationBatchResultSchema,
   jevAllocationBatchRequestSchema,
+  jevTechniqueClassificationRequestSchema,
+  jevTechniqueClassificationResultSchema,
+  type JevTechniqueClassificationRequest,
+  type JevTechniqueClassificationResult,
   type JevAllocationInput,
   type JevDecisionRequest,
   type JevDecisionResult,
@@ -368,6 +372,31 @@ export function createJevEngine(
       return hits.map((hit, index) => checked(requests[index], hit!));
     });
   }
+  /** One bounded classification request. Results name only techniques that were asked about. */
+  async function classifyTechniques(
+    request: JevTechniqueClassificationRequest,
+    externalSignal?: AbortSignal,
+  ): Promise<JevTechniqueClassificationResult | null> {
+    // An invalid request is the caller's input problem, not a Jev failure, so it never counts
+    // towards pausing Jev.
+    const valid = jevTechniqueClassificationRequestSchema.safeParse(request);
+    if (!valid.success) return null;
+    const parsed = valid.data;
+    return guarded(externalSignal, 30_000, async (signal) => {
+      const result = jevTechniqueClassificationResultSchema.parse(await post(parsed, signal));
+      const asked = new Set(parsed.techniques.map((technique) => technique.id));
+      if (
+        result.points.length !== parsed.points.length ||
+        result.points.some((point) =>
+          [...point.techniqueIds, ...point.suggestedIds].some((id) => !asked.has(id)),
+        )
+      )
+        throw new Pause('error');
+      lastUsedAt = Date.now();
+      publish();
+      return result;
+    });
+  }
   async function markTyped(request: JevTypedAnswerRequest): Promise<JevTypedVerdict> {
     const result = await decide(
       {
@@ -451,6 +480,7 @@ export function createJevEngine(
     ...controller,
     decide,
     decideAllocations,
+    classifyTechniques,
     markTyped,
     eligible,
     cancellationSignal: () => generation.signal,

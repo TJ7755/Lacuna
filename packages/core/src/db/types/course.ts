@@ -2,6 +2,7 @@ import type { Specification } from '@lacuna/core/specifications/catalogue';
 import type { SpecificationReference } from '@lacuna/core/specifications/links';
 import type { CardFilter } from '@lacuna/core/db/search';
 import type { ExamObjective, FsrsParameters } from '@lacuna/core/db/types/scheduling';
+import type { CourseTechnique } from '@lacuna/core/questions/techniqueTags';
 
 // ---------------------------------------------------------------------------
 // Course architecture (Course -> Lesson -> Note + Card).
@@ -37,6 +38,11 @@ export interface CourseRecord {
   specificationRef?: SpecificationReference;
   /** Specification metadata and source supplied with this Course. */
   specificationData?: Specification;
+  /**
+   * Exam techniques this course practises. Absent means empty; built-in techniques already
+   * referenced by question tags still join the effective catalogue.
+   */
+  techniques?: CourseTechnique[];
   createdAt: number;
   /** Last mutation time. Required after schema v23; backfilled from createdAt. */
   updatedAt: number;
@@ -136,6 +142,7 @@ export interface CourseDistributedCopy {
     specificationRef?: SpecificationReference;
     /** Specification metadata and source supplied with this Course. */
     specificationData?: Specification;
+    techniques?: CourseTechnique[];
   };
 }
 

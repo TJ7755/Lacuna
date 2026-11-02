@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState, type RefObject } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
 export interface PopoverPosition {
   top: number;
@@ -15,11 +15,15 @@ export function useAnchoredPopoverPosition(
   open: boolean,
   triggerRef: RefObject<HTMLElement | null>,
   popoverRef: RefObject<HTMLElement | null>,
+  /** Keep the first placement while open, so content that grows never flips the side. */
+  { keepPlacement = false }: { keepPlacement?: boolean } = {},
 ) {
   const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
   const [position, setPosition] = useState<PopoverPosition | null>(null);
+  const kept = useRef<'bottom' | 'top' | null>(null);
 
   useLayoutEffect(() => {
+    kept.current = null;
     if (!open || !triggerRef.current) return;
     const compute = () => {
       const trigger = triggerRef.current;
@@ -31,7 +35,10 @@ export function useAnchoredPopoverPosition(
       const spaceBelow = window.innerHeight - triggerRect.bottom - VIEWPORT_PADDING;
       const spaceAbove = triggerRect.top - VIEWPORT_PADDING;
       const nextPlacement =
-        spaceBelow >= popoverHeight || spaceBelow >= spaceAbove ? 'bottom' : 'top';
+        kept.current ??
+        (spaceBelow >= popoverHeight || spaceBelow >= spaceAbove ? 'bottom' : 'top');
+      // The first pass may use the default size; keep the side chosen once the popover is measured.
+      if (keepPlacement && popoverRect?.height) kept.current = nextPlacement;
       const unclampedTop =
         nextPlacement === 'bottom'
           ? triggerRect.bottom + POPOVER_GAP
@@ -69,7 +76,7 @@ export function useAnchoredPopoverPosition(
       window.removeEventListener('scroll', compute, true);
       resizeObserver?.disconnect();
     };
-  }, [open, popoverRef, triggerRef]);
+  }, [open, popoverRef, triggerRef, keepPlacement]);
 
   const resetPosition = useCallback(() => setPosition(null), []);
   return { placement, position, resetPosition };

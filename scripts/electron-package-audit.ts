@@ -26,9 +26,10 @@ const WINDOWS_PACKAGE_BUDGET = {
   archiveBytes: 17_000_000,
   payloadBytes: 17_000_000,
   // Includes the optional maths and highlighting renderer chunks, and the forecast maths
-  // chunk that keeps the chart's recovery entry independent of the first attempt.
-  // Archive and payload byte limits still apply.
-  payloadFileCount: 717,
+  // chunk that keeps the chart's recovery entry independent of the first attempt, and the
+  // exam-technique catalogue, form and authoring chunks shared by the question-set editor
+  // and course settings. Archive and payload byte limits still apply.
+  payloadFileCount: 721,
   sourceMapBytes: 0,
   buildOnlyAssetBytes: 10_000,
   localeBytes: 1_300_000,

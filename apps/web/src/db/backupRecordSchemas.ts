@@ -11,6 +11,7 @@ import {
   validSpecificationCoverageSelector,
 } from '../specifications/linkSchemas';
 import { assertCourseSpecificationSelection } from '../specifications/data';
+import { courseTechniquesSchema } from '@lacuna/core/questions/techniqueTags';
 
 export const text = z.string();
 export const id = text.min(1);
@@ -178,6 +179,7 @@ const course = object({
   specification: text.optional(),
   specificationRef: specificationRefSchema.optional(),
   specificationData: specificationDataSchema.optional(),
+  techniques: courseTechniquesSchema.optional(),
   colour: text.optional(),
   examDatePromptDismissed: flag.optional(),
   learnFirst: flag.optional(),
@@ -212,6 +214,7 @@ const course = object({
       specification: text.optional(),
       specificationRef: specificationRefSchema.optional(),
       specificationData: specificationDataSchema.optional(),
+      techniques: courseTechniquesSchema.optional(),
     }).optional(),
   }).optional(),
 }).superRefine((course, context) => {

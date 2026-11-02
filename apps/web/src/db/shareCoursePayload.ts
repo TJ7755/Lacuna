@@ -266,6 +266,7 @@ export async function buildCourseSharePayload(
     ...(course.specificationData === undefined
       ? {}
       : { specificationData: course.specificationData }),
+    ...(course.techniques?.length ? { techniques: course.techniques } : {}),
     ...(course.examBoard === undefined ? {} : { examBoard: course.examBoard }),
     ...(course.specification === undefined ? {} : { specification: course.specification }),
     o: course.examObjective === 'securedTopics' ? 1 : 0,
