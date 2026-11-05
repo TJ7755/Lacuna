@@ -137,6 +137,8 @@ function baselineSchedule(
 /**
  * Rebuild the current epoch after undo or merge. Answer receipts remain immutable;
  * only active replay effects are applied, and opaque legacy evidence stays in its baseline.
+ * Replay the persisted scheduleEffect.grade, including historical binary grades, rather
+ * than regrading marks under the current policy and changing an established schedule.
  */
 export function replayQuestionSchedule(
   question: Pick<QuestionDefinition, 'scheduleEpoch'>,

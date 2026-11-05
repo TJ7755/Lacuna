@@ -34,7 +34,12 @@ export function questionTechniqueIds(question: QuestionSetQuestion): TechniqueId
   ];
 }
 
-/** Replay independent first answers; repeated presentations never manufacture stability. */
+/**
+ * Derive memory from immutable practice first markings, with one review per technique
+ * across a question's authored non-knowledge allocations. Corrections do not rewrite
+ * this evidence, and repeated presentations never manufacture stability.
+ * The recorded gradeMappingVersion retains historical binary grading on replay.
+ */
 export function deriveTechniqueSchedules(
   attempts: readonly QuestionSetAttemptRecord[],
 ): Map<TechniqueId, QuestionScheduleState> {
