@@ -94,6 +94,9 @@ for (const width of [390, 1440]) {
     });
     await page.keyboard.press('Control+Enter');
     await expect(page).toHaveURL(`${courseUrl}/cards`);
+    const search = page.getByRole('searchbox', { name: 'Search all cards', exact: true });
+    await search.focus();
+    await search.fill('Keyboard diagram');
     await expect(page.getByText('Keyboard diagram', { exact: true })).toBeVisible();
     const edit = page.getByRole('button', { name: 'Edit occlusion', exact: true });
     await edit.focus();
