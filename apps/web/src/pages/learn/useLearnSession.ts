@@ -42,10 +42,8 @@ import {
   type PracticeSession,
 } from './sessionCompletionPersistence';
 import {
-  transitionCompletion,
   transitionResponseTimer,
   transitionSession,
-  type CompletionEvent,
   type SessionEventInput,
   type SessionState,
 } from './sessionMachine';
@@ -54,6 +52,7 @@ import { emptySessionState, sessionCell, simpleSessionCell } from './sessionRunt
 import { resolveLearnSessionScope } from './sessionScope';
 import { clearSimpleSession, saveSimpleSession } from './simpleSessionPersistence';
 import type { LearnModeType, LessonNotesScreen, Phase, StudyUnit } from './types';
+import { useSessionCompletion } from './useSessionCompletion';
 
 export type { AnswerResult } from './answerSteps';
 
@@ -374,10 +373,6 @@ export function useLearnSession({
   const lastAnswer = useRef<AnswerSnapshot | null>(null);
   // Guards against a double key-press / click submitting the same card twice.
   const submitting = useRef(false);
-  const finalising = useRef(false);
-  const pendingCompletion = useRef<SessionSummary | null>(null);
-  const completionPromise = useRef<Promise<boolean> | null>(null);
-  const completionConfirmed = useRef(false);
   // Retained across a failed submission retry; cleared only when the player advances.
   const pendingReviewEventId = useRef<string | null>(null);
   // Per-unit counts from canonical events for the current local calendar day.
@@ -429,20 +424,6 @@ export function useLearnSession({
     timerStart.current = next.startedAt;
     responseTime.current = next.responseSeconds;
     pausedElapsed.current = next.pausedElapsed;
-  };
-  const applyCompletionEvent = (event: CompletionEvent) => {
-    const transition = transitionCompletion(
-      {
-        finalising: finalising.current,
-        confirmed: completionConfirmed.current,
-        pending: pendingCompletion.current,
-      },
-      event,
-    );
-    finalising.current = transition.state.finalising;
-    completionConfirmed.current = transition.state.confirmed;
-    pendingCompletion.current = transition.state.pending;
-    return transition.effects;
   };
   const exitTo = isLessonScoped
     ? resolvedCourseId
@@ -500,103 +481,77 @@ export function useLearnSession({
     [],
   );
 
-  /**
-   * Commit a provisional report exactly once. False keeps the report and Undo
-   * available after a failure; callers must await true before leaving/continuing.
-   */
-  const confirmCompletion = useCallback((): Promise<boolean> => {
-    if (completionPromise.current) return completionPromise.current;
-    if (submitting.current && lastAnswer.current?.retainOnCompletion) return Promise.resolve(false);
-    const nextSummary = pendingCompletion.current;
-    if (!nextSummary) return Promise.resolve(completionConfirmed.current);
-    const commit = async (): Promise<boolean> => {
-      try {
-        const { deliveredSummary, completedPlan } = await persistSessionCompletion(
-          nextSummary,
-          requestWindowId,
-          () => ({
-            revisionPlan: revisionPlanRef.current,
-            initialRevision: revisionInitialRevision.current,
-            sessionId: reviewSessionIdRef.current,
-            startedAt: revisionWindowStartedAt.current,
-            covered: revisionSessionRef.current.covered,
-            improved: revisionSessionRef.current.improved,
-            parked: revisionSessionRef.current.parked,
-            reviewEventIds: revisionSessionRef.current.reviewEventIds,
-            context: ctxRef.current,
-            cards: cardsRef.current,
-            practice: practiceSessionRef.current,
-            ratchetCourseId: ratchetCourseIdRef.current,
-            ratchetLessonId: ratchetLessonIdRef.current,
-          }),
-        );
-        revisionPlanRef.current = completedPlan;
-        if (isSimpleMode && deliveredSummary.reachedGoal) clearSimpleSession(simpleSessionScope);
-        applyCompletionEvent({ type: 'confirmed' });
-        lastAnswer.current = null;
-        if (mountedRef.current) {
-          setCanUndo(false);
-          setSummary(deliveredSummary);
-          setPhase('finished');
-          onStepFinished?.(deliveredSummary);
-        }
-        return true;
-      } catch (cause) {
-        applyCompletionEvent({
-          type: 'failed',
-          retainUndo: lastAnswer.current?.retainOnCompletion === true,
-        });
-        notify(
-          cause instanceof Error ? cause.message : 'Could not finish the study window.',
-          'negative',
-        );
-        return false;
-      } finally {
-        completionPromise.current = null;
-      }
-    };
-    completionPromise.current = commit();
-    return completionPromise.current;
-  }, [
-    cardsRef,
-    isSimpleMode,
-    notify,
-    onStepFinished,
-    requestWindowId,
-    revisionSessionRef,
-    simpleSessionScope,
-  ]);
-
-  /** Settle completion produced by an answer, or allow exit when none is due. */
-  const settleCompletion = useCallback(
-    () =>
-      pendingCompletion.current || completionPromise.current
-        ? confirmCompletion()
-        : Promise.resolve(true),
-    [confirmCompletion],
+  const readCompletionGuards = useCallback(
+    () => ({
+      mounted: mountedRef.current,
+      submitting: submitting.current,
+      retainUndo: lastAnswer.current?.retainOnCompletion === true,
+    }),
+    [],
   );
-
-  const finaliseSummary = useCallback(
-    (nextSummary: SessionSummary) => {
-      if (!mountedRef.current) return;
-      const effects = applyCompletionEvent({
-        type: 'propose',
-        summary: nextSummary,
-        retainUndo: lastAnswer.current?.retainOnCompletion === true,
-      });
-      if (nextSummary.reachedGoal && effects.length > 0) setSchedulerProgress(1);
-      for (const effect of effects) {
-        if (effect === 'show-summary') {
-          setSummary(nextSummary);
-          setPhase('finished');
-        } else if (effect === 'clear-undo') {
-          lastAnswer.current = null;
-          setCanUndo(false);
-        } else if (effect === 'persist-completion') void confirmCompletion();
-      }
+  const clearCompletionUndo = useCallback(() => {
+    lastAnswer.current = null;
+    if (mountedRef.current) setCanUndo(false);
+  }, []);
+  const presentCompletion = useCallback(
+    (nextSummary: SessionSummary, confirmed: boolean) => {
+      setSummary(nextSummary);
+      setPhase('finished');
+      if (confirmed) onStepFinished?.(nextSummary);
     },
-    [confirmCompletion],
+    [onStepFinished],
   );
+  const reportCompletionError = useCallback(
+    (cause: unknown) => {
+      notify(
+        cause instanceof Error ? cause.message : 'Could not finish the study window.',
+        'negative',
+      );
+    },
+    [notify],
+  );
+  const persistCompletion = useCallback(
+    async (nextSummary: SessionSummary): Promise<SessionSummary> => {
+      const { deliveredSummary, completedPlan } = await persistSessionCompletion(
+        nextSummary,
+        requestWindowId,
+        () => ({
+          revisionPlan: revisionPlanRef.current,
+          initialRevision: revisionInitialRevision.current,
+          sessionId: reviewSessionIdRef.current,
+          startedAt: revisionWindowStartedAt.current,
+          covered: revisionSessionRef.current.covered,
+          improved: revisionSessionRef.current.improved,
+          parked: revisionSessionRef.current.parked,
+          reviewEventIds: revisionSessionRef.current.reviewEventIds,
+          context: ctxRef.current,
+          cards: cardsRef.current,
+          practice: practiceSessionRef.current,
+          ratchetCourseId: ratchetCourseIdRef.current,
+          ratchetLessonId: ratchetLessonIdRef.current,
+        }),
+      );
+      revisionPlanRef.current = completedPlan;
+      if (isSimpleMode && deliveredSummary.reachedGoal) clearSimpleSession(simpleSessionScope);
+      return deliveredSummary;
+    },
+    [cardsRef, isSimpleMode, requestWindowId, revisionSessionRef, simpleSessionScope],
+  );
+  const completion = useSessionCompletion({
+    read: readCompletionGuards,
+    persist: persistCompletion,
+    present: presentCompletion,
+    clearUndo: clearCompletionUndo,
+    reportError: reportCompletionError,
+    setProgress: setSchedulerProgress,
+  });
+  const {
+    confirm: confirmCompletion,
+    settle: settleCompletion,
+    propose: finaliseSummary,
+    beginPass: beginCompletionPass,
+    reset: resetCompletion,
+  } = completion;
 
   const finish = useCallback(
     (
@@ -663,10 +618,7 @@ export function useLearnSession({
   const serveNext = useCallback(() => {
     if (!mountedRef.current) return;
     // Keep studying starts a new pass after the previous report was committed.
-    if (completionConfirmed.current) {
-      finalising.current = false;
-      completionConfirmed.current = false;
-    }
+    beginCompletionPass();
     presentedAnswerInput.current = undefined;
 
     const effects = applySessionEventRef.current({
@@ -709,7 +661,15 @@ export function useLearnSession({
           break;
       }
     }
-  }, [finish, distraction, isSimpleMode, persistSimpleResume, requestWindowId, requestReviewLimit]);
+  }, [
+    beginCompletionPass,
+    finish,
+    distraction,
+    isSimpleMode,
+    persistSimpleResume,
+    requestWindowId,
+    requestReviewLimit,
+  ]);
 
   const continueStudying = useCallback(() => {
     if (summary?.simpleMode) {
@@ -810,9 +770,7 @@ export function useLearnSession({
     events.current = [];
     lastAnswer.current = null;
     submitting.current = false;
-    finalising.current = false;
-    pendingCompletion.current = null;
-    completionConfirmed.current = false;
+    resetCompletion();
     progressBefore.current = 0;
     progressCacheRef.current = { dirty: true, value: 0 };
     perfRef.current = new Map();
@@ -1075,13 +1033,11 @@ export function useLearnSession({
     progressCacheRef,
     practiceSessionRef,
     sessionStartMs,
-    pendingCompletion,
+    completion,
     persistPracticeMilestone,
     limitOverride,
     timeLimitOverride,
-    completionPromise,
     mountedRef,
-    applyCompletionEvent,
     setSummary,
     setCurrent,
     setPhase,
