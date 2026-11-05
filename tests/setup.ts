@@ -41,6 +41,15 @@ type HappyDomSettings = {
 
 const happyDom = (window as unknown as { happyDOM?: { settings: HappyDomSettings } }).happyDOM;
 if (happyDom) {
+  // Happy DOM reports an unread cancelled `finished` promise as unhandled, unlike
+  // browsers. Handle the current promise (play() can replace it), while preserving
+  // its rejection for callers that await it.
+  const cancelAnimation = Animation.prototype.cancel;
+  Animation.prototype.cancel = function () {
+    void this.finished.catch(() => {});
+    cancelAnimation.call(this);
+  };
+
   happyDom.settings.fetch.interceptor = {
     beforeAsyncRequest: async ({ request, window: frameWindow }) => {
       if (

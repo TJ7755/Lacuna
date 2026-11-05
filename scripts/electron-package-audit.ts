@@ -23,8 +23,9 @@ type FileRecord = {
 
 const LOCALE = /(?:^|[\\/])locales[\\/][^\\/]+\.pak$/i;
 const WINDOWS_PACKAGE_BUDGET = {
-  archiveBytes: 17_000_000,
-  payloadBytes: 17_000_000,
+  // Binding 0.6's vendored trainer adds 820,431 bytes over 0.5's WASM.
+  archiveBytes: 18_000_000,
+  payloadBytes: 18_000_000,
   // Includes the optional maths and highlighting renderer chunks, and the forecast maths
   // chunk that keeps the chart's recovery entry independent of the first attempt, and the
   // exam-technique catalogue, form and authoring chunks shared by the question-set editor
