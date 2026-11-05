@@ -1,6 +1,8 @@
 import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import type { Card } from '@lacuna/core/db/types';
 import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
+import { readAll } from './fixtures/syncConvergence';
 
 const IMAGE_FIXTURE = resolve('public/icons/icon-192.png');
 
@@ -28,6 +30,8 @@ async function addCard(page: Page, front: string, back: string, withImage = fals
 
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).toHaveURL(/#\/course\/[^/]+\/cards$/);
+  // Search mounts the unassigned card's virtual section.
+  await page.getByLabel('Search all cards').fill(front);
   await expect(page.getByText(front, { exact: true }).last()).toBeVisible();
 }
 
@@ -64,6 +68,10 @@ test('replaces a clean browser context with a media-bearing full backup', async 
     await openCourseCards(target);
     const targetOnlyFront = `Recovery target only ${Date.now()}`;
     await addCard(target, targetOnlyFront, 'Target-only answer');
+    const targetOnlyCard = (await readAll<Card>(target, 'cards')).find((card) =>
+      card.front.includes(targetOnlyFront),
+    );
+    if (!targetOnlyCard) throw new Error('Expected the target-only card before replacement.');
 
     await openRecoverySettings(target);
     await target.getByLabel('Recover this installation').setInputFiles(backupPath);
@@ -72,8 +80,11 @@ test('replaces a clean browser context with a media-bearing full backup', async 
     await expect(target.getByText('Data replaced from backup.')).toBeVisible();
 
     await target.goto(`/#/course/${source.courseId}/cards`);
+    await target.getByLabel('Search all cards').fill(sourceFront);
     await expect(target.getByText(sourceFront, { exact: true })).toBeVisible();
-    await expect(target.getByText(targetOnlyFront, { exact: true })).toHaveCount(0);
+    // A filtered list cannot prove that target-only records were replaced.
+    const restoredCards = await readAll<Card>(target, 'cards');
+    expect(restoredCards.map((card) => card.id)).not.toContain(targetOnlyCard.id);
     await expect(target.getByRole('img', { name: 'icon-192' })).toBeVisible();
   } finally {
     await targetContext.close();
