@@ -33,7 +33,12 @@ import { activeTechniqueIds, type TechniqueId } from '@lacuna/core/questions/tec
 export { undoConceptPracticeAttempt } from './questionSetAttemptRepository';
 export { questionPresentationFingerprint as conceptPracticeFingerprint } from './generators/declarative';
 
-/** Criterion totals retain partial credit. Ambiguous or unresolved evidence cannot move a schedule. */
+/**
+ * Criterion totals retain partial credit. Ambiguous or unresolved evidence cannot move a schedule.
+ * The immutable first-marking snapshot's gradeMappingVersion governs this projection:
+ * historical receipts keep binary grades; fractional-hard-v2 uses the shared Practice mapping.
+ * Question scheduleEffect grades belong to Question replay, not Concept replay.
+ */
 export function deriveConceptApplicationSchedules(
   attempts: readonly QuestionSetAttemptRecord[],
 ): Map<string, QuestionScheduleState> {
