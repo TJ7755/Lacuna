@@ -37,6 +37,7 @@ interface FlowControlsProps {
   autoMark?: AutoMark;
   departing?: boolean;
   grades: ReactNode[];
+  negativeIndex?: number;
   rowClassName: string;
   revealLabel?: ReactNode;
   /** Content above the reveal pill that fades with it, such as a typed answer field. */
@@ -126,6 +127,7 @@ function FlowSplitLiquid({
   waiting,
   neutral,
   holder,
+  negativeIndex,
   negative,
   departing,
   reveal,
@@ -139,6 +141,7 @@ function FlowSplitLiquid({
   /** No verdict has arrived yet: keep the waiting liquid neutral. */
   neutral: boolean;
   holder: number;
+  negativeIndex?: number;
   negative: boolean;
   departing: boolean;
   reveal: Rect;
@@ -207,6 +210,18 @@ function FlowSplitLiquid({
     </filter>
   );
   const centred = { transformBox: 'fill-box', transformOrigin: 'center' } as const;
+  const outline = (colour: string) => (
+    <>
+      <feMorphology in="liquid" operator="erode" radius="1" result="inner" />
+      <feComposite in="liquid" in2="inner" operator="out" result="ring" />
+      <feFlood style={{ floodColor: colour }} result="line" />
+      <feComposite in="line" in2="ring" operator="in" result="outline" />
+      <feMerge>
+        <feMergeNode in="liquid" />
+        <feMergeNode in="outline" />
+      </feMerge>
+    </>
+  );
   const shells = slots.map((_, index) => <use key={index} href={`#${id}-shell-${index}`} />);
   const pulsing = waiting && neutral && !departing && m > 0;
   const colour = waiting ? 'hsl(from var(--color-ink-faint) h 0% l)' : 'var(--color-accent)';
@@ -292,20 +307,12 @@ function FlowSplitLiquid({
             {shells}
           </g>
         </mask>
-        {liquid(
-          'shell',
-          <>
-            {/* A fine outline traced around the joined drops. */}
-            <feMorphology in="liquid" operator="erode" radius="1" result="inner" />
-            <feComposite in="liquid" in2="inner" operator="out" result="ring" />
-            <feFlood style={{ floodColor: 'var(--color-line-strong)' }} result="line" />
-            <feComposite in="line" in2="ring" operator="in" result="outline" />
-            <feMerge>
-              <feMergeNode in="liquid" />
-              <feMergeNode in="outline" />
-            </feMerge>
-          </>,
-        )}
+        {liquid('shell', outline('var(--color-line-strong)'))}
+        {negativeIndex !== undefined &&
+          liquid(
+            'negative-shell',
+            outline('color-mix(in srgb, var(--color-negative) 40%, transparent)'),
+          )}
         {liquid(
           'colour',
           <>
@@ -340,6 +347,24 @@ function FlowSplitLiquid({
           <g filter={`url(#${id}-shell)`} style={{ fill: 'var(--color-surface-raised)' }}>
             {shells}
           </g>
+          {negativeIndex !== undefined && (
+            // Again gains its own paper surface and red outline as the accent drains,
+            // before the real button takes over. The other drops keep their existing ink.
+            <motion.g
+              data-flow-negative
+              filter={`url(#${id}-negative-shell)`}
+              style={{ fill: 'var(--color-paper)' }}
+              initial={false}
+              animate={{ opacity: question || waiting ? 0 : 1 }}
+              transition={
+                question || waiting
+                  ? { duration: 0.08 * m }
+                  : { duration: 0.24 * m, delay: 0.2 * m, ease: 'easeInOut' }
+              }
+            >
+              <use href={`#${id}-shell-${negativeIndex}`} />
+            </motion.g>
+          )}
           <g
             data-flow-colour={!waiting || neutral ? '' : undefined}
             mask={`url(#${id}-within)`}
@@ -445,6 +470,7 @@ export function FlowGradeControls({
   autoMark,
   departing = false,
   grades,
+  negativeIndex,
   rowClassName,
   revealLabel = 'Show answer',
   revealLead,
@@ -549,6 +575,7 @@ export function FlowGradeControls({
           waiting={automatic}
           neutral={judging}
           holder={grades.length - 1}
+          negativeIndex={negativeIndex}
           negative={!question && autoMark !== undefined && !autoMark.pending && !autoMark.correct}
           departing={draining}
           reveal={rects.reveal}

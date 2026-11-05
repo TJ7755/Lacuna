@@ -166,6 +166,7 @@ export function StudyControls({
             autoMark={isTypingCard ? autoMark : undefined}
             departing={departing}
             grades={grades}
+            negativeIndex={gradingMode === 'manual' ? 0 : undefined}
             rowClassName={gradeRowClassName}
             revealLabel={isTypingCard ? 'Check answer' : 'Show answer'}
             revealLead={isTypingCard ? <div className="mb-3">{typedField}</div> : undefined}
