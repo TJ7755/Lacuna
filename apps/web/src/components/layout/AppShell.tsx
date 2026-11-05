@@ -75,6 +75,9 @@ export function AppShell() {
 }
 
 function AppShellLayout() {
+  const [floatingWindowControls] = useState(
+    () => !!window.electronAPI?.isElectron && window.electronAPI.platform !== 'darwin',
+  );
   const navigationCourses = useNavigationCourses();
   const [collapsed, setCollapsed] = useState(() => storedString(COLLAPSE_KEY).read() === '1');
 
@@ -258,7 +261,7 @@ function AppShellLayout() {
       initial={arrivedFromLanding && motionEnabled ? { scale: 0.975 } : false}
       animate={arrivedFromLanding && motionEnabled ? { scale: 1 } : undefined}
       transition={{ type: 'spring', duration: 0.32 * m, bounce: 0 }}
-      className="flex h-screen overflow-hidden flex-col"
+      className="relative flex h-screen overflow-hidden flex-col"
     >
       {/* First stop for keyboard users: past the sidebar's courses to the page itself. */}
       <a
@@ -341,7 +344,8 @@ function AppShellLayout() {
         <div
           ref={appContentRef}
           aria-hidden={mobileOpen || undefined}
-          className="flex min-w-0 flex-1 flex-col"
+          // Clear the floating desktop controls without pushing the sidebar down.
+          className={cn('flex min-w-0 flex-1 flex-col', floatingWindowControls && 'pt-8')}
           style={{ touchAction: 'pan-y' }}
           {...mobileNavigationSwipe}
         >

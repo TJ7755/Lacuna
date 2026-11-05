@@ -34,20 +34,33 @@ describe('Electron titlebar', () => {
 
     render(<Titlebar />);
 
-    expect(screen.getByText('Lacuna')).toBeInTheDocument();
-    expect(screen.getByTestId('titlebar-brand').querySelector('svg')).toHaveClass(
-      'text-accent-ink',
-    );
-    expect(document.querySelector('[data-titlebar-native-controls="darwin"]')).toHaveClass(
-      'h-10',
-      'pl-20',
-    );
-    expect(screen.getByTestId('titlebar-brand')).toHaveClass('-translate-y-[3px]');
+    expect(screen.queryByText('Lacuna')).not.toBeInTheDocument();
+    expect(document.querySelector('[data-titlebar-native-controls="darwin"]')).toHaveClass('h-10');
     expect(screen.queryByRole('button', { name: 'Minimise' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Maximise' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
     expect(api.isMaximized).not.toHaveBeenCalled();
     expect(api.onMaximizedChange).not.toHaveBeenCalled();
+  });
+
+  it.each(['win32', 'linux'])(
+    'floats unbranded controls over the shell on %s',
+    async (platform) => {
+      installElectronApi(platform);
+
+      const { container } = render(<Titlebar />);
+
+      expect(screen.queryByText('Lacuna')).not.toBeInTheDocument();
+      expect(container.firstElementChild).toHaveClass('absolute', 'inset-x-0', 'top-0', 'h-8');
+      expect(container.firstElementChild).not.toHaveClass('border-b', 'bg-surface');
+      expect(await screen.findByRole('button', { name: 'Close' })).toHaveClass('h-8', 'w-12');
+      expect(container.querySelector('.titlebar-drag')).toBeInTheDocument();
+    },
+  );
+
+  it('renders no desktop chrome in a web browser', () => {
+    const { container } = render(<Titlebar />);
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('retains functional custom controls on Windows', async () => {

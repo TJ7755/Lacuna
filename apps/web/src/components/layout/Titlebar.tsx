@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { LacunaIcon } from '../ui/icons';
 
 function isElectron(): boolean {
   return typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
@@ -43,10 +42,9 @@ function CloseIcon() {
 }
 
 /**
- * A custom title bar that only appears when running inside the Electron frameless
- * window. macOS keeps its native traffic lights and reserves their leading
- * inset; Windows and Linux render custom controls on the right. The title
- * region is a drag area so the window can be moved by clicking and dragging.
+ * Frameless window controls without a separate branded title bar. Windows and
+ * Linux float controls over the shell; AppShell clears their height in the page
+ * column. macOS retains space for its native traffic lights.
  */
 export function Titlebar() {
   const [electron] = useState(() => isElectron());
@@ -78,26 +76,17 @@ export function Titlebar() {
   return (
     <div
       data-titlebar-native-controls={isMacOS ? 'darwin' : undefined}
-      className={`titlebar-drag flex shrink-0 items-center justify-between border-b border-line bg-surface pr-3 select-none ${isMacOS ? 'h-10 pl-20' : 'h-12 pl-3'}`}
+      className={`titlebar-drag flex select-none ${isMacOS ? 'h-10 shrink-0' : 'absolute inset-x-0 top-0 z-30 h-8 justify-end'}`}
     >
-      {/* Title area — draggable */}
-      <div
-        data-testid="titlebar-brand"
-        className={`titlebar-drag flex items-center gap-2 text-sm text-ink-soft ${isMacOS ? '-translate-y-[3px]' : ''}`}
-      >
-        <LacunaIcon width={14} height={14} className="text-accent-ink" />
-        <span className="font-display font-medium">Lacuna</span>
-      </div>
-
       {/* Window controls — non-draggable */}
       {!isMacOS && (
-        <div className="titlebar-no-drag flex items-center gap-1">
+        <div className="titlebar-no-drag flex items-center">
           <button
             type="button"
             onClick={() => api.minimizeWindow()}
             aria-label="Minimise"
             title="Minimise"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+            className="flex h-8 w-12 items-center justify-center text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
           >
             <MinimizeIcon />
           </button>
@@ -106,7 +95,7 @@ export function Titlebar() {
             onClick={() => api.maximizeWindow()}
             aria-label={isMaximized ? 'Restore' : 'Maximise'}
             title={isMaximized ? 'Restore' : 'Maximise'}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+            className="flex h-8 w-12 items-center justify-center text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
           >
             {isMaximized ? <RestoreIcon /> : <MaximizeIcon />}
           </button>
@@ -115,7 +104,7 @@ export function Titlebar() {
             onClick={() => api.closeWindow()}
             aria-label="Close"
             title="Close"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition hover:bg-negative/10 hover:text-negative active:bg-negative/15"
+            className="flex h-8 w-12 items-center justify-center text-ink-soft transition-colors hover:bg-negative hover:text-white active:bg-negative/90"
           >
             <CloseIcon />
           </button>
