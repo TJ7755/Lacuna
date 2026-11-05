@@ -168,8 +168,9 @@
   outline: none;
 }
 .qs-choices[data-flow] input:focus-visible ~ .qs-choice-content {
-  outline: 2px solid hsl(var(--accent));
-  outline-offset: 3px;
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 .qs-panel-backdrop {
   position: fixed;
