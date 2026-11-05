@@ -30,7 +30,6 @@ import {
   afterScheduledAnswer,
   snapshotSession,
   transitionSession,
-  type CompletionEvent,
   type SessionEventInput,
   type SessionState,
 } from './sessionMachine';
@@ -39,6 +38,7 @@ import type { MachineMarkedAnswer, Phase, StudyUnit } from './types';
 import type { SessionEffect } from './sessionMachine';
 import type { Cell } from './sessionRuntime';
 import type { UseLearnSessionParams } from './useLearnSession';
+import type { SessionCompletion } from './useSessionCompletion';
 /** One submitted answer, as the grading paths need it. */
 export interface AnswerResponse {
   retainUndo: boolean;
@@ -102,15 +102,11 @@ interface SessionAnswerEnvironment {
   progressCacheRef: Cell<{ dirty: boolean; value: number }>;
   practiceSessionRef: Cell<PracticeSession | null>;
   sessionStartMs: Cell<number>;
-  pendingCompletion: Cell<SessionSummary | null>;
+  completion: SessionCompletion;
   persistPracticeMilestone: (cards: Card[], completed: boolean) => Promise<void>;
   limitOverride: boolean;
   timeLimitOverride: boolean;
-  completionPromise: Cell<Promise<boolean> | null>;
   mountedRef: Cell<boolean>;
-  applyCompletionEvent: (
-    event: CompletionEvent,
-  ) => ('show-summary' | 'persist-completion' | 'clear-undo')[];
   setSummary: (value: SessionSummary | null) => void;
   setCurrent: (value: Card | null) => void;
   setPhase: (value: Phase) => void;
@@ -164,13 +160,11 @@ export function createSessionAnswerEffects({
   progressCacheRef,
   practiceSessionRef,
   sessionStartMs,
-  pendingCompletion,
+  completion,
   persistPracticeMilestone,
   limitOverride,
   timeLimitOverride,
-  completionPromise,
   mountedRef,
-  applyCompletionEvent,
   setSummary,
   setCurrent,
   setPhase,
@@ -535,7 +529,7 @@ export function createSessionAnswerEffects({
     for (const effect of effects) {
       if (effect.type === 'finish') finish(...effect.stop);
       else if (effect.type === 'serve-next') serveNext();
-      else if (effect.type === 'persist-practice' && !pendingCompletion.current)
+      else if (effect.type === 'persist-practice' && !completion.pending)
         await persistPracticeMilestone(nextCards, false);
     }
     return lastAnswer.current ? answerResult : { undoAvailable: false };
@@ -543,7 +537,7 @@ export function createSessionAnswerEffects({
   const undoLast = async (options?: { reveal?: boolean }) => {
     const snap = lastAnswer.current;
     const ctx = ctxRef.current;
-    if (!snap || !ctx || submitting.current || completionPromise.current) return;
+    if (!snap || !ctx || submitting.current || completion.persisting) return;
     submitting.current = true;
     try {
       await undoSessionAnswer(snap.undo, snap.simple?.exposureAdded);
@@ -562,7 +556,7 @@ export function createSessionAnswerEffects({
       const prevReviews = snap.deckReviews - (snap.simple ? 0 : 1);
       if (prevReviews > 0) reviewsByDeck.current.set(snap.deckId, prevReviews);
       else reviewsByDeck.current.delete(snap.deckId);
-      applyCompletionEvent({ type: 'reset' });
+      completion.reset();
       setSummary(null);
       lastAnswer.current = null;
       setCanUndo(false);
