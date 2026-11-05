@@ -1,8 +1,8 @@
 import { animate, motionValue } from 'motion';
 import { speedMultiplier } from '../../state/motionSpeed';
-import { scaledSpring } from './motion';
+import { motionTransition } from './motion';
 
-/** A quiet inset shadow leaves native paint, content and hit areas in their owner's hands. */
+/** A quiet colour wash leaves native paint, content and hit areas in their owner's hands. */
 export function createFeedbackSurface(element: HTMLElement, onDispose: () => void) {
   const layer = document.createElement('i');
   layer.setAttribute('aria-hidden', 'true');
@@ -38,15 +38,15 @@ export function createFeedbackSurface(element: HTMLElement, onDispose: () => voi
       if (disposed) return;
       pressed = nextPressed && element.dataset.flowFeedback !== 'hover';
       over = nextOver && element.dataset.flowFeedback !== 'press';
-      animate(depth, pressed ? 0.16 : over ? 0.045 : 0, {
-        ...scaledSpring(speedMultiplier(), 580, 32),
+      animate(depth, pressed ? 0.09 : over ? 0.045 : 0, {
+        ...motionTransition('feedback', speedMultiplier()),
         onComplete: () => {
           if (!pressed && !over) dispose();
         },
       });
     },
     reset() {
-      depth.jump(pressed ? 0.16 : over ? 0.045 : 0);
+      depth.jump(pressed ? 0.09 : over ? 0.045 : 0);
       if (!pressed && !over) dispose();
     },
   };
