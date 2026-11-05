@@ -3,10 +3,10 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { _electron as electron, expect, test } from '@playwright/test';
+import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { skipOnboarding } from '../e2e/fixtures/lacunaApp';
 
-const root = fileURLToPath(new URL('../..', import.meta.url));
+const root = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const require = createRequire(import.meta.url);
 
 test('Windows integrates working window controls without a separate title bar', async ({
@@ -14,18 +14,20 @@ test('Windows integrates working window controls without a separate title bar', 
 }, testInfo) => {
   test.skip(process.platform !== 'win32', 'Windows custom window controls.');
   const profile = await realpath(await mkdtemp(path.join(tmpdir(), 'lacuna-window-chrome-')));
-  const app = await electron.launch({
-    executablePath: require('electron') as string,
-    args: [root, `--user-data-dir=${profile}`],
-  });
+  let app: ElectronApplication | undefined;
   try {
+    app = await electron.launch({
+      executablePath: require('electron') as string,
+      args: [root, `--user-data-dir=${profile}`],
+    });
     const page = await app.firstWindow();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
     await skipOnboarding(page);
     const nativeWindow = await app.browserWindow(page);
     await nativeWindow.evaluate((window) => {
       window.unmaximize();
-      window.setSize(1280, 900);
+      window.setSize(1400, 900);
     });
 
     await expect(page.getByTestId('titlebar-brand')).toHaveCount(0);
@@ -53,8 +55,10 @@ test('Windows integrates working window controls without a separate title bar', 
     await page.locator('main').getByRole('button', { name: 'New course', exact: true }).click();
     await expect(page.getByRole('form', { name: 'New course' })).toBeVisible();
     await page.keyboard.press('Escape');
+    const screenshot = testInfo.outputPath('desktop-window-chrome.png');
+    await page.screenshot({ path: screenshot });
     await testInfo.attach('desktop-window-chrome.png', {
-      body: await page.screenshot(),
+      path: screenshot,
       contentType: 'image/png',
     });
 
@@ -70,7 +74,10 @@ test('Windows integrates working window controls without a separate title bar', 
     await close.click();
     await closed;
   } finally {
-    await app.close();
-    await rm(profile, { recursive: true, force: true });
+    try {
+      await app?.close();
+    } finally {
+      await rm(profile, { recursive: true, force: true });
+    }
   }
 });
