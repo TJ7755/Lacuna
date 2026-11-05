@@ -128,6 +128,35 @@ describe('CardList generated ownership', () => {
       occlusionRegionId: 'region-1',
     };
 
+    it('bounds thumbnails across many small image groups', async () => {
+      const occlusions = Array.from({ length: 100 }, (_, index) => ({
+        ...occlusion,
+        id: `occlusion-${index}`,
+        name: `Diagram ${index}`,
+        regions: [{ ...occlusion.regions[0], id: `region-${index}` }],
+      }));
+      const cards = occlusions.map((owner, index) => ({
+        ...occlusionCard,
+        id: `card-${index}`,
+        occlusionRegionId: owner.regions[0].id,
+      }));
+      const { container } = render(
+        <div style={{ overflowY: 'auto' }}>
+          <CardList
+            cards={cards}
+            context={mockContext}
+            onEditCard={vi.fn()}
+            occlusions={occlusions}
+          />
+        </div>,
+      );
+      expect(container.querySelectorAll('[data-occlusion-thumbnail]').length).toBeLessThan(10);
+      expect(screen.getByText('Diagram 0')).toBeInTheDocument();
+      await waitFor(() =>
+        expect(container.querySelector('img')).toHaveAttribute('src', 'blob:diagram'),
+      );
+    });
+
     it('groups an occlusion-generated card under an occlusion header, badges it, and hides its select checkbox and delete action', () => {
       const onEditOcclusion = vi.fn();
       render(

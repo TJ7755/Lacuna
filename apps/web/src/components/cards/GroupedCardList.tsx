@@ -1,9 +1,9 @@
 import { useMemo, type ComponentProps } from 'react';
-import { baseItemId, isLabelCardId, sequenceForItemId } from '../../db/sequenceGeneration';
-import { occlusionForRegionId } from '../../db/occlusionGeneration';
+import { baseItemId, isLabelCardId } from '../../db/sequenceGeneration';
 import type { Card, Occlusion, Sequence } from '@lacuna/core/db/types';
 import { CardListBody } from './CardListBody';
 import { GeneratedCardGroup } from './GeneratedCardGroup';
+import { CardSections } from './CardSections';
 
 type GroupedCardListProps = ComponentProps<typeof CardListBody> & {
   sequences?: Sequence[];
@@ -46,19 +46,27 @@ export function GroupedCardList({
     cards: Card[];
   }
   const generatedGroups = useMemo(() => {
+    const sequenceByItem = new Map<string, Sequence>();
+    for (const sequence of sequences ?? [])
+      for (const item of sequence.items) {
+        if (!sequenceByItem.has(item.id)) sequenceByItem.set(item.id, sequence);
+      }
+    const occlusionByRegion = new Map<string, Occlusion>();
+    for (const occlusion of occlusions ?? [])
+      for (const region of occlusion.regions) {
+        if (!occlusionByRegion.has(region.id)) occlusionByRegion.set(region.id, occlusion);
+      }
     const byOwner = new Map<string, GeneratedGroup>();
     for (const card of cards) {
       if (card.sequenceItemId !== null && card.sequenceItemId !== undefined) {
-        const sequence = sequences ? sequenceForItemId(sequences, card.sequenceItemId) : undefined;
+        const sequence = sequenceByItem.get(baseItemId(card.sequenceItemId));
         if (!sequence) continue;
         const key = `sequence:${sequence.id}`;
         const group = byOwner.get(key) ?? { kind: 'sequence', owner: sequence, cards: [] };
         group.cards.push(card);
         byOwner.set(key, group);
       } else if (card.occlusionRegionId !== null && card.occlusionRegionId !== undefined) {
-        const occlusion = occlusions
-          ? occlusionForRegionId(occlusions, card.occlusionRegionId)
-          : undefined;
+        const occlusion = occlusionByRegion.get(card.occlusionRegionId);
         if (!occlusion) continue;
         const key = `occlusion:${occlusion.id}`;
         const group = byOwner.get(key) ?? { kind: 'occlusion', owner: occlusion, cards: [] };
@@ -105,44 +113,62 @@ export function GroupedCardList({
         </div>
       ) : (
         <>
-          {generatedGroups.map((group) => (
-            <GeneratedCardGroup
-              key={`${group.kind}:${group.owner.id}`}
-              kind={group.kind}
-              owner={group.owner}
-              cards={group.cards}
-              schedulingConfig={schedulingConfig}
-              onEditCard={onEditCard}
-              onEditOwner={group.kind === 'sequence' ? onEditSequence : onEditOcclusion}
-              onResume={onResume}
-              onToggleFlag={onToggleFlag}
-              linkedCardIds={linkedCardIds}
-              onUnlinkCard={onUnlinkCard}
-              motionMultiplier={motionMultiplier}
-              compactMetadata={compactMetadata}
-              occlusions={occlusions}
-            />
-          ))}
-          {looseCards.length > 0 && (
-            <CardListBody
-              cards={looseCards}
-              schedulingConfig={schedulingConfig}
-              selectMode={selectMode}
-              selected={selected}
-              expandedCardId={expandedCardId}
-              onToggle={onToggle}
-              onToggleExpand={onToggleExpand}
-              onEditCard={onEditCard}
-              onResume={onResume}
-              onDelete={onDelete}
-              onToggleFlag={onToggleFlag}
-              linkedCardIds={linkedCardIds}
-              onUnlinkCard={onUnlinkCard}
-              motionMultiplier={motionMultiplier}
-              compactMetadata={compactMetadata}
-              occlusions={occlusions}
-            />
-          )}
+          <CardSections
+            entranceWindowMs={420 * motionMultiplier}
+            sections={[
+              ...generatedGroups,
+              ...(looseCards.length
+                ? [
+                    {
+                      kind: 'loose' as const,
+                      owner: { id: 'loose', name: '' },
+                      cards: looseCards,
+                    },
+                  ]
+                : []),
+            ]}
+            cardCount={cards.length}
+            sectionKey={(group) => `${group.kind}:${group.owner.id}`}
+          >
+            {(group) =>
+              group.kind !== 'loose' ? (
+                <GeneratedCardGroup
+                  kind={group.kind}
+                  owner={group.owner}
+                  cards={group.cards}
+                  schedulingConfig={schedulingConfig}
+                  onEditCard={onEditCard}
+                  onEditOwner={group.kind === 'sequence' ? onEditSequence : onEditOcclusion}
+                  onResume={onResume}
+                  onToggleFlag={onToggleFlag}
+                  linkedCardIds={linkedCardIds}
+                  onUnlinkCard={onUnlinkCard}
+                  motionMultiplier={motionMultiplier}
+                  compactMetadata={compactMetadata}
+                  occlusions={occlusions}
+                />
+              ) : (
+                <CardListBody
+                  cards={looseCards}
+                  schedulingConfig={schedulingConfig}
+                  selectMode={selectMode}
+                  selected={selected}
+                  expandedCardId={expandedCardId}
+                  onToggle={onToggle}
+                  onToggleExpand={onToggleExpand}
+                  onEditCard={onEditCard}
+                  onResume={onResume}
+                  onDelete={onDelete}
+                  onToggleFlag={onToggleFlag}
+                  linkedCardIds={linkedCardIds}
+                  onUnlinkCard={onUnlinkCard}
+                  motionMultiplier={motionMultiplier}
+                  compactMetadata={compactMetadata}
+                  occlusions={occlusions}
+                />
+              )
+            }
+          </CardSections>
         </>
       )}
     </>

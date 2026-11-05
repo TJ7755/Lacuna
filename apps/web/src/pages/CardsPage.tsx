@@ -14,7 +14,7 @@ import {
   COURSE_PAGE_TITLE,
 } from '../components/course/coursePageLayout';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
-import { useMemo, useRef } from 'react';
+import { useDeferredValue, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { originFrom } from '../utils/editorOrigin';
@@ -26,6 +26,7 @@ import {
   useCourseBankBackingDecks,
 } from '../state/useCourseData';
 import { CardList } from '../components/cards/CardList';
+import { CardSections } from '../components/cards/CardSections';
 import { courseCardListContext } from '../components/cards/cardListContext';
 import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../components/ui/motion';
@@ -66,7 +67,9 @@ export function CardsPage() {
   // Search and filters live in the URL, so returning from an editor restores them.
   const [params, setParams] = useSearchParams();
   const search = params.get('q') ?? '';
-  const filters = useMemo(() => readFilters(params.get('f')), [params]);
+  const filterParam = params.get('f');
+  const filters = useMemo(() => readFilters(filterParam), [filterParam]);
+  const deferredSearch = useDeferredValue(search);
   const setSearch = (value: string) =>
     setParams(
       (prev) => {
@@ -99,7 +102,7 @@ export function CardsPage() {
   const occlusions = useOcclusions(courseId);
   const lessonIds = useMemo(() => lessons?.map((lesson) => lesson.id) ?? [], [lessons]);
   const backingDecks = useCourseBankBackingDecks(courseId, lessonIds);
-  const query = search.trim();
+  const query = deferredSearch.trim();
   useScopedFindShortcut(
     cards?.length
       ? () => {
@@ -266,49 +269,52 @@ export function CardsPage() {
         </div>
       ) : (
         <div className={`${BUCKET_CLASS} flex flex-col`}>
-          {lessonsWithCards.map((lesson, index) => (
-            <motion.div
-              key={lesson.id}
-              initial={multiplier > 0 ? { opacity: 0, y: 14 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.45 * multiplier,
-                delay: arrivalDelay(index, multiplier),
-                ease: MOTION_EASING.emphasised,
-              }}
-            >
-              <LessonBucket
-                courseId={courseId!}
-                lesson={lesson}
-                cards={byLesson.get(lesson.id) ?? []}
-                deck={backingDecks?.get(lesson.id)}
-                assignableLessons={assignableLessons}
-                sequences={sequences.filter((s) => s.primaryLessonId === lesson.id)}
-                occlusions={occlusions.filter((o) => o.primaryLessonId === lesson.id)}
-              />
-            </motion.div>
-          ))}
-          {unassigned.length > 0 && (
-            <motion.div
-              initial={multiplier > 0 ? { opacity: 0, y: 14 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.45 * multiplier,
-                delay: arrivalDelay(lessonsWithCards.length, multiplier),
-                ease: MOTION_EASING.emphasised,
-              }}
-            >
-              <UnassignedBucket
-                courseId={courseId!}
-                courseName={course.name}
-                cards={unassigned}
-                deck={backingDecks?.get(null)}
-                assignableLessons={assignableLessons}
-                sequences={sequences.filter((s) => s.primaryLessonId === null)}
-                occlusions={occlusions.filter((o) => o.primaryLessonId === null)}
-              />
-            </motion.div>
-          )}
+          <CardSections
+            entranceWindowMs={
+              (0.45 * multiplier +
+                arrivalDelay(lessonsWithCards.length - (unassigned.length ? 0 : 1), multiplier)) *
+              1000
+            }
+            sections={[...lessonsWithCards, ...(unassigned.length ? [null] : [])]}
+            cardCount={shownCount}
+            sectionKey={(lesson) => lesson?.id ?? 'unassigned'}
+          >
+            {(lesson, index, previouslyMounted) => (
+              <motion.div
+                initial={!previouslyMounted && multiplier > 0 ? { opacity: 0, y: 14 } : false}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.45 * multiplier,
+                  delay: arrivalDelay(index, multiplier),
+                  ease: MOTION_EASING.emphasised,
+                }}
+              >
+                {lesson ? (
+                  <LessonBucket
+                    courseId={courseId!}
+                    lesson={lesson}
+                    cards={byLesson.get(lesson.id) ?? []}
+                    deck={backingDecks?.get(lesson.id)}
+                    assignableLessons={assignableLessons}
+                    sequences={sequences.filter((s) => s.primaryLessonId === lesson.id)}
+                    occlusions={occlusions.filter((o) => o.primaryLessonId === lesson.id)}
+                    divided={index > 0}
+                  />
+                ) : (
+                  <UnassignedBucket
+                    courseId={courseId!}
+                    courseName={course.name}
+                    cards={unassigned}
+                    deck={backingDecks?.get(null)}
+                    assignableLessons={assignableLessons}
+                    sequences={sequences.filter((s) => s.primaryLessonId === null)}
+                    occlusions={occlusions.filter((o) => o.primaryLessonId === null)}
+                    divided={index > 0}
+                  />
+                )}
+              </motion.div>
+            )}
+          </CardSections>
         </div>
       )}
     </div>
@@ -319,8 +325,8 @@ export function CardsPage() {
 const BUCKET_CLASS = 'rounded-3xl bg-surface p-4 card-surface md:p-5';
 
 /** Lessons after the first are divided by a rule; the motion wrapper is each one's parent. */
-const LESSON_SECTION_CLASS =
-  'pt-2 [div+div>&]:mt-3 [div+div>&]:border-t [div+div>&]:border-line [div+div>&]:pt-5';
+const LESSON_SECTION_CLASS = 'pt-2';
+const DIVIDED_SECTION_CLASS = 'mt-3 border-t border-line !pt-5';
 
 interface AssignableLesson {
   id: string;
@@ -335,6 +341,7 @@ function LessonBucket({
   assignableLessons,
   sequences,
   occlusions,
+  divided,
 }: {
   courseId: string;
   lesson: Lesson;
@@ -343,6 +350,7 @@ function LessonBucket({
   assignableLessons: AssignableLesson[];
   sequences: Sequence[];
   occlusions: Occlusion[];
+  divided: boolean;
 }) {
   const go = useCardsNavigate();
   const heading = (
@@ -359,7 +367,7 @@ function LessonBucket({
     </div>
   );
   return (
-    <section className={LESSON_SECTION_CLASS}>
+    <section className={`${LESSON_SECTION_CLASS} ${divided ? DIVIDED_SECTION_CLASS : ''}`}>
       {deck ? (
         <CardList
           heading={heading}
@@ -395,6 +403,7 @@ function UnassignedBucket({
   assignableLessons,
   sequences,
   occlusions,
+  divided,
 }: {
   courseId: string;
   courseName: string;
@@ -403,6 +412,7 @@ function UnassignedBucket({
   assignableLessons: AssignableLesson[];
   sequences: Sequence[];
   occlusions: Occlusion[];
+  divided: boolean;
 }) {
   const go = useCardsNavigate();
   const heading = (
@@ -411,7 +421,7 @@ function UnassignedBucket({
     </h2>
   );
   return (
-    <section className={LESSON_SECTION_CLASS}>
+    <section className={`${LESSON_SECTION_CLASS} ${divided ? DIVIDED_SECTION_CLASS : ''}`}>
       {deck ? (
         <CardList
           heading={heading}

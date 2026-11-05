@@ -204,6 +204,39 @@ it('warms the real course path read before mount and refreshes it on later inten
   await waitFor(() => expect(revisit.result.current?.course?.name).toBe('Genetics'));
 });
 
+it('hands a completed prefetch to its mounted reader without immediately repeating the read', async () => {
+  const course = await createCourse('Biology');
+  const read = vi.fn(async (id: string) => db.courses.get(id));
+  const useRecords = retainedLiveQuery(read);
+  await useRecords.preload(course.id);
+  const reader = renderHook(() => useRecords(course.id));
+  expect(reader.result.current?.name).toBe('Biology');
+  await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+  expect(read).toHaveBeenCalledTimes(1);
+  await db.courses.update(course.id, { name: 'Cells' });
+  await waitFor(() => expect(reader.result.current?.name).toBe('Cells'));
+  expect(read).toHaveBeenCalledTimes(2);
+  reader.unmount();
+  await db.courses.update(course.id, { name: 'Genetics' });
+  await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+  expect(read).toHaveBeenCalledTimes(2);
+});
+
+it('stops an unused prefetch after the handoff window and revalidates it on revisit', async () => {
+  const course = await createCourse('Biology');
+  const read = vi.fn(async (id: string) => db.courses.get(id));
+  const useRecords = retainedLiveQuery(read);
+  await useRecords.preload(course.id);
+  await act(() => new Promise((resolve) => setTimeout(resolve, 1_100)));
+  await db.courses.update(course.id, { name: 'Cells' });
+  await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+  expect(read).toHaveBeenCalledTimes(1);
+  const reader = renderHook(() => useRecords(course.id));
+  expect(reader.result.current?.name).toBe('Biology');
+  await waitFor(() => expect(reader.result.current?.name).toBe('Cells'));
+  expect(read).toHaveBeenCalledTimes(2);
+});
+
 it('retries failed speculative reads and does not revive an evicted pending snapshot', async () => {
   const course = await createCourse('Biology');
   const read = vi.fn(async (id: string) => db.courses.get(id));
