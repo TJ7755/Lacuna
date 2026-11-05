@@ -376,7 +376,7 @@ export interface MergeLineageResult {
  * Re-import an updated share code against a course that already tracks the payload's
  * lineage (§7.5's "merge apply, in order" steps 1-6). `courseId` must already carry a
  * matching `distributedCopy.lineageId` — routing that decision is Task 9's job
- * (`SharePage`/`UnifiedImportPanel`'s decode-time branch); this function assumes the
+ * (`SharedCourseImport`'s decode-time branch); this function assumes the
  * caller has already established the match.
  */
 export async function mergeLineageUpdate(

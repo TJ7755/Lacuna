@@ -23,8 +23,8 @@ await mkdir(reportDir, { recursive: true });
 
 const testFiles = [
   'apps/web/src/release/canonicalScenario.test.ts',
-  'apps/web/src/components/import/ShareCodeImportPanel.test.tsx',
-  'apps/web/src/components/import/UnifiedImportPanel.test.tsx',
+  'apps/web/src/components/import/SharedCourseImport.codes.test.tsx',
+  'apps/web/src/components/import/SharedCourseImport.scheduling.test.tsx',
   'apps/web/src/pages/settings/DataPortabilitySection.test.tsx',
 ];
 const startedAt = new Date().toISOString();
@@ -65,7 +65,7 @@ try {
       },
       {
         kind: 'gui-automation',
-        subject: 'Both share-code import surfaces and full-backup preview rendering',
+        subject: 'Active shared-course import and full-backup preview rendering',
       },
       {
         kind: 'human-inspection',
