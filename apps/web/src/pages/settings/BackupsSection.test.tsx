@@ -103,6 +103,8 @@ describe('BackupsSection', () => {
   });
 
   it('returns focus after an older point moves into the recent list', async () => {
+    // Exercise real exit retention and focus with Motion's JS engine in this DOM test.
+    Reflect.deleteProperty(Element.prototype, 'animate');
     mockBackups = Array.from({ length: 5 }, (_, index) => ({
       id: index + 1,
       createdAt: Date.UTC(2026, 7, 28) - index * 60_000,

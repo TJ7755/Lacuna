@@ -185,7 +185,7 @@ describe('QuestionSetEvidencePanel', () => {
     await waitFor(() => expect(screen.queryByText(/marks unresolved/i)).not.toBeInTheDocument());
     fireEvent.click(disclosure);
     expect(screen.queryByRole('group', { name: 'Evidence attempts' })).not.toBeInTheDocument();
-    expect(screen.getByText('Repeated attempts')).toBeVisible();
+    await waitFor(() => expect(screen.getByText('Repeated attempts')).toBeVisible());
     fireEvent.click(disclosure);
     expect(screen.getByRole('button', { name: 'Repeated' })).toHaveAttribute(
       'aria-pressed',

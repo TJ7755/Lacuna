@@ -20,7 +20,6 @@ import {
   type Steps,
 } from 'ts-fsrs';
 import type { Card, FsrsCardState, FsrsParameters, Grade } from '@lacuna/core/db/types';
-import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 
 export type { FSRS } from 'ts-fsrs';
 
@@ -72,7 +71,6 @@ export function toTsCard(card: SchedulingMemory, now: number): TsCard {
     due: new Date(card.due ?? card.lastReviewed),
     stability,
     difficulty,
-    elapsed_days: Math.max(0, Math.floor((now - card.lastReviewed) / MS_PER_DAY)),
     scheduled_days: card.scheduledDays,
     learning_steps: card.learningSteps,
     reps: card.reps,
@@ -123,9 +121,7 @@ export interface ReviewResult {
 export function applyReview(engine: FSRS, card: Card, grade: Grade, now: number): ReviewResult {
   const before = toTsCard(card, now);
   const retrievabilityAtReview =
-    card.lastReviewed === null || card.state === 0
-      ? null
-      : engine.get_retrievability(before, now, false);
+    card.lastReviewed === null || card.state === 0 ? null : engine.retrievability(before, now);
   const item = engine.next(before, new Date(now), grade as TsGrade);
   return { memory: fromTsCard(item.card, now), retrievabilityAtReview };
 }

@@ -50,7 +50,8 @@ const INITIAL_ASSET_BUDGET = {
   javascriptBytes: 910_000,
   // Separate landing dependencies add a small amount of study-entry chunk framing, and the
   // entry graph embeds hashed lazy-chunk names, so any route change moves it by a few bytes.
-  javascriptGzipBytes: 285_000,
+  // motion 14.9 added about 7 KB gzipped over 14.1 across StepSwap and landing-motion.
+  javascriptGzipBytes: 292_000,
   scriptRequests: 16,
   // Include the landing styles required to paint prerendered HTML before hydration.
   cssBytes: 150_000,

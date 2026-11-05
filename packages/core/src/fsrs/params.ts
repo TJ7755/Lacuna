@@ -8,8 +8,8 @@ import {
   default_w,
   default_request_retention,
   default_maximum_interval,
-  default_learning_steps,
-  default_relearning_steps,
+  defaultLearningSteps,
+  defaultRelearningSteps,
 } from 'ts-fsrs';
 import type { FsrsParameters } from '@lacuna/core/db/types';
 
@@ -36,8 +36,8 @@ export function defaultFsrsParameters(): FsrsParameters {
     requestRetention: default_request_retention,
     enable_fuzz: true,
     maximum_interval: default_maximum_interval,
-    learning_steps: [...default_learning_steps],
-    relearning_steps: [...default_relearning_steps],
+    learning_steps: [...defaultLearningSteps],
+    relearning_steps: [...defaultRelearningSteps],
   };
 }
 

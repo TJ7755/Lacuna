@@ -4,8 +4,8 @@
 //
 // IMPORTANT: `@open-spaced-repetition/binding-wasm32-wasi` is vendored locally
 // (see ./wasi-worker-browser.mjs and ../assets/fsrs-binding.wasm32-wasi.wasm)
-// because the upstream npm package incorrectly declares `cpu: wasm32` and fails
-// to install on x64 VMs. Do NOT import from `@open-spaced-repetition/binding`
+// because releases up to 0.5.0 declared `cpu: wasm32` and failed to install on
+// x64 VMs. Keep both files at the installed binding version. Do NOT import from `@open-spaced-repetition/binding`
 // (the root package) in browser code — its `browser` entry re-exports from the
 // missing wasm32-wasi package and will break the build.
 

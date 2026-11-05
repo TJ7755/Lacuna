@@ -14,24 +14,24 @@ import type { FSRSBindingItem } from '@open-spaced-repetition/binding';
 import {
   fsrs,
   generatorParameters,
-  clipParameters,
   createEmptyCard,
   checkParameters,
   CLAMP_PARAMETERS,
   W17_W18_Ceiling,
   clamp,
   default_w,
-  default_relearning_steps,
+  defaultRelearningSteps,
   type Card as TsCard,
   type Grade as TsGrade,
 } from 'ts-fsrs';
+import { clipFSRS6Parameters } from 'ts-fsrs/models/fsrs-6';
 import { DEFAULT_REQUEST_RETENTION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, Grade } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 export { MIN_OPTIMISE_REVIEWS } from './optimiseConfig';
 
 const EPS = 1e-6;
-const NUM_RELEARNING_STEPS = default_relearning_steps.length;
+const NUM_RELEARNING_STEPS = defaultRelearningSteps.length;
 
 /** A single card's grade sequence, the only thing the optimiser needs from a card. */
 export interface ReviewSequence {
@@ -90,7 +90,7 @@ export function countReviews(cards: Card[], reviewHistory?: readonly ReviewHisto
   );
 }
 
-/** Per-weight min/max bounds used by `clipParameters` (FSRS valid ranges). */
+/** Per-weight min/max bounds used by `clipFSRS6Parameters` (FSRS valid ranges). */
 function fsrsWeightBounds(
   numRelearningSteps: number = NUM_RELEARNING_STEPS,
 ): Array<[number, number]> {
@@ -231,7 +231,7 @@ export function evaluateParameters(
         (options?.scoreAfterTimestamp === undefined ||
           seq.timestamps[i] > options.scoreAfterTimestamp)
       ) {
-        const r = engine.get_retrievability(card, when, false);
+        const r = engine.retrievability(card, when);
         const p = Math.min(1 - EPS, Math.max(EPS, r));
         const y = seq.grades[i] > 1 ? 1 : 0;
         loss += -(y * Math.log(p) + (1 - y) * Math.log(1 - p));
@@ -245,6 +245,8 @@ export function evaluateParameters(
 }
 
 interface ComputeParametersOptions {
+  /** Binding 0.6+ defaults to FSRS-7 (34 weights); Lacuna schedules with FSRS-6. */
+  modelVersion: 'FSRS-6';
   enableShortTerm: boolean;
   numRelearningSteps: number;
   progress?: (current: number, total: number) => boolean | void | undefined;
@@ -305,6 +307,7 @@ export async function optimiseParameters(
   }).logLoss;
 
   const rawW = await options.computeParameters(trainSet, {
+    modelVersion: 'FSRS-6',
     enableShortTerm: true,
     numRelearningSteps: NUM_RELEARNING_STEPS,
     progress: (current, total) => {
@@ -337,5 +340,5 @@ export async function optimiseParameters(
 
 /** Clip a weight set to the FSRS valid ranges (always returns a fresh 21-length array). */
 function clip(w: number[]): number[] {
-  return clipParameters(w, NUM_RELEARNING_STEPS);
+  return clipFSRS6Parameters(w, NUM_RELEARNING_STEPS);
 }

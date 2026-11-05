@@ -1,7 +1,6 @@
 import { createEmptyCard, type Card as TsCard, type Grade as TsGrade, type State } from 'ts-fsrs';
 import type { FsrsParameters, Grade } from '@lacuna/core/db/types';
 import { makeEngine } from '../fsrs/fsrs';
-import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import {
   QUESTION_SCHEDULER_VERSION,
   type QuestionAttempt,
@@ -74,7 +73,6 @@ function toTsCard(schedule: QuestionScheduleState, now: number): TsCard {
     due: new Date(schedule.due ?? schedule.lastReviewed),
     stability: schedule.stability ?? 0.1,
     difficulty: schedule.difficulty ?? 5,
-    elapsed_days: Math.max(0, Math.floor((now - schedule.lastReviewed) / MS_PER_DAY)),
     scheduled_days: schedule.scheduledDays,
     learning_steps: schedule.learningSteps,
     reps: schedule.reps,
@@ -111,7 +109,7 @@ export function scheduleQuestionReview(
   const retrievabilityAtAttempt =
     schedule.lastReviewed === null || schedule.state === 0
       ? null
-      : engine.get_retrievability(before, now, false);
+      : engine.retrievability(before, now);
   const result = engine.next(before, new Date(now), grade as TsGrade);
 
   return {
