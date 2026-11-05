@@ -97,6 +97,9 @@
   min-height: 44px;
   display: flex;
   align-items: center;
+  width: fit-content;
+  padding-inline: 12px;
+  margin-inline: -12px;
   font-weight: 600;
   color: hsl(var(--ink));
 }
