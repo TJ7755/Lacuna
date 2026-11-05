@@ -100,6 +100,49 @@ function storedDraftText(page: Page, attemptId: string, nodeId: string) {
   );
 }
 
+for (const theme of ['light', 'dark'] as const) {
+  test(`answer ring stays consistent while typing, ${theme}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.addInitScript((value) => localStorage.setItem('lacuna-theme', value), theme);
+    await page.emulateMedia({ colorScheme: theme });
+    const attemptId = await startTranslation(page);
+    const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
+    const resting = await answer.evaluate((field) => {
+      const style = getComputedStyle(field);
+      return { outline: style.outline, shadow: style.boxShadow, focused: true };
+    });
+    expect(resting.outline).toContain('solid');
+    const sampling = answer.evaluate(
+      (field) =>
+        new Promise<string[]>((resolve) => {
+          const samples = new Set<string>();
+          const end = performance.now() + 1800;
+          const sample = () => {
+            const style = getComputedStyle(field);
+            samples.add(
+              JSON.stringify({
+                outline: style.outline,
+                shadow: style.boxShadow,
+                focused: document.activeElement === field,
+              }),
+            );
+            if (performance.now() < end) requestAnimationFrame(sample);
+            else resolve([...samples]);
+          };
+          sample();
+        }),
+    );
+    await answer.pressSequentially('Le chat ici', { delay: 80 });
+    const samples = await sampling;
+    await expect.poll(() => storedDraftText(page, attemptId, 'part-a')).toBe('Le chat ici');
+    await testInfo.attach(`steady-answer-ring-${theme}`, {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
+    expect(samples).toEqual([JSON.stringify(resting)]);
+  });
+}
+
 for (const viewport of [
   { width: 1280, height: 800 },
   { width: 390, height: 844 },

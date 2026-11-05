@@ -84,6 +84,7 @@ export function QuestionSetAnswer({
         <div className="qs-answer-field">
           <ComposerTextarea
             className="qs-preview-answer"
+            data-no-typing-feedback=""
             aria-label={format.kind === 'calculation' ? 'Your working and answer' : 'Your answer'}
             aria-describedby={headingId}
             readOnly={readOnly}
