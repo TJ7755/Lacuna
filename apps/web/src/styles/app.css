@@ -391,9 +391,7 @@
   corner-shape: inherit;
   pointer-events: none;
   will-change: opacity;
-  box-shadow:
-    inset 0 0 0 1px currentColor,
-    inset 0 2px 4px -2px currentColor;
+  background-color: currentColor;
 }
 [data-study-trigger][aria-busy='true']::after {
   content: '';

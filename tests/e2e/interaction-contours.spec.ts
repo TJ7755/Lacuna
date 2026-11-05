@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 test.use({ viewport: { width: 1470, height: 956 }, serviceWorkers: 'block' });
 
@@ -68,3 +68,56 @@ test('shared feedback preserves contours through hover, press and focus', async 
     await expect(target).toHaveCSS('border-radius', radius);
   }
 });
+
+for (const theme of ['light', 'dark']) {
+  test(`held course tabs and the new-course trigger have no inset outline (${theme})`, async ({
+    page,
+  }, info) => {
+    await page.addInitScript((theme) => localStorage.setItem('lacuna-theme', theme), theme);
+    await enterFreshLacuna(page);
+    const trigger = page.locator('main').getByRole('button', { name: 'New course', exact: true });
+    await trigger.hover();
+    await page.mouse.down();
+    const feedback = trigger.locator('.flow-feedback-layer');
+    await expect(feedback).toHaveCSS('box-shadow', 'none');
+    await page.mouse.up();
+    await expect(page.getByRole('textbox', { name: 'Course name', exact: true })).toBeFocused();
+    await page.mouse.move(0, 0);
+    await expect(feedback).toHaveCount(0, { timeout: 300 });
+    await page.screenshot({ path: info.outputPath('new-course-open.png') });
+    await info.attach('New course without a lingering outline', {
+      path: info.outputPath('new-course-open.png'),
+      contentType: 'image/png',
+    });
+    await page.getByRole('textbox', { name: 'Course name', exact: true }).press('Escape');
+    await expect(trigger).toBeFocused();
+    await createCourse(page, 'Interaction feedback', false);
+
+    const navigation = page.locator('nav[aria-label="Course sections"]:visible');
+    const cards = navigation.getByRole('link', { name: 'Cards', exact: true });
+    await cards.hover();
+    await page.mouse.down();
+    const heldFeedback = cards.locator('.flow-feedback-layer');
+    await expect(heldFeedback).toHaveCSS('box-shadow', 'none');
+    await expect(page).not.toHaveURL(/\/cards$/);
+    await navigation.screenshot({ path: info.outputPath('course-tab-held.png') });
+    await info.attach('Held course tab without an inset outline', {
+      path: info.outputPath('course-tab-held.png'),
+      contentType: 'image/png',
+    });
+    await page.mouse.up();
+    await expect(page).toHaveURL(/\/cards$/);
+    await cards.press('ArrowRight');
+    const questions = navigation.getByRole('link', { name: 'Questions', exact: true });
+    await expect(questions).toBeFocused();
+    await expect(questions).not.toHaveCSS('box-shadow', 'none');
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await cards.hover();
+    await page.mouse.down();
+    await expect(cards.locator('.flow-feedback-layer')).toHaveCSS('box-shadow', 'none');
+    await page.mouse.move(0, 0);
+    await page.mouse.up();
+    await expect(cards.locator('.flow-feedback-layer')).toHaveCount(0);
+  });
+}
