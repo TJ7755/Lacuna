@@ -27,9 +27,15 @@ class ResizeObserverMock implements ResizeObserver {
   });
 }
 
-function Fixture({ itemCount = 100 }: { itemCount?: number }) {
+function Fixture({
+  itemCount = 100,
+  pinnedIndices,
+}: {
+  itemCount?: number;
+  pinnedIndices?: number[];
+}) {
   const [, rerender] = useState(0);
-  const virtual = useVirtualList({ itemCount, estimateSize: 100, enabled: true });
+  const virtual = useVirtualList({ itemCount, estimateSize: 100, enabled: true, pinnedIndices });
   return (
     <div data-testid="scroll-root" style={{ height: 300, overflowY: 'auto' }}>
       <div data-testid="layout">
@@ -104,6 +110,20 @@ describe('useVirtualList', () => {
       screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
     });
     await waitFor(() => expect(screen.getByTestId('item-8')).toBeInTheDocument());
+  });
+
+  it('retains only explicitly pinned active rows outside the viewport', async () => {
+    const { rerender } = render(<Fixture pinnedIndices={[0]} />);
+    const list = await screen.findByTestId('list');
+    list.dataset.top = '-11000';
+    act(() => {
+      screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
+    });
+    await waitFor(() => expect(screen.getByTestId('item-99')).toBeInTheDocument());
+    expect(screen.getByTestId('item-0')).toBeInTheDocument();
+    expect(screen.queryAllByTestId(/^item-/)).toHaveLength(4);
+    rerender(<Fixture />);
+    await waitFor(() => expect(screen.queryByTestId('item-0')).not.toBeInTheDocument());
   });
 
   it('keeps only trailing overscan rows when the viewport is below the entire list', async () => {
@@ -200,5 +220,16 @@ describe('useVirtualList', () => {
       });
     });
     await waitFor(() => expect(parseFloat(list.style.height)).toBe(initialHeight + 120));
+  });
+
+  it('keeps the previous layout while a mounted row is temporarily hidden', async () => {
+    render(<Fixture />);
+    const row = await screen.findByTestId('item-0');
+    const list = screen.getByTestId('list');
+    const initialHeight = list.style.height;
+    act(() => {
+      notifyResize(row, { borderBoxSize: [{ blockSize: 0, inlineSize: 0 }] });
+    });
+    expect(list.style.height).toBe(initialHeight);
   });
 });

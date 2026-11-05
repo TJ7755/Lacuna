@@ -267,6 +267,30 @@ describe('CardsPage', () => {
     expect(screen.getByText('(2)', { exact: false })).toBeInTheDocument();
   });
 
+  it('bounds mounted lesson sections even when each lesson is below the row virtualisation threshold', () => {
+    mockCourse = course;
+    mockLessons = Array.from({ length: 100 }, (_, index) => ({
+      ...lesson1,
+      id: `lesson-${index}`,
+      name: `Topic ${index}`,
+      orderIndex: index,
+    }));
+    mockCards = mockLessons.map((lesson, index) =>
+      makeCard({
+        id: `card-${index}`,
+        primaryLessonId: lesson.id,
+      }),
+    );
+    renderPage();
+    expect(screen.getAllByRole('heading', { level: 2 }).length).toBeLessThan(15);
+    // Search still visits the complete course, including sections not mounted above.
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search all cards' }), {
+      target: { value: 'deck:"Topic 99"' },
+    });
+    expect(screen.getByRole('heading', { name: /Topic 99/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(1);
+  });
+
   it('hands each group heading to its card list, sharing a row with the list actions', () => {
     mockCourse = course;
     mockLessons = [lesson1];

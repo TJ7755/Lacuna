@@ -41,6 +41,11 @@ jobs:
         env:
           LACUNA_BROWSER_PREBUILT: 'true'
       - run: node scripts/performance-heavy/build.mjs
+      - name: Image-heavy Cards measurements
+        run: node scripts/performance-heavy/cards.mjs dist artifacts/performance/cards.json
+        env:
+          PERF_REPETITIONS: ${{ github.event_name == 'workflow_dispatch' && '3' || '1' }}
+          PERF_RATE: '4'
       - name: Large-library production budgets
         run: node artifacts/performance/run.mjs
         env:
@@ -59,6 +64,7 @@ jobs:
           path: |
             artifacts/performance/*.json
             artifacts/performance/*failure.png
+            artifacts/performance/cards-*.png
             test-results/
           retention-days: 30
 

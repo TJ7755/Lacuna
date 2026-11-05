@@ -179,6 +179,33 @@ export function filterSessionCardPool(cards: Card[], options: SessionCardPoolOpt
 
 const FRONT_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
+const normalisedCardContent = new WeakMap<
+  Card,
+  {
+    front: string;
+    back: string;
+    normalisedFront: string;
+    normalisedBack: string;
+  }
+>();
+
+/** Typing searches the same loaded records repeatedly. In particular, embedded
+ * images must not be normalised again on every keypress. Weak keys release these
+ * derived strings with the loaded records; compare fields to cover in-place edits. */
+function cardContent(card: Card) {
+  let cached = normalisedCardContent.get(card);
+  if (!cached || cached.front !== card.front || cached.back !== card.back) {
+    cached = {
+      front: card.front,
+      back: card.back,
+      normalisedFront: normalise(card.front),
+      normalisedBack: normalise(card.back),
+    };
+    normalisedCardContent.set(card, cached);
+  }
+  return cached;
+}
+
 /**
  * Find cards in a Course/Lesson-aware scope.
  */
@@ -225,13 +252,18 @@ export function searchCardsInScope(
 
     let score = 0;
     if (q) {
-      const haystack = normalise(
-        [card.front, card.back, course.name, lesson?.name ?? '', ...(card.tags ?? [])].join('  '),
-      );
+      const content = cardContent(card);
+      const haystack = [
+        content.normalisedFront,
+        content.normalisedBack,
+        normalise(course.name),
+        normalise(lesson?.name ?? ''),
+        ...(card.tags ?? []).map(normalise),
+      ].join('  ');
       const idx = haystack.indexOf(q);
       if (idx === -1) continue;
 
-      const frontIdx = normalise(card.front).indexOf(q);
+      const frontIdx = content.normalisedFront.indexOf(q);
       // Front matches always rank above non-front matches, regardless of how
       // far into the front text they appear. Ties are broken by earliest
       // overall match position (idx).

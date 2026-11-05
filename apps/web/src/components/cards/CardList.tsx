@@ -9,6 +9,7 @@ import { CheckIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { GroupedCardList } from './GroupedCardList';
+import { useCardSectionActivity } from './CardSections';
 import type { Card, Occlusion, Sequence } from '@lacuna/core/db/types';
 import type { CardListContext } from './cardListContext';
 import { BulkBarButton, CardBulkBar } from './CardBulkBar';
@@ -105,6 +106,7 @@ export function CardList({
     handleToggleFlag,
     handleDeleteOne,
   } = useCardListActions({ cards, linkedCardIds, assignableLessons, courseId });
+  useCardSectionActivity(selectMode || expandedCardId !== null);
 
   return (
     <div>

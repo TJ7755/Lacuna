@@ -139,6 +139,31 @@ describe('searchCards', () => {
     expect(results.map((r) => r.card.id)).toEqual(['a']);
   });
 
+  it('refreshes repeated searches when loaded content or ownership metadata changes', () => {
+    const loaded = card('a', {
+      front: 'Résumé',
+      back: 'Initial answer',
+      primaryLessonId: lesson.id,
+    });
+    expect(searchCards('resume', [loaded])).toHaveLength(1);
+    expect(searchCards('initial answer', [loaded])).toHaveLength(1);
+    loaded.front = 'Updated question';
+    loaded.back = 'Replacement answer';
+    loaded.tags = ['changed'];
+    expect(searchCards('resume', [loaded])).toHaveLength(0);
+    expect(searchCards('initial answer', [loaded])).toHaveLength(0);
+    expect(searchCards('updated question', [loaded])).toHaveLength(1);
+    expect(searchCards('replacement answer', [loaded])).toHaveLength(1);
+    expect(searchCards('tag:changed', [loaded], { parseQuery: true })).toHaveLength(1);
+    expect(
+      searchCardsInScope('renamed topic', {
+        cards: [loaded],
+        courses: [course],
+        lessons: [{ ...lesson, name: 'Renamed topic' }],
+      }),
+    ).toHaveLength(1);
+  });
+
   it('lists due cards with an empty query when the due filter is on', () => {
     const cards = [
       card('due', { due: NOW - 1, lastReviewed: NOW - 5000 }),

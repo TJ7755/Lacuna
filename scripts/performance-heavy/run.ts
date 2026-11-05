@@ -41,7 +41,7 @@ if (
 if (!Number.isInteger(port) || port < 0 || port > 65_535) {
   throw new Error('PERF_PORT must be an integer from 0 to 65535.');
 }
-const root = resolve('dist');
+const root = resolve(process.env.PERF_DIST ?? 'dist');
 const mime: Record<string, string> = {
   '.html': 'text/html',
   '.js': 'application/javascript',
@@ -110,6 +110,7 @@ const report: Record<string, unknown> = {
   traced: Boolean(traceDirectory),
   persistentProfile: profileDir ?? null,
   productionIndexBytes: (await stat(resolve(root, 'index.html'))).size,
+  productionBuild: root,
   timingMethod:
     'Host wall clock: action through asserted visible result and two animation frames; includes Playwright overhead.',
   limitations:

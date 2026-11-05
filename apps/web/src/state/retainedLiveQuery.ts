@@ -9,18 +9,27 @@ export function retainedLiveQuery<T>(read: (key: string) => Promise<T>) {
     let error: { cause: unknown } | undefined;
     let subscription: { unsubscribe(): void } | undefined;
     let expiry: ReturnType<typeof setTimeout> | undefined;
+    let handoff: ReturnType<typeof setTimeout> | undefined;
+    let preloading = false;
     let version = 0;
     let pending:
       { promise: Promise<void>; resolve(): void; reject(cause: unknown): void } | undefined;
     const listeners = new Set<() => void>();
     function stop() {
+      clearTimeout(handoff);
+      handoff = undefined;
+      preloading = false;
       version++;
       subscription?.unsubscribe();
       subscription = undefined;
     }
     function idle() {
       if (listeners.size) return;
-      stop();
+      // Router preparation resolves just before React mounts the reader. Keep its
+      // live read briefly so that handoff does not repeat every query in the snapshot.
+      // A mounted reader's final unsubscribe still stops immediately.
+      if (preloading && subscription) handoff ??= setTimeout(stop, 1_000);
+      else stop();
       error = undefined;
       clearTimeout(expiry);
       expiry = setTimeout(() => entry.dispose(), 5 * 60_000);
@@ -75,10 +84,14 @@ export function retainedLiveQuery<T>(read: (key: string) => Promise<T>) {
           reject = fail;
         });
         pending = { promise, resolve, reject };
+        preloading = true;
         start();
         return promise;
       },
       subscribe(listener: () => void) {
+        preloading = false;
+        clearTimeout(handoff);
+        handoff = undefined;
         listeners.add(listener);
         start();
         return () => {

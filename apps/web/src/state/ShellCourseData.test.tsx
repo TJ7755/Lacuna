@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import type { ReactNode } from 'react';
-import { renderHook, waitFor } from '@testing-library/react';
+import { render, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createCourse, createCourseCard } from '../db/repository';
 import { db } from '../db/schema';
@@ -84,6 +84,99 @@ it('uses per-Card recall instead of a final-only forecast before and after its p
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
+});
+
+it('retains shared card reads across Today navigation while dashboard supplements stay live', async () => {
+  const course = await createCourse('Navigation');
+  const card = await createCourseCard(course.id, 'front_back', 'Front', 'Back');
+  const reads = vi.spyOn(db.cards, 'toArray');
+  const performance = vi.spyOn(db.schedulingPerformance, 'bulkGet');
+  let sidebar: ReturnType<typeof useSidebarData>;
+  let dashboard: ReturnType<typeof useCourseDashboardData>;
+  function Consumer() {
+    sidebar = useSidebarData();
+    dashboard = useCourseDashboardData();
+    return null;
+  }
+  const view = (includeDashboard: boolean) => (
+    <ShellCourseDataProvider includeDashboard={includeDashboard}>
+      <Consumer />
+    </ShellCourseDataProvider>
+  );
+  const { rerender, unmount } = render(view(true));
+  try {
+    await waitFor(() => expect(dashboard?.allCards).toHaveLength(1));
+    const firstSidebar = sidebar;
+    expect(reads).toHaveBeenCalledTimes(1);
+    expect(performance).toHaveBeenCalledTimes(1);
+    rerender(view(false));
+    await waitFor(() => expect(dashboard).toBeUndefined());
+    rerender(view(true));
+    await waitFor(() => expect(dashboard?.allCards).toHaveLength(1));
+    expect(reads).toHaveBeenCalledTimes(1);
+    expect(performance).toHaveBeenCalledTimes(1);
+    expect(sidebar?.courses).toBe(firstSidebar?.courses);
+    await db.coursePerformance.update(course.id, {
+      runningMeanResponseTime: 30,
+      totalCorrectReviews: 5,
+    });
+    await waitFor(() => expect(dashboard?.stats.forecast[0].minutes).toBe(0.5));
+    expect(reads).toHaveBeenCalledTimes(1);
+    await db.cards.update(card.id, { suspended: true });
+    await waitFor(() => expect(dashboard?.allCards[0].suspended).toBe(true));
+    expect(reads).toHaveBeenCalledTimes(2);
+  } finally {
+    unmount();
+    reads.mockRestore();
+    performance.mockRestore();
+  }
+});
+
+it('refreshes due counts on Today re-entry without rereading shared Cards', async () => {
+  const now = Date.now();
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+  const reads = vi.spyOn(db.cards, 'toArray');
+  let sidebar: ReturnType<typeof useSidebarData>;
+  let dashboard: ReturnType<typeof useCourseDashboardData>;
+  function Consumer() {
+    sidebar = useSidebarData();
+    dashboard = useCourseDashboardData();
+    return null;
+  }
+  const view = (includeDashboard: boolean) => (
+    <ShellCourseDataProvider includeDashboard={includeDashboard}>
+      <Consumer />
+    </ShellCourseDataProvider>
+  );
+  try {
+    const course = await createCourse('Due soon');
+    const card = await createCourseCard(course.id, 'front_back', 'Front', 'Back');
+    await db.cards.update(card.id, {
+      state: 2,
+      lastReviewed: now - 86_400_000,
+      stability: 10,
+      due: now + 1000,
+    });
+    const { rerender, unmount } = render(view(true));
+    try {
+      await waitFor(() => expect(dashboard?.summaries[course.id].eligible).toBe(0));
+      expect(sidebar?.summaries[course.id].eligible).toBe(0);
+      rerender(view(false));
+      await waitFor(() => expect(dashboard).toBeUndefined());
+      clock.mockReturnValue(now + 2000);
+      rerender(view(true));
+      await waitFor(() => expect(dashboard?.summaries[course.id].eligible).toBe(1), {
+        timeout: 1000,
+      });
+      expect(sidebar?.summaries[course.id].eligible).toBe(1);
+      expect(reads).toHaveBeenCalledTimes(1);
+    } finally {
+      unmount();
+    }
+  } finally {
+    reads.mockRestore();
+    clock.mockRestore();
+  }
 });
 
 it('keeps activity and new-card caps correct without reading full review records', async () => {

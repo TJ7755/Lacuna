@@ -3,8 +3,9 @@ import { useVirtualList } from '../../hooks/useVirtualList';
 import { occlusionForRegionId } from '../../db/occlusionGeneration';
 import type { Card, Occlusion, SchedulerConfig } from '@lacuna/core/db/types';
 import { CardRow } from './CardRow';
+import { useCardSectionEntranceExpired } from './CardSections';
 
-const VIRTUAL_THRESHOLD = 50;
+const VIRTUAL_THRESHOLD = 20;
 
 /** Longest possible entry animation: the capped stagger plus one row's fade. */
 const INTRO_WINDOW_MS = 420;
@@ -66,7 +67,8 @@ export function CardListBody({
   // virtual window is not an entrance: rows revealed by scrolling previously
   // animated on first sight, which made the effect look arbitrary because whether
   // a given card faded depended on how far the list had been scrolled before.
-  const [introDone, setIntroDone] = useState(false);
+  const previouslyMounted = useCardSectionEntranceExpired(INTRO_WINDOW_MS * motionMultiplier);
+  const [introDone, setIntroDone] = useState(previouslyMounted);
   useEffect(() => {
     if (introDone || cards.length === 0) return;
     const id = window.setTimeout(() => setIntroDone(true), INTRO_WINDOW_MS * motionMultiplier);

@@ -13,6 +13,8 @@ interface UseVirtualListOptions {
   gap?: number;
   overscan?: number;
   enabled?: boolean;
+  /** Retain active editors/toolbars while their section is outside the window. */
+  pinnedIndices?: readonly number[];
 }
 
 interface UseVirtualListResult {
@@ -44,6 +46,7 @@ export function useVirtualList({
   gap = 0,
   overscan = 3,
   enabled = true,
+  pinnedIndices,
 }: UseVirtualListOptions): UseVirtualListResult {
   const containerRef = useRef<HTMLDivElement>(null);
   const itemHeights = useRef<Record<number, number>>({});
@@ -58,14 +61,16 @@ export function useVirtualList({
   // callbacks: discarding them here loses their ResizeObservers without giving
   // React a chance to invoke the old callback with null.
   useEffect(() => {
+    if (!enabled) return;
     itemHeights.current = {};
     // Mounted rows retain their callback refs when cards are added or removed.
     // Rebuild their measurements rather than waiting for a resize that may never occur.
     for (const [index, element] of measuredElements.current) {
-      if (index < itemCount) itemHeights.current[index] = element.getBoundingClientRect().height;
+      const height = element.getBoundingClientRect().height;
+      if (index < itemCount && height > 0) itemHeights.current[index] = height;
     }
     setMeasureVersion((version) => version + 1);
-  }, [itemCount]);
+  }, [itemCount, enabled]);
 
   // Track the nearest scrolling ancestor. AppShell scrolls its <main>, not the
   // window, so listening only on window leaves a large list frozen at its first range.
@@ -119,6 +124,9 @@ export function useVirtualList({
       let observer: ResizeObserver | null = null;
       let currentElement: HTMLElement | null = null;
       const updateHeight = (height: number) => {
+        // A Suspense-hidden or not-yet-laid-out section cannot replace its estimate
+        // with zero: that would collapse all subsequent sections into the viewport.
+        if (height <= 0) return;
         const prev = itemHeights.current[index];
         if (prev === height) return;
         itemHeights.current[index] = height;
@@ -218,7 +226,14 @@ export function useVirtualList({
     endIndex = Math.min(itemCount - 1, endIndex + overscan);
 
     const items: VirtualItem[] = [];
+    const indices = new Set<number>();
     for (let i = startIndex; i <= endIndex; i++) {
+      indices.add(i);
+    }
+    for (const index of pinnedIndices ?? []) {
+      if (index >= 0 && index < itemCount) indices.add(index);
+    }
+    for (const i of [...indices].sort((a, b) => a - b)) {
       items.push({
         index: i,
         start: starts[i],
@@ -237,6 +252,7 @@ export function useVirtualList({
     scrollOffset,
     containerHeight,
     measureVersion,
+    pinnedIndices,
   ]);
 
   const scrollToIndex = useCallback(

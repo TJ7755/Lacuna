@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { PathIcon, ImageIcon } from '../ui/icons';
 import { Button } from '../ui/Button';
 import { CardListBody } from './CardListBody';
+import { useCardSectionActivity } from './CardSections';
 import type { Card, Occlusion, SchedulerConfig } from '@lacuna/core/db/types';
 
 /** The minimal shape of a generated card's owner (a Sequence or an Occlusion) this group needs. */
@@ -56,6 +57,7 @@ export function GeneratedCardGroup({
   compactMetadata,
 }: GeneratedCardGroupProps) {
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  useCardSectionActivity(expandedCardId !== null);
   const { Icon, editLabel } = KIND_META[kind];
 
   return (
