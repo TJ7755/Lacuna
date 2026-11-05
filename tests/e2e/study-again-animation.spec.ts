@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   test(`Again gains its red surface before the liquid hands back (${reducedMotion})`, async ({
@@ -9,7 +9,6 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await page.emulateMedia({ reducedMotion });
     await enterFreshLacuna(page);
     await createCourse(page, 'Again animation');
-    const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
     await page.getByRole('button', { name: 'Edit mode' }).click();
     await page.getByRole('button', { name: 'New card', exact: true }).first().click();
     await page.getByRole('textbox', { name: 'Front' }).fill('Which organ produces bile?');
@@ -17,7 +16,13 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await page.getByRole('button', { name: 'Add card', exact: true }).click();
     await expect(page).not.toHaveURL(/\/cards\/new$/);
     await page.evaluate(() => localStorage.setItem('lacuna.gradingMode', 'manual'));
-    await page.goto(`/#/course/${courseId}/learn?filter=new`);
+    await page.reload();
+    await page
+      .getByRole('navigation', { name: 'Course sections' })
+      .getByRole('link', { name: 'Path', exact: true })
+      .click();
+    await page.getByRole('button', { name: 'Study', exact: true }).click();
+    await chooseScheduledStudy(page);
     const reveal = page.getByRole('button', { name: 'Show answer', exact: true }).last();
     await expect(reveal).toBeVisible();
     const liquid = page.locator('[data-flow-layer]');
