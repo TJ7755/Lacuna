@@ -70,7 +70,8 @@ else {
     spawn(process.execPath, ['-e', "require('node:fs').writeFileSync(process.env.FAKE_DESCENDANT_FILE, String(process.pid)); setInterval(() => {}, 1000)"], { stdio: 'inherit' });
     writeFileSync(process.env.FAKE_WAIT_FILE, String(process.pid));
     setInterval(() => {}, 1000);
-  } else process.exitCode = Number(process.env.FAKE_STATUS || 0);
+  } else if (!process.env.FAKE_FAIL_SCRIPT || args[1] === process.env.FAKE_FAIL_SCRIPT)
+    process.exitCode = Number(process.env.FAKE_STATUS || 0);
 }
 `,
   );
@@ -278,6 +279,25 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
     assert.equal(result.report.commands.length, 1);
   });
 
+  test('lint-scoped changes plan the same unused-code checks as CI, immediately after lint', (t) => {
+    const { change, run } = fixture(t);
+    change('tooling/handwriting-maths/src/main.ts');
+    const result = run('verify.mjs', ['--plan']);
+    assert.equal(result.status, 2, result.stderr);
+    assert.equal(result.report.scope.lint, true);
+    assert.equal(result.report.scope.app, false);
+    const lintIndex = result.report.plan.findIndex(({ args }) => args[1] === 'lint');
+    assert.deepEqual(
+      result.report.plan.slice(lintIndex, lintIndex + 3),
+      ['lint', 'knip', 'knip:files'].map((script) => ({
+        command: 'bun',
+        args: ['run', script],
+        cwd: '.',
+      })),
+    );
+    assert.equal(result.report.commands.length, 1);
+  });
+
   test('unknown changes and explicit full mode select the CONTRIBUTING matrix and expose native gaps', (t) => {
     const { change, run } = fixture(t);
     change('unknown/new.txt');
@@ -310,6 +330,28 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
     assert.ok(result.report.outstanding.length > 0);
     const browser = result.report.commands.find(({ args }) => args[1] === 'test:e2e:web');
     assert.deepEqual(browser.env, { CI: 'true' });
+    const lintIndex = result.report.commands.findIndex(({ args }) => args[1] === 'lint');
+    assert.deepEqual(
+      result.report.commands.slice(lintIndex, lintIndex + 3).map(({ args }) => args),
+      ['lint', 'knip', 'knip:files'].map((script) => ['run', script]),
+    );
+  });
+
+  test('lint and unused-code failures preserve their status and stop subsequent checks', (t) => {
+    const { change, run } = fixture(t);
+    change('tooling/handwriting-maths/src/main.ts');
+    const scripts = ['lint', 'knip', 'knip:files'];
+    for (const [index, script] of scripts.entries()) {
+      const result = run('verify.mjs', [], { FAKE_FAIL_SCRIPT: script, FAKE_STATUS: '23' });
+      assert.equal(result.status, 23, script);
+      const lintIndex = result.report.commands.findIndex(({ args }) => args[1] === 'lint');
+      assert.deepEqual(
+        result.report.commands.slice(lintIndex).map(({ args }) => args),
+        scripts.slice(0, index + 1).map((selected) => ['run', selected]),
+      );
+      assert.equal(result.report.commands.at(-1).exitCode, 23);
+      assert.match(result.report.error, /failed with exit status 23/);
+    }
   });
 
   test('a selected verification check preserves its failure status and stops', (t) => {
