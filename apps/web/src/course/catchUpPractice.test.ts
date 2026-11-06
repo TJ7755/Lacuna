@@ -3,6 +3,7 @@ import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { makeExamDateContext } from '../fsrs/examDate';
 import type { ReviewActivity } from '../fsrs/heatmap';
+import { startOfDay } from '../utils/datetime';
 import { card, NOW } from '../fsrs/session.testFixtures';
 import { catchUpPracticePacing, catchUpPracticePool } from './catchUpPractice';
 
@@ -74,7 +75,7 @@ const pool = (cards: Card[], config = course, allowExtra = false) =>
   );
 
 describe('adaptive catch-up introductions', () => {
-  it.each(['reset', 'rolling-boundaries', 'repeat-attempts', 'exhausted-cap', 'near-exam'])(
+  it.each(['reset', 'day-boundaries', 'repeat-attempts', 'exhausted-cap', 'near-exam'])(
     'preserves introduction pacing and admission with timestamp activity (%s)',
     (scenario) => {
       let cards: Card[];
@@ -85,10 +86,10 @@ describe('adaptive catch-up introductions', () => {
           ...Array.from({ length: 10 }, (_, i) => reviewed(`introduced-${i}`, NOW - 100)),
           ...unseen(80),
         ];
-      } else if (scenario === 'rolling-boundaries') {
+      } else if (scenario === 'day-boundaries') {
         cards = [
-          reviewed('boundary', NOW - MS_PER_DAY),
-          reviewed('inside', NOW - MS_PER_DAY + 1),
+          reviewed('yesterday', startOfDay(NOW) - 1),
+          reviewed('boundary', startOfDay(NOW)),
           reviewed('now', NOW),
           reviewed('future', NOW + 1),
           ...unseen(30),
@@ -125,7 +126,7 @@ describe('adaptive catch-up introductions', () => {
       const projected = cards.map((item) => ({ ...item, history: [] }));
       const expectedPacing = pacing(cards, cards, config);
       expect(expectedPacing.introducedToday).toBe(
-        scenario === 'rolling-boundaries'
+        scenario === 'day-boundaries'
           ? 2
           : scenario === 'repeat-attempts'
             ? 1
@@ -195,7 +196,7 @@ describe('adaptive catch-up introductions', () => {
     ).toBe(30);
   });
 
-  it('counts distinct first reviews in a rolling day and keeps the target stable as cards are introduced', () => {
+  it('counts distinct first reviews today and keeps the target stable as cards are introduced', () => {
     const config = { ...course, examDate: NOW + 6 * MS_PER_DAY };
     const introduced = Array.from({ length: 10 }, (_, i) => reviewed(`seen-${i}`, NOW - 100));
     expect(pacing([...unseen(80), ...introduced], undefined, config)).toMatchObject({
@@ -203,7 +204,7 @@ describe('adaptive catch-up introductions', () => {
       introducedToday: 10,
       remainingNewAllowance: 20,
     });
-    const old = reviewed('old', NOW - MS_PER_DAY);
+    const old = reviewed('old', startOfDay(NOW) - 1);
     old.history.push({ ...old.history[0], timestamp: NOW - 1 });
     expect(pacing([old, ...unseen(30)])).toMatchObject({
       introducedToday: 0,

@@ -5,6 +5,7 @@ import { resolveCardExamDate } from '../fsrs/examDate';
 import { isAvailable } from '../fsrs/eligibility';
 import { cardReviewTimestamps, type ReviewActivity } from '../fsrs/heatmap';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import { startOfDay } from '../utils/datetime';
 import { earlierLessonIds } from './courseEntry';
 import { eligiblePracticePool } from './studyPools';
 
@@ -36,7 +37,7 @@ export interface CatchUpPracticePacing {
 }
 
 /**
- * Pace unique introductions across a rolling 24 hours. Reserve half the remaining
+ * Pace unique introductions per local calendar day. Reserve half the remaining
  * days, up to the course's urgent-practice window, for subsequent spaced reviews.
  * This is an introduction workload estimate, never a claim of exam readiness.
  * Earlier deadlines constrain only their cumulative coverage, so a small near
@@ -50,13 +51,13 @@ export function catchUpPracticePacing(
   now: number = Date.now(),
   activity?: ReviewActivity,
 ): CatchUpPracticePacing {
-  const cutoff = now - MS_PER_DAY;
-  const introducedRecently = (card: Card) => {
+  const cutoff = startOfDay(now);
+  const introducedToday = (card: Card) => {
     const first = firstReviewAt(card, activity);
-    return first > cutoff && first <= now;
+    return first >= cutoff && first <= now;
   };
   const uniqueScope = [...new Map(scope.map((card) => [card.id, card])).values()];
-  const introduced = uniqueScope.filter(introducedRecently);
+  const introduced = uniqueScope.filter(introducedToday);
   const unseen = uniqueScope.filter((card) => isUnseen(card, activity) && isAvailable(card, now));
   const deadlineCounts = new Map<number, number>();
   for (const card of [...unseen, ...introduced]) {
@@ -74,7 +75,7 @@ export function catchUpPracticePacing(
     dailyTarget = Math.max(dailyTarget, Math.ceil(cumulativeCount / introductionDays));
   }
   const allIntroduced = [...new Map(allCards.map((card) => [card.id, card])).values()].filter(
-    introducedRecently,
+    introducedToday,
   ).length;
   const nonCatchUpIntroduced = Math.max(0, allIntroduced - introduced.length);
   // Preserve a higher explicit course allowance, but a smaller course cap cannot
