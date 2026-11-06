@@ -1,7 +1,7 @@
 // Snapshot contents and storage are shared by interactive and worker backups.
 import { db } from './schema';
 import { exportDatabase } from './backupSnapshot';
-import { mirrorToFolder } from './backupFolder';
+import { mirrorToFolder, type FolderMirrorResult } from './backupFolder';
 import type { BackupFile, BackupSnapshot } from '@lacuna/core/db/types';
 
 const MAX_RESTORE_POINTS = 10;
@@ -12,7 +12,10 @@ export async function backupIsStale(): Promise<boolean> {
   return !last || Date.now() - last.createdAt >= STALE_MS;
 }
 
-export async function createRestorePoint(onStored: () => void): Promise<BackupFile> {
+export async function createRestorePoint(
+  onStored: () => void,
+  onMirror?: (result: FolderMirrorResult) => void,
+): Promise<BackupFile> {
   const payload = await exportDatabase();
   const snapshot: BackupSnapshot = {
     createdAt: payload.exportedAt,
@@ -32,12 +35,14 @@ export async function createRestorePoint(onStored: () => void): Promise<BackupFi
   }
 
   // Best-effort folder mirror; never let it break the backup itself.
-  await mirrorToFolder(payload).catch((e: unknown) => {
+  const mirror = await mirrorToFolder(payload).catch((e: unknown): FolderMirrorResult => {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
       console.warn('Folder mirror failed:', e);
     }
+    return { state: 'failed' };
   });
+  onMirror?.(mirror);
 
   return payload;
 }

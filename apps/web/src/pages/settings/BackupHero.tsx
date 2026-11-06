@@ -1,5 +1,4 @@
-// Hero of the Your data area: the one big Back up action and how fresh the last
-// backup is. The button runs busy -> tick, and a short burst marks a saved backup.
+// Local restore-point action and freshness. Folder-copy receipts are separate.
 
 import { forwardRef, useEffect, useRef, useState, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
@@ -53,7 +52,9 @@ export const BackupHero = forwardRef<
   }
 
   const status: BackupStatus =
-    phase === 'done' ? { label: 'Backed up just now', tone: 'fresh' } : backupStatus(lastAt);
+    phase === 'done'
+      ? { label: 'Restore point saved just now', tone: 'fresh' }
+      : backupStatus(lastAt);
 
   return (
     <SettingsCard id="settings-backups">
@@ -114,7 +115,7 @@ export const BackupHero = forwardRef<
                 />
               )}
             </span>
-            {phase === 'busy' ? 'Backing up…' : phase === 'done' ? 'Backed up' : 'Back up'}
+            {phase === 'busy' ? 'Saving…' : phase === 'done' ? 'Saved' : 'Save restore point'}
           </Button>
           {bursts > 0 && phase === 'done' && (
             <Burst trigger={bursts} multiplier={multiplier} count={14} spread={70} />

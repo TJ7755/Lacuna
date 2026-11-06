@@ -8,6 +8,12 @@ import type { BackupFile } from '@lacuna/core/db/types';
 const MAX_RESTORE_POINTS = 10;
 const FOLDER_KEY = 'backupFolderHandle';
 
+export type FolderMirrorResult =
+  | { state: 'unconfigured' }
+  | { state: 'saved'; folder: string; at: number }
+  | { state: 'permission-denied'; folder: string }
+  | { state: 'failed'; folder?: string };
+
 // The File System Access types are not in every TS lib target; treat them loosely.
 type DirHandle = {
   name: string;
@@ -89,16 +95,27 @@ async function pruneFolderMirror(handle: DirHandle): Promise<void> {
 }
 
 /** Best-effort folder mirror for a backup payload. */
-export async function mirrorToFolder(payload: BackupFile): Promise<void> {
+export async function mirrorToFolder(payload: BackupFile): Promise<FolderMirrorResult> {
   const handle = await getFolderHandle();
-  if (!handle) return;
-  if (!(await ensurePermission(handle))) return;
-  const stamp = new Date(payload.exportedAt).toISOString().slice(0, 19).replace(/:/g, '-');
-  const fileHandle = await handle.getFileHandle(`lacuna-backup-${stamp}.json`, {
-    create: true,
-  });
-  const writable = await fileHandle.createWritable();
-  await writable.write(JSON.stringify(payload, null, 2));
-  await writable.close();
-  await pruneFolderMirror(handle);
+  if (!handle) return { state: 'unconfigured' };
+  try {
+    if (!(await ensurePermission(handle)))
+      return { state: 'permission-denied', folder: handle.name };
+    const stamp = new Date(payload.exportedAt).toISOString().slice(0, 19).replace(/:/g, '-');
+    const fileHandle = await handle.getFileHandle(`lacuna-backup-${stamp}.json`, {
+      create: true,
+    });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(payload, null, 2));
+    await writable.close();
+    // Pruning an older copy must not turn a completed write into an apparent failure.
+    await pruneFolderMirror(handle).catch(() => undefined);
+    return { state: 'saved', folder: handle.name, at: payload.exportedAt };
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn('Folder mirror failed:', error);
+    }
+    return { state: 'failed', folder: handle.name };
+  }
 }
