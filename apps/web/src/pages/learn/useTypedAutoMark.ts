@@ -88,7 +88,6 @@ export function useTypedAutoMark({
   const marker = useJevTypedMarker();
   const status = useJevStatus();
   const [mark, setMark] = useState<TypedAutoMark>({ state: 'idle' });
-  const accepted = useRef(false);
   const onMarkedRef = useRef(onMarked);
   useEffect(() => {
     onMarkedRef.current = onMarked;
@@ -98,14 +97,10 @@ export function useTypedAutoMark({
   const active = eligible && marker !== null;
   const cardId = card?.id;
 
-  // Reading time belongs to the learner, independently of animation speed. A cancelled
-  // departure can be accepted again after its menu/editor/leave dialogue closes.
-  useEffect(() => {
-    accepted.current = false;
-  }, [active, mark, paused]);
+  // The answer flow owns its pending-save/transition guards. Keep a failed or
+  // cancelled answer retryable instead of latching acceptance in this presentation.
   const continueAnswer = useCallback(() => {
-    if (!active || paused || mark.state !== 'marked' || accepted.current) return;
-    accepted.current = true;
+    if (!active || paused || mark.state !== 'marked') return;
     if (mark.grade === undefined) onMarkedRef.current(mark.correct, mark.provenance);
     else onMarkedRef.current(mark.correct, mark.provenance, mark.grade);
   }, [active, paused, mark]);

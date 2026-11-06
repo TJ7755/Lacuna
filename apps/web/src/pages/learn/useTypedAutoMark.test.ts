@@ -247,7 +247,6 @@ describe('useTypedAutoMark', () => {
     act(() => {
       if (result.current.state === 'marked') {
         result.current.onContinue?.();
-        result.current.onContinue?.();
       }
     });
     expect(onMarked).toHaveBeenCalledExactlyOnceWith(true, null);
