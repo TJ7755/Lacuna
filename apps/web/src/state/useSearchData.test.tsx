@@ -19,6 +19,7 @@ beforeEach(async () => {
     db.lessons.clear(),
     db.notes.clear(),
     db.questions.clear(),
+    db.questionSets.clear(),
     db.reviewHistory.clear(),
   ]);
 });
@@ -28,6 +29,18 @@ describe('useSearchData', () => {
     const course = await createCourse('Biology');
     const card = await createCourseCard(course.id, 'front_back', 'Cell membrane', 'Phospholipid');
     await db.cards.update(card.id, { lapses: 8, tags: ['cells'] });
+    await db.questionSets.put({
+      id: 'modern-set',
+      courseId: course.id,
+      title: 'Modern cells',
+      lessonIds: [],
+      assessmentIds: [],
+      questions: [],
+      contentVersion: 1,
+      contentRevisionId: 'revision',
+      createdAt: 1,
+      updatedAt: 1,
+    });
     await db.reviewHistory.put(
       reviewHistoryEntryForCard(card, {
         timestamp: Date.now(),
@@ -50,6 +63,7 @@ describe('useSearchData', () => {
       const data = await (useSearchData() as unknown as Promise<SearchData>);
 
       expect(data.cards).toHaveLength(1);
+      expect(data.questionSets).toMatchObject([{ id: 'modern-set', title: 'Modern cells' }]);
       expect(data.cards[0]).toMatchObject({
         id: card.id,
         front: 'Cell membrane',

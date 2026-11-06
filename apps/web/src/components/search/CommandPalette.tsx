@@ -1,4 +1,3 @@
-import { searchHelp } from '../../pages/help/searchHelp';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import {
   useCallback,
@@ -14,11 +13,8 @@ import { useNavigate } from 'react-router-dom';
 import { AppLink as Link } from '../ui/AppLink';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import { useSearchData } from '../../state/useSearchData';
-import {
-  searchCardsInScope,
-  searchCourseContent,
-  searchQuestionsInScope,
-} from '@lacuna/core/db/search';
+import { searchCardsInScope } from '@lacuna/core/db/search';
+import { globalSearch } from './globalSearch';
 import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 import { SearchIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -59,32 +55,7 @@ function GlobalPaletteDialog({
   returnFocusTarget?: RefObject<HTMLElement | null>;
 }) {
   const searchData = useSearchData();
-  // Help and course/lesson/note hits precede Question and Card hits, capped together
-  // so the palette never grows unbounded on a broad query.
-  const search = useCallback(
-    (query: string): PaletteHit[] => {
-      const courses = searchData?.courses ?? [];
-      const lessons = searchData?.lessons ?? [];
-      const courseHits = searchCourseContent(query, courses, lessons, searchData?.notes ?? []);
-      const cardHits = searchCardsInScope(query, {
-        cards: searchData?.cards ?? [],
-        courses,
-        lessons,
-      });
-      const questionHits = searchQuestionsInScope(query, {
-        questions: searchData?.questions ?? [],
-        courses,
-        lessons,
-      });
-      const helpHits: PaletteHit[] = query.trim()
-        ? searchHelp(query)
-            .slice(0, 3)
-            .map((topic) => ({ kind: 'help', topic }))
-        : [];
-      return [...helpHits, ...courseHits, ...questionHits, ...cardHits];
-    },
-    [searchData],
-  );
+  const search = useCallback((query: string) => globalSearch(query, searchData), [searchData]);
   return (
     <CommandPaletteDialog
       onClose={onClose}
