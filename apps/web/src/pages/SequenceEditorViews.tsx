@@ -284,10 +284,7 @@ export function SequenceIdentity({
 
 export function SequenceItems({
   itemPlural,
-  itemTerm,
-  chunkLabel,
   saved,
-  touch,
   usesSpeakers,
   partRef,
   speakers,
@@ -303,10 +300,7 @@ export function SequenceItems({
   saveRef,
 }: {
   itemPlural: string;
-  itemTerm: string;
-  chunkLabel: string;
   saved: Outline;
-  touch: boolean;
   usesSpeakers: boolean;
   partRef: RefObject<HTMLDivElement | null>;
   speakers: string[];
@@ -333,12 +327,6 @@ export function SequenceItems({
             {saved.items.length}
           </span>
         </h2>
-        {!touch && (
-          <p className="text-xs text-ink-faint">
-            Enter for the next {itemTerm}, twice for a new {chunkLabel.toLowerCase()}. Shift+Enter
-            breaks a {itemTerm}.
-          </p>
-        )}
       </div>
 
       {usesSpeakers && (

@@ -283,21 +283,6 @@ export function OcclusionEditor() {
     <div
       className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}
       {...editorKeys}
-      onKeyDown={(event) => {
-        if (
-          !event.defaultPrevented &&
-          !event.nativeEvent.isComposing &&
-          event.nativeEvent.keyCode !== 229 &&
-          (event.ctrlKey || event.metaKey) &&
-          !event.shiftKey &&
-          event.key.toLowerCase() === 'z' &&
-          !(event.target as Element).closest('input, textarea, [contenteditable]') &&
-          regionHistory.canUndo
-        ) {
-          event.preventDefault();
-          regionHistory.undo();
-        } else editorKeys.onKeyDown(event);
-      }}
       onFocus={(event) => keepClearOfDock(event.target)}
     >
       {leaveGuard.dialog}
@@ -413,7 +398,7 @@ export function OcclusionEditor() {
             variant="ghost"
             size="sm"
             aria-label="Undo region deletion"
-            title="Undo region deletion (Ctrl/Cmd+Z)"
+            title="Undo region deletion"
             disabled={!regionHistory.canUndo || saving}
             onClick={regionHistory.undo}
           >

@@ -37,7 +37,6 @@ import {
 } from '../db/sequenceRepository';
 import type { SequencePresetId } from '@lacuna/core/db/types';
 import { useEditorKeys } from '../hooks/dialogKeys';
-import { useIsTouchMode } from '../state/inputMode';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { useReturn } from '../utils/editorOrigin';
 import { DEFAULT_RECITATION_CHUNK_SIZE, hasStanzas } from './learn/recitation/recitationFlow';
@@ -60,7 +59,6 @@ export function SequenceEditor() {
   }>();
   const lessonMode = Boolean(lessonId);
   const { notify } = useToast();
-  const touch = useIsTouchMode();
 
   const course = useCourse(courseId);
   const lesson = useLesson(lessonId);
@@ -358,10 +356,7 @@ export function SequenceEditor() {
 
         <SequenceItems
           itemPlural={itemPlural}
-          itemTerm={itemTerm}
-          chunkLabel={chunkLabel}
           saved={saved}
-          touch={touch}
           usesSpeakers={usesSpeakers}
           partRef={partRef}
           speakers={speakers}
