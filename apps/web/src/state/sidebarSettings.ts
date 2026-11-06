@@ -29,6 +29,9 @@ export const DEFAULTS: SidebarSettings = {
   navItems: DEFAULT_NAV_ITEMS,
 };
 
+/** Navigation groups share their order between customisation and the sidebar. */
+export const FOOTER_NAV = new Set(['share', 'settings', 'help']);
+
 const setting = createLocalSetting<SidebarSettings>({
   key: 'lacuna.sidebarSettings',
   event: 'lacuna:sidebar-settings',
@@ -44,7 +47,7 @@ const setting = createLocalSetting<SidebarSettings>({
         // and visibility of everything that survives.
         const merged = navItems.flatMap((n) => {
           const def = DEFAULT_NAV_ITEMS.find((item) => item.id === n.id);
-          return def ? [{ ...n, label: def.label }] : [];
+          return def ? [{ ...n, label: def.label, visible: n.id === 'settings' || n.visible }] : [];
         });
         for (const def of DEFAULT_NAV_ITEMS) {
           if (!merged.find((n) => n.id === def.id)) {

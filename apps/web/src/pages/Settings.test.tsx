@@ -62,6 +62,7 @@ vi.mock('../state/inputMode', () => ({
   useIsTouchMode: () => false,
 }));
 vi.mock('../state/sidebarSettings', () => ({
+  FOOTER_NAV: new Set(['share', 'settings', 'help']),
   DEFAULT_NAV_ITEMS: [],
   useSidebarSettings: () => [
     {

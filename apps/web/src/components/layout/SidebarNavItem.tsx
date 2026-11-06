@@ -15,8 +15,7 @@ export const NAV_LABELS: Record<string, string> = {
   analytics: 'Progress',
 };
 
-/** Entries that sit at the foot of the sidebar rather than at the top. */
-export const FOOTER_NAV = new Set(['share', 'settings', 'help']);
+export { FOOTER_NAV } from '../../state/sidebarSettings';
 
 const PILL_SHADOW = 'shadow-[0_1px_2px_hsl(var(--ink)/0.06)]';
 

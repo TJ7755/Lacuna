@@ -124,7 +124,9 @@ function AppShellLayout() {
   const titlebarRef = useRef<HTMLDivElement>(null);
   const bottomNavRef = useRef<HTMLDivElement>(null);
   const shellBodyRef = useRef<HTMLDivElement>(null);
+  const desktopSidebarRef = useRef<HTMLDivElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+  const drawerReturnFocusRef = useRef<HTMLElement | null>(null);
   const mobileWasOpenRef = useRef(false);
   const paletteReturnFocusRef = useRef<HTMLElement | null>(null);
   const mobileDrawerRef = useFocusTrap(mobileOpen, {
@@ -145,9 +147,8 @@ function AppShellLayout() {
     onOpen: () => setMobileOpen(true),
   });
 
-  // Keep an icon rail visible on narrower desktop windows instead of spending a
-  // quarter of the viewport on the full sidebar. The user's preference resumes
-  // once there is enough room for the expanded navigation.
+  // Narrow desktop windows retain the rail; its expansion opens the existing
+  // navigation overlay without shrinking the learner's content column.
   useEffect(() => {
     const query = window.matchMedia?.(WIDE_DESKTOP_QUERY);
     if (!query) return;
@@ -156,6 +157,10 @@ function AppShellLayout() {
     query.addEventListener('change', onChange);
     return () => query.removeEventListener('change', onChange);
   }, []);
+
+  useEffect(() => {
+    if (wideDesktop) setMobileOpen(false);
+  }, [wideDesktop]);
 
   // Debounce sidebar collapse writes so rapid toggles / drag-resize don't hammer localStorage.
   useEffect(() => {
@@ -206,7 +211,7 @@ function AppShellLayout() {
   // trigger.
   useEffect(() => {
     if (mobileWasOpenRef.current && !mobileOpen && !paletteOpen) {
-      mobileTriggerRef.current?.focus();
+      (drawerReturnFocusRef.current ?? mobileTriggerRef.current)?.focus();
     }
     mobileWasOpenRef.current = mobileOpen;
   }, [mobileOpen, paletteOpen]);
@@ -220,7 +225,7 @@ function AppShellLayout() {
         e.preventDefault();
         if (!paletteOpen) {
           paletteReturnFocusRef.current = mobileOpen
-            ? mobileTriggerRef.current
+            ? (drawerReturnFocusRef.current ?? mobileTriggerRef.current)
             : document.activeElement instanceof HTMLElement
               ? document.activeElement
               : null;
@@ -282,18 +287,31 @@ function AppShellLayout() {
       </div>
       <div ref={shellBodyRef} className="relative flex flex-1 overflow-hidden">
         {/* Desktop sidebar */}
-        <div className="hidden md:block">
+        <div
+          ref={desktopSidebarRef}
+          className="hidden md:block"
+          inert={mobileOpen}
+          aria-hidden={mobileOpen || undefined}
+        >
           <Sidebar
             collapsed={!wideDesktop || collapsed}
-            onToggleCollapsed={() => setCollapsed((c) => !c)}
-            collapseControl={wideDesktop}
+            onToggleCollapsed={() => {
+              if (wideDesktop) setCollapsed((c) => !c);
+              else {
+                drawerReturnFocusRef.current =
+                  desktopSidebarRef.current?.querySelector<HTMLButtonElement>(
+                    '[aria-label="Expand sidebar"]',
+                  ) ?? null;
+                setMobileOpen(true);
+              }
+            }}
           />
         </div>
 
         {/* Mobile drawer */}
         <AnimatePresence>
           {mobileOpen && (
-            <MobileDrawerPresence className="fixed inset-0 z-40 md:hidden">
+            <MobileDrawerPresence className="fixed inset-0 z-40">
               <motion.div
                 className="absolute inset-0"
                 initial={motionEnabled ? { opacity: 0 } : false}
@@ -353,7 +371,10 @@ function AppShellLayout() {
           <div className="flex items-center gap-2 bg-paper pb-1 pt-[max(0.5rem,env(safe-area-inset-top))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:hidden">
             <button
               ref={mobileTriggerRef}
-              onClick={() => setMobileOpen(true)}
+              onClick={() => {
+                drawerReturnFocusRef.current = mobileTriggerRef.current;
+                setMobileOpen(true);
+              }}
               aria-label="Open navigation"
               className="flex h-11 w-11 items-center justify-center rounded-full text-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
             >
