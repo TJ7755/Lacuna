@@ -6,6 +6,7 @@ import { createCourse, createLesson, createLessonCard } from '../../db/repositor
 import { db } from '../../db/schema';
 import { hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
 import { reviewHistoryEntryForCard } from '@lacuna/core/db/reviewHistory';
+import type { Card } from '@lacuna/core/db/types';
 import { calculateRemainingWork, type RemainingWorkRecords } from '../../course/remainingWorkData';
 import { calculateRemainingWorkOffThread } from '../../course/remainingWorkWorker';
 import { RemainingWork } from './RemainingWork';
@@ -56,6 +57,82 @@ it('runs supplied Path records through the background estimator', async () => {
       expect.any(AbortSignal),
     ),
   );
+});
+
+it('observes review changes without counting the historical course index', async () => {
+  const { records } = await fixture();
+  const count = vi.spyOn(IDBIndex.prototype, 'count');
+  const page = render(<RemainingWork courseId={records.course!.id} />);
+  try {
+    await waitFor(() => expect(calculateRemainingWorkOffThread).toHaveBeenCalled());
+    expect(count).not.toHaveBeenCalled();
+  } finally {
+    page.unmount();
+  }
+});
+
+it('refreshes current-card estimates for corrections, insertions, undo and clearing historical reviews', async () => {
+  const { records } = await fixture();
+  const courseId = records.course!.id;
+  await createLessonCard(courseId, records.lessons[0].id, 'front_back', 'Second', 'Answer');
+  await createLessonCard(courseId, records.lessons[0].id, 'front_back', 'Third', 'Answer');
+  const cards = await db.cards.where('courseId').equals(courseId).toArray();
+  const review = (card: Card, eventId: string, timestamp: number) => ({
+    ...reviewHistoryEntryForCard(card, {
+      eventId,
+      timestamp,
+      grade: 3,
+      responseTimeSec: 30,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 2,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    }),
+    courseId: 'previous-course',
+  });
+  const now = Date.now();
+  const corrected = { ...review(cards[1], 'later-review', now - 100), responseTimeSec: 90 };
+  await db.reviewHistory.bulkAdd([
+    { ...review(cards[0], 'first-card-review', now - 300), courseId },
+    review(cards[1], 'earlier-review', now - 200),
+    { ...corrected, responseTimeSec: 30 },
+  ]);
+  const page = render(<RemainingWork courseId={courseId} />);
+  const estimator = vi.mocked(calculateRemainingWorkOffThread);
+  const refreshAfter = async (mutate: () => Promise<unknown>) => {
+    const previous = estimator.mock.calls.length;
+    await act(async () => {
+      await mutate();
+    });
+    await waitFor(() => expect(estimator.mock.calls.length).toBeGreaterThan(previous));
+  };
+  try {
+    await waitFor(() => expect(estimator).toHaveBeenCalled());
+    const timestamps = (await db.reviewActivity.get(cards[1].id))!.timestamps;
+    // Neither the card, timestamp projection nor former course ownership changes.
+    await refreshAfter(() => db.reviewHistory.put(corrected));
+    expect((await db.reviewActivity.get(cards[1].id))!.timestamps).toEqual(timestamps);
+    // This card had no projection row when the component first subscribed.
+    await refreshAfter(() => db.reviewHistory.add(review(cards[2], 'new-review', now)));
+    await refreshAfter(() => db.reviewHistory.delete(corrected.id));
+    await refreshAfter(() => db.reviewHistory.add(corrected));
+    await refreshAfter(() => db.reviewHistory.clear());
+    let added!: Card;
+    await refreshAfter(async () => {
+      added = await createLessonCard(
+        courseId,
+        records.lessons[0].id,
+        'front_back',
+        'Fourth',
+        'Answer',
+      );
+    });
+    await refreshAfter(() => db.reviewHistory.add(review(added, 'added-card-review', now)));
+  } finally {
+    page.unmount();
+  }
 });
 
 it('pauses its owned request for Quick search and resumes afterwards', async () => {

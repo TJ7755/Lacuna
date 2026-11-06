@@ -11,7 +11,7 @@ import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import type { BackupSnapshot, Card, SessionHistoryEntry } from '@lacuna/core/db/types';
 import { listGlobalDailySessionHistory } from '../db/sessionHistoryRead';
 
-/** The shell pauses optional calculations whilst foreground Quick search owns input. */
+/** Navigation preparation and Quick search pause optional calculations. */
 export const BackgroundCalculationsEnabled = createContext(true);
 
 export function useCard(cardId: string | undefined): Card | null | undefined {

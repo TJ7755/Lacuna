@@ -1,11 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { LazyMotion, domAnimation, m, usePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { beginStudyTransition, releaseStudyCover } from './LandingTransition';
 import { RouteTransition, routeTransitionKey, routeTransitionTiming } from './RouteTransition';
+import { BackgroundCalculationsEnabled } from '../../state/useData';
 
 function Page({ name, destination }: { name: string; destination: string }) {
   const navigate = useNavigate();
@@ -92,6 +93,55 @@ describe('routeTransitionTiming', () => {
 });
 
 describe('RouteTransition', () => {
+  it('pauses optional calculations while the destination loader retains the current page', async () => {
+    function PageWithCalculations({ name, destination }: { name: string; destination: string }) {
+      const enabled = useContext(BackgroundCalculationsEnabled);
+      return (
+        <>
+          <Page name={name} destination={destination} />
+          <output aria-label="Background calculations">{String(enabled)}</output>
+        </>
+      );
+    }
+    let ready!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const router = createMemoryRouter([
+      {
+        element: <RouteTransition />,
+        children: [
+          {
+            path: '/',
+            element: <PageWithCalculations name="Current" destination="/destination" />,
+          },
+          {
+            path: '/destination',
+            loader: () => pending,
+            element: <PageWithCalculations name="Destination" destination="/" />,
+          },
+        ],
+      },
+    ]);
+    render(
+      <LazyMotion features={domAnimation}>
+        <RouterProvider router={router} />
+      </LazyMotion>,
+    );
+    expect(screen.getByLabelText('Background calculations')).toHaveTextContent('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Navigate' }));
+    await waitFor(() =>
+      expect(screen.getByLabelText('Background calculations')).toHaveTextContent('false'),
+    );
+    expect(screen.getByRole('heading', { name: 'Current' })).toBeVisible();
+    await act(async () => {
+      ready();
+      await pending;
+    });
+    await screen.findByRole('heading', { name: 'Destination' });
+    expect(screen.getByLabelText('Background calculations')).toHaveTextContent('true');
+  });
+
   it('mounts a study arrival at full opacity beneath the launch cover', async () => {
     vi.mocked(window.matchMedia).mockReturnValue({
       matches: false,
