@@ -83,10 +83,10 @@ describe('DataPortabilitySection', () => {
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseRecoverFile();
 
-    expect(
-      screen.getByText(/local conversation is cleared after replacement succeeds/),
-    ).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Replace local data' }));
+    expect(
+      screen.getByText('Delete current local data, disconnect AI and restore this backup?'),
+    ).toBeInTheDocument();
     expect(importBackup).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Replace local data' }));
     await waitFor(() => expect(importBackup).toHaveBeenCalledWith(expect.anything(), 'replace'));
@@ -104,19 +104,6 @@ describe('DataPortabilitySection', () => {
     expect(replace).toHaveBeenCalledWith('recovery', expect.any(Function));
   });
 
-  it('describes add-from-backup without a recency rule', async () => {
-    readBackupFile.mockResolvedValue(backupStub());
-    render(<DataPortabilitySection motionMultiplier={0} />);
-    await chooseRecoverFile();
-
-    expect(
-      await screen.findByText(/keeps your current data and folds in the backup/),
-    ).toHaveTextContent(
-      'Add from backup keeps your current data and folds in the backup; existing items are not deleted.',
-    );
-    expect(screen.queryByText(/more recently updated/)).not.toBeInTheDocument();
-  });
-
   it('reports the backup lesson count rather than the internal deck count', async () => {
     readBackupFile.mockResolvedValue(
       backupStub({
@@ -131,9 +118,10 @@ describe('DataPortabilitySection', () => {
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseRecoverFile();
 
-    expect(await screen.findByText(/This backup contains/)).toHaveTextContent(
-      'This backup contains 7 lessons and 36 cards, plus 4 Questions',
-    );
+    expect(await screen.findByText('7 lessons')).toBeInTheDocument();
+    expect(screen.getByText('36 cards')).toBeInTheDocument();
+    expect(screen.getByText('4 Questions')).toBeInTheDocument();
+    expect(screen.getByText('10 August 2026')).toBeInTheDocument();
   });
 
   it('requires confirmation before combining with another device', async () => {
@@ -148,7 +136,7 @@ describe('DataPortabilitySection', () => {
 
     expect(
       await screen.findByText(/Combine with the 12 August 2026 backup \(4 cards, 0 Questions\)\?/),
-    ).toBeInTheDocument();
+    ).toHaveTextContent('Deletions from either device apply.');
     expect(screen.queryByText(/Data from both devices is combined/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Merge' })).not.toBeInTheDocument();
     expect(manualMerge).not.toHaveBeenCalled();
@@ -157,14 +145,11 @@ describe('DataPortabilitySection', () => {
     await waitFor(() => expect(manualMerge).toHaveBeenCalledTimes(1));
   });
 
-  it('explains combining in the resting copy, not at the confirm', () => {
+  it('keeps the existing recovery choices in the resting view', () => {
     render(<DataPortabilitySection motionMultiplier={0} />);
 
     expect(
       screen.getByRole('heading', { level: 3, name: 'Combine two devices' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Keeps Cards, Questions and reviews from both sides/),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Choose backup from another device' }),

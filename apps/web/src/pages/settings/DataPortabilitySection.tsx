@@ -3,7 +3,7 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { UnifiedExportPanel } from '../../components/import/UnifiedExportPanel';
 import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
-import { AlertIcon, FileTextIcon, UploadIcon } from '../../components/ui/icons';
+import { AlertIcon, CalendarIcon, FileTextIcon, UploadIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import type { ImportMode } from '../../db/portability';
 import { friendlyDbError } from '../../db/dbErrors';
@@ -195,10 +195,6 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
               <SettingsSubsectionHeading className="text-sm font-semibold text-ink">
                 Combine two devices
               </SettingsSubsectionHeading>
-              <p className="text-xs text-ink-soft">
-                Keeps Cards, Questions and reviews from both sides; removes what either deleted.
-                Saves a restore point first.
-              </p>
             </div>
             {combineBusy ? (
               <Button variant="secondary" size="sm" disabled>
@@ -206,7 +202,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
               </Button>
             ) : pendingCombine ? (
               <ConfirmInline
-                message={`Combine with the ${formatDate(pendingCombine.exportedAt)} backup (${plural(pendingCombine.cards.length, 'card')}, ${plural(pendingCombine.questions?.length ?? 0, 'Question')})?`}
+                message={`Combine with the ${formatDate(pendingCombine.exportedAt)} backup (${plural(pendingCombine.cards.length, 'card')}, ${plural(pendingCombine.questions?.length ?? 0, 'Question')})? Deletions from either device apply.`}
                 confirmLabel="Combine"
                 variant="default"
                 disabled={busy}
@@ -249,9 +245,6 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
               <SettingsSubsectionHeading className="text-sm font-semibold text-ink">
                 Recover this installation
               </SettingsSubsectionHeading>
-              <p className="text-xs text-ink-soft">
-                Add a backup&rsquo;s contents here, or replace everything with it.
-              </p>
             </div>
             <Button
               variant="secondary"
@@ -294,28 +287,16 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
                 <FileTextIcon width={18} height={18} className="shrink-0" />
                 <span className="min-w-0 break-words">{fileName}</span>
               </SettingsSubsectionHeading>
-              <div className="text-sm text-ink-soft">
-                <p className="mb-3">
-                  This backup contains{' '}
-                  <strong className="text-ink">
-                    {pending.lessons?.length ?? pending.decks?.length ?? 0}
-                  </strong>{' '}
-                  lessons and <strong className="text-ink">{pending.cards.length}</strong> cards,
-                  plus <strong className="text-ink">{pending.questions?.length ?? 0}</strong>{' '}
-                  Questions, exported on {formatDate(pending.exportedAt)}.
-                </p>
-                <ul className="space-y-2">
-                  <li>
-                    <strong className="text-ink">Add from backup</strong> keeps your current data
-                    and folds in the backup; existing items are not deleted.
-                  </li>
-                  <li>
-                    <strong className="text-ink">Replace local data</strong> deletes every course
-                    and review record in this installation, then restores the backup exactly. Lacuna
-                    has no account or cloud copy to delete. A connected AI is disconnected, and its
-                    local conversation is cleared after replacement succeeds.
-                  </li>
-                </ul>
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-ink-soft">
+                <span>
+                  {plural(pending.lessons?.length ?? pending.decks?.length ?? 0, 'lesson')}
+                </span>
+                <span>{plural(pending.cards.length, 'card')}</span>
+                <span>{plural(pending.questions?.length ?? 0, 'Question')}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarIcon width={16} height={16} />
+                  {formatDate(pending.exportedAt)}
+                </span>
               </div>
               <div className="mt-5 flex flex-wrap justify-end gap-2">
                 <Button

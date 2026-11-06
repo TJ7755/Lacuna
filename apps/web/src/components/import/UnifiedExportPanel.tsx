@@ -183,7 +183,6 @@ export function UnifiedExportPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-ink">Full backup</div>
-          <p className="text-xs text-ink-soft">{FULL_BACKUP.description}</p>
         </div>
         <Button
           variant="secondary"
