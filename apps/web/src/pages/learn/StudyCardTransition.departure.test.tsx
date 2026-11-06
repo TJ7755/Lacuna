@@ -5,6 +5,8 @@ import { act, render } from '@testing-library/react';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StudyCardTransition, type StudyCardTransitionHandle } from './StudyCardTransition';
 
+vi.mock('motion/mini', () => ({ animate: vi.fn(() => ({ stop: vi.fn() })) }));
+
 const flights = vi.hoisted(
   () =>
     [] as {

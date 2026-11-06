@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { animate, m as motion, useMotionValue } from 'motion/react';
+import { m as motion, useAnimationControls } from 'motion/react';
 import { cn } from '../../components/ui/cn';
 import { scaledSpring } from '../../components/ui/motion';
 import { countOf } from '../../utils/plural';
@@ -27,7 +27,8 @@ export function SessionSegments({
   const viewport = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const previousWidth = useRef(0);
-  const x = useMotionValue(0);
+  const snapped = useRef(true);
+  const position = useAnimationControls();
   const currentIndex = currentCardIds.length === 0 ? -1 : cardIds.indexOf(currentCardIds[0]);
   const progressAnnouncement =
     currentIndex >= 0 ? `${noun} ${currentIndex + 1} of ${cardIds.length}` : 'Session complete';
@@ -54,13 +55,23 @@ export function SessionSegments({
     // Resizing changes the geometry, not the learner's position. Snap that change
     // before paint; only navigation glides, using the row's presented position.
     if (previousWidth.current !== width || m === 0) {
-      x.jump(offset);
+      position.set({ x: offset });
       previousWidth.current = width;
+      snapped.current = true;
       return;
     }
-    const animation = animate(x, offset, scaledSpring(m, 420, 2 * Math.sqrt(420)));
-    return () => animation.stop();
-  }, [m, offset, width, x]);
+    // Named element transforms can run on the compositor. Controls retain the
+    // presented position and velocity when navigation interrupts this same spring.
+    void position.start({
+      x: offset,
+      transition: {
+        ...scaledSpring(m, 420, 2 * Math.sqrt(420)),
+        ...(snapped.current ? { velocity: 0 } : {}),
+      },
+    });
+    snapped.current = false;
+    return () => position.stop();
+  }, [m, offset, width, position]);
 
   const fadeLeft = start > 0 ? 'transparent, black 12px' : 'black';
   const fadeRight =
@@ -89,8 +100,10 @@ export function SessionSegments({
         <motion.div
           data-session-segment-row=""
           className="relative flex h-full"
+          animate={position}
           style={{
-            x,
+            // Initialise element-owned motion before the first geometry snap.
+            x: 0,
             gap,
             width: windowed ? cardIds.length * (segmentWidth + gap) - gap : '100%',
           }}

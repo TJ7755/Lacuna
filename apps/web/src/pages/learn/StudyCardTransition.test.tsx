@@ -4,6 +4,8 @@ import { act, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StudyCardTransition, type StudyCardTransitionHandle } from './StudyCardTransition';
 
+vi.mock('motion/mini', () => ({ animate: vi.fn(() => ({ stop: vi.fn() })) }));
+
 beforeEach(() => {
   const nativeAnimate = Element.prototype.animate;
   vi.spyOn(Element.prototype, 'animate').mockImplementation(function (this: Element, ...args) {

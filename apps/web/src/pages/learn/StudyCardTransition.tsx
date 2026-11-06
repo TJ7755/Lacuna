@@ -17,6 +17,7 @@ import {
   usePresence,
   useTransform,
 } from 'motion/react';
+import { animate as animateNative } from 'motion/mini';
 import { scaledSpring } from '../../components/ui/motion';
 import type { Phase } from './types';
 import { StudyCardMotionContext } from './studyCardMotion';
@@ -264,22 +265,36 @@ const StudyCardPresentation = forwardRef<
 
 /** A new rim must animate even inside the first presentation's initial=false context. */
 function StudyGradeRim({ correct, m }: { correct: boolean; m: number }) {
-  const opacity = useMotionValue(0);
+  const rimRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
-    const animation = animate(opacity, [0, 1, 0], {
-      duration: 0.32 * m,
-      times: [0, 0.2, 1],
-    });
-    return () => animation.stop();
-  }, [m, opacity]);
+    const element = rimRef.current;
+    if (!element) return;
+    element.style.opacity = '0';
+    if (m === 0) return;
+    const animation = animateNative(
+      element,
+      { opacity: [0, 1, 0] },
+      {
+        duration: 0.32 * m,
+        times: [0, 0.2, 1],
+        // Match the numeric animation's ease-out within each keyframe interval.
+        ease: ['easeOut', 'easeOut'],
+      },
+    );
+    return () => {
+      animation.stop();
+      element.style.opacity = '0';
+    };
+  }, [m]);
   const colour = correct ? 'positive' : 'negative';
   return (
-    <motion.div
+    <div
+      ref={rimRef}
       aria-hidden
       data-study-rim={colour}
       className="pointer-events-none absolute inset-0 rounded-3xl"
       style={{
-        opacity,
+        opacity: 0,
         boxShadow: `inset 0 0 0 2px hsl(var(--${colour}) / 0.65), inset 0 0 20px hsl(var(--${colour}) / 0.16)`,
       }}
     />
