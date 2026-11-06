@@ -51,7 +51,7 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
       records.assessments,
       Date.now(),
       { links: records.links, exposures: records.exposures, completions: records.completions },
-      undefined,
+      records.activity,
       records.concepts,
     )[records.course.id];
   }, [records]);
@@ -180,6 +180,7 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
             meanReviewSeconds,
             practiceMilestones: practiceMilestones ?? [],
             reviewsToday: records?.reviewsToday,
+            activity: records?.activity,
             now,
           })
         : null,
@@ -193,6 +194,7 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
       nodes,
       practiceMilestones,
       records?.reviewsToday,
+      records?.activity,
       now,
     ],
   );

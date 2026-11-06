@@ -3,20 +3,27 @@ import type { Card, Course, Lesson, LessonCardLink } from '@lacuna/core/db/types
 import type { ExamDateContext } from '../fsrs/examDate';
 import { resolveCardExamDate } from '../fsrs/examDate';
 import { isAvailable } from '../fsrs/eligibility';
+import { cardReviewTimestamps, type ReviewActivity } from '../fsrs/heatmap';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { earlierLessonIds } from './courseEntry';
 import { eligiblePracticePool } from './studyPools';
 
 const DEFAULT_CATCH_UP_DAILY_TARGET = 20;
 
-function firstReviewAt(card: Card): number {
-  return card.history.reduce((first, review) => Math.min(first, review.timestamp), Infinity);
+function firstReviewAt(card: Card, activity?: ReviewActivity): number {
+  return cardReviewTimestamps(card, activity).reduce(
+    (first, timestamp) => Math.min(first, timestamp),
+    Infinity,
+  );
 }
 
 /** A reset retains review evidence and must not spend another unique introduction. */
-function isUnseen(card: Card): boolean {
+function isUnseen(card: Card, activity?: ReviewActivity): boolean {
   return (
-    card.state === 0 && card.reps === 0 && card.lastReviewed === null && card.history.length === 0
+    card.state === 0 &&
+    card.reps === 0 &&
+    card.lastReviewed === null &&
+    cardReviewTimestamps(card, activity).length === 0
   );
 }
 
@@ -41,15 +48,16 @@ export function catchUpPracticePacing(
   course: Course,
   examDateContext: ExamDateContext,
   now: number = Date.now(),
+  activity?: ReviewActivity,
 ): CatchUpPracticePacing {
   const cutoff = now - MS_PER_DAY;
   const introducedRecently = (card: Card) => {
-    const first = firstReviewAt(card);
+    const first = firstReviewAt(card, activity);
     return first > cutoff && first <= now;
   };
   const uniqueScope = [...new Map(scope.map((card) => [card.id, card])).values()];
   const introduced = uniqueScope.filter(introducedRecently);
-  const unseen = uniqueScope.filter((card) => isUnseen(card) && isAvailable(card, now));
+  const unseen = uniqueScope.filter((card) => isUnseen(card, activity) && isAvailable(card, now));
   const deadlineCounts = new Map<number, number>();
   for (const card of [...unseen, ...introduced]) {
     const deadline = resolveCardExamDate(card, examDateContext, now);
@@ -100,15 +108,16 @@ export function catchUpPracticePool(
     course.schoolCoveredLessonIds,
   ),
   allowExtra = false,
+  activity?: ReviewActivity,
 ): Card[] {
   const earlier = new Set([...priorKnowledgeLessonIds].filter((id) => reachedLessonIds.has(id)));
   const scope = lessonCardMembershipForLessons(earlier, cards, links);
   const eligible = eligiblePracticePool(scope, course, examDateContext, now);
   if (allowExtra) return eligible;
-  const pacing = catchUpPracticePacing(scope, cards, course, examDateContext, now);
+  const pacing = catchUpPracticePacing(scope, cards, course, examDateContext, now, activity);
   const admitted = new Set(
     eligible
-      .filter(isUnseen)
+      .filter((card) => isUnseen(card, activity))
       .map((card) => ({
         card,
         deadline: resolveCardExamDate(card, examDateContext, now) ?? Infinity,
@@ -117,5 +126,5 @@ export function catchUpPracticePool(
       .slice(0, pacing.remainingNewAllowance)
       .map(({ card }) => card.id),
   );
-  return eligible.filter((card) => !isUnseen(card) || admitted.has(card.id));
+  return eligible.filter((card) => !isUnseen(card, activity) || admitted.has(card.id));
 }

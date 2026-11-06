@@ -58,22 +58,27 @@ export function RemainingWork({
   const [error, setError] = useState<Error>();
   useEffect(() => {
     if (!input) return;
-    let cancelled = false;
-    const calculation = records
-      ? calculateRemainingWork(input, now, false)
-      : calculateRemainingWorkOffThread(input, now);
-    void calculation.then(
-      (next) => {
-        if (!cancelled) setEstimates(next);
-      },
-      (cause: unknown) => {
-        if (!cancelled) setError(cause instanceof Error ? cause : new Error(String(cause)));
-      },
-    );
+    const controller = new AbortController();
+    const { signal } = controller;
+    void Promise.resolve()
+      .then(() =>
+        signal.aborted ? undefined : calculateRemainingWorkOffThread(input, now, signal),
+      )
+      // A cached course can open offline before its optional worker chunk was
+      // fetched. Keep its estimates available through the same calculation.
+      .catch(() => (signal.aborted ? undefined : calculateRemainingWork(input, now, true)))
+      .then(
+        (next) => {
+          if (!signal.aborted) setEstimates(next);
+        },
+        (cause: unknown) => {
+          if (!signal.aborted) setError(cause instanceof Error ? cause : new Error(String(cause)));
+        },
+      );
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [input, now, records]);
+  }, [input, now]);
   if (error) throw error;
   if (!estimates?.length) return null;
   return (

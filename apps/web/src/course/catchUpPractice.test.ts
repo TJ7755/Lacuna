@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { makeExamDateContext } from '../fsrs/examDate';
+import type { ReviewActivity } from '../fsrs/heatmap';
 import { card, NOW } from '../fsrs/session.testFixtures';
 import { catchUpPracticePacing, catchUpPracticePool } from './catchUpPractice';
 
@@ -73,6 +74,86 @@ const pool = (cards: Card[], config = course, allowExtra = false) =>
   );
 
 describe('adaptive catch-up introductions', () => {
+  it.each(['reset', 'rolling-boundaries', 'repeat-attempts', 'exhausted-cap', 'near-exam'])(
+    'preserves introduction pacing and admission with timestamp activity (%s)',
+    (scenario) => {
+      let cards: Card[];
+      const config =
+        scenario === 'near-exam' ? { ...course, examDate: NOW + 6 * MS_PER_DAY } : course;
+      if (scenario === 'near-exam') {
+        cards = [
+          ...Array.from({ length: 10 }, (_, i) => reviewed(`introduced-${i}`, NOW - 100)),
+          ...unseen(80),
+        ];
+      } else if (scenario === 'rolling-boundaries') {
+        cards = [
+          reviewed('boundary', NOW - MS_PER_DAY),
+          reviewed('inside', NOW - MS_PER_DAY + 1),
+          reviewed('now', NOW),
+          reviewed('future', NOW + 1),
+          ...unseen(30),
+        ];
+      } else if (scenario === 'repeat-attempts') {
+        const repeated = reviewed('repeated', NOW - 100);
+        repeated.history.push(
+          ...Array.from({ length: 25 }, (_, i) => ({
+            ...repeated.history[0],
+            timestamp: NOW - 50 + i,
+          })),
+        );
+        cards = [repeated, ...unseen(30)];
+      } else {
+        cards = [
+          ...Array.from({ length: 20 }, (_, i) => reviewed(`introduced-${i}`, NOW - 100)),
+          { ...reviewed('due', NOW - 2 * MS_PER_DAY), due: NOW - 1 },
+          ...unseen(5),
+        ];
+        if (scenario === 'reset') {
+          cards.push({
+            ...reviewed('reset', NOW - 2 * MS_PER_DAY),
+            state: 0,
+            reps: 0,
+            lastReviewed: null,
+            stability: null,
+            due: null,
+          });
+        }
+      }
+      const activity: ReviewActivity = new Map(
+        cards.map((item) => [item.id, item.history.map((review) => review.timestamp)]),
+      );
+      const projected = cards.map((item) => ({ ...item, history: [] }));
+      const expectedPacing = pacing(cards, cards, config);
+      expect(expectedPacing.introducedToday).toBe(
+        scenario === 'rolling-boundaries'
+          ? 2
+          : scenario === 'repeat-attempts'
+            ? 1
+            : scenario === 'near-exam'
+              ? 10
+              : 20,
+      );
+      expect(
+        catchUpPracticePacing(projected, projected, config, context(config), NOW, activity),
+      ).toEqual(expectedPacing);
+      const admitted = catchUpPracticePool(
+        projected,
+        config,
+        lessons,
+        [],
+        context(config),
+        new Set(['earlier', 'current']),
+        NOW,
+        new Set(['earlier']),
+        false,
+        activity,
+      );
+      expect(admitted.map((item) => item.id)).toEqual(pool(cards, config).map((item) => item.id));
+      if (scenario === 'near-exam') expect(expectedPacing.dailyTarget).toBe(30);
+      if (scenario === 'reset') expect(admitted.map((item) => item.id)).toEqual(['due', 'reset']);
+    },
+  );
+
   it('defaults to twenty unique earlier cards without a course cap or exam', () => {
     expect(pacing(unseen(30))).toMatchObject({
       dailyTarget: 20,

@@ -3,6 +3,8 @@ import { useMemo } from 'react';
 import { db } from '../db/schema';
 import type { Concept } from '@lacuna/core/questions/types';
 import { dailyReviewCounts, hydrateCardsWithHistory } from '../db/reviewHistoryRead';
+import { readReviewActivity } from '../db/reviewActivityRead';
+import type { ReviewActivity } from '../fsrs/heatmap';
 import { performanceForCourseBackingDecks } from '../db/backingDecks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { retainedLiveQuery } from './retainedLiveQuery';
@@ -26,6 +28,8 @@ interface CourseStudyFlowRecords {
   course: Course | null;
   lessons: Lesson[];
   cards: Card[];
+  /** Path presentation needs timestamps; active Study keeps full card histories. */
+  activity?: ReviewActivity;
   concepts?: Concept[];
   questionPractice?: ConceptPracticeItem[];
   examSkillPractice?: ExamSkillPracticeItem[];
@@ -79,6 +83,21 @@ export function useCourseStudyFlowRecords(
 export const useCoursePathRecords = retainedLiveQuery((courseId) =>
   readCourseStudyFlowRecords(courseId, 0, undefined, false),
 );
+
+async function pathReviewActivity(cards: Card[]): Promise<ReviewActivity> {
+  const [activity, legacy] = await Promise.all([
+    readReviewActivity(cards),
+    // Current stored cards have no history projection. Preserve the adapter's
+    // canonical precedence and legacy-only events only where old records need it.
+    hydrateCardsWithHistory(cards.filter((card) => card.history?.length > 0)),
+  ]);
+  for (const card of legacy)
+    activity.set(
+      card.id,
+      card.history.map((review) => review.timestamp),
+    );
+  return activity;
+}
 
 async function readCourseStudyFlowRecords(
   courseId: string | undefined,
@@ -138,16 +157,20 @@ async function readCourseStudyFlowRecords(
       db.questionSets.where('courseId').equals(courseId).count(),
     ]);
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [cards, links, exposures, completions, performance, reviewCounts] = await Promise.all([
-    hydrateCardsWithHistory(rawCards),
-    lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
-    lessonIds.length > 0 ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray() : [],
-    lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-    performanceForCourseBackingDecks(courseId, rawCards),
-    course.dailyReviewGoal || course.maxReviewsPerDay
-      ? dailyReviewCounts('course')
-      : new Map<string, number>(),
-  ]);
+  const [cards, activity, links, exposures, completions, performance, reviewCounts] =
+    await Promise.all([
+      includeQuestionPractice ? hydrateCardsWithHistory(rawCards) : rawCards,
+      includeQuestionPractice ? undefined : pathReviewActivity(rawCards),
+      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+      lessonIds.length > 0
+        ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
+        : [],
+      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
+      performanceForCourseBackingDecks(courseId, rawCards),
+      course.dailyReviewGoal || course.maxReviewsPerDay
+        ? dailyReviewCounts('course')
+        : new Map<string, number>(),
+    ]);
   const questionContext = {
     course,
     lessons,
@@ -186,6 +209,7 @@ async function readCourseStudyFlowRecords(
     course,
     lessons,
     cards,
+    activity,
     concepts,
     questionPractice,
     examSkillPractice,

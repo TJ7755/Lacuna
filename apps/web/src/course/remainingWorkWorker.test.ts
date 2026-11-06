@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { calculateRemainingWorkOffThread } from './remainingWorkWorker';
 import type { RemainingWorkInput } from './remainingWorkData';
+import { card } from '../fsrs/session.testFixtures';
 
 class FakeWorker {
   static instances: FakeWorker[] = [];
@@ -21,6 +22,97 @@ beforeEach(() => {
   vi.stubGlobal('Worker', FakeWorker);
 });
 afterEach(() => vi.unstubAllGlobals());
+
+it('releases the worker when its final pending consumer aborts', async () => {
+  const controller = new AbortController();
+  const done = calculateRemainingWorkOffThread(input, 1, controller.signal);
+  const settled = done.catch((error: unknown) => error);
+  const worker = FakeWorker.instances[0];
+  try {
+    controller.abort();
+    expect(worker.terminate).toHaveBeenCalledOnce();
+    await expect(settled).resolves.toMatchObject({ name: 'AbortError' });
+  } finally {
+    worker.onerror!();
+    await settled;
+  }
+});
+
+it('keeps another consumer running when one shared request aborts', async () => {
+  const controller = new AbortController();
+  const first = calculateRemainingWorkOffThread(input, 1, controller.signal);
+  const second = calculateRemainingWorkOffThread(input, 2);
+  const settled = Promise.allSettled([first, second]);
+  const rejected = vi.fn();
+  void first.catch(rejected);
+  const worker = FakeWorker.instances[0];
+  try {
+    controller.abort();
+    await Promise.resolve();
+    expect(rejected).toHaveBeenCalledWith(expect.objectContaining({ name: 'AbortError' }));
+    expect(worker.terminate).not.toHaveBeenCalled();
+    const { id } = worker.postMessage.mock.calls[1][0];
+    worker.onmessage!({ data: { id, results: [] } } as MessageEvent);
+    expect((await settled).map((result) => result.status)).toEqual(['rejected', 'fulfilled']);
+    expect(worker.terminate).toHaveBeenCalledOnce();
+  } finally {
+    worker.onerror!();
+    await settled;
+  }
+});
+
+it('does not let a terminated worker error reject its replacement batch', async () => {
+  const first = Promise.allSettled([calculateRemainingWorkOffThread(input, 1)]);
+  const old = FakeWorker.instances[0];
+  old.onerror!();
+  await first;
+  const second = calculateRemainingWorkOffThread(input, 2);
+  const settled = Promise.allSettled([second]);
+  const fresh = FakeWorker.instances[1];
+  try {
+    old.onerror!();
+    expect(fresh.terminate).not.toHaveBeenCalled();
+    fresh.onmessage!({
+      data: { id: fresh.postMessage.mock.calls[0][0].id, results: [] },
+    } as MessageEvent);
+    expect((await settled)[0].status).toBe('fulfilled');
+  } finally {
+    fresh.onerror!();
+    await settled;
+  }
+});
+
+it('does not start work for an already aborted consumer', async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const settled = calculateRemainingWorkOffThread(input, 1, controller.signal).catch(
+    (error: unknown) => error,
+  );
+  try {
+    expect(FakeWorker.instances).toHaveLength(0);
+    await expect(settled).resolves.toMatchObject({ name: 'AbortError' });
+  } finally {
+    FakeWorker.instances[0]?.onerror?.();
+    await settled;
+  }
+});
+
+it('sends only owning records and scheduling fields, without image bodies or Path activity', async () => {
+  const source = {
+    ...input.source,
+    cards: [card('image', 'deck', { front: 'x'.repeat(128 * 1024), back: 'Heavy answer' })],
+    activity: new Map([['image', [100, 200]]]),
+  };
+  const done = calculateRemainingWorkOffThread({ source, plans: [] }, 1);
+  const worker = FakeWorker.instances[0];
+  const [{ id, input: sent }] = worker.postMessage.mock.calls[0];
+  expect(sent.source).not.toHaveProperty('activity');
+  expect(sent.source.cards[0]).toMatchObject({ id: 'image', front: '', back: '' });
+  expect(sent.source.cards[0].history).toEqual(source.cards[0].history);
+  expect(source.cards[0].front).toHaveLength(128 * 1024);
+  worker.onmessage!({ data: { id, results: [] } } as MessageEvent);
+  await expect(done).resolves.toEqual([]);
+});
 
 it('routes concurrent course replies independently and releases the shared worker after the last reply', async () => {
   const firstDone = vi.fn();
