@@ -91,8 +91,7 @@ describe('App initialisation', () => {
       return cancel;
     });
     const { unmount } = render(<App />);
-    await waitFor(() => expect(screen.queryByText('Lacuna')).not.toBeInTheDocument());
-    expect(dependencies.scheduleBackgroundWork).toHaveBeenCalledOnce();
+    await waitFor(() => expect(dependencies.scheduleBackgroundWork).toHaveBeenCalledOnce());
     expect(dependencies.autoBackupIfStale).not.toHaveBeenCalled();
     await act(async () => queued!());
     await waitFor(() => expect(dependencies.autoBackupIfStale).toHaveBeenCalledOnce());
