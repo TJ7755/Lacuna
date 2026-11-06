@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { animate } from 'motion/react';
+import { animate } from 'motion/mini';
 import { revealPageParts } from './PageArrival';
 
-vi.mock('motion/react', () => ({ animate: vi.fn() }));
+vi.mock('motion/mini', () => ({ animate: vi.fn() }));
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -48,8 +48,8 @@ describe('page arrivals', () => {
     expect(first.part.style.opacity).toBe('0');
     expect(second.part.style.opacity).toBe('0');
     expect(animate).toHaveBeenCalledWith(
-      0,
-      expect.any(Number),
+      first.part,
+      { opacity: [0, expect.any(Number)] },
       expect.objectContaining({ visualDuration: 0.18, delay: 0 }),
     );
     stopFirst?.();
@@ -67,5 +67,17 @@ describe('page arrivals', () => {
     expect(reads).toEqual([]);
     expect(animate).not.toHaveBeenCalled();
     expect(part.style.opacity).toBe('');
+  });
+
+  it('restores the surface after the browser finishes the introduction', async () => {
+    const { root, part } = surface(10, []);
+    vi.mocked(animate).mockReturnValue({ stop: vi.fn() } as unknown as ReturnType<typeof animate>);
+    const stop = revealPageParts(root, 1);
+    await Promise.resolve();
+    const options = vi.mocked(animate).mock.calls[0][2] as { onComplete: () => void };
+    options.onComplete();
+    expect(part.style.opacity).toBe('');
+    expect(part.style.willChange).toBe('transform');
+    stop?.();
   });
 });

@@ -1,4 +1,4 @@
-import { animate, motionValue } from 'motion';
+import { animate } from 'motion/mini';
 import { speedMultiplier } from '../../state/motionSpeed';
 import { motionTransition } from './motion';
 
@@ -7,20 +7,15 @@ export function createFeedbackSurface(element: HTMLElement, onDispose: () => voi
   const layer = document.createElement('i');
   layer.setAttribute('aria-hidden', 'true');
   layer.className = 'flow-feedback-layer';
-  const depth = motionValue(0);
+  let animation: ReturnType<typeof animate> | undefined;
   const originalPosition = element.style.position;
   let disposed = false;
   let pressed = false,
     over = false;
-  const draw = () => {
-    layer.style.opacity = String(depth.get());
-  };
-  const stop = depth.on('change', draw);
   const dispose = () => {
     if (disposed) return;
     disposed = true;
-    depth.stop();
-    stop();
+    animation?.stop();
     layer.remove();
     if (element.style.position === 'relative') {
       if (originalPosition) element.style.position = originalPosition;
@@ -30,7 +25,7 @@ export function createFeedbackSurface(element: HTMLElement, onDispose: () => voi
   };
   if (getComputedStyle(element).position === 'static') element.style.position = 'relative';
   element.prepend(layer);
-  draw();
+  layer.style.opacity = '0';
   return {
     element,
     dispose,
@@ -38,15 +33,23 @@ export function createFeedbackSurface(element: HTMLElement, onDispose: () => voi
       if (disposed) return;
       pressed = nextPressed && element.dataset.flowFeedback !== 'hover';
       over = nextOver && element.dataset.flowFeedback !== 'press';
-      animate(depth, pressed ? 0.09 : over ? 0.045 : 0, {
-        ...motionTransition('feedback', speedMultiplier()),
-        onComplete: () => {
-          if (!pressed && !over) dispose();
+      // Native opacity keeps the wash moving while the action occupies the main
+      // thread. Mini commits the presented style before retargeting this layer.
+      animation = animate(
+        layer,
+        { opacity: pressed ? 0.09 : over ? 0.045 : 0 },
+        {
+          ...motionTransition('feedback', speedMultiplier()),
+          onComplete: () => {
+            if (!pressed && !over) dispose();
+          },
         },
-      });
+      );
     },
     reset() {
-      depth.jump(pressed ? 0.09 : over ? 0.045 : 0);
+      if (disposed) return;
+      animation?.stop();
+      layer.style.opacity = String(pressed ? 0.09 : over ? 0.045 : 0);
       if (!pressed && !over) dispose();
     },
   };
