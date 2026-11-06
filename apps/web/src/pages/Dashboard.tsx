@@ -25,9 +25,9 @@ import { MOTION_DURATION, MOTION_EASING } from '../components/ui/motion';
 import { NewCourseControl } from '../components/course/NewCourseControl';
 import { ImportControl } from '../components/import/ImportControl';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { dashboardForecastHistories, urgencyOrder } from '../state/dashboardForecasts';
+import { urgencyOrder } from '../state/dashboardForecasts';
 import { forecastWindow, useForecastRange } from '../state/forecastRange';
-import { useAllReviewHistory } from '../state/useData';
+import { useDashboardForecastHistories } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
 import { useToast } from '../components/ui/Toast';
 import { finishOnboarding, onboardingPending } from '../onboarding/onboardingState';
@@ -139,22 +139,9 @@ export function Dashboard() {
 
   // The chart traces each forecast back over the chosen window, which needs graded
   // review history; navigation's shared data carries only review timestamps.
-  const reviewHistory = useAllReviewHistory();
   const [forecastRange] = useForecastRange();
   const chartWindow = forecastWindow(forecastRange);
-  const histories = useMemo(() => {
-    if (!data || !forecasts || !reviewHistory) return undefined;
-    const now = Date.now();
-    return dashboardForecastHistories(
-      data.courses,
-      data.lessons,
-      data.allCards,
-      reviewHistory,
-      forecasts,
-      now - chartWindow.past * 86_400_000,
-      now,
-    );
-  }, [data, forecasts, reviewHistory, chartWindow.past]);
+  const histories = useDashboardForecastHistories(data, chartWindow.past);
   const lines = useMemo<ForecastLine[]>(
     () =>
       (rows ?? []).flatMap((row) => {

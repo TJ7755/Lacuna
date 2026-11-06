@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
+import { BackgroundCalculationsEnabled } from '../../state/useData';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import { ASSESSMENT_TARGET_RECALL } from '../../fsrs/assessmentTiming';
@@ -35,6 +36,7 @@ export function RemainingWork({
   courseId: string;
   records?: RemainingWorkRecords;
 }) {
+  const enabled = useContext(BackgroundCalculationsEnabled);
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const refresh = () => setNow(Date.now());
@@ -46,6 +48,7 @@ export function RemainingWork({
     };
   }, []);
   const input = useLiveQuery(async () => {
+    if (!enabled) return undefined;
     const [source, plans] = await Promise.all([
       records ?? readRemainingWorkRecords(courseId),
       db.revisionPlans.where('courseId').equals(courseId).toArray(),
@@ -53,11 +56,11 @@ export function RemainingWork({
     // Observe the course range without registering every historical event as a dependency.
     if (!records) await db.reviewHistory.where('courseId').equals(courseId).count();
     return { source, plans };
-  }, [courseId, records]);
+  }, [courseId, records, enabled]);
   const [estimates, setEstimates] = useState<RemainingWorkResults>();
   const [error, setError] = useState<Error>();
   useEffect(() => {
-    if (!input) return;
+    if (!enabled || !input) return;
     const controller = new AbortController();
     const { signal } = controller;
     void Promise.resolve()
@@ -78,7 +81,7 @@ export function RemainingWork({
     return () => {
       controller.abort();
     };
-  }, [input, now]);
+  }, [input, now, enabled]);
   if (error) throw error;
   if (!estimates?.length) return null;
   return (

@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
 
+// Daily startup maintenance waits for input quiet; these are functional backup
+// checks, independent of the unchanged first-interaction performance budgets.
+test.setTimeout(60_000);
+
 async function restorePointCount(page: Page): Promise<number> {
   return page.evaluate(async () => {
     const connection = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -34,7 +38,7 @@ test('commits the daily restore point without cloning its payload on the UI thre
     };
   });
   await enterFreshLacuna(page);
-  await expect.poll(() => restorePointCount(page)).toBe(1);
+  await expect.poll(() => restorePointCount(page), { timeout: 10_000 }).toBe(1);
   expect(
     await page.evaluate(() => (window as unknown as { uiBackupWrites: number }).uiBackupWrites),
   ).toBe(0);
@@ -52,7 +56,7 @@ test('runs the daily worker for the first time after an offline reload', async (
   const workerUrls: string[] = [];
   page.on('worker', (worker) => workerUrls.push(worker.url()));
   await enterFreshLacuna(page);
-  await expect.poll(() => restorePointCount(page)).toBe(1);
+  await expect.poll(() => restorePointCount(page), { timeout: 10_000 }).toBe(1);
   expect(workerUrls.some((url) => url.includes('dailyBackup.worker-'))).toBe(false);
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
@@ -97,7 +101,7 @@ test('runs the daily worker for the first time after an offline reload', async (
   try {
     await context.setOffline(true);
     await page.reload();
-    await expect.poll(() => restorePointCount(page)).toBe(1);
+    await expect.poll(() => restorePointCount(page), { timeout: 10_000 }).toBe(1);
     expect(workerUrls.filter((url) => url.includes('dailyBackup.worker-'))).toHaveLength(1);
   } finally {
     await context.setOffline(false);
@@ -109,7 +113,7 @@ test('restores a daily snapshot offline before any import or export action', asy
   context,
 }) => {
   await enterFreshLacuna(page);
-  await expect.poll(() => restorePointCount(page)).toBe(1);
+  await expect.poll(() => restorePointCount(page), { timeout: 10_000 }).toBe(1);
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });

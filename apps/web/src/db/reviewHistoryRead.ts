@@ -110,9 +110,11 @@ export async function listReviewHistoryForCards(
 }
 
 /** Read all review events through the canonical adapter, with legacy compatibility fallback. */
-export async function listAllReviewHistory(): Promise<ReviewHistoryEntry[]> {
+export async function listAllReviewHistory(loadedCards?: Card[]): Promise<ReviewHistoryEntry[]> {
   const canonical = await db.reviewHistory.toArray();
-  return sortReviewHistory(mergeReviewHistoryForRead(canonical, await db.cards.toArray()));
+  return sortReviewHistory(
+    mergeReviewHistoryForRead(canonical, loadedCards ?? (await db.cards.toArray())),
+  );
 }
 
 /** Read one course's events, optionally reusing its already-loaded cards for legacy projections. */
