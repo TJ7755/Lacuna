@@ -10,6 +10,7 @@ const root = resolve(process.argv[2] ?? 'dist');
 const output = resolve(process.argv[3] ?? 'artifacts/performance/cards.json');
 const repetitions = Number(process.env.PERF_REPETITIONS ?? 3);
 const rate = Number(process.env.PERF_RATE ?? 4);
+const imageSource = process.env.PERF_IMAGE_SOURCE ?? 'asset';
 const expect = baseExpect.configure({ timeout: 30000 });
 await mkdir(dirname(output), { recursive: true });
 const mime = {
@@ -45,7 +46,7 @@ await new Promise((done) => server.listen(0, '127.0.0.1', done));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true });
 const report = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   build: root,
   buildIndexSha256: createHash('sha256')
     .update(await readFile(resolve(root, 'index.html')))
@@ -61,10 +62,11 @@ const report = {
   rate,
   viewport: { width: 1440, height: 900 },
   reducedMotion: 'no-preference',
-  fixture: { cards: 800, lessons: 20, diagrams: 100, regionsPerDiagram: 4 },
+  fixture: { cards: 800, lessons: 20, diagrams: 100, regionsPerDiagram: 4, imageSource },
   method:
     'Wall clock includes Playwright overhead. Input-to-readable starts at pointerdown/input in the renderer and ends after readable content and two frames. Fresh context per repetition; warm revisit shares that context. Profiling is optional and must be compared separately.',
   runs: [],
+  failures: [],
 };
 try {
   for (let iteration = 0; iteration < repetitions; iteration++) {
@@ -78,7 +80,7 @@ try {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`${origin}/__fixture`);
     await page.addScriptTag({ path: 'artifacts/performance/fixture.js' });
-    await page.evaluate(async () => {
+    await page.evaluate(async (imageSource) => {
       await window.LacunaHeavyFixture.seed(true);
       const db = await new Promise((resolve, reject) => {
         const request = indexedDB.open('lacuna');
@@ -102,6 +104,7 @@ try {
       ctx.fillStyle = '#f0e8c8';
       ctx.font = '48px sans-serif';
       ctx.fillText('Cell structure', 180, 500);
+      const embeddedImage = canvas.toDataURL('image/png');
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
       const bytes = new Uint8Array(await blob.arrayBuffer());
       await new Promise((resolve, reject) => {
@@ -172,7 +175,7 @@ try {
               deckId: lessonId,
               front: generated
                 ? `Label ${(i % 4) + 1} of 4 — Cell diagram ${group}`
-                : `Recall image ${index}\n\n![Cell structure](lacuna-asset://${hash})`,
+                : `Recall image ${index}\n\n![Cell structure](${imageSource === 'embedded' ? embeddedImage : `lacuna-asset://${hash}`})`,
               back: `Nucleus answer ${index}`,
               history: [],
               occlusionRegionId: regionId,
@@ -183,7 +186,7 @@ try {
         tx.onerror = () => reject(tx.error);
       });
       db.close();
-    });
+    }, imageSource);
     // Count actual IndexedDB reads, including reads issued by Dexie.
     await page.addInitScript(() => {
       window.__reads = {};
@@ -270,6 +273,7 @@ try {
         await cdp.send('Profiler.enable');
         await cdp.send('Profiler.start');
       }
+      const beforeMetrics = await cdp.send('Performance.getMetrics');
       const start = performance.now();
       await action();
       await ready();
@@ -298,6 +302,16 @@ try {
         ...counts,
         heapBytes: metrics.metrics.find((m) => m.name === 'JSHeapUsedSize')?.value,
       };
+      for (const metric of [
+        'TaskDuration',
+        'ScriptDuration',
+        'LayoutDuration',
+        'RecalcStyleDuration',
+      ]) {
+        sample[metric] =
+          metrics.metrics.find((m) => m.name === metric).value -
+          beforeMetrics.metrics.find((m) => m.name === metric).value;
+      }
       run.samples.push(sample);
       await page.evaluate(() => window.__stopInteraction());
       if (profiling) {
@@ -341,6 +355,93 @@ try {
       () => page.getByLabel('Search all cards').fill(''),
       () => expect.poll(() => page.locator('[data-card-id]').count()).toBeGreaterThan(1),
     );
+    await measure(
+      'fill-broad-query',
+      () => page.getByLabel('Search all cards').fill('Nucleus'),
+      () => expect(page.getByLabel('Search all cards')).toHaveValue('Nucleus'),
+    );
+    await measure(
+      'clear-broad-query',
+      () => page.getByLabel('Search all cards').fill(''),
+      () => expect(page.getByLabel('Search all cards')).toHaveValue(''),
+    );
+    // A broad query keeps image rows mounted while every character updates the URL.
+    // Record renderer input-to-paint separately from Playwright wall-clock overhead.
+    await page.evaluate(() => {
+      window.__typedPaints = [];
+      document
+        .querySelector('[aria-label="Search all cards"]')
+        .addEventListener('input', (event) => {
+          const value = event.target.value;
+          const start = performance.now();
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              window.__typedPaints.push({ value, inputToPaintMs: performance.now() - start });
+            }),
+          );
+        });
+      window.__longTasks = [];
+    });
+    const beforeTyping = await cdp.send('Performance.getMetrics');
+    if (process.env.PERF_PROFILE === '1') {
+      await cdp.send('Profiler.enable');
+      await cdp.send('Profiler.start');
+    }
+    const typingStarted = performance.now();
+    await page.getByLabel('Search all cards').pressSequentially('Nucleus', { delay: 30 });
+    await expect.poll(() => page.evaluate(() => window.__typedPaints.length)).toBe(7);
+    const afterTyping = await cdp.send('Performance.getMetrics');
+    const typed = await page.evaluate(() => ({
+      value: document.querySelector('[aria-label="Search all cards"]').value,
+      paints: window.__typedPaints,
+      longTasks: window.__longTasks,
+      rows: document.querySelectorAll('[data-card-id]').length,
+      images: document.querySelectorAll('main img').length,
+    }));
+    const typingSample = {
+      name: 'type-broad-query',
+      elapsedMs: performance.now() - typingStarted,
+      ...typed,
+    };
+    for (const metric of [
+      'TaskDuration',
+      'ScriptDuration',
+      'LayoutDuration',
+      'RecalcStyleDuration',
+    ]) {
+      typingSample[metric] =
+        afterTyping.metrics.find((m) => m.name === metric).value -
+        beforeTyping.metrics.find((m) => m.name === metric).value;
+    }
+    if (process.env.PERF_PROFILE === '1') {
+      const { profile } = await cdp.send('Profiler.stop');
+      await writeFile(
+        output.replace(/\.json$/, `-${iteration}-type-broad-query.cpuprofile`),
+        JSON.stringify(profile),
+      );
+    }
+    if (typed.value !== 'Nucleus') {
+      report.failures.push({
+        iteration,
+        name: typingSample.name,
+        expected: 'Nucleus',
+        actual: typed.value,
+      });
+    } else {
+      await expect(
+        page.locator('[aria-live="polite"]').filter({ hasText: /^800 cards$/ }),
+      ).toBeVisible();
+    }
+    run.samples.push(typingSample);
+    console.log(JSON.stringify({ iteration, ...typingSample }));
+    await page.getByLabel('Search all cards').fill('no-such-nucleus-card');
+    await expect(page.getByText(/No cards match.*no-such-nucleus-card/)).toBeVisible();
+    await expect(page.locator('[data-card-id]')).toHaveCount(0);
+    await measure(
+      'clear-miss',
+      () => page.getByLabel('Search all cards').fill(''),
+      () => expect.poll(() => page.locator('[data-card-id]').count()).toBeGreaterThan(1),
+    );
     await page.getByRole('link', { name: 'Today', exact: true }).first().click();
     await expect(courseLink).toBeVisible();
     await measure('course-warm', () => courseLink.click(), heading);
@@ -355,6 +456,7 @@ try {
     await mkdir(dirname(output), { recursive: true });
     await writeFile(output, JSON.stringify(report, null, 2) + '\n');
   }
+  expect(report.failures, 'typed query preserved').toEqual([]);
 } finally {
   await browser.close();
   server.close();
