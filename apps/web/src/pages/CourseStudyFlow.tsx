@@ -404,6 +404,7 @@ function CourseStudyFlowInner() {
     body = (
       <LearnMode
         request={request}
+        showConfirmedReport={false}
         onStepFinished={handleStepFinished}
         onFlowExit={finishFlow}
         sessionId={flowIdentity?.sessionId}

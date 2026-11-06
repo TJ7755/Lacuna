@@ -105,7 +105,7 @@ test('desktop Study starts at the current lesson and introduces earlier cards be
   page,
 }, info) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await enterFreshLacuna(page);
   const courseUrl = await createCourse(page, 'Mid-course biology', false);
   const courseId = new URL(courseUrl).hash.split('/')[2];
@@ -143,8 +143,31 @@ test('desktop Study starts at the current lesson and introduces earlier cards be
   ).toBeVisible();
   await capture(page, info, 'earlier-card-in-fsrs-practice');
   expect(await readAll(page, 'questionSetAttempts')).toHaveLength(0);
+  // Record inserted reports, including ones removed before a locator could see them.
+  // Completing an embedded step should hand off directly to the next planned step.
+  await page.evaluate(() => {
+    const reports: string[] = [];
+    document.documentElement.dataset.sessionReports = JSON.stringify(reports);
+    new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (!(node instanceof Element)) continue;
+          const report = node.matches('main[aria-label="Session report"]')
+            ? node
+            : node.querySelector('main[aria-label="Session report"]');
+          if (report) reports.push(report.querySelector('h1')?.textContent ?? 'Session report');
+        }
+      }
+      document.documentElement.dataset.sessionReports = JSON.stringify(reports);
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await expect(handoff.getByRole('heading', { name: /^Practise:/ })).toBeVisible();
+  expect(
+    await page.evaluate(() => JSON.parse(document.documentElement.dataset.sessionReports ?? '[]')),
+  ).toEqual([]);
+  await capture(page, info, 'catch-up-direct-practice-handoff');
   await expect
     .poll(() => readAll<ReviewHistoryEntry>(page, 'reviewHistory'))
     .toMatchObject([
