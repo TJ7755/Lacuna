@@ -241,11 +241,7 @@ function CardStep({
   return (
     <>
       <div className="mb-4 shrink-0 text-center">
-        <StepHeading compact>Try a practice example</StepHeading>
-        <p className="mx-auto max-w-prose text-sm text-ink-soft">
-          See how revision works before choosing your own material. Think of an answer, then select
-          Show answer and check whether you knew it.
-        </p>
+        <StepHeading compact>Practice</StepHeading>
       </div>
       <div className="study-card-slot min-h-0 flex-1">
         <StudyCardTransition cardId={FIRST_CARD.id} phase={phase} multiplier={m}>
@@ -268,9 +264,6 @@ function CardStep({
       </div>
       {hasMissed && (
         <div className="mt-3 shrink-0 text-center">
-          <p role="status" className="text-sm text-ink-soft">
-            Missed cards come back for practice.
-          </p>
           <Button variant="ghost" onClick={onDone}>
             Continue setup <ArrowRightIcon width={18} height={18} />
           </Button>
