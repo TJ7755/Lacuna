@@ -190,12 +190,12 @@ describe('lesson pools', () => {
     ]);
   });
 
-  it('counts recent introductions across the whole course for a direct lesson', () => {
+  it('counts today’s introductions across the whole course for a direct lesson', () => {
     const introducedElsewhere = makeCard('introduced', 'l2', {
       state: 1,
       history: [
         {
-          timestamp: NOW - 1,
+          timestamp: NOW,
           grade: 3,
           responseTimeSec: 1,
           distracted: false,
