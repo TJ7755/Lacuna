@@ -5,12 +5,16 @@ test('narrow desktop navigation expands without shrinking content and returns fo
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1100, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   const main = await page.locator('main').boundingBox();
   const expand = page.getByRole('button', { name: 'Expand sidebar', exact: true });
   await expand.press('Enter');
   const navigation = page.getByRole('dialog', { name: 'Navigation', exact: true });
   await expect(navigation.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
+  await expect
+    .poll(() => navigation.evaluate((element) => element.getBoundingClientRect().left))
+    .toBe(0);
   expect((await page.locator('main').boundingBox())?.width).toBe(main?.width);
   await page.screenshot({
     path: testInfo.outputPath('desktop-navigation-expanded.png'),
@@ -29,6 +33,7 @@ test('sidebar customisation matches the rendered groups and keeps Settings pinne
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await page.goto('/#/settings#settings-sidebar');
   await expect(page.getByRole('button', { name: 'Move Share up', exact: true })).toBeDisabled();
