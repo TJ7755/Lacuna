@@ -490,7 +490,7 @@ describe('CardsPage', () => {
         target: { value: 'apple' },
       });
       fireEvent.click(screen.getByRole('button', { name: /Flagged/ }));
-      fireEvent.click(screen.getByRole('button', { name: editLabel, exact: true }));
+      fireEvent.click(screen.getByRole('button', { name: editLabel }));
 
       expect(screen.getByTestId('editor-path')).toHaveTextContent(destination);
       expect(screen.getByTestId('editor-origin')).toHaveTextContent(
