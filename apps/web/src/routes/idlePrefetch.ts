@@ -25,3 +25,36 @@ export function scheduleIdlePrefetch(
     cancel();
   };
 }
+
+/**
+ * Startup maintenance must not race the first search/navigation for IndexedDB.
+ * Give input five quiet seconds, but run within thirty seconds of readiness so
+ * continuous interaction cannot indefinitely postpone the daily restore point.
+ */
+export function scheduleBackgroundWork(work: () => void): () => void {
+  const events = ['keydown', 'pointerdown', 'wheel'] as const;
+  let finished = false;
+  let quiet: ReturnType<typeof setTimeout>;
+  const stop = () => {
+    clearTimeout(quiet);
+    clearTimeout(deadline);
+    for (const event of events) window.removeEventListener(event, postpone);
+  };
+  const run = () => {
+    if (finished) return;
+    finished = true;
+    stop();
+    work();
+  };
+  const postpone = () => {
+    clearTimeout(quiet);
+    quiet = setTimeout(run, 5_000);
+  };
+  const deadline = setTimeout(run, 30_000);
+  for (const event of events) window.addEventListener(event, postpone, { passive: true });
+  postpone();
+  return () => {
+    finished = true;
+    stop();
+  };
+}

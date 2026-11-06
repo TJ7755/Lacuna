@@ -2,6 +2,8 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as MigrationModule from './db/lessonViewModeMigration';
 import type * as SchemaModule from './db/schema';
+import type * as IdleModule from './routes/idlePrefetch';
+import type * as BackupsModule from './db/backups';
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -20,6 +22,17 @@ const dependencies = vi.hoisted(() => ({
   stampMissingLessonViewModes: vi.fn(),
   isFirstRun: vi.fn(),
   settleFirstRun: vi.fn(),
+  scheduleBackgroundWork: vi.fn(),
+  autoBackupIfStale: vi.fn(),
+}));
+
+vi.mock('./routes/idlePrefetch', async (importOriginal) => ({
+  ...(await importOriginal<typeof IdleModule>()),
+  scheduleBackgroundWork: dependencies.scheduleBackgroundWork,
+}));
+vi.mock('./db/backups', async (importOriginal) => ({
+  ...(await importOriginal<typeof BackupsModule>()),
+  autoBackupIfStale: dependencies.autoBackupIfStale,
 }));
 
 vi.mock('./db/schema', async (importOriginal) => ({
@@ -66,6 +79,25 @@ describe('App initialisation', () => {
     });
     dependencies.isFirstRun.mockResolvedValue(false);
     dependencies.settleFirstRun.mockResolvedValue(undefined);
+    dependencies.autoBackupIfStale.mockResolvedValue(undefined);
+    dependencies.scheduleBackgroundWork.mockImplementation(() => vi.fn());
+  });
+
+  it('schedules daily maintenance after readiness and releases the pending schedule on unmount', async () => {
+    let queued: (() => void) | undefined;
+    const cancel = vi.fn();
+    dependencies.scheduleBackgroundWork.mockImplementationOnce((work: () => void) => {
+      queued = work;
+      return cancel;
+    });
+    const { unmount } = render(<App />);
+    await waitFor(() => expect(screen.queryByText('Lacuna')).not.toBeInTheDocument());
+    expect(dependencies.scheduleBackgroundWork).toHaveBeenCalledOnce();
+    expect(dependencies.autoBackupIfStale).not.toHaveBeenCalled();
+    await act(async () => queued!());
+    await waitFor(() => expect(dependencies.autoBackupIfStale).toHaveBeenCalledOnce());
+    unmount();
+    expect(cancel).toHaveBeenCalledOnce();
   });
 
   it('requests persistence after opening the database without blocking readiness', async () => {

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type CDPSession, type Page } from '@playwright/test';
 import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 test.use({ serviceWorkers: 'block', viewport: { width: 1440, height: 1000 } });
@@ -123,6 +123,7 @@ test('cached Today keeps its forecast when first opening the optional calculatio
     serviceWorkers: 'allow',
   });
   const page = await context.newPage();
+  let cdp: CDPSession | undefined;
   try {
     await page.goto('/');
     await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
@@ -146,7 +147,7 @@ test('cached Today keeps its forecast when first opening the optional calculatio
         }
       }
     });
-    const cdp = await context.newCDPSession(page);
+    cdp = await context.newCDPSession(page);
     await cdp.send('Network.clearBrowserCache');
     await context.setOffline(true);
     await page.getByRole('link', { name: 'Today', exact: true }).first().click();
@@ -154,6 +155,11 @@ test('cached Today keeps its forecast when first opening the optional calculatio
     await expect(page.getByRole('img', { name: 'Exam-day forecast', exact: true })).toBeVisible();
     expect(await page.evaluate(() => Reflect.get(window, 'forecastWork').historyReads)).toBe(1);
   } finally {
-    await browser.close();
+    try {
+      await context.setOffline(false);
+      await cdp?.detach();
+    } finally {
+      await browser.close();
+    }
   }
 });
