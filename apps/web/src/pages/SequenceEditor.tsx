@@ -42,6 +42,7 @@ import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { useReturn } from '../utils/editorOrigin';
 import { DEFAULT_RECITATION_CHUNK_SIZE, hasStanzas } from './learn/recitation/recitationFlow';
 import { DangerZoneSection } from './settings/DangerZoneSection';
+import { useEditorLeaveGuard } from './useEditorLeaveGuard';
 
 /** Empty items are scaffolding, never content: they are not previewed or saved. */
 function withoutEmptyItems(outline: Outline): Outline {
@@ -122,6 +123,20 @@ export function SequenceEditor() {
   });
   const backPath = returnTo.to;
   const backLabel = returnTo.label;
+  const leaveGuard = useEditorLeaveGuard(
+    loaded,
+    {
+      name,
+      description,
+      outline,
+      cueWindow,
+      generateLabelCards,
+      presetId,
+      mySpeaker,
+      recitationChunkSize,
+    },
+    returnTo,
+  );
 
   const saved = useMemo(() => withoutEmptyItems(outline), [outline]);
 
@@ -196,7 +211,7 @@ export function SequenceEditor() {
   }
 
   const editorKeys = useEditorKeys({
-    onCancel: returnTo.goBack,
+    onCancel: leaveGuard.requestLeave,
     onSubmit: () => void handleSave(),
   });
 
@@ -296,7 +311,10 @@ export function SequenceEditor() {
         await createSequence(courseId, lessonId ?? null, name, saved.items, opts);
         notify('Sequence added.', 'positive');
       }
-      returnTo.goBack();
+      leaveGuard.markSaved();
+      leaveGuard.requestLeave();
+    } catch {
+      setSaveError('Could not save the sequence. Try again.');
     } finally {
       setSaving(false);
     }
@@ -312,9 +330,10 @@ export function SequenceEditor() {
 
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`} {...editorKeys}>
+      {leaveGuard.dialog}
       <header className="mb-8">
         <Link
-          {...returnTo.linkProps}
+          {...leaveGuard.linkProps}
           className="mb-3 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
         >
           <ChevronLeftIcon width={16} height={16} />
@@ -398,7 +417,10 @@ export function SequenceEditor() {
             snapshot={() => snapshotSequence(sequence.id)}
             onDelete={() => deleteSequence(sequence.id)}
             onRestore={(snap) => restoreSequence(snap as SequenceSnapshot)}
-            onDeleted={returnTo.goBack}
+            onDeleted={() => {
+              leaveGuard.markSaved();
+              leaveGuard.requestLeave();
+            }}
           />
         )}
       </div>
@@ -421,7 +443,7 @@ export function SequenceEditor() {
               {cardCount}
             </p>
           )}
-          <Button variant="ghost" onClick={returnTo.goBack}>
+          <Button variant="ghost" onClick={leaveGuard.requestLeave} disabled={saving}>
             Cancel
           </Button>
           <Button

@@ -24,7 +24,8 @@ import {
   type DrawnRegionRect,
 } from '../components/occlusion/OcclusionCanvas';
 import { OcclusionRegionPane } from '../components/occlusion/OcclusionRegionPane';
-import { ChevronLeftIcon } from '../components/ui/icons';
+import { useRegionDeletionUndo } from '../components/occlusion/useRegionDeletionUndo';
+import { ChevronLeftIcon, RefreshIcon } from '../components/ui/icons';
 import { makeId } from '../db/schema';
 import { generateCards } from '../db/occlusionGeneration';
 import { resolveAssetUrl } from '../db/assetCache';
@@ -40,6 +41,7 @@ import {
 import { useReturn } from '../utils/editorOrigin';
 import type { Occlusion, OcclusionRegion } from '@lacuna/core/db/types';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import { useEditorLeaveGuard } from './useEditorLeaveGuard';
 
 export function OcclusionEditor() {
   const { occlusionId, courseId, lessonId } = useParams<{
@@ -66,6 +68,8 @@ export function OcclusionEditor() {
   const [uploading, setUploading] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [confirmingReplace, setConfirmingReplace] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const regionHistory = useRegionDeletionUndo(regions, setRegions, setSelectedRegionId);
 
   // Seed the form from the occlusion being edited once it has loaded.
   useEffect(() => {
@@ -106,6 +110,7 @@ export function OcclusionEditor() {
   });
   const backPath = returnTo.to;
   const backLabel = returnTo.label;
+  const leaveGuard = useEditorLeaveGuard(loaded, { name, assetHash, regions }, returnTo);
 
   // A draft Occlusion built from current form state, purely so the pure generation
   // module (never re-implemented here) can compute the live card-count preview.
@@ -133,7 +138,7 @@ export function OcclusionEditor() {
   const dockRef = useRef<HTMLDivElement>(null);
   const nameId = useId();
   const editorKeys = useEditorKeys({
-    onCancel: returnTo.goBack,
+    onCancel: leaveGuard.requestLeave,
     onSubmit: () => void handleSave(),
   });
 
@@ -184,7 +189,8 @@ export function OcclusionEditor() {
   }
 
   const editable = Boolean(course && canEditLessons(course));
-  const canSave = editable && name.trim().length > 0 && assetHash !== null && regions.length > 0;
+  const canSave =
+    editable && !uploading && name.trim().length > 0 && assetHash !== null && regions.length > 0;
 
   function addRegion(rect: DrawnRegionRect) {
     const region: OcclusionRegion = {
@@ -214,18 +220,6 @@ export function OcclusionEditor() {
 
   function focusCanvas() {
     gridRef.current?.querySelector<HTMLElement>('[data-testid="occlusion-canvas"]')?.focus();
-  }
-
-  function deleteRegion(id: string) {
-    // Clear any feature region's pairing that pointed at the region being removed —
-    // mirrors updateOcclusion's server-side cleanup, applied here too since a region
-    // can be drawn, paired to, and deleted again before the occlusion is ever saved.
-    setRegions((prev) =>
-      prev
-        .filter((r) => r.id !== id)
-        .map((r) => (r.pairedRegionId === id ? { ...r, pairedRegionId: undefined } : r)),
-    );
-    setSelectedRegionId((current) => (current === id ? null : current));
   }
 
   // Replacing the diagram of an occlusion that already exists regenerates every card
@@ -265,8 +259,9 @@ export function OcclusionEditor() {
 
   async function handleSave() {
     if (!editable) return;
-    if (!canSave || !courseId || !assetHash) return;
+    if (!canSave || saving || !courseId || !assetHash) return;
     setSaving(true);
+    setSaveError(null);
     try {
       if (editing && occlusion) {
         await updateOcclusion({ ...occlusion, name: name.trim(), assetHash, regions });
@@ -275,7 +270,10 @@ export function OcclusionEditor() {
         await createOcclusion(courseId, lessonId ?? null, name, assetHash, regions);
         notify('Occlusion added.', 'positive');
       }
-      returnTo.goBack();
+      leaveGuard.markSaved();
+      leaveGuard.requestLeave();
+    } catch {
+      setSaveError('Could not save the occlusion. Try again.');
     } finally {
       setSaving(false);
     }
@@ -285,13 +283,29 @@ export function OcclusionEditor() {
     <div
       className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}
       {...editorKeys}
+      onKeyDown={(event) => {
+        if (
+          !event.defaultPrevented &&
+          !event.nativeEvent.isComposing &&
+          event.nativeEvent.keyCode !== 229 &&
+          (event.ctrlKey || event.metaKey) &&
+          !event.shiftKey &&
+          event.key.toLowerCase() === 'z' &&
+          !(event.target as Element).closest('input, textarea, [contenteditable]') &&
+          regionHistory.canUndo
+        ) {
+          event.preventDefault();
+          regionHistory.undo();
+        } else editorKeys.onKeyDown(event);
+      }}
       onFocus={(event) => keepClearOfDock(event.target)}
     >
+      {leaveGuard.dialog}
       <div>
         <header className="relative mb-8">
           <div className="relative">
             <Link
-              {...returnTo.linkProps}
+              {...leaveGuard.linkProps}
               className="mb-3 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
             >
               <ChevronLeftIcon width={16} height={16} />
@@ -343,7 +357,7 @@ export function OcclusionEditor() {
               regions={regions}
               selectedRegionId={selectedRegionId}
               onSelect={setSelectedRegionId}
-              onDelete={deleteRegion}
+              onDelete={regionHistory.deleteRegion}
               onUpdate={updateRegion}
               onEmptied={focusCanvas}
             />
@@ -371,7 +385,10 @@ export function OcclusionEditor() {
                 if (editable) await deleteOcclusion(occlusion.id);
               }}
               onRestore={(snap) => restoreOcclusion(snap as OcclusionSnapshot)}
-              onDeleted={returnTo.goBack}
+              onDeleted={() => {
+                leaveGuard.markSaved();
+                leaveGuard.requestLeave();
+              }}
             />
           )}
         </div>
@@ -383,8 +400,26 @@ export function OcclusionEditor() {
         aria-label="Occlusion editor actions"
         className="pointer-events-none sticky bottom-0 z-30 -mx-[18px] mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-[18px] pb-5 pt-12 min-[481px]:-mx-6 min-[481px]:px-6 md:-mx-10 md:px-10"
       >
-        <div ref={dockRef} className="pointer-events-auto ml-auto flex w-fit items-center gap-3">
-          <Button variant="ghost" onClick={returnTo.goBack}>
+        <div
+          ref={dockRef}
+          className="pointer-events-auto ml-auto flex w-fit flex-wrap items-center justify-end gap-3"
+        >
+          {saveError && (
+            <p role="alert" className="max-w-xs text-right text-sm text-negative">
+              {saveError}
+            </p>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Undo region deletion"
+            title="Undo region deletion (Ctrl/Cmd+Z)"
+            disabled={!regionHistory.canUndo || saving}
+            onClick={regionHistory.undo}
+          >
+            <RefreshIcon className="-scale-x-100" />
+          </Button>
+          <Button variant="ghost" onClick={leaveGuard.requestLeave} disabled={saving}>
             Cancel
           </Button>
           <Button
