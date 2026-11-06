@@ -79,18 +79,18 @@ describe('useStorageQuotaWarning', () => {
 
     await waitFor(() => expect(notify).toHaveBeenCalledOnce());
     expect(notify).toHaveBeenCalledWith(
-      'Storage is 86% full. Consider exporting your data to free up space.',
+      'Storage is 86% full. Export a backup before removing unused content.',
       'negative',
       {
-        duration: 8000,
-        actionLabel: 'Open backups',
+        persistent: true,
+        actionLabel: 'Open export',
         onAction: expect.any(Function),
       },
     );
 
     const options = notify.mock.calls[0]?.[2] as { onAction: () => void };
     options.onAction();
-    expect(window.location.hash).toBe('#/settings#settings-backups');
+    expect(window.location.hash).toBe('#/settings#settings-export');
 
     unmount();
     Object.defineProperty(navigator, 'storage', {

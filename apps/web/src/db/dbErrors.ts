@@ -5,7 +5,9 @@ export function friendlyDbError(error: unknown): Error {
     (error instanceof DOMException || error instanceof Error) &&
     error.name === 'QuotaExceededError'
   ) {
-    return new Error('Your browser storage is full. Free up space or export your data to a file.');
+    return new Error(
+      'Your browser storage is full. Export a backup before removing unused content.',
+    );
   }
   if (error instanceof Error) return error;
   return new Error(String(error));

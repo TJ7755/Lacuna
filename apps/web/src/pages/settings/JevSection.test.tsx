@@ -105,5 +105,22 @@ describe('JevSection', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(id));
     expect(await screen.findByText(/Quota ID copied/)).toBeInTheDocument();
     expect(screen.getByLabelText('Quota ID')).toHaveTextContent(id);
+    expect(screen.getByLabelText('Quota ID')).toHaveClass('select-text');
+  });
+
+  it('offers selectable quota text when automatic copying is unavailable', async () => {
+    state.settings = { enabled: true, acceptedConsentVersion: JEV_CONSENT_VERSION };
+    const id = 'cd'.repeat(32);
+    state.quotaId.mockResolvedValue(id);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    render(<JevSection />);
+    fireEvent.click(screen.getByRole('button', { name: 'Copy quota ID' }));
+
+    expect(await screen.findByText(/Select and copy the quota ID below/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Quota ID')).toHaveClass('select-text');
+    expect(screen.getByLabelText('Quota ID')).toHaveTextContent(id);
   });
 });

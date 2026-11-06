@@ -3,7 +3,7 @@ import Dexie from 'dexie';
 import { describe, expect, it } from 'vitest';
 import { friendlyDbError } from './dbErrors';
 
-const full = 'Your browser storage is full. Free up space or export your data to a file.';
+const full = 'Your browser storage is full. Export a backup before removing unused content.';
 
 describe('friendlyDbError', () => {
   it('translates quota errors whether raw or re-wrapped by Dexie', () => {

@@ -27,6 +27,50 @@ function TestComponent() {
 }
 
 describe('ToastProvider', () => {
+  it('keeps error notices until explicitly dismissed by default', async () => {
+    render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Error' }));
+
+    expect(await screen.findByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Notifications').querySelector('.origin-left')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    await waitFor(() =>
+      expect(screen.queryByText('Error', { selector: 'span' })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('honours explicit timed error notices and persistent opt-outs', async () => {
+    function TimedErrors() {
+      const { notify } = useToast();
+      return (
+        <>
+          <button onClick={() => notify('Short error', 'negative', { duration: 20 })}>
+            Short error
+          </button>
+          <button onClick={() => notify('Default timer', 'negative', { persistent: false })}>
+            Opt out
+          </button>
+        </>
+      );
+    }
+    render(
+      <ToastProvider>
+        <TimedErrors />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Short error' }));
+    await waitFor(() =>
+      expect(screen.queryByText('Short error', { selector: 'span' })).not.toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Opt out' }));
+    expect(screen.getByLabelText('Notifications').querySelector('.origin-left')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
+  });
+
   it('keeps persistent toasts untimed with working action and dismiss buttons', async () => {
     const onAction = vi.fn();
     const onDismiss = vi.fn();

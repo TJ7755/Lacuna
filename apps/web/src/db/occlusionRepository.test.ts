@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import {
   cardsForOcclusion,
@@ -40,6 +40,23 @@ function featureRegion(id: string, overrides: Partial<OcclusionRegion> = {}): Oc
 
 describe('createOcclusion', () => {
   beforeEach(reset);
+
+  it('uses the shared recovery explanation when storage is full', async () => {
+    const course = await createCourse('Biology');
+    const add = vi
+      .spyOn(db.occlusions, 'add')
+      .mockRejectedValueOnce(new DOMException('Storage quota exceeded', 'QuotaExceededError'));
+    try {
+      await expect(
+        createOcclusion(course.id, null, 'Cell', 'hash-1', [labelRegion('r1')]),
+      ).rejects.toThrow(
+        'Your browser storage is full. Export a backup before removing unused content.',
+      );
+      expect(await db.occlusions.count()).toBe(0);
+    } finally {
+      add.mockRestore();
+    }
+  });
 
   it('persists the occlusion and generates one card per region with a real backing deck', async () => {
     const course = await createCourse('Biology');

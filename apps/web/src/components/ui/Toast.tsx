@@ -21,9 +21,9 @@ interface ToastOptions {
   actionLabel?: string;
   /** Invoked when the action button is pressed; the toast then dismisses. */
   onAction?: () => void;
-  /** Lifetime in milliseconds. Defaults to 3500ms, or 6000ms when an action is shown. */
+  /** Explicit lifetime in milliseconds; overrides the default persistent error notice. */
   duration?: number;
-  /** If true, the toast stays on screen until the user clicks it away. */
+  /** Errors stay until dismissed by default; false opts back into the usual timer. */
   persistent?: boolean;
   /** Invoked when the toast is dismissed (either by the user clicking the close button,
    *  or by the action button being pressed, or by the auto-dismiss timer firing). */
@@ -63,7 +63,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const notify = useCallback(
     (message: string, tone: ToastTone = 'neutral', options?: ToastOptions) => {
       const id = ++toastIdCounter;
-      const duration = options?.persistent
+      const persistent =
+        options?.persistent ?? (tone === 'negative' && options?.duration === undefined);
+      const duration = persistent
         ? Infinity
         : (options?.duration ?? (options?.actionLabel ? 6000 : 3500));
       setToasts((prev) => {

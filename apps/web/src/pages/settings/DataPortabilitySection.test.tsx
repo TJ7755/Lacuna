@@ -83,10 +83,10 @@ describe('DataPortabilitySection', () => {
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseRecoverFile();
 
-    expect(
-      screen.getByText(/local conversation is cleared after replacement succeeds/),
-    ).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Replace local data' }));
+    expect(
+      screen.getByText('Delete current local data, disconnect AI and restore this backup?'),
+    ).toBeInTheDocument();
     expect(importBackup).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Replace local data' }));
     await waitFor(() => expect(importBackup).toHaveBeenCalledWith(expect.anything(), 'replace'));
@@ -104,19 +104,6 @@ describe('DataPortabilitySection', () => {
     expect(replace).toHaveBeenCalledWith('recovery', expect.any(Function));
   });
 
-  it('describes add-from-backup without a recency rule', async () => {
-    readBackupFile.mockResolvedValue(backupStub());
-    render(<DataPortabilitySection motionMultiplier={0} />);
-    await chooseRecoverFile();
-
-    expect(
-      await screen.findByText(/keeps your current data and folds in the backup/),
-    ).toHaveTextContent(
-      'Add from backup keeps your current data and folds in the backup; existing items are not deleted.',
-    );
-    expect(screen.queryByText(/more recently updated/)).not.toBeInTheDocument();
-  });
-
   it('reports the backup lesson count rather than the internal deck count', async () => {
     readBackupFile.mockResolvedValue(
       backupStub({
@@ -131,9 +118,10 @@ describe('DataPortabilitySection', () => {
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseRecoverFile();
 
-    expect(await screen.findByText(/This backup contains/)).toHaveTextContent(
-      'This backup contains 7 lessons and 36 cards, plus 4 Questions',
-    );
+    expect(await screen.findByText('7 lessons')).toBeInTheDocument();
+    expect(screen.getByText('36 cards')).toBeInTheDocument();
+    expect(screen.getByText('4 Questions')).toBeInTheDocument();
+    expect(screen.getByText('10 August 2026')).toBeInTheDocument();
   });
 
   it('requires confirmation before combining with another device', async () => {
@@ -148,7 +136,7 @@ describe('DataPortabilitySection', () => {
 
     expect(
       await screen.findByText(/Combine with the 12 August 2026 backup \(4 cards, 0 Questions\)\?/),
-    ).toBeInTheDocument();
+    ).toHaveTextContent('Deletions from either device apply.');
     expect(screen.queryByText(/Data from both devices is combined/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Merge' })).not.toBeInTheDocument();
     expect(manualMerge).not.toHaveBeenCalled();
@@ -157,14 +145,11 @@ describe('DataPortabilitySection', () => {
     await waitFor(() => expect(manualMerge).toHaveBeenCalledTimes(1));
   });
 
-  it('explains combining in the resting copy, not at the confirm', () => {
+  it('keeps the existing recovery choices in the resting view', () => {
     render(<DataPortabilitySection motionMultiplier={0} />);
 
     expect(
       screen.getByRole('heading', { level: 3, name: 'Combine two devices' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Keeps Cards, Questions and reviews from both sides/),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Choose backup from another device' }),
@@ -230,7 +215,7 @@ describe('DataPortabilitySection', () => {
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseCombineFile();
 
-    expect(notify).toHaveBeenCalledWith('This file is not a valid Lacuna backup.', 'negative');
+    expect(screen.getByRole('alert')).toHaveTextContent('This file is not a valid Lacuna backup.');
     expect(manualMerge).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Combine' })).not.toBeInTheDocument();
   });
@@ -247,11 +232,8 @@ describe('DataPortabilitySection', () => {
     await chooseCombineFile();
     fireEvent.click(await screen.findByRole('button', { name: 'Combine' }));
 
-    await waitFor(() =>
-      expect(notify).toHaveBeenCalledWith(
-        'IndexedDB unavailable. A safety backup could not be taken, so the database was not modified.',
-        'negative',
-      ),
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'IndexedDB unavailable. A safety backup could not be taken, so the database was not modified.',
     );
     expect(importBackup).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Combine' })).toBeInTheDocument();
@@ -266,12 +248,101 @@ describe('DataPortabilitySection', () => {
     await chooseCombineFile();
     fireEvent.click(await screen.findByRole('button', { name: 'Combine' }));
 
-    await waitFor(() =>
-      expect(notify).toHaveBeenCalledWith(
-        'The import did not finish. Restore from Automatic backups if this installation looks wrong.',
-        'negative',
-      ),
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The import did not finish. Use a restore point if this installation looks wrong.',
     );
+  });
+
+  it.each(['merge', 'replace'] as const)(
+    'keeps the selected backup and specific error for a %s retry',
+    async (mode) => {
+      const backup = backupStub();
+      readBackupFile.mockResolvedValue(backup);
+      importBackup.mockRejectedValueOnce(new Error('Storage is full. Free space and try again.'));
+      render(<DataPortabilitySection motionMultiplier={0} />);
+      await chooseRecoverFile();
+      const label = mode === 'replace' ? 'Replace local data' : 'Add from backup';
+      if (mode === 'replace') fireEvent.click(screen.getByRole('button', { name: label }));
+      fireEvent.click(screen.getByRole('button', { name: label }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Storage is full. Free space and try again.',
+      );
+      expect(screen.getByRole('heading', { name: 'backup.json' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: label })).toBeEnabled();
+      expect(notify).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: label }));
+
+      await waitFor(() => expect(importBackup).toHaveBeenCalledTimes(2));
+      expect(importBackup).toHaveBeenLastCalledWith(backup, mode);
+      expect(readBackupFile).toHaveBeenCalledOnce();
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: 'backup.json' })).not.toBeInTheDocument(),
+      );
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    },
+  );
+
+  it('blocks replacement, new files, cancellation and duplicate activation while adding', async () => {
+    let complete: () => void = () => {};
+    importBackup.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          complete = resolve;
+        }),
+    );
+    readBackupFile.mockResolvedValue(backupStub());
+    render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseRecoverFile();
+    fireEvent.click(screen.getByRole('button', { name: 'Add from backup' }));
+
+    expect(await screen.findByRole('button', { name: 'Adding…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Replace local data' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Choose backup file' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Choose backup from another device' }),
+    ).toBeDisabled();
+    await chooseCombineFile();
+    fireEvent.click(screen.getByRole('button', { name: 'Adding…' }));
+    expect(importBackup).toHaveBeenCalledOnce();
+    expect(readBackupFile).toHaveBeenCalledOnce();
+    await act(async () => complete());
+  });
+
+  it('retains a global error notice if the learner navigates away during recovery', async () => {
+    let rejectImport: (error: Error) => void = () => {};
+    importBackup.mockImplementationOnce(
+      () =>
+        new Promise<void>((_, reject) => {
+          rejectImport = reject;
+        }),
+    );
+    readBackupFile.mockResolvedValue(backupStub());
+    const view = render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseRecoverFile();
+    fireEvent.click(screen.getByRole('button', { name: 'Add from backup' }));
+    await waitFor(() => expect(importBackup).toHaveBeenCalledOnce());
+    view.unmount();
+
+    await act(async () => rejectImport(new Error('Storage is full. Free space and try again.')));
+
+    expect(notify).toHaveBeenCalledWith('Storage is full. Free space and try again.', 'negative');
+  });
+
+  it('uses the shared, concise quota explanation rather than the repeated database exception', async () => {
+    readBackupFile.mockResolvedValue(backupStub());
+    importBackup.mockRejectedValue(
+      new DOMException('Repeated low-level detail', 'QuotaExceededError'),
+    );
+    render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseRecoverFile();
+    fireEvent.click(screen.getByRole('button', { name: 'Add from backup' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Your browser storage is full. Export a backup before removing unused content.',
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Repeated low-level detail');
   });
 
   it('disables the combine action while it is running', async () => {

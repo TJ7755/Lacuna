@@ -31,13 +31,13 @@ export function useStorageQuotaWarning() {
         if (quota > 0 && usage / quota > WARNING_THRESHOLD && !warnedRef.current) {
           warnedRef.current = true;
           notify(
-            `Storage is ${Math.round((usage / quota) * 100)}% full. Consider exporting your data to free up space.`,
+            `Storage is ${Math.round((usage / quota) * 100)}% full. Export a backup before removing unused content.`,
             'negative',
             {
-              duration: 8000,
-              actionLabel: 'Open backups',
+              persistent: true,
+              actionLabel: 'Open export',
               onAction: () => {
-                window.location.hash = '#/settings#settings-backups';
+                window.location.hash = '#/settings#settings-export';
               },
             },
           );

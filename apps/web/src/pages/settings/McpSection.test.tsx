@@ -114,6 +114,27 @@ describe('McpSection', () => {
     });
     expect(getStatus).toHaveBeenCalledOnce();
   });
+
+  it('keeps the configuration selectable when automatic copying fails', async () => {
+    getStatus.mockResolvedValue({
+      running: true,
+      toolCount: 46,
+      toolSurfaceVersion: 2,
+      companion: { command: 'lacuna', args: ['--mcp-companion'] },
+    });
+    writeText.mockRejectedValueOnce(new Error('Clipboard denied'));
+    render(<McpSection />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy' }));
+
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        'Copy failed — select the configuration and copy it manually.',
+        'negative',
+      ),
+    );
+    expect(screen.getByLabelText('MCP client configuration')).toHaveClass('select-text');
+    expect(screen.getByLabelText('MCP client configuration')).toHaveTextContent('--mcp-companion');
+  });
 });
 
 function withinRow(row: Element, label: string): HTMLElement {
