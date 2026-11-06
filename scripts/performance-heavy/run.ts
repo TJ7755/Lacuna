@@ -7,6 +7,7 @@ import {
   startDiagnosticTrace,
   saveDiagnosticTrace,
 } from './diagnostics';
+import { installIndexedDbProbe, readIndexedDbProbe } from './indexedDbProbe';
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile, stat, readdir, rm, cp } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
@@ -21,11 +22,28 @@ const burstReviews = Number(process.env.PERF_BURST_REVIEWS ?? 0);
 const smoke = process.env.PERF_SMOKE === '1';
 const quick = process.env.PERF_MODE === 'quick';
 const budgets = process.env.PERF_BUDGETS === '1';
+const indexedDbProbe = process.env.PERF_IDB_PROBE === '1';
+const optionalWorkers = process.env.PERF_OPTIONAL_WORKERS ?? 'normal';
+const assetCommit = process.env.PERF_ASSET_COMMIT;
 const diagnostics = budgets || process.env.PERF_DIAGNOSTICS === '1';
 const traceDirectory = process.env.PERF_TRACE_DIR;
 const profileDir = process.env.PERF_PROFILE_DIR ? resolve(process.env.PERF_PROFILE_DIR) : undefined;
 const port = Number(process.env.PERF_PORT ?? (profileDir ? 4173 : 0));
 const profileSentinel = 'lacuna-heavy-performance-profile-v2-schema27-fixture1';
+if (
+  !['normal', 'idle'].includes(optionalWorkers) ||
+  (optionalWorkers === 'idle' && !indexedDbProbe)
+) {
+  throw new Error('PERF_OPTIONAL_WORKERS must be normal, or idle with PERF_IDB_PROBE=1.');
+}
+if (indexedDbProbe && budgets) {
+  throw new Error(
+    'Instrumented diagnostic runs require PERF_BUDGETS=0; they are not budget evidence.',
+  );
+}
+if (assetCommit && !/^[0-9a-f]{40}$/i.test(assetCommit)) {
+  throw new Error('PERF_ASSET_COMMIT must identify the frozen build with a full commit SHA.');
+}
 if (
   !rates.length ||
   rates.some((rate) => !Number.isFinite(rate) || rate < 1) ||
@@ -60,10 +78,15 @@ const server = createServer(async (request, response) => {
     return;
   }
   try {
-    const body =
+    let body =
       pathname === '/__performance_fixture'
         ? '<!doctype html><title>Performance fixture</title>'
         : await readFile(path);
+    if (indexedDbProbe && /\/remainingWork\.worker-[^/]+\.js$/.test(pathname)) {
+      // Change only the served diagnostic response; frozen assets remain intact.
+      const entry = optionalWorkers === 'idle' ? 'self.onmessage = () => {};' : body.toString();
+      body = `(${installIndexedDbProbe.toString()})(true);\n${entry}`;
+    }
     response
       .writeHead(200, {
         'Content-Type':
@@ -111,6 +134,18 @@ const report: Record<string, unknown> = {
   persistentProfile: profileDir ?? null,
   productionIndexBytes: (await stat(resolve(root, 'index.html'))).size,
   productionBuild: root,
+  ...(assetCommit ? { assetCommit } : {}),
+  ...(indexedDbProbe
+    ? {
+        indexedDbProbe: {
+          optionalWorkers,
+          workerEntry: '/assets/remainingWork.worker-*.js',
+          clock: 'performance.timeOrigin + performance.now(), milliseconds',
+          limitations:
+            'Native API wrappers and worker progress messages add overhead. Timings are diagnostic only. Idle workers are a counterfactual without optional estimates, not the product scenario.',
+        },
+      }
+    : {}),
   timingMethod:
     'Host wall clock: action through asserted visible result and two animation frames; includes Playwright overhead.',
   limitations:
@@ -250,6 +285,7 @@ try {
     report.browser = context.browser()?.version();
     const page = await context.newPage();
     if (diagnostics) await page.addInitScript(installLagProbe);
+    if (indexedDbProbe) await page.addInitScript(installIndexedDbProbe, false);
     page.on('console', (message) => {
       if (message.type() === 'log') console.log(message.text());
     });
@@ -331,6 +367,9 @@ try {
           elapsedMs: performance.now() - started,
           error: String(error),
           ...(diagnostics ? { lag: await readLagProbe(page).catch(() => undefined) } : {}),
+          ...(indexedDbProbe
+            ? { indexedDbEvents: await readIndexedDbProbe(page).catch(() => undefined) }
+            : {}),
         });
         throw error;
       }
@@ -342,6 +381,7 @@ try {
       );
       const elapsedMs = performance.now() - started;
       const lag = diagnostics ? await readLagProbe(page) : undefined;
+      const indexedDbEvents = indexedDbProbe ? await readIndexedDbProbe(page) : undefined;
       if (trace) await saveDiagnosticTrace(cdp, trace);
       const after = await cdp.send('Performance.getMetrics');
       const value = (metrics: typeof after, key: string) =>
@@ -356,6 +396,7 @@ try {
         iteration,
         elapsedMs,
         ...(lag ? { lag } : {}),
+        ...(indexedDbEvents ? { indexedDbEvents } : {}),
         ...(trace ? { traced: true } : {}),
         jsHeapUsedBytes: value(after, 'JSHeapUsedSize'),
         // A document navigation can reset Chromium's cumulative task counter.
@@ -367,6 +408,7 @@ try {
         JSON.stringify({
           rate,
           ...sample,
+          indexedDbEvents: indexedDbEvents ? { count: indexedDbEvents.length } : undefined,
           lag: lag
             ? {
                 mountedCardRows: lag.mountedCardRows,
@@ -378,6 +420,9 @@ try {
       );
       // Save completed operations even if a later memory test kills the runner.
       await writeFile(output, JSON.stringify(report, null, 2) + '\n');
+      if (indexedDbEvents?.some((event) => event.kind === 'worker-error')) {
+        throw new Error('A worker failed during IndexedDB diagnosis; inspect the recorded events.');
+      }
     }
 
     try {
