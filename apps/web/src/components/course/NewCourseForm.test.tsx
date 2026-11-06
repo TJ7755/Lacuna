@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NewCourseForm } from './NewCourseForm';
 import { defaultExamDate, fromDateTimeLocalValue, getLocalTimeZone } from '../../utils/datetime';
@@ -125,6 +125,31 @@ describe('NewCourseForm', () => {
     expect(mocks.prefetchRoute).toHaveBeenCalledWith('/course/new');
     expect(mocks.prefetchRoute).toHaveBeenCalledWith('/course/new/lesson/new');
     expect(mocks.createCourse).not.toHaveBeenCalled();
+  });
+
+  it('keeps its enclosing flow busy until the course and lesson are written', async () => {
+    let finish!: (lesson: { id: string }) => void;
+    mocks.createLesson.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const onBusyChange = vi.fn();
+    const onClose = vi.fn();
+    const view = render(
+      <NewCourseForm inline library={false} onClose={onClose} onBusyChange={onBusyChange} />,
+    );
+    fireEvent.change(screen.getByLabelText('Course name'), { target: { value: 'Biology' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await waitFor(() => expect(mocks.createLesson).toHaveBeenCalled());
+    expect(onBusyChange).toHaveBeenLastCalledWith(true);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    await act(async () => finish({ id: 'lesson' }));
+    expect(onClose).toHaveBeenCalledOnce();
+    view.unmount();
+    expect(onBusyChange).toHaveBeenLastCalledWith(false);
   });
 
   it('can expand inline without a modal or keyboard trap, and cancels with Escape', () => {

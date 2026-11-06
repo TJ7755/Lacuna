@@ -37,9 +37,8 @@ export function finishOnboarding(): void {
 }
 
 /**
- * Where a first course should open. While onboarding is pending, the learner sees its last
- * step first and then lands in the course, whichever flow made it: onboarding itself, a
- * class code or a share link opened on a fresh install.
+ * First-course handover: onboarding marks setup complete and immediately opens this
+ * destination, whichever flow made it (creation, class code or a shared course).
  */
 export function onboardingDestination(path: string): string {
   return onboardingPending() ? `/start?then=${encodeURIComponent(path)}` : path;

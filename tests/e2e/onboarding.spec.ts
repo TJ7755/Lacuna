@@ -1,44 +1,77 @@
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 // #816: a fresh profile tries a card, answers the exam question, makes a course and
 // finishes onboarding inside it, with the exam answer carried into the course.
-test('a new learner finishes onboarding inside their first course', async ({ page }) => {
+test('a new learner corrects setup and opens their first course directly', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page).toHaveURL(/#\/start$/);
 
   await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
   await page.getByRole('button', { name: 'No', exact: true }).click();
-  // A missed card comes back, as it does in a study session.
-  await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Continue setup' })).toBeInViewport();
+  await page.screenshot({
+    path: testInfo.outputPath('onboarding-honest-miss.png'),
+    animations: 'disabled',
+  });
+  await page.getByRole('button', { name: 'Continue setup' }).click();
 
   await expect(page.getByRole('heading', { name: 'Do you have an exam coming up?' })).toBeFocused();
   await page.getByRole('radio', { name: /^Yes/ }).press('Space');
-  await expect(page.getByText('Exam date and time', { exact: true })).toBeVisible();
+  const date = page.getByRole('button', { name: 'Exam date and time' });
+  await date.click();
+  await page.getByRole('textbox', { name: 'Hour' }).fill('16');
+  await page.getByRole('textbox', { name: 'Minute' }).fill('35');
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  const selectedDate = await date.textContent();
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await expect(page.getByRole('heading', { name: 'What do you want to learn?' })).toBeVisible();
-  await page.getByRole('button', { name: 'Start from scratch' }).click();
+  await expect(page.getByRole('button', { name: 'Create my own', exact: true })).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'Back', exact: true }).locator('svg')).toHaveCSS(
+    'width',
+    '22px',
+  );
+  await expect(page.getByRole('button', { name: 'Appearance', exact: true })).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath('onboarding-material-choices.png'),
+    animations: 'disabled',
+  });
+  await page.getByRole('button', { name: 'Back', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Do you have an exam coming up?' })).toBeFocused();
+  await expect(page.getByRole('radio', { name: /^Yes/ })).toBeChecked();
+  await expect(date).toHaveText(selectedDate!);
+  await page.screenshot({
+    path: testInfo.outputPath('onboarding-exam-back.png'),
+    animations: 'disabled',
+  });
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  const expectedExam = await page.evaluate(
+    () => JSON.parse(sessionStorage.getItem('lacuna-onboarding-target')!).examDate as number,
+  );
+  await page.getByRole('button', { name: 'Create my own' }).click();
   const form = page.getByRole('form', { name: 'New course' });
   // The exam answer from step 2 stands, so the form does not ask again.
   await expect(form.getByRole('radio')).toHaveCount(0);
   await form.getByRole('textbox', { name: 'Course name' }).fill('Biology');
   await form.getByRole('button', { name: 'Create', exact: true }).click();
 
-  await expect(page.getByRole('heading', { name: 'How should Lacuna look?' })).toBeVisible();
-  const advanced = page.getByRole('switch', { name: 'Show advanced details' });
-  await expect(advanced).not.toBeChecked();
-  await advanced.press('Space');
-  await expect(advanced).toBeChecked();
-  await page.getByRole('radio', { name: 'Light' }).click();
-  await page.getByRole('button', { name: 'Open course' }).click();
-
   await expect(page).toHaveURL(/#\/course\/[^/?]+$/);
   await expect(page.getByRole('button', { name: 'Lesson 1', exact: true })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('lacuna-onboarding'))).toBe('done');
+  await page.screenshot({
+    path: testInfo.outputPath('onboarding-course-open.png'),
+    animations: 'disabled',
+  });
   await page.goto('/#/settings#settings-study');
-  await expect(page.getByRole('switch', { name: 'Show advanced details' })).toBeChecked();
+  await expect(page.getByRole('switch', { name: 'Show advanced details' })).not.toBeChecked();
   const assessment = await page.evaluate(
     () =>
       new Promise<{ schedulingMode?: string; examDate?: number }>((resolve, reject) => {
@@ -57,7 +90,7 @@ test('a new learner finishes onboarding inside their first course', async ({ pag
         };
       }),
   );
-  expect(assessment).toMatchObject({ schedulingMode: 'exam', examDate: expect.any(Number) });
+  expect(assessment).toMatchObject({ schedulingMode: 'exam', examDate: expectedExam });
 
   // Onboarding runs once: entering again goes straight to Today.
   await page.evaluate(() => {
@@ -65,4 +98,25 @@ test('a new learner finishes onboarding inside their first course', async ({ pag
   });
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+});
+
+test('an imported first course opens directly', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
+  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await page.getByRole('radio', { name: /^Not yet/ }).press('Space');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await page.getByLabel('Import file', { exact: true }).setInputFiles({
+    name: 'Welcome.lacuna',
+    mimeType: 'application/json',
+    buffer: readFileSync(new URL('./fixtures/welcome-course.lacuna', import.meta.url)),
+  });
+  await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+  await page.getByRole('button', { name: 'Add to my courses' }).click();
+  await expect(page).toHaveURL(/#\/course\/[^/?]+$/);
+  await expect(page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('lacuna-onboarding'))).toBe('done');
 });
