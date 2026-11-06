@@ -18,8 +18,6 @@ vi.mock('../../state/motionSpeed', () => ({
   speedMultiplier: () => 0,
   getMotionMultiplier: () => 0,
 }));
-vi.mock('../../ai/settings', () => ({ useAiSettings: () => [{ enabled: false }, vi.fn()] }));
-vi.mock('../../ai/session/AiSessionContext', () => ({ useOptionalAiSession: () => null }));
 vi.mock('../learn/StudySheet', () => {
   throw new Error('Study chunk unavailable');
 });

@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { createHostedTransport, hostedLimitError } from './hostedTransport';
+import { createHostedTransport, hostedLimitError } from './transport';
 
 afterEach(() => {
   vi.useRealTimers();

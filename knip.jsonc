@@ -102,7 +102,7 @@
       "project": ["**/*.{js,mjs,cjs,ts,tsx,mts,cts}", "!dist*/**"],
     },
     "apps/ai": {
-      "entry": ["api/ai/*.ts", "server/ai/localSpike.ts"],
+      "entry": ["api/ai/*.ts"],
       "project": ["**/*.{js,mjs,cjs,ts,tsx,mts,cts}", "!dist*/**"],
     },
     "apps/gaps": {

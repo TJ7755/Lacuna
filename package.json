@@ -28,7 +28,6 @@
     "typecheck": "bun run typecheck:web && bun run typecheck:server && bun run typecheck:electron",
     "typecheck:web": "bun check -b",
     "typecheck:server": "bun check -p tsconfig.server.json",
-    "ai:gateway:spike": "bun apps/ai/server/ai/localSpike.ts",
     "ai:invites": "node scripts/ai-invites.mjs",
     "typecheck:electron": "bun check -p apps/desktop/tsconfig.json && bun check -p apps/desktop/tsconfig.preload.json && bun check -p apps/desktop/tsconfig.mcp.json",
     "typecheck:ai-mcp": "bun run --cwd tooling/lacuna-ai-mcp typecheck",

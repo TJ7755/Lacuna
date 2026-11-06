@@ -30,7 +30,6 @@ export type {
   AiToolLedgerEntry,
   AiToolSessionDependencies,
   AiToolSessionState,
-  AiToolWireResponse,
   AiToolWriteGrant,
 } from './toolSession/types';
 

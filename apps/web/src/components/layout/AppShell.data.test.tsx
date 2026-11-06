@@ -29,8 +29,6 @@ vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['none'],
   speedMultiplier: () => 0,
 }));
-vi.mock('../../ai/settings', () => ({ useAiSettings: () => [{ enabled: false }] }));
-vi.mock('../../ai/session/AiSessionContext', () => ({ useOptionalAiSession: () => null }));
 
 function DashboardData() {
   const data = useCourseDashboardData();

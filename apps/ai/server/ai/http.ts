@@ -1,4 +1,4 @@
-import { MAX_HOSTED_REQUEST_BYTES } from '../../../web/src/ai/hostedProtocol.js';
+const MAX_AI_REQUEST_BYTES = 96 * 1024;
 
 export function allowedOrigin(request: Request): string | null | false {
   const origin = request.headers.get('origin');
@@ -28,7 +28,7 @@ export async function readBoundedBody(request: Request): Promise<string | null> 
       const { value, done } = await reader.read();
       if (done) break;
       length += value.byteLength;
-      if (length > MAX_HOSTED_REQUEST_BYTES) {
+      if (length > MAX_AI_REQUEST_BYTES) {
         await reader.cancel();
         return null;
       }

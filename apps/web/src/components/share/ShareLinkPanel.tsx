@@ -1,7 +1,7 @@
 import { forwardRef, lazy, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import QRCode from 'react-qr-code';
-import { HOSTED_SERVICE_ORIGIN } from '../../ai/session/hostedTransport';
+import { HOSTED_SERVICE_ORIGIN } from '../../config/origins';
 import type { Course } from '@lacuna/core/db/types';
 import { formatShareLink } from '../../shareLinks/client';
 import { readShareCredentials } from '../../shareLinks/credentials';

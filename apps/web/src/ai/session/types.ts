@@ -10,7 +10,6 @@ import type {
 type AiSessionConnection =
   | { status: 'disconnected'; reason?: string }
   | { status: 'pairing'; code: string; expiresAt: number }
-  | { status: 'hosted'; lastActivityAt: number }
   | {
       status: 'connected' | 'quiet';
       connectionId: string;
@@ -67,11 +66,10 @@ export type AiSessionCommandResult<T = undefined> =
   { ok: true; data: T } | { ok: false; error: AiSessionCommandError };
 
 /**
- * The UI's sole session seam. `getSnapshot` is referentially stable between notifications so a
- * React adapter can consume it with `useSyncExternalStore`; tests use the same interface.
+ * Shared session seam for external AI adapters. `getSnapshot` is referentially stable between
+ * notifications; protocol integration tests use the same interface.
  */
 export interface AiSession {
-  readonly provider?: 'external' | 'hosted';
   subscribe(listener: () => void): () => void;
   getSnapshot(): AiSessionSnapshot;
   /** Start device-local background work after the owning UI has committed. */
@@ -79,7 +77,6 @@ export interface AiSession {
   /** Stop device-local background work without mutating persisted conversation state. */
   dispose(): void;
   pair(): Promise<AiSessionCommandResult<{ code: string; expiresAt: number }>>;
-  connectHosted?(credential: string): Promise<AiSessionCommandResult>;
   send(content: string): Promise<AiSessionCommandResult<{ messageId: string }>>;
   stop(runId: string): Promise<AiSessionCommandResult>;
   decide(approvalId: string, approved: boolean): Promise<AiSessionCommandResult>;
