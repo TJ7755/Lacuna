@@ -38,9 +38,7 @@ test('a new learner corrects setup and opens their first course directly', async
     'width',
     '22px',
   );
-  await expect(
-    page.getByRole('button', { name: 'Appearance', exact: true }).locator('svg'),
-  ).toHaveCSS('width', '22px');
+  await expect(page.getByRole('button', { name: 'Appearance', exact: true })).toHaveCount(0);
   await page.screenshot({
     path: testInfo.outputPath('onboarding-material-choices.png'),
     animations: 'disabled',
@@ -63,15 +61,6 @@ test('a new learner corrects setup and opens their first course directly', async
   // The exam answer from step 2 stands, so the form does not ask again.
   await expect(form.getByRole('radio')).toHaveCount(0);
   await form.getByRole('textbox', { name: 'Course name' }).fill('Biology');
-  await page.getByRole('button', { name: 'Appearance', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Appearance', exact: true })).toBeFocused();
-  await page.getByRole('radio', { name: 'Light', exact: true }).click();
-  await page.screenshot({
-    path: testInfo.outputPath('onboarding-appearance-optional.png'),
-    animations: 'disabled',
-  });
-  await page.getByRole('button', { name: 'Back to setup', exact: true }).click();
-  await expect(form.getByRole('textbox', { name: 'Course name' })).toHaveValue('Biology');
   await form.getByRole('button', { name: 'Create', exact: true }).click();
 
   await expect(page).toHaveURL(/#\/course\/[^/?]+$/);
@@ -111,7 +100,7 @@ test('a new learner corrects setup and opens their first course directly', async
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 });
 
-test('an imported first course opens without an appearance detour', async ({ page }) => {
+test('an imported first course opens directly', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();

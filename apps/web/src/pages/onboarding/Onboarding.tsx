@@ -17,14 +17,7 @@ import {
   chosenStudyTarget,
   finishOnboarding,
 } from '../../onboarding/onboardingState';
-import {
-  ArrowRightIcon,
-  ChevronLeftIcon,
-  PlusIcon,
-  SettingsIcon,
-  UploadIcon,
-} from '../../components/ui/icons';
-import { AppearanceSection } from '../settings/AppearanceSection';
+import { ArrowRightIcon, ChevronLeftIcon, PlusIcon, UploadIcon } from '../../components/ui/icons';
 import { FlipCard } from '../learn/FlipCard';
 import { LearnHeader } from '../learn/LearnHeader';
 import { StudyCardTransition } from '../learn/StudyCardTransition';
@@ -57,7 +50,7 @@ const FIRST_CARD: Card = {
   updatedAt: 0,
 };
 
-// Appearance stays optional; the required steps lead straight into the chosen material.
+// The required steps lead straight into the chosen material.
 const STEPS = ['card', 'exam', 'content'] as const;
 type Step = (typeof STEPS)[number];
 type ContentIntent = 'create' | 'import' | null;
@@ -79,7 +72,6 @@ export function Onboarding() {
   // Existing creation and import flows return here only to finish their handover.
   const then = params.get('then');
   const [step, setStep] = useState<Step>('card');
-  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [contentIntent, setContentIntent] = useState<ContentIntent>(null);
   const [initialTarget] = useState(chosenStudyTarget);
   const [target, setTarget] = useState<CourseSchedulingMode | null>(initialTarget?.mode ?? null);
@@ -107,8 +99,7 @@ export function Onboarding() {
   const advance = () => setStep(STEPS[stepIndex + 1]);
   const back = () => {
     if (importing) return;
-    if (appearanceOpen) setAppearanceOpen(false);
-    else if (step === 'content' && contentIntent) setContentIntent(null);
+    if (step === 'content' && contentIntent) setContentIntent(null);
     else if (stepIndex > 0) setStep(STEPS[stepIndex - 1]);
   };
 
@@ -157,11 +148,11 @@ export function Onboarding() {
             : 'pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-6')
         }
       >
-        <div className="mb-3 flex shrink-0 items-center justify-between">
-          {stepIndex > 0 || appearanceOpen ? (
+        {stepIndex > 0 && (
+          <div className="mb-3 flex shrink-0 items-center">
             <Button
               variant="secondary"
-              aria-label={appearanceOpen ? 'Back to setup' : 'Back'}
+              aria-label="Back"
               title="Back"
               disabled={importing}
               onClick={back}
@@ -170,35 +161,19 @@ export function Onboarding() {
             >
               <ChevronLeftIcon width={22} height={22} />
             </Button>
-          ) : (
-            <span />
-          )}
-          <Button
-            variant={appearanceOpen ? 'inverse' : 'secondary'}
-            aria-label="Appearance"
-            title="Appearance"
-            aria-pressed={appearanceOpen}
-            disabled={importing}
-            onClick={() => setAppearanceOpen((open) => !open)}
-            className="h-11 w-11 shrink-0"
-            style={{ paddingInline: 0 }}
-          >
-            <SettingsIcon width={22} height={22} />
-          </Button>
-        </div>
+          </div>
+        )}
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={step}
-            className={(appearanceOpen ? 'hidden' : 'flex') + ' min-h-0 flex-1 flex-col'}
-            inert={appearanceOpen}
-            aria-hidden={appearanceOpen || undefined}
+            className="flex min-h-0 flex-1 flex-col"
             initial={m > 0 ? { opacity: 0, x: 32 } : false}
             animate={{ opacity: 1, x: 0 }}
             exit={m > 0 ? { opacity: 0, x: -32 } : undefined}
             transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
           >
             {step === 'card' ? (
-              <CardStep m={m} active={!appearanceOpen} isTouchMode={isTouchMode} onDone={advance} />
+              <CardStep m={m} isTouchMode={isTouchMode} onDone={advance} />
             ) : step === 'exam' ? (
               <ExamStep
                 target={target}
@@ -218,7 +193,6 @@ export function Onboarding() {
             )}
           </motion.div>
         </AnimatePresence>
-        {appearanceOpen && <AppearanceOptions />}
       </main>
     </div>
   );
@@ -227,12 +201,10 @@ export function Onboarding() {
 /** Step 1 teaches an honest self-judgement without making recall a condition of setup. */
 function CardStep({
   m,
-  active,
   isTouchMode,
   onDone,
 }: {
   m: number;
-  active: boolean;
   isTouchMode: boolean;
   onDone: () => void;
 }) {
@@ -255,7 +227,7 @@ function CardStep({
 
   // Space shows the answer, as it does in a study session.
   useEffect(() => {
-    if (!active || phase !== 'question') return;
+    if (phase !== 'question') return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== ' ') return;
       if ((event.target as HTMLElement | null)?.closest('button, a, input, textarea')) return;
@@ -264,7 +236,7 @@ function CardStep({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, phase]);
+  }, [phase]);
 
   return (
     <>
@@ -465,27 +437,5 @@ function ContentStep({
         )}
       </div>
     </div>
-  );
-}
-
-/** Optional settings reuse the real controls without interrupting first-course creation. */
-function AppearanceOptions() {
-  const ref = useRef<HTMLElement>(null);
-  useLayoutEffect(() => {
-    ref.current?.focus({ preventScroll: true });
-  }, []);
-  return (
-    <section
-      ref={ref}
-      tabIndex={-1}
-      aria-label="Appearance"
-      className="flex min-h-0 flex-1 flex-col outline-none focus-visible:shadow-none"
-    >
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <div className="mx-auto my-auto w-full max-w-xl py-2">
-          <AppearanceSection />
-        </div>
-      </div>
-    </section>
   );
 }
