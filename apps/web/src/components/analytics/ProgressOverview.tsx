@@ -25,6 +25,7 @@ import { MiniRing } from '../ui/MiniRing';
 import { SECTION_CARD_SURFACE_CLASS } from '../ui/SectionCard';
 import { Select } from '../ui/Select';
 import { InfoPopover } from './InfoPopover';
+import { ProgressMeasureDefinitions } from './ProgressMeasures';
 
 const percent = (value: number) => `${Math.round(value * 100)}%`;
 const CARD = `${SECTION_CARD_SURFACE_CLASS} p-5`;
@@ -83,7 +84,7 @@ export function ProgressScopeSelect({
   );
 }
 
-/** One figure behind an icon; the label is its accessible name and tooltip. */
+/** Icons support a short visible label, with the complete figure also named accessibly. */
 function Stat({
   icon,
   value,
@@ -108,9 +109,12 @@ function Stat({
       >
         {icon}
       </span>
-      <span className="font-display text-2xl font-semibold tabular-nums">
-        {value}
-        {unit && <span className="ml-1 text-sm font-normal text-ink-soft">{unit}</span>}
+      <span className="flex flex-col">
+        <span className="font-display text-2xl font-semibold leading-tight tabular-nums">
+          {value}
+          {unit && <span className="ml-1 text-sm font-normal text-ink-soft">{unit}</span>}
+        </span>
+        <span className="text-xs text-ink-soft">{label}</span>
       </span>
     </span>
   );
@@ -122,6 +126,7 @@ function StudyBar({ study, cardCount }: Pick<CourseProgressReport, 'study' | 'ca
     {
       count: study.reviewed,
       label: 'Reviewed at least once',
+      caption: 'Reviewed',
       bar: 'bg-accent',
       badge: 'bg-accent text-accent-fg',
       icon: <CheckIcon width={12} height={12} strokeWidth={2.4} />,
@@ -129,6 +134,7 @@ function StudyBar({ study, cardCount }: Pick<CourseProgressReport, 'study' | 'ca
     {
       count: study.taughtNotReviewed,
       label: 'Taught or introduced, not yet reviewed',
+      caption: 'Introduced',
       bar: 'bg-accent/40',
       badge: 'bg-ink/5 text-ink-soft',
       icon: <BookIcon width={12} height={12} />,
@@ -136,6 +142,7 @@ function StudyBar({ study, cardCount }: Pick<CourseProgressReport, 'study' | 'ca
     {
       count: study.notStarted,
       label: 'Not started',
+      caption: 'Not started',
       bar: '',
       badge: 'bg-ink/5 text-ink-soft',
       icon: <SparklesIcon width={12} height={12} />,
@@ -160,8 +167,9 @@ function StudyBar({ study, cardCount }: Pick<CourseProgressReport, 'study' | 'ca
             <span className={cn('grid size-5 place-items-center rounded-full', part.badge)}>
               {part.icon}
             </span>
-            <span className="sr-only">{part.label}:</span>
-            {part.count}
+            <span>
+              {part.count} {part.caption}
+            </span>
           </li>
         ))}
       </ul>
@@ -189,6 +197,7 @@ export function ProgressOverview({
   const { openStudySheet } = useStudySheet();
   const { assessment, forecast, study, cardCount, excluded } = report;
   const notReviewed = study.taughtNotReviewed + study.notStarted;
+  const unassessed = cardCount > 0 && study.reviewed === 0;
 
   const excludedNote = [
     excluded.extension > 0 && countOf(excluded.extension, 'extension card'),
@@ -255,7 +264,11 @@ export function ProgressOverview({
             .join(', ') + '.';
 
   const recallName = `${progressHeading(course)}: ${
-    recall.figure === null ? 'no forecast' : percent(recall.figure)
+    unassessed
+      ? 'not assessed yet'
+      : recall.figure === null
+        ? 'no forecast'
+        : percent(recall.figure)
   }`;
   const revise = forecast.kind === 'assessment' && assessment && cardCount > 0;
 
@@ -265,29 +278,36 @@ export function ProgressOverview({
         {assessment?.name ?? 'Whole course'}
       </h2>
 
-      <div className={cn(CARD, 'flex items-center gap-5')}>
-        <span role="img" aria-label={recallName} title={recallName} className="relative grid">
-          <MiniRing value={recall.figure ?? 0} size={132} strokeWidth={12} />
-          <span className="absolute inset-0 grid place-items-center font-display text-3xl font-semibold tabular-nums">
-            {recall.figure === null ? '–' : percent(recall.figure)}
-          </span>
-        </span>
-        <div className="flex flex-col gap-3">
-          {recall.days !== undefined && (
-            <Stat
-              icon={<CalendarIcon width={18} height={18} />}
-              value={recall.days}
-              unit="d"
-              label={`Days until ${assessment?.name ?? 'the assessment'}`}
-            />
-          )}
-          <Stat
-            icon={<RestoreIcon width={18} height={18} />}
-            value={report.dueCards}
-            label="Due for review"
-            tone={report.dueCards > 0 ? 'warning' : undefined}
-          />
+      <div className={cn(CARD, 'flex flex-col gap-3')}>
+        <div>
+          <p className="text-sm font-semibold">{progressHeading(course)}</p>
+          <p className="text-xs text-ink-soft">If you stopped now</p>
         </div>
+        <div className="flex items-center gap-5">
+          <span role="img" aria-label={recallName} title={recallName} className="relative grid">
+            <MiniRing value={recall.figure ?? 0} size={132} strokeWidth={12} />
+            <span className="absolute inset-0 grid place-items-center font-display text-3xl font-semibold tabular-nums">
+              {unassessed || recall.figure === null ? '–' : percent(recall.figure)}
+            </span>
+          </span>
+          <div className="flex flex-col gap-3">
+            {recall.days !== undefined && (
+              <Stat
+                icon={<CalendarIcon width={18} height={18} />}
+                value={recall.days}
+                unit="d"
+                label={`Days until ${assessment?.name ?? 'the assessment'}`}
+              />
+            )}
+            <Stat
+              icon={<RestoreIcon width={18} height={18} />}
+              value={report.dueCards}
+              label="Due for review"
+              tone={report.dueCards > 0 ? 'warning' : undefined}
+            />
+          </div>
+        </div>
+        {unassessed && <p className="text-sm text-ink-soft">Not assessed yet</p>}
       </div>
 
       <div className={cn(CARD, 'flex flex-col justify-between gap-4 sm:flex-1')}>
@@ -313,12 +333,7 @@ export function ProgressOverview({
           <div className="flex shrink-0 items-center gap-2">
             <InfoPopover label="About recall">
               <p className="text-sm text-ink">{recall.detail}</p>
-              {recall.figure !== null && (
-                <p>
-                  Cards not yet reviewed count as forgotten. This is predicted recall, not a mark or
-                  grade.
-                </p>
-              )}
+              <ProgressMeasureDefinitions />
               <p>{next}</p>
               {excludedNote.length > 0 && <p>Not counted: {excludedNote.join(', ')}.</p>}
             </InfoPopover>

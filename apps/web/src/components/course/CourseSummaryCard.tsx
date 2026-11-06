@@ -1,5 +1,6 @@
 import { cn } from '../ui/cn';
 import type { ForecastStatus } from '../dashboard/forecastStatus';
+import { ProgressMeasuresInfo } from '../analytics/ProgressMeasures';
 
 const STATUS_TEXT: Record<ForecastStatus, string> = {
   ahead: 'text-positive',
@@ -36,7 +37,7 @@ export function CourseSummaryCard({
     <section
       aria-label="Course summary"
       data-page-part=""
-      className={cn(className, 'flex gap-8 px-5 py-5 md:gap-12 md:px-7')}
+      className={cn(className, 'flex flex-wrap items-center gap-8 px-5 py-5 md:gap-12 md:px-7')}
     >
       {figures.map((figure) => (
         <div key={figure.label} className="flex flex-none flex-col gap-1">
@@ -51,6 +52,9 @@ export function CourseSummaryCard({
           <span className="whitespace-nowrap text-sm text-ink-soft">{figure.label}</span>
         </div>
       ))}
+      <div className="ml-auto">
+        <ProgressMeasuresInfo side="top" />
+      </div>
     </section>
   );
 }

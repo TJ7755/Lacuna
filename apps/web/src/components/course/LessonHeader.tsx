@@ -127,7 +127,7 @@ export function LessonHeader({
             </button>
           )}
         </div>
-        {meta && <p className="text-ink-soft tabular-nums">{meta}</p>}
+        {meta && <div className="text-ink-soft tabular-nums">{meta}</div>}
         {description && <p className="max-w-prose text-sm text-ink-soft">{description}</p>}
       </div>
       {children && <div className="flex flex-wrap items-center gap-3">{children}</div>}

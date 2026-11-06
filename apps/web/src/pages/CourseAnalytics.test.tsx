@@ -1,5 +1,5 @@
 import { expectAppDestination } from '../../../../tests/helpers/expectAppDestination';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
@@ -75,7 +75,7 @@ vi.mock('../components/course/CourseTabs', () => ({
 
 vi.mock('../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal'],
-  speedMultiplier: () => 1,
+  speedMultiplier: () => 0,
 }));
 
 function generatedQuestion(): QuestionDefinition {
@@ -227,7 +227,7 @@ describe('CourseAnalytics', () => {
     expect(screen.getByRole('heading', { name: 'Questions' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Marks earned: 100%' })).toBeInTheDocument();
     expect(screen.getByText(/a topic without marked answers is not a gap/)).toBeInTheDocument();
-    expect(screen.getByText(/This is predicted recall, not a mark or grade/)).toBeInTheDocument();
+    expect(screen.getByText(/A memory estimate if you stopped reviewing now/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Question details' }));
     const generatedHeadline = screen.getByText('Novel generated accuracy').parentElement;
     expect(generatedHeadline).not.toBeNull();
@@ -242,6 +242,73 @@ describe('CourseAnalytics', () => {
     fireEvent.click(cards);
     expect(cards).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('Card analytics charts')).toBeInTheDocument();
+  });
+
+  it('keeps the headline meaning and metric labels visible, with shared definitions on demand', async () => {
+    mocks.questionData = { questions: [], conceptSets: [], concepts: [], attempts: [] };
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/analytics']}>
+        <ToastProvider>
+          <Routes>
+            <Route path="/course/:courseId/analytics" element={<CourseAnalytics />} />
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+    const overview = screen.getByRole('region', { name: 'Whole course' });
+    for (const label of [
+      'Predicted recall',
+      'If you stopped now',
+      'Due for review',
+      'Cards',
+      'Reviews, 30 days',
+      'Study time, 30 days',
+      '2 Reviewed',
+      '0 Introduced',
+      '1 Not started',
+    ]) {
+      await waitFor(() => expect(within(overview).getAllByText(label)[0]).toBeVisible());
+    }
+    const definition = within(overview).getByText(/Reviewed at least once and no longer new/);
+    expect(definition).not.toBeVisible();
+    fireEvent.click(within(overview).getByLabelText('About recall'));
+    expect(definition).toBeVisible();
+    expect(within(overview).getByText(/7 days ahead without a date/)).toBeVisible();
+  });
+
+  it('shows an unassessed headline until the scoped cards have review evidence', async () => {
+    const data = records(mocks.course);
+    mocks.records = {
+      ...data,
+      cards: data.cards.map((card) => ({
+        ...card,
+        lastReviewed: null,
+        state: 0,
+        reps: 0,
+        stability: null,
+        due: null,
+      })),
+    };
+    mocks.questionData = { questions: [], conceptSets: [], concepts: [], attempts: [] };
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/analytics']}>
+        <ToastProvider>
+          <Routes>
+            <Route path="/course/:courseId/analytics" element={<CourseAnalytics />} />
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+    const overview = screen.getByRole('region', { name: 'Whole course' });
+    await waitFor(() =>
+      expect(
+        within(overview).getByRole('img', { name: 'Predicted recall: not assessed yet' }),
+      ).toBeVisible(),
+    );
+    expect(within(overview).getByText('Not assessed yet')).toBeVisible();
+    expect(within(overview).queryByText('0%')).not.toBeInTheDocument();
+    fireEvent.click(within(overview).getByRole('button', { name: 'Study' }));
+    expect(mocks.openStudySheet).toHaveBeenCalledWith(mocks.course.id, expect.anything());
   });
 
   it('scopes the overview, forecast, question evidence and next action to a selected assessment', async () => {
@@ -259,7 +326,7 @@ describe('CourseAnalytics', () => {
 
     const whole = screen.getByRole('region', { name: 'Whole course' });
     expect(within(whole).getByRole('img', { name: 'Cards: 3' })).toBeInTheDocument();
-    expect(whole).toHaveTextContent('Reviewed at least once:2');
+    expect(whole).toHaveTextContent('2 Reviewed');
     expect(whole).toHaveTextContent('Each card is measured at its next test or paper.');
     // Cards target two dates, so no single exam-day line is drawn; each paper gets a row.
     expect(screen.queryByText('Exam-day forecast')).not.toBeInTheDocument();

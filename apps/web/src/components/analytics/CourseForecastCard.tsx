@@ -45,7 +45,10 @@ export function CourseForecastCard({
     return {
       id: course.id,
       name: course.name,
-      status: forecastStatus(forecast),
+      // Zero is the model's conservative baseline, not evidence that a new learner is behind.
+      status: input.cards.some((card) => card.lastReviewed !== null)
+        ? forecastStatus(forecast)
+        : 'steady',
       forecast,
       history: points,
     };
@@ -54,6 +57,11 @@ export function CourseForecastCard({
   if (!line) return null;
   return (
     <section aria-label="Exam-day forecast" className={`${SECTION_CARD_SURFACE_CLASS} p-5 md:p-6`}>
+      {!input.cards.some((card) => card.lastReviewed !== null) && (
+        <p className="mb-3 text-sm text-ink-soft">
+          Not assessed yet · Unreviewed cards start at 0%.
+        </p>
+      )}
       <ForecastChart
         lines={[line]}
         now={Date.now()}

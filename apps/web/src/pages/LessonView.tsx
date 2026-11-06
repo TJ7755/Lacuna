@@ -28,6 +28,7 @@ import { LessonHeader } from '../components/course/LessonHeader';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { courseHeaderStats } from '../course/headerStats';
 import { lessonMetaParts } from '../course/lessonMeta';
+import { ProgressMeasuresInfo } from '../components/analytics/ProgressMeasures';
 import {
   canEditLessons,
   isLessonAuthoringMode,
@@ -159,9 +160,12 @@ export function LessonView() {
             description={lesson.description || undefined}
             meta={
               visibleMetaParts.length > 0 && (
-                <span className={examUrgent ? 'text-warning-fg' : undefined}>
-                  {visibleMetaParts.join(' · ')}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={examUrgent ? 'text-warning-fg' : undefined}>
+                    {visibleMetaParts.join(' · ')}
+                  </span>
+                  <ProgressMeasuresInfo />
+                </div>
               )
             }
             onRename={

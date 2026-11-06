@@ -65,7 +65,7 @@ describe('CourseForecastCard', () => {
     expect(screen.getByRole('button', { name: /Mathematics/ })).toBeInTheDocument();
   });
 
-  it('shows exam-day recall if study stopped now, so an unstudied course reads 0%', () => {
+  it('explains the zero baseline without judging an unstudied course as behind', () => {
     const unstudied = {
       ...reviewedCard(),
       stability: null,
@@ -86,6 +86,8 @@ describe('CourseForecastCard', () => {
     );
 
     expect(screen.getByText('0%')).toBeInTheDocument();
+    expect(screen.getByText('Not assessed yet · Unreviewed cards start at 0%.')).toBeVisible();
+    expect(screen.queryByText('Behind')).not.toBeInTheDocument();
   });
 
   it('renders nothing for a course with no cards to forecast', () => {

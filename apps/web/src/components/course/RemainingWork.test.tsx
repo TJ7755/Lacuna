@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { Component, type ReactNode } from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render as renderInDom, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createCourse, createLesson, createLessonCard } from '../../db/repository';
 import { db } from '../../db/schema';
@@ -9,10 +10,13 @@ import { reviewHistoryEntryForCard } from '@lacuna/core/db/reviewHistory';
 import { calculateRemainingWork, type RemainingWorkRecords } from '../../course/remainingWorkData';
 import { calculateRemainingWorkOffThread } from '../../course/remainingWorkWorker';
 import { RemainingWork } from './RemainingWork';
+import { expectAppDestination } from '../../../../../tests/helpers/expectAppDestination';
 
 vi.mock('../../course/remainingWorkWorker', () => ({
   calculateRemainingWorkOffThread: vi.fn(async () => []),
 }));
+
+const render = (ui: ReactNode) => renderInDom(<MemoryRouter>{ui}</MemoryRouter>);
 
 class FailureBoundary extends Component<{ children: ReactNode }, { error?: Error }> {
   state: { error?: Error } = {};
@@ -128,8 +132,16 @@ it.each(['rejection', 'construction throw'] as const)(
     );
     await waitFor(() => expect(calculateRemainingWorkOffThread).toHaveBeenCalled());
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    await screen.findByText(/Allow around 2 minutes in total/);
-    expect(screen.getByText(/Uses your recorded review times/)).toBeInTheDocument();
+    await screen.findByText(/~2 min remaining/);
+    const assumptions = screen.getByText(/Uses your recorded review times/);
+    expect(assumptions).not.toBeVisible();
+    const study = screen.getByRole('link', { name: /Study for/ });
+    expectAppDestination(
+      study,
+      `/course/${card.courseId}/study?assessmentId=${records.assessments[0].id}`,
+    );
+    fireEvent.click(screen.getByText('Details'));
+    expect(assumptions).toBeVisible();
   },
 );
 
