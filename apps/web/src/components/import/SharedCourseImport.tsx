@@ -1,5 +1,5 @@
 import { SectionCard } from '../ui/SectionCard';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { parseShareCode } from '../../shareLinks/client';
 import { formatClassCode, parseClassCode, normaliseShortClassCode } from '../../insights/classCode';
@@ -30,7 +30,8 @@ import type { CourseRecord, CourseSchedulingMode } from '@lacuna/core/db/types';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useToast } from '../ui/Toast';
 import { Button } from '../ui/Button';
-import { UploadIcon, CameraIcon, CloseIcon } from '../ui/icons';
+import { CameraIcon, CloseIcon } from '../ui/icons';
+import { fieldLabelClassName } from '../ui/Field';
 import { chosenStudyTarget } from '../../onboarding/onboardingState';
 import {
   defaultExamDate,
@@ -39,6 +40,7 @@ import {
   getLocalTimeZone,
 } from '../../utils/datetime';
 import { CourseStudyTarget } from '../course/CourseStudyTarget';
+import './SharedCourseImport.css';
 
 /** A decoded, not-yet-confirmed import. `merge` is present when the payload's lineage
  *  (Arc 7 §7.5) matches a course already imported locally — routing this to the merge
@@ -174,6 +176,7 @@ export function SharedCourseImport({
   chosen?: boolean;
 }) {
   const { notify } = useToast();
+  const inputId = useId();
   const [input, setInput] = useState('');
   const [pending, setPending] = useState<PendingShareImport | null>(null);
   const inspectionGeneration = useRef(0);
@@ -330,7 +333,7 @@ export function SharedCourseImport({
 
   return (
     <SectionCard
-      className="rounded-3xl bg-surface card-surface p-6"
+      className="shared-course-import rounded-3xl bg-surface card-surface p-6"
       onKeyDown={(event) => {
         // Ctrl/Cmd+Enter does the next step: import once a course is read, otherwise read the code.
         if (event.key !== 'Enter' || !(event.ctrlKey || event.metaKey) || event.defaultPrevented)
@@ -340,29 +343,32 @@ export function SharedCourseImport({
         else if (input.trim() && !importing) void handleInspect();
       }}
     >
-      <div className="mb-5 flex items-center gap-2">
-        <UploadIcon width={18} height={18} className="text-accent-ink" />
-        <h2 className="font-display text-xl">
-          {chosen ? 'Add this course' : 'Import a shared course'}
-        </h2>
-      </div>
+      <h2 className={chosen ? 'mb-5 font-display text-xl' : 'sr-only'}>
+        {chosen ? 'Add this course' : 'Import a shared course'}
+      </h2>
 
       {!chosen && (
         <>
-          <CourseFileImportButton
-            disabled={importing}
-            onReadStart={beginInspection}
-            onError={(message, generation) => {
-              if (generation === inspectionGeneration.current) setError(message);
-            }}
-            onInspect={async (file, generation) => {
-              const next = await resolvePending(file.payload, '');
-              if (generation === inspectionGeneration.current) setPending({ ...next, file });
-            }}
-          />
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <label htmlFor={inputId} className={fieldLabelClassName}>
+              Link or code
+            </label>
+            <CourseFileImportButton
+              disabled={importing}
+              onReadStart={beginInspection}
+              onError={(message, generation) => {
+                if (generation === inspectionGeneration.current) setError(message);
+              }}
+              onInspect={async (file, generation) => {
+                const next = await resolvePending(file.payload, '');
+                if (generation === inspectionGeneration.current) setPending({ ...next, file });
+              }}
+            />
+          </div>
 
           <div className="rounded-2xl bg-paper/70 px-4 py-3 transition-shadow focus-within:bg-surface focus-within:shadow-[0_0_0_2px_hsl(var(--ink))]">
             <textarea
+              id={inputId}
               aria-label="Share link or code to import"
               autoFocus
               value={input}
@@ -371,26 +377,22 @@ export function SharedCourseImport({
                 beginInspection();
               }}
               rows={4}
-              placeholder="Paste a share link or code"
-              className="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-body placeholder:text-sm placeholder:text-ink-faint"
+              className="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none"
             />
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <Button
-              variant="secondary"
-              onClick={handleInspect}
-              disabled={importing || !input.trim()}
-            >
-              Read code
-            </Button>
-            <Button
-              variant="secondary"
+              variant="ghost"
+              aria-label={scanning ? 'Stop scanning' : 'Scan QR code'}
               onClick={scanning ? handleStopScan : handleStartScan}
               disabled={importing || !navigator.mediaDevices?.getUserMedia}
             >
-              <CameraIcon width={18} height={18} />
-              {scanning ? 'Stop scanning' : 'Scan QR code'}
+              <CameraIcon width={16} height={16} />
+              {scanning ? 'Stop scanning' : 'Scan'}
+            </Button>
+            <Button variant="primary" onClick={handleInspect} disabled={importing || !input.trim()}>
+              Read code
             </Button>
           </div>
         </>
