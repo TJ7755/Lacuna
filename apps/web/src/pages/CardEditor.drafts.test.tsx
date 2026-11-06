@@ -5,6 +5,7 @@ import {
   renderNew,
   chooseType,
   editorState,
+  createCourseCard,
 } from './CardEditor.testSupport';
 import { describe, expect, it, vi } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/react';
@@ -13,6 +14,58 @@ import { CardEditor } from './CardEditor';
 import { draftKey, loadDraft, saveDraft } from '../utils/drafts';
 
 describe('CardEditor — draft autosave', () => {
+  it.each(['unmount', 'pagehide', 'beforeunload'] as const)(
+    'preserves the latest edit on %s before the autosave delay',
+    (exit) => {
+      const view = renderNew();
+      const front = screen.getByPlaceholderText(/Question or prompt/);
+      fireEvent.change(front, { target: { value: 'First version' } });
+      fireEvent.change(front, { target: { value: 'Latest unsaved question' } });
+      fireEvent.change(screen.getByPlaceholderText(/^Answer$/), {
+        target: { value: 'Latest unsaved answer' },
+      });
+
+      if (exit === 'unmount') view.unmount();
+      else fireEvent(window, new Event(exit));
+
+      expect(loadDraft(draftKey('bank:course-1', 'new'))).toMatchObject({
+        front: 'Latest unsaved question',
+        back: 'Latest unsaved answer',
+      });
+    },
+  );
+
+  it('offers an answer-first draft after leaving immediately', () => {
+    const view = renderNew();
+    fireEvent.change(screen.getByPlaceholderText(/^Answer$/), {
+      target: { value: 'An answer written before its question' },
+    });
+    view.unmount();
+
+    renderNew();
+    fireEvent.click(screen.getByRole('button', { name: 'Restore draft' }));
+    expect(screen.getByPlaceholderText(/^Answer$/)).toHaveValue(
+      'An answer written before its question',
+    );
+  });
+
+  it('does not recreate a cleared draft after saving and leaving', async () => {
+    const view = renderNew();
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'A saved question' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/^Answer$/), {
+      target: { value: 'A saved answer' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add card' }));
+    });
+    expect(createCourseCard).toHaveBeenCalled();
+    view.unmount();
+
+    expect(loadDraft(draftKey('bank:course-1', 'new'))).toBeNull();
+  });
+
   it('does not fabricate a draft merely by opening a saved card', async () => {
     vi.useFakeTimers();
     editorState.card = { ...generatedCard, sequenceItemId: undefined };
