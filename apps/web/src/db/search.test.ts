@@ -8,7 +8,7 @@ import {
   type SearchOptions,
 } from '@lacuna/core/db/search';
 import { DEFAULT_LEECH_LAPSE_THRESHOLD } from '@lacuna/core/fsrs/leech';
-import type { Card, Course, LegacyDeckRecord, Lesson } from '@lacuna/core/db/types';
+import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion } from '@lacuna/core/db/types';
 import type { FixedQuestionDefinition } from '@lacuna/core/questions/types';
 
 const NOW = 1_000_000_000_000;
@@ -164,6 +164,44 @@ describe('searchCards', () => {
     ).toHaveLength(1);
   });
 
+  it('preserves matching across field separators and front-first ranking', () => {
+    const acrossFields = card('boundary', { front: 'Ends alpha', back: 'beta starts' });
+    const inFront = card('front', { front: 'Later alpha  beta', back: '' });
+    expect(searchCards('alpha  beta', [acrossFields, inFront]).map((hit) => hit.card.id)).toEqual([
+      'front',
+      'boundary',
+    ]);
+    const bank = card('bank', { front: '', back: '', tags: ['exam revision'] });
+    expect(searchCards('rome    exam', [bank])).toHaveLength(1);
+    expect(searchCards('rome  exam', [bank])).toHaveLength(0);
+    expect(searchCards('\u0301 beta', [acrossFields])).toHaveLength(1);
+    expect(searchCards('alpha \u0301', [acrossFields])).toHaveLength(1);
+  });
+
+  it('reads in-place tag and ownership renames on repeated image-heavy searches', () => {
+    const loaded = card('image', {
+      front: `![Cell](data:image/png;base64,${'a'.repeat(128 * 1024)})`,
+      back: 'Nucleus',
+      tags: ['old tag'],
+      primaryLessonId: lesson.id,
+    });
+    const owner = { ...course };
+    const topic = { ...lesson };
+    const scope = { cards: [loaded], courses: [owner], lessons: [topic] };
+    expect(searchCardsInScope('nucleus', scope)).toHaveLength(1);
+    expect(searchCardsInScope('old tag', scope)).toHaveLength(1);
+    loaded.tags![0] = 'Résumé';
+    owner.name = 'Renamed course';
+    topic.name = 'Renamed lesson';
+    expect(searchCardsInScope('old tag', scope)).toHaveLength(0);
+    expect(searchCardsInScope('resume', scope)).toHaveLength(1);
+    expect(searchCardsInScope('ancient rome', scope)).toHaveLength(0);
+    expect(searchCardsInScope('renamed course', scope)).toHaveLength(1);
+    expect(searchCardsInScope('the republic', scope)).toHaveLength(0);
+    expect(searchCardsInScope('renamed lesson', scope)).toHaveLength(1);
+    expect(searchCardsInScope('nucleus', scope)).toHaveLength(1);
+  });
+
   it('lists due cards with an empty query when the due filter is on', () => {
     const cards = [
       card('due', { due: NOW - 1, lastReviewed: NOW - 5000 }),
@@ -234,6 +272,61 @@ describe('searchCards', () => {
 });
 
 describe('searchCardsInScope', () => {
+  it('finds generated diagram cards by their displayed answers, including paired features', () => {
+    const diagram: Occlusion = {
+      id: 'diagram',
+      courseId: course.id,
+      primaryLessonId: lesson.id,
+      name: 'Cell anatomy',
+      assetHash: 'image-hash',
+      createdAt: NOW,
+      updatedAt: NOW,
+      regions: [
+        {
+          id: 'label',
+          role: 'label',
+          shape: 'rectangle',
+          x: 0,
+          y: 0,
+          w: 0.1,
+          h: 0.1,
+          answerText: 'Núcleus',
+          backNote: 'Controls cell activity',
+        },
+        {
+          id: 'feature',
+          role: 'feature',
+          shape: 'rectangle',
+          x: 0.2,
+          y: 0,
+          w: 0.1,
+          h: 0.1,
+          pairedRegionId: 'label',
+          answerText: 'Unused own answer',
+        },
+      ],
+    };
+    const generated = ['label', 'feature'].map((id) =>
+      card(id, {
+        occlusionRegionId: id,
+        front: 'Label the structure',
+        back: 'Label the structure',
+      }),
+    );
+    const scope = { cards: generated, courses: [course], lessons: [lesson], occlusions: [diagram] };
+    expect(searchCardsInScope('nucleus', scope).map((hit) => hit.card)).toEqual(generated);
+    expect(searchCardsInScope('unused own answer', scope)).toHaveLength(0);
+    expect(searchCardsInScope('cell anatomy', scope)).toHaveLength(2);
+    expect(searchCardsInScope('controls cell activity', scope).map((hit) => hit.card)).toEqual([
+      generated[0],
+    ]);
+    diagram.regions[0].answerText = 'Mitochondrion';
+    expect(searchCardsInScope('nucleus', scope)).toHaveLength(0);
+    expect(searchCardsInScope('mitochondrion', scope)).toHaveLength(2);
+    diagram.courseId = 'other-course';
+    expect(searchCardsInScope('mitochondrion', scope)).toHaveLength(0);
+  });
+
   it('returns Course, Lesson and bank cards with domain ownership labels', () => {
     const courseCard = card('course', { primaryLessonId: null });
     const lessonCard = card('lesson', {

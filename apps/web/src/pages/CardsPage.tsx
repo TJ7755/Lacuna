@@ -143,7 +143,12 @@ export function CardsPage() {
       query && course
         ? searchCardsInScope(
             query,
-            { cards: availableCards, courses: [course], lessons: availableLessons },
+            {
+              cards: availableCards,
+              courses: [course],
+              lessons: availableLessons,
+              occlusions: occlusions ?? [],
+            },
             { parseQuery: true },
           ).map((hit) => hit.card)
         : availableCards;
@@ -165,7 +170,7 @@ export function CardsPage() {
         (lesson) => (byLesson.get(lesson.id)?.length ?? 0) > 0,
       ),
     };
-  }, [cards, lessons, query, filters, course]);
+  }, [cards, lessons, occlusions, query, filters, course]);
 
   usePageShortcuts({
     '/': cards && cards.length > 0 ? () => searchRef.current?.focus() : undefined,

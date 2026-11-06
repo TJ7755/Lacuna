@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, extname, sep, dirname } from 'node:path';
 import { cpus, totalmem, platform } from 'node:os';
+import { createHash } from 'node:crypto';
 
 const root = resolve(process.argv[2] ?? 'dist');
 const output = resolve(process.argv[3] ?? 'artifacts/performance/cards.json');
@@ -44,7 +45,14 @@ await new Promise((done) => server.listen(0, '127.0.0.1', done));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true });
 const report = {
+  schemaVersion: 2,
   build: root,
+  buildIndexSha256: createHash('sha256')
+    .update(await readFile(resolve(root, 'index.html')))
+    .digest('hex'),
+  harnessSha256: createHash('sha256')
+    .update(await readFile(new URL(import.meta.url)))
+    .digest('hex'),
   measuredAt: new Date().toISOString(),
   platform: platform(),
   cpu: cpus()[0].model,
@@ -55,7 +63,7 @@ const report = {
   reducedMotion: 'no-preference',
   fixture: { cards: 800, lessons: 20, diagrams: 100, regionsPerDiagram: 4 },
   method:
-    'Wall clock through visible result and two frames; includes Playwright overhead. Fresh context per repetition; warm revisit shares that context.',
+    'Wall clock includes Playwright overhead. Input-to-readable starts at pointerdown/input in the renderer and ends after readable content and two frames. Fresh context per repetition; warm revisit shares that context. Profiling is optional and must be compared separately.',
   runs: [],
 };
 try {
@@ -179,6 +187,12 @@ try {
     // Count actual IndexedDB reads, including reads issued by Dexie.
     await page.addInitScript(() => {
       window.__reads = {};
+      window.__longTasks = [];
+      new PerformanceObserver((list) => {
+        window.__longTasks.push(
+          ...list.getEntries().map(({ startTime, duration }) => ({ startTime, duration })),
+        );
+      }).observe({ type: 'longtask', buffered: true });
       for (const method of ['getAll', 'get', 'openCursor', 'count']) {
         for (const proto of [IDBObjectStore.prototype, IDBIndex.prototype]) {
           const original = proto[method];
@@ -196,17 +210,82 @@ try {
     const run = { iteration, errors, samples: [] };
     report.runs.push(run);
     async function measure(name, action, ready) {
-      await page.evaluate(() => {
+      await page.evaluate((name) => {
         window.__reads = {};
-      });
+        window.__longTasks = [];
+        const state = { start: null, end: null, cancelled: false };
+        const begin = () => {
+          if (state.start !== null) return;
+          state.start = performance.now();
+          const check = () => {
+            if (state.cancelled) return;
+            const rows = document.querySelectorAll('[data-card-id]');
+            const course = name.startsWith('course-');
+            const target = course
+              ? [...document.querySelectorAll('main h1')].find(
+                  (node) => node.textContent === 'Heavy course 0',
+                )
+              : document.querySelector('[data-card-id] .prose-lacuna');
+            const matches =
+              course ||
+              (name === 'search-last-card'
+                ? rows.length === 1 && target?.textContent.includes('Recall image 799')
+                : rows.length > 1);
+            let opacity = 1;
+            let element = target;
+            while (element) {
+              opacity *= Number(getComputedStyle(element).opacity);
+              element = element.parentElement;
+            }
+            const rect = target?.getBoundingClientRect();
+            if (
+              !matches ||
+              !rect?.height ||
+              rect.bottom <= 0 ||
+              rect.top >= innerHeight ||
+              opacity < 0.9
+            ) {
+              requestAnimationFrame(check);
+              return;
+            }
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                state.end = performance.now();
+              }),
+            );
+          };
+          requestAnimationFrame(check);
+        };
+        window.addEventListener('pointerdown', begin, { capture: true, once: true });
+        window.addEventListener('input', begin, { capture: true, once: true });
+        window.__interaction = state;
+        window.__stopInteraction = () => {
+          state.cancelled = true;
+          window.removeEventListener('pointerdown', begin, true);
+          window.removeEventListener('input', begin, true);
+        };
+      }, name);
+      const profiling = process.env.PERF_PROFILE === '1';
+      if (profiling) {
+        await cdp.send('Profiler.enable');
+        await cdp.send('Profiler.start');
+      }
       const start = performance.now();
       await action();
       await ready();
+      await expect
+        .poll(() => page.evaluate(() => window.__interaction.end), { timeout: 30000 })
+        .not.toBeNull();
       await page.evaluate(
         () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
       );
       const elapsedMs = performance.now() - start;
       const counts = await page.evaluate(() => ({
+        inputToReadableMs: window.__interaction.end - window.__interaction.start,
+        longTasks: window.__longTasks.filter(
+          ({ startTime }) =>
+            startTime >= window.__interaction.start && startTime <= window.__interaction.end,
+        ),
         reads: window.__reads,
         rows: document.querySelectorAll('[data-card-id]').length,
         images: document.querySelectorAll('main img').length,
@@ -220,6 +299,14 @@ try {
         heapBytes: metrics.metrics.find((m) => m.name === 'JSHeapUsedSize')?.value,
       };
       run.samples.push(sample);
+      await page.evaluate(() => window.__stopInteraction());
+      if (profiling) {
+        const { profile } = await cdp.send('Profiler.stop');
+        await writeFile(
+          output.replace(/\.json$/, `-${iteration}-${name}.cpuprofile`),
+          JSON.stringify(profile),
+        );
+      }
       console.log(JSON.stringify({ iteration, ...sample }));
       await writeFile(output, JSON.stringify(report, null, 2) + '\n');
     }

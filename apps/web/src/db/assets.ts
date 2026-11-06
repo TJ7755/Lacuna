@@ -204,7 +204,16 @@ export async function collectOrphanedAssets(now: number = Date.now()): Promise<n
         db.assets,
       ],
       async () => {
-        if ((await db.assets.count()) === 0) return 0;
+        const assetCount = await db.assets.count();
+        if (assetCount === 0) return 0;
+        // Fresh uploads cannot be collected. Avoid scanning the whole library
+        // when every asset is still protected; undated rows are absent from the
+        // index, so they continue through the ordinary sweep.
+        const recentCount = await db.assets
+          .where('createdAt')
+          .above(now - ASSET_GC_GRACE_MS)
+          .count();
+        if (recentCount === assetCount) return 0;
         // Build the set of referenced hashes by streaming every persisted Markdown
         // owner in batches so note-only images are not mistaken for orphans.
         const referenced = new Set<string>();

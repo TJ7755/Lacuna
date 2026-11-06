@@ -146,15 +146,16 @@ export function useVirtualList({
           return;
         }
         measuredElements.current.set(index, el);
-        updateHeight(el.getBoundingClientRect().height);
         if (typeof ResizeObserver !== 'undefined') {
+          // Its initial observation measures after layout, avoiding a forced
+          // layout between each nested section's ref attachment during mounting.
           observer = new ResizeObserver((entries) => {
             const entry = entries[0];
             if (entry)
               updateHeight(entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height);
           });
           observer.observe(el, { box: 'border-box' });
-        }
+        } else updateHeight(el.getBoundingClientRect().height);
       });
     }
     return measureCallbacks.current.get(index)!;

@@ -30,4 +30,29 @@ describe('optional Markdown renderers', () => {
     await waitFor(() => expect(result.current.highlight).toBeTypeOf('function'));
     expect(loaders.highlight).toHaveBeenCalledOnce();
   });
+
+  it('uses warmed renderers in the first render of a newly mounted view', async () => {
+    const source = '$x^2$\n\n```js\nconst x = 1;\n```';
+    const warmed = renderHook(() => useOptionalMarkdown(source));
+    await waitFor(() => {
+      expect(warmed.result.current.math).toBeTypeOf('function');
+      expect(warmed.result.current.highlight).toBeTypeOf('function');
+    });
+    warmed.unmount();
+
+    const renders: { math: boolean; highlight: boolean }[] = [];
+    const remounted = renderHook(() => {
+      const plugins = useOptionalMarkdown(source);
+      renders.push({ math: Boolean(plugins.math), highlight: Boolean(plugins.highlight) });
+      return plugins;
+    });
+    await waitFor(() => {
+      expect(remounted.result.current.math).toBeTypeOf('function');
+      expect(remounted.result.current.highlight).toBeTypeOf('function');
+    });
+    expect(renders).toEqual([{ math: true, highlight: true }]);
+
+    const plain = renderHook(() => useOptionalMarkdown('Plain Markdown'));
+    expect(plain.result.current).toEqual({});
+  });
 });
