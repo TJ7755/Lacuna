@@ -91,27 +91,6 @@ describe('StudyControls automatic marking', () => {
     m: 0,
   };
 
-  it.each([false, true])('offers Continue after a verdict (touch: %s)', (isTouchMode) => {
-    const onContinue = vi.fn();
-    const view = render(
-      <LazyMotion features={domAnimation}>
-        <StudyControls
-          {...props}
-          phase="answer"
-          isTouchMode={isTouchMode}
-          autoMark={{ pending: false, correct: false, onContinue }}
-        />
-      </LazyMotion>,
-    );
-    try {
-      fireEvent.click(view.getByRole('button', { name: 'Continue' }));
-      expect(onContinue).toHaveBeenCalledOnce();
-      expect(view.queryByRole('button', { name: 'No' })).toBeNull();
-    } finally {
-      view.unmount();
-    }
-  });
-
   it.each([
     { pending: true },
     { pending: false, correct: true },

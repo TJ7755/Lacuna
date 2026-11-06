@@ -10,8 +10,7 @@ export type Phase = 'loading' | 'notes' | 'question' | 'answer' | 'finished';
 export type { SessionCardOutcome } from '../../course/sessionSummary';
 
 /** Automatic marking of a submitted typed answer: still judging, or the verdict it reached. */
-export type AutoMark =
-  { pending: true } | { pending: false; correct: boolean; onContinue?: () => void };
+export type AutoMark = { pending: true } | { pending: false; correct: boolean };
 
 /** A machine-verified response passed into the existing review pipeline. */
 export interface MachineMarkedAnswer {

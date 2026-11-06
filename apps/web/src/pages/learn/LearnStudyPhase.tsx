@@ -21,11 +21,7 @@ import type { LearnModeType } from './types';
 import type { useLearnSession } from './useLearnSession';
 import type { useLearnView } from './useLearnView';
 import type { useLearnAnswerFeedback } from './useLearnAnswerFeedback';
-import {
-  typedAutoMarkMessage,
-  type typedAnswerJudgement,
-  type useTypedAutoMark,
-} from './useTypedAutoMark';
+import type { typedAnswerJudgement, useTypedAutoMark } from './useTypedAutoMark';
 import type { useStudyFocus } from './useStudyFocus';
 
 export function LearnStudyPhase({
@@ -141,7 +137,6 @@ export function LearnStudyPhase({
     answerWithUndo,
     gradeFeedback,
   } = feedback;
-  const markingMessage = typedAutoMarkMessage(typedAutoMark);
   return (
     <>
       {/* In-session card editor: fixes a card without leaving the session (timer paused). */}
@@ -319,20 +314,15 @@ export function LearnStudyPhase({
         )}
 
         {isTypingCard && (
-          // Verdict colour needs no extra caption; a fallback needs a visible next action.
-          <div
-            role="status"
-            aria-live="polite"
-            className={markingMessage ? 'mt-3 text-center text-sm text-ink-soft' : 'sr-only'}
-          >
-            {markingMessage ??
-              (typedAutoMark.state === 'checking'
-                ? 'Checking your answer.'
-                : typedAutoMark.state === 'marked'
-                  ? typedAutoMark.correct
-                    ? 'Marked correct.'
-                    : 'Marked incorrect.'
-                  : '')}
+          // The Flow fill and the card carry the verdict visually; this says it aloud.
+          <div aria-live="polite" className="sr-only">
+            {typedAutoMark.state === 'checking'
+              ? 'Checking your answer.'
+              : typedAutoMark.state === 'marked'
+                ? typedAutoMark.correct
+                  ? 'Marked correct.'
+                  : 'Marked incorrect.'
+                : ''}
           </div>
         )}
         {!suppressClassicGrading && (
@@ -347,11 +337,7 @@ export function LearnStudyPhase({
               typedAutoMark.state === 'checking'
                 ? { pending: true }
                 : typedAutoMark.state === 'marked'
-                  ? {
-                      pending: false,
-                      correct: typedAutoMark.correct,
-                      onContinue: typedAutoMark.onContinue,
-                    }
+                  ? { pending: false, correct: typedAutoMark.correct }
                   : undefined
             }
             gradingMode={gradingMode}

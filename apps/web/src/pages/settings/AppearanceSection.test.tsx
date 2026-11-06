@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import { AccentProvider } from '../../state/AccentContext';
 import { FontScaleProvider } from '../../state/FontScaleContext';
 import { ThemeProvider } from '../../state/ThemeContext';
@@ -18,39 +18,6 @@ function renderAppearance() {
 }
 
 describe('AppearanceSection', () => {
-  beforeEach(() => localStorage.clear());
-
-  it('uses one accent tab stop and selects colours with arrows, Home and End', () => {
-    renderAppearance();
-    const group = screen.getByRole('radiogroup', { name: 'Accent colour' });
-    const volt = within(group).getByRole('radio', { name: 'Volt' });
-    fireEvent.click(volt);
-    volt.focus();
-    fireEvent.keyDown(volt, { key: 'ArrowRight' });
-    const amber = within(group).getByRole('radio', { name: 'Amber' });
-    expect(amber).toHaveFocus();
-    expect(amber).toHaveAttribute('aria-checked', 'true');
-    expect(
-      within(group)
-        .getAllByRole('radio')
-        .filter((radio) => radio.tabIndex === 0),
-    ).toEqual([amber]);
-    fireEvent.keyDown(amber, { key: 'End' });
-    const last = within(group).getAllByRole('radio').at(-1)!;
-    expect(last).toHaveFocus();
-    fireEvent.keyDown(last, { key: 'Home' });
-    expect(volt).toHaveFocus();
-    fireEvent.keyDown(volt, { key: 'ArrowLeft' });
-    expect(last).toHaveFocus();
-  });
-
-  it('offers an in-app motion Off choice', () => {
-    renderAppearance();
-    fireEvent.click(screen.getByRole('radio', { name: 'Off' }));
-    expect(screen.getByRole('radio', { name: 'Off' })).toHaveAttribute('aria-checked', 'true');
-    expect(localStorage.getItem('lacuna.motionSpeed')).toBe('off');
-  });
-
   it('chooses text size from a pill, named by step', () => {
     renderAppearance();
 

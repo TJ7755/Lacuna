@@ -259,7 +259,7 @@ describe('CommandPalette', () => {
     localStorage.clear();
   });
 
-  it('retains shortcut hints across openings and remounts', () => {
+  it('keeps shortcut guidance out of the palette across openings and remounts', () => {
     const renderPalette = (open: boolean) => (
       <StrictMode>
         <CommandPalette open={open} onClose={vi.fn()} />
@@ -267,8 +267,8 @@ describe('CommandPalette', () => {
     );
     const first = render(renderPalette(false), { wrapper: MemoryRouter });
     first.rerender(renderPalette(true));
-    expect(screen.getByText('Navigate')).toBeInTheDocument();
-    expect(screen.getByText('Esc')).toBeInTheDocument();
+    expect(screen.queryByText('Navigate')).not.toBeInTheDocument();
+    expect(screen.queryByText('Esc')).not.toBeInTheDocument();
     expect(screen.getByRole('combobox')).toHaveAttribute('placeholder', 'Search…');
     // The popover uses the shared flat hairline surface.
     const panel = screen.getByRole('combobox').closest('.rounded-3xl');
@@ -278,13 +278,13 @@ describe('CommandPalette', () => {
 
     first.rerender(renderPalette(false));
     first.rerender(renderPalette(true));
-    expect(screen.getByText('Navigate')).toBeInTheDocument();
-    expect(screen.getByText('Esc')).toBeInTheDocument();
+    expect(screen.queryByText('Navigate')).not.toBeInTheDocument();
+    expect(screen.queryByText('Esc')).not.toBeInTheDocument();
     first.unmount();
 
     render(renderPalette(true), { wrapper: MemoryRouter });
-    expect(screen.getByText('Navigate')).toBeInTheDocument();
-    expect(screen.getByText('Esc')).toBeInTheDocument();
+    expect(screen.queryByText('Navigate')).not.toBeInTheDocument();
+    expect(screen.queryByText('Esc')).not.toBeInTheDocument();
   });
 
   it('restores focus to the Quick search trigger after Escape closes the palette', async () => {

@@ -170,20 +170,19 @@ describe('Settings', () => {
     expect(setCourseCardMetric).toHaveBeenCalledWith('today');
   });
 
-  it('presents animation speed with an explicit off choice', () => {
+  it('presents animation speed as three explicit choices', () => {
     render(<Settings />);
 
     const group = screen.getByRole('radiogroup', { name: 'Animation speed' });
     const choices = Array.from(group.querySelectorAll('[role="radio"]'));
-    expect(choices).toHaveLength(4);
+    expect(choices).toHaveLength(3);
     expect(screen.getByRole('radio', { name: 'Fast' })).toHaveAttribute('aria-checked', 'true');
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Off' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Slow' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Normal' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Fast' }));
 
-    expect(setMotionSpeed.mock.calls).toEqual([['off'], ['slow'], ['normal'], ['fast']]);
+    expect(setMotionSpeed.mock.calls).toEqual([['slow'], ['normal'], ['fast']]);
   });
 
   it('supports standard keyboard navigation for animation speed', () => {
@@ -195,10 +194,6 @@ describe('Settings', () => {
     expect(screen.getByRole('radio', { name: 'Normal' })).toHaveFocus();
 
     fireEvent.keyDown(screen.getByRole('radio', { name: 'Normal' }), { key: 'Home' });
-    expect(setMotionSpeed).toHaveBeenLastCalledWith('off');
-    expect(screen.getByRole('radio', { name: 'Off' })).toHaveFocus();
-
-    fireEvent.keyDown(screen.getByRole('radio', { name: 'Off' }), { key: 'ArrowRight' });
     expect(setMotionSpeed).toHaveBeenLastCalledWith('slow');
     expect(screen.getByRole('radio', { name: 'Slow' })).toHaveFocus();
 

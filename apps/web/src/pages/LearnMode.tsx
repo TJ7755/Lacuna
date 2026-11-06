@@ -222,6 +222,7 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
     occlusionAnswerText,
     paused: editing || menuOpen || hintsOpen || leaveConfirmationOpen,
     manual: manualRestoredCardId === current?.id,
+    onHold: () => cardTransitionRef.current?.cancel(),
     m,
     onMarked: (correct, provenance, grade) =>
       answerWithUndo(grade ?? correct, 'keyboard', 0, provenance ?? undefined, true),

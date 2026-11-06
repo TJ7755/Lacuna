@@ -48,7 +48,7 @@ export function AppearanceSection() {
       <SettingRow label="Accent colour" className="[&>div:first-child]:basis-28">
         <div role="radiogroup" aria-label="Accent colour" className="flex flex-wrap">
           <LayoutGroup id="accent-swatches">
-            {ACCENTS.map((option, index) => {
+            {ACCENTS.map((option) => {
               const active = accent === option.key;
               return (
                 <motion.button
@@ -56,29 +56,7 @@ export function AppearanceSection() {
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  tabIndex={active ? 0 : -1}
                   onClick={() => setAccent(option.key)}
-                  onKeyDown={(event) => {
-                    const offset =
-                      event.key === 'ArrowRight' || event.key === 'ArrowDown'
-                        ? 1
-                        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
-                          ? -1
-                          : 0;
-                    if (!offset && event.key !== 'Home' && event.key !== 'End') return;
-                    event.preventDefault();
-                    const next =
-                      event.key === 'Home'
-                        ? 0
-                        : event.key === 'End'
-                          ? ACCENTS.length - 1
-                          : (index + offset + ACCENTS.length) % ACCENTS.length;
-                    setAccent(ACCENTS[next].key);
-                    event.currentTarget
-                      .closest('[role="radiogroup"]')
-                      ?.querySelectorAll<HTMLButtonElement>('[role="radio"]')
-                      [next]?.focus();
-                  }}
                   whileHover={multiplier > 0 ? { scale: 1.1 } : undefined}
                   transition={scaledSpring(multiplier, 520, 32)}
                   title={option.label}

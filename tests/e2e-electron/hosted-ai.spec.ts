@@ -90,9 +90,6 @@ test('Electron keeps Jev access without the AI chat interface', async () => {
     }, courseId);
     await page.getByRole('textbox', { name: 'Your answer', exact: true }).fill('CO2');
     await page.getByRole('button', { name: 'Check answer', exact: true }).click();
-    await expect(page.getByText('Marked correct.', { exact: true })).toBeAttached();
-    await expect(page.getByRole('main', { name: 'Session report' })).toHaveCount(0);
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page.getByRole('main', { name: 'Session report' })).toBeVisible();
     expect(requests.some((url) => url.endsWith('/session'))).toBe(true);
     expect(requests.filter((url) => url.endsWith('/jev'))).toHaveLength(1);

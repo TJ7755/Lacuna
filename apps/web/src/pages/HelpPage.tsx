@@ -134,12 +134,7 @@ export function HelpPage() {
               </SettingsSectionHeading>
             </div>
             {topics.length ? (
-              <>
-                <p role="status" className="sr-only">
-                  {topics.length} matching {topics.length === 1 ? 'topic' : 'topics'}
-                </p>
-                {topics.map(row)}
-              </>
+              topics.map(row)
             ) : (
               <p role="status" className="py-6 pl-[calc(18px+0.625rem)] text-sm text-ink-soft">
                 No matching topics.

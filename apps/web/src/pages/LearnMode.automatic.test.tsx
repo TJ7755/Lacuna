@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
@@ -11,7 +11,6 @@ import type * as JevModule from '../jev';
 import type * as MotionSpeedModule from '../state/motionSpeed';
 import { writeAnswerInput } from '../state/answerInput';
 import { LearnMode } from './LearnMode';
-import * as persistence from './learn/sessionAnswerPersistence';
 
 vi.mock('../state/motionSpeed', async (importOriginal) => ({
   ...(await importOriginal<typeof MotionSpeedModule>()),
@@ -28,67 +27,6 @@ beforeEach(async () => {
   localStorage.clear();
   marker.mockReset();
 });
-afterEach(() => vi.restoreAllMocks());
-
-it('retries a failed automatic answer without duplicating its pending save', async () => {
-  const course = await createCourse('Retry automatic answer');
-  const lesson = await createLesson(course.id, 'Colours');
-  const card = await createLessonCard(
-    course.id,
-    lesson.id,
-    'front_back',
-    'Name a colour.',
-    'Red',
-    [],
-    undefined,
-    'type',
-  );
-  render(
-    <ThemeProvider>
-      <AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider>
-    </ThemeProvider>,
-  );
-  fireEvent.change(await screen.findByRole('textbox', { name: 'Your answer' }), {
-    target: { value: 'Red' },
-  });
-  fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
-  const next = await screen.findByRole('button', { name: 'Continue' });
-  const save = persistence.persistSimpleSessionAnswer;
-  let release!: () => void;
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  const persist = vi
-    .spyOn(persistence, 'persistSimpleSessionAnswer')
-    .mockRejectedValueOnce(new Error('Save failed'))
-    .mockImplementationOnce(async (...args) => {
-      await gate;
-      return save(...args);
-    });
-  try {
-    fireEvent.click(next);
-    await screen.findByText('Your answer could not be saved. Please try again.');
-    expect(await db.reviewHistory.count()).toBe(0);
-    fireEvent.click(next);
-    fireEvent.click(next);
-    await waitFor(() => expect(persist).toHaveBeenCalledTimes(2));
-    expect(await db.reviewHistory.count()).toBe(0);
-  } finally {
-    await act(async () => release());
-  }
-  await waitFor(async () =>
-    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(1),
-  );
-  expect(persist).toHaveBeenCalledTimes(2);
-}, 15_000);
 
 describe('automatic final-answer Undo', () => {
   it.each([
@@ -131,7 +69,6 @@ describe('automatic final-answer Undo', () => {
       const input = await screen.findByRole('textbox', { name: 'Your answer' });
       fireEvent.change(input, { target: { value: 'Red' } });
       fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
-      fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
       await screen.findByRole('main', { name: 'Session report' });
       expect(onStepFinished).not.toHaveBeenCalled();
       const report = screen.getByRole('main', { name: 'Session report' });
@@ -231,7 +168,6 @@ it('keeps a submitted typed answer eligible after the live preference changes to
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
   act(() => writeAnswerInput('reveal'));
-  fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
   await waitFor(async () =>
     expect(await db.reviewHistory.where('cardId').equals(card.id).first()).toMatchObject({
       input: 'typed',

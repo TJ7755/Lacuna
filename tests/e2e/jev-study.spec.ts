@@ -92,6 +92,8 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       await start(page);
       await submit(page);
       await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toBeVisible();
+      await page.getByRole('main', { name: 'Study card' }).focus();
+      await page.keyboard.down('Space');
       try {
         const layer = page.locator('[data-flow-layer]');
         await expect(layer).toBeVisible();
@@ -156,6 +158,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         await page.screenshot({ path: test.info().outputPath('verdict-colour.png') });
       } finally {
         release();
+        await page.keyboard.up('Space');
       }
     });
   }
@@ -172,6 +175,8 @@ test('drains with the card flight and reforms the next pill without delaying typ
   await start(page);
   await submit(page);
   await expect(page.locator('[data-flow-layer]')).toHaveAttribute('data-flow-state', 'bead');
+  await page.getByRole('main', { name: 'Study card' }).focus();
+  await page.keyboard.down('Space');
   await expect(page.locator('[data-study-face="back"] [data-typed-verdict]')).toBeVisible();
   await page.waitForTimeout(600);
   const liquid = page.locator('[data-flow-layer]');
@@ -200,7 +205,7 @@ test('drains with the card flight and reforms the next pill without delaying typ
       ),
     };
   });
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.keyboard.up('Space');
   await page.waitForTimeout(40);
   await page.screenshot({ path: test.info().outputPath('bead-draining.png') });
   const { width, frames } = await samples.evaluate(async (sample) => ({
@@ -265,7 +270,6 @@ test('keeps submitted typing through a cross-tab preference change and Undo', as
   await expect(page.getByRole('button', { name: 'Yes', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'No', exact: true })).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath('jev-verdict.png') });
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(card).not.toHaveAttribute('data-study-card-id', id!);
   await page.getByRole('button', { name: 'Undo last answer' }).click();
   await expect(page.locator('[data-study-card-id]').first()).toHaveAttribute(
@@ -304,8 +308,6 @@ test('restores pointer grading after a timeout and ignores a late verdict', asyn
   await expect(page.getByRole('button', { name: 'No', exact: true })).toBeVisible();
   await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Yes', exact: true })).toBeEnabled();
-  await expect(page.getByRole('status').filter({ hasText: 'Marking timed out' })).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath('feedback-manual-timeout.png') });
   release();
   await expect(page.locator('[data-study-card-id]').first()).toHaveAttribute(
     'data-study-card-id',
@@ -369,7 +371,6 @@ test('marks an exact match locally without calling Jev', async ({ page }) => {
   await start(page);
   const id = await page.locator('[data-study-card-id]').first().getAttribute('data-study-card-id');
   await submit(page, 'Red, green and blue.');
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.locator('[data-study-card-id]').first()).not.toHaveAttribute(
     'data-study-card-id',
     id!,
@@ -381,10 +382,8 @@ test('marks an exact match locally without calling Jev', async ({ page }) => {
 test('keeps a final Simple answer undoable and restores manual marking', async ({ page }) => {
   await start(page, true, true);
   await submit(page, 'Red, green and blue.');
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
   await submit(page, 'Red, green and blue.');
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   const report = page.getByRole('main', { name: 'Session report' });
   await expect(report).toBeVisible();
   await report.getByRole('button', { name: 'Undo last answer' }).click();
@@ -395,44 +394,62 @@ test('keeps a final Simple answer undoable and restores manual marking', async (
   await expect(report.getByRole('button', { name: 'Undo last answer' })).toHaveCount(0);
 });
 
-for (const reducedMotion of ['no-preference', 'reduce'] as const) {
-  test(`keeps automatic feedback until Continue (${reducedMotion})`, async ({ page }) => {
-    await page.emulateMedia({ reducedMotion });
-    await page.route('**/api/ai/jev', (route) =>
-      route.fulfill({
-        json: { value: 0, confidence: 0.98, inputTokens: 600, model: 'jev-1.14.0', feedback },
-      }),
-    );
-    await start(page);
-    const card = page.locator('[data-study-card-id]').first();
-    const id = await card.getAttribute('data-study-card-id');
-    await submit(page);
-    await expect(page.locator('[data-study-face="back"] [data-typed-verdict]')).toContainText(
-      'Partly right',
-    );
-    const next = page.getByRole('button', { name: 'Continue', exact: true });
-    await expect(next).toBeVisible();
-    await page.waitForTimeout(3000);
-    await expect(card).toHaveAttribute('data-study-card-id', id!);
-    const bead = await page.locator('[data-flow-layer] > g use').first().boundingBox();
-    const action = await next.boundingBox();
-    expect(bead).not.toBeNull();
-    expect(action).not.toBeNull();
-    expect(Math.abs(action!.y + action!.height / 2 - bead!.y - bead!.height / 2)).toBeLessThan(2);
-    await page.screenshot({
-      path: test.info().outputPath(`feedback-readable-${reducedMotion}.png`),
-    });
-    if (reducedMotion === 'reduce') {
-      await next.focus();
-      await page.keyboard.press('Enter');
-    } else await next.click();
-    await expect(card).not.toHaveAttribute('data-study-card-id', id!);
-    await page.getByRole('button', { name: 'Undo last answer' }).click();
-    await expect(card).toHaveAttribute('data-study-card-id', id!);
-    await expect(page.getByRole('button', { name: 'No', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
+test('holds an automatic answer with Space and resumes as soon as it is released', async ({
+  page,
+}) => {
+  let release!: () => void;
+  const response = new Promise<void>((resolve) => {
+    release = resolve;
   });
-}
+  await page.route('**/api/ai/jev', async (route) => {
+    await response;
+    await route.fulfill({
+      json: { value: 0, confidence: 0.98, inputTokens: 600, model: 'jev-1.14.0', feedback },
+    });
+  });
+  await start(page);
+  const card = page.locator('[data-study-card-id]').first();
+  const id = await card.getAttribute('data-study-card-id');
+  await submit(page);
+  await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toBeVisible();
+  await page.keyboard.down('Space');
+  release();
+  await expect(page.locator('[data-study-face="back"] [data-typed-verdict]')).toContainText(
+    'Partly right',
+  );
+  // Exceed the normal 700 ms deadline while physically holding the brake.
+  await page.waitForTimeout(1000);
+  await expect(card).toHaveAttribute('data-study-card-id', id!);
+  await page.evaluate((id) => {
+    const card = document.querySelector(`[data-study-card-id="${id}"]`)!;
+    const origin = card.getBoundingClientRect().left;
+    (window as unknown as { jevReleaseMotion: Promise<number> }).jevReleaseMotion = new Promise(
+      (resolve, reject) => {
+        window.addEventListener(
+          'keyup',
+          () => {
+            const started = performance.now();
+            const sample = () => {
+              if (!card.isConnected || Math.abs(card.getBoundingClientRect().left - origin) > 1)
+                resolve(performance.now() - started);
+              else if (performance.now() - started > 1500)
+                reject(new Error('The released answer did not start moving.'));
+              else requestAnimationFrame(sample);
+            };
+            requestAnimationFrame(sample);
+          },
+          { once: true },
+        );
+      },
+    );
+  }, id);
+  await page.keyboard.up('Space');
+  const elapsed = await page.evaluate(
+    () => (window as unknown as { jevReleaseMotion: Promise<number> }).jevReleaseMotion,
+  );
+  expect(elapsed).toBeLessThan(200);
+  await expect(card).not.toHaveAttribute('data-study-card-id', id!);
+});
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   test(`shows manual grade labels promptly when they become actionable (${reducedMotion})`, async ({
@@ -497,7 +514,6 @@ test('types a reveal lesson through the learner preference and applies a Jev mar
     .getAttribute('data-study-card-id');
   await submit(page);
   await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toBeVisible();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.locator('[data-study-card-id]').first()).not.toHaveAttribute(
     'data-study-card-id',
     first!,

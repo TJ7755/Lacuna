@@ -1,5 +1,4 @@
 import { KeyboardIcon } from '../../components/ui/icons';
-import { InfoPopover } from '../../components/analytics/InfoPopover';
 import { useInputMode, type InputMode } from '../../state/inputMode';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { SegmentedPills, SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
@@ -21,9 +20,6 @@ export function InputModeSection() {
           <SettingsSectionHeading className="font-display text-xl font-semibold tracking-tight">
             Input mode
           </SettingsSectionHeading>
-          <InfoPopover label="About input controls">
-            <p>Keyboard hints or touch gestures. Auto follows your device.</p>
-          </InfoPopover>
         </div>
         <SegmentedPills
           label="Input mode"

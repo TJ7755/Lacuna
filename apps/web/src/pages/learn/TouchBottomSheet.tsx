@@ -4,7 +4,7 @@ import { hapticLight, hapticMedium } from '../../utils/haptic';
 import type { Grade } from '@lacuna/core/db/types';
 import { Button } from '../../components/ui/Button';
 import { StepSwap } from '../../components/ui/StepSwap';
-import { ArrowRightIcon, CheckIcon, CloseIcon } from '../../components/ui/icons';
+import { CheckIcon, CloseIcon } from '../../components/ui/icons';
 import { cn } from '../../components/ui/cn';
 import type { AutoMark, Phase } from './types';
 import { StudyGradeButton, type StudyGradeFeedback } from './StudyGradeButton';
@@ -81,11 +81,6 @@ export function TouchBottomSheet({
               <p id={recallPromptId} className="text-sm text-ink-soft">
                 {recallPrompt}
               </p>
-            )}
-            {autoMark && !autoMark.pending && autoMark.onContinue && (
-              <Button variant="primary" size="lg" onClick={autoMark.onContinue}>
-                Continue <ArrowRightIcon width={18} height={18} />
-              </Button>
             )}
             {!autoMark &&
               (gradingMode === 'manual' ? (
