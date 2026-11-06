@@ -163,7 +163,7 @@ describe('OcclusionEditor', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
       expect(name).toHaveValue('Plant cell');
       fireEvent.click(target);
-      fireEvent.click(screen.getByRole('button', { name: 'Discard changes', exact: true }));
+      fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
       await screen.findByText('Cards');
     },
   );

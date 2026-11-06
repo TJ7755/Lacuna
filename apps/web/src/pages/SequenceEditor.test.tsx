@@ -145,7 +145,7 @@ describe('SequenceEditor', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
       expect(field(1)).toHaveValue('Glycolysis');
       fireEvent.click(target);
-      fireEvent.click(screen.getByRole('button', { name: 'Discard changes', exact: true }));
+      fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
       await screen.findByText('Cards');
     },
   );
