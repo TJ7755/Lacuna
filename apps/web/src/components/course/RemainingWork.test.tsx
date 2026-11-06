@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { Component, type ReactNode } from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createCourse, createLesson, createLessonCard } from '../../db/repository';
 import { db } from '../../db/schema';
 import { hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
@@ -28,6 +28,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   await Promise.all(db.tables.map((table) => table.clear()));
 });
+afterEach(() => vi.restoreAllMocks());
 
 async function fixture() {
   const course = await createCourse('Assessment estimates');
@@ -51,8 +52,48 @@ it('runs supplied Path records through the background estimator', async () => {
     expect(calculateRemainingWorkOffThread).toHaveBeenCalledWith(
       { source: records, plans: [] },
       expect.any(Number),
+      expect.any(AbortSignal),
     ),
   );
+});
+
+it('aborts its pending estimator when the course unmounts', async () => {
+  const { card, records } = await fixture();
+  let signal: AbortSignal | undefined;
+  vi.mocked(calculateRemainingWorkOffThread).mockImplementationOnce(
+    (_input, _now, supplied?: AbortSignal) => {
+      signal = supplied;
+      return new Promise((resolve) =>
+        supplied?.addEventListener('abort', () => resolve([]), { once: true }),
+      );
+    },
+  );
+  const page = render(<RemainingWork courseId={card.courseId!} records={records} />);
+  await waitFor(() => expect(calculateRemainingWorkOffThread).toHaveBeenCalled());
+  page.unmount();
+  expect(signal?.aborted).toBe(true);
+});
+
+it('does not start the main-thread fallback after an unmounted worker rejects', async () => {
+  const { card, records } = await fixture();
+  let fail!: (cause: unknown) => void;
+  vi.mocked(calculateRemainingWorkOffThread).mockImplementationOnce(
+    () =>
+      new Promise((_resolve, reject) => {
+        fail = reject;
+      }),
+  );
+  const fallback = vi.spyOn(
+    await import('../../course/remainingWorkData'),
+    'calculateRemainingWork',
+  );
+  const page = render(<RemainingWork courseId={card.courseId!} records={records} />);
+  await waitFor(() => expect(calculateRemainingWorkOffThread).toHaveBeenCalled());
+  page.unmount();
+  await act(async () => {
+    fail(new DOMException('Cancelled', 'AbortError'));
+  });
+  expect(fallback).not.toHaveBeenCalled();
 });
 
 it.each(['rejection', 'construction throw'] as const)(
