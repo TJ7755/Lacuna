@@ -226,12 +226,12 @@ export async function loadSessionSource(
     const schedulingUnit = (await getSchedulingUnit(course.id)) ?? course;
     const practiceConfig: SessionSchedulingConfig = {
       ...schedulingUnit,
-      // Introductions have already rationed new cards for traditional courses.
-      // Direct-FSRS courses need the scheduler to enforce the same course-wide cap.
+      // Catch-up is admitted by its adaptive pacing policy. Reapplying the fixed
+      // course cap here would silently undo acceleration near an exam.
       newCardsPerDay:
-        course.learnFirst === false || catchUpPractice ? schedulingUnit.newCardsPerDay : undefined,
+        course.learnFirst === false && !catchUpPractice ? schedulingUnit.newCardsPerDay : undefined,
     };
-    if (course.learnFirst === false && !plannedRevision && !standaloneSimple) {
+    if (course.learnFirst === false && !catchUpPractice && !plannedRevision && !standaloneSimple) {
       cards = studyPool(cards, practiceConfig, Date.now(), undefined, allCards);
     }
     units = [course];

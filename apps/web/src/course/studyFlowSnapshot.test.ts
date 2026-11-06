@@ -465,7 +465,8 @@ it('plans the joining lesson while independently counting capped earlier exam pr
     meanReviewSeconds: 10,
     now: NOW,
   });
-  expect(snapshot.catchUpEligibleCount).toBe(1);
+  expect(snapshot.catchUpEligibleCount).toBe(2);
+  expect(snapshot.catchUpPriorityCount).toBe(2);
   expect(snapshot.recurringPracticeEligibleCount).toBe(0);
   expect(planNextStudyStep(snapshot)).toMatchObject({ kind: 'step', step: { lessonId: 'l2' } });
 });

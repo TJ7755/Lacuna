@@ -133,14 +133,7 @@ export function assessmentPracticePool(
     (card) =>
       assessmentCardIds.has(card.id) &&
       isAvailable(card, now) &&
-      (card.state === 0 ||
-        worthwhileAssessmentPractice(
-          card,
-          examDate,
-          now,
-          context.course.practiceUrgentWindowDays,
-          ctx,
-        )),
+      (card.state === 0 || worthwhileAssessmentPractice(card, examDate, now, ctx)),
   );
 }
 /** Future assessments intersecting this exact Practice context, ordered by date. */

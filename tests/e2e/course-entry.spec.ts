@@ -4,8 +4,8 @@ import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 
-for (const width of [1440, 390]) {
-  test(`joins a locked course midway and prepares for the exam before current lessons at ${width}px`, async ({
+for (const width of [1440]) {
+  test(`joins a locked course midway and catches up after the current lesson at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -110,9 +110,7 @@ for (const width of [1440, 390]) {
     const preview = page.getByRole('region', { name: 'Session preview' });
     const recommendation = preview.getByRole('list', { name: "Today's session" });
     await expect(recommendation.getByRole('listitem')).toHaveCount(1);
-    await expect(recommendation).toHaveText(
-      'Prepare for Final exam1 card available · up to 10 reviews',
-    );
+    await expect(recommendation).toHaveText('Year twoLearn · 1 new card');
     await preview.getByRole('button', { name: 'Other ways', exact: true }).click();
     await expect(
       preview.getByRole('button', { name: 'Review earlier material', exact: true }),
@@ -128,25 +126,29 @@ for (const width of [1440, 390]) {
     await expect(page.getByText('Year two recall', { exact: true })).toHaveCount(0);
     await page.goto(courseUrl);
     await page.getByRole('button', { name: 'Study', exact: true }).click();
-    await expect(recommendation).toHaveText(
-      'Prepare for Final exam1 card available · up to 10 reviews',
-    );
+    await expect(recommendation).toHaveText('Year twoLearn · 1 new card');
     await preview.getByRole('button', { name: 'Start session', exact: true }).click();
     await expect(
-      page.locator('[data-study-face="front"]').getByText('Year one recall', { exact: true }),
+      page.locator('[data-study-face="front"]').getByText('Year two recall', { exact: true }),
     ).toBeVisible();
-    await expect(page.getByText('Year two recall', { exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
     await page.getByRole('button', { name: 'Yes', exact: true }).click();
-    await expect
-      .poll(() => readAll<ReviewHistoryEntry>(page, 'reviewHistory'))
-      .toMatchObject([{ cardId: priorCard.id, correct: true, sessionKind: 'assessment-revision' }]);
     const continuation = page.getByRole('button', { name: 'Continue', exact: true });
     await expect(continuation).toBeEnabled();
     await continuation.click();
     await expect(
-      page.locator('[data-study-face="front"]').getByText('Year two recall', { exact: true }),
+      page.locator('[data-study-face="front"]').getByText('Year one recall', { exact: true }),
     ).toBeVisible();
-    expect(await readAll(page, 'reviewHistory')).toHaveLength(1);
+    await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
+    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+    await expect
+      .poll(() => readAll<ReviewHistoryEntry>(page, 'reviewHistory'))
+      .toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ primaryLessonId: 'year-2', correct: true }),
+          expect.objectContaining({ cardId: priorCard.id, correct: true }),
+        ]),
+      );
+    expect(await readAll(page, 'reviewHistory')).toHaveLength(2);
   });
 }

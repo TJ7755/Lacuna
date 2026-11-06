@@ -106,10 +106,7 @@ export function eligiblePracticePool(
     if (examDate === undefined || examDate < now) {
       return card.state === 0 || (card.due !== null && card.due <= now);
     }
-    return (
-      card.state === 0 ||
-      worthwhileAssessmentPractice(card, examDate, now, course.practiceUrgentWindowDays, ctx)
-    );
+    return card.state === 0 || worthwhileAssessmentPractice(card, examDate, now, ctx);
   });
 }
 

@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
 import { db } from '../db/schema';
 import type { Concept } from '@lacuna/core/questions/types';
-import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
+import { dailyReviewCounts, hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { performanceForCourseBackingDecks } from '../db/backingDecks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { retainedLiveQuery } from './retainedLiveQuery';
@@ -38,6 +38,7 @@ interface CourseStudyFlowRecords {
   practiceNodes: PracticeNode[];
   milestones: PracticeMilestone[];
   performance: UserPerformance[];
+  reviewsToday?: number;
   /** The refresh key this read answered, so callers can tell a stale result from a fresh one. */
   generation: number;
 }
@@ -137,11 +138,14 @@ async function readCourseStudyFlowRecords(
     ]);
   const cards = await hydrateCardsWithHistory(rawCards);
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [links, exposures, completions, performance] = await Promise.all([
+  const [links, exposures, completions, performance, reviewCounts] = await Promise.all([
     lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
     lessonIds.length > 0 ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray() : [],
     lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
     performanceForCourseBackingDecks(courseId, cards),
+    course.dailyReviewGoal || course.maxReviewsPerDay
+      ? dailyReviewCounts('course')
+      : new Map<string, number>(),
   ]);
   const questionContext = {
     course,
@@ -187,6 +191,7 @@ async function readCourseStudyFlowRecords(
     practiceNodes,
     milestones,
     performance,
+    reviewsToday: reviewCounts.get(courseId) ?? 0,
     generation: refreshKey,
   };
 }
