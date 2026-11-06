@@ -165,7 +165,16 @@ async function readCourseStudyFlowRecords(
       includeQuestionPractice ? undefined : pathReviewActivity(rawCards),
       lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
       lessonIds.length > 0
-        ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
+        ? db.transaction('r', db.lessonCardExposures, async () => {
+            // Exact ranges use getAll rather than a cursor callback for every card.
+            // Sort lesson IDs to retain the anyOf index/primary-key result order.
+            const exposures = await Promise.all(
+              [...lessonIds]
+                .sort()
+                .map((id) => db.lessonCardExposures.where('lessonId').equals(id).toArray()),
+            );
+            return exposures.flat();
+          })
         : [],
       lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
       performanceForCourseBackingDecks(courseId, rawCards),

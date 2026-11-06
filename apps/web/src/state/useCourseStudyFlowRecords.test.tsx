@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createCourse, createCourseCard } from '../db/repository';
+import { createLesson } from '../db/lessonRepository';
 import { db } from '../db/schema';
 import { createConcept } from '../questions/repository';
 import { createQuestionSet } from '../questions/questionSetRepository';
@@ -26,6 +27,54 @@ const review = (timestamp: number, eventId = 'review'): ReviewLog => ({
   difficultyAfter: 5,
   retrievabilityAtReview: null,
 });
+
+it.each([
+  ['Path', useCoursePathRecords],
+  ['Study', useCourseStudyFlowRecords],
+] as const)(
+  'bulk-reads %s exposures in index order and observes changes',
+  async (_name, useRecords) => {
+    const course = await createCourse('Exposure reads');
+    const other = await createCourse('Other course');
+    const last = await createLesson(course.id, 'First in course', { id: 'lesson-z' });
+    const first = await createLesson(course.id, 'Last in course', { id: 'lesson-a' });
+    const outside = await createLesson(other.id, 'Outside');
+    const card = await createCourseCard(course.id, 'front_back', 'Linked card', 'Answer');
+    await db.lessonCardExposures.bulkPut(
+      [last, first, outside].map((lesson) => ({
+        lessonId: lesson.id,
+        cardId: card.id,
+        taughtAt: 100,
+        updatedAt: 100,
+      })),
+    );
+    const expected = await db.lessonCardExposures
+      .where('lessonId')
+      .anyOf([last.id, first.id])
+      .toArray();
+    const openCursor = IDBIndex.prototype.openCursor;
+    let exposureCursors = 0;
+    vi.spyOn(IDBIndex.prototype, 'openCursor').mockImplementation(function (
+      this: IDBIndex,
+      ...args
+    ) {
+      if (this.objectStore.name === 'lessonCardExposures') exposureCursors++;
+      return openCursor.apply(this, args);
+    });
+    const { result, unmount } = renderHook(() => useRecords(course.id));
+    try {
+      await waitFor(() => expect(result.current?.exposures).toEqual(expected));
+      expect(exposureCursors).toBe(0);
+      await db.lessonCardExposures.update([first.id, card.id], { taughtAt: 200 });
+      await waitFor(() => expect(result.current?.exposures[0].taughtAt).toBe(200));
+      await db.lessonCardExposures.delete([last.id, card.id]);
+      await waitFor(() => expect(result.current?.exposures).toHaveLength(1));
+      expect(result.current?.exposures[0].lessonId).toBe(first.id);
+    } finally {
+      unmount();
+    }
+  },
+);
 
 it('reads timestamps for a populated Path without loading any full review histories', async () => {
   const course = await createCourse('Mature course');
