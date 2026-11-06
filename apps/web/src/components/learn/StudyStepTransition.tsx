@@ -110,14 +110,20 @@ export function StudyStepTransition({
       <main className="study-transition-main" aria-label="Study progress">
         <div className="min-w-0">
           <p className="study-transition-done">
-            <span role="img" aria-label={incomplete ? 'Paused' : 'Completed'}>
+            <span
+              role="img"
+              aria-label={incomplete ? 'Paused' : 'Completed'}
+              className="grid h-6 shrink-0 place-items-center"
+            >
               {incomplete ? (
                 <ClockIcon width={18} height={18} />
               ) : (
                 <CheckIcon width={18} height={18} />
               )}
             </span>
-            <span className="truncate">{incomplete ? 'Step paused' : completedLabel}</span>
+            <span className="min-w-0 [overflow-wrap:anywhere]">
+              {incomplete ? 'Step paused' : completedLabel}
+            </span>
           </p>
           <ResultStrip results={results} label={resultLabel} />
 

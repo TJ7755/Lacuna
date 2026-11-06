@@ -25,8 +25,9 @@
 }
 .study-transition-done {
   display: flex;
-  height: 24px;
-  align-items: center;
+  min-height: 24px;
+  align-items: flex-start;
+  line-height: 24px;
   gap: 10px;
   color: hsl(var(--ink-soft));
   animation: study-fade calc(360ms * var(--step-motion)) ease-out both;
@@ -148,11 +149,6 @@
   animation: study-rise calc(600ms * var(--step-motion))
     calc((720ms + var(--topic-index) * 70ms) * var(--step-motion)) var(--ease-arrive) both;
 }
-.study-progress-bar {
-  transform-origin: left;
-  animation: study-grow calc(700ms * var(--step-motion))
-    calc((820ms + var(--topic-index) * 70ms) * var(--step-motion)) var(--ease-arrive) both;
-}
 @media (max-width: 1023px) {
   .study-progress-panel {
     animation-name: study-rise;
@@ -197,11 +193,6 @@
   }
   to {
     stroke-dashoffset: var(--ring-filled);
-  }
-}
-@keyframes study-grow {
-  from {
-    transform: scaleX(0);
   }
 }
 .study-transition[data-motion='off'] * {

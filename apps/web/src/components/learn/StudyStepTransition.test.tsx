@@ -92,6 +92,35 @@ const progress: StudyProgress = {
 };
 
 describe('StudyStepTransition', () => {
+  it('reports exact due counts, including zero, in the precomputed topic priority order', () => {
+    const names = [
+      'Cell membranes and transport across concentration gradients',
+      'Photosynthesis and the movement of energy through ecosystems',
+    ];
+    renderTransition({
+      completedLabel:
+        'The transport of substances through the circulatory system and across cell membranes',
+      progress: {
+        ...progress,
+        priorities: names.map((name, index) => ({
+          ...progress.priorities[0],
+          conceptId: String(index),
+          name,
+          dueCards: index === 0 ? 3 : 0,
+        })),
+      },
+    });
+    const topics = within(screen.getByRole('list', { name: 'Priority topics' })).getAllByRole(
+      'listitem',
+    );
+    expect(topics).toHaveLength(2);
+    expect(topics[0]).toHaveTextContent(names[0]);
+    expect(within(topics[0]).getByText('3 due')).toBeVisible();
+    expect(topics[1]).toHaveTextContent(names[1]);
+    expect(within(topics[1]).getByText('0 due')).toBeVisible();
+    expect(screen.getByRole('button', { name: /^Continue/ })).toHaveFocus();
+  });
+
   it('shows the named exam countdown and forecast beside the ranked topics', () => {
     renderTransition({
       nextConceptId: 'cells',
