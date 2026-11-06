@@ -9,12 +9,21 @@ import { AnimatedDisclosure } from '../../components/ui/AnimatedDisclosure';
 import { Button } from '../../components/ui/Button';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import { useAdvancedDetails } from '../../state/advancedDetails';
-import { PillSwitch, SettingsCard } from '../settings/SettingsUi';
 import { useAnswerStrictness } from '../../state/answerStrictness';
 import { useIsTouchMode } from '../../state/inputMode';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
-import { chooseStudyTarget, finishOnboarding } from '../../onboarding/onboardingState';
+import {
+  chooseStudyTarget,
+  chosenStudyTarget,
+  finishOnboarding,
+} from '../../onboarding/onboardingState';
+import {
+  ArrowRightIcon,
+  ChevronLeftIcon,
+  PlusIcon,
+  SettingsIcon,
+  UploadIcon,
+} from '../../components/ui/icons';
 import { AppearanceSection } from '../settings/AppearanceSection';
 import { FlipCard } from '../learn/FlipCard';
 import { LearnHeader } from '../learn/LearnHeader';
@@ -48,9 +57,10 @@ const FIRST_CARD: Card = {
   updatedAt: 0,
 };
 
-// The four steps from #816, shown as the session bar's segments.
-const STEPS = ['card', 'exam', 'content', 'features'] as const;
+// Appearance stays optional; the required steps lead straight into the chosen material.
+const STEPS = ['card', 'exam', 'content'] as const;
 type Step = (typeof STEPS)[number];
+type ContentIntent = 'create' | 'import' | null;
 
 const EXAM_WORDING: Record<CourseSchedulingMode, { label: string; detail: string }> = {
   exam: { label: 'Yes', detail: 'Reviews build up to the day' },
@@ -66,17 +76,22 @@ export function Onboarding() {
   const m = speedMultiplier(motionSpeed);
   const isTouchMode = useIsTouchMode();
   const [params] = useSearchParams();
-  // Set once the learner has a course: every flow that makes one returns here for the last step.
+  // Existing creation and import flows return here only to finish their handover.
   const then = params.get('then');
-  const [step, setStep] = useState<Step>(then ? 'features' : 'card');
+  const [step, setStep] = useState<Step>('card');
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [contentIntent, setContentIntent] = useState<ContentIntent>(null);
+  const [initialTarget] = useState(chosenStudyTarget);
+  const [target, setTarget] = useState<CourseSchedulingMode | null>(initialTarget?.mode ?? null);
+  const [examDate, setExamDate] = useState(() => initialTarget?.examDate ?? defaultExamDate());
+  const [examDateValid, setExamDateValid] = useState(true);
   // Only a course the learner has just made or imported; anything else goes to Today.
   const destination = then && /^\/course\/[^/?#]+(?:\/lesson\/[^/?#]+)?$/.test(then) ? then : '/';
-  // Step 3 hands over by navigating here again, which keeps this page mounted. Going back from
-  // the last step loses the course, so it returns to step 3.
-  useEffect(() => {
-    if (then) setStep('features');
-    else setStep((current) => (current === 'features' ? 'content' : current));
-  }, [then]);
+  useLayoutEffect(() => {
+    if (!then) return;
+    finishOnboarding();
+    void navigate(destination, { replace: true });
+  }, [then, destination, navigate]);
   const stepIndex = STEPS.indexOf(step);
   const outcomes = new Map<string, SessionCardOutcome>(
     STEPS.slice(0, stepIndex).map((done) => [done, 'correct']),
@@ -90,6 +105,12 @@ export function Onboarding() {
     void navigate(destination, { replace: true });
   };
   const advance = () => setStep(STEPS[stepIndex + 1]);
+  const back = () => {
+    if (importing) return;
+    if (appearanceOpen) setAppearanceOpen(false);
+    else if (step === 'content' && contentIntent) setContentIntent(null);
+    else if (stepIndex > 0) setStep(STEPS[stepIndex - 1]);
+  };
 
   return (
     <div className="study-session flex h-dvh flex-col overflow-hidden">
@@ -136,38 +157,82 @@ export function Onboarding() {
             : 'pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-6')
         }
       >
+        <div className="mb-3 flex shrink-0 items-center justify-between">
+          {stepIndex > 0 || appearanceOpen ? (
+            <Button
+              variant="secondary"
+              aria-label={appearanceOpen ? 'Back to setup' : 'Back'}
+              title="Back"
+              disabled={importing}
+              onClick={back}
+              className="h-11 w-11 shrink-0"
+              style={{ paddingInline: 0 }}
+            >
+              <ChevronLeftIcon width={22} height={22} />
+            </Button>
+          ) : (
+            <span />
+          )}
+          <Button
+            variant={appearanceOpen ? 'inverse' : 'secondary'}
+            aria-label="Appearance"
+            title="Appearance"
+            aria-pressed={appearanceOpen}
+            disabled={importing}
+            onClick={() => setAppearanceOpen((open) => !open)}
+            className="h-11 w-11 shrink-0"
+            style={{ paddingInline: 0 }}
+          >
+            <SettingsIcon width={22} height={22} />
+          </Button>
+        </div>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={step}
-            className="flex min-h-0 flex-1 flex-col"
+            className={(appearanceOpen ? 'hidden' : 'flex') + ' min-h-0 flex-1 flex-col'}
+            inert={appearanceOpen}
+            aria-hidden={appearanceOpen || undefined}
             initial={m > 0 ? { opacity: 0, x: 32 } : false}
             animate={{ opacity: 1, x: 0 }}
             exit={m > 0 ? { opacity: 0, x: -32 } : undefined}
             transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
           >
             {step === 'card' ? (
-              <CardStep m={m} isTouchMode={isTouchMode} onDone={advance} />
+              <CardStep m={m} active={!appearanceOpen} isTouchMode={isTouchMode} onDone={advance} />
             ) : step === 'exam' ? (
-              <ExamStep onDone={advance} />
-            ) : step === 'content' ? (
-              <ContentStep onBusyChange={setImporting} />
+              <ExamStep
+                target={target}
+                setTarget={setTarget}
+                examDate={examDate}
+                setExamDate={setExamDate}
+                examDateValid={examDateValid}
+                setExamDateValid={setExamDateValid}
+                onDone={advance}
+              />
             ) : (
-              <FeaturesStep onDone={leave} />
+              <ContentStep
+                intent={contentIntent}
+                onIntent={setContentIntent}
+                onBusyChange={setImporting}
+              />
             )}
           </motion.div>
         </AnimatePresence>
+        {appearanceOpen && <AppearanceOptions />}
       </main>
     </div>
   );
 }
 
-/** Step 1: one card in the real study frame. A missed card comes back until it is known. */
+/** Step 1 teaches an honest self-judgement without making recall a condition of setup. */
 function CardStep({
   m,
+  active,
   isTouchMode,
   onDone,
 }: {
   m: number;
+  active: boolean;
   isTouchMode: boolean;
   onDone: () => void;
 }) {
@@ -190,7 +255,7 @@ function CardStep({
 
   // Space shows the answer, as it does in a study session.
   useEffect(() => {
-    if (phase !== 'question') return;
+    if (!active || phase !== 'question') return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== ' ') return;
       if ((event.target as HTMLElement | null)?.closest('button, a, input, textarea')) return;
@@ -199,14 +264,12 @@ function CardStep({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [phase]);
+  }, [active, phase]);
 
   return (
     <>
       <div className="mb-4 shrink-0 text-center">
-        <h2 className="mb-2 font-display text-xl tracking-tight text-ink">
-          Try a practice example
-        </h2>
+        <StepHeading compact>Try a practice example</StepHeading>
         <p className="mx-auto max-w-prose text-sm text-ink-soft">
           See how revision works before choosing your own material. Think of an answer, then select
           Show answer and check whether you knew it.
@@ -231,14 +294,16 @@ function CardStep({
           />
         </StudyCardTransition>
       </div>
-      <div role="status" aria-atomic="true" className="shrink-0">
-        {hasMissed && (
-          <p className="mx-auto mt-4 max-w-prose text-center text-sm text-ink-soft">
-            Missed cards come back for practice. Try recalling the answer, then show it again.
-            Choose Yes if you remembered, or No to practise again. You can Exit at any time.
+      {hasMissed && (
+        <div className="mt-3 shrink-0 text-center">
+          <p role="status" className="text-sm text-ink-soft">
+            Missed cards come back for practice.
           </p>
-        )}
-      </div>
+          <Button variant="ghost" onClick={onDone}>
+            Continue setup <ArrowRightIcon width={18} height={18} />
+          </Button>
+        </div>
+      )}
       <StudyControls
         phase={phase}
         recallPrompt="Did you remember the answer?"
@@ -258,11 +323,24 @@ function CardStep({
 }
 
 /** Step 2: the study target, asked as a plain question. Step 3 applies it to the new course. */
-function ExamStep({ onDone }: { onDone: () => void }) {
-  const [target, setTarget] = useState<CourseSchedulingMode | null>(null);
+function ExamStep({
+  target,
+  setTarget,
+  examDate,
+  setExamDate,
+  examDateValid,
+  setExamDateValid,
+  onDone,
+}: {
+  target: CourseSchedulingMode | null;
+  setTarget: (mode: CourseSchedulingMode) => void;
+  examDate: number;
+  setExamDate: (date: number) => void;
+  examDateValid: boolean;
+  setExamDateValid: (valid: boolean) => void;
+  onDone: () => void;
+}) {
   const [timeZone] = useState(getLocalTimeZone);
-  const [examDate, setExamDate] = useState(defaultExamDate);
-  const [examDateValid, setExamDateValid] = useState(true);
   const ready = target === 'steady' || (target === 'exam' && examDateValid);
 
   return (
@@ -311,7 +389,7 @@ function ExamStep({ onDone }: { onDone: () => void }) {
 }
 
 /** Each step's question, focused on arrival so keyboard and screen-reader users start there. */
-function StepHeading({ children }: { children: string }) {
+function StepHeading({ children, compact = false }: { children: string; compact?: boolean }) {
   const ref = useRef<HTMLHeadingElement>(null);
   useLayoutEffect(() => {
     ref.current?.focus({ preventScroll: true });
@@ -320,7 +398,10 @@ function StepHeading({ children }: { children: string }) {
     <h2
       ref={ref}
       tabIndex={-1}
-      className="mb-6 text-balance font-display text-2xl tracking-tight text-ink outline-none focus-visible:shadow-none md:text-3xl"
+      className={
+        'text-balance font-display tracking-tight text-ink outline-none focus-visible:shadow-none ' +
+        (compact ? 'mb-2 text-xl' : 'mb-6 text-2xl md:text-3xl')
+      }
     >
       {children}
     </h2>
@@ -329,30 +410,57 @@ function StepHeading({ children }: { children: string }) {
 
 /**
  * Step 3: the real import surface, or a new empty course. Each of them finishes by opening
- * its course, which onboardingDestination routes back here for the last step first.
+ * its course through the existing onboarding completion handover.
  */
-function ContentStep({ onBusyChange }: { onBusyChange: (busy: boolean) => void }) {
-  const [fromScratch, setFromScratch] = useState(false);
-
+function ContentStep({
+  intent,
+  onIntent,
+  onBusyChange,
+}: {
+  intent: ContentIntent;
+  onIntent: (intent: ContentIntent) => void;
+  onBusyChange: (busy: boolean) => void;
+}) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       {/* Top-aligned: the panel changes height as sources open and searches narrow. */}
       <div className="mx-auto w-full max-w-md py-2 md:pt-8">
-        <StepHeading>What do you want to learn?</StepHeading>
-        <div className="overflow-hidden rounded-3xl bg-surface-raised card-surface">
-          {fromScratch ? (
-            <NewCourseForm inline library={false} onClose={() => setFromScratch(false)} />
-          ) : (
-            <div className="pt-2">
-              <ImportPanel onBusyChange={onBusyChange} />
-            </div>
-          )}
-        </div>
-        {!fromScratch && (
-          <div className="mt-4 flex justify-center">
-            <Button variant="ghost" onClick={() => setFromScratch(true)}>
-              Start from scratch
+        <StepHeading key={intent ?? 'choices'}>What do you want to learn?</StepHeading>
+        {!intent ? (
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => onIntent('create')}
+              className="min-h-36 flex-col gap-4 px-3"
+              style={{ borderRadius: '1.5rem' }}
+            >
+              <PlusIcon width={32} height={32} />
+              Create my own
             </Button>
+            <Button
+              variant="secondary"
+              onClick={() => onIntent('import')}
+              className="min-h-36 flex-col gap-4 px-3"
+              style={{ borderRadius: '1.5rem' }}
+            >
+              <UploadIcon width={32} height={32} />
+              Import
+            </Button>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-3xl bg-surface-raised card-surface">
+            {intent === 'create' ? (
+              <NewCourseForm
+                inline
+                library={false}
+                onClose={() => onIntent(null)}
+                onBusyChange={onBusyChange}
+              />
+            ) : (
+              <div className="pt-2">
+                <ImportPanel onClose={() => onIntent(null)} onBusyChange={onBusyChange} />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -360,42 +468,24 @@ function ContentStep({ onBusyChange }: { onBusyChange: (busy: boolean) => void }
   );
 }
 
-/** Step 4: the real Appearance settings, so Lacuna looks right before the first session. */
-function FeaturesStep({ onDone }: { onDone: () => void }) {
-  const [showAdvancedDetails, setShowAdvancedDetails] = useAdvancedDetails();
+/** Optional settings reuse the real controls without interrupting first-course creation. */
+function AppearanceOptions() {
+  const ref = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    ref.current?.focus({ preventScroll: true });
+  }, []);
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <section
+      ref={ref}
+      tabIndex={-1}
+      aria-label="Appearance"
+      className="flex min-h-0 flex-1 flex-col outline-none focus-visible:shadow-none"
+    >
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="mx-auto my-auto w-full max-w-xl py-2">
-          <StepHeading>How should Lacuna look?</StepHeading>
           <AppearanceSection />
-          <SettingsCard>
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <label htmlFor="onboarding-advanced-details" className="font-semibold text-ink">
-                  Show advanced details
-                </label>
-                <p className="mt-1 text-sm text-ink-soft">
-                  Show scheduler settings and technical statistics. You can change this in Settings.
-                </p>
-              </div>
-              <PillSwitch
-                id="onboarding-advanced-details"
-                checked={showAdvancedDetails}
-                onChange={setShowAdvancedDetails}
-                ariaLabel="Show advanced details"
-              />
-            </div>
-          </SettingsCard>
         </div>
       </div>
-      <div className="study-controls mt-6 w-full shrink-0">
-        <div className="mx-auto w-full max-w-md">
-          <Button variant="primary" size="lg" className="w-full" onClick={onDone}>
-            Open course
-          </Button>
-        </div>
-      </div>
-    </div>
+    </section>
   );
 }

@@ -28,12 +28,10 @@ for (const viewport of [
     await page.screenshot({ path: testInfo.outputPath('after-no.png'), animations: 'disabled' });
 
     await expect(feedback).toBeVisible();
-    await expect(feedback).toContainText('Try recalling the answer, then show it again.');
-    await expect(feedback).toContainText('Choose Yes if you remembered, or No to practise again.');
-    await expect(feedback).toContainText('You can Exit at any time.');
+    await expect(page.getByRole('button', { name: 'Continue setup' })).toBeInViewport();
     await expect(feedback).toBeInViewport({ ratio: 1 });
     await expect(reveal).toBeInViewport({ ratio: 1 });
-    await expect(page.getByText('Step 1 of 4', { exact: true })).toBeAttached();
+    await expect(page.getByText('Step 1 of 3', { exact: true })).toBeAttached();
 
     // Another honest No keeps the same practice available, with its explanation.
     await reveal.click();
@@ -47,13 +45,12 @@ for (const viewport of [
     });
 
     if (viewport.width === 1280) {
-      await reveal.click();
-      await page.getByRole('button', { name: 'Yes', exact: true }).click();
+      await page.getByRole('button', { name: 'Continue setup' }).click();
       await expect(
         page.getByRole('heading', { name: 'Do you have an exam coming up?' }),
       ).toBeVisible();
       await expect(feedback).toHaveCount(0);
-      await expect(page.getByText('Step 2 of 4', { exact: true })).toBeAttached();
+      await expect(page.getByText('Step 2 of 3', { exact: true })).toBeAttached();
     } else {
       // Leaving never requires falsely claiming recall.
       await page.getByRole('button', { name: 'Exit', exact: true }).click();
