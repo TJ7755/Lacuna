@@ -2,7 +2,7 @@
 // automatically when the underlying IndexedDB records change.
 
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import type { ForecastHistories, ForecastHistoryInput } from './forecastHistoryData';
 import { calculateForecastHistoriesOffThread } from './forecastHistoryWorker';
 import { db } from '../db/schema';
@@ -10,6 +10,9 @@ import { hydrateCardsWithHistory, listAllReviewHistory } from '../db/reviewHisto
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import type { BackupSnapshot, Card, SessionHistoryEntry } from '@lacuna/core/db/types';
 import { listGlobalDailySessionHistory } from '../db/sessionHistoryRead';
+
+/** The shell pauses optional calculations whilst foreground Quick search owns input. */
+export const BackgroundCalculationsEnabled = createContext(true);
 
 export function useCard(cardId: string | undefined): Card | null | undefined {
   return useLiveQuery<Card | null>(
@@ -39,16 +42,18 @@ export function useDashboardForecastHistories(
     | undefined,
   past: number,
 ): ForecastHistories | undefined {
+  const enabled = useContext(BackgroundCalculationsEnabled);
   const revision = useLiveQuery(async () => {
+    if (!enabled) return undefined;
     // A full primary-key range observes edits as well as inserts/deletes. Return
     // a new token even when count is unchanged (e.g. corrected historical evidence).
     await db.reviewHistory.count();
     return {};
-  }, []);
+  }, [enabled]);
   const [histories, setHistories] = useState<ForecastHistories>();
   const [error, setError] = useState<unknown>();
   useEffect(() => {
-    if (!data || !revision) return;
+    if (!enabled || !data || !revision) return;
     const controller = new AbortController();
     const { signal } = controller;
     const now = Date.now();
@@ -77,7 +82,7 @@ export function useDashboardForecastHistories(
         },
       );
     return () => controller.abort();
-  }, [data, past, revision]);
+  }, [data, past, revision, enabled]);
   if (error) throw error;
   // Keep the last complete trace visible while a changed snapshot is calculated.
   return data ? histories : undefined;

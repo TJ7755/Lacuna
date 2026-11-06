@@ -47,7 +47,8 @@ vi.mock('react-router-dom', () => ({
   ),
 }));
 
-vi.mock('../state/useData', () => ({
+vi.mock('../state/useData', async () => ({
+  BackgroundCalculationsEnabled: (await import('react')).createContext(true),
   useDashboardForecastHistories: (
     data: { forecasts: Record<string, { ifStopped: number }> } | undefined,
   ) =>

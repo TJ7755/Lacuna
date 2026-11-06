@@ -55,49 +55,66 @@ for (const failWorker of [false, true]) {
   });
 }
 
-test('leaving Today cancels a held forecast worker while Study stays usable', async ({ page }) => {
-  await enterWithWelcomeCourse(page);
-  await observeForecastWork(page);
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
+for (const destination of ['course', 'search'] as const) {
+  test(`opening ${destination} cancels a held forecast worker while Study stays usable`, async ({
+    page,
+  }) => {
+    await enterWithWelcomeCourse(page);
+    await observeForecastWork(page);
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let requested = false;
+    await page.route('**/assets/remainingWork.worker-*.js', async (route) => {
+      requested = true;
+      await held;
+      await route.abort();
+    });
+    try {
+      await page.reload();
+      await expect.poll(() => requested).toBe(true);
+      await expect(page.getByRole('button', { name: 'Study Welcome to Lacuna' })).toBeEnabled();
+      if (destination === 'search') {
+        await page.keyboard.press('ControlOrMeta+k');
+        await expect(page.getByRole('combobox')).toBeVisible();
+      } else {
+        await page
+          .getByRole('region', { name: 'Today, most urgent first' })
+          .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
+          .click();
+        await expect(page).toHaveURL(/#\/course\/[^/]+$/);
+      }
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const work = Reflect.get(window, 'forecastWork') as {
+              workers: number;
+              terminated: number;
+            };
+            return work.workers > 0 && work.workers === work.terminated;
+          }),
+        )
+        .toBe(true);
+      release();
+      expect(await page.evaluate(() => Reflect.get(window, 'forecastWork').historyReads)).toBe(0);
+      if (destination === 'search') {
+        await page.keyboard.press('Escape');
+        await expect(
+          page.getByRole('img', { name: 'Exam-day forecast', exact: true }),
+        ).toBeVisible();
+      }
+    } finally {
+      release();
+    }
   });
-  let requested = false;
-  await page.route('**/assets/remainingWork.worker-*.js', async (route) => {
-    requested = true;
-    await held;
-    await route.abort();
-  });
-  try {
-    await page.reload();
-    await expect.poll(() => requested).toBe(true);
-    await expect(page.getByRole('button', { name: 'Study Welcome to Lacuna' })).toBeEnabled();
-    await page
-      .getByRole('region', { name: 'Today, most urgent first' })
-      .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
-      .click();
-    await expect(page).toHaveURL(/#\/course\/[^/]+$/);
-    await expect
-      .poll(() =>
-        page.evaluate(() => {
-          const work = Reflect.get(window, 'forecastWork') as {
-            workers: number;
-            terminated: number;
-          };
-          return work.workers > 0 && work.workers === work.terminated;
-        }),
-      )
-      .toBe(true);
-    release();
-    expect(await page.evaluate(() => Reflect.get(window, 'forecastWork').historyReads)).toBe(0);
-  } finally {
-    release();
-  }
-});
+}
 
 test('cached Today keeps its forecast when first opening the optional calculation offline', async ({
   playwright,
 }, testInfo) => {
+  // This case also starts and closes a dedicated browser; interaction budgets are separate.
+  test.setTimeout(60_000);
   // HTTP cache clearing is browser-global; isolate this offline proof from other specs.
   const browser = await playwright.chromium.launch();
   const context = await browser.newContext({
@@ -137,7 +154,6 @@ test('cached Today keeps its forecast when first opening the optional calculatio
     await expect(page.getByRole('img', { name: 'Exam-day forecast', exact: true })).toBeVisible();
     expect(await page.evaluate(() => Reflect.get(window, 'forecastWork').historyReads)).toBe(1);
   } finally {
-    await context.close();
     await browser.close();
   }
 });

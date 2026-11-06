@@ -9,6 +9,7 @@ import { reviewHistoryEntryForCard } from '@lacuna/core/db/reviewHistory';
 import { calculateRemainingWork, type RemainingWorkRecords } from '../../course/remainingWorkData';
 import { calculateRemainingWorkOffThread } from '../../course/remainingWorkWorker';
 import { RemainingWork } from './RemainingWork';
+import { BackgroundCalculationsEnabled } from '../../state/useData';
 
 vi.mock('../../course/remainingWorkWorker', () => ({
   calculateRemainingWorkOffThread: vi.fn(async () => []),
@@ -55,6 +56,26 @@ it('runs supplied Path records through the background estimator', async () => {
       expect.any(AbortSignal),
     ),
   );
+});
+
+it('pauses its owned request for Quick search and resumes afterwards', async () => {
+  const { records } = await fixture();
+  const renderEstimate = (enabled: boolean) => (
+    <BackgroundCalculationsEnabled.Provider value={enabled}>
+      <RemainingWork courseId={records.course!.id} records={records} />
+    </BackgroundCalculationsEnabled.Provider>
+  );
+  const { rerender, unmount } = render(renderEstimate(true));
+  try {
+    await waitFor(() => expect(calculateRemainingWorkOffThread).toHaveBeenCalledTimes(1));
+    const signal = vi.mocked(calculateRemainingWorkOffThread).mock.calls[0][2];
+    rerender(renderEstimate(false));
+    await waitFor(() => expect(signal?.aborted).toBe(true));
+    rerender(renderEstimate(true));
+    await waitFor(() => expect(calculateRemainingWorkOffThread).toHaveBeenCalledTimes(2));
+  } finally {
+    unmount();
+  }
 });
 
 it('aborts its pending estimator when the course unmounts', async () => {

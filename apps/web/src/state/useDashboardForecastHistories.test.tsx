@@ -6,7 +6,7 @@ import { createCourse, createCourseCard } from '../db/repository';
 import { reviewHistoryEntryForCard } from '@lacuna/core/db/reviewHistory';
 import type { ReviewLog } from '@lacuna/core/db/types';
 import { dashboardForecasts } from './dashboardForecasts';
-import { useDashboardForecastHistories } from './useData';
+import { BackgroundCalculationsEnabled, useDashboardForecastHistories } from './useData';
 import { calculateForecastHistoriesOffThread } from './forecastHistoryWorker';
 import type { ForecastHistories } from './forecastHistoryData';
 
@@ -40,6 +40,30 @@ beforeEach(async () => {
   calculate.mockReset().mockImplementation(() => new Promise((resolve) => replies.push(resolve)));
 });
 afterEach(() => vi.restoreAllMocks());
+
+it('cancels whilst Quick search is foreground and resumes with fresh evidence', async () => {
+  let enabled = true;
+  const { rerender, unmount } = renderHook(() => useDashboardForecastHistories(source, 18), {
+    wrapper: ({ children }) => (
+      <BackgroundCalculationsEnabled.Provider value={enabled}>
+        {children}
+      </BackgroundCalculationsEnabled.Provider>
+    ),
+  });
+  try {
+    await waitFor(() => expect(calculate).toHaveBeenCalledTimes(1));
+    enabled = false;
+    rerender();
+    await waitFor(() => expect(calculate.mock.calls[0][1].aborted).toBe(true));
+    await db.reviewHistory.add(reviewHistoryEntryForCard(source.allCards[0], review));
+    expect(calculate).toHaveBeenCalledTimes(1);
+    enabled = true;
+    rerender();
+    await waitFor(() => expect(calculate).toHaveBeenCalledTimes(2));
+  } finally {
+    unmount();
+  }
+});
 
 it('refreshes after same-count historical edits, insertion, undo and reset without reading rows', async () => {
   const entry = reviewHistoryEntryForCard(source.allCards[0], review);
