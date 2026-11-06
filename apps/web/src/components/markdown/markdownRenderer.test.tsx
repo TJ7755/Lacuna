@@ -1,17 +1,17 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
+import type * as MarkdownModule from 'react-markdown';
 import { answerMathPlugin } from './optionalMarkdown';
 import { EMBED_REHYPE_PLUGINS, REHYPE_PLUGINS, REMARK_PLUGINS } from './markdownPipeline';
 import { renderMarkdownToHtml } from './markdownRenderer';
 
 const parser = vi.hoisted(() => ({ render: vi.fn() }));
 vi.mock('react-markdown', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-markdown')>();
+  const actual = await importOriginal<typeof MarkdownModule>();
   parser.render.mockImplementation(actual.default);
   return { ...actual, default: parser.render };
 });
-const { default: FullMarkdown } =
-  await vi.importActual<typeof import('react-markdown')>('react-markdown');
+const { default: FullMarkdown } = await vi.importActual<typeof MarkdownModule>('react-markdown');
 
 const plainSources = [
   'Label 1 of 4 — Cell diagram 0',
