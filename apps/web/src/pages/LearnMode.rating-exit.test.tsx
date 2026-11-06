@@ -13,6 +13,8 @@ import { loadSimpleSession } from './learn/simpleSessionPersistence';
 import * as completion from './learn/sessionCompletionPersistence';
 import type { SessionSummary } from '../components/learn/types';
 
+vi.mock('motion/mini', () => ({ animate: vi.fn(() => ({ stop: vi.fn() })) }));
+
 beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
   localStorage.clear();

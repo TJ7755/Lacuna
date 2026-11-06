@@ -1,12 +1,14 @@
 import 'fake-indexeddb/auto';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { createCard, createCourse } from '../db/repository';
 import { db } from '../db/schema';
 import { ThemeProvider } from '../state/ThemeContext';
 import { ToastProvider } from '../components/ui/Toast';
 import { LearnMode } from './LearnMode';
+
+vi.mock('motion/mini', () => ({ animate: vi.fn(() => ({ stop: vi.fn() })) }));
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
