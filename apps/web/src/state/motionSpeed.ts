@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react';
 import { createLocalSetting } from './localSetting';
 
-export type MotionSpeed = 'slow' | 'normal' | 'fast';
+export type MotionSpeed = 'off' | 'slow' | 'normal' | 'fast';
 
 const MULTIPLIERS: Record<MotionSpeed, number> = {
+  off: 0,
   slow: 1.4,
   normal: 1.0,
   fast: 0.6,
@@ -17,7 +18,7 @@ function prefersReducedMotion(): boolean {
 const setting = createLocalSetting<MotionSpeed>({
   key: 'lacuna.motionSpeed',
   event: 'lacuna:motion-speed',
-  parse: (raw) => (raw === 'slow' || raw === 'fast' ? raw : 'normal'),
+  parse: (raw) => (raw === 'off' || raw === 'slow' || raw === 'fast' ? raw : 'normal'),
 });
 
 export const readMotionSpeed = setting.read;

@@ -13,6 +13,24 @@ describe('HelpPage', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('announces search matches and lets a matching topic collapse and reopen', () => {
+    render(
+      <MemoryRouter>
+        <HelpPage />
+      </MemoryRouter>,
+    );
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search help' }), {
+      target: { value: 'PICTURE sharing' },
+    });
+    expect(screen.getByRole('status')).toHaveTextContent(/\d+ matching topics?/);
+    const topic = screen.getByRole('button', { name: 'How do I share a diagram with its image?' });
+    expect(topic).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(topic);
+    expect(topic).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(topic);
+    expect(topic).toHaveAttribute('aria-expanded', 'true');
+  });
+
   it('opens a recognised topic from the final HashRouter fragment and follows changes', () => {
     const scroll = vi.fn();
     HTMLElement.prototype.scrollIntoView = scroll;

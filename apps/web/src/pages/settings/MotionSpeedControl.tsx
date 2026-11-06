@@ -2,6 +2,7 @@ import type { MotionSpeed } from '../../state/motionSpeed';
 import { SegmentedPills } from './SettingsUi';
 
 const OPTIONS: { value: MotionSpeed; label: string }[] = [
+  { value: 'off', label: 'Off' },
   { value: 'slow', label: 'Slow' },
   { value: 'normal', label: 'Normal' },
   { value: 'fast', label: 'Fast' },
@@ -12,7 +13,7 @@ interface MotionSpeedControlProps {
   onChange: (value: MotionSpeed) => void;
 }
 
-/** Animation speed as a three-way pill: slow, normal or fast. */
+/** Animation speed, including a local off choice that preserves the OS reduction floor. */
 export function MotionSpeedControl({ value, onChange }: MotionSpeedControlProps) {
   return (
     <SegmentedPills label="Animation speed" value={value} options={OPTIONS} onChange={onChange} />

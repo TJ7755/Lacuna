@@ -54,7 +54,7 @@ export const fieldHintClassName = 'mt-1 block text-xs font-normal text-ink-faint
 
 /** A text control's frame alone, for controls laid out in a row (`cn` does not merge classes). */
 export const inputFrameClassName =
-  'rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 font-normal text-ink outline-none focus:border-accent';
+  'rounded-xl border-[1.5px] border-ink-faint bg-surface px-3.5 py-2.5 font-normal text-ink outline-none focus:border-accent';
 
 export const inputClassName = `mt-2 w-full ${inputFrameClassName}`;
 

@@ -1,4 +1,3 @@
-import { storedString } from '../../state/localSetting';
 import { searchHelp } from '../../pages/help/searchHelp';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import {
@@ -37,7 +36,6 @@ function PaletteResults(props: HTMLMotionProps<'ul'>) {
 }
 
 const MAX_RESULTS = 40;
-const HINTS_SEEN_KEY = 'lacuna.quickSearchHintsSeen';
 
 /** Quick search: a keyboard-summoned overlay for jumping straight to content. */
 export function CommandPalette({
@@ -180,21 +178,6 @@ function CommandPaletteDialog({
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
   const [active, setActive] = useState(0);
-  const [showHints] = useState(() => {
-    try {
-      return storedString(HINTS_SEEN_KEY).read() !== 'true';
-    } catch {
-      return true;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      storedString(HINTS_SEEN_KEY).write('true');
-    } catch {
-      // Storage restrictions must not prevent search from opening.
-    }
-  }, []);
 
   // Deferring the search keeps input updates urgent without imposing a fixed delay.
   const allResults = useMemo(() => search(deferredQuery), [search, deferredQuery]);
@@ -319,11 +302,9 @@ function CommandPaletteDialog({
                 placeholder={placeholder}
                 className="flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
               />
-              {showHints && (
-                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
-                  Esc
-                </kbd>
-              )}
+              <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
+                Esc
+              </kbd>
             </div>
             <div aria-live="polite" aria-atomic="true" className="sr-only">
               {query.trim() === ''
@@ -407,19 +388,17 @@ function CommandPaletteDialog({
             )}
 
             {/* Footer shortcuts */}
-            {showHints && (
-              <div className="flex items-center gap-3 border-t border-line bg-surface-raised/30 px-4 py-2 text-[10px] text-ink-faint">
-                <span className="flex items-center gap-1">
-                  <kbd className="rounded border border-line px-1 py-0.5">↑</kbd>
-                  <kbd className="rounded border border-line px-1 py-0.5">↓</kbd>
-                  Navigate
-                </span>
-                <span className="flex items-center gap-1">
-                  <kbd className="rounded border border-line px-1 py-0.5">↵</kbd>
-                  Open
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-3 border-t border-line bg-surface-raised/30 px-4 py-2 text-[10px] text-ink-faint">
+              <span className="flex items-center gap-1">
+                <kbd className="rounded border border-line px-1 py-0.5">↑</kbd>
+                <kbd className="rounded border border-line px-1 py-0.5">↓</kbd>
+                Navigate
+              </span>
+              <span className="flex items-center gap-1">
+                <kbd className="rounded border border-line px-1 py-0.5">↵</kbd>
+                Open
+              </span>
+            </div>
           </motion.div>
         </motion.div>
       }

@@ -13,6 +13,12 @@ beforeEach(() => {
 });
 
 describe('readMotionSpeed', () => {
+  it('retains a local motion Off choice with a zero multiplier', () => {
+    writeMotionSpeed('off');
+    expect(readMotionSpeed()).toBe('off');
+    expect(speedMultiplier()).toBe(0);
+  });
+
   it('returns normal when nothing is stored', () => {
     expect(readMotionSpeed()).toBe('normal');
   });

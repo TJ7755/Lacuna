@@ -259,7 +259,7 @@ describe('CommandPalette', () => {
     localStorage.clear();
   });
 
-  it('shows shortcut hints for the first opening only, including after remounting', () => {
+  it('retains shortcut hints across openings and remounts', () => {
     const renderPalette = (open: boolean) => (
       <StrictMode>
         <CommandPalette open={open} onClose={vi.fn()} />
@@ -278,12 +278,13 @@ describe('CommandPalette', () => {
 
     first.rerender(renderPalette(false));
     first.rerender(renderPalette(true));
-    expect(screen.queryByText('Navigate')).not.toBeInTheDocument();
-    expect(screen.queryByText('Esc')).not.toBeInTheDocument();
+    expect(screen.getByText('Navigate')).toBeInTheDocument();
+    expect(screen.getByText('Esc')).toBeInTheDocument();
     first.unmount();
 
     render(renderPalette(true), { wrapper: MemoryRouter });
-    expect(screen.queryByText('Navigate')).not.toBeInTheDocument();
+    expect(screen.getByText('Navigate')).toBeInTheDocument();
+    expect(screen.getByText('Esc')).toBeInTheDocument();
   });
 
   it('restores focus to the Quick search trigger after Escape closes the palette', async () => {
