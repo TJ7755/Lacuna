@@ -1,4 +1,14 @@
-import { HelpIcon, FileTextIcon, FolderIcon, GridIcon, FlagIcon, TagIcon } from '../ui/icons';
+import {
+  HelpIcon,
+  FileTextIcon,
+  FolderIcon,
+  GridIcon,
+  FlagIcon,
+  TagIcon,
+  ImageIcon,
+  PlayIcon,
+} from '../ui/icons';
+import { isAudioCardFront } from '../../media/audio';
 import { GeneratedCardBadge } from '../cards/GeneratedCardBadge';
 import { memo } from 'react';
 import { HighlightedText, hasTextMatch, matchPreview, type SearchHit } from './searchPresentation';
@@ -29,6 +39,32 @@ export const SearchResultContent = memo(function SearchResultContent({
             <HighlightedText text={hit.topic.question} query={query} />
           </span>
           <span className="text-xs text-ink-faint">Help · {hit.topic.group}</span>
+        </span>
+      </>
+    );
+  }
+  if (hit.kind === 'question-set') {
+    return (
+      <>
+        <span
+          className="grid h-7 w-7 flex-none place-items-center rounded-lg bg-accent-soft text-accent-ink"
+          title="Question set"
+        >
+          <FileTextIcon width={14} height={14} />
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className={titleClass}>
+            <HighlightedText
+              text={matchPreview(hit.questionSet.title, query, max) || 'Untitled set'}
+              query={query}
+            />
+          </span>
+          <span className="truncate text-xs text-ink-faint">{hit.course.name} · Question set</span>
+          {hit.excerpt !== hit.questionSet.title && hasTextMatch(hit.excerpt, query) && (
+            <span className={secondaryClass}>
+              <HighlightedText text={matchPreview(hit.excerpt, query, max)} query={query} />
+            </span>
+          )}
         </span>
       </>
     );
@@ -90,8 +126,20 @@ export const SearchResultContent = memo(function SearchResultContent({
       ? question.explanation
       : question!.generatorKey;
   const tags = card?.tags ?? question?.tags ?? [];
+  const audio = !!card && isAudioCardFront(card.front);
+  const image = !!card && !audio && /!\[([^\]]*)\]\([^)]+\)/.exec(card.front);
+  const mediaTitle = audio ? 'Audio clip' : image ? image[1].trim() || 'Image' : '';
+  const MediaIcon = audio ? PlayIcon : ImageIcon;
   return (
     <>
+      {(audio || image) && (
+        <span
+          className="grid h-7 w-7 flex-none place-items-center rounded-lg bg-accent-soft text-accent-ink"
+          title={audio ? 'Audio clip' : 'Image'}
+        >
+          <MediaIcon width={14} height={14} />
+        </span>
+      )}
       {compact && question && (
         <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-accent-soft text-accent-ink">
           <FileTextIcon width={14} height={14} />
@@ -100,7 +148,7 @@ export const SearchResultContent = memo(function SearchResultContent({
       <span className="flex min-w-0 flex-col gap-0.5">
         <span className={titleClass}>
           <HighlightedText
-            text={matchPreview(title, query, max) || '(empty front)'}
+            text={matchPreview(title, query, max) || mediaTitle || '(empty front)'}
             query={query}
           />
         </span>
