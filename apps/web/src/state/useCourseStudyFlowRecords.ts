@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
+import { useExamClock } from './useExamClock';
 import { db } from '../db/schema';
 import type { Concept } from '@lacuna/core/questions/types';
 import { dailyReviewCounts, hydrateCardsWithHistory } from '../db/reviewHistoryRead';
@@ -54,6 +55,7 @@ export function useCourseStudyFlowRecords(
   enabled = true,
   sittingStartedAt?: number,
 ) {
+  const clock = useExamClock([]);
   const cache = useMemo(
     () => ({
       courseId,
@@ -75,7 +77,7 @@ export function useCourseStudyFlowRecords(
     };
     if (version === cache.version) cache.value = value;
     return value;
-  }, [cache, refreshKey, live, sittingStartedAt]);
+  }, [cache, refreshKey, live, sittingStartedAt, clock]);
   return result?.courseId === courseId ? result?.records : undefined;
 }
 

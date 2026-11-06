@@ -118,26 +118,26 @@ describe('studyPool', () => {
     expect(pool).not.toContain('new2');
   });
 
-  it('does not count cards first reviewed more than 24 hours ago', () => {
-    const twoDaysAgo = NOW - 2 * MS_PER_DAY;
+  it('does not count cards first reviewed yesterday evening', () => {
+    const yesterdayEvening = new Date(2026, 5, 3, 20).getTime();
     const cards = [
       makeCard({
         id: 'old',
         state: 2,
         createdAt: 1,
         lastReviewed: NOW,
-        history: [review(twoDaysAgo)],
+        history: [review(yesterdayEvening)],
       }),
       makeCard({ id: 'new1', createdAt: 2 }),
       makeCard({ id: 'new2', createdAt: 3 }),
     ];
     const pool = studyPool(cards, deck(2), NOW).map((c) => c.id);
-    // Nothing introduced in the last 24 hours, so the full budget of 2 new cards is available.
+    // Yesterday's introductions leave today's full budget available.
     expect(pool).toContain('new1');
     expect(pool).toContain('new2');
   });
 
-  it('uses canonical activity for the rolling 24-hour new-card budget', () => {
+  it('uses canonical activity for the daily new-card budget', () => {
     const cards = [
       makeCard({
         id: 'introduced',
