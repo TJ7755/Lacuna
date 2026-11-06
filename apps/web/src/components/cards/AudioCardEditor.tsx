@@ -5,7 +5,7 @@ import { resolveAssetUrl } from '../../db/assetCache';
 import { buildAudioCardFront, parseAudioCardFront } from '../../media/audio';
 import { Button } from '../ui/Button';
 import { useActionFocus } from '../../hooks/useActionFocus';
-import { PauseIcon, UploadIcon } from '../ui/icons';
+import { PauseIcon, RefreshIcon, UploadIcon } from '../ui/icons';
 
 const AUDIO_ACCEPT =
   '.mp3,.m4a,.mp4,.ogg,.wav,.webm,audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/webm';
@@ -25,6 +25,7 @@ export function AudioCardEditor({
   onFrontChange,
   onBackChange,
   onError,
+  onBusyChange,
   autoFocus = false,
   entryRef,
   promptRef,
@@ -41,6 +42,7 @@ export function AudioCardEditor({
   onFrontChange: (front: string) => void;
   onBackChange: (back: string) => void;
   onError: (message: string) => void;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const localPromptRef = useRef<HTMLTextAreaElement>(null);
   const localAnswerRef = useRef<HTMLTextAreaElement>(null);
@@ -71,6 +73,12 @@ export function AudioCardEditor({
   const chunksRef = useRef<Blob[]>([]);
   const startingRecordingRef = useRef(false);
   const mountedRef = useRef(true);
+  const pending = busy || recording || startingRecording;
+
+  useEffect(() => {
+    onBusyChange?.(pending);
+    return () => onBusyChange?.(false);
+  }, [onBusyChange, pending]);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,6 +99,8 @@ export function AudioCardEditor({
     return () => {
       mountedRef.current = false;
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      recorderRef.current = null;
     };
   }, []);
 
@@ -104,9 +114,10 @@ export function AudioCardEditor({
         (parsed?.prompt ?? front.trim()) ? answerInput.current : promptInput.current,
       );
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Could not store that audio file.');
+      if (mountedRef.current)
+        onError(error instanceof Error ? error.message : 'Could not store that audio file.');
     } finally {
-      setBusy(false);
+      if (mountedRef.current) setBusy(false);
     }
   };
 
@@ -137,14 +148,16 @@ export function AudioCardEditor({
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
+      streamRef.current = stream;
       const recorder = new MediaRecorder(stream, { mimeType });
       recorderRef.current = recorder;
-      streamRef.current = stream;
       chunksRef.current = [];
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data);
+        if (recorderRef.current === recorder && event.data.size > 0)
+          chunksRef.current.push(event.data);
       };
       recorder.onstop = () => {
+        if (recorderRef.current !== recorder) return;
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
         recorderRef.current = null;
@@ -153,9 +166,20 @@ export function AudioCardEditor({
           void store(new Blob(chunksRef.current, { type: mimeType }), mimeType);
         }
       };
+      recorder.onerror = () => {
+        if (!mountedRef.current || recorderRef.current !== recorder) return;
+        recorderRef.current = null;
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        setRecording(false);
+        onError('Could not record audio. Try again.');
+      };
       recorder.start();
       setRecording(true);
     } catch {
+      recorderRef.current = null;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
       if (mountedRef.current) onError('Microphone access was not granted.');
     } finally {
       startingRecordingRef.current = false;
@@ -187,13 +211,22 @@ export function AudioCardEditor({
             ref={entryRef}
             autoFocus={autoFocus}
             disabled={busy || recording || startingRecording}
+            aria-busy={busy}
             onFocus={attachmentFocus.remember}
             onClick={() => {
               attachmentFocus.remember();
               fileRef.current?.click();
             }}
           >
-            <UploadIcon width={16} height={16} />
+            {busy ? (
+              <RefreshIcon
+                width={16}
+                height={16}
+                className="animate-spin motion-reduce:animate-none"
+              />
+            ) : (
+              <UploadIcon width={16} height={16} />
+            )}
             {parsed ? 'Replace' : 'Choose file'}
           </Button>
           <input
