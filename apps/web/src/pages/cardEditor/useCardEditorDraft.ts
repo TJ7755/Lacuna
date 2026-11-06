@@ -70,6 +70,24 @@ export function useCardEditorDraft({
   // through this stable handle rather than a dependency.
   const persistDraftRef = useRef(persistDraft);
   persistDraftRef.current = persistDraft;
+  const pendingDraftRef = useRef<(() => void) | undefined>(undefined);
+  pendingDraftRef.current = loaded && draftDirty && !draftPrompt ? persistDraft : undefined;
+
+  // Route exits and document unloads can beat the debounce. Keep only author edits;
+  // opening a card or leaving an unresolved restore prompt must not replace a draft.
+  useEffect(() => {
+    const flush = () => {
+      window.clearTimeout(draftTimer.current);
+      pendingDraftRef.current?.();
+    };
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('beforeunload', flush);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      window.removeEventListener('beforeunload', flush);
+      flush();
+    };
+  }, []);
 
   // Re-arm the loaded latch whenever the card being edited changes so direct
   // navigation between cards (same route, different param) re-seeds the form.
@@ -100,7 +118,7 @@ export function useCardEditorDraft({
     if (!editing) {
       // New card: check for a draft from a previous abandoned session.
       const draft = loadDraft(draftKeyRef.current);
-      if (draft && draft.front.trim()) {
+      if (draft) {
         setDraftPrompt(true);
       }
       setLoaded(true);
@@ -161,8 +179,7 @@ export function useCardEditorDraft({
   };
 
   const discardDraft = () => {
-    clearDraft(draftKeyRef.current);
-    setDraftDirty(false);
+    clearSavedDraft();
     setDraftPrompt(false);
     if (editing && card) {
       setType(
@@ -223,6 +240,10 @@ export function useCardEditorDraft({
   }
 
   function clearSavedDraft() {
+    // Disarm synchronously: save/discard can be followed by unmount before React
+    // commits the clean state, and neither exit should recreate the cleared draft.
+    window.clearTimeout(draftTimer.current);
+    pendingDraftRef.current = undefined;
     clearDraft(draftKeyRef.current);
     setDraftDirty(false);
   }
