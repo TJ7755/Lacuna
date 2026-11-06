@@ -31,5 +31,5 @@ export function questionStudyEligible(
   if (!isUpcomingExamDate(examDate, now) || examDate - now > windowDays * MS_PER_DAY) {
     return false;
   }
-  return worthwhileAssessmentPractice(schedule, examDate, now, windowDays, ctx);
+  return worthwhileAssessmentPractice(schedule, examDate, now, ctx);
 }

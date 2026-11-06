@@ -431,11 +431,13 @@ describe('CourseStudyFlow', () => {
       await screen.findByTestId('learn-request');
       fireEvent.click(screen.getByRole('button', { name: stop }));
       const review = await screen.findByRole('button', {
-        name: stop === 'Pause step' ? 'Resume' : 'Review earlier material',
+        name: stop === 'Pause step' ? 'Resume' : /^Continue$/,
       });
       expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
       expect(learnMounts).toBe(1);
-      expect(screen.queryByRole('button', { name: /^Continue$/ })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Review earlier material' }),
+      ).not.toBeInTheDocument();
       fireEvent.click(review);
       await waitFor(() => expect(request()).toMatchObject({ mode: 'catch-up' }));
       expect(learnMounts).toBe(2);

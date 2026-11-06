@@ -363,14 +363,14 @@ describe('mid-course catch-up', () => {
       catchUpPracticePool(cards, joined, lessons, [], context, new Set(['l1', 'l2']), NOW).map(
         (card) => card.id,
       ),
-    ).toEqual(['old1']);
+    ).toEqual(['old1', 'old2']);
     expect(cards.every((card) => card.state === 0 && card.history.length === 0)).toBe(true);
     expect(practiceCardScope(cards, [], [], { reachedLessonIds: new Set(['l1', 'l2']) })).toEqual(
       [],
     );
   });
 
-  it('honours availability, the shared daily allowance, and dated access', () => {
+  it('honours availability and dated access while reserving catch-up alongside current work', () => {
     expect(catchUpPracticePool(cards, joined, lessons, [], context, new Set(), NOW)).toEqual([]);
     expect(
       catchUpPracticePool(
@@ -401,6 +401,6 @@ describe('mid-course catch-up', () => {
     });
     expect(
       catchUpPracticePool([...cards, reviewed], joined, lessons, [], context, new Set(['l1']), NOW),
-    ).toEqual([]);
+    ).toEqual(cards.slice(0, 2));
   });
 });

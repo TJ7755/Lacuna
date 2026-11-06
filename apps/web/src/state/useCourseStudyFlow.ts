@@ -100,6 +100,7 @@ export function useCourseStudyFlow(
       ),
       meanReviewSeconds,
       practiceMilestones: records.milestones,
+      reviewsToday: records.reviewsToday,
       now,
     });
     snapshot.hasStudyHistory ||=
@@ -168,7 +169,7 @@ export function useCourseStudyFlow(
     return {
       course: records.course,
       snapshot,
-      decision: planNextStudyStep(snapshot, true, previousStep),
+      decision: planNextStudyStep(snapshot, previousStep),
       // Until the live query answers the new refresh key, `records` is the previous
       // read: label it with that read's key, or the conductor would plan from stale data.
       generation: records.generation,

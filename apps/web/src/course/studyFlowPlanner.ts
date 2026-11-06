@@ -29,6 +29,7 @@ export type StudyFlowDecision =
   | { kind: 'choice'; step: StudyFlowStep; assessments: AssessmentPracticeOption[] }
   | { kind: 'blocked'; reason: 'archived' | 'curriculum-locked' }
   | { kind: 'complete' }
+  | { kind: 'waiting' }
   | { kind: 'empty' };
 
 /**
@@ -60,7 +61,6 @@ export const EXAM_PRACTICE_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = 
  */
 export function planNextStudyStep(
   snapshot: CourseStudyFlowSnapshot,
-  allowCatchUp = true,
   previousStep?: StudyFlowStep | null,
 ): StudyFlowDecision {
   if (snapshot.archived) return { kind: 'blocked', reason: 'archived' };
@@ -81,6 +81,7 @@ export function planNextStudyStep(
       if (node.lesson.isExtension && index < startIndex) continue;
       hasCurriculum = true;
       if (node.status === 'available') {
+        if (snapshot.reviewLimitReached && snapshot.learnFirst === false) continue;
         step = { kind: 'lesson', lessonId: node.id, label: node.lesson.name };
         break;
       }
@@ -96,7 +97,7 @@ export function planNextStudyStep(
         continue;
       hasCurriculum = true;
       const practice = snapshot.practiceByKey.get(node.nodeKey);
-      if (practice?.active) {
+      if (!snapshot.reviewLimitReached && practice?.active) {
         step = {
           kind: 'practice',
           nodeKey: node.nodeKey,
@@ -133,7 +134,24 @@ export function planNextStudyStep(
     : undefined;
   const repair = question?.repairLessonId;
   if (questionStep && question?.unfinished) return { kind: 'step', step: questionStep };
-  if (repair && !(previousStep?.kind === 'lesson' && previousStep.lessonId === repair)) {
+  // Entry selects where to begin, never what the learner already knows. Once
+  // that lesson is introduced, earlier knowledge gets its daily allocation
+  // before independent questions or more forward curriculum can starve it.
+  if (!snapshot.reviewLimitReached && snapshot.recurringPracticeEligibleCount > 0)
+    return { kind: 'step', step: DUE_REVIEW_STEP };
+  if (
+    !snapshot.hasStartedCurrentLesson &&
+    step?.kind === 'lesson' &&
+    step.lessonId === snapshot.studyStartLessonId
+  )
+    return { kind: 'step', step };
+  if (!snapshot.reviewLimitReached && (snapshot.catchUpPriorityCount ?? 0) > 0)
+    return { kind: 'step', step: CATCH_UP_STEP };
+  if (
+    repair &&
+    !(snapshot.reviewLimitReached && snapshot.learnFirst === false) &&
+    !(previousStep?.kind === 'lesson' && previousStep.lessonId === repair)
+  ) {
     const lesson = snapshot.nodes.find(
       (node) => node.nodeType === 'lesson' && node.id === repair && node.status !== 'locked',
     );
@@ -149,10 +167,9 @@ export function planNextStudyStep(
     if (questionStep) return { kind: 'step', step: questionStep };
     if (step?.kind === 'lesson') return { kind: 'step', step };
   }
-  if (snapshot.recurringPracticeEligibleCount > 0) return { kind: 'step', step: DUE_REVIEW_STEP };
   // An available Question or exam date is not evidence that an untouched course was taught.
   if (snapshot.hasStudyHistory === false && step?.kind === 'lesson') return { kind: 'step', step };
-  const assessment = snapshot.assessmentOptions[0];
+  const assessment = snapshot.reviewLimitReached ? undefined : snapshot.assessmentOptions[0];
   const assessmentStep: StudyFlowStep | undefined = assessment
     ? {
         kind: 'practice',
@@ -161,7 +178,7 @@ export function planNextStudyStep(
         assessmentId: assessment.assessmentId,
         label: `Prepare for ${assessment.name}`,
       }
-    : snapshot.examPracticeEligibleCount > 0 && !step
+    : !snapshot.reviewLimitReached && snapshot.examPracticeEligibleCount > 0 && !step
       ? EXAM_PRACTICE_STEP
       : undefined;
   if (assessmentStep && previousStep?.kind !== 'practice')
@@ -172,8 +189,9 @@ export function planNextStudyStep(
   if (assessmentStep) return { kind: 'step', step: assessmentStep };
   if (questionStep) return { kind: 'step', step: questionStep };
 
-  if (allowCatchUp && (snapshot.catchUpEligibleCount ?? 0) > 0)
+  if (!snapshot.reviewLimitReached && (snapshot.catchUpEligibleCount ?? 0) > 0)
     return { kind: 'step', step: CATCH_UP_STEP };
   if (hasLockedLesson) return { kind: 'blocked', reason: 'curriculum-locked' };
+  if ((snapshot.readiness?.belowTargetCount ?? 0) > 0) return { kind: 'waiting' };
   return hasCurriculum || snapshot.cardCount > 0 ? { kind: 'complete' } : { kind: 'empty' };
 }

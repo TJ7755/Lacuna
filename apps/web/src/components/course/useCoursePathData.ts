@@ -179,6 +179,7 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
             examDateContext,
             meanReviewSeconds,
             practiceMilestones: practiceMilestones ?? [],
+            reviewsToday: records?.reviewsToday,
             now,
           })
         : null,
@@ -191,6 +192,7 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
       meanReviewSeconds,
       nodes,
       practiceMilestones,
+      records?.reviewsToday,
       now,
     ],
   );

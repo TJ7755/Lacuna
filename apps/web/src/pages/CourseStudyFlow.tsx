@@ -25,7 +25,6 @@ import {
   STUDY_REVIEW_BLOCK_SIZE,
   CATCH_UP_STEP,
   EXAM_PRACTICE_STEP,
-  planNextStudyStep,
   type StudyFlowStep,
 } from '../course/studyFlowPlanner';
 import type {
@@ -87,7 +86,6 @@ function CourseStudyFlowInner() {
   );
   const [refreshKey, setRefreshKey] = useState(0);
   const [previousStep, setPreviousStep] = useState<StudyFlowStep | null>(null);
-  const [catchUpFinished, setCatchUpFinished] = useState(false);
   const entryAssessmentId = searchParams.get('assessmentId');
   const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
     if (searchParams.get('review') === 'earlier') return CATCH_UP_STEP;
@@ -107,20 +105,12 @@ function CourseStudyFlowInner() {
   // The choice is made in the study sheet before this route is entered and arrives as a
   // query parameter, so the flow no longer presents an entry screen of its own.
   const [transition, setTransition] = useState<TransitionState | null>(null);
-  const plannedFlow = useCourseStudyFlow(
+  const flow = useCourseStudyFlow(
     courseId,
     refreshKey,
     currentStep === null || transition !== null,
     previousStep,
     flowIdentity?.startedAt,
-  );
-  // Reaching a session objective need not empty the broader catch-up pool.
-  const flow = useMemo(
-    () =>
-      plannedFlow && catchUpFinished
-        ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false, previousStep) }
-        : plannedFlow,
-    [catchUpFinished, plannedFlow, previousStep],
   );
   const pomodoro = usePomodoroFlowContext();
 
@@ -245,8 +235,6 @@ function CourseStudyFlowInner() {
       completedGenerationRef.current = refreshKey;
       touchActiveStudyFlow(courseId);
       setPreviousStep(completed);
-      if (completed.kind === 'practice' && completed.mode === 'catch-up' && summary.reachedGoal)
-        setCatchUpFinished(true);
       setTransition({ summary, completedStep: completed });
       setRefreshKey((value) => value + 1);
     },
@@ -438,11 +426,19 @@ function CourseStudyFlowInner() {
     scene = 'message';
     body = (
       <StudyFlowMessage
-        title={flow?.decision.kind === 'empty' ? 'This course is empty' : 'You are caught up'}
+        title={
+          flow?.decision.kind === 'empty'
+            ? 'This course is empty'
+            : flow?.decision.kind === 'waiting'
+              ? 'More practice is needed'
+              : 'You are caught up'
+        }
         detail={
           flow?.decision.kind === 'empty'
             ? 'Add a lesson before starting this study flow.'
-            : 'There is no lesson or practice ready right now.'
+            : flow?.decision.kind === 'waiting'
+              ? 'Some material is still below its exam-day recall target. Return when spacing, study limits or lesson access allow more useful practice.'
+              : 'There is no lesson or practice ready right now.'
         }
         onExit={finishFlow}
       />

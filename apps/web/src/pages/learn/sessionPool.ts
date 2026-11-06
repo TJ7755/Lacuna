@@ -226,6 +226,7 @@ export function prepareCourseSessionPool(
         reachedLessonIds,
         Date.now(),
         earlierCourseLessonIds(course, courseLessons, examDates, manualNodes),
+        true,
       )
     : standaloneSimple
       ? course.archived
