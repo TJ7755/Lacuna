@@ -216,7 +216,8 @@ test('page opacity keeps progressing on the compositor while the main thread is 
   const cdp = await page.context().newCDPSession(page);
   const frames: { timestamp: number; data: string }[] = [];
   cdp.on('Page.screencastFrame', (event) => {
-    frames.push({ timestamp: event.metadata.timestamp, data: event.data });
+    if (event.metadata.timestamp !== undefined)
+      frames.push({ timestamp: event.metadata.timestamp, data: event.data });
     void cdp.send('Page.screencastFrameAck', { sessionId: event.sessionId });
   });
   let blockedAt: number;
