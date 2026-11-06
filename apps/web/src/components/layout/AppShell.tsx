@@ -38,6 +38,7 @@ import { consumeLandingArrival } from './LandingTransition';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useMobileNavigationSwipe } from './useMobileNavigationSwipe';
 import { FinalExamLifecycleController } from '../course/FinalExamLifecycleController';
+import { QuickSearchPending } from './QuickSearchPending';
 import { keyMatches, loadBindings } from '../../state/shortcutBindings';
 
 const CommandPalette = lazy(() =>
@@ -230,6 +231,8 @@ function AppShellLayout() {
               ? document.activeElement
               : null;
           setMobileOpen(false);
+        } else {
+          requestAnimationFrame(() => paletteReturnFocusRef.current?.focus());
         }
         setPaletteOpen(!paletteOpen);
         return;
@@ -447,7 +450,14 @@ function AppShellLayout() {
       </div>
       {paletteOpen && (
         <OverlayLoadBoundary label="Quick search" onClose={() => setPaletteOpen(false)}>
-          <Suspense fallback={null}>
+          <Suspense
+            fallback={
+              <QuickSearchPending
+                onClose={() => setPaletteOpen(false)}
+                returnFocusTarget={paletteReturnFocusRef}
+              />
+            }
+          >
             <CommandPalette
               open={paletteOpen}
               onClose={() => setPaletteOpen(false)}

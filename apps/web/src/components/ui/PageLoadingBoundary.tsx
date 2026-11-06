@@ -9,10 +9,11 @@ import {
   type ReactNode,
 } from 'react';
 import { PageArrival, PageArrivalReady } from './PageArrival';
+import { DelayedLoadingIndicator } from './LoadingIndicator';
 
 const LoadingContext = createContext<((token: object, pending: boolean) => void) | null>(null);
 
-/** Readiness coordinates real content entrances; loading never draws a substitute page. */
+/** Keep live content while coordinating arrivals and delayed pending feedback. */
 export function PageLoadingBoundary({
   children,
   pending = false,
@@ -42,6 +43,7 @@ export function PageLoadingBoundary({
         <PageArrivalReady value={!waiting}>
           {animateArrival ? <PageArrival>{content}</PageArrival> : content}
         </PageArrivalReady>
+        {waiting && <DelayedLoadingIndicator />}
       </div>
     </LoadingContext.Provider>
   );
@@ -55,5 +57,5 @@ export function PageLoading() {
     report?.(token, true);
     return () => report?.(token, false);
   }, [report, token]);
-  return null;
+  return report ? null : <DelayedLoadingIndicator />;
 }
