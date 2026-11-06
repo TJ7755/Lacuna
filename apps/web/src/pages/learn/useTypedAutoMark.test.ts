@@ -252,46 +252,17 @@ describe('useTypedAutoMark', () => {
     expect(onMarked).toHaveBeenCalledExactlyOnceWith(true, null);
   });
 
-  it.each(['Space', 'Enter'])(
-    'continues a visible verdict with %s, never a repeated or composing key',
-    (key) => {
-      jev.marker = vi.fn();
-      const { onMarked } = setup('Paris');
-      const press = (extra = {}) =>
-        window.dispatchEvent(
-          new KeyboardEvent('keydown', { code: key, key: key === 'Space' ? ' ' : key, ...extra }),
-        );
-      act(() => {
-        press();
-        vi.advanceTimersByTime(JEV_JUDGING_MS);
-      });
-      expect(onMarked).not.toHaveBeenCalled();
-      act(() => {
-        press({ repeat: true });
-        press({ isComposing: true });
-      });
-      expect(onMarked).not.toHaveBeenCalled();
-      act(() => {
-        press();
-      });
-      expect(onMarked).toHaveBeenCalledExactlyOnceWith(true, null);
-    },
-  );
-
-  it.each(['button', 'a'])('keeps Space available to activate a focused %s', (tag) => {
+  it('does not accept a verdict from a global Space or Enter key', () => {
     jev.marker = vi.fn();
-    setup('Paris');
-    const control = document.createElement(tag);
-    document.body.append(control);
-    const event = new KeyboardEvent('keydown', {
-      code: 'Space',
-      key: ' ',
-      bubbles: true,
-      cancelable: true,
+    const { onMarked } = setup('Paris');
+    act(() => {
+      vi.advanceTimersByTime(JEV_JUDGING_MS);
     });
-    control.dispatchEvent(event);
-    expect(event.defaultPrevented).toBe(false);
-    control.remove();
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter' }));
+    });
+    expect(onMarked).not.toHaveBeenCalled();
   });
 
   it('leaves an answer restored by Undo for manual grading without another verdict', () => {

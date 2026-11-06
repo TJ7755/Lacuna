@@ -92,8 +92,6 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       await start(page);
       await submit(page);
       await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toBeVisible();
-      await page.getByRole('main', { name: 'Study card' }).focus();
-      await page.keyboard.down('Space');
       try {
         const layer = page.locator('[data-flow-layer]');
         await expect(layer).toBeVisible();
@@ -158,7 +156,6 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         await page.screenshot({ path: test.info().outputPath('verdict-colour.png') });
       } finally {
         release();
-        await page.keyboard.up('Space');
       }
     });
   }
@@ -175,8 +172,6 @@ test('drains with the card flight and reforms the next pill without delaying typ
   await start(page);
   await submit(page);
   await expect(page.locator('[data-flow-layer]')).toHaveAttribute('data-flow-state', 'bead');
-  await page.getByRole('main', { name: 'Study card' }).focus();
-  await page.keyboard.down('Space');
   await expect(page.locator('[data-study-face="back"] [data-typed-verdict]')).toBeVisible();
   await page.waitForTimeout(600);
   const liquid = page.locator('[data-flow-layer]');
@@ -205,7 +200,6 @@ test('drains with the card flight and reforms the next pill without delaying typ
       ),
     };
   });
-  await page.keyboard.up('Space');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.waitForTimeout(40);
   await page.screenshot({ path: test.info().outputPath('bead-draining.png') });

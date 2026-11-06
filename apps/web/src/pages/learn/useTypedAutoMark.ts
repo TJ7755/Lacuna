@@ -105,36 +105,6 @@ export function useTypedAutoMark({
     else onMarkedRef.current(mark.correct, mark.provenance, mark.grade);
   }, [active, paused, mark]);
 
-  useEffect(() => {
-    if (!active || paused || mark.state !== 'marked') return;
-    const down = (event: KeyboardEvent) => {
-      if (
-        (event.code !== 'Space' && event.key !== 'Enter') ||
-        event.repeat ||
-        event.defaultPrevented ||
-        event.isComposing ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.altKey
-      )
-        return;
-      const target = event.target;
-      if (
-        target instanceof Element &&
-        target.closest(
-          'input, textarea, select, button, a, [role="button"], [contenteditable]:not([contenteditable="false"]), [role="dialog"], [role="menu"]',
-        )
-      )
-        return;
-      event.preventDefault();
-      continueAnswer();
-    };
-    window.addEventListener('keydown', down, true);
-    return () => {
-      window.removeEventListener('keydown', down, true);
-    };
-  }, [active, paused, mark, continueAnswer]);
-
   // Decide the mark once per revealed answer, after the pause that keeps a verdict from
   // landing in the same breath as the submission.
   useEffect(() => {

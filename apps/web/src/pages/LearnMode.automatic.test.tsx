@@ -79,7 +79,6 @@ it('retries a failed automatic answer without duplicating its pending save', asy
     expect(await db.reviewHistory.count()).toBe(0);
     fireEvent.click(next);
     fireEvent.click(next);
-    fireEvent.keyDown(window, { key: 'Enter', code: 'Enter' });
     await waitFor(() => expect(persist).toHaveBeenCalledTimes(2));
     expect(await db.reviewHistory.count()).toBe(0);
   } finally {
