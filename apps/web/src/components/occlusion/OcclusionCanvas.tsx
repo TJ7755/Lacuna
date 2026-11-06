@@ -5,7 +5,6 @@
 // screen without any dedicated optimisation.
 
 import {
-  useId,
   useRef,
   useState,
   type ChangeEvent,
@@ -72,7 +71,6 @@ export function OcclusionCanvas({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragRef = useRef<{ rect: DOMRect; startX: number; startY: number } | null>(null);
   const [draft, setDraft] = useState<DrawnRegionRect | null>(null);
-  const instructionsId = useId();
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget || event.ctrlKey || event.metaKey || event.altKey)
@@ -240,7 +238,6 @@ export function OcclusionCanvas({
             data-testid="occlusion-canvas"
             role="group"
             aria-label={tool === 'select' ? 'Position selected region' : 'Draw a region'}
-            aria-describedby={instructionsId}
             tabIndex={0}
             onKeyDown={handleKeyDown}
             onBlur={(event) => {
@@ -266,13 +263,6 @@ export function OcclusionCanvas({
           <div className="grid aspect-[16/10] place-items-center rounded-xl border border-dashed border-line-strong text-center text-sm text-ink-faint">
             Upload a diagram to begin.
           </div>
-        )}
-        {assetUrl && (
-          <p id={instructionsId} className="mt-2 text-xs text-ink-soft">
-            {tool === 'select'
-              ? 'Select a region, then focus the diagram. Arrow keys move it; Shift + arrows resize it.'
-              : 'Drag to draw, or press Enter to start a box. Arrow keys move it; Shift + arrows resize it. Enter adds it; Escape cancels.'}
-          </p>
         )}
       </div>
     </div>
