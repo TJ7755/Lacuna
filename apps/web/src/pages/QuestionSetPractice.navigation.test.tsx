@@ -79,7 +79,7 @@ describe('QuestionSetPractice navigation and focus', () => {
       });
     fireEvent.keyDown(answer, { key: 'Enter', ctrlKey: true });
     await waitFor(() => expect(save).toHaveBeenCalled());
-    const other = screen.getByRole('button', { name: 'Save and finish later' });
+    const other = screen.getByRole('button', { name: 'Exit' });
     other.focus();
     release();
     await screen.findByRole('heading', { name: 'Q1 (b)' });
@@ -243,7 +243,7 @@ describe('QuestionSetPractice navigation and focus', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'A persisted response.' },
     });
-    const save = screen.getByRole('button', { name: 'Save and finish later' });
+    const save = screen.getByRole('button', { name: 'Exit' });
     await waitFor(() => expect(save).not.toBeDisabled());
     fireEvent.click(save);
     await waitFor(() =>

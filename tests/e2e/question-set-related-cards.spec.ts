@@ -145,9 +145,7 @@ for (const width of [1280, 320]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       width,
     );
-    const saveBounds = await page
-      .getByRole('button', { name: 'Save and finish later' })
-      .boundingBox();
+    const saveBounds = await page.getByRole('button', { name: 'Exit', exact: true }).boundingBox();
     expect(saveBounds!.x + saveBounds!.width).toBeLessThanOrEqual(width);
     if (width === 1280) {
       const toolbar = testInfo.outputPath('toolbar.png');
@@ -220,9 +218,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
     await answer.fill('My answer so far.');
     const trigger = page.getByRole('button', { name: 'Use related cards', exact: true });
-    await expect(trigger).toHaveAccessibleDescription(
-      'Opening these cards records this answer as assisted.',
-    );
+    await expect(page.getByText(/Opening these cards/)).toHaveCount(0);
     await expect(trigger).toBeInViewport({ ratio: 1 });
     await expect(page.getByText('Related prompt a1')).toHaveCount(0);
     const collapsed = testInfo.outputPath('help-collapsed.png');
@@ -236,6 +232,27 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await expect(dialog).toContainText('Card 1 of 20');
     await expect(dialog).toContainText('Related prompt a1');
     await expect(dialog).not.toContainText('Related answer a1');
+    await expect(dialog).not.toContainText('Your draft is kept');
+    await expect(dialog.getByRole('button', { name: /Return to/ })).toHaveCount(0);
+    await expect.poll(async () => (await dialog.boundingBox())!.width).toBeCloseTo(640, 0);
+    const navigation = dialog.getByRole('navigation', { name: 'Related cards' });
+    const navBounds = (await navigation.boundingBox())!;
+    const previousBounds = (await navigation
+      .getByRole('button', { name: 'Previous card' })
+      .boundingBox())!;
+    const nextBounds = (await navigation.getByRole('button', { name: 'Next card' }).boundingBox())!;
+    const countBounds = (await navigation.getByRole('status').boundingBox())!;
+    expect(previousBounds.x).toBeCloseTo(navBounds.x, 0);
+    expect(nextBounds.x + nextBounds.width).toBeCloseTo(navBounds.x + navBounds.width, 0);
+    expect(countBounds.x + countBounds.width / 2).toBeCloseTo(navBounds.x + navBounds.width / 2, 0);
+    expect(previousBounds.y + previousBounds.height / 2).toBeCloseTo(
+      countBounds.y + countBounds.height / 2,
+      0,
+    );
+    expect(nextBounds.y + nextBounds.height / 2).toBeCloseTo(
+      countBounds.y + countBounds.height / 2,
+      0,
+    );
     expect((await readAttempt(page)).assistance).toEqual([
       expect.objectContaining({ nodeId: 'part-a', kind: 'related-knowledge' }),
     ]);
@@ -243,7 +260,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await reveal.focus();
     await reveal.press('Enter');
     await expect(dialog).toContainText('Related answer a1');
-    await expect(dialog.getByRole('button', { name: 'Return to answer' })).toBeInViewport({
+    await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport({
       ratio: 1,
     });
     const opened = testInfo.outputPath('help-opened.png');
@@ -259,7 +276,36 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await dialog.getByRole('button', { name: 'Previous card', exact: true }).click();
     await expect(dialog).toContainText('Related prompt a1');
     await expect(dialog).not.toContainText('Related answer a1');
-    await dialog.getByRole('button', { name: 'Return to answer', exact: true }).click();
+    const closing = dialog.evaluate(
+      (surface) =>
+        new Promise<Array<{ opacity: number; width: number }>>((resolve) => {
+          const heading = surface.querySelector('header')!;
+          const samples: Array<{ opacity: number; width: number }> = [];
+          const end = performance.now() + 500;
+          const sample = () => {
+            if (surface.isConnected) {
+              samples.push({
+                opacity: Number(getComputedStyle(heading).opacity),
+                width: surface.getBoundingClientRect().width,
+              });
+            }
+            if (performance.now() < end) requestAnimationFrame(sample);
+            else resolve(samples);
+          };
+          sample();
+        }),
+    );
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+    const closingSamples = await closing;
+    await testInfo.attach('Related cards closing frames', {
+      body: JSON.stringify(closingSamples),
+      contentType: 'application/json',
+    });
+    if (reducedMotion === 'no-preference') {
+      expect(closingSamples.some((sample) => sample.opacity < 0.1 && sample.width > 300)).toBe(
+        true,
+      );
+    }
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
     await expect(answer).toHaveValue('My answer so far.');
@@ -279,7 +325,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await trigger.click();
     await expect(dialog).toContainText('Related prompt a2');
     await expect(dialog).not.toContainText('Related prompt a1');
-    await dialog.getByRole('button', { name: 'Return to answer', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click();
     await page.reload();
     await expect(answer).toHaveValue('');
     const restored = await readAttempt(page);

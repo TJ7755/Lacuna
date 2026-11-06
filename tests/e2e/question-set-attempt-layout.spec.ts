@@ -143,9 +143,105 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  test(`part transition preserves the answer field with ${reducedMotion} motion`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.emulateMedia({ reducedMotion });
+    const attemptId = await startTranslation(page);
+    const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
+    const emptyHeight = await answer.evaluate((field) => field.clientHeight);
+    const draft = 'A line of working.\n'.repeat(30);
+    await answer.fill(draft);
+    await expect.poll(() => storedDraftText(page, attemptId, 'part-a')).toBe(draft);
+    await expect
+      .poll(() => answer.evaluate((field) => field.clientHeight))
+      .toBeGreaterThan(emptyHeight + 40);
+    // Wait for the initial typing resize to settle before measuring navigation itself.
+    await page.locator('article.qs-paper').evaluate(
+      (paper) =>
+        new Promise<void>((resolve, reject) => {
+          let height = paper.clientHeight;
+          let steady = 0;
+          const deadline = performance.now() + 2000;
+          const sample = () => {
+            const next = paper.clientHeight;
+            steady = next === height ? steady + 1 : 0;
+            height = next;
+            if (steady >= 6) resolve();
+            else if (performance.now() > deadline)
+              reject(new Error('Answer surface did not settle'));
+            else requestAnimationFrame(sample);
+          };
+          requestAnimationFrame(sample);
+        }),
+    );
+    await testInfo.attach('before-next-part', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
+    await expect(page.getByRole('button', { name: 'Next part', exact: true })).toBeEnabled();
+    const samples = await page.locator('article.qs-paper').evaluate(
+      (paper) =>
+        new Promise<
+          Array<{ height: number; incoming: boolean; fieldHeight: number; fieldWidth: number }>
+        >((resolve) => {
+          const frames: Array<{
+            height: number;
+            incoming: boolean;
+            fieldHeight: number;
+            fieldWidth: number;
+          }> = [];
+          const deadline = performance.now() + 1400;
+          const sample = () => {
+            const field = paper.querySelector<HTMLTextAreaElement>('textarea:not([inert] *)')!;
+            const heading = paper.querySelector('h2:not([inert] *)');
+            frames.push({
+              height: paper.clientHeight,
+              incoming: heading?.textContent?.trim() === 'Q1 (b)',
+              fieldHeight: field.clientHeight,
+              fieldWidth: field.clientWidth,
+            });
+            if (performance.now() < deadline) requestAnimationFrame(sample);
+            else resolve(frames);
+          };
+          sample();
+          paper.querySelector<HTMLButtonElement>('[data-attempt-primary]')!.click();
+        }),
+    );
+    await testInfo.attach('part-transition-frames', {
+      body: JSON.stringify(samples),
+      contentType: 'application/json',
+    });
+    await expect(page.getByRole('heading', { name: 'Q1 (b)', exact: true })).toBeVisible();
+    await expect(answer).toBeFocused();
+    await expect(answer).toHaveValue('');
+    const incoming = samples.filter((frame) => frame.incoming);
+    expect(incoming.length).toBeGreaterThan(1);
+    const start = samples[0].height;
+    const end = samples.at(-1)!.height;
+    expect(start - end).toBeGreaterThan(40);
+    const intermediate = new Set(
+      samples
+        .filter((frame) => frame.height > end + 2 && frame.height < start - 2)
+        .map((frame) => frame.height),
+    );
+    if (reducedMotion === 'reduce') expect(intermediate.size).toBe(0);
+    else expect(intermediate.size).toBeGreaterThanOrEqual(2);
+    // Surface height may flow, but the newly mounted textbox must never stretch with it.
+    expect(new Set(incoming.map((frame) => frame.fieldHeight))).toEqual(new Set([emptyHeight]));
+    expect(new Set(incoming.map((frame) => frame.fieldWidth)).size).toBe(1);
+    await testInfo.attach('after-next-part', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
+  });
+}
+
 for (const viewport of [
   { width: 1280, height: 800 },
-  { width: 390, height: 844 },
+  { width: 1440, height: 900 },
 ]) {
   for (const theme of ['light', 'dark'] as const) {
     test(`attempt layout at ${viewport.width}×${viewport.height}, ${theme}`, async ({
@@ -165,12 +261,10 @@ for (const viewport of [
           path: testInfo.outputPath(`${state}.png`),
           animations: 'disabled',
         });
-        if (viewport.width === 1280) {
-          await testInfo.attach(state, {
-            path: testInfo.outputPath(`${state}.png`),
-            contentType: 'image/png',
-          });
-        }
+        await testInfo.attach(state, {
+          path: testInfo.outputPath(`${state}.png`),
+          contentType: 'image/png',
+        });
       };
       const assertFits = async () => {
         const dimensions = await page.evaluate(() =>
@@ -194,21 +288,29 @@ for (const viewport of [
       await expect(page.getByText('Saved', { exact: true })).toHaveCount(0);
       await assertFits();
       const header = page.locator('.qs-practice-header');
-      const back = header.getByRole('link');
+      const exit = header.getByRole('button', { name: 'Exit', exact: true });
+      await expect(exit).toHaveCount(1);
+      await expect(header.getByRole('button', { name: 'Finish for now' })).toHaveCount(0);
+      await expect(header.getByRole('button', { name: 'Save and finish later' })).toHaveCount(0);
       const stepper = header.locator('.qs-part-stepper');
       const segments = stepper.locator('.qs-part-segment');
       const uncompletedColour = await segments
         .nth(1)
         .evaluate((node) => getComputedStyle(node).backgroundColor);
       await expect(segments.nth(0)).toHaveCSS('background-color', uncompletedColour);
-      const finish = header.getByRole('button', { name: 'Save and finish later', exact: true });
       const headerBoxes = async () => ({
-        back: await back.boundingBox(),
+        exit: await exit.boundingBox(),
         stepper: await stepper.boundingBox(),
-        finish: await finish.boundingBox(),
       });
       const initialHeader = await headerBoxes();
-      expect((await back.boundingBox())!.y).toBe((await finish.boundingBox())!.y);
+      const assertCentred = async () => {
+        const bar = (await stepper.boundingBox())!;
+        const frame = (await header.boundingBox())!;
+        expect(Math.abs(bar.x + bar.width / 2 - (frame.x + frame.width / 2))).toBeLessThanOrEqual(
+          1,
+        );
+      };
+      await assertCentred();
       const fieldHeight = (await answer.boundingBox())!.height;
       await answer.fill('A line of working.\n'.repeat(30));
       await expect
@@ -235,6 +337,7 @@ for (const viewport of [
       await answer.press('Control+Enter');
       const award = page.getByRole('radio', { name: '3 / 3', exact: true });
       await expect(page.getByRole('radio', { name: 'Not marked', exact: true })).toBeFocused();
+      await assertCentred();
       await capture('marking');
       await award.focus();
       await award.press('Space');
