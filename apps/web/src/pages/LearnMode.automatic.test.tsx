@@ -58,7 +58,9 @@ describe('automatic final-answer Undo', () => {
                 <Routes>
                   <Route
                     path="/lesson/:lessonId/learn"
-                    element={<LearnMode onStepFinished={onStepFinished} />}
+                    element={
+                      <LearnMode onStepFinished={onStepFinished} showConfirmedReport={false} />
+                    }
                   />
                 </Routes>
               </MemoryRouter>
