@@ -242,10 +242,30 @@ describe('backups', () => {
     };
     vi.spyOn(db.appState, 'get').mockResolvedValue({ key: 'backupFolderHandle', value: handle });
 
-    await takeAutoBackup(true);
+    const onMirror = vi.fn();
+    await takeAutoBackup(true, onMirror);
 
     expect(await db.backups.count()).toBe(1);
     expect(warn).toHaveBeenCalledWith('Folder mirror failed:', expect.any(Error));
+    expect(onMirror).toHaveBeenCalledWith({ state: 'failed', folder: 'Backups' });
+  });
+
+  it('keeps a local restore point when folder permission is denied', async () => {
+    const handle = {
+      name: 'Backups',
+      queryPermission: vi.fn(async () => 'denied' as PermissionState),
+      requestPermission: vi.fn(async () => 'denied' as PermissionState),
+      getFileHandle: vi.fn(),
+    };
+    vi.spyOn(db.appState, 'get').mockResolvedValue({ key: 'backupFolderHandle', value: handle });
+    const onMirror = vi.fn();
+
+    const payload = await takeAutoBackup(true, onMirror);
+
+    expect(payload).toBeDefined();
+    expect(await db.backups.count()).toBe(1);
+    expect(onMirror).toHaveBeenCalledWith({ state: 'permission-denied', folder: 'Backups' });
+    expect(handle.getFileHandle).not.toHaveBeenCalled();
   });
 
   it('keeps ten ordinary restore points without pruning a pre-migration snapshot', async () => {

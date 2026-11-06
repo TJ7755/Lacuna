@@ -1,7 +1,12 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { backupFolderName } from '../../db/backupFolder';
+import {
+  backupFolderName,
+  chooseBackupFolder,
+  folderMirrorSupported,
+  type FolderMirrorResult,
+} from '../../db/backupFolder';
 import { BackupsSection } from './BackupsSection';
 
 const mockDeleteBackup = vi.fn().mockResolvedValue(undefined);
@@ -10,7 +15,13 @@ const mockTakeAutoBackup = vi.fn().mockResolvedValue(undefined);
 const mockNotify = vi.fn();
 const mockCheckPersistentStorage = vi.fn().mockResolvedValue(null);
 const mockRequestPersistentStorage = vi.fn();
-let mockBackups = [
+let mockBackups: Array<{
+  id: number;
+  createdAt: number;
+  deckCount: number;
+  cardCount: number;
+  payload?: { questions?: unknown[]; questionSets?: Array<{ questions: unknown[] }> };
+}> = [
   {
     id: 7,
     createdAt: Date.UTC(2026, 7, 28),
@@ -22,7 +33,8 @@ let mockBackups = [
 vi.mock('../../db/backups', () => ({
   deleteBackup: (id: number) => mockDeleteBackup(id),
   restoreBackup: (id: number) => mockRestoreBackup(id),
-  takeAutoBackup: (force?: boolean) => mockTakeAutoBackup(force),
+  takeAutoBackup: (force?: boolean, onMirror?: (result: FolderMirrorResult) => void) =>
+    mockTakeAutoBackup(force, onMirror),
 }));
 
 vi.mock('../../db/backupFolder', () => ({
@@ -63,6 +75,9 @@ describe('BackupsSection', () => {
     mockNotify.mockClear();
     mockRestoreBackup.mockClear();
     mockTakeAutoBackup.mockClear();
+    vi.mocked(backupFolderName).mockResolvedValue(null);
+    vi.mocked(folderMirrorSupported).mockReturnValue(false);
+    vi.mocked(chooseBackupFolder).mockReset();
     mockCheckPersistentStorage.mockReset();
     mockCheckPersistentStorage.mockResolvedValue(null);
     mockRequestPersistentStorage.mockReset();
@@ -144,7 +159,9 @@ describe('BackupsSection', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete restore point' }));
     await waitFor(() => expect(mockDeleteBackup).toHaveBeenCalledWith(7));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Back up' })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Save restore point' })).toHaveFocus(),
+    );
   });
 
   it('keeps confirmation open and reports a failed restore-point deletion', async () => {
@@ -244,11 +261,108 @@ describe('BackupsSection', () => {
   it('forces a restore point when Back up is pressed and confirms with a tick', async () => {
     render(<BackupsSection />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Back up' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save restore point' }));
 
-    await waitFor(() => expect(mockTakeAutoBackup).toHaveBeenCalledWith(true));
-    expect(await screen.findByRole('button', { name: 'Backed up' })).toBeInTheDocument();
-    expect(screen.getByText('Backed up just now')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mockTakeAutoBackup).toHaveBeenCalledWith(true, expect.any(Function)),
+    );
+    expect(await screen.findByRole('button', { name: 'Saved' })).toBeInTheDocument();
+    expect(screen.getByText('Restore point saved just now')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['permission-denied', 'Folder permission needed. Choose the folder again.'],
+    ['failed', 'Folder copy failed. Your restore point is saved.'],
+  ] as const)(
+    'keeps the local receipt separate when folder copying is %s',
+    async (state, message) => {
+      vi.mocked(folderMirrorSupported).mockReturnValue(true);
+      vi.mocked(backupFolderName).mockResolvedValue('Backups');
+      mockTakeAutoBackup.mockImplementationOnce(async (_, onMirror) => {
+        onMirror({ state, folder: 'Backups' });
+      });
+      render(<BackupsSection />);
+
+      expect(await screen.findByText('Folder copy · Backups')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Save restore point' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(message);
+      expect(await screen.findByRole('button', { name: 'Saved' })).toBeInTheDocument();
+      expect(screen.getByText('Restore point saved just now')).toBeInTheDocument();
+      expect(screen.queryByText(/^Copied /)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Choose folder' })).toBeEnabled();
+    },
+  );
+
+  it('shows a folder-copy timestamp only after a confirmed write', async () => {
+    vi.mocked(folderMirrorSupported).mockReturnValue(true);
+    vi.mocked(backupFolderName).mockResolvedValue('Backups');
+    mockTakeAutoBackup.mockImplementationOnce(async (_, onMirror) => {
+      onMirror({ state: 'saved', folder: 'Backups', at: Date.UTC(2026, 10, 6, 12) });
+    });
+    render(<BackupsSection />);
+
+    await screen.findByText('Folder copy · Backups');
+    expect(screen.queryByText(/^Copied /)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save restore point' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/^Copied /);
+    expect(screen.getByRole('status')).toHaveTextContent('6 November 2026');
+  });
+
+  it('keeps the folder fixed until its copy receipt has returned', async () => {
+    vi.mocked(folderMirrorSupported).mockReturnValue(true);
+    vi.mocked(backupFolderName).mockResolvedValue('Backups');
+    let finish: () => void = () => {};
+    mockTakeAutoBackup.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    render(<BackupsSection />);
+    await screen.findByText('Folder copy · Backups');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save restore point' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Choose folder' })).toBeDisabled(),
+    );
+    expect(screen.getByRole('button', { name: 'Stop mirroring' })).toBeDisabled();
+    finish();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Choose folder' })).toBeEnabled(),
+    );
+  });
+
+  it('reports a failed folder selection inline while ignoring cancellation', async () => {
+    vi.mocked(folderMirrorSupported).mockReturnValue(true);
+    vi.mocked(chooseBackupFolder).mockRejectedValueOnce(
+      new DOMException('Cancelled', 'AbortError'),
+    );
+    render(<BackupsSection />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose folder' }));
+    await waitFor(() => expect(chooseBackupFolder).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    vi.mocked(chooseBackupFolder).mockRejectedValueOnce(
+      new DOMException('Denied', 'SecurityError'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Choose folder' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not choose the folder. Try again.',
+    );
+  });
+
+  it('includes legacy and authored-set questions in the restore-point contents', async () => {
+    mockBackups[0].payload = {
+      questions: [{}],
+      questionSets: [{ questions: [{}, {}] }],
+    };
+    render(<BackupsSection />);
+
+    expect(await screen.findByLabelText('3 questions')).toHaveTextContent('3');
+    expect(screen.getByLabelText('1 lesson')).toHaveTextContent('1');
+    expect(screen.getByLabelText('2 cards')).toHaveTextContent('2');
   });
 
   it('shows a stale backup in warning colour and a recent one as backed up', async () => {
@@ -256,11 +370,11 @@ describe('BackupsSection', () => {
       { id: 7, createdAt: Date.now() - 20 * 24 * 60 * 60 * 1000, deckCount: 1, cardCount: 2 },
     ];
     const view = render(<BackupsSection />);
-    expect(await screen.findByText(/^Last backup /)).toHaveClass('text-warning-fg');
+    expect(await screen.findByText(/^Last restore point /)).toHaveClass('text-warning-fg');
 
     mockBackups = [{ id: 8, createdAt: Date.now() - 60 * 60 * 1000, deckCount: 1, cardCount: 2 }];
     view.rerender(<BackupsSection />);
-    expect(await screen.findByText(/^Backed up /)).toHaveClass('text-positive');
+    expect(await screen.findByText(/^Restore point saved /)).toHaveClass('text-positive');
   });
 
   it('shows a negative notice when the backup folder cannot be read', async () => {
