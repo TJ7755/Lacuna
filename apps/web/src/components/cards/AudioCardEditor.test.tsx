@@ -192,7 +192,7 @@ describe('AudioCardEditor', () => {
       />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Listen and translate:'), {
+    fireEvent.change(screen.getByLabelText('Prompt (optional)'), {
       target: { value: 'New prompt' },
     });
     expect(onFrontChange).toHaveBeenCalledWith(`New prompt\n\n![audio](lacuna-asset://${hash})`);

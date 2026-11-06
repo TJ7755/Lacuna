@@ -39,7 +39,6 @@ const TYPE_HELP: Partial<Record<EditorCardType, string>> = {
   cloze: 'Recall a hidden word or phrase, for example: Water is {{c1::H2O}}.',
   numeric: 'Check a number or expression, for example: 8 / 2 = 4.',
   working: 'Check each step against a mark scheme, for example: [1] answer :: equals :: 4.',
-  audio: 'Listen to a clip, then recall its answer. Choose a file or explicitly start recording.',
 };
 
 function isEveryday(type: EditorCardType) {

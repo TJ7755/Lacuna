@@ -192,8 +192,8 @@ export function AudioCardEditor({
     <div className="flex flex-col gap-5">
       <div>
         <h2 className="mb-2 font-display text-lg tracking-tight">Audio</h2>
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-4">
-          {previewUrl ? (
+        <div className="flex flex-wrap items-center justify-end gap-3 rounded-xl border border-line bg-surface p-4">
+          {previewUrl && (
             <audio
               className="min-w-0 flex-1"
               src={previewUrl}
@@ -201,10 +201,6 @@ export function AudioCardEditor({
               preload="metadata"
               onError={() => onError('This clip could not be played. Choose or record another.')}
             />
-          ) : (
-            <span className="min-w-0 flex-1 text-sm text-ink-soft">
-              Choose or record an audio clip.
-            </span>
           )}
           <Button
             type="button"
@@ -249,9 +245,6 @@ export function AudioCardEditor({
             {recording ? 'Stop recording' : startingRecording ? 'Starting…' : 'Record'}
           </Button>
         </div>
-        <p className="mt-2 text-xs text-ink-faint">
-          MP3, M4A, MP4, Ogg, WAV or WebM; 25 MB maximum.
-        </p>
       </div>
 
       <label>
@@ -267,7 +260,6 @@ export function AudioCardEditor({
             else onFrontChange(event.target.value);
           }}
           rows={3}
-          placeholder="Listen and translate:"
           className={`${inputFrameClassName} w-full resize-y transition-colors placeholder:text-ink-faint`}
         />
       </label>
@@ -282,7 +274,6 @@ export function AudioCardEditor({
           value={back}
           onChange={(event) => onBackChange(event.target.value)}
           rows={5}
-          placeholder="The expected answer."
           className={`${inputFrameClassName} w-full resize-y transition-colors placeholder:text-ink-faint`}
         />
       </label>
