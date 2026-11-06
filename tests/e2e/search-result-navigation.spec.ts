@@ -104,6 +104,10 @@ for (const width of [390, 1440]) {
         .toBe(true);
       const scroll = await main.evaluate((element) => element.scrollTop);
       await input.press('Enter');
+      const preview = page.getByRole('dialog', { name: 'Card preview' });
+      await expect(preview).toBeVisible();
+      await expect(preview).toContainText('Palatine 080');
+      await preview.getByRole('link', { name: 'Edit card', exact: true }).click();
       await expect(page).toHaveURL(/\/cards\/[^/]+\/edit$/);
       await expect(page.getByRole('button', { name: 'Save changes', exact: true })).toBeVisible();
       await page.goBack();

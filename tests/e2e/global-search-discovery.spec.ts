@@ -137,4 +137,22 @@ test('discovers modern question sets, ranks prompts and represents media in both
   await expect(dialog.getByRole('option').filter({ hasText: 'Audio clip' })).toBeVisible();
   await expect(dialog.getByRole('option').filter({ hasText: 'Cell diagram' })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('media-only-quick-results.png') });
+  await dialog.getByRole('option').filter({ hasText: 'Audio clip' }).click();
+  const preview = page.getByRole('dialog', { name: 'Card preview' });
+  await expect(preview.locator('audio')).toBeVisible();
+  await expect(preview.locator('audio')).toHaveJSProperty('autoplay', false);
+  await page.screenshot({ path: test.info().outputPath('audio-card-preview.png') });
+  await preview.getByRole('button', { name: 'Close card preview' }).click();
+  await expect(quick).toHaveValue('Media fixture');
+  await dialog.getByRole('option').filter({ hasText: 'Cell diagram' }).click();
+  await expect(preview.getByRole('img', { name: 'Cell diagram' })).toBeVisible();
+  const centreOffset = await preview
+    .getByRole('img', { name: 'Cell diagram' })
+    .evaluate((image) => {
+      const bounds = image.getBoundingClientRect();
+      const dialog = image.closest('[role="dialog"]')!.getBoundingClientRect();
+      return Math.abs(bounds.left + bounds.width / 2 - dialog.left - dialog.width / 2);
+    });
+  expect(centreOffset).toBeLessThan(2);
+  await page.screenshot({ path: test.info().outputPath('image-card-preview.png') });
 });

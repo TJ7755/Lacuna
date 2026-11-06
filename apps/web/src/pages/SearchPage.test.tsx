@@ -253,6 +253,11 @@ describe('SearchPage', () => {
     expect(input).toHaveAttribute('aria-activedescendant', options[1].id);
     expect(scroll).toHaveBeenCalledWith({ block: 'nearest', behavior: 'instant' });
     fireEvent.keyDown(input, { key: 'Enter' });
+    expect(router.state.location.pathname).toBe('/search');
+    expect(screen.getByRole('dialog', { name: 'Card preview' })).toHaveTextContent(
+      'Palatine second',
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'Edit card' }));
     expect(router.state.location.pathname).toBe('/course/course-1/cards/card-2/edit');
     scroll.mockRestore();
   });
@@ -276,7 +281,44 @@ describe('SearchPage', () => {
     expect(second).toHaveAttribute('aria-selected', 'true');
     expect(input).toHaveAttribute('aria-activedescendant', second.id);
     fireEvent.keyDown(input, { key: 'Enter' });
+    expect(router.state.location.pathname).toBe('/search');
+    expect(screen.getByRole('dialog', { name: 'Card preview' })).toHaveTextContent(
+      'Palatine second',
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'Edit card' }));
     expect(router.state.location.pathname).toBe('/course/course-1/cards/card-2/edit');
+  });
+
+  it('previews and reveals a card without navigation, then closes without changing the search', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    const router = createMemoryRouter([{ path: '*', element: <SearchPage /> }], {
+      initialEntries: ['/search?q=Palatine&filter=new'],
+    });
+    render(<RouterProvider router={router} />);
+    const input = screen.getByRole('combobox');
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByRole('button', { name: 'Question' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Answer' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('Rome');
+    expect(router.state.location.search).toBe('?q=Palatine&filter=new');
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Answer' }), {
+      key: 'Escape',
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await act(async () => new Promise(requestAnimationFrame));
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue('Palatine');
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+    expect(router.state.location.pathname).toBe('/course/course-1/cards/card-1/edit');
   });
 
   it('clears only filters and retains the query', () => {
@@ -328,6 +370,9 @@ describe('SearchPage', () => {
     main.scrollTop = 320;
     fireEvent.scroll(main);
     fireEvent.click(option);
+    expect(screen.getByRole('dialog', { name: 'Card preview' })).toBeInTheDocument();
+    expect(main.scrollTop).toBe(320);
+    fireEvent.click(screen.getByRole('link', { name: 'Edit card' }));
     expect(screen.getByText('Editor')).toBeInTheDocument();
     expect(main.scrollTop).toBe(0);
     await act(() => router.navigate(-1));

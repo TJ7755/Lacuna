@@ -223,9 +223,44 @@ describe('CommandPalette', () => {
       fireEvent.keyDown(input, { key: 'Escape', ...composition });
       expect(onClose).not.toHaveBeenCalled();
       fireEvent.keyDown(input, { key: 'Enter' });
-      expect(onClose).toHaveBeenCalledOnce();
+      expect(screen.getByRole('dialog', { name: 'Card preview' })).toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
     },
   );
+  it('retains quick-search query, selection and scroll when a preview is dismissed', () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard, { ...mockCard, id: 'second', front: 'Palatine second' }],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    const onClose = vi.fn();
+    render(<CommandPalette open onClose={onClose} />, { wrapper: MemoryRouter });
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'Palatine' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    const list = screen.getByRole('listbox').parentElement!;
+    list.scrollTop = 120;
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByRole('dialog', { name: 'Card preview' })).toHaveTextContent(
+      'Palatine second',
+    );
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Answer' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('Rome');
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Answer' }), {
+      key: 'Escape',
+    });
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue('Palatine');
+    expect(list.scrollTop).toBe(120);
+    expect(screen.getAllByRole('option')[1]).toHaveAttribute('aria-selected', 'true');
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it('retires the retained result list as soon as the query is cleared', async () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [mockCard],

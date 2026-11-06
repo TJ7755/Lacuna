@@ -20,6 +20,7 @@ import { SearchIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { StudyDrawing } from '../ui/StudyDrawing';
+import { SearchCardPreview, type CardSearchHit } from './SearchCardPreview';
 import { SearchResultOption } from './SearchResultOption';
 import { hitKey, hitPath, type SearchHit } from './searchPresentation';
 
@@ -144,7 +145,14 @@ function CommandPaletteDialog({
     returnFocusTarget?.current ??
       (document.activeElement instanceof HTMLElement ? document.activeElement : null),
   );
-  const trapRef = useFocusTrap(true, { autoFocusSelector: 'input', returnFocus: false });
+  const [preview, setPreview] = useState<CardSearchHit | null>(null);
+  const searchPanel = useRef<HTMLDivElement>(null);
+  const previewPanel = useRef<HTMLDivElement>(null);
+  useFocusTrap(
+    true,
+    { autoFocusSelector: preview ? '[aria-pressed="true"]' : 'input', returnFocus: false },
+    preview ? previewPanel : searchPanel,
+  );
 
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -192,9 +200,13 @@ function CommandPaletteDialog({
     onClose();
   }
 
-  function go(index: number) {
+  function go(index: number, edit = false) {
     const hit = results[index];
     if (!hit) return;
+    if (hit.kind === 'card' && !scoped && !edit) {
+      setPreview(hit);
+      return;
+    }
     closeForNavigation();
     void navigate(
       hitPath(hit),
@@ -207,7 +219,8 @@ function CommandPaletteDialog({
     if (e.key === 'Escape') {
       // Dismissal belongs to the dialog, not to the page beneath it.
       e.stopPropagation();
-      onClose();
+      if (preview) setPreview(null);
+      else onClose();
     } else if (scoped && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
       const key = e.key.toLowerCase();
       if (key === 'f') {
@@ -231,7 +244,7 @@ function CommandPaletteDialog({
       setActive((a) => (results.length > 0 ? Math.max(a - 1, 0) : -1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (hasVisibleResults && query === deferredQuery) go(active);
+      if (hasVisibleResults && query === deferredQuery) go(active, e.shiftKey);
     }
   }
 
@@ -239,136 +252,147 @@ function CommandPaletteDialog({
     <AnimatePresence>
       {
         <motion.div
-          ref={trapRef}
           role="dialog"
           aria-modal="true"
-          aria-label={label}
+          aria-label={preview ? 'Card preview' : label}
           className="fixed inset-0 z-50 flex items-start justify-center pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(12vh,env(safe-area-inset-top))]"
         >
-          <ModalBackdrop shade={40} onClick={onClose} />
+          <ModalBackdrop shade={40} onClick={() => (preview ? setPreview(null) : onClose())} />
           <motion.div
             initial={{ opacity: 0, y: -12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -12, scale: 0.98 }}
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-surface card-surface will-change-transform-opacity"
+            className="relative flex max-h-[80vh] w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-surface card-surface will-change-transform-opacity"
             onKeyDown={onKeyDown}
           >
-            <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-              <SearchIcon width={18} height={18} className="text-ink-faint" />
-              <input
-                ref={inputRef}
-                role="combobox"
-                aria-label={inputLabel}
-                aria-controls={hasVisibleResults ? 'palette-listbox' : undefined}
-                aria-expanded={hasVisibleResults}
-                aria-autocomplete="list"
-                aria-activedescendant={
-                  hasVisibleResults && active >= 0 && active < results.length
-                    ? `palette-option-${active}`
-                    : undefined
-                }
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={placeholder}
-                className="flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
-              />
-              <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
-                Esc
-              </kbd>
-            </div>
-            <div aria-live="polite" aria-atomic="true" className="sr-only">
-              {query.trim() === ''
-                ? 'Type to search'
-                : results.length === 0
-                  ? `No results for ${deferredQuery}`
-                  : `${results.length < allResults.length ? `${results.length} of ` : ''}${allResults.length} ${allResults.length === 1 ? 'result' : 'results'} available`}
-            </div>
-
-            <div className="max-h-[50vh] overflow-y-auto">
-              <AnimatePresence mode="wait">
-                {query.trim() === '' ? (
-                  <motion.div
-                    key="empty"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.12 * m }}
-                    className="flex justify-center px-4 py-5"
-                  >
-                    <StudyDrawing kind="search" className="h-14 w-14 opacity-60" />
-                  </motion.div>
-                ) : results.length === 0 ? (
-                  <motion.p
-                    key="none"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.12 * m }}
-                    className="px-4 py-6 text-center text-sm text-ink-faint"
-                  >
-                    Nothing matches &ldquo;{deferredQuery}&rdquo;.
-                  </motion.p>
-                ) : (
-                  <PaletteResults
-                    ref={resultList}
-                    key="results"
-                    id="palette-listbox"
-                    role="listbox"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.12 * m }}
-                    // Inset rounded rows, as in every other menu; 6px + 10px keeps the
-                    // text on the search field's 16px edge.
-                    className="p-1.5"
-                  >
-                    {results.map((hit, i) => {
-                      return (
-                        <li key={hitKey(hit)} role="presentation">
-                          <SearchResultOption
-                            index={i}
-                            hit={hit}
-                            query={deferredQuery}
-                            id={`palette-option-${i}`}
-                            selected={i === active}
-                            onSelect={() => setActive(i)}
-                            onOpen={() => go(i)}
-                          />
-                        </li>
-                      );
-                    })}
-                  </PaletteResults>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {hasVisibleResults && limit !== undefined && allResults.length > limit && (
-              <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2 text-xs text-ink-faint">
-                <span>
-                  {results.length} of {allResults.length} results
-                </span>
-                <Link
-                  to={`/search?${new URLSearchParams({ q: query })}`}
-                  onClick={closeForNavigation}
-                  className="inline-flex min-h-11 items-center rounded-full px-3 text-sm text-accent-ink"
-                >
-                  See all results
-                </Link>
+            {preview && (
+              <div ref={previewPanel} className="flex min-h-0 flex-col">
+                <SearchCardPreview
+                  key={preview.card.id}
+                  hit={preview}
+                  onClose={() => setPreview(null)}
+                  onNavigate={closeForNavigation}
+                />
               </div>
             )}
+            <div ref={searchPanel} hidden={!!preview} inert={!!preview}>
+              <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+                <SearchIcon width={18} height={18} className="text-ink-faint" />
+                <input
+                  ref={inputRef}
+                  role="combobox"
+                  aria-label={inputLabel}
+                  aria-controls={hasVisibleResults ? 'palette-listbox' : undefined}
+                  aria-expanded={hasVisibleResults}
+                  aria-autocomplete="list"
+                  aria-activedescendant={
+                    hasVisibleResults && active >= 0 && active < results.length
+                      ? `palette-option-${active}`
+                      : undefined
+                  }
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={placeholder}
+                  className="flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
+                />
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
+                  Esc
+                </kbd>
+              </div>
+              <div aria-live="polite" aria-atomic="true" className="sr-only">
+                {query.trim() === ''
+                  ? 'Type to search'
+                  : results.length === 0
+                    ? `No results for ${deferredQuery}`
+                    : `${results.length < allResults.length ? `${results.length} of ` : ''}${allResults.length} ${allResults.length === 1 ? 'result' : 'results'} available`}
+              </div>
 
-            {/* Footer shortcuts */}
-            <div className="flex items-center gap-3 border-t border-line bg-surface-raised/30 px-4 py-2 text-[10px] text-ink-faint">
-              <span className="flex items-center gap-1">
-                <kbd className="rounded border border-line px-1 py-0.5">↑</kbd>
-                <kbd className="rounded border border-line px-1 py-0.5">↓</kbd>
-                Navigate
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="rounded border border-line px-1 py-0.5">↵</kbd>
-                Open
-              </span>
+              <div className="max-h-[50vh] overflow-y-auto">
+                <AnimatePresence mode="wait">
+                  {query.trim() === '' ? (
+                    <motion.div
+                      key="empty"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.12 * m }}
+                      className="flex justify-center px-4 py-5"
+                    >
+                      <StudyDrawing kind="search" className="h-14 w-14 opacity-60" />
+                    </motion.div>
+                  ) : results.length === 0 ? (
+                    <motion.p
+                      key="none"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.12 * m }}
+                      className="px-4 py-6 text-center text-sm text-ink-faint"
+                    >
+                      Nothing matches &ldquo;{deferredQuery}&rdquo;.
+                    </motion.p>
+                  ) : (
+                    <PaletteResults
+                      ref={resultList}
+                      key="results"
+                      id="palette-listbox"
+                      role="listbox"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.12 * m }}
+                      // Inset rounded rows, as in every other menu; 6px + 10px keeps the
+                      // text on the search field's 16px edge.
+                      className="p-1.5"
+                    >
+                      {results.map((hit, i) => {
+                        return (
+                          <li key={hitKey(hit)} role="presentation">
+                            <SearchResultOption
+                              index={i}
+                              hit={hit}
+                              query={deferredQuery}
+                              id={`palette-option-${i}`}
+                              selected={i === active}
+                              onSelect={() => setActive(i)}
+                              onOpen={() => go(i)}
+                            />
+                          </li>
+                        );
+                      })}
+                    </PaletteResults>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {hasVisibleResults && limit !== undefined && allResults.length > limit && (
+                <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2 text-xs text-ink-faint">
+                  <span>
+                    {results.length} of {allResults.length} results
+                  </span>
+                  <Link
+                    to={`/search?${new URLSearchParams({ q: query })}`}
+                    onClick={closeForNavigation}
+                    className="inline-flex min-h-11 items-center rounded-full px-3 text-sm text-accent-ink"
+                  >
+                    See all results
+                  </Link>
+                </div>
+              )}
+
+              {/* Footer shortcuts */}
+              <div className="flex items-center gap-3 border-t border-line bg-surface-raised/30 px-4 py-2 text-[10px] text-ink-faint">
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded border border-line px-1 py-0.5">↑</kbd>
+                  <kbd className="rounded border border-line px-1 py-0.5">↓</kbd>
+                  Navigate
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded border border-line px-1 py-0.5">↵</kbd>
+                  Open
+                </span>
+              </div>
             </div>
           </motion.div>
         </motion.div>
