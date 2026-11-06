@@ -143,7 +143,9 @@ async function readCourseStudyFlowRecords(
     lessonIds.length > 0 ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray() : [],
     lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
     performanceForCourseBackingDecks(courseId, cards),
-    dailyReviewCounts('course'),
+    course.dailyReviewGoal || course.maxReviewsPerDay
+      ? dailyReviewCounts('course')
+      : new Map<string, number>(),
   ]);
   const questionContext = {
     course,
