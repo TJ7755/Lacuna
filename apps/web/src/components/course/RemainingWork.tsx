@@ -53,8 +53,9 @@ export function RemainingWork({
       records ?? readRemainingWorkRecords(courseId),
       db.revisionPlans.where('courseId').equals(courseId).toArray(),
     ]);
-    // Observe the course range without registering every historical event as a dependency.
-    if (!records) await db.reviewHistory.where('courseId').equals(courseId).count();
+    // Canonical mutations rewrite the affected card's activity row, including
+    // timing corrections. Observe every current card, including missing rows.
+    if (!records) await db.reviewActivity.bulkGet(source.cards.map((card) => card.id));
     return { source, plans };
   }, [courseId, records, enabled]);
   const [estimates, setEstimates] = useState<RemainingWorkResults>();

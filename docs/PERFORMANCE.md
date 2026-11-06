@@ -22,6 +22,12 @@ remains in Git; it is not a current priority list.
    `LACUNA_ELECTRON_APP_DIR=<path> bun run test:e2e:electron-package` against the intended package.
    Record the package's identity, host architecture and unsigned/signed state.
 
+For a fixed baseline/candidate comparison on one hosted runner, dispatch the performance workflow
+from the candidate branch with `gh workflow run performance.yml --ref <branch> -f comparison_base=<full-commit-sha>`.
+To compare an exact merge candidate, also supply `-f comparison_candidate=<full-commit-sha>`.
+Download its `storage-comparison-*` artefact, including the predeclared plan, all results and failures.
+The workflow owns the run order; do not repeat it merely to obtain a passing sample.
+
 ## Interpret
 
 Compare equivalent workloads on named before/after commits. Count retries and failures separately
