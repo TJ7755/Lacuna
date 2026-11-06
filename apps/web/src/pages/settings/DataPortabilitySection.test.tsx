@@ -230,7 +230,7 @@ describe('DataPortabilitySection', () => {
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseCombineFile();
 
-    expect(notify).toHaveBeenCalledWith('This file is not a valid Lacuna backup.', 'negative');
+    expect(screen.getByRole('alert')).toHaveTextContent('This file is not a valid Lacuna backup.');
     expect(manualMerge).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Combine' })).not.toBeInTheDocument();
   });
@@ -247,11 +247,8 @@ describe('DataPortabilitySection', () => {
     await chooseCombineFile();
     fireEvent.click(await screen.findByRole('button', { name: 'Combine' }));
 
-    await waitFor(() =>
-      expect(notify).toHaveBeenCalledWith(
-        'IndexedDB unavailable. A safety backup could not be taken, so the database was not modified.',
-        'negative',
-      ),
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'IndexedDB unavailable. A safety backup could not be taken, so the database was not modified.',
     );
     expect(importBackup).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Combine' })).toBeInTheDocument();
@@ -266,12 +263,101 @@ describe('DataPortabilitySection', () => {
     await chooseCombineFile();
     fireEvent.click(await screen.findByRole('button', { name: 'Combine' }));
 
-    await waitFor(() =>
-      expect(notify).toHaveBeenCalledWith(
-        'The import did not finish. Restore from Automatic backups if this installation looks wrong.',
-        'negative',
-      ),
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The import did not finish. Use a restore point if this installation looks wrong.',
     );
+  });
+
+  it.each(['merge', 'replace'] as const)(
+    'keeps the selected backup and specific error for a %s retry',
+    async (mode) => {
+      const backup = backupStub();
+      readBackupFile.mockResolvedValue(backup);
+      importBackup.mockRejectedValueOnce(new Error('Storage is full. Free space and try again.'));
+      render(<DataPortabilitySection motionMultiplier={0} />);
+      await chooseRecoverFile();
+      const label = mode === 'replace' ? 'Replace local data' : 'Add from backup';
+      if (mode === 'replace') fireEvent.click(screen.getByRole('button', { name: label }));
+      fireEvent.click(screen.getByRole('button', { name: label }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Storage is full. Free space and try again.',
+      );
+      expect(screen.getByRole('heading', { name: 'backup.json' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: label })).toBeEnabled();
+      expect(notify).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: label }));
+
+      await waitFor(() => expect(importBackup).toHaveBeenCalledTimes(2));
+      expect(importBackup).toHaveBeenLastCalledWith(backup, mode);
+      expect(readBackupFile).toHaveBeenCalledOnce();
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: 'backup.json' })).not.toBeInTheDocument(),
+      );
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    },
+  );
+
+  it('blocks replacement, new files, cancellation and duplicate activation while adding', async () => {
+    let complete: () => void = () => {};
+    importBackup.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          complete = resolve;
+        }),
+    );
+    readBackupFile.mockResolvedValue(backupStub());
+    render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseRecoverFile();
+    fireEvent.click(screen.getByRole('button', { name: 'Add from backup' }));
+
+    expect(await screen.findByRole('button', { name: 'Adding…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Replace local data' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Choose backup file' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Choose backup from another device' }),
+    ).toBeDisabled();
+    await chooseCombineFile();
+    fireEvent.click(screen.getByRole('button', { name: 'Adding…' }));
+    expect(importBackup).toHaveBeenCalledOnce();
+    expect(readBackupFile).toHaveBeenCalledOnce();
+    await act(async () => complete());
+  });
+
+  it('retains a global error notice if the learner navigates away during recovery', async () => {
+    let rejectImport: (error: Error) => void = () => {};
+    importBackup.mockImplementationOnce(
+      () =>
+        new Promise<void>((_, reject) => {
+          rejectImport = reject;
+        }),
+    );
+    readBackupFile.mockResolvedValue(backupStub());
+    const view = render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseRecoverFile();
+    fireEvent.click(screen.getByRole('button', { name: 'Add from backup' }));
+    await waitFor(() => expect(importBackup).toHaveBeenCalledOnce());
+    view.unmount();
+
+    await act(async () => rejectImport(new Error('Storage is full. Free space and try again.')));
+
+    expect(notify).toHaveBeenCalledWith('Storage is full. Free space and try again.', 'negative');
+  });
+
+  it('uses the shared, concise quota explanation rather than the repeated database exception', async () => {
+    readBackupFile.mockResolvedValue(backupStub());
+    importBackup.mockRejectedValue(
+      new DOMException('Repeated low-level detail', 'QuotaExceededError'),
+    );
+    render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseRecoverFile();
+    fireEvent.click(screen.getByRole('button', { name: 'Add from backup' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Your browser storage is full. Export a backup before removing unused content.',
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Repeated low-level detail');
   });
 
   it('disables the combine action while it is running', async () => {

@@ -159,7 +159,10 @@ export function McpSection() {
               Copy
             </Button>
           </div>
-          <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-xs text-ink">
+          <pre
+            aria-label="MCP client configuration"
+            className="mt-2 select-text overflow-x-auto whitespace-pre-wrap break-all text-xs text-ink"
+          >
             {JSON.stringify(
               {
                 mcpServers: {

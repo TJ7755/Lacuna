@@ -177,7 +177,7 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.props.label
               ? `An error occurred in ${this.props.label}.`
               : 'An unexpected error occurred.'}{' '}
-            Your data is saved locally and is safe.
+            Unsaved edits may be lost.
           </p>
           <Button variant="primary" onClick={this.handleReset}>
             Try again
@@ -195,7 +195,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </button>
             <AnimatedDisclosure open={this.state.detailsOpen} retainContent>
               <div className="mt-2 flex flex-col items-center gap-3 text-center">
-                <pre className="w-full overflow-x-auto rounded-xl border-[1.5px] border-line-strong bg-surface px-3.5 py-2.5 text-left text-xs text-ink-faint">
+                <pre className="w-full select-text overflow-x-auto rounded-xl border-[1.5px] border-line-strong bg-surface px-3.5 py-2.5 text-left text-xs text-ink-faint">
                   {this.state.error.message}
                 </pre>
                 <div className="flex flex-wrap items-center justify-center gap-2">

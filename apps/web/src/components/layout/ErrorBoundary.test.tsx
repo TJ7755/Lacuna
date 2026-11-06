@@ -17,6 +17,8 @@ describe('ErrorBoundary', () => {
     );
 
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    expect(screen.getByText(/Unsaved edits may be lost/)).toBeInTheDocument();
+    expect(screen.queryByText(/Your data is saved locally and is safe/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
@@ -39,6 +41,7 @@ describe('ErrorBoundary', () => {
       'false',
     );
     fireEvent.click(screen.getByText('Technical details'));
+    expect(screen.getByText('lazy chunk unavailable')).toHaveClass('select-text');
     fireEvent.click(screen.getByRole('button', { name: 'Copy diagnostic details' }));
     expect(
       await screen.findByText('Could not copy. Download the bundle instead.'),
