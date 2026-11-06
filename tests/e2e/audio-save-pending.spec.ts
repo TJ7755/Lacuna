@@ -101,6 +101,7 @@ test('cannot save the previous clip while its replacement is being recorded or s
     'true',
   );
   await expect(save).toBeDisabled();
+  await page.getByRole('textbox', { name: 'Prompt (optional)' }).fill('Identify this sound');
   await page.screenshot({ path: info.outputPath('processing-save-disabled.png') });
   await page.evaluate(() => window.dispatchEvent(new Event('release-test-store')));
   await expect(save).toBeEnabled();
@@ -126,5 +127,6 @@ test('cannot save the previous clip while its replacement is being recorded or s
   expect(fronts).toHaveLength(1);
   expect(fronts[0]).toContain('![audio](lacuna-asset://');
   expect(fronts[0]).not.toContain(oldHash);
+  expect(fronts[0]).toContain('Identify this sound');
   await page.evaluate(() => window.dispatchEvent(new Event('close-test-signal')));
 });

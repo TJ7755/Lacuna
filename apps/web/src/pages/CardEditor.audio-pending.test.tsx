@@ -52,6 +52,9 @@ it('blocks both Save and keyboard submission until a replacement clip reaches th
     });
   });
   expect(updateCard).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByRole('textbox', { name: 'Prompt (optional)' }), {
+    target: { value: 'Identify this sound' },
+  });
   await act(async () =>
     finish?.({
       hash: newHash,
@@ -63,11 +66,12 @@ it('blocks both Save and keyboard submission until a replacement clip reaches th
   );
   await waitFor(() => expect(save).toBeEnabled());
   fireEvent.click(save);
-  await waitFor(() =>
-    expect(updateCard).toHaveBeenCalledWith(
-      'card-1',
-      expect.objectContaining({ front: `Listen\n\n![audio](lacuna-asset://${newHash})` }),
-    ),
+  await waitFor(() => expect(updateCard).toHaveBeenCalled());
+  expect(updateCard).toHaveBeenCalledWith(
+    'card-1',
+    expect.objectContaining({
+      front: `Identify this sound\n\n![audio](lacuna-asset://${newHash})`,
+    }),
   );
 });
 

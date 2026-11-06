@@ -63,6 +63,8 @@ export function AudioCardEditor({
     }
   };
   const parsed = parseAudioCardFront(front);
+  const latestFront = useRef(front);
+  latestFront.current = front;
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -109,10 +111,9 @@ export function AudioCardEditor({
     try {
       const asset = await storeAudioBlob(blob, mimeType);
       if (!mountedRef.current) return;
-      onFrontChange(buildAudioCardFront(parsed?.prompt ?? front.trim(), asset.hash));
-      attachmentFocus.restore(
-        (parsed?.prompt ?? front.trim()) ? answerInput.current : promptInput.current,
-      );
+      const prompt = parseAudioCardFront(latestFront.current)?.prompt ?? latestFront.current.trim();
+      onFrontChange(buildAudioCardFront(prompt, asset.hash));
+      attachmentFocus.restore(prompt ? answerInput.current : promptInput.current);
     } catch (error) {
       if (mountedRef.current)
         onError(error instanceof Error ? error.message : 'Could not store that audio file.');
