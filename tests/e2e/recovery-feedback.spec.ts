@@ -197,6 +197,12 @@ test('supports copying configuration text with a simulated read-only native brid
 
 test('offers recovery without guaranteeing that unverified edits were saved', async ({ page }) => {
   await enterFreshLacuna(page);
+  // A fresh empty installation need not have an automatic restore point.
+  // Create one so the injected formatter failure is exercised deterministically.
+  await page.goto('/#/settings#settings-backups');
+  await page.getByRole('button', { name: 'Back up', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Restore', exact: true }).first()).toBeVisible();
+  await page.goto('/#/');
   await page.evaluate(() => {
     Date.prototype.toLocaleString = () => {
       throw new Error('Date formatting unavailable');
