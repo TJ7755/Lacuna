@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 for (const width of [390, 1440]) {
-  test(`quick search keeps its drawing and remembers first-visit hints at ${width}px`, async ({
+  test(`quick search keeps its drawing without shortcut guidance at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 1000 });
@@ -17,8 +17,7 @@ for (const width of [390, 1440]) {
     await expect(input).toHaveAttribute('placeholder', 'Search…');
     await expect(drawing).toBeVisible();
     await expect(drawing).toHaveAttribute('aria-hidden', 'true');
-    await expect(dialog.getByText('Navigate')).toBeVisible();
-    await expect(dialog.getByText('Esc', { exact: true })).toBeVisible();
+    await expect(dialog.locator('kbd')).toHaveCount(0);
     await expect(dialog.getByText('Type to search across every course.')).toHaveCount(0);
     await page.screenshot({
       animations: 'disabled',
