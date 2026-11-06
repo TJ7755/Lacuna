@@ -119,7 +119,7 @@ export function App() {
           const { isFirstRun, settleFirstRun } = await import('./db/seed');
           const firstRun = await isFirstRun();
           if (firstRun && !isPublicEntry(window.location.hash) && !enteredFromLanding) {
-            window.location.hash = '#/welcome';
+            await router.navigate('/welcome');
           }
 
           await settleFirstRun();
@@ -136,7 +136,7 @@ export function App() {
         }
         // A new learner who chose to enter starts with onboarding rather than an empty Today.
         if (enteredFromLanding && onboardingPending() && /^#?\/?$/.test(window.location.hash)) {
-          window.location.hash = '#/start';
+          await router.navigate('/start');
         }
       } catch (error) {
         if (import.meta.env.DEV) {
