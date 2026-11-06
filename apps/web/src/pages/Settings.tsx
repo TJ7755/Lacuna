@@ -20,7 +20,6 @@ import { JevSection } from './settings/JevSection';
 import { SettingsDisclosure } from './settings/SettingsDisclosure';
 import { Rise } from '../components/analytics/Arrival';
 import { FeedbackSection } from '../components/feedback/FeedbackSection';
-import { ArchiveIcon, CardsIcon, GridIcon, MoonIcon, PlayIcon } from '../components/ui/icons';
 
 declare const __APP_VERSION__: string;
 
@@ -44,13 +43,6 @@ const DATA_ANCHORS = [
 ];
 const INTEGRATION_ANCHORS = ['settings-install', 'settings-jev', 'settings-mcp'];
 const COMMON_ANCHORS = new Set(['settings-appearance', 'settings-input', 'settings-pomodoro']);
-const SETTINGS_JUMPS = [
-  { id: 'settings-appearance', label: 'Appearance', Icon: MoonIcon },
-  { id: 'settings-study', label: 'Study settings', Icon: PlayIcon },
-  { id: 'settings-course-defaults', label: 'Course defaults', Icon: CardsIcon },
-  { id: 'settings-backups', label: 'Data settings', Icon: ArchiveIcon },
-  { id: 'settings-jev', label: 'Integrations', Icon: GridIcon },
-];
 
 export function Settings() {
   const install = useInstallPrompt();
@@ -63,28 +55,7 @@ export function Settings() {
     <div className={`${PAGE_FRAME} pb-12`}>
       <Rise as="header" className={PAGE_HEADER}>
         <h1 className={PAGE_TITLE}>Settings</h1>
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
-          <nav className="flex gap-1" aria-label="Settings sections">
-            {SETTINGS_JUMPS.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                aria-label={`Jump to ${label.toLowerCase()}`}
-                title={label}
-                className="grid min-h-11 min-w-11 place-items-center rounded-full text-ink-soft hover:bg-ink/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                onClick={() => {
-                  const target = `#/settings#${id}`;
-                  if (window.location.hash === target)
-                    window.dispatchEvent(new HashChangeEvent('hashchange'));
-                  else window.location.hash = target;
-                }}
-              >
-                <Icon width={20} height={20} />
-              </button>
-            ))}
-          </nav>
-          <p className="text-sm tabular text-ink-faint">Version {appVersion()}</p>
-        </div>
+        <p className="text-sm tabular text-ink-faint">Version {appVersion()}</p>
       </Rise>
       <Rise
         index={1}

@@ -25,7 +25,7 @@ test('narrow desktop navigation expands without shrinking content and returns fo
   await expect(expand).toBeFocused();
 });
 
-test('sidebar customisation matches the rendered groups and settings shortcuts find data', async ({
+test('sidebar customisation matches the rendered groups and keeps Settings pinned', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -41,21 +41,4 @@ test('sidebar customisation matches the rendered groups and settings shortcuts f
     path: testInfo.outputPath('sidebar-groups.png'),
     animations: 'disabled',
   });
-  await page.getByRole('button', { name: 'Jump to data settings', exact: true }).click();
-  await expect(page.getByRole('button', { name: /^Your data/ })).toHaveAttribute(
-    'aria-expanded',
-    'true',
-  );
-  await expect(page.locator('#settings-backups')).toBeVisible();
-  await expect(page.locator('#settings-backups').getByRole('heading').first()).toBeInViewport();
-  await page.screenshot({
-    path: testInfo.outputPath('settings-section-jump.png'),
-    animations: 'disabled',
-  });
-  await page.getByRole('button', { name: /^Your data/ }).click();
-  await page.getByRole('button', { name: 'Jump to data settings', exact: true }).click();
-  await expect(page.getByRole('button', { name: /^Your data/ })).toHaveAttribute(
-    'aria-expanded',
-    'true',
-  );
 });
