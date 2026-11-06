@@ -1,9 +1,9 @@
 import { createCourse, createLesson, createLessonCard } from '../../../apps/web/src/db/repository';
 import { db } from '../../../apps/web/src/db/schema';
 
-export const completedName =
+const completedName =
   'How substances are transported through the circulatory system and exchanged across cell membranes';
-export const topicNames = [
+const topicNames = [
   'Explain how differences in concentration cause substances to move across a selectively permeable cell membrane',
   'Explain how the movement of water across a selectively permeable cell membrane changes the mass of plant tissue',
 ];
