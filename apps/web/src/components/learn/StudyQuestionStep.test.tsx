@@ -116,7 +116,7 @@ it.each([false, true])(
     const first = open();
     const answer = await screen.findByLabelText('Your answer');
     expect(hasLandingArrival()).toBe(false);
-    expect(screen.getAllByRole('button', { name: 'Exit', exact: true })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^Exit$/ })).toHaveLength(1);
     expect(screen.queryByRole('button', { name: 'Finish for now' })).not.toBeInTheDocument();
     fireEvent.change(answer, {
       target: { value: 'Controls which substances enter and leave.' },

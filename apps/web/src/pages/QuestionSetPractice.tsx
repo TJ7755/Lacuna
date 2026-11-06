@@ -309,7 +309,7 @@ function PracticeWorkspace({
           variant="secondary"
           size="sm"
           className="qs-practice-exit"
-          disabled={formDirty || reflectionDirty || acting}
+          disabled={formDirty || reflectionDirty}
           onClick={() =>
             void perform(async () => {
               await progress.flush();
