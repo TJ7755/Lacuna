@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { StudyControls } from './StudyControls';
 import type { AutoMark } from './types';
 
+vi.mock('motion/mini', () => ({ animate: vi.fn(() => ({ stop: vi.fn() })) }));
+
 describe('StudyControls typed answers', () => {
   it('keeps the question open when Enter confirms an IME candidate', () => {
     const onReveal = vi.fn();

@@ -13,6 +13,8 @@ import type * as CourseStudyFlowModule from '../state/useCourseStudyFlow';
 import { LearnMode } from './LearnMode';
 import { CourseStudyFlow } from './CourseStudyFlow';
 
+vi.mock('motion/mini', () => ({ animate: vi.fn(() => ({ stop: vi.fn() })) }));
+
 let motionMultiplier = 0;
 let holdPlanner = false;
 

@@ -51,6 +51,7 @@
         "tests/performance/playwright.study-load.config.ts",
         // Playwright specs pass these paths to esbuild entryPoints at runtime.
         "tests/e2e/fixtures/{jevStudy,reportContinuation,studyFirstGrade,studyImageAdvance,studySessionLoad}.ts",
+        "tests/e2e/fixtures/studyAnimation.tsx",
         "scripts/{ai-benchmark,jev-smoke,question-bank,library-publish}.ts",
         "scripts/performance-heavy/{fixture,run}.ts",
         "scripts/performance-heavy/{summarise,trace-summary}.mjs",
