@@ -48,7 +48,22 @@ export function calculateRemainingWorkOffThread(
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject });
     try {
-      worker!.postMessage({ id, input, now });
+      const { course, assessments, lessons, cards, links, concepts } = input.source;
+      // Path records also contain activity and planning data. Estimates only need
+      // ownership, schedules and real legacy evidence; never clone image bodies.
+      const source = {
+        course,
+        assessments,
+        lessons,
+        links,
+        concepts,
+        cards: cards.map(({ front: _front, back: _back, payload: _payload, ...card }) => ({
+          ...card,
+          front: '',
+          back: '',
+        })),
+      };
+      worker!.postMessage({ id, input: { source, plans: input.plans }, now });
     } catch (error) {
       pending.delete(id);
       reject(error);

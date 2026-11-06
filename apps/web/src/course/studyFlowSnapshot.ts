@@ -11,6 +11,7 @@ import type {
   PracticeMilestone,
 } from '@lacuna/core/db/types';
 import type { ExamDateContext } from '../fsrs/examDate';
+import type { ReviewActivity } from '../fsrs/heatmap';
 import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
 import type { ConceptPracticeNeeds } from '../questions/techniqueEvidence';
 import type { PathNode, PracticePathNode } from './path';
@@ -90,6 +91,7 @@ export interface BuildCourseStudyFlowSnapshotInput {
   meanReviewSeconds: number;
   practiceMilestones?: PracticeMilestone[];
   reviewsToday?: number;
+  activity?: ReviewActivity;
   now?: number;
 }
 
@@ -152,6 +154,7 @@ export function buildCourseStudyFlowSnapshot({
   meanReviewSeconds,
   practiceMilestones = [],
   reviewsToday = 0,
+  activity,
   now = Date.now(),
 }: BuildCourseStudyFlowSnapshotInput): CourseStudyFlowSnapshot {
   const milestoneByKey = new Map(
@@ -375,6 +378,7 @@ export function buildCourseStudyFlowSnapshot({
       now,
       earlier,
       true,
+      activity,
     ).length,
     catchUpPriorityCount: catchUpPracticePool(
       cards,
@@ -385,6 +389,8 @@ export function buildCourseStudyFlowSnapshot({
       reachedLessonIds,
       now,
       earlier,
+      false,
+      activity,
     ).length,
     readiness: buildStudyReadiness({ course, cards, examDateContext, now }),
     archived: course.archived === true,

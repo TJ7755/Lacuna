@@ -1,7 +1,6 @@
 import type { CourseAssessment, RevisionPlan } from '@lacuna/core/db/types';
-import { cardsWithReviewHistory } from '@lacuna/core/db/reviewHistory';
 import type { useCoursePathRecords } from '../state/useCourseStudyFlowRecords';
-import { listReviewHistoryForCourse } from '../db/reviewHistoryRead';
+import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { courseLessonOrderPreference } from './lessonOrder';
 import { isUpcomingExamDate } from '../fsrs/examDate';
@@ -29,12 +28,7 @@ export async function calculateRemainingWork(
 ): Promise<RemainingWorkResults> {
   const { course, assessments, lessons, links, concepts } = input.source;
   if (!course) return [];
-  const cards = hydrate
-    ? cardsWithReviewHistory(
-        input.source.cards,
-        await listReviewHistoryForCourse(course.id, input.source.cards),
-      )
-    : input.source.cards;
+  const cards = hydrate ? await hydrateCardsWithHistory(input.source.cards) : input.source.cards;
   const context = simContext(course, makeEngine(course.fsrsParameters));
   return assessments
     .filter((assessment) => isUpcomingExamDate(assessment.examDate, now))

@@ -59,21 +59,23 @@ export function RemainingWork({
   useEffect(() => {
     if (!input) return;
     let cancelled = false;
-    const calculation = records
-      ? calculateRemainingWork(input, now, false)
-      : calculateRemainingWorkOffThread(input, now);
-    void calculation.then(
-      (next) => {
-        if (!cancelled) setEstimates(next);
-      },
-      (cause: unknown) => {
-        if (!cancelled) setError(cause instanceof Error ? cause : new Error(String(cause)));
-      },
-    );
+    void Promise.resolve()
+      .then(() => calculateRemainingWorkOffThread(input, now))
+      // A cached course can open offline before its optional worker chunk was
+      // fetched. Keep its estimates available through the same calculation.
+      .catch(() => calculateRemainingWork(input, now, true))
+      .then(
+        (next) => {
+          if (!cancelled) setEstimates(next);
+        },
+        (cause: unknown) => {
+          if (!cancelled) setError(cause instanceof Error ? cause : new Error(String(cause)));
+        },
+      );
     return () => {
       cancelled = true;
     };
-  }, [input, now, records]);
+  }, [input, now]);
   if (error) throw error;
   if (!estimates?.length) return null;
   return (
