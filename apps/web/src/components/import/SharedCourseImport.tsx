@@ -40,7 +40,6 @@ import {
   getLocalTimeZone,
 } from '../../utils/datetime';
 import { CourseStudyTarget } from '../course/CourseStudyTarget';
-import './SharedCourseImport.css';
 
 /** A decoded, not-yet-confirmed import. `merge` is present when the payload's lineage
  *  (Arc 7 §7.5) matches a course already imported locally — routing this to the merge
