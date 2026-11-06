@@ -1,8 +1,4 @@
-import {
-  createHostedTransport,
-  HostedTransportError,
-  hostedLimitError,
-} from '../ai/session/hostedTransport';
+import { createHostedTransport, HostedTransportError, hostedLimitError } from './transport';
 import { HOSTED_SERVICE_ORIGIN } from '../config/origins';
 import { decisionHash, jevDecisionCache, type JevDecisionCache } from './cache';
 import { splitJevExpectedAnswer } from './answerParts';

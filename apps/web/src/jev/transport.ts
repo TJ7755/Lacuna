@@ -1,13 +1,7 @@
-import { decodeHostedEvents, type HostedEvent, type HostedRequest } from '../hostedProtocol';
-import { HOSTED_SERVICE_ORIGIN } from '../../config/origins';
-
-export { HOSTED_SERVICE_ORIGIN } from '../../config/origins';
-
-export const HOSTED_ACCESS_STORAGE_KEY = 'lacuna.aiHostedAccess';
+import { HOSTED_SERVICE_ORIGIN } from '../config/origins';
 
 export interface HostedTransport {
   exchange(credential: string, signal?: AbortSignal): Promise<{ token: string; expiresAt: number }>;
-  infer(request: HostedRequest, token: string, signal: AbortSignal): AsyncGenerator<HostedEvent>;
 }
 
 export class HostedTransportError extends Error {
@@ -20,7 +14,7 @@ export class HostedTransportError extends Error {
         access: 'Your AI session has expired or was rejected.',
         quota: 'AI limit reached. Try again later.',
         'rate-limit': 'Too many attempts. Try again later.',
-        unavailable: 'Built-in AI is unavailable. Try again later.',
+        unavailable: 'Automatic marking is unavailable. Try again later.',
         network: 'Lacuna could not reach the AI service. Check your connection.',
         invalid: 'The AI service rejected this request.',
       }[kind],
@@ -92,32 +86,6 @@ export function createHostedTransport(
         throw new HostedTransportError('invalid');
       }
       return { token: body.token, expiresAt: body.expiresAt };
-    },
-    async *infer(request, token, signal) {
-      let response: Response;
-      try {
-        response = await fetcher(endpoint('inference'), {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(request),
-          signal,
-        });
-      } catch {
-        throw new HostedTransportError('network');
-      }
-      if (!response.ok) throw responseError(response);
-      if (
-        !response.body ||
-        !response.headers.get('Content-Type')?.startsWith('application/x-ndjson')
-      ) {
-        throw new HostedTransportError('invalid');
-      }
-      try {
-        yield* decodeHostedEvents(response.body);
-      } catch {
-        if (signal.aborted) return;
-        throw new HostedTransportError('network');
-      }
     },
   };
 }
