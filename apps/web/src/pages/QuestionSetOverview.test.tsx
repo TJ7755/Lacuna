@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import { expectAppDestination } from '../../../../tests/helpers/expectAppDestination';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
@@ -78,6 +79,15 @@ beforeEach(async () => {
 });
 
 describe('QuestionSetOverview', () => {
+  it('offers recovery for a missing course instead of waiting for its question set', async () => {
+    open('missing-course');
+
+    expect(
+      await screen.findByRole('heading', { name: 'This course could not be found.' }),
+    ).toBeVisible();
+    expectAppDestination(screen.getByRole('link', { name: 'Back to Today' }), '/');
+  });
+
   it('shows questions and indented parts inline without empty attempts or modal triggers', async () => {
     const { course } = await fixture();
     open(course.id);

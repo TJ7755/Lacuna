@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { MissingRecord } from '../components/course/MissingRecord';
 import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { PillToggleGroup } from '../components/cards/PillToggleGroup';
@@ -42,7 +43,13 @@ export function QuestionSetOverview() {
   const [error, setError] = useState('');
   const attempts = useLiveQuery(() => listQuestionSetAttempts(setId!), [setId]);
   const content = useLiveQuery(() => getQuestionSet(setId!), [setId]);
-  if (content === undefined || !course || !attempts) return <QuestionSetLoading />;
+  if (course === null)
+    return (
+      <MissingRecord message="This course could not be found." to="/">
+        Back to Today
+      </MissingRecord>
+    );
+  if (content === undefined || course === undefined || !attempts) return <QuestionSetLoading />;
   const retainedAttempts = attempts.filter((attempt) => attempt.courseId === courseId);
   const back = (
     <Link className="qs-back" to={origin?.questionSetReturnTo ?? `/course/${courseId}/questions`}>
