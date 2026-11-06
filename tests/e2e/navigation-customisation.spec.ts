@@ -47,6 +47,7 @@ test('sidebar customisation matches the rendered groups and settings shortcuts f
     'true',
   );
   await expect(page.locator('#settings-backups')).toBeVisible();
+  await expect(page.locator('#settings-backups').getByRole('heading').first()).toBeInViewport();
   await page.screenshot({
     path: testInfo.outputPath('settings-section-jump.png'),
     animations: 'disabled',
