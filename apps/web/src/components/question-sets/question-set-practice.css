@@ -2,38 +2,37 @@
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
-  max-width: 1080px;
+  max-width: 1152px;
   margin: auto;
-  padding: 24px 32px 32px;
+  padding: 0 24px 32px;
   color: hsl(var(--ink));
 }
 /* The task sits in the optical centre of the page; the header stays at the top. */
 .qs-practice > article {
   margin-block: auto;
+  width: 100%;
+  max-width: 1024px;
+  align-self: center;
 }
 .qs-practice-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 360px) minmax(0, 1fr);
   align-items: center;
+  min-height: 84px;
   gap: 16px;
   margin-bottom: 20px;
 }
-.qs-practice-header > .qs-back {
-  flex: 1;
-  min-width: 0;
-  color: hsl(var(--ink-soft));
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 44px;
+.qs-practice-exit {
+  justify-self: start;
+  height: 44px;
+  padding-inline: 16px;
 }
 .qs-practice-header > .qs-actions {
-  flex: 1 0 auto;
+  min-width: 0;
   justify-content: flex-end;
 }
 .qs-part-stepper {
   position: relative;
-  flex: 0 1 360px;
   min-width: 96px;
 }
 .qs-part-segments {
@@ -371,12 +370,19 @@
   min-height: 0;
 }
 .qs-related-navigation {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   flex: 0 0 auto;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 4px;
+  gap: 8px;
+}
+.qs-related-navigation > button {
+  min-width: 0;
+  padding-inline: 0;
+  justify-self: start;
+}
+.qs-related-navigation > button:last-child {
+  justify-self: end;
 }
 .qs-related-navigation p {
   font-variant-numeric: tabular-nums;
@@ -399,23 +405,18 @@
   padding-top: 20px;
   border-top: 1px solid hsl(var(--line));
 }
-.qs-related-reader > button {
-  flex: 0 0 auto;
-}
 @media (max-width: 700px) {
   .qs-practice {
     min-height: 0;
     padding: 16px 16px 24px;
   }
   .qs-practice-header {
+    grid-template-columns: auto minmax(96px, 1fr);
     gap: 8px;
     margin-bottom: 12px;
   }
-  .qs-practice-header:has(.qs-header-tools) {
-    flex-wrap: wrap;
-  }
-  .qs-practice-header:has(.qs-header-tools) > .qs-actions {
-    flex-basis: 100%;
+  .qs-practice-header > .qs-actions {
+    grid-column: 1 / -1;
   }
   .qs-practice-header > .qs-actions button {
     padding: 0 4px;

@@ -35,9 +35,7 @@ it('does not reveal related knowledge until recording assistance succeeds', asyn
     />,
   );
   const trigger = screen.getByRole('button', { name: 'Use related cards' });
-  expect(trigger).toHaveAccessibleDescription(
-    'Opening these cards records this answer as assisted.',
-  );
+  expect(screen.queryByText(/Opening these cards/)).not.toBeInTheDocument();
   fireEvent.click(trigger);
   await act(async () => {});
   expect(beforeReveal).toHaveBeenCalledOnce();
@@ -51,7 +49,10 @@ it('does not reveal related knowledge until recording assistance succeeds', asyn
   const dialog = await screen.findByRole('dialog', { name: 'Related cards' });
   expect(within(dialog).getByText('What is osmosis?')).toBeInTheDocument();
   expect(screen.queryByText('Movement of water.')).not.toBeInTheDocument();
-  expect(dialog).toHaveTextContent('This answer is recorded as assisted.');
+  expect(dialog).not.toHaveTextContent('This answer is recorded as assisted.');
+  expect(
+    within(dialog).queryByRole('button', { name: 'Return to answer' }),
+  ).not.toBeInTheDocument();
   fireEvent.click(within(dialog).getByRole('button', { name: 'Show answer' }));
   expect(within(dialog).getByText('Movement of water.')).toBeInTheDocument();
 });
