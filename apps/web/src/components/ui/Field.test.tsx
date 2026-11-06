@@ -10,7 +10,7 @@ describe('Field', () => {
       </Field>,
     );
     const input = screen.getByRole('textbox', { name: /Course name/ });
-    expect(input).toHaveClass('w-full', 'border-line', 'border-[1.5px]', 'bg-surface');
+    expect(input).toHaveClass('w-full', 'border-ink-faint', 'border-[1.5px]', 'bg-surface');
     expect(input).toHaveAttribute('id');
     expect(input).not.toHaveAttribute('aria-invalid');
     expect(screen.getByText('Shown on the dashboard.')).toHaveClass('text-ink-faint');
