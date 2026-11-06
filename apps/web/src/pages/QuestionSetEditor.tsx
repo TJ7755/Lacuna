@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { MissingRecord } from '../components/course/MissingRecord';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { db } from '../db/schema';
@@ -25,7 +26,13 @@ import '../components/question-sets/question-composer.css';
 export function QuestionSetEditor() {
   const { courseId, setId } = useParams<{ courseId: string; setId: string }>();
   const course = useCourse(courseId);
-  if (!course) return <QuestionSetLoading />;
+  if (course === undefined) return <QuestionSetLoading />;
+  if (course === null)
+    return (
+      <MissingRecord message="This course could not be found." to="/">
+        Back to Today
+      </MissingRecord>
+    );
   if (!canEditLessons(course) || course.archived)
     return (
       <QuestionSetUnavailable

@@ -96,8 +96,18 @@ export function CourseAnalytics() {
   const questionEvidence = useQuestionEvidence(courseId, progress?.report.conceptIds);
   const scopeSelect = useRef<HTMLSelectElement>(null);
 
+  if (records !== undefined && !course) {
+    return (
+      <MissingRecord message="This course could not be found." to="/">
+        Back to Today
+      </MissingRecord>
+    );
+  }
+
   if (
     records === undefined ||
+    !course ||
+    !progress ||
     reviewHistory === undefined ||
     questionData === undefined ||
     questionAnalytics === null
@@ -106,14 +116,6 @@ export function CourseAnalytics() {
       <div role="status" aria-busy="true" aria-label="Loading course analytics">
         <PageLoading />
       </div>
-    );
-  }
-
-  if (!course || !progress) {
-    return (
-      <MissingRecord message="This course could not be found." to="/">
-        Back to Today
-      </MissingRecord>
     );
   }
 
