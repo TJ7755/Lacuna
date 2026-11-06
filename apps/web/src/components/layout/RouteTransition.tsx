@@ -22,7 +22,7 @@ export function routeTransitionKey(pathname: string): string {
   if (pathname === '/download') return 'download';
   if (
     pathname === '/learn' ||
-    /^\/course\/[^/]+\/(?:study|learn)$/.test(pathname) ||
+    /^\/course\/[^/]+\/(?:study|learn|questions\/learn)$/.test(pathname) ||
     /^\/lesson\/[^/]+\/learn$/.test(pathname)
   ) {
     return `focus:${pathname}`;
