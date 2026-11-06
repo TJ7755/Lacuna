@@ -150,16 +150,27 @@ export function renderMarkdownToHtml(
   if (optional.highlight)
     rehypePlugins.push([optional.highlight, { detect: true, ignoreMissing: true }]);
 
-  const html = renderToStaticMarkup(
-    <ReactMarkdown
-      remarkPlugins={REMARK_PLUGINS}
-      rehypePlugins={rehypePlugins}
-      components={enlargeImages ? ENLARGE_COMPONENTS : MARKDOWN_COMPONENTS}
-      urlTransform={(url) => (url.startsWith('blob:') ? url : defaultUrlTransform(url))}
-    >
-      {prepared}
-    </ReactMarkdown>,
-  );
+  // Generated labels and short answers often contain no Markdown at all. Keep
+  // this allow-list narrow: indentation, list prefixes, entities, autolinks and
+  // every formatting delimiter still need the full parser and sanitiser.
+  const plainText =
+    !optional.math &&
+    !optional.highlight &&
+    prepared === prepared.trim() &&
+    /^[\p{L}\p{N}][\p{L}\p{N} ,;:!?'"()–—-]*$/u.test(prepared) &&
+    !/^\d+\)/.test(prepared);
+  const html = plainText
+    ? renderToStaticMarkup(<p>{prepared}</p>)
+    : renderToStaticMarkup(
+        <ReactMarkdown
+          remarkPlugins={REMARK_PLUGINS}
+          rehypePlugins={rehypePlugins}
+          components={enlargeImages ? ENLARGE_COMPONENTS : MARKDOWN_COMPONENTS}
+          urlTransform={(url) => (url.startsWith('blob:') ? url : defaultUrlTransform(url))}
+        >
+          {prepared}
+        </ReactMarkdown>,
+      );
 
   if (HTML_CACHE.size >= cacheLimit) {
     evictStaleEntries(now);

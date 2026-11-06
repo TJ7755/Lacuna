@@ -3,7 +3,7 @@
 // case- and diacritic-insensitive substring over the card front/back, its
 // Course or Lesson context, and the card's tags.
 
-import type { Card, Course, Lesson, Note } from '@lacuna/core/db/types';
+import type { Card, Course, Lesson, Note, Occlusion } from '@lacuna/core/db/types';
 import { isLeech } from '@lacuna/core/fsrs/leech';
 import type { QuestionDefinition } from '@lacuna/core/questions/types';
 
@@ -31,6 +31,8 @@ export interface SearchScope {
   cards: Card[];
   courses: Course[];
   lessons: Lesson[];
+  /** Optional authored answers behind generated image-occlusion cards. */
+  occlusions?: Occlusion[];
 }
 
 export interface QuestionSearchScope {
@@ -184,8 +186,8 @@ const normalisedCardContent = new WeakMap<
   {
     front: string;
     back: string;
-    normalisedFront: string;
-    normalisedBack: string;
+    normalisedText: string;
+    frontLength: number;
   }
 >();
 
@@ -195,15 +197,31 @@ const normalisedCardContent = new WeakMap<
 function cardContent(card: Card) {
   let cached = normalisedCardContent.get(card);
   if (!cached || cached.front !== card.front || cached.back !== card.back) {
+    const front = normalise(card.front);
     cached = {
       front: card.front,
       back: card.back,
-      normalisedFront: normalise(card.front),
-      normalisedBack: normalise(card.back),
+      normalisedText: [front, normalise(card.back)].join('  '),
+      frontLength: front.length,
     };
     normalisedCardContent.set(card, cached);
   }
   return cached;
+}
+
+function indexOutsideContent(query: string, content: string, fields: string[]): number {
+  // Queries spanning fields contain their two-space separator, or start/end
+  // inside it (normalising accents can expose edge spaces after trimming).
+  // Preserve those matches without copying embedded images for ordinary typing.
+  if (query.includes('  ') || query.startsWith(' ') || query.endsWith(' '))
+    return [content, ...fields].join('  ').indexOf(query);
+  let offset = content.length + 2;
+  for (const field of fields) {
+    const index = field.indexOf(query);
+    if (index !== -1) return offset + index;
+    offset += field.length + 2;
+  }
+  return -1;
 }
 
 /**
@@ -211,7 +229,7 @@ function cardContent(card: Card) {
  */
 export function searchCardsInScope(
   query: string,
-  { cards, courses, lessons }: SearchScope,
+  { cards, courses, lessons, occlusions }: SearchScope,
   options: SearchOptions = {},
 ): ScopedCardSearchResult[] {
   const now = options.now ?? Date.now();
@@ -223,6 +241,22 @@ export function searchCardsInScope(
 
   const courseById = new Map(courses.map((course) => [course.id, course]));
   const lessonById = new Map(lessons.map((lesson) => [lesson.id, lesson]));
+  const occlusionTextByRegion = new Map<string, { courseId: string; text: string }>();
+  if (q) {
+    for (const occlusion of occlusions ?? []) {
+      const regions = new Map(occlusion.regions.map((region) => [region.id, region]));
+      for (const region of occlusion.regions) {
+        const answer =
+          region.role === 'feature' && region.pairedRegionId
+            ? regions.get(region.pairedRegionId)?.answerText
+            : region.answerText;
+        occlusionTextByRegion.set(region.id, {
+          courseId: occlusion.courseId,
+          text: normalise([occlusion.name, answer ?? '', region.backNote ?? ''].join('  ')),
+        });
+      }
+    }
+  }
   const ranked: { result: ScopedCardSearchResult; score: number }[] = [];
 
   for (const card of cards) {
@@ -253,21 +287,28 @@ export function searchCardsInScope(
     let score = 0;
     if (q) {
       const content = cardContent(card);
-      const haystack = [
-        content.normalisedFront,
-        content.normalisedBack,
-        normalise(course.name),
-        normalise(lesson?.name ?? ''),
-        ...(card.tags ?? []).map(normalise),
-      ].join('  ');
-      const idx = haystack.indexOf(q);
-      if (idx === -1) continue;
-
-      const frontIdx = content.normalisedFront.indexOf(q);
+      const contentIdx = content.normalisedText.indexOf(q);
       // Front matches always rank above non-front matches, regardless of how
       // far into the front text they appear. Ties are broken by earliest
       // overall match position (idx).
-      score = frontIdx === -1 ? Number.MAX_SAFE_INTEGER / 2 + idx : frontIdx;
+      if (contentIdx !== -1)
+        score =
+          contentIdx + q.length <= content.frontLength
+            ? contentIdx
+            : Number.MAX_SAFE_INTEGER / 2 + contentIdx;
+      else {
+        const generated = card.occlusionRegionId
+          ? occlusionTextByRegion.get(card.occlusionRegionId)
+          : undefined;
+        const idx = indexOutsideContent(q, content.normalisedText, [
+          normalise(course.name),
+          normalise(lesson?.name ?? ''),
+          ...(card.tags ?? []).map(normalise),
+          ...(generated?.courseId === course.id ? [generated.text] : []),
+        ]);
+        if (idx === -1) continue;
+        score = Number.MAX_SAFE_INTEGER / 2 + idx;
+      }
     }
     ranked.push({ result: { kind: 'card', card, course, lesson, contextName }, score });
   }

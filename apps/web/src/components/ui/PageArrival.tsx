@@ -30,9 +30,42 @@ export function PageArrival({ children, className }: { children: ReactNode; clas
   );
 }
 
-/** Shared reading-order reveal for ordinary pages and the study launch cover. */
+type Arrival = {
+  root: HTMLElement;
+  multiplier: number;
+  stop?: () => void;
+};
+
+const pendingArrivals = new Set<Arrival>();
+
+/** Shared reading-order reveal for ordinary pages and the study launch cover.
+ * Measure every arrival in the commit before writing any animation styles. A
+ * Cards window has many nested reading surfaces; interleaving their reads and
+ * writes otherwise forces a fresh layout for each preview. The microtask still
+ * starts all entrances before the browser's next paint. */
 export function revealPageParts(root: HTMLElement, multiplier: number) {
   if (multiplier === 0) return;
+  const arrival: Arrival = { root, multiplier };
+  if (pendingArrivals.size === 0) queueMicrotask(flushArrivals);
+  pendingArrivals.add(arrival);
+  return () => {
+    pendingArrivals.delete(arrival);
+    arrival.stop?.();
+  };
+}
+
+function flushArrivals() {
+  const measured = [...pendingArrivals].map((arrival) => ({
+    arrival,
+    surfaces: measurePageParts(arrival.root),
+  }));
+  pendingArrivals.clear();
+  for (const { arrival, surfaces } of measured) {
+    arrival.stop = animatePageParts(surfaces, arrival.multiplier);
+  }
+}
+
+function measurePageParts(root: HTMLElement) {
   const parts = [...root.querySelectorAll<HTMLElement>('[data-page-part]')].filter(
     (part) => part.closest('[data-page-arrival]') === root,
   );
@@ -55,7 +88,7 @@ export function revealPageParts(root: HTMLElement, multiplier: number) {
     content.children.length === 1 &&
     content.firstElementChild?.hasAttribute('data-page-arrival')
   )
-    return;
+    return [];
   const surfaces = (parts.length ? parts : defaults.length ? defaults : [content])
     // Existing Motion/CSS entrances retain ownership of their opacity.
     .filter(
@@ -69,6 +102,10 @@ export function revealPageParts(root: HTMLElement, multiplier: number) {
       willChange: element.style.willChange,
     }))
     .sort((a, b) => a.top - b.top);
+  return surfaces;
+}
+
+function animatePageParts(surfaces: ReturnType<typeof measurePageParts>, multiplier: number) {
   const rows = [...new Set(surfaces.map(({ top }) => Math.round(top)))];
   const restore = ({ element, willChange }: (typeof surfaces)[number]) => {
     element.style.removeProperty('opacity');

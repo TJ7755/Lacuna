@@ -10,6 +10,8 @@ export interface OptionalMarkdownPlugins {
 
 let math: Promise<MarkdownPlugin> | undefined;
 let highlight: Promise<MarkdownPlugin> | undefined;
+let loadedMath: MarkdownPlugin | undefined;
+let loadedHighlight: MarkdownPlugin | undefined;
 
 /** Keep maths readable and answer comparison synchronous before KaTeX is available. */
 export const answerMathPlugin: MarkdownPlugin = () => (tree) => {
@@ -40,7 +42,6 @@ export const answerMathPlugin: MarkdownPlugin = () => (tree) => {
 };
 
 export function useOptionalMarkdown(source: string): OptionalMarkdownPlugins {
-  const [plugins, setPlugins] = useState<OptionalMarkdownPlugins>({});
   // Conservative detection avoids parsing twice. False positives only fetch an optional renderer.
   const needsMath = source.includes('$') || /(?:`{3,}|~{3,})math\b|language-math\b/.test(source);
   const codeSource = source.replace(
@@ -48,10 +49,16 @@ export function useOptionalMarkdown(source: string): OptionalMarkdownPlugins {
     '',
   );
   const needsHighlight = /```|~~~|<pre\b|^(?: {4}|\t)\S/m.test(codeSource);
+  // A settled import is ready synchronously. New card faces must not first parse
+  // fallback HTML and then parse again just to retrieve an already loaded renderer.
+  const [plugins, setPlugins] = useState<OptionalMarkdownPlugins>(() => ({
+    ...(needsMath && loadedMath ? { math: loadedMath } : {}),
+    ...(needsHighlight && loadedHighlight ? { highlight: loadedHighlight } : {}),
+  }));
   useEffect(() => {
     let cancelled = false;
     if (needsMath && !plugins.math) {
-      math ??= import('./optionalMarkdownMath').then((module) => module.default);
+      math ??= import('./optionalMarkdownMath').then((module) => (loadedMath = module.default));
       void math
         .then((plugin) => {
           if (!cancelled) setPlugins((previous) => ({ ...previous, math: plugin }));
@@ -62,7 +69,7 @@ export function useOptionalMarkdown(source: string): OptionalMarkdownPlugins {
     }
     if (needsHighlight && !plugins.highlight) {
       highlight ??= import('rehype-highlight').then(
-        (module) => module.default as unknown as MarkdownPlugin,
+        (module) => (loadedHighlight = module.default as unknown as MarkdownPlugin),
       );
       void highlight
         .then((plugin) => {

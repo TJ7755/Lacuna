@@ -77,13 +77,14 @@ export function useCourseStudyFlowRecords(
 
 // Presentation retains results; the study conductor keeps its existing fresh-generation contract.
 export const useCoursePathRecords = retainedLiveQuery((courseId) =>
-  readCourseStudyFlowRecords(courseId),
+  readCourseStudyFlowRecords(courseId, 0, undefined, false),
 );
 
 async function readCourseStudyFlowRecords(
   courseId: string | undefined,
   refreshKey = 0,
   sittingStartedAt?: number,
+  includeQuestionPractice = true,
 ): Promise<CourseStudyFlowRecords> {
   if (!courseId) {
     return {
@@ -136,13 +137,13 @@ async function readCourseStudyFlowRecords(
       db.concepts.where('courseId').equals(courseId).toArray(),
       db.questionSets.where('courseId').equals(courseId).count(),
     ]);
-  const cards = await hydrateCardsWithHistory(rawCards);
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [links, exposures, completions, performance, reviewCounts] = await Promise.all([
+  const [cards, links, exposures, completions, performance, reviewCounts] = await Promise.all([
+    hydrateCardsWithHistory(rawCards),
     lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
     lessonIds.length > 0 ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray() : [],
     lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-    performanceForCourseBackingDecks(courseId, cards),
+    performanceForCourseBackingDecks(courseId, rawCards),
     course.dailyReviewGoal || course.maxReviewsPerDay
       ? dailyReviewCounts('course')
       : new Map<string, number>(),
@@ -157,8 +158,14 @@ async function readCourseStudyFlowRecords(
     practiceNodes,
     concepts,
   };
-  const questionScopeConceptIds = questionStudyScope(questionContext);
-  const questionScopeLessonIds = questionStudyLessonScope({ ...questionContext, completions });
+  // The Path only needs question availability when it is the course's sole study
+  // content. Replaying attempts and loading question generators otherwise delays
+  // first opening without changing anything the Path displays. Study always plans.
+  const planQuestions = includeQuestionPractice || (cards.length === 0 && lessons.length === 0);
+  const questionScopeConceptIds = planQuestions ? questionStudyScope(questionContext) : [];
+  const questionScopeLessonIds = planQuestions
+    ? questionStudyLessonScope({ ...questionContext, completions })
+    : [];
   const questionPractice =
     questionScopeConceptIds.length && questionSetCount > 0
       ? await import('../questions/conceptPractice').then(({ listConceptPractice }) =>
@@ -166,7 +173,7 @@ async function readCourseStudyFlowRecords(
         )
       : [];
   const examSkillPractice =
-    questionSetCount > 0
+    planQuestions && questionSetCount > 0
       ? await import('../questions/examSkillPractice').then(({ listExamSkillPractice }) =>
           listExamSkillPractice(courseId, Date.now(), {
             sittingStartedAt,
