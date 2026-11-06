@@ -5,7 +5,7 @@ import { resolveAssetUrl } from '../../db/assetCache';
 import { buildAudioCardFront, parseAudioCardFront } from '../../media/audio';
 import { Button } from '../ui/Button';
 import { useActionFocus } from '../../hooks/useActionFocus';
-import { PauseIcon, UploadIcon } from '../ui/icons';
+import { PauseIcon, RefreshIcon, UploadIcon } from '../ui/icons';
 
 const AUDIO_ACCEPT =
   '.mp3,.m4a,.mp4,.ogg,.wav,.webm,audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/webm';
@@ -25,6 +25,7 @@ export function AudioCardEditor({
   onFrontChange,
   onBackChange,
   onError,
+  onBusyChange,
   autoFocus = false,
   entryRef,
   promptRef,
@@ -41,6 +42,7 @@ export function AudioCardEditor({
   onFrontChange: (front: string) => void;
   onBackChange: (back: string) => void;
   onError: (message: string) => void;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const localPromptRef = useRef<HTMLTextAreaElement>(null);
   const localAnswerRef = useRef<HTMLTextAreaElement>(null);
@@ -61,6 +63,8 @@ export function AudioCardEditor({
     }
   };
   const parsed = parseAudioCardFront(front);
+  const latestFront = useRef(front);
+  latestFront.current = front;
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -71,6 +75,12 @@ export function AudioCardEditor({
   const chunksRef = useRef<Blob[]>([]);
   const startingRecordingRef = useRef(false);
   const mountedRef = useRef(true);
+  const pending = busy || recording || startingRecording;
+
+  useEffect(() => {
+    onBusyChange?.(pending);
+    return () => onBusyChange?.(false);
+  }, [onBusyChange, pending]);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,6 +101,8 @@ export function AudioCardEditor({
     return () => {
       mountedRef.current = false;
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      recorderRef.current = null;
     };
   }, []);
 
@@ -99,14 +111,14 @@ export function AudioCardEditor({
     try {
       const asset = await storeAudioBlob(blob, mimeType);
       if (!mountedRef.current) return;
-      onFrontChange(buildAudioCardFront(parsed?.prompt ?? front.trim(), asset.hash));
-      attachmentFocus.restore(
-        (parsed?.prompt ?? front.trim()) ? answerInput.current : promptInput.current,
-      );
+      const prompt = parseAudioCardFront(latestFront.current)?.prompt ?? latestFront.current.trim();
+      onFrontChange(buildAudioCardFront(prompt, asset.hash));
+      attachmentFocus.restore(prompt ? answerInput.current : promptInput.current);
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Could not store that audio file.');
+      if (mountedRef.current)
+        onError(error instanceof Error ? error.message : 'Could not store that audio file.');
     } finally {
-      setBusy(false);
+      if (mountedRef.current) setBusy(false);
     }
   };
 
@@ -137,14 +149,16 @@ export function AudioCardEditor({
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
+      streamRef.current = stream;
       const recorder = new MediaRecorder(stream, { mimeType });
       recorderRef.current = recorder;
-      streamRef.current = stream;
       chunksRef.current = [];
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data);
+        if (recorderRef.current === recorder && event.data.size > 0)
+          chunksRef.current.push(event.data);
       };
       recorder.onstop = () => {
+        if (recorderRef.current !== recorder) return;
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
         recorderRef.current = null;
@@ -153,9 +167,20 @@ export function AudioCardEditor({
           void store(new Blob(chunksRef.current, { type: mimeType }), mimeType);
         }
       };
+      recorder.onerror = () => {
+        if (!mountedRef.current || recorderRef.current !== recorder) return;
+        recorderRef.current = null;
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        setRecording(false);
+        onError('Could not record audio. Try again.');
+      };
       recorder.start();
       setRecording(true);
     } catch {
+      recorderRef.current = null;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
       if (mountedRef.current) onError('Microphone access was not granted.');
     } finally {
       startingRecordingRef.current = false;
@@ -167,8 +192,8 @@ export function AudioCardEditor({
     <div className="flex flex-col gap-5">
       <div>
         <h2 className="mb-2 font-display text-lg tracking-tight">Audio</h2>
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-4">
-          {previewUrl ? (
+        <div className="flex flex-wrap items-center justify-end gap-3 rounded-xl border border-line bg-surface p-4">
+          {previewUrl && (
             <audio
               className="min-w-0 flex-1"
               src={previewUrl}
@@ -176,10 +201,6 @@ export function AudioCardEditor({
               preload="metadata"
               onError={() => onError('This clip could not be played. Choose or record another.')}
             />
-          ) : (
-            <span className="min-w-0 flex-1 text-sm text-ink-soft">
-              Choose or record an audio clip.
-            </span>
           )}
           <Button
             type="button"
@@ -187,13 +208,22 @@ export function AudioCardEditor({
             ref={entryRef}
             autoFocus={autoFocus}
             disabled={busy || recording || startingRecording}
+            aria-busy={busy}
             onFocus={attachmentFocus.remember}
             onClick={() => {
               attachmentFocus.remember();
               fileRef.current?.click();
             }}
           >
-            <UploadIcon width={16} height={16} />
+            {busy ? (
+              <RefreshIcon
+                width={16}
+                height={16}
+                className="animate-spin motion-reduce:animate-none"
+              />
+            ) : (
+              <UploadIcon width={16} height={16} />
+            )}
             {parsed ? 'Replace' : 'Choose file'}
           </Button>
           <input
@@ -215,9 +245,6 @@ export function AudioCardEditor({
             {recording ? 'Stop recording' : startingRecording ? 'Starting…' : 'Record'}
           </Button>
         </div>
-        <p className="mt-2 text-xs text-ink-faint">
-          MP3, M4A, MP4, Ogg, WAV or WebM; 25 MB maximum.
-        </p>
       </div>
 
       <label>
@@ -233,7 +260,6 @@ export function AudioCardEditor({
             else onFrontChange(event.target.value);
           }}
           rows={3}
-          placeholder="Listen and translate:"
           className={`${inputFrameClassName} w-full resize-y transition-colors placeholder:text-ink-faint`}
         />
       </label>
@@ -248,7 +274,6 @@ export function AudioCardEditor({
           value={back}
           onChange={(event) => onBackChange(event.target.value)}
           rows={5}
-          placeholder="The expected answer."
           className={`${inputFrameClassName} w-full resize-y transition-colors placeholder:text-ink-faint`}
         />
       </label>

@@ -78,7 +78,6 @@ export function CardEditorActions({
             size="lg"
             onClick={() => onSave(true)}
             disabled={!canSave}
-            title="Save and add another (Ctrl/Cmd+Enter)"
             style={{ paddingInline: '1rem' }}
             className="order-first col-span-2 w-full py-2"
           >
