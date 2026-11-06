@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PairingPayload } from '../../sync/pairing';
 import { SyncPairingFlow, type SyncPairingMode } from './SyncPairingFlow';
@@ -205,6 +205,30 @@ describe('SyncPairingFlow', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Stop scanning' }));
       expect(screen.queryByText('Point the camera at the pairing QR.')).not.toBeInTheDocument();
       await waitFor(() => expect(scannerStop).toHaveBeenCalled());
+    });
+
+    it('releases a camera which finishes starting after Stop scanning', async () => {
+      let finishStart!: () => void;
+      let running = false;
+      scannerStart.mockImplementation(async () => {
+        await new Promise<void>((resolve) => {
+          finishStart = resolve;
+        });
+        running = true;
+      });
+      scannerStop.mockImplementation(async () => {
+        if (!running) throw new Error('Camera has not started.');
+        running = false;
+      });
+      renderFlow('join');
+      fireEvent.click(screen.getByRole('button', { name: 'Scan pairing QR' }));
+      await waitFor(() => expect(scannerStart).toHaveBeenCalled());
+      fireEvent.click(screen.getByRole('button', { name: 'Stop scanning' }));
+      await act(async () => {
+        finishStart();
+      });
+
+      expect(running).toBe(false);
     });
 
     it('disables scanning without a camera', () => {

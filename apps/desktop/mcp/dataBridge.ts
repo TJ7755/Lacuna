@@ -33,6 +33,10 @@ import type { McpClientIdentity } from '../../web/src/mcp/companionEntry.js';
 
 const RENDERER_TIMEOUT_MS = 10_000;
 const SERVER_STOPPED_ERROR = { kind: 'internal', message: 'MCP server stopped.' } as const;
+const CLIENT_DISCONNECTED_ERROR = {
+  kind: 'forbidden',
+  message: 'MCP client disconnected.',
+} as const;
 
 type McpWindowProvider = () => BrowserWindow | null;
 
@@ -110,6 +114,7 @@ export class DataBridge {
     client: McpClientIdentity,
   ): Promise<CallToolResult> {
     if (this.closed) return Promise.resolve(errorToCallToolResult(SERVER_STOPPED_ERROR));
+    if (store.isClosed) return Promise.resolve(errorToCallToolResult(CLIENT_DISCONNECTED_ERROR));
     const invoke = this.requireDispatcher();
     return this.executeTool(tool, rawInput, store, client, invoke);
   }
@@ -117,6 +122,7 @@ export class DataBridge {
   stop(): void {
     if (this.closed) return;
     this.closed = true;
+    this.grantStore?.close();
     this.dispatcher?.close(SERVER_STOPPED_ERROR);
     for (const resolve of this.pendingConsent.values()) resolve(false);
     this.pendingConsent.clear();
@@ -207,6 +213,7 @@ export class DataBridge {
 
     const scopes = await this.resolveScopes(tool, parsed.data);
     if (this.closed) return errorToCallToolResult(SERVER_STOPPED_ERROR);
+    if (store.isClosed) return errorToCallToolResult(CLIENT_DISCONNECTED_ERROR);
     if (!scopes.ok) return errorToCallToolResult(scopes.error);
     if (scopes.targets.length !== 1) {
       return errorToCallToolResult({
@@ -217,6 +224,7 @@ export class DataBridge {
     const target = scopes.targets[0];
     const authorised = await this.ensureGrant(store, tool, target.courseId, client, target.label);
     if (this.closed) return errorToCallToolResult(SERVER_STOPPED_ERROR);
+    if (store.isClosed) return errorToCallToolResult(CLIENT_DISCONNECTED_ERROR);
     if (!authorised.ok) return errorToCallToolResult(authorised.error);
 
     const request: McpInvokeRequest = {
@@ -319,6 +327,7 @@ export class DataBridge {
         }),
     );
     if (this.closed) return { ok: false, error: SERVER_STOPPED_ERROR };
+    if (store.isClosed) return { ok: false, error: CLIENT_DISCONNECTED_ERROR };
     if (!approved) return { ok: false, error: outcome.error };
     return { ok: true, grant: store.grant(courseId, tool.requiredScope, label) };
   }

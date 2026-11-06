@@ -377,4 +377,31 @@ describe('remembered credentials', () => {
 
     await expect(unlockSyncState(state, PASSPHRASE)).rejects.toThrow('storage unavailable');
   });
+
+  it.each(['unpaired', 'replaced', 'rewrapped'])(
+    'does not remember an old unlock after the pairing is %s',
+    async (change) => {
+      const keybag = await wrapKeybag(CHANNEL_KEY, PASSPHRASE, WRITE_TOKEN, {
+        channelId: CHANNEL_ID,
+      });
+      const state: SyncState = {
+        relayUrl: DEFAULT_RELAY_URL,
+        channelId: CHANNEL_ID,
+        wrappedKeyMaterial: Array.from(keybag, (byte) => byte.toString(16).padStart(2, '0')).join(
+          '',
+        ),
+      };
+      const current =
+        change === 'unpaired'
+          ? { shareLinks: {} }
+          : change === 'replaced'
+            ? { ...state, channelId: 'fedcba9876543210fedcba9876543210' }
+            : { ...state, wrappedKeyMaterial: 'aa'.repeat(162) };
+      // The row can change while the asynchronous key derivation is running.
+      readSyncStateMock.mockResolvedValue(current);
+
+      await expect(unlockSyncState(state, PASSPHRASE)).rejects.toThrow('pairing changed');
+      expect(writeSyncStateMock).not.toHaveBeenCalled();
+    },
+  );
 });

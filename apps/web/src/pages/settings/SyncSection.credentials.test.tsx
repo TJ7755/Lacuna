@@ -1,6 +1,7 @@
 import './SyncSection.testSupport';
 import {
   credentials,
+  forgetRememberedCredentialsMock,
   loadSyncPairingMock,
   readRememberedCredentialsMock,
   readSyncStateMock,
@@ -9,7 +10,7 @@ import {
   syncWithPassphraseMock,
   unlockSyncStateMock,
 } from './SyncSection.testSupport';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { describe, expect, it, vi } from 'vitest';
 import { SyncSection } from './SyncSection';
@@ -134,5 +135,67 @@ describe('SyncSection credentials', () => {
 
     await waitFor(() => expect(syncWithCredentialsMock).toHaveBeenCalledWith(credentials));
     expect(unlockSyncStateMock).not.toHaveBeenCalled();
+  });
+
+  it('removes a revealed pairing key immediately when locking the device', async () => {
+    readSyncStateMock.mockResolvedValue(state);
+    readRememberedCredentialsMock.mockReturnValue(credentials);
+    render(<SyncSection />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Show pairing QR' }));
+    await screen.findByTestId('sync-pairing-qr');
+    forgetRememberedCredentialsMock.mockReturnValue(new Promise(() => {}));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lock' }));
+
+    expect(screen.queryByTestId('sync-pairing-qr')).not.toBeInTheDocument();
+  });
+
+  it('keeps a new reveal blocked while locking is awaiting storage', async () => {
+    readSyncStateMock.mockResolvedValue(state);
+    readRememberedCredentialsMock.mockReturnValue(credentials);
+    let finishLock!: () => void;
+    forgetRememberedCredentialsMock.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishLock = resolve;
+      }),
+    );
+    render(<SyncSection />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Lock' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Show pairing QR' }));
+    });
+    await act(async () => finishLock());
+
+    expect(screen.queryByRole('button', { name: 'Lock' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sync-pairing-qr')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Recovery passphrase'), {
+      target: { value: 'a long recovery phrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show pairing QR' }));
+    expect(await screen.findByTestId('sync-pairing-qr')).toBeInTheDocument();
+  });
+
+  it('does not reveal a late unlock after the window loses focus, and allows retry', async () => {
+    readSyncStateMock.mockResolvedValue(state);
+    let release!: (value: typeof credentials) => void;
+    unlockSyncStateMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    render(<SyncSection />);
+    fireEvent.change(await screen.findByLabelText('Recovery passphrase'), {
+      target: { value: 'a long recovery phrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show pairing QR' }));
+    await waitFor(() => expect(unlockSyncStateMock).toHaveBeenCalledOnce());
+    fireEvent(window, new Event('blur'));
+    await act(async () => {
+      release(credentials);
+    });
+
+    expect(screen.queryByTestId('sync-pairing-qr')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show pairing QR' }));
+    expect(await screen.findByTestId('sync-pairing-qr')).toBeInTheDocument();
   });
 });

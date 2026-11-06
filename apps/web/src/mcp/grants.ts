@@ -57,6 +57,17 @@ export function courseIdOrGlobal(courseId: string | undefined | null): string {
  */
 export class GrantStore {
   private readonly grants = new Map<string, McpGrant>();
+  private closed = false;
+
+  get isClosed(): boolean {
+    return this.closed;
+  }
+
+  /** Fence retained references, including consent that outlives its companion connection. */
+  close(): void {
+    this.closed = true;
+    this.grants.clear();
+  }
 
   /**
    * Records a grant for `courseId` at `scope`. If a grant already exists at an equal or
@@ -75,6 +86,7 @@ export class GrantStore {
 
   /** Replaces a grant with an exact scope. Used by the trusted Settings controls. */
   setScope(courseId: string, scope: McpScope, label?: string): McpGrant {
+    if (this.closed) throw new Error('MCP grant store is closed.');
     const next: McpGrant = { courseId, scope, grantedAt: Date.now(), label };
     this.grants.set(courseId, next);
     return next;
