@@ -45,7 +45,7 @@ test('keeps the selected file and actionable error, then retries without choosin
   await expect(recovery.getByRole('heading', { name: 'revision-backup.json' })).toBeVisible();
   await expect(recovery.getByRole('button', { name: 'Add from backup' })).toBeEnabled();
   await recovery.getByRole('alert').scrollIntoViewIfNeeded();
-  await page.screenshot({
+  await recovery.screenshot({
     path: test.info().outputPath('recovery-file-retained.png'),
     animations: 'disabled',
   });
@@ -80,7 +80,7 @@ test('keeps the selected file and actionable error, then retries without choosin
     await expect(
       recovery.getByRole('button', { name: 'Choose backup from another device' }),
     ).toBeDisabled();
-    await page.screenshot({
+    await recovery.screenshot({
       path: test.info().outputPath('recovery-pending.png'),
       animations: 'disabled',
     });
