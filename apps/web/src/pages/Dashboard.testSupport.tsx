@@ -1,5 +1,4 @@
 import { vi, beforeEach } from 'vitest';
-import type * as DashboardForecasts from '../state/dashboardForecasts';
 import { screen, within } from '@testing-library/react';
 import type { Course } from '@lacuna/core/db/types';
 
@@ -48,27 +47,21 @@ vi.mock('react-router-dom', () => ({
   ),
 }));
 
-vi.mock('../state/useData', () => ({
-  useAllReviewHistory: () => dashboardState.mockReviewHistory,
-}));
-vi.mock('../state/dashboardForecasts', async (importOriginal) => ({
-  ...(await importOriginal<typeof DashboardForecasts>()),
-  dashboardForecastHistories: (
-    _courses: unknown,
-    _lessons: unknown,
-    _cards: unknown,
-    _history: unknown,
-    forecasts: Record<string, { ifStopped: number }>,
+vi.mock('../state/useDashboardForecastHistories', () => ({
+  useDashboardForecastHistories: (
+    data: { forecasts: Record<string, { ifStopped: number }> } | undefined,
   ) =>
-    Object.fromEntries(
-      Object.entries(forecasts).map(([id, value]) => [
-        id,
-        [
-          { at: Date.now() - DAY, recall: value.ifStopped / 2 },
-          { at: Date.now(), recall: value.ifStopped },
-        ],
-      ]),
-    ),
+    !data || dashboardState.mockReviewHistory === undefined
+      ? undefined
+      : Object.fromEntries(
+          Object.entries(data.forecasts).map(([id, value]) => [
+            id,
+            [
+              { at: Date.now() - DAY, recall: value.ifStopped / 2 },
+              { at: Date.now(), recall: value.ifStopped },
+            ],
+          ]),
+        ),
 }));
 vi.mock('../state/useCourseData', () => ({
   useCourseDashboardData: () => dashboardState.mockCourseDashboardData,
