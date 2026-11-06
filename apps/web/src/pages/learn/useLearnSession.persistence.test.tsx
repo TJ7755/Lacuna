@@ -178,3 +178,43 @@ it('records each recited line once and exposes only mastered lines', async () =>
     await db.sequences.delete(sequence.id);
   }
 });
+
+it('retries recitation mastery exposure before advancing after a failed write', async () => {
+  const course = await createCourse('Recitation retry');
+  const lesson = await createLesson(course.id, 'Poem');
+  const sequence = await createSequence(
+    course.id,
+    lesson.id,
+    'One line',
+    [{ id: 'line', value: 'Remember this line' }],
+    { mode: 'lines' },
+  );
+  const [card] = await cardsForSequence(sequence);
+  const params = sessionParams({ lessonId: lesson.id, isSimpleMode: true, mode: 'simple' });
+  const session = renderHook(() => useLearnSession(params));
+  try {
+    await waitFor(() => expect(session.result.current.recitationSequence?.id).toBe(sequence.id));
+    const exposure = vi
+      .spyOn(db.lessonCardExposures, 'add')
+      .mockRejectedValueOnce(new Error('Exposure failed'));
+    await act(async () => {
+      await expect(
+        session.result.current.answerRecitation([{ itemId: 'line', correct: true }], 4, 'all'),
+      ).rejects.toThrow('Exposure failed');
+    });
+    expect(await db.reviewHistory.count()).toBe(1);
+    expect(await db.lessonCardExposures.count()).toBe(0);
+
+    await act(async () => {
+      await session.result.current.answerRecitation([{ itemId: 'line', correct: true }], 4, 'all');
+    });
+
+    await waitFor(() => expect(session.result.current.summary?.events).toHaveLength(1));
+    expect(exposure).toHaveBeenCalledTimes(2);
+    expect(await db.lessonCardExposures.get([lesson.id, card.id])).toBeDefined();
+    expect(await db.reviewHistory.count()).toBe(1);
+  } finally {
+    session.unmount();
+    await db.sequences.delete(sequence.id);
+  }
+});

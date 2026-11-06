@@ -352,10 +352,11 @@ export function createSessionAnswerEffects({
     for (const itemId of masteredItemIds === 'all' ? [...cards.keys()] : masteredItemIds) {
       const card = cards.get(itemId);
       if (!card || simpleMastered.current.has(card.id)) continue;
-      updateProgress({ type: 'recitation-mastered', cardIds: [card.id] });
       if (lessonExposureIdRef.current) {
         await upsertLessonCardExposure(lessonExposureIdRef.current, card.id);
       }
+      // Mastery acknowledges the exposure write: a failed write must remain retryable.
+      updateProgress({ type: 'recitation-mastered', cardIds: [card.id] });
     }
     sessionCardOutcomesRef.current = outcomes;
     setSessionCardOutcomes(outcomes);

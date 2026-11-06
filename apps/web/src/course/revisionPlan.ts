@@ -387,6 +387,11 @@ export function mergeRevisionPlans(local: RevisionPlan, incoming: RevisionPlan):
     const localWindow = localWindows.get(window.id);
     if (activeLocal?.id === window.id) return activeLocal;
     if (localWindow?.status === 'completed' && window.status !== 'completed') return localWindow;
+    // A restore must not introduce a second owner while local work is still active.
+    if (activeLocal && window.status === 'active') {
+      const { startedAt: _startedAt, ...scheduled } = window;
+      return { ...scheduled, status: 'scheduled' as const };
+    }
     return window;
   });
   const pendingReasons = REPLAN_ORDER.filter(
@@ -402,6 +407,7 @@ export function mergeRevisionPlans(local: RevisionPlan, incoming: RevisionPlan):
   return {
     ...newer,
     id: local.id,
+    status: windows.some((window) => window.status === 'active') ? 'active' : newer.status,
     windows,
     completedSessions: mergeById(local.completedSessions, incoming.completedSessions),
     replans: mergeById(local.replans, incoming.replans),

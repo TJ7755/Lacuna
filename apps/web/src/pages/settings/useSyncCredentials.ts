@@ -24,14 +24,37 @@ export function useSyncCredentials({
   const [showQr, setShowQr] = useState(false);
   const [qrValue, setQrValue] = useState('');
   const qrPanelRef = useRef<HTMLDivElement>(null);
+  const revealGeneration = useRef(0);
+  const locking = useRef(false);
 
   function hideQr() {
+    revealGeneration.current += 1;
     setShowQr(false);
     setQrValue('');
   }
 
+  useEffect(() => {
+    // Privacy cancellation also fences an unlock which has not produced a QR yet.
+    const hide = () => {
+      revealGeneration.current += 1;
+      setShowQr(false);
+      setQrValue('');
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') hide();
+    };
+    window.addEventListener('blur', hide);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      revealGeneration.current += 1;
+      window.removeEventListener('blur', hide);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [syncState]);
+
   async function handleRevealQr() {
-    if (!syncState) return;
+    if (!syncState || locking.current) return;
+    const generation = ++revealGeneration.current;
     feedback.begin();
     if (!unlocked) {
       const passphraseError = validateRecoveryPassphrase(actionPassphrase);
@@ -42,13 +65,16 @@ export function useSyncCredentials({
     }
     try {
       const { encodePairingCode, unlockSyncState } = await loadSyncPairing();
+      if (generation !== revealGeneration.current) return;
       const credentials = unlocked ?? (await unlockSyncState(syncState, actionPassphrase));
+      if (generation !== revealGeneration.current) return;
       setUnlocked(credentials);
       setActionPassphrase('');
       setQrValue(encodePairingCode(credentials));
       setShowQr(true);
     } catch (error) {
-      feedback.fail(error, 'Could not unlock the pairing QR code. Try again.');
+      if (generation === revealGeneration.current)
+        feedback.fail(error, 'Could not unlock the pairing QR code. Try again.');
     }
   }
 
@@ -63,14 +89,20 @@ export function useSyncCredentials({
   }
 
   async function handleLock() {
+    if (locking.current) return;
+    locking.current = true;
+    hideQr();
+    setUnlocked(null);
+    setActionPassphrase('');
     clearUnlockedCredentials();
     try {
       await forgetRememberedCredentials();
-      setUnlocked(null);
-      setActionPassphrase('');
     } catch (error) {
+      setUnlocked(unlocked);
       publishUnlockedCredentials(unlocked);
       notify(error instanceof Error ? error.message : 'Could not lock this device.', 'negative');
+    } finally {
+      locking.current = false;
     }
   }
 
@@ -101,21 +133,7 @@ export function useSyncCredentialPrivacy({
   'unlocked' | 'showQr' | 'qrValue' | 'qrPanelRef' | 'setShowQr' | 'setQrValue'
 >) {
   useEffect(() => {
-    if (!qrValue) return;
     if (showQr) qrPanelRef.current?.focus();
-    const hide = () => {
-      setShowQr(false);
-      setQrValue('');
-    };
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') hide();
-    };
-    window.addEventListener('blur', hide);
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      window.removeEventListener('blur', hide);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
   }, [showQr, qrValue, qrPanelRef, setShowQr, setQrValue]);
 
   useEffect(() => {

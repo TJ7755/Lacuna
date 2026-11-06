@@ -108,7 +108,6 @@ export async function publishShareLink(
   if (!preflight) throw new Error('The course could not be found.');
   await encodeSharePayload(new TextEncoder().encode(await buildCourseFile(courseId)));
 
-  const distribution = await publishCourse(courseId);
   const course = await db.courses.get(courseId);
   if (!course) throw new Error('The course could not be found.');
 
@@ -117,6 +116,8 @@ export async function publishShareLink(
   if (shareId && !credentials && !options.replaceLink) {
     throw new ShareLinkNeedsReplacementError();
   }
+  // Refusing replacement must leave the publication counter unchanged, including retries.
+  const distribution = await publishCourse(courseId);
   if (!shareId || !credentials) {
     const minted = await mintShare(relayUrl, options.fetchImpl);
     shareId = minted.shareId;

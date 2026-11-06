@@ -39,6 +39,7 @@ export class McpConnectionStore {
   }
 
   disconnect(connectionId: string): void {
+    this.entries.get(connectionId)?.grants.close();
     this.entries.delete(connectionId);
   }
 
