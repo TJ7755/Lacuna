@@ -22,27 +22,21 @@ describe('desktop download selection', () => {
     );
   });
 
-  it('reveals alternative packages only when requested', () => {
+  it('offers alternative downloads and their update differences before installation help', () => {
     vi.stubGlobal('navigator', { userAgent: 'Windows NT 10.0' });
     render(<Download />, { wrapper: MemoryRouter });
-
-    expect(
-      screen.queryByRole('link', { name: 'Download the Windows portable build' }),
-    ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Other Windows download' }));
-    expect(
-      screen.getByRole('link', { name: 'Download the Windows portable build' }),
-    ).toHaveAttribute('href', DOWNLOADS.windowsPortable);
-    fireEvent.click(screen.getByRole('button', { name: 'Linux' }));
-    expect(
-      screen.queryByRole('link', { name: 'Download the DEB package' }),
-    ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Other Linux download' }));
-    expect(screen.getByRole('link', { name: 'Download the DEB package' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Windows portable · manual updates' })).toHaveAttribute(
       'href',
-      DOWNLOADS.linuxDeb,
+      DOWNLOADS.windowsPortable,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Linux' }));
+    expect(screen.queryByRole('link', { name: /Windows portable/ })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Debian / Ubuntu DEB · manual updates' }),
+    ).toHaveAttribute('href', DOWNLOADS.linuxDeb);
+    expect(screen.getByRole('button', { name: 'Installation help' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
     );
   });
 
@@ -64,6 +58,7 @@ describe('desktop download selection', () => {
     render(<Download />, { wrapper: MemoryRouter });
 
     expect(screen.getByText('Choose your computer.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Installation help' })).toBeDisabled();
     expect(screen.queryByRole('link', { name: 'Download for Windows' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Windows' })).toHaveAttribute(
       'aria-pressed',
@@ -74,68 +69,58 @@ describe('desktop download selection', () => {
     expect(screen.getByText('64-bit Windows · installer')).toBeVisible();
   });
 
-  it('recommends the Windows installer with automatic updates and keeps portable optional', () => {
-    vi.stubGlobal('navigator', {
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-    });
-
+  it('shows Windows expectations and browser handover beside the installer', () => {
+    vi.stubGlobal('navigator', { userAgent: 'Windows NT 10.0' });
     render(<Download />, { wrapper: MemoryRouter });
-
     expect(screen.getByText('64-bit Windows · installer')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
-    expect(screen.getByText(/installer sets up Lacuna with automatic updates/i)).toBeVisible();
-    expect(screen.getByText(/browser data is not copied/i)).toBeVisible();
+    expect(screen.getByText('Automatic updates')).toBeVisible();
+    expect(screen.getByText('Unsigned')).toBeVisible();
+    expect(screen.getByText('Managed computers may block installation.')).toBeVisible();
+    expect(screen.getByText('Browser data is not copied automatically.')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Back up in browser' })).toHaveAttribute(
+      'href',
+      '/settings#settings-export',
+    );
+    expect(screen.getByText('Import on desktop')).toBeVisible();
+    expect(screen.getByText(/Prerelease · v/)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Download for Windows' })).toHaveAttribute(
       'href',
       DOWNLOADS.windowsInstaller,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Other Windows download' }));
+    expect(screen.queryByText(/Run anyway/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
+    expect(screen.getByText(/Run anyway only when you downloaded Lacuna/)).toBeVisible();
     expect(
-      screen.getByRole('link', { name: 'Download the Windows portable build' }),
-    ).toHaveAttribute('href', DOWNLOADS.windowsPortable);
-    expect(screen.getByText(/no installer or administrator account/i)).toBeVisible();
-    expect(screen.getByText(/It uses manual updates/)).toBeVisible();
-    expect(
-      screen.getByText(
-        (_, element) =>
-          element?.tagName === 'P' &&
-          element.textContent?.includes('Run anyway only when you downloaded Lacuna') === true,
-      ),
+      screen.getByText('Portable: no installer. Keep it in a folder you can access.'),
     ).toBeVisible();
   });
 
-  it('keeps other platforms available with accurate architecture and update guidance', () => {
+  it('keeps architecture and update differences accurate when platforms change and resets help', () => {
     render(<Download />, { wrapper: MemoryRouter });
-
     fireEvent.click(screen.getByRole('button', { name: 'macOS' }));
     expect(screen.getByText('Apple Silicon only')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
-    expect(screen.getByText(/Apple Silicon Macs only and uses manual updates/)).toBeVisible();
+    expect(screen.getByText('Manual updates')).toBeVisible();
+    expect(screen.getByText('Unsigned')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Download for macOS' })).toHaveAttribute(
       'href',
       DOWNLOADS.macDmg,
     );
-    expect(screen.getByText(/Privacy & Security/)).toBeVisible();
-    expect(
-      screen.getByText(
-        (_, element) =>
-          element?.tagName === 'P' &&
-          element.textContent?.includes('Open Anyway only when you downloaded Lacuna') === true,
-      ),
-    ).toBeVisible();
-
+    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
+    expect(screen.getByText('Drag Lacuna into Applications.')).toBeVisible();
+    expect(screen.getByText(/Open Anyway only when you downloaded Lacuna/)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Linux' }));
     expect(screen.getByText('64-bit Linux · AppImage')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
-    expect(screen.getByText(/It uses automatic updates/)).toBeVisible();
+    expect(screen.getByText('Automatic updates')).toBeVisible();
+    expect(screen.queryByText('Unsigned')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Installation help' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
     expect(screen.getByRole('link', { name: 'Download for Linux' })).toHaveAttribute(
       'href',
       DOWNLOADS.linuxAppImage,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Other Linux download' }));
-    expect(screen.getByRole('link', { name: 'Download the DEB package' })).toHaveAttribute(
-      'href',
-      DOWNLOADS.linuxDeb,
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
+    expect(screen.getByText(/Allow the AppImage to run/)).toBeVisible();
   });
 });

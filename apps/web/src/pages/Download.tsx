@@ -1,6 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { DownloadIcon, LacunaIcon } from '../components/ui/icons';
+import {
+  AlertIcon,
+  ArrowRightIcon,
+  DownloadIcon,
+  LacunaIcon,
+  LockIcon,
+  RefreshIcon,
+  UploadIcon,
+} from '../components/ui/icons';
 import { Button, buttonClassName } from '../components/ui/Button';
 import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
 import { StepSwap } from '../components/ui/StepSwap';
@@ -37,17 +45,35 @@ const platformLabels: Record<DesktopPlatform, string> = {
   linux: 'Linux',
 };
 
-function AlternativeDownload({ platform, children }: { platform: string; children: ReactNode }) {
-  const [expanded, setExpanded] = useState(false);
+function AlternativeDownload({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <div className="download-alternative">
-      <Button variant="ghost" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
-        Other {platform} download <span aria-hidden="true">{expanded ? '−' : '+'}</span>
-      </Button>
-      <AnimatedDisclosure open={expanded} innerClassName="download-alternative-content">
-        {children}
-      </AnimatedDisclosure>
-    </div>
+    <a href={href} className="download-alternative download-inline-link">
+      <DownloadIcon width={16} height={16} />
+      {children}
+    </a>
+  );
+}
+
+function DownloadStatus({
+  automatic,
+  unsigned = false,
+}: {
+  automatic: boolean;
+  unsigned?: boolean;
+}) {
+  return (
+    <p className="download-status">
+      {unsigned && (
+        <span>
+          <AlertIcon width={16} height={16} />
+          Unsigned
+        </span>
+      )}
+      <span>
+        <RefreshIcon width={16} height={16} />
+        {automatic ? 'Automatic updates' : 'Manual updates'}
+      </span>
+    </p>
   );
 }
 
@@ -65,6 +91,10 @@ function WindowsDownload() {
     <>
       <DownloadButton href={DOWNLOADS.windowsInstaller}>Download for Windows</DownloadButton>
       <p className="download-compatibility">64-bit Windows · installer</p>
+      <DownloadStatus automatic unsigned />
+      <AlternativeDownload href={DOWNLOADS.windowsPortable}>
+        Windows portable · manual updates
+      </AlternativeDownload>
     </>
   );
 }
@@ -74,6 +104,7 @@ function MacDownload() {
     <>
       <DownloadButton href={DOWNLOADS.macDmg}>Download for macOS</DownloadButton>
       <p className="download-compatibility">Apple Silicon only</p>
+      <DownloadStatus automatic={false} unsigned />
     </>
   );
 }
@@ -83,6 +114,10 @@ function LinuxDownload() {
     <>
       <DownloadButton href={DOWNLOADS.linuxAppImage}>Download for Linux</DownloadButton>
       <p className="download-compatibility">64-bit Linux · AppImage</p>
+      <DownloadStatus automatic />
+      <AlternativeDownload href={DOWNLOADS.linuxDeb}>
+        Debian / Ubuntu DEB · manual updates
+      </AlternativeDownload>
     </>
   );
 }
@@ -93,30 +128,15 @@ function InstallationHelp({ platform }: { platform: DesktopPlatform | null }) {
       {platform === 'windows' && (
         <>
           <p>
-            The installer sets up Lacuna with automatic updates. Managed computers may block
-            installers.
-          </p>
-          <p>
             Lacuna is not yet code-signed. If Windows blocks it, use More info → Run anyway only
             when you downloaded Lacuna from this page.
           </p>
-          <AlternativeDownload platform="Windows">
-            <p>
-              <a className="download-inline-link" href={DOWNLOADS.windowsPortable}>
-                Download the Windows portable build
-              </a>{' '}
-              if you need no installer or administrator account. Keep it in a folder you can access.
-              It uses manual updates.
-            </p>
-          </AlternativeDownload>
+          <p>Portable: no installer. Keep it in a folder you can access.</p>
         </>
       )}
       {platform === 'macos' && (
         <>
-          <p>
-            Drag Lacuna into Applications. This build supports Apple Silicon Macs only and uses
-            manual updates.
-          </p>
+          <p>Drag Lacuna into Applications.</p>
           <p>
             Lacuna is not yet code-signed. Use Privacy &amp; Security → Open Anyway only when you
             downloaded Lacuna from this page.
@@ -126,21 +146,11 @@ function InstallationHelp({ platform }: { platform: DesktopPlatform | null }) {
       {platform === 'linux' && (
         <>
           <p>
-            Allow the AppImage to run in its file permissions, then open it. It uses automatic
-            updates. Only grant permission when you downloaded Lacuna from this page.
+            Allow the AppImage to run in its file permissions, then open it. Only grant permission
+            when you downloaded Lacuna from this page.
           </p>
-          <AlternativeDownload platform="Linux">
-            <p>
-              <a className="download-inline-link" href={DOWNLOADS.linuxDeb}>
-                Download the DEB package
-              </a>{' '}
-              for Debian or Ubuntu. It uses manual updates.
-            </p>
-          </AlternativeDownload>
         </>
       )}
-      <p>This is prerelease software. Keep a backup of important course data.</p>
-      <p>Existing browser data is not copied into the desktop app automatically.</p>
     </section>
   );
 }
@@ -168,13 +178,17 @@ export function Download() {
           <LacunaIcon className="size-7" /> Lacuna
         </Link>
         <Link to="/" className="download-browser-link">
-          Open Lacuna <span aria-hidden="true">↗</span>
+          Open Lacuna <ArrowRightIcon className="-rotate-45" />
         </Link>
       </nav>
       <main className="download-main">
         <div className="download-choice">
           <header className="download-intro">
             <h1>Download Lacuna.</h1>
+            <p className="download-prerelease">
+              <AlertIcon width={16} height={16} />
+              Prerelease · v{APP_VERSION}
+            </p>
           </header>
           <div className="download-platforms" role="group" aria-label="Operating system">
             {(Object.keys(platformLabels) as DesktopPlatform[]).map((platform) => (
@@ -201,10 +215,33 @@ export function Download() {
               )}
             </StepSwap>
           </section>
+          {selected && (
+            <p className="download-managed">
+              <LockIcon width={16} height={16} />
+              Managed computers may block installation.
+            </p>
+          )}
+          <section className="download-transfer" aria-label="Move browser data to desktop">
+            <p>Browser data is not copied automatically.</p>
+            <ol>
+              <li>
+                <Link to="/settings#settings-export" className="download-inline-link">
+                  <DownloadIcon width={18} height={18} />
+                  Back up in browser
+                </Link>
+                <ArrowRightIcon />
+              </li>
+              <li>
+                <UploadIcon width={18} height={18} />
+                Import on desktop
+              </li>
+            </ol>
+          </section>
         </div>
         <footer className="download-footer">
           <Button
             variant="ghost"
+            disabled={!selected}
             aria-expanded={helpOpen}
             aria-controls="download-help"
             onClick={() => setHelpOpen(!helpOpen)}
