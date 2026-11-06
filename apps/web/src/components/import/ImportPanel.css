@@ -1,6 +1,12 @@
 .import-panel {
   padding: 8px 20px 20px;
 }
+.import-panel .shared-course-import {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
 .import-control-title {
   visibility: hidden;
 }

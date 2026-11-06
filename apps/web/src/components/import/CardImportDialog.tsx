@@ -31,6 +31,7 @@ export interface CardImportDialogProps {
   presentation?: 'dialog' | 'page' | 'panel';
   initialFile?: File;
   reviewOptions?: ReactNode;
+  panelNavigation?: ReactNode;
   canImport?: boolean;
   preferPackage?: boolean;
   onBusyChange?: (busy: boolean) => void;
@@ -50,6 +51,7 @@ export function CardImportDialog({
   presentation = 'dialog',
   initialFile,
   reviewOptions,
+  panelNavigation,
   canImport = true,
   preferPackage = false,
   onBusyChange,
@@ -195,16 +197,23 @@ export function CardImportDialog({
             Import cards
           </h2>
           {panel ? (
-            <p className="card-import-progress" aria-label="Import progress">
-              {step === 'input'
-                ? 'Add cards'
-                : step === 'review'
-                  ? 'Review cards'
-                  : 'Choose destination'}
-              <span>
-                {stepNumber} of {separateDestination ? 3 : 2}
-              </span>
-            </p>
+            <>
+              {panelNavigation}
+              <p className="card-import-progress" aria-label="Import progress">
+                <span className="sr-only">
+                  {step === 'input'
+                    ? 'Add cards'
+                    : step === 'review'
+                      ? 'Review cards'
+                      : 'Choose destination'}
+                  {' · '}
+                  Step {stepNumber} of {separateDestination ? 3 : 2}
+                </span>
+                <span aria-hidden="true">
+                  {stepNumber} / {separateDestination ? 3 : 2}
+                </span>
+              </p>
+            </>
           ) : (
             <ImportStepper step={step === 'destination' ? 'review' : step} />
           )}
@@ -369,15 +378,22 @@ export function CardImportDialog({
           <Button
             ref={primaryRef}
             variant="primary"
+            aria-label={
+              step === 'input'
+                ? 'Review cards'
+                : step === 'review' && separateDestination
+                  ? 'Choose destination'
+                  : undefined
+            }
             disabled={!canContinue || busy || (finalStep && !canImport)}
             onClick={() => void confirm()}
           >
             {busy
               ? 'Importing…'
               : step === 'input'
-                ? 'Review cards'
+                ? 'Review'
                 : step === 'review' && separateDestination
-                  ? 'Choose destination'
+                  ? 'Destination'
                   : `Import ${countOf(count, 'card')}`}
             <span aria-hidden="true">→</span>
           </Button>

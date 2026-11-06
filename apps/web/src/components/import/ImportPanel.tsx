@@ -171,6 +171,19 @@ export function ImportPanel({
       }
     },
   });
+  const cardSource = source === 'text' || source === 'anki';
+  const sourceNavigation = (
+    <button
+      type="button"
+      disabled={busy}
+      aria-label={libraryCourse ? 'Back to the course library' : 'Back to import sources'}
+      onClick={back}
+      className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+    >
+      <ChevronLeftIcon width={16} height={16} />
+      {libraryCourse ? 'Course library' : 'Sources'}
+    </button>
+  );
 
   return (
     <div
@@ -191,22 +204,9 @@ export function ImportPanel({
             direction={source ? 1 : -1}
           >
             <>
-              <header className={source ? 'mb-3 flex items-center justify-end' : 'sr-only'}>
+              <header className={source && !cardSource ? 'mb-4 flex items-center' : 'sr-only'}>
                 <h2 className="sr-only">Import</h2>
-                {source && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    aria-label={
-                      libraryCourse ? 'Back to the course library' : 'Back to import sources'
-                    }
-                    onClick={back}
-                    className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-                  >
-                    <ChevronLeftIcon width={16} height={16} />
-                    {libraryCourse ? 'Course library' : 'All sources'}
-                  </button>
-                )}
+                {source && !cardSource && sourceNavigation}
               </header>
               {!source ? (
                 <>
@@ -334,6 +334,7 @@ export function ImportPanel({
               ) : (
                 <CardImportDialog
                   presentation="panel"
+                  panelNavigation={sourceNavigation}
                   initialFile={file}
                   // Pasted text outlives a trip back to All sources.
                   initialText={source === 'text' && !file ? pastedText : undefined}

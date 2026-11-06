@@ -52,6 +52,8 @@ for (const width of [1280, 390]) {
     await page.getByText('Steady retention', { exact: true }).click();
     await expect(page.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
     const add = page.getByRole('button', { name: 'Add to my courses' });
+    // The compact input can leave the preview heading in view without scrolling its actions in.
+    await add.scrollIntoViewIfNeeded();
     await expect(add).toBeInViewport();
     const first = page.getByText('Biology lesson 1', { exact: true });
     const actionBounds = (await add.boundingBox())!;

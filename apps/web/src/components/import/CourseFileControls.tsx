@@ -82,7 +82,7 @@ export function CourseFileImportButton({
   }
 
   return (
-    <div className="mb-5">
+    <div>
       <input
         ref={input}
         type="file"
@@ -100,11 +100,12 @@ export function CourseFileImportButton({
       />
       <Button
         variant="secondary"
+        aria-label="Upload course file"
         disabled={disabled || reading}
         onClick={() => input.current?.click()}
       >
-        <UploadIcon width={18} height={18} />
-        {reading ? 'Reading…' : 'Choose course file'}
+        <UploadIcon width={16} height={16} />
+        {reading ? 'Reading…' : 'Upload'}
       </Button>
     </div>
   );

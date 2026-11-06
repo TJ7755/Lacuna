@@ -3,7 +3,7 @@ import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { useRef, useState } from 'react';
 import { FORMAT_LABELS, type ImportFormat } from '../../db/importEngine';
-import { FileTextIcon, UploadIcon } from '../ui/icons';
+import { ChevronDownIcon, FileTextIcon, UploadIcon } from '../ui/icons';
 import type { useCardImportSource } from './useCardImportSource';
 import { countOf } from '../../utils/plural';
 
@@ -36,7 +36,7 @@ export function CardImportInput({
     >
       <div className="card-import-input-label">
         <label htmlFor="card-import-text" className={fieldLabelClassName}>
-          {preferPackage ? 'Anki package' : 'Paste your cards'}
+          {preferPackage ? 'Anki package' : 'Paste'}
         </label>
         <Button
           type="button"
@@ -45,7 +45,7 @@ export function CardImportInput({
           disabled={source.reading}
         >
           <UploadIcon width={16} height={16} />
-          Upload a file
+          Upload
         </Button>
       </div>
       <input
@@ -86,50 +86,46 @@ export function CardImportInput({
         <textarea
           className={inputFrameClassName}
           id="card-import-text"
+          aria-label="Paste your cards"
           value={source.text}
           onChange={(event) => source.changeText(event.target.value)}
           spellCheck={false}
           disabled={source.reading}
         />
       )}
-      <div className="card-import-source-meta" role="status">
-        <span>
-          {source.reading
-            ? 'Reading file…'
-            : `${countOf(source.apkg?.cards.length ?? source.result.cards.length, 'card')} detected`}
-        </span>
-        <span>
-          {source.apkg
-            ? 'APKG'
-            : source.format
-              ? FORMAT_LABELS[source.format]
-              : source.text
-                ? FORMAT_LABELS[source.detected]
-                : 'Text, CSV, JSON or Anki'}
-        </span>
+      <div className="card-import-input-tools">
+        <div className="card-import-source-meta" role="status">
+          <span>
+            {source.reading
+              ? 'Reading…'
+              : countOf(source.apkg?.cards.length ?? source.result.cards.length, 'card')}
+          </span>
+        </div>
+        {!source.apkg && !preferPackage && (
+          <details>
+            <summary>
+              Format <ChevronDownIcon width={14} height={14} />
+            </summary>
+            <label>
+              <span className="sr-only">Format</span>
+              <Select
+                value={source.format}
+                onChange={(event) => source.setFormat(event.target.value as ImportFormat | '')}
+              >
+                <option value="">Automatic</option>
+                {(
+                  ['csv', 'tsv', 'markdown-table', 'markdown-list', 'json', 'plain-text'] as const
+                ).map((format) => (
+                  <option key={format} value={format}>
+                    {FORMAT_LABELS[format]}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <p>One row per card: front, back, optional tags.</p>
+          </details>
+        )}
       </div>
-      {!source.apkg && !preferPackage && (
-        <details>
-          <summary>Import settings</summary>
-          <label>
-            Format
-            <Select
-              value={source.format}
-              onChange={(event) => source.setFormat(event.target.value as ImportFormat | '')}
-            >
-              <option value="">Automatic</option>
-              {(
-                ['csv', 'tsv', 'markdown-table', 'markdown-list', 'json', 'plain-text'] as const
-              ).map((format) => (
-                <option key={format} value={format}>
-                  {FORMAT_LABELS[format]}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <p>Use one row per card: front, back, then optional tags.</p>
-        </details>
-      )}
     </div>
   );
 }
