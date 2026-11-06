@@ -1,5 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { installPressFeedback } from './pressFeedback';
+
+vi.mock('motion/mini', () => ({ animate: vi.fn(() => ({ stop: vi.fn() })) }));
 
 // Native activation and stable content are proved in the browser. This boundary
 // protects delegation ownership and cleanup without asserting animation keyframes.

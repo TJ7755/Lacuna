@@ -1,7 +1,7 @@
 import { createContext, useContext, useLayoutEffect, useRef, type ReactNode } from 'react';
-import { animate } from 'motion/react';
+import { spring } from 'motion';
+import { animate } from 'motion/mini';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import { liquidSpring } from './motion';
 
 export const PageArrivalReady = createContext(true);
 
@@ -117,15 +117,19 @@ function animatePageParts(surfaces: ReturnType<typeof measurePageParts>, multipl
     element.style.willChange =
       willChange && willChange !== 'auto' ? `${willChange}, opacity` : 'opacity';
     element.style.opacity = '0';
-    return animate(0, target, {
-      ...liquidSpring(multiplier),
-      visualDuration: 0.18 * multiplier,
-      delay: Math.min(rows.indexOf(Math.round(top)) * 0.025, 0.075) * multiplier,
-      onUpdate: (opacity) => {
-        element.style.opacity = String(opacity);
+    // Give the browser ownership of opacity so a busy main thread cannot freeze
+    // the introduction while neighbouring surfaces mount or read their data.
+    return animate(
+      element,
+      { opacity: [0, target] },
+      {
+        type: spring,
+        bounce: 0,
+        visualDuration: 0.18 * multiplier,
+        delay: Math.min(rows.indexOf(Math.round(top)) * 0.025, 0.075) * multiplier,
+        onComplete: () => restore(surface),
       },
-      onComplete: () => restore(surface),
-    });
+    );
   });
   return () => {
     controls.forEach((control) => control.stop());
