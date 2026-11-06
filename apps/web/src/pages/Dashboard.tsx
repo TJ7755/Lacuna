@@ -27,7 +27,7 @@ import { ImportControl } from '../components/import/ImportControl';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { urgencyOrder } from '../state/dashboardForecasts';
 import { forecastWindow, useForecastRange } from '../state/forecastRange';
-import { useDashboardForecastHistories } from '../state/useDashboardForecastHistories';
+import { useDashboardForecastHistories } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
 import { useToast } from '../components/ui/Toast';
 import { finishOnboarding, onboardingPending } from '../onboarding/onboardingState';

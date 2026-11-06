@@ -47,7 +47,7 @@ vi.mock('react-router-dom', () => ({
   ),
 }));
 
-vi.mock('../state/useDashboardForecastHistories', () => ({
+vi.mock('../state/useData', () => ({
   useDashboardForecastHistories: (
     data: { forecasts: Record<string, { ifStopped: number }> } | undefined,
   ) =>

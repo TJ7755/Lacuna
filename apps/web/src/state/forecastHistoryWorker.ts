@@ -25,8 +25,10 @@ export async function calculateForecastHistoriesOffThread(
   if (signal.aborted) throw cancelled();
   try {
     if (typeof Worker === 'undefined') throw new Error('Workers unavailable.');
-    const worker = new Worker(new URL('../workers/forecastHistory.worker.ts', import.meta.url), {
+    // Share the packaged entry, not the worker instance or its request lifecycle.
+    const worker = new Worker(new URL('../workers/remainingWork.worker.ts', import.meta.url), {
       type: 'module',
+      name: 'forecast-history',
     });
     return await new Promise<ForecastHistories>((resolve, reject) => {
       const finish = (error?: Error, histories?: ForecastHistories) => {
@@ -50,7 +52,7 @@ export async function calculateForecastHistoriesOffThread(
       signal.addEventListener('abort', abort, { once: true });
       if (signal.aborted) return abort();
       try {
-        worker.postMessage(forecastHistorySnapshot(input));
+        worker.postMessage({ kind: 'forecast-history', input: forecastHistorySnapshot(input) });
       } catch (error) {
         finish(error instanceof Error ? error : new Error(String(error)));
       }

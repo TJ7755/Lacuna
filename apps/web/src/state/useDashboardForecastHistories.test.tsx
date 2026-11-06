@@ -6,7 +6,7 @@ import { createCourse, createCourseCard } from '../db/repository';
 import { reviewHistoryEntryForCard } from '@lacuna/core/db/reviewHistory';
 import type { ReviewLog } from '@lacuna/core/db/types';
 import { dashboardForecasts } from './dashboardForecasts';
-import { useDashboardForecastHistories } from './useDashboardForecastHistories';
+import { useDashboardForecastHistories } from './useData';
 import { calculateForecastHistoriesOffThread } from './forecastHistoryWorker';
 import type { ForecastHistories } from './forecastHistoryData';
 

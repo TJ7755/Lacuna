@@ -1,9 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 test.use({ serviceWorkers: 'block', viewport: { width: 1440, height: 1000 } });
 
-async function observeForecastWork(page: import('@playwright/test').Page) {
+async function observeForecastWork(page: Page) {
   const observe = () => {
     const observed = { historyReads: 0, workers: 0, terminated: 0 };
     Object.assign(window, { forecastWork: observed });
@@ -17,7 +17,7 @@ async function observeForecastWork(page: import('@playwright/test').Page) {
       private forecast: boolean;
       constructor(url: string | URL, options?: WorkerOptions) {
         super(url, options);
-        this.forecast = String(url).includes('forecastHistory.worker-');
+        this.forecast = options?.name === 'forecast-history';
         if (this.forecast) observed.workers++;
       }
       terminate() {
@@ -37,7 +37,7 @@ for (const failWorker of [false, true]) {
     await enterWithWelcomeCourse(page);
     await observeForecastWork(page);
     if (failWorker)
-      await page.route('**/assets/forecastHistory.worker-*.js', (route) => route.abort());
+      await page.route('**/assets/remainingWork.worker-*.js', (route) => route.abort());
     await page.reload();
     await expect(page.getByRole('button', { name: 'Study Welcome to Lacuna' })).toBeEnabled();
     await expect(page.getByRole('img', { name: 'Exam-day forecast', exact: true })).toBeVisible();
@@ -63,7 +63,7 @@ test('leaving Today cancels a held forecast worker while Study stays usable', as
     release = resolve;
   });
   let requested = false;
-  await page.route('**/assets/forecastHistory.worker-*.js', async (route) => {
+  await page.route('**/assets/remainingWork.worker-*.js', async (route) => {
     requested = true;
     await held;
     await route.abort();
@@ -124,7 +124,8 @@ test('cached Today keeps its forecast when first opening the optional calculatio
       for (const name of await caches.keys()) {
         const cache = await caches.open(name);
         for (const request of await cache.keys()) {
-          if (/\/forecastHistory(?:\.worker|Data)-/.test(request.url)) await cache.delete(request);
+          if (/\/(?:remainingWork\.worker|forecastHistoryData)-/.test(request.url))
+            await cache.delete(request);
         }
       }
     });

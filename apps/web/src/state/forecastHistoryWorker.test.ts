@@ -48,7 +48,10 @@ it('returns worker points and terminates without reading histories on the render
   const pending = calculateForecastHistoriesOffThread(input, new AbortController().signal);
   const worker = FakeWorker.instances[0];
   expect(worker.postMessage).toHaveBeenCalledWith(
-    expect.objectContaining({ cards: [expect.objectContaining({ front: '', back: '' })] }),
+    expect.objectContaining({
+      kind: 'forecast-history',
+      input: expect.objectContaining({ cards: [expect.objectContaining({ front: '', back: '' })] }),
+    }),
   );
   worker.onmessage!({
     data: { histories: { biology: [{ at: input.now, recall: 0.5 }] } },
