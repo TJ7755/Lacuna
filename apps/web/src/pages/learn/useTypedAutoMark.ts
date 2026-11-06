@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Card, Grade } from '@lacuna/core/db/types';
 import { markdownAnswerCorrect, markdownPlainText } from '../../components/markdown/MarkdownView';
 import { answerComparisonOptions, type AnswerStrictness } from '../../state/answerStrictness';
@@ -7,7 +7,9 @@ import {
   JEV_JUDGING_MS,
   JEV_TYPED_TIMEOUT_MS,
   useJevTypedMarker,
+  useJevStatus,
   type JevMarkProvenance,
+  type JevPauseReason,
   type JevTypedFeedback,
 } from '../../jev';
 import type { TypedAnswerJudgement } from '../../components/markdown/typedAnswerFeedback';
@@ -18,6 +20,7 @@ export type TypedAutoMark =
   | { state: 'off' }
   | { state: 'idle' }
   | { state: 'checking' }
+  | { state: 'manual'; reason: JevPauseReason | 'timeout' | 'uncertain'; retryAt?: number | null }
   /** The marker could not decide, but may still say which parts were missed. */
   | { state: 'unsure'; feedback: JevTypedFeedback; expected: string }
   | {
@@ -27,6 +30,7 @@ export type TypedAutoMark =
       provenance: JevMarkProvenance | null;
       feedback?: JevTypedFeedback;
       expected?: string;
+      onContinue?: () => void;
     };
 
 /** What the revealed card shows about a typed answer while automatic marking is on. */
@@ -48,9 +52,6 @@ export function typedAnswerJudgement(mark: TypedAutoMark): TypedAnswerJudgement 
 const OFF: TypedAutoMark = { state: 'off' };
 const IDLE: TypedAutoMark = { state: 'idle' };
 
-/** How long a mark stays visible before the card is dismissed with it, before motion scaling. */
-const TYPED_AUTO_MARK_HOLD_MS = 700;
-
 /** How long a submitted answer waits before it is marked, before motion scaling. */
 export const TYPED_AUTO_MARK_DELAY_MS = 500;
 
@@ -70,7 +71,6 @@ export function useTypedAutoMark({
   manual = false,
   m,
   onMarked,
-  onHold,
 }: {
   card: Card | null;
   phase: Phase;
@@ -78,37 +78,45 @@ export function useTypedAutoMark({
   typedAnswer: string;
   answerStrictness: AnswerStrictness;
   occlusionAnswerText?: string;
-  /** Menus, editing and hints suspend automatic dismissal. */
+  /** Menus, editing and hints suspend accepting a verdict. */
   paused: boolean;
   /** Undo leaves the restored answer with the learner instead of grading it again. */
   manual?: boolean;
   m: number;
   onMarked: (correct: boolean, provenance: JevMarkProvenance | null, grade?: Grade) => void;
-  onHold?: () => void;
 }): TypedAutoMark {
   const marker = useJevTypedMarker();
+  const status = useJevStatus();
   const [mark, setMark] = useState<TypedAutoMark>({ state: 'idle' });
-  const [holding, setHolding] = useState(false);
-  const dismissAt = useRef<number | null>(null);
+  const accepted = useRef(false);
   const onMarkedRef = useRef(onMarked);
-  const onHoldRef = useRef(onHold);
   useEffect(() => {
     onMarkedRef.current = onMarked;
-    onHoldRef.current = onHold;
-  }, [onMarked, onHold]);
+  }, [onMarked]);
 
-  const active = !manual && marker !== null && isTypingCard && phase === 'answer' && card !== null;
+  const eligible = !manual && isTypingCard && phase === 'answer' && card !== null;
+  const active = eligible && marker !== null;
   const cardId = card?.id;
-  const canHold = active && (mark.state === 'checking' || mark.state === 'marked');
+
+  // Reading time belongs to the learner, independently of animation speed. A cancelled
+  // departure can be accepted again after its menu/editor/leave dialogue closes.
+  useEffect(() => {
+    accepted.current = false;
+  }, [active, mark, paused]);
+  const continueAnswer = useCallback(() => {
+    if (!active || paused || mark.state !== 'marked' || accepted.current) return;
+    accepted.current = true;
+    if (mark.grade === undefined) onMarkedRef.current(mark.correct, mark.provenance);
+    else onMarkedRef.current(mark.correct, mark.provenance, mark.grade);
+  }, [active, paused, mark]);
 
   useEffect(() => {
-    if (!canHold || paused) {
-      setHolding(false);
-      return;
-    }
+    if (!active || paused || mark.state !== 'marked') return;
     const down = (event: KeyboardEvent) => {
       if (
-        event.code !== 'Space' ||
+        (event.code !== 'Space' && event.key !== 'Enter') ||
+        event.repeat ||
+        event.defaultPrevented ||
         event.isComposing ||
         event.ctrlKey ||
         event.metaKey ||
@@ -124,29 +132,17 @@ export function useTypedAutoMark({
       )
         return;
       event.preventDefault();
-      if (!event.repeat) onHoldRef.current?.();
-      setHolding(true);
+      continueAnswer();
     };
-    const up = (event: KeyboardEvent) => {
-      if (event.code === 'Space') setHolding(false);
-    };
-    const release = () => setHolding(false);
     window.addEventListener('keydown', down, true);
-    window.addEventListener('keyup', up, true);
-    window.addEventListener('blur', release);
-    document.addEventListener('visibilitychange', release);
     return () => {
       window.removeEventListener('keydown', down, true);
-      window.removeEventListener('keyup', up, true);
-      window.removeEventListener('blur', release);
-      document.removeEventListener('visibilitychange', release);
     };
-  }, [canHold, paused]);
+  }, [active, paused, mark, continueAnswer]);
 
   // Decide the mark once per revealed answer, after the pause that keeps a verdict from
   // landing in the same breath as the submission.
   useEffect(() => {
-    dismissAt.current = null;
     setMark({ state: 'idle' });
     if (!active || !card || typedAnswer.trim() === '') return;
     const expected = typingExpectedAnswer(card, occlusionAnswerText);
@@ -167,7 +163,7 @@ export function useTypedAutoMark({
         return;
       }
       settle = window.setTimeout(() => {
-        setMark(IDLE);
+        setMark({ state: 'manual', reason: 'timeout' });
         controller.abort();
       }, JEV_TYPED_TIMEOUT_MS);
       const expectedText = markdownPlainText(expected);
@@ -188,7 +184,7 @@ export function useTypedAutoMark({
               (answerStrictness === 'exact' && verdict.outcome === 'correct')
               ? verdict.feedback
                 ? { state: 'unsure', feedback: verdict.feedback, expected: expectedText }
-                : { state: 'idle' }
+                : { state: 'manual', reason: 'uncertain' }
               : {
                   state: 'marked',
                   correct: verdict.outcome === 'correct',
@@ -201,7 +197,7 @@ export function useTypedAutoMark({
           );
         })
         .catch(() => {
-          if (!controller.signal.aborted) setMark({ state: 'idle' });
+          if (!controller.signal.aborted) setMark({ state: 'manual', reason: 'error' });
         })
         .finally(() => window.clearTimeout(settle));
     }, TYPED_AUTO_MARK_DELAY_MS * scale);
@@ -225,26 +221,32 @@ export function useTypedAutoMark({
     marker,
   ]);
 
-  // A visible mark dismisses the card after a short hold, unless something interrupts.
-  useEffect(() => {
-    if (mark.state !== 'marked' || paused || !active) {
-      dismissAt.current = null;
-      return;
-    }
-    dismissAt.current ??= performance.now() + TYPED_AUTO_MARK_HOLD_MS * Math.max(m, 0.3);
-    if (holding) return;
-    const timer = window.setTimeout(
-      () =>
-        mark.grade === undefined
-          ? onMarkedRef.current(mark.correct, mark.provenance)
-          : onMarkedRef.current(mark.correct, mark.provenance, mark.grade),
-      Math.max(0, dismissAt.current - performance.now()),
-    );
-    return () => window.clearTimeout(timer);
-  }, [mark, paused, active, m, holding]);
-
-  if (marker === null) return OFF;
+  if (marker === null)
+    return eligible && status.state === 'paused'
+      ? { state: 'manual', reason: status.reason, retryAt: status.retryAt }
+      : OFF;
+  if (active && mark.state === 'marked') return { ...mark, onContinue: continueAnswer };
   return active ? mark : IDLE;
+}
+
+/** A brief local explanation when the ordinary self-marking controls take over. */
+export function typedAutoMarkMessage(mark: TypedAutoMark): string | undefined {
+  if (mark.state === 'unsure') return 'Check the mark';
+  if (mark.state !== 'manual') return undefined;
+  switch (mark.reason) {
+    case 'timeout':
+      return 'Marking timed out — mark yourself';
+    case 'uncertain':
+      return 'Marking unsure — mark yourself';
+    case 'offline':
+      return 'Offline — mark yourself';
+    case 'limit-reached':
+      return 'Marking allowance reached — mark yourself';
+    case 'rate-limited':
+      return 'Marking paused — mark yourself';
+    default:
+      return 'Marking unavailable — mark yourself';
+  }
 }
 
 /** Partial recall requires a known majority of expected parts, never a guess. */

@@ -45,8 +45,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { keys: ['Space'], description: 'Show the answer' },
       {
-        keys: ['Hold Space'],
-        description: 'Keep an automatic answer visible; release to continue',
+        keys: ['Space / Enter'],
+        description: 'Continue after an automatic mark',
       },
       { keys: ['Down'], description: 'Hide the answer' },
       { keys: ['Y'], description: 'Mark correct (silent mode)' },

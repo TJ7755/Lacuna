@@ -82,6 +82,8 @@ it('holds a verdict behind the leave dialogue until the learner chooses Stay', a
   });
   expect(await db.reviewHistory.count()).toBe(0);
   fireEvent.click(screen.getByRole('button', { name: 'Stay' }));
+  expect(await db.reviewHistory.count()).toBe(0);
+  fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
   await waitFor(async () => expect(await db.reviewHistory.count()).toBe(1));
 });
 
@@ -110,5 +112,5 @@ it('invalidates a held verdict when the expected answer is edited', async () => 
   });
   expect(onMarked).not.toHaveBeenCalled();
   expect(marker).toHaveBeenCalledWith(expect.objectContaining({ expected: 'London' }));
-  expect(result.current.state).toBe('idle');
+  expect(result.current.state).toBe('manual');
 });

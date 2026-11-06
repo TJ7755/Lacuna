@@ -2,17 +2,19 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Card } from '@lacuna/core/db/types';
 import type * as JevModule from '../../jev';
-import type { JevTypedAnswerRequest, JevTypedVerdict } from '../../jev';
+import type { JevStatus, JevTypedAnswerRequest, JevTypedVerdict } from '../../jev';
 import { JEV_JUDGING_MS, JEV_TYPED_TIMEOUT_MS } from '../../jev';
 import { TYPED_AUTO_MARK_DELAY_MS, useTypedAutoMark } from './useTypedAutoMark';
 
 const jev = vi.hoisted(() => ({
+  status: { state: 'off' } as JevStatus,
   marker: null as null | ((request: JevTypedAnswerRequest) => Promise<JevTypedVerdict>),
 }));
 
 vi.mock('../../jev', async (importOriginal) => ({
   ...(await importOriginal<typeof JevModule>()),
   useJevTypedMarker: () => jev.marker,
+  useJevStatus: () => jev.status,
 }));
 
 const card = { id: 'c1', type: 'front_back', front: 'Capital of France?', back: 'Paris' } as Card;
@@ -22,6 +24,7 @@ function setup(
   typedAnswer: string,
   overrides: {
     paused?: boolean;
+    m?: number;
     card?: Card;
     manual?: boolean;
     answerStrictness?: 'lenient' | 'standard' | 'exact';
@@ -37,7 +40,7 @@ function setup(
       answerStrictness: overrides.answerStrictness ?? 'standard',
       paused: overrides.paused ?? false,
       manual: overrides.manual,
-      m: 1,
+      m: overrides.m ?? 1,
       onMarked,
     }),
   );
@@ -49,6 +52,7 @@ describe('useTypedAutoMark', () => {
   afterEach(() => {
     vi.useRealTimers();
     jev.marker = null;
+    jev.status = { state: 'off' };
   });
 
   it('stays off and never marks while automatic marking is unavailable', () => {
@@ -90,6 +94,9 @@ describe('useTypedAutoMark', () => {
     act(() => {
       vi.advanceTimersByTime(1000);
     });
+    act(() => {
+      if (result.current.state === 'marked') result.current.onContinue?.();
+    });
     expect(onMarked).toHaveBeenCalledWith(true, null);
     expect(jev.marker).not.toHaveBeenCalled();
   });
@@ -109,6 +116,9 @@ describe('useTypedAutoMark', () => {
     expect(result.current).toMatchObject({ state: 'marked', correct: true });
     act(() => {
       vi.advanceTimersByTime(1000);
+    });
+    act(() => {
+      if (result.current.state === 'marked') result.current.onContinue?.();
     });
     expect(onMarked).toHaveBeenCalledWith(true, provenance);
     expect(jev.marker).toHaveBeenCalledWith(
@@ -137,7 +147,12 @@ describe('useTypedAutoMark', () => {
         vi.advanceTimersByTime(5000);
       });
       if (answerStrictness === 'exact') expect(onMarked).not.toHaveBeenCalled();
-      else expect(onMarked).toHaveBeenCalledWith(true, provenance);
+      else {
+        act(() => {
+          if (result.current.state === 'marked') result.current.onContinue?.();
+        });
+        expect(onMarked).toHaveBeenCalledWith(true, provenance);
+      }
     },
   );
 
@@ -153,6 +168,9 @@ describe('useTypedAutoMark', () => {
     expect(result.current).toMatchObject({ state: 'marked', correct: false });
     act(() => {
       vi.advanceTimersByTime(5000);
+    });
+    act(() => {
+      if (result.current.state === 'marked') result.current.onContinue?.();
     });
     expect(onMarked).toHaveBeenCalledWith(false, provenance);
   });
@@ -183,6 +201,9 @@ describe('useTypedAutoMark', () => {
       act(() => {
         vi.advanceTimersByTime(5000);
       });
+      act(() => {
+        if (result.current.state === 'marked') result.current.onContinue?.();
+      });
       expect(onMarked).toHaveBeenCalledWith(false, provenance, 2);
     },
   );
@@ -196,7 +217,7 @@ describe('useTypedAutoMark', () => {
     act(() => {
       vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
     });
-    expect(result.current).toEqual({ state: 'idle' });
+    expect(result.current).toEqual({ state: 'manual', reason: 'uncertain' });
     act(() => {
       vi.advanceTimersByTime(5000);
     });
@@ -212,85 +233,51 @@ describe('useTypedAutoMark', () => {
     expect(onMarked).not.toHaveBeenCalled();
   });
 
-  it('uses Space as a brake and moves immediately on release after the usual hold', () => {
+  it.each([0, 0.6, 1, 1.5])('keeps feedback until Continue at motion multiplier %s', (m) => {
     jev.marker = vi.fn();
-    const { onMarked } = setup('Paris');
+    const { result, onMarked } = setup('Paris', { m });
     act(() => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));
+      vi.advanceTimersByTime(JEV_JUDGING_MS * Math.max(m, 0.3));
     });
+    expect(result.current.state).toBe('marked');
     act(() => {
-      vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
-    });
-    act(() => {
-      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
-    });
-    act(() => {
-      vi.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(30_000);
     });
     expect(onMarked).not.toHaveBeenCalled();
     act(() => {
-      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ' }));
-    });
-    act(() => {
-      vi.advanceTimersByTime(0);
+      if (result.current.state === 'marked') {
+        result.current.onContinue?.();
+        result.current.onContinue?.();
+      }
     });
     expect(onMarked).toHaveBeenCalledExactlyOnceWith(true, null);
   });
 
-  it('keeps the original deadline when Space is released early', () => {
-    jev.marker = vi.fn();
-    const { onMarked } = setup('Paris');
-    act(() => {
-      vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
-    });
-    act(() => {
-      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
-    });
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
-    act(() => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));
-    });
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
-    act(() => {
-      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ' }));
-    });
-    act(() => {
-      vi.advanceTimersByTime(299);
-    });
-    expect(onMarked).not.toHaveBeenCalled();
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(onMarked).toHaveBeenCalledOnce();
-  });
-
-  it('releases the brake when the window loses focus', () => {
-    jev.marker = vi.fn();
-    const { onMarked } = setup('Paris');
-    act(() => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));
-    });
-    act(() => {
-      vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
-    });
-    act(() => {
-      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
-    });
-    act(() => {
-      vi.advanceTimersByTime(5000);
-    });
-    act(() => {
-      window.dispatchEvent(new Event('blur'));
-    });
-    act(() => {
-      vi.advanceTimersByTime(0);
-    });
-    expect(onMarked).toHaveBeenCalledOnce();
-  });
+  it.each(['Space', 'Enter'])(
+    'continues a visible verdict with %s, never a repeated or composing key',
+    (key) => {
+      jev.marker = vi.fn();
+      const { onMarked } = setup('Paris');
+      const press = (extra = {}) =>
+        window.dispatchEvent(
+          new KeyboardEvent('keydown', { code: key, key: key === 'Space' ? ' ' : key, ...extra }),
+        );
+      act(() => {
+        press();
+        vi.advanceTimersByTime(JEV_JUDGING_MS);
+      });
+      expect(onMarked).not.toHaveBeenCalled();
+      act(() => {
+        press({ repeat: true });
+        press({ isComposing: true });
+      });
+      expect(onMarked).not.toHaveBeenCalled();
+      act(() => {
+        press();
+      });
+      expect(onMarked).toHaveBeenCalledExactlyOnceWith(true, null);
+    },
+  );
 
   it.each(['button', 'a'])('keeps Space available to activate a focused %s', (tag) => {
     jev.marker = vi.fn();
@@ -336,7 +323,7 @@ describe('useTypedAutoMark', () => {
         expected: 'E = mc^2',
       }),
     );
-    expect(result.current.state).toBe('idle');
+    expect(result.current.state).toBe('manual');
     expect(onMarked).not.toHaveBeenCalled();
   });
 
@@ -352,7 +339,23 @@ describe('useTypedAutoMark', () => {
       vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS + JEV_TYPED_TIMEOUT_MS);
     });
     expect(signal?.aborted).toBe(true);
-    expect(result.current).toEqual({ state: 'idle' });
+    expect(result.current).toEqual({ state: 'manual', reason: 'timeout' });
+    expect(onMarked).not.toHaveBeenCalled();
+  });
+
+  it('explains an unavailable enabled marker in the current answer', () => {
+    jev.status = { state: 'paused', reason: 'limit-reached', lastUsedAt: 1, retryAt: 1000 };
+    const { result } = setup('Lyon');
+    expect(result.current).toEqual({ state: 'manual', reason: 'limit-reached', retryAt: 1000 });
+  });
+
+  it('explains a rejected marker request and keeps manual grading available', async () => {
+    jev.marker = vi.fn().mockRejectedValue(new Error('offline'));
+    const { result, onMarked } = setup('Lyon');
+    await act(async () => {
+      vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
+    });
+    expect(result.current).toEqual({ state: 'manual', reason: 'error' });
     expect(onMarked).not.toHaveBeenCalled();
   });
 
@@ -374,7 +377,7 @@ describe('useTypedAutoMark', () => {
     act(() => {
       vi.advanceTimersByTime(5000);
     });
-    expect(result.current).toEqual({ state: 'idle' });
+    expect(result.current).toEqual({ state: 'manual', reason: 'timeout' });
     expect(onMarked).not.toHaveBeenCalled();
   });
 });

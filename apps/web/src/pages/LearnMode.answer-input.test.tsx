@@ -102,6 +102,7 @@ it.each(['standard', 'exact'] as const)(
       return;
     }
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
     await waitFor(async () =>
       expect(await db.reviewHistory.toArray()).toEqual([
         expect.objectContaining({ input: 'typed' }),
@@ -148,6 +149,7 @@ it('restores typed answer feedback on Undo after the preference changes to revea
     target: { value: 'A different capital' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
   await waitFor(async () => expect(await db.reviewHistory.count()).toBe(1));
   changePreference('reveal');
   await screen.findByText(/^show answer$/i, { selector: 'button' });

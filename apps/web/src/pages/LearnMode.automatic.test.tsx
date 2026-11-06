@@ -69,6 +69,7 @@ describe('automatic final-answer Undo', () => {
       const input = await screen.findByRole('textbox', { name: 'Your answer' });
       fireEvent.change(input, { target: { value: 'Red' } });
       fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
       await screen.findByRole('main', { name: 'Session report' });
       expect(onStepFinished).not.toHaveBeenCalled();
       const report = screen.getByRole('main', { name: 'Session report' });
@@ -168,6 +169,7 @@ it('keeps a submitted typed answer eligible after the live preference changes to
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
   act(() => writeAnswerInput('reveal'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
   await waitFor(async () =>
     expect(await db.reviewHistory.where('cardId').equals(card.id).first()).toMatchObject({
       input: 'typed',

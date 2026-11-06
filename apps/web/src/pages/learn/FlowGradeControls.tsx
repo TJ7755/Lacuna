@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { animate, m as motion, useMotionValue, useTransform, type Transition } from 'motion/react';
 import { Button } from '../../components/ui/Button';
+import { ArrowRightIcon } from '../../components/ui/icons';
 import { liquidSpring, motionTransition } from '../../components/ui/motion';
 import type { AutoMark } from './types';
 
@@ -643,6 +644,16 @@ export function FlowGradeControls({
           );
         })}
       </div>
+      {!question && autoMark && !autoMark.pending && autoMark.onContinue && (
+        <div
+          className="relative col-start-1 row-start-1 ml-[calc(50%+2rem)] self-start"
+          style={rects ? { marginTop: rects.reveal.top } : undefined}
+        >
+          <Button variant="primary" size="lg" disabled={departing} onClick={autoMark.onContinue}>
+            Continue <ArrowRightIcon width={18} height={18} />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
