@@ -25,8 +25,7 @@ export async function calculateForecastHistoriesOffThread(
   if (signal.aborted) throw cancelled();
   try {
     if (typeof Worker === 'undefined') throw new Error('Workers unavailable.');
-    // Share the packaged entry, not the worker instance or its request lifecycle.
-    const worker = new Worker(new URL('../workers/remainingWork.worker.ts', import.meta.url), {
+    const worker = new Worker(new URL('../workers/forecastHistory.worker.ts', import.meta.url), {
       type: 'module',
       name: 'forecast-history',
     });
@@ -52,7 +51,7 @@ export async function calculateForecastHistoriesOffThread(
       signal.addEventListener('abort', abort, { once: true });
       if (signal.aborted) return abort();
       try {
-        worker.postMessage({ kind: 'forecast-history', input: forecastHistorySnapshot(input) });
+        worker.postMessage(forecastHistorySnapshot(input));
       } catch (error) {
         finish(error instanceof Error ? error : new Error(String(error)));
       }

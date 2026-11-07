@@ -2,7 +2,7 @@ import { Button } from '../components/ui/Button';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useNavigation } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
@@ -37,12 +37,6 @@ import {
   type ArchiveTarget,
   type CourseMenuState,
 } from '../components/dashboard/CourseActions';
-
-const RemainingWork = lazy(() =>
-  import('../components/course/RemainingWork').then((module) => ({
-    default: module.RemainingWork,
-  })),
-);
 
 export function Dashboard() {
   const frame = useRef<HTMLDivElement>(null);
@@ -301,12 +295,6 @@ export function Dashboard() {
                 setCourseMenu({ course, position, trigger });
               }}
             />
-            {/* After the queue, so Study actions stay on the first screen. */}
-            <Suspense fallback={null}>
-              {rows.map((row) => (
-                <RemainingWork key={row.id} courseId={row.id} />
-              ))}
-            </Suspense>
           </div>
         )}
       </PageLoadingBoundary>

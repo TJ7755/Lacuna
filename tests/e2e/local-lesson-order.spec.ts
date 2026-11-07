@@ -133,12 +133,6 @@ async function importSchoolScience(
     .getByRole('button', { name: 'School science', exact: true })
     .click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
-  // Workload estimates arrive after the path and push it down; drags measure afterwards.
-  await expect(
-    page
-      .getByLabel('Estimated assessment workload')
-      .getByText('Final exam: estimated remaining work'),
-  ).toBeVisible();
   return page.url();
 }
 
@@ -409,11 +403,6 @@ for (const input of [
         exact: true,
       });
       await expect(row).toHaveAttribute('aria-roledescription', 'sortable path row');
-      await expect(
-        page
-          .getByLabel('Estimated assessment workload')
-          .getByText('My mock - updated: estimated remaining work'),
-      ).toBeVisible();
       // Keep the held row clear of the edges, where lifting it would start edge scrolling.
       await row.evaluate((element) => element.scrollIntoView({ block: 'center' }));
       const start = (await row.boundingBox())!;
@@ -549,10 +538,6 @@ test('keeps lessons and anchored practice rows apart during a checkpoint drag pr
   await add.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(add).toBeHidden();
   const checkpoint = path.getByRole('button', { name: 'Edit checkpoint: My test', exact: true });
-  // Its workload estimate arrives later and moves the path; measure once it has settled.
-  await expect(
-    page.getByLabel('Estimated assessment workload').getByText('My test: estimated remaining work'),
-  ).toBeVisible();
   await checkpoint.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   const start = (await checkpoint.boundingBox())!;
   const target = (await path.locator('[data-path-lesson="A"] [data-path-row]').boundingBox())!;
