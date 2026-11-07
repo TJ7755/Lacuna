@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { settle } from './fixtures/flowEvidence';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
 
 test.use({
@@ -26,7 +27,7 @@ for (const { reducedMotion, height } of [
     const biology = subjects.getByRole('button', { name: /^Biology \d+ courses$/ });
     await expect(biology).toBeVisible();
     // Finish entry before isolating the subject disclosure's motion.
-    await page.waitForTimeout(800);
+    await settle(page.locator('.flow-expansion').filter({ has: subjects }));
     const outerOverflow = await subjects.evaluate((list) => {
       const scroller = list.closest<HTMLElement>('.overflow-y-auto')!;
       return scroller.scrollHeight - scroller.clientHeight;

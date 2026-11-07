@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { settle } from './fixtures/flowEvidence';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 test.use({ viewport: { width: 1470, height: 956 }, serviceWorkers: 'block' });
@@ -14,6 +15,7 @@ for (const theme of ['light', 'dark']) {
     const summary = page
       .locator('summary')
       .filter({ hasText: 'Not sure which qualification to choose?' });
+    await settle(page.locator('.flow-expansion').filter({ has: summary }));
     await summary.hover();
     const feedback = summary.locator('.flow-feedback-layer');
     await expect(feedback).toHaveCSS('opacity', '0.045');
