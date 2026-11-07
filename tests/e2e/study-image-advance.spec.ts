@@ -1,9 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { build } from 'esbuild';
-import { largeStudyImages, type StudyImageFixture } from './fixtures/largeStudyImages';
+import {
+  largeStudyImages,
+  studyImageFixtureDirectory,
+  type StudyImageFixture,
+} from './fixtures/largeStudyImages';
 
 interface ImageProbeEntry {
   kind: string;
@@ -108,13 +111,12 @@ async function measureAdvance(page: Page, cardId: string) {
   return page.evaluate(() => (window as unknown as ProbeWindow).imageAdvance!);
 }
 
-const directory = join(tmpdir(), 'lacuna-study-images-v1');
 let images: StudyImageFixture[];
 
 test.beforeAll('Generate original-sized JPEG and PNG fixtures', async () => {
   // Cold image compression must not consume the browser measurement deadline.
   test.setTimeout(600_000);
-  images = await largeStudyImages(directory);
+  images = await largeStudyImages();
 });
 
 test('measures original-sized JPEG and PNG card advances at 4x CPU slowdown', async ({
@@ -125,7 +127,7 @@ test('measures original-sized JPEG and PNG card advances at 4x CPU slowdown', as
     const name = new URL(route.request().url()).pathname.split('/').pop()!;
     await route.fulfill({
       contentType: name.endsWith('.png') ? 'image/png' : 'image/jpeg',
-      body: await readFile(join(directory, name)),
+      body: await readFile(join(studyImageFixtureDirectory, name)),
     });
   });
   const bundle = await build({

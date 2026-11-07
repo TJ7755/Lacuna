@@ -116,7 +116,7 @@ test('refresh rejects duplicated, failed and retried evidence', () => {
 test('real Playwright test-list parsing preserves parameterised, serial and skipped identities', () => {
   const directory = realpathSync(mkdtempSync(join(tmpdir(), 'lacuna-browser-shards-')));
   try {
-    symlinkSync(resolve('node_modules'), join(directory, 'node_modules'), 'dir');
+    symlinkSync(resolve('node_modules'), join(directory, 'node_modules'), 'junction');
     mkdirSync(join(directory, 'nested'));
     writeFileSync(
       join(directory, 'playwright.config.mjs'),
@@ -133,7 +133,7 @@ test('real Playwright test-list parsing preserves parameterised, serial and skip
           test.skip('skipped case', () => {});
         });`,
       );
-    const list = (args = []) => {
+    const list = (args = [], allowEmpty = false) => {
       const result = spawnSync(
         process.execPath,
         [
@@ -158,7 +158,12 @@ test('real Playwright test-list parsing preserves parameterised, serial and skip
         },
       );
       assert.equal(result.status, 0, result.stderr || result.stdout);
-      return inventory(JSON.parse(result.stdout));
+      const discovery = JSON.parse(result.stdout);
+      if (allowEmpty && discovery.suites.length === 0) {
+        assert.deepEqual(discovery.errors, []);
+        return [];
+      }
+      return inventory(discovery);
     };
     const all = list();
     const selected = [];
@@ -167,7 +172,12 @@ test('real Playwright test-list parsing preserves parameterised, serial and skip
       writeFileSync(path, shard.files.map((file) => `[chromium-functional] > ${file}`).join('\n'));
       const actual = list(['--test-list', path]);
       verifyInventory(shard.tests, actual);
-      selected.push(...actual);
+      const lanes = [1, 2].map((lane) => list(['--test-list', path, `--shard=${lane}/2`], true));
+      verifyInventory(actual, lanes.flat());
+      for (const file of shard.files) {
+        assert.equal(lanes.filter((lane) => lane.some((test) => test.file === file)).length, 1);
+      }
+      selected.push(...lanes.flat());
     }
     verifyInventory(all, selected);
     assert.equal(selected.length, 9);
@@ -179,7 +189,7 @@ test('real Playwright test-list parsing preserves parameterised, serial and skip
 test('the shard CLI executes tests and retains its selector and plan after output cleanup', () => {
   const directory = realpathSync(mkdtempSync(join(tmpdir(), 'lacuna-browser-shard-run-')));
   try {
-    symlinkSync(resolve('node_modules'), join(directory, 'node_modules'), 'dir');
+    symlinkSync(resolve('node_modules'), join(directory, 'node_modules'), 'junction');
     for (const path of ['scripts', 'tests/config', 'tests/e2e', 'test-results'])
       mkdirSync(join(directory, path), { recursive: true });
     for (const file of ['ci-browser-shards.mjs', 'ci-browser-timings.json'])

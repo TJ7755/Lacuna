@@ -90,9 +90,10 @@ test('aggregate gates run after dependency failures but do not run after workflo
 });
 
 test('documentation-only changes resolve required names without running heavy steps', () => {
-  for (const name of required.filter((name) => !['test', 'browser-smoke'].includes(name))) {
+  const aggregates = ['test', 'browser-smoke', 'electron-ai'];
+  for (const name of required.filter((name) => !aggregates.includes(name))) {
     const job = workflow.jobs[name];
-    if (name !== 'electron-ai') assert.equal(job.if, "needs.changes.result == 'success'", name);
+    assert.equal(job.if, "needs.changes.result == 'success'", name);
     const [acknowledgement, ...heavySteps] = job.steps;
     assert.equal(
       acknowledgement.if,
@@ -100,23 +101,14 @@ test('documentation-only changes resolve required names without running heavy st
         ? "(needs.changes.outputs.app == 'false' && needs.changes.outputs.web_tests == 'false')"
         : name === 'production'
           ? "(needs.changes.outputs.app == 'false' && needs.changes.outputs.sites == 'false')"
-          : name === 'electron-ai'
-            ? "needs.changes.outputs.windows_native == 'false'"
-            : `needs.changes.outputs.${{ 'ai-mcp': 'ai_mcp', typecheck: 'app' }[name] ?? name} == 'false'`,
+          : `needs.changes.outputs.${{ 'ai-mcp': 'ai_mcp', typecheck: 'app' }[name] ?? name} == 'false'`,
       name,
     );
     assert.equal(acknowledgement.shell, 'bash', name);
     assert.ok(acknowledgement.run.includes('GITHUB_STEP_SUMMARY'), name);
     assert.ok(heavySteps.length > 0, name);
     for (const step of heavySteps.filter(
-      (step) =>
-        step.name !== 'Verify standalone site contracts' &&
-        !(
-          name === 'electron-ai' &&
-          ['Preserve Electron AI test evidence', 'Require Windows installer evidence'].includes(
-            step.name,
-          )
-        ),
+      (step) => step.name !== 'Verify standalone site contracts',
     )) {
       assert.equal(
         step.if,
@@ -124,35 +116,29 @@ test('documentation-only changes resolve required names without running heavy st
           ? "(needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')"
           : name === 'production'
             ? "(needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')"
-            : name === 'electron-ai'
-              ? "needs.changes.outputs.windows_native != 'false'"
-              : `needs.changes.outputs.${{ 'ai-mcp': 'ai_mcp', typecheck: 'app' }[name] ?? name} != 'false'`,
+            : `needs.changes.outputs.${{ 'ai-mcp': 'ai_mcp', typecheck: 'app' }[name] ?? name} != 'false'`,
         `${name}: ${step.uses ?? step.run}`,
       );
     }
   }
 });
 
-// Pull requests require the browser smoke job; other events require the full browser suites.
-const eventBrowserResults = {
-  pull_request: ['PR_RESULT'],
-  push: ['RESULT', 'TIMING_RESULT', 'STANDALONE_RESULT'],
-};
+const fullBrowserResults = ['RESULT', 'TIMING_RESULT', 'STANDALONE_RESULT'];
 const gateCases = (job) =>
   job === 'browser-smoke'
-    ? Object.entries(eventBrowserResults).map(([event, keys]) => ({
-        event,
-        ignored: Object.values(eventBrowserResults)
-          .flat()
-          .filter((key) => !keys.includes(key)),
-      }))
+    ? [
+        { event: 'pull_request', browserCI: 'false', ignored: fullBrowserResults },
+        { event: 'pull_request', browserCI: 'true', ignored: [] },
+        { event: 'pull_request', browserCI: '', ignored: [] },
+        { event: 'push', browserCI: 'false', ignored: ['PR_RESULT'] },
+      ]
     : [{ event: 'pull_request', ignored: [] }];
 
 test('aggregate shell gates fail closed and report each dependency result', () => {
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-gates-'));
   try {
     for (const job of ['test', 'browser-smoke'])
-      for (const { event, ignored } of gateCases(job)) {
+      for (const { event, browserCI, ignored } of gateCases(job)) {
         const step = workflow.jobs[job].steps[0];
         const results = Object.keys(step.env).filter(
           (key) => key.endsWith('RESULT') && !ignored.includes(key),
@@ -168,6 +154,7 @@ test('aggregate shell gates fail closed and report each dependency result', () =
             HANDWRITING: 'true',
             PYTHON: 'true',
             EVENT_NAME: event,
+            BROWSER_CI: browserCI ?? '',
             GITHUB_STEP_SUMMARY: summary,
             ...Object.fromEntries(ignored.map((key) => [key, 'skipped'])),
             ...Object.fromEntries(results.map((key) => [key, 'success'])),
@@ -244,10 +231,7 @@ test('aggregate shell gates fail closed and report each dependency result', () =
   }
 });
 
-test('browser consumers use the same pinned browser image and shared production artefact', () => {
-  const version = readFileSync(new URL('../bun.lock', import.meta.url), 'utf8').match(
-    /"@playwright\/test": \["@playwright\/test@([^"\s]+)"/,
-  )[1];
+test('browser consumers install the lockfile browser and share the production artefact', () => {
   const jobs = workflow.jobs;
   const consumers = ['browser-pr', 'browser-tests', 'browser-timing'];
   const producer = jobs.production.steps.find((step) =>
@@ -255,13 +239,16 @@ test('browser consumers use the same pinned browser image and shared production 
   );
   assert.ok(producer);
   for (const name of [...consumers, 'browser-standalone']) {
-    assert.match(
-      jobs[name].container.image,
-      new RegExp(
-        `^mcr\\.microsoft\\.com/playwright:v${version.replaceAll('.', '\\.')}\\-noble@sha256:[a-f0-9]{64}$`,
-      ),
+    const job = jobs[name];
+    assert.equal(job['runs-on'], 'ubuntu-24.04');
+    assert.equal(job.container, undefined);
+    const installPackages = job.steps.findIndex(
+      (step) => step.run === 'bun install --frozen-lockfile',
     );
-    assert.ok(!jobs[name].steps.some((step) => /playwright install/.test(step.run ?? '')));
+    const installBrowser = job.steps.findIndex(
+      (step) => step.run === 'bunx --no-install playwright install --only-shell chromium',
+    );
+    assert.ok(installPackages >= 0 && installBrowser > installPackages);
     assert.ok(jobs['browser-smoke'].needs.includes(name));
   }
   for (const name of consumers) {
@@ -277,6 +264,11 @@ test('browser consumers use the same pinned browser image and shared production 
     assert.equal(job.env.LACUNA_BROWSER_PREBUILT, 'true');
   }
   const timing = jobs['browser-timing'];
+  assert.deepEqual(timing.strategy.matrix.include, [
+    { project: 'chromium-image-performance', shard: 1, total: 1 },
+    { project: 'chromium-study-performance', shard: 1, total: 2 },
+    { project: 'chromium-study-performance', shard: 2, total: 2 },
+  ]);
   assert.ok(
     timing.steps.some((step) =>
       /--project=\$\{\{ matrix.project }} --workers=1/.test(step.run ?? ''),
@@ -291,9 +283,12 @@ test('browser consumers use the same pinned browser image and shared production 
     jobs['browser-tests'].strategy.matrix.shard,
     [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
   );
+  assert.deepEqual(jobs['browser-tests'].strategy.matrix.lane, [1, 2]);
   assert.ok(
     jobs['browser-tests'].steps.some(
-      (step) => step.run === 'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/16',
+      (step) =>
+        step.run ===
+        'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/16 ${{ matrix.lane }}/2',
     ),
   );
   const functionalEvidence = jobs['browser-tests'].steps.find(
@@ -301,9 +296,18 @@ test('browser consumers use the same pinned browser image and shared production 
   );
   assert.equal(functionalEvidence.if, 'always()');
   assert.ok(functionalEvidence.with.path.split('\n').includes('artifacts/ci-browser-shards/'));
-  const smoke = jobs['browser-pr'].steps.find((step) => step.env?.CHANGED_SPECS);
+  const steps = jobs['browser-pr'].steps;
+  const releaseSmoke = steps.find((step) => step.name === 'Run release smoke');
+  assert.match(releaseSmoke.run, / release-smoke\.spec\.ts$/);
+  assert.doesNotMatch(releaseSmoke.run, /--shard/);
+  const discovery = steps.find((step) => step.name === 'Verify release smoke discovery');
+  assert.match(discovery.run, / --list release-smoke\.spec\.ts$/);
+  assert.doesNotMatch(discovery.run, /--shard/);
+  const smoke = steps.find((step) => step.env?.CHANGED_SPECS);
+  assert.ok(steps.indexOf(discovery) < steps.indexOf(smoke));
   assert.equal(smoke.env.CHANGED_SPECS, '${{ needs.changes.outputs.web_specs }}');
-  assert.match(smoke.run, /--project=chromium-functional release-smoke\.spec\.ts \$CHANGED_SPECS$/);
+  assert.match(smoke.run, /--shard=\$\{\{ matrix.shard \}\}/);
+  assert.match(smoke.run, /release-smoke\.spec\.ts \$CHANGED_SPECS$/);
 });
 
 test('pull requests pass only plain changed web spec names to the browser smoke job', () => {
@@ -584,7 +588,8 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'browser-tests',
     'browser-standalone',
     'browser-timing',
-    'electron-ai',
+    'electron-ai-tests',
+    'windows-installed-upgrade',
     'electron-macos-smoke',
   ];
   // Pull requests run the browser smoke job; master commits retain the full browser suites.
@@ -604,7 +609,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     [['tests/e2e/mobile-pwa-smoke.spec.ts'], ['typecheck', 'lint', ...web]],
     [['tests/e2e/gaps-standalone.spec.ts'], ['typecheck', 'lint', ...web]],
     [['tests/e2e/fixtures/videoEmbeds.ts'], all],
-    [['tests/config/playwright.web.config.ts'], all],
+    [['tests/config/playwright.web.config.ts'], workers],
     [['tests/e2e/study-flip.spec.ts', 'apps/web/src/App.tsx'], all],
     [
       ['docs/README.md', 'apps/gaps/sw.js', 'tooling/handwriting-maths/src/main.ts'],
@@ -613,6 +618,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     [['apps/web/src/fsrs/coefficients/model.json'], all],
     [['apps/relay/shared/insights/index.ts'], all],
     [['apps/library/vercel.json'], all],
+    [['.github/workflows/ci.yml'], workers],
     [['unknown/file'], all],
   ]) {
     const outputs = Object.fromEntries(
@@ -641,12 +647,29 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     });
   });
   assert.deepEqual(selected.sort(), workers.filter((name) => name !== 'browser-pr').sort());
+  for (const browser_ci of [undefined, '', 'unknown']) {
+    for (const name of postMerge) {
+      assert.ok(
+        runInNewContext(workflow.jobs[name].if, {
+          github: { event_name: 'pull_request' },
+          needs: { changes: { outputs: { app: 'true', sites: 'true', browser_ci } } },
+        }),
+        `${name} for browser_ci=${browser_ci}`,
+      );
+    }
+  }
 });
 
 test('Windows evidence is selected conservatively on PRs and pushes', () => {
-  const native = workflow.jobs['electron-ai'];
+  const gate = workflow.jobs['electron-ai'];
+  const ai = workflow.jobs['electron-ai-tests'];
   const upgrade = workflow.jobs['windows-installed-upgrade'];
-  assert.ok(native.needs.includes('windows-installed-upgrade'));
+  assert.equal(gate.name, 'electron-ai');
+  assert.deepEqual(gate.needs, ['changes', 'electron-ai-tests', 'windows-installed-upgrade']);
+  assert.equal(gate['runs-on'], 'ubuntu-latest');
+  assert.equal(ai['runs-on'], 'windows-latest');
+  assert.equal(ai.needs, 'changes');
+  assert.equal(upgrade.needs, 'changes');
   for (const event_name of ['pull_request', 'push']) {
     for (const flag of ['true', 'false', '', undefined, 'unknown']) {
       const context = {
@@ -655,38 +678,27 @@ test('Windows evidence is selected conservatively on PRs and pushes', () => {
         always: () => true,
       };
       const affected = flag !== 'false';
+      assert.equal(runInNewContext(ai.if, context), affected);
       assert.equal(runInNewContext(upgrade.if, context), affected);
-      assert.equal(
-        runInNewContext(native['runs-on'].slice(4, -3), context),
-        affected ? 'windows-latest' : 'ubuntu-latest',
-      );
-      assert.equal(runInNewContext(native.steps[0].if, context), !affected);
-      for (const step of native.steps.slice(1)) {
-        if (step.name === 'Require Windows installer evidence') continue;
-        assert.equal(
-          runInNewContext(step.if, context),
-          affected,
-          step.name ?? step.run ?? step.uses,
-        );
-      }
     }
   }
 });
 
-test('required Windows check rejects absent or failed installer evidence', () => {
+test('required Windows check rejects absent or failed AI or installer evidence', () => {
   const job = workflow.jobs['electron-ai'];
   assert.equal(
     render(job.if, 'synchronize', {}, true),
     'true',
     'A cancelled dependency must not turn the required check into a successful skip',
   );
-  const step = job.steps.find((step) => step.name === 'Require Windows installer evidence');
+  const step = job.steps.find((step) => step.name === 'Require Windows AI and installer evidence');
   for (const status of ['failure', 'cancelled', 'skipped', '']) {
     const execution = spawnSync('bash', ['-e', '-c', step.run], {
       env: {
         ...process.env,
         SCOPE_RESULT: status,
         WINDOWS_NATIVE: 'false',
+        AI_RESULT: 'skipped',
         UPGRADE_RESULT: 'skipped',
       },
     });
@@ -694,18 +706,23 @@ test('required Windows check rejects absent or failed installer evidence', () =>
   }
   for (const flag of ['false', 'true', '', 'unknown']) {
     for (const result of ['success', 'skipped', 'failure', 'cancelled', '']) {
-      const execution = spawnSync('bash', ['-e', '-c', step.run], {
-        env: {
-          ...process.env,
-          SCOPE_RESULT: 'success',
-          WINDOWS_NATIVE: flag,
-          UPGRADE_RESULT: result,
-        },
-      });
-      assert.equal(
-        execution.status,
-        result === 'success' || (flag === 'false' && result === 'skipped') ? 0 : 1,
-      );
+      for (const dependency of ['AI_RESULT', 'UPGRADE_RESULT']) {
+        const execution = spawnSync('bash', ['-e', '-c', step.run], {
+          env: {
+            ...process.env,
+            SCOPE_RESULT: 'success',
+            WINDOWS_NATIVE: flag,
+            AI_RESULT: 'success',
+            UPGRADE_RESULT: 'success',
+            [dependency]: result,
+          },
+        });
+        assert.equal(
+          execution.status,
+          result === 'success' || (flag === 'false' && result === 'skipped') ? 0 : 1,
+          `${dependency}=${result} with windows_native=${flag}`,
+        );
+      }
     }
   }
 });
@@ -731,10 +748,10 @@ test('site-only production runs the existing build, hosting and asset contracts'
 });
 
 test('Electron AI evidence survives native failures without widening execution scope', () => {
-  const job = workflow.jobs['electron-ai'];
+  const job = workflow.jobs['electron-ai-tests'];
   const steps = job.steps;
   const evidence = steps.find((step) => step.name === 'Preserve Electron AI test evidence');
-  assert.equal(evidence.if, "always() && needs.changes.outputs.windows_native != 'false'");
+  assert.equal(evidence.if, 'always()');
   assert.equal(evidence.uses, 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9');
   assert.deepEqual(evidence.with, {
     name: 'electron-ai-results',
@@ -758,7 +775,12 @@ test('Windows upgrade scenarios retain both probes on isolated runners with the 
       (step) => !step.if || runInNewContext(step.if, { matrix: { probe }, always: () => true }),
     );
     const commands = steps.map((step) => step.run ?? '').join('\n');
-    assert.match(commands, /bun run electron:build:win/);
+    assert.match(commands, /bun run electron:prepare/);
+    assert.match(commands, /bun run build:assets -- --mode production --base \.\//);
+    assert.match(
+      commands,
+      /electron-builder --win nsis --x64 --config apps\/desktop\/electron-builder.yml --publish never/,
+    );
     assert.match(commands, /bun run perf:check:electron-package/);
     const selected = ['windows-upgrade-companion.mjs', 'windows-release-upgrade.mjs'].filter(
       (script) => commands.includes(script),
@@ -853,7 +875,7 @@ test('web spec aggregate gates retain every browser result and allow only unaffe
   try {
     const scope = classifyPaths(['tests/e2e/study-flip.spec.ts']);
     for (const name of ['test', 'browser-smoke'])
-      for (const { event, ignored } of gateCases(name)) {
+      for (const { event, browserCI, ignored } of gateCases(name)) {
         const step = workflow.jobs[name].steps[0];
         const results = Object.keys(step.env).filter(
           (key) => key.endsWith('RESULT') && !ignored.includes(key),
@@ -866,6 +888,7 @@ test('web spec aggregate gates retain every browser result and allow only unaffe
           ...Object.fromEntries(ignored.map((key) => [key, 'skipped'])),
           ...Object.fromEntries(results.map((key) => [key, 'success'])),
           EVENT_NAME: event,
+          BROWSER_CI: browserCI ?? '',
           GITHUB_STEP_SUMMARY: join(directory, 'summary'),
         };
         if (name === 'test')
@@ -911,8 +934,9 @@ test('push scope still selects the full matrix regardless of changed web specs',
         .map((line) => line.split('=')),
     );
     assert.equal(outputs.docs_only, 'false');
+    assert.equal(outputs.browser_ci, 'false');
     for (const [area, value] of Object.entries(outputs))
-      if (area !== 'docs_only') assert.equal(value, 'true', area);
+      if (!['docs_only', 'browser_ci'].includes(area)) assert.equal(value, 'true', area);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
