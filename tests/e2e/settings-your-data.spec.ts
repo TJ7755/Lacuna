@@ -16,17 +16,11 @@ for (const width of [1440, 390, 320]) {
         localStorage.setItem('lacuna-onboarding', 'done');
         localStorage.setItem('lacuna-seeded', '1');
       }, theme);
-      // Empty profiles need not have an automatic restore point to clone.
-      await page.goto('/#/settings#settings-backups');
-      const backupCard = page.locator('#settings-backups');
-      await backupCard.getByRole('button', { name: 'Save restore point', exact: true }).click();
-      await expect(backupCard.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
-      const [snapshot] = await readAll<BackupSnapshot>(page, 'backups');
-      // Remount Settings after seeding without restarting background sync.
+      // Seed the restore-point list before Settings reads it. An empty profile may have no backups.
       await page.goto('/#/');
       await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
       await page.evaluate(
-        async ({ snapshot, channelId, writeToken }) => {
+        async ({ channelId, writeToken }) => {
           await new Promise<void>((resolve, reject) => {
             const request = indexedDB.open('lacuna');
             request.onerror = () => reject(request.error);
@@ -37,7 +31,32 @@ for (const width of [1440, 390, 320]) {
               backups.clear();
               const now = Date.now();
               for (let index = 0; index < 8; index++) {
-                backups.put({ ...snapshot, id: index + 1, createdAt: now - index * 60_000 });
+                const createdAt = now - index * 60_000;
+                backups.put({
+                  id: index + 1,
+                  createdAt,
+                  deckCount: 0,
+                  cardCount: 0,
+                  payload: {
+                    app: 'lacuna-v15',
+                    version: 15,
+                    exportedAt: createdAt,
+                    cards: [],
+                    assets: [],
+                    sessionHistory: [],
+                    userPerformance: [],
+                    schedulingUnits: [],
+                    coursePerformance: [],
+                    schedulingPerformance: [],
+                    concepts: [],
+                    questions: [],
+                    questionConcepts: [],
+                    questionAttempts: [],
+                    questionSets: [],
+                    questionSetAttempts: [],
+                    practiceNodes: [],
+                  },
+                } satisfies BackupSnapshot);
               }
               transaction.objectStore('appState').put({
                 key: 'syncState',
@@ -60,7 +79,7 @@ for (const width of [1440, 390, 320]) {
             };
           });
         },
-        { snapshot, channelId: SYNC_CHANNEL_ID, writeToken: SYNC_WRITE_TOKEN },
+        { channelId: SYNC_CHANNEL_ID, writeToken: SYNC_WRITE_TOKEN },
       );
       await page.goto('/#/settings#settings-sync');
       const sync = page.locator('#settings-sync');
