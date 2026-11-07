@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
+import { appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-// Let setup overlap the build. Partial retries reuse successful producers from
-// earlier attempts, just as a needs dependency does. Source identity must match.
-export async function waitForProduction({
+// Windows dependency setup overlaps the Ubuntu build. Partial retries can reuse
+// a successful renderer from an earlier attempt for the same source.
+export async function waitForRenderer({
   repository,
   runId,
   attempt,
@@ -30,47 +31,57 @@ export async function waitForProduction({
         signal: AbortSignal.timeout(10_000),
       },
     );
-    assert.ok(response.ok, `Cannot read production status: HTTP ${response.status}`);
+    assert.ok(response.ok, `Cannot read build status: HTTP ${response.status}`);
     const { jobs, total_count: count } = await response.json();
     assert.ok(
       Array.isArray(jobs) && Number.isInteger(count) && count < 100,
       'The job inventory is incomplete; update pagination before expanding the workflow',
     );
-    const producers = jobs.filter((job) => job.name === 'production');
-    assert.ok(producers.length <= 1, 'Ambiguous production job');
+    const producers = jobs.filter((job) => job.name === 'electron-renderer');
+    assert.ok(producers.length <= 1, 'Ambiguous desktop renderer job');
     const producer = producers[0];
     if (producer) {
-      assert.equal(producer.run_id, Number(runId), 'Production belongs to another run');
-      assert.equal(producer.head_sha, sourceSha, 'Production tested another source commit');
+      assert.equal(producer.run_id, Number(runId), 'Build belongs to another run');
+      assert.equal(producer.head_sha, sourceSha, 'Build tested another source commit');
       assert.ok(
         Number.isSafeInteger(producer.run_attempt) &&
           producer.run_attempt > 0 &&
           producer.run_attempt <= Number(attempt),
-        'Invalid production attempt',
+        'Invalid build attempt',
       );
       if (producer.status === 'completed') {
-        assert.equal(producer.conclusion, 'success', 'The production gate did not pass');
-        return;
+        assert.equal(producer.conclusion, 'success', 'The desktop renderer job did not pass');
+        assert.ok(
+          producer.steps?.some(
+            (step) =>
+              step.name === 'Share the desktop renderer build' &&
+              step.status === 'completed' &&
+              step.conclusion === 'success',
+          ),
+          'The desktop renderer job did not publish its build',
+        );
+        return producer.run_attempt;
       }
       assert.ok(
         ['queued', 'in_progress', 'waiting', 'pending', 'requested'].includes(producer.status),
-        'Unknown production state',
+        'Unknown build state',
       );
     }
-    // Twelve consumers share the repository token's rate limit. Back off to one
+    // The consumers share the repository token's rate limit. Back off to one
     // request per minute each if a build is unusually slow.
     if (index + 1 < polls)
       await sleep(index < 3 ? 3_000 : index < 8 ? 15_000 : index < 12 ? 30_000 : 60_000);
   }
-  throw new Error('Timed out waiting for the production gate');
+  throw new Error('Timed out waiting for the desktop renderer build');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  await waitForProduction({
+  const attempt = await waitForRenderer({
     repository: process.env.GITHUB_REPOSITORY,
     runId: process.env.GITHUB_RUN_ID,
     attempt: process.env.GITHUB_RUN_ATTEMPT,
     sourceSha: process.env.SOURCE_SHA,
     token: process.env.GH_TOKEN,
   });
+  appendFileSync(process.env.GITHUB_OUTPUT, `attempt=${attempt}\n`);
 }

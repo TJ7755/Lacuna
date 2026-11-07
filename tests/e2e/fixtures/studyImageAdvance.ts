@@ -7,7 +7,10 @@ import type { StudyImageFixture } from './largeStudyImages';
 import { buildCardConcept } from '../../../apps/web/src/questions/concepts';
 
 /** Original-sized imported assets, stored through the same byte/hash seam as APKG media. */
-export async function seed(images: StudyImageFixture[]) {
+export async function seed(images: StudyImageFixture[], imageFiles: FileList) {
+  const files = new Map(Array.from(imageFiles, (file) => [file.name, file]));
+  if (files.size !== images.length)
+    throw new Error('The image fixture files do not match the manifest');
   await seedHeavy(true);
   await db.open();
   const originals = await db.cards.toArray();
@@ -29,7 +32,8 @@ export async function seed(images: StudyImageFixture[]) {
   await db.reviewHistory.clear();
   let bytes = 0;
   for (const [i, image] of images.entries()) {
-    const blob = await (await fetch(image.url)).blob();
+    const blob = files.get(image.url.split('/').pop()!);
+    if (!blob) throw new Error(`Missing fixture image ${image.url}`);
     const asset = await storeImageBlob(blob, image.mimeType, image.width, image.height);
     if (asset.hash !== image.hash) throw new Error('Fixture image bytes changed during seeding');
     const stored = (await db.assets.get(asset.hash))!.blob;

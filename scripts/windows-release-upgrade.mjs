@@ -7,6 +7,7 @@ import { createServer } from 'node:http';
 import path from 'node:path';
 import { expect } from '@playwright/test';
 import { launchInstalledElectron } from './installed-electron-probe.mjs';
+import { requireAuditedInstaller } from './windows-ci-upgrade.mjs';
 import { importWelcomeCourse, skipOnboarding } from '../tests/e2e/fixtures/lacunaApp.ts';
 
 assert.equal(process.platform, 'win32', 'Run this probe on an isolated Windows runner.');
@@ -151,6 +152,7 @@ async function snapshot(page) {
 
 try {
   await install(baseline);
+  await requireAuditedInstaller();
   await pointInstalledUpdaterAtFeed();
   let page = await open(pinned.version);
   await page.evaluate(() => window.electronAPI.updater.checkForUpdates());

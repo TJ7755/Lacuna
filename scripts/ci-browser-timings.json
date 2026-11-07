@@ -1,122 +1,645 @@
 {
   "source": {
-    "commit": "d34fb72e8c1a72dc972f6c61b0148e838c358b38",
-    "run": "https://github.com/TJ7755/Lacuna/actions/runs/40190429543",
-    "playwright": "1.64.1",
-    "runner": "ubuntu-latest",
-    "workers": 2
+    "commit": "9c94dc3dba26437e518324c9ded8a31ece882e65",
+    "run": "https://github.com/TJ7755/Lacuna/actions/runs/42408113389",
+    "playwright": "1.64.1"
   },
   "files": {
-    "accent-label-contrast.spec.ts": { "tests": 2, "durationMs": 19549 },
-    "accessibility.spec.ts": { "tests": 3, "durationMs": 9229 },
-    "ai-sidebar-removal.spec.ts": { "tests": 2, "durationMs": 13557 },
-    "anki-import.spec.ts": { "tests": 1, "durationMs": 4178 },
-    "assessment-editor-width.spec.ts": { "tests": 1, "durationMs": 5714 },
-    "audio-playback.spec.ts": { "tests": 1, "durationMs": 9254 },
-    "card-editor-layout.spec.ts": { "tests": 5, "durationMs": 23966 },
-    "card-import-dialogue.spec.ts": { "tests": 4, "durationMs": 24708 },
-    "cards-virtualisation.spec.ts": { "tests": 1, "durationMs": 3987 },
-    "concept-practice.spec.ts": { "tests": 10, "durationMs": 64098 },
-    "course-deletion.spec.ts": { "tests": 2, "durationMs": 8186 },
-    "course-entry.spec.ts": { "tests": 2, "durationMs": 11616 },
-    "course-file-sharing.spec.ts": { "tests": 1, "durationMs": 8255 },
-    "course-navigation-layout.spec.ts": { "tests": 4, "durationMs": 31851 },
-    "course-overview.spec.ts": { "tests": 3, "durationMs": 24445 },
-    "course-popover-layering.spec.ts": { "tests": 1, "durationMs": 8617 },
-    "course-rename-focus.spec.ts": { "tests": 1, "durationMs": 7102 },
-    "course-review-availability.spec.ts": { "tests": 4, "durationMs": 34045 },
-    "course-settings-scroll.spec.ts": { "tests": 1, "durationMs": 6199 },
-    "daily-backup-worker.spec.ts": { "tests": 3, "durationMs": 9416 },
-    "dashboard-course-actions.spec.ts": { "tests": 5, "durationMs": 34762 },
-    "dashboard-header-text.spec.ts": { "tests": 2, "durationMs": 17559 },
-    "data-recovery.spec.ts": { "tests": 1, "durationMs": 24345 },
-    "deployment-recovery.spec.ts": { "tests": 1, "durationMs": 3320 },
-    "desktop-audit.spec.ts": { "tests": 8, "durationMs": 70025 },
-    "diagram-keyboard-audit.spec.ts": { "tests": 2, "durationMs": 18771 },
-    "diagram-narrow-audit.spec.ts": { "tests": 4, "durationMs": 30722 },
-    "direction-c-audit.spec.ts": { "tests": 5, "durationMs": 33764 },
-    "direction-c-detail.spec.ts": { "tests": 2, "durationMs": 13894 },
-    "editor-keyboard-contract.spec.ts": { "tests": 5, "durationMs": 14735 },
-    "expanding-controls-audit.spec.ts": { "tests": 3, "durationMs": 21030 },
-    "first-interaction-latency.spec.ts": { "tests": 1, "durationMs": 7951 },
-    "forecast-labels.spec.ts": { "tests": 2, "durationMs": 4235 },
-    "gaps-class-code-entry.spec.ts": { "tests": 4, "durationMs": 28034 },
-    "gaps-entry.spec.ts": { "tests": 2, "durationMs": 8514 },
-    "import-focus-scroll.spec.ts": { "tests": 1, "durationMs": 2308 },
-    "import-navigation.spec.ts": { "tests": 4, "durationMs": 26607 },
-    "jev-study.spec.ts": { "tests": 17, "durationMs": 123044 },
-    "landing-film-fallback.spec.ts": { "tests": 4, "durationMs": 7440 },
-    "landing-motion.spec.ts": { "tests": 1, "durationMs": 3933 },
-    "landing-prerender-paint.spec.ts": { "tests": 12, "durationMs": 3393 },
-    "landing-prerender.spec.ts": { "tests": 3, "durationMs": 5655 },
-    "landing-rework.spec.ts": { "tests": 4, "durationMs": 12307 },
-    "landing-transition.spec.ts": { "tests": 1, "durationMs": 2999 },
-    "lesson-actions.spec.ts": { "tests": 3, "durationMs": 21818 },
-    "lesson-add-toolbar.spec.ts": { "tests": 1, "durationMs": 3143 },
-    "lesson-management-audit.spec.ts": { "tests": 2, "durationMs": 15751 },
-    "library-links.spec.ts": { "tests": 6, "durationMs": 9709 },
-    "markdown-diagrams.spec.ts": { "tests": 1, "durationMs": 11484 },
-    "merge-review-layout.spec.ts": { "tests": 2, "durationMs": 7174 },
-    "narrow-larger-text.spec.ts": { "tests": 2, "durationMs": 5065 },
-    "offline-reload.spec.ts": { "tests": 1, "durationMs": 8924 },
-    "onboarding.spec.ts": { "tests": 1, "durationMs": 8278 },
-    "optimiser-worker.spec.ts": { "tests": 2, "durationMs": 1219 },
-    "path-inline-editing.spec.ts": { "tests": 1, "durationMs": 16162 },
-    "pomodoro-timer.spec.ts": { "tests": 1, "durationMs": 6765 },
-    "practice-queue.spec.ts": { "tests": 4, "durationMs": 32876 },
-    "preference-transitions.spec.ts": { "tests": 2, "durationMs": 23435 },
-    "progress-charts.spec.ts": { "tests": 2, "durationMs": 13573 },
-    "progress-leeches.spec.ts": { "tests": 1, "durationMs": 5610 },
-    "progress-narrow-text.spec.ts": { "tests": 1, "durationMs": 2684 },
-    "question-editor-mobile-footer.spec.ts": { "tests": 9, "durationMs": 57722 },
-    "question-set-attempt-layout.spec.ts": { "tests": 4, "durationMs": 40937 },
-    "question-set-composer.spec.ts": { "tests": 3, "durationMs": 17929 },
-    "question-set-jev-unsure.spec.ts": { "tests": 2, "durationMs": 13378 },
-    "question-set-marking-alignment.spec.ts": { "tests": 2, "durationMs": 12397 },
-    "question-set-navigation-motion.spec.ts": { "tests": 2, "durationMs": 12606 },
-    "question-set-practice-keyboard.spec.ts": { "tests": 5, "durationMs": 20391 },
-    "question-set-related-cards.spec.ts": { "tests": 2, "durationMs": 7235 },
-    "question-set-search-scroll.spec.ts": { "tests": 2, "durationMs": 7156 },
-    "question-set-search.spec.ts": { "tests": 2, "durationMs": 19613 },
-    "quick-search-layout.spec.ts": { "tests": 2, "durationMs": 19740 },
-    "quizlet-comparison.spec.ts": { "tests": 3, "durationMs": 5353 },
-    "radios-to-toggles.spec.ts": { "tests": 2, "durationMs": 10280 },
-    "recitation.spec.ts": { "tests": 1, "durationMs": 6674 },
-    "release-smoke.spec.ts": { "tests": 7, "durationMs": 55100 },
-    "report-continuation.spec.ts": { "tests": 3, "durationMs": 29365 },
-    "review-activity-layout.spec.ts": { "tests": 1, "durationMs": 5248 },
-    "school-use-spine.spec.ts": { "tests": 1, "durationMs": 10489 },
-    "search-result-navigation.spec.ts": { "tests": 2, "durationMs": 28084 },
-    "seo-course-pages.spec.ts": { "tests": 2, "durationMs": 11250 },
-    "session-report.spec.ts": { "tests": 1, "durationMs": 7801 },
-    "settings-scroll-extent.spec.ts": { "tests": 6, "durationMs": 22815 },
-    "settings-text-reflow.spec.ts": { "tests": 6, "durationMs": 17402 },
-    "settings-your-data.spec.ts": { "tests": 6, "durationMs": 30102 },
-    "share-links.spec.ts": { "tests": 8, "durationMs": 83247 },
-    "shared-course-import-action.spec.ts": { "tests": 2, "durationMs": 10834 },
-    "shared-course-scheduling.spec.ts": { "tests": 2, "durationMs": 8649 },
-    "sidebar-details.spec.ts": { "tests": 3, "durationMs": 24940 },
-    "simple-learn.spec.ts": { "tests": 2, "durationMs": 8968 },
-    "specialised-card-entry.spec.ts": { "tests": 11, "durationMs": 68042 },
-    "storage-persistence-notice.spec.ts": { "tests": 3, "durationMs": 20110 },
-    "study-card-adaptive-size.spec.ts": { "tests": 2, "durationMs": 40992 },
-    "study-card-fit.spec.ts": { "tests": 19, "durationMs": 166650 },
-    "study-card-glide.spec.ts": { "tests": 4, "durationMs": 58280 },
-    "study-card-layout.spec.ts": { "tests": 1, "durationMs": 11542 },
-    "study-flip.spec.ts": { "tests": 1, "durationMs": 12027 },
-    "study-keyboard-handoff.spec.ts": { "tests": 1, "durationMs": 13515 },
-    "study-response.spec.ts": { "tests": 1, "durationMs": 11006 },
-    "study-session-load.spec.ts": { "tests": 1, "durationMs": 18073 },
-    "study-swipe.spec.ts": { "tests": 12, "durationMs": 92129 },
-    "sync-convergence.spec.ts": { "tests": 4, "durationMs": 73167 },
-    "sync-pairing-feedback.spec.ts": { "tests": 3, "durationMs": 14651 },
-    "sync-relay.spec.ts": { "tests": 1, "durationMs": 3443 },
-    "toast-control-geometry.spec.ts": { "tests": 4, "durationMs": 5179 },
-    "toast-layout.spec.ts": { "tests": 6, "durationMs": 48856 },
-    "today-sync-status.spec.ts": { "tests": 4, "durationMs": 25919 },
-    "utility-keyboard-audit.spec.ts": { "tests": 5, "durationMs": 37213 },
-    "video-embeds.spec.ts": { "tests": 1, "durationMs": 9043 },
-    "volt-appearance.spec.ts": { "tests": 3, "durationMs": 4913 },
-    "working-study-focus.spec.ts": { "tests": 1, "durationMs": 4295 }
+    "accent-label-contrast.spec.ts": {
+      "tests": 2,
+      "durationMs": 16762
+    },
+    "accessibility.spec.ts": {
+      "tests": 3,
+      "durationMs": 10279
+    },
+    "advanced-details.spec.ts": {
+      "tests": 2,
+      "durationMs": 17937
+    },
+    "ai-sidebar-removal.spec.ts": {
+      "tests": 2,
+      "durationMs": 15608
+    },
+    "anki-import.spec.ts": {
+      "tests": 1,
+      "durationMs": 4873
+    },
+    "assessment-editor-width.spec.ts": {
+      "tests": 1,
+      "durationMs": 7520
+    },
+    "audio-playback.spec.ts": {
+      "tests": 1,
+      "durationMs": 9206
+    },
+    "audio-save-pending.spec.ts": {
+      "tests": 1,
+      "durationMs": 6254
+    },
+    "backup-status.spec.ts": {
+      "tests": 5,
+      "durationMs": 13625
+    },
+    "card-draft-preservation.spec.ts": {
+      "tests": 5,
+      "durationMs": 16289
+    },
+    "card-editor-layout.spec.ts": {
+      "tests": 5,
+      "durationMs": 35888
+    },
+    "card-import-dialogue.spec.ts": {
+      "tests": 4,
+      "durationMs": 28354
+    },
+    "cards-virtualisation.spec.ts": {
+      "tests": 3,
+      "durationMs": 16613
+    },
+    "concept-practice.spec.ts": {
+      "tests": 10,
+      "durationMs": 63214
+    },
+    "control-accessibility.spec.ts": {
+      "tests": 2,
+      "durationMs": 6275
+    },
+    "course-deletion.spec.ts": {
+      "tests": 2,
+      "durationMs": 8697
+    },
+    "course-entry.spec.ts": {
+      "tests": 1,
+      "durationMs": 6599
+    },
+    "course-file-sharing.spec.ts": {
+      "tests": 1,
+      "durationMs": 8239
+    },
+    "course-library-flow.spec.ts": {
+      "tests": 4,
+      "durationMs": 27834
+    },
+    "course-loading.spec.ts": {
+      "tests": 2,
+      "durationMs": 17613
+    },
+    "course-navigation-layout.spec.ts": {
+      "tests": 4,
+      "durationMs": 34366
+    },
+    "course-overview.spec.ts": {
+      "tests": 7,
+      "durationMs": 63846
+    },
+    "course-path-readiness.spec.ts": {
+      "tests": 1,
+      "durationMs": 3970
+    },
+    "course-popover-layering.spec.ts": {
+      "tests": 2,
+      "durationMs": 12751
+    },
+    "course-progress.spec.ts": {
+      "tests": 3,
+      "durationMs": 22993
+    },
+    "course-rename-focus.spec.ts": {
+      "tests": 1,
+      "durationMs": 8028
+    },
+    "course-review-availability.spec.ts": {
+      "tests": 4,
+      "durationMs": 34059
+    },
+    "course-settings-scroll.spec.ts": {
+      "tests": 1,
+      "durationMs": 6269
+    },
+    "course-specification-settings.spec.ts": {
+      "tests": 3,
+      "durationMs": 34343
+    },
+    "daily-backup-worker.spec.ts": {
+      "tests": 3,
+      "durationMs": 27787
+    },
+    "dashboard-course-actions.spec.ts": {
+      "tests": 5,
+      "durationMs": 30736
+    },
+    "dashboard-header-text.spec.ts": {
+      "tests": 2,
+      "durationMs": 20021
+    },
+    "dashboard-history.spec.ts": {
+      "tests": 5,
+      "durationMs": 43492
+    },
+    "data-recovery.spec.ts": {
+      "tests": 1,
+      "durationMs": 25126
+    },
+    "deployment-recovery.spec.ts": {
+      "tests": 2,
+      "durationMs": 4051
+    },
+    "desktop-audit.spec.ts": {
+      "tests": 8,
+      "durationMs": 65085
+    },
+    "diagram-keyboard-audit.spec.ts": {
+      "tests": 2,
+      "durationMs": 17870
+    },
+    "diagram-narrow-audit.spec.ts": {
+      "tests": 4,
+      "durationMs": 26703
+    },
+    "direction-c-audit.spec.ts": {
+      "tests": 5,
+      "durationMs": 34416
+    },
+    "direction-c-detail.spec.ts": {
+      "tests": 2,
+      "durationMs": 13777
+    },
+    "editor-keyboard-contract.spec.ts": {
+      "tests": 5,
+      "durationMs": 12864
+    },
+    "expanding-controls-audit.spec.ts": {
+      "tests": 6,
+      "durationMs": 36606
+    },
+    "feedback-smoothness.spec.ts": {
+      "tests": 4,
+      "durationMs": 1335
+    },
+    "feedback.spec.ts": {
+      "tests": 1,
+      "durationMs": 3129
+    },
+    "first-interaction-latency.spec.ts": {
+      "tests": 1,
+      "durationMs": 9374
+    },
+    "first-learning-journey.spec.ts": {
+      "tests": 3,
+      "durationMs": 21953
+    },
+    "forecast-labels.spec.ts": {
+      "tests": 2,
+      "durationMs": 4270
+    },
+    "gaps-class-code-entry.spec.ts": {
+      "tests": 4,
+      "durationMs": 34167
+    },
+    "gaps-entry.spec.ts": {
+      "tests": 2,
+      "durationMs": 6373
+    },
+    "import-compact-layout.spec.ts": {
+      "tests": 3,
+      "durationMs": 15500
+    },
+    "import-focus-scroll.spec.ts": {
+      "tests": 2,
+      "durationMs": 5594
+    },
+    "import-navigation.spec.ts": {
+      "tests": 4,
+      "durationMs": 29429
+    },
+    "integration-status.spec.ts": {
+      "tests": 2,
+      "durationMs": 6315
+    },
+    "interaction-contours.spec.ts": {
+      "tests": 5,
+      "durationMs": 20594
+    },
+    "interaction-smoothness.spec.ts": {
+      "tests": 3,
+      "durationMs": 5421
+    },
+    "jev-public-beta.spec.ts": {
+      "tests": 1,
+      "durationMs": 4659
+    },
+    "jev-study.spec.ts": {
+      "tests": 18,
+      "durationMs": 107799
+    },
+    "landing-film-fallback.spec.ts": {
+      "tests": 2,
+      "durationMs": 1878
+    },
+    "landing-loading.spec.ts": {
+      "tests": 3,
+      "durationMs": 7123
+    },
+    "landing-motion.spec.ts": {
+      "tests": 1,
+      "durationMs": 3050
+    },
+    "landing-prerender-paint.spec.ts": {
+      "tests": 12,
+      "durationMs": 4592
+    },
+    "landing-prerender.spec.ts": {
+      "tests": 3,
+      "durationMs": 3246
+    },
+    "landing-rework.spec.ts": {
+      "tests": 2,
+      "durationMs": 3050
+    },
+    "landing-transition.spec.ts": {
+      "tests": 1,
+      "durationMs": 2419
+    },
+    "lesson-actions.spec.ts": {
+      "tests": 3,
+      "durationMs": 21548
+    },
+    "lesson-add-toolbar.spec.ts": {
+      "tests": 1,
+      "durationMs": 3300
+    },
+    "lesson-management-audit.spec.ts": {
+      "tests": 2,
+      "durationMs": 17034
+    },
+    "library-links.spec.ts": {
+      "tests": 6,
+      "durationMs": 8990
+    },
+    "local-lesson-order.spec.ts": {
+      "tests": 16,
+      "durationMs": 113487
+    },
+    "long-course-title.spec.ts": {
+      "tests": 3,
+      "durationMs": 15246
+    },
+    "markdown-diagrams.spec.ts": {
+      "tests": 1,
+      "durationMs": 11536
+    },
+    "merge-review-layout.spec.ts": {
+      "tests": 2,
+      "durationMs": 7171
+    },
+    "missing-course-recovery.spec.ts": {
+      "tests": 3,
+      "durationMs": 9377
+    },
+    "narrow-larger-text.spec.ts": {
+      "tests": 2,
+      "durationMs": 5033
+    },
+    "navigation-customisation.spec.ts": {
+      "tests": 2,
+      "durationMs": 5069
+    },
+    "new-course-double-click.spec.ts": {
+      "tests": 2,
+      "durationMs": 6907
+    },
+    "offline-reload.spec.ts": {
+      "tests": 1,
+      "durationMs": 7530
+    },
+    "onboarding-demo-context.spec.ts": {
+      "tests": 2,
+      "durationMs": 8108
+    },
+    "onboarding-demo-retry.spec.ts": {
+      "tests": 2,
+      "durationMs": 12542
+    },
+    "onboarding.spec.ts": {
+      "tests": 2,
+      "durationMs": 4814
+    },
+    "optimiser-worker.spec.ts": {
+      "tests": 2,
+      "durationMs": 1110
+    },
+    "paper-assessments.spec.ts": {
+      "tests": 2,
+      "durationMs": 19330
+    },
+    "path-inline-editing.spec.ts": {
+      "tests": 1,
+      "durationMs": 17569
+    },
+    "pomodoro-timer.spec.ts": {
+      "tests": 1,
+      "durationMs": 6446
+    },
+    "practice-queue.spec.ts": {
+      "tests": 4,
+      "durationMs": 25604
+    },
+    "preference-transitions.spec.ts": {
+      "tests": 2,
+      "durationMs": 19105
+    },
+    "progress-charts.spec.ts": {
+      "tests": 3,
+      "durationMs": 21577
+    },
+    "progress-leeches.spec.ts": {
+      "tests": 1,
+      "durationMs": 6188
+    },
+    "progress-narrow-text.spec.ts": {
+      "tests": 1,
+      "durationMs": 3054
+    },
+    "public-policies.spec.ts": {
+      "tests": 2,
+      "durationMs": 17307
+    },
+    "qualification-guidance.spec.ts": {
+      "tests": 2,
+      "durationMs": 2470
+    },
+    "question-editor-mobile-footer.spec.ts": {
+      "tests": 9,
+      "durationMs": 56466
+    },
+    "question-route-arrival.spec.ts": {
+      "tests": 1,
+      "durationMs": 3442
+    },
+    "question-set-attempt-layout.spec.ts": {
+      "tests": 8,
+      "durationMs": 69416
+    },
+    "question-set-composer.spec.ts": {
+      "tests": 3,
+      "durationMs": 18080
+    },
+    "question-set-jev-unsure.spec.ts": {
+      "tests": 5,
+      "durationMs": 26003
+    },
+    "question-set-link-lesson.spec.ts": {
+      "tests": 1,
+      "durationMs": 7273
+    },
+    "question-set-navigation-motion.spec.ts": {
+      "tests": 2,
+      "durationMs": 14817
+    },
+    "question-set-practice-keyboard.spec.ts": {
+      "tests": 5,
+      "durationMs": 29555
+    },
+    "question-set-related-cards.spec.ts": {
+      "tests": 4,
+      "durationMs": 22087
+    },
+    "question-set-search-scroll.spec.ts": {
+      "tests": 2,
+      "durationMs": 11509
+    },
+    "question-set-search.spec.ts": {
+      "tests": 2,
+      "durationMs": 18656
+    },
+    "question-technique-authoring.spec.ts": {
+      "tests": 3,
+      "durationMs": 17472
+    },
+    "quick-search-layout.spec.ts": {
+      "tests": 2,
+      "durationMs": 21706
+    },
+    "quizlet-comparison.spec.ts": {
+      "tests": 3,
+      "durationMs": 6134
+    },
+    "radios-to-toggles.spec.ts": {
+      "tests": 2,
+      "durationMs": 10780
+    },
+    "recall-judgement.spec.ts": {
+      "tests": 2,
+      "durationMs": 24401
+    },
+    "recitation.spec.ts": {
+      "tests": 1,
+      "durationMs": 8678
+    },
+    "recovery-feedback.spec.ts": {
+      "tests": 5,
+      "durationMs": 13927
+    },
+    "release-smoke.spec.ts": {
+      "tests": 7,
+      "durationMs": 55242
+    },
+    "report-continuation.spec.ts": {
+      "tests": 3,
+      "durationMs": 22661
+    },
+    "review-activity-layout.spec.ts": {
+      "tests": 1,
+      "durationMs": 5035
+    },
+    "school-use-spine.spec.ts": {
+      "tests": 1,
+      "durationMs": 9152
+    },
+    "search-result-navigation.spec.ts": {
+      "tests": 2,
+      "durationMs": 27617
+    },
+    "seo-course-pages.spec.ts": {
+      "tests": 2,
+      "durationMs": 10159
+    },
+    "session-report.spec.ts": {
+      "tests": 1,
+      "durationMs": 9029
+    },
+    "settings-scroll-extent.spec.ts": {
+      "tests": 6,
+      "durationMs": 18060
+    },
+    "settings-text-reflow.spec.ts": {
+      "tests": 6,
+      "durationMs": 17093
+    },
+    "settings-your-data.spec.ts": {
+      "tests": 6,
+      "durationMs": 18554
+    },
+    "share-links.spec.ts": {
+      "tests": 8,
+      "durationMs": 87257
+    },
+    "shared-course-import-action.spec.ts": {
+      "tests": 2,
+      "durationMs": 12881
+    },
+    "shared-course-scheduling.spec.ts": {
+      "tests": 2,
+      "durationMs": 9744
+    },
+    "sidebar-details.spec.ts": {
+      "tests": 3,
+      "durationMs": 24350
+    },
+    "simple-learn-choices.spec.ts": {
+      "tests": 3,
+      "durationMs": 19453
+    },
+    "simple-learn.spec.ts": {
+      "tests": 2,
+      "durationMs": 14547
+    },
+    "specialised-card-entry.spec.ts": {
+      "tests": 11,
+      "durationMs": 64820
+    },
+    "specialised-editor-preservation.spec.ts": {
+      "tests": 2,
+      "durationMs": 7638
+    },
+    "specification-progress.spec.ts": {
+      "tests": 2,
+      "durationMs": 9714
+    },
+    "specification-topic-pages.spec.ts": {
+      "tests": 1,
+      "durationMs": 1444
+    },
+    "startup-arrival.spec.ts": {
+      "tests": 1,
+      "durationMs": 1813
+    },
+    "storage-persistence-notice.spec.ts": {
+      "tests": 3,
+      "durationMs": 19552
+    },
+    "study-again-animation.spec.ts": {
+      "tests": 2,
+      "durationMs": 18437
+    },
+    "study-animation-smoothness.spec.ts": {
+      "tests": 17,
+      "durationMs": 24622
+    },
+    "study-card-adaptive-size.spec.ts": {
+      "tests": 2,
+      "durationMs": 41744
+    },
+    "study-card-fit.spec.ts": {
+      "tests": 19,
+      "durationMs": 157096
+    },
+    "study-card-glide.spec.ts": {
+      "tests": 4,
+      "durationMs": 52761
+    },
+    "study-card-layout.spec.ts": {
+      "tests": 1,
+      "durationMs": 9558
+    },
+    "study-catch-up.spec.ts": {
+      "tests": 1,
+      "durationMs": 10856
+    },
+    "study-double-activation.spec.ts": {
+      "tests": 4,
+      "durationMs": 44796
+    },
+    "study-keyboard-handoff.spec.ts": {
+      "tests": 1,
+      "durationMs": 7117
+    },
+    "study-response.spec.ts": {
+      "tests": 1,
+      "durationMs": 9592
+    },
+    "study-session-load.spec.ts": {
+      "tests": 1,
+      "durationMs": 12703
+    },
+    "study-swipe.spec.ts": {
+      "tests": 12,
+      "durationMs": 93592
+    },
+    "study-target-scrollbar-audit.spec.ts": {
+      "tests": 1,
+      "durationMs": 7825
+    },
+    "sync-convergence.spec.ts": {
+      "tests": 4,
+      "durationMs": 89235
+    },
+    "sync-pairing-feedback.spec.ts": {
+      "tests": 3,
+      "durationMs": 14892
+    },
+    "sync-relay.spec.ts": {
+      "tests": 1,
+      "durationMs": 4315
+    },
+    "toast-control-geometry.spec.ts": {
+      "tests": 4,
+      "durationMs": 5106
+    },
+    "toast-layout.spec.ts": {
+      "tests": 6,
+      "durationMs": 48647
+    },
+    "today-flow.spec.ts": {
+      "tests": 7,
+      "durationMs": 64017
+    },
+    "today-overlays.spec.ts": {
+      "tests": 5,
+      "durationMs": 38893
+    },
+    "today-paint.spec.ts": {
+      "tests": 4,
+      "durationMs": 40325
+    },
+    "today-sync-status.spec.ts": {
+      "tests": 4,
+      "durationMs": 27853
+    },
+    "transition-priorities.spec.ts": {
+      "tests": 1,
+      "durationMs": 4544
+    },
+    "unified-study.spec.ts": {
+      "tests": 6,
+      "durationMs": 63920
+    },
+    "utility-keyboard-audit.spec.ts": {
+      "tests": 5,
+      "durationMs": 42332
+    },
+    "video-embeds.spec.ts": {
+      "tests": 1,
+      "durationMs": 9456
+    },
+    "volt-appearance.spec.ts": {
+      "tests": 3,
+      "durationMs": 5385
+    },
+    "working-study-focus.spec.ts": {
+      "tests": 1,
+      "durationMs": 3857
+    }
   }
 }

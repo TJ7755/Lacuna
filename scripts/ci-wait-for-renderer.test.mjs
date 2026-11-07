@@ -1,15 +1,21 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { waitForProduction } from './ci-wait-for-production.mjs';
+import { waitForRenderer } from './ci-wait-for-renderer.mjs';
 
 const sourceSha = 'a'.repeat(40);
+const publication = {
+  name: 'Share the desktop renderer build',
+  status: 'completed',
+  conclusion: 'success',
+};
 const producer = (status, conclusion = null) => ({
-  name: 'production',
+  name: 'electron-renderer',
   run_id: 42,
   run_attempt: 2,
   head_sha: sourceSha,
   status,
   conclusion,
+  steps: status === 'completed' ? [publication] : [],
 });
 const options = (states) => ({
   repository: 'owner/repository',
@@ -31,34 +37,40 @@ const options = (states) => ({
 });
 
 test('partial retries reuse a successful producer from an earlier attempt with the same source', async () => {
-  await waitForProduction(options([[{ ...producer('completed', 'success'), run_attempt: 1 }]]));
+  assert.equal(
+    await waitForRenderer(options([[{ ...producer('completed', 'success'), run_attempt: 1 }]])),
+    1,
+  );
   for (const overrides of [{ run_attempt: 3 }, { run_attempt: 0 }, { head_sha: 'b'.repeat(40) }])
     await assert.rejects(
-      waitForProduction(options([[{ ...producer('completed', 'success'), ...overrides }]])),
+      waitForRenderer(options([[{ ...producer('completed', 'success'), ...overrides }]])),
     );
 });
 
-test('browser setup can overlap production but consumers wait for the current successful attempt', async () => {
+test('Windows setup can overlap a renderer build that must complete before use', async () => {
   const states = [
     [],
     [producer('queued')],
     [producer('in_progress')],
+    [{ ...producer('in_progress'), steps: [publication] }],
     [producer('completed', 'success')],
   ];
-  await waitForProduction(options(states));
+  assert.equal(await waitForRenderer(options(states)), 2);
   assert.equal(states.length, 0);
 });
 
-test('failed, skipped, cancelled, ambiguous, foreign and unknown production states fail closed', async () => {
+test('failed, skipped, cancelled, ambiguous, foreign and unknown renderer states fail closed', async () => {
   for (const conclusion of ['failure', 'skipped', 'cancelled', null])
-    await assert.rejects(waitForProduction(options([[producer('completed', conclusion)]])));
+    await assert.rejects(waitForRenderer(options([[producer('completed', conclusion)]])));
   for (const jobs of [
     [producer('completed', 'success'), producer('completed', 'success')],
     [{ ...producer('completed', 'success'), run_id: 43 }],
+    [{ ...producer('completed', 'success'), steps: [] }],
+    [{ ...producer('completed', 'success'), steps: [{ ...publication, conclusion: 'failure' }] }],
     [producer('unknown')],
   ])
-    await assert.rejects(waitForProduction(options([jobs])));
-  await assert.rejects(waitForProduction(options([[]])), /Timed out/);
+    await assert.rejects(waitForRenderer(options([jobs])));
+  await assert.rejects(waitForRenderer(options([[]])), /Timed out/);
 });
 
 test('unavailable and truncated API responses cannot authorise a download', async () => {
@@ -69,16 +81,16 @@ test('unavailable and truncated API responses cannot authorise a download', asyn
       json: async () => ({ jobs: [producer('completed', 'success')], total_count: 101 }),
     },
   ]) {
-    await assert.rejects(waitForProduction({ ...options([[]]), request: async () => response }));
+    await assert.rejects(waitForRenderer({ ...options([[]]), request: async () => response }));
   }
-  await assert.rejects(waitForProduction({ ...options([[]]), token: '' }));
-  await assert.rejects(waitForProduction({ ...options([[]]), attempt: '0' }));
-  await assert.rejects(waitForProduction({ ...options([[]]), timeoutMs: 0 }), /Timed out/);
+  await assert.rejects(waitForRenderer({ ...options([[]]), token: '' }));
+  await assert.rejects(waitForRenderer({ ...options([[]]), attempt: '0' }));
+  await assert.rejects(waitForRenderer({ ...options([[]]), timeoutMs: 0 }), /Timed out/);
 });
 
 test('slow builds back off within the shared repository API budget', async () => {
   const delays = [];
-  await waitForProduction({
+  await waitForRenderer({
     ...options([...Array.from({ length: 14 }, () => []), [producer('completed', 'success')]]),
     sleep: async (delay) => {
       delays.push(delay);
