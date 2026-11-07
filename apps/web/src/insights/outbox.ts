@@ -4,20 +4,17 @@ import {
   INSIGHT_ID_RE,
   INSIGHT_RETENTION_DAYS,
   isoDayLabel,
+  localReportingDayLabel,
   parseInsightEnvelope,
+  utcReportingWindow,
+  validReportingWindow,
   type InsightEnvelope,
+  type ReportingWindow,
 } from '@lacuna/protocol/insights/index';
 import { normaliseRelayUrl } from '../sync/relay';
 import { sealInsightEnvelope, type InsightsRecipient } from './envelope';
 import { putInsightEnvelope } from './mailbox';
-import {
-  completedReportingDay,
-  localReportingWindow,
-  reportingDayLabel,
-  utcReportingWindow,
-  validReportingWindow,
-  type ReportingWindow,
-} from './reportingDay';
+import { completedReportingDay, localReportingWindow } from './reportingDay';
 
 interface PacketIdentity {
   shareId: string;
@@ -153,11 +150,13 @@ export function createInsightsOutbox(
       completedDay = false,
     ): Promise<InsightsPublicationResult> {
       const startedAt = now();
-      const startedDay = reportingDayLabel(startedAt);
+      const startedDay = localReportingDayLabel(startedAt);
       const isoDay = completedDay ? completedReportingDay(startedAt) : startedDay;
       const initialWindow = newReportingWindow(isoDay);
       const stillAllowed = () =>
-        options.isOptedIn() && !options.signal?.aborted && reportingDayLabel(now()) === startedDay;
+        options.isOptedIn() &&
+        !options.signal?.aborted &&
+        localReportingDayLabel(now()) === startedDay;
       const allowed = async () =>
         stillAllowed() && (!options.isCurrent || (await options.isCurrent())) && stillAllowed();
       if (!(await allowed())) return 'idle';

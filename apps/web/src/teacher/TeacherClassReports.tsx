@@ -10,8 +10,8 @@ import {
   INSIGHT_RETENTION_DAYS,
   isoDayLabel,
   isoDayStartMs,
+  localReportingDayLabel,
 } from '@lacuna/protocol/insights/index';
-import { reportingDayLabel } from '../insights/reportingDay';
 import type { DailyEvidence } from '../insights/evidence';
 import { dayLabel } from './classInsights';
 import { type ConnectedGapsCourse } from './connectionStore';
@@ -105,7 +105,7 @@ export function ClassPage({
   onRemoved(): void;
 }) {
   const now = Date.now();
-  const latest = reportingDayLabel(now);
+  const latest = localReportingDayLabel(now);
   const earliest = isoDayLabel(now - INSIGHT_RETENTION_DAYS * DAY_MS);
   const [forgetting, setForgetting] = useState(false);
   const [forgetBusy, setForgetBusy] = useState(false);

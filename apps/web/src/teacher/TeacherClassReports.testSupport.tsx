@@ -1,7 +1,7 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { useCallback, useState } from 'react';
 import { beforeEach, vi } from 'vitest';
-import { reportingDayLabel } from '../insights/reportingDay';
+import { localReportingDayLabel } from '@lacuna/protocol/insights/index';
 import type { DailyEvidence, DailyEvidenceEvent } from '../insights/evidence';
 import { ClassPage } from './TeacherClassReports';
 import { createClassSessions } from './classSessions';
@@ -47,7 +47,7 @@ vi.mock('./TeacherKeySetup', () => ({
 }));
 
 export const course = { shareId: 'a'.repeat(32), courseName: 'Biology', verifiedAt: 0 };
-export const latest = reportingDayLabel(Date.now());
+export const latest = localReportingDayLabel(Date.now());
 export const callbacks = { onRemoved: vi.fn() };
 export const unlockRequest: ClassRequest = { kind: 'unlock', id: 1 };
 

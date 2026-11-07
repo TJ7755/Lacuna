@@ -7,7 +7,8 @@ import {
   createInsightsLastPublishedAtSetting,
   createInsightsOptInSetting,
 } from '../state/insightsOptIn';
-import { completedReportingDay, reportingDayLabel } from './reportingDay';
+import { localReportingDayLabel } from '@lacuna/protocol/insights/index';
+import { completedReportingDay } from './reportingDay';
 import { collectDailyEvidence } from './collectEvidence';
 import { createEnrolmentSetting, reportingEnabled } from './enrolment';
 import { createInsightsOutbox, type InsightsPublicationResult } from './outbox';
@@ -67,7 +68,7 @@ async function deliver(
   publish = false,
 ): Promise<InsightsPublicationResult> {
   const now = options.now ?? Date.now,
-    dayAt = publish ? reportingDayLabel : completedReportingDay,
+    dayAt = publish ? localReportingDayLabel : completedReportingDay,
     day = dayAt(now());
   const setting = createEnrolmentSetting(courseId),
     enrolment = setting.read();

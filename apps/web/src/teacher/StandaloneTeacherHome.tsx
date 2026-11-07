@@ -4,7 +4,7 @@ import { buttonClassName } from '../components/ui/buttonStyles';
 import { cn } from '../components/ui/cn';
 import { LacunaIcon, MenuIcon } from '../components/ui/icons';
 import { SectionCard } from '../components/ui/SectionCard';
-import { reportingDayLabel } from '../insights/reportingDay';
+import { localReportingDayLabel } from '@lacuna/protocol/insights/index';
 import type { ConnectedGapsCourse } from './connectionStore';
 import { GapsSidebar, type GapsPage, type SidebarClass } from './GapsSidebar';
 import { Spinner, usePresence } from './gapsUi';
@@ -67,7 +67,7 @@ export function StandaloneTeacherHome() {
     desktop.addEventListener('change', closeOnDesktop);
     return () => desktop.removeEventListener('change', closeOnDesktop);
   }, []);
-  const latestDay = reportingDayLabel(Date.now());
+  const latestDay = localReportingDayLabel(Date.now());
 
   const reload = useCallback(async () => {
     setListFailed(false);

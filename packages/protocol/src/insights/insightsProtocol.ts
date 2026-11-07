@@ -1,12 +1,10 @@
-import { isoDayStartMs } from '@lacuna/protocol/insights/insightsDay';
+import { INSIGHT_MAX_DAY_ADVANCE_MS, isoDayStartMs } from '@lacuna/protocol/insights/insightsDay';
 
 export const INSIGHT_MAX_EVIDENCE_BYTES = 65_536;
 export const INSIGHT_MAX_ENVELOPE_BYTES = 90 * 1024;
 export const INSIGHT_PAGE_SIZE = 16;
 export const INSIGHT_DAILY_SLOTS = 50;
 export const INSIGHT_RETENTION_DAYS = 84;
-// A civil date can start this far ahead of its UTC calendar coordinate.
-export const INSIGHT_MAX_DAY_ADVANCE_MS = 14 * 60 * 60 * 1000;
 export const INSIGHT_DAY_MS = 24 * 60 * 60 * 1000;
 export const INSIGHT_ID_RE = /^[0-9a-f]{32}$/;
 

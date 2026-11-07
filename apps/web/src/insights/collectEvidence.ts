@@ -7,7 +7,7 @@ import type {
   QuestionSetAttemptRecord,
   QuestionSetResponseValue,
 } from '@lacuna/core/questions/questionSetAttempts';
-import { utcReportingWindow } from './reportingDay';
+import { utcReportingWindow } from '@lacuna/protocol/insights/index';
 import {
   DailyEvidenceTooLargeError,
   encodeDailyEvidence,

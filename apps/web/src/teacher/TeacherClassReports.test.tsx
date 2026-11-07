@@ -9,10 +9,14 @@ import {
 } from './TeacherClassReports.testSupport';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { expect, it } from 'vitest';
-import { DAY_MS, isoDayLabel, isoDayStartMs } from '@lacuna/protocol/insights/index';
+import {
+  DAY_MS,
+  isoDayLabel,
+  isoDayStartMs,
+  localReportingDayLabel,
+} from '@lacuna/protocol/insights/index';
 import { createClassSessions } from './classSessions';
 import { dayLabel } from './classInsights';
-import { reportingDayLabel } from '../insights/reportingDay';
 
 it('reads only after an explicit unlock and preserves unknown, self-marked and disputed evidence', async () => {
   mocks.read.mockResolvedValue({
@@ -84,7 +88,7 @@ it('opens today’s local day and explains explicit partial snapshots and refres
   await unlock();
   await screen.findByText(/No report does not mean no study/);
   expect(mocks.read).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ isoDay: reportingDayLabel(Date.now()) }),
+    expect.objectContaining({ isoDay: localReportingDayLabel(Date.now()) }),
   );
   expect(screen.getByText('Today')).toBeVisible();
   expect(screen.getByText(/Partial results/)).toHaveTextContent(

@@ -1,6 +1,9 @@
 import { z } from 'zod';
-import { INSIGHT_MAX_EVIDENCE_BYTES } from '@lacuna/protocol/insights/index';
-import { utcReportingWindow, validReportingWindow } from './reportingDay';
+import {
+  INSIGHT_MAX_EVIDENCE_BYTES,
+  utcReportingWindow,
+  validReportingWindow,
+} from '@lacuna/protocol/insights/index';
 
 const identity = z.string().min(1).max(200);
 const marks = z.number().finite().min(0).max(1_000_000);

@@ -3,6 +3,10 @@ export {
   isoDayLabel,
   isoDayStartMs,
   completedIsoDayLabel,
+  localReportingDayLabel,
+  utcReportingWindow,
+  validReportingWindow,
+  type ReportingWindow,
 } from '@lacuna/protocol/insights/insightsDay';
 export {
   INSIGHT_MAX_EVIDENCE_BYTES,
@@ -10,7 +14,6 @@ export {
   INSIGHT_PAGE_SIZE,
   INSIGHT_DAILY_SLOTS,
   INSIGHT_RETENTION_DAYS,
-  INSIGHT_MAX_DAY_ADVANCE_MS,
   INSIGHT_DAY_MS,
   INSIGHT_ID_RE,
   parseInsightMailboxPage,
