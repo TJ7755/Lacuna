@@ -78,8 +78,25 @@ for (const width of [1440]) {
     const sharing = page.getByRole('button', { name: 'How sharing works' });
     await expect(sharing).toBeVisible();
     expect((await sharing.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await expect(page.getByText(/activity already recorded today and yesterday/)).toBeVisible();
+    await expect(page.getByText('Connect with a class code to enable sharing.')).toBeVisible();
+    const sharingDetails = page
+      .getByRole('listitem')
+      .filter({ hasText: /activity already recorded today and yesterday/ });
     await expect(sharing).toHaveAttribute('aria-expanded', 'false');
+    await expect(sharingDetails).toHaveCount(0);
+    const insights = sharing.locator('xpath=ancestor::section[1]');
+    await insights.screenshot({
+      path: test.info().outputPath('class-insights-collapsed.png'),
+      animations: 'disabled',
+    });
+    await sharing.click();
+    await expect(sharing).toHaveAttribute('aria-expanded', 'true');
+    await expect(sharingDetails).toBeVisible();
+    await insights.screenshot({
+      path: test.info().outputPath('class-insights-expanded.png'),
+      animations: 'disabled',
+    });
+    await sharing.click();
     await page.getByRole('button', { name: /^Lessons/ }).click();
     const picker = page.getByRole('combobox', { name: 'Start study from' });
     await picker.selectOption({ label: 'Year two' });
