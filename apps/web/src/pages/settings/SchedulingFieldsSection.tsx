@@ -88,21 +88,17 @@ export function SchedulingFieldsSection({
           : 'mt-5 flex flex-col gap-4 rounded-2xl bg-ink/[0.03] p-4'
       }
     >
-      <div className="block text-sm text-ink-soft">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold text-ink">Interval fuzz</div>
-            <span className={fieldHintClassName}>
-              Adds a small random variation to scheduled intervals so cards do not cluster on the
-              same day. Recommended on.
-            </span>
-          </div>
-          <Toggle checked={enableFuzz} onChange={onEnableFuzzChange} ariaLabel="Fuzz intervals" />
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-ink">Vary review intervals</span>
+        <Toggle
+          checked={enableFuzz}
+          onChange={onEnableFuzzChange}
+          ariaLabel="Vary review intervals"
+        />
       </div>
 
       <label className={fieldLabelClassName}>
-        Maximum interval
+        Maximum interval (days)
         <Input
           type="number"
           min={1}
@@ -112,10 +108,6 @@ export function SchedulingFieldsSection({
           onBlur={onMaxIntervalBlur}
           placeholder={maxIntervalPlaceholder}
         />
-        <span className={fieldHintClassName}>
-          Caps the longest scheduled interval in days. Cards that would be scheduled beyond this
-          limit are capped here instead. The default is 36,500 days (~100 years).
-        </span>
       </label>
 
       <label className={fieldLabelClassName}>
@@ -127,8 +119,7 @@ export function SchedulingFieldsSection({
           placeholder="e.g. 1m, 10m"
         />
         <span className={fieldHintClassName}>
-          Intervals for a new card before it graduates to review. Use values like 1m, 10m, 1d, 1h
-          separated by commas or spaces.
+          Comma- or space-separated durations, e.g. 1m, 10m, 1h, 1d.
         </span>
       </label>
 
@@ -140,17 +131,13 @@ export function SchedulingFieldsSection({
           onBlur={onRelearningStepsBlur}
           placeholder="e.g. 10m"
         />
-        <span className={fieldHintClassName}>
-          Intervals for a card after it lapses, before it returns to review. Use the same format as
-          learning steps.
-        </span>
       </label>
 
       <div className="block text-sm text-ink-soft">
         <div className="mb-2 text-sm font-semibold text-ink">Leech detection</div>
         <div className="flex flex-col gap-3">
           <label className={fieldLabelClassName}>
-            Leech threshold
+            Failed reviews to flag a leech
             <Input
               type="number"
               min={1}
@@ -160,10 +147,6 @@ export function SchedulingFieldsSection({
               onBlur={onLeechThresholdBlur}
               placeholder="8"
             />
-            <span className={fieldHintClassName}>
-              Number of lapses (failed reviews) at which a card is treated as a leech. Leave blank
-              for the default of 8.
-            </span>
           </label>
           <fieldset className="block text-sm text-ink-soft">
             <legend className={`mb-2 ${fieldLabelClassName}`}>When a card becomes a leech</legend>
@@ -224,9 +207,7 @@ export function SchedulingFieldsSection({
               placeholder="Unlimited"
             />
             <span className={section === 'workload' ? 'sr-only' : fieldHintClassName}>
-              Caps how many never-seen cards a study session introduces each day, so a large course
-              does not overwhelm you. Leave blank for unlimited. Reviews of cards you have already
-              started are never capped.
+              Blank for unlimited.
             </span>
           </label>
 
@@ -242,8 +223,7 @@ export function SchedulingFieldsSection({
               placeholder="Unlimited"
             />
             <span className={section === 'workload' ? 'sr-only' : fieldHintClassName}>
-              Caps how many cards you can review in a single day for this course, including
-              re-reviews of cards you have already started. Leave blank for unlimited.
+              Blank for unlimited.
             </span>
           </label>
 
@@ -259,13 +239,12 @@ export function SchedulingFieldsSection({
               placeholder="No goal"
             />
             <span className={section === 'workload' ? 'sr-only' : fieldHintClassName}>
-              Target number of cards to review per day. When reached, the session ends with a
-              &quot;Daily goal reached&quot; message. Leave blank for no goal.
+              Ends the session at this count. Blank for no goal.
             </span>
           </label>
 
           <label className={fieldLabelClassName}>
-            {section === 'workload' ? 'Session time limit (min)' : 'Session time limit'}
+            Session time limit (min)
             <Input
               type="number"
               min={0}
@@ -276,8 +255,7 @@ export function SchedulingFieldsSection({
               placeholder="No limit"
             />
             <span className={section === 'workload' ? 'sr-only' : fieldHintClassName}>
-              Maximum number of minutes a single study session may run. When the limit is reached,
-              the session ends gracefully. Leave blank for no limit.
+              Blank for no limit.
             </span>
           </label>
         </div>

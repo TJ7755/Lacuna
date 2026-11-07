@@ -49,10 +49,8 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
     return (
       <p className="text-sm text-ink-soft">
         {reference
-          ? `Specification ${reference.specificationId} has no supplied metadata. Tier, route and point coverage cannot be resolved.`
-          : 'Custom course: no specification metadata supplied.'}{' '}
-        Use the free-text details below, or import a course with specification metadata to choose
-        tiers and routes.
+          ? `No metadata for specification ${reference.specificationId}.`
+          : 'Custom course: no specification metadata supplied.'}
       </p>
     );
   }
@@ -133,8 +131,7 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
       {!editable && (
         <p className="flex items-start gap-2 text-sm text-ink-soft">
           <LockIcon width={16} height={16} className="mt-0.5 shrink-0" />
-          This published course is locked. The publisher owns its specification selection. Use the
-          existing detach option below if you want to edit your own copy.
+          Detach the course to change its specification.
         </p>
       )}
       {draft ? (
@@ -262,12 +259,6 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
                   </li>
                 ))}
               </ul>
-            )}
-            {draft && (
-              <p className="text-xs text-ink-faint">
-                Cards, review history, lesson order and assessment definitions stay unchanged. Paper
-                coverage follows the chosen tier and routes.
-              </p>
             )}
           </>
         )}

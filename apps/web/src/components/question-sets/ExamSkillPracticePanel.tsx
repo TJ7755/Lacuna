@@ -85,13 +85,7 @@ export function ExamSkillPracticePanel({
       className="mb-6 min-w-0 rounded-xl border border-line p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-medium">Exam-skill practice</h2>
-          <p className="text-sm text-ink-soft">
-            Practise explicitly tagged exam techniques. Knowledge topics stay linked to their
-            questions.
-          </p>
-        </div>
+        <h2 className="text-lg font-medium">Exam-skill practice</h2>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="primary"
@@ -102,12 +96,8 @@ export function ExamSkillPracticePanel({
           </Button>
         </div>
       </div>
-      <p className="my-3 text-sm text-ink-soft">
-        Questions vary where the bank allows. Written marks are self-assessed; this is practice
-        evidence, not a mastery score.
-      </p>
       {blueprints.length > 0 && (
-        <details className="mb-3 text-sm">
+        <details className="mt-3 text-sm">
           <summary>Practice boundaries</summary>
           <p className="my-2 text-ink-soft">
             Practice balances authored question types, difficulty and contexts. It does not apply
@@ -144,11 +134,9 @@ export function ExamSkillPracticePanel({
         </details>
       )}
       {!available.length && (
-        <p className="my-3 text-sm text-ink-soft">
-          No exam skills are explicitly tagged for practice yet. Browse the question sets below.
-        </p>
+        <p className="mt-3 text-sm text-ink-soft">No tagged exam skills yet.</p>
       )}
-      <ul className="space-y-2">
+      <ul className="mt-3 space-y-2 empty:hidden">
         {available.slice(0, 6).map((skill) => (
           <li key={skill.techniqueId} className="flex flex-wrap items-center justify-between gap-2">
             <span className="min-w-0 flex-1 basis-48">
@@ -222,10 +210,7 @@ export function ExamSkillPracticePanel({
       {busy && <p role="status">Starting practice…</p>}
       {fallback && (
         <div role="status" className="mt-4">
-          <p>
-            No unseen questions remain in this pool. Familiar practice repeats previously exposed
-            content.
-          </p>
+          <p>No unseen questions left.</p>
           <Button
             disabled={disabled || busy}
             onClick={() => void start(fallback.techniqueId, true)}

@@ -182,22 +182,7 @@ export function MergeReviewPanel() {
         expanded={expanded.has(row.key)}
         onToggle={() => toggle(row.key)}
         pending={pending}
-        note={
-          conflict
-            ? removal
-              ? "You've edited this item, and it was removed from the course."
-              : "You've edited this item."
-            : removal
-              ? 'This item is no longer in the course.'
-              : undefined
-        }
-        consequence={
-          removal
-            ? `Remove deletes this item. ${conflict ? 'Keep mine' : 'Keep'} retains your copy.`
-            : conflict
-              ? 'Keep mine retains your edits. Take theirs replaces them.'
-              : 'Accept replaces changed fields. Keep mine retains your copy.'
-        }
+        note={conflict && removal ? 'Removed by the publisher · Local edits' : undefined}
         // Conflicts retain the student's version unless they explicitly choose otherwise (§7.5).
         primary={{
           label: conflict ? 'Keep mine' : removal ? 'Remove' : 'Accept',
@@ -251,11 +236,11 @@ export function MergeReviewPanel() {
         </div>
       )}
       {ordered.length > 0 && (
-        <footer className="rounded-3xl bg-surface p-6 card-surface">
-          <p className="mb-3 text-xs text-ink-soft">
-            Accept all applies updates and removals. Conflicts need your decision.
-          </p>
-          <div className="flex flex-wrap justify-end gap-2">
+        <footer className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 rounded-3xl bg-surface p-6 card-surface">
+          {rows.removals.length > 0 && (
+            <p className="mr-auto text-xs text-ink-soft">Accept all includes removals.</p>
+          )}
+          <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={() => navigate(backTo)}>
               Review later
             </Button>

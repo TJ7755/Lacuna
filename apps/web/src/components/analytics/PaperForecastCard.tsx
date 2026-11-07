@@ -1,7 +1,6 @@
 import { useId } from 'react';
 import type { PaperForecast } from '../../course/courseProgress';
 import { formatDate } from '../../utils/datetime';
-import { countOf } from '../../utils/plural';
 import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
 import { Button } from '../ui/Button';
 import { SectionCard } from '../ui/SectionCard';
@@ -29,16 +28,9 @@ export function PaperForecastCard({
   const titleId = useId();
   return (
     <SectionCard aria-labelledby={titleId} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 id={titleId} className="font-display text-2xl">
-          {informational ? 'Later paper forecasts' : 'Forecast by paper'}
-        </h2>
-        <p className="text-sm text-ink-soft">
-          {informational
-            ? 'If you stop reviewing now, these overlapping papers measure the same cards again at their later dates. They do not change your current study target. Choose a paper to see its chart.'
-            : 'Your cards are tested on different dates, so each date is measured on its own if you stop reviewing now. Choose a paper to see its exam-day chart.'}
-        </p>
-      </div>
+      <h2 id={titleId} className="font-display text-2xl">
+        {informational ? 'Later paper forecasts' : 'Forecast by paper'}
+      </h2>
       <div className="overflow-x-auto">
         <table aria-label="Forecast by paper date" className="w-full text-left text-sm">
           <thead className="text-xs text-ink-soft">
@@ -60,7 +52,7 @@ export function PaperForecastCard({
                 <th scope="row" className="py-3 pr-3 font-normal">
                   {paper.date === undefined ? (
                     <span className="text-ink-soft">
-                      No upcoming test or paper, measured {MAINTENANCE_HORIZON_DAYS} days ahead
+                      No date · {MAINTENANCE_HORIZON_DAYS}-day forecast
                     </span>
                   ) : (
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -88,16 +80,6 @@ export function PaperForecastCard({
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-ink-soft">
-        {countOf(
-          papers.reduce((total, paper) => total + paper.cardCount, 0),
-          'card',
-        )}{' '}
-        {informational
-          ? 'across these papers; shared cards can count more than once.'
-          : 'in total, matching the headline.'}{' '}
-        Unreviewed cards count as forgotten.
-      </p>
     </SectionCard>
   );
 }

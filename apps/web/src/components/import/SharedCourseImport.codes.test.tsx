@@ -256,7 +256,7 @@ describe('SharedCourseImport with course codes and files', () => {
       await inspectCode();
       expect(screen.getByText('Ready to import')).toBeInTheDocument();
       expect(screen.getByText('Test Course').closest('p')).toHaveTextContent(
-        'Test Course — 1 lesson, 3 notes and 2 cards',
+        'Test Course · 1 lesson · 3 notes · 2 cards',
       );
       fireEvent.click(screen.getByText('Add to my courses'));
       await waitFor(() => expect(mockNotify).toHaveBeenCalled());
@@ -404,7 +404,7 @@ it('offers import after the warning and before a long lesson list', async () => 
   });
   fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
   const add = await screen.findByRole('button', { name: 'Add to my courses' });
-  const warning = screen.getByText(/This share code omitted media/);
+  const warning = screen.getByText(/Images and audio .* will appear as placeholders/);
   expect(warning.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(
     add.compareDocumentPosition(screen.getByText('Lesson 1')) & Node.DOCUMENT_POSITION_FOLLOWING,

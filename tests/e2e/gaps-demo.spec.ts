@@ -15,8 +15,7 @@ const pupilNames = [
   'Finn Wilson',
 ];
 const demoTitle = 'Biology — fictional demo';
-const fictionalNotice =
-  'Fictional demo: six invented pupils and answers. Nothing is saved or sent.';
+const fictionalNotice = /Nothing is saved or sent/;
 
 async function browserStorage(page: Page) {
   return page.evaluate(async () => {

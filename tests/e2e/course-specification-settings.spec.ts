@@ -251,7 +251,7 @@ test('offers supported defaults explicitly and keeps Custom and missing metadata
   await page.goto('/#/');
   const missing = await importCourse(page, 'missing');
   await openDetails(page, missing.id);
-  await expect(page.getByText(/has no supplied metadata/)).toBeVisible();
+  await expect(page.getByText(/^No metadata for specification/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Change selection', exact: true })).toHaveCount(0);
   await page
     .getByRole('textbox', { name: 'Specification', exact: true })

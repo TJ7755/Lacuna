@@ -431,7 +431,7 @@ test('copies an existing link without the publishing device credentials', async 
   );
   await page.reload();
   const panel = page.getByRole('region', { name: 'Share link', exact: true });
-  await expect(panel.getByText(/Copy and pass on this link/)).toBeVisible();
+  await expect(panel.getByText(/Managed on the publishing device/)).toBeVisible();
   await expect(panel.getByRole('button', { name: 'Replace link', exact: true })).toBeHidden();
   await panel.getByRole('button', { name: 'Copy', exact: true }).click();
   await expect

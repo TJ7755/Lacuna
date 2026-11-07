@@ -272,10 +272,7 @@ export function SyncPairingFlow({
             <SettingsSubsectionHeading className="mb-1 font-display text-lg">
               Set up sync
             </SettingsSubsectionHeading>
-            <p className="text-sm text-ink-soft">
-              Start here on your first device. Your study data is encrypted before it leaves this
-              device.
-            </p>
+            <p className="text-sm text-ink-soft">Study data is encrypted before sending.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <SyncField
@@ -298,8 +295,7 @@ export function SyncPairingFlow({
             />
           </div>
           <p className="text-xs text-ink-faint">
-            Use at least 16 characters. Keep this phrase safe: you need it to recover your pairing
-            or join another device without a QR code.
+            At least 16 characters. Keep this passphrase for recovery.
           </p>
           {advanced}
           {formError}
@@ -314,14 +310,9 @@ export function SyncPairingFlow({
         </form>
       ) : (
         <div>
-          <div className="mb-5">
-            <SettingsSubsectionHeading className="mb-1 font-display text-lg">
-              Join another device
-            </SettingsSubsectionHeading>
-            <p className="text-sm text-ink-soft">
-              Scan the pairing QR from your other device, or enter its channel details manually.
-            </p>
-          </div>
+          <SettingsSubsectionHeading className="mb-5 font-display text-lg">
+            Join another device
+          </SettingsSubsectionHeading>
           <SegmentedPills
             label="Pairing method"
             value={joinMode}
@@ -354,9 +345,7 @@ export function SyncPairingFlow({
                   </Button>
                 )}
                 {!cameraAvailable && (
-                  <span className="text-xs text-ink-faint">
-                    Camera scanning is unavailable in this browser.
-                  </span>
+                  <span className="text-xs text-ink-faint">Camera unavailable.</span>
                 )}
               </div>
               {scanning && (
@@ -366,7 +355,6 @@ export function SyncPairingFlow({
                     ref={scannerElementRef}
                     className="mx-auto aspect-square max-w-sm overflow-hidden rounded-lg"
                   />
-                  <p className="mt-2 text-xs text-white/70">Point the camera at the pairing QR.</p>
                 </div>
               )}
               {scanError && (
@@ -377,8 +365,8 @@ export function SyncPairingFlow({
               {pairingPayload && (
                 <form onSubmit={(event) => void handleQrJoin(event)} className="space-y-4">
                   <div className="rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm text-ink-soft">
-                    QR read. This device will pair with{' '}
-                    <span className="font-mono text-xs text-ink">{pairingPayload.relayUrl}</span>.
+                    Relay ·{' '}
+                    <span className="font-mono text-xs text-ink">{pairingPayload.relayUrl}</span>
                   </div>
                   <SyncField
                     id="sync-qr-passphrase"
@@ -390,8 +378,7 @@ export function SyncPairingFlow({
                     autoComplete="new-password"
                   />
                   <p className="text-xs text-ink-faint">
-                    Choose at least 16 characters to protect this device’s recovery copy. You can
-                    reuse your existing recovery passphrase.
+                    At least 16 characters. You can reuse your passphrase.
                   </p>
                   {formError}
                   <div className="flex flex-wrap gap-2">
@@ -433,8 +420,7 @@ export function SyncPairingFlow({
                 autoComplete="current-password"
               />
               <p className="text-xs text-ink-faint">
-                Enter the recovery passphrase chosen when sync was first set up. Keep it and the
-                channel id private.
+                Use your existing passphrase. Keep it and the channel ID private.
               </p>
               {advanced}
               {formError}

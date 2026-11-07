@@ -7,7 +7,7 @@ it('uses actual report views for fictional answers without unlocking, reading or
   const onExit = vi.fn();
   render(<DemoClassPage onExit={onExit} />);
   expect(screen.getByRole('heading', { name: 'Biology — fictional demo' })).toBeVisible();
-  const notice = 'Fictional demo: six invented pupils and answers. Nothing is saved or sent.';
+  const notice = /Nothing is saved or sent/;
   expect(screen.getByText(notice)).toBeVisible();
   expect(screen.getByRole('table')).toBeVisible();
   const revisit = screen.getByRole('heading', { name: 'Worth revisiting' }).parentElement!;

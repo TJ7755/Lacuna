@@ -168,14 +168,6 @@ export function BatchAuthoringPromptDialog({
                 </label>
               </div>
 
-              <div className="rounded-2xl bg-ink/[0.04] px-4 py-3">
-                <p className="text-sm font-medium text-ink">Concept checks, not worksheets</p>
-                <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-                  Working items should test a reusable method or derivation. Use symbolic general
-                  forms where possible; arbitrary-number exercise variants are not supported yet.
-                </p>
-              </div>
-
               <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm text-ink-soft">
                 <Toggle
                   checked={showConstraints}

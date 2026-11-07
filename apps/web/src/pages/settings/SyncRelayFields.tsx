@@ -63,8 +63,7 @@ export function SyncRelayFields({
                 error={feedback?.field === 'sync-mint-secret' ? feedback.message : undefined}
               />
               <p className="text-xs text-ink-faint">
-                The relay mint secret is used only to create this channel and is not stored. Ask
-                your relay administrator for it.
+                Ask your relay administrator. Lacuna does not store this secret.
               </p>
             </>
           )}

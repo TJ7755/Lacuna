@@ -52,7 +52,7 @@ describe('SharePage links', () => {
     expect(link).toHaveAttribute('href', `https://gaps.getlacuna.app/#course=${shareId}`);
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-    await screen.findByText(/Copy and pass on this link/);
+    await screen.findByText(/Managed on the publishing device/);
 
     chooseCourse('Other course');
     expect(link).toHaveAttribute('href', 'https://gaps.getlacuna.app');
@@ -207,7 +207,7 @@ describe('SharePage links', () => {
     const replacementId = 'f'.repeat(32);
     mockPublishShareLink.mockResolvedValue({ shareId: replacementId, revision: 2, byteSize: 128 });
     render(<SharePage />);
-    await screen.findByText(/Copy and pass on this link/);
+    await screen.findByText(/Managed on the publishing device/);
     expect(screen.getByRole('textbox', { name: 'Share link' })).toHaveValue(
       `${window.location.origin}/#/s/${'e'.repeat(32)}`,
     );
@@ -232,7 +232,7 @@ describe('SharePage links', () => {
     render(<SharePage />);
     await expectShareLinkRevision(2);
     fireEvent.click(screen.getByRole('button', { name: 'Update link' }));
-    await screen.findByText(/Copy and pass on this link/);
+    await screen.findByText(/Managed on the publishing device/);
     expect(screen.getByRole('textbox', { name: 'Share link' })).toHaveValue(
       `${window.location.origin}/#/s/${'b'.repeat(32)}`,
     );

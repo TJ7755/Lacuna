@@ -42,7 +42,7 @@ export function SyncDetails({ state }: { state: SyncState }) {
       headerClassName="flex min-h-11 items-center justify-between gap-3 rounded-lg text-sm text-ink-soft outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
     >
       <div className="space-y-2 pb-3 pt-1 text-sm text-ink-soft">
-        <p>Keeps paired devices up to date. Export a backup for a separate copy.</p>
+        <p>Export a backup for a separate copy.</p>
         <div className="flex flex-wrap gap-x-5 gap-y-1 break-all text-xs">
           <span>{state.relayUrl ?? 'Relay not recorded'}</span>
           <span>{state.channelId ?? 'channel unavailable'}</span>

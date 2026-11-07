@@ -40,6 +40,7 @@ import {
   getLocalTimeZone,
 } from '../../utils/datetime';
 import { CourseStudyTarget } from '../course/CourseStudyTarget';
+import { countOf } from '../../utils/plural';
 
 /** A decoded, not-yet-confirmed import. `merge` is present when the payload's lineage
  *  (Arc 7 §7.5) matches a course already imported locally — routing this to the merge
@@ -466,49 +467,37 @@ export function SharedCourseImport({
                 </p>
               ) : pending.summary.kind === 'course' ? (
                 <p className="mb-3 text-sm text-ink-soft">
-                  <strong className="text-ink">{pending.summary.courseName}</strong> —{' '}
-                  <strong className="text-ink">{pending.summary.lessonCount}</strong> lesson
-                  {pending.summary.lessonCount === 1 ? '' : 's'},{' '}
-                  <strong className="text-ink">{pending.summary.noteCount ?? 0}</strong> note
-                  {pending.summary.noteCount === 1 ? '' : 's'} and{' '}
-                  <strong className="text-ink">{pending.summary.cardCount}</strong> card
-                  {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
-                  {formatDate(pending.summary.exportedAt)}.
+                  <strong className="text-ink">{pending.summary.courseName}</strong> ·{' '}
+                  {countOf(pending.summary.lessonCount, 'lesson')} ·{' '}
+                  {countOf(pending.summary.noteCount ?? 0, 'note')} ·{' '}
+                  {countOf(pending.summary.cardCount, 'card')}
                 </p>
               ) : (
                 <p className="mb-3 text-sm text-ink-soft">
-                  This code contains{' '}
-                  <strong className="text-ink">{pending.summary.deckCount}</strong> lesson
-                  {pending.summary.deckCount === 1 ? '' : 's'} and{' '}
-                  <strong className="text-ink">{pending.summary.cardCount}</strong> card
-                  {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
-                  {formatDate(pending.summary.exportedAt)}. It will be added as a single imported
-                  course.
+                  {countOf(pending.summary.deckCount, 'lesson')} ·{' '}
+                  {countOf(pending.summary.cardCount, 'card')} ·{' '}
+                  {formatDate(pending.summary.exportedAt)}
                 </p>
               )}
               {!pending.merge && pending.summary.omittedImages && (
                 <p className="mb-4 rounded-2xl bg-ink/[0.06] px-4 py-3 text-sm text-ink-soft">
-                  This share code omitted media to keep the code small. Images and audio will appear
-                  as placeholders after import. Use a full backup for an exact transfer.
+                  Images and audio omitted from this code will appear as placeholders.
                 </p>
               )}
               {pending.scheduling?.fromOnboarding && (
                 <p className="mb-5 text-sm text-ink-soft">
                   {pending.scheduling.mode === 'exam'
-                    ? `Reviews build up to your exam on ${formatDateTime(pending.scheduling.examDate, pending.scheduling.timeZone)}.`
-                    : 'Reviews keep everything fresh, with no exam date.'}{' '}
-                  You can change this in Course settings.
+                    ? `Exam date · ${formatDateTime(pending.scheduling.examDate, pending.scheduling.timeZone)}`
+                    : 'Steady retention'}
                 </p>
               )}
               {pending.scheduling && !pending.scheduling.fromOnboarding && (
                 <div className="mb-5 space-y-3">
-                  <p className="text-sm text-ink-soft">
-                    {pending.scheduling.suggestion && (
-                      <>Teacher suggests {pending.scheduling.suggestion}. </>
-                    )}
-                    Choose Exam date to confirm or change your date, or Steady retention for no
-                    fixed exam. Your choice stays yours when the teacher updates this course.
-                  </p>
+                  {pending.scheduling.suggestion && (
+                    <p className="text-sm text-ink-soft">
+                      Teacher suggests {pending.scheduling.suggestion}.
+                    </p>
+                  )}
                   <CourseStudyTarget
                     schedulingMode={pending.scheduling.mode}
                     setSchedulingMode={(mode) => updateScheduling({ mode })}

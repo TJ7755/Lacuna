@@ -120,7 +120,7 @@ describe('Analytics', () => {
     }
   });
 
-  it('shows a single day of predictions and explains how the trajectory averages courses', () => {
+  it('shows a single day of predictions', () => {
     live.courses = [{ id: 'c', name: 'Course' }];
     live.history = [
       { timestamp: Date.now(), deckId: 'd', courseId: 'c', averagePredictedRetrievability: 0.73 },
@@ -131,9 +131,7 @@ describe('Analytics', () => {
       expect(chart).toHaveTextContent(
         /Predicted 73% on .+\. Study on another day to see a trend\./,
       );
-      expect(chart).toHaveTextContent(
-        'Each point is a day you studied, averaging the courses studied that day.',
-      );
+      expect(chart).toHaveAttribute('data-rows', '1');
     } finally {
       live.courses = [];
       live.history = [];
@@ -159,7 +157,7 @@ describe('Analytics', () => {
     expect(screen.getByText('0 reviews in 7 days')).toBeInTheDocument();
   });
 
-  it('explains stability and leeches and links leeches to the affected cards', () => {
+  it('shows stability and leech counts and links to the affected cards', () => {
     live.courses = [{ id: 'c', name: 'Biology' }];
     live.cards = [
       { id: 'leech', courseId: 'c', lapses: 8, stability: 2, history: [] },
@@ -168,9 +166,9 @@ describe('Analytics', () => {
     try {
       render(<Analytics />, { wrapper: MemoryRouter });
       const stability = screen.getByRole('region', { name: 'Stability profile' });
-      expect(stability).toHaveTextContent("Days until each card's recall is likely to fall to 90%");
+      expect(stability).toHaveTextContent('Days until recall falls to 90%');
       const leeches = screen.getByRole('region', { name: 'Leech count by course' });
-      expect(leeches).toHaveTextContent('Cards you keep forgetting.');
+      expect(leeches).toHaveAttribute('data-rows', '1');
       expectAppDestination(
         within(leeches).getByRole('link', { name: 'Show leech cards' }),
         '/search?filter=leech',

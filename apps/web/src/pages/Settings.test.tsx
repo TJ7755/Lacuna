@@ -230,7 +230,7 @@ describe('Settings', () => {
     expect(screen.getByRole('switch', { name: 'Show Search entry' })).toBeInTheDocument();
     expect(
       screen.getByRole('spinbutton', {
-        name: 'Threshold (far)',
+        name: 'Backlog before revision period',
         hidden: true,
       }),
     ).toBeInTheDocument();
@@ -414,7 +414,7 @@ describe('Settings', () => {
       screen.getByRole('switch', { name: 'Optimise scheduling', hidden: true }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('spinbutton', { name: 'Threshold (far)', hidden: true }),
+      screen.getByRole('spinbutton', { name: 'Backlog before revision period', hidden: true }),
     ).toBeInTheDocument();
   });
 });

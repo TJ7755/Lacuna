@@ -167,9 +167,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       /^[0-9A-Z]{4}-[0-9A-Z]{4}$/,
     );
     await expect(teacher.getByRole('button', { name: 'Copy code', exact: true })).toBeVisible();
-    await expect(
-      teacher.getByText(/Pupils open getlacuna.app, choose Import, then Join a class/),
-    ).toBeVisible();
+    await expect(teacher.getByText(/Import → Join a class/)).toBeVisible();
     const code = await teacher.getByLabel('Class code', { exact: true }).inputValue();
     expect(code).toMatch(/^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{4}-[0-9ABCDEFGHJKMNPQRSTVWXYZ]{4}$/);
     const link = await teacher.getByLabel('Pupil join link', { exact: true }).inputValue();

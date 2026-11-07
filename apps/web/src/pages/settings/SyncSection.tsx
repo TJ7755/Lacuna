@@ -369,7 +369,7 @@ export function SyncSection() {
                 size="sm"
                 className="px-3 text-positive"
                 aria-label="Lock"
-                title="Unlocked — this device remembers its key, so sync works without the passphrase."
+                title="Lock sync"
                 onClick={() => void handleLock()}
                 disabled={busy !== null}
               >
@@ -395,11 +395,8 @@ export function SyncSection() {
                 }
                 type="password"
                 autoComplete="current-password"
-                placeholder="Needed to sync, show the QR or delete the channel"
               />
-              <p className="mt-2 text-xs text-ink-faint">
-                This is used locally to open the encrypted recovery key. It is never sent to Lacuna.
-              </p>
+              <p className="mt-2 text-xs text-ink-faint">Your passphrase stays on this device.</p>
             </div>
           )}
 

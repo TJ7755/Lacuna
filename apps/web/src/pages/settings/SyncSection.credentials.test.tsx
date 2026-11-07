@@ -112,10 +112,7 @@ describe('SyncSection credentials', () => {
     const details = screen.getByRole('button', { name: 'End-to-end encrypted' });
     expect(details).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('alert')).toHaveTextContent('Relay unavailable');
-    expect(screen.getByRole('button', { name: 'Lock' })).toHaveAttribute(
-      'title',
-      'Unlocked — this device remembers its key, so sync works without the passphrase.',
-    );
+    expect(screen.getByRole('button', { name: 'Lock' })).toBeEnabled();
     fireEvent.click(details);
     expect(details).toHaveAttribute('aria-expanded', 'true');
     await waitFor(() => expect(screen.getByText(state.relayUrl!)).toBeVisible());

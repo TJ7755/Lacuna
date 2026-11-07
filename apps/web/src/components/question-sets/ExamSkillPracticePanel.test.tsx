@@ -79,7 +79,7 @@ it('renders authored exam skills and starts their actual saved questions with ex
   mounted.unmount();
   mounted = view();
   fireEvent.click(screen.getByRole('button', { name: 'Practise Interpret a graph' }));
-  await screen.findByText(/No unseen questions remain/);
+  await screen.findByText('No unseen questions left.');
   expect(await db.questionSetAttempts.count()).toBe(1);
   fireEvent.click(screen.getByRole('button', { name: 'Practise familiar questions' }));
   await screen.findByText('Answer selected question');
@@ -93,6 +93,6 @@ it('explains an untagged bank and disables starting practice', () => {
       <ExamSkillPracticePanel courseId="course" skills={[]} disabled={false} />
     </MemoryRouter>,
   );
-  expect(screen.getByText(/No exam skills are explicitly tagged/)).toBeVisible();
+  expect(screen.getByText('No tagged exam skills yet.')).toBeVisible();
   expect(screen.getByRole('button', { name: 'Practise exam skills' })).toBeDisabled();
 });

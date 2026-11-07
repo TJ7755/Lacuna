@@ -65,11 +65,7 @@ it('creates both secrets with one generated code and continues without downloadi
   expect(screen.getByLabelText('Recovery code').children[1]).toHaveTextContent(
     code.slice(12).match(/.{4}/g).join('-'),
   );
-  expect(
-    screen.getByText(
-      'You need this code and the file to open the class on another device. This is the only time the code is shown.',
-    ),
-  ).toBeVisible();
+  expect(screen.getByText(/This code is shown once/)).toBeVisible();
   expect(screen.getByRole('button', { name: 'Continue to class' })).toBeEnabled();
   expect(mocks.download).not.toHaveBeenCalled();
   fireEvent.click(await screen.findByRole('button', { name: 'Continue to class' }));

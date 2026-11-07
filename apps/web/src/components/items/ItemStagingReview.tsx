@@ -330,11 +330,7 @@ export function ItemStagingReview({
 
             <AnimatedDisclosure open={batchRevisionOpen && failingCandidates.length > 0}>
               <div className="rounded-2xl bg-ink/[0.04] p-4">
-                <p className="text-sm text-ink-soft">
-                  The prompt carries each failing item and its validation errors. Paste the reply
-                  back below; the {failingCandidates.length} revised item
-                  {failingCandidates.length === 1 ? '' : 's'} replace only those, in order.
-                </p>
+                <p className="text-sm text-ink-soft">Only failing items are replaced, in order.</p>
                 <label className={`${fieldLabelClassName} mt-3 flex flex-col gap-2`}>
                   Anything else to change? (optional)
                   <textarea

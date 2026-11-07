@@ -196,7 +196,7 @@ describe('MergeReviewPanel', () => {
     expect(screen.getByText('Updates')).toBeTruthy();
     expect(screen.getByText('Removals')).toBeTruthy();
     expect(screen.getByText('Conflicts')).toBeTruthy();
-    expect(screen.getByText("You've edited this item.")).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Take theirs' })).toBeEnabled();
   });
 
   it('accepts a single update with the right reference', () => {
