@@ -21,7 +21,7 @@ export function lessonCardMembershipByLesson(
   // Iterate cards rather than links to keep the existing input order within each lesson.
   for (const card of cards) {
     const primary = card.primaryLessonId;
-    if (primary != null) membership.get(primary)?.push(card);
+    if (primary !== null && primary !== undefined) membership.get(primary)?.push(card);
     const linked = linksByCard.get(card.id);
     if (!linked) continue;
     for (const lessonId of linked) {

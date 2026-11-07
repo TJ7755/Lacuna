@@ -213,6 +213,13 @@ describe('searchCards', () => {
       expect(searchCards(query, [loaded])).toHaveLength(0);
   });
 
+  it.each(['\f', '\v', '?'])('preserves source when an image payload contains %j', (separator) => {
+    const loaded = card('malformed-image', {
+      front: `![Example](data:image/png;base64,Hello${separator}text)`,
+    });
+    expect(searchCards('base64,hello', [loaded])).toHaveLength(1);
+  });
+
   it('keeps image URL examples searchable when the author presents them as text', () => {
     const loaded = card('example', {
       front: 'Explain the `data:image/png;base64,AAAA` example.',

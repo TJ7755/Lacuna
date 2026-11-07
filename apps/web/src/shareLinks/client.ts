@@ -6,6 +6,7 @@ import { DEFAULT_RELAY_URL } from '../sync/pairingConfig';
 import { SHARE_ID_RE } from './shareId';
 
 export { DEFAULT_RELAY_URL };
+export { SHARE_ID_RE };
 
 const WRITE_TOKEN_RE = /^[0-9a-f]{64}$/;
 

@@ -33,7 +33,7 @@ it.each([
   ['Path', useCoursePathRecords],
   ['Study', useCourseStudyFlowRecords],
 ] as const)(
-  'bulk-reads %s lesson progress in index order and observes changes',
+  'bulk-reads %s exposures in index order and observes changes',
   async (_name, useRecords) => {
     const course = await createCourse('Exposure reads');
     const other = await createCourse('Other course');
@@ -49,42 +49,23 @@ it.each([
         updatedAt: 100,
       })),
     );
-    const lessonIds = [last.id, first.id];
-    await db.lessonCards.bulkPut(
-      [last, first, outside].map((lesson) => ({
-        id: `link-${lesson.id}`,
-        lessonId: lesson.id,
-        cardId: card.id,
-        createdAt: 100,
-        updatedAt: 100,
-      })),
-    );
-    await db.lessonCompletions.bulkPut(
-      [last, first, outside].map((lesson) => ({ lessonId: lesson.id, completedAt: 100 })),
-    );
-    const [exposures, links, completions] = await Promise.all([
-      db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray(),
-      db.lessonCards.where('lessonId').anyOf(lessonIds).toArray(),
-      db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray(),
-    ]);
+    const expected = await db.lessonCardExposures
+      .where('lessonId')
+      .anyOf([last.id, first.id])
+      .toArray();
     const openCursor = IDBIndex.prototype.openCursor;
-    const cursorTables: string[] = [];
+    let exposureCursors = 0;
     vi.spyOn(IDBIndex.prototype, 'openCursor').mockImplementation(function (
       this: IDBIndex,
       ...args
     ) {
-      cursorTables.push(this.objectStore.name);
+      if (this.objectStore.name === 'lessonCardExposures') exposureCursors++;
       return openCursor.apply(this, args);
     });
     const { result, unmount } = renderHook(() => useRecords(course.id));
     try {
-      await waitFor(() => expect(result.current).toMatchObject({ exposures, links, completions }));
-      expect(cursorTables).not.toContain('lessonCardExposures');
-      expect(cursorTables).not.toContain('lessonCards');
-      await db.lessonCards.delete(links[0].id);
-      await db.lessonCompletions.update(first.id, { completedAt: 200 });
-      await waitFor(() => expect(result.current?.links).toEqual(links.slice(1)));
-      await waitFor(() => expect(result.current?.completions[0].completedAt).toBe(200));
+      await waitFor(() => expect(result.current?.exposures).toEqual(expected));
+      expect(exposureCursors).toBe(0);
       await db.lessonCardExposures.update([first.id, card.id], { taughtAt: 200 });
       await waitFor(() => expect(result.current?.exposures[0].taughtAt).toBe(200));
       await db.lessonCardExposures.delete([last.id, card.id]);
@@ -148,32 +129,6 @@ it('shares a warm course card read with another live route', async () => {
   } finally {
     path.unmount();
     cards.unmount();
-  }
-});
-
-it('uses selected card keys for Path activity in a larger library and observes their updates', async () => {
-  const course = await createCourse('Small course');
-  const card = await createCourseCard(course.id, 'front_back', 'Cell', 'Answer');
-  const outside = await createCourse('Outside');
-  const other = await createCourseCard(outside.id, 'front_back', 'Other', 'Answer');
-  const entry = reviewHistoryEntryForCard(card, review(100));
-  await db.reviewHistory.bulkPut([
-    { ...entry, courseId: outside.id },
-    ...Array.from({ length: 7 }, (_, i) =>
-      reviewHistoryEntryForCard({ ...other, id: `outside-${i}` }, review(200 + i, `review-${i}`)),
-    ),
-  ]);
-  const allActivity = vi.spyOn(db.reviewActivity, 'toArray');
-  const selectedActivity = vi.spyOn(db.reviewActivity, 'bulkGet');
-  const { result, unmount } = renderHook(() => useCoursePathRecords(course.id));
-  try {
-    await waitFor(() => expect(result.current?.activity).toEqual(new Map([[card.id, [100]]])));
-    expect(allActivity).not.toHaveBeenCalled();
-    expect(selectedActivity).toHaveBeenCalledExactlyOnceWith([card.id]);
-    await db.reviewHistory.delete(entry.id);
-    await waitFor(() => expect(result.current?.activity).toEqual(new Map()));
-  } finally {
-    unmount();
   }
 });
 

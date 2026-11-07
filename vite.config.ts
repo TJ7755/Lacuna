@@ -186,7 +186,7 @@ export default defineConfig({
             {
               // These scheduling helpers are shared by the same study entry points.
               name: 'study-eligibility',
-              test: /[\\/]src[\\/]fsrs[\\/](?:eligibility|horizon|assessmentTiming)\.ts$/,
+              test: /[\\/]src[\\/]fsrs[\\/](?:eligibility|horizon|assessmentTiming|objective|progress)\.ts$/,
               includeDependenciesRecursively: false,
             },
             {
@@ -209,7 +209,7 @@ export default defineConfig({
             },
             {
               name: 'database',
-              test: /[\\/]src[\\/](?:utils[\\/]id|db[\\/](?:database|schema|reviewActivityProjection|schemaFloor|assessmentMigration|backingDecks|schedulingUnitBuilder|reviewHistory|mutationStamp|preMigrationSnapshots))\.ts$/,
+              test: /[\\/]src[\\/](?:utils[\\/]id|db[\\/](?:database|schema|reviewActivityProjection|reviewActivityRead|schemaFloor|assessmentMigration|backingDecks|schedulingUnitBuilder|reviewHistory|mutationStamp|preMigrationSnapshots))\.ts$/,
               includeDependenciesRecursively: false,
             },
             {
@@ -234,7 +234,7 @@ export default defineConfig({
             },
             {
               name: 'course-sequencing',
-              test: /[\\/]src[\\/](?:course[\\/](?:lessonOrder|assessmentCoverage)|fsrs[\\/]examDate)\.ts$/,
+              test: /[\\/]src[\\/](?:course[\\/](?:lessonOrder|assessmentCoverage|unlock)|fsrs[\\/]examDate)\.ts$/,
             },
             {
               name: 'web-runtime',

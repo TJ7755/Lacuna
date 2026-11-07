@@ -88,7 +88,7 @@ export const useCoursePathRecords = retainedLiveQuery((courseId) =>
 
 async function pathReviewActivity(cards: Card[]): Promise<ReviewActivity> {
   const [activity, legacy] = await Promise.all([
-    readReviewActivity(cards, 'selection'),
+    readReviewActivity(cards),
     // Current stored cards have no history projection. Preserve the adapter's
     // canonical precedence and legacy-only events only where old records need it.
     hydrateCardsWithHistory(cards.filter((card) => card.history?.length > 0)),
@@ -99,29 +99,6 @@ async function pathReviewActivity(cards: Card[]): Promise<ReviewActivity> {
       card.history.map((review) => review.timestamp),
     );
   return activity;
-}
-
-function readLessonProgress(lessons: Lesson[]) {
-  if (!lessons.length) return Promise.resolve([[], [], []] as const);
-  // Exact indexed ranges let IndexedDB return each lesson in bulk, while the
-  // sorted keys preserve the previous anyOf index order.
-  const ids = lessons.map((lesson) => lesson.id).sort();
-  return db.transaction(
-    'r',
-    [db.lessonCards, db.lessonCardExposures, db.lessonCompletions],
-    async () => {
-      const [links, exposures, completions] = await Promise.all([
-        Promise.all(ids.map((id) => db.lessonCards.where('lessonId').equals(id).toArray())),
-        Promise.all(ids.map((id) => db.lessonCardExposures.where('lessonId').equals(id).toArray())),
-        db.lessonCompletions.bulkGet(ids),
-      ]);
-      return [
-        links.flat(),
-        exposures.flat(),
-        completions.filter((row) => row !== undefined),
-      ] as const;
-    },
-  );
 }
 
 async function readCourseStudyFlowRecords(
@@ -182,17 +159,33 @@ async function readCourseStudyFlowRecords(
   const course = hydrateCourse(courseRecord, finalAssessmentForCourse(courseId, assessments));
   // The Path only plans question practice when it is the course's sole study content.
   const planQuestions = includeQuestionPractice || (rawCards.length === 0 && lessons.length === 0);
+  const lessonIds = lessons.map((lesson) => lesson.id);
   const [
     cards,
     activity,
-    [links, exposures, completions],
+    links,
+    exposures,
+    completions,
     performance,
     reviewCounts,
     questionSetCount,
   ] = await Promise.all([
     includeQuestionPractice ? hydrateCardsWithHistory(rawCards) : rawCards,
     includeQuestionPractice ? undefined : pathReviewActivity(rawCards),
-    readLessonProgress(lessons),
+    lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+    lessonIds.length > 0
+      ? db.transaction('r', db.lessonCardExposures, async () => {
+          // Exact ranges use getAll rather than a cursor callback for every card.
+          // Sort lesson IDs to retain the anyOf index/primary-key result order.
+          const exposures = await Promise.all(
+            [...lessonIds]
+              .sort()
+              .map((id) => db.lessonCardExposures.where('lessonId').equals(id).toArray()),
+          );
+          return exposures.flat();
+        })
+      : [],
+    lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
     performanceForCourseBackingDecks(courseId, rawCards),
     course.dailyReviewGoal || course.maxReviewsPerDay
       ? dailyReviewCounts('course')
