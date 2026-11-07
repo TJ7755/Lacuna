@@ -3,6 +3,7 @@ import { scaledSpring } from '../ui/motion';
 import { Component, createRef, type ErrorInfo, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
 import { Button } from '../ui/Button';
+import { trackProductEvent } from '../../state/productAnalytics';
 import {
   buildDiagnostics,
   formatDiagnostics,
@@ -75,6 +76,8 @@ export class ErrorBoundary extends Component<Props, State> {
       console.error('Lacuna error boundary caught an error:', error, info);
     }
     this.setState({ componentStack: info.componentStack ?? null });
+    // Anonymous product count only; the diagnostic bundle itself stays local.
+    trackProductEvent('error_boundary_shown');
     // Gather non-sensitive counts for the diagnostic bundle (best-effort).
     gatherCounts()
       .then((counts) => {

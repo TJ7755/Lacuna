@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { describe, expect, it, vi } from 'vitest';
-import { installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  installProductEventPlaceholder,
+  installSimpleAnalytics,
+  registerProductionServiceWorker,
+  removeSimpleAnalytics,
+} from './webBootstrap';
 
 describe('hosted web bootstrap', () => {
   it('does not attempt service-worker registration from a packaged app origin', async () => {
@@ -30,17 +35,57 @@ describe('hosted web bootstrap', () => {
 });
 
 describe('Simple Analytics bootstrap', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it('loads the asynchronous script once on the production website', () => {
     const targetDocument = document.implementation.createHTMLDocument();
     const options = { targetDocument, isProduction: true, origin: 'https://getlacuna.app' };
     installSimpleAnalytics(options);
     installSimpleAnalytics(options);
-    const scripts = targetDocument.querySelectorAll('script');
+    const scripts = targetDocument.querySelectorAll<HTMLScriptElement>(
+      'script[src="https://scripts.simpleanalyticscdn.com/latest.js"]',
+    );
     expect(scripts).toHaveLength(1);
     expect(scripts[0].src).toBe('https://scripts.simpleanalyticscdn.com/latest.js');
     expect(scripts[0].async).toBe(true);
     expect(scripts[0].crossOrigin).toBe('anonymous');
     expect(scripts[0].hasAttribute('data-collect-dnt')).toBe(false);
+    expect(
+      targetDocument.querySelector('script[data-product-analytics-placeholder="sa_event"]'),
+    ).not.toBeNull();
+  });
+
+  it('queues product events until the embed loads', () => {
+    const targetDocument = document.implementation.createHTMLDocument();
+    installProductEventPlaceholder(targetDocument);
+    installProductEventPlaceholder(targetDocument);
+    expect(
+      targetDocument.querySelectorAll('script[data-product-analytics-placeholder="sa_event"]'),
+    ).toHaveLength(1);
+  });
+
+  it('removes the script and placeholder after opting out', () => {
+    const targetDocument = document.implementation.createHTMLDocument();
+    installSimpleAnalytics({
+      targetDocument,
+      isProduction: true,
+      origin: 'https://getlacuna.app',
+    });
+    removeSimpleAnalytics(targetDocument);
+    expect(targetDocument.querySelector('script')).toBeNull();
+  });
+
+  it('does not load analytics after opting out', () => {
+    const targetDocument = document.implementation.createHTMLDocument();
+    installSimpleAnalytics({
+      targetDocument,
+      isProduction: true,
+      origin: 'https://getlacuna.app',
+      productAnalyticsEnabled: false,
+    });
+    expect(targetDocument.querySelector('script')).toBeNull();
   });
 
   it.each([

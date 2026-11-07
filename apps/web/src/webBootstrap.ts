@@ -1,3 +1,5 @@
+import { isWebsiteAnalyticsAllowed } from './state/productAnalytics';
+
 /** In-app hash routes start with `#/`; any other fragment is an in-page anchor. */
 export function isAppHashRoute(hash: string): boolean {
   return hash.startsWith('#/');
@@ -38,17 +40,25 @@ export async function registerProductionServiceWorker(
   }
 }
 
-/** Keep website analytics out of desktop, development and preview sessions. */
+/** Hosted web only: production getlacuna.app, opted in, DNT/GPC respected, no Electron. */
 export function installSimpleAnalytics({
   targetDocument = document,
   isProduction = import.meta.env.PROD,
   origin = window.location.origin,
+  productAnalyticsEnabled,
 }: {
   targetDocument?: Document;
   isProduction?: boolean;
   origin?: string;
+  /** Test seam for the device opt-out; defaults to the stored preference. */
+  productAnalyticsEnabled?: boolean;
 } = {}): void {
   if (!isProduction || origin !== 'https://getlacuna.app') return;
+  if (!isWebsiteAnalyticsAllowed({ origin, isProduction, productAnalyticsEnabled })) {
+    removeSimpleAnalytics(targetDocument);
+    return;
+  }
+  installProductEventPlaceholder(targetDocument);
 
   const source = 'https://scripts.simpleanalyticscdn.com/latest.js';
   if (targetDocument.querySelector(`script[src="${source}"]`)) return;
@@ -59,4 +69,30 @@ export function installSimpleAnalytics({
   // Use CORS so the hosted site's cross-origin isolation permits this script.
   script.crossOrigin = 'anonymous';
   targetDocument.body.append(script);
+}
+
+/**
+ * Queue product counts until Simple Analytics loads. Events fired before the
+ * embed arrives would otherwise be lost; the queued calls flush in order once
+ * the real `sa_event` replaces this placeholder.
+ */
+export function installProductEventPlaceholder(targetDocument: Document = document): void {
+  if (targetDocument.querySelector('script[data-product-analytics-placeholder="sa_event"]')) return;
+  const placeholder = targetDocument.createElement('script');
+  placeholder.dataset.productAnalyticsPlaceholder = 'sa_event';
+  placeholder.textContent =
+    'window.sa_event=window.sa_event||function(){var a=[].slice.call(arguments);window.sa_event.q?window.sa_event.q.push(a):window.sa_event.q=[a]};';
+  targetDocument.head.append(placeholder);
+}
+
+/** Remove a previously installed Simple Analytics script after opting out. */
+export function removeSimpleAnalytics(targetDocument: Document = document): void {
+  const scripts = targetDocument.querySelectorAll(
+    'script[src="https://scripts.simpleanalyticscdn.com/latest.js"]',
+  );
+  scripts.forEach((script) => script.remove());
+  const placeholder = targetDocument.querySelector(
+    'script[data-product-analytics-placeholder="sa_event"]',
+  );
+  placeholder?.remove();
 }

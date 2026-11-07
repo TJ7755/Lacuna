@@ -15,6 +15,7 @@ import { ShortcutsSection } from './settings/ShortcutsSection';
 import { SidebarSection } from './settings/SidebarSection';
 import { CourseHeaderSection } from './settings/CourseHeaderSection';
 import { CourseDefaultsSection, StudySection } from './settings/StudySection';
+import { ProductAnalyticsSection } from './settings/ProductAnalyticsSection';
 import { SyncSection } from './settings/SyncSection';
 import { JevSection } from './settings/JevSection';
 import { SettingsDisclosure } from './settings/SettingsDisclosure';
@@ -40,6 +41,7 @@ const DATA_ANCHORS = [
   'settings-data-links',
   'settings-sync',
   'settings-export',
+  'settings-product-analytics',
 ];
 const INTEGRATION_ANCHORS = ['settings-install', 'settings-jev', 'settings-mcp'];
 const COMMON_ANCHORS = new Set(['settings-appearance', 'settings-input', 'settings-pomodoro']);
@@ -103,13 +105,14 @@ export function Settings() {
           <SettingsDisclosure
             id="settings-group-data"
             title="Your data"
-            summary="Backups, sync and recovery"
+            summary="Backups, sync, recovery and usage counts"
             anchors={DATA_ANCHORS}
           >
             <BackupsSection />
             <DataLinksSection />
             <SyncSection />
             <DataPortabilitySection motionMultiplier={motionMultiplier} />
+            <ProductAnalyticsSection />
           </SettingsDisclosure>
         </Rise>
         <Rise index={6}>

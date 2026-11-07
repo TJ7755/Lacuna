@@ -13,6 +13,7 @@ import { useGradingMode } from '../state/gradingMode';
 import { useAnswerStrictness } from '../state/answerStrictness';
 import { useStudyMode } from '../state/studyMode';
 import { useLessonCourse } from '../state/useCourseData';
+import { trackProductEvent } from '../state/productAnalytics';
 import { useStartInFocusMode } from '../state/focusModePreference';
 import { useShortcutBindings } from '../state/shortcutBindings';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -265,6 +266,7 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
   useEffect(() => {
     if (phase === 'finished' && summary) {
       window.dispatchEvent(new CustomEvent('lacuna:study-session-end'));
+      trackProductEvent('study_session_completed');
     }
   }, [phase, summary]);
 

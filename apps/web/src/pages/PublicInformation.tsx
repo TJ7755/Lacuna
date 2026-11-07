@@ -89,6 +89,18 @@ export function Privacy() {
           .
         </p>
         <p>
+          On the hosted website only, Lacuna can also count anonymous product use: app opens,
+          onboarding completion, study sessions and error screens. Counts carry only the app version
+          and a coarse touch or desktop band, use cookieless Simple Analytics custom events hosted
+          in the EU, and respect Do Not Track and Global Privacy Control. Collection never includes
+          card or lesson content, answers, identifiers, account details or cross-site tracking. It
+          is on by default for new installs so maintainers can see whether onboarding and study
+          sessions work; you can switch it off during onboarding or later in Settings, which removes
+          the analytics script and sends nothing further. It never runs in the desktop app, preview
+          builds or development. Simple Analytics aggregates counts server-side; see its
+          documentation for page-view retention.
+        </p>
+        <p>
           Web builds deployed on Vercel also enable Vercel Web Analytics in the application. It
           measures page views and visit information such as referrers, browser, device and
           approximate location. See{' '}

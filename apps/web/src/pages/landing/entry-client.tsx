@@ -2,6 +2,7 @@ import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { LandingRoot } from './LandingRoot';
 import { markLandingHandover } from '../../landingHandover';
 import { installSimpleAnalytics, isAppHashRoute } from '../../webBootstrap';
+import { trackProductEvent } from '../../state/productAnalytics';
 import '../../index.css';
 
 let landingRoot: Root | null = null;
@@ -69,6 +70,7 @@ function prefetchApp(): void {
 /** Hydrate the prerendered landing markup; hand over to the app on navigation. */
 export function hydrateLanding(): void {
   installSimpleAnalytics();
+  trackProductEvent('app_opened');
   const container = document.getElementById('root')!;
   if (container.querySelector('.landing-page')) {
     landingRoot = hydrateRoot(container, <LandingRoot />);

@@ -1,6 +1,7 @@
 import './index.css';
 import { installStaleChunkRecovery } from './pwa/staleChunkRecovery';
 import { installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
+import { trackProductEvent } from './state/productAnalytics';
 import { renderApp } from './appRoot';
 
 async function clearDevelopmentPwaState(): Promise<void> {
@@ -27,6 +28,7 @@ function start(): void {
   if (document.documentElement.hasAttribute('data-landing-entry')) return;
   installStaleChunkRecovery();
   installSimpleAnalytics();
+  trackProductEvent('app_opened');
   void registerProductionServiceWorker();
   if (!import.meta.env.DEV && !document.documentElement.hasAttribute('data-app-starting')) {
     void import('./landingBootstrap');

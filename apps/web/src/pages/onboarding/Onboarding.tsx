@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { Card, CourseSchedulingMode } from '@lacuna/core/db/types';
 import { StudyTargetTiles } from '../../components/course/CourseStudyTarget';
 import { NewCourseForm } from '../../components/course/NewCourseForm';
@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useAdvancedDetails } from '../../state/advancedDetails';
+import { trackProductEvent, useProductAnalyticsEnabled } from '../../state/productAnalytics';
 import { PillSwitch, SettingsCard } from '../settings/SettingsUi';
 import { useAnswerStrictness } from '../../state/answerStrictness';
 import { useIsTouchMode } from '../../state/inputMode';
@@ -49,7 +50,7 @@ const FIRST_CARD: Card = {
 };
 
 // The four steps from #816, shown as the session bar's segments.
-const STEPS = ['card', 'exam', 'content', 'features'] as const;
+const STEPS = ['card', 'exam', 'content', 'features', 'privacy'] as const;
 type Step = (typeof STEPS)[number];
 
 const EXAM_WORDING: Record<CourseSchedulingMode, { label: string; detail: string }> = {
@@ -66,16 +67,17 @@ export function Onboarding() {
   const m = speedMultiplier(motionSpeed);
   const isTouchMode = useIsTouchMode();
   const [params] = useSearchParams();
-  // Set once the learner has a course: every flow that makes one returns here for the last step.
+  // Set once the learner has a course: every flow that makes one returns here for the last steps.
   const then = params.get('then');
   const [step, setStep] = useState<Step>(then ? 'features' : 'card');
   // Only a course the learner has just made or imported; anything else goes to Today.
   const destination = then && /^\/course\/[^/?#]+(?:\/lesson\/[^/?#]+)?$/.test(then) ? then : '/';
   // Step 3 hands over by navigating here again, which keeps this page mounted. Going back from
-  // the last step loses the course, so it returns to step 3.
+  // the final steps loses the course, so it returns to step 3.
   useEffect(() => {
     if (then) setStep('features');
-    else setStep((current) => (current === 'features' ? 'content' : current));
+    else
+      setStep((current) => (current === 'features' || current === 'privacy' ? 'content' : current));
   }, [then]);
   const stepIndex = STEPS.indexOf(step);
   const outcomes = new Map<string, SessionCardOutcome>(
@@ -85,8 +87,9 @@ export function Onboarding() {
   // A course being imported must finish here, or its lineage confirmation is skipped.
   const [importing, setImporting] = useState(false);
   const leave = () => {
-    if (importing && step === 'content') return;
+    if (importing && (step === 'content' || step === 'privacy')) return;
     finishOnboarding();
+    trackProductEvent('onboarding_completed');
     void navigate(destination, { replace: true });
   };
   const advance = () => setStep(STEPS[stepIndex + 1]);
@@ -151,8 +154,10 @@ export function Onboarding() {
               <ExamStep onDone={advance} />
             ) : step === 'content' ? (
               <ContentStep onBusyChange={setImporting} />
+            ) : step === 'features' ? (
+              <FeaturesStep onDone={advance} />
             ) : (
-              <FeaturesStep onDone={leave} />
+              <PrivacyStep onDone={leave} onBack={() => setStep('features')} />
             )}
           </motion.div>
         </AnimatePresence>
@@ -390,7 +395,60 @@ function FeaturesStep({ onDone }: { onDone: () => void }) {
         </div>
       </div>
       <div className="study-controls mt-6 w-full shrink-0">
-        <div className="mx-auto w-full max-w-md">
+        <div className="mx-auto flex w-full max-w-md gap-3">
+          <Button variant="primary" size="lg" className="w-full" onClick={onDone}>
+            Continue
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Step 5: the anonymous product-counts choice (#1192). On by default on hosted
+ * web only, explicit and separate from the appearance step, changeable later
+ * in Settings. Declining sends nothing; see state/productAnalytics.
+ */
+function PrivacyStep({ onDone, onBack }: { onDone: () => void; onBack: () => void }) {
+  const [productAnalytics, setProductAnalytics] = useProductAnalyticsEnabled();
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="mx-auto my-auto w-full max-w-xl py-2">
+          <StepHeading>Can Lacuna count anonymous usage?</StepHeading>
+          <SettingsCard>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <label htmlFor="onboarding-product-analytics" className="font-semibold text-ink">
+                  Anonymous usage counts
+                </label>
+                <p className="mt-1 text-sm text-ink-soft">
+                  On: the hosted website counts app opens, onboarding completion, study sessions and
+                  error screens with the app version and a coarse touch or desktop band. Counts use
+                  cookieless Simple Analytics, respect Do Not Track, and never include card content,
+                  answers, identifiers or account details. You can switch this off here or later in
+                  Settings; switching off removes the analytics script and sends nothing further.
+                </p>
+                <p className="mt-2 text-sm text-ink-soft">
+                  Read the <Link to="/privacy">privacy information</Link> before choosing.
+                </p>
+              </div>
+              <PillSwitch
+                id="onboarding-product-analytics"
+                checked={productAnalytics}
+                onChange={setProductAnalytics}
+                ariaLabel="Anonymous usage counts"
+              />
+            </div>
+          </SettingsCard>
+        </div>
+      </div>
+      <div className="study-controls mt-6 w-full shrink-0">
+        <div className="mx-auto flex w-full max-w-md gap-3">
+          <Button variant="secondary" size="lg" className="w-full" onClick={onBack}>
+            Back
+          </Button>
           <Button variant="primary" size="lg" className="w-full" onClick={onDone}>
             Open course
           </Button>

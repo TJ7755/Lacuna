@@ -1,6 +1,7 @@
 import { storedString } from '../state/localSetting';
 import type { CourseSchedulingMode } from '@lacuna/core/db/types';
 import { initialiseAdvancedDetailsForNewLearner } from '../state/advancedDetails';
+import { writeProductAnalyticsEnabled } from '../state/productAnalytics';
 
 // First-run onboarding (#816). Only a fresh install is marked pending, so existing learners
 // never see it; finishing or leaving the flow clears the mark.
@@ -9,9 +10,24 @@ const ONBOARDING_KEY = 'lacuna-onboarding';
 export function markOnboardingPending(): void {
   try {
     initialiseAdvancedDetailsForNewLearner();
+    initialiseProductAnalyticsForNewLearner();
     storedString(ONBOARDING_KEY).write('pending');
   } catch {
     // Without storage the learner simply goes straight to Today.
+  }
+}
+
+/**
+ * New installs default to anonymous product counts on hosted web only (#1192).
+ * An explicit opt-out is never overwritten; the caller preserves it.
+ */
+export function initialiseProductAnalyticsForNewLearner(): void {
+  try {
+    if (storedString('lacuna.productAnalytics').read() === null) {
+      writeProductAnalyticsEnabled(true);
+    }
+  } catch {
+    // Without storage there is no preference to initialise.
   }
 }
 

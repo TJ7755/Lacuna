@@ -26,6 +26,17 @@ describe('onboarding state', () => {
     expect(localStorage.getItem('lacuna.advancedDetails')).toBe('false');
   });
 
+  it('defaults a fresh learner to product counts without touching existing choices', () => {
+    markOnboardingPending();
+    expect(localStorage.getItem('lacuna.productAnalytics')).toBe('on');
+  });
+
+  it('preserves an explicit product-counts opt-out when first-run initialisation repeats', () => {
+    localStorage.setItem('lacuna.productAnalytics', 'off');
+    markOnboardingPending();
+    expect(localStorage.getItem('lacuna.productAnalytics')).toBe('off');
+  });
+
   it('preserves an explicit details choice when first-run initialisation repeats', () => {
     localStorage.setItem('lacuna.advancedDetails', 'true');
     markOnboardingPending();
