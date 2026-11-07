@@ -5,7 +5,13 @@ import { cn } from '../components/ui/cn';
 import { ChevronLeftIcon, ChevronRightIcon, QrCodeIcon, RefreshIcon } from '../components/ui/icons';
 import { SectionCard } from '../components/ui/SectionCard';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
-import { DAY_MS, isoDayLabel, isoDayStartMs } from '@lacuna/protocol/insights/index';
+import {
+  DAY_MS,
+  INSIGHT_RETENTION_DAYS,
+  isoDayLabel,
+  isoDayStartMs,
+  localReportingDayLabel,
+} from '@lacuna/protocol/insights/index';
 import type { DailyEvidence } from '../insights/evidence';
 import { dayLabel } from './classInsights';
 import { type ConnectedGapsCourse } from './connectionStore';
@@ -22,9 +28,6 @@ import { Invite } from './ClassInvite';
 import { ClassSettings } from './ClassSettings';
 
 type Tab = 'results' | 'pupils' | 'invite';
-
-/** Reports are retained for 84 days after their reporting day. */
-const RETENTION_DAYS = 84;
 
 export function DemoClassPage({ onExit }: { onExit(): void }) {
   const [reports] = useState(createDemoReports);
@@ -101,8 +104,9 @@ export function ClassPage({
   onLock(): void;
   onRemoved(): void;
 }) {
-  const latest = isoDayLabel(Date.now());
-  const earliest = isoDayLabel(isoDayStartMs(latest) - RETENTION_DAYS * DAY_MS);
+  const now = Date.now();
+  const latest = localReportingDayLabel(now);
+  const earliest = isoDayLabel(now - INSIGHT_RETENTION_DAYS * DAY_MS);
   const [forgetting, setForgetting] = useState(false);
   const [forgetBusy, setForgetBusy] = useState(false);
   const [forgetError, setForgetError] = useState('');
@@ -318,7 +322,7 @@ export function ClassPage({
 
           {tab !== 'invite' && day === latest && (
             <p className="mb-6 max-w-2xl text-sm text-ink-soft">
-              Partial UTC results. Ask pupils to Send latest progress, then Refresh results.
+              Partial results. Ask pupils to Send latest progress, then Refresh results.
             </p>
           )}
 
@@ -445,9 +449,7 @@ function DayStepper({
           aria-live="polite"
           className="flex min-w-48 items-center justify-center gap-2.5 px-1 text-sm tabular-nums"
         >
-          <span className="font-semibold">
-            {day === latest ? 'Today (UTC)' : dayLabel(day, 'short')}
-          </span>
+          <span className="font-semibold">{day === latest ? 'Today' : dayLabel(day, 'short')}</span>
           {loading ? (
             <>
               <Spinner className="h-3.5 w-3.5 text-ink-faint" />

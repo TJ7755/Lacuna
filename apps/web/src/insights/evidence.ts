@@ -1,6 +1,9 @@
 import { z } from 'zod';
-import { DAY_MS, isoDayStartMs } from '@lacuna/protocol/insights/index';
-import { INSIGHT_MAX_EVIDENCE_BYTES } from '@lacuna/protocol/insights/index';
+import {
+  INSIGHT_MAX_EVIDENCE_BYTES,
+  utcReportingWindow,
+  validReportingWindow,
+} from '@lacuna/protocol/insights/index';
 
 const identity = z.string().min(1).max(200);
 const marks = z.number().finite().min(0).max(1_000_000);
@@ -32,6 +35,8 @@ const evidenceSchema = z
     v: z.literal(1),
     shareId: z.string().regex(/^[0-9a-f]{32}$/),
     day: z.string(),
+    // Older reports omit the window and retain their original UTC interpretation.
+    window: z.object({ start: z.number(), end: z.number() }).strict().optional(),
     pupil: z
       .object({ id: z.string().regex(/^[0-9a-f]{32}$/), label: z.string().trim().min(1).max(80) })
       .strict(),
@@ -40,10 +45,12 @@ const evidenceSchema = z
   })
   .strict()
   .superRefine((report, ctx) => {
-    const start = isoDayStartMs(report.day);
+    const { start, end } = report.window ?? utcReportingWindow(report.day);
+    if (report.window && !validReportingWindow(report.day, report.window))
+      ctx.addIssue({ code: 'custom', message: 'Invalid evidence window.' });
     const ids = new Set<string>();
     for (const event of report.events) {
-      if (event.at < start || event.at >= start + DAY_MS || ids.has(event.id))
+      if (event.at < start || event.at >= end || ids.has(event.id))
         ctx.addIssue({ code: 'custom', message: 'Invalid evidence day or duplicate event.' });
       ids.add(event.id);
     }

@@ -144,7 +144,7 @@ export function percent(score: number | null): string {
   return score === null ? '–' : `${Math.round(score * 100)}%`;
 }
 
-/** A UTC reporting day as teachers say it: "Monday 19 October". */
+/** Format the calendar label without shifting it to another date. */
 export function dayLabel(day: string, style: 'long' | 'short' = 'long'): string {
   return new Date(`${day}T12:00:00Z`).toLocaleDateString('en-GB', {
     weekday: style,

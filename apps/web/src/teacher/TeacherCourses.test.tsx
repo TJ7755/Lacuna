@@ -42,7 +42,7 @@ it('offers the demo before any connection form and opens it with one click', () 
 });
 
 it.each([{ courses: [] }, { courses: [biology] }])(
-  'labels the UTC reporting day explicitly for %j',
+  'shows the reporting date for %j',
   ({ courses }) => {
     render(
       <TodayPage
@@ -55,7 +55,7 @@ it.each([{ courses: [] }, { courses: [biology] }])(
         onExploreDemo={vi.fn()}
       />,
     );
-    expect(screen.getByText('Reports for Monday 19 October (UTC)')).toBeVisible();
+    expect(screen.getByText('Reports for Monday 19 October')).toBeVisible();
   },
 );
 

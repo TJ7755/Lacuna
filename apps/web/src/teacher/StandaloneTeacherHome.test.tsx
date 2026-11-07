@@ -6,7 +6,12 @@ import {
   type ClassSession,
 } from './StandaloneTeacherHome';
 import { ThemeProvider } from '../state/ThemeContext';
-import { DAY_MS, isoDayLabel, isoDayStartMs } from '@lacuna/protocol/insights/index';
+import {
+  DAY_MS,
+  isoDayLabel,
+  isoDayStartMs,
+  localReportingDayLabel,
+} from '@lacuna/protocol/insights/index';
 import type { ReadClassReports } from './readReports';
 
 const course = { shareId: 'a'.repeat(32), courseName: 'Biology', verifiedAt: 0 };
@@ -174,7 +179,7 @@ it('carries a new connection from the sidebar to protecting its class', async ()
 });
 
 it('uses today’s loaded day consistently for Today and sidebar summaries', async () => {
-  const today = isoDayLabel(Date.now());
+  const today = localReportingDayLabel(Date.now());
   const yesterday = isoDayLabel(isoDayStartMs(today) - DAY_MS);
   const report = {
     v: 1 as const,
@@ -217,11 +222,11 @@ it('opens recovery and the explanation of Gaps as pages from the sidebar', async
   );
   fireEvent.click(within(more).getByRole('button', { name: 'About Gaps' }));
   await screen.findByRole('heading', { name: 'About Gaps' });
-  expect(screen.getByText(/no report does not mean no study/)).toBeInTheDocument();
-  expect(
-    screen.getByText(/Send latest progress shares today’s partial UTC results/),
-  ).toHaveTextContent(/Send latest progress/);
-  expect(screen.getByText(/Automatic reports cover yesterday \(UTC\)/)).toBeVisible();
+  expect(screen.getByText(/no report does not mean no study/i)).toBeInTheDocument();
+  expect(screen.getByText(/Send latest progress shares today’s partial results/)).toHaveTextContent(
+    /Send latest progress/,
+  );
+  expect(screen.getByText(/Automatic reports cover each pupil’s previous local day/)).toBeVisible();
   expect(screen.getByRole('link', { name: 'School data notice' })).toBeVisible();
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });

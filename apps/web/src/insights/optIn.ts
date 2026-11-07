@@ -1,4 +1,5 @@
-import { completedIsoDayLabel, isoDayStartMs } from '@lacuna/protocol/insights/index';
+import { isoDayStartMs } from '@lacuna/protocol/insights/index';
+import { completedReportingDay } from './reportingDay';
 
 export interface InsightsOptInState {
   optedIn: boolean;
@@ -7,13 +8,13 @@ export interface InsightsOptInState {
 
 export type DailyInsightsPlan = { action: 'idle' } | { action: 'send'; day: string };
 
-/** One report per completed UTC day; offline catch-up never backfills skipped days. */
+/** One report per completed local day; offline catch-up never backfills skipped days. */
 export function planDailyInsightsSend(
   state: Readonly<InsightsOptInState>,
   nowMs: number,
 ): DailyInsightsPlan {
   if (!state.optedIn) return { action: 'idle' };
-  const target = completedIsoDayLabel(nowMs);
+  const target = completedReportingDay(nowMs);
   if (state.lastSentDay === null || isoDayStartMs(state.lastSentDay) < isoDayStartMs(target)) {
     return { action: 'send', day: target };
   }

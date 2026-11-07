@@ -1,4 +1,4 @@
-import { isoDayStartMs } from '@lacuna/protocol/insights/insightsDay';
+import { INSIGHT_MAX_DAY_ADVANCE_MS, isoDayStartMs } from '@lacuna/protocol/insights/insightsDay';
 
 export const INSIGHT_MAX_EVIDENCE_BYTES = 65_536;
 export const INSIGHT_MAX_ENVELOPE_BYTES = 90 * 1024;
@@ -106,13 +106,18 @@ function requireEncodedBytes(value: unknown, min: number, max: number): asserts 
     throw new Error('Invalid insights encoded bytes.');
 }
 
+// Existing dates keep the same fixed deadline, regardless of the pupil’s reporting window.
 export function insightDayExpiresAt(day: string): number {
   return isoDayStartMs(day) + (INSIGHT_RETENTION_DAYS + 1) * INSIGHT_DAY_MS;
 }
 
 /** Late uploads and retries never extend the fixed reporting-day deadline. */
 export function requireInsightDay(day: string, now: number): void {
-  if (!Number.isFinite(now) || isoDayStartMs(day) > now || insightDayExpiresAt(day) <= now) {
+  if (
+    !Number.isFinite(now) ||
+    isoDayStartMs(day) - INSIGHT_MAX_DAY_ADVANCE_MS > now ||
+    insightDayExpiresAt(day) <= now
+  ) {
     throw new Error('The insights day is in the future or expired.');
   }
 }

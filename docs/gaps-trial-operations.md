@@ -106,10 +106,14 @@ and [Pro credit rules](https://vercel.com/docs/plans/pro-plan) when reviewing th
 ## After the class starts
 
 After the first explicit publication, have the teacher refresh today's results
-and confirm they can read the snapshot. After the first completed UTC day with
+and confirm they can read the snapshot. After the first completed local day with
 the class, also confirm automatic daily delivery. Ask about missing reports privately;
 first check consent, class invitation, app version and whether the app was opened
 online. Record only aggregate operational findings publicly.
+
+After a reporting update, refresh both Lacuna and Gaps on the trial devices.
+Check the new day boundary on a date without a pre-update UTC report. If a
+publication fails during rollout, retry after the relay deployment finishes.
 
 Review spend and the next scheduled maintenance result after the first day, then
 after the first week. This is an operator procedure, not a newly installed

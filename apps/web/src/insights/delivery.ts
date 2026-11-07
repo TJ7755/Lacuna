@@ -7,7 +7,8 @@ import {
   createInsightsLastPublishedAtSetting,
   createInsightsOptInSetting,
 } from '../state/insightsOptIn';
-import { completedIsoDayLabel } from '@lacuna/protocol/insights/index';
+import { localReportingDayLabel } from '@lacuna/protocol/insights/index';
+import { completedReportingDay } from './reportingDay';
 import { collectDailyEvidence } from './collectEvidence';
 import { createEnrolmentSetting, reportingEnabled } from './enrolment';
 import { createInsightsOutbox, type InsightsPublicationResult } from './outbox';
@@ -67,8 +68,7 @@ async function deliver(
   publish = false,
 ): Promise<InsightsPublicationResult> {
   const now = options.now ?? Date.now,
-    dayAt = (at: number) =>
-      publish ? new Date(at).toISOString().slice(0, 10) : completedIsoDayLabel(at),
+    dayAt = publish ? localReportingDayLabel : completedReportingDay,
     day = dayAt(now());
   const setting = createEnrolmentSetting(courseId),
     enrolment = setting.read();
@@ -113,7 +113,7 @@ async function deliver(
       isCurrent,
       signal: controller.signal,
       fetchImpl: options.fetchImpl,
-      evidence: async () => {
+      evidence: async (window) => {
         const current = await db.courses.get(courseId);
         if (
           !current ||
@@ -126,6 +126,7 @@ async function deliver(
           courseId,
           shareId: enrolment.shareId,
           day,
+          window,
           pupil: { id: enrolment.pupilId, label: enrolment.pupilLabel },
         });
       },

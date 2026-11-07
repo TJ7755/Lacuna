@@ -24,6 +24,7 @@ beforeAll(async () => {
   owner = await createInsightsOwner('a teacher keeps a long recovery phrase offline', shareId);
 }, 30_000);
 beforeEach(() => {
+  vi.stubEnv('TZ', 'UTC');
   clock = Date.parse('2026-10-19T12:00:00Z');
   databaseName = `insights-outbox-test-${crypto.randomUUID()}`;
   outboxes = [];
@@ -267,6 +268,22 @@ describe('durable encrypted daily delivery', () => {
     expect(input.fetchImpl).toHaveBeenCalledTimes(1);
     expect(input.evidence).toHaveBeenCalledTimes(1);
   });
+});
+
+it('finishes a pre-upgrade snapshot on its original UTC window and slot', async () => {
+  const outbox = openOutbox();
+  const input = options();
+  expect(await outbox.publish(input)).toBe('sent');
+  vi.stubEnv('TZ', 'Asia/Singapore');
+  clock = Date.parse('2026-10-19T16:01:00Z');
+  expect(await outbox.send(input)).toBe('idle');
+  expect(input.fetchImpl).toHaveBeenCalledTimes(1);
+
+  clock = Date.parse('2026-10-20T00:01:00Z');
+  input.evidence.mockResolvedValueOnce(new TextEncoder().encode('later UTC evidence'));
+  expect(await outbox.send(input)).toBe('sent');
+  expect(input.evidence).toHaveBeenLastCalledWith(undefined);
+  expect(input.fetchImpl.mock.calls[1][0]).toBe(input.fetchImpl.mock.calls[0][0]);
 });
 
 async function inspectSnapshots() {

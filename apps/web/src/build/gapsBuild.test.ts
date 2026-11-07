@@ -136,7 +136,9 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       ),
     ).toEqual([]);
     expect(modules.join('\n')).not.toMatch(/node_modules\/(?:motion|react-router|ai|ts-fsrs)\//);
-    const files = (await readdir(directory, { recursive: true })).sort();
+    const files = (await readdir(directory, { recursive: true }))
+      .map((file) => file.replaceAll('\\', '/'))
+      .sort();
     expect(await readFile(join(directory, 'sw.js'), 'utf8')).toBe(
       await readFile('apps/gaps/sw.js', 'utf8'),
     );

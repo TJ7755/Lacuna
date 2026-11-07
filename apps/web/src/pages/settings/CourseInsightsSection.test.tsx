@@ -141,7 +141,8 @@ describe('CourseInsightsSection', () => {
     expect(screen.getByText('Last daily report: 2026-10-18.')).toBeTruthy();
   });
 
-  it('shows the connected course and a useful explicit-publication time', () => {
+  it('shows the connected course and the local publication time', () => {
+    vi.stubEnv('TZ', 'Asia/Singapore');
     joinClass();
     localStorage.setItem(
       `lacuna.insights.lastPublishedAt.${COURSE_ID}`,
@@ -150,9 +151,7 @@ describe('CourseInsightsSection', () => {
     renderSection();
     expect(screen.getByText('Connected course: Biology.')).toBeVisible();
     expect(screen.queryByText(/Class reference/)).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/Last successful publication:.*19.*10.*2026.*12:34.*UTC/),
-    ).toBeVisible();
+    expect(screen.getByText('Last successful publication: 19/10/2026, 20:34:00.')).toBeVisible();
   });
 
   it.each([

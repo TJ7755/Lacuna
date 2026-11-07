@@ -1,12 +1,12 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { expect, test, type Page } from '@playwright/test';
 import { createHandler } from '../../apps/relay/src/relay';
 import { MemoryStore } from '../../apps/relay/src/store';
-import { DAY_MS, completedIsoDayLabel } from '@lacuna/protocol/insights/index';
-import { createCourse, enterFreshLacuna, openImport } from './fixtures/lacunaApp';
+import { DAY_MS, isoDayLabel } from '@lacuna/protocol/insights/index';
+import { createCourse, openImport, skipOnboarding } from './fixtures/lacunaApp';
 import { parseClassCode } from '../../apps/web/src/insights/classCode';
 import { addLessonCard, reviewOnlyCard, readAll } from './fixtures/syncConvergence';
 
@@ -32,8 +32,10 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
 }, testInfo) => {
   test.setTimeout(180_000);
   process.env.RELAY_INSIGHTS_ENABLED = '1';
-  const clock = Date.now(),
-    day = completedIsoDayLabel(clock);
+  // At 07:30 in Singapore, the current local date is still tomorrow in UTC.
+  const clock = Math.floor(Date.now() / DAY_MS) * DAY_MS - 30 * 60_000;
+  const today = isoDayLabel(clock + 8 * 60 * 60_000);
+  const day = isoDayLabel(clock);
   const relay = new MemoryStore(() => clock),
     handle = createHandler(relay, { now: () => clock });
   const uploads: string[] = [];
@@ -64,7 +66,8 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     });
   }
   await wire(author);
-  await enterFreshLacuna(author);
+  await author.goto('/#/start');
+  await skipOnboarding(author);
   await createCourse(author, 'Class biology');
   const courseId = /#\/course\/([^/]+)/.exec(author.url())![1];
   const front = 'Membrane recall';
@@ -85,12 +88,13 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     .inputValue();
   const sourceShareId = sourceLink.split('/').pop()!;
 
-  const teacherContext = await browser.newContext(),
-    pupilContext = await browser.newContext(),
+  const teacherContext = await browser.newContext({ timezoneId: 'Asia/Singapore' }),
+    pupilContext = await browser.newContext({ timezoneId: 'Asia/Singapore' }),
     returningContext = await browser.newContext();
   try {
     const teacher = await teacherContext.newPage(),
       pupil = await pupilContext.newPage();
+    await teacher.clock.setFixedTime(clock);
     await wire(teacher);
     await wire(pupil);
     await pupil.emulateMedia({ reducedMotion: 'reduce' });
@@ -102,7 +106,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await teacher.route('https://gaps.getlacuna.app/**', async (route) => {
       const path = decodeURIComponent(new URL(route.request().url()).pathname);
       const file = resolve(teacherBuild, path === '/' ? 'index.html' : `.${path}`);
-      if (!file.startsWith(`${teacherBuild}/`)) return route.abort();
+      if (!file.startsWith(`${teacherBuild}${sep}`)) return route.abort();
       const type = file.endsWith('.js')
         ? 'text/javascript'
         : file.endsWith('.css')
@@ -199,7 +203,8 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     });
 
     await pupil.clock.setFixedTime(clock - DAY_MS);
-    await enterFreshLacuna(pupil);
+    await pupil.goto('/#/start');
+    await skipOnboarding(pupil);
     await expect(pupil.getByRole('navigation', { name: 'Gaps' })).toHaveCount(0);
     await openImport(pupil);
     await pupil.getByRole('button', { name: /Join a class Enter your teacher/ }).click();
@@ -244,7 +249,8 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     // A returning pupil first imports the original course, then joins using only the board code.
     const returning = await returningContext.newPage();
     await wire(returning);
-    await enterFreshLacuna(returning);
+    await returning.goto('/#/start');
+    await skipOnboarding(returning);
     await returning.goto(`/#/s/${sourceShareId}`);
     await returning.getByRole('radio', { name: /Exam date/ }).press('Space');
     await returning.getByRole('button', { name: 'Add to my courses' }).click();
@@ -395,7 +401,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await expect(teacher.getByRole('region', { name: 'Evidence for Pupil A' })).toContainText(
       'Recalled',
     );
-    const todayPrefix = `insights/${shareId}/${new Date(clock).toISOString().slice(0, 10)}/envelopes/`;
+    const todayPrefix = `insights/${shareId}/${today}/envelopes/`;
     const firstSlots = (await relay.list(todayPrefix)).map(({ key }) => key);
     expect(firstSlots).toHaveLength(1);
     await teacher.screenshot({
