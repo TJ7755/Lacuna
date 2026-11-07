@@ -531,6 +531,62 @@ it('asks equivalence, answer kind and part coverage together while leaving gradi
 });
 
 it.each([
+  [undefined, 0.9, 1],
+  [true, 0.9, 0],
+  [true, 0.72, null],
+] as const)(
+  'marks the same spelling slip according to the author policy %s (kind confidence %s)',
+  async (requireCorrectSpelling, confidence, value) => {
+    const fetcher = vi.fn().mockResolvedValue(
+      Response.json({
+        model: 'jev-1.14.0',
+        answers: {
+          decision: { type: 'noul', noul: 0.99 },
+          kind: {
+            type: 'choice',
+            choice: 'spelling',
+            confidence,
+            probabilities: {
+              same: 1 - confidence,
+              spelling: confidence,
+              imprecise: 0,
+              partial: 0,
+              wrong: 0,
+              blank: 0,
+            },
+          },
+        },
+        usage: { input_tokens: 12, output_tokens: 1 },
+      }),
+    );
+    const state = {
+      prompt: 'Give the verb meaning to make room for',
+      expected: 'accommodate',
+      answer: 'acommodate',
+    };
+    const result = await callJevDecision(
+      { purpose: 'typed-equivalence', ...state, requireCorrectSpelling },
+      'key',
+      new AbortController().signal,
+      fetcher,
+    );
+    expect(result).toMatchObject({
+      value,
+      confidence: requireCorrectSpelling ? confidence : 0.99,
+      feedback: { kind: 'spelling', parts: [] },
+    });
+    const request = JSON.parse(fetcher.mock.calls[0][1].body);
+    expect(request.state).toEqual(state);
+    if (requireCorrectSpelling) {
+      expect(request.questions.decision.instructions).toContain('with correct spelling');
+      expect(request.questions.decision.criteria.false).toContain('spelling error');
+    } else {
+      expect(request.questions.decision.instructions).toContain('Judge meaning');
+    }
+  },
+);
+
+it.each([
   [0.6999, null],
   [0.7, 'same'],
 ] as const)(

@@ -35,6 +35,7 @@ function unpackCard(sc: ShareCard): ParsedCard[] {
   const attributes = {
     ...(sc.g?.length ? { tags: sc.g } : {}),
     ...(sc.am ? { answerMode: sc.am } : {}),
+    ...(sc.rs ? { requireCorrectSpelling: sc.rs } : {}),
   };
   if (sc.p !== undefined) {
     assertValidCardPayload(sc.k === 1 ? 'cloze' : 'front_back', sc.p);

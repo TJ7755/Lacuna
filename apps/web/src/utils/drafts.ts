@@ -5,6 +5,7 @@ const DRAFT_PREFIX = 'lacuna:draft';
 
 export interface DraftData {
   answerMode?: AnswerMode;
+  requireCorrectSpelling?: boolean;
   front: string;
   back: string;
   tags: string[];

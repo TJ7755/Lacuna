@@ -62,6 +62,7 @@ export const jevDecisionRequestSchema = z.discriminatedUnion('purpose', [
     prompt: text.min(1),
     expected: text.min(1),
     answer: text,
+    requireCorrectSpelling: z.literal(true).optional(),
   }),
   z.strictObject({
     purpose: z.literal('mark-allocation'),

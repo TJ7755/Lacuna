@@ -151,6 +151,8 @@ export function useTypedAutoMark({
     if (!active || !card || typedAnswer.trim() === '') return;
     const expected = typingExpectedAnswer(card, occlusionAnswerText);
     const options = answerComparisonOptions(answerStrictness);
+    // Punctuation may be part of the spelling, as in the middle word of "rock ’n’ roll".
+    if (card.requireCorrectSpelling) options.ignorePunctuation = false;
     setMark({ state: 'checking' });
     const controller = new AbortController();
     const scale = Math.max(m, 0.3);
@@ -178,6 +180,7 @@ export function useTypedAutoMark({
         ),
         expected: expectedText,
         answer: typedAnswer,
+        ...(card.requireCorrectSpelling ? { requireCorrectSpelling: true } : {}),
         signal: controller.signal,
       })
         .then((verdict) => {
@@ -219,6 +222,7 @@ export function useTypedAutoMark({
     card?.front,
     card?.back,
     card?.type,
+    card?.requireCorrectSpelling,
     typedAnswer,
     answerStrictness,
     occlusionAnswerText,

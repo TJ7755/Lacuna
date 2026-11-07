@@ -112,6 +112,7 @@ const incomingCard = object({
   g: strings.optional(),
   p: payload.optional(),
   am: answerMode,
+  rs: z.literal(true).optional(),
 });
 const incomingNote = object({ i: id, n: text, c: text });
 const incomingLesson = object({
@@ -325,7 +326,9 @@ export const stateSchemas = {
       updates: object({
         lessons: z.array(lessonContent.partial().extend({ id })),
         notes: z.array(noteContent.partial().extend({ id })),
-        cards: z.array(cardContent.partial().extend({ id })),
+        cards: z.array(
+          cardContent.partial().extend({ id, requireCorrectSpelling: z.literal(true).nullish() }),
+        ),
       }),
       removals: object({ lessonIds: ids, noteIds: ids, cardIds: ids }),
       conflicts: z.array(
