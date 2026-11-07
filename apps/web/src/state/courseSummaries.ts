@@ -1,5 +1,5 @@
 import type { Concept } from '@lacuna/core/questions/types';
-import { lessonCardMembership } from '../course/lessonMembership';
+import { coreCourseCards, lessonCardMembershipByLesson } from '../course/lessonMembership';
 import type {
   Card,
   Course,
@@ -87,28 +87,28 @@ export function computeCourseSummaries(
     (assessmentsByCourse[assessment.courseId] ??= []).push(assessment);
   }
 
+  const exposuresByLesson = new Map<string, LessonCardExposure[]>();
+  for (const exposure of progress.exposures) {
+    const rows = exposuresByLesson.get(exposure.lessonId);
+    if (rows) rows.push(exposure);
+    else exposuresByLesson.set(exposure.lessonId, [exposure]);
+  }
+  const completedLessonIds = new Set(progress.completions.map((row) => row.lessonId));
+
   const summaries: Record<string, CourseSummary> = {};
   for (const course of courses) {
     const courseCards = cardsByCourse[course.id] ?? [];
     const courseLessons = lessonsByCourse[course.id] ?? [];
-    // Exclude cards whose primaryLessonId belongs to an extension lesson.
-    // Cards with null or absent primaryLessonId are included.
-    const coreCards = courseCards.filter(
-      (c) =>
-        c.primaryLessonId === null ||
-        c.primaryLessonId === undefined ||
-        !extensionLessonIds.has(c.primaryLessonId),
-    );
+    const coreCards = coreCourseCards(courseCards, extensionLessonIds);
     const available = availableCards(coreCards, now);
     const coreLessons = courseLessons.filter((lesson) => !lesson.isExtension);
-    const completedLessonCount = coreLessons.filter((lesson) =>
-      lessonTaught(
-        lesson.id,
-        lessonCardMembership(lesson.id, courseCards, progress.links),
-        progress.exposures,
-        progress.completions,
-      ),
-    ).length;
+    const lessonCards = lessonCardMembershipByLesson(coreLessons, courseCards, progress.links);
+    const completedLessonCount = coreLessons.filter(({ id }) => {
+      const members = lessonCards.get(id) ?? [];
+      return members.length
+        ? lessonTaught(id, members, exposuresByLesson.get(id) ?? [], [])
+        : completedLessonIds.has(id);
+    }).length;
     const today = startOfDay(now, course.timeZone);
     const examDateContext = makeExamDateContext(
       course,

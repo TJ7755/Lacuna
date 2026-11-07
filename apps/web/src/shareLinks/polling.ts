@@ -1,7 +1,5 @@
 import { storedString } from '../state/localSetting';
 import { db } from '../db/schema';
-import { decodeCourseFile, withCourseFileAssets } from '../db/courseFile';
-import { isLineagePayload, mergeLineageUpdate } from '../db/mergeImport';
 import { DEFAULT_RELAY_URL, getShareBytes, parseShareManifest } from './client';
 import { listShareImports } from './linkStore';
 
@@ -183,6 +181,9 @@ async function pollOneCourse(
       };
     }
 
+    // The importer is only needed after the relay returns a newer course file.
+    const [{ decodeCourseFile, withCourseFileAssets }, { isLineagePayload, mergeLineageUpdate }] =
+      await Promise.all([import('../db/courseFile'), import('../db/mergeImport')]);
     let file;
     try {
       file = await decodeCourseFile(new TextDecoder().decode(payloadSlot.bytes));

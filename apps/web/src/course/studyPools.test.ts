@@ -9,6 +9,7 @@ import type {
   PracticeNode,
 } from '@lacuna/core/db/types';
 import { makeExamDateContext } from '../fsrs/examDate';
+import { lessonCardMembershipByLesson } from './lessonMembership';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import {
   eligiblePracticePool,
@@ -168,6 +169,23 @@ describe('lesson pools', () => {
     expect(members[0]).toBe(cards[0]);
     expect({ cards, links }).toEqual(before);
     expect(lessonCardMembershipForLessons(new Set(), cards, links)).toEqual([]);
+  });
+
+  it('indexes each lesson membership in card order, without adding orphan links or duplicates', () => {
+    const cards = [makeCard('linked', null), makeCard('primary', 'l1'), makeCard('outside', 'l3')];
+    const lessons = [makeLesson('l2'), makeLesson('l1'), makeLesson('l4')];
+    const links = [
+      link('l1', 'primary'),
+      link('l1', 'linked'),
+      link('l2', 'primary'),
+      link('l2', 'missing'),
+      link('l3', 'linked'),
+    ];
+    expect([...lessonCardMembershipByLesson(lessons, cards, links)]).toEqual([
+      ['l2', [cards[1]]],
+      ['l1', [cards[0], cards[1]]],
+      ['l4', []],
+    ]);
   });
 
   it('excludes only exposures for this lesson', () => {

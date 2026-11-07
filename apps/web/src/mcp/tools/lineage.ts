@@ -113,6 +113,7 @@ function toShareCardInput(
     g: card.g,
     p: card.p as ItemPayload | undefined,
     am: card.am,
+    rs: card.rs,
   };
 }
 
@@ -152,6 +153,7 @@ function toExistingCard(card: Card): ExistingCard {
     tags: card.tags,
     payload: card.payload,
     answerMode: card.answerMode,
+    requireCorrectSpelling: card.requireCorrectSpelling,
   };
 }
 

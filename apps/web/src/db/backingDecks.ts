@@ -169,12 +169,14 @@ export function findBackingDeck(courseId: string, lessonId: string | null) {
 
 export async function findBackingDecks(
   courseId: string,
-  lessonIds: readonly string[],
 ): Promise<Map<string | null, SchedulingUnitRecord>> {
-  const units = await db.schedulingUnits.bulkGet([courseId, ...lessonIds]);
+  // A single indexed read replaces one IndexedDB request per lesson.
+  const units = await db.schedulingUnits.where('courseId').equals(courseId).toArray();
   const result = new Map<string | null, SchedulingUnitRecord>();
-  for (const unit of units)
-    if (unit?.courseId === courseId) result.set(unit.lessonId ?? null, unit);
+  for (const unit of units) {
+    const lessonId = unit.lessonId ?? null;
+    if (unit.id === (lessonId ?? courseId)) result.set(lessonId, unit);
+  }
   return result;
 }
 

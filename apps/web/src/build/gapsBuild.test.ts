@@ -121,6 +121,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
             'src/sync/relay.ts',
             'src/sync/pairingConfig.ts',
             'src/shareLinks/client.ts',
+            'src/shareLinks/shareId.ts',
             'src/shareLinks/payloadCodec.ts',
             'src/state/ThemeContext.tsx',
             'src/state/localSetting.ts',

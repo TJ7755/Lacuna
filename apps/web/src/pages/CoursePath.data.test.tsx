@@ -15,9 +15,6 @@ vi.mock('../components/learn/StudySheetContext', () => ({
   useStudySheet: () => ({ openStudySheet: vi.fn() }),
 }));
 vi.mock('../components/cards/LessonCardsSection', () => ({ LessonCardsSection: () => null }));
-// Workload estimation has its own asynchronous history read and separate coverage.
-// This suite counts the data shared by the Path and its header before that work.
-vi.mock('../components/course/RemainingWork', () => ({ RemainingWork: () => null }));
 vi.mock('../components/course/CourseHeader', () => ({
   CourseHeader: ({ children }: { children: React.ReactNode }) => <header>{children}</header>,
 }));

@@ -48,6 +48,7 @@ export interface JevTypedAnswerRequest {
   /** Plain-text expected answer, as compared word by word. */
   expected: string;
   answer: string;
+  requireCorrectSpelling?: true;
   signal?: AbortSignal;
 }
 

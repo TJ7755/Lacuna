@@ -65,6 +65,7 @@ export async function createImportedCards(
             back: card.front,
             tags: card.tags,
             answerMode: card.answerMode,
+            requireCorrectSpelling: card.requireCorrectSpelling,
             conceptId: card.conceptId,
           })),
           { skipValidation: true },

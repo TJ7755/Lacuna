@@ -2,7 +2,7 @@ import { Button } from '../components/ui/Button';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useNavigation } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
@@ -31,18 +31,13 @@ import { useDashboardForecastHistories } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
 import { useToast } from '../components/ui/Toast';
 import { finishOnboarding, onboardingPending } from '../onboarding/onboardingState';
+import { listShareImports } from '../shareLinks/linkStore';
 import {
   CourseContextMenu,
   ArchiveCourseDialog,
   type ArchiveTarget,
   type CourseMenuState,
 } from '../components/dashboard/CourseActions';
-
-const RemainingWork = lazy(() =>
-  import('../components/course/RemainingWork').then((module) => ({
-    default: module.RemainingWork,
-  })),
-);
 
 export function Dashboard() {
   const frame = useRef<HTMLDivElement>(null);
@@ -79,12 +74,10 @@ export function Dashboard() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
-  // Background check for teacher republishes of share-linked courses. The poll
-  // module (with the merge importer and course-file decoder) loads on demand so
-  // none of that weight joins the initial bundle; the dashboard never waits on
-  // it either. A merged update surfaces through the existing pending-review
-  // badge. A failed chunk load simply retries on the next dashboard visit.
+  // Only libraries with share-linked courses need the relay polling runtime.
+  // Poll failures can retry on the next dashboard visit.
   useEffect(() => {
+    if (listShareImports().length === 0 || navigator.onLine === false) return;
     let cancelled = false;
     void import('../shareLinks/polling')
       .then(({ pollShareUpdates }) => {
@@ -301,12 +294,6 @@ export function Dashboard() {
                 setCourseMenu({ course, position, trigger });
               }}
             />
-            {/* After the queue, so Study actions stay on the first screen. */}
-            <Suspense fallback={null}>
-              {rows.map((row) => (
-                <RemainingWork key={row.id} courseId={row.id} />
-              ))}
-            </Suspense>
           </div>
         )}
       </PageLoadingBoundary>

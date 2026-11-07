@@ -13,12 +13,14 @@ describe('mergeImport: first import of a lineage', () => {
     await db.open();
   });
 
-  it('carries answer modes through first import and later author updates', async () => {
+  it('carries answer modes and spelling through first import and later author updates', async () => {
     const sharedLesson = lessonOne({ am: 'type' });
     sharedLesson.cards[0].am = 'reveal';
+    sharedLesson.cards[0].rs = true;
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [sharedLesson] }));
     expect((await db.lessons.get('lesson-1'))?.answerMode).toBe('type');
     expect((await db.cards.get('card-1'))?.answerMode).toBe('reveal');
+    expect((await db.cards.get('card-1'))?.requireCorrectSpelling).toBe(true);
     await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': true });
     const updatedLesson = lessonOne({ am: 'reveal' });
     updatedLesson.cards[0].am = 'type';
@@ -28,6 +30,7 @@ describe('mergeImport: first import of a lineage', () => {
     );
     expect((await db.lessons.get('lesson-1'))?.answerMode).toBe('reveal');
     expect((await db.cards.get('card-1'))?.answerMode).toBe('type');
+    expect((await db.cards.get('card-1'))?.requireCorrectSpelling).toBeUndefined();
     await mergeLineageUpdate(course.id, coursePayload({ rv: 3, at: 3000, lessons: [lessonOne()] }));
     expect((await db.lessons.get('lesson-1'))?.answerMode).toBeUndefined();
     expect((await db.cards.get('card-1'))?.answerMode).toBeUndefined();

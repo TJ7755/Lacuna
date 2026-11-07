@@ -200,6 +200,7 @@ async function takeIncomingConflict(
       tags: inc.g ?? [],
       payload: inc.p,
       answerMode: inc.am,
+      requireCorrectSpelling: inc.rs,
     });
   }
   await refreshSnapshot(kind, entityId, mapping);

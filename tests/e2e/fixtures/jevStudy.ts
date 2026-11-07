@@ -34,5 +34,5 @@ export async function seed(enabled: boolean, globalTyping = false) {
   );
   if (globalTyping) localStorage.setItem('lacuna.answerInput', 'type');
   localStorage.setItem('lacuna.jevInstallation', 'a'.repeat(64));
-  return { lessonId: lesson.id, cardIds };
+  return { courseId: course.id, lessonId: lesson.id, cardIds };
 }

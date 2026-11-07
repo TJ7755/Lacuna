@@ -82,7 +82,8 @@ const server = createServer(async (request, response) => {
       pathname === '/__performance_fixture'
         ? '<!doctype html><title>Performance fixture</title>'
         : await readFile(path);
-    if (indexedDbProbe && /\/remainingWork\.worker-[^/]+\.js$/.test(pathname)) {
+    // Frozen comparison builds may still bundle forecast history in the former workload entry.
+    if (indexedDbProbe && /\/(?:remainingWork|forecastHistory)\.worker-[^/]+\.js$/.test(pathname)) {
       // Change only the served diagnostic response; frozen assets remain intact.
       const entry = optionalWorkers === 'idle' ? 'self.onmessage = () => {};' : body.toString();
       body = `(${installIndexedDbProbe.toString()})(true);\n${entry}`;
@@ -139,10 +140,10 @@ const report: Record<string, unknown> = {
     ? {
         indexedDbProbe: {
           optionalWorkers,
-          workerEntry: '/assets/remainingWork.worker-*.js',
+          workerEntry: '/assets/{remainingWork,forecastHistory}.worker-*.js',
           clock: 'performance.timeOrigin + performance.now(), milliseconds',
           limitations:
-            'Native API wrappers and worker progress messages add overhead. Timings are diagnostic only. Idle workers are a counterfactual without optional estimates, not the product scenario.',
+            'Native API wrappers and worker progress messages add overhead. Timings are diagnostic only. Idle workers omit optional history calculations.',
         },
       }
     : {}),

@@ -6,6 +6,7 @@ import { NumericAnswerEditor } from '../../components/items/NumericAnswerEditor'
 import { MarkSchemeEditor } from '../../components/items/MarkSchemeEditor';
 import { TagInput } from '../../components/ui/TagInput';
 import { ContentDisclosure } from '../../components/ui/ContentDisclosure';
+import { Toggle } from '../../components/ui/Toggle';
 import { CheckIcon } from '../../components/ui/icons';
 import { cn } from '../../components/ui/cn';
 import { scaledSpring } from '../../components/ui/motion';
@@ -45,6 +46,7 @@ export function CardAuthoringFields({
     workingFixtures,
     tags,
     answerMode,
+    requireCorrectSpelling,
     alsoReverse,
   } = draft.values;
   const {
@@ -55,6 +57,7 @@ export function CardAuthoringFields({
     setWorkingFixtures,
     setTags,
     setAnswerMode,
+    setRequireCorrectSpelling,
     setAlsoReverse,
     setDraftDirty,
   } = draft.setters;
@@ -77,6 +80,7 @@ export function CardAuthoringFields({
     isStructured,
     clozeValid,
     canReverse,
+    canConfigureSpelling,
     formKind,
     formKey,
     shakeField,
@@ -278,6 +282,14 @@ export function CardAuthoringFields({
               placeholder="Add tags"
             />
           </div>
+
+          {canConfigureSpelling && (
+            <Toggle
+              label="Require correct spelling"
+              checked={requireCorrectSpelling}
+              onChange={(value) => modifyDraftField(setRequireCorrectSpelling, value)}
+            />
+          )}
 
           {canReverse && (
             <div className="pb-1">

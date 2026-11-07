@@ -113,6 +113,7 @@ export function toShareCardInput(card: ShareCard): ShareCardInput {
     g: card.g,
     p: card.p as ItemPayload | undefined,
     am: card.am,
+    rs: card.rs,
   };
 }
 
@@ -152,6 +153,7 @@ export function toExistingCard(card: Card): ExistingCard {
     tags: card.tags,
     payload: card.payload,
     answerMode: card.answerMode,
+    requireCorrectSpelling: card.requireCorrectSpelling,
   };
 }
 
@@ -172,6 +174,7 @@ export function cardSnapshot(card: ExistingCard): LineageCardSnapshot {
     tags: card.tags,
     payload: card.payload,
     answerMode: card.answerMode,
+    requireCorrectSpelling: card.requireCorrectSpelling,
   };
 }
 
@@ -264,6 +267,7 @@ function cardSnapshotsEqual(a: LineageCardSnapshot, b: LineageCardSnapshot): boo
     a.back === b.back &&
     tagsEqual(a.tags, b.tags) &&
     a.answerMode === b.answerMode &&
+    a.requireCorrectSpelling === b.requireCorrectSpelling &&
     jsonValuesEqual(a.payload, b.payload)
   );
 }

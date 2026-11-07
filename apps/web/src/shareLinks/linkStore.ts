@@ -1,6 +1,6 @@
 import { storedString } from '../state/localSetting';
 import { db } from '../db/schema';
-import { SHARE_ID_RE } from './client';
+import { SHARE_ID_RE } from './shareId';
 
 const STORAGE_KEY = 'lacuna.shareImports';
 
