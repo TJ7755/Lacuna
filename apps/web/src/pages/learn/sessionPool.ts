@@ -309,6 +309,7 @@ export function prepareSimpleSessionQueue(
     : createQueue(cards);
   return {
     queue,
+    introduction: resumed?.introduction,
     mastered: new Set(resumed?.masteredCardIds ?? []),
     wrong: new Set(
       [...(resumed?.outcomes ?? [])]

@@ -2,7 +2,6 @@ import { AnimatePresence } from 'motion/react';
 import { useId, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { DialogPanel } from '../../components/ui/DialogPanel';
-import { AlertIcon } from '../../components/ui/icons';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { JEV_PROVIDER } from '../../jev';
 
@@ -59,42 +58,29 @@ function JevConsentPanel({ onAccept, onCancel }: Omit<JevConsentDialogProps, 'op
         {title}
       </h2>
 
-      <div
+      <p
         id={warningId}
-        className="mt-4 rounded-2xl border-2 border-negative bg-negative/5 p-4 text-negative"
+        className="mt-4 rounded-xl border border-negative/40 bg-negative/5 p-4 text-sm leading-6 text-ink"
       >
-        <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
-          <AlertIcon width={18} height={18} aria-hidden="true" />
-          Warning
-        </p>
-        <p className="mt-2 font-display text-xl font-semibold leading-snug sm:text-2xl">
-          Your answers, with their questions and mark schemes, are sent to {JEV_PROVIDER.name} in
-          the {JEV_PROVIDER.region}. Do not include personal data about yourself or anyone else in
-          your answers, questions, cards or mark schemes.
-        </p>
-      </div>
+        Jev sends study text to {JEV_PROVIDER.name} in the {JEV_PROVIDER.region}. Do not include
+        personal data about yourself or anyone else in material you use with Jev.
+      </p>
 
       <ul
         id={detailsId}
         className="mt-5 flex list-disc flex-col gap-2 pl-5 text-sm leading-6 text-ink-soft"
       >
         <li>
-          Jev is an experimental public beta. Its accuracy is still being evaluated across subjects
-          and answer types. Marks and diagnoses can be wrong, even when Jev is confident. Check its
-          decisions and mark answers yourself when needed.
+          Jev marks answers, chooses multiple-choice options from lesson material and classifies
+          authored techniques.
         </li>
         <li>
-          Only answers that need judgement are sent: a typed flashcard answer that does not match
-          word for word, or a written practice answer. Each goes with its question and the expected
-          answer or mark-scheme line. Your study history, schedule and other cards are not sent.
+          Lacuna has zero data retention enabled with {JEV_PROVIDER.name}, which says it does not
+          train Jev on submissions.
         </li>
         <li>
-          {JEV_PROVIDER.name} says it does not train on what it receives. It may keep it
-          indefinitely, so assume anything sent is stored.
-        </li>
-        <li>
-          Turning this off stops new requests and cancels work in progress. It does not delete
-          anything already sent to {JEV_PROVIDER.name}. You can undo or change any mark it gives.
+          Jev is experimental and can make mistakes. You can check its marks and mark answers
+          yourself. Turning Jev off stops new requests.
         </li>
         <li>
           <a
@@ -115,8 +101,7 @@ function JevConsentPanel({ onAccept, onCancel }: Omit<JevConsentDialogProps, 'op
           checked={understood}
           onChange={(event) => setUnderstood(event.target.checked)}
         />
-        I understand that Jev can be wrong and sends my answers to {JEV_PROVIDER.name} in the{' '}
-        {JEV_PROVIDER.region}. I will not include anyone’s personal data.
+        I understand and will keep personal data out of material I use with Jev.
       </label>
 
       <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

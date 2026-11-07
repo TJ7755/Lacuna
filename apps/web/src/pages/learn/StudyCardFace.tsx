@@ -4,13 +4,15 @@ import { MarkdownView } from '../../components/markdown/MarkdownView';
 import { CardContent } from '../../components/cards/CardContent';
 import { LineHintButton, LineHintDisplay } from '../../components/learn/LineHint';
 import { HINT_TIME_PENALTY_SEC } from '../../fsrs/grading';
-import { answerComparisonOptions, type AnswerStrictness } from '../../state/answerStrictness';
+import type { AnswerStrictness } from '../../state/answerStrictness';
+import { typedComparisonOptions } from './typedRecall';
 import { typingExpectedAnswer } from './sessionCardCapabilities';
 import type { TypedAnswerJudgement } from '../../components/markdown/typedAnswerFeedback';
 
 export function StudyCardFace({
   card,
   side,
+  promptId,
   audioCard,
   audioAutoplay,
   isLinesModeCard,
@@ -29,6 +31,7 @@ export function StudyCardFace({
 }: {
   card: Card;
   side: 'front' | 'back';
+  promptId?: string;
   audioCard: boolean;
   audioAutoplay: boolean;
   isLinesModeCard?: boolean;
@@ -51,17 +54,18 @@ export function StudyCardFace({
       side === 'back' && isTyping && typedAnswer !== undefined
         ? {
             answer: typedAnswer,
-            options: answerComparisonOptions(answerStrictness),
+            options: typedComparisonOptions(card, answerStrictness),
             judgement: typedJudgement,
           }
         : undefined,
-    [side, isTyping, typedAnswer, typedJudgement, answerStrictness],
+    [side, isTyping, typedAnswer, typedJudgement, card, answerStrictness],
   );
 
   return (
     <>
       <div
         data-study-face={measuring ? undefined : side}
+        id={promptId}
         className={
           'mx-auto flex w-full max-w-prose flex-col justify-center text-center text-lg leading-relaxed md:text-xl' +
           (measuring ? '' : ' flex-1')

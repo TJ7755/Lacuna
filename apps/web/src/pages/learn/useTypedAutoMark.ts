@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Card, Grade } from '@lacuna/core/db/types';
-import { markdownAnswerCorrect, markdownPlainText } from '../../components/markdown/MarkdownView';
-import { answerComparisonOptions, type AnswerStrictness } from '../../state/answerStrictness';
+import { markdownPlainText } from '../../components/markdown/MarkdownView';
+import type { AnswerStrictness } from '../../state/answerStrictness';
 import { renderClozeFront } from '../../utils/cloze';
 import {
   JEV_JUDGING_MS,
@@ -13,6 +13,7 @@ import {
 import type { TypedAnswerJudgement } from '../../components/markdown/typedAnswerFeedback';
 import { typingExpectedAnswer } from './sessionCardCapabilities';
 import type { Phase } from './types';
+import { matchesTypedRecall } from './typedRecall';
 
 export type TypedAutoMark =
   | { state: 'off' }
@@ -150,9 +151,6 @@ export function useTypedAutoMark({
     setMark({ state: 'idle' });
     if (!active || !card || typedAnswer.trim() === '') return;
     const expected = typingExpectedAnswer(card, occlusionAnswerText);
-    const options = answerComparisonOptions(answerStrictness);
-    // Punctuation may be part of the spelling, as in the middle word of "rock ’n’ roll".
-    if (card.requireCorrectSpelling) options.ignorePunctuation = false;
     setMark({ state: 'checking' });
     const controller = new AbortController();
     const scale = Math.max(m, 0.3);
@@ -164,7 +162,7 @@ export function useTypedAutoMark({
       reveal = window.setTimeout(() => setMark(next), Math.max(0, shownAt - performance.now()));
     };
     const pause = window.setTimeout(() => {
-      if (markdownAnswerCorrect(expected, { answer: typedAnswer, options })) {
+      if (matchesTypedRecall(card, typedAnswer, answerStrictness, occlusionAnswerText)) {
         show({ state: 'marked', correct: true, provenance: null });
         return;
       }

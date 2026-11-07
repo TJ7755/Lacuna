@@ -165,9 +165,7 @@ function CostPanel() {
           Check current plans ↗
         </a>
       </div>
-      <p className="qc-fineprint">
-        Lacuna is in beta. Jev automatic marking is optional and needs a beta access code.
-      </p>
+      <p className="qc-fineprint">Lacuna is in beta. Jev is optional.</p>
     </div>
   );
 }

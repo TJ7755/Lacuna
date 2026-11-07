@@ -1,3 +1,9 @@
+import {
+  introductionStage,
+  recordIntroductionAttempt,
+  selectIntroductionCard,
+  type LessonIntroduction,
+} from './lessonIntroduction';
 import type { RecordReviewArgs } from '../../db/reviewRepository';
 import type { Card } from '@lacuna/core/db/types';
 import type { SessionCardOutcome, SessionEvent, SessionSummary } from '../../course/sessionSummary';
@@ -17,6 +23,7 @@ import { answerGrade, sessionStopAfterAnswer, type SessionStop } from './answerP
 export interface SessionState {
   cards: Card[];
   simple: SimpleSessionState;
+  introduction?: LessonIntroduction;
   cardIds: string[];
   events: SessionEvent[];
   outcomes: Map<string, SessionCardOutcome>;
@@ -63,6 +70,7 @@ export type SessionEventInput =
     }
   | { type: 'next'; selection: Selection }
   | { type: 'simple-recorded'; card: Card; event: SessionEvent }
+  | { type: 'introduction-checked'; card: Card; correct: boolean }
   | {
       type: 'scheduled-recorded';
       card: Card;
@@ -166,6 +174,24 @@ export function transitionSession(
         effects: [],
       };
     }
+    case 'introduction-checked': {
+      if (!state.introduction) return { state, effects: [] };
+      return {
+        state: {
+          ...state,
+          introduction: recordIntroductionAttempt(
+            state.introduction,
+            event.card.id,
+            event.correct ? 'recall' : 'retry',
+          ),
+          simple: {
+            ...state.simple,
+            queue: [...state.simple.queue.filter((card) => card.id !== event.card.id), event.card],
+          },
+        },
+        effects: [{ type: 'persist-resume' }],
+      };
+    }
     case 'simple-recorded': {
       const simple = transitionSimpleAnswer(
         {
@@ -177,10 +203,19 @@ export function transitionSession(
         event.event.correct,
       );
       const remaining = simple.queue.some((card) => !simple.mastered.has(card.id));
+      const introduction =
+        state.introduction && introductionStage(state.introduction, event.card.id) === 'recall'
+          ? recordIntroductionAttempt(
+              state.introduction,
+              event.card.id,
+              event.event.correct && !event.card.suspended ? 'passed' : 'recall',
+            )
+          : state.introduction;
       return {
         state: {
           ...state,
           simple,
+          introduction,
           cards: replace(state.cards, event.card),
           outcomes: simple.outcomes,
           events: [...state.events, event.event],
@@ -300,7 +335,9 @@ function selectSessionCard(state: SessionState, input: Selection): SessionTransi
   )
     return finish(context ? sessionComplete(state.cards, context, now) : false, false, true);
   if (input.simple) {
-    const card = state.simple.queue.find((candidate) => !state.simple.mastered.has(candidate.id));
+    const card = state.introduction
+      ? selectIntroductionCard(state.introduction, state.simple.queue, state.simple.mastered)
+      : state.simple.queue.find((candidate) => !state.simple.mastered.has(candidate.id));
     return {
       state,
       effects: [

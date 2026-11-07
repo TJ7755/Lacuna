@@ -23,7 +23,12 @@ describe('planStudySession', () => {
     });
     expect(plan.steps).toEqual([
       // Two reviews plus one new card counted three times: 60 seconds.
-      { key: 'lesson:l1', title: 'Cell structure', detail: 'Learn · 3 cards, 1 new', minutes: 1 },
+      {
+        key: 'lesson:l1',
+        title: 'Cell structure',
+        detail: 'Learn new cards · 3 cards, 1 new',
+        minutes: 1,
+      },
     ]);
     expect(plan.totalMinutes).toBe(1);
     expect(plan.startsWithDueReview).toBe(false);
@@ -36,7 +41,7 @@ describe('planStudySession', () => {
       lessonCardsById: new Map([['l1', [card(false), card(false)]]]),
       meanReviewSeconds: 12,
     });
-    expect(plan.steps[0]?.detail).toBe('Learn · 2 new cards');
+    expect(plan.steps[0]?.detail).toBe('Learn new cards · 2 cards');
   });
 
   it('lists due reviews once when they are the step itself', () => {

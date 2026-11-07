@@ -155,6 +155,8 @@ export function resolveLearnSessionRequest({
     plannedRevision,
     reviewSessionKind,
     isSimpleMode,
+    introduceNewCards:
+      Boolean(lessonId) && isSimpleMode && !standaloneSimple && !filterParams.length && !tagFilter,
     standaloneSimple,
     examPractice: request?.kind === 'practice' && request.mode === 'exam',
     catchUpPractice: request?.kind === 'practice' && request.mode === 'catch-up',

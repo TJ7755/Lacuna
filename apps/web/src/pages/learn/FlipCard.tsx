@@ -27,6 +27,7 @@ const CARD_SURFACE_CLASS =
  */
 export function FlipCard({
   card,
+  promptId,
   revealed,
   motionSpeed,
   motionMultiplier,
@@ -37,6 +38,7 @@ export function FlipCard({
   hintsOpen,
   onReveal,
   onHide,
+  allowGradingGestures = true,
   onAnswer,
   typedAnswer,
   typedJudgement,
@@ -51,6 +53,8 @@ export function FlipCard({
   occlusionAnswerText,
 }: {
   card: Card;
+  /** A recognition prompt has the ordinary card surface but no reveal action. */
+  promptId?: string;
   revealed: boolean;
   motionSpeed: MotionSpeed;
   motionMultiplier?: number;
@@ -61,6 +65,7 @@ export function FlipCard({
   hintsOpen: boolean;
   onReveal: () => void;
   onHide: () => void;
+  allowGradingGestures?: boolean;
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard', velocity?: number) => void;
   typedAnswer?: string;
   typedJudgement?: TypedAnswerJudgement;
@@ -79,6 +84,7 @@ export function FlipCard({
 }) {
   const m = motionMultiplier ?? speedMultiplier(motionSpeed);
   const isTyping = Boolean(isTypingCard);
+  const promptOnly = promptId !== undefined;
   const [swipe, setSwipe] = useState({ x: 0, hint: null as 'left' | 'right' | null });
   const audioCard = isAudioCardFront(card.front);
   const [showAudioFront, setShowAudioFront] = useState(false);
@@ -182,7 +188,7 @@ export function FlipCard({
       if (!swipeRef.current.axis && Math.max(Math.abs(dx), Math.abs(dy)) > 8) {
         swipeRef.current.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
       }
-      if (swipeRef.current.axis !== 'x' || phase !== 'answer') return;
+      if (!allowGradingGestures || swipeRef.current.axis !== 'x' || phase !== 'answer') return;
       const offset = swipeRef.current.startOffset + dx;
       swipeRef.current.x = offset;
       swipeXMotion.set(offset);
@@ -190,7 +196,7 @@ export function FlipCard({
         offset < -swipeThreshold / 2 ? 'left' : offset > swipeThreshold / 2 ? 'right' : null;
       setSwipe({ x: offset, hint });
     },
-    [phase, swipeXMotion],
+    [allowGradingGestures, phase, swipeXMotion],
   );
 
   const handlePointerUp = useCallback(
@@ -204,7 +210,12 @@ export function FlipCard({
       const velocity = swipeXMotion.getVelocity();
       if (axis) {
         const flick = Math.abs(dx) > 12 && Math.abs(velocity) > 650 && dx * velocity > 0;
-        if (axis === 'x' && (Math.abs(dx) > swipeThreshold || flick) && phase === 'answer') {
+        if (
+          allowGradingGestures &&
+          axis === 'x' &&
+          (Math.abs(dx) > swipeThreshold || flick) &&
+          phase === 'answer'
+        ) {
           committed.current = true;
           hapticMedium();
           setHasSwiped(true);
@@ -235,7 +246,7 @@ export function FlipCard({
         }
       }
     },
-    [phase, audioCard, onReveal, onHide, onAnswer, resetSwipe, swipeXMotion],
+    [allowGradingGestures, phase, audioCard, onReveal, onHide, onAnswer, resetSwipe, swipeXMotion],
   );
 
   const handlePointerCancel = useCallback(
@@ -268,6 +279,7 @@ export function FlipCard({
     <StudyCardFace
       card={card}
       side={side}
+      promptId={side === 'front' && !measuring ? promptId : undefined}
       audioCard={audioCard}
       audioAutoplay={audioCard && side === 'front'}
       isLinesModeCard={isLinesModeCard}
@@ -293,19 +305,26 @@ export function FlipCard({
     >
       <div
         ref={containerRef}
-        role="button"
-        tabIndex={0}
+        role={promptOnly ? undefined : 'button'}
+        data-study-reveal-only={!promptOnly && !allowGradingGestures ? true : undefined}
+        tabIndex={promptOnly ? undefined : 0}
         aria-label={
-          displayedFront ? (revealed ? 'Show answer again' : 'Show answer') : 'Hide answer'
+          promptOnly
+            ? undefined
+            : displayedFront
+              ? revealed
+                ? 'Show answer again'
+                : 'Show answer'
+              : 'Hide answer'
         }
-        className="relative w-full cursor-pointer"
+        className={cn('relative w-full', !promptOnly && 'cursor-pointer')}
         style={{ transformStyle: 'preserve-3d', touchAction: 'pan-y' }}
-        onPointerDown={handlePointerDown}
+        onPointerDown={promptOnly ? undefined : handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onKeyDown={(event) => {
-          if (committed.current || !isPresent) return;
+          if (promptOnly || committed.current || !isPresent) return;
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
           event.stopPropagation();
@@ -323,7 +342,8 @@ export function FlipCard({
         />
 
         {/* Touch swipe indicators — persistent hints that show the available gestures. */}
-        {isTouchMode &&
+        {allowGradingGestures &&
+          isTouchMode &&
           phase === 'answer' &&
           !hasSwiped &&
           !swipe.hint &&

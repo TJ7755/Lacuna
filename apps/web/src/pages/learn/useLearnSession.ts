@@ -25,11 +25,13 @@ import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { SessionContext } from '../../fsrs/session';
 import { sessionCompletionProgress, sessionProgress, sessionServePool } from '../../fsrs/session';
 import type { JevMarkProvenance } from '@lacuna/core/jev/types';
+import type { AnswerStrictness } from '../../state/answerStrictness';
 import { useAnswerInput } from '../../state/answerInput';
 import { startOfDay } from '../../utils/datetime';
 import { useLeaveFlowWith } from '../../utils/editorOrigin';
 import { resolveAnswerMode, reviewAnswerInput } from '../../utils/resolveAnswerMode';
 import { answerCorrect, type AnswerInput, type AnswerResult } from './answerSteps';
+import { canIntroduceCard, introductionProgress, introductionStage } from './lessonIntroduction';
 import { loadSessionData } from './loadSessionData';
 import { loadSessionSource } from './loadSessionSource';
 import { shuffledSimpleQueue } from './recitation/recitationFlow';
@@ -42,6 +44,7 @@ import {
   type PracticeSession,
 } from './sessionCompletionPersistence';
 import {
+  snapshotSession,
   transitionResponseTimer,
   transitionSession,
   type SessionEventInput,
@@ -51,6 +54,7 @@ import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
 import { emptySessionState, sessionCell, simpleSessionCell } from './sessionRuntime';
 import { resolveLearnSessionScope } from './sessionScope';
 import { clearSimpleSession, saveSimpleSession } from './simpleSessionPersistence';
+import { matchesTypedRecall } from './typedRecall';
 import type { LearnModeType, LessonNotesScreen, Phase, StudyUnit } from './types';
 import { useSessionCompletion } from './useSessionCompletion';
 
@@ -80,6 +84,8 @@ export interface UseLearnSessionParams {
   plannedRevision: boolean;
   reviewSessionKind: ReviewSessionKind;
   isSimpleMode: boolean;
+  introduceNewCards?: boolean;
+  answerStrictness?: AnswerStrictness;
   /** An explicitly requested pass, independent of curricular introductions and practice. */
   standaloneSimple?: boolean;
   /** Optional revision below a future exam target, without a curricular scope. */
@@ -120,6 +126,8 @@ export function useLearnSession({
   plannedRevision,
   reviewSessionKind,
   isSimpleMode,
+  introduceNewCards = false,
+  answerStrictness = 'lenient',
   standaloneSimple = false,
   examPractice = false,
   catchUpPractice = false,
@@ -216,6 +224,37 @@ export function useLearnSession({
   const [lessonNotesScreen, setLessonNotesScreen] = useState<LessonNotesScreen | null>(null);
   const answerModeLessonsRef = useRef<Map<string, Lesson>>(new Map());
   const [current, setCurrent] = useState<Card | null>(null);
+  const [lessonChoiceSource, setLessonChoiceSource] = useState<{
+    lessonId: string;
+    cards: Card[];
+  } | null>(null);
+  const updateLessonChoiceCard = useCallback((updated: Card) => {
+    setLessonChoiceSource(
+      (source) =>
+        source && {
+          ...source,
+          cards: source.cards.map((card) => (card.id === updated.id ? updated : card)),
+        },
+    );
+  }, []);
+  const [introductionPresentation, setIntroductionPresentation] = useState<{
+    serial: number;
+    stage: ReturnType<typeof introductionStage>;
+  }>({ serial: 0, stage: undefined });
+  const introductionPresentationRef = useRef({ ...introductionPresentation, checked: false });
+  const lastIntroduction = useRef<{ machine: SessionState; card: Card } | null>(null);
+  const presentIntroduction = useCallback(
+    (card: Card) => {
+      const stage = introductionStage(machineState.current.introduction, card.id);
+      const next = {
+        serial: introductionPresentationRef.current.serial + 1,
+        stage: stage && canIntroduceCard(card) ? stage : undefined,
+      };
+      introductionPresentationRef.current = { ...next, checked: false };
+      setIntroductionPresentation(next);
+    },
+    [machineState],
+  );
   // Cards in this session's pool generated from a lines-mode Sequence, mapped to their
   // owning Sequence — loaded once alongside the card pool (see linesModeCards.ts). Drives
   // the first-letter hint step, which only applies to lines-mode recall cards.
@@ -241,13 +280,20 @@ export function useLearnSession({
     lessonId ?? current?.primaryLessonId ?? '',
   )?.answerMode;
   const occlusionAnswerText = currentOcclusionData?.answerText;
-  const isTypingCard = useMemo(
-    () =>
-      current !== null &&
+  const isTypingCard = useMemo(() => {
+    if (!current) return false;
+    if (introductionPresentation.stage) return introductionPresentation.stage === 'recall';
+    return (
       resolveAnswerMode(current, lessonAnswerMode, answerInputPreference, occlusionAnswerText) ===
-        'type',
-    [current, lessonAnswerMode, answerInputPreference, occlusionAnswerText],
-  );
+      'type'
+    );
+  }, [
+    current,
+    introductionPresentation.stage,
+    lessonAnswerMode,
+    answerInputPreference,
+    occlusionAnswerText,
+  ]);
   const isMachineMarkedCard = hasMachineMarkedPayload(current);
   // A payload the current client cannot render as a study face at all: present but
   // not machine-markable (unknown v, or a known-but-unbuilt kind such as `scaffold`).
@@ -363,6 +409,15 @@ export function useLearnSession({
   const revisionInitialRevision = useRef(0);
   const revisionWindowStartedAt = useRef(0);
   const revisionSessionRef = useRef(sessionCell(machineState, 'revision')).current;
+  const introduction = machineState.current.introduction;
+  const masteredInPass = simpleMastered.current;
+  const chunkProgress = useMemo(
+    () =>
+      introduction &&
+      introductionProgress(introduction, sessionCardIds, currentCardIds, masteredInPass),
+    [introduction, sessionCardIds, currentCardIds, masteredInPass],
+  );
+
   const timerStart = useRef(0);
   const responseTime = useRef(0);
   // Elapsed thinking time captured when the edit overlay opens during the question
@@ -447,9 +502,18 @@ export function useLearnSession({
         outcomes,
         events: events.current,
         recitations: simpleRecitations.current,
+        introduction: machineState.current.introduction,
       });
     },
-    [events, isSimpleMode, sessionCardOutcomesRef, simpleMastered, simpleQueue, simpleSessionScope],
+    [
+      events,
+      isSimpleMode,
+      machineState,
+      sessionCardOutcomesRef,
+      simpleMastered,
+      simpleQueue,
+      simpleSessionScope,
+    ],
   );
 
   const resetSimpleSessionOutcomes = useCallback(() => {
@@ -650,6 +714,8 @@ export function useLearnSession({
           break;
         case 'present-card':
           setCurrent(effect.card);
+          if (introduceNewCards || introductionPresentationRef.current.stage)
+            presentIntroduction(effect.card);
           setPhase('question');
           onCardServedRef.current?.();
           setHintStep(0);
@@ -666,14 +732,50 @@ export function useLearnSession({
     finish,
     distraction,
     isSimpleMode,
+    introduceNewCards,
     persistSimpleResume,
+    presentIntroduction,
     requestWindowId,
     requestReviewLimit,
   ]);
 
+  const checkIntroduction = useCallback(
+    (serial: number, correct: boolean) => {
+      const presentation = introductionPresentationRef.current;
+      const card = currentRef.current;
+      if (
+        !card ||
+        presentation.stage !== 'familiarise' ||
+        presentation.checked ||
+        presentation.serial !== serial ||
+        submitting.current
+      )
+        return false;
+      presentation.checked = true;
+      lastIntroduction.current = { machine: snapshotSession(machineState.current), card };
+      lastAnswer.current = null;
+      applySessionEventRef.current({ type: 'introduction-checked', card, correct });
+      setCanUndo(true);
+      persistSimpleResume();
+      return true;
+    },
+    [machineState, persistSimpleResume],
+  );
+
+  const continueIntroduction = useCallback(
+    (serial: number) => {
+      const presentation = introductionPresentationRef.current;
+      if (presentation.serial !== serial || !presentation.checked) return;
+      serveNext();
+    },
+    [serveNext],
+  );
+
   const continueStudying = useCallback(() => {
     if (summary?.simpleMode) {
-      // Restart simple mode: reset all simple state and begin again.
+      // A repeat pass practises the learned material in its ordinary answer format.
+      machineState.current = { ...machineState.current, introduction: undefined };
+      lastIntroduction.current = null;
       simpleMastered.current = new Set();
       simpleWrong.current = new Set();
       simpleQueue.current = createSimpleQueue(
@@ -700,6 +802,7 @@ export function useLearnSession({
     }
   }, [
     summary?.simpleMode,
+    machineState,
     simpleMastered,
     simpleWrong,
     simpleQueue,
@@ -769,6 +872,9 @@ export function useLearnSession({
     cooldowns.current = new Map();
     events.current = [];
     lastAnswer.current = null;
+    lastIntroduction.current = null;
+    machineState.current = { ...machineState.current, introduction: undefined };
+    setLessonChoiceSource(null);
     submitting.current = false;
     resetCompletion();
     progressBefore.current = 0;
@@ -864,6 +970,7 @@ export function useLearnSession({
         lessonId,
         plannedRevision,
         isSimpleMode,
+        introduceNewCards,
         isGlobal,
         mode,
         simpleSessionScope,
@@ -871,6 +978,9 @@ export function useLearnSession({
       });
       if (cancelled) return;
       cardsRef.current = data.cards;
+      machineState.current = { ...machineState.current, introduction: data.introduction };
+      if (introduceNewCards && lessonId)
+        setLessonChoiceSource({ lessonId, cards: data.lessonChoiceCards });
       perfRef.current = data.performance;
       schedulingUnitsRef.current = data.schedulingUnits;
       schedulingConfigRef.current = data.schedulingConfig;
@@ -928,6 +1038,7 @@ export function useLearnSession({
     navigate,
     onFlowExit,
     isSimpleMode,
+    introduceNewCards,
     mode,
     isGlobal,
     standaloneSimple,
@@ -992,7 +1103,7 @@ export function useLearnSession({
     saveRecitationStep,
     answerRecitation,
     answerScheduled,
-    undoLast,
+    undoLast: undoRecordedAnswer,
   } = createSessionAnswerEffects({
     isGlobal,
     schedulingUnitsRef,
@@ -1050,11 +1161,38 @@ export function useLearnSession({
     notify,
   });
 
+  const undoLast = async (options?: { reveal?: boolean }) => {
+    const recognition = lastIntroduction.current;
+    if (!recognition) {
+      const restored = await undoRecordedAnswer(options);
+      if (restored && introduceNewCards) presentIntroduction(restored);
+      return restored;
+    }
+    if (submitting.current) return;
+    applySessionEventRef.current({
+      type: 'restore',
+      snapshot: recognition.machine,
+      card: recognition.card,
+    });
+    lastIntroduction.current = null;
+    setCanUndo(false);
+    setCurrent(recognition.card);
+    presentIntroduction(recognition.card);
+    setPhase('question');
+    onCardServedRef.current?.();
+    presentedAnswerInput.current = undefined;
+    distraction.beginCard();
+    distraction.setAnswerVisible(false);
+    persistSimpleResume();
+    return recognition.card;
+  };
+
   const answer = useCallback(
     async (
       input: AnswerInput,
       options?: {
         markedBy?: JevMarkProvenance;
+        typedAnswer?: string;
         /** Automatic typed verdicts retain Undo through the final report. */
         retainUndo?: boolean;
       },
@@ -1068,6 +1206,7 @@ export function useLearnSession({
         (!machineMarked && phaseNow !== 'answer') ||
         (machineMarked && phaseNow !== 'question') ||
         !cardNow ||
+        introductionPresentationRef.current.stage === 'familiarise' ||
         isUnrenderableItemPayload(cardNow)
       ) {
         submitting.current = false;
@@ -1075,28 +1214,43 @@ export function useLearnSession({
       }
 
       try {
+        const verifiedRecall = introductionPresentationRef.current.stage === 'recall';
+        const typedAnswer = options?.typedAnswer ?? '';
+        const markedBy = !verifiedRecall || typedAnswer.trim() ? options?.markedBy : undefined;
+        const correct =
+          verifiedRecall && !markedBy
+            ? matchesTypedRecall(cardNow, typedAnswer, answerStrictness)
+            : answerCorrect(input);
         const response: AnswerResponse = {
-          retainUndo: options?.retainUndo ?? false,
+          retainUndo: options?.retainUndo ?? verifiedRecall,
           input: reviewAnswerInput(
             cardNow,
             recitationSequence !== null,
             presentedAnswerInput.current === 'typed',
           ),
-          markedBy: options?.markedBy,
-          correct: answerCorrect(input),
-          manualGrade: typeof input === 'number' ? input : null,
+          markedBy,
+          correct,
+          manualGrade: !verifiedRecall && typeof input === 'number' ? input : null,
           machineMarked,
           t: machineMarked ? (performance.now() - timerStart.current) / 1000 : responseTime.current,
           distracted: distraction.wasDistracted(),
         };
-        return isSimpleMode
-          ? await answerSimple(cardNow, response)
-          : await answerScheduled(cardNow, response);
+        if (!isSimpleMode) return await answerScheduled(cardNow, response);
+        const result = await answerSimple(cardNow, response);
+        lastIntroduction.current = null;
+        return result;
       } finally {
         submitting.current = false;
       }
     },
-    [distraction, isSimpleMode, answerSimple, answerScheduled, recitationSequence],
+    [
+      distraction,
+      isSimpleMode,
+      answerSimple,
+      answerScheduled,
+      recitationSequence,
+      answerStrictness,
+    ],
   );
 
   /** Drop the current card from the live pool after a suspend/bury, then move on. */
@@ -1107,6 +1261,8 @@ export function useLearnSession({
       if (!mountedRef.current) return;
       setCanUndo(false);
       lastAnswer.current = null;
+      lastIntroduction.current = null;
+      updateLessonChoiceCard(updated);
       applySessionEventRef.current({ type: 'remove-card', card: updated, simple: isSimpleMode });
       progressCacheRef.current.dirty = true;
       setSchedulerProgress(
@@ -1129,6 +1285,7 @@ export function useLearnSession({
       sessionCardOutcomesRef,
       simpleMastered,
       simpleQueue,
+      updateLessonChoiceCard,
     ],
   );
 
@@ -1183,10 +1340,34 @@ export function useLearnSession({
     (updated: Card) => {
       applySessionEventRef.current({ type: 'replace-card', card: updated });
       setCurrent(updated);
+      if (introduceNewCards) {
+        updateLessonChoiceCard(updated);
+        if (introductionPresentationRef.current.stage === 'familiarise') {
+          const recognition = lastIntroduction.current;
+          if (recognition?.card.id === updated.id && introductionPresentationRef.current.checked) {
+            applySessionEventRef.current({
+              type: 'restore',
+              snapshot: recognition.machine,
+              card: updated,
+            });
+            lastIntroduction.current = null;
+            setCanUndo(false);
+            persistSimpleResume();
+          }
+          presentIntroduction(updated);
+          setPhase('question');
+        }
+      }
       setEditing(false);
       resumeAfterEdit();
     },
-    [resumeAfterEdit],
+    [
+      introduceNewCards,
+      persistSimpleResume,
+      presentIntroduction,
+      resumeAfterEdit,
+      updateLessonChoiceCard,
+    ],
   );
 
   /** Flag or unflag the current card without disturbing its review timer or place. */
@@ -1221,6 +1402,14 @@ export function useLearnSession({
     lessonNotesScreen,
     continueFromNotes,
     current,
+    lessonChoiceCards:
+      introduceNewCards && lessonChoiceSource?.lessonId === lessonId
+        ? lessonChoiceSource?.cards
+        : undefined,
+    introductionPresentation,
+    introductionProgress: chunkProgress,
+    checkIntroduction,
+    continueIntroduction,
     hintStep,
     setHintStep,
     isTypingCard,

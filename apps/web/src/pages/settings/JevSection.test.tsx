@@ -43,16 +43,10 @@ describe('JevSection', () => {
     const dialog = screen.getByRole('alertdialog', {
       name: 'Before you turn on automatic marking',
     });
-    expect(dialog).toHaveTextContent('Warning');
-    expect(dialog).toHaveTextContent('sent to TypeSafe AI in the United States');
+    expect(dialog).toHaveTextContent('Jev sends study text to TypeSafe AI in the United States');
     expect(dialog).toHaveTextContent('Do not include personal data about yourself or anyone else');
-    expect(dialog).toHaveTextContent('your answers, questions, cards or mark schemes');
-    expect(dialog).toHaveTextContent('experimental public beta');
-    expect(dialog).toHaveTextContent('across subjects and answer types');
-    expect(dialog).toHaveTextContent(
-      'Marks and diagnoses can be wrong, even when Jev is confident',
-    );
-    expect(dialog).toHaveTextContent('It does not delete anything already sent');
+    expect(dialog).toHaveTextContent('chooses multiple-choice options from lesson material');
+    expect(dialog).toHaveTextContent('zero data retention enabled');
     const turnOn = screen.getByRole('button', { name: 'Turn on' });
     expect(turnOn).toBeDisabled();
     fireEvent.click(turnOn);

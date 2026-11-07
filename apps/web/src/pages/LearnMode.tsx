@@ -3,7 +3,7 @@ import { StudyEntrance } from '../components/learn/StudyEntrance';
 import './learn/studyLayout.css';
 import { typedAnswerJudgement, useTypedAutoMark } from './learn/useTypedAutoMark';
 import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
-import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
@@ -18,6 +18,10 @@ import { useShortcutBindings } from '../state/shortcutBindings';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
 import { useToast } from '../components/ui/Toast';
+import { useLessonDistractors } from '../jev';
+import { matchesTypedRecall } from './learn/typedRecall';
+import { canOfferChoices, lessonChoiceCandidates } from './learn/simpleLearnQuestions';
+import { filterSimpleLearnCardPool } from './learn/sessionPool';
 import { useLearnSession } from './learn/useLearnSession';
 import { useLearnView } from './learn/useLearnView';
 import { useLearnAnswerFeedback } from './learn/useLearnAnswerFeedback';
@@ -32,12 +36,6 @@ import {
 } from '../course/learnSessionRequest';
 import { SessionExitGuard } from '../components/learn/SessionExitGuard';
 import type { NavigationGuardHandle } from '../components/ui/NavigationGuard';
-
-const SimpleLearnChoiceSession = lazy(() =>
-  import('./learn/SimpleLearnChoiceSession').then((module) => ({
-    default: module.SimpleLearnChoiceSession,
-  })),
-);
 
 export type { LearnSessionRequest } from '../course/learnSessionRequest';
 
@@ -55,39 +53,9 @@ interface LearnModeProps {
 }
 
 export function LearnMode(props: LearnModeProps = {}) {
-  const { courseId, lessonId } = useParams<{ courseId: string; lessonId: string }>();
-  const [searchParams] = useSearchParams();
-  const choiceOptions = useMemo(() => {
-    if (
-      props.request ||
-      (!courseId && !lessonId) ||
-      searchParams.get('mode') !== 'simple' ||
-      searchParams.get('format') !== 'multiple-choice'
-    ) {
-      return null;
-    }
-    // Recognition loads a standalone scope. Only card filters carry over from the route.
-    const scope = new URLSearchParams(
-      [...searchParams].filter(([key]) => key === 'tag' || key === 'filter'),
-    );
-    scope.set('mode', 'simple');
-    return resolveLearnSessionRequest({
-      route: { courseId, lessonId },
-      searchParams: scope,
-      studyMode: 'simple',
-      lessonLearnFirst: undefined,
-    });
-  }, [courseId, lessonId, props.request, searchParams]);
   return (
     <PageLoadingBoundary animateArrival={false}>
-      {choiceOptions ? (
-        <SimpleLearnChoiceSession
-          key={JSON.stringify([courseId, lessonId, searchParams.toString()])}
-          options={choiceOptions}
-        />
-      ) : (
-        <LearnSession {...props} />
-      )}
+      <LearnSession {...props} />
     </PageLoadingBoundary>
   );
 }
@@ -180,6 +148,7 @@ function LearnSession({
   const session = useLearnSession({
     enabled: sessionReady,
     ...sessionOptions,
+    answerStrictness,
     sessionId,
     navigate,
     onFlowExit,
@@ -195,6 +164,8 @@ function LearnSession({
     lessonNotesScreen,
     continueFromNotes,
     current,
+    introductionPresentation,
+    lessonChoiceCards,
     hintStep,
     setHintStep,
     isTypingCard: isTypingQuestion,
@@ -220,19 +191,40 @@ function LearnSession({
     persistSimpleResume,
   } = session;
 
+  const choiceBank = useMemo(
+    () => lessonChoiceCandidates(lessonChoiceCards ?? []),
+    [lessonChoiceCards],
+  );
+  // Rank the lesson content once. Study exclusions still apply to options we show.
+  const rankedChoices = useLessonDistractors(lessonChoiceCards ? lessonId : undefined, choiceBank);
+  const choiceCandidates = useMemo(() => {
+    const availableIds = new Set(
+      filterSimpleLearnCardPool(lessonChoiceCards ?? []).map(({ id }) => id),
+    );
+    return choiceBank.filter(({ id }) => availableIds.has(id));
+  }, [choiceBank, lessonChoiceCards]);
+  const familiarising = introductionPresentation.stage === 'familiarise';
+  const verifyTypedRecall = introductionPresentation.stage === 'recall';
+  const choiceTarget = familiarising
+    ? choiceCandidates.find((candidate) => candidate.id === current?.id)
+    : undefined;
+  const choiceQuestion =
+    choiceTarget && canOfferChoices(choiceTarget, choiceCandidates) ? choiceTarget : undefined;
+
   const isTypingCard = phase === 'answer' ? presentedAnswerInput === 'typed' : isTypingQuestion;
 
   useEffect(() => {
     if (phase === 'question' && !isTypingCard) setTypedAnswer('');
   }, [phase, isTypingCard, setTypedAnswer]);
 
-  const studyFocusRef = useStudyFocus(current?.id, phase, editing || menuOpen || hintsOpen);
-
   // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
   // applies to a machine-marked item, nor to one whose payload this client
   // can't render at all — see UnknownItemFace.
   const suppressClassicGrading =
-    isMachineMarkedCard || hasUnrenderableItemPayload || recitationSequence !== null;
+    familiarising ||
+    isMachineMarkedCard ||
+    hasUnrenderableItemPayload ||
+    recitationSequence !== null;
 
   const feedback = useLearnAnswerFeedback({
     answer,
@@ -245,6 +237,7 @@ function LearnSession({
     presentedAnswerInput,
     current,
     typedAnswer,
+    verifyTypedRecall,
   });
   const {
     cardTransitionRef,
@@ -269,10 +262,38 @@ function LearnSession({
     onHold: () => cardTransitionRef.current?.cancel(),
     m,
     onMarked: (correct, provenance, grade) =>
-      answerWithUndo(grade ?? correct, 'keyboard', 0, provenance ?? undefined, true),
+      answerWithUndo(
+        verifyTypedRecall ? correct : (grade ?? correct),
+        'keyboard',
+        0,
+        provenance ?? undefined,
+        true,
+      ),
   });
 
   const typedJudgement = useMemo(() => typedAnswerJudgement(typedAutoMark), [typedAutoMark]);
+  const recallCorrect = useMemo(
+    () =>
+      verifyTypedRecall
+        ? phase === 'answer' &&
+          current !== null &&
+          matchesTypedRecall(current, typedAnswer, answerStrictness)
+        : undefined,
+    [verifyTypedRecall, phase, current, typedAnswer, answerStrictness],
+  );
+  const showLocalRecall =
+    recallCorrect !== undefined &&
+    phase === 'answer' &&
+    typedAutoMark.state !== 'checking' &&
+    typedAutoMark.state !== 'marked';
+  const studyFocusRef = useStudyFocus(
+    current && introductionPresentation.stage
+      ? `${current.id}:${introductionPresentation.serial}`
+      : current?.id,
+    phase,
+    editing || menuOpen || hintsOpen,
+    showLocalRecall || (familiarising && !choiceQuestion && phase === 'answer'),
+  );
 
   useEffect(() => {
     if (editing || menuOpen || hintsOpen || leaveConfirmationOpen)
@@ -294,7 +315,8 @@ function LearnSession({
     editing,
     current,
     isTypingCard,
-    suppressClassicGrading,
+    suppressClassicGrading: suppressClassicGrading || verifyTypedRecall,
+    allowRevealWhenGradingSuppressed: verifyTypedRecall || (familiarising && !choiceQuestion),
     openEdit,
     hintsOpen,
     setHintsOpen,
@@ -413,6 +435,11 @@ function LearnSession({
               isTouchMode={isTouchMode}
               suppressClassicGrading={suppressClassicGrading}
               isTypingCard={isTypingCard}
+              recallCorrect={recallCorrect}
+              showLocalRecall={showLocalRecall}
+              choiceQuestion={choiceQuestion}
+              choiceCandidates={choiceCandidates}
+              rankedChoices={choiceQuestion ? rankedChoices.get(choiceQuestion.id) : undefined}
               gradingMode={gradingMode}
               answerStrictness={answerStrictness}
               typedAutoMark={typedAutoMark}

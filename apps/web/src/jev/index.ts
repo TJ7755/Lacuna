@@ -20,6 +20,7 @@ export function useJevTypedMarker() {
   return jevEngine.marker();
 }
 export { useJevAllocationMarking, markJevAttempt } from './attempts';
+export { useLessonDistractors } from './lessonDistractors';
 export { splitJevExpectedAnswer, type JevExpectedAnswerPart } from './answerParts';
 /** Technique classification is an explicit authoring action, never a background request. */
 export const classifyTechniques: typeof jevEngine.classifyTechniques = (request, signal) =>

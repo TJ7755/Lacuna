@@ -110,7 +110,7 @@ for (const width of [1440]) {
     const preview = page.getByRole('region', { name: 'Session preview' });
     const recommendation = preview.getByRole('list', { name: "Today's session" });
     await expect(recommendation.getByRole('listitem')).toHaveCount(1);
-    await expect(recommendation).toHaveText('Year twoLearn · 1 new card');
+    await expect(recommendation).toHaveText('Year twoLearn new cards · 1 card');
     await preview.getByRole('button', { name: 'Other ways', exact: true }).click();
     await expect(
       preview.getByRole('button', { name: 'Review earlier material', exact: true }),
@@ -126,16 +126,26 @@ for (const width of [1440]) {
     await expect(page.getByText('Year two recall', { exact: true })).toHaveCount(0);
     await page.goto(courseUrl);
     await page.getByRole('button', { name: 'Study', exact: true }).click();
-    await expect(recommendation).toHaveText('Year twoLearn · 1 new card');
+    await expect(recommendation).toHaveText('Year twoLearn new cards · 1 card');
     await preview.getByRole('button', { name: 'Start session', exact: true }).click();
     await expect(
       page.locator('[data-study-face="front"]').getByText('Year two recall', { exact: true }),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
-    await page.getByRole('button', { name: 'Yes', exact: true }).click();
-    const continuation = page.getByRole('button', { name: 'Continue', exact: true });
-    await expect(continuation).toBeEnabled();
-    await continuation.click();
+    const study = page.getByRole('main', { name: 'Study card' });
+    const nextCard = study.getByRole('button', { name: 'Continue', exact: true });
+    await nextCard.click();
+    await page.getByRole('textbox', { name: 'Your answer' }).fill('Year two answer');
+    await page.getByRole('button', { name: 'Check answer', exact: true }).click();
+    await nextCard.click();
+    await page
+      .getByRole('main', { name: 'Session report' })
+      .getByRole('button', { name: 'Continue', exact: true })
+      .click();
+    await page
+      .getByRole('main', { name: 'Study progress' })
+      .getByRole('button', { name: 'Continue', exact: true })
+      .click();
     await expect(
       page.locator('[data-study-face="front"]').getByText('Year one recall', { exact: true }),
     ).toBeVisible();

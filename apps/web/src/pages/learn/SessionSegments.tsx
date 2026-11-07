@@ -84,7 +84,7 @@ export function SessionSegments({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(Math.max(0, Math.min(1, value)) * 100)}
-      title={`${countOf(cardIds.length, 'card')} in this session`}
+      title={`${countOf(cardIds.length, noun.toLowerCase())} in this session`}
     >
       <span className="sr-only" aria-live="polite" aria-atomic="true">
         {progressAnnouncement}

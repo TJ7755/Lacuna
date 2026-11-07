@@ -1,18 +1,11 @@
 import type { Card } from '@lacuna/core/db/types';
 import { markdownAnswerShape } from '../../components/markdown/markdownAnswers';
+import { lessonDistractorAnswerKey } from '../../jev/protocol';
 
-interface ChoiceCard {
+export interface LessonChoiceCard {
+  id: string;
   prompt: string;
   answer: string;
-}
-
-interface ChoiceGroup {
-  entries: ChoiceCard[];
-  promptCounts: Map<string, number>;
-}
-
-export interface SimpleLearnQuestion extends ChoiceCard {
-  choices: string[];
 }
 
 function shortPlainText(source: string, maxLength: number) {
@@ -26,7 +19,8 @@ function distinctText(text: string) {
   return text
     .normalize('NFC')
     .toLowerCase()
-    .replace(/[.!?]+$/, '');
+    .replace(/[.!?]+$/, '')
+    .trim();
 }
 
 function shuffled<T>(values: readonly T[]): T[] {
@@ -38,60 +32,58 @@ function shuffled<T>(values: readonly T[]): T[] {
   return result;
 }
 
-/** Generate recognition questions from distinct short answers in the same lesson. */
-export function buildSimpleLearnQuestions(
-  cards: readonly Card[],
-  lessonScoped: boolean,
-): SimpleLearnQuestion[] {
-  const groups = new Map<string | null, ChoiceGroup>();
+/** Only compatible, unambiguous cards from the selected lesson can supply choice text. */
+export function lessonChoiceCandidates(cards: readonly Card[]): LessonChoiceCard[] {
+  const entries: LessonChoiceCard[] = [];
+  const promptCounts = new Map<string, number>();
   for (const card of cards) {
-    if (
-      card.type !== 'front_back' ||
-      card.payload ||
-      card.sequenceItemId ||
-      card.occlusionRegionId
-    ) {
+    if (card.type === 'cloze' || card.payload || card.sequenceItemId || card.occlusionRegionId) {
       continue;
     }
     const rawPrompt = card.front.trim();
     if (!rawPrompt) continue;
     const { text: prompt, hasVisual } = markdownAnswerShape(rawPrompt);
     if (hasVisual || !prompt || prompt.length > 180) continue;
-    const groupKey = lessonScoped ? null : (card.primaryLessonId ?? null);
-    let group = groups.get(groupKey);
-    if (!group) {
-      group = { entries: [], promptCounts: new Map() };
-      groups.set(groupKey, group);
-    }
     const promptKey = distinctText(prompt);
-    group.promptCounts.set(promptKey, (group.promptCounts.get(promptKey) ?? 0) + 1);
-    // Formatting may be needed to understand a prompt, but it can still duplicate plain text.
+    promptCounts.set(promptKey, (promptCounts.get(promptKey) ?? 0) + 1);
+    // Formatted prompts may need the familiarisation face, but can still duplicate plain prompts.
     if (/[\r\n]/.test(rawPrompt) || prompt !== rawPrompt.replace(/\s+/g, ' ')) continue;
     const answer = shortPlainText(card.back, 80);
-    if (answer) group.entries.push({ prompt, answer });
+    if (answer) entries.push({ id: card.id, prompt, answer });
   }
-
-  const questions: SimpleLearnQuestion[] = [];
-  for (const { entries, promptCounts } of groups.values()) {
-    // Repeated prompts can represent alternate valid answers. Skip them entirely.
-    const eligible = entries.filter(({ prompt }) => promptCounts.get(distinctText(prompt)) === 1);
-    const answers = shuffled([
-      ...new Map(eligible.map(({ answer }) => [distinctText(answer), answer])),
-    ]);
-    if (answers.length < 2) continue;
-    eligible.forEach((entry, index) => {
-      const key = distinctText(entry.answer);
-      const distractors: string[] = [];
-      for (let offset = 0; offset < answers.length && distractors.length < 3; offset += 1) {
-        const [candidate, answer] = answers[(index + offset) % answers.length];
-        if (candidate !== key) distractors.push(answer);
-      }
-      questions.push({ ...entry, choices: shuffled([entry.answer, ...distractors]) });
-    });
-  }
-  return shuffled(questions);
+  return entries.filter(({ prompt }) => promptCounts.get(distinctText(prompt)) === 1);
 }
 
-export function retrySimpleLearnQuestion(question: SimpleLearnQuestion): SimpleLearnQuestion {
-  return { ...question, choices: shuffled(question.choices) };
+export function canOfferChoices(
+  target: LessonChoiceCard,
+  cards: readonly LessonChoiceCard[],
+): boolean {
+  const expected = lessonDistractorAnswerKey(target.answer);
+  return cards.some((candidate) => lessonDistractorAnswerKey(candidate.answer) !== expected);
+}
+
+/** Sample ranked, still-eligible distractors and fill any gaps locally. */
+export function lessonChoices(
+  target: LessonChoiceCard,
+  cards: readonly LessonChoiceCard[],
+  rankedIds: readonly string[],
+): string[] {
+  const byId = new Map(cards.map((card) => [card.id, card]));
+  const seen = new Set([lessonDistractorAnswerKey(target.answer)]);
+  const distractors: string[] = [];
+  const add = (candidate: LessonChoiceCard | undefined) => {
+    if (!candidate || distractors.length === 3) return;
+    const key = lessonDistractorAnswerKey(candidate.answer);
+    if (seen.has(key)) return;
+    seen.add(key);
+    distractors.push(candidate.answer);
+  };
+  for (const id of shuffled(rankedIds)) add(byId.get(id));
+  if (distractors.length < 3) {
+    for (const candidate of shuffled(cards)) {
+      add(candidate);
+      if (distractors.length === 3) break;
+    }
+  }
+  return shuffled([target.answer, ...distractors]);
 }
