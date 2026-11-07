@@ -286,6 +286,10 @@ export async function loadLessonSessionSource(courseId: string, lessonId: string
   };
 }
 
+export function filterSimpleLearnCardPool(cards: Card[], now = Date.now()): Card[] {
+  return cards.filter((card) => !card.suspended && !(card.buriedUntil && card.buriedUntil > now));
+}
+
 /** Restore the saved pass without shuffling it again; new passes shuffle exactly once. */
 export function prepareSimpleSessionQueue(
   cards: Card[],

@@ -71,7 +71,7 @@ export const helpTopics: readonly HelpTopic[] = [
     group: 'Studying',
     question: 'When should I use Simple learn?',
     answer:
-      'Use Simple learn for a first pass through the course’s cards. Incorrect cards return later until you have answered every card correctly; your answers also start review scheduling. Turn off Learn first in course settings to go straight to spaced repetition.',
+      'Use Simple learn for a first pass through the course’s cards. Incorrect cards return later until you have answered every card correctly. Recall updates your review schedule. For familiarisation, open Other ways, choose Practise until all correct, then choose Multiple choice. It uses suitable short text cards and leaves your review schedule alone. Turn off Learn first in course settings to go straight to spaced repetition.',
     keywords: ['first', 'new', 'normal', 'session'],
   },
   {

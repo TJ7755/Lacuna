@@ -3,7 +3,7 @@ import { StudyEntrance } from '../components/learn/StudyEntrance';
 import './learn/studyLayout.css';
 import { typedAnswerJudgement, useTypedAutoMark } from './learn/useTypedAutoMark';
 import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
@@ -33,6 +33,12 @@ import {
 import { SessionExitGuard } from '../components/learn/SessionExitGuard';
 import type { NavigationGuardHandle } from '../components/ui/NavigationGuard';
 
+const SimpleLearnChoiceSession = lazy(() =>
+  import('./learn/SimpleLearnChoiceSession').then((module) => ({
+    default: module.SimpleLearnChoiceSession,
+  })),
+);
+
 export type { LearnSessionRequest } from '../course/learnSessionRequest';
 
 interface LearnModeProps {
@@ -49,9 +55,39 @@ interface LearnModeProps {
 }
 
 export function LearnMode(props: LearnModeProps = {}) {
+  const { courseId, lessonId } = useParams<{ courseId: string; lessonId: string }>();
+  const [searchParams] = useSearchParams();
+  const choiceOptions = useMemo(() => {
+    if (
+      props.request ||
+      (!courseId && !lessonId) ||
+      searchParams.get('mode') !== 'simple' ||
+      searchParams.get('format') !== 'multiple-choice'
+    ) {
+      return null;
+    }
+    // Recognition loads a standalone scope. Only card filters carry over from the route.
+    const scope = new URLSearchParams(
+      [...searchParams].filter(([key]) => key === 'tag' || key === 'filter'),
+    );
+    scope.set('mode', 'simple');
+    return resolveLearnSessionRequest({
+      route: { courseId, lessonId },
+      searchParams: scope,
+      studyMode: 'simple',
+      lessonLearnFirst: undefined,
+    });
+  }, [courseId, lessonId, props.request, searchParams]);
   return (
     <PageLoadingBoundary animateArrival={false}>
-      <LearnSession {...props} />
+      {choiceOptions ? (
+        <SimpleLearnChoiceSession
+          key={JSON.stringify([courseId, lessonId, searchParams.toString()])}
+          options={choiceOptions}
+        />
+      ) : (
+        <LearnSession {...props} />
+      )}
     </PageLoadingBoundary>
   );
 }
