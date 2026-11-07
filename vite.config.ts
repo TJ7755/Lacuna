@@ -186,7 +186,7 @@ export default defineConfig({
             {
               // These scheduling helpers are shared by the same study entry points.
               name: 'study-eligibility',
-              test: /[\\/]src[\\/]fsrs[\\/](?:eligibility|horizon|assessmentTiming|objective|progress)\.ts$/,
+              test: /[\\/]src[\\/]fsrs[\\/](?:eligibility|horizon|assessmentTiming|objective|progress|stats|heatmap)\.ts$/,
               includeDependenciesRecursively: false,
             },
             {
