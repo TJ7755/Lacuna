@@ -51,6 +51,7 @@ export interface LoadedSessionSource {
   cards: Card[];
   resolvedCourseId: string | null;
   lessonHasMembers: boolean;
+  lessonMembers?: Card[];
   reviewKind: 'scheduling-unit' | 'course';
   ratchetCourseId: string | null;
   ratchetLessonId: string | null;
@@ -130,6 +131,7 @@ export async function loadSessionSource(
       membership,
     } = await loadLessonSessionSource(course.id, lessonId);
     result.lessonHasMembers = membership.length > 0;
+    result.lessonMembers = membership;
     const examDateContext = makeExamDateContext(
       course,
       courseLessons,

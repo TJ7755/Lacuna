@@ -9,7 +9,7 @@ import {
 } from './studyFlowPlanner';
 import { countOf } from '../utils/plural';
 
-/** A new card is introduced and then recalled at least twice in its first session. */
+/** Allow time for a first exposure, recall and a retry. */
 const NEW_CARD_REVIEW_EQUIVALENTS = 3;
 
 interface StudySessionPlanStep {
@@ -41,14 +41,15 @@ function describeStep(
   if (step.kind === 'lesson') {
     const cards = lessonCardsById.get(step.lessonId) ?? [];
     const fresh = cards.filter((card) => card.lastReviewed === null).length;
+    const introducing = fresh > 0 && snapshot.learnFirst !== false;
     return {
       key: `lesson:${step.lessonId}`,
       title: step.label,
-      detail: `Learn · ${
+      detail: `${introducing ? 'Learn new cards' : 'Learn'} · ${
         cards.length === 0
           ? 'Notes only'
           : fresh === cards.length
-            ? countOf(fresh, 'new card')
+            ? countOf(fresh, introducing ? 'card' : 'new card')
             : fresh > 0
               ? `${countOf(cards.length, 'card')}, ${fresh} new`
               : countOf(cards.length, 'card')

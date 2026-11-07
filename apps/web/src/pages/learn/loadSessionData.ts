@@ -20,8 +20,9 @@ import type { SessionSummary } from '../../course/sessionSummary';
 import { FILTER_LABELS, type LearnModeType, type LessonNotesScreen } from './types';
 import type { LoadedSessionSource } from './loadSessionSource';
 import { shuffledSimpleQueue } from './recitation/recitationFlow';
-import { prepareSimpleSessionQueue } from './sessionPool';
+import { filterSimpleLearnCardPool, prepareSimpleSessionQueue } from './sessionPool';
 import type { SimpleSessionScope } from './simpleSessionPersistence';
+import { prepareIntroduction } from './lessonIntroduction';
 
 interface SessionDataRequest {
   source: LoadedSessionSource;
@@ -30,6 +31,7 @@ interface SessionDataRequest {
   lessonId: string | undefined;
   plannedRevision: boolean;
   isSimpleMode: boolean;
+  introduceNewCards: boolean;
   isGlobal: boolean;
   mode: LearnModeType;
   simpleSessionScope: SimpleSessionScope;
@@ -50,18 +52,14 @@ export async function loadSessionData(request: SessionDataRequest) {
     lessonId,
     plannedRevision,
     isSimpleMode,
+    introduceNewCards,
     isGlobal,
     mode,
     simpleSessionScope,
   } = request;
   const { units, sessionUnits, firstStudyLessonId, firstStudyLessonName } = source;
-  let cards = filterSessionCardPool(source.cards, { tag: tagFilter, filters: filterParams });
-  if (isSimpleMode) {
-    const now = Date.now();
-    cards = cards.filter(
-      (card) => !card.suspended && !(card.buriedUntil && card.buriedUntil > now),
-    );
-  }
+  const filtered = filterSessionCardPool(source.cards, { tag: tagFilter, filters: filterParams });
+  const cards = isSimpleMode ? filterSimpleLearnCardPool(filtered) : filtered;
   const perfs = await performanceForReviewUnits(
     units.map((unit) => unit.id),
     source.reviewKind,
@@ -115,6 +113,10 @@ export async function loadSessionData(request: SessionDataRequest) {
         shuffledSimpleQueue(pool, linesMode),
       )
     : null;
+  const introduction =
+    introduceNewCards && simple
+      ? prepareIntroduction(simple.queue, simple.introduction)
+      : undefined;
   const notes =
     firstStudyLessonId && firstStudyLessonName ? await listNotes(firstStudyLessonId) : null;
   let entry: SessionEntry;
@@ -193,6 +195,8 @@ export async function loadSessionData(request: SessionDataRequest) {
   }
   return {
     cards,
+    introduction,
+    lessonChoiceCards: introduction ? (source.lessonMembers ?? []) : [],
     performance,
     schedulingUnits,
     schedulingConfig,

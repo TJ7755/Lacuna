@@ -27,6 +27,7 @@ export function StudyControls({
   onAnswer,
   autoMark,
   recallPrompt,
+  recallCorrect,
   departing = false,
   m,
 }: {
@@ -44,6 +45,7 @@ export function StudyControls({
   /** Automatic marking of a typed answer: still judging, or the verdict it reached. */
   autoMark?: AutoMark;
   recallPrompt?: string;
+  recallCorrect?: boolean;
   departing?: boolean;
   m: number;
 }) {
@@ -64,6 +66,7 @@ export function StudyControls({
   ) => (
     <StudyGradeButton
       key={String(input)}
+      data-study-continue={recallCorrect !== undefined || undefined}
       grade={input}
       feedback={feedback}
       m={m}
@@ -77,49 +80,53 @@ export function StudyControls({
   );
   // The primary grade comes last: the Flow controls draw its fill.
   const grades =
-    gradingMode === 'manual'
-      ? [
-          grade(
-            1,
-            'danger',
-            <>
-              <CloseIcon width={18} height={18} />
-              Again
-            </>,
-          ),
-          grade(2, 'secondary', 'Hard'),
-          grade(3, 'secondary', 'Good'),
-          grade(
-            4,
-            'primary',
-            <>
-              <CheckIcon width={18} height={18} />
-              Easy
-            </>,
-          ),
-        ]
-      : [
-          grade(
-            false,
-            'danger',
-            <>
-              <CloseIcon width={18} height={18} />
-              No
-            </>,
-          ),
-          grade(
-            true,
-            'primary',
-            <>
-              <CheckIcon width={18} height={18} />
-              Yes
-            </>,
-          ),
-        ];
+    recallCorrect !== undefined
+      ? [grade(recallCorrect, 'primary', 'Continue')]
+      : gradingMode === 'manual'
+        ? [
+            grade(
+              1,
+              'danger',
+              <>
+                <CloseIcon width={18} height={18} />
+                Again
+              </>,
+            ),
+            grade(2, 'secondary', 'Hard'),
+            grade(3, 'secondary', 'Good'),
+            grade(
+              4,
+              'primary',
+              <>
+                <CheckIcon width={18} height={18} />
+                Easy
+              </>,
+            ),
+          ]
+        : [
+            grade(
+              false,
+              'danger',
+              <>
+                <CloseIcon width={18} height={18} />
+                No
+              </>,
+            ),
+            grade(
+              true,
+              'primary',
+              <>
+                <CheckIcon width={18} height={18} />
+                Yes
+              </>,
+            ),
+          ];
   const gradeRowClassName =
-    gradingMode === 'manual'
-      ? 'grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4'
-      : 'flex w-full max-w-md gap-3';
+    recallCorrect !== undefined
+      ? 'flex w-full max-w-md'
+      : gradingMode === 'manual'
+        ? 'grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4'
+        : 'flex w-full max-w-md gap-3';
   const typedField = (
     <>
       <label htmlFor="study-typed-answer" className="mb-2 block text-sm text-ink-soft">
@@ -166,7 +173,7 @@ export function StudyControls({
             autoMark={isTypingCard ? autoMark : undefined}
             departing={departing}
             grades={grades}
-            negativeIndex={gradingMode === 'manual' ? 0 : undefined}
+            negativeIndex={recallCorrect === undefined && gradingMode === 'manual' ? 0 : undefined}
             rowClassName={gradeRowClassName}
             revealLabel={isTypingCard ? 'Check answer' : 'Show answer'}
             revealLead={isTypingCard ? <div className="mb-3">{typedField}</div> : undefined}
@@ -206,6 +213,7 @@ export function StudyControls({
           isTypingCard={isTypingCard}
           autoMark={autoMark}
           recallPrompt={recallPrompt}
+          recallCorrect={recallCorrect}
         />
       )}
     </>

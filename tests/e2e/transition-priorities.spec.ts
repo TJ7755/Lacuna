@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { build } from 'esbuild';
-import { chooseScheduledStudy, enterFreshLacuna } from './fixtures/lacunaApp';
+import {
+  chooseScheduledStudy,
+  completeRevealedIntroduction,
+  enterFreshLacuna,
+} from './fixtures/lacunaApp';
 import type { seed } from './fixtures/transitionPriorities';
 
 test('A completed lesson and its priority topics keep their full names and exact due counts on desktop', async ({
@@ -30,8 +34,7 @@ test('A completed lesson and its priority topics keep their full names and exact
   await expect(continueNotes.or(card)).toBeVisible();
   if (await continueNotes.isVisible()) await continueNotes.click();
   await expect(card).toBeVisible();
-  await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await completeRevealedIntroduction(page, 'Xylem');
   const transition = page.getByRole('main', { name: 'Study progress', exact: true });
   await expect(transition).toBeVisible();
   const completed = transition.getByText(fixture.completedName, { exact: true });

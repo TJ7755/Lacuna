@@ -126,3 +126,24 @@ it('uses the configured help key to open and close study hints', () => {
   fireEvent.keyDown(window, { key: 'b' });
   expect(callbacks.setHintsOpen).toHaveBeenCalledWith(false);
 });
+
+it('keeps configured reveal and hide but withholds self-grading during introduction', () => {
+  const callbacks = params({
+    suppressClassicGrading: true,
+    allowRevealWhenGradingSuppressed: true,
+    bindings: { ...DEFAULT_BINDINGS, reveal: 'b' },
+  });
+  const { rerender } = renderHook(
+    ({ phase }: { phase: UseLearnKeyboardShortcutsParams['phase'] }) =>
+      useLearnKeyboardShortcuts({ ...callbacks, phase }),
+    { initialProps: { phase: 'question' } },
+  );
+  fireEvent.keyDown(window, { key: 'b' });
+  expect(callbacks.reveal).toHaveBeenCalledOnce();
+  rerender({ phase: 'answer' });
+  fireEvent.keyDown(window, { key: 'ArrowRight', code: 'ArrowRight' });
+  fireEvent.keyDown(window, { key: 'n' });
+  fireEvent.keyDown(window, { key: 'ArrowDown', code: 'ArrowDown' });
+  expect(callbacks.answer).not.toHaveBeenCalled();
+  expect(callbacks.hide).toHaveBeenCalledOnce();
+});

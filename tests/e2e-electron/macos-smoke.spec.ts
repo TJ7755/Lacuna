@@ -10,6 +10,7 @@ import {
 import { waitForSeededDashboard } from '../../scripts/electron-performance/renderer-interactions';
 import type { RunningPackagedApp } from '../../scripts/electron-performance/types';
 import { landingFilms } from '../../apps/web/src/components/landing/films';
+import { chooseScheduledStudy, completeRevealedIntroduction } from '../e2e/fixtures/lacunaApp';
 
 async function courseStored(page: Page, courseName: string): Promise<boolean> {
   return page.evaluate(
@@ -53,6 +54,11 @@ test('macOS packaged Electron launches, stores a course and completes a study st
     const page = running.page;
     await waitForSeededDashboard(page);
     const courseName = 'macOS storage smoke';
+    const front = 'Which tissue carries water?';
+    const back = 'Xylem';
+    const lesson = page
+      .getByRole('list', { name: 'Course path' })
+      .getByRole('button', { name: 'Lesson 1', exact: true });
     await page.locator('main').getByRole('button', { name: 'New course' }).click();
     await page.getByRole('textbox', { name: 'Course name' }).fill(courseName);
     const steady = page.getByRole('radio', { name: /Steady retention/ });
@@ -60,11 +66,7 @@ test('macOS packaged Electron launches, stores a course and completes a study st
     await steady.press('Space');
     await expect(steady).toBeChecked();
     await page.getByRole('button', { name: 'Create', exact: true }).click();
-    await expect(
-      page
-        .getByRole('list', { name: 'Course path' })
-        .getByRole('button', { name: 'Lesson 1', exact: true }),
-    ).toBeVisible();
+    await expect(lesson).toBeVisible();
     await expect.poll(() => courseStored(page, courseName)).toBe(true);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect.poll(() => courseStored(page, courseName)).toBe(true);
@@ -74,39 +76,30 @@ test('macOS packaged Electron launches, stores a course and completes a study st
         .getByRole('link', { name: courseName, exact: true }),
     ).toBeVisible();
 
+    await lesson.click();
+    await page.getByRole('button', { name: 'Edit mode' }).click();
+    await page.getByRole('button', { name: 'New card', exact: true }).first().click();
+    await page.getByRole('textbox', { name: 'Front' }).fill(front);
+    await page.getByRole('textbox', { name: 'Back' }).fill(back);
+    await page.getByRole('button', { name: 'Add card', exact: true }).click();
+    await expect(page.getByText(front, { exact: true }).first()).toBeVisible();
     await page
-      .getByRole('navigation', { name: 'Courses' })
-      .getByRole('link', { name: 'Welcome to Lacuna' })
+      .getByRole('navigation', { name: 'Course sections' })
+      .getByRole('link', { name: 'Path', exact: true })
       .click();
-    await expect(
-      page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }),
-    ).toBeVisible();
-    await page.getByRole('button', { name: 'Study', exact: true }).last().click();
-    await page
-      .getByRole('region', { name: 'Session preview' })
-      .getByRole('button', { name: 'Start session' })
-      .first()
-      .click();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    const study = page.getByRole('button', { name: 'Study', exact: true }).last();
+    await study.click();
+    await chooseScheduledStudy(page);
     const cardId = await page
       .locator('[data-study-card-id]')
       .first()
       .getAttribute('data-study-card-id');
     expect(cardId).toBeTruthy();
-    await page
-      .getByRole('button', { name: /Show answer/i })
-      .last()
-      .click();
-    await page.getByRole('button', { name: 'Yes', exact: true }).click();
-    await expect(page.getByRole('progressbar', { name: 'Session progress' })).toContainText(
-      'Card 2 of',
-    );
-    await page.getByRole('button', { name: 'Exit', exact: true }).click();
-    await page
-      .getByRole('dialog', { name: 'Leave this session?' })
-      .getByRole('button', { name: 'Leave' })
-      .click();
-    await expect(page.getByRole('button', { name: 'Study', exact: true }).last()).toBeVisible();
+    await completeRevealedIntroduction(page, back);
+    const progress = page.getByRole('main', { name: 'Study progress' });
+    await expect(progress.getByRole('img', { name: 'Completed', exact: true })).toBeVisible();
+    await progress.getByRole('button', { name: 'Finish for now', exact: true }).click();
+    await expect(study).toBeVisible();
     await testInfo.attach('macos-study-smoke.json', {
       body: Buffer.from(
         JSON.stringify(
@@ -124,15 +117,24 @@ test('macOS packaged Electron launches, stores a course and completes a study st
       contentType: 'application/json',
     });
 
-    const exit = await closePackagedApp(running);
+    const closing = running;
     running = undefined;
+    const exit = await closePackagedApp(closing);
     expect(exit.exitCode).toBe(0);
-  } finally {
-    try {
-      if (running) await closePackagedApp(running);
-    } finally {
-      await rm(root, { recursive: true, force: true });
+  } catch (error) {
+    if (running) {
+      try {
+        await closePackagedApp(running);
+      } catch (shutdownError) {
+        await testInfo.attach('packaged-cleanup-error.txt', {
+          body: String(shutdownError),
+          contentType: 'text/plain',
+        });
+      }
     }
+    throw error;
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });
 

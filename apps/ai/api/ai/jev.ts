@@ -9,6 +9,7 @@ import {
   callJevDecision,
   callJevAllocationBatch,
   callJevTechniqueClassification,
+  callJevLessonDistractors,
   JevProviderError,
 } from '../../server/jev/provider.js';
 import {
@@ -99,11 +100,13 @@ export default {
       try {
         const data = parsed.data;
         result =
-          data.purpose === 'technique-classification'
-            ? await callJevTechniqueClassification(data, key, signal)
-            : 'allocations' in data
-              ? await callJevAllocationBatch(data, key, signal)
-              : await callJevDecision(data, key, signal);
+          data.purpose === 'lesson-distractors'
+            ? await callJevLessonDistractors(data, key, signal)
+            : data.purpose === 'technique-classification'
+              ? await callJevTechniqueClassification(data, key, signal)
+              : 'allocations' in data
+                ? await callJevAllocationBatch(data, key, signal)
+                : await callJevDecision(data, key, signal);
       } finally {
         typesafeMs = performance.now() - typesafeStarted;
       }

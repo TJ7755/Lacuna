@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { chooseScheduledStudy, createCourse, skipOnboarding } from './fixtures/lacunaApp';
+import { chooseRecallPractice, createCourse, skipOnboarding } from './fixtures/lacunaApp';
 
 test.use({ hasTouch: true });
 
@@ -22,7 +22,7 @@ async function startStudy(page: Page) {
     .getByRole('link', { name: 'Path', exact: true })
     .click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
-  await chooseScheduledStudy(page);
+  await chooseRecallPractice(page);
   await page.setViewportSize({ width: 390, height: 900 });
   await reveal(page);
 }

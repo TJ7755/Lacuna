@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { build } from 'esbuild';
+import { chooseRecallPractice, chooseScheduledStudy } from './fixtures/lacunaApp';
 
 interface GradeDatabaseProbe {
   at: number;
@@ -66,11 +67,8 @@ for (const firstLesson of [false, true]) {
       });
       await page.goto('/#/course/heavy-course-0');
       await page.getByRole('button', { name: 'Study', exact: true }).click();
-      await page
-        .getByRole('region', { name: 'Session preview' })
-        .getByRole('button', { name: 'Start session' })
-        .first()
-        .click();
+      if (firstLesson) await chooseRecallPractice(page, 'Heavy lesson 0');
+      else await chooseScheduledStudy(page);
       await expect(page.locator('[data-study-face="front"]')).toBeVisible();
       await page
         .getByRole('button', { name: /Show answer/i })

@@ -1,40 +1,67 @@
 import { expect, test } from '@playwright/test';
-import { chooseScheduledStudy, enterWithWelcomeCourse } from './fixtures/lacunaApp';
+import { build } from 'esbuild';
+import {
+  chooseScheduledStudy,
+  continueStudyReportByKeyboard,
+  enterFreshLacuna,
+} from './fixtures/lacunaApp';
 
 test('a keyboard-only learner moves from notes through a finished step without the mouse', async ({
   page,
 }) => {
-  await enterWithWelcomeCourse(page);
-  await page.locator('main').getByRole('button', { name: 'Study' }).first().click();
+  await enterFreshLacuna(page);
+  const bundle = await build({
+    stdin: {
+      contents: `
+        import { createCourse, createLesson, createLessonCard, createNote } from './apps/web/src/db/repository';
+        export async function seed() {
+          const course = await createCourse('Keyboard study', { learnFirst: true, lessonViewMode: 'study' });
+          const first = await createLesson(course.id, 'Plants');
+          const next = await createLesson(course.id, 'Circulation');
+          await createNote(first.id, 'Overview', 'Xylem carries water.');
+          await createLessonCard(course.id, first.id, 'front_back', 'Which tissue carries water?', 'Xylem');
+          await createLessonCard(course.id, next.id, 'front_back', 'What pumps blood?', 'The heart');
+          return course.id;
+        }
+      `,
+      resolveDir: process.cwd(),
+    },
+    bundle: true,
+    write: false,
+    platform: 'browser',
+    format: 'iife',
+    globalName: 'KeyboardStudyFixture',
+    define: { 'import.meta.env.DEV': 'false' },
+  });
+  await page.addScriptTag({ content: bundle.outputFiles[0].text });
+  const courseId = await page.evaluate(() =>
+    (
+      window as unknown as { KeyboardStudyFixture: { seed(): Promise<string> } }
+    ).KeyboardStudyFixture.seed(),
+  );
+  await page.goto(`/#/course/${courseId}`);
+  await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
 
-  // The welcome course opens on its first lesson's notes.
   await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
 
-  const studyCard = page.locator('[data-study-card-id]:not([inert])');
-  const finished = page.getByRole('main', { name: 'Study progress' });
-  await expect(studyCard).toBeVisible();
-  // The first step is a handful of cards; answer each by keyboard until it completes.
-  for (let answered = 0; !(await finished.isVisible()); answered += 1) {
-    expect(answered).toBeLessThan(20);
-    const cardId = await studyCard.getAttribute('data-study-card-id');
-    await page.keyboard.press('Space');
-    await expect(studyCard.locator('[data-study-face="back"]')).toBeVisible();
-    await page.keyboard.press('Y');
-    await expect
-      .poll(async () => {
-        if (await finished.isVisible()) return true;
-        // The outgoing card overlaps its replacement; read the active identity atomically.
-        return studyCard.evaluateAll(
-          (cards, previousId) =>
-            cards.length === 1 && cards[0].getAttribute('data-study-card-id') !== previousId,
-          cardId,
-        );
-      })
-      .toBe(true);
-  }
+  const study = page.getByRole('main', { name: 'Study card' });
+  const continueCard = study.getByRole('button', { name: 'Continue', exact: true });
+  await expect(
+    study.getByRole('button', { name: 'Show answer', exact: true }).last(),
+  ).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(continueCard).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(study.getByRole('textbox', { name: 'Your answer' })).toBeFocused();
+  await page.keyboard.insertText('Xylem');
+  await page.keyboard.press('Enter');
+  await expect(continueCard).toBeFocused();
+  await page.keyboard.press('Enter');
 
+  await continueStudyReportByKeyboard(page);
+  const finished = page.getByRole('main', { name: 'Study progress' });
   await expect(finished.getByRole('button', { name: /^Continue/ })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(finished).toBeHidden();

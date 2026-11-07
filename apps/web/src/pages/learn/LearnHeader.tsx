@@ -202,7 +202,11 @@ export function LearnHeader({
     mode !== 'simple' && !plannedRevision
       ? `${Math.round(predictedRecall * 100)}% ${forecastLabel(singleDeck)}`
       : undefined;
-  const progressName = plannedRevision ? 'Revision time used' : 'Session progress';
+  const progressName = plannedRevision
+    ? 'Revision time used'
+    : segmentNoun === 'Chunk'
+      ? 'Chunks complete'
+      : 'Session progress';
 
   return (
     <motion.header
@@ -235,7 +239,10 @@ export function LearnHeader({
               {info.title}
             </h1>
             {cardPosition && (
-              <span className="shrink-0 text-ink-soft tabular-nums">· {cardPosition}</span>
+              <span className="shrink-0 text-ink-soft tabular-nums">
+                · {segmentNoun === 'Chunk' ? 'Chunk ' : ''}
+                {cardPosition}
+              </span>
             )}
           </div>
           {info.subtitle && (

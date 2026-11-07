@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
 import {
   answerYes,
-  answerYesAndWaitForExposure,
+  familiariseCard,
+  recallCard,
   continueFromNotes,
   findStudyFaceText,
   queryStudyFaceText,
@@ -10,7 +11,7 @@ import {
 } from './LearnMode.testFixtures';
 import { LearnMode } from './LearnMode';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { db } from '../db/schema';
 import {
@@ -87,6 +88,7 @@ describe('LearnMode scope', () => {
               <LearnMode
                 request={{ kind: 'practice', courseId: course.id, mode }}
                 onStepFinished={finished}
+                showConfirmedReport={false}
               />
             </ToastProvider>
           </MemoryRouter>,
@@ -135,20 +137,15 @@ describe('LearnMode scope', () => {
     )!;
     expect(flipCard).toHaveAttribute('tabindex', '0');
     fireEvent.keyDown(flipCard, { key: 'Enter' });
-    expect(await screen.findByRole('button', { name: /^yes$/i })).toBeInTheDocument();
-    const yes = screen.getByRole('button', { name: /^yes$/i });
-    await act(async () => {
-      fireEvent.click(yes);
-      for (let attempt = 0; attempt < 50; attempt += 1) {
-        if (
-          (await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()) === 1 &&
-          (await db.reviewHistory.where('cardId').equals(card.id).count()) === 1
-        )
-          return;
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      }
+    expect(screen.queryByRole('button', { name: /^yes$/i })).not.toBeInTheDocument();
+    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
+    expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(0);
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    await recallCard('A1');
+    await waitFor(async () => {
+      expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(1);
+      expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(1);
     });
-    expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(1);
     const reviews = await storedReviewsForCard(card.id);
     expect(reviews).toHaveLength(1);
     expect(reviews[0]).toMatchObject({
@@ -178,6 +175,7 @@ describe('LearnMode scope', () => {
             <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
               <Routes>
                 <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+                <Route path="/course/:courseId/lesson/:lessonId" element={<p>Lesson overview</p>} />
               </Routes>
             </MemoryRouter>
           </ToastProvider>
@@ -187,7 +185,11 @@ describe('LearnMode scope', () => {
 
     await screen.findByRole('heading', { name: 'Cells' });
     await continueFromNotes();
-    await answerYes();
+    await familiariseCard();
+    await recallCard('A1');
+    const report = await screen.findByRole('main', { name: 'Session report' });
+    expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeUndefined();
+    fireEvent.click(within(report).getByRole('button', { name: 'Done' }));
 
     await waitFor(async () => {
       expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeDefined();
@@ -210,13 +212,14 @@ describe('LearnMode scope', () => {
       position: 0,
     });
 
-    const { unmount } = render(
+    render(
       <ThemeProvider>
         <AccentProvider>
           <ToastProvider>
             <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
               <Routes>
                 <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+                <Route path="/course/:courseId/lesson/:lessonId" element={<p>Lesson overview</p>} />
               </Routes>
             </MemoryRouter>
           </ToastProvider>
@@ -226,13 +229,11 @@ describe('LearnMode scope', () => {
 
     await screen.findByRole('heading', { name: 'Kinematics' });
     await continueFromNotes();
-    await answerYesAndWaitForExposure(lesson1.id);
-    await screen.findByRole('heading', {
-      name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
-    });
-    await act(async () => unmount());
-    // Give any (incorrect) ratchet write a chance to land before asserting it didn't.
-    await new Promise((r) => setTimeout(r, 50));
+    await familiariseCard();
+    await recallCard('A1');
+    const report = await screen.findByRole('main', { name: 'Session report' });
+    fireEvent.click(within(report).getByRole('button', { name: 'Done' }));
+    await screen.findByText('Lesson overview');
     expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeUndefined();
   });
 
@@ -336,8 +337,16 @@ describe('LearnMode scope', () => {
     const seen = new Set<string>();
     for (let index = 0; index < 3; index++) {
       const card = await findStudyFaceText(/^(Due Q|Not Due Q|New Q)$/);
-      seen.add(card.textContent ?? '');
-      if (index < 2) await answerYes();
+      const prompt = card.textContent ?? '';
+      seen.add(prompt);
+      if (index === 2) break;
+      if (prompt === 'New Q') {
+        await familiariseCard();
+        await recallCard('A');
+      } else {
+        await answerYes();
+      }
+      await waitFor(() => expect(queryStudyFaceText(prompt)).toBeUndefined());
     }
     expect(seen).toEqual(new Set(['Due Q', 'Not Due Q', 'New Q']));
   });
@@ -375,8 +384,16 @@ describe('LearnMode scope', () => {
     const seen = new Set<string>();
     for (let index = 0; index < 3; index++) {
       const card = await findStudyFaceText(/^(Due Q|Not Due Q|New Q)$/);
-      seen.add(card.textContent ?? '');
-      if (index < 2) await answerYes();
+      const prompt = card.textContent ?? '';
+      seen.add(prompt);
+      if (index === 2) break;
+      if (prompt === 'New Q') {
+        await familiariseCard();
+        await recallCard('A');
+      } else {
+        await answerYes();
+      }
+      await waitFor(() => expect(queryStudyFaceText(prompt)).toBeUndefined());
     }
     expect(seen).toEqual(new Set(['Due Q', 'Not Due Q', 'New Q']));
   });
@@ -442,6 +459,10 @@ describe('LearnMode scope', () => {
               <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
                 <Routes>
                   <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+                  <Route
+                    path="/course/:courseId/lesson/:lessonId"
+                    element={<p>Lesson overview</p>}
+                  />
                 </Routes>
               </MemoryRouter>
             </ToastProvider>
@@ -451,12 +472,12 @@ describe('LearnMode scope', () => {
 
       await screen.findByRole('heading', { name: 'First' });
       await continueFromNotes();
-      await answerYesAndWaitForExposure(lesson1.id);
-      await screen.findByRole('heading', {
-        name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
-      });
+      await familiariseCard();
+      await recallCard('A1');
+      const report = await screen.findByRole('main', { name: 'Session report' });
+      fireEvent.click(within(report).getByRole('button', { name: 'Done' }));
+      await screen.findByText('Lesson overview');
       await act(async () => unmount());
-      await new Promise((r) => setTimeout(r, 50));
       expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeUndefined();
     }
   });

@@ -3,12 +3,13 @@ import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures
 
 test('makes the revealed answer readable during the deliberate card flip', async ({ page }) => {
   const frontText = 'Which value is the response marker?';
+  const backText = 'The response marker is forty-two.';
   await enterFreshLacuna(page);
   await createCourse(page, 'Study response regression');
   await page.getByRole('button', { name: 'Edit mode' }).click();
   await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Front' }).fill(frontText);
-  await page.getByRole('textbox', { name: 'Back' }).fill('The response marker is forty-two.');
+  await page.getByRole('textbox', { name: 'Back' }).fill(backText);
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).not.toHaveURL(/\/cards\/new$/);
   await expect(page.locator('[data-card-id]').getByText(frontText, { exact: true })).toBeVisible();
@@ -43,7 +44,7 @@ test('makes the revealed answer readable during the deliberate card flip', async
     if (!front) throw new Error('The front of the study Card is missing.');
     return new Promise<number>((resolve, reject) => {
       const started = performance.now();
-      (button as HTMLButtonElement).click();
+      button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       function sample() {
         const content = document.querySelector('[data-study-face] .prose-lacuna');
         let opacity = 1;
@@ -61,9 +62,14 @@ test('makes the revealed answer readable during the deliberate card flip', async
   });
   expect(elapsed).toBeGreaterThan(300);
   expect(elapsed).toBeLessThan(650);
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  const study = page.getByRole('main', { name: 'Study card' });
+  const advance = study.getByRole('button', { name: 'Continue', exact: true });
+  await advance.click();
+  await study.getByRole('textbox', { name: 'Your answer' }).fill(backText);
+  await study.getByRole('button', { name: 'Check answer', exact: true }).click();
+  await advance.click();
   await expect(page.locator('[data-study-face="back"]')).toHaveCount(0);
-  // The introduction itself now records one canonical FSRS review.
+  // Familiarisation and recall together record one canonical FSRS review.
   await expect
     .poll(() =>
       page.evaluate(

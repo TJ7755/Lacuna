@@ -155,10 +155,118 @@ export type JevTechniqueClassificationResult = z.infer<
   typeof jevTechniqueClassificationResultSchema
 >;
 
+// Bump when the Choice question, batching or shortlist policy changes.
+export const JEV_DISTRACTOR_POLICY_VERSION = 1;
+export const JEV_DISTRACTOR_MAX_BANK = 48;
+export const JEV_DISTRACTOR_SINGLE_BATCH = 32;
+export const JEV_DISTRACTOR_BATCH_TARGETS = 16;
+export const JEV_DISTRACTOR_MAX_BYTES = 12_000;
+export const JEV_DISTRACTOR_MAX_PROMPT = 500;
+export const JEV_DISTRACTOR_MAX_ANSWER = 160;
+const JEV_DISTRACTOR_MIN_RANKED = 3;
+const JEV_DISTRACTOR_MAX_RANKED = 8;
+const distractorCard = z.strictObject({
+  prompt: z.string().trim().min(1).max(JEV_DISTRACTOR_MAX_PROMPT).optional(),
+  answer: z.string().trim().min(1).max(JEV_DISTRACTOR_MAX_ANSWER),
+});
+export const jevLessonDistractorRequestSchema = z
+  .strictObject({
+    purpose: z.literal('lesson-distractors'),
+    cards: z.array(distractorCard).min(3).max(JEV_DISTRACTOR_MAX_BANK),
+    targets: z
+      .array(z.number().int().nonnegative())
+      .min(1)
+      .max(JEV_DISTRACTOR_BATCH_TARGETS)
+      .optional(),
+  })
+  .refine(({ cards, targets }) => {
+    if (new TextEncoder().encode(JSON.stringify(cards)).length > JEV_DISTRACTOR_MAX_BYTES)
+      return false;
+    if (!targets)
+      return cards.length <= JEV_DISTRACTOR_SINGLE_BATCH && cards.every((card) => card.prompt);
+    return (
+      targets.length === new Set(targets).size && targets.every((target) => cards[target]?.prompt)
+    );
+  }, 'Lesson distractor content or targets exceed their bounds.');
+export type JevLessonDistractorRequest = z.infer<typeof jevLessonDistractorRequestSchema>;
+export const jevLessonDistractorResultSchema = z.strictObject({
+  model: z.literal(JEV_MODEL),
+  inputTokens: z.number().int().nonnegative(),
+  rankings: z
+    .array(
+      z
+        .array(
+          z
+            .number()
+            .int()
+            .nonnegative()
+            .max(JEV_DISTRACTOR_MAX_BANK - 1),
+        )
+        .max(JEV_DISTRACTOR_MAX_RANKED),
+    )
+    .max(JEV_DISTRACTOR_SINGLE_BATCH),
+});
+export type JevLessonDistractorResult = z.infer<typeof jevLessonDistractorResultSchema>;
+
+export function lessonDistractorTargets(request: JevLessonDistractorRequest): number[] {
+  return request.targets ?? request.cards.map((_card, index) => index);
+}
+
+/** Keep punctuation variants such as US and U.S. out of the same answer set. */
+export function lessonDistractorAnswerKey(answer: string): string {
+  const text = answer.normalize('NFC').trim().replace(/\s+/g, ' ').replace(/’/g, "'").toLowerCase();
+  const key = text.replace(/[.!?]+$/, '') || text;
+  return /^(?:\p{L}\.)+\p{L}$/u.test(key) ? key.replace(/\./g, '') : key;
+}
+
+export function lessonDistractorCandidates(
+  cards: JevLessonDistractorRequest['cards'],
+  target: number,
+): number[] {
+  const seen = new Set([lessonDistractorAnswerKey(cards[target].answer)]);
+  return cards.flatMap(({ answer }, index) => {
+    const candidate = lessonDistractorAnswerKey(answer);
+    if (seen.has(candidate)) return [];
+    seen.add(candidate);
+    return [index];
+  });
+}
+
+export function shortlistJevDistractors(
+  scored: { index: number; probability: number }[],
+): number[] {
+  const ranked = scored.toSorted((a, b) => b.probability - a.probability || a.index - b.index);
+  const third = ranked[JEV_DISTRACTOR_MIN_RANKED - 1]?.probability ?? 0;
+  const threshold = Math.max(0.02, 0.6 * third);
+  return ranked
+    .slice(0, JEV_DISTRACTOR_MAX_RANKED)
+    .filter(({ probability }, rank) => rank < JEV_DISTRACTOR_MIN_RANKED || probability >= threshold)
+    .map(({ index }) => index);
+}
+
+export function validLessonDistractorRankings(
+  request: JevLessonDistractorRequest,
+  result: JevLessonDistractorResult,
+): boolean {
+  const targets = lessonDistractorTargets(request);
+  return (
+    result.rankings.length === targets.length &&
+    result.rankings.every((row, index) => {
+      const candidates = lessonDistractorCandidates(request.cards, targets[index]);
+      return (
+        row.length >= Math.min(JEV_DISTRACTOR_MIN_RANKED, candidates.length) &&
+        row.length === new Set(row).size &&
+        row.every((candidate) => candidates.includes(candidate))
+      );
+    })
+  );
+}
+
 export const jevMarkRequestSchema = z.union([
   jevDecisionRequestSchema,
   jevAllocationBatchRequestSchema,
   jevTechniqueClassificationRequestSchema,
+  jevLessonDistractorRequestSchema,
 ]);
 export const jevAllocationBatchResultSchema = z.strictObject({
   model: z.literal(JEV_MODEL),

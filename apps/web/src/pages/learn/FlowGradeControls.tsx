@@ -40,6 +40,7 @@ interface FlowControlsProps {
   negativeIndex?: number;
   rowClassName: string;
   revealLabel?: ReactNode;
+  revealDisabled?: boolean;
   /** Content above the reveal pill that fades with it, such as a typed answer field. */
   revealLead?: ReactNode;
   onReveal: () => void;
@@ -473,6 +474,7 @@ export function FlowGradeControls({
   negativeIndex,
   rowClassName,
   revealLabel = 'Show answer',
+  revealDisabled,
   revealLead,
   onReveal,
   m,
@@ -526,15 +528,15 @@ export function FlowGradeControls({
       const pill = pillRef.current;
       const row = rowRef.current;
       if (!reveal || !pill || !row) return;
+      const revealRect = rectOf(pill, reveal.offsetLeft, reveal.offsetTop);
+      // Automatic-only answers use the reveal pill as the verdict's single slot.
       setRects({
-        reveal: rectOf(pill, reveal.offsetLeft, reveal.offsetTop),
-        slots: slotRefs.current
-          .slice(0, grades.length)
-          .map((slot) =>
-            slot
-              ? rectOf(slot, row.offsetLeft, row.offsetTop)
-              : rectOf(pill, reveal.offsetLeft, reveal.offsetTop),
-          ),
+        reveal: revealRect,
+        slots: grades.length
+          ? slotRefs.current
+              .slice(0, grades.length)
+              .map((slot) => (slot ? rectOf(slot, row.offsetLeft, row.offsetTop) : revealRect))
+          : [revealRect],
       });
     };
     measure();
@@ -574,7 +576,7 @@ export function FlowGradeControls({
           question={question}
           waiting={automatic}
           neutral={judging}
-          holder={grades.length - 1}
+          holder={Math.max(0, grades.length - 1)}
           negativeIndex={negativeIndex}
           negative={!question && autoMark !== undefined && !autoMark.pending && !autoMark.correct}
           departing={draining}
@@ -597,7 +599,13 @@ export function FlowGradeControls({
       >
         {revealLead}
         <div ref={pillRef}>
-          <Button variant="primary" size="lg" className="w-full" onClick={onReveal}>
+          <Button
+            variant="primary"
+            size="lg"
+            className="w-full"
+            disabled={revealDisabled}
+            onClick={onReveal}
+          >
             {revealLabel}
           </Button>
         </div>

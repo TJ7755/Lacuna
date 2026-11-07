@@ -7,6 +7,45 @@ export async function chooseScheduledStudy(page: Page) {
   await expect(sheet).toBeHidden();
 }
 
+export async function chooseRecallPractice(page: Page, lessonName?: string) {
+  const sheet = page.getByRole('region', { name: 'Session preview' });
+  await sheet.getByRole('button', { name: 'Other ways', exact: true }).click();
+  await sheet.getByText('Practise until all correct', { exact: true }).click();
+  if (lessonName) await sheet.getByLabel('What to practise').selectOption({ label: lessonName });
+  await sheet.getByRole('button', { name: 'Start practising', exact: true }).click();
+  await expect(sheet).toBeHidden();
+}
+
+export async function completeRevealedIntroduction(page: Page, answer: string) {
+  const study = page.getByRole('main', { name: 'Study card' });
+  const next = study.getByRole('button', { name: 'Continue', exact: true });
+  await study.getByRole('button', { name: 'Show answer', exact: true }).last().click();
+  await next.click();
+  await study.getByRole('textbox', { name: 'Your answer' }).fill(answer);
+  await study.getByRole('button', { name: 'Check answer', exact: true }).click();
+  await next.click();
+  await page
+    .getByRole('main', { name: 'Session report' })
+    .getByRole('button', { name: 'Continue', exact: true })
+    .click();
+}
+
+export async function continueStudyReportByKeyboard(page: Page) {
+  const next = page
+    .getByRole('main', { name: 'Session report' })
+    .getByRole('button', { name: 'Continue', exact: true });
+  await expect(next).toBeVisible();
+  for (
+    let tabs = 0;
+    tabs < 8 && !(await next.evaluate((button) => button === document.activeElement));
+    tabs += 1
+  ) {
+    await page.keyboard.press('Tab');
+  }
+  await expect(next).toBeFocused();
+  await page.keyboard.press('Enter');
+}
+
 export async function enterFreshLacuna(page: Page) {
   await page.goto('/');
   await expect(page.getByRole('region', { name: 'Revision around your exam' })).toBeVisible();

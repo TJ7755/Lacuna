@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import {
+  chooseScheduledStudy,
+  continueStudyReportByKeyboard,
+  createCourse,
+  enterFreshLacuna,
+} from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
@@ -45,7 +50,17 @@ test('authors, persists and studies a card through the keyboard', async ({ page 
   await expect(
     studyCard.locator('[data-study-face="back"]').getByText(back, { exact: true }),
   ).toBeVisible();
-  await page.keyboard.press('Y');
+  const study = page.getByRole('main', { name: 'Study card' });
+  const continueCard = study.getByRole('button', { name: 'Continue', exact: true });
+  await expect(continueCard).toBeFocused();
+  await page.keyboard.press('Enter');
+  const answer = study.getByRole('textbox', { name: 'Your answer' });
+  await expect(answer).toBeFocused();
+  await page.keyboard.insertText(back);
+  await page.keyboard.press('Enter');
+  await expect(continueCard).toBeFocused();
+  await page.keyboard.press('Enter');
+  await continueStudyReportByKeyboard(page);
 
   await expect(
     page

@@ -18,6 +18,10 @@ import { useShortcutBindings } from '../state/shortcutBindings';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
 import { useToast } from '../components/ui/Toast';
+import { useLessonDistractors } from '../jev';
+import { matchesTypedRecall } from './learn/typedRecall';
+import { canOfferChoices, lessonChoiceCandidates } from './learn/simpleLearnQuestions';
+import { filterSimpleLearnCardPool } from './learn/sessionPool';
 import { useLearnSession } from './learn/useLearnSession';
 import { useLearnView } from './learn/useLearnView';
 import { useLearnAnswerFeedback } from './learn/useLearnAnswerFeedback';
@@ -144,6 +148,7 @@ function LearnSession({
   const session = useLearnSession({
     enabled: sessionReady,
     ...sessionOptions,
+    answerStrictness,
     sessionId,
     navigate,
     onFlowExit,
@@ -159,6 +164,8 @@ function LearnSession({
     lessonNotesScreen,
     continueFromNotes,
     current,
+    introductionPresentation,
+    lessonChoiceCards,
     hintStep,
     setHintStep,
     isTypingCard: isTypingQuestion,
@@ -184,19 +191,40 @@ function LearnSession({
     persistSimpleResume,
   } = session;
 
+  const choiceBank = useMemo(
+    () => lessonChoiceCandidates(lessonChoiceCards ?? []),
+    [lessonChoiceCards],
+  );
+  // Rank the lesson content once. Study exclusions still apply to options we show.
+  const rankedChoices = useLessonDistractors(lessonChoiceCards ? lessonId : undefined, choiceBank);
+  const choiceCandidates = useMemo(() => {
+    const availableIds = new Set(
+      filterSimpleLearnCardPool(lessonChoiceCards ?? []).map(({ id }) => id),
+    );
+    return choiceBank.filter(({ id }) => availableIds.has(id));
+  }, [choiceBank, lessonChoiceCards]);
+  const familiarising = introductionPresentation.stage === 'familiarise';
+  const verifyTypedRecall = introductionPresentation.stage === 'recall';
+  const choiceTarget = familiarising
+    ? choiceCandidates.find((candidate) => candidate.id === current?.id)
+    : undefined;
+  const choiceQuestion =
+    choiceTarget && canOfferChoices(choiceTarget, choiceCandidates) ? choiceTarget : undefined;
+
   const isTypingCard = phase === 'answer' ? presentedAnswerInput === 'typed' : isTypingQuestion;
 
   useEffect(() => {
     if (phase === 'question' && !isTypingCard) setTypedAnswer('');
   }, [phase, isTypingCard, setTypedAnswer]);
 
-  const studyFocusRef = useStudyFocus(current?.id, phase, editing || menuOpen || hintsOpen);
-
   // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
   // applies to a machine-marked item, nor to one whose payload this client
   // can't render at all — see UnknownItemFace.
   const suppressClassicGrading =
-    isMachineMarkedCard || hasUnrenderableItemPayload || recitationSequence !== null;
+    familiarising ||
+    isMachineMarkedCard ||
+    hasUnrenderableItemPayload ||
+    recitationSequence !== null;
 
   const feedback = useLearnAnswerFeedback({
     answer,
@@ -209,6 +237,7 @@ function LearnSession({
     presentedAnswerInput,
     current,
     typedAnswer,
+    verifyTypedRecall,
   });
   const {
     cardTransitionRef,
@@ -233,10 +262,38 @@ function LearnSession({
     onHold: () => cardTransitionRef.current?.cancel(),
     m,
     onMarked: (correct, provenance, grade) =>
-      answerWithUndo(grade ?? correct, 'keyboard', 0, provenance ?? undefined, true),
+      answerWithUndo(
+        verifyTypedRecall ? correct : (grade ?? correct),
+        'keyboard',
+        0,
+        provenance ?? undefined,
+        true,
+      ),
   });
 
   const typedJudgement = useMemo(() => typedAnswerJudgement(typedAutoMark), [typedAutoMark]);
+  const recallCorrect = useMemo(
+    () =>
+      verifyTypedRecall
+        ? phase === 'answer' &&
+          current !== null &&
+          matchesTypedRecall(current, typedAnswer, answerStrictness)
+        : undefined,
+    [verifyTypedRecall, phase, current, typedAnswer, answerStrictness],
+  );
+  const showLocalRecall =
+    recallCorrect !== undefined &&
+    phase === 'answer' &&
+    typedAutoMark.state !== 'checking' &&
+    typedAutoMark.state !== 'marked';
+  const studyFocusRef = useStudyFocus(
+    current && introductionPresentation.stage
+      ? `${current.id}:${introductionPresentation.serial}`
+      : current?.id,
+    phase,
+    editing || menuOpen || hintsOpen,
+    showLocalRecall || (familiarising && !choiceQuestion && phase === 'answer'),
+  );
 
   useEffect(() => {
     if (editing || menuOpen || hintsOpen || leaveConfirmationOpen)
@@ -258,7 +315,8 @@ function LearnSession({
     editing,
     current,
     isTypingCard,
-    suppressClassicGrading,
+    suppressClassicGrading: suppressClassicGrading || verifyTypedRecall,
+    allowRevealWhenGradingSuppressed: verifyTypedRecall || (familiarising && !choiceQuestion),
     openEdit,
     hintsOpen,
     setHintsOpen,
@@ -316,8 +374,13 @@ function LearnSession({
         answerSaveStatus={answerSaveStatus}
         onAttempt={(source) => {
           if (source === 'navigation') exitDecisionPendingRef.current = true;
-          void settleAnswer().catch(() => {});
-          cardTransitionRef.current?.cancel();
+          if (choiceQuestion) {
+            // Choice results are saved at Check. Pause the pending advance behind the app's dialog.
+            if (source === 'navigation') cardTransitionRef.current?.cancel();
+          } else {
+            void settleAnswer().catch(() => {});
+            cardTransitionRef.current?.cancel();
+          }
           persistSimpleResume();
         }}
         onConfirm={async () => {
@@ -377,6 +440,11 @@ function LearnSession({
               isTouchMode={isTouchMode}
               suppressClassicGrading={suppressClassicGrading}
               isTypingCard={isTypingCard}
+              recallCorrect={recallCorrect}
+              showLocalRecall={showLocalRecall}
+              choiceQuestion={choiceQuestion}
+              choiceCandidates={choiceCandidates}
+              rankedChoices={choiceQuestion ? rankedChoices.get(choiceQuestion.id) : undefined}
               gradingMode={gradingMode}
               answerStrictness={answerStrictness}
               typedAutoMark={typedAutoMark}
@@ -389,6 +457,7 @@ function LearnSession({
               filterParams={filterParams}
               tagFilter={tagFilter}
               cardDeparting={cardDeparting}
+              leaveConfirmationOpen={leaveConfirmationOpen}
               setCardDeparting={setCardDeparting}
               m={m}
             />
