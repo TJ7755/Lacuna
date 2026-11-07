@@ -14,6 +14,8 @@ import {
   jevDecisionResultSchema,
   type JevDecisionRequest,
   type JevDecisionResult,
+  jevLessonDistractorResultSchema,
+  type JevLessonDistractorResult,
 } from './protocol';
 
 interface CacheEntry {
@@ -21,12 +23,19 @@ interface CacheEntry {
   result: JevDecisionResult;
   usedAt: number;
 }
+interface DistractorEntry {
+  hash: string;
+  result: JevLessonDistractorResult;
+}
+
 // Separate database: device cache must never enter the application backup/sync snapshot.
 class JevCache extends Dexie {
   entries!: Table<CacheEntry, string>;
+  distractors!: Table<DistractorEntry, string>;
   constructor() {
     super('lacuna-jev-cache');
     this.version(1).stores({ entries: 'hash,usedAt' });
+    this.version(2).stores({ distractors: 'hash' });
   }
 }
 const disk = new JevCache();
@@ -103,3 +112,40 @@ export function createJevDecisionCache(): JevDecisionCache {
   };
 }
 export const jevDecisionCache = createJevDecisionCache();
+
+const distractorsInMemory = new Map<string, JevLessonDistractorResult>();
+function rememberDistractors(hash: string, result: JevLessonDistractorResult) {
+  distractorsInMemory.delete(hash);
+  distractorsInMemory.set(hash, result);
+  if (distractorsInMemory.size > 32)
+    distractorsInMemory.delete(distractorsInMemory.keys().next().value!);
+}
+
+export const jevDistractorCache = {
+  async get(hash: string): Promise<JevLessonDistractorResult | undefined> {
+    const hit = distractorsInMemory.get(hash);
+    if (hit) {
+      rememberDistractors(hash, hit);
+      return hit;
+    }
+    try {
+      const row = await disk.distractors.get(hash);
+      const parsed = jevLessonDistractorResultSchema.safeParse(row?.result);
+      if (parsed.success) {
+        rememberDistractors(hash, parsed.data);
+        return parsed.data;
+      }
+    } catch {
+      /* The device may deny cache access. */
+    }
+    return undefined;
+  },
+  async put(hash: string, result: JevLessonDistractorResult): Promise<void> {
+    rememberDistractors(hash, result);
+    try {
+      await disk.distractors.put({ hash, result });
+    } catch {
+      /* The in-memory shortlist remains available. */
+    }
+  },
+};

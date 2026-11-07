@@ -39,6 +39,11 @@ describe('compareAnswer', () => {
     expect(result.correct).toBe(true);
   });
 
+  it('allows a keyboard apostrophe in lenient mode while keeping punctuation in strict mode', () => {
+    expect(compareAnswer("l'avion", 'l’avion').correct).toBe(true);
+    expect(compareAnswer("l'avion", 'l’avion', { ignorePunctuation: false }).correct).toBe(false);
+  });
+
   it('ignores punctuation-only words by default', () => {
     const omitted = compareAnswer('To be or not', 'To be — or not');
     expect(omitted.correct).toBe(true);

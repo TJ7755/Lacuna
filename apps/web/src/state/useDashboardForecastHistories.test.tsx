@@ -65,6 +65,35 @@ it('cancels whilst Quick search is foreground and resumes with fresh evidence', 
   }
 });
 
+it('keeps the forecast paused when closing Quick search is followed by navigation', async () => {
+  let enabled = true;
+  const { rerender, unmount } = renderHook(() => useDashboardForecastHistories(source, 18), {
+    wrapper: ({ children }) => (
+      <BackgroundCalculationsEnabled.Provider value={enabled}>
+        {children}
+      </BackgroundCalculationsEnabled.Provider>
+    ),
+  });
+  try {
+    await waitFor(() => expect(calculate).toHaveBeenCalledTimes(1));
+    enabled = false;
+    rerender();
+    expect(calculate.mock.calls[0][1].aborted).toBe(true);
+
+    const readRevision = vi.spyOn(db.reviewHistory, 'count');
+    enabled = true;
+    rerender();
+    await waitFor(() => expect(readRevision).toHaveBeenCalled());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    enabled = false;
+    rerender();
+
+    expect(calculate).toHaveBeenCalledTimes(1);
+  } finally {
+    unmount();
+  }
+});
+
 it('refreshes after same-count historical edits, insertion, undo and reset without reading rows', async () => {
   const entry = reviewHistoryEntryForCard(source.allCards[0], review);
   await db.reviewHistory.add(entry);

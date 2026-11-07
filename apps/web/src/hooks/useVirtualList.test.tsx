@@ -130,6 +130,28 @@ describe('useVirtualList', () => {
     expect(result.current.totalHeight).toBe(320);
   });
 
+  it('measures multiple rows with one observer and releases detached rows', () => {
+    const { result } = renderHook(() => useVirtualList({ itemCount: 2, estimateSize: 100 }));
+    const first = document.createElement('div');
+    const second = document.createElement('div');
+    const attachFirst = result.current.measureRef(0);
+    const attachSecond = result.current.measureRef(1);
+    act(() => {
+      attachFirst(first);
+      attachSecond(second);
+    });
+
+    expect(resizeObservers).toHaveLength(1);
+    expect(resizeObservers[0].targets).toEqual(new Set([first, second]));
+    act(() => {
+      notifyResize(first, { borderBoxSize: [{ blockSize: 170, inlineSize: 500 }] });
+      notifyResize(second, { borderBoxSize: [{ blockSize: 130, inlineSize: 500 }] });
+      attachFirst(null);
+    });
+    expect(result.current.totalHeight).toBe(300);
+    expect(resizeObservers[0].targets).toEqual(new Set([second]));
+  });
+
   it('updates its range when the nearest scrolling ancestor scrolls', async () => {
     render(<Fixture />);
     await screen.findByTestId('item-0');

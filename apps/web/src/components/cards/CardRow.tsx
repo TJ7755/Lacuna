@@ -1,7 +1,7 @@
 // One card in a card list: question, answer and schedule, with swipe and hover actions and
 // an expandable analytics panel. Rendered by CardListBody, for ordinary and generated cards.
 
-import React, { lazy } from 'react';
+import React, { lazy, useMemo } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { RelatedQuestionSets } from '../question-sets/RelatedQuestionSets';
 import { Button } from '../ui/Button';
@@ -11,6 +11,7 @@ import { cn } from '../ui/cn';
 import { scaledSpring } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { isLeech } from '@lacuna/core/fsrs/leech';
+import { stripEmbeddedImageUrls } from '@lacuna/core/db/search';
 import { resolveOcclusionAnswerText } from '../../db/occlusionGeneration';
 import type { Card, Occlusion, SchedulerConfig } from '@lacuna/core/db/types';
 import { GeneratedCardBadge } from './GeneratedCardBadge';
@@ -78,6 +79,7 @@ export const CardRow = React.memo(function CardRow({
   const leech = isLeech(card);
   const flagged = card.flagged === true;
   const schedule = cardScheduleLabel(card, Date.now());
+  const label = useMemo(() => stripEmbeddedImageUrls(card.front), [card.front]);
   // An occlusion card's stored back repeats its front; the region's answer says more.
   const occlusionAnswer =
     occlusion && card.occlusionRegionId
@@ -212,7 +214,7 @@ export const CardRow = React.memo(function CardRow({
         <button
           type="button"
           data-card-details
-          aria-label={`${selectMode && !generated && !linked ? 'Select card' : 'Card details'}: ${card.front || cardKindLabel(card)}`}
+          aria-label={`${selectMode && !generated && !linked ? 'Select card' : 'Card details'}: ${label || cardKindLabel(card)}`}
           aria-expanded={selectMode && !generated && !linked ? undefined : expanded}
           aria-pressed={selectMode && !generated && !linked ? selected : undefined}
           className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"

@@ -40,6 +40,40 @@ describe('course share payload content', () => {
     expect(cards[0].answerMode).toBe('reveal');
   });
 
+  it('preserves distinct spelling requirements for mirror cards in a share code', async () => {
+    const course = await createCourse('Vocabulary');
+    const lesson = await createLesson(course.id, 'French');
+    await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'Summer',
+      'été',
+      [],
+      undefined,
+      'type',
+      true,
+    );
+    await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'été',
+      'Summer',
+      [],
+      undefined,
+      'type',
+    );
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    const { courseIds } = await importSharePayload(payload);
+    const imported = await db.cards.where('courseId').equals(courseIds[0]).toArray();
+
+    expect(imported).toHaveLength(2);
+    expect(imported.find((card) => card.front === 'Summer')?.requireCorrectSpelling).toBe(true);
+    expect(imported.find((card) => card.front === 'été')?.requireCorrectSpelling).toBeUndefined();
+  });
+
   it('identifies stripped audio as audio while retaining the legacy omission flag', async () => {
     const course = await createCourse('Audio course');
     const lesson = await createLesson(course.id, 'Listening');

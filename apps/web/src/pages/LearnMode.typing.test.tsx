@@ -29,7 +29,7 @@ describe('typed study accessibility', () => {
     render(
       <ThemeProvider>
         <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
             <Routes>
               <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
             </Routes>

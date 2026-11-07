@@ -22,6 +22,7 @@ import type { CardType, ItemPayload } from '@lacuna/core/db/types';
 
 export interface ShareCardInput {
   am?: 'reveal' | 'type';
+  rs?: true;
   /** Originating id — always present for a lineage-bearing merge (§7.2: "`i` is
    *  populated only when `li` is present", and this module is only ever invoked on the
    *  merge path, where `li` is present by construction). */
@@ -85,6 +86,7 @@ export interface ExistingNote {
 
 export interface ExistingCard {
   answerMode?: 'reveal' | 'type';
+  requireCorrectSpelling?: true;
   id: string;
   /** Primary lesson, or null for a course bank card. */
   lessonId: string | null;
@@ -154,6 +156,7 @@ export interface CreateNotePayload {
 
 export interface CreateCardPayload {
   answerMode?: 'reveal' | 'type';
+  requireCorrectSpelling?: true;
   id: string;
   /** The adopted id of the lesson this card belongs to (may itself be a fresh create),
    *  or null for a bank card. */
@@ -193,6 +196,8 @@ export interface NoteUpdate {
  *  `GeneratedCardUpdate` exactly (§7.3's final classification bullet). */
 export interface CardUpdate {
   answerMode?: 'reveal' | 'type';
+  /** Null clears the requirement, including after serialising a pending update. */
+  requireCorrectSpelling?: true | null;
   id: string;
   /** Set when the teacher moved the card to another lesson (null: the course bank). Must
    *  go through `assignCardsToLesson`, which keeps the backing deck in step. */
@@ -385,6 +390,10 @@ function diffCard(
     update.answerMode = incoming.am;
     changed = true;
   }
+  if (existing.requireCorrectSpelling !== incoming.rs) {
+    update.requireCorrectSpelling = incoming.rs ?? null;
+    changed = true;
+  }
   if (!jsonValuesEqual(existing.payload, incoming.p)) {
     update.payload = incoming.p;
     changed = true;
@@ -447,6 +456,7 @@ export function diffLineage(input: LineageDiffInput): LineageDiffResult {
         tags: incomingCard.g,
         payload: incomingCard.p,
         answerMode: incomingCard.am,
+        requireCorrectSpelling: incomingCard.rs,
       });
       return;
     }

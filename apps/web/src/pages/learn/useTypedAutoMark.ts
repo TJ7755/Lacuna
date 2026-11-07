@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Card, Grade } from '@lacuna/core/db/types';
-import { markdownAnswerCorrect, markdownPlainText } from '../../components/markdown/MarkdownView';
-import { answerComparisonOptions, type AnswerStrictness } from '../../state/answerStrictness';
+import { markdownPlainText } from '../../components/markdown/MarkdownView';
+import type { AnswerStrictness } from '../../state/answerStrictness';
 import { renderClozeFront } from '../../utils/cloze';
 import {
   JEV_JUDGING_MS,
@@ -13,6 +13,7 @@ import {
 import type { TypedAnswerJudgement } from '../../components/markdown/typedAnswerFeedback';
 import { typingExpectedAnswer } from './sessionCardCapabilities';
 import type { Phase } from './types';
+import { matchesTypedRecall } from './typedRecall';
 
 export type TypedAutoMark =
   | { state: 'off' }
@@ -49,7 +50,7 @@ const OFF: TypedAutoMark = { state: 'off' };
 const IDLE: TypedAutoMark = { state: 'idle' };
 
 /** How long a mark stays visible before the card is dismissed with it, before motion scaling. */
-const TYPED_AUTO_MARK_HOLD_MS = 700;
+export const STUDY_VERDICT_HOLD_MS = 700;
 
 /** How long a submitted answer waits before it is marked, before motion scaling. */
 export const TYPED_AUTO_MARK_DELAY_MS = 500;
@@ -150,7 +151,6 @@ export function useTypedAutoMark({
     setMark({ state: 'idle' });
     if (!active || !card || typedAnswer.trim() === '') return;
     const expected = typingExpectedAnswer(card, occlusionAnswerText);
-    const options = answerComparisonOptions(answerStrictness);
     setMark({ state: 'checking' });
     const controller = new AbortController();
     const scale = Math.max(m, 0.3);
@@ -162,7 +162,7 @@ export function useTypedAutoMark({
       reveal = window.setTimeout(() => setMark(next), Math.max(0, shownAt - performance.now()));
     };
     const pause = window.setTimeout(() => {
-      if (markdownAnswerCorrect(expected, { answer: typedAnswer, options })) {
+      if (matchesTypedRecall(card, typedAnswer, answerStrictness, occlusionAnswerText)) {
         show({ state: 'marked', correct: true, provenance: null });
         return;
       }
@@ -178,6 +178,7 @@ export function useTypedAutoMark({
         ),
         expected: expectedText,
         answer: typedAnswer,
+        ...(card.requireCorrectSpelling ? { requireCorrectSpelling: true } : {}),
         signal: controller.signal,
       })
         .then((verdict) => {
@@ -219,6 +220,7 @@ export function useTypedAutoMark({
     card?.front,
     card?.back,
     card?.type,
+    card?.requireCorrectSpelling,
     typedAnswer,
     answerStrictness,
     occlusionAnswerText,
@@ -231,7 +233,7 @@ export function useTypedAutoMark({
       dismissAt.current = null;
       return;
     }
-    dismissAt.current ??= performance.now() + TYPED_AUTO_MARK_HOLD_MS * Math.max(m, 0.3);
+    dismissAt.current ??= performance.now() + STUDY_VERDICT_HOLD_MS * Math.max(m, 0.3);
     if (holding) return;
     const timer = window.setTimeout(
       () =>

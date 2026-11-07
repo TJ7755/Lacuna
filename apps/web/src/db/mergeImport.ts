@@ -292,6 +292,7 @@ export async function importLineageFirstTime(
           tags: shareCard.g ?? [],
           payload: shareCard.p as ItemPayload | undefined,
           answerMode: shareCard.am,
+          requireCorrectSpelling: shareCard.rs,
           suspended: false,
           buriedUntil: null,
         };

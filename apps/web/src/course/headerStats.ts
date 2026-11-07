@@ -3,9 +3,7 @@
 // that every due count and Review due cards session share. Pure — same
 // convention as path.ts, no database access.
 //
-// Mastery is deliberately NOT computed here: CoursePath derives it from the
-// course-level CourseSummary (which excludes extension-lesson cards, see
-// computeCourseSummaries in useCourseData.ts), while LessonView derives it
+// CoursePath derives mastery from core course cards, while LessonView derives it
 // directly from progressValue on the lesson's own cards. These are different
 // scopes with different inputs, so this helper takes the already-computed
 // mastery value as a parameter and simply bundles it alongside the stats that

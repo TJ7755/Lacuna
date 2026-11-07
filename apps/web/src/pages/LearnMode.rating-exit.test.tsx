@@ -61,7 +61,7 @@ async function startSession({
     <ThemeProvider>
       <AccentProvider>
         <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?filter=new`]}>
             <Routes>
               <Route
                 path="/lesson/:lessonId/learn"

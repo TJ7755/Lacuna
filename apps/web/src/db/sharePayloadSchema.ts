@@ -134,6 +134,7 @@ const ShareCardSchema = z
     // Stable Concept identity within a v3 payload. Optional only for v2 compatibility.
     co: z.string().optional(),
     am: z.enum(['reveal', 'type']).optional(),
+    rs: z.literal(true).optional(),
   })
   .superRefine((card, context) => {
     if (card.p !== undefined && card.k !== 0) {

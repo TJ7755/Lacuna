@@ -109,7 +109,10 @@ test('starts a real lesson study interaction', async ({ page }) => {
     const bounds = surface.getBoundingClientRect();
     return bounds.left + bounds.width / 2;
   });
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await page
+    .getByRole('main', { name: 'Study card' })
+    .getByRole('button', { name: /^(Yes|Continue)$/ })
+    .click();
   await expect(page.locator('[data-study-card-id]').first()).not.toHaveAttribute(
     'data-study-card-id',
     cardId ?? '',

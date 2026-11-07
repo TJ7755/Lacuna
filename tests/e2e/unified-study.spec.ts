@@ -3,7 +3,7 @@ import type { CourseAssessment, Lesson } from '@lacuna/core/db/types';
 import type { Concept } from '@lacuna/core/questions/types';
 import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { completeRevealedIntroduction, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 import { addLessonCard, readAll } from './fixtures/syncConvergence';
 
 const MEMBRANE_ANSWER =
@@ -332,11 +332,7 @@ for (const techniqueOnly of [false, true]) {
     const preview = page.getByRole('region', { name: 'Session preview', exact: true });
     await preview.getByRole('button', { name: 'Start session', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Lesson 1', exact: true })).toBeVisible();
-    await page
-      .getByRole('button', { name: /Show answer/i })
-      .last()
-      .click();
-    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+    await completeRevealedIntroduction(page, 'Recall the membrane function answer');
     const handoff = page.getByRole('main', { name: 'Study progress', exact: true });
     await handoff.getByRole('button', { name: 'Finish for now', exact: true }).click();
     const [introduced] = await readAll<{ due: number }>(page, 'cards');

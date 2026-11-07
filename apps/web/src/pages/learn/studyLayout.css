@@ -185,3 +185,16 @@ mark.typed-missed {
     opacity: 0.7;
   }
 }
+
+.study-choice-controls .qs-choices {
+  margin: 0;
+  text-align: center;
+}
+
+.study-choice-controls .qs-choices > div {
+  justify-content: center;
+}
+
+.study-choice-controls .qs-choices label {
+  border-radius: 9999px;
+}

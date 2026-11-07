@@ -416,6 +416,52 @@ describe('useLearnSession answer boundary', () => {
     }
   });
 
+  it('verifies introduction recall at commit even when a submitted grade claims success', async () => {
+    const course = await createCourse('Verified recall');
+    const lesson = await createLesson(course.id, 'Fruit', { answerMode: 'reveal' });
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Apple', 'pomme');
+    const params = sessionParams({
+      lessonId: lesson.id,
+      reviewSessionKind: 'lesson',
+      isSimpleMode: true,
+      introduceNewCards: true,
+      mode: 'simple',
+    });
+    const { result } = renderHook(() => useLearnSession(params));
+    await waitFor(() => expect(result.current.introductionPresentation.stage).toBe('familiarise'));
+    act(() => {
+      const { serial } = result.current.introductionPresentation;
+      expect(result.current.checkIntroduction(serial, true)).toBe(true);
+      result.current.continueIntroduction(serial);
+    });
+    expect(result.current.isTypingCard).toBe(true);
+    expect(await db.reviewHistory.count()).toBe(0);
+
+    for (const typedAnswer of ['   ', 'incorrect']) {
+      act(() => result.current.reveal());
+      await act(async () => {
+        await result.current.answer(4, { typedAnswer });
+      });
+      expect(result.current.introductionPresentation.stage).toBe('recall');
+      expect(result.current.sessionCardOutcomes.get(card.id)).toBe('wrong');
+    }
+    expect(await db.lessonCardExposures.get([lesson.id, card.id])).toBeUndefined();
+
+    act(() => result.current.reveal());
+    await act(async () => {
+      await result.current.answer(false, { typedAnswer: 'pomme' });
+    });
+    const reviews = await db.reviewHistory.where('cardId').equals(card.id).toArray();
+    expect(reviews).toHaveLength(3);
+    expect(
+      reviews.filter((review) => review.grade === 1 && !review.correct && review.input === 'typed'),
+    ).toHaveLength(2);
+    expect(
+      reviews.some((review) => review.grade > 1 && review.correct && review.input === 'typed'),
+    ).toBe(true);
+    expect(await db.lessonCardExposures.get([lesson.id, card.id])).toBeDefined();
+  });
+
   it('records No in Simple Learn as Again and keeps the card in its learning queue', async () => {
     const course = await createCourse('Simple retry');
     const lesson = await createLesson(course.id, 'Cells');

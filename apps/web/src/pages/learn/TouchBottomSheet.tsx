@@ -24,6 +24,7 @@ export function TouchBottomSheet({
   isTypingCard,
   autoMark,
   recallPrompt,
+  recallCorrect,
 }: {
   phase: Phase;
   feedback?: StudyGradeFeedback;
@@ -36,6 +37,7 @@ export function TouchBottomSheet({
   /** Automatic marking of a typed answer: the self-marking grades stay away. */
   autoMark?: AutoMark;
   recallPrompt?: string;
+  recallCorrect?: boolean;
 }) {
   const recallPromptId = useId();
   const selfRating =
@@ -83,7 +85,17 @@ export function TouchBottomSheet({
               </p>
             )}
             {!autoMark &&
-              (gradingMode === 'manual' ? (
+              (recallCorrect !== undefined ? (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  data-study-continue
+                  onClick={() => onAnswer(recallCorrect, 'touch')}
+                >
+                  Continue
+                </Button>
+              ) : gradingMode === 'manual' ? (
                 <div className="grid w-full grid-cols-2 gap-3">
                   <StudyGradeButton
                     grade={1}

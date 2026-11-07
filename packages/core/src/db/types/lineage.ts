@@ -93,6 +93,7 @@ export interface LineageNoteSnapshot {
 /** The subset of a Card's fields `lineageDiff.ts` diffs on — content only, never FSRS fields. */
 export interface LineageCardSnapshot {
   answerMode?: AnswerMode;
+  requireCorrectSpelling?: true;
   type: CardType;
   front: string;
   back: string;

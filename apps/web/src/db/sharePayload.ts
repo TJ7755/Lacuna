@@ -19,6 +19,8 @@ import { SharePayloadSchema } from './sharePayloadSchema';
 /** A single card in a share payload. `k` is the kind. */
 export interface ShareCard {
   am?: 'reveal' | 'type';
+  /** Mirrors Card.requireCorrectSpelling when the author requires it. */
+  rs?: true;
   id?: string;
   /**
    * 0 = front/back, 1 = cloze, 2 = reversible front/back pair (expands to two

@@ -1,3 +1,4 @@
+import { restoreIntroduction, type LessonIntroduction } from './lessonIntroduction';
 import { storedString } from '../../state/localSetting';
 import type { SessionCardOutcome, SessionEvent } from '../../course/sessionSummary';
 
@@ -27,6 +28,7 @@ interface StoredSimpleSession {
   events: SessionEvent[];
   /** In-progress recitations by sequence id; validated against the sequence on use. */
   recitations?: Record<string, unknown>;
+  introduction?: LessonIntroduction;
 }
 
 export interface SimpleSessionSnapshot {
@@ -36,6 +38,7 @@ export interface SimpleSessionSnapshot {
   events: SessionEvent[];
   /** Saved recitation states, unvalidated until the sequence is known. */
   recitations?: Map<string, unknown>;
+  introduction?: LessonIntroduction;
 }
 
 export interface SaveSimpleSessionInput {
@@ -44,6 +47,7 @@ export interface SaveSimpleSessionInput {
   outcomes: Iterable<readonly [string, SessionCardOutcome]>;
   events: SessionEvent[];
   recitations?: ReadonlyMap<string, unknown>;
+  introduction?: LessonIntroduction;
 }
 
 function unique(values: string[]): string[] {
@@ -145,6 +149,7 @@ export function saveSimpleSession(scope: SimpleSessionScope, input: SaveSimpleSe
     masteredCardIds: unique(input.masteredCardIds),
     outcomes: [...input.outcomes].map(([cardId, outcome]) => [cardId, outcome]),
     events: input.events,
+    ...(input.introduction ? { introduction: input.introduction } : {}),
     ...(input.recitations?.size ? { recitations: Object.fromEntries(input.recitations) } : {}),
   };
   try {
@@ -189,6 +194,7 @@ export function loadSimpleSession(
     masteredCardIds,
     outcomes,
     events: stored.events,
+    introduction: restoreIntroduction(stored.introduction),
   };
   if (typeof stored.recitations === 'object' && stored.recitations !== null) {
     snapshot.recitations = new Map(Object.entries(stored.recitations));

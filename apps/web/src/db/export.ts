@@ -223,6 +223,7 @@ export async function exportCardsJson(): Promise<string> {
     deck: resolveDeckDisplay(c, maps).name,
     type: c.type,
     answerMode: c.answerMode ?? maps.lessonAnswerModes.get(c.primaryLessonId ?? '') ?? 'reveal',
+    requireCorrectSpelling: c.requireCorrectSpelling,
   }));
   return JSON.stringify(items, null, 2);
 }

@@ -103,6 +103,7 @@ const review = object({
 });
 export const cardContent = object({
   answerMode,
+  requireCorrectSpelling: z.literal(true).optional(),
   type: z.enum(['front_back', 'basic_reversed', 'cloze', 'typing']),
   front: text,
   back: text,

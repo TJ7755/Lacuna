@@ -20,6 +20,7 @@ import { originFrom } from '../utils/editorOrigin';
 import {
   useCourse,
   useCourseCardProjections,
+  useLessons,
   useOcclusions,
   useSequences,
   useCourseBankBackingDecks,
@@ -31,7 +32,7 @@ import { filterSessionCardPool, searchCardsInScope, type CardFilter } from '@lac
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import type { Card } from '@lacuna/core/db/types';
-import { useLessonOrderData } from '../state/useLessonOrderData';
+import { courseLessonOrderPreference, resolveLessonOrder } from '../course/lessonOrder';
 
 /**
  * Navigate from Cards so the destination's Back returns here with the same search,
@@ -93,12 +94,18 @@ export function CardsPage() {
   const multiplier = speedMultiplier(motionSpeed);
 
   const course = useCourse(courseId);
-  const lessons = useLessonOrderData(courseId)?.lessons;
+  // Course identity and preferences are already live in the shell. Reuse the
+  // same lesson read as Course Path instead of loading its assessments again.
+  const publishedLessons = useLessons(courseId);
+  const preferredOrder = course ? courseLessonOrderPreference(course) : undefined;
+  const lessons = useMemo(
+    () => publishedLessons && resolveLessonOrder(publishedLessons, preferredOrder),
+    [publishedLessons, preferredOrder],
+  );
   const cards = useCourseCardProjections(courseId);
   const sequences = useSequences(courseId);
   const occlusions = useOcclusions(courseId);
-  const lessonIds = useMemo(() => lessons?.map((lesson) => lesson.id) ?? [], [lessons]);
-  const backingDecks = useCourseBankBackingDecks(courseId, lessonIds);
+  const backingDecks = useCourseBankBackingDecks(courseId);
   const query = deferredSearch.trim();
   useScopedFindShortcut(
     cards?.length

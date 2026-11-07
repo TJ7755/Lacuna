@@ -29,6 +29,7 @@ export function useLearnAnswerFeedback({
   presentedAnswerInput,
   current,
   typedAnswer,
+  verifyTypedRecall,
 }: {
   answer: Session['answer'];
   undoLast: Session['undoLast'];
@@ -40,6 +41,7 @@ export function useLearnAnswerFeedback({
   presentedAnswerInput: Session['presentedAnswerInput'];
   current: Card | null;
   typedAnswer: string;
+  verifyTypedRecall: boolean;
 }) {
   const [gradeFeedback, setGradeFeedback] = useState<StudyGradeFeedback>();
   const cardTransitionRef = useRef<StudyCardTransitionHandle>(null);
@@ -55,7 +57,9 @@ export function useLearnAnswerFeedback({
   const clearStreakMoment = useCallback(() => setStreakMoment(null), []);
   const undoInFlightRef = useRef(false);
   const completionInFlightRef = useRef(false);
-  const lastTypedAnswerRef = useRef<{ cardId: string; answer: string } | null>(null);
+  const lastTypedAnswerRef = useRef<{ cardId: string; answer: string; verified: boolean } | null>(
+    null,
+  );
   const [manualRestoredCardId, setManualRestoredCardId] = useState<string | null>(null);
   const [confirmingCompletion, setConfirmingCompletion] = useState(false);
   const undoWithTransitionCancel = useCallback(async () => {
@@ -67,8 +71,9 @@ export function useLearnAnswerFeedback({
       runRef.current = 0;
       setStreakMoment(null);
       const typed = lastTypedAnswerRef.current;
-      if (typed) setManualRestoredCardId(typed.cardId);
-      const restored = await undoLast({ reveal: typed !== null });
+      if (typed) setManualRestoredCardId(typed.verified ? null : typed.cardId);
+      // Restore verified recall to the input so only an intentional resubmission is marked.
+      const restored = await undoLast({ reveal: typed !== null && !typed.verified });
       if (restored && typed?.cardId === restored.id) {
         setTypedAnswer(typed.answer);
         lastTypedAnswerRef.current = null;
@@ -107,11 +112,16 @@ export function useLearnAnswerFeedback({
           try {
             const result = await answer(
               input,
-              automatic ? { markedBy, retainUndo: true } : undefined,
+              automatic || verifyTypedRecall
+                ? {
+                    ...(automatic ? { markedBy, retainUndo: true } : {}),
+                    ...(verifyTypedRecall ? { typedAnswer } : {}),
+                  }
+                : undefined,
             );
             lastTypedAnswerRef.current =
               result.undoAvailable && presentedAnswerInput === 'typed' && current
-                ? { cardId: current.id, answer: typedAnswer }
+                ? { cardId: current.id, answer: typedAnswer, verified: verifyTypedRecall }
                 : null;
             if (result.undoAvailable) {
               notify(result.feedbackMessage ?? 'Answer recorded', 'neutral', {
@@ -147,7 +157,15 @@ export function useLearnAnswerFeedback({
         setStreakMoment({ run: runRef.current, key: Date.now() });
       }
     },
-    [answer, notify, undoWithTransitionCancel, presentedAnswerInput, current, typedAnswer],
+    [
+      answer,
+      notify,
+      undoWithTransitionCancel,
+      presentedAnswerInput,
+      current,
+      typedAnswer,
+      verifyTypedRecall,
+    ],
   );
 
   return {
