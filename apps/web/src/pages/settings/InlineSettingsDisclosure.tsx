@@ -25,6 +25,7 @@ export function InlineSettingsDisclosure({
   const multiplier = speedMultiplier(speed);
   return (
     <div className={className}>
+      {/* Extend the hover and focus bounds while keeping the content edges aligned. */}
       <button
         type="button"
         data-press
@@ -32,7 +33,7 @@ export function InlineSettingsDisclosure({
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen(!open)}
-        className={`w-full scale-100! text-left ${headerClassName}`}
+        className={`-mx-2 w-[calc(100%+--spacing(4))] scale-100! px-2 text-left ${headerClassName}`}
       >
         {header}
         {/* The chevron path has 4.5px of air each side; the margin puts its tip on the content edge. */}
