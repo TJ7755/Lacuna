@@ -37,7 +37,7 @@ for (const failWorker of [false, true]) {
     await enterWithWelcomeCourse(page);
     await observeForecastWork(page);
     if (failWorker)
-      await page.route('**/assets/remainingWork.worker-*.js', (route) => route.abort());
+      await page.route('**/assets/forecastHistory.worker-*.js', (route) => route.abort());
     await page.reload();
     await expect(page.getByRole('button', { name: 'Study Welcome to Lacuna' })).toBeEnabled();
     await expect(page.getByRole('img', { name: 'Exam-day forecast', exact: true })).toBeVisible();
@@ -66,7 +66,7 @@ for (const destination of ['course', 'search'] as const) {
       release = resolve;
     });
     let requested = false;
-    await page.route('**/assets/remainingWork.worker-*.js', async (route) => {
+    await page.route('**/assets/forecastHistory.worker-*.js', async (route) => {
       requested = true;
       await held;
       await route.abort();
@@ -142,8 +142,7 @@ test('cached Today keeps its forecast when first opening the optional calculatio
       for (const name of await caches.keys()) {
         const cache = await caches.open(name);
         for (const request of await cache.keys()) {
-          if (/\/(?:remainingWork\.worker|forecastHistoryData)-/.test(request.url))
-            await cache.delete(request);
+          if (/\/forecastHistory(?:\.worker|Data)-/.test(request.url)) await cache.delete(request);
         }
       }
     });
