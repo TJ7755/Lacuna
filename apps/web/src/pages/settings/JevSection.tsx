@@ -12,6 +12,7 @@ import {
 } from '../../jev';
 import { formatRelativeTime } from '../../utils/datetime';
 import { JevConsentDialog } from './JevConsentDialog';
+import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { PillSwitch, SETTINGS_HEADING_ROW_CLASS, SettingRow, SettingsCard } from './SettingsUi';
 import { cn } from '../../components/ui/cn';
@@ -65,16 +66,7 @@ export function JevSection() {
         </SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm leading-6 text-ink-soft">
-        Jev is an experimental public beta for marking typed flashcard answers and written practice
-        answers, using the decision model from {JEV_PROVIDER.name}. Its accuracy is still being
-        evaluated. It can give wrong marks and diagnoses. Check its decisions; you can always undo
-        or change its mark.
-      </p>
-
-      <p className="mb-5 text-sm leading-6 text-ink-soft">
-        The standard beta allowance is 100 marking requests per installation each UTC day, with
-        short-term limits to keep the service available. A written-answer request can include
-        several mark-scheme lines. You can still mark answers yourself when the allowance runs out.
+        Experimental beta. Check its marks; you can undo them.
       </p>
 
       <SettingRow
@@ -84,8 +76,8 @@ export function JevSection() {
             Mark my answers automatically
             <span className="mt-1 block text-sm font-normal leading-6 text-ink-soft">
               {on
-                ? `Answers that need judgement are sent to ${JEV_PROVIDER.name} in the ${JEV_PROVIDER.region}, with the question and mark scheme.`
-                : 'Off by default. Nothing is sent until you turn this on and accept the warning.'}
+                ? `Sends answers needing judgement to ${JEV_PROVIDER.name} in the ${JEV_PROVIDER.region}.`
+                : 'Nothing is sent until you turn this on.'}
             </span>
           </>
         }
@@ -96,6 +88,33 @@ export function JevSection() {
           ariaLabel="Mark my answers automatically"
         />
       </SettingRow>
+
+      <InlineSettingsDisclosure
+        className="mt-5 border-t border-line pt-4"
+        headerClassName="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        header={<span className="text-sm font-medium text-ink">How it works</span>}
+      >
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ink-soft">
+          <li>
+            Jev is an experimental public beta for marking typed flashcard answers and written
+            practice answers, using the decision model from {JEV_PROVIDER.name}. Its accuracy is
+            still being evaluated. It can give wrong marks and diagnoses. Check its decisions; you
+            can always undo or change its mark.
+          </li>
+          <li>
+            The standard beta allowance is 100 marking requests per installation each UTC day, with
+            short-term limits to keep the service available. A written-answer request can include
+            several mark-scheme lines. You can still mark answers yourself when the allowance runs
+            out.
+          </li>
+          <li>
+            Only answers that need judgement are sent: a typed flashcard answer that does not match
+            word for word, or a written practice answer. Each goes with its question and the
+            expected answer or mark-scheme line. Your study history, schedule and other cards are
+            not sent.
+          </li>
+        </ul>
+      </InlineSettingsDisclosure>
 
       {message && (
         <p role="status" className="mt-3 text-sm text-ink-faint">
