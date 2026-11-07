@@ -178,7 +178,7 @@ test('keeps automatic practice and checkpoint coverage when a locked course is r
   await path.getByRole('button', { name: 'Open checkpoint: Topic test', exact: true }).click();
   const details = page.getByRole('dialog', { name: 'Topic test details' });
   await expect(details.getByRole('listitem')).toHaveText(['Topic C', 'Topic A']);
-  await expect(details.getByText('2 lessons · 2 cards', { exact: true })).toBeVisible();
+  await expect(details.getByText('2 lessons, 2 cards', { exact: true })).toBeVisible();
   await page.screenshot({
     path: test.info().outputPath('local-order-checkpoint.png'),
     animations: 'disabled',
@@ -477,7 +477,7 @@ for (const input of [
       await path
         .getByRole('button', { name: 'Edit checkpoint: My mock - updated', exact: true })
         .click();
-      await expect(edit.getByText('1 lesson · 1 card', { exact: true })).toBeVisible();
+      await expect(edit.getByText('1 lesson, 1 card', { exact: true })).toBeVisible();
       await page.screenshot({
         path: test.info().outputPath(`learner-checkpoint-${input.name}-editor.png`),
         animations: 'disabled',

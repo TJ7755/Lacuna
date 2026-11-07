@@ -321,7 +321,7 @@ export function AssessmentEditor({
       )}
 
       <div className="rounded-2xl bg-ink/[0.04] px-3 py-2 text-xs text-ink-soft">
-        {resolved.coveredLessons.length} lesson{resolved.coveredLessons.length === 1 ? '' : 's'} ·{' '}
+        {resolved.coveredLessons.length} lesson{resolved.coveredLessons.length === 1 ? '' : 's'},{' '}
         {resolved.cards.length} card{resolved.cards.length === 1 ? '' : 's'}
       </div>
 

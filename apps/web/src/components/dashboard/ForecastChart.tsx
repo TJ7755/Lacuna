@@ -155,7 +155,7 @@ export function ForecastChart({
       if (!tooClose)
         marks.push({
           at,
-          label: narrow ? 'Exam' : `${formatShortDate(at)} · Exam`,
+          label: narrow ? 'Exam' : `Exam ${formatShortDate(at)}`,
           strong: true,
           anchor: x(at) + halfLabel > W ? 'end' : 'middle',
         });
@@ -276,7 +276,9 @@ export function ForecastChart({
         </ul>
       </div>
       <p className="text-sm text-ink-soft">
-        If you stop studying now{!allExam && !noExam ? ' · Exam dates or four weeks ahead' : ''}
+        {!allExam && !noExam
+          ? 'At exams or in four weeks if you stop now'
+          : 'If you stop studying now'}
       </p>
       <svg
         ref={ref}

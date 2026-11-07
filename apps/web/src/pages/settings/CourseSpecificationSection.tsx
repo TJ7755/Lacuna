@@ -106,7 +106,7 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
         <div className="min-w-0">
           <h3 className="font-semibold text-ink">{spec.title}</h3>
           <p className="mt-1 text-sm text-ink-soft">
-            {boards[spec.board]} · {qualifications[spec.qualification]} · {spec.code} · First exam{' '}
+            {boards[spec.board]} {qualifications[spec.qualification]} {spec.code}, first exam{' '}
             {spec.firstExamination}
           </p>
         </div>
@@ -193,14 +193,15 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
           <div className="flex flex-wrap gap-2 text-xs text-ink-soft">
             {(spec.tiers.length > 0 || reference?.tier) && (
               <span className="rounded-lg bg-ink/[0.06] px-2 py-1">
-                Tier ·{' '}
+                Tier (
                 {spec.tiers.find((tier) => tier.id === reference?.tier)?.name ??
                   (reference?.tier ? `Unavailable (${reference.tier})` : 'Not chosen')}
+                )
               </span>
             )}
             {(spec.routes.length > 0 || reference?.routeIds?.length) && (
               <span className="rounded-lg bg-ink/[0.06] px-2 py-1">
-                Routes ·{' '}
+                Routes (
                 {reference?.routeIds?.length
                   ? reference.routeIds
                       .map(
@@ -210,6 +211,7 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
                       )
                       .join(', ')
                   : 'Not chosen'}
+                )
               </span>
             )}
           </div>

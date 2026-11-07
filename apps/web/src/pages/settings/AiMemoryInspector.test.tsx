@@ -52,7 +52,7 @@ describe('AiMemoryInspector', () => {
       </ToastProvider>,
     );
 
-    expect(screen.getByText('Fractions · Unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Fractions (Unavailable)')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Correct' }));
     fireEvent.change(screen.getByLabelText('Correct memory'), {
       target: { value: 'Learner correction.' },

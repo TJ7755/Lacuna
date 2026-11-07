@@ -71,7 +71,7 @@ describe('desktop download selection', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Windows' }));
-    expect(screen.getByText('64-bit Windows · installer')).toBeVisible();
+    expect(screen.getByText('64-bit Windows installer')).toBeVisible();
   });
 
   it('recommends the Windows installer with automatic updates and keeps portable optional', () => {
@@ -81,7 +81,7 @@ describe('desktop download selection', () => {
 
     render(<Download />, { wrapper: MemoryRouter });
 
-    expect(screen.getByText('64-bit Windows · installer')).toBeVisible();
+    expect(screen.getByText('64-bit Windows installer')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
     expect(screen.getByText(/installer sets up Lacuna with automatic updates/i)).toBeVisible();
     expect(screen.getByText(/browser data is not copied/i)).toBeVisible();
@@ -125,7 +125,7 @@ describe('desktop download selection', () => {
     ).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Linux' }));
-    expect(screen.getByText('64-bit Linux · AppImage')).toBeVisible();
+    expect(screen.getByText('64-bit Linux AppImage')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
     expect(screen.getByText(/It uses automatic updates/)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Download for Linux' })).toHaveAttribute(

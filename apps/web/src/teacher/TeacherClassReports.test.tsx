@@ -34,7 +34,7 @@ it('reads only after an explicit unlock and preserves unknown, self-marked and d
   fireEvent.click(pupil);
   expect(pupil).toHaveAttribute('aria-expanded', 'true');
   const dialog = await screen.findByRole('region', { name: 'Evidence for Pupil A' });
-  expect(within(dialog).getByText(/Unknown \/ 2 marks · Self marked/)).toBeInTheDocument();
+  expect(within(dialog).getByText(/Unknown \/ 2 marks \(Self marked,/)).toBeInTheDocument();
   expect(within(dialog).getByText(/disputed by the pupil/)).toBeInTheDocument();
   expect(within(dialog).getByText(/shortened for this report/)).toBeInTheDocument();
   expect(within(dialog).getByText(/Membrane/)).toHaveTextContent('Membrane Unknown / 2');

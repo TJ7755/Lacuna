@@ -212,7 +212,7 @@ describe('QuestionSetCourseRow', () => {
     renderRow(false);
 
     const row = screen.getByRole('button', { name: 'Practice questions: Cell structure' });
-    expect(row).toHaveTextContent('1/1 answered · 1 new part');
+    expect(row).toHaveTextContent('1/1 answered (1 new part)');
     expect(row.querySelector('.origin-left')).toHaveStyle({ width: '50%' });
     fireEvent.click(row);
     expect(screen.getByTestId('location')).toHaveTextContent(

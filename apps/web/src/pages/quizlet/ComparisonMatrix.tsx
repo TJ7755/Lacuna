@@ -101,9 +101,7 @@ export function ComparisonMatrix() {
           })}
         </tbody>
       </table>
-      <div className="qc-matrix-foot">
-        Checked 27 September 2026 · Select a feature for details and sources.
-      </div>
+      <div className="qc-matrix-foot">Checked 27 September 2026</div>
     </div>
   );
 }

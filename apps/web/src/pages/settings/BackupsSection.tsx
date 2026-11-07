@@ -325,7 +325,7 @@ export function BackupsSection() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-semibold text-ink">
                   <FolderIcon width={16} height={16} />
-                  Folder copy · {folder ?? 'Not configured'}
+                  Folder copy ({folder ?? 'Not configured'})
                 </div>
                 {mirror?.state === 'saved' ? (
                   <p role="status" className="mt-1 flex items-center gap-1.5 text-xs text-positive">

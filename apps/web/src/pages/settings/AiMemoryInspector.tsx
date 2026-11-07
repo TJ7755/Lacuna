@@ -155,8 +155,8 @@ export function AiMemoryInspector({
                       {memory.courseId === null
                         ? 'Global'
                         : (data.courseNames.get(memory.courseId) ?? 'Unavailable Course')}
-                      {' · '}
-                      {memory.basis.replace('-', ' ')}
+                      {' ('}
+                      {memory.basis.replace('-', ' ')})
                     </span>
                   </div>
                   {editingId === memory.id ? (
@@ -183,7 +183,7 @@ export function AiMemoryInspector({
                             className="rounded-full bg-surface-raised px-2 py-1 text-xs text-ink-soft"
                           >
                             {reference.label}
-                            {unavailable ? ' · Unavailable' : ''}
+                            {unavailable ? ' (Unavailable)' : ''}
                           </li>
                         );
                       })}

@@ -160,7 +160,7 @@ describe('SharePage links', () => {
     expect(screen.getByRole('textbox', { name: 'Share link' })).toHaveValue(
       `${window.location.origin}/#/s/${shareId}`,
     );
-    expect(screen.getByText(/^Revision 3 · updated/)).toBeInTheDocument();
+    expect(screen.getByText('Revision 3', { exact: true })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Update link' })).toBeInTheDocument();
     expect(mockPublishShareLink).not.toHaveBeenCalled();
     await waitFor(() => expect(mockReadShareCredentials).toHaveBeenCalledWith(shareId));

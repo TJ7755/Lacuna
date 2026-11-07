@@ -98,13 +98,13 @@ export function QuestionAnalyticsSection({
               </thead>
               <tbody className="divide-y divide-line">
                 <MetricRow
-                  label="Fixed · first presentation"
+                  label="Fixed (first presentation)"
                   metric={analytics.fixed.firstPresentation}
                 />
-                <MetricRow label="Fixed · repeats" metric={analytics.fixed.repeat} />
-                <MetricRow label="Generated · novel variants" metric={analytics.generated.novel} />
+                <MetricRow label="Fixed (repeats)" metric={analytics.fixed.repeat} />
+                <MetricRow label="Generated (novel variants)" metric={analytics.generated.novel} />
                 <MetricRow
-                  label="Generated · repeated variants"
+                  label="Generated (repeated variants)"
                   metric={analytics.generated.repeated}
                 />
               </tbody>
@@ -170,7 +170,7 @@ export function QuestionAnalyticsSection({
                 {excludedAttemptCount > 0 && (
                   <>
                     <p className="mt-5 text-sm text-ink-soft">
-                      Excluded attempts · {excludedAttemptCount}
+                      Excluded attempts ({excludedAttemptCount})
                     </p>
                     <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
                       <InventoryStat label="Shown" value={analytics.excluded.shown} />
@@ -197,7 +197,7 @@ export function QuestionAnalyticsSection({
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-sm font-medium text-ink">{criterion.label}</p>
                       <span className="shrink-0 tabular-nums text-xs text-ink-faint">
-                        v{criterion.contentVersion} · line {criterion.lineIndex + 1}
+                        v{criterion.contentVersion}, line {criterion.lineIndex + 1}
                       </span>
                     </div>
                     <p className="mt-2 text-sm text-ink-soft">

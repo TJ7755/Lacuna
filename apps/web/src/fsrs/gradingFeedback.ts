@@ -34,12 +34,12 @@ export function reviewFeedbackMessage(grade: Grade, due: number, now = Date.now(
           : interval < YEAR_MS
             ? quantity(interval / MONTH_MS, 'month')
             : quantity(interval / YEAR_MS, 'year');
-  return `${GRADE_LABELS[grade]} · ${grade === 1 ? 'retry' : 'again'} in ${next}`;
+  return `${GRADE_LABELS[grade]}, ${grade === 1 ? 'retry' : 'again'} in ${next}`;
 }
 
 /**
  * Post-grade feedback as projected exam-day retention for the just-reviewed
- * card, e.g. "Good · 82% recall at exam". Uses the same forward projection as
+ * card, e.g. "Good, 82% recall at exam". Uses the same forward projection as
  * the progress bar so the two always agree (see src/fsrs/progress.ts).
  *
  * Returns null unless a genuine future exam date applies to the card: without
@@ -62,5 +62,5 @@ export function reviewRetentionMessage(
   const percent = Math.round(
     predictedRetrievabilityAtHorizon(card, deck, now, examDateContext) * 100,
   );
-  return `${GRADE_LABELS[grade]} · ${percent}% recall at exam`;
+  return `${GRADE_LABELS[grade]}, ${percent}% recall at exam`;
 }

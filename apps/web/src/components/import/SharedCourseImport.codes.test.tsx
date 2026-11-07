@@ -255,9 +255,7 @@ describe('SharedCourseImport with course codes and files', () => {
       mockDecodedPayload = { v: 6 };
       await inspectCode();
       expect(screen.getByText('Ready to import')).toBeInTheDocument();
-      expect(screen.getByText('Test Course').closest('p')).toHaveTextContent(
-        'Test Course · 1 lesson · 3 notes · 2 cards',
-      );
+      expect(screen.getByText('Test Course')).toBeInTheDocument();
       fireEvent.click(screen.getByText('Add to my courses'));
       await waitFor(() => expect(mockNotify).toHaveBeenCalled());
       expect(mockMergeLineageUpdate).not.toHaveBeenCalled();

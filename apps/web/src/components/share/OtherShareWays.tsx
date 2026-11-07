@@ -7,7 +7,6 @@ import { exportCardsSimple } from '../../db/export';
 import { buildCourseShareCode, buildCourseShareCodeQR } from '../../db/share';
 import type { Card, Course } from '@lacuna/core/db/types';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import { formatRelativeTime } from '../../utils/datetime';
 import { CourseFileExportButton } from '../import/CourseFileControls';
 import { Button } from '../ui/Button';
 import { DownloadIcon, FileTextIcon, QrCodeIcon, ShareIcon } from '../ui/icons';
@@ -248,7 +247,7 @@ export function OtherShareControls({
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
       <p className="text-sm text-ink-faint">
         {course.distribution
-          ? `Revision ${course.distribution.revision} · published ${formatRelativeTime(course.distribution.publishedAt)}`
+          ? `Revision ${course.distribution.revision}`
           : 'Unpublished copies won’t receive your later edits.'}
       </p>
       <Button

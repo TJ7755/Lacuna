@@ -33,12 +33,7 @@ import { Button } from '../ui/Button';
 import { CameraIcon, CloseIcon } from '../ui/icons';
 import { fieldLabelClassName } from '../ui/Field';
 import { chosenStudyTarget } from '../../onboarding/onboardingState';
-import {
-  defaultExamDate,
-  formatDate,
-  formatDateTime,
-  getLocalTimeZone,
-} from '../../utils/datetime';
+import { defaultExamDate, formatDateTime, getLocalTimeZone } from '../../utils/datetime';
 import { CourseStudyTarget } from '../course/CourseStudyTarget';
 import { countOf } from '../../utils/plural';
 
@@ -466,17 +461,10 @@ export function SharedCourseImport({
                   )}
                 </p>
               ) : pending.summary.kind === 'course' ? (
-                <p className="mb-3 text-sm text-ink-soft">
-                  <strong className="text-ink">{pending.summary.courseName}</strong> ·{' '}
-                  {countOf(pending.summary.lessonCount, 'lesson')} ·{' '}
-                  {countOf(pending.summary.noteCount ?? 0, 'note')} ·{' '}
-                  {countOf(pending.summary.cardCount, 'card')}
-                </p>
+                <p className="mb-3 text-sm font-semibold text-ink">{pending.summary.courseName}</p>
               ) : (
                 <p className="mb-3 text-sm text-ink-soft">
-                  {countOf(pending.summary.deckCount, 'lesson')} ·{' '}
-                  {countOf(pending.summary.cardCount, 'card')} ·{' '}
-                  {formatDate(pending.summary.exportedAt)}
+                  {countOf(pending.summary.cardCount, 'card')}
                 </p>
               )}
               {!pending.merge && pending.summary.omittedImages && (
@@ -487,7 +475,7 @@ export function SharedCourseImport({
               {pending.scheduling?.fromOnboarding && (
                 <p className="mb-5 text-sm text-ink-soft">
                   {pending.scheduling.mode === 'exam'
-                    ? `Exam date · ${formatDateTime(pending.scheduling.examDate, pending.scheduling.timeZone)}`
+                    ? `Exam on ${formatDateTime(pending.scheduling.examDate, pending.scheduling.timeZone)}`
                     : 'Steady retention'}
                 </p>
               )}

@@ -41,7 +41,7 @@ describe('ForecastChart axis', () => {
     // The plot runs from 40px in to 16px short of the right edge.
     expect(Number(dot.getAttribute('cx'))).toBeCloseTo(40 + 0.6 * (width - 56));
     expect(screen.getAllByText('62%')).toHaveLength(1);
-    expect(screen.getByText(/· Exam/)).toBeInTheDocument();
+    expect(screen.getByText(/^Exam \d{1,2} [A-Za-z]{3}$/)).toBeInTheDocument();
   });
 
   it('centres the exam label on its marker at phone width', () => {
@@ -66,7 +66,7 @@ describe('ForecastChart axis', () => {
 
   it('points to an exam beyond the window from the axis edge', () => {
     renderChart(40);
-    expect(screen.queryByText(/· Exam/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Exam \d{1,2} [A-Za-z]{3}$/)).not.toBeInTheDocument();
     expect(screen.getByText(/^Exam .+ →$/)).toBeInTheDocument();
   });
 

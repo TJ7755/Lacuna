@@ -170,8 +170,8 @@ export function MergeReviewPanel() {
     review.diff.creates.cards.length;
   const sourceLabel = course?.distributedCopy?.sourceLabel;
   const headerLine = sourceLabel
-    ? `Update from ${sourceLabel} · revision ${review.revision}`
-    : `Update · revision ${review.revision}`;
+    ? `Update from ${sourceLabel} (revision ${review.revision})`
+    : `Revision ${review.revision}`;
   const renderRow = (row: ReviewRowModel, section: 'update' | 'removal' | 'conflict') => {
     const removal = section === 'removal' || row.conflictRemoval;
     const conflict = section === 'conflict';
@@ -182,7 +182,7 @@ export function MergeReviewPanel() {
         expanded={expanded.has(row.key)}
         onToggle={() => toggle(row.key)}
         pending={pending}
-        note={conflict && removal ? 'Removed by the publisher · Local edits' : undefined}
+        note={conflict && removal ? 'Publisher removal conflicts with your edits' : undefined}
         // Conflicts retain the student's version unless they explicitly choose otherwise (§7.5).
         primary={{
           label: conflict ? 'Keep mine' : removal ? 'Remove' : 'Accept',

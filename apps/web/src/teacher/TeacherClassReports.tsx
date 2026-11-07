@@ -63,9 +63,7 @@ export function DemoClassPage({ onExit }: { onExit(): void }) {
             { value: 'pupils', label: 'Pupils' },
           ]}
         />
-        <p className="text-sm text-ink-faint">
-          6 fictional reports · 3 questions · Nothing is saved or sent.
-        </p>
+        <p className="text-sm text-ink-faint">Nothing is saved or sent.</p>
       </div>
       <div key={reset}>
         {tab === 'results' ? <Results reports={reports} /> : <Pupils reports={reports} />}

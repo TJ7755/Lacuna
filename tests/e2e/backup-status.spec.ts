@@ -53,7 +53,7 @@ for (const mode of [
       await expect(local.getByRole('alert')).toHaveText('Could not choose the folder. Try again.');
     } else if (mode !== 'unconfigured') {
       await local.getByRole('button', { name: 'Choose folder' }).click();
-      await expect(local.getByText('Folder copy · Lacuna backup test')).toBeVisible();
+      await expect(local.getByText('Folder copy (Lacuna backup test)')).toBeVisible();
     }
     await local.getByRole('button', { name: 'Save restore point' }).click();
     await expect(local.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();

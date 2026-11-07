@@ -150,8 +150,8 @@ export function StudyStepTransition({
           {cardSummary?.revision?.predictedReadiness !== undefined &&
             cardSummary.revision.readinessUncertainty !== undefined && (
               <p className="mt-4 text-base text-ink-soft">
-                {Math.round(cardSummary.revision.predictedReadiness * 100)}% predicted readiness · ±
-                {Math.round(cardSummary.revision.readinessUncertainty * 100)}% uncertainty
+                {Math.round(cardSummary.revision.predictedReadiness * 100)}% predicted readiness (±
+                {Math.round(cardSummary.revision.readinessUncertainty * 100)}% uncertainty)
               </p>
             )}
 

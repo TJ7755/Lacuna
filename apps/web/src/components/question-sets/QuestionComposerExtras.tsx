@@ -32,7 +32,7 @@ export function QuestionComposerExtras({
       {answer.allocations.map((point, index) => (
         <fieldset className="qs-field" key={point.id}>
           <legend className="text-sm text-ink-soft">
-            Point {index + 1} · {point.criterion}
+            Point {index + 1} ({point.criterion})
           </legend>
           <ComposerTextarea
             aria-label={`Point ${index + 1} marking guidance`}

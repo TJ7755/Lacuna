@@ -310,7 +310,7 @@ describe('LessonView View mode', () => {
   it('summarises learnt cards and notes on one line', () => {
     mockLessonCards = [makeCard('a'), { ...makeCard('b'), state: 2, lastReviewed: 1 }];
     renderPage();
-    expect(screen.getByText(/^1 of 2 cards learnt · 1 note/)).toBeInTheDocument();
+    expect(screen.getByText(/^1 of 2 cards learnt, 1 note/)).toBeInTheDocument();
   });
 
   it('starts the lesson from Study lesson, named apart from course-level Study', () => {

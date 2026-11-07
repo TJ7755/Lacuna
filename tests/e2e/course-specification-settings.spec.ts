@@ -159,7 +159,7 @@ for (const width of [1440, 390]) {
     const section = page.getByRole('region', { name: 'Supplied specification', exact: true });
     await expect(section.getByRole('heading', { name: 'Synthetic science' })).toBeVisible();
     await expect(
-      section.getByText('AQA · GCSE · EXAMPLE · First exam 2027', { exact: true }),
+      section.getByText('AQA GCSE EXAMPLE, first exam 2027', { exact: true }),
     ).toBeVisible();
     const about = section.getByLabel('About this specification', { exact: true });
     await about.click();
@@ -211,8 +211,8 @@ for (const width of [1440, 390]) {
     ).toBeVisible();
     await page.reload();
     await page.getByRole('button', { name: /^Course details/ }).click();
-    await expect(section.getByText('Tier · Foundation', { exact: true })).toBeVisible();
-    await expect(section.getByText('Routes · Written papers', { exact: true })).toBeVisible();
+    await expect(section.getByText('Tier (Foundation)', { exact: true })).toBeVisible();
+    await expect(section.getByText('Routes (Written papers)', { exact: true })).toBeVisible();
     expect(await evidence(page)).toEqual(before);
     const saved = (await readAll<CourseRecord>(page, 'courses'))[0];
     expect(saved.specificationRef).toEqual({ ...paperSpecificationReference, tier: 'foundation' });

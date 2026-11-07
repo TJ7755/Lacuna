@@ -80,7 +80,7 @@ export function MergeReviewRow({
       {!expanded && preview && (
         <div className="mt-3 space-y-1 text-sm">
           <p className="text-xs text-accent-ink">
-            {changed.map((field) => `${field.label} · ${field.state}`).join('; ') ||
+            {changed.map((field) => `${field.label} (${field.state})`).join(', ') ||
               'Unchanged content'}
           </p>
           <p className="flex gap-2">
@@ -108,7 +108,7 @@ export function MergeReviewRow({
               )}
             >
               <p className="mb-2 text-sm font-medium text-ink">
-                {field.label} · {field.state}
+                {field.label} ({field.state})
               </p>
               <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                 {(['before', 'after'] as const).map((version) => (

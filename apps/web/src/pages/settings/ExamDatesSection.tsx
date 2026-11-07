@@ -177,9 +177,10 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
                   <div className="mt-0.5 text-xs text-ink-faint">
                     {assessment.examDate === undefined
                       ? 'Steady retention'
-                      : formatDateTime(assessment.examDate, assessment.timeZone ?? timeZone)}{' '}
-                    · {resolved.coveredLessons.length} lesson
-                    {resolved.coveredLessons.length === 1 ? '' : 's'} · {resolved.cards.length} card
+                      : formatDateTime(assessment.examDate, assessment.timeZone ?? timeZone)}
+                    {', '}
+                    {resolved.coveredLessons.length} lesson
+                    {resolved.coveredLessons.length === 1 ? '' : 's'}, {resolved.cards.length} card
                     {resolved.cards.length === 1 ? '' : 's'}
                   </div>
                   {resolved.validation.needsAuthorConfirmation && (

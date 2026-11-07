@@ -52,7 +52,7 @@ export function PaperForecastCard({
                 <th scope="row" className="py-3 pr-3 font-normal">
                   {paper.date === undefined ? (
                     <span className="text-ink-soft">
-                      No date · {MAINTENANCE_HORIZON_DAYS}-day forecast
+                      {MAINTENANCE_HORIZON_DAYS}-day forecast (no exam date)
                     </span>
                   ) : (
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">

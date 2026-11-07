@@ -184,7 +184,7 @@ async function expectShareLinkRevision(page: Page, revision: number): Promise<vo
   await expect(
     panel.getByRole('heading', { name: 'Share link', exact: true, level: 2 }),
   ).toBeVisible();
-  await expect(panel.getByText(new RegExp(`^Revision ${revision} ·`))).toBeVisible();
+  await expect(panel.getByText(new RegExp(`^Revision ${revision}(?:\\.|$)`))).toBeVisible();
 }
 
 async function createShareLink(page: Page): Promise<string> {

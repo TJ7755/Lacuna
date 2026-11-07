@@ -54,7 +54,8 @@ export function questionSetSearchContext(
     ...referencedQuestionSetConceptIds(set).flatMap((id) => concepts.get(id) ?? []),
   ]
     .map(searchableText)
-    .join(' · ');
+    .filter(Boolean)
+    .join(', ');
 }
 
 /** AND across words/fields; best location covers most words, then the whole phrase.
@@ -116,7 +117,9 @@ export function searchQuestionSets<T extends QuestionSet>(
           ...Object.values(content.bank.blueprint),
           ...Object.values(content.bank.source),
           ...content.bank.concepts.map((concept) => concept.name),
-        ].join(' · '),
+        ]
+          .filter(Boolean)
+          .join(', '),
       });
       if (content.bank.family) {
         fields.push({ location: 'Template title', text: content.bank.family.template.title });

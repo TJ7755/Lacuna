@@ -56,16 +56,16 @@ for (const width of [1280, 390]) {
 
         if ('lastError' in state) {
           await expect(link.getByText('Sync failed', { exact: true })).toBeVisible();
-          await expect(link).toHaveAccessibleName(/Synced .+ · Sync failed · Open sync/);
+          await expect(link).toHaveAccessibleName(/Synced .+\. Sync failed\. Open sync/);
         } else if (!('lastSuccessfulSyncAt' in state)) {
           await expect(link.getByText('Not yet synced', { exact: true })).toBeVisible();
         } else {
-          await expect(link).toHaveAccessibleName(/Synced .+ · Open sync/);
+          await expect(link).toHaveAccessibleName(/Synced .+\. Open sync/);
           if (width === 390) await expect(link.getByText(/^Synced/)).toBeHidden();
         }
       }
 
-      const link = page.getByRole('link', { name: 'Not yet synced · Open sync' });
+      const link = page.getByRole('link', { name: 'Not yet synced. Open sync' });
       await link.focus();
       await expect(link).toBeFocused();
       expect(await link.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe(

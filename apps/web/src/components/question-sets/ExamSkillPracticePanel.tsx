@@ -13,6 +13,17 @@ import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
 import { Select } from '../ui/Select';
 
+function skillSummary(skill: ExamSkillPracticeItem): string {
+  const status =
+    skill.readiness === 'unassessed' ? 'Not yet assessed' : skill.due ? 'Due now' : 'Scheduled';
+  const availability = `${skill.unseenCount} of ${skill.availableCount} unseen`;
+  const recall =
+    skill.estimatedRecall === null || skill.estimatedRecall === undefined
+      ? ''
+      : `, ${Math.round(skill.estimatedRecall * 100)}% estimated recall${skill.examDate ? ' at exam' : ' now'}`;
+  return `${status}, ${availability}${recall}`;
+}
+
 export function ExamSkillPracticePanel({
   courseId,
   skills,
@@ -140,23 +151,7 @@ export function ExamSkillPracticePanel({
         {available.slice(0, 6).map((skill) => (
           <li key={skill.techniqueId} className="flex flex-wrap items-center justify-between gap-2">
             <span className="min-w-0 flex-1 basis-48">
-              {skill.name}{' '}
-              <span className="text-sm text-ink-soft">
-                ·{' '}
-                {skill.readiness === 'unassessed'
-                  ? 'Not yet assessed'
-                  : skill.due
-                    ? 'Due now'
-                    : 'Scheduled'}{' '}
-                · {skill.unseenCount} unseen / {skill.availableCount} available
-                {skill.estimatedRecall !== null && skill.estimatedRecall !== undefined && (
-                  <>
-                    {' '}
-                    · {Math.round(skill.estimatedRecall * 100)}% estimated recall
-                    {skill.examDate ? ' at exam' : ' now'}
-                  </>
-                )}
-              </span>
+              {skill.name} <span className="text-sm text-ink-soft">({skillSummary(skill)})</span>
             </span>
             <Button
               size="sm"
@@ -181,20 +176,7 @@ export function ExamSkillPracticePanel({
               <option value="">Choose a skill</option>
               {available.map((skill) => (
                 <option key={skill.techniqueId} value={skill.techniqueId}>
-                  {skill.name} ·{' '}
-                  {skill.readiness === 'unassessed'
-                    ? 'Not yet assessed'
-                    : skill.due
-                      ? 'Due now'
-                      : 'Scheduled'}{' '}
-                  · {skill.unseenCount} unseen / {skill.availableCount} available
-                  {skill.estimatedRecall !== null && skill.estimatedRecall !== undefined && (
-                    <>
-                      {' '}
-                      · {Math.round(skill.estimatedRecall * 100)}% estimated recall
-                      {skill.examDate ? ' at exam' : ' now'}
-                    </>
-                  )}
+                  {skill.name} ({skillSummary(skill)})
                 </option>
               ))}
             </Select>

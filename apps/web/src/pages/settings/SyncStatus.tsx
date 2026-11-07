@@ -50,7 +50,7 @@ export function SyncDetails({ state }: { state: SyncState }) {
         {(encrypted || plaintext) && (
           <p className="text-xs">
             Last snapshot: {encrypted ? `${encrypted} encrypted` : 'encrypted size unknown'}
-            {plaintext ? ` · ${plaintext} before encryption` : ''}
+            {plaintext ? ` (${plaintext} before encryption)` : ''}
           </p>
         )}
       </div>

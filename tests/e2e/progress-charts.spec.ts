@@ -40,7 +40,7 @@ test('Lesson breakdown keeps card counts off the percentage axis', async ({ page
   const plot = (await card.locator('.recharts-surface').boundingBox())!;
   await page.mouse.move(plot.x + 80, plot.y + plot.height / 2);
   const tooltip = card.locator('.recharts-tooltip-wrapper');
-  await expect(tooltip).toContainText(/ · \d+ cards?/);
+  await expect(tooltip).toContainText(/ \(\d+ cards?\)/);
   // Rows follow the legend's order rather than the alphabet.
   const text = (await tooltip.textContent()) ?? '';
   const recallAt = text.indexOf('Predicted recall');

@@ -96,7 +96,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
   const compactLabel = breakPending
     ? 'Break ready'
     : active
-      ? `${label(phase)} · ${formattedTime}`
+      ? `${label(phase)} ${formattedTime}`
       : 'Pomodoro timer';
 
   return (

@@ -64,7 +64,7 @@ function WindowsDownload() {
   return (
     <>
       <DownloadButton href={DOWNLOADS.windowsInstaller}>Download for Windows</DownloadButton>
-      <p className="download-compatibility">64-bit Windows · installer</p>
+      <p className="download-compatibility">64-bit Windows installer</p>
     </>
   );
 }
@@ -82,7 +82,7 @@ function LinuxDownload() {
   return (
     <>
       <DownloadButton href={DOWNLOADS.linuxAppImage}>Download for Linux</DownloadButton>
-      <p className="download-compatibility">64-bit Linux · AppImage</p>
+      <p className="download-compatibility">64-bit Linux AppImage</p>
     </>
   );
 }

@@ -120,7 +120,7 @@ for (const exam of [false, true]) {
     await page.getByRole('button', { name: 'Study Biology' }).click();
     const preview = page.getByRole('region', { name: 'Session preview' });
     await expect(preview.getByRole('list', { name: "Today's session" })).toHaveText(
-      'Review due cards1 card available · up to 10 reviews',
+      'Review due cards1 card available (up to 10 reviews)',
     );
     await preview.getByRole('button', { name: 'Start session' }).click();
     await expect(page.locator('[data-study-card-id="review-due"]:not([inert])')).toBeVisible();
@@ -136,7 +136,7 @@ for (const exam of [false, true]) {
       const recommendation = preview.getByRole('list', { name: "Today's session" });
       await expect(recommendation.getByRole('listitem')).toHaveCount(1);
       await expect(recommendation).toHaveText(
-        'Practise for exam1 card available · up to 10 reviews',
+        'Practise for exam1 card available (up to 10 reviews)',
       );
       await page.screenshot({ path: testInfo.outputPath('early-exam-preparation.png') });
       await preview.getByRole('button', { name: 'Other ways', exact: true }).click();

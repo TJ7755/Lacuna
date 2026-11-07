@@ -87,7 +87,7 @@ describe('DateTimePicker', () => {
     );
 
     const trigger = screen.getByRole('button', { name: 'Pick a date' });
-    expect(trigger).toHaveTextContent('10 Jun 2026 · 14:30');
+    expect(trigger).toHaveTextContent('10 Jun 2026 at 14:30');
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
@@ -319,7 +319,7 @@ describe('DateTimePicker', () => {
       expect(screen.getByRole('button', { name: '30 December 2025' })).toHaveFocus(),
     );
     expect(screen.getByRole('button', { name: 'Pick a date' })).toHaveTextContent(
-      '10 Jan 2026 · 14:30',
+      '10 Jan 2026 at 14:30',
     );
     expect(onChange).not.toHaveBeenCalled();
   });

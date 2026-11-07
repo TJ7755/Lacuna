@@ -185,7 +185,7 @@ export function CourseSettings() {
           <CourseSettingsDisclosure
             title="Course details"
             summary={
-              [examBoard, specification].filter(Boolean).join(' · ') ||
+              [examBoard, specification].filter(Boolean).join(' ') ||
               'Name, exam board and specification'
             }
           >

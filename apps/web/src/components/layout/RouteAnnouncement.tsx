@@ -59,7 +59,7 @@ export default function RouteAnnouncement({ pathname }: { pathname: string }) {
 
   useEffect(() => {
     const label = routeLabel(pathname);
-    document.title = `${label} · Lacuna`;
+    document.title = `${label} – Lacuna`;
     setAnnouncement('');
     const timeout = window.setTimeout(() => setAnnouncement(label), 0);
     return () => window.clearTimeout(timeout);

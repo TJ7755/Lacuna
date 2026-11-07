@@ -390,6 +390,6 @@ describe('StudyStepTransition', () => {
       />,
     );
 
-    expect(screen.getByText('74% predicted readiness · ±8% uncertainty')).toBeInTheDocument();
+    expect(screen.getByText('74% predicted readiness (±8% uncertainty)')).toBeInTheDocument();
   });
 });

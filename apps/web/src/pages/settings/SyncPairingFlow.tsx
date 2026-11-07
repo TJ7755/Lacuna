@@ -365,7 +365,7 @@ export function SyncPairingFlow({
               {pairingPayload && (
                 <form onSubmit={(event) => void handleQrJoin(event)} className="space-y-4">
                   <div className="rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm text-ink-soft">
-                    Relay ·{' '}
+                    Relay at{' '}
                     <span className="font-mono text-xs text-ink">{pairingPayload.relayUrl}</span>
                   </div>
                   <SyncField

@@ -19,7 +19,7 @@ for (const width of [1280, 800]) {
 
     await footer.getByRole('link', { name: 'Privacy', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Privacy', exact: true })).toBeVisible();
-    await expect(page).toHaveTitle('Privacy · Lacuna');
+    await expect(page).toHaveTitle('Privacy – Lacuna');
     await expect(page.getByText(/IndexedDB/)).toBeVisible();
     await expect(
       page.getByRole('link', { name: 'Simple Analytics data collection' }),
@@ -30,7 +30,7 @@ for (const width of [1280, 800]) {
       .getByRole('link', { name: 'Terms', exact: true })
       .click();
     await expect(page.getByRole('heading', { name: 'Terms', exact: true })).toBeVisible();
-    await expect(page).toHaveTitle('Terms · Lacuna');
+    await expect(page).toHaveTitle('Terms – Lacuna');
     await expect(page.getByRole('link', { name: 'MIT licence', exact: true })).toHaveAttribute(
       'href',
       'https://github.com/TJ7755/Lacuna/blob/master/LICENSE',

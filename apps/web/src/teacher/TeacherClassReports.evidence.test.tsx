@@ -20,7 +20,7 @@ it('uses actual report views for fictional answers without unlocking, reading or
     ),
   ).toBeVisible();
   expect(within(revisit).getByText('Ada Bennett, Ben Carter, Chloe Evans')).toBeVisible();
-  expect(within(revisit).getByText('Unknown / 2 marks · Self marked')).toBeVisible();
+  expect(within(revisit).getByText('Unknown / 2 marks (Self marked)')).toBeVisible();
 
   fireEvent.click(screen.getByRole('tab', { name: 'Pupils' }));
   expect(screen.getByText(notice)).toBeVisible();
@@ -29,7 +29,7 @@ it('uses actual report views for fictional answers without unlocking, reading or
   fireEvent.click(within(pupils).getByRole('button', { name: /Finn Wilson/ }));
   const evidence = await screen.findByRole('region', { name: 'Evidence for Finn Wilson' });
   expect(within(evidence).getByText('I am unsure which way the water moves.')).toBeVisible();
-  expect(within(evidence).getByText('Unknown / 2 marks · Self marked')).toBeVisible();
+  expect(within(evidence).getByText('Unknown / 2 marks (Self marked)')).toBeVisible();
 
   fireEvent.click(screen.getByRole('button', { name: 'Reset demo' }));
   expect(screen.getByRole('tab', { name: 'Results' })).toHaveAttribute('aria-selected', 'true');
@@ -117,7 +117,7 @@ it('labels grouped answers with their marking method, dispute and shortening', a
   fireEvent.click(await screen.findByRole('button', { name: /^Explain osmosis/ }));
   const answers = await screen.findByRole('region', { name: 'Answers' });
   expect(
-    within(answers).getByText(/Self marked · disputed by the pupil · shortened for this report/),
+    within(answers).getByText(/Self marked, disputed by the pupil, shortened for this report/),
   ).toBeVisible();
   expect(within(answers).getByText(/Automatic marking/)).toBeVisible();
   expect(within(answers).queryByText('Ada, Ben')).not.toBeInTheDocument();

@@ -109,7 +109,7 @@ it('imports with the onboarding exam date over a teacher suggestion, without ask
   const add = await screen.findByRole('button', { name: 'Add to my courses' });
   expect(add).toBeEnabled();
   expect(screen.queryByRole('radio')).not.toBeInTheDocument();
-  expect(screen.getByText(/^Exam date · /)).toBeInTheDocument();
+  expect(screen.getByText(/^Exam on /)).toBeInTheDocument();
   fireEvent.click(add);
   await waitFor(async () => expect(await db.courseAssessments.count()).toBe(1));
   expect((await db.courseAssessments.toArray())[0]).toMatchObject({

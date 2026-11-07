@@ -11,7 +11,6 @@ import {
   unpublishShareLink,
 } from '../../shareLinks/publish';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import { formatRelativeTime } from '../../utils/datetime';
 import { Button } from '../ui/Button';
 import { buttonClassName } from '../ui/buttonStyles';
 import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
@@ -283,11 +282,8 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
                 </div>
                 <p className="mt-3 text-sm text-ink-faint">
                   Revision {link.revision}
-                  {course.distribution?.shareId === link.shareId && (
-                    <> · updated {formatRelativeTime(course.distribution.publishedAt)}</>
-                  )}
-                  {state === 'forwarded' && ' · Updates from the publisher'}
-                  {state === 'unmanaged' && ' · Managed on the publishing device'}
+                  {state === 'forwarded' && '. Updates from the publisher.'}
+                  {state === 'unmanaged' && '. Managed on the publishing device.'}
                 </p>
                 {state === 'unmanaged' && (
                   <details className="mt-4 text-sm text-ink-soft">

@@ -133,7 +133,7 @@ describe('LearnMode progress', () => {
 
     const firstQuestion = (await findStudyFaceText(/undo question/i)).textContent;
     await answerYes();
-    expect(await screen.findByText(/^(Easy|Good|Hard) · \d+% recall at exam$/)).toBeInTheDocument();
+    expect(await screen.findByText(/^(Easy|Good|Hard), \d+% recall at exam$/)).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
 
     await waitFor(async () => expect(await db.reviewHistory.count()).toBe(0));

@@ -98,8 +98,8 @@ export function renderCoursePathRows(
                 <strong className="font-bold">{node.assessment.name}</strong>
                 {date !== undefined && (
                   <span className="text-ink-faint">
-                    {' · '}
-                    {formatShortDate(date, node.assessment.timeZone ?? props.timeZone)}
+                    {' ('}
+                    {formatShortDate(date, node.assessment.timeZone ?? props.timeZone)})
                   </span>
                 )}
               </span>
@@ -174,7 +174,7 @@ export function renderCoursePathRows(
         ? (props.lockHint(lesson.lesson.id) ?? 'Locked')
         : done && pct >= SECURE
           ? 'Secure'
-          : `${countOf(detail?.cardCount ?? 0, 'card')}${detail?.dueCount ? ` · ${detail.dueCount} due` : ''}${lesson.lesson.isExtension ? ' · Extension' : ''}`
+          : `${countOf(detail?.cardCount ?? 0, 'card')}${detail?.dueCount ? ` (${detail.dueCount} due)` : ''}${lesson.lesson.isExtension ? ', extension' : ''}`
       : `${pct}% secured`;
     const label = practice
       ? `Card practice: ${name}, ${pct}% secured`

@@ -193,7 +193,7 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name: 'Edit 1: First paper', exact: true }).click();
     const search = page.getByPlaceholder('Search covered cards…');
     const editor = search.locator('xpath=../..');
-    await expect(editor.getByText('1 lesson · 1 card', { exact: true })).toBeVisible();
+    await expect(editor.getByText('1 lesson, 1 card', { exact: true })).toBeVisible();
     await expect(editor.getByText('Name the basic unit of life.', { exact: true })).toBeVisible();
     await expect(editor.getByText('What does an enzyme do?', { exact: true })).toHaveCount(0);
     await chooseDate(page, 'Date and time', 12);
@@ -230,7 +230,7 @@ for (const width of [1440, 390]) {
       true,
     );
     await page.getByRole('button', { name: 'Edit 2: Second paper', exact: true }).click();
-    await expect(page.getByText('1 lesson · 2 cards', { exact: true })).toBeVisible();
+    await expect(page.getByText('1 lesson, 2 cards', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     await page
       .getByRole('button', { name: 'Edit 1: First paper', exact: true })
@@ -256,7 +256,7 @@ for (const width of [1440, 390]) {
       .getByRole('button', { name: /1: First paper/ })
       .click();
     const details = page.getByRole('dialog', { name: '1: First paper details', exact: true });
-    await expect(details.getByText('1 lesson · 1 card', { exact: true })).toBeVisible();
+    await expect(details.getByText('1 lesson, 1 card', { exact: true })).toBeVisible();
     await expect(details.getByRole('button', { name: /Revise/ })).toHaveCount(0);
     await capture(page, testInfo, `paper-coverage-details-${width}`);
     await details.getByRole('button', { name: 'Close assessment details', exact: true }).click();

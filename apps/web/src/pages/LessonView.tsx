@@ -160,7 +160,7 @@ export function LessonView() {
             meta={
               visibleMetaParts.length > 0 && (
                 <span className={examUrgent ? 'text-warning-fg' : undefined}>
-                  {visibleMetaParts.join(' · ')}
+                  {visibleMetaParts.join(', ')}
                 </span>
               )
             }

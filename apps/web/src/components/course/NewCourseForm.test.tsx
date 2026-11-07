@@ -199,7 +199,7 @@ describe('NewCourseForm', () => {
       timeZone: getLocalTimeZone(),
     });
 
-    expect(picker).toHaveTextContent(`${expectedDate} · 23:59`);
+    expect(picker).toHaveTextContent(`${expectedDate} at 23:59`);
   });
 
   it('creates an exam-targeted course after that target is selected', async () => {

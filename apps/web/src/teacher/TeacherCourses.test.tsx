@@ -166,7 +166,7 @@ it('makes the first locked class the default next step and summarises unlocked o
       onExploreDemo={vi.fn()}
     />,
   );
-  expect(screen.getByText('1 reports · 1 to revisit')).toBeVisible();
+  expect(screen.getByText('1 report, 1 to revisit')).toBeVisible();
   expect(screen.getByRole('heading', { name: 'Today’s loaded results' })).toBeVisible();
   expect(screen.queryByRole('heading', { name: 'Yesterday' })).not.toBeInTheDocument();
   const unlock = screen.getByRole('button', { name: 'Unlock GCSE Chemistry' });

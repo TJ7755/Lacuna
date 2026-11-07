@@ -228,14 +228,14 @@ for (const viewport of [
       });
       await expect(misconception).toHaveCount(1);
       await expect(misconception).toContainText('Ada Bennett, Ben Carter, Chloe Evans');
-      await expect(misconception).toContainText('0 / 2 marks · Self marked');
+      await expect(misconception).toContainText('0 / 2 marks (Self marked)');
       await expect(answers.getByText('Dylan Hughes', { exact: true })).toBeVisible();
       await expect(answers.getByText('Esme Patel', { exact: true })).toBeVisible();
       const unmarked = answers.getByRole('listitem').filter({
         hasText: 'I am unsure which way the water moves.',
       });
       await expect(unmarked).toContainText('Finn Wilson');
-      await expect(unmarked).toContainText('Unknown / 2 marks · Self marked');
+      await expect(unmarked).toContainText('Unknown / 2 marks (Self marked)');
       await expectNoHorizontalOverflow(page);
       await expectEqualResultWidths(table, resultWidth);
       await capture(page, testInfo, `gaps-demo-answers-${viewport.width}`);
@@ -246,7 +246,7 @@ for (const viewport of [
         hasText: 'Explain osmosis.',
       });
       await expect(osmosisEvidence).toContainText('I am unsure which way the water moves.');
-      await expect(osmosisEvidence).toContainText('Unknown / 2 marks · Self marked');
+      await expect(osmosisEvidence).toContainText('Unknown / 2 marks (Self marked)');
       await expectNoHorizontalOverflow(page);
       await expectEqualResultWidths(table, resultWidth);
       await capture(page, testInfo, `gaps-demo-pupil-evidence-${viewport.width}`);

@@ -90,17 +90,18 @@ export function QuestionSetPicker({
                   {questionSetSearchContext(content, context) || 'No linked lesson or Concept'}
                 </small>
                 <small>
-                  {countOf(content.questions.length, 'question')} ·{' '}
+                  {countOf(content.questions.length, 'question')},{' '}
                   {countOf(
                     flattenQuestionSet(content).filter((row) => row.node.answer).length,
                     'answerable part',
-                  )}{' '}
-                  · {countOf(questionSetMarks(content), 'mark')}
+                  )}
+                  , {countOf(questionSetMarks(content), 'mark')}
                 </small>
                 {content.bank && (
                   <small>
-                    {Object.values(content.bank.blueprint).join(' · ')} ·{' '}
-                    {content.bank.source.title}
+                    {[...Object.values(content.bank.blueprint), content.bank.source.title]
+                      .filter(Boolean)
+                      .join(', ')}
                   </small>
                 )}
                 {query.trim() && (

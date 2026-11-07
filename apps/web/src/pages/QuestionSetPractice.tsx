@@ -420,7 +420,7 @@ function PracticeWorkspace({
                     label={[
                       ...(criterion ? [dimensionNames[criterion.allocation.dimension]] : []),
                       `${answer.maxMarks} ${answer.maxMarks === 1 ? 'mark' : 'marks'}`,
-                    ].join(' · ')}
+                    ].join(', ')}
                   />
                 </header>
 

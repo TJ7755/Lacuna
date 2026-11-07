@@ -220,11 +220,11 @@ it('shows new parts after a real update extends a completed set, including a rep
     ],
   });
   await mergeLineageUpdate(course.id, extended);
-  await waitFor(() => expect(row).toHaveTextContent('1/1 answered · 1 new part'));
+  await waitFor(() => expect(row).toHaveTextContent('1/1 answered (1 new part)'));
   expect(row.querySelector('.origin-left')).toHaveStyle({ width: '50%' });
 
   await mergeLineageUpdate(course.id, { ...extended, rv: 3 });
-  await waitFor(() => expect(row).toHaveTextContent('1/1 answered · 1 new part'));
+  await waitFor(() => expect(row).toHaveTextContent('1/1 answered (1 new part)'));
   expect(await db.questionSetAttempts.get(completed.id)).toEqual(completed);
 });
 
@@ -295,7 +295,7 @@ it.each(['Concept', 'exam-skill'] as const)(
         ],
       }),
     );
-    await waitFor(() => expect(row).toHaveTextContent('2/2 answered · 1 new part'));
+    await waitFor(() => expect(row).toHaveTextContent('2/2 answered (1 new part)'));
     expect(row.querySelector('.origin-left')).toHaveStyle({ width: '67%' });
     expect(await db.questionSetAttempts.get(completed.id)).toEqual(completed);
     expect(await db.questionSetAttempts.get(partial.id)).toEqual(partial);

@@ -66,7 +66,7 @@ export function QuestionSetCourseRow({
           : unavailable
             ? 'Unavailable'
             : progress
-              ? `${progress.answeredParts}/${progress.totalParts} answered${addedParts ? ` · ${addedParts} new ${addedParts === 1 ? 'part' : 'parts'}` : ''}`
+              ? `${progress.answeredParts}/${progress.totalParts} answered${addedParts ? ` (${addedParts} new ${addedParts === 1 ? 'part' : 'parts'})` : ''}`
               : 'Practice questions';
         return (
           <motion.button

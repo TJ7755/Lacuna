@@ -285,13 +285,13 @@ export function QuestionsPage() {
                   {content.title || 'Untitled set'}
                 </h2>
                 <p>
-                  {countOf(content.questions.length, 'question')} ·{' '}
+                  {countOf(content.questions.length, 'question')},{' '}
                   {countOf(questionSetMarks(content), 'mark')}
                   {draft
-                    ? ' · Draft'
+                    ? ' (draft)'
                     : progress.get(content.id)?.lastTriedAt !== undefined
-                      ? ` · last tried ${formatRelativeTime(progress.get(content.id)!.lastTriedAt!)}`
-                      : ' · not tried yet'}
+                      ? `, last tried ${formatRelativeTime(progress.get(content.id)!.lastTriedAt!)}`
+                      : ''}
                 </p>
                 {search.trim() && (
                   <p>

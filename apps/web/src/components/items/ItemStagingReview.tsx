@@ -303,8 +303,8 @@ export function ItemStagingReview({
               <div>
                 <h3 className="font-display text-xl">Staged Questions</h3>
                 <p className="mt-1 text-sm text-ink-faint">
-                  {candidates.length} proposed Question{candidates.length === 1 ? '' : 's'} ·{' '}
-                  {cleanCandidates.length} clean
+                  {cleanCandidates.length} of {candidates.length} proposed Question
+                  {candidates.length === 1 ? '' : 's'} clean
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">

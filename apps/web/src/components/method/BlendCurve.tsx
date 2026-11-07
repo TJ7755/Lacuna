@@ -258,7 +258,7 @@ export function BlendCurve() {
           </span>
         </span>
         <span className="text-ink-soft">
-          day {day.toFixed(2)} · {successPct}% / {failurePct}% short-term
+          Day {day.toFixed(2)}, {successPct}% / {failurePct}% short-term
         </span>
       </figcaption>
     </figure>
