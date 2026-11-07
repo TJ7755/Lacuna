@@ -234,8 +234,8 @@ test('two browser profiles preserve concurrent reviews of the same card', async 
     ).length;
     await Promise.all([suppressStudyEndSync(page), suppressStudyEndSync(peer)]);
     const [localStudyCardId, peerStudyCardId] = await Promise.all([
-      reviewOnlyCard(page, courseId),
-      reviewOnlyCard(peer, courseId),
+      reviewOnlyCard(page, courseId, initialCard.back),
+      reviewOnlyCard(peer, courseId, initialCard.back),
     ]);
     expect(localStudyCardId).toBe(initialCard.id);
     expect(peerStudyCardId).toBe(initialCard.id);

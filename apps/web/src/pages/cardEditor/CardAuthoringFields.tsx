@@ -269,7 +269,8 @@ export function CardAuthoringFields({
         defaultOpen={editing && tags.length > 0}
         className="border-t border-line pt-2"
       >
-        <div className="flex flex-col gap-4 pt-3">
+        {/* Leave room for the extended hit areas of tag suggestions and the spelling switch. */}
+        <div className="flex flex-col gap-5 pt-3">
           <div>
             <div className="mb-2 text-sm text-ink-soft">Tags</div>
             <TagInput
