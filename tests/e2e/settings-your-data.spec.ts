@@ -1,7 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import type { BackupSnapshot } from '@lacuna/core/db/types';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 import { SYNC_CHANNEL_ID, SYNC_WRITE_TOKEN } from './fixtures/syncRelay';
 
@@ -12,12 +11,16 @@ for (const width of [1440, 390, 320]) {
     test(`Your data at ${width}px in ${theme}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      await page.addInitScript((value) => localStorage.setItem('lacuna-theme', value), theme);
-      await enterFreshLacuna(page);
-      await expect.poll(async () => (await readAll(page, 'backups')).length).toBeGreaterThan(0);
-      const [snapshot] = await readAll<BackupSnapshot>(page, 'backups');
+      await page.addInitScript((value) => {
+        localStorage.setItem('lacuna-theme', value);
+        localStorage.setItem('lacuna-onboarding', 'done');
+        localStorage.setItem('lacuna-seeded', '1');
+      }, theme);
+      // Seed the restore-point list before Settings reads it. An empty profile may have no backups.
+      await page.goto('/#/');
+      await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
       await page.evaluate(
-        async ({ snapshot, channelId, writeToken }) => {
+        async ({ channelId, writeToken }) => {
           await new Promise<void>((resolve, reject) => {
             const request = indexedDB.open('lacuna');
             request.onerror = () => reject(request.error);
@@ -28,7 +31,32 @@ for (const width of [1440, 390, 320]) {
               backups.clear();
               const now = Date.now();
               for (let index = 0; index < 8; index++) {
-                backups.put({ ...snapshot, id: index + 1, createdAt: now - index * 60_000 });
+                const createdAt = now - index * 60_000;
+                backups.put({
+                  id: index + 1,
+                  createdAt,
+                  deckCount: 0,
+                  cardCount: 0,
+                  payload: {
+                    app: 'lacuna-v15',
+                    version: 15,
+                    exportedAt: createdAt,
+                    cards: [],
+                    assets: [],
+                    sessionHistory: [],
+                    userPerformance: [],
+                    schedulingUnits: [],
+                    coursePerformance: [],
+                    schedulingPerformance: [],
+                    concepts: [],
+                    questions: [],
+                    questionConcepts: [],
+                    questionAttempts: [],
+                    questionSets: [],
+                    questionSetAttempts: [],
+                    practiceNodes: [],
+                  },
+                } satisfies BackupSnapshot);
               }
               transaction.objectStore('appState').put({
                 key: 'syncState',
@@ -51,7 +79,7 @@ for (const width of [1440, 390, 320]) {
             };
           });
         },
-        { snapshot, channelId: SYNC_CHANNEL_ID, writeToken: SYNC_WRITE_TOKEN },
+        { channelId: SYNC_CHANNEL_ID, writeToken: SYNC_WRITE_TOKEN },
       );
       await page.goto('/#/settings#settings-sync');
       const sync = page.locator('#settings-sync');
