@@ -36,7 +36,7 @@ export async function answerYesAndWaitForExposure(lessonId: string) {
 }
 /** Advance a familiarisation card through the reveal fallback. */
 export async function familiariseCard() {
-  fireEvent.keyDown(await screen.findByRole('button', { name: 'Show answer', exact: true }), {
+  fireEvent.keyDown(await screen.findByRole('button', { name: /^Show answer$/i }), {
     key: 'Enter',
   });
   fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));

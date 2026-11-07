@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { m as motion } from 'motion/react';
 import { QuestionSetChoices } from '../../components/question-sets/QuestionSetChoices';
 import '../../components/question-sets/question-set-controls.css';
+import { motionTransition } from '../../components/ui/motion';
 import { FlowGradeControls } from './FlowGradeControls';
 import { lessonChoices, type LessonChoiceCard } from './simpleLearnQuestions';
 import { STUDY_VERDICT_HOLD_MS } from './useTypedAutoMark';
@@ -113,15 +115,23 @@ export function LessonChoiceControls({
       aria-busy={result === 'checking' || undefined}
       className="study-controls study-choice-controls mx-auto mt-6 flex w-full max-w-md shrink-0 flex-col gap-3"
     >
-      <QuestionSetChoices
-        label="Choose an answer"
-        describedBy={promptId}
-        value={selected}
-        options={choices.map((answer) => ({ value: answer, label: answer }))}
-        onChange={setSelected}
-        disabled={Boolean(result)}
-        flow
-      />
+      <motion.div
+        initial={false}
+        animate={{ opacity: result ? 0 : 1 }}
+        transition={motionTransition('feedback', m)}
+        aria-hidden={result ? true : undefined}
+        inert={Boolean(result)}
+      >
+        <QuestionSetChoices
+          label="Choose an answer"
+          describedBy={promptId}
+          value={selected}
+          options={choices.map((answer) => ({ value: answer, label: answer }))}
+          onChange={setSelected}
+          disabled={Boolean(result)}
+          flow
+        />
+      </motion.div>
       <p role="status" className="sr-only">
         {result === 'correct'
           ? 'Correct.'

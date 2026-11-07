@@ -139,6 +139,8 @@ test('introduces choices before timed typing and keeps the old practice entry', 
   await expect(view.choices.nth(wrongIndex)).toBeChecked();
   await page.keyboard.press('Enter');
   await expect(view.choiceControls).toHaveAttribute('aria-busy', 'true');
+  await expect(view.choices).toHaveCount(0);
+  await expect(view.choiceControls.locator('.qs-choices').locator('..')).toHaveCSS('opacity', '0');
   await expect(view.revealed).toHaveText(cards[first]);
   await expect(view.advance).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('learn-new-cards-retry.png') });

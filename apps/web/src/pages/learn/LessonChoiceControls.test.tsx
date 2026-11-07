@@ -44,15 +44,21 @@ it('checks a numbered choice without tabbing, announces the verdict, and resumes
     );
     expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
 
-    act(() => vi.advanceTimersByTime(180));
+    act(() => {
+      vi.advanceTimersByTime(180);
+    });
     expect(screen.getByRole('status')).toHaveTextContent(
       correct ? 'Correct.' : 'Incorrect. Correct answer: pomme',
     );
     rendered.rerender(view(true));
-    act(() => vi.advanceTimersByTime(1_000));
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
     expect(onAdvance).not.toHaveBeenCalled();
     rendered.rerender(view(false));
-    act(() => vi.advanceTimersByTime(210));
+    act(() => {
+      vi.advanceTimersByTime(210);
+    });
     expect(onAdvance).toHaveBeenCalledExactlyOnceWith(correct);
   } finally {
     rendered.unmount();
