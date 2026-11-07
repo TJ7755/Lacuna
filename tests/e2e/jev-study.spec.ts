@@ -32,7 +32,7 @@ async function start(page: Page, enabled = true, simple = false, globalTyping = 
             seed(
               enabled: boolean,
               globalTyping: boolean,
-            ): Promise<{ lessonId: string; cardIds: string[] }>;
+            ): Promise<{ courseId: string; lessonId: string; cardIds: string[] }>;
           };
         }
       ).JevStudyFixture;
@@ -42,6 +42,7 @@ async function start(page: Page, enabled = true, simple = false, globalTyping = 
   );
   await page.goto(`/#/lesson/${seeded.lessonId}/learn?${simple ? 'mode=simple' : 'filter=new'}`);
   await expect(page.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
+  return seeded;
 }
 
 async function submit(page: Page, answer = 'Red and blue') {
@@ -57,6 +58,60 @@ const feedback = {
     { start: 15, end: 19, covered: true },
   ],
 };
+
+test('an author can require correct spelling on a typed card', async ({ page }, testInfo) => {
+  // Keep the same first card when a fresh session ranks these tied new cards.
+  await page.addInitScript(() => {
+    Math.random = () => 0.5;
+  });
+  await page.route('**/api/ai/jev', async (route) => {
+    const strict = route.request().postDataJSON().requireCorrectSpelling === true;
+    await route.fulfill({
+      json: {
+        value: strict ? 0 : 1,
+        confidence: 0.98,
+        inputTokens: 600,
+        model: 'jev-1.14.0',
+        feedback: { ...feedback, kind: 'spelling' },
+      },
+    });
+  });
+  const { courseId, lessonId } = await start(page);
+  const studyUrl = page.url();
+  const id = await page.locator('[data-study-card-id]').first().getAttribute('data-study-card-id');
+  await page.goto(`/#/course/${courseId}/lesson/${lessonId}/cards/${id}/edit`);
+  await page.getByRole('button', { name: 'Card options' }).click();
+  const spelling = page.getByRole('switch', { name: 'Require correct spelling' });
+  await expect(spelling).toHaveAttribute('aria-checked', 'false');
+  await spelling.click();
+  await expect(spelling).toHaveAttribute('aria-checked', 'true');
+  await spelling.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('spelling-card-option.png') });
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByRole('heading', { name: 'Edit card' })).toHaveCount(0);
+
+  await page.goto(studyUrl);
+  await expect(page.locator('[data-study-card-id]').first()).toHaveAttribute(
+    'data-study-card-id',
+    id!,
+  );
+  const request = page.waitForRequest('**/api/ai/jev');
+  await submit(page, 'Rad, green and blue.');
+  expect((await request).postDataJSON()).toMatchObject({ requireCorrectSpelling: true });
+  await page.getByRole('main', { name: 'Study card' }).focus();
+  await page.keyboard.down('Space');
+  try {
+    const verdict = page.locator('[data-study-face="back"] [data-typed-verdict="incorrect"]');
+    await expect(verdict).toContainText('Check the spelling');
+    await page.screenshot({ path: testInfo.outputPath('spelling-incorrect-mark.png') });
+  } finally {
+    await page.keyboard.up('Space');
+  }
+  await expect(page.locator('[data-study-card-id]').first()).not.toHaveAttribute(
+    'data-study-card-id',
+    id!,
+  );
+});
 
 async function flowColour(page: Page) {
   return page.locator('[data-flow-colour]').evaluate((element) => {

@@ -400,6 +400,7 @@ export function createJevEngine(
         prompt: request.prompt,
         expected: request.expected,
         answer: request.answer.normalize('NFC').trim().replace(/\s+/g, ' '),
+        ...(request.requireCorrectSpelling ? { requireCorrectSpelling: true } : {}),
       },
       request.signal,
       JEV_TYPED_TIMEOUT_MS,

@@ -36,6 +36,7 @@ export function useCardEditorSave({
   const {
     type,
     answerMode,
+    requireCorrectSpelling,
     front,
     back,
     numericAnswer,
@@ -76,6 +77,7 @@ export function useCardEditorSave({
   const backValid = isCloze || isStructured || back.trim().length > 0;
   const numericValid = !isNumeric || numericAnswerSpecIsValid(numericAnswer);
   const editable = Boolean(course && canEditLessons(course));
+  const canConfigureSpelling = editable && !course?.archived && !isStructured;
   const canSave =
     editable && !mediaBusy && frontValid && backValid && clozeValid && numericValid && workingValid;
   const canReverse = !editing && !isCloze && !isBasicReversed && !isStructured && !isAudio;
@@ -127,6 +129,7 @@ export function useCardEditorSave({
           : editing
             ? card?.answerMode
             : undefined;
+      const storedSpelling = canConfigureSpelling && requireCorrectSpelling ? true : undefined;
       const storedType: CardType = isStructured || isAudio ? 'front_back' : type;
       const backValue = isCloze || isStructured ? '' : back;
       const payload: ItemPayload | undefined = isNumeric
@@ -149,6 +152,9 @@ export function useCardEditorSave({
           tags,
           payload,
           answerMode: storedAnswerMode,
+          ...(canConfigureSpelling || isStructured
+            ? { requireCorrectSpelling: storedSpelling }
+            : {}),
         });
         // If this is a basic_reversed card, update its reverse partner too.
         if (card.type === 'basic_reversed' && card.reverseCardId) {
@@ -174,6 +180,7 @@ export function useCardEditorSave({
             backValue,
             tags,
             storedAnswerMode,
+            storedSpelling,
           );
         } else if (reversed) {
           await createLessonCardWithReverse(
@@ -183,6 +190,7 @@ export function useCardEditorSave({
             backValue,
             tags,
             storedAnswerMode,
+            storedSpelling,
           );
         } else {
           await createLessonCard(
@@ -194,12 +202,27 @@ export function useCardEditorSave({
             tags,
             payload,
             storedAnswerMode,
+            storedSpelling,
           );
         }
       } else if (isBasicReversed) {
-        await createCourseBasicReversedPair(courseId!, front, backValue, tags, storedAnswerMode);
+        await createCourseBasicReversedPair(
+          courseId!,
+          front,
+          backValue,
+          tags,
+          storedAnswerMode,
+          storedSpelling,
+        );
       } else if (reversed) {
-        await createCourseCardWithReverse(courseId!, front, backValue, tags, storedAnswerMode);
+        await createCourseCardWithReverse(
+          courseId!,
+          front,
+          backValue,
+          tags,
+          storedAnswerMode,
+          storedSpelling,
+        );
       } else {
         await createCourseCard(
           courseId!,
@@ -209,6 +232,7 @@ export function useCardEditorSave({
           tags,
           payload,
           storedAnswerMode,
+          storedSpelling,
         );
       }
       draft.clearSavedDraft();
@@ -259,6 +283,7 @@ export function useCardEditorSave({
     clozeValid,
     canSave,
     canReverse,
+    canConfigureSpelling,
     formKind,
   };
 }
