@@ -136,16 +136,17 @@ it('partitions the complete local Chromium suite across the functional and isola
     const local = list('playwright.web.config.ts', 'chromium');
     const functional = list('playwright.web.ci.config.ts', 'chromium-functional');
     const image = list('playwright.web.ci.config.ts', 'chromium-image-performance', '--workers=1');
-    const study = list('playwright.web.ci.config.ts', 'chromium-study-performance', '--workers=1');
-    const timing = list(
-      'playwright.web.ci.config.ts',
-      'chromium-image-performance',
-      '--project=chromium-study-performance',
-      '--workers=1',
+    const study = [1, 2].map((shard) =>
+      list(
+        'playwright.web.ci.config.ts',
+        'chromium-study-performance',
+        '--workers=1',
+        `--shard=${shard}/2`,
+      ),
     );
     const functionalCases = cases(functional.suites);
     const imageCases = cases(image.suites);
-    const studyCases = cases(study.suites);
+    const studyCases = study.flatMap(({ suites }) => cases(suites));
     const allCiCases = [...functionalCases, ...imageCases, ...studyCases];
 
     expect(cases(local.suites).length).toBeGreaterThan(0);
@@ -162,8 +163,10 @@ it('partitions the complete local Chromium suite across the functional and isola
           !name.startsWith('study-grade-load.spec.ts:'),
       ),
     ).toBe(true);
-    expect(cases(timing.suites).sort()).toEqual([...imageCases, ...studyCases].sort());
-    expect(timing.config.workers).toBe(1);
+    for (const shard of study) {
+      expect(cases(shard.suites).length).toBeGreaterThan(0);
+      expect(shard.config.workers).toBe(1);
+    }
     expect(functional.config.workers).toBe(2);
     expect(functional.config.fullyParallel).toBe(true);
     expect(image.config.workers).toBe(1);
@@ -188,7 +191,7 @@ it('partitions the complete local Chromium suite across the functional and isola
     for (const name of ['chromium-image-performance', 'chromium-study-performance']) {
       expect(projects.find((project) => project.name === name)).toMatchObject({
         workers: 1,
-        fullyParallel: false,
+        fullyParallel: name === 'chromium-study-performance',
       });
     }
   } finally {
