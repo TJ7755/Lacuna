@@ -73,8 +73,8 @@ describe('readStored', () => {
     localStorage.setItem(KEY, JSON.stringify(stored));
     const settings = readStored();
     expect(settings.navItems.find((n) => n.id === 'learn')).toBeUndefined();
-    // Surviving items keep their stored order and visibility ahead of any merged defaults.
-    expect(settings.navItems[0]).toEqual({ id: 'settings', label: 'Settings', visible: false });
+    // Existing order survives; Settings stays available to undo customisation.
+    expect(settings.navItems[0]).toEqual({ id: 'settings', label: 'Settings', visible: true });
     expect(settings.navItems[1]).toEqual({ id: 'dashboard', label: 'Today', visible: true });
   });
 });
