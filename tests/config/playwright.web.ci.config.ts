@@ -27,7 +27,8 @@ export default defineConfig({
       ...chromium,
       name: 'chromium-study-performance',
       testMatch: studyGrade,
-      fullyParallel: false,
+      // Let Playwright shard independent cases. Each runner still measures one at a time.
+      fullyParallel: true,
       workers: 1,
     },
   ],

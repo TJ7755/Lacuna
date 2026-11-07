@@ -143,10 +143,20 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const source = { commit, run, playwright: reports[0].config.version };
     writeFileSync(timingPath, `${JSON.stringify(refreshTimings(reports, source), null, 2)}\n`);
   } else {
-    assert.equal(command, 'run', 'Use run current/total or refresh commit run-url reports...');
+    assert.equal(
+      command,
+      'run',
+      'Use run current/total [lane/total] or refresh commit run-url reports...',
+    );
     assert.match(args[0] ?? '', /^[1-9]\d*\/[1-9]\d*$/);
     const [current, total] = args[0].split('/').map(Number);
     assert.ok(current <= total, 'Shard index exceeds total');
+    const lane = args[1];
+    if (lane !== undefined) {
+      assert.match(lane, /^[1-9]\d*\/[1-9]\d*$/);
+      const [index, count] = lane.split('/').map(Number);
+      assert.ok(index <= count, 'Lane index exceeds total');
+    }
     const discovered = inventory(listTests());
     const shards = planShards(discovered, JSON.parse(readFileSync(timingPath, 'utf8')), total);
     const selected = shards[current - 1];
@@ -155,7 +165,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     mkdirSync(evidence, { recursive: true });
     const list = resolve(evidence, 'functional-shard.txt');
     writeFileSync(list, selected.files.map((file) => `[${project}] > ${file}`).join('\n'));
-    // Ask Playwright itself to prove that its selector retained exactly the planned identities.
+    // Verify the file selection before Playwright subdivides it by native test groups.
+    // In particular, Playwright keeps a serial suite in the same lane.
     verifyInventory(selected.tests, inventory(listTests(['--test-list', list])));
     writeFileSync(
       resolve(evidence, 'functional-shard-plan.json'),
@@ -163,6 +174,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
         {
           shard: current,
           total,
+          lane,
           discovered: discovered.map(({ id }) => id),
           shards: shards.map(({ files, tests, estimatedMs }) => ({
             files,
@@ -184,6 +196,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
         `--project=${project}`,
         '--test-list',
         list,
+        ...(lane === undefined ? [] : [`--shard=${lane}`]),
       ],
       { stdio: 'inherit' },
     );
