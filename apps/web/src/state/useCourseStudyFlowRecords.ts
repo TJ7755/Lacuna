@@ -123,15 +123,23 @@ async function readCourseStudyFlowRecords(
       generation: refreshKey,
     };
   }
-  const [courseRecord, assessments] = await db.transaction(
-    'r',
-    [db.courses, db.courseAssessments],
-    () =>
-      Promise.all([
-        db.courses.get(courseId),
-        db.courseAssessments.where('courseId').equals(courseId).toArray(),
-      ]),
-  );
+  // Keep the card and lesson reads implicit so Dexie's live query cache can
+  // share them with other routes. The hydrated course still needs its atomic
+  // course/assessment read.
+  const [[courseRecord, assessments], lessons, rawCards, practiceNodes, milestones, concepts] =
+    await Promise.all([
+      db.transaction('r', [db.courses, db.courseAssessments], () =>
+        Promise.all([
+          db.courses.get(courseId),
+          db.courseAssessments.where('courseId').equals(courseId).toArray(),
+        ]),
+      ),
+      db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
+      db.cards.where('courseId').equals(courseId).toArray(),
+      db.practiceNodes.where('courseId').equals(courseId).toArray(),
+      db.practiceMilestones.where('courseId').equals(courseId).toArray(),
+      db.concepts.where('courseId').equals(courseId).toArray(),
+    ]);
   if (!courseRecord) {
     return {
       course: null,
@@ -149,39 +157,41 @@ async function readCourseStudyFlowRecords(
     };
   }
   const course = hydrateCourse(courseRecord, finalAssessmentForCourse(courseId, assessments));
-  const [lessons, rawCards, practiceNodes, milestones, concepts, questionSetCount] =
-    await Promise.all([
-      db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
-      db.cards.where('courseId').equals(courseId).toArray(),
-      db.practiceNodes.where('courseId').equals(courseId).toArray(),
-      db.practiceMilestones.where('courseId').equals(courseId).toArray(),
-      db.concepts.where('courseId').equals(courseId).toArray(),
-      db.questionSets.where('courseId').equals(courseId).count(),
-    ]);
+  // The Path only plans question practice when it is the course's sole study content.
+  const planQuestions = includeQuestionPractice || (rawCards.length === 0 && lessons.length === 0);
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [cards, activity, links, exposures, completions, performance, reviewCounts] =
-    await Promise.all([
-      includeQuestionPractice ? hydrateCardsWithHistory(rawCards) : rawCards,
-      includeQuestionPractice ? undefined : pathReviewActivity(rawCards),
-      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
-      lessonIds.length > 0
-        ? db.transaction('r', db.lessonCardExposures, async () => {
-            // Exact ranges use getAll rather than a cursor callback for every card.
-            // Sort lesson IDs to retain the anyOf index/primary-key result order.
-            const exposures = await Promise.all(
-              [...lessonIds]
-                .sort()
-                .map((id) => db.lessonCardExposures.where('lessonId').equals(id).toArray()),
-            );
-            return exposures.flat();
-          })
-        : [],
-      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-      performanceForCourseBackingDecks(courseId, rawCards),
-      course.dailyReviewGoal || course.maxReviewsPerDay
-        ? dailyReviewCounts('course')
-        : new Map<string, number>(),
-    ]);
+  const [
+    cards,
+    activity,
+    links,
+    exposures,
+    completions,
+    performance,
+    reviewCounts,
+    questionSetCount,
+  ] = await Promise.all([
+    includeQuestionPractice ? hydrateCardsWithHistory(rawCards) : rawCards,
+    includeQuestionPractice ? undefined : pathReviewActivity(rawCards),
+    lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+    lessonIds.length > 0
+      ? db.transaction('r', db.lessonCardExposures, async () => {
+          // Exact ranges use getAll rather than a cursor callback for every card.
+          // Sort lesson IDs to retain the anyOf index/primary-key result order.
+          const exposures = await Promise.all(
+            [...lessonIds]
+              .sort()
+              .map((id) => db.lessonCardExposures.where('lessonId').equals(id).toArray()),
+          );
+          return exposures.flat();
+        })
+      : [],
+    lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
+    performanceForCourseBackingDecks(courseId, rawCards),
+    course.dailyReviewGoal || course.maxReviewsPerDay
+      ? dailyReviewCounts('course')
+      : new Map<string, number>(),
+    planQuestions ? db.questionSets.where('courseId').equals(courseId).count() : 0,
+  ]);
   const questionContext = {
     course,
     lessons,
@@ -192,10 +202,6 @@ async function readCourseStudyFlowRecords(
     practiceNodes,
     concepts,
   };
-  // The Path only needs question availability when it is the course's sole study
-  // content. Replaying attempts and loading question generators otherwise delays
-  // first opening without changing anything the Path displays. Study always plans.
-  const planQuestions = includeQuestionPractice || (cards.length === 0 && lessons.length === 0);
   const questionScopeConceptIds = planQuestions ? questionStudyScope(questionContext) : [];
   const questionScopeLessonIds = planQuestions
     ? questionStudyLessonScope({ ...questionContext, completions })

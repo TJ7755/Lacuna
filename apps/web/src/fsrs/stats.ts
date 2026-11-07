@@ -87,21 +87,12 @@ function streakFrom(daySet: Set<number>, today: number): number {
   return streak;
 }
 
-/**
- * Compute the dashboard statistics.
- *
- * @param cards         every card across all decks
- * @param deckSeconds   deckId → mean seconds per review, for decks that have calibration
- * @param now           reference instant (defaults to now)
- */
-export function computeStudyStats(
+/** Study activity is independent of the response-time calibration used by the forecast. */
+export function studyReviewStats(
   cards: Card[],
-  deckSeconds: Map<string, number>,
-  now: number = Date.now(),
-  forecastSourceIds?: ReadonlySet<string>,
+  now: number,
   activity?: ReviewActivity,
-  schedulingBySource?: ReadonlyMap<string, SchedulerConfig>,
-): StudyStats {
+): Pick<StudyStats, 'streak' | 'reviewedToday'> {
   const today = startOfDay(now);
 
   // Day streak and reviews-today come from each card's append-only review history.
@@ -114,7 +105,19 @@ export function computeStudyStats(
       if (day === today) reviewedToday += 1;
     }
   }
+  return { streak: streakFrom(studiedDays, today), reviewedToday };
+}
 
+/** Forecast time from card due dates and per-source response-time calibration. */
+export function studyWorkloadForecast(
+  cards: Card[],
+  deckSeconds: Map<string, number>,
+  now: number,
+  forecastSourceIds?: ReadonlySet<string>,
+  activity?: ReviewActivity,
+  schedulingBySource?: ReadonlyMap<string, SchedulerConfig>,
+): DayForecast[] {
+  const today = startOfDay(now);
   const newCardsAllowed = new Set<string>();
   if (schedulingBySource) {
     const cardsBySource = new Map<string | undefined, Card[]>();
@@ -203,5 +206,27 @@ export function computeStudyStats(
     slice.minutes += minutes;
   }
 
-  return { streak: streakFrom(studiedDays, today), reviewedToday, forecast };
+  return forecast;
+}
+
+/** Compute both components when the caller only needs one forecast. */
+export function computeStudyStats(
+  cards: Card[],
+  deckSeconds: Map<string, number>,
+  now: number = Date.now(),
+  forecastSourceIds?: ReadonlySet<string>,
+  activity?: ReviewActivity,
+  schedulingBySource?: ReadonlyMap<string, SchedulerConfig>,
+): StudyStats {
+  return {
+    ...studyReviewStats(cards, now, activity),
+    forecast: studyWorkloadForecast(
+      cards,
+      deckSeconds,
+      now,
+      forecastSourceIds,
+      activity,
+      schedulingBySource,
+    ),
+  };
 }

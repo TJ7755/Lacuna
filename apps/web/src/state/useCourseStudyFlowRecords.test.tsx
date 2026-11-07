@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { renderHook, waitFor } from '@testing-library/react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createCourse, createCourseCard } from '../db/repository';
 import { createLesson } from '../db/lessonRepository';
@@ -104,6 +105,30 @@ it('reads timestamps for a populated Path without loading any full review histor
     expect(result.current?.cards.every((card) => card.history.length === 0)).toBe(true);
   } finally {
     unmount();
+  }
+});
+
+it('shares a warm course card read with another live route', async () => {
+  const course = await createCourse('Warm course');
+  await createCourseCard(course.id, 'front_back', 'Cell', 'Answer');
+  const cards = renderHook(() =>
+    useLiveQuery(() => db.cards.where('courseId').equals(course.id).toArray()),
+  );
+  await waitFor(() => expect(cards.result.current).toHaveLength(1));
+
+  const getAll = IDBIndex.prototype.getAll;
+  const readCards = vi.fn();
+  vi.spyOn(IDBIndex.prototype, 'getAll').mockImplementation(function (this: IDBIndex, ...args) {
+    if (this.objectStore.name === 'cards') readCards();
+    return getAll.apply(this, args);
+  });
+  const path = renderHook(() => useCoursePathRecords(course.id));
+  try {
+    await waitFor(() => expect(path.result.current?.cards).toHaveLength(1));
+    expect(readCards).not.toHaveBeenCalled();
+  } finally {
+    path.unmount();
+    cards.unmount();
   }
 });
 

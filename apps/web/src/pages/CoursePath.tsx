@@ -85,7 +85,7 @@ export function CoursePath() {
     assessments,
     practiceNodes,
     lessonLinks,
-    summary,
+    coreMastery,
     archived,
     authoring,
     dataLoaded,
@@ -149,7 +149,7 @@ export function CoursePath() {
   }
 
   // Course not found.
-  if (course === null || summary === null) {
+  if (course === null) {
     return (
       <MissingRecord message="This course could not be found." to="/">
         Back to Today
@@ -231,10 +231,8 @@ export function CoursePath() {
   // consulted under `linear` unlock mode.
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
 
-  // Summary figures: mastery is passed in from the course-level summary (extension-lesson
-  // cards already excluded there) and stands in for the forecast until it loads. The due
-  // count is the snapshot's, so it matches the Review due cards session it opens.
-  const { mastery } = courseHeaderStats(course, assessments, summary?.mastery ?? 0, now);
+  // Core mastery stands in for the forecast until it loads.
+  const { mastery } = courseHeaderStats(course, assessments, coreMastery, now);
 
   // Selected lesson detail includes linked cards, due reviews and mastery.
   const detailForLesson = (lessonId: string) => {
