@@ -27,11 +27,11 @@ export function TeacherHomeView({ children }: { children?: ReactNode }) {
               relay; connecting a class does not turn it on.
             </p>
             <p>
-              Pupils can choose Send latest progress to share a partial snapshot of today’s UTC day.
-              Refresh results in the class view to read their latest accepted update.
+              Pupils can choose Send latest progress to share a partial snapshot of their current
+              local day. Refresh results in the class view to read their latest accepted update.
             </p>
             <p>
-              Automatic reports cover the latest completed UTC day when pupils open Lacuna online.
+              Automatic reports cover each pupil’s previous local day when they open Lacuna online.
               Missed days are not backfilled. No report does not mean no study.
             </p>
             <p>

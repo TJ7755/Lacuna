@@ -129,7 +129,7 @@ export function CourseInsightsSection({
           {enrolment && (
             <p className="mt-1 text-sm text-ink-faint">
               {lastPublished !== null
-                ? `Last successful publication: ${new Date(lastPublished).toLocaleString('en-GB', { timeZone: 'UTC' })} UTC.`
+                ? `Last successful publication: ${new Date(lastPublished).toLocaleString('en-GB')}.`
                 : lastSent === null
                   ? 'Nothing has been sent yet.'
                   : `Last daily report: ${lastSent}.`}
@@ -179,8 +179,8 @@ export function CourseInsightsSection({
           <li>
             Send latest progress publishes today’s completed work immediately. Send again after more
             work to update the same daily report, without counting it twice. While this app is open
-            and online, yesterday’s report is also sent automatically. Days use UTC; missed days are
-            not sent later, and long answers or busy days may be shortened.
+            and online, yesterday’s report is also sent automatically. Days use this device’s time
+            zone. Missed days are skipped, and long answers or busy days may be shortened.
           </li>
           <li>
             The service sees the course, reporting day, submission time and packet size, but not

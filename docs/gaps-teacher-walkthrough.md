@@ -11,7 +11,7 @@ they do not explain which control to choose unless the teacher is stuck.
 Use the teacher's normal device and browser, or record why that is not possible.
 
 The facilitator prepares a published synthetic course with a pinned class key and
-one synthetic report for a completed UTC day. Create it with **Create class**, copy the generated recovery code and download
+one synthetic report for a completed local day. Create it with **Create class**, copy the generated recovery code and download
 its class recovery file under **Keep this private to reopen the class** before continuing.
 Use **Give this to pupils** on **Invite** for the pupil class code or join link.
 Keep the recovery file and code separately
@@ -28,7 +28,7 @@ If no prepared report exists, postpone the results task rather than inventing on
 or changing a pupil's clock. Also rehearse a synthetic pupil's **Send latest progress**
 action today and the teacher's **Refresh results** action. A second publication
 after more work must update the same daily report without duplicating activity.
-Automatic daily delivery is checked separately after a UTC boundary.
+Automatic daily delivery is checked separately after midnight on the pupil device.
 
 Before a class trial, ask school IT whether pupil and teacher browser profiles clear
 storage at logout. Rehearse logout and reopening with synthetic data on the actual

@@ -5,6 +5,8 @@ export const INSIGHT_MAX_ENVELOPE_BYTES = 90 * 1024;
 export const INSIGHT_PAGE_SIZE = 16;
 export const INSIGHT_DAILY_SLOTS = 50;
 export const INSIGHT_RETENTION_DAYS = 84;
+// A civil date can start this far ahead of its UTC calendar coordinate.
+export const INSIGHT_MAX_DAY_ADVANCE_MS = 14 * 60 * 60 * 1000;
 export const INSIGHT_DAY_MS = 24 * 60 * 60 * 1000;
 export const INSIGHT_ID_RE = /^[0-9a-f]{32}$/;
 
@@ -106,13 +108,18 @@ function requireEncodedBytes(value: unknown, min: number, max: number): asserts 
     throw new Error('Invalid insights encoded bytes.');
 }
 
+// Existing dates keep the same fixed deadline, regardless of the pupil’s reporting window.
 export function insightDayExpiresAt(day: string): number {
   return isoDayStartMs(day) + (INSIGHT_RETENTION_DAYS + 1) * INSIGHT_DAY_MS;
 }
 
 /** Late uploads and retries never extend the fixed reporting-day deadline. */
 export function requireInsightDay(day: string, now: number): void {
-  if (!Number.isFinite(now) || isoDayStartMs(day) > now || insightDayExpiresAt(day) <= now) {
+  if (
+    !Number.isFinite(now) ||
+    isoDayStartMs(day) - INSIGHT_MAX_DAY_ADVANCE_MS > now ||
+    insightDayExpiresAt(day) <= now
+  ) {
     throw new Error('The insights day is in the future or expired.');
   }
 }

@@ -29,6 +29,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   localStorage.clear();
   vi.stubEnv('VITE_GAPS_REPORTING_ENABLED', 'true');
+  vi.stubEnv('TZ', 'UTC');
   await Dexie.delete('lacuna.insights.outbox');
   await db.delete();
   await db.open();
@@ -58,14 +59,16 @@ it('sends no evidence for an old toggle, a disabled build or a different importe
   await deliverCourseInsights(courseId, { now, fetchImpl });
   expect(fetchImpl).not.toHaveBeenCalled();
 });
-it('delivers yesterday’s encrypted recall once and records only an accepted report', async () => {
+it('includes late local evening recall in yesterday’s encrypted report and only delivers it once', async () => {
+  vi.stubEnv('TZ', 'America/Sao_Paulo');
+  const now = () => Date.parse('2026-10-19T03:01:00Z');
   setReportingConsent(courseId, true, 'Pupil A');
   const card = await createCourseCard(courseId, 'front_back', 'Membrane', 'Water');
   await db.reviewHistory.add({
     id: 'review',
     cardId: card.id,
     courseId,
-    timestamp: Date.parse(`${day}T12:00:00Z`),
+    timestamp: Date.parse('2026-10-19T02:59:00Z'),
     grade: 3,
     correct: true,
     responseTimeSec: 2,

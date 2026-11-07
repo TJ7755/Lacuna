@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { planDailyInsightsSend, runDailyInsightsSend } from './optIn';
 
-const now = Date.parse('2026-10-19T00:00:00Z');
+const now = Date.parse('2026-10-19T00:00:00');
 describe('daily insights planning', () => {
   it('stays idle when consent is off', () => {
     expect(planDailyInsightsSend({ optedIn: false, lastSentDay: null }, now)).toEqual({
@@ -9,11 +9,11 @@ describe('daily insights planning', () => {
     });
   });
   it.each([
-    ['2026-10-19T00:00:00Z', '2026-10-18'],
-    ['2026-10-19T23:59:59Z', '2026-10-18'],
-    ['2027-01-01T00:00:00Z', '2026-12-31'],
-    ['2024-03-01T12:00:00Z', '2024-02-29'],
-  ])('sends only the latest completed UTC day at %s', (time, day) => {
+    ['2026-10-19T00:00:00', '2026-10-18'],
+    ['2026-10-19T23:59:59', '2026-10-18'],
+    ['2027-01-01T00:00:00', '2026-12-31'],
+    ['2024-03-01T12:00:00', '2024-02-29'],
+  ])('sends only the latest completed local day at %s', (time, day) => {
     expect(planDailyInsightsSend({ optedIn: true, lastSentDay: null }, Date.parse(time))).toEqual({
       action: 'send',
       day,

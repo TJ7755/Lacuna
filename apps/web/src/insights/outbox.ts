@@ -1,17 +1,23 @@
 import Dexie from 'dexie';
 import {
-  completedIsoDayLabel,
   DAY_MS,
-  INSIGHT_RETENTION_DAYS,
-} from '@lacuna/protocol/insights/index';
-import {
   INSIGHT_ID_RE,
+  INSIGHT_RETENTION_DAYS,
+  isoDayLabel,
   parseInsightEnvelope,
   type InsightEnvelope,
 } from '@lacuna/protocol/insights/index';
 import { normaliseRelayUrl } from '../sync/relay';
 import { sealInsightEnvelope, type InsightsRecipient } from './envelope';
 import { putInsightEnvelope } from './mailbox';
+import {
+  completedReportingDay,
+  localReportingWindow,
+  reportingDayLabel,
+  utcReportingWindow,
+  validReportingWindow,
+  type ReportingWindow,
+} from './reportingDay';
 
 interface PacketIdentity {
   shareId: string;
@@ -21,13 +27,13 @@ interface PacketIdentity {
   slotId: string;
 }
 type SavedPacket = PacketIdentity &
-  ({ status: 'pending'; envelope: InsightEnvelope } | { status: 'sent' });
+  ({ status: 'pending'; envelope: InsightEnvelope; window?: ReportingWindow } | { status: 'sent' });
 
 interface DailyDelivery {
   shareId: string;
   relayUrl: string;
   recipient: InsightsRecipient;
-  evidence(): Promise<Uint8Array>;
+  evidence(window?: ReportingWindow): Promise<Uint8Array>;
   isOptedIn(): boolean;
   isCurrent?(): Promise<boolean>;
   fetchImpl?: typeof fetch;
@@ -42,8 +48,8 @@ type SnapshotPacket = PacketIdentity & {
   revision: number;
   evidenceHash: string;
   envelope: InsightEnvelope;
+  window?: ReportingWindow;
 };
-const currentIsoDay = (at: number) => new Date(at).toISOString().slice(0, 10);
 
 /** Explicit pupil-side delivery seam; opening it does not install a scheduler. */
 export function createInsightsOutbox(
@@ -57,7 +63,7 @@ export function createInsightsOutbox(
   const packets = database.table<SavedPacket, [string, string]>('packets');
   const pruneExpired = () =>
     database.transaction('rw', snapshots, async () => {
-      const cutoff = currentIsoDay(now() - (INSIGHT_RETENTION_DAYS + 1) * DAY_MS);
+      const cutoff = isoDayLabel(now() - (INSIGHT_RETENTION_DAYS + 1) * DAY_MS);
       await snapshots.where('isoDay').belowOrEqual(cutoff).delete();
     });
 
@@ -78,7 +84,8 @@ export function createInsightsOutbox(
       if (!options.isOptedIn() || options.signal?.aborted) return 'idle';
       if (!INSIGHT_ID_RE.test(options.shareId)) throw new Error('Invalid insights course.');
       await pruneExpired();
-      const isoDay = completedIsoDayLabel(now());
+      const isoDay = completedReportingDay(now());
+      const window = newReportingWindow(isoDay);
       const context = {
         shareId: options.shareId,
         isoDay,
@@ -87,7 +94,7 @@ export function createInsightsOutbox(
       };
       const key: [string, string] = [context.shareId, isoDay];
       const stillAllowed = () =>
-        options.isOptedIn() && !options.signal?.aborted && completedIsoDayLabel(now()) === isoDay;
+        options.isOptedIn() && !options.signal?.aborted && completedReportingDay(now()) === isoDay;
 
       if (await snapshots.get(key)) return this.publish(options, true);
       let packet = await packets.get(key);
@@ -95,7 +102,7 @@ export function createInsightsOutbox(
         packet = checkSavedPacket(packet, context);
       } else {
         if (!stillAllowed()) return 'idle';
-        const evidence = await options.evidence();
+        const evidence = await options.evidence(window);
         if (!stillAllowed()) return 'idle';
         const envelope = await sealInsightEnvelope(options.recipient, evidence, context);
         if (!stillAllowed()) return 'idle';
@@ -104,6 +111,7 @@ export function createInsightsOutbox(
           slotId: crypto.randomUUID().replaceAll('-', ''),
           status: 'pending',
           envelope,
+          ...(window && { window }),
         };
         // Seal before the transaction. Concurrent tabs must use the committed winner.
         packet = await database.transaction('rw', [packets, snapshots], async () => {
@@ -117,7 +125,12 @@ export function createInsightsOutbox(
         });
       }
       if (!packet) return this.publish(options, true);
-      if (packet.status === 'sent' || !stillAllowed()) return 'idle';
+      if (
+        packet.status === 'sent' ||
+        !stillAllowed() ||
+        now() < (packet.window ?? utcReportingWindow(isoDay)).end
+      )
+        return 'idle';
 
       // A failed upload or failed acknowledgement commit leaves these exact bytes retryable.
       if (options.isCurrent && !(await options.isCurrent())) return 'idle';
@@ -139,10 +152,12 @@ export function createInsightsOutbox(
       options: DailyDelivery,
       completedDay = false,
     ): Promise<InsightsPublicationResult> {
-      const startedDay = currentIsoDay(now());
-      const isoDay = completedDay ? completedIsoDayLabel(now()) : startedDay;
+      const startedAt = now();
+      const startedDay = reportingDayLabel(startedAt);
+      const isoDay = completedDay ? completedReportingDay(startedAt) : startedDay;
+      const initialWindow = newReportingWindow(isoDay);
       const stillAllowed = () =>
-        options.isOptedIn() && !options.signal?.aborted && currentIsoDay(now()) === startedDay;
+        options.isOptedIn() && !options.signal?.aborted && reportingDayLabel(now()) === startedDay;
       const allowed = async () =>
         stillAllowed() && (!options.isCurrent || (await options.isCurrent())) && stillAllowed();
       if (!(await allowed())) return 'idle';
@@ -164,15 +179,20 @@ export function createInsightsOutbox(
       if (legacy && !initial) {
         const saved = checkSavedPacket(legacy, context);
         if (saved.status === 'sent') return 'unchanged';
-        return this.send(options);
+        return completedDay ? this.send(options) : 'idle';
       }
       let sent = false;
       for (let attempt = 0; attempt < 8; attempt += 1) {
         let fresh = false;
         if (!(await allowed())) return 'idle';
         let packet = await read();
+        // Keep the original window on an existing slot, including pre-upgrade UTC
+        // snapshots, so later revisions cannot silently shift delivered evidence.
+        // A pupil with an older snapshot starts using local bounds on a fresh date.
+        const window = packet ? packet.window : initialWindow;
+        if (completedDay && now() < (window ?? utcReportingWindow(isoDay)).end) return 'idle';
         if (!packet || packet.status === 'sent') {
-          const evidence = await options.evidence();
+          const evidence = await options.evidence(window);
           if (!(await allowed())) return 'idle';
           const evidenceHash = Array.from(
             new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(evidence))),
@@ -201,6 +221,7 @@ export function createInsightsOutbox(
             revision: (previous?.revision ?? 0) + 1,
             evidenceHash,
             envelope,
+            ...(window && { window }),
             status: 'pending',
           };
           // Commit before fetch. A racing tab must use the winner, never its own resealed bytes.
@@ -260,11 +281,21 @@ export function createInsightsOutbox(
   };
 }
 
+function newReportingWindow(day: string): ReportingWindow | undefined {
+  const local = localReportingWindow(day);
+  const utc = utcReportingWindow(day);
+  return local.start === utc.start && local.end === utc.end ? undefined : local;
+}
+
 function checkSavedPacket(raw: SavedPacket, context: Omit<PacketIdentity, 'slotId'>): SavedPacket {
   if (
     !raw ||
     (raw.status !== 'pending' && raw.status !== 'sent') ||
-    Object.keys(raw).length !== (raw.status === 'pending' ? 7 : 6) ||
+    Object.keys(raw).length !==
+      (raw.status === 'pending' ? (raw.window === undefined ? 7 : 8) : 6) ||
+    (raw.status === 'pending' &&
+      raw.window !== undefined &&
+      (!raw.window || !validReportingWindow(context.isoDay, raw.window))) ||
     !INSIGHT_ID_RE.test(raw.slotId) ||
     !/^[0-9a-f]{64}$/.test(raw.keyId) ||
     raw.shareId !== context.shareId ||
@@ -298,7 +329,9 @@ function checkSnapshot(
 ): SnapshotPacket {
   if (
     !raw ||
-    Object.keys(raw).length !== 10 ||
+    Object.keys(raw).length !== (raw.window === undefined ? 10 : 11) ||
+    (raw.window !== undefined &&
+      (!raw.window || !validReportingWindow(context.isoDay, raw.window))) ||
     !['pending', 'sent'].includes(raw.status) ||
     !INSIGHT_ID_RE.test(raw.slotId) ||
     !/^[0-9a-f]{64}$/.test(raw.writeToken) ||
