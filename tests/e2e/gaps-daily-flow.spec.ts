@@ -6,7 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { createHandler } from '../../apps/relay/src/relay';
 import { MemoryStore } from '../../apps/relay/src/store';
 import { DAY_MS, isoDayLabel } from '@lacuna/protocol/insights/index';
-import { createCourse, enterFreshLacuna, openImport } from './fixtures/lacunaApp';
+import { createCourse, openImport, skipOnboarding } from './fixtures/lacunaApp';
 import { parseClassCode } from '../../apps/web/src/insights/classCode';
 import { addLessonCard, reviewOnlyCard, readAll } from './fixtures/syncConvergence';
 
@@ -66,7 +66,8 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     });
   }
   await wire(author);
-  await enterFreshLacuna(author);
+  await author.goto('/#/start');
+  await skipOnboarding(author);
   await createCourse(author, 'Class biology');
   const courseId = /#\/course\/([^/]+)/.exec(author.url())![1];
   const front = 'Membrane recall';
@@ -202,7 +203,8 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     });
 
     await pupil.clock.setFixedTime(clock - DAY_MS);
-    await enterFreshLacuna(pupil);
+    await pupil.goto('/#/start');
+    await skipOnboarding(pupil);
     await expect(pupil.getByRole('navigation', { name: 'Gaps' })).toHaveCount(0);
     await openImport(pupil);
     await pupil.getByRole('button', { name: /Join a class Enter your teacher/ }).click();
@@ -247,7 +249,8 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     // A returning pupil first imports the original course, then joins using only the board code.
     const returning = await returningContext.newPage();
     await wire(returning);
-    await enterFreshLacuna(returning);
+    await returning.goto('/#/start');
+    await skipOnboarding(returning);
     await returning.goto(`/#/s/${sourceShareId}`);
     await returning.getByRole('radio', { name: /Exam date/ }).press('Space');
     await returning.getByRole('button', { name: 'Add to my courses' }).click();
