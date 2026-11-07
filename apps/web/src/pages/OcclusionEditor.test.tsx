@@ -150,6 +150,93 @@ beforeEach(() => {
 });
 
 describe('OcclusionEditor', () => {
+  it.each(['Cancel', 'Back to Cards'])(
+    'keeps unsaved work until %s is confirmed',
+    async (action) => {
+      mockCourse = course;
+      renderNew();
+      const name = screen.getByRole('textbox', { name: 'Name' });
+      fireEvent.change(name, { target: { value: 'Plant cell' } });
+      const target = screen.getByRole(action === 'Cancel' ? 'button' : 'link', { name: action });
+      fireEvent.click(target);
+      expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+      expect(name).toHaveValue('Plant cell');
+      fireEvent.click(target);
+      fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+      await screen.findByText('Cards');
+    },
+  );
+
+  it.each(['button'])(
+    'restores deleted regions and pairings with %s without losing later edits',
+    async () => {
+      mockCourse = course;
+      mockOcclusion = {
+        id: 'occ-1',
+        courseId: 'course-1',
+        primaryLessonId: null,
+        name: 'Plant cell',
+        assetHash: 'hash-1',
+        regions: [
+          { id: 'label', role: 'label', shape: 'rectangle', x: 0.1, y: 0.1, w: 0.2, h: 0.2 },
+          {
+            id: 'feature',
+            role: 'feature',
+            shape: 'rectangle',
+            x: 0.5,
+            y: 0.5,
+            w: 0.2,
+            h: 0.2,
+            pairedRegionId: 'label',
+          },
+        ],
+        createdAt: 0,
+        updatedAt: 1,
+      };
+      renderEdit();
+      await screen.findByRole('img');
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Box 1' }));
+      fireEvent.click(screen.getByRole('button', { name: /Feature Region 1/ }));
+      fireEvent.change(screen.getByLabelText(/Note on back/), { target: { value: 'Newer note' } });
+      const undo = screen.getByRole('button', { name: 'Undo region deletion' });
+      fireEvent.click(undo);
+      expect(screen.getByRole('button', { name: 'Delete Box 1' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+      await screen.findByText('Cards');
+      expect(updateOcclusion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          regions: [
+            mockOcclusion.regions[0],
+            expect.objectContaining({
+              id: 'feature',
+              pairedRegionId: 'label',
+              backNote: 'Newer note',
+            }),
+          ],
+        }),
+      );
+    },
+  );
+
+  it('retains the diagram and regions after a failed save', async () => {
+    mockCourse = course;
+    const { container } = renderNew();
+    await uploadDiagram();
+    drawBox(container, [40, 30], [200, 180]);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'Plant cell' },
+    });
+    createOcclusion.mockRejectedValueOnce(new Error('Storage full'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add occlusion' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not save the occlusion. Try again.',
+    );
+    expect(screen.getByRole('img')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete Box 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add occlusion' })).toBeEnabled();
+  });
+
   it.each(['course', 'lesson', 'occlusion'] as const)(
     'keeps the missing-%s state aligned and its Back target full-size',
     (missing) => {

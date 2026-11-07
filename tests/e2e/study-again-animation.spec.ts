@@ -82,7 +82,36 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     const screenshot = testInfo.outputPath('again-settled.png');
     await page.screenshot({ path: screenshot });
     await testInfo.attach('Again settled', { path: screenshot, contentType: 'image/png' });
-    await page.getByRole('button', { name: 'Again', exact: true }).click();
+    const acknowledgement = await page.getByRole('button', { name: 'Again', exact: true }).evaluate(
+      (button) =>
+        new Promise<{ rim: boolean; fill: boolean }>((resolve) => {
+          let rim = false,
+            fill = false;
+          const start = performance.now();
+          const nativeOpacity = (selector: string) =>
+            [...document.querySelectorAll(selector)].some((node) =>
+              node
+                .getAnimations()
+                .some(
+                  (animation) =>
+                    animation.effect instanceof KeyframeEffect &&
+                    animation.effect.getKeyframes().some((frame) => frame.opacity !== undefined),
+                ),
+            );
+          (button as HTMLButtonElement).click();
+          const sample = () => {
+            rim ||= nativeOpacity('[data-study-rim]');
+            fill ||= nativeOpacity('[data-study-grade-fill]');
+            if (performance.now() - start < 600) requestAnimationFrame(sample);
+            else resolve({ rim, fill });
+          };
+          requestAnimationFrame(sample);
+        }),
+    );
+    expect(acknowledgement).toEqual({
+      rim: reducedMotion === 'no-preference',
+      fill: reducedMotion === 'no-preference',
+    });
     await expect(page.locator('[data-study-face="back"]')).toHaveCount(0);
   });
 }

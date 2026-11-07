@@ -294,6 +294,14 @@ function NothingToStudy({
       </>
     );
   }
+  if (decision.kind === 'waiting') {
+    return (
+      <p className="py-1 text-sm text-ink-soft">
+        Some material is still below its exam-day recall target. Return when more useful practice is
+        available.
+      </p>
+    );
+  }
   if (decision.kind === 'blocked') {
     if (decision.reason === 'archived') {
       return (

@@ -60,7 +60,11 @@ describe('backup folder mirror', () => {
     const { handle, write, close } = folder({ request: 'granted' });
     const payload = { exportedAt: Date.UTC(2026, 7, 12, 9, 5, 7) } as BackupFile;
 
-    await mirrorToFolder(payload);
+    await expect(mirrorToFolder(payload)).resolves.toEqual({
+      state: 'saved',
+      folder: 'Backups',
+      at: payload.exportedAt,
+    });
 
     expect(handle.requestPermission).toHaveBeenCalledWith({ mode: 'readwrite' });
     expect(handle.getFileHandle).toHaveBeenCalledWith('lacuna-backup-2026-08-12T09-05-07.json', {
@@ -73,12 +77,28 @@ describe('backup folder mirror', () => {
   it('writes nothing when folder permission is refused', async () => {
     const { handle } = folder({ request: 'denied' });
 
-    await mirrorToFolder({ exportedAt: 0 } as BackupFile);
+    await expect(mirrorToFolder({ exportedAt: 0 } as BackupFile)).resolves.toEqual({
+      state: 'permission-denied',
+      folder: 'Backups',
+    });
 
     expect(handle.getFileHandle).not.toHaveBeenCalled();
   });
 
   it('does nothing without a configured folder', async () => {
-    await expect(mirrorToFolder({ exportedAt: 0 } as BackupFile)).resolves.toBeUndefined();
+    await expect(mirrorToFolder({ exportedAt: 0 } as BackupFile)).resolves.toEqual({
+      state: 'unconfigured',
+    });
+  });
+
+  it('reports a failed write without claiming a saved copy', async () => {
+    const { write, close } = folder({ query: 'granted' });
+    write.mockRejectedValueOnce(new DOMException('Disk full', 'QuotaExceededError'));
+
+    await expect(mirrorToFolder({ exportedAt: 0 } as BackupFile)).resolves.toEqual({
+      state: 'failed',
+      folder: 'Backups',
+    });
+    expect(close).not.toHaveBeenCalled();
   });
 });

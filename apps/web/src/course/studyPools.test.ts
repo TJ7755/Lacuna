@@ -9,6 +9,7 @@ import type {
   PracticeNode,
 } from '@lacuna/core/db/types';
 import { makeExamDateContext } from '../fsrs/examDate';
+import { lessonCardMembershipByLesson } from './lessonMembership';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import {
   eligiblePracticePool,
@@ -170,6 +171,23 @@ describe('lesson pools', () => {
     expect(lessonCardMembershipForLessons(new Set(), cards, links)).toEqual([]);
   });
 
+  it('indexes each lesson membership in card order, without adding orphan links or duplicates', () => {
+    const cards = [makeCard('linked', null), makeCard('primary', 'l1'), makeCard('outside', 'l3')];
+    const lessons = [makeLesson('l2'), makeLesson('l1'), makeLesson('l4')];
+    const links = [
+      link('l1', 'primary'),
+      link('l1', 'linked'),
+      link('l2', 'primary'),
+      link('l2', 'missing'),
+      link('l3', 'linked'),
+    ];
+    expect([...lessonCardMembershipByLesson(lessons, cards, links)]).toEqual([
+      ['l2', [cards[1]]],
+      ['l1', [cards[0], cards[1]]],
+      ['l4', []],
+    ]);
+  });
+
   it('excludes only exposures for this lesson', () => {
     const cards = [makeCard('linked', 'l2')];
     const links = [link('l1', 'linked')];
@@ -190,12 +208,12 @@ describe('lesson pools', () => {
     ]);
   });
 
-  it('counts recent introductions across the whole course for a direct lesson', () => {
+  it('counts today’s introductions across the whole course for a direct lesson', () => {
     const introducedElsewhere = makeCard('introduced', 'l2', {
       state: 1,
       history: [
         {
-          timestamp: NOW - 1,
+          timestamp: NOW,
           grade: 3,
           responseTimeSec: 1,
           distracted: false,
@@ -363,14 +381,14 @@ describe('mid-course catch-up', () => {
       catchUpPracticePool(cards, joined, lessons, [], context, new Set(['l1', 'l2']), NOW).map(
         (card) => card.id,
       ),
-    ).toEqual(['old1']);
+    ).toEqual(['old1', 'old2']);
     expect(cards.every((card) => card.state === 0 && card.history.length === 0)).toBe(true);
     expect(practiceCardScope(cards, [], [], { reachedLessonIds: new Set(['l1', 'l2']) })).toEqual(
       [],
     );
   });
 
-  it('honours availability, the shared daily allowance, and dated access', () => {
+  it('honours availability and dated access while reserving catch-up alongside current work', () => {
     expect(catchUpPracticePool(cards, joined, lessons, [], context, new Set(), NOW)).toEqual([]);
     expect(
       catchUpPracticePool(
@@ -401,6 +419,6 @@ describe('mid-course catch-up', () => {
     });
     expect(
       catchUpPracticePool([...cards, reviewed], joined, lessons, [], context, new Set(['l1']), NOW),
-    ).toEqual([]);
+    ).toEqual(cards.slice(0, 2));
   });
 });

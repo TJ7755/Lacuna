@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { useLocation, useOutlet } from 'react-router-dom';
+import { useLocation, useNavigation, useOutlet } from 'react-router-dom';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { BackgroundCalculationsEnabled } from '../../state/useData';
 import { hasLandingArrival } from './LandingTransition';
 
 const RouteAnnouncement = lazy(() => import('./RouteAnnouncement'));
@@ -22,7 +23,7 @@ export function routeTransitionKey(pathname: string): string {
   if (pathname === '/download') return 'download';
   if (
     pathname === '/learn' ||
-    /^\/course\/[^/]+\/(?:study|learn)$/.test(pathname) ||
+    /^\/course\/[^/]+\/(?:study|learn|questions\/learn)$/.test(pathname) ||
     /^\/lesson\/[^/]+\/learn$/.test(pathname)
   ) {
     return `focus:${pathname}`;
@@ -48,6 +49,7 @@ export function RouteTransition() {
     mounted.current = true;
   }, []);
   const location = useLocation();
+  const navigation = useNavigation();
   const outlet = useOutlet();
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
@@ -63,7 +65,7 @@ export function RouteTransition() {
   const motionEnabled = multiplier > 0 && !covered;
 
   return (
-    <>
+    <BackgroundCalculationsEnabled.Provider value={navigation.state === 'idle'}>
       <Suspense fallback={null}>
         <RouteAnnouncement pathname={location.pathname} />
       </Suspense>
@@ -80,6 +82,6 @@ export function RouteTransition() {
           {outlet}
         </motion.div>
       </AnimatePresence>
-    </>
+    </BackgroundCalculationsEnabled.Provider>
   );
 }

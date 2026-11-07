@@ -19,6 +19,46 @@ beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
 });
 
+it.each(['dailyReviewGoal', 'maxReviewsPerDay'] as const)(
+  'keeps catch-up outstanding without reopening empty sessions after %s',
+  async (setting) => {
+    const course = await createCourse('Catch-up pacing', {
+      learnFirst: false,
+      autoPractice: false,
+      [setting]: 1,
+    });
+    const earlier = await createLesson(course.id, 'Earlier');
+    const current = await createLesson(course.id, 'Current');
+    const reviewed = await createLessonCard(course.id, earlier.id, 'front_back', 'Seen', 'Answer');
+    await createLessonCard(course.id, earlier.id, 'front_back', 'Unseen', 'Answer');
+    await db.courses.update(course.id, {
+      studyStartLessonId: current.id,
+      schoolCoveredLessonIds: [earlier.id],
+    });
+    await recordReview({
+      card: reviewed,
+      deck: course,
+      kind: 'course',
+      eventId: 'daily-review',
+      sessionId: 'catch-up',
+      sessionKind: 'practice',
+      grade: 3,
+      correct: true,
+      responseTimeSec: 3,
+      distracted: false,
+    });
+    const { result, unmount } = renderHook(() => useCourseStudyFlow(course.id));
+    try {
+      await waitFor(() => expect(result.current?.snapshot.reviewLimitReached).toBe(true));
+      expect(result.current?.snapshot.catchUpPriorityCount).toBeGreaterThan(0);
+      expect(result.current?.snapshot.readiness?.ready).toBe(false);
+      expect(result.current?.decision).toEqual({ kind: 'waiting' });
+    } finally {
+      unmount();
+    }
+  },
+);
+
 it.each([
   { learnFirst: true, reordered: false },
   { learnFirst: true, reordered: true },
@@ -114,7 +154,7 @@ it.each([
     await waitFor(() => expect(result.current?.generation).toBe(2));
     expect(result.current?.decision).toMatchObject({
       kind: 'step',
-      step: { kind: 'practice', mode: 'assessment' },
+      step: { kind: 'practice', mode: 'catch-up' },
     });
 
     await act(async () => {
@@ -151,11 +191,10 @@ it.each([
     });
     rerender({ refreshKey: 4 });
     await waitFor(() => expect(result.current?.generation).toBe(4));
+    // The explicit Question did not introduce the selected lesson's knowledge.
     expect(result.current?.decision).toMatchObject({
       kind: 'step',
-      step: learnFirst
-        ? { kind: 'exam-questions', conceptId: later.id }
-        : { kind: 'practice', mode: 'assessment' },
+      step: { kind: 'lesson', lessonId: current.id },
     });
   },
 );

@@ -137,7 +137,10 @@ export function JevSection() {
             </p>
           )}
           {quotaId && (
-            <code aria-label="Quota ID" className="mt-2 block break-all text-xs text-ink-soft">
+            <code
+              aria-label="Quota ID"
+              className="mt-2 block select-text break-all text-xs text-ink-soft"
+            >
               {quotaId}
             </code>
           )}

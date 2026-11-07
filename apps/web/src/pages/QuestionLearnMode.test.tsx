@@ -11,6 +11,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
 import { questionGeneratorRegistry } from '../questions/generators';
 import type { QuestionAttempt, QuestionDefinition } from '@lacuna/core/questions/types';
+import { LazyMotion, domAnimation } from 'motion/react';
+import { RouteTransition } from '../components/layout/RouteTransition';
 import { QuestionLearnMode } from './QuestionLearnMode';
 
 const mocks = vi.hoisted(() => ({
@@ -21,14 +23,25 @@ const mocks = vi.hoisted(() => ({
   abandon: vi.fn(),
   notify: vi.fn(),
   data: undefined as CourseQuestionData | undefined,
+  dataListeners: new Set<() => void>(),
 }));
 
-vi.mock('../components/questions/useQuestionData', () => ({
-  useCourseQuestionData: () => mocks.data,
-}));
+vi.mock('../components/questions/useQuestionData', async () => {
+  const { useSyncExternalStore } = await import('react');
+  return {
+    useCourseQuestionData: () =>
+      useSyncExternalStore(
+        (listener) => {
+          mocks.dataListeners.add(listener);
+          return () => mocks.dataListeners.delete(listener);
+        },
+        () => mocks.data,
+      ),
+  };
+});
 
 vi.mock('../state/useCourseData', () => ({
-  useCourse: () => ({ id: 'course-1', name: 'Mathematics' }),
+  useCourse: (courseId: string) => ({ id: courseId, name: 'Mathematics' }),
 }));
 
 vi.mock('../components/ui/Toast', () => ({
@@ -180,6 +193,86 @@ describe('QuestionLearnMode', () => {
     const unload = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(false);
+  });
+
+  it('does not retain a completed course session when history opens another course', async () => {
+    // This checks session identity, rather than the legitimate outgoing route fade.
+    const media = vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    const router = createMemoryRouter(
+      [
+        {
+          element: <RouteTransition />,
+          children: [{ path: '/course/:courseId/questions/learn', element: <QuestionLearnMode /> }],
+        },
+      ],
+      {
+        initialEntries: ['/course/course-2/questions/learn', '/course/course-1/questions/learn'],
+        initialIndex: 1,
+      },
+    );
+    const session = () => (
+      <LazyMotion features={domAnimation}>
+        <RouterProvider router={router} />
+      </LazyMotion>
+    );
+    const view = render(session());
+    try {
+      await screen.findByLabelText('Your answer');
+      fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '4' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Show worked feedback' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Next Question' }));
+      await screen.findByRole('heading', { name: 'Session complete' });
+
+      const firstData = mocks.data!;
+      mocks.data = undefined;
+      await act(() => router.navigate(-1));
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: 'Session complete' })).not.toBeInTheDocument(),
+      );
+      const second = {
+        ...question(),
+        id: 'question-2',
+        courseId: 'course-2',
+        prompt: 'Solve **3 + 3**.',
+      };
+      mocks.data = {
+        ...firstData,
+        questions: [second],
+        conceptSets: [
+          { ...firstData.conceptSets[0], courseId: second.courseId, questionId: second.id },
+        ],
+      };
+      mocks.start.mockImplementation((input: { sessionId: string; attemptId: string }) =>
+        Promise.resolve({
+          ...shownAttempt(input),
+          questionId: second.id,
+          courseId: second.courseId,
+          renderedPrompt: second.prompt,
+        }),
+      );
+      view.rerender(session());
+      act(() => mocks.dataListeners.forEach((listener) => listener()));
+
+      expect(screen.queryByRole('heading', { name: 'Session complete' })).not.toBeInTheDocument();
+      expect(await screen.findByText('3 + 3')).toBeInTheDocument();
+      expect(mocks.start).toHaveBeenLastCalledWith(
+        expect.objectContaining({ questionId: second.id }),
+      );
+    } finally {
+      view.unmount();
+      router.dispose();
+      media.mockRestore();
+    }
   });
 
   it('guards explicit Exit and browser unload only while a Question is outstanding', async () => {

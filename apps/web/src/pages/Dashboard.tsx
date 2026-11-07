@@ -2,7 +2,7 @@ import { Button } from '../components/ui/Button';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useNavigation } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
@@ -25,24 +25,19 @@ import { MOTION_DURATION, MOTION_EASING } from '../components/ui/motion';
 import { NewCourseControl } from '../components/course/NewCourseControl';
 import { ImportControl } from '../components/import/ImportControl';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { dashboardForecastHistories, urgencyOrder } from '../state/dashboardForecasts';
+import { urgencyOrder } from '../state/dashboardForecasts';
 import { forecastWindow, useForecastRange } from '../state/forecastRange';
-import { useAllReviewHistory } from '../state/useData';
+import { useDashboardForecastHistories } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
 import { useToast } from '../components/ui/Toast';
 import { finishOnboarding, onboardingPending } from '../onboarding/onboardingState';
+import { listShareImports } from '../shareLinks/linkStore';
 import {
   CourseContextMenu,
   ArchiveCourseDialog,
   type ArchiveTarget,
   type CourseMenuState,
 } from '../components/dashboard/CourseActions';
-
-const RemainingWork = lazy(() =>
-  import('../components/course/RemainingWork').then((module) => ({
-    default: module.RemainingWork,
-  })),
-);
 
 export function Dashboard() {
   const frame = useRef<HTMLDivElement>(null);
@@ -79,12 +74,10 @@ export function Dashboard() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
-  // Background check for teacher republishes of share-linked courses. The poll
-  // module (with the merge importer and course-file decoder) loads on demand so
-  // none of that weight joins the initial bundle; the dashboard never waits on
-  // it either. A merged update surfaces through the existing pending-review
-  // badge. A failed chunk load simply retries on the next dashboard visit.
+  // Only libraries with share-linked courses need the relay polling runtime.
+  // Poll failures can retry on the next dashboard visit.
   useEffect(() => {
+    if (listShareImports().length === 0 || navigator.onLine === false) return;
     let cancelled = false;
     void import('../shareLinks/polling')
       .then(({ pollShareUpdates }) => {
@@ -139,22 +132,9 @@ export function Dashboard() {
 
   // The chart traces each forecast back over the chosen window, which needs graded
   // review history; navigation's shared data carries only review timestamps.
-  const reviewHistory = useAllReviewHistory();
   const [forecastRange] = useForecastRange();
   const chartWindow = forecastWindow(forecastRange);
-  const histories = useMemo(() => {
-    if (!data || !forecasts || !reviewHistory) return undefined;
-    const now = Date.now();
-    return dashboardForecastHistories(
-      data.courses,
-      data.lessons,
-      data.allCards,
-      reviewHistory,
-      forecasts,
-      now - chartWindow.past * 86_400_000,
-      now,
-    );
-  }, [data, forecasts, reviewHistory, chartWindow.past]);
+  const histories = useDashboardForecastHistories(data, chartWindow.past);
   const lines = useMemo<ForecastLine[]>(
     () =>
       (rows ?? []).flatMap((row) => {
@@ -314,12 +294,6 @@ export function Dashboard() {
                 setCourseMenu({ course, position, trigger });
               }}
             />
-            {/* After the queue, so Study actions stay on the first screen. */}
-            <Suspense fallback={null}>
-              {rows.map((row) => (
-                <RemainingWork key={row.id} courseId={row.id} />
-              ))}
-            </Suspense>
           </div>
         )}
       </PageLoadingBoundary>

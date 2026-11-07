@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { BrowserWindow } from 'electron';
 import { GrantStore } from './grants';
+import { McpConnectionStore } from './connections';
 import { TOOL_CONTRACT_REGISTRY } from './contracts/registry';
 import { listCoursesContract } from './contracts/read';
 import { createCourseContract } from './contracts/content';
@@ -212,4 +213,46 @@ describe('Electron MCP data bridge interface', () => {
       content: [{ type: 'text', text: '[internal] MCP server stopped.' }],
     });
   });
+
+  it.each(['scope', 'consent'] as const)(
+    'blocks a disconnected companion whose %s reply arrives late',
+    async (stage) => {
+      const renderer = rendererWindow();
+      const bridge = new DataBridge(() => renderer.window);
+      bridge.start();
+      const clients = new McpConnectionStore();
+      const client = { connectionId: 'client-1', name: 'Test client' };
+      clients.connect(client);
+      const grants = clients.grants(client.connectionId);
+      const result = bridge.execute(createCourseContract, { name: 'Biology' }, grants, client);
+      const scopeRequest = renderer.webContents.send.mock.calls[0][1] as { id: string };
+      if (stage === 'scope') clients.disconnect(client.connectionId);
+      emit('mcp:scope:reply', renderer.trustedEvent, {
+        id: scopeRequest.id,
+        ok: true,
+        targets: [{ courseId: '__global__', label: 'All Lacuna data' }],
+      });
+      if (stage === 'consent') {
+        await vi.waitFor(() => expect(renderer.webContents.send).toHaveBeenCalledTimes(2));
+        const consentRequest = renderer.webContents.send.mock.calls[1][1] as { id: string };
+        clients.disconnect(client.connectionId);
+        emit('mcp:consent:reply', renderer.trustedEvent, {
+          id: consentRequest.id,
+          approved: true,
+        });
+      }
+      // A late approval must not restore the detached store or dispatch a write.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (stage === 'scope')
+        expect(
+          renderer.webContents.send.mock.calls.filter(([channel]) => channel === 'mcp:consent'),
+        ).toEqual([]);
+      expect(grants.list()).toEqual([]);
+      expect(
+        renderer.webContents.send.mock.calls.filter(([channel]) => channel === 'mcp:invoke'),
+      ).toEqual([]);
+      bridge.stop();
+      await expect(result).resolves.toMatchObject({ isError: true });
+    },
+  );
 });

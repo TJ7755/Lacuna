@@ -1,0 +1,91 @@
+import { HOSTED_SERVICE_ORIGIN } from '../config/origins';
+
+export interface HostedTransport {
+  exchange(credential: string, signal?: AbortSignal): Promise<{ token: string; expiresAt: number }>;
+}
+
+export class HostedTransportError extends Error {
+  constructor(
+    readonly kind: 'access' | 'rate-limit' | 'quota' | 'unavailable' | 'network' | 'invalid',
+    readonly retryAt: number | null = null,
+  ) {
+    super(
+      {
+        access: 'Your AI session has expired or was rejected.',
+        quota: 'AI limit reached. Try again later.',
+        'rate-limit': 'Too many attempts. Try again later.',
+        unavailable: 'Automatic marking is unavailable. Try again later.',
+        network: 'Lacuna could not reach the AI service. Check your connection.',
+        invalid: 'The AI service rejected this request.',
+      }[kind],
+    );
+  }
+}
+
+function endpoint(path: string): string {
+  return `${window.electronAPI?.isElectron === true ? HOSTED_SERVICE_ORIGIN : ''}/api/ai/${path}`;
+}
+
+/** Only known endpoint limits can supply a long reset; unlabelled 429s use short backoff. */
+export function hostedLimitError(
+  response: Response,
+  source: 'session' | 'marking',
+): HostedTransportError {
+  const retryAfter = response.headers.get('Retry-After') ?? '';
+  const seconds = /^\d+$/.test(retryAfter) ? Number(retryAfter) : NaN;
+  const limit = response.headers.get('X-Lacuna-AI-Limit');
+  const monthly =
+    source === 'marking' && (limit === 'monthly-tokens' || limit === 'monthly-requests');
+  const daily = source === 'marking' && limit === 'installation-day';
+  const short =
+    source === 'marking' &&
+    (limit === 'installation-minute' ||
+      limit === 'installation-concurrent' ||
+      limit === 'global-concurrent');
+  const maximum = monthly
+    ? 31 * 86_400
+    : daily || limit === 'session-day'
+      ? 86_400
+      : short || limit === 'session-minute'
+        ? 60
+        : 0;
+  const validReset = Number.isSafeInteger(seconds) && seconds > 0 && seconds <= maximum;
+  return new HostedTransportError(
+    (monthly || daily) && validReset ? 'quota' : 'rate-limit',
+    Date.now() + (validReset ? seconds : 60) * 1000,
+  );
+}
+
+function responseError(response: Response): HostedTransportError {
+  const { status } = response;
+  if (status === 401) return new HostedTransportError('access');
+  if (status === 429) return hostedLimitError(response, 'session');
+  if (status === 400 || status === 413) return new HostedTransportError('invalid');
+  return new HostedTransportError('unavailable');
+}
+
+export function createHostedTransport(
+  fetcher: typeof fetch = globalThis.fetch.bind(globalThis),
+): HostedTransport {
+  return {
+    async exchange(credential, signal) {
+      let response: Response;
+      try {
+        response = await fetcher(endpoint('session'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential }),
+          signal,
+        });
+      } catch {
+        throw new HostedTransportError('network');
+      }
+      if (!response.ok) throw responseError(response);
+      const body = (await response.json()) as { token?: unknown; expiresAt?: unknown };
+      if (typeof body.token !== 'string' || typeof body.expiresAt !== 'number') {
+        throw new HostedTransportError('invalid');
+      }
+      return { token: body.token, expiresAt: body.expiresAt };
+    },
+  };
+}

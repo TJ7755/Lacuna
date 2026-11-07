@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useContext } from 'react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createCourse, createCourseCard } from '../../db/repository';
@@ -7,6 +8,7 @@ import { db } from '../../db/schema';
 import { useCourseDashboardData, useSidebarData } from '../../state/useCourseData';
 import { ToastProvider } from '../ui/Toast';
 import { AppShell } from './AppShell';
+import { BackgroundCalculationsEnabled } from '../../state/useData';
 
 // Keep the real shell, routing and data consumers; omit unrelated overlay controls.
 vi.mock('./Sidebar', () => ({
@@ -29,32 +31,34 @@ vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['none'],
   speedMultiplier: () => 0,
 }));
-vi.mock('../../ai/settings', () => ({ useAiSettings: () => [{ enabled: false }] }));
-vi.mock('../../ai/session/AiSessionContext', () => ({ useOptionalAiSession: () => null }));
 
 function DashboardData() {
   const data = useCourseDashboardData();
   const navigate = useNavigate();
+  const backgroundEnabled = useContext(BackgroundCalculationsEnabled);
   return (
     <>
       <output data-testid="dashboard-count">{data?.allCards.length}</output>
+      <output aria-label="Background calculations">{String(backgroundEnabled)}</output>
       <button onClick={() => navigate('/settings')}>Settings</button>
     </>
   );
 }
 
-function renderShell() {
+function renderShell(backgroundEnabled = true) {
   return render(
-    <MemoryRouter>
-      <ToastProvider>
-        <Routes>
-          <Route path="/" element={<AppShell />}>
-            <Route index element={<DashboardData />} />
-            <Route path="settings" element={<h1>Settings</h1>} />
-          </Route>
-        </Routes>
-      </ToastProvider>
-    </MemoryRouter>,
+    <BackgroundCalculationsEnabled.Provider value={backgroundEnabled}>
+      <MemoryRouter>
+        <ToastProvider>
+          <Routes>
+            <Route path="/" element={<AppShell />}>
+              <Route index element={<DashboardData />} />
+              <Route path="settings" element={<h1>Settings</h1>} />
+            </Route>
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>
+    </BackgroundCalculationsEnabled.Provider>,
   );
 }
 
@@ -63,6 +67,11 @@ beforeEach(async () => {
   const course = await createCourse('Biology');
   await createCourseCard(course.id, 'front_back', 'Cell', 'Unit of life');
   Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: vi.fn() });
+});
+
+it('preserves the outer navigation pause inside the shell', () => {
+  renderShell(false);
+  expect(screen.getByLabelText('Background calculations')).toHaveTextContent('false');
 });
 
 it('shares one cards and compact activity read across the dashboard and both navigation surfaces', async () => {

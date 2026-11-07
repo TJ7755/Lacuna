@@ -1,8 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
+import { useExamClock } from './useExamClock';
 import { db } from '../db/schema';
 import type { Concept } from '@lacuna/core/questions/types';
-import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
+import { dailyReviewCounts, hydrateCardsWithHistory } from '../db/reviewHistoryRead';
+import { readReviewActivity } from '../db/reviewActivityRead';
+import type { ReviewActivity } from '../fsrs/heatmap';
 import { performanceForCourseBackingDecks } from '../db/backingDecks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { retainedLiveQuery } from './retainedLiveQuery';
@@ -26,6 +29,8 @@ interface CourseStudyFlowRecords {
   course: Course | null;
   lessons: Lesson[];
   cards: Card[];
+  /** Path presentation needs timestamps; active Study keeps full card histories. */
+  activity?: ReviewActivity;
   concepts?: Concept[];
   questionPractice?: ConceptPracticeItem[];
   examSkillPractice?: ExamSkillPracticeItem[];
@@ -38,6 +43,7 @@ interface CourseStudyFlowRecords {
   practiceNodes: PracticeNode[];
   milestones: PracticeMilestone[];
   performance: UserPerformance[];
+  reviewsToday?: number;
   /** The refresh key this read answered, so callers can tell a stale result from a fresh one. */
   generation: number;
 }
@@ -49,6 +55,7 @@ export function useCourseStudyFlowRecords(
   enabled = true,
   sittingStartedAt?: number,
 ) {
+  const clock = useExamClock([]);
   const cache = useMemo(
     () => ({
       courseId,
@@ -70,19 +77,35 @@ export function useCourseStudyFlowRecords(
     };
     if (version === cache.version) cache.value = value;
     return value;
-  }, [cache, refreshKey, live, sittingStartedAt]);
+  }, [cache, refreshKey, live, sittingStartedAt, clock]);
   return result?.courseId === courseId ? result?.records : undefined;
 }
 
 // Presentation retains results; the study conductor keeps its existing fresh-generation contract.
 export const useCoursePathRecords = retainedLiveQuery((courseId) =>
-  readCourseStudyFlowRecords(courseId),
+  readCourseStudyFlowRecords(courseId, 0, undefined, false),
 );
+
+async function pathReviewActivity(cards: Card[]): Promise<ReviewActivity> {
+  const [activity, legacy] = await Promise.all([
+    readReviewActivity(cards),
+    // Current stored cards have no history projection. Preserve the adapter's
+    // canonical precedence and legacy-only events only where old records need it.
+    hydrateCardsWithHistory(cards.filter((card) => card.history?.length > 0)),
+  ]);
+  for (const card of legacy)
+    activity.set(
+      card.id,
+      card.history.map((review) => review.timestamp),
+    );
+  return activity;
+}
 
 async function readCourseStudyFlowRecords(
   courseId: string | undefined,
   refreshKey = 0,
   sittingStartedAt?: number,
+  includeQuestionPractice = true,
 ): Promise<CourseStudyFlowRecords> {
   if (!courseId) {
     return {
@@ -100,15 +123,23 @@ async function readCourseStudyFlowRecords(
       generation: refreshKey,
     };
   }
-  const [courseRecord, assessments] = await db.transaction(
-    'r',
-    [db.courses, db.courseAssessments],
-    () =>
-      Promise.all([
-        db.courses.get(courseId),
-        db.courseAssessments.where('courseId').equals(courseId).toArray(),
-      ]),
-  );
+  // Keep the card and lesson reads implicit so Dexie's live query cache can
+  // share them with other routes. The hydrated course still needs its atomic
+  // course/assessment read.
+  const [[courseRecord, assessments], lessons, rawCards, practiceNodes, milestones, concepts] =
+    await Promise.all([
+      db.transaction('r', [db.courses, db.courseAssessments], () =>
+        Promise.all([
+          db.courses.get(courseId),
+          db.courseAssessments.where('courseId').equals(courseId).toArray(),
+        ]),
+      ),
+      db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
+      db.cards.where('courseId').equals(courseId).toArray(),
+      db.practiceNodes.where('courseId').equals(courseId).toArray(),
+      db.practiceMilestones.where('courseId').equals(courseId).toArray(),
+      db.concepts.where('courseId').equals(courseId).toArray(),
+    ]);
   if (!courseRecord) {
     return {
       course: null,
@@ -126,22 +157,40 @@ async function readCourseStudyFlowRecords(
     };
   }
   const course = hydrateCourse(courseRecord, finalAssessmentForCourse(courseId, assessments));
-  const [lessons, rawCards, practiceNodes, milestones, concepts, questionSetCount] =
-    await Promise.all([
-      db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
-      db.cards.where('courseId').equals(courseId).toArray(),
-      db.practiceNodes.where('courseId').equals(courseId).toArray(),
-      db.practiceMilestones.where('courseId').equals(courseId).toArray(),
-      db.concepts.where('courseId').equals(courseId).toArray(),
-      db.questionSets.where('courseId').equals(courseId).count(),
-    ]);
-  const cards = await hydrateCardsWithHistory(rawCards);
+  // The Path only plans question practice when it is the course's sole study content.
+  const planQuestions = includeQuestionPractice || (rawCards.length === 0 && lessons.length === 0);
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [links, exposures, completions, performance] = await Promise.all([
+  const [
+    cards,
+    activity,
+    links,
+    exposures,
+    completions,
+    performance,
+    reviewCounts,
+    questionSetCount,
+  ] = await Promise.all([
+    includeQuestionPractice ? hydrateCardsWithHistory(rawCards) : rawCards,
+    includeQuestionPractice ? undefined : pathReviewActivity(rawCards),
     lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
-    lessonIds.length > 0 ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray() : [],
+    lessonIds.length > 0
+      ? db.transaction('r', db.lessonCardExposures, async () => {
+          // Exact ranges use getAll rather than a cursor callback for every card.
+          // Sort lesson IDs to retain the anyOf index/primary-key result order.
+          const exposures = await Promise.all(
+            [...lessonIds]
+              .sort()
+              .map((id) => db.lessonCardExposures.where('lessonId').equals(id).toArray()),
+          );
+          return exposures.flat();
+        })
+      : [],
     lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-    performanceForCourseBackingDecks(courseId, cards),
+    performanceForCourseBackingDecks(courseId, rawCards),
+    course.dailyReviewGoal || course.maxReviewsPerDay
+      ? dailyReviewCounts('course')
+      : new Map<string, number>(),
+    planQuestions ? db.questionSets.where('courseId').equals(courseId).count() : 0,
   ]);
   const questionContext = {
     course,
@@ -153,8 +202,10 @@ async function readCourseStudyFlowRecords(
     practiceNodes,
     concepts,
   };
-  const questionScopeConceptIds = questionStudyScope(questionContext);
-  const questionScopeLessonIds = questionStudyLessonScope({ ...questionContext, completions });
+  const questionScopeConceptIds = planQuestions ? questionStudyScope(questionContext) : [];
+  const questionScopeLessonIds = planQuestions
+    ? questionStudyLessonScope({ ...questionContext, completions })
+    : [];
   const questionPractice =
     questionScopeConceptIds.length && questionSetCount > 0
       ? await import('../questions/conceptPractice').then(({ listConceptPractice }) =>
@@ -162,7 +213,7 @@ async function readCourseStudyFlowRecords(
         )
       : [];
   const examSkillPractice =
-    questionSetCount > 0
+    planQuestions && questionSetCount > 0
       ? await import('../questions/examSkillPractice').then(({ listExamSkillPractice }) =>
           listExamSkillPractice(courseId, Date.now(), {
             sittingStartedAt,
@@ -175,6 +226,7 @@ async function readCourseStudyFlowRecords(
     course,
     lessons,
     cards,
+    activity,
     concepts,
     questionPractice,
     examSkillPractice,
@@ -187,6 +239,7 @@ async function readCourseStudyFlowRecords(
     practiceNodes,
     milestones,
     performance,
+    reviewsToday: reviewCounts.get(courseId) ?? 0,
     generation: refreshKey,
   };
 }

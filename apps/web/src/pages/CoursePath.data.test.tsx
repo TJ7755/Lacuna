@@ -28,13 +28,14 @@ beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
 });
 
-it('reads one course card/history set for the path and its header summary', async () => {
+it('reads one course card/activity set for the path and its header summary', async () => {
   const course = await createCourse('Biology');
   await createLesson(course.id, 'Cells');
   await createLesson(course.id, 'Genetics');
   await createCourseCard(course.id, 'front_back', 'Cell', 'Unit of life');
   const cards = vi.spyOn(db.cards, 'where');
   const history = vi.spyOn(db.reviewHistory, 'where');
+  const activity = vi.spyOn(db.reviewActivity, 'toArray');
   const courses = vi.spyOn(db.courses, 'get');
   const assessments = vi.spyOn(db.courseAssessments, 'where');
   render(
@@ -48,7 +49,8 @@ it('reads one course card/history set for the path and its header summary', asyn
   );
   await screen.findByRole('button', { name: 'Study' });
   await waitFor(() => expect(cards).toHaveBeenCalledTimes(1));
-  expect(history).toHaveBeenCalledTimes(1);
+  expect(history).not.toHaveBeenCalled();
+  expect(activity).toHaveBeenCalledTimes(1);
   expect(courses).toHaveBeenCalledTimes(1);
   expect(assessments).toHaveBeenCalledTimes(1);
 });

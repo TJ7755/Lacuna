@@ -26,6 +26,7 @@ import {
   onboardingPending,
 } from './onboarding/onboardingState';
 import { replacementLifecycle } from './db/replacementLifecycle';
+import { scheduleBackgroundWork } from './routes/idlePrefetch';
 
 export { router } from './routes/router';
 
@@ -118,7 +119,7 @@ export function App() {
           const { isFirstRun, settleFirstRun } = await import('./db/seed');
           const firstRun = await isFirstRun();
           if (firstRun && !isPublicEntry(window.location.hash) && !enteredFromLanding) {
-            window.location.hash = '#/welcome';
+            await router.navigate('/welcome');
           }
 
           await settleFirstRun();
@@ -135,7 +136,7 @@ export function App() {
         }
         // A new learner who chose to enter starts with onboarding rather than an empty Today.
         if (enteredFromLanding && onboardingPending() && /^#?\/?$/.test(window.location.hash)) {
-          window.location.hash = '#/start';
+          await router.navigate('/start');
         }
       } catch (error) {
         if (import.meta.env.DEV) {
@@ -153,14 +154,21 @@ export function App() {
       }
 
       setReady(true);
-      // The daily restore point runs in a worker so large backups do not stall study.
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    // A worker still competes for the database's native read/write queue. Leave
+    // startup input quiet first; once started, the actual backup is never aborted.
+    return scheduleBackgroundWork(() => {
       void import('./db/backups')
         .then(({ autoBackupIfStale }) => autoBackupIfStale())
         .catch(() => {
           // Background backup failures are non-fatal.
         });
-    })();
-  }, []);
+    });
+  }, [ready]);
 
   useEffect(() => {
     const handler = () => revokeAllCachedUrls();

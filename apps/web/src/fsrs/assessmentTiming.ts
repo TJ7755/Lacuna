@@ -39,7 +39,7 @@ export function assessmentTiming(
 }
 
 /** Current memory only: do not assume a future scheduled review has happened. */
-export function assessmentRecallBelowTarget(
+function assessmentRecallBelowTarget(
   card: SchedulingMemory,
   examDate: number,
   now: number,
@@ -70,13 +70,11 @@ export function worthwhileAssessmentPractice(
   card: SchedulingMemory,
   examDate: number,
   now: number,
-  windowDays: number,
   ctx: SimContext,
 ): boolean {
   if (card.due !== null && card.due <= now) return true;
   return (
     assessmentRecallBelowTarget(card, examDate, now, ctx) &&
-    examDate - now <= windowDays * MS_PER_DAY &&
     (card.lastReviewed === null || now - card.lastReviewed >= MS_PER_DAY / 24) &&
     assessmentReviewGain(card, examDate, now, ctx) >= MIN_ASSESSMENT_REVIEW_GAIN
   );

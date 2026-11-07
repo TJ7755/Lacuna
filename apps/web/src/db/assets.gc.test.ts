@@ -56,8 +56,14 @@ describe('asset garbage collection', () => {
       3,
     );
 
-    expect(await collectOrphanedAssets()).toBe(0);
-    expect(await db.assets.get(asset.hash)).toBeDefined();
+    const reads = vi.spyOn(db.cards, 'offset');
+    try {
+      expect(await collectOrphanedAssets()).toBe(0);
+      expect(await db.assets.get(asset.hash)).toBeDefined();
+      expect(reads).not.toHaveBeenCalled();
+    } finally {
+      reads.mockRestore();
+    }
   });
 
   it('collects an orphan exactly one grace period after it was stored', async () => {
@@ -73,6 +79,22 @@ describe('asset garbage collection', () => {
 
     expect(await collectOrphanedAssets(storedAt + ASSET_GC_GRACE_MS)).toBe(1);
     expect(await db.assets.get(asset.hash)).toBeUndefined();
+  });
+
+  it('still sweeps eligible and undated assets when grace-exempt assets share the store', async () => {
+    const [expired, undated, fresh] = await Promise.all(
+      ['expired', 'undated', 'fresh'].map((label) =>
+        storeImageBlob(new Blob([label], { type: 'image/png' }), 'image/png', 4, 3),
+      ),
+    );
+    const now = Date.now();
+    await db.assets.update(expired.hash, { createdAt: now - ASSET_GC_GRACE_MS });
+    await db.assets.update(undated.hash, { createdAt: undefined });
+
+    expect(await collectOrphanedAssets(now)).toBe(2);
+    expect(await db.assets.get(expired.hash)).toBeUndefined();
+    expect(await db.assets.get(undated.hash)).toBeUndefined();
+    expect(await db.assets.get(fresh.hash)).toBeDefined();
   });
 
   it('retains an asset referenced only by a local Question Set draft', async () => {

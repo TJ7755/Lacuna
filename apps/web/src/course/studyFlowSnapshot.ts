@@ -1,6 +1,8 @@
 import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
 import { earlierLessonIds } from './courseEntry';
 import { catchUpPracticePool } from './catchUpPractice';
+import { buildStudyReadiness, type StudyReadiness } from './studyReadiness';
+import { lessonCardMembership } from './lessonMembership';
 import type {
   Card,
   Course,
@@ -9,6 +11,7 @@ import type {
   PracticeMilestone,
 } from '@lacuna/core/db/types';
 import type { ExamDateContext } from '../fsrs/examDate';
+import type { ReviewActivity } from '../fsrs/heatmap';
 import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
 import type { ConceptPracticeNeeds } from '../questions/techniqueEvidence';
 import type { PathNode, PracticePathNode } from './path';
@@ -45,8 +48,14 @@ export interface CourseStudyFlowSnapshot {
   /** Routing history, including declared school coverage; never a mastery judgement. */
   hasStudyHistory: boolean;
   studyStartLessonId?: string;
+  hasStartedCurrentLesson?: boolean;
+  reviewLimitReached?: boolean;
+  learnFirst?: boolean;
   priorKnowledgeLessonIds: ReadonlySet<string>;
   catchUpEligibleCount?: number;
+  /** Earlier work within the adaptive daily allocation, ahead of independent questions. */
+  catchUpPriorityCount?: number;
+  readiness?: StudyReadiness;
   archived: boolean;
   nodes: PathNode[];
   practiceByKey: ReadonlyMap<string, StudyFlowPracticeState>;
@@ -81,6 +90,8 @@ export interface BuildCourseStudyFlowSnapshotInput {
   examDateContext: ExamDateContext;
   meanReviewSeconds: number;
   practiceMilestones?: PracticeMilestone[];
+  reviewsToday?: number;
+  activity?: ReviewActivity;
   now?: number;
 }
 
@@ -142,6 +153,8 @@ export function buildCourseStudyFlowSnapshot({
   examDateContext,
   meanReviewSeconds,
   practiceMilestones = [],
+  reviewsToday = 0,
+  activity,
   now = Date.now(),
 }: BuildCourseStudyFlowSnapshotInput): CourseStudyFlowSnapshot {
   const milestoneByKey = new Map(
@@ -338,6 +351,22 @@ export function buildCourseStudyFlowSnapshot({
       cards.some((card) => card.lastReviewed !== null) ||
       nodes.some((node) => node.nodeType === 'lesson' && node.status === 'completed'),
     studyStartLessonId: course.studyStartLessonId,
+    hasStartedCurrentLesson:
+      course.studyStartLessonId !== undefined &&
+      (exposures.some((exposure) => exposure.lessonId === course.studyStartLessonId) ||
+        nodes.some(
+          (node) =>
+            node.nodeType === 'lesson' &&
+            node.id === course.studyStartLessonId &&
+            node.status === 'completed',
+        ) ||
+        lessonCardMembership(course.studyStartLessonId, cards, links).some(
+          (card) => card.lastReviewed !== null,
+        )),
+    reviewLimitReached: [course.dailyReviewGoal, course.maxReviewsPerDay].some((limit) =>
+      Boolean(limit && reviewsToday >= limit),
+    ),
+    learnFirst: course.learnFirst,
     priorKnowledgeLessonIds: earlier,
     catchUpEligibleCount: catchUpPracticePool(
       cards,
@@ -348,7 +377,22 @@ export function buildCourseStudyFlowSnapshot({
       reachedLessonIds,
       now,
       earlier,
+      true,
+      activity,
     ).length,
+    catchUpPriorityCount: catchUpPracticePool(
+      cards,
+      course,
+      lessons,
+      links,
+      examDateContext,
+      reachedLessonIds,
+      now,
+      earlier,
+      false,
+      activity,
+    ).length,
+    readiness: buildStudyReadiness({ course, cards, examDateContext, now }),
     archived: course.archived === true,
     nodes,
     practiceByKey,

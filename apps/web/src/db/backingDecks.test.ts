@@ -38,10 +38,10 @@ describe('scheduling-unit access', () => {
   it('bulk-resolves only units owned by the Course', async () => {
     const course = await createCourse('Biology');
     const lesson = await createLesson(course.id, 'Cells');
-    const other = await createCourse('Chemistry');
-    const units = await findBackingDecks(course.id, [lesson.id, other.id]);
+    await createCourse('Chemistry');
+    const units = await findBackingDecks(course.id);
 
-    expect([...units.keys()]).toEqual([null, lesson.id]);
+    expect(new Set(units.keys())).toEqual(new Set([null, lesson.id]));
   });
 
   it('updates and exactly restores scheduling performance', async () => {

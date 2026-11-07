@@ -131,14 +131,10 @@ export function useCourseBankBackingDeck(
 /** Resolve every lesson and unassigned backing deck for Cards in one live query. */
 export function useCourseBankBackingDecks(
   courseId: string | undefined,
-  lessonIds: readonly string[],
 ): Map<string | null, SchedulingUnitRecord> | undefined {
   return useLiveQuery(
-    () =>
-      courseId
-        ? findBackingDecks(courseId, lessonIds)
-        : new Map<string | null, SchedulingUnitRecord>(),
-    [courseId, lessonIds],
+    () => (courseId ? findBackingDecks(courseId) : new Map<string | null, SchedulingUnitRecord>()),
+    [courseId],
   );
 }
 

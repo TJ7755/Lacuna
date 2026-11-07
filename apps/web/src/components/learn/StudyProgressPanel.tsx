@@ -21,7 +21,6 @@ export function StudyProgressPanel({
   const { exam, fsrs } = progress;
   const recall = exam ? exam.value : fsrs.recallNow;
   const topics = progress.priorities.slice(0, VISIBLE_TOPICS);
-  const most = Math.max(1, ...topics.map((topic) => topic.dueCards));
 
   return (
     <section aria-label="Progress and priorities" className="study-progress-panel">
@@ -59,7 +58,7 @@ export function StudyProgressPanel({
       </div>
 
       {topics.length > 0 && (
-        <ol className="mt-8 space-y-5 border-t border-line pt-6">
+        <ol aria-label="Priority topics" className="mt-8 space-y-5 border-t border-line pt-6">
           {topics.map((topic, index) => {
             const next = topic.conceptId === nextConceptId;
             return (
@@ -69,20 +68,16 @@ export function StudyProgressPanel({
                 style={{ '--topic-index': index } as CSSProperties}
               >
                 <div className="flex items-baseline justify-between gap-4 text-base">
-                  <span className={`truncate ${next ? 'font-semibold' : 'text-ink-soft'}`}>
+                  <span
+                    className={`min-w-0 flex-1 [overflow-wrap:anywhere] ${next ? 'font-semibold' : 'text-ink-soft'}`}
+                  >
                     {topic.name}
                   </span>
-                  {topic.dueCards > 0 && (
-                    <span className="shrink-0 tabular-nums text-ink-soft">
-                      {topic.dueCards} due
-                    </span>
-                  )}
-                </div>
-                <div className="mt-2 h-1 overflow-hidden rounded-full bg-line" aria-hidden="true">
-                  <div
-                    className={`study-progress-bar h-full rounded-full ${next ? 'bg-accent' : 'bg-ink-faint'}`}
-                    style={{ width: `${(topic.dueCards / most) * 100}%` }}
-                  />
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-sm tabular-nums ${next ? 'bg-accent/10 text-ink' : 'bg-ink/5 text-ink-soft'}`}
+                  >
+                    {topic.dueCards} due
+                  </span>
                 </div>
               </li>
             );

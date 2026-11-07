@@ -1,11 +1,13 @@
-import { useId, useState } from 'react';
-import { AnimatePresence } from 'motion/react';
+import { useState } from 'react';
+import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import { Button } from '../ui/Button';
 import { CardsIcon } from '../ui/icons';
 import { ExpandingSheet } from '../ui/ExpandingSheet';
 import { QuestionSetRelatedCards } from './QuestionSetRelatedCards';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { MOTION_DURATION, MOTION_EASING } from '../ui/motion';
 
 export function QuestionSetRelatedKnowledge({
   courseId,
@@ -21,7 +23,6 @@ export function QuestionSetRelatedKnowledge({
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const descriptionId = useId();
   const cards = useLiveQuery(
     () =>
       db.cards
@@ -40,7 +41,6 @@ export function QuestionSetRelatedKnowledge({
         variant={submitted ? 'ghost' : 'secondary'}
         className={submitted ? 'qs-icon-button' : undefined}
         aria-label={submitted ? 'Related cards' : undefined}
-        aria-describedby={submitted ? undefined : descriptionId}
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchor)}
         aria-busy={busy}
@@ -70,11 +70,9 @@ export function QuestionSetRelatedKnowledge({
         <CardsIcon width={18} height={18} />
         {!submitted && (busy ? 'Saving assistance…' : 'Use related cards')}
       </Button>
-      {!submitted && (
-        <p id={descriptionId} className="qs-muted" role={busy ? 'status' : undefined}>
-          {busy
-            ? 'Saving assistance before opening your cards…'
-            : 'Opening these cards records this answer as assisted.'}
+      {busy && (
+        <p className="sr-only" role="status">
+          Saving assistance…
         </p>
       )}
       {error && <p role="alert">{error}</p>}
@@ -86,25 +84,36 @@ export function QuestionSetRelatedKnowledge({
             closeLabel="Close"
             autoFocusSelector="h2"
             onClose={close}
-            face={(headingId) => (
-              <header className="px-6 pb-2 pt-5 pr-16">
-                <h2 id={headingId} tabIndex={-1} className="font-display text-xl">
-                  Related cards
-                </h2>
-                <p className="mt-2 text-sm text-ink-soft">
-                  {submitted
-                    ? 'Review the knowledge linked to this question part.'
-                    : 'This answer is recorded as assisted. Your draft is kept while you use help.'}
-                </p>
-              </header>
-            )}
+            face={(headingId) => <RelatedCardsHeading id={headingId} />}
           >
             <div className="px-6 pb-6 pt-2">
-              <QuestionSetRelatedCards cards={cards} submitted={submitted} onClose={close} />
+              <QuestionSetRelatedCards cards={cards} />
             </div>
           </ExpandingSheet>
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function RelatedCardsHeading({ id }: { id: string }) {
+  const present = useIsPresent();
+  const [speed] = useMotionSpeed();
+  const multiplier = speedMultiplier(speed);
+  return (
+    <motion.header
+      className="px-6 pb-2 pt-5 pr-16"
+      initial={false}
+      // The sheet returns to a differently labelled trigger; fade its title before it contracts.
+      animate={{ opacity: present ? 1 : 0 }}
+      transition={{
+        duration: MOTION_DURATION.feedback * multiplier,
+        ease: MOTION_EASING.standard,
+      }}
+    >
+      <h2 id={id} tabIndex={-1} className="font-display text-xl">
+        Related cards
+      </h2>
+    </motion.header>
   );
 }

@@ -76,20 +76,21 @@
 .card-import-input[data-dragging='true'] .card-import-package {
   background: hsl(var(--accent-soft));
 }
-.card-import-source-meta {
+.card-import-input-tools {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 12px;
-  margin: 12px 0 16px;
-  font-size: 14px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.card-import-source-meta {
+  flex-shrink: 0;
   color: hsl(var(--ink-faint));
 }
-.card-import-source-meta span:last-child {
-  font-weight: 600;
-  color: hsl(var(--ink-soft));
-}
 .card-import-input details {
-  font-size: 14px;
+  min-width: 0;
+  text-align: right;
   color: hsl(var(--ink-soft));
 }
 .card-import-input summary {
@@ -100,17 +101,25 @@
   width: fit-content;
   padding-inline: 12px;
   margin-inline: -12px;
+  justify-content: flex-end;
+  gap: 6px;
   font-weight: 600;
-  color: hsl(var(--ink));
+}
+.card-import-input summary svg {
+  transition: transform calc(0.16s * var(--import-motion, 1));
+}
+.card-import-input details[open] summary svg {
+  transform: rotate(180deg);
 }
 .card-import-input details label {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: flex-end;
   margin: 8px 0;
 }
 .card-import-input details select {
   width: auto;
+  max-width: 100%;
 }
 .card-import-package {
   min-height: 260px;

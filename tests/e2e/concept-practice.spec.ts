@@ -286,7 +286,7 @@ for (const width of [1280, 390]) {
       await answer.fill('24 / 8 = 3 g/cm³');
       await fits(page);
       await capture(page, info, 'calculation');
-      await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
+      await page.getByRole('button', { name: 'Exit', exact: true }).click();
       await expect(page).toHaveURL(/\/questions$/);
       await importExample(page, 'static-multipart');
       await page.getByRole('button', { name: 'Resume question practice', exact: true }).click();
@@ -312,7 +312,7 @@ for (const width of [1280, 390]) {
       await expect(page.getByText(/No unseen questions remain/)).toBeVisible();
       await page.getByRole('button', { name: 'Practise familiar questions', exact: true }).click();
       await expect(page.locator('article.qs-paper')).toBeVisible();
-      await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
+      await page.getByRole('button', { name: 'Exit', exact: true }).click();
     });
 
     test('presents every finite family variant once before offering familiar questions', async ({
@@ -329,7 +329,7 @@ for (const width of [1280, 390]) {
         prompts.add(prompt);
         await fits(page);
         if (index === 0) await capture(page, info, 'numeric-family');
-        await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
+        await page.getByRole('button', { name: 'Exit', exact: true }).click();
       }
       await page.getByRole('button', { name: `Practise ${density}`, exact: true }).click();
       await expect(page.getByText(/No unseen questions remain/)).toBeVisible();

@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import { expectAppDestination } from '../../../../tests/helpers/expectAppDestination';
 import { createFixedQuestion } from '../questions/repository.authoring';
 import { createConcept } from '../questions/repository.concepts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +12,16 @@ import { loadQuestionSetDraft, saveQuestionSetDraft } from '../questions/questio
 import { open, resetEditorData, setup } from './questionSetEditorTestSupport';
 
 describe('Paper question set authoring', () => {
+  it('offers recovery for a missing course without opening a draft editor', async () => {
+    open('missing-course');
+
+    expect(
+      await screen.findByRole('heading', { name: 'This course could not be found.' }),
+    ).toBeVisible();
+    expectAppDestination(screen.getByRole('link', { name: 'Back to Today' }), '/');
+    expect(screen.queryByLabelText('Q1 question')).not.toBeInTheDocument();
+  });
+
   beforeEach(resetEditorData);
   afterEach(() => vi.restoreAllMocks());
 

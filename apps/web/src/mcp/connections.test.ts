@@ -8,10 +8,13 @@ describe('McpConnectionStore', () => {
     store.connect({ connectionId: 'two', name: 'Claude' }, 20);
 
     store.setGrant('one', 'course-1', 'write', 'Course One');
+    const retained = store.grants('one');
     expect(store.grants('one').hasScope('course-1', 'write')).toBe(true);
     expect(store.grants('two').hasScope('course-1', 'read')).toBe(false);
 
     store.disconnect('one');
+    expect(retained.list()).toEqual([]);
+    expect(() => retained.grant('course-1', 'write')).toThrow('MCP grant store is closed.');
     expect(() => store.grants('one')).toThrow('Unknown MCP connection');
     expect(store.list()).toEqual([
       {

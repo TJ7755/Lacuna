@@ -470,14 +470,16 @@ it.each([true, false])(
     await updateCourse(course.id, { studyStartLessonId: current.id, newCardsPerDay: 1 });
     const params = sessionParams({ courseId: course.id, catchUpPractice: true });
     const { result, unmount } = renderHook(() => useLearnSession(params));
+    let answeredId: string;
     try {
-      await waitFor(() => expect(result.current.current?.id).toBe(old.id));
-      expect(result.current.sessionCardIds).toEqual([old.id]);
+      await waitFor(() => expect(result.current.current).not.toBeNull());
+      expect(new Set(result.current.sessionCardIds)).toEqual(new Set([old.id, second.id]));
+      answeredId = result.current.current!.id;
       act(() => result.current.reveal());
       await act(async () => {
         await result.current.answer(true);
       });
-      const scheduled = await db.cards.get(old.id);
+      const scheduled = await db.cards.get(answeredId);
       expect(scheduled?.reps).toBeGreaterThan(0);
       expect(scheduled?.due).not.toBeNull();
       expect(await db.lessonCardExposures.where('lessonId').equals(earlier.id).count()).toBe(0);
@@ -489,7 +491,9 @@ it.each([true, false])(
     const resumed = renderHook(() => useLearnSession(resumedParams));
     try {
       await waitFor(() => expect(resumed.result.current.phase).not.toBe('loading'));
-      expect(resumed.result.current.sessionCardIds).not.toContain(second.id);
+      expect(resumed.result.current.sessionCardIds).toContain(
+        answeredId! === old.id ? second.id : old.id,
+      );
     } finally {
       resumed.unmount();
     }

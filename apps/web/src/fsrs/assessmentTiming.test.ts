@@ -91,7 +91,7 @@ describe('assessment timing prediction', () => {
 });
 
 describe('worthwhile early assessment practice', () => {
-  it('measures gains across the final fortnight and preserves final-day work', () => {
+  it('admits useful early work outside the urgent window while preserving spacing', () => {
     const ctx = context();
     const c = card('weak', 'course', {
       state: 2,
@@ -105,27 +105,25 @@ describe('worthwhile early assessment practice', () => {
     );
 
     expect(gains.every((gain) => gain >= 0.01)).toBe(true);
-    expect(worthwhileAssessmentPractice(c, NOW + MS_PER_DAY / 10, NOW, 14, ctx)).toBe(true);
-    expect(worthwhileAssessmentPractice(c, NOW + 14 * MS_PER_DAY, NOW, 14, ctx)).toBe(true);
-    expect(worthwhileAssessmentPractice(c, NOW + 14 * MS_PER_DAY + 1, NOW, 14, ctx)).toBe(false);
+    expect(worthwhileAssessmentPractice(c, NOW + MS_PER_DAY / 10, NOW, ctx)).toBe(true);
+    expect(worthwhileAssessmentPractice(c, NOW + 14 * MS_PER_DAY, NOW, ctx)).toBe(true);
+    expect(worthwhileAssessmentPractice(c, NOW + 30 * MS_PER_DAY, NOW, ctx)).toBe(true);
     expect(
       worthwhileAssessmentPractice(
         { ...c, lastReviewed: NOW - MS_PER_DAY / 2 },
         NOW + MS_PER_DAY / 10,
         NOW,
-        14,
         ctx,
       ),
     ).toBe(true);
     expect(
-      worthwhileAssessmentPractice({ ...c, lastReviewed: NOW }, NOW + MS_PER_DAY, NOW, 14, ctx),
+      worthwhileAssessmentPractice({ ...c, lastReviewed: NOW }, NOW + MS_PER_DAY, NOW, ctx),
     ).toBe(false);
     expect(
       worthwhileAssessmentPractice(
         { ...c, due: NOW, stability: 10000 },
         NOW + 30 * MS_PER_DAY,
         NOW,
-        14,
         ctx,
       ),
     ).toBe(true);

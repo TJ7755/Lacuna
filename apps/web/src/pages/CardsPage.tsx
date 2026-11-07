@@ -14,36 +14,25 @@ import {
   COURSE_PAGE_TITLE,
 } from '../components/course/coursePageLayout';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
-import { useDeferredValue, useMemo, useRef } from 'react';
+import { useCallback, useDeferredValue, useLayoutEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { AppLink as Link } from '../components/ui/AppLink';
 import { originFrom } from '../utils/editorOrigin';
 import {
   useCourse,
   useCourseCardProjections,
+  useLessons,
   useOcclusions,
   useSequences,
   useCourseBankBackingDecks,
 } from '../state/useCourseData';
-import { CardList } from '../components/cards/CardList';
-import { CardSections } from '../components/cards/CardSections';
-import { courseCardListContext } from '../components/cards/cardListContext';
-import { m as motion } from 'motion/react';
-import { MOTION_EASING } from '../components/ui/motion';
+import { CardsResults } from '../components/cards/CardsResults';
 import { PlusIcon } from '../components/ui/icons';
 import { CardsToolbar, CARD_FILTER_CHIPS } from '../components/cards/CardsToolbar';
 import { filterSessionCardPool, searchCardsInScope, type CardFilter } from '@lacuna/core/db/search';
-import { arrivalDelay } from './settings/SettingsUi';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
-import type {
-  Card,
-  Lesson,
-  Occlusion,
-  SchedulingUnitRecord,
-  Sequence,
-} from '@lacuna/core/db/types';
-import { useLessonOrderData } from '../state/useLessonOrderData';
+import type { Card } from '@lacuna/core/db/types';
+import { courseLessonOrderPreference, resolveLessonOrder } from '../course/lessonOrder';
 
 /**
  * Navigate from Cards so the destination's Back returns here with the same search,
@@ -53,7 +42,15 @@ import { useLessonOrderData } from '../state/useLessonOrderData';
 function useCardsNavigate() {
   const navigate = useNavigate();
   const location = useLocation();
-  return (to: string) => void navigate(to, { state: originFrom(location, 'Cards') });
+  // Results can skip input renders while edit actions still return to the latest URL.
+  const committed = useRef({ navigate, location });
+  useLayoutEffect(() => {
+    committed.current = { navigate, location };
+  }, [navigate, location]);
+  return useCallback((to: string) => {
+    const { navigate, location } = committed.current;
+    void navigate(to, { state: originFrom(location, 'Cards') });
+  }, []);
 }
 
 function readFilters(value: string | null): ReadonlySet<CardFilter> {
@@ -78,7 +75,8 @@ export function CardsPage() {
         else next.delete('q');
         return next;
       },
-      { replace: true },
+      // A transition-owned input can restore an older value between keystrokes.
+      { replace: true, flushSync: true },
     );
   const setFilters = (value: ReadonlySet<CardFilter>) =>
     setParams(
@@ -96,12 +94,18 @@ export function CardsPage() {
   const multiplier = speedMultiplier(motionSpeed);
 
   const course = useCourse(courseId);
-  const lessons = useLessonOrderData(courseId)?.lessons;
+  // Course identity and preferences are already live in the shell. Reuse the
+  // same lesson read as Course Path instead of loading its assessments again.
+  const publishedLessons = useLessons(courseId);
+  const preferredOrder = course ? courseLessonOrderPreference(course) : undefined;
+  const lessons = useMemo(
+    () => publishedLessons && resolveLessonOrder(publishedLessons, preferredOrder),
+    [publishedLessons, preferredOrder],
+  );
   const cards = useCourseCardProjections(courseId);
   const sequences = useSequences(courseId);
   const occlusions = useOcclusions(courseId);
-  const lessonIds = useMemo(() => lessons?.map((lesson) => lesson.id) ?? [], [lessons]);
-  const backingDecks = useCourseBankBackingDecks(courseId, lessonIds);
+  const backingDecks = useCourseBankBackingDecks(courseId);
   const query = deferredSearch.trim();
   useScopedFindShortcut(
     cards?.length
@@ -143,7 +147,12 @@ export function CardsPage() {
       query && course
         ? searchCardsInScope(
             query,
-            { cards: availableCards, courses: [course], lessons: availableLessons },
+            {
+              cards: availableCards,
+              courses: [course],
+              lessons: availableLessons,
+              occlusions: occlusions ?? [],
+            },
             { parseQuery: true },
           ).map((hit) => hit.card)
         : availableCards;
@@ -165,7 +174,7 @@ export function CardsPage() {
         (lesson) => (byLesson.get(lesson.id)?.length ?? 0) > 0,
       ),
     };
-  }, [cards, lessons, query, filters, course]);
+  }, [cards, lessons, occlusions, query, filters, course]);
 
   usePageShortcuts({
     '/': cards && cards.length > 0 ? () => searchRef.current?.focus() : undefined,
@@ -269,52 +278,20 @@ export function CardsPage() {
         </div>
       ) : (
         <div className={`${BUCKET_CLASS} flex flex-col`}>
-          <CardSections
-            entranceWindowMs={
-              (0.45 * multiplier +
-                arrivalDelay(lessonsWithCards.length - (unassigned.length ? 0 : 1), multiplier)) *
-              1000
-            }
-            sections={[...lessonsWithCards, ...(unassigned.length ? [null] : [])]}
-            cardCount={shownCount}
-            sectionKey={(lesson) => lesson?.id ?? 'unassigned'}
-          >
-            {(lesson, index, previouslyMounted) => (
-              <motion.div
-                initial={!previouslyMounted && multiplier > 0 ? { opacity: 0, y: 14 } : false}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.45 * multiplier,
-                  delay: arrivalDelay(index, multiplier),
-                  ease: MOTION_EASING.emphasised,
-                }}
-              >
-                {lesson ? (
-                  <LessonBucket
-                    courseId={courseId!}
-                    lesson={lesson}
-                    cards={byLesson.get(lesson.id) ?? []}
-                    deck={backingDecks?.get(lesson.id)}
-                    assignableLessons={assignableLessons}
-                    sequences={sequences.filter((s) => s.primaryLessonId === lesson.id)}
-                    occlusions={occlusions.filter((o) => o.primaryLessonId === lesson.id)}
-                    divided={index > 0}
-                  />
-                ) : (
-                  <UnassignedBucket
-                    courseId={courseId!}
-                    courseName={course.name}
-                    cards={unassigned}
-                    deck={backingDecks?.get(null)}
-                    assignableLessons={assignableLessons}
-                    sequences={sequences.filter((s) => s.primaryLessonId === null)}
-                    occlusions={occlusions.filter((o) => o.primaryLessonId === null)}
-                    divided={index > 0}
-                  />
-                )}
-              </motion.div>
-            )}
-          </CardSections>
+          <CardsResults
+            courseId={courseId!}
+            courseName={course.name}
+            multiplier={multiplier}
+            lessonsWithCards={lessonsWithCards}
+            unassigned={unassigned}
+            byLesson={byLesson}
+            shownCount={shownCount}
+            backingDecks={backingDecks}
+            assignableLessons={assignableLessons}
+            sequences={sequences}
+            occlusions={occlusions}
+            go={go}
+          />
         </div>
       )}
     </div>
@@ -323,128 +300,3 @@ export function CardsPage() {
 
 /** The course's cards share one flat hairline surface; lessons are divided within it. */
 const BUCKET_CLASS = 'rounded-3xl bg-surface p-4 card-surface md:p-5';
-
-/** Lessons after the first are divided by a rule; the motion wrapper is each one's parent. */
-const LESSON_SECTION_CLASS = 'pt-2';
-const DIVIDED_SECTION_CLASS = 'mt-3 border-t border-line !pt-5';
-
-interface AssignableLesson {
-  id: string;
-  name: string;
-}
-
-function LessonBucket({
-  courseId,
-  lesson,
-  cards,
-  deck,
-  assignableLessons,
-  sequences,
-  occlusions,
-  divided,
-}: {
-  courseId: string;
-  lesson: Lesson;
-  cards: Card[];
-  deck: SchedulingUnitRecord | undefined;
-  assignableLessons: AssignableLesson[];
-  sequences: Sequence[];
-  occlusions: Occlusion[];
-  divided: boolean;
-}) {
-  const go = useCardsNavigate();
-  const heading = (
-    <div className="flex min-w-0 flex-1 items-center gap-1 px-1 max-sm:basis-full max-sm:justify-between">
-      <h2 className="min-w-0 font-display text-xl font-semibold tracking-tight">
-        {lesson.name} <span className="font-normal text-ink-faint">({cards.length})</span>
-      </h2>
-      <Link
-        to={`/course/${courseId}/lesson/${lesson.id}`}
-        className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-      >
-        Open lesson
-      </Link>
-    </div>
-  );
-  return (
-    <section className={`${LESSON_SECTION_CLASS} ${divided ? DIVIDED_SECTION_CLASS : ''}`}>
-      {deck ? (
-        <CardList
-          heading={heading}
-          cards={cards}
-          context={courseCardListContext({
-            schedulingConfig: deck,
-            courseId,
-            primaryLessonId: lesson.id,
-            importTargetName: lesson.name,
-          })}
-          hideHeader
-          stickyHeader
-          courseId={courseId}
-          assignableLessons={assignableLessons}
-          onEditCard={(card) => go(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`)}
-          sequences={sequences}
-          onEditSequence={(sequenceId) => go(`/course/${courseId}/sequence/${sequenceId}/edit`)}
-          occlusions={occlusions}
-          onEditOcclusion={(occlusionId) => go(`/course/${courseId}/occlusion/${occlusionId}/edit`)}
-        />
-      ) : (
-        <div className="mb-3">{heading}</div>
-      )}
-    </section>
-  );
-}
-
-function UnassignedBucket({
-  courseId,
-  courseName,
-  cards,
-  deck,
-  assignableLessons,
-  sequences,
-  occlusions,
-  divided,
-}: {
-  courseId: string;
-  courseName: string;
-  cards: Card[];
-  deck: SchedulingUnitRecord | undefined;
-  assignableLessons: AssignableLesson[];
-  sequences: Sequence[];
-  occlusions: Occlusion[];
-  divided: boolean;
-}) {
-  const go = useCardsNavigate();
-  const heading = (
-    <h2 className="px-1 font-display text-xl font-semibold tracking-tight">
-      Unassigned <span className="font-normal text-ink-faint">({cards.length})</span>
-    </h2>
-  );
-  return (
-    <section className={`${LESSON_SECTION_CLASS} ${divided ? DIVIDED_SECTION_CLASS : ''}`}>
-      {deck ? (
-        <CardList
-          heading={heading}
-          cards={cards}
-          context={courseCardListContext({
-            schedulingConfig: deck,
-            courseId,
-            primaryLessonId: null,
-            importTargetName: courseName,
-          })}
-          hideHeader
-          stickyHeader
-          courseId={courseId}
-          assignableLessons={assignableLessons}
-          onEditCard={(card) => go(`/course/${courseId}/cards/${card.id}/edit`)}
-          sequences={sequences}
-          onEditSequence={(sequenceId) => go(`/course/${courseId}/sequence/${sequenceId}/edit`)}
-          occlusions={occlusions}
-          onEditOcclusion={(occlusionId) => go(`/course/${courseId}/occlusion/${occlusionId}/edit`)}
-        />
-      ) : (
-        <div className="mb-3">{heading}</div>
-      )}
-    </section>
-  );
-}

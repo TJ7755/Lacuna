@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AudioCardEditor } from './AudioCardEditor';
 import { storeAudioBlob } from '../../db/assets';
@@ -16,6 +16,100 @@ vi.mock('../../db/assetCache', () => ({
 }));
 
 describe('AudioCardEditor', () => {
+  it('releases the parent busy state when a pending upload fails or unmounts', async () => {
+    let reject: ((error: Error) => void) | undefined;
+    vi.mocked(storeAudioBlob).mockImplementationOnce(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail;
+        }),
+    );
+    const onBusyChange = vi.fn();
+    const onError = vi.fn();
+    const view = render(
+      <AudioCardEditor
+        front=""
+        back=""
+        onFrontChange={vi.fn()}
+        onBackChange={vi.fn()}
+        onError={onError}
+        onBusyChange={onBusyChange}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Choose file'), {
+      target: { files: [new File(['clip'], 'clip.wav', { type: 'audio/wav' })] },
+    });
+    expect(onBusyChange).toHaveBeenLastCalledWith(true);
+    await act(async () => reject?.(new Error('Storage full')));
+    expect(onError).toHaveBeenCalledWith('Storage full');
+    expect(onBusyChange).toHaveBeenLastCalledWith(false);
+    vi.mocked(storeAudioBlob).mockImplementationOnce(() => new Promise(() => {}));
+    fireEvent.change(screen.getByLabelText('Choose file'), {
+      target: { files: [new File(['clip'], 'clip.wav', { type: 'audio/wav' })] },
+    });
+    expect(onBusyChange).toHaveBeenLastCalledWith(true);
+    view.unmount();
+    expect(onBusyChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('holds the parent busy state through permission and recording, then releases it on recorder error', async () => {
+    let grant: ((stream: MediaStream) => void) | undefined;
+    const recorders: FakeRecorder[] = [];
+    const stop = vi.fn();
+    const getUserMedia = vi.fn(
+      () =>
+        new Promise<MediaStream>((resolve) => {
+          grant = resolve;
+        }),
+    );
+    class FakeRecorder {
+      static isTypeSupported() {
+        return true;
+      }
+      onerror: (() => void) | null = null;
+      ondataavailable: ((event: { data: Blob }) => void) | null = null;
+      onstop: (() => void) | null = null;
+      constructor() {
+        recorders.push(this);
+      }
+      start() {}
+      stop() {
+        this.onstop?.();
+      }
+    }
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } });
+    vi.stubGlobal('MediaRecorder', FakeRecorder);
+    const onBusyChange = vi.fn();
+    const onError = vi.fn();
+    render(
+      <AudioCardEditor
+        front=""
+        back=""
+        onFrontChange={vi.fn()}
+        onBackChange={vi.fn()}
+        onError={onError}
+        onBusyChange={onBusyChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Record' }));
+    expect(onBusyChange).toHaveBeenLastCalledWith(true);
+    await act(async () => grant?.({ getTracks: () => [{ stop }] } as unknown as MediaStream));
+    expect(screen.getByRole('button', { name: 'Stop recording' })).toBeEnabled();
+    expect(onBusyChange).toHaveBeenLastCalledWith(true);
+    act(() => recorders.at(-1)?.onerror?.());
+    expect(onBusyChange).toHaveBeenLastCalledWith(false);
+    expect(stop).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith('Could not record audio. Try again.');
+    fireEvent.click(screen.getByRole('button', { name: 'Record' }));
+    expect(getUserMedia).toHaveBeenCalledTimes(2);
+    await act(async () => grant?.({ getTracks: () => [{ stop }] } as unknown as MediaStream));
+    recorders[0].ondataavailable?.({ data: new Blob(['obsolete']) });
+    recorders[1].ondataavailable?.({ data: new Blob(['new']) });
+    fireEvent.click(screen.getByRole('button', { name: 'Stop recording' }));
+    await waitFor(() => expect(onBusyChange).toHaveBeenLastCalledWith(false));
+    expect(vi.mocked(storeAudioBlob).mock.lastCall?.[0].size).toBe(3);
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -98,7 +192,7 @@ describe('AudioCardEditor', () => {
       />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Listen and translate:'), {
+    fireEvent.change(screen.getByLabelText('Prompt (optional)'), {
       target: { value: 'New prompt' },
     });
     expect(onFrontChange).toHaveBeenCalledWith(`New prompt\n\n![audio](lacuna-asset://${hash})`);

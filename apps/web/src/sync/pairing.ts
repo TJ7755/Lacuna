@@ -215,7 +215,7 @@ export async function unlockSyncState(
       channelId: id,
     });
     const credentials: SyncCredentials = { relayUrl: url, channelId: id, ...opened };
-    await rememberCredentials(credentials);
+    await rememberCredentials(credentials, state);
     return credentials;
   } catch (error) {
     if (error instanceof SyncCryptoPassphraseError) {
@@ -225,15 +225,18 @@ export async function unlockSyncState(
   }
 }
 
-async function rememberCredentials(credentials: SyncCredentials): Promise<void> {
-  await updateSyncState((current) =>
-    current
-      ? {
-          ...current,
-          remembered: serialiseRememberedCredentials(credentials),
-        }
-      : current,
-  );
+async function rememberCredentials(credentials: SyncCredentials, owner: SyncState): Promise<void> {
+  await updateSyncState((current) => {
+    // Key derivation yields: only the pairing whose keybag was opened may gain this key.
+    if (
+      current?.channelId !== owner.channelId ||
+      current?.relayUrl !== owner.relayUrl ||
+      current?.wrappedKeyMaterial !== owner.wrappedKeyMaterial
+    ) {
+      throw new SyncPairingError('The sync pairing changed while it was being unlocked.');
+    }
+    return { ...current, remembered: serialiseRememberedCredentials(credentials) };
+  });
 }
 
 export async function unpair(): Promise<void> {

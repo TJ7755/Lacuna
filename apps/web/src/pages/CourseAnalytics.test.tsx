@@ -198,6 +198,24 @@ describe('CourseAnalytics', () => {
     mocks.records = records(mocks.course);
   });
 
+  it('offers recovery for a missing course before waiting for dependent analytics', () => {
+    mocks.records = { ...records(mocks.course), course: null };
+    mocks.questionData = undefined;
+    render(
+      <MemoryRouter initialEntries={['/course/missing/analytics']}>
+        <Routes>
+          <Route path="/course/:courseId/analytics" element={<CourseAnalytics />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'This course could not be found.' })).toBeVisible();
+    expectAppDestination(screen.getByRole('link', { name: 'Back to Today' }), '/');
+    expect(
+      screen.queryByRole('status', { name: 'Loading course analytics' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('renders Question evidence separately with novel generated performance as the headline', () => {
     const question = generatedQuestion();
     mocks.questionData = {

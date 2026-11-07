@@ -171,7 +171,7 @@ for (const diagnostic of [false, true])
       page.getByText('Automatic marking was not sure enough. Choose a mark.', { exact: true }),
     ).toHaveCount(0);
     const attemptUrl = page.url();
-    await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
+    await page.getByRole('button', { name: 'Exit', exact: true }).click();
     await page.goto(attemptUrl);
     await expect(unsure).toBeChecked();
     await page.reload();
@@ -266,7 +266,7 @@ for (const viewport of [
     );
     await chooseZero(page);
     const attemptUrl = page.url();
-    await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
+    await page.getByRole('button', { name: 'Exit', exact: true }).click();
     await page.goto('/#/settings#settings-jev');
     const status = page.getByRole('status').filter({ hasText: 'Paused: too many requests.' });
     await expect(status).toContainText('Try again after');

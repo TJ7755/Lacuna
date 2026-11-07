@@ -153,6 +153,7 @@ export function CardAuthoringFields({
                 onFrontChange={(value) => modifyDraftField(setFront, value)}
                 onBackChange={(value) => modifyDraftField(setBack, value)}
                 onError={(message) => notify(message, 'negative')}
+                onBusyChange={save.setMediaBusy}
               />
             </div>
           ) : isNumeric || isWorking ? (

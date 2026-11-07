@@ -16,6 +16,19 @@ for (const provider of ['external', 'hosted']) {
         }),
       );
       localStorage.setItem('lacuna.answerInput', 'type');
+      localStorage.setItem('lacuna.aiHostedAccess', 'a'.repeat(40));
+      localStorage.setItem(
+        'lacuna-ai-hosted-session-v1',
+        JSON.stringify({
+          version: 1,
+          conversationId: 'legacy-chat',
+          items: [],
+          draft: 'Saved chat draft',
+          queuedFollowUp: null,
+          approval: null,
+          toolState: { grants: [], approvals: [], ledger: [] },
+        }),
+      );
     }, provider);
     const requests: string[] = [];
     await page.route('**/api/ai/**', (route) => {
@@ -41,6 +54,7 @@ for (const provider of ['external', 'hosted']) {
     await expect(page.getByRole('button', { name: 'AI', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Assistant', exact: true })).toHaveCount(0);
     await expect(page.getByRole('complementary', { name: 'AI conversation' })).toHaveCount(0);
+    await expect(page.getByText('Saved chat draft', { exact: true })).toHaveCount(0);
     expect(requests).toEqual([]);
 
     await page.getByRole('switch', { name: 'Mark my answers automatically' }).click();
@@ -73,5 +87,13 @@ for (const provider of ['external', 'hosted']) {
     await expect(page.getByRole('switch', { name: 'Mark my answers automatically' })).toBeChecked();
     await expect(page.getByLabel('Access code')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'AI', exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => localStorage.getItem('lacuna.aiHostedAccess'))).toBe(
+      'a'.repeat(40),
+    );
+    expect(
+      await page.evaluate(
+        () => JSON.parse(localStorage.getItem('lacuna-ai-hosted-session-v1')!).draft,
+      ),
+    ).toBe('Saved chat draft');
   });
 }

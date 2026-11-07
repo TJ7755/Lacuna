@@ -189,6 +189,7 @@ for (const manyLessons of [false, true]) {
                 y: 0.3,
                 w: 0.1,
                 h: 0.1,
+                answerText: `Region answer ${index * 8 + group * 4 + region}`,
               })),
             });
             for (let region = 0; region < 4; region++) {
@@ -197,7 +198,7 @@ for (const manyLessons of [false, true]) {
                 ...cards[0],
                 id: `image-card-${number}`,
                 front: `Image prompt ${number}`,
-                back: `Image answer ${number}`,
+                back: `Image prompt ${number}`,
                 primaryLessonId: ownerLessonId,
                 schedulingUnitId: ownerLessonId,
                 deckId: ownerLessonId,
@@ -275,6 +276,10 @@ for (const manyLessons of [false, true]) {
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toHaveAttribute('data-card-id', 'image-card-159');
     await expect(search).toBeFocused();
+    await search.fill('Region answer 159');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toHaveAttribute('data-card-id', 'image-card-159');
+    await expect(rows.first().locator('[data-card-answer]')).toHaveText('Region answer 159');
     await search.fill('');
     await expect(page.locator('[data-card-id="image-card-0"]')).toBeVisible();
     await expect.poll(() => rows.count()).toBeLessThan(40);

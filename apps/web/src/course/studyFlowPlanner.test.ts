@@ -176,7 +176,7 @@ describe('planNextStudyStep', () => {
 
   it('moves from recall to independent Questions and repairs demonstrated knowledge gaps first', () => {
     const next = {
-      ...snapshot([lessonNode('1', 'completed')], [], 20),
+      ...snapshot([lessonNode('1', 'completed')]),
       questionScopeConceptIds: ['enzymes'],
       questionOptions: [
         {
@@ -192,7 +192,7 @@ describe('planNextStudyStep', () => {
       mode: 'recurring' as const,
       label: 'Review due cards',
     };
-    expect(planNextStudyStep(next, true, due)).toMatchObject({
+    expect(planNextStudyStep(next, due)).toMatchObject({
       kind: 'step',
       step: { kind: 'exam-questions', conceptId: 'enzymes' },
     });
@@ -209,7 +209,7 @@ describe('planNextStudyStep', () => {
       step: { kind: 'lesson', lessonId: '1' },
     });
     expect(
-      planNextStudyStep(repair, true, { kind: 'lesson', lessonId: '1', label: 'Notes' }),
+      planNextStudyStep(repair, { kind: 'lesson', lessonId: '1', label: 'Notes' }),
     ).toMatchObject({ kind: 'step', step: { kind: 'exam-questions' } });
   });
 });
@@ -245,7 +245,7 @@ describe('mid-course entry', () => {
     ).toMatchObject({ kind: 'step', step: { mode: 'catch-up' } });
   });
 
-  it('can finish the flow without automatically repeating completed catch-up', () => {
+  it('keeps offering catch-up after a block finishes while earlier work remains', () => {
     expect(
       planNextStudyStep(
         {
@@ -253,9 +253,83 @@ describe('mid-course entry', () => {
           catchUpEligibleCount: 20,
           nodes: [nodes[0], nodes[1], lessonNode('2', 'completed'), nodes[3]],
         },
-        false,
+        { kind: 'practice', nodeKey: 'catch-up', mode: 'catch-up', label: 'Earlier material' },
       ),
-    ).toEqual({ kind: 'blocked', reason: 'curriculum-locked' });
+    ).toMatchObject({ kind: 'step', step: { mode: 'catch-up' } });
+  });
+
+  it('prioritises the daily catch-up allocation over questions and later lessons', () => {
+    const input = {
+      ...joined(),
+      nodes: [nodes[0], lessonNode('2', 'completed'), lessonNode('3', 'available')],
+      catchUpEligibleCount: 40,
+      catchUpPriorityCount: 20,
+      questionOptions: [{ conceptId: 'topic', name: 'Application' }],
+    };
+    expect(planNextStudyStep(input)).toMatchObject({ kind: 'step', step: { mode: 'catch-up' } });
+    expect(planNextStudyStep({ ...input, catchUpPriorityCount: 0 })).toMatchObject({
+      kind: 'step',
+      step: { kind: 'exam-questions' },
+    });
+    expect(planNextStudyStep({ ...input, recurringPracticeEligibleCount: 1 })).toMatchObject({
+      kind: 'step',
+      step: { mode: 'recurring' },
+    });
+  });
+
+  it('honours the joining lesson before catch-up and independent questions', () => {
+    expect(
+      planNextStudyStep({
+        ...joined(),
+        catchUpPriorityCount: 20,
+        catchUpEligibleCount: 40,
+        questionOptions: [{ conceptId: 'topic', name: 'Application' }],
+      }),
+    ).toMatchObject({ kind: 'step', step: { lessonId: '2' } });
+  });
+
+  it('does not force a partially introduced joining lesson ahead of catch-up', () => {
+    expect(
+      planNextStudyStep({
+        ...joined(),
+        hasStartedCurrentLesson: true,
+        catchUpPriorityCount: 20,
+        catchUpEligibleCount: 40,
+      }),
+    ).toMatchObject({ kind: 'step', step: { mode: 'catch-up' } });
+  });
+
+  it('moves to questions when a saved daily review goal prevents more card practice', () => {
+    const input = {
+      ...joined(),
+      reviewLimitReached: true,
+      learnFirst: false,
+      recurringPracticeEligibleCount: 1,
+      catchUpPriorityCount: 20,
+      catchUpEligibleCount: 40,
+      readiness: { totalCount: 40, belowTargetCount: 40, unintroducedCount: 40, ready: false },
+      questionOptions: [{ conceptId: 'topic', name: 'Application' }],
+      nodes: [lessonNode('1', 'available'), lessonNode('2', 'available')],
+    };
+    expect(planNextStudyStep(input)).toMatchObject({
+      kind: 'step',
+      step: { kind: 'exam-questions' },
+    });
+    expect(planNextStudyStep({ ...input, questionOptions: [] })).toEqual({ kind: 'waiting' });
+  });
+
+  it('waits for productive practice instead of declaring weak material ready', () => {
+    const input = {
+      ...snapshot([lessonNode('1', 'completed')]),
+      readiness: { totalCount: 2, belowTargetCount: 1, unintroducedCount: 0, ready: false },
+    };
+    expect(planNextStudyStep(input)).toEqual({ kind: 'waiting' });
+    expect(
+      planNextStudyStep({
+        ...input,
+        readiness: { ...input.readiness, belowTargetCount: 0, ready: true },
+      }),
+    ).toEqual({ kind: 'complete' });
   });
 
   it('starts at the chosen core lesson even when an extension precedes it', () => {

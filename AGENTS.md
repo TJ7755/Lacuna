@@ -1,5 +1,7 @@
 Use British English and no emojis. Keep changes scoped; inspect current code and callers, and extend existing systems.
 Operational procedures: docs/README.md. Contribution and validation policy: CONTRIBUTING.md.
+
+NEVER add or retain text, controls or any other page element unless it serves an aesthetic function or is essential to the page's function. Preserve generous spacing. Put non-essential explanations in Help or documentation. Do not add keyboard shortcuts or alternate controls when an existing button already performs the action.
 Do not use harness memory features or read, create or update MEMORIES.md.
 NEVER use computer use without explicit permission from the user. Using the preview browser and Playwright to capture images is permitted without additional permission.
 

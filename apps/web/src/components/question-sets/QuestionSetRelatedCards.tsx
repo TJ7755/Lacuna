@@ -4,15 +4,7 @@ import { CardContent } from '../cards/CardContent';
 import { Button } from '../ui/Button';
 
 /** Consultation stays on one card; changing cards never reveals the next answer. */
-export function QuestionSetRelatedCards({
-  cards,
-  submitted,
-  onClose,
-}: {
-  cards: Card[];
-  submitted: boolean;
-  onClose: () => void;
-}) {
+export function QuestionSetRelatedCards({ cards }: { cards: Card[] }) {
   const [selectedId, setSelectedId] = useState(cards[0]?.id);
   const index = Math.max(
     0,
@@ -45,9 +37,6 @@ export function QuestionSetRelatedCards({
       <div className="qs-related-card" ref={reader}>
         <RelatedCard key={card.id} card={card} />
       </div>
-      <Button variant="primary" onClick={onClose}>
-        {submitted ? 'Return to marking' : 'Return to answer'}
-      </Button>
     </div>
   );
 }

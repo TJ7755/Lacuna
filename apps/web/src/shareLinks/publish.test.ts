@@ -158,9 +158,13 @@ describe('publishShareLink', () => {
     await publishShareLink(course.id, { relayUrl: RELAY_URL, fetchImpl });
     await forgetShareCredentials(SHARE_ID);
 
-    await expect(publishShareLink(course.id, { relayUrl: RELAY_URL, fetchImpl })).rejects.toThrow(
-      ShareLinkNeedsReplacementError,
-    );
+    const before = (await db.courses.get(course.id))!.distribution;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await expect(publishShareLink(course.id, { relayUrl: RELAY_URL, fetchImpl })).rejects.toThrow(
+        ShareLinkNeedsReplacementError,
+      );
+      expect((await db.courses.get(course.id))!.distribution).toEqual(before);
+    }
     expect(relay.mintCount()).toBe(1);
     expect((await db.courses.get(course.id))?.distribution?.shareId).toBe(SHARE_ID);
   });

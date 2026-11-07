@@ -10,11 +10,11 @@ export interface BackupStatus {
 
 /** Plain-language state of the newest restore point, for the Your data hero. */
 export function backupStatus(lastAt: number | null, now: number = Date.now()): BackupStatus {
-  if (lastAt === null) return { label: 'No backup yet', tone: 'stale' };
+  if (lastAt === null) return { label: 'No restore point yet', tone: 'stale' };
   const age = now - lastAt;
   const when = formatRelativeTime(lastAt, now);
-  if (age < 60 * 1000) return { label: 'Backed up just now', tone: 'fresh' };
+  if (age < 60 * 1000) return { label: 'Restore point saved just now', tone: 'fresh' };
   return age >= STALE_BACKUP_MS
-    ? { label: `Last backup ${when}`, tone: 'stale' }
-    : { label: `Backed up ${when}`, tone: 'fresh' };
+    ? { label: `Last restore point ${when}`, tone: 'stale' }
+    : { label: `Restore point saved ${when}`, tone: 'fresh' };
 }

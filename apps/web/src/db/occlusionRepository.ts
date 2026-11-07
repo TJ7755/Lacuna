@@ -8,6 +8,7 @@
 
 import type { Transaction } from 'dexie';
 import { db, makeId } from './schema';
+import { friendlyDbError } from './dbErrors';
 import type {
   Card,
   LessonCardExposure,
@@ -79,15 +80,6 @@ async function clearGeneratedCardCascade(
     'lessonCardExposures',
     exposures.map((exposure) => lessonCardExposureId(exposure.lessonId, exposure.cardId)),
   );
-}
-
-/** Convert low-level IndexedDB errors into user-friendly messages (mirrors repository.ts's friendlyDbError). */
-function friendlyDbError(err: unknown): Error {
-  if (err instanceof DOMException && err.name === 'QuotaExceededError') {
-    return new Error('Your browser storage is full. Free up space or export your data to a file.');
-  }
-  if (err instanceof Error) return err;
-  return new Error(String(err));
 }
 
 // Guarantees createOcclusion's createdAt strictly increases even when two occlusions are

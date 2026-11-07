@@ -130,6 +130,74 @@ beforeEach(() => {
 });
 
 describe('SequenceEditor', () => {
+  it.each(['Cancel', 'Back to Cards'])(
+    'keeps unsaved work until %s is confirmed',
+    async (action) => {
+      mockCourse = course;
+      renderNew();
+      fireEvent.change(screen.getByLabelText('Sequence name'), {
+        target: { value: 'Respiration' },
+      });
+      type(1, 'Glycolysis');
+      const target = screen.getByRole(action === 'Cancel' ? 'button' : 'link', { name: action });
+      fireEvent.click(target);
+      expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+      expect(field(1)).toHaveValue('Glycolysis');
+      fireEvent.click(target);
+      fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+      await screen.findByText('Cards');
+    },
+  );
+
+  it('warns on reload only after an authoring change', () => {
+    mockCourse = course;
+    renderNew();
+    const pristine = new Event('beforeunload', { cancelable: true });
+    fireEvent(window, pristine);
+    expect(pristine.defaultPrevented).toBe(false);
+    type(1, 'Glycolysis');
+    const dirty = new Event('beforeunload', { cancelable: true });
+    fireEvent(window, dirty);
+    expect(dirty.defaultPrevented).toBe(true);
+  });
+
+  it('retains authoring work and explains a failed save', async () => {
+    mockCourse = course;
+    createSequence.mockRejectedValueOnce(new Error('Storage full'));
+    renderNew();
+    fireEvent.change(screen.getByLabelText('Sequence name'), { target: { value: 'Respiration' } });
+    paste(1, 'Glycolysis\nKrebs cycle');
+    fireEvent.click(screen.getByRole('button', { name: 'Add sequence' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not save the sequence. Try again.',
+    );
+    expect(field(1)).toHaveValue('Glycolysis');
+    expect(screen.getByLabelText('Sequence name')).toHaveValue('Respiration');
+    expect(screen.getByRole('button', { name: 'Add sequence' })).toBeEnabled();
+  });
+
+  it('keeps edits made while an earlier version is saving', async () => {
+    mockCourse = course;
+    let complete: (() => void) | undefined;
+    createSequence.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          complete = resolve;
+        }),
+    );
+    renderNew();
+    const name = screen.getByLabelText('Sequence name');
+    fireEvent.change(name, { target: { value: 'Respiration' } });
+    paste(1, 'Glycolysis\nKrebs cycle');
+    fireEvent.click(screen.getByRole('button', { name: 'Add sequence' }));
+    fireEvent.change(name, { target: { value: 'Newer unsaved title' } });
+    await act(async () => complete?.());
+    expect(await screen.findByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(name).toHaveValue('Newer unsaved title');
+  });
+
   it.each(['course', 'lesson', 'sequence'] as const)(
     'keeps the missing-%s state aligned and its Back target full-size',
     (missing) => {

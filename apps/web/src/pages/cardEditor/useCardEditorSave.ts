@@ -56,6 +56,7 @@ export function useCardEditorSave({
 
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
+  const [mediaBusy, setMediaBusy] = useState(false);
   const { showSaved, flashSaved, afterSaved } = useCardSaveConfirmation(draft.currentDraftKey);
   const [shakeField, setShakeField] = useState<string | null>(null);
   const [shakeNonce, setShakeNonce] = useState(0);
@@ -75,13 +76,14 @@ export function useCardEditorSave({
   const backValid = isCloze || isStructured || back.trim().length > 0;
   const numericValid = !isNumeric || numericAnswerSpecIsValid(numericAnswer);
   const editable = Boolean(course && canEditLessons(course));
-  const canSave = editable && frontValid && backValid && clozeValid && numericValid && workingValid;
+  const canSave =
+    editable && !mediaBusy && frontValid && backValid && clozeValid && numericValid && workingValid;
   const canReverse = !editing && !isCloze && !isBasicReversed && !isStructured && !isAudio;
   // Front / back and Basic (reversed) share a form; every other type has its own.
   const formKind = isBasicReversed ? 'front_back' : type;
 
   async function handleSave(andAnother = false) {
-    if (!editable || savingRef.current) return;
+    if (!editable || savingRef.current || mediaBusy) return;
     const missingOwner = lessonMode ? !courseId || !lessonId : !courseId;
     if (!canSave || missingOwner) {
       // Shake the first invalid field to give the user tactile feedback on why save is blocked.
@@ -240,6 +242,7 @@ export function useCardEditorSave({
   }
 
   return {
+    setMediaBusy,
     handleSave,
     saving,
     addedCount,

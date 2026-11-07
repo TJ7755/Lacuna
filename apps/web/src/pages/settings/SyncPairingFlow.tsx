@@ -52,7 +52,6 @@ export function SyncPairingFlow({
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const scannerElementRef = useRef<HTMLDivElement>(null);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
     if (methodArrow.current) {
@@ -113,7 +112,6 @@ export function SyncPairingFlow({
         const { Html5Qrcode } = await import('html5-qrcode');
         if (cancelled || !scannerElementRef.current) return;
         scanner = new Html5Qrcode(scannerElementRef.current.id);
-        scannerRef.current = scanner;
         await scanner.start(
           { facingMode: 'environment' },
           { fps: 10, qrbox: { width: 250, height: 250 } },
@@ -121,7 +119,6 @@ export function SyncPairingFlow({
             if (cancelled || !scanner) return;
             const current = scanner;
             scanner = null;
-            scannerRef.current = null;
             await stop(current);
             setScanning(false);
             try {
@@ -140,12 +137,16 @@ export function SyncPairingFlow({
             // No code in this frame; keep scanning silently.
           },
         );
+        // stop() can reject while start() is still awaiting camera permission.
+        // Once startup completes, release an instance whose view has already closed.
+        if (cancelled && scanner) {
+          await stop(scanner);
+        }
       } catch (error) {
         if (scanner) {
           await stop(scanner);
           scanner = null;
         }
-        scannerRef.current = null;
         if (cancelled) return;
         setScanning(false);
         setScanError(
@@ -156,9 +157,7 @@ export function SyncPairingFlow({
 
     return () => {
       cancelled = true;
-      const current = scannerRef.current;
-      scannerRef.current = null;
-      if (current) void stop(current);
+      if (scanner) void stop(scanner);
     };
   }, [scanning]);
 

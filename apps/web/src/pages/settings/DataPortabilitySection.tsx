@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { UnifiedExportPanel } from '../../components/import/UnifiedExportPanel';
 import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
-import { UploadIcon } from '../../components/ui/icons';
+import { AlertIcon, CalendarIcon, FileTextIcon, UploadIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import type { ImportMode } from '../../db/portability';
+import { friendlyDbError } from '../../db/dbErrors';
 import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 import type { BackupFile } from '@lacuna/core/db/types';
 import type * as ManualMergeModule from '../../sync/manualMerge';
@@ -63,33 +64,69 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [pendingCombine, setPendingCombine] = useState<BackupFile | null>(null);
   const [combineBusy, setCombineBusy] = useState(false);
+  const [importMode, setImportMode] = useState<ImportMode | null>(null);
+  const [reading, setReading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState('');
+  const operationRef = useRef(false);
+  const mountedRef = useRef(true);
+  const busy = combineBusy || reading || importMode !== null;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  function reportError(message: string) {
+    if (mountedRef.current) setError(message);
+    else notify(message, 'negative');
+  }
 
   async function handleRecoverFile(file: File) {
-    if (combineBusy) return;
+    if (operationRef.current) return;
+    operationRef.current = true;
+    setReading(true);
+    setError(null);
     try {
-      setPendingCombine(null);
       const { readBackupFile } = await import('../../db/portability');
       setPending(await readBackupFile(file));
+      setPendingCombine(null);
+      setConfirmReplace(false);
+      setFileName(file.name);
     } catch (error) {
-      notify(error instanceof Error ? error.message : 'Invalid file.', 'negative');
+      reportError(error instanceof Error ? error.message : 'Invalid file.');
+    } finally {
+      operationRef.current = false;
+      setReading(false);
     }
   }
 
   async function handleCombineFile(file: File) {
-    if (combineBusy) return;
+    if (operationRef.current) return;
+    operationRef.current = true;
+    setReading(true);
+    setError(null);
     try {
-      setPending(null);
-      setConfirmReplace(false);
       const { readBackupFile } = await import('../../db/portability');
       setPendingCombine(await readBackupFile(file));
+      setPending(null);
+      setConfirmReplace(false);
+      setFileName(file.name);
     } catch (error) {
-      notify(error instanceof Error ? error.message : 'Invalid file.', 'negative');
+      reportError(error instanceof Error ? error.message : 'Invalid file.');
+    } finally {
+      operationRef.current = false;
+      setReading(false);
     }
   }
 
   async function runCombine() {
-    if (!pendingCombine || combineBusy) return;
+    if (!pendingCombine || operationRef.current) return;
+    operationRef.current = true;
     setCombineBusy(true);
+    setError(null);
     let mergeModule: typeof ManualMergeModule | undefined;
     try {
       mergeModule = await import('../../sync/manualMerge');
@@ -102,19 +139,20 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
         mergeModule !== undefined &&
         error instanceof mergeModule.ManualMergeError &&
         error.databaseModified;
-      notify(
-        modified
-          ? `${message} Restore from Automatic backups if this installation looks wrong.`
-          : message,
-        'negative',
+      reportError(
+        modified ? `${message} Use a restore point if this installation looks wrong.` : message,
       );
     } finally {
+      operationRef.current = false;
       setCombineBusy(false);
     }
   }
 
   async function runImport(mode: ImportMode) {
-    if (!pending) return;
+    if (!pending || operationRef.current) return;
+    operationRef.current = true;
+    setImportMode(mode);
+    setError(null);
     try {
       const [{ importBackup }, { replacementLifecycle }] = await Promise.all([
         import('../../db/portability'),
@@ -124,11 +162,13 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
         importBackup(pending, mode),
       );
       notify(mode === 'replace' ? 'Data replaced from backup.' : 'Backup added.', 'positive');
-    } catch {
-      notify('Import failed.', 'negative');
-    } finally {
       setPending(null);
       setConfirmReplace(false);
+    } catch (error) {
+      reportError(error instanceof Error ? friendlyDbError(error).message : 'Import failed.');
+    } finally {
+      operationRef.current = false;
+      setImportMode(null);
     }
   }
 
@@ -140,7 +180,13 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
           Full backup and recovery
         </SettingsSectionHeading>
       </div>
-      <div className="mt-4 flex flex-col gap-3">
+      {error && (
+        <p role="alert" className="mt-3 flex items-start gap-2 text-sm text-negative">
+          <AlertIcon width={16} height={16} className="mt-0.5 shrink-0" />
+          {error}
+        </p>
+      )}
+      <div className="mt-4 flex flex-col gap-3" aria-busy={busy}>
         <UnifiedExportPanel />
 
         <div className="rounded-2xl bg-paper px-4 py-3">
@@ -149,10 +195,6 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
               <SettingsSubsectionHeading className="text-sm font-semibold text-ink">
                 Combine two devices
               </SettingsSubsectionHeading>
-              <p className="text-xs text-ink-soft">
-                Keeps Cards, Questions and reviews from both sides; removes what either deleted.
-                Saves a restore point first.
-              </p>
             </div>
             {combineBusy ? (
               <Button variant="secondary" size="sm" disabled>
@@ -160,16 +202,21 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
               </Button>
             ) : pendingCombine ? (
               <ConfirmInline
-                message={`Combine with the ${formatDate(pendingCombine.exportedAt)} backup (${plural(pendingCombine.cards.length, 'card')}, ${plural(pendingCombine.questions?.length ?? 0, 'Question')})?`}
+                message={`Combine with the ${formatDate(pendingCombine.exportedAt)} backup (${plural(pendingCombine.cards.length, 'card')}, ${plural(pendingCombine.questions?.length ?? 0, 'Question')})? Deletions from either device apply.`}
                 confirmLabel="Combine"
                 variant="default"
-                onCancel={() => setPendingCombine(null)}
-                onConfirm={() => void runCombine()}
+                disabled={busy}
+                onCancel={() => {
+                  setPendingCombine(null);
+                  setError(null);
+                }}
+                onConfirm={runCombine}
               />
             ) : (
               <Button
                 variant="secondary"
                 size="sm"
+                disabled={busy}
                 onClick={() => combineInputRef.current?.click()}
               >
                 <UploadIcon width={16} height={16} />
@@ -181,6 +228,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
               type="file"
               accept="application/json,.json"
               className="hidden"
+              disabled={busy}
               aria-label="Backup from another device"
               onChange={(event) => {
                 const file = event.target.files?.[0];
@@ -197,15 +245,12 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
               <SettingsSubsectionHeading className="text-sm font-semibold text-ink">
                 Recover this installation
               </SettingsSubsectionHeading>
-              <p className="text-xs text-ink-soft">
-                Add a backup&rsquo;s contents here, or replace everything with it.
-              </p>
             </div>
             <Button
               variant="secondary"
               size="sm"
               onClick={() => recoverInputRef.current?.click()}
-              disabled={combineBusy}
+              disabled={busy}
             >
               <UploadIcon width={16} height={16} />
               Choose backup file
@@ -215,6 +260,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
               type="file"
               accept="application/json,.json"
               className="hidden"
+              disabled={busy}
               aria-label="Recover this installation"
               onChange={(event) => {
                 const file = event.target.files?.[0];
@@ -229,6 +275,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
       <AnimatePresence>
         {pending && (
           <motion.div
+            aria-busy={busy}
             initial={motionMultiplier > 0 ? { opacity: 0 } : false}
             animate={{ opacity: 1 }}
             exit={motionMultiplier > 0 ? { opacity: 0 } : undefined}
@@ -236,54 +283,46 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
             className="mt-5"
           >
             <div className="rounded-2xl bg-paper p-5">
-              <SettingsSubsectionHeading className="mb-3 font-display text-lg font-semibold tracking-tight">
-                Full-backup recovery
+              <SettingsSubsectionHeading className="mb-3 flex items-center gap-2 font-display text-lg font-semibold tracking-tight">
+                <FileTextIcon width={18} height={18} className="shrink-0" />
+                <span className="min-w-0 break-words">{fileName}</span>
               </SettingsSubsectionHeading>
-              <div className="text-sm text-ink-soft">
-                <p className="mb-3">
-                  This backup contains{' '}
-                  <strong className="text-ink">
-                    {pending.lessons?.length ?? pending.decks?.length ?? 0}
-                  </strong>{' '}
-                  lessons and <strong className="text-ink">{pending.cards.length}</strong> cards,
-                  plus <strong className="text-ink">{pending.questions?.length ?? 0}</strong>{' '}
-                  Questions, exported on {formatDate(pending.exportedAt)}.
-                </p>
-                <ul className="space-y-2">
-                  <li>
-                    <strong className="text-ink">Add from backup</strong> keeps your current data
-                    and folds in the backup; existing items are not deleted.
-                  </li>
-                  <li>
-                    <strong className="text-ink">Replace local data</strong> deletes every course
-                    and review record in this installation, then restores the backup exactly. Lacuna
-                    has no account or cloud copy to delete. A connected AI is disconnected, and its
-                    local conversation is cleared after replacement succeeds.
-                  </li>
-                </ul>
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-ink-soft">
+                <span>
+                  {plural(pending.lessons?.length ?? pending.decks?.length ?? 0, 'lesson')}
+                </span>
+                <span>{plural(pending.cards.length, 'card')}</span>
+                <span>{plural(pending.questions?.length ?? 0, 'Question')}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarIcon width={16} height={16} />
+                  {formatDate(pending.exportedAt)}
+                </span>
               </div>
               <div className="mt-5 flex flex-wrap justify-end gap-2">
                 <Button
                   variant="ghost"
+                  disabled={busy}
                   onClick={() => {
                     setPending(null);
                     setConfirmReplace(false);
+                    setError(null);
                   }}
                 >
                   Cancel
                 </Button>
-                <Button variant="secondary" onClick={() => runImport('merge')}>
-                  Add from backup
+                <Button variant="secondary" disabled={busy} onClick={() => runImport('merge')}>
+                  {importMode === 'merge' ? 'Adding…' : 'Add from backup'}
                 </Button>
                 {confirmReplace ? (
                   <ConfirmInline
                     message="Delete current local data, disconnect AI and restore this backup?"
-                    confirmLabel="Replace local data"
+                    confirmLabel={importMode === 'replace' ? 'Replacing…' : 'Replace local data'}
+                    disabled={busy}
                     onCancel={() => setConfirmReplace(false)}
-                    onConfirm={() => void runImport('replace')}
+                    onConfirm={() => runImport('replace')}
                   />
                 ) : (
-                  <Button variant="danger" onClick={() => setConfirmReplace(true)}>
+                  <Button variant="danger" disabled={busy} onClick={() => setConfirmReplace(true)}>
                     Replace local data
                   </Button>
                 )}

@@ -35,10 +35,17 @@ interface NewCourseFormProps {
   inline?: boolean;
   /** Offer the course library first; onboarding has already shown it. */
   library?: boolean;
+  /** Lets an enclosing flow keep navigation in place until its write has finished. */
+  onBusyChange?: (busy: boolean) => void;
 }
 
 /** Create an empty course; steady retention is the default study target. */
-export function NewCourseForm({ onClose, inline = false, library = true }: NewCourseFormProps) {
+export function NewCourseForm({
+  onClose,
+  inline = false,
+  library = true,
+  onBusyChange,
+}: NewCourseFormProps) {
   const { notify } = useToast();
   const navigate = useNavigate();
   const present = useIsPresent();
@@ -76,6 +83,10 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
   });
   // A library course being written must finish here, or its lineage confirmation is skipped.
   const [libraryBusy, setLibraryBusy] = useState(false);
+  useEffect(() => {
+    onBusyChange?.(saving || libraryBusy);
+  }, [saving, libraryBusy, onBusyChange]);
+  useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
   const close = () => {
     if (!saving && !libraryBusy) onClose();
   };

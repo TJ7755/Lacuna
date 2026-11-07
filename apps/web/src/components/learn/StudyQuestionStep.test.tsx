@@ -116,10 +116,12 @@ it.each([false, true])(
     const first = open();
     const answer = await screen.findByLabelText('Your answer');
     expect(hasLandingArrival()).toBe(false);
+    expect(screen.getAllByRole('button', { name: /^Exit$/ })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Finish for now' })).not.toBeInTheDocument();
     fireEvent.change(answer, {
       target: { value: 'Controls which substances enter and leave.' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save and finish later' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
     await waitFor(() => expect(onExit).toHaveBeenCalledOnce());
     const [saved] = await db.questionSetAttempts.toArray();
     expect(saved.responses[0].draft).toEqual({

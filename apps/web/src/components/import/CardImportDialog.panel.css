@@ -8,18 +8,17 @@
   background: transparent;
 }
 .card-import-panel .card-import-header {
-  padding: 0 0 12px;
+  justify-content: space-between;
+  padding: 0 0 16px;
+}
+.card-import-panel .card-import-header > button {
+  display: inline-flex;
+  width: auto;
 }
 .card-import-progress {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  width: 100%;
-  font-weight: 600;
-}
-.card-import-progress > span {
+  margin-left: auto;
   color: hsl(var(--ink-faint));
-  font-weight: 400;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 .card-import-panel .card-import-scroll {
@@ -46,11 +45,6 @@
 }
 .card-import-panel .card-import-input-label {
   margin-bottom: 8px;
-}
-.card-import-panel .card-import-source-meta {
-  margin: 8px 0 0;
-  font-size: 13px;
-  flex-wrap: wrap;
 }
 .card-import-panel .card-import-package {
   min-height: 180px;
@@ -120,6 +114,6 @@
 }
 
 .card-import-panel .card-import-input[data-package-empty='true'] .card-import-input-label,
-.card-import-panel .card-import-input[data-package-empty='true'] .card-import-source-meta {
+.card-import-panel .card-import-input[data-package-empty='true'] .card-import-input-tools {
   display: none;
 }

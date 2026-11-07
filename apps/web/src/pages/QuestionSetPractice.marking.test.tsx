@@ -130,7 +130,7 @@ describe('QuestionSetPractice marking', () => {
     submit.focus();
     fireEvent.click(submit);
     await waitFor(() => expect(save).toHaveBeenCalled());
-    const other = screen.getByRole('button', { name: 'Save and finish later' });
+    const other = screen.getByRole('button', { name: 'Exit' });
     other.focus();
     release();
     await screen.findByRole('button', { name: 'Submit unanswered' });

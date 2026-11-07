@@ -103,6 +103,89 @@ function assessment(id: string, examDate: number, afterLessonId: string): Course
 }
 
 describe('buildCourseStudyFlowSnapshot', () => {
+  it('keeps snapshot counts when histories are replaced by authoritative timestamp activity', () => {
+    const c = course({ studyStartLessonId: 'current', examDate: undefined });
+    const lessons = [lesson('earlier', 0), lesson('current', 1)];
+    const reviewed = (id: string, timestamp: number): Card => ({
+      ...card(id, 'earlier'),
+      state: 2,
+      reps: 1,
+      stability: 2,
+      difficulty: 5,
+      lastReviewed: timestamp,
+      due: NOW + MS_PER_DAY,
+      history: [
+        {
+          timestamp,
+          grade: 3,
+          responseTimeSec: 1,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 2,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+      ],
+    });
+    const reset = {
+      ...reviewed('reset', NOW - 2 * MS_PER_DAY),
+      state: 0 as const,
+      reps: 0,
+      lastReviewed: null,
+      stability: null,
+      due: null,
+    };
+    const cards = [
+      ...Array.from({ length: 20 }, (_, i) => reviewed(`introduced-${i}`, NOW - 1)),
+      { ...reviewed('due', NOW - 2 * MS_PER_DAY), due: NOW - 1 },
+      reset,
+      ...Array.from({ length: 5 }, (_, i) => card(`new-${i}`, 'earlier')),
+      card('current', 'current'),
+    ];
+    const input = {
+      course: c,
+      nodes: [
+        {
+          id: 'earlier',
+          nodeType: 'lesson' as const,
+          lesson: lessons[0],
+          status: 'completed' as const,
+        },
+        {
+          id: 'current',
+          nodeType: 'lesson' as const,
+          lesson: lessons[1],
+          status: 'available' as const,
+        },
+        {
+          id: 'auto',
+          nodeType: 'practice-auto' as const,
+          nodeKey: 'auto',
+          afterLessonId: 'current',
+        },
+      ],
+      cards,
+      links: [],
+      exposures: [exposure('current', 'current')],
+      examDateContext: makeExamDateContext(c, lessons, []),
+      meanReviewSeconds: 10,
+      now: NOW,
+    };
+    const expected = buildCourseStudyFlowSnapshot(input);
+    expect(expected.catchUpEligibleCount).toBe(7);
+    expect(expected.catchUpPriorityCount).toBe(2);
+    expect(
+      buildCourseStudyFlowSnapshot({
+        ...input,
+        cards: cards.map((item) => ({ ...item, history: [] })),
+        activity: new Map(
+          cards.map((item) => [item.id, item.history.map((review) => review.timestamp)]),
+        ),
+      }),
+    ).toEqual(expected);
+  });
+
   it.each([MS_PER_DAY, 0, -MS_PER_DAY])(
     'keeps due recall separate while recommending available early exam practice (%ims)',
     (dueOffset) => {
@@ -465,7 +548,8 @@ it('plans the joining lesson while independently counting capped earlier exam pr
     meanReviewSeconds: 10,
     now: NOW,
   });
-  expect(snapshot.catchUpEligibleCount).toBe(1);
+  expect(snapshot.catchUpEligibleCount).toBe(2);
+  expect(snapshot.catchUpPriorityCount).toBe(2);
   expect(snapshot.recurringPracticeEligibleCount).toBe(0);
   expect(planNextStudyStep(snapshot)).toMatchObject({ kind: 'step', step: { lessonId: 'l2' } });
 });

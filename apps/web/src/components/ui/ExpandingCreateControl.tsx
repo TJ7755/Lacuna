@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, useId, useRef, type ReactNode } from 'react';
+﻿import { useEffect, useLayoutEffect, useState, useId, useRef, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
 import { FlowExpansionSurface } from './FlowExpansionSurface';
 import { PlusIcon } from './icons';
@@ -86,7 +86,9 @@ export function ExpandingCreateControl({
       const height = Math.min(formHeight ?? triggerHeight + 240, window.innerHeight - 36);
       const top = Math.max(18, Math.min(bounds.top, window.innerHeight - 18 - height));
       setVerticalOffset(top - bounds.top);
-      setAvailableHeight(Math.max(triggerHeight, window.innerHeight - top - 18));
+      // The shell rises to fit the form. Give its scroller the final viewport budget
+      // immediately so a growing form does not change width as the shell moves.
+      setAvailableHeight(Math.max(triggerHeight, window.innerHeight - 36));
     };
     measure();
     window.addEventListener('resize', measure);
@@ -172,7 +174,7 @@ export function ExpandingCreateControl({
         </motion.button>
         <div
           data-flow-expansion-content
-          className="pointer-events-none absolute inset-0"
+          className="pointer-events-none absolute inset-0 overflow-clip"
           inert={!open}
           aria-hidden={!open || undefined}
           onKeyDown={(event) => {
@@ -194,8 +196,9 @@ export function ExpandingCreateControl({
               animate={{ opacity: open ? 1 : 0 }}
               transition={{ duration: 0.12 * multiplier }}
             >
+              {/* The edge fade indicates overflow without a scrollbar changing the form width. */}
               <div
-                className="scroll-edge-fade overflow-y-auto overscroll-contain text-left"
+                className="scroll-edge-fade overflow-y-auto overscroll-contain text-left supports-[animation-timeline:scroll()]:[scrollbar-width:none]"
                 style={{
                   maxHeight:
                     availableHeight === undefined ? undefined : availableHeight - triggerHeight,

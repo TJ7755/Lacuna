@@ -9,7 +9,11 @@ import {
   createLessonCard,
   upsertLessonCardExposure,
 } from './repository';
-import { createOrResumeRevisionPlan, startRevisionWindow } from './revisionPlanRepository';
+import {
+  completeRevisionWindow,
+  createOrResumeRevisionPlan,
+  startRevisionWindow,
+} from './revisionPlanRepository';
 
 import { reset } from './portability.testFixtures';
 
@@ -289,3 +293,61 @@ describe('backup assessments', () => {
     expect(plans[0]).toEqual(expect.objectContaining({ id: plan.id, assessmentId: final.id }));
   });
 });
+
+it.each(['active', 'completed'] as const)(
+  'keeps one resumable local window when merging a remotely %s plan twice',
+  async (remoteStatus) => {
+    await reset();
+    const now = Date.parse('2026-07-17T08:00:00Z');
+    const course = await createCourse('Revision merge');
+    const assessment = await createCourseAssessment(
+      course.id,
+      'Paper',
+      Date.parse('2026-07-19T12:00:00Z'),
+      { timeZone: 'UTC' },
+    );
+    const plan = await createOrResumeRevisionPlan(
+      assessment.id,
+      15,
+      {
+        projectionMode: 'fsrs-6-practice-fallback',
+        memoryModelVersion: 'fsrs-6',
+        fallbackReason: 'missing',
+      },
+      now,
+    );
+    const local = await startRevisionWindow(plan.id, plan.windows[0].id, now + 1);
+    for (const [index, window] of plan.windows.entries()) {
+      if (index > 0) await startRevisionWindow(plan.id, window.id, now + index * 10);
+      if (remoteStatus === 'active' && index === 1) break;
+      await completeRevisionWindow(
+        plan.id,
+        window.id,
+        {
+          id: `remote-session-${index}`,
+          windowId: window.id,
+          startedAt: now + index * 10,
+          completedAt: now + index * 10 + 1,
+          cardIds: [],
+          reviewEventIds: [],
+        },
+        now + index * 10 + 2,
+      );
+    }
+    const incoming = await exportDatabase();
+    await db.revisionPlans.put(local);
+
+    await importBackup(incoming, 'merge');
+    await importBackup(incoming, 'merge');
+
+    const merged = (await db.revisionPlans.get(plan.id))!;
+    expect(merged.windows.filter((window) => window.status === 'active')).toEqual([
+      local.windows[0],
+    ]);
+    expect(merged.status).toBe('active');
+    expect(merged.completedSessions).toEqual(incoming.revisionPlans![0].completedSessions);
+    await expect(startRevisionWindow(plan.id, local.windows[0].id, now + 100)).resolves.toEqual(
+      merged,
+    );
+  },
+);

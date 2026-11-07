@@ -9,7 +9,15 @@ import { SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../components/ui/cn';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
-import { RestoreIcon } from '../../components/ui/icons';
+import {
+  AlertIcon,
+  BookIcon,
+  CardsIcon,
+  CheckIcon,
+  FileTextIcon,
+  FolderIcon,
+  RestoreIcon,
+} from '../../components/ui/icons';
 import { motionTransition } from '../../components/ui/motion';
 import { useToast } from '../../components/ui/Toast';
 import {
@@ -17,6 +25,7 @@ import {
   chooseBackupFolder,
   clearBackupFolder,
   folderMirrorSupported,
+  type FolderMirrorResult,
 } from '../../db/backupFolder';
 import {
   checkPersistentStorage,
@@ -37,6 +46,9 @@ export function BackupsSection() {
   const [restoring, setRestoring] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [folder, setFolder] = useState<string | null>(null);
+  const [mirror, setMirror] = useState<FolderMirrorResult | null>(null);
+  const [folderError, setFolderError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const backupNowButton = useRef<HTMLButtonElement>(null);
   const lastAt =
     backups && backups.length > 0 ? Math.max(...backups.map((b) => b.createdAt)) : null;
@@ -81,14 +93,18 @@ export function BackupsSection() {
   }, [confirmDelete]);
 
   async function handleBackupNow(): Promise<boolean> {
+    setSaving(true);
     try {
       const { takeAutoBackup } = await import('../../db/backups');
       // Forced: a deliberate click must not be swallowed by the automatic-save throttle.
-      await takeAutoBackup(true);
+      setMirror(null);
+      await takeAutoBackup(true, setMirror);
       return true;
     } catch {
       notify('Could not save a restore point.', 'negative');
       return false;
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -122,12 +138,14 @@ export function BackupsSection() {
   }
 
   async function handleChooseFolder() {
+    setFolderError(null);
     try {
       const name = await chooseBackupFolder();
       setFolder(name);
-      if (name) notify('Backups will now mirror to that folder.', 'positive');
-    } catch {
-      // The user cancelling the picker is not an error worth reporting.
+      setMirror(null);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setFolderError('Could not choose the folder. Try again.');
     }
   }
 
@@ -147,6 +165,9 @@ export function BackupsSection() {
   }
 
   function renderRestorePoint(backup: BackupSnapshot) {
+    const questionCount =
+      (backup.payload?.questions?.length ?? 0) +
+      (backup.payload?.questionSets?.reduce((count, set) => count + set.questions.length, 0) ?? 0);
     return (
       <motion.li
         key={backup.id}
@@ -159,9 +180,27 @@ export function BackupsSection() {
       >
         <div className="min-w-0">
           <div className="text-sm font-semibold text-ink">{formatDateTime(backup.createdAt)}</div>
-          <div className="text-xs text-ink-soft">
-            {backup.deckCount} lesson{backup.deckCount === 1 ? '' : 's'} · {backup.cardCount} card
-            {backup.cardCount === 1 ? '' : 's'}
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-soft">
+            {(
+              [
+                [BookIcon, backup.deckCount, 'lesson'],
+                [CardsIcon, backup.cardCount, 'card'],
+                [FileTextIcon, questionCount, 'question'],
+              ] as const
+            ).map(([Icon, count, noun]) => {
+              const label = `${count} ${noun}${count === 1 ? '' : 's'}`;
+              return (
+                <span
+                  key={noun}
+                  aria-label={label}
+                  title={label}
+                  className="inline-flex items-center gap-1"
+                >
+                  <Icon width={14} height={14} />
+                  {count}
+                </span>
+              );
+            })}
           </div>
         </div>
         {confirmDelete === backup.id ? (
@@ -285,30 +324,60 @@ export function BackupsSection() {
           <div className={subtleRow}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-ink">Mirror to a folder</div>
-                <p className="text-xs text-ink-soft">
-                  {folder
-                    ? `Backups are also written to “${folder}”. This survives clearing browser data.`
-                    : 'Also write each backup to a folder on your computer, so it survives clearing browser data.'}
-                </p>
+                <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                  <FolderIcon width={16} height={16} />
+                  Folder copy · {folder ?? 'Not configured'}
+                </div>
+                {mirror?.state === 'saved' ? (
+                  <p role="status" className="mt-1 flex items-center gap-1.5 text-xs text-positive">
+                    <CheckIcon width={14} height={14} />
+                    Copied {formatDateTime(mirror.at)}
+                  </p>
+                ) : mirror?.state === 'failed' || mirror?.state === 'permission-denied' ? (
+                  <p
+                    role="alert"
+                    className="mt-1 flex items-center gap-1.5 text-xs text-warning-fg"
+                  >
+                    <AlertIcon width={14} height={14} />
+                    {mirror.state === 'permission-denied'
+                      ? 'Folder permission needed. Choose the folder again.'
+                      : 'Folder copy failed. Your restore point is saved.'}
+                  </p>
+                ) : (
+                  <p className="text-xs text-ink-soft">Survives clearing browser data.</p>
+                )}
+                {folderError && (
+                  <p role="alert" className="mt-1 text-xs text-negative">
+                    {folderError}
+                  </p>
+                )}
               </div>
-              {folder ? (
+              <div className="flex flex-wrap gap-2">
                 <Button
-                  variant="ghost"
+                  variant="secondary"
                   size="sm"
-                  onClick={async () => {
-                    await clearBackupFolder();
-                    setFolder(null);
-                    notify('Folder mirroring stopped.', 'neutral');
-                  }}
+                  disabled={saving}
+                  onClick={handleChooseFolder}
                 >
-                  Stop mirroring
-                </Button>
-              ) : (
-                <Button variant="secondary" size="sm" onClick={handleChooseFolder}>
                   Choose folder
                 </Button>
-              )}
+                {folder && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={saving}
+                    onClick={async () => {
+                      await clearBackupFolder();
+                      setFolder(null);
+                      setMirror(null);
+                      setFolderError(null);
+                      notify('Folder mirroring stopped.', 'neutral');
+                    }}
+                  >
+                    Stop mirroring
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         ) : (

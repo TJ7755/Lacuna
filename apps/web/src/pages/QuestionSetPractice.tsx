@@ -11,8 +11,8 @@ import {
   useQuestionSetPracticeFocus,
 } from '../components/question-sets/useQuestionSetPracticeFocus';
 import { StepSwap } from '../components/ui/StepSwap';
+import { MeasuredHeight } from '../components/ui/MeasuredHeight';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { AppLink as Link } from '../components/ui/AppLink';
 import { flattenQuestionSet } from '../questions/questionSetAuthoring';
 import {
   feedbackAvailable,
@@ -45,7 +45,7 @@ import {
   QuestionSetUnavailable,
 } from '../components/question-sets/QuestionSetRouteState';
 import { dimensionNames } from '../components/question-sets/presentation';
-import { FileTextIcon } from '../components/ui/icons';
+import { CloseIcon, FileTextIcon } from '../components/ui/icons';
 import type { QuestionStudySummary } from '../course/sessionSummary';
 import { summariseSelfMarking } from '@lacuna/core/questions/questionSets';
 import { StudyEntrance } from '../components/learn/StudyEntrance';
@@ -305,24 +305,22 @@ function PracticeWorkspace({
   return (
     <div className="qs-practice" ref={rootRef} onKeyDown={questionSetPrimaryKey}>
       <header className="qs-practice-header">
-        {study ? (
-          <Button
-            variant="ghost"
-            disabled={formDirty || reflectionDirty || busy}
-            onClick={() =>
-              void perform(async () => {
-                await progress.flush();
-                study.onExit();
-              })
-            }
-          >
-            Finish for now
-          </Button>
-        ) : (
-          <Link className="qs-back" to={base} state={origin}>
-            ← {attempt.receipt.title}
-          </Link>
-        )}
+        <Button
+          variant="secondary"
+          size="sm"
+          className="qs-practice-exit"
+          disabled={formDirty || reflectionDirty}
+          onClick={() =>
+            void perform(async () => {
+              await progress.flush();
+              if (study) study.onExit();
+              else await navigate(origin?.questionSetReturnTo ?? base);
+            })
+          }
+        >
+          <CloseIcon width={16} height={16} aria-hidden="true" />
+          Exit
+        </Button>
         <QuestionSetPracticeStepper
           mode={attempt.mode}
           nodes={nodes}
@@ -365,21 +363,6 @@ function PracticeWorkspace({
               />
             </div>
           )}
-          {attempt.status !== 'complete' && (
-            <Button
-              variant="ghost"
-              disabled={formDirty || reflectionDirty}
-              onClick={() =>
-                void perform(async () => {
-                  await progress.flush();
-                  if (study) study.onExit();
-                  else await navigate(origin?.questionSetReturnTo ?? base);
-                })
-              }
-            >
-              Save and finish later
-            </Button>
-          )}
         </div>
       </header>
       {(progress.error || actionError) && (
@@ -410,89 +393,95 @@ function PracticeWorkspace({
       <article
         className={`qs-paper rounded-3xl bg-surface card-surface ${marking ? 'qs-paper-marking' : ''}`}
       >
-        <StepSwap stepKey={`${active.id}:${marking}`} direction={transition.direction}>
-          {marking ? (
-            <>
-              <header className="qs-part-bar">
-                <h2
-                  id={`qs-question-${active.id}`}
-                  tabIndex={-1}
-                  className="focus-visible:shadow-none"
-                >
-                  {[
-                    ...active.parentIds.map((id) => allNodes.find((row) => row.id === id)!.label),
-                    active.label,
-                  ].join(' ')}
-                </h2>
-                <MarkPips
-                  max={answer.maxMarks}
-                  awarded={attempt.decisions
-                    .filter((row) => answer.allocations.some((a) => a.id === row.allocationId))
-                    .reduce((sum, row) => sum + (row.status === 'awarded' ? row.marks : 0), 0)}
-                  label={[
-                    ...(criterion ? [dimensionNames[criterion.allocation.dimension]] : []),
-                    `${answer.maxMarks} ${answer.maxMarks === 1 ? 'mark' : 'marks'}`,
-                  ].join(' · ')}
-                />
-              </header>
+        <MeasuredHeight>
+          <StepSwap
+            stepKey={`${active.id}:${marking}`}
+            direction={transition.direction}
+            effect="fade-lift"
+          >
+            {marking ? (
+              <>
+                <header className="qs-part-bar">
+                  <h2
+                    id={`qs-question-${active.id}`}
+                    tabIndex={-1}
+                    className="focus-visible:shadow-none"
+                  >
+                    {[
+                      ...active.parentIds.map((id) => allNodes.find((row) => row.id === id)!.label),
+                      active.label,
+                    ].join(' ')}
+                  </h2>
+                  <MarkPips
+                    max={answer.maxMarks}
+                    awarded={attempt.decisions
+                      .filter((row) => answer.allocations.some((a) => a.id === row.allocationId))
+                      .reduce((sum, row) => sum + (row.status === 'awarded' ? row.marks : 0), 0)}
+                    label={[
+                      ...(criterion ? [dimensionNames[criterion.allocation.dimension]] : []),
+                      `${answer.maxMarks} ${answer.maxMarks === 1 ? 'mark' : 'marks'}`,
+                    ].join(' · ')}
+                  />
+                </header>
 
-              {criterion && (
-                <QuestionSetMarking
-                  key={active.id}
-                  attempt={attempt}
-                  nodeId={active.id}
-                  allocation={criterion.allocation}
-                  busy={busy || acting || Boolean(progress.error)}
-                  onDraftChange={setFormDirty}
-                  onDecision={(decision) =>
-                    updateMarking((current) => ({
-                      decisions: [
-                        ...current.decisions.filter(
-                          (row) => row.allocationId !== criterion.allocation.id,
-                        ),
-                        ...(decision ? [decision] : []),
-                      ],
-                    }))
-                  }
-                  onAnnotation={(annotation) =>
-                    updateMarking((current) => ({
-                      annotations: [...current.annotations, annotation],
-                    }))
-                  }
-                  onRemoveAnnotation={(id) =>
-                    updateMarking((current) => ({
-                      annotations: current.annotations.filter((row) => row.id !== id),
-                    }))
-                  }
-                  onCorrection={(content) =>
-                    updateMarking((current) => ({
-                      corrections: [
-                        ...current.corrections.filter((row) => row.nodeId !== active.id),
-                        { nodeId: active.id, content, updatedAt: Date.now() },
-                      ],
-                    }))
-                  }
-                />
-              )}
-            </>
-          ) : (
-            <QuestionSetAnswer
-              content={attempt.receipt}
-              nodeId={active.id}
-              readOnly={acting}
-              value={value.kind === 'multiple-choice' ? value.selectedOptionIds : value.text}
-              onChange={(next) =>
-                progress.edit(
-                  active.id,
-                  answer.response.kind === 'multiple-choice'
-                    ? { kind: 'multiple-choice', selectedOptionIds: next as string[] }
-                    : { kind: answer.response.kind, text: next as string },
-                )
-              }
-            />
-          )}
-        </StepSwap>
-        {!marking && relatedKnowledge}
+                {criterion && (
+                  <QuestionSetMarking
+                    key={active.id}
+                    attempt={attempt}
+                    nodeId={active.id}
+                    allocation={criterion.allocation}
+                    busy={busy || acting || Boolean(progress.error)}
+                    onDraftChange={setFormDirty}
+                    onDecision={(decision) =>
+                      updateMarking((current) => ({
+                        decisions: [
+                          ...current.decisions.filter(
+                            (row) => row.allocationId !== criterion.allocation.id,
+                          ),
+                          ...(decision ? [decision] : []),
+                        ],
+                      }))
+                    }
+                    onAnnotation={(annotation) =>
+                      updateMarking((current) => ({
+                        annotations: [...current.annotations, annotation],
+                      }))
+                    }
+                    onRemoveAnnotation={(id) =>
+                      updateMarking((current) => ({
+                        annotations: current.annotations.filter((row) => row.id !== id),
+                      }))
+                    }
+                    onCorrection={(content) =>
+                      updateMarking((current) => ({
+                        corrections: [
+                          ...current.corrections.filter((row) => row.nodeId !== active.id),
+                          { nodeId: active.id, content, updatedAt: Date.now() },
+                        ],
+                      }))
+                    }
+                  />
+                )}
+              </>
+            ) : (
+              <QuestionSetAnswer
+                content={attempt.receipt}
+                nodeId={active.id}
+                readOnly={acting}
+                value={value.kind === 'multiple-choice' ? value.selectedOptionIds : value.text}
+                onChange={(next) =>
+                  progress.edit(
+                    active.id,
+                    answer.response.kind === 'multiple-choice'
+                      ? { kind: 'multiple-choice', selectedOptionIds: next as string[] }
+                      : { kind: answer.response.kind, text: next as string },
+                  )
+                }
+              />
+            )}
+            {!marking && relatedKnowledge}
+          </StepSwap>
+        </MeasuredHeight>
         <footer className="qs-attempt-footer">
           <QuestionSetPracticeNavigation
             rows={

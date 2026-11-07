@@ -10,7 +10,7 @@
 //    will introduce). It deliberately does not change the dashboard denominator, so
 //    the deck's exam-day trajectory stays honest while a session paces new material.
 
-import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import { startOfDay } from '../utils/datetime';
 import { resolveCardExamDate, type ExamDateContext } from './examDate';
 import { simContext } from './forwardSim';
 import { worthwhileAssessmentPractice } from './assessmentTiming';
@@ -41,22 +41,19 @@ export function dueCards(cards: Card[], now: number = Date.now()): Card[] {
   return availableCards(cards, now).filter((c) => isDue(c, now));
 }
 
-/** How many brand-new cards a card-set has already introduced in the last 24 hours.
- *  Uses a rolling window so a late-night session that crosses midnight does not
- *  double-spend the daily new-card budget.
- */
-function newCardsIntroducedRecently(
+/** Unique first reviews in the user's local calendar day, matching daily review limits. */
+function newCardsIntroducedToday(
   cards: Card[],
   now: number = Date.now(),
   activity?: ReviewActivity,
 ): number {
-  const cutoff = now - MS_PER_DAY;
+  const cutoff = startOfDay(now);
   return cards.filter((c) => {
     const firstReview = cardReviewTimestamps(c, activity).reduce(
       (min, timestamp) => Math.min(min, timestamp),
       Infinity,
     );
-    return firstReview !== Infinity && firstReview > cutoff;
+    return firstReview >= cutoff && firstReview <= now;
   }).length;
 }
 
@@ -80,7 +77,7 @@ export function studyPool(
   const cap = Math.floor(deck.newCardsPerDay ?? 0);
   if (cap <= 0) return available; // unlimited
 
-  const budget = Math.max(cap - newCardsIntroducedRecently(budgetCards, now, activity), 0);
+  const budget = Math.max(cap - newCardsIntroducedToday(budgetCards, now, activity), 0);
   const newAllowed = new Set(
     available
       .filter((c) => c.state === 0)
@@ -106,10 +103,7 @@ export function eligiblePracticePool(
     if (examDate === undefined || examDate < now) {
       return card.state === 0 || (card.due !== null && card.due <= now);
     }
-    return (
-      card.state === 0 ||
-      worthwhileAssessmentPractice(card, examDate, now, course.practiceUrgentWindowDays, ctx)
-    );
+    return card.state === 0 || worthwhileAssessmentPractice(card, examDate, now, ctx);
   });
 }
 

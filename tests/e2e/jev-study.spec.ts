@@ -24,16 +24,22 @@ async function start(page: Page, enabled = true, simple = false, globalTyping = 
   );
   await enterFreshLacuna(page);
   await page.addScriptTag({ content: fixture });
-  const seeded = await page.evaluate(async ({ enabled, globalTyping }) => {
-    const fixture = (
-      window as unknown as {
-        JevStudyFixture: {
-          seed(enabled: boolean, globalTyping: boolean): Promise<{ lessonId: string; cardIds: string[] }>;
-        };
-      }
-    ).JevStudyFixture;
-    return fixture.seed(enabled, globalTyping);
-  }, { enabled, globalTyping });
+  const seeded = await page.evaluate(
+    async ({ enabled, globalTyping }) => {
+      const fixture = (
+        window as unknown as {
+          JevStudyFixture: {
+            seed(
+              enabled: boolean,
+              globalTyping: boolean,
+            ): Promise<{ lessonId: string; cardIds: string[] }>;
+          };
+        }
+      ).JevStudyFixture;
+      return fixture.seed(enabled, globalTyping);
+    },
+    { enabled, globalTyping },
+  );
   await page.goto(`/#/lesson/${seeded.lessonId}/learn?${simple ? 'mode=simple' : 'filter=new'}`);
   await expect(page.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
 }
@@ -103,7 +109,11 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         const after = await bead.getAttribute('style');
         if (reducedMotion === 'reduce') expect(after).toBe(before);
         else expect(after).not.toBe(before);
-        const aspectRatio = await layer.locator(':scope > g > g').first().locator('use').first()
+        const aspectRatio = await layer
+          .locator(':scope > g > g')
+          .first()
+          .locator('use')
+          .first()
           .evaluate((element) => {
             const bounds = element.getBoundingClientRect();
             return bounds.width / bounds.height;
@@ -125,10 +135,15 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
             });
         });
         release();
-        await expect.poll(async () => {
-          const [r, g, b] = await flowColour(page);
-          return correct ? g > r && g > b : r > g && r > b;
-        }, { intervals: [10] }).toBe(true);
+        await expect
+          .poll(
+            async () => {
+              const [r, g, b] = await flowColour(page);
+              return correct ? g > r && g > b : r > g && r > b;
+            },
+            { intervals: [10] },
+          )
+          .toBe(true);
         if (reducedMotion !== 'reduce') {
           await page.waitForTimeout(40);
           await page.screenshot({ path: test.info().outputPath('verdict-welling.png') });
@@ -263,8 +278,9 @@ test('keeps submitted typing through a cross-tab preference change and Undo', as
   );
   await expect(page.getByRole('button', { name: 'No', exact: true })).toBeVisible();
   await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toHaveCount(0);
-  await expect(page.locator('[data-study-face="back"] [aria-label="Submitted response"]'))
-    .toHaveText('Red and blue');
+  await expect(
+    page.locator('[data-study-face="back"] [aria-label="Submitted response"]'),
+  ).toHaveText('Red and blue');
   await page.screenshot({ path: test.info().outputPath('jev-undo-manual.png') });
 });
 
@@ -483,21 +499,37 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   });
 }
 
-test('types a reveal lesson through the learner preference and applies a Jev mark', async ({ page }) => {
-  await page.route('**/api/ai/jev', (route) => route.fulfill({
-    json: { value: 1, confidence: 0.98, inputTokens: 600, model: 'jev-1.14.0' },
-  }));
+test('types a reveal lesson through the learner preference and applies a Jev mark', async ({
+  page,
+}) => {
+  await page.route('**/api/ai/jev', (route) =>
+    route.fulfill({
+      json: { value: 1, confidence: 0.98, inputTokens: 600, model: 'jev-1.14.0' },
+    }),
+  );
   await start(page, true, false, true);
-  const first = await page.locator('[data-study-card-id]').first().getAttribute('data-study-card-id');
+  const first = await page
+    .locator('[data-study-card-id]')
+    .first()
+    .getAttribute('data-study-card-id');
   await submit(page);
   await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toBeVisible();
-  await expect(page.locator('[data-study-card-id]').first()).not.toHaveAttribute('data-study-card-id', first!);
+  await expect(page.locator('[data-study-card-id]').first()).not.toHaveAttribute(
+    'data-study-card-id',
+    first!,
+  );
   await expect(page.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
 });
 
-test('does not mark abandoned typing when another tab changes the answer preference', async ({ page, context }) => {
+test('does not mark abandoned typing when another tab changes the answer preference', async ({
+  page,
+  context,
+}) => {
   await start(page, true, true, true);
-  const first = await page.locator('[data-study-card-id]').first().getAttribute('data-study-card-id');
+  const first = await page
+    .locator('[data-study-card-id]')
+    .first()
+    .getAttribute('data-study-card-id');
   await page.getByRole('textbox', { name: 'Your answer' }).fill('Red, green and blue.');
   const settings = await context.newPage();
   await settings.goto('/#/settings#settings-study');
@@ -505,13 +537,19 @@ test('does not mark abandoned typing when another tab changes the answer prefere
   await options.getByRole('radio', { name: 'Revealing', exact: true }).click();
   await page.bringToFront();
   await expect(page.getByRole('textbox', { name: 'Your answer' })).toHaveCount(0);
-  await page.locator('button').filter({ hasText: /^Show answer$/ }).click();
+  await page
+    .locator('button')
+    .filter({ hasText: /^Show answer$/ })
+    .click();
   await settings.bringToFront();
   await options.getByRole('radio', { name: 'Typing where possible', exact: true }).click();
   await page.bringToFront();
   await expect(page.getByRole('button', { name: 'Yes', exact: true })).toBeVisible();
   await page.waitForTimeout(2500);
-  await expect(page.locator('[data-study-card-id]').first()).toHaveAttribute('data-study-card-id', first!);
+  await expect(page.locator('[data-study-card-id]').first()).toHaveAttribute(
+    'data-study-card-id',
+    first!,
+  );
   await expect(page.getByRole('button', { name: 'Yes', exact: true })).toBeVisible();
   await settings.close();
 });

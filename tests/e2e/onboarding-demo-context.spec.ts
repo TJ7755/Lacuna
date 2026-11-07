@@ -18,15 +18,7 @@ for (const width of [1280, 640]) {
       animations: 'disabled',
     });
 
-    await expect(page.getByRole('heading', { name: 'Try a practice example' })).toBeInViewport();
-    await expect(
-      page.getByText('See how revision works before choosing your own material.', { exact: false }),
-    ).toBeInViewport();
-    await expect(
-      page.getByText('Think of an answer, then select Show answer and check whether you knew it.', {
-        exact: false,
-      }),
-    ).toBeInViewport();
+    await expect(page.getByRole('heading', { name: 'Practice', exact: true })).toBeInViewport();
     const reveal = page.getByRole('button', { name: 'Show answer', exact: true }).last();
     await expect(reveal).toBeInViewport();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(

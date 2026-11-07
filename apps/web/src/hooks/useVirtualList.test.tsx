@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useVirtualList } from './useVirtualList';
 
@@ -99,6 +99,57 @@ describe('useVirtualList', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it('uses the initial resize observation without forcing layout while attaching a row ref', () => {
+    const { result } = renderHook(() => useVirtualList({ itemCount: 2, estimateSize: 100 }));
+    const row = document.createElement('div');
+    const geometry = vi.spyOn(row, 'getBoundingClientRect');
+    act(() => result.current.measureRef(0)(row));
+
+    expect(geometry).not.toHaveBeenCalled();
+    expect(result.current.totalHeight).toBe(200);
+    act(() => {
+      notifyResize(row, {
+        contentRect: { height: 180 } as DOMRectReadOnly,
+        borderBoxSize: [{ blockSize: 220, inlineSize: 500 }],
+      });
+    });
+    expect(result.current.totalHeight).toBe(320);
+  });
+
+  it('measures an attached row immediately when ResizeObserver is unavailable', () => {
+    vi.stubGlobal('ResizeObserver', undefined);
+    const { result } = renderHook(() => useVirtualList({ itemCount: 2, estimateSize: 100 }));
+    const row = document.createElement('div');
+    row.dataset.height = '220';
+    const geometry = vi.spyOn(row, 'getBoundingClientRect');
+    act(() => result.current.measureRef(0)(row));
+
+    expect(geometry).toHaveBeenCalledOnce();
+    expect(result.current.totalHeight).toBe(320);
+  });
+
+  it('measures multiple rows with one observer and releases detached rows', () => {
+    const { result } = renderHook(() => useVirtualList({ itemCount: 2, estimateSize: 100 }));
+    const first = document.createElement('div');
+    const second = document.createElement('div');
+    const attachFirst = result.current.measureRef(0);
+    const attachSecond = result.current.measureRef(1);
+    act(() => {
+      attachFirst(first);
+      attachSecond(second);
+    });
+
+    expect(resizeObservers).toHaveLength(1);
+    expect(resizeObservers[0].targets).toEqual(new Set([first, second]));
+    act(() => {
+      notifyResize(first, { borderBoxSize: [{ blockSize: 170, inlineSize: 500 }] });
+      notifyResize(second, { borderBoxSize: [{ blockSize: 130, inlineSize: 500 }] });
+      attachFirst(null);
+    });
+    expect(result.current.totalHeight).toBe(300);
+    expect(resizeObservers[0].targets).toEqual(new Set([second]));
   });
 
   it('updates its range when the nearest scrolling ancestor scrolls', async () => {

@@ -8,10 +8,13 @@ export function useDesktopUpdater() {
   useEffect(() => {
     if (!updater) return;
     let active = true;
+    let receivedUpdate = false;
     void updater.getState().then((next) => {
-      if (active) setState(next);
+      // A notification can overtake the IPC snapshot. It owns the newer state.
+      if (active && !receivedUpdate) setState(next);
     });
     const unsubscribe = updater.onStateChange((next) => {
+      receivedUpdate = true;
       if (active) setState(next);
     });
     return () => {

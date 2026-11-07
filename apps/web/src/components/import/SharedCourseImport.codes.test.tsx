@@ -221,7 +221,7 @@ describe('SharedCourseImport with course codes and files', () => {
   it('keeps an unreadable code beside the field until it is edited', async () => {
     vi.mocked(decodeShare).mockRejectedValueOnce(new Error('This share code is incomplete.'));
     render(<SharedCourseImport />);
-    const field = screen.getByPlaceholderText('Paste a share link or code');
+    const field = screen.getByLabelText('Share link or code to import');
     fireEvent.change(field, { target: { value: 'LAC2-broken' } });
     fireEvent.click(screen.getByText('Read code'));
     expect(await screen.findByRole('alert')).toHaveTextContent('This share code is incomplete.');
@@ -235,7 +235,7 @@ describe('SharedCourseImport with course codes and files', () => {
     render(<SharedCourseImport />);
     expect(screen.getByText('Import a shared course')).toBeInTheDocument();
     expect(screen.queryByText(/share-code encodings/)).not.toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Paste a share link or code')).toBeInTheDocument();
+    expect(screen.getByLabelText('Share link or code to import')).toBeInTheDocument();
     expect(
       screen.getByRole('textbox', { name: 'Share link or code to import' }),
     ).toBeInTheDocument();
@@ -244,7 +244,7 @@ describe('SharedCourseImport with course codes and files', () => {
   describe('decode-time merge routing (Arc 7 §7.5)', () => {
     async function inspectCode() {
       render(<SharedCourseImport />);
-      fireEvent.change(screen.getByPlaceholderText('Paste a share link or code'), {
+      fireEvent.change(screen.getByLabelText('Share link or code to import'), {
         target: { value: 'LAC2-some-code' },
       });
       fireEvent.click(screen.getByText('Read code'));

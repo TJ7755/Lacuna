@@ -44,6 +44,8 @@ interface LearnModeProps {
   onFlowExit?: () => void;
   /** Stable identity for a containing continuous study flow. */
   sessionId?: string;
+  /** A containing flow can own confirmed completion; provisional reports still offer Undo. */
+  showConfirmedReport?: boolean;
 }
 
 export function LearnMode(props: LearnModeProps = {}) {
@@ -54,7 +56,13 @@ export function LearnMode(props: LearnModeProps = {}) {
   );
 }
 
-function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps) {
+function LearnSession({
+  request,
+  onStepFinished,
+  onFlowExit,
+  sessionId,
+  showConfirmedReport = true,
+}: LearnModeProps) {
   const [leaveConfirmationOpen, setLeaveConfirmationOpen] = useState(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
@@ -327,7 +335,7 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
         onExplicitLeave={backOut}
       />
       <AnimatePresence mode="wait" initial={false}>
-        {phase === 'finished' && summary ? (
+        {phase === 'finished' && summary && (showConfirmedReport || canUndo) ? (
           <motion.div
             key="finished"
             initial={{ opacity: 0 }}

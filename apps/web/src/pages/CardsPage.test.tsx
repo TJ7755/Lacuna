@@ -1,7 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { act, render, screen, fireEvent, within } from '@testing-library/react';
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  Route,
+  RouterProvider,
+  Routes,
+  useLocation,
+} from 'react-router-dom';
 import { CardsPage } from './CardsPage';
+import type * as React from 'react';
 import type {
   Card,
   Course,
@@ -13,11 +21,20 @@ import type {
 
 vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: vi.fn() }) }));
 
+const deferredSearchState = vi.hoisted(() => ({ held: false }));
+vi.mock('react', async () => {
+  const actual = await vi.importActual<typeof React>('react');
+  return {
+    ...actual,
+    useDeferredValue: <T,>(value: T) => {
+      const deferred = actual.useDeferredValue(value);
+      return deferredSearchState.held ? '' : deferred;
+    },
+  };
+});
+
 let mockCourse: Course | undefined;
 let mockLessons: Lesson[] | undefined;
-vi.mock('../state/useLessonOrderData', () => ({
-  useLessonOrderData: () => ({ lessons: mockLessons }),
-}));
 let mockCards: Card[] | undefined;
 let mockSequences: Sequence[] | undefined = [];
 let mockOcclusions: Occlusion[] | undefined = [];
@@ -35,11 +52,7 @@ vi.mock('../state/useCourseData', () => ({
   useCourseCardProjections: () => mockCards,
   useSequences: () => mockSequences,
   useOcclusions: () => mockOcclusions,
-  useCourseBankBackingDecks: () =>
-    new Map([
-      [null, mockDeck],
-      ['lesson-1', mockDeck],
-    ]),
+  useCourseBankBackingDecks: () => mockBackingDecks,
 }));
 
 const mockDeck: LegacyDeckRecord = {
@@ -60,6 +73,10 @@ const mockDeck: LegacyDeckRecord = {
   examObjective: 'expectedMarks',
   lastInteractedAt: Date.now(),
 };
+const mockBackingDecks = new Map([
+  [null, mockDeck],
+  ['lesson-1', mockDeck],
+]);
 
 // Stub out CardList: assert wiring (cards shown, courseId/assignableLessons passed
 // through) without exercising its own internals, which are covered by
@@ -71,11 +88,17 @@ vi.mock('../components/cards/CardList', () => ({
     assignableLessons,
     context,
     heading,
+    onEditCard,
+    onEditSequence,
+    onEditOcclusion,
   }: {
     heading?: React.ReactNode;
     cards: Card[];
     courseId?: string;
     assignableLessons?: { id: string; name: string }[];
+    onEditCard: (card: Card) => void;
+    onEditSequence?: (id: string) => void;
+    onEditOcclusion?: (id: string) => void;
     context?: {
       importTargetName: string;
       onImport: unknown;
@@ -99,6 +122,13 @@ vi.mock('../components/cards/CardList', () => ({
         <span data-testid="card-list-assignable">
           {assignableLessons?.map((l) => l.name).join(',')}
         </span>
+        {cards.map((card) => (
+          <button key={card.id} onClick={() => onEditCard(card)}>
+            Edit card {card.id}
+          </button>
+        ))}
+        <button onClick={() => onEditSequence?.('sequence-1')}>Edit sequence</button>
+        <button onClick={() => onEditOcclusion?.('occlusion-1')}>Edit occlusion</button>
       </div>
     );
   },
@@ -194,17 +224,29 @@ function makeCard(overrides: Partial<Card>): Card {
   };
 }
 
+function EditorDestination() {
+  const location = useLocation();
+  return (
+    <>
+      <span data-testid="editor-path">{location.pathname}</span>
+      <span data-testid="editor-origin">{location.state?.origin?.path}</span>
+    </>
+  );
+}
+
 function renderPage(entry = '/course/course-1/cards') {
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/course/:courseId/cards" element={<CardsPage />} />
         <Route path="/course/:courseId/cards/new" element={<p>Card editor</p>} />
+        <Route path="*" element={<EditorDestination />} />
       </Routes>
     </MemoryRouter>,
   );
 }
 beforeEach(() => {
+  deferredSearchState.held = false;
   observedContexts = [];
   mockCourse = undefined;
   mockLessons = undefined;
@@ -265,6 +307,29 @@ describe('CardsPage', () => {
     expect(screen.getByRole('heading', { name: /Demand/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Supply/ })).toBeInTheDocument();
     expect(screen.getByText('(2)', { exact: false })).toBeInTheDocument();
+  });
+
+  it.each([
+    { locked: true, archived: false, order: ['Supply (1)', 'Demand (1)'] },
+    { locked: false, archived: false, order: ['Demand (1)', 'Supply (1)'] },
+    { locked: true, archived: true, order: ['Demand (1)', 'Supply (1)'] },
+  ])('orders lessons when locked=$locked and archived=$archived', ({ locked, archived, order }) => {
+    mockCourse = {
+      ...course,
+      archived,
+      distributedCopy: { lineageId: 'economics', revision: 1, locked, autoAcceptUpdates: false },
+      localLessonOrder: [lesson2.id, lesson1.id],
+    };
+    mockLessons = [lesson2, lesson1];
+    mockCards = [
+      makeCard({ id: 'c1', primaryLessonId: lesson1.id }),
+      makeCard({ id: 'c2', primaryLessonId: lesson2.id }),
+    ];
+    renderPage();
+
+    expect(
+      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual(order);
   });
 
   it('bounds mounted lesson sections even when each lesson is below the row virtualisation threshold', () => {
@@ -369,6 +434,90 @@ describe('CardsPage', () => {
     });
     expect(screen.getByTestId('card-list-count').textContent).toBe('1');
   });
+
+  it('keeps card lists unchanged while the input is ahead of the deferred search result', () => {
+    mockCourse = course;
+    mockLessons = [lesson1];
+    mockCards = [makeCard({ id: 'c1', primaryLessonId: lesson1.id, front: 'Apple' })];
+    renderPage();
+    deferredSearchState.held = true;
+    observedContexts = [];
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search all cards' }), {
+      target: { value: 'app' },
+    });
+
+    expect(screen.getByRole('searchbox', { name: 'Search all cards' })).toHaveValue('app');
+    expect(screen.getByTestId('card-list-count')).toHaveTextContent('1');
+    expect(observedContexts).toHaveLength(0);
+  });
+
+  it('commits each typed character before the data router can defer the result work', () => {
+    mockCourse = course;
+    mockLessons = [lesson1];
+    mockCards = [makeCard({ id: 'c1', primaryLessonId: lesson1.id, front: 'Apple' })];
+    const router = createMemoryRouter(
+      [{ path: '/course/:courseId/cards', element: <CardsPage /> }],
+      { initialEntries: ['/course/course-1/cards'] },
+    );
+    render(<RouterProvider router={router} />);
+    const input = screen.getByRole('searchbox', { name: 'Search all cards' });
+
+    act(() => {
+      for (const value of ['a', 'ap', 'app', 'appl', 'apple']) {
+        fireEvent.change(input, { target: { value } });
+        expect(input).toHaveValue(value);
+      }
+    });
+
+    expect(router.state.location.search).toBe('?q=apple');
+  });
+
+  it.each([
+    {
+      owner: 'lesson-owned card',
+      primaryLessonId: lesson1.id,
+      editLabel: 'Edit card c1',
+      destination: '/course/course-1/lesson/lesson-1/cards/c1/edit',
+    },
+    {
+      owner: 'unassigned card',
+      primaryLessonId: null,
+      editLabel: 'Edit card c1',
+      destination: '/course/course-1/cards/c1/edit',
+    },
+    {
+      owner: 'sequence',
+      primaryLessonId: lesson1.id,
+      editLabel: 'Edit sequence',
+      destination: '/course/course-1/sequence/sequence-1/edit',
+    },
+    {
+      owner: 'occlusion',
+      primaryLessonId: null,
+      editLabel: 'Edit occlusion',
+      destination: '/course/course-1/occlusion/occlusion-1/edit',
+    },
+  ])(
+    'keeps the latest search and filters when editing a $owner',
+    ({ primaryLessonId, editLabel, destination }) => {
+      mockCourse = course;
+      mockLessons = [lesson1];
+      mockCards = [makeCard({ id: 'c1', primaryLessonId, front: 'Apple', flagged: true })];
+      renderPage('/course/course-1/cards?q=app');
+
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Search all cards' }), {
+        target: { value: 'apple' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Flagged/ }));
+      fireEvent.click(screen.getByRole('button', { name: editLabel }));
+
+      expect(screen.getByTestId('editor-path')).toHaveTextContent(destination);
+      expect(screen.getByTestId('editor-origin')).toHaveTextContent(
+        '/course/course-1/cards?q=apple&f=flagged',
+      );
+    },
+  );
 
   it('finds course cards through the shared tag syntax and restores shortcut focus', () => {
     mockCourse = course;

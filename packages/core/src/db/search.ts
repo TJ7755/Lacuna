@@ -3,7 +3,7 @@
 // case- and diacritic-insensitive substring over the card front/back, its
 // Course or Lesson context, and the card's tags.
 
-import type { Card, Course, Lesson, Note } from '@lacuna/core/db/types';
+import type { Card, Course, Lesson, Note, Occlusion } from '@lacuna/core/db/types';
 import { isLeech } from '@lacuna/core/fsrs/leech';
 import type { QuestionDefinition } from '@lacuna/core/questions/types';
 
@@ -31,6 +31,8 @@ export interface SearchScope {
   cards: Card[];
   courses: Course[];
   lessons: Lesson[];
+  /** Optional authored answers behind generated image-occlusion cards. */
+  occlusions?: Occlusion[];
 }
 
 export interface QuestionSearchScope {
@@ -178,32 +180,79 @@ export function filterSessionCardPool(cards: Card[], options: SessionCardPoolOpt
 }
 
 const FRONT_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const EMBEDDED_IMAGE_URL = String.raw`data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+`;
+const HTML_ATTRIBUTE = String.raw`[^\s"'<>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'<>\x60=]+))?`;
+const EMBEDDED_IMAGE_DESTINATION = new RegExp(
+  [
+    // Consume code examples before trying to match any images within them.
+    String.raw`^ {0,3}(\x60{3,}|~{3,})[^\r\n]*(?:\r?\n|$)[\s\S]*?(?:^ {0,3}\1[\x60~]*[ \t]*(?=\r?$)|(?![\s\S]))`,
+    String.raw`^(?: {4}| {0,3}\t)[^\r\n]*`,
+    String.raw`(?<![\\\x60])(\x60+)(?!\x60)[\s\S]*?(?<!\x60)\2(?!\x60)`,
+    String.raw`((?<!\\)!\[(?:\\.|[^\[\]\\\r\n]|\[[^\[\]\r\n]*\])*\]\([ \t]*)(?:<${EMBEDDED_IMAGE_URL}>|${EMBEDDED_IMAGE_URL})(?=[ \t\r\n)])`,
+    String.raw`(<img(?:\s+${HTML_ATTRIBUTE})*?\s+src\s*=\s*)(?:(["'])${EMBEDDED_IMAGE_URL}\5|${EMBEDDED_IMAGE_URL})(?=[\s/>])(?=[^<>]*>)`,
+  ].join('|'),
+  'gim',
+);
+
+/** Keep authored text, including image labels, while omitting the encoded pixels. */
+export function stripEmbeddedImageUrls(text: string): string {
+  if (!/data:image\//i.test(text)) return text;
+  return text.replace(
+    EMBEDDED_IMAGE_DESTINATION,
+    (
+      match,
+      _fence,
+      _code,
+      markdown: string | undefined,
+      html: string | undefined,
+      quote: string | undefined,
+    ) => (html === undefined ? (markdown ?? match) : html + (quote?.repeat(2) ?? '')),
+  );
+}
 
 const normalisedCardContent = new WeakMap<
   Card,
   {
     front: string;
     back: string;
-    normalisedFront: string;
-    normalisedBack: string;
+    searchableFront: string;
+    normalisedText: string;
+    frontLength: number;
   }
 >();
 
-/** Typing searches the same loaded records repeatedly. In particular, embedded
- * images must not be normalised again on every keypress. Weak keys release these
- * derived strings with the loaded records; compare fields to cover in-place edits. */
+/** Keep image labels and surrounding text, without indexing the encoded pixels.
+ * Weak keys release these derived strings with the loaded records. */
 function cardContent(card: Card) {
   let cached = normalisedCardContent.get(card);
   if (!cached || cached.front !== card.front || cached.back !== card.back) {
+    const searchableFront = stripEmbeddedImageUrls(card.front);
+    const front = normalise(searchableFront);
     cached = {
       front: card.front,
       back: card.back,
-      normalisedFront: normalise(card.front),
-      normalisedBack: normalise(card.back),
+      searchableFront,
+      normalisedText: [front, normalise(stripEmbeddedImageUrls(card.back))].join('  '),
+      frontLength: front.length,
     };
     normalisedCardContent.set(card, cached);
   }
   return cached;
+}
+
+function indexOutsideContent(query: string, content: string, fields: string[]): number {
+  // Queries spanning fields contain their two-space separator, or start/end
+  // inside it (normalising accents can expose edge spaces after trimming).
+  // Preserve those matches without copying embedded images for ordinary typing.
+  if (query.includes('  ') || query.startsWith(' ') || query.endsWith(' '))
+    return [content, ...fields].join('  ').indexOf(query);
+  let offset = content.length + 2;
+  for (const field of fields) {
+    const index = field.indexOf(query);
+    if (index !== -1) return offset + index;
+    offset += field.length + 2;
+  }
+  return -1;
 }
 
 /**
@@ -211,7 +260,7 @@ function cardContent(card: Card) {
  */
 export function searchCardsInScope(
   query: string,
-  { cards, courses, lessons }: SearchScope,
+  { cards, courses, lessons, occlusions }: SearchScope,
   options: SearchOptions = {},
 ): ScopedCardSearchResult[] {
   const now = options.now ?? Date.now();
@@ -223,7 +272,23 @@ export function searchCardsInScope(
 
   const courseById = new Map(courses.map((course) => [course.id, course]));
   const lessonById = new Map(lessons.map((lesson) => [lesson.id, lesson]));
-  const ranked: { result: ScopedCardSearchResult; score: number }[] = [];
+  const occlusionTextByRegion = new Map<string, { courseId: string; text: string }>();
+  if (q) {
+    for (const occlusion of occlusions ?? []) {
+      const regions = new Map(occlusion.regions.map((region) => [region.id, region]));
+      for (const region of occlusion.regions) {
+        const answer =
+          region.role === 'feature' && region.pairedRegionId
+            ? regions.get(region.pairedRegionId)?.answerText
+            : region.answerText;
+        occlusionTextByRegion.set(region.id, {
+          courseId: occlusion.courseId,
+          text: normalise([occlusion.name, answer ?? '', region.backNote ?? ''].join('  ')),
+        });
+      }
+    }
+  }
+  const ranked: { result: ScopedCardSearchResult; score: number; front: string }[] = [];
 
   for (const card of cards) {
     const course = card.courseId ? courseById.get(card.courseId) : undefined;
@@ -251,32 +316,39 @@ export function searchCardsInScope(
     }
 
     let score = 0;
+    let front = card.front;
     if (q) {
       const content = cardContent(card);
-      const haystack = [
-        content.normalisedFront,
-        content.normalisedBack,
-        normalise(course.name),
-        normalise(lesson?.name ?? ''),
-        ...(card.tags ?? []).map(normalise),
-      ].join('  ');
-      const idx = haystack.indexOf(q);
-      if (idx === -1) continue;
-
-      const frontIdx = content.normalisedFront.indexOf(q);
+      front = content.searchableFront;
+      const contentIdx = content.normalisedText.indexOf(q);
       // Front matches always rank above non-front matches, regardless of how
       // far into the front text they appear. Ties are broken by earliest
       // overall match position (idx).
-      score = frontIdx === -1 ? Number.MAX_SAFE_INTEGER / 2 + idx : frontIdx;
+      if (contentIdx !== -1)
+        score =
+          contentIdx + q.length <= content.frontLength
+            ? contentIdx
+            : Number.MAX_SAFE_INTEGER / 2 + contentIdx;
+      else {
+        const generated = card.occlusionRegionId
+          ? occlusionTextByRegion.get(card.occlusionRegionId)
+          : undefined;
+        const idx = indexOutsideContent(q, content.normalisedText, [
+          normalise(course.name),
+          normalise(lesson?.name ?? ''),
+          ...(card.tags ?? []).map(normalise),
+          ...(generated?.courseId === course.id ? [generated.text] : []),
+        ]);
+        if (idx === -1) continue;
+        score = Number.MAX_SAFE_INTEGER / 2 + idx;
+      }
     }
-    ranked.push({ result: { kind: 'card', card, course, lesson, contextName }, score });
+    ranked.push({ result: { kind: 'card', card, course, lesson, contextName }, score, front });
   }
 
   // Rank by match quality, then by front text so equal matches read in a stable, natural
   // order ("Item 9" before "Item 10") rather than the storage order of random ids.
-  ranked.sort(
-    (a, b) => a.score - b.score || FRONT_ORDER.compare(a.result.card.front, b.result.card.front),
-  );
+  ranked.sort((a, b) => a.score - b.score || FRONT_ORDER.compare(a.front, b.front));
   return ranked.map(({ result }) => result);
 }
 

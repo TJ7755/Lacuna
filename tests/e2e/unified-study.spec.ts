@@ -240,7 +240,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
         page.getByRole('heading', { name: 'Time available today', exact: true }),
       ).toHaveCount(0);
       await answer.fill(MEMBRANE_ANSWER);
-      await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
+      await page.getByRole('button', { name: 'Exit', exact: true }).click();
       await expect(page).toHaveURL(courseUrl);
 
       await study.click();

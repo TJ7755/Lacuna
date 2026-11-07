@@ -2,6 +2,15 @@ name: Local performance budgets
 
 on:
   workflow_dispatch:
+    inputs:
+      comparison_base:
+        description: 'Optional full baseline commit SHA for a fixed same-runner comparison'
+        required: false
+        type: string
+      comparison_candidate:
+        description: 'Optional full candidate commit SHA; defaults to the dispatched branch'
+        required: false
+        type: string
   pull_request:
     paths:
       - 'apps/web/**'
@@ -11,6 +20,7 @@ on:
       - 'scripts/performance-audit.ts'
       - 'scripts/stress-relay*'
       - 'tests/e2e/first-interaction-latency.spec.ts'
+      - 'tests/e2e/interaction-smoothness.spec.ts'
       - 'tests/e2e/fixtures/interactionPerformance.ts'
       - 'vite.config.ts'
       - 'package.json'
@@ -26,6 +36,7 @@ concurrency:
 
 jobs:
   web:
+    if: github.event_name != 'workflow_dispatch' || inputs.comparison_base == ''
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -37,7 +48,11 @@ jobs:
       - run: bunx playwright install --with-deps chromium
       - run: bun run build:assets
       - run: bun run perf:check
-      - run: bun run perf:audit:web-interactions
+      - name: Verify first interactions and animation behaviour
+        run: >-
+          bunx playwright test -c tests/config/playwright.web.config.ts
+          tests/e2e/first-interaction-latency.spec.ts tests/e2e/interaction-smoothness.spec.ts
+          --project=chromium --workers=1
         env:
           LACUNA_BROWSER_PREBUILT: 'true'
       - run: node scripts/performance-heavy/build.mjs
@@ -69,6 +84,7 @@ jobs:
           retention-days: 30
 
   relay:
+    if: github.event_name != 'workflow_dispatch' || inputs.comparison_base == ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -87,4 +103,121 @@ jobs:
         with:
           name: relay-performance-${{ github.sha }}
           path: artifacts/stress/*.json
+          retention-days: 30
+
+  comparison:
+    if: github.event_name == 'workflow_dispatch' && inputs.comparison_base != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COMPARISON_BASE: ${{ inputs.comparison_base }}
+      COMPARISON_CANDIDATE: ${{ inputs.comparison_candidate || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-bun
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - name: Build frozen comparison sources
+        shell: bash
+        run: |
+          [[ "$COMPARISON_BASE" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$COMPARISON_CANDIDATE" =~ ^[0-9a-f]{40}$ ]]
+          mkdir -p artifacts/performance/comparison
+          for label in base candidate; do
+            commit="$COMPARISON_BASE"
+            if [[ "$label" == candidate ]]; then commit="$COMPARISON_CANDIDATE"; fi
+            git fetch --no-tags origin "$commit"
+            comparison_root="$RUNNER_TEMP/lacuna-performance-$label"
+            mkdir "$comparison_root"
+            git archive "$commit" | tar -x -C "$comparison_root"
+            (
+              cd "$comparison_root"
+              bun install --frozen-lockfile
+              bun run build:assets
+            ) > "artifacts/performance/comparison/$label-build.log" 2>&1
+            echo "COMPARISON_${label^^}_DIST=$comparison_root/dist" >> "$GITHUB_ENV"
+          done
+          node scripts/performance-heavy/build.mjs
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const order = ['base', 'candidate', 'candidate', 'base', 'base', 'candidate'];
+          const plan = {
+            harness: process.env.GITHUB_SHA,
+            base: process.env.COMPARISON_BASE,
+            candidate: process.env.COMPARISON_CANDIDATE,
+            ordinaryOrder: order,
+            imageOrder: order,
+            imageSources: ['asset', 'embedded'],
+            imageCpuRate: 4,
+            diagnosticOrder: ['base-normal', 'candidate-normal', 'candidate-idle'],
+            retries: 0,
+          };
+          writeFileSync('artifacts/performance/comparison/plan.json', JSON.stringify(plan, null, 2));
+          NODE
+      - name: Run the fixed comparison plan
+        shell: bash
+        env:
+          PERF_PROFILE_DIR: ${{ runner.temp }}/lacuna-performance-comparison-profile
+          PERF_PORT: '4173'
+          PERF_RATES: '1'
+          PERF_MODE: quick
+          PERF_BURST_REVIEWS: '2'
+        run: |
+          failures=0
+          index=0
+          for label in base candidate candidate base base candidate; do
+            index=$((index + 1))
+            if [[ "$label" == base ]]; then
+              dist="$COMPARISON_BASE_DIST"
+              commit="$COMPARISON_BASE"
+            else
+              dist="$COMPARISON_CANDIDATE_DIST"
+              commit="$COMPARISON_CANDIDATE"
+            fi
+            output="artifacts/performance/comparison/ordinary-$index-$label"
+            status=0
+            PERF_DIST="$dist" PERF_ASSET_COMMIT="$commit" PERF_LABEL="github-comparison-$label" \
+              PERF_OUTPUT="$output.json" PERF_REPETITIONS=1 PERF_BUDGETS=1 \
+              node artifacts/performance/run.mjs > "$output.log" 2>&1 || status=$?
+            echo "$index $label exit=$status" | tee -a artifacts/performance/comparison/outcomes.log
+            if [[ "$status" != 0 ]]; then failures=$((failures + 1)); fi
+            for source in asset embedded; do
+              output="artifacts/performance/comparison/cards-$source-$index-$label"
+              status=0
+              PERF_ASSET_COMMIT="$commit" PERF_IMAGE_SOURCE="$source" PERF_RATE=4 PERF_REPETITIONS=1 \
+                node scripts/performance-heavy/cards.mjs "$dist" "$output.json" > "$output.log" 2>&1 || status=$?
+              echo "cards $source $index $label exit=$status" | tee -a artifacts/performance/comparison/outcomes.log
+              if [[ "$status" != 0 ]]; then failures=$((failures + 1)); fi
+            done
+          done
+          # Instrumented runs and the idle-worker control are diagnostic evidence only.
+          for condition in base-normal candidate-normal candidate-idle; do
+            if [[ "$condition" == base-normal ]]; then
+              dist="$COMPARISON_BASE_DIST"
+              commit="$COMPARISON_BASE"
+            else
+              dist="$COMPARISON_CANDIDATE_DIST"
+              commit="$COMPARISON_CANDIDATE"
+            fi
+            workers=normal
+            if [[ "$condition" == candidate-idle ]]; then workers=idle; fi
+            output="artifacts/performance/comparison/diagnostic-$condition"
+            status=0
+            PERF_DIST="$dist" PERF_ASSET_COMMIT="$commit" PERF_LABEL="github-diagnostic-$condition" \
+              PERF_OUTPUT="$output.json" PERF_REPETITIONS=3 PERF_BUDGETS=0 PERF_DIAGNOSTICS=1 \
+              PERF_IDB_PROBE=1 PERF_OPTIONAL_WORKERS="$workers" \
+              node artifacts/performance/run.mjs > "$output.log" 2>&1 || status=$?
+            echo "$condition exit=$status" | tee -a artifacts/performance/comparison/outcomes.log
+            if [[ "$status" != 0 ]]; then failures=$((failures + 1)); fi
+          done
+          echo "Fixed-plan failures: $failures; every result retained; no retries."
+          test "$failures" -eq 0
+      - name: Preserve every comparison result
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: storage-comparison-${{ github.sha }}
+          path: artifacts/performance/comparison/
           retention-days: 30

@@ -36,6 +36,7 @@ function fragment() {
 export function HelpPage() {
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+  const [collapsedResults, setCollapsedResults] = useState<ReadonlySet<string>>(() => new Set());
   const [target, setTarget] = useState<string | null>(null);
   const location = useLocation();
   const [speed] = useMotionSpeed();
@@ -69,14 +70,22 @@ export function HelpPage() {
       <HelpTopicRow
         key={topic.id}
         topic={topic}
-        open={searching || expanded.has(topic.id)}
+        open={searching ? !collapsedResults.has(topic.id) : expanded.has(topic.id)}
         onRevealed={() => {
           if (target !== topic.id) return;
           document.getElementById(target)?.scrollIntoView({ block: 'start' });
           setTarget(null);
         }}
         onToggle={() => {
-          if (searching) return;
+          if (searching) {
+            setCollapsedResults((previous) => {
+              const next = new Set(previous);
+              if (next.has(topic.id)) next.delete(topic.id);
+              else next.add(topic.id);
+              return next;
+            });
+            return;
+          }
           setTarget(null);
           setExpanded((previous) => {
             const next = new Set(previous);
@@ -105,7 +114,10 @@ export function HelpPage() {
           aria-label="Search help"
           placeholder="Search help"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setCollapsedResults(new Set());
+          }}
           className="h-12 w-full rounded-full bg-surface pl-11 pr-4 text-ink card-surface card-surface-control outline-none placeholder:text-ink-faint focus-visible:ring-2 focus-visible:ring-accent-ink"
         />
       </label>

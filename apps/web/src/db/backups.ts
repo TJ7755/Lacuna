@@ -8,6 +8,7 @@ import { scheduleAssetGc } from './assets';
 import { replacementLifecycle } from './replacementLifecycle';
 import { backupIsStale, createRestorePoint } from './backupRestorePoint';
 import { runDailyBackupWorker } from './dailyBackupWorker';
+import type { FolderMirrorResult } from './backupFolder';
 
 export {
   backupFolderName,
@@ -51,11 +52,14 @@ function markStored(reservation: { at: number }): void {
  *  Calls within the 5-minute throttle window are silently skipped so rapid mutations
  *  do not produce N backups per session. Pass `force: true` to bypass the throttle.
  *  Returns the snapshot that was stored, or `undefined` when the throttle skipped. */
-export async function takeAutoBackup(force = false): Promise<BackupFile | undefined> {
+export async function takeAutoBackup(
+  force = false,
+  onMirror?: (result: FolderMirrorResult) => void,
+): Promise<BackupFile | undefined> {
   const reservation = reserveBackup(force);
   if (!reservation) return;
   try {
-    return await createRestorePoint(() => markStored(reservation));
+    return await createRestorePoint(() => markStored(reservation), onMirror);
   } finally {
     pendingBackups.delete(reservation);
   }

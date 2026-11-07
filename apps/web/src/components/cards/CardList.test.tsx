@@ -58,6 +58,20 @@ describe('CardList rendering', () => {
     expect(await screen.findByTestId('card-analytics')).toBeInTheDocument();
   });
 
+  it('names an embedded image card without putting its encoded bytes in the accessibility tree', () => {
+    const card = {
+      ...mockCard,
+      front:
+        'Name this organelle. ![A cell](data:image/png;base64,EncodedImageBytes) `data:image/png;base64,Example`',
+    };
+    render(<CardList cards={[card]} context={mockContext} onEditCard={vi.fn()} />);
+
+    const details = screen.getByRole('button', { name: /Card details: Name this organelle/ });
+    expect(details).toHaveAccessibleName(/A cell/);
+    expect(details).toHaveAccessibleName(/data:image\/png;base64,Example/);
+    expect(details).not.toHaveAccessibleName(/EncodedImageBytes/);
+  });
+
   it('tints a hovered row without letting the swipe tray show through', () => {
     const { container } = render(
       <CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />,

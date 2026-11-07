@@ -3,6 +3,7 @@ import { ModalBackdrop } from '../ui/ModalBackdrop';
 import {
   lazy,
   Suspense,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -13,6 +14,7 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { ShellCourseDataProvider } from '../../state/ShellCourseData';
+import { BackgroundCalculationsEnabled } from '../../state/useData';
 import {
   CourseNavigationDataProvider,
   useNavigationCourses,
@@ -79,6 +81,7 @@ function AppShellLayout() {
     () => !!window.electronAPI?.isElectron && window.electronAPI.platform !== 'darwin',
   );
   const navigationCourses = useNavigationCourses();
+  const backgroundCalculationsEnabled = useContext(BackgroundCalculationsEnabled);
   const [collapsed, setCollapsed] = useState(() => storedString(COLLAPSE_KEY).read() === '1');
 
   // Sync sidebar collapsed state across tabs.
@@ -392,15 +395,19 @@ function AppShellLayout() {
             onPointerCancel={onPointerCancel}
           >
             <ErrorBoundary label="this page">
-              <StudySheetProvider value={studySheet.value}>
-                <RouteTransitions
-                  pathname={location.pathname}
-                  direction={sectionDirection}
-                  multiplier={m}
-                >
-                  {outlet}
-                </RouteTransitions>
-              </StudySheetProvider>
+              <BackgroundCalculationsEnabled.Provider
+                value={backgroundCalculationsEnabled && !paletteOpen}
+              >
+                <StudySheetProvider value={studySheet.value}>
+                  <RouteTransitions
+                    pathname={location.pathname}
+                    direction={sectionDirection}
+                    multiplier={m}
+                  >
+                    {outlet}
+                  </RouteTransitions>
+                </StudySheetProvider>
+              </BackgroundCalculationsEnabled.Provider>
             </ErrorBoundary>
           </main>
         </div>
