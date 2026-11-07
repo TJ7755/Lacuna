@@ -1,5 +1,15 @@
 import type { Card, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 
+/** Core course cards include unassigned cards and exclude primary extension membership. */
+export function coreCourseCards(cards: Card[], extensionLessonIds: ReadonlySet<string>): Card[] {
+  return cards.filter(
+    ({ primaryLessonId }) =>
+      primaryLessonId === null ||
+      primaryLessonId === undefined ||
+      !extensionLessonIds.has(primaryLessonId),
+  );
+}
+
 /** Index all requested lessons in one pass over the cards and their explicit links. */
 export function lessonCardMembershipByLesson(
   lessons: readonly Pick<Lesson, 'id'>[],

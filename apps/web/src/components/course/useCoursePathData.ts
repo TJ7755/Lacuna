@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import type { useCoursePathRecords } from '../../state/useCourseStudyFlowRecords';
-import { computeCourseSummaries } from '../../state/courseSummaries';
 import { availableCards, dueCards } from '../../fsrs/eligibility';
+import { progressValue } from '../../fsrs/objective';
 import { buildDeckSecondsMap } from '../../fsrs/stats';
 import { makeExamDateContext } from '../../fsrs/examDate';
 import { buildPath } from '../../course/path';
-import { lessonCardMembershipByLesson } from '../../course/lessonMembership';
+import { coreCourseCards, lessonCardMembershipByLesson } from '../../course/lessonMembership';
 import {
   currentAssessmentPracticeContext,
   type AssessmentPracticeOption,
@@ -40,19 +40,19 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
   const lessonCompletions = records?.completions;
   const practiceMilestones = records?.milestones;
   const perf = records?.performance;
-  const summary = useMemo(() => {
-    if (!records) return undefined;
-    if (!records.course) return null;
-    return computeCourseSummaries(
-      [records.course],
-      records.lessons,
-      records.cards,
-      records.assessments,
+  const coreMastery = useMemo(() => {
+    if (!records?.course) return 0;
+    // The Path already computes the due pool and progress through its Study snapshot.
+    const { course, lessons, cards, assessments, links, concepts } = records;
+    const extensionLessonIds = new Set(
+      lessons.filter((lesson) => lesson.isExtension).map(({ id }) => id),
+    );
+    return progressValue(
+      coreCourseCards(cards, extensionLessonIds),
+      course,
       Date.now(),
-      { links: records.links, exposures: records.exposures, completions: records.completions },
-      records.activity,
-      records.concepts,
-    )[records.course.id];
+      makeExamDateContext(course, lessons, assessments, links, concepts),
+    );
   }, [records]);
   const archived = course?.archived === true;
   const authoring = course ? !archived && isLessonAuthoringMode(course) : false;
@@ -61,7 +61,6 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
     lessons !== undefined &&
     assessments !== undefined &&
     courseCards !== undefined &&
-    summary !== undefined &&
     practiceNodes !== undefined &&
     lessonLinks !== undefined &&
     exposures !== undefined &&
@@ -226,7 +225,7 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
     assessments,
     practiceNodes,
     lessonLinks,
-    summary,
+    coreMastery,
     archived,
     authoring,
     dataLoaded,
@@ -246,7 +245,6 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
         lessons,
         assessments,
         courseCards,
-        summary,
         practiceNodes,
         lessonLinks,
       }

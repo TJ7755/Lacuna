@@ -231,15 +231,16 @@ export function ShellCourseDataProvider({
     if (!includeDashboard || !data) return undefined;
     return data.loadDashboard();
   }, [includeDashboard, data]);
+  // The dashboard query settles asynchronously on exit. Its retired result
+  // must not recompute the sidebar after the route has already left Today.
+  const activeDashboard = includeDashboard ? dashboard : undefined;
   const value = useMemo<ShellCourseData | undefined>(() => {
     if (!data) return undefined;
     // Retain a complete published snapshot while an updated supplement resolves.
     // Its sidebar and dashboard must refer to the same set of Cards.
-    if (includeDashboard && dashboard) {
-      return dashboard;
-    }
+    if (activeDashboard) return activeDashboard;
     return { sidebar: data.sidebarAt(Date.now()) };
-  }, [data, dashboard, includeDashboard]);
+  }, [data, activeDashboard]);
 
   return (
     <ShellCourseDataContext.Provider value={value}>{children}</ShellCourseDataContext.Provider>

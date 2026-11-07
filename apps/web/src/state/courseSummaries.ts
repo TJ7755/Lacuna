@@ -1,5 +1,5 @@
 import type { Concept } from '@lacuna/core/questions/types';
-import { lessonCardMembershipByLesson } from '../course/lessonMembership';
+import { coreCourseCards, lessonCardMembershipByLesson } from '../course/lessonMembership';
 import type {
   Card,
   Course,
@@ -99,14 +99,7 @@ export function computeCourseSummaries(
   for (const course of courses) {
     const courseCards = cardsByCourse[course.id] ?? [];
     const courseLessons = lessonsByCourse[course.id] ?? [];
-    // Exclude cards whose primaryLessonId belongs to an extension lesson.
-    // Cards with null or absent primaryLessonId are included.
-    const coreCards = courseCards.filter(
-      (c) =>
-        c.primaryLessonId === null ||
-        c.primaryLessonId === undefined ||
-        !extensionLessonIds.has(c.primaryLessonId),
-    );
+    const coreCards = coreCourseCards(courseCards, extensionLessonIds);
     const available = availableCards(coreCards, now);
     const coreLessons = courseLessons.filter((lesson) => !lesson.isExtension);
     const lessonCards = lessonCardMembershipByLesson(coreLessons, courseCards, progress.links);

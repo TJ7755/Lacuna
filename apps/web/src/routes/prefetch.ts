@@ -20,7 +20,6 @@ import {
   loadCourseAnalytics,
   loadCourseStudyFlow,
   loadCoursePath,
-  preloadCoursePathData,
   loadCourseSettings,
   loadHelpPage,
   loadImportPanel,
@@ -126,16 +125,10 @@ async function prepareTarget(
   try {
     const target = prefetchTarget(path);
     if (!target || signal?.aborted) return null;
-    const module =
-      source === 'navigation'
-        ? loadRouteModuleForNavigation(target.loader, signal)
-        : loadRouteModule(target.loader);
-    const data = target.dataKey
-      ? preloadCoursePathData(target.dataKey, signal).catch(() => {
-          // The mounted query can retry a failed speculative read.
-        })
-      : undefined;
-    await Promise.all([module, data]);
+    const module = await (source === 'navigation'
+      ? loadRouteModuleForNavigation(target.loader, signal)
+      : loadRouteModule(target.loader));
+    if (!signal?.aborted && target.dataKey) await module.preload?.(target.dataKey);
   } catch {
     // Speculation must be retryable. Navigation leaves import recovery and query
     // errors with their existing React owners rather than the router error page.

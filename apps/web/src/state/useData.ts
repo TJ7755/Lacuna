@@ -2,7 +2,7 @@
 // automatically when the underlying IndexedDB records change.
 
 import { useLiveQuery } from 'dexie-react-hooks';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ForecastHistories, ForecastHistoryInput } from './forecastHistoryData';
 import { calculateForecastHistoriesOffThread } from './forecastHistoryWorker';
 import { db } from '../db/schema';
@@ -13,6 +13,7 @@ import { listGlobalDailySessionHistory } from '../db/sessionHistoryRead';
 
 /** Navigation preparation and Quick search pause optional calculations. */
 export const BackgroundCalculationsEnabled = createContext(true);
+const FORECAST_RESUME_DELAY_MS = 500;
 
 export function useCard(cardId: string | undefined): Card | null | undefined {
   return useLiveQuery<Card | null>(
@@ -52,36 +53,51 @@ export function useDashboardForecastHistories(
   }, [enabled]);
   const [histories, setHistories] = useState<ForecastHistories>();
   const [error, setError] = useState<unknown>();
+  const wasPaused = useRef(false);
   useEffect(() => {
-    if (!enabled || !data || !revision) return;
+    if (!enabled) {
+      wasPaused.current = true;
+      return;
+    }
+    if (!data || !revision) return;
     const controller = new AbortController();
     const { signal } = controller;
-    const now = Date.now();
-    void Promise.resolve()
-      .then(() => {
-        if (signal.aborted) return undefined;
-        if (Object.keys(data.forecasts).length === 0) return {};
-        return calculateForecastHistoriesOffThread(
-          {
-            courses: data.courses,
-            lessons: data.lessons,
-            cards: data.allCards,
-            forecasts: data.forecasts,
-            from: now - past * 86_400_000,
-            now,
+    const start = () => {
+      wasPaused.current = false;
+      const now = Date.now();
+      void Promise.resolve()
+        .then(() => {
+          if (signal.aborted) return undefined;
+          if (Object.keys(data.forecasts).length === 0) return {};
+          return calculateForecastHistoriesOffThread(
+            {
+              courses: data.courses,
+              lessons: data.lessons,
+              cards: data.allCards,
+              forecasts: data.forecasts,
+              from: now - past * 86_400_000,
+              now,
+            },
+            signal,
+          );
+        })
+        .then(
+          (next) => {
+            if (!signal.aborted) setHistories(next);
           },
-          signal,
+          (cause: unknown) => {
+            if (!signal.aborted) setError(cause);
+          },
         );
-      })
-      .then(
-        (next) => {
-          if (!signal.aborted) setHistories(next);
-        },
-        (cause: unknown) => {
-          if (!signal.aborted) setError(cause);
-        },
-      );
-    return () => controller.abort();
+    };
+    // Closing Quick search can be followed immediately by navigation. A worker
+    // terminated after a bulk read starts can still leave IndexedDB busy.
+    const resume = wasPaused.current ? setTimeout(start, FORECAST_RESUME_DELAY_MS) : undefined;
+    if (resume === undefined) start();
+    return () => {
+      clearTimeout(resume);
+      controller.abort();
+    };
   }, [data, past, revision, enabled]);
   if (error) throw error;
   // Keep the last complete trace visible while a changed snapshot is calculated.

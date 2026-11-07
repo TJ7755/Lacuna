@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import type { ReactNode } from 'react';
-import { render, renderHook, waitFor } from '@testing-library/react';
+import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createCourse, createCourseCard } from '../db/repository';
 import { db } from '../db/schema';
@@ -109,8 +109,17 @@ it('retains shared card reads across Today navigation while dashboard supplement
     const firstSidebar = sidebar;
     expect(reads).toHaveBeenCalledTimes(1);
     expect(performance).toHaveBeenCalledTimes(1);
-    rerender(view(false));
-    await waitFor(() => expect(dashboard).toBeUndefined());
+    vi.useFakeTimers();
+    try {
+      rerender(view(false));
+      const outsideSidebar = sidebar;
+      expect(dashboard).toBeUndefined();
+      await act(() => vi.advanceTimersByTimeAsync(0));
+      // Retiring the dashboard live query must not publish a second sidebar.
+      expect(sidebar).toBe(outsideSidebar);
+    } finally {
+      vi.useRealTimers();
+    }
     rerender(view(true));
     await waitFor(() => expect(dashboard?.allCards).toHaveLength(1));
     expect(reads).toHaveBeenCalledTimes(1);

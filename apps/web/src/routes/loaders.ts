@@ -41,12 +41,10 @@ export const loadCourseAnalytics = () =>
   import('../pages/CourseAnalytics').then((module) => ({ default: module.CourseAnalytics }));
 
 export const loadCoursePath = () =>
-  import('../pages/CoursePath').then((module) => ({ default: module.CoursePath }));
-
-export async function preloadCoursePathData(courseId: string, signal?: AbortSignal) {
-  const { useCoursePathRecords } = await import('../state/useCourseStudyFlowRecords');
-  if (!signal?.aborted) await useCoursePathRecords.preload(courseId);
-}
+  import('../pages/CoursePath').then((module) => ({
+    default: module.CoursePath,
+    preload: module.preloadCoursePath,
+  }));
 
 export { loadLessonView } from './lessonRoute';
 

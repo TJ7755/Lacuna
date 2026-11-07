@@ -39,10 +39,7 @@ const loaders = vi.hoisted(() => ({
   loadPupilClassPage: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
 }));
 
-const preloadCoursePathData = vi.hoisted(() =>
-  vi.fn<(id: string, signal?: AbortSignal) => Promise<void>>(),
-);
-vi.mock('./loaders', () => ({ ...loaders, preloadCoursePathData }));
+vi.mock('./loaders', () => loaders);
 
 const recoverFromChunkFailure = vi.hoisted(() => vi.fn(async () => false));
 vi.mock('../pwa/staleChunkRecovery', () => ({ recoverFromChunkFailure }));
@@ -55,8 +52,6 @@ beforeEach(() => {
   }
   recoverFromChunkFailure.mockReset();
   recoverFromChunkFailure.mockResolvedValue(false);
-  preloadCoursePathData.mockReset();
-  preloadCoursePathData.mockResolvedValue(undefined);
 });
 
 describe('prefetchRoute', () => {
@@ -168,21 +163,17 @@ it('keeps the current route usable until its destination is prepared and honours
   router.dispose();
 });
 
-it('loads course records alongside its route and waits for both before replacing the outlet', async () => {
+it('waits for the course path presentation read before replacing the current outlet', async () => {
   const { prepareRoute } = await import('./prefetch');
   const { lazyRouteModule } = await import('./routeModule');
   let finish!: () => void;
   const ready = new Promise<void>((resolve) => {
     finish = resolve;
   });
-  let finishModule!: (module: Awaited<ReturnType<RouteLoader>>) => void;
-  loaders.loadCoursePath.mockImplementationOnce(
-    () =>
-      new Promise((resolve) => {
-        finishModule = resolve;
-      }),
-  );
-  preloadCoursePathData.mockReturnValueOnce(ready);
+  loaders.loadCoursePath.mockResolvedValueOnce({
+    default: () => createElement('h1', null, 'Course ready'),
+    preload: () => ready,
+  });
   const CoursePath = lazyRouteModule(loaders.loadCoursePath);
   const router = createMemoryRouter([
     {
@@ -208,10 +199,6 @@ it('loads course records alongside its route and waits for both before replacing
   let navigation!: Promise<void>;
   await act(async () => {
     navigation = router.navigate('/course/biology');
-  });
-  expect(preloadCoursePathData).toHaveBeenCalledWith('biology', expect.any(AbortSignal));
-  await act(async () => {
-    finishModule({ default: () => createElement('h1', null, 'Course ready') });
   });
   expect(screen.getByRole('button', { name: 'Current route' })).toBeEnabled();
   expect(screen.queryByText('Loading destination')).not.toBeInTheDocument();

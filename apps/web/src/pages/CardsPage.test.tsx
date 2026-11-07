@@ -35,9 +35,6 @@ vi.mock('react', async () => {
 
 let mockCourse: Course | undefined;
 let mockLessons: Lesson[] | undefined;
-vi.mock('../state/useLessonOrderData', () => ({
-  useLessonOrderData: () => ({ lessons: mockLessons }),
-}));
 let mockCards: Card[] | undefined;
 let mockSequences: Sequence[] | undefined = [];
 let mockOcclusions: Occlusion[] | undefined = [];
@@ -310,6 +307,29 @@ describe('CardsPage', () => {
     expect(screen.getByRole('heading', { name: /Demand/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Supply/ })).toBeInTheDocument();
     expect(screen.getByText('(2)', { exact: false })).toBeInTheDocument();
+  });
+
+  it.each([
+    { locked: true, archived: false, order: ['Supply (1)', 'Demand (1)'] },
+    { locked: false, archived: false, order: ['Demand (1)', 'Supply (1)'] },
+    { locked: true, archived: true, order: ['Demand (1)', 'Supply (1)'] },
+  ])('orders lessons when locked=$locked and archived=$archived', ({ locked, archived, order }) => {
+    mockCourse = {
+      ...course,
+      archived,
+      distributedCopy: { lineageId: 'economics', revision: 1, locked, autoAcceptUpdates: false },
+      localLessonOrder: [lesson2.id, lesson1.id],
+    };
+    mockLessons = [lesson2, lesson1];
+    mockCards = [
+      makeCard({ id: 'c1', primaryLessonId: lesson1.id }),
+      makeCard({ id: 'c2', primaryLessonId: lesson2.id }),
+    ];
+    renderPage();
+
+    expect(
+      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual(order);
   });
 
   it('bounds mounted lesson sections even when each lesson is below the row virtualisation threshold', () => {
