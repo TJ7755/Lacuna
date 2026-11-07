@@ -1,8 +1,12 @@
-import { useState } from 'react';
-import { Button } from '../../components/ui/Button';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { QuestionSetChoices } from '../../components/question-sets/QuestionSetChoices';
 import '../../components/question-sets/question-set-controls.css';
+import { FlowGradeControls } from './FlowGradeControls';
 import { lessonChoices, type LessonChoiceCard } from './simpleLearnQuestions';
+import { STUDY_VERDICT_HOLD_MS } from './useTypedAutoMark';
+
+// A local choice needs only enough judging time for the ordinary two-sided flip.
+const CHOICE_CHECKING_MS = 600;
 
 export function LessonChoiceControls({
   card,
@@ -10,24 +14,103 @@ export function LessonChoiceControls({
   candidates,
   rankedIds,
   onCheck,
-  onContinue,
+  onAdvance,
+  paused,
+  departing,
+  m,
 }: {
   card: LessonChoiceCard;
   promptId: string;
   candidates: readonly LessonChoiceCard[];
   rankedIds: readonly string[];
   onCheck: (correct: boolean) => boolean;
-  onContinue: () => void;
+  onAdvance: (correct: boolean) => void;
+  paused: boolean;
+  departing: boolean;
+  m: number;
 }) {
   // The presentation owns its choices. A ranking that arrives mid-question is for later cards.
   const [choices] = useState(() => lessonChoices(card, candidates, rankedIds));
   const [selected, setSelected] = useState('');
-  const [checked, setChecked] = useState(false);
-  const correct = selected === card.answer;
+  const [result, setResult] = useState<'checking' | 'correct' | 'incorrect'>();
+  const controls = useRef<HTMLDivElement>(null);
+  const submit = useCallback(() => {
+    if (paused || !selected || result) return;
+    if (onCheck(selected === card.answer)) setResult('checking');
+  }, [paused, selected, result, onCheck, card.answer]);
+
+  useEffect(() => {
+    if (paused || !result) return;
+    const checking = result === 'checking';
+    const timer = window.setTimeout(
+      () => {
+        if (checking) setResult(selected === card.answer ? 'correct' : 'incorrect');
+        else onAdvance(result === 'correct');
+      },
+      (checking ? CHOICE_CHECKING_MS : STUDY_VERDICT_HOLD_MS) * Math.max(m, 0.3),
+    );
+    return () => window.clearTimeout(timer);
+  }, [paused, result, selected, card.answer, m, onAdvance]);
+
+  useEffect(() => {
+    if (paused || result) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.isComposing ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        event.shiftKey
+      )
+        return;
+      const target = event.target;
+      const root = controls.current;
+      if (!root || root.closest('[inert], [aria-hidden="true"]')) return;
+      let nativeButton: Element | null = null;
+      if (target instanceof Element && target !== document.body) {
+        if (!root.closest('main')?.contains(target)) return;
+        nativeButton = target.closest('button, a, [role="button"]');
+        if (nativeButton && !root.contains(nativeButton)) return;
+        const radio = target.matches('input[type="radio"]') && root.contains(target);
+        if (
+          !radio &&
+          target.closest(
+            'input, textarea, select, [contenteditable], [role="dialog"], [role="menu"]',
+          )
+        )
+          return;
+      }
+
+      if (/^[1-4]$/.test(event.key)) {
+        const index = Number(event.key) - 1;
+        const answer = choices[index];
+        if (answer === undefined) return;
+        event.preventDefault();
+        setSelected(answer);
+        root.querySelectorAll<HTMLInputElement>('input[type="radio"]')[index]?.focus({
+          preventScroll: true,
+        });
+      } else if (
+        selected &&
+        !nativeButton &&
+        (event.key === 'Enter' || event.key === ' ' || event.code === 'Space')
+      ) {
+        event.preventDefault();
+        submit();
+      }
+      // Leave arrows and the first Space to native radio navigation.
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [choices, paused, result, selected, submit]);
 
   return (
     <div
+      ref={controls}
       data-study-choices
+      aria-busy={result === 'checking' || undefined}
       className="study-controls study-choice-controls mx-auto mt-6 flex w-full max-w-md shrink-0 flex-col gap-3"
     >
       <QuestionSetChoices
@@ -36,33 +119,33 @@ export function LessonChoiceControls({
         value={selected}
         options={choices.map((answer) => ({ value: answer, label: answer }))}
         onChange={setSelected}
-        disabled={checked}
+        disabled={Boolean(result)}
         flow
-        accentValues={() => checked && correct}
       />
-      <div className="flex flex-col gap-3">
-        <p role="status" className="min-h-5 text-center text-sm">
-          {checked &&
-            (correct ? (
-              <span className="text-positive">Correct.</span>
-            ) : (
-              <span className="text-negative">Incorrect. Correct answer: {card.answer}</span>
-            ))}
-        </p>
-        <Button
-          variant="primary"
-          size="lg"
-          className="w-full"
-          disabled={!selected}
-          data-study-continue={checked ? true : undefined}
-          onClick={() => {
-            if (checked) onContinue();
-            else if (onCheck(correct)) setChecked(true);
-          }}
-        >
-          {checked ? 'Continue' : 'Check answer'}
-        </Button>
-      </div>
+      <p role="status" className="sr-only">
+        {result === 'correct'
+          ? 'Correct.'
+          : result === 'incorrect'
+            ? `Incorrect. Correct answer: ${card.answer}`
+            : ''}
+      </p>
+      <FlowGradeControls
+        question={!result}
+        grades={[]}
+        rowClassName="w-full"
+        revealLabel="Check answer"
+        revealDisabled={!selected}
+        onReveal={submit}
+        autoMark={
+          result === 'checking'
+            ? { pending: true }
+            : result
+              ? { pending: false, correct: result === 'correct' }
+              : undefined
+        }
+        departing={departing}
+        m={m}
+      />
     </div>
   );
 }

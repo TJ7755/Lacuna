@@ -194,3 +194,7 @@ mark.typed-missed {
 .study-choice-controls .qs-choices > div {
   justify-content: center;
 }
+
+.study-choice-controls .qs-choices label {
+  border-radius: 9999px;
+}

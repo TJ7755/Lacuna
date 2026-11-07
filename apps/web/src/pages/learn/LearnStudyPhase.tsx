@@ -1,4 +1,4 @@
-import { useId, type RefObject } from 'react';
+import { useCallback, useId, type RefObject } from 'react';
 import { AnimatePresence } from 'motion/react';
 import type { Card, ItemPayload } from '@lacuna/core/db/types';
 import { LessonChoiceControls } from './LessonChoiceControls';
@@ -54,6 +54,7 @@ export function LearnStudyPhase({
   filterParams,
   tagFilter,
   cardDeparting,
+  leaveConfirmationOpen,
   setCardDeparting,
   m,
 }: {
@@ -83,6 +84,7 @@ export function LearnStudyPhase({
   filterParams: CardFilter[];
   tagFilter: string | null;
   cardDeparting: boolean;
+  leaveConfirmationOpen: boolean;
   setCardDeparting: (departing: boolean) => void;
   m: number;
 }) {
@@ -157,6 +159,23 @@ export function LearnStudyPhase({
   const familiarising = introductionPresentation.stage === 'familiarise';
   const serial = introductionPresentation.serial;
   const promptId = `${useId()}-${serial}`;
+  const checkChoice = useCallback(
+    (correct: boolean) => {
+      if (!checkIntroduction(serial, correct)) return false;
+      reveal();
+      return true;
+    },
+    [checkIntroduction, reveal, serial],
+  );
+  const advanceChoice = useCallback(
+    (correct: boolean) => {
+      const commit = () => continueIntroduction(serial);
+      const transition = cardTransitionRef.current;
+      if (transition) transition.dismiss(correct, commit);
+      else commit();
+    },
+    [cardTransitionRef, continueIntroduction, serial],
+  );
   return (
     <>
       {/* In-session card editor: fixes a card without leaving the session (timer paused). */}
@@ -345,8 +364,11 @@ export function LearnStudyPhase({
             promptId={promptId}
             candidates={choiceCandidates}
             rankedIds={rankedChoices ?? []}
-            onCheck={(correct) => checkIntroduction(serial, correct)}
-            onContinue={() => continueIntroduction(serial)}
+            onCheck={checkChoice}
+            onAdvance={advanceChoice}
+            paused={editing || menuOpen || hintsOpen || leaveConfirmationOpen}
+            departing={cardDeparting}
+            m={m}
           />
         )}
         {isTypingCard && (

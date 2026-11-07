@@ -55,13 +55,17 @@ async function enableJev(page: Page) {
 
 function study(page: Page) {
   const main = page.getByRole('main', { name: 'Study card' });
+  const activeCard = main.locator('[data-study-card-id]:not([inert])');
   return {
     main,
-    prompt: main.getByText(/^What is the French for .+\?$/).filter({ visible: true }),
+    prompt: activeCard
+      .locator('[data-study-face="front"]')
+      .getByText(/^What is the French for .+\?$/),
+    revealed: activeCard.locator('[data-study-face="back"]'),
+    choiceControls: main.locator('[data-study-choices]'),
     choices: main.getByRole('radio'),
     typing: main.getByRole('textbox', { name: 'Your answer' }),
     check: main.getByRole('button', { name: 'Check answer', exact: true }),
-    feedback: main.getByRole('status').filter({ hasText: /^(Correct|Incorrect)\./ }),
     advance: main.getByRole('button', { name: 'Continue', exact: true }),
   };
 }
@@ -74,13 +78,45 @@ async function choose(view: ReturnType<typeof study>, answer: string) {
   await view.check.click();
 }
 
+async function nextPrompt(view: ReturnType<typeof study>, previous: string) {
+  await expect
+    .poll(async () => {
+      const [text] = await view.prompt.allTextContents();
+      return Boolean(text && text !== previous);
+    })
+    .toBe(true);
+  return view.prompt.innerText();
+}
+
 test('introduces choices before timed typing and keeps the old practice entry', async ({
   page,
 }, testInfo) => {
   const { lessonId, cards } = await seedLesson(page);
   const lessonUrl = `/#/lesson/${lessonId}/learn`;
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto(lessonUrl);
   await page.addScriptTag({ content: fixture });
+  await page.getByRole('button', { name: 'Exit', exact: true }).evaluate((exit) => {
+    let interrupted = false;
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (!(node instanceof Element)) continue;
+          const rim = node.matches('[data-study-rim]')
+            ? node
+            : node.querySelector('[data-study-rim]');
+          const verdict = rim?.getAttribute('data-study-rim');
+          if (verdict) document.documentElement.setAttribute('data-tested-study-rim', verdict);
+          if (verdict === 'negative' && !interrupted && exit instanceof HTMLElement) {
+            interrupted = true;
+            exit.click();
+          }
+        }
+      }
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  });
+  const recordedRim = page.locator('html');
 
   const view = study(page);
   await expect(view.choices).toHaveCount(4);
@@ -88,20 +124,30 @@ test('introduces choices before timed typing and keeps the old practice entry', 
   const progress = page.getByRole('progressbar', { name: 'Chunks complete' });
   await expect(progress.locator('[data-session-card-status]')).toHaveCount(3);
   await page.screenshot({ path: testInfo.outputPath('learn-new-cards-choice.png') });
+  const hoverLabel = view.choices.nth(1).locator('..');
+  await hoverLabel.hover();
+  await expect(hoverLabel.locator('.flow-feedback-layer')).toHaveCSS('border-radius', '9999px');
+  await page.screenshot({ path: testInfo.outputPath('learn-new-cards-pill-hover.png') });
   const first = await view.prompt.innerText();
   await expect(view.choices.first()).toBeFocused();
   const wrongIndex = (await view.choices.nth(1).inputValue()) === cards[first] ? 2 : 1;
   await page.keyboard.press('ArrowRight');
-  if (wrongIndex === 2) await page.keyboard.press('ArrowRight');
+  await expect(view.choices.nth(1)).toBeChecked();
+  await page.keyboard.press('1');
+  await expect(view.choices.first()).toBeChecked();
+  await page.keyboard.press(String(wrongIndex + 1));
   await expect(view.choices.nth(wrongIndex)).toBeChecked();
-  await page.keyboard.press('Tab');
-  await expect(view.check).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(view.feedback).toContainText(`Correct answer: ${cards[first]}`);
+  await expect(view.choiceControls).toHaveAttribute('aria-busy', 'true');
+  await expect(view.revealed).toHaveText(cards[first]);
+  await expect(view.advance).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('learn-new-cards-retry.png') });
   expect(await readReviews(page)).toHaveLength(0);
-  await expect(view.advance).toBeFocused();
-  await page.keyboard.press('Enter');
+  await expect(recordedRim).toHaveAttribute('data-tested-study-rim', 'negative');
+  const leave = page.getByRole('dialog', { name: 'Leave this session?' });
+  await leave.getByRole('button', { name: 'Stay' }).click();
+  await expect(view.revealed).toHaveText(cards[first]);
+  await nextPrompt(view, first);
 
   const firstChunk = new Set([first]);
   for (let index = 0; index < 3; index += 1) {
@@ -109,9 +155,23 @@ test('introduces choices before timed typing and keeps the old practice entry', 
     const prompt = await view.prompt.innerText();
     expect(firstChunk.has(prompt)).toBe(false);
     firstChunk.add(prompt);
-    await choose(view, cards[prompt]);
-    await expect(view.feedback).toHaveText('Correct.');
-    await view.advance.click();
+    if (index === 0) {
+      const ordered = await view.choices.evaluateAll((options) =>
+        options.map((option) => option.getAttribute('value')),
+      );
+      await page.keyboard.press(String(ordered.indexOf(cards[prompt]) + 1));
+      await expect(
+        view.main.getByRole('radio', { name: cards[prompt], exact: true }),
+      ).toBeChecked();
+      await page.keyboard.press('Space');
+      await expect(view.choiceControls).toHaveAttribute('aria-busy', 'true');
+      await expect(view.revealed).toHaveText(cards[prompt]);
+      await expect(recordedRim).toHaveAttribute('data-tested-study-rim', 'positive');
+    } else {
+      await choose(view, cards[prompt]);
+    }
+    await nextPrompt(view, prompt);
+    if (index === 0) await page.emulateMedia({ reducedMotion: 'reduce' });
   }
   expect(await readReviews(page)).toHaveLength(0);
 
@@ -144,8 +204,7 @@ test('introduces choices before timed typing and keeps the old practice entry', 
     } else {
       if (prompt === first) retried = true;
       await choose(view, cards[prompt]);
-      await expect(view.feedback).toHaveText('Correct.');
-      await view.advance.click();
+      await nextPrompt(view, prompt);
     }
   }
   expect(retried).toBe(true);
@@ -204,20 +263,17 @@ test('prepares one lesson-wide Jev shortlist and reuses it after reload', async 
   expect((await response).ok()).toBe(true);
   expect(await optionText()).toEqual(firstOptions);
   await choose(view, cards[firstPrompt]);
-  await view.advance.click();
+  const rankedPrompt = await nextPrompt(view, firstPrompt);
   await expect(view.choices).toHaveCount(4);
-  const nextPrompt = await view.prompt.innerText();
-  await expect.poll(optionText).toEqual(expectedChoices.get(nextPrompt));
+  await expect.poll(optionText).toEqual(expectedChoices.get(rankedPrompt));
 
   await page.reload();
   await expect(view.choices).toHaveCount(4);
   const resumedPrompt = await view.prompt.innerText();
-  expect(resumedPrompt).toBe(nextPrompt);
+  expect(resumedPrompt).toBe(rankedPrompt);
   await choose(view, cards[resumedPrompt]);
-  await view.advance.click();
+  const cachedPrompt = await nextPrompt(view, resumedPrompt);
   await expect(view.choices).toHaveCount(4);
-  const cachedPrompt = await view.prompt.innerText();
-  expect(cachedPrompt).not.toBe(resumedPrompt);
   await expect.poll(optionText).toEqual(expectedChoices.get(cachedPrompt));
   expect(preparationRequests).toBe(1);
 });

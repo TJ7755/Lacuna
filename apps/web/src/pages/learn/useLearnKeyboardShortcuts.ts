@@ -87,9 +87,11 @@ export function useLearnKeyboardShortcuts({
       // While the user is typing into any input, textarea, select, or content-editable
       // element, card shortcuts stay inert so keystrokes don't accidentally grade.
       const target = e.target as HTMLElement | null;
+      const choiceRadio =
+        target instanceof HTMLElement && target.matches('[data-study-choices] input[type="radio"]');
       if (
         target &&
-        (target.tagName === 'INPUT' ||
+        ((target.tagName === 'INPUT' && !choiceRadio) ||
           target.tagName === 'TEXTAREA' ||
           target.tagName === 'SELECT' ||
           target.isContentEditable)

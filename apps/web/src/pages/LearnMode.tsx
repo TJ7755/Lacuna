@@ -374,8 +374,13 @@ function LearnSession({
         answerSaveStatus={answerSaveStatus}
         onAttempt={(source) => {
           if (source === 'navigation') exitDecisionPendingRef.current = true;
-          void settleAnswer().catch(() => {});
-          cardTransitionRef.current?.cancel();
+          if (choiceQuestion) {
+            // Choice results are saved at Check. Pause the pending advance behind the app's dialog.
+            if (source === 'navigation') cardTransitionRef.current?.cancel();
+          } else {
+            void settleAnswer().catch(() => {});
+            cardTransitionRef.current?.cancel();
+          }
           persistSimpleResume();
         }}
         onConfirm={async () => {
@@ -452,6 +457,7 @@ function LearnSession({
               filterParams={filterParams}
               tagFilter={tagFilter}
               cardDeparting={cardDeparting}
+              leaveConfirmationOpen={leaveConfirmationOpen}
               setCardDeparting={setCardDeparting}
               m={m}
             />

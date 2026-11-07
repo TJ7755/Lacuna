@@ -50,7 +50,7 @@ const OFF: TypedAutoMark = { state: 'off' };
 const IDLE: TypedAutoMark = { state: 'idle' };
 
 /** How long a mark stays visible before the card is dismissed with it, before motion scaling. */
-const TYPED_AUTO_MARK_HOLD_MS = 700;
+export const STUDY_VERDICT_HOLD_MS = 700;
 
 /** How long a submitted answer waits before it is marked, before motion scaling. */
 export const TYPED_AUTO_MARK_DELAY_MS = 500;
@@ -233,7 +233,7 @@ export function useTypedAutoMark({
       dismissAt.current = null;
       return;
     }
-    dismissAt.current ??= performance.now() + TYPED_AUTO_MARK_HOLD_MS * Math.max(m, 0.3);
+    dismissAt.current ??= performance.now() + STUDY_VERDICT_HOLD_MS * Math.max(m, 0.3);
     if (holding) return;
     const timer = window.setTimeout(
       () =>

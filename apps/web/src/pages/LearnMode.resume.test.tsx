@@ -80,7 +80,7 @@ describe('LearnMode resume', () => {
       <ThemeProvider>
         <AccentProvider>
           <ToastProvider>
-            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?filter=new`]}>
               <Routes>
                 <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
               </Routes>
@@ -112,7 +112,7 @@ describe('LearnMode resume', () => {
       <ThemeProvider>
         <AccentProvider>
           <ToastProvider>
-            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?filter=new`]}>
               <Routes>
                 <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
               </Routes>
@@ -145,7 +145,7 @@ describe('LearnMode resume', () => {
       <ThemeProvider>
         <AccentProvider>
           <ToastProvider>
-            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?filter=new`]}>
               <Routes>
                 <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
               </Routes>
