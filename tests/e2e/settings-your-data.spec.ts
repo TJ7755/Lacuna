@@ -1,7 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import type { BackupSnapshot } from '@lacuna/core/db/types';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 import { SYNC_CHANNEL_ID, SYNC_WRITE_TOKEN } from './fixtures/syncRelay';
 
@@ -12,10 +11,20 @@ for (const width of [1440, 390, 320]) {
     test(`Your data at ${width}px in ${theme}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      await page.addInitScript((value) => localStorage.setItem('lacuna-theme', value), theme);
-      await enterFreshLacuna(page);
-      await expect.poll(async () => (await readAll(page, 'backups')).length).toBeGreaterThan(0);
+      await page.addInitScript((value) => {
+        localStorage.setItem('lacuna-theme', value);
+        localStorage.setItem('lacuna-onboarding', 'done');
+        localStorage.setItem('lacuna-seeded', '1');
+      }, theme);
+      // Empty profiles need not have an automatic restore point to clone.
+      await page.goto('/#/settings#settings-backups');
+      const backupCard = page.locator('#settings-backups');
+      await backupCard.getByRole('button', { name: 'Save restore point', exact: true }).click();
+      await expect(backupCard.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
       const [snapshot] = await readAll<BackupSnapshot>(page, 'backups');
+      // Remount Settings after seeding without restarting background sync.
+      await page.goto('/#/');
+      await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
       await page.evaluate(
         async ({ snapshot, channelId, writeToken }) => {
           await new Promise<void>((resolve, reject) => {
