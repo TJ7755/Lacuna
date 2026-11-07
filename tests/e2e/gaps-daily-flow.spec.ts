@@ -67,7 +67,9 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
   await enterFreshLacuna(author);
   await createCourse(author, 'Class biology');
   const courseId = /#\/course\/([^/]+)/.exec(author.url())![1];
-  await addLessonCard(author, courseId, 'Membrane recall');
+  const front = 'Membrane recall';
+  const answer = `${front} answer`;
+  await addLessonCard(author, courseId, front);
   await author.goto('/#/share');
   // Class biology is the only course, so the page opens on it without a picker.
   await expect(
@@ -252,7 +254,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       'courses',
     );
     const existingCourse = beforeCourses.find((course) => course.distributedCopy)!;
-    await reviewOnlyCard(returning, existingCourse.id);
+    await reviewOnlyCard(returning, existingCourse.id, answer);
     const beforeCards = await readAll(returning, 'cards');
     const beforeHistory = await readAll(returning, 'reviewHistory');
     await returning.goto('/#/');
@@ -283,7 +285,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       (id) => JSON.parse(localStorage.getItem('lacuna.shareImports')!)[id] as string,
       shareId,
     );
-    await reviewOnlyCard(pupil, importedId);
+    await reviewOnlyCard(pupil, importedId, answer);
     expect(uploads).toHaveLength(0);
     await pupil.clock.setFixedTime(clock);
     await pupil.goto('/#/');
