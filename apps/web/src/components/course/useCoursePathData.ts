@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
-import type { Card } from '@lacuna/core/db/types';
 import type { useCoursePathRecords } from '../../state/useCourseStudyFlowRecords';
 import { computeCourseSummaries } from '../../state/courseSummaries';
 import { availableCards, dueCards } from '../../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../../fsrs/stats';
 import { makeExamDateContext } from '../../fsrs/examDate';
 import { buildPath } from '../../course/path';
-import { lessonCardMembership } from '../../course/lessonMembership';
+import { lessonCardMembershipByLesson } from '../../course/lessonMembership';
 import {
   currentAssessmentPracticeContext,
   type AssessmentPracticeOption,
@@ -73,13 +72,10 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
   // Complete lesson membership includes both primary and explicitly linked cards.
   // Hooks below must run unconditionally (Rules of Hooks), so they tolerate
   // not-yet-loaded data via fallbacks and are only consumed once `dataLoaded`.
-  const lessonCardsById = useMemo(() => {
-    const map = new Map<string, Card[]>();
-    for (const lesson of lessons ?? []) {
-      map.set(lesson.id, lessonCardMembership(lesson.id, courseCards ?? [], lessonLinks ?? []));
-    }
-    return map;
-  }, [courseCards, lessonLinks, lessons]);
+  const lessonCardsById = useMemo(
+    () => lessonCardMembershipByLesson(lessons ?? [], courseCards ?? [], lessonLinks ?? []),
+    [courseCards, lessonLinks, lessons],
+  );
 
   // Live review-due count and mean review time, feeding shouldInsertPractice
   // (addendum 2 §H). Deliberately review-only (dueCards): practice-node pacing

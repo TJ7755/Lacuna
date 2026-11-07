@@ -12,6 +12,7 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/react';
 import { Dashboard } from './Dashboard';
+import { clearShareImport, recordShareImport } from '../shareLinks/linkStore';
 import {
   chooseStudyTarget,
   chosenStudyTarget,
@@ -19,7 +20,27 @@ import {
   onboardingPending,
 } from '../onboarding/onboardingState';
 
+const { pollShareUpdates } = vi.hoisted(() => ({ pollShareUpdates: vi.fn() }));
+vi.mock('../shareLinks/polling', () => ({ pollShareUpdates }));
+
 describe('Dashboard Today queue', () => {
+  it('loads share polling only for libraries with a recorded share import', async () => {
+    const shareId = 'a'.repeat(32);
+    const view = render(<Dashboard />);
+    await act(() => vi.dynamicImportSettled());
+    expect(pollShareUpdates).not.toHaveBeenCalled();
+    view.unmount();
+
+    recordShareImport(shareId, mockCourse.id);
+    try {
+      render(<Dashboard />);
+      await act(() => vi.dynamicImportSettled());
+      expect(pollShareUpdates).toHaveBeenCalledTimes(1);
+    } finally {
+      clearShareImport(shareId);
+    }
+  });
+
   it('waits silently for course data while keeping the toolbar available', () => {
     const view = render(<Dashboard />);
     expect(screen.queryByText(/Loading Today/)).not.toBeInTheDocument();

@@ -7,7 +7,12 @@ import { readReviewActivity } from '../db/reviewActivityRead';
 import type { ReviewActivity } from '../fsrs/heatmap';
 import { db } from '../db/schema';
 import type { Card, Course, Lesson } from '@lacuna/core/db/types';
-import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
+import {
+  buildDeckSecondsMap,
+  studyReviewStats,
+  studyWorkloadForecast,
+  type StudyStats,
+} from '../fsrs/stats';
 import { computeCourseSummaries, type CourseSummary } from './courseSummaries';
 import { dashboardForecasts } from './dashboardForecasts';
 import type { CourseForecast } from '../fsrs/courseForecast';
@@ -123,7 +128,10 @@ export function ShellCourseDataProvider({
     );
     const deckSeconds = buildDeckSecondsMap(performance);
     const forecastCourses = courses.filter((course) => !paperCourseIds.has(course.id));
-    const sidebarAt = (now: number): SidebarData => ({
+    const sidebarAt = (
+      now: number,
+      reviewStats = studyReviewStats(cards, now, activity),
+    ): SidebarData => ({
       courses,
       lessons: orderedLessons,
       summaries: computeCourseSummaries(
@@ -136,14 +144,17 @@ export function ShellCourseDataProvider({
         activity,
         concepts,
       ),
-      stats: computeStudyStats(
-        cards,
-        deckSeconds,
-        now,
-        activeCourseIds,
-        activity,
-        schedulingByCourse,
-      ),
+      stats: {
+        ...reviewStats,
+        forecast: studyWorkloadForecast(
+          cards,
+          deckSeconds,
+          now,
+          activeCourseIds,
+          activity,
+          schedulingByCourse,
+        ),
+      },
       // The legacy forecast assumes one horizon; paper Courses use their per-Card summary.
       forecasts: dashboardForecasts(forecastCourses, lessons, cards, now),
     });
@@ -173,7 +184,8 @@ export function ShellCourseDataProvider({
         // Time advances without a database mutation. Refresh eligibility and the
         // sidebar alongside Today while reusing the retained records.
         const now = Date.now();
-        const sidebar = sidebarAt(now);
+        const reviewStats = studyReviewStats(cards, now, activity);
+        const sidebar = sidebarAt(now, reviewStats);
         return {
           sidebar,
           dashboard: {
@@ -198,14 +210,17 @@ export function ShellCourseDataProvider({
             forecasts: sidebar.forecasts,
             // Dashboard response-time calibration is course-based; navigation keeps
             // scheduling-unit pacing. Sharing the records must not conflate the two.
-            stats: computeStudyStats(
-              cards,
-              courseSeconds,
-              now,
-              activeCourseIds,
-              activity,
-              schedulingByCourse,
-            ),
+            stats: {
+              ...reviewStats,
+              forecast: studyWorkloadForecast(
+                cards,
+                courseSeconds,
+                now,
+                activeCourseIds,
+                activity,
+                schedulingByCourse,
+              ),
+            },
           },
         };
       },

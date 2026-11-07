@@ -1,5 +1,5 @@
 import type { Concept } from '@lacuna/core/questions/types';
-import { lessonCardMembership } from '../course/lessonMembership';
+import { lessonCardMembershipByLesson } from '../course/lessonMembership';
 import type {
   Card,
   Course,
@@ -87,6 +87,14 @@ export function computeCourseSummaries(
     (assessmentsByCourse[assessment.courseId] ??= []).push(assessment);
   }
 
+  const exposuresByLesson = new Map<string, LessonCardExposure[]>();
+  for (const exposure of progress.exposures) {
+    const rows = exposuresByLesson.get(exposure.lessonId);
+    if (rows) rows.push(exposure);
+    else exposuresByLesson.set(exposure.lessonId, [exposure]);
+  }
+  const completedLessonIds = new Set(progress.completions.map((row) => row.lessonId));
+
   const summaries: Record<string, CourseSummary> = {};
   for (const course of courses) {
     const courseCards = cardsByCourse[course.id] ?? [];
@@ -101,14 +109,13 @@ export function computeCourseSummaries(
     );
     const available = availableCards(coreCards, now);
     const coreLessons = courseLessons.filter((lesson) => !lesson.isExtension);
-    const completedLessonCount = coreLessons.filter((lesson) =>
-      lessonTaught(
-        lesson.id,
-        lessonCardMembership(lesson.id, courseCards, progress.links),
-        progress.exposures,
-        progress.completions,
-      ),
-    ).length;
+    const lessonCards = lessonCardMembershipByLesson(coreLessons, courseCards, progress.links);
+    const completedLessonCount = coreLessons.filter(({ id }) => {
+      const members = lessonCards.get(id) ?? [];
+      return members.length
+        ? lessonTaught(id, members, exposuresByLesson.get(id) ?? [], [])
+        : completedLessonIds.has(id);
+    }).length;
     const today = startOfDay(now, course.timeZone);
     const examDateContext = makeExamDateContext(
       course,

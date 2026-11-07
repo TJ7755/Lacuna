@@ -31,6 +31,7 @@ import { useDashboardForecastHistories } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
 import { useToast } from '../components/ui/Toast';
 import { finishOnboarding, onboardingPending } from '../onboarding/onboardingState';
+import { listShareImports } from '../shareLinks/linkStore';
 import {
   CourseContextMenu,
   ArchiveCourseDialog,
@@ -79,12 +80,10 @@ export function Dashboard() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
-  // Background check for teacher republishes of share-linked courses. The poll
-  // module (with the merge importer and course-file decoder) loads on demand so
-  // none of that weight joins the initial bundle; the dashboard never waits on
-  // it either. A merged update surfaces through the existing pending-review
-  // badge. A failed chunk load simply retries on the next dashboard visit.
+  // Only libraries with share-linked courses need the relay polling runtime.
+  // Poll failures can retry on the next dashboard visit.
   useEffect(() => {
+    if (listShareImports().length === 0 || navigator.onLine === false) return;
     let cancelled = false;
     void import('../shareLinks/polling')
       .then(({ pollShareUpdates }) => {

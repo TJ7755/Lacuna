@@ -4,7 +4,7 @@ import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { buildPath } from '../course/path';
-import { lessonCardMembership } from '../course/lessonMembership';
+import { lessonCardMembershipByLesson } from '../course/lessonMembership';
 import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
 import {
   buildCourseStudyFlowSnapshot,
@@ -45,11 +45,10 @@ export function useCourseStudyFlow(
     if (records === undefined) return undefined;
     if (!records.course) return null;
     const now = Date.now();
-    const lessonCardsById = new Map(
-      records.lessons.map((lesson) => [
-        lesson.id,
-        lessonCardMembership(lesson.id, records.cards, records.links),
-      ]),
+    const lessonCardsById = lessonCardMembershipByLesson(
+      records.lessons,
+      records.cards,
+      records.links,
     );
     const currentPractice = currentAssessmentPracticeContext({
       course: records.course,

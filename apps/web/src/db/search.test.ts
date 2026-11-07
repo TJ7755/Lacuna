@@ -202,6 +202,33 @@ describe('searchCards', () => {
     expect(searchCardsInScope('nucleus', scope)).toHaveLength(1);
   });
 
+  it('finds text around embedded images without matching their encoded bytes', () => {
+    const loaded = card('image', {
+      front: '![Cell nucleus](DATA:image/png;base64,SearchNoise+/=) Mitosis',
+      back: '<img alt="Cytoplasm" src="data:image/webp;base64,OtherNoise"> Division',
+    });
+    for (const query of ['cell nucleus', 'mitosis', 'cytoplasm', 'division'])
+      expect(searchCards(query, [loaded])).toHaveLength(1);
+    for (const query of ['searchnoise', 'othernoise'])
+      expect(searchCards(query, [loaded])).toHaveLength(0);
+  });
+
+  it('keeps image URL examples searchable when the author presents them as text', () => {
+    const loaded = card('example', {
+      front: 'Explain the `data:image/png;base64,AAAA` example.',
+      back: '`![Example](data:image/png;base64,BBBB)` and `<img src="data:image/png;base64,CCCC">`',
+    });
+    for (const query of ['data:image/png', 'base64,AAAA', 'base64,BBBB', 'base64,CCCC'])
+      expect(searchCards(query, [loaded])).toHaveLength(1);
+  });
+
+  it('keeps image syntax in indented Markdown code searchable', () => {
+    const loaded = card('example', {
+      front: '    ![Example](data:image/png;base64,BBBB)',
+    });
+    expect(searchCards('data:image/png', [loaded])).toHaveLength(1);
+  });
+
   it('lists due cards with an empty query when the due filter is on', () => {
     const cards = [
       card('due', { due: NOW - 1, lastReviewed: NOW - 5000 }),

@@ -51,6 +51,8 @@ export function useVirtualList({
   const containerRef = useRef<HTMLDivElement>(null);
   const itemHeights = useRef<Record<number, number>>({});
   const measuredElements = useRef(new Map<number, HTMLElement>());
+  const measuredIndices = useRef(new Map<Element, number>());
+  const itemObserver = useRef<ResizeObserver | null>(null);
   const measureCallbacks = useRef(new Map<number, (el: HTMLElement | null) => void>());
 
   const [scrollOffset, setScrollOffset] = useState(0);
@@ -120,62 +122,55 @@ export function useVirtualList({
   // expand and font scaling can reflow them after mount, so a one-shot ref
   // measurement is insufficient for an absolutely positioned list.
   const measureRef = useCallback((index: number) => {
+    function updateHeight(index: number, height: number): boolean {
+      // Hidden or not-yet-laid-out rows must retain their previous size estimate.
+      if (height <= 0 || itemHeights.current[index] === height) return false;
+      itemHeights.current[index] = height;
+      return true;
+    }
     if (!measureCallbacks.current.has(index)) {
-      let observer: ResizeObserver | null = null;
       let currentElement: HTMLElement | null = null;
-      const updateHeight = (height: number) => {
-        // A Suspense-hidden or not-yet-laid-out section cannot replace its estimate
-        // with zero: that would collapse all subsequent sections into the viewport.
-        if (height <= 0) return;
-        const prev = itemHeights.current[index];
-        if (prev === height) return;
-        itemHeights.current[index] = height;
-        setMeasureVersion((v) => v + 1);
-      };
       measureCallbacks.current.set(index, (el: HTMLElement | null) => {
         if (el === currentElement) return;
-        observer?.disconnect();
-        observer = null;
+        if (currentElement) {
+          itemObserver.current?.unobserve(currentElement);
+          measuredIndices.current.delete(currentElement);
+        }
         currentElement = el;
         if (!el) {
-          // Virtualised rows are mounted and unmounted as the viewport moves.
-          // Retaining one callback closure per row defeats that lifecycle and
-          // keeps every ResizeObserver handle reachable indefinitely.
           measuredElements.current.delete(index);
           measureCallbacks.current.delete(index);
           return;
         }
         measuredElements.current.set(index, el);
         if (typeof ResizeObserver !== 'undefined') {
-          // Its initial observation measures after layout, avoiding a forced
-          // layout between each nested section's ref attachment during mounting.
-          observer = new ResizeObserver((entries) => {
-            const entry = entries[0];
-            if (entry)
-              updateHeight(entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height);
+          // One observer measures the entire batch after layout and invalidates the
+          // offsets once, even when several images finish loading together.
+          itemObserver.current ??= new ResizeObserver((entries) => {
+            let changed = false;
+            for (const entry of entries) {
+              const index = measuredIndices.current.get(entry.target);
+              if (index === undefined) continue;
+              const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+              if (updateHeight(index, height)) changed = true;
+            }
+            if (changed) setMeasureVersion((v) => v + 1);
           });
-          observer.observe(el, { box: 'border-box' });
-        } else updateHeight(el.getBoundingClientRect().height);
+          measuredIndices.current.set(el, index);
+          itemObserver.current.observe(el, { box: 'border-box' });
+        } else if (updateHeight(index, el.getBoundingClientRect().height)) {
+          setMeasureVersion((v) => v + 1);
+        }
       });
     }
     return measureCallbacks.current.get(index)!;
   }, []);
 
-  // Recalculate layout when measurements change
-  const { totalHeight, virtualItems } = useMemo(() => {
+  // Geometry changes with measurements, while scrolling only changes the window.
+  const { starts, heights, totalHeight } = useMemo(() => {
     // The version is the reactive counterpart to the height cache held in a ref.
     void measureVersion;
-    if (!enabled) {
-      return {
-        totalHeight: 0,
-        virtualItems: Array.from({ length: itemCount }, (_, index) => ({
-          index,
-          start: 0,
-          end: 0,
-          key: String(index),
-        })),
-      };
-    }
+    if (!enabled) return { starts: [], heights: [], totalHeight: 0 };
 
     const heights: number[] = [];
     const starts: number[] = [];
@@ -186,7 +181,18 @@ export function useVirtualList({
       heights[i] = h;
       current += h + gap;
     }
-    const total = Math.max(0, current - gap);
+    return { starts, heights, totalHeight: Math.max(0, current - gap) };
+  }, [enabled, itemCount, estimateSize, gap, measureVersion]);
+
+  const virtualItems = useMemo(() => {
+    if (!enabled) {
+      return Array.from({ length: itemCount }, (_, index) => ({
+        index,
+        start: 0,
+        end: 0,
+        key: String(index),
+      }));
+    }
 
     // Find visible range
     const startOffset = scrollOffset;
@@ -243,18 +249,8 @@ export function useVirtualList({
       });
     }
 
-    return { totalHeight: total, virtualItems: items };
-  }, [
-    enabled,
-    itemCount,
-    estimateSize,
-    gap,
-    overscan,
-    scrollOffset,
-    containerHeight,
-    measureVersion,
-    pinnedIndices,
-  ]);
+    return items;
+  }, [enabled, itemCount, starts, heights, overscan, scrollOffset, containerHeight, pinnedIndices]);
 
   const scrollToIndex = useCallback(
     (index: number) => {

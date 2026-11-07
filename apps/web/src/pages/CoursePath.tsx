@@ -51,8 +51,6 @@ function prefetchLessonView(): void {
   });
 }
 
-export const preloadCoursePath = useCoursePathRecords.preload;
-
 export function CoursePath() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();

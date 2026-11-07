@@ -20,6 +20,7 @@ on:
       - 'scripts/performance-audit.ts'
       - 'scripts/stress-relay*'
       - 'tests/e2e/first-interaction-latency.spec.ts'
+      - 'tests/e2e/interaction-smoothness.spec.ts'
       - 'tests/e2e/fixtures/interactionPerformance.ts'
       - 'vite.config.ts'
       - 'package.json'
@@ -47,7 +48,11 @@ jobs:
       - run: bunx playwright install --with-deps chromium
       - run: bun run build:assets
       - run: bun run perf:check
-      - run: bun run perf:audit:web-interactions
+      - name: Verify first interactions and animation behaviour
+        run: >-
+          bunx playwright test -c tests/config/playwright.web.config.ts
+          tests/e2e/first-interaction-latency.spec.ts tests/e2e/interaction-smoothness.spec.ts
+          --project=chromium --workers=1
         env:
           LACUNA_BROWSER_PREBUILT: 'true'
       - run: node scripts/performance-heavy/build.mjs
@@ -135,7 +140,22 @@ jobs:
             echo "COMPARISON_${label^^}_DIST=$comparison_root/dist" >> "$GITHUB_ENV"
           done
           node scripts/performance-heavy/build.mjs
-          node --input-type=module -e "import {writeFileSync} from 'node:fs'; writeFileSync('artifacts/performance/comparison/plan.json', JSON.stringify({harness:process.env.GITHUB_SHA,base:process.env.COMPARISON_BASE,candidate:process.env.COMPARISON_CANDIDATE,ordinaryOrder:['base','candidate','candidate','base','base','candidate'],diagnosticOrder:['base-normal','candidate-normal','candidate-idle'],retries:0},null,2));"
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const order = ['base', 'candidate', 'candidate', 'base', 'base', 'candidate'];
+          const plan = {
+            harness: process.env.GITHUB_SHA,
+            base: process.env.COMPARISON_BASE,
+            candidate: process.env.COMPARISON_CANDIDATE,
+            ordinaryOrder: order,
+            imageOrder: order,
+            imageSources: ['asset', 'embedded'],
+            imageCpuRate: 4,
+            diagnosticOrder: ['base-normal', 'candidate-normal', 'candidate-idle'],
+            retries: 0,
+          };
+          writeFileSync('artifacts/performance/comparison/plan.json', JSON.stringify(plan, null, 2));
+          NODE
       - name: Run the fixed comparison plan
         shell: bash
         env:
@@ -163,6 +183,14 @@ jobs:
               node artifacts/performance/run.mjs > "$output.log" 2>&1 || status=$?
             echo "$index $label exit=$status" | tee -a artifacts/performance/comparison/outcomes.log
             if [[ "$status" != 0 ]]; then failures=$((failures + 1)); fi
+            for source in asset embedded; do
+              output="artifacts/performance/comparison/cards-$source-$index-$label"
+              status=0
+              PERF_ASSET_COMMIT="$commit" PERF_IMAGE_SOURCE="$source" PERF_RATE=4 PERF_REPETITIONS=1 \
+                node scripts/performance-heavy/cards.mjs "$dist" "$output.json" > "$output.log" 2>&1 || status=$?
+              echo "cards $source $index $label exit=$status" | tee -a artifacts/performance/comparison/outcomes.log
+              if [[ "$status" != 0 ]]; then failures=$((failures + 1)); fi
+            done
           done
           # Instrumented runs and the idle-worker control are diagnostic evidence only.
           for condition in base-normal candidate-normal candidate-idle; do

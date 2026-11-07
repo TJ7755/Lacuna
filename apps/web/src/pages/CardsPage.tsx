@@ -97,8 +97,7 @@ export function CardsPage() {
   const cards = useCourseCardProjections(courseId);
   const sequences = useSequences(courseId);
   const occlusions = useOcclusions(courseId);
-  const lessonIds = useMemo(() => lessons?.map((lesson) => lesson.id) ?? [], [lessons]);
-  const backingDecks = useCourseBankBackingDecks(courseId, lessonIds);
+  const backingDecks = useCourseBankBackingDecks(courseId);
   const query = deferredSearch.trim();
   useScopedFindShortcut(
     cards?.length

@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { renderHook, waitFor } from '@testing-library/react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createCourse, createCourseCard } from '../db/repository';
 import { createLesson } from '../db/lessonRepository';
@@ -32,7 +33,7 @@ it.each([
   ['Path', useCoursePathRecords],
   ['Study', useCourseStudyFlowRecords],
 ] as const)(
-  'bulk-reads %s exposures in index order and observes changes',
+  'bulk-reads %s lesson progress in index order and observes changes',
   async (_name, useRecords) => {
     const course = await createCourse('Exposure reads');
     const other = await createCourse('Other course');
@@ -48,23 +49,42 @@ it.each([
         updatedAt: 100,
       })),
     );
-    const expected = await db.lessonCardExposures
-      .where('lessonId')
-      .anyOf([last.id, first.id])
-      .toArray();
+    const lessonIds = [last.id, first.id];
+    await db.lessonCards.bulkPut(
+      [last, first, outside].map((lesson) => ({
+        id: `link-${lesson.id}`,
+        lessonId: lesson.id,
+        cardId: card.id,
+        createdAt: 100,
+        updatedAt: 100,
+      })),
+    );
+    await db.lessonCompletions.bulkPut(
+      [last, first, outside].map((lesson) => ({ lessonId: lesson.id, completedAt: 100 })),
+    );
+    const [exposures, links, completions] = await Promise.all([
+      db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray(),
+      db.lessonCards.where('lessonId').anyOf(lessonIds).toArray(),
+      db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray(),
+    ]);
     const openCursor = IDBIndex.prototype.openCursor;
-    let exposureCursors = 0;
+    const cursorTables: string[] = [];
     vi.spyOn(IDBIndex.prototype, 'openCursor').mockImplementation(function (
       this: IDBIndex,
       ...args
     ) {
-      if (this.objectStore.name === 'lessonCardExposures') exposureCursors++;
+      cursorTables.push(this.objectStore.name);
       return openCursor.apply(this, args);
     });
     const { result, unmount } = renderHook(() => useRecords(course.id));
     try {
-      await waitFor(() => expect(result.current?.exposures).toEqual(expected));
-      expect(exposureCursors).toBe(0);
+      await waitFor(() => expect(result.current).toMatchObject({ exposures, links, completions }));
+      expect(cursorTables).not.toContain('lessonCardExposures');
+      expect(cursorTables).not.toContain('lessonCards');
+      await db.lessonCards.delete(links[0].id);
+      await db.lessonCompletions.update(first.id, { completedAt: 200 });
+      await waitFor(() => expect(result.current?.links).toEqual(links.slice(1)));
+      await waitFor(() => expect(result.current?.completions[0].completedAt).toBe(200));
       await db.lessonCardExposures.update([first.id, card.id], { taughtAt: 200 });
       await waitFor(() => expect(result.current?.exposures[0].taughtAt).toBe(200));
       await db.lessonCardExposures.delete([last.id, card.id]);
@@ -102,6 +122,56 @@ it('reads timestamps for a populated Path without loading any full review histor
     expect(timestamps).toHaveBeenCalledOnce();
     expect(result.current?.activity?.get(template.id)).toEqual([100]);
     expect(result.current?.cards.every((card) => card.history.length === 0)).toBe(true);
+  } finally {
+    unmount();
+  }
+});
+
+it('shares a warm course card read with another live route', async () => {
+  const course = await createCourse('Warm course');
+  await createCourseCard(course.id, 'front_back', 'Cell', 'Answer');
+  const cards = renderHook(() =>
+    useLiveQuery(() => db.cards.where('courseId').equals(course.id).toArray()),
+  );
+  await waitFor(() => expect(cards.result.current).toHaveLength(1));
+
+  const getAll = IDBIndex.prototype.getAll;
+  const readCards = vi.fn();
+  vi.spyOn(IDBIndex.prototype, 'getAll').mockImplementation(function (this: IDBIndex, ...args) {
+    if (this.objectStore.name === 'cards') readCards();
+    return getAll.apply(this, args);
+  });
+  const path = renderHook(() => useCoursePathRecords(course.id));
+  try {
+    await waitFor(() => expect(path.result.current?.cards).toHaveLength(1));
+    expect(readCards).not.toHaveBeenCalled();
+  } finally {
+    path.unmount();
+    cards.unmount();
+  }
+});
+
+it('uses selected card keys for Path activity in a larger library and observes their updates', async () => {
+  const course = await createCourse('Small course');
+  const card = await createCourseCard(course.id, 'front_back', 'Cell', 'Answer');
+  const outside = await createCourse('Outside');
+  const other = await createCourseCard(outside.id, 'front_back', 'Other', 'Answer');
+  const entry = reviewHistoryEntryForCard(card, review(100));
+  await db.reviewHistory.bulkPut([
+    { ...entry, courseId: outside.id },
+    ...Array.from({ length: 7 }, (_, i) =>
+      reviewHistoryEntryForCard({ ...other, id: `outside-${i}` }, review(200 + i, `review-${i}`)),
+    ),
+  ]);
+  const allActivity = vi.spyOn(db.reviewActivity, 'toArray');
+  const selectedActivity = vi.spyOn(db.reviewActivity, 'bulkGet');
+  const { result, unmount } = renderHook(() => useCoursePathRecords(course.id));
+  try {
+    await waitFor(() => expect(result.current?.activity).toEqual(new Map([[card.id, [100]]])));
+    expect(allActivity).not.toHaveBeenCalled();
+    expect(selectedActivity).toHaveBeenCalledExactlyOnceWith([card.id]);
+    await db.reviewHistory.delete(entry.id);
+    await waitFor(() => expect(result.current?.activity).toEqual(new Map()));
   } finally {
     unmount();
   }

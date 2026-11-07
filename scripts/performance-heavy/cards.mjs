@@ -46,8 +46,9 @@ await new Promise((done) => server.listen(0, '127.0.0.1', done));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true });
 const report = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   build: root,
+  assetCommit: process.env.PERF_ASSET_COMMIT ?? null,
   buildIndexSha256: createHash('sha256')
     .update(await readFile(resolve(root, 'index.html')))
     .digest('hex'),
@@ -68,6 +69,7 @@ const report = {
   runs: [],
   failures: [],
 };
+let activePage;
 try {
   for (let iteration = 0; iteration < repetitions; iteration++) {
     const context = await browser.newContext({
@@ -76,11 +78,12 @@ try {
       serviceWorkers: 'block',
     });
     const page = await context.newPage();
+    activePage = page;
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`${origin}/__fixture`);
     await page.addScriptTag({ path: 'artifacts/performance/fixture.js' });
-    await page.evaluate(async (imageSource) => {
+    const imageSizes = await page.evaluate(async (imageSource) => {
       await window.LacunaHeavyFixture.seed(true);
       const db = await new Promise((resolve, reject) => {
         const request = indexedDB.open('lacuna');
@@ -104,9 +107,23 @@ try {
       ctx.fillStyle = '#f0e8c8';
       ctx.font = '48px sans-serif';
       ctx.fillText('Cell structure', 180, 500);
-      const embeddedImage = canvas.toDataURL('image/png');
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
       const bytes = new Uint8Array(await blob.arrayBuffer());
+      let embeddedImage;
+      if (imageSource === 'embedded') {
+        // Give legacy imports a realistic encoded payload with deterministic pixels.
+        const texture = ctx.createImageData(256, 256);
+        let seed = 42;
+        for (let i = 0; i < texture.data.length; i += 4) {
+          seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+          texture.data[i] = seed >>> 24;
+          texture.data[i + 1] = (seed >>> 16) & 255;
+          texture.data[i + 2] = (seed >>> 8) & 255;
+          texture.data[i + 3] = 255;
+        }
+        ctx.putImageData(texture, 32, 32);
+        embeddedImage = canvas.toDataURL('image/png');
+      }
       await new Promise((resolve, reject) => {
         const tx = db.transaction(
           ['cards', 'lessons', 'schedulingUnits', 'occlusions', 'assets', 'reviewHistory'],
@@ -186,6 +203,7 @@ try {
         tx.onerror = () => reject(tx.error);
       });
       db.close();
+      return { assetBytes: bytes.length, embeddedCharacters: embeddedImage?.length ?? 0 };
     }, imageSource);
     // Count actual IndexedDB reads, including reads issued by Dexie.
     await page.addInitScript(() => {
@@ -210,18 +228,29 @@ try {
     const cdp = await context.newCDPSession(page);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate });
     await cdp.send('Performance.enable');
-    const run = { iteration, errors, samples: [] };
+    const run = { iteration, imageSizes, errors, samples: [] };
     report.runs.push(run);
     async function measure(name, action, ready) {
       await page.evaluate((name) => {
         window.__reads = {};
         window.__longTasks = [];
-        const state = { start: null, end: null, cancelled: false };
+        const navigation = name.startsWith('course-') || name.startsWith('cards-');
+        const state = {
+          start: null,
+          end: null,
+          cancelled: false,
+          longestFrameMs: 0,
+          arrival: null,
+        };
         const begin = () => {
           if (state.start !== null) return;
           state.start = performance.now();
+          let previousFrame = state.start;
           const check = () => {
             if (state.cancelled) return;
+            const frame = performance.now();
+            state.longestFrameMs = Math.max(state.longestFrameMs, frame - previousFrame);
+            previousFrame = frame;
             const rows = document.querySelectorAll('[data-card-id]');
             const course = name.startsWith('course-');
             const target = course
@@ -238,6 +267,20 @@ try {
             let element = target;
             while (element) {
               opacity *= Number(getComputedStyle(element).opacity);
+              if (navigation && !state.arrival && element.style.willChange.includes('opacity')) {
+                const effect = element
+                  .getAnimations()
+                  .map((animation) => animation.effect)
+                  .find(
+                    (effect) =>
+                      effect instanceof KeyframeEffect &&
+                      effect.getKeyframes().some((frame) => frame.opacity !== undefined),
+                  );
+                if (effect) {
+                  const { duration, delay, easing } = effect.getTiming();
+                  state.arrival = { observedMs: frame - state.start, duration, delay, easing };
+                }
+              }
               element = element.parentElement;
             }
             const rect = target?.getBoundingClientRect();
@@ -286,6 +329,8 @@ try {
       const elapsedMs = performance.now() - start;
       const counts = await page.evaluate(() => ({
         inputToReadableMs: window.__interaction.end - window.__interaction.start,
+        longestFrameMs: window.__interaction.longestFrameMs,
+        arrival: window.__interaction.arrival,
         longTasks: window.__longTasks.filter(
           ({ startTime }) =>
             startTime >= window.__interaction.start && startTime <= window.__interaction.end,
@@ -355,17 +400,7 @@ try {
       () => page.getByLabel('Search all cards').fill(''),
       () => expect.poll(() => page.locator('[data-card-id]').count()).toBeGreaterThan(1),
     );
-    await measure(
-      'fill-broad-query',
-      () => page.getByLabel('Search all cards').fill('Nucleus'),
-      () => expect(page.getByLabel('Search all cards')).toHaveValue('Nucleus'),
-    );
-    await measure(
-      'clear-broad-query',
-      () => page.getByLabel('Search all cards').fill(''),
-      () => expect(page.getByLabel('Search all cards')).toHaveValue(''),
-    );
-    // A broad query keeps image rows mounted while every character updates the URL.
+    // A broad query keeps the image results populated while the user types.
     // Record renderer input-to-paint separately from Playwright wall-clock overhead.
     await page.evaluate(() => {
       window.__typedPaints = [];
@@ -389,7 +424,9 @@ try {
     }
     const typingStarted = performance.now();
     await page.getByLabel('Search all cards').pressSequentially('Nucleus', { delay: 30 });
-    await expect.poll(() => page.evaluate(() => window.__typedPaints.length)).toBe(7);
+    await page.evaluate(
+      () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+    );
     const afterTyping = await cdp.send('Performance.getMetrics');
     const typed = await page.evaluate(() => ({
       value: document.querySelector('[aria-label="Search all cards"]').value,
@@ -420,7 +457,9 @@ try {
         JSON.stringify(profile),
       );
     }
-    if (typed.value !== 'Nucleus') {
+    run.samples.push(typingSample);
+    console.log(JSON.stringify({ iteration, ...typingSample }));
+    if (typed.value !== 'Nucleus' || typed.paints.length !== 7) {
       report.failures.push({
         iteration,
         name: typingSample.name,
@@ -431,9 +470,8 @@ try {
       await expect(
         page.locator('[aria-live="polite"]').filter({ hasText: /^800 cards$/ }),
       ).toBeVisible();
+      await expect(page).toHaveURL(/[?&]q=Nucleus(?:&|$)/);
     }
-    run.samples.push(typingSample);
-    console.log(JSON.stringify({ iteration, ...typingSample }));
     await page.getByLabel('Search all cards').fill('no-such-nucleus-card');
     await expect(page.getByText(/No cards match.*no-such-nucleus-card/)).toBeVisible();
     await expect(page.locator('[data-card-id]')).toHaveCount(0);
@@ -457,6 +495,15 @@ try {
     await writeFile(output, JSON.stringify(report, null, 2) + '\n');
   }
   expect(report.failures, 'typed query preserved').toEqual([]);
+} catch (error) {
+  report.failures.push({ name: 'scenario', message: String(error) });
+  await writeFile(output, JSON.stringify(report, null, 2) + '\n');
+  if (activePage && !activePage.isClosed()) {
+    await activePage
+      .screenshot({ path: output.replace(/\.json$/, '-failure.png'), timeout: 5000 })
+      .catch(() => {});
+  }
+  throw error;
 } finally {
   await browser.close();
   server.close();
