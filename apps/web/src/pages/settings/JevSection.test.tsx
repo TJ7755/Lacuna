@@ -73,36 +73,40 @@ describe('JevSection', () => {
   it('keeps one short line on the card with state-dependent sending text', () => {
     const { rerender } = render(<JevSection />);
     expect(
-      screen.getByText('Experimental beta. Check its marks; you can undo them.'),
+      screen.getByText('Experimental beta. Check its marks and undo any mistakes.'),
     ).toBeInTheDocument();
-    expect(screen.getByText('Nothing is sent until you turn this on.')).toBeInTheDocument();
-    expect(screen.queryByText(/100 marking requests/)).not.toBeVisible();
+    expect(
+      screen.getByText('Nothing is sent until you accept the consent warning.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/100 Jev requests/)).not.toBeVisible();
     expect(screen.queryByText(/still being evaluated/)).not.toBeVisible();
 
     state.settings = { enabled: true, acceptedConsentVersion: JEV_CONSENT_VERSION };
     rerender(<JevSection />);
     expect(
-      screen.getByText('Experimental beta. Check its marks; you can undo them.'),
+      screen.getByText('Experimental beta. Check its marks and undo any mistakes.'),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('Sends answers needing judgement to TypeSafe AI in the United States.'),
+      screen.getByText('Sends study text to TypeSafe AI in the United States.'),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Nothing is sent until you turn this on.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Nothing is sent until you accept the consent warning.'),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps the removed detail reachable in the How it works disclosure', () => {
     render(<JevSection />);
     const disclosure = screen.getByRole('button', { name: 'How it works' });
     expect(disclosure).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByText(/100 marking requests/)).not.toBeVisible();
+    expect(screen.queryByText(/100 Jev requests/)).not.toBeVisible();
     expect(screen.queryByText(/still being evaluated/)).not.toBeVisible();
 
     fireEvent.click(disclosure);
     expect(disclosure).toHaveAttribute('aria-expanded', 'true');
     for (const pattern of [
       /still being evaluated/,
-      /100 marking requests per installation each UTC day/,
-      /Only answers that need judgement are sent/,
+      /100 Jev requests per installation each UTC day/,
+      /lesson text to choose multiple-choice options, and authored techniques/,
     ]) {
       const detail = screen.getByText(pattern);
       expect(detail.closest('[aria-hidden="true"]')).toBeNull();

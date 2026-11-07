@@ -66,7 +66,7 @@ export function JevSection() {
         </SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm leading-6 text-ink-soft">
-        Experimental beta. Check its marks; you can undo them.
+        Experimental beta. Check its marks and undo any mistakes.
       </p>
 
       <SettingRow
@@ -76,8 +76,8 @@ export function JevSection() {
             Mark my answers automatically
             <span className="mt-1 block text-sm font-normal leading-6 text-ink-soft">
               {on
-                ? `Sends answers needing judgement to ${JEV_PROVIDER.name} in the ${JEV_PROVIDER.region}.`
-                : 'Nothing is sent until you turn this on.'}
+                ? `Sends study text to ${JEV_PROVIDER.name} in the ${JEV_PROVIDER.region}.`
+                : 'Nothing is sent until you accept the consent warning.'}
             </span>
           </>
         }
@@ -102,16 +102,13 @@ export function JevSection() {
             can always undo or change its mark.
           </li>
           <li>
-            The standard beta allowance is 100 marking requests per installation each UTC day, with
-            short-term limits to keep the service available. A written-answer request can include
-            several mark-scheme lines. You can still mark answers yourself when the allowance runs
-            out.
+            The standard beta allowance is 100 Jev requests per installation each UTC day, with
+            short-term limits to keep the service available. You can still mark answers yourself
+            when the allowance runs out.
           </li>
           <li>
-            Only answers that need judgement are sent: a typed flashcard answer that does not match
-            word for word, or a written practice answer. Each goes with its question and the
-            expected answer or mark-scheme line. Your study history, schedule and other cards are
-            not sent.
+            Jev can send answers with their questions and marking material, lesson text to choose
+            multiple-choice options, and authored techniques to classify them.
           </li>
         </ul>
       </InlineSettingsDisclosure>
