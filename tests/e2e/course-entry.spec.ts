@@ -78,8 +78,11 @@ for (const width of [1440, 390]) {
     const sharing = page.getByRole('button', { name: 'How sharing works' });
     await expect(sharing).toBeVisible();
     expect((await sharing.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await expect(page.getByText(/activity already recorded today and yesterday/)).toBeVisible();
+    await expect(page.getByText('Connect with a class code to enable sharing.')).toBeVisible();
+    await expect(page.getByText(/activity already recorded today and yesterday/)).toBeHidden();
     await expect(sharing).toHaveAttribute('aria-expanded', 'false');
+    await sharing.click();
+    await expect(page.getByText(/activity already recorded today and yesterday/)).toBeVisible();
     await page.getByRole('button', { name: /^Lessons/ }).click();
     const picker = page.getByRole('combobox', { name: 'Start study from' });
     await picker.selectOption({ label: 'Year two' });
