@@ -54,10 +54,6 @@ export function ExpandingCreateControl({
   const body = useRef<HTMLDivElement>(null);
   const surface = useRef<HTMLDivElement>(null);
   const [formHeight, setFormHeight] = useState<number>();
-  // Hide the inner scroller's own scrollbar while the surface settles on its new
-  // height: the growing form transiently overflows the scroller, and the flash
-  // of chrome is the defect even though the overflow itself resolves.
-  const [settling, setSettling] = useState(false);
   useLayoutEffect(() => {
     const element = body.current;
     if (!element || !open) return;
@@ -90,7 +86,9 @@ export function ExpandingCreateControl({
       const height = Math.min(formHeight ?? triggerHeight + 240, window.innerHeight - 36);
       const top = Math.max(18, Math.min(bounds.top, window.innerHeight - 18 - height));
       setVerticalOffset(top - bounds.top);
-      setAvailableHeight(Math.max(triggerHeight, window.innerHeight - top - 18));
+      // The shell rises to fit the form. Give its scroller the final viewport budget
+      // immediately so a growing form does not change width as the shell moves.
+      setAvailableHeight(Math.max(triggerHeight, window.innerHeight - 36));
     };
     measure();
     window.addEventListener('resize', measure);
@@ -135,14 +133,9 @@ export function ExpandingCreateControl({
           borderRadius: open ? 36 : triggerHeight / 2,
         }}
         transition={transition}
-        onAnimationStart={() => {
-          if (multiplier > 0) setSettling(true);
-        }}
-        // Keep drafts and selection alive until the shape has actually closed,
-        // and restore the inner scroller's scrollbar once it has settled.
+        // Keep drafts and selection alive until the shape has actually closed.
         onAnimationComplete={() => {
           if (!open) setRetainForm(false);
-          setSettling(false);
         }}
         // The closed button uses an inset ring; the open form is a flat card.
         // Only the inner form scrolls: autofocus must not scroll the growing shell and its label.
@@ -203,8 +196,9 @@ export function ExpandingCreateControl({
               animate={{ opacity: open ? 1 : 0 }}
               transition={{ duration: 0.12 * multiplier }}
             >
+              {/* The edge fade indicates overflow without a scrollbar changing the form width. */}
               <div
-                className={`scroll-edge-fade overflow-y-auto overscroll-contain text-left ${settling ? '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : ''}`}
+                className="scroll-edge-fade overflow-y-auto overscroll-contain text-left supports-[animation-timeline:scroll()]:[scrollbar-width:none]"
                 style={{
                   maxHeight:
                     availableHeight === undefined ? undefined : availableHeight - triggerHeight,

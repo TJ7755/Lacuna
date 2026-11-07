@@ -76,9 +76,15 @@ test('cannot save the previous clip while its replacement is being recorded or s
   await page.evaluate(() => window.dispatchEvent(new Event('fail-test-recorder')));
   await expect(save).toBeEnabled();
   await page.evaluate(() => window.dispatchEvent(new Event('close-test-signal')));
-  await expect(page.getByText('Could not record audio. Try again.', { exact: true })).toBeVisible();
-  await expect(page.getByText('Could not record audio. Try again.', { exact: true })).toBeHidden();
+  const notifications = page.getByLabel('Notifications', { exact: true });
+  const recordingError = notifications.getByText('Could not record audio. Try again.', {
+    exact: true,
+  });
+  await expect(recordingError).toBeVisible();
+  await notifications.getByRole('button', { name: 'Dismiss', exact: true }).click();
+  await expect(recordingError).toBeHidden();
   await page.getByRole('button', { name: 'Record', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Starting…', exact: true })).toBeVisible();
   await page.evaluate(() => window.dispatchEvent(new Event('grant-test-mic')));
   await expect(page.getByRole('button', { name: 'Stop recording', exact: true })).toBeVisible();
   await page.evaluate(() => {

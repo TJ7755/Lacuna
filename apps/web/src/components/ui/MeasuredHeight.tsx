@@ -31,7 +31,6 @@ export function MeasuredHeight({ children }: { children: ReactNode }) {
     if (!observed) return;
     const styled = observed.parentElement;
     if (!styled) return;
-    styled.style.setProperty('overflow', 'hidden');
     // Layout height, not the transformed bounding box: an ancestor mid-scale would shrink it.
     const measure = (next: number) => {
       const previous = heightValue.current;
@@ -39,7 +38,7 @@ export function MeasuredHeight({ children }: { children: ReactNode }) {
       setHeight(next);
       // Re-clip alongside a new grow target, before the taller content paints.
       if (previous !== undefined && next > previous) {
-        styled.style.setProperty('overflow', 'hidden');
+        styled.style.setProperty('overflow', 'clip');
       }
     };
     measure(observed.offsetHeight);
@@ -48,17 +47,15 @@ export function MeasuredHeight({ children }: { children: ReactNode }) {
     });
     observer.observe(observed);
     return () => observer.disconnect();
-  }, [children]);
+  }, []);
   return (
     <motion.div
       ref={box}
       initial={false}
       animate={{ height: multiplier > 0 ? (height ?? 'auto') : 'auto' }}
       transition={expandingActionSpring(multiplier)}
-      // Reduced motion never starts an animation, so the completion handler owns
-      // the only release: the layout effect above keeps that content clipped.
       onAnimationComplete={release}
-      className="overflow-hidden"
+      className="overflow-clip"
     >
       <div ref={content} className="flow-root">
         {children}
