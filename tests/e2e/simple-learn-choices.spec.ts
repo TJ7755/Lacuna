@@ -96,7 +96,10 @@ test('introduces choices before timed typing and keeps the old practice entry', 
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto(lessonUrl);
   await page.addScriptTag({ content: fixture });
-  await page.getByRole('button', { name: 'Exit', exact: true }).evaluate((exit) => {
+  const view = study(page);
+  await expect(view.choices).toHaveCount(4);
+  const exitButton = page.getByRole('banner').getByRole('button', { name: 'Exit', exact: true });
+  await exitButton.evaluate((exit) => {
     let interrupted = false;
     const observer = new MutationObserver((records) => {
       for (const record of records) {
@@ -118,8 +121,6 @@ test('introduces choices before timed typing and keeps the old practice entry', 
   });
   const recordedRim = page.locator('html');
 
-  const view = study(page);
-  await expect(view.choices).toHaveCount(4);
   await expect(view.check).toBeDisabled();
   const progress = page.getByRole('progressbar', { name: 'Chunks complete' });
   await expect(progress.locator('[data-session-card-status]')).toHaveCount(3);
