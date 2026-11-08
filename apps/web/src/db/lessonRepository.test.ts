@@ -12,6 +12,7 @@ import {
   ratchetLessonUnlock,
 } from './repository';
 import { listLessons } from './read';
+import { setLessonSpellingRequirement } from './lessonRepository';
 import { reset } from './courseRepository.testFixtures';
 
 describe('createLesson orderIndex', () => {
@@ -60,6 +61,42 @@ describe('createLesson orderIndex', () => {
     const course = await createCourse('History');
     const lesson = await createLesson(course.id, 'Week 1');
     expect(lesson.isExtension).toBe(false);
+  });
+});
+
+describe('lesson spelling authorisation', () => {
+  beforeEach(reset);
+
+  it('lets only the owning course in Edit mode change the lesson default', async () => {
+    const owner = await createCourse('French');
+    const other = await createCourse('German');
+    const lesson = await createLesson(owner.id, 'Vocabulary');
+
+    await expect(setLessonSpellingRequirement(other.id, lesson.id, true)).rejects.toThrow(
+      'Lesson not found.',
+    );
+    await expect(setLessonSpellingRequirement(owner.id, 'missing', true)).rejects.toThrow(
+      'Lesson not found.',
+    );
+    await expect(setLessonSpellingRequirement('missing', lesson.id, true)).rejects.toThrow(
+      'Switch to Edit mode',
+    );
+    expect((await db.lessons.get(lesson.id))?.requireCorrectSpelling).toBeUndefined();
+
+    await setLessonSpellingRequirement(owner.id, lesson.id, true);
+    await db.courses.update(owner.id, { lessonViewMode: 'study' });
+    await expect(setLessonSpellingRequirement(owner.id, lesson.id, false)).rejects.toThrow(
+      'Switch to Edit mode',
+    );
+    expect((await db.lessons.get(lesson.id))?.requireCorrectSpelling).toBe(true);
+
+    await db.courses.update(owner.id, { lessonViewMode: 'edit' });
+    await setLessonSpellingRequirement(owner.id, lesson.id, false);
+    await db.courses.update(owner.id, { archived: true });
+    await expect(setLessonSpellingRequirement(owner.id, lesson.id, true)).rejects.toThrow(
+      'Switch to Edit mode',
+    );
+    expect((await db.lessons.get(lesson.id))?.requireCorrectSpelling).toBeUndefined();
   });
 });
 
