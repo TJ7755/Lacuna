@@ -246,6 +246,13 @@ for (const inputMode of ['keyboard', 'touch']) {
     const firstId = await activeCard.getAttribute('data-study-card-id');
     await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
     await expect(page.locator('[data-study-face="back"]')).toBeVisible();
+    if (inputMode === 'touch') {
+      const hide = page.getByRole('button', { name: 'Hide answer', exact: true });
+      await expect(hide).toHaveCount(1);
+      await hide.click();
+      await expect(page.locator('[data-study-face="front"]')).toBeVisible();
+      await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
+    }
     await page.getByRole('button', { name: 'Yes', exact: true }).click();
     const notifications = page.getByLabel('Notifications', { exact: true });
     await expect(notifications.getByRole('button', { name: 'Undo' })).toBeVisible();

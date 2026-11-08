@@ -16,7 +16,6 @@ export function StudyControls({
   typingInputRef,
   onTypedAnswer,
   onReveal,
-  onHide,
   onAnswer,
   autoMark,
   recallPrompt,
@@ -33,7 +32,6 @@ export function StudyControls({
   typingInputRef: RefObject<HTMLInputElement | null>;
   onTypedAnswer: (value: string) => void;
   onReveal: () => void;
-  onHide: () => void;
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
   /** Automatic marking of a typed answer: still judging, or the verdict it reached. */
   autoMark?: AutoMark;
@@ -186,7 +184,6 @@ export function StudyControls({
           feedback={feedback}
           gradingMode={gradingMode}
           onReveal={onReveal}
-          onHide={onHide}
           onAnswer={onAnswer}
           m={m}
           typedField={isTypingCard ? typedField : undefined}

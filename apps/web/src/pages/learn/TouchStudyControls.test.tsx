@@ -8,7 +8,6 @@ function renderSheet(phase: 'question' | 'answer', onReveal = vi.fn(), onAnswer 
       phase={phase}
       gradingMode="silent"
       onReveal={onReveal}
-      onHide={vi.fn()}
       onAnswer={onAnswer}
       m={0}
     />,
@@ -27,7 +26,6 @@ describe('TouchStudyControls', () => {
         phase="answer"
         gradingMode="silent"
         onReveal={vi.fn()}
-        onHide={vi.fn()}
         onAnswer={vi.fn()}
         m={0}
       />,
@@ -52,7 +50,6 @@ describe('TouchStudyControls', () => {
         phase="answer"
         gradingMode="silent"
         onReveal={vi.fn()}
-        onHide={vi.fn()}
         onAnswer={vi.fn()}
         m={0}
         autoMark={{ pending: false, correct: true }}
@@ -60,6 +57,5 @@ describe('TouchStudyControls', () => {
     );
     expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'No' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Hide answer' })).toBeInTheDocument();
   });
 });

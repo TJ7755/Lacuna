@@ -275,7 +275,6 @@ function CardStep({
         typingInputRef={typingInputRef}
         onTypedAnswer={noop}
         onReveal={reveal}
-        onHide={hide}
         onAnswer={answer}
         m={m}
       />

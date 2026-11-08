@@ -15,7 +15,6 @@ export function TouchStudyControls({
   feedback,
   gradingMode,
   onReveal,
-  onHide,
   onAnswer,
   m,
   typedField,
@@ -27,7 +26,6 @@ export function TouchStudyControls({
   feedback?: StudyGradeFeedback;
   gradingMode: 'silent' | 'manual';
   onReveal: () => void;
-  onHide: () => void;
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
   m: number;
   typedField?: ReactNode;
@@ -76,10 +74,7 @@ export function TouchStudyControls({
       <StepSwap
         stepKey={phase}
         effect="fade-lift"
-        className={cn(
-          'flex min-h-14 items-center justify-end gap-3',
-          manual && 'max-sm:min-h-[7.75rem]',
-        )}
+        className={cn('flex min-h-14 items-center gap-3', manual && 'max-sm:min-h-[7.75rem]')}
       >
         {question ? (
           <>
@@ -96,67 +91,40 @@ export function TouchStudyControls({
               {typedField ? 'Check answer' : 'Show answer'}
             </Button>
           </>
+        ) : autoMark ? null : recallCorrect !== undefined ? (
+          <Button
+            variant="primary"
+            size="lg"
+            className={cn(ACTION, 'w-full')}
+            data-study-continue
+            onClick={() => onAnswer(recallCorrect, 'touch')}
+          >
+            Continue
+          </Button>
+        ) : manual ? (
+          <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
+            {grade(1, 'Again')}
+            {grade(2, 'Hard')}
+            {grade(3, 'Good')}
+            {grade(4, 'Easy')}
+          </div>
         ) : (
-          <>
-            {!autoMark &&
-              (recallCorrect !== undefined ? (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  className={cn(ACTION, 'flex-1')}
-                  data-study-continue
-                  onClick={() => onAnswer(recallCorrect, 'touch')}
-                >
-                  Continue
-                </Button>
-              ) : manual ? (
-                <div className="grid min-w-0 flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
-                  {grade(1, 'Again')}
-                  {grade(2, 'Hard')}
-                  {grade(3, 'Good')}
-                  {grade(4, 'Easy')}
-                </div>
-              ) : (
-                <div className="grid min-w-0 flex-1 grid-cols-2 gap-3">
-                  {grade(
-                    false,
-                    <>
-                      <CloseIcon width={18} height={18} />
-                      No
-                    </>,
-                  )}
-                  {grade(
-                    true,
-                    <>
-                      <CheckIcon width={18} height={18} />
-                      Yes
-                    </>,
-                  )}
-                </div>
-              ))}
-            <Button
-              variant="secondary"
-              size="lg"
-              className={cn(ACTION, 'w-14 shrink-0 px-0!')}
-              aria-label="Hide answer"
-              title="Hide answer"
-              onClick={onHide}
-            >
-              <svg
-                aria-hidden="true"
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M6.4 6.4A13 13 0 0 0 2 12s3.6 6 10 6a10 10 0 0 0 4.3-.9M9.5 6.3A10 10 0 0 1 12 6c6.4 0 10 6 10 6a14 14 0 0 1-2.7 3.1" />
-              </svg>
-            </Button>
-          </>
+          <div className="grid w-full grid-cols-2 gap-3">
+            {grade(
+              false,
+              <>
+                <CloseIcon width={18} height={18} />
+                No
+              </>,
+            )}
+            {grade(
+              true,
+              <>
+                <CheckIcon width={18} height={18} />
+                Yes
+              </>,
+            )}
+          </div>
         )}
       </StepSwap>
     </div>
