@@ -16,7 +16,6 @@ const setting = createLocalSetting<AnswerStrictness>({
   parse: oneOf(['lenient', 'standard', 'exact'], 'lenient'),
 });
 
-export const readAnswerStrictness = setting.read;
 export const writeAnswerStrictness = setting.write;
 export const useAnswerStrictness = setting.use;
 

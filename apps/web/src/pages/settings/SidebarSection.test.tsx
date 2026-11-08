@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULTS, readStored, writeSidebarSettings } from '../../state/sidebarSettings';
+import { DEFAULT_NAV_ITEMS, type SidebarSettings } from '../../state/sidebarSettings';
 import { SidebarSection } from './SidebarSection';
 
 vi.mock('../../state/motionSpeed', () => ({
@@ -8,8 +8,11 @@ vi.mock('../../state/motionSpeed', () => ({
   speedMultiplier: () => 0,
 }));
 
+const key = 'lacuna.sidebarSettings';
+const savedNav = () => (JSON.parse(localStorage.getItem(key)!) as SidebarSettings).navItems;
+
 describe('Sidebar navigation ordering', () => {
-  beforeEach(() => writeSidebarSettings(DEFAULTS));
+  beforeEach(() => localStorage.removeItem(key));
 
   it('gives each reorder control the shared minimum target size', () => {
     render(<SidebarSection />);
@@ -22,13 +25,13 @@ describe('Sidebar navigation ordering', () => {
     expect(screen.getByRole('button', { name: 'Move Today up' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Move Today down' }));
     expect(
-      readStored()
-        .navItems.map((item) => item.id)
+      savedNav()
+        .map((item) => item.id)
         .slice(0, 2),
     ).toEqual(['search', 'dashboard']);
     expect(screen.getByRole('button', { name: 'Move Today up' })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Reset to defaults' }));
-    expect(readStored().navItems).toEqual(DEFAULTS.navItems);
+    expect(savedNav()).toEqual(DEFAULT_NAV_ITEMS);
   });
 
   it('reorders only within the rendered groups and keeps Settings available', () => {
@@ -46,8 +49,8 @@ describe('Sidebar navigation ordering', () => {
         .map((item) => item.getAttribute('aria-label')),
     ).toEqual(['Show Settings', 'Show Share', 'Show Help']);
     expect(
-      readStored()
-        .navItems.filter((item) => ['share', 'settings', 'help'].includes(item.id))
+      savedNav()
+        .filter((item) => ['share', 'settings', 'help'].includes(item.id))
         .map((item) => item.id),
     ).toEqual(['settings', 'share', 'help']);
   });

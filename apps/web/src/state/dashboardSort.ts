@@ -8,6 +8,4 @@ const setting = createLocalSetting<DashboardSort>({
   parse: oneOf(['recent', 'ready', 'mastery', 'exam', 'name', 'created'], 'recent'),
 });
 
-export const readDashboardSort = setting.read;
-export const writeDashboardSort = setting.write;
 export const useDashboardSort = setting.use;

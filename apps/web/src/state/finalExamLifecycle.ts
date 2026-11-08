@@ -11,8 +11,6 @@ const policySetting = createLocalSetting<AfterFinalExamPolicy>({
   parse: oneOf(['archive', 'keep-revising'], 'ask'),
 });
 
-export const readAfterFinalExamPolicy = policySetting.read;
-export const writeAfterFinalExamPolicy = policySetting.write;
 export const useAfterFinalExamPolicy = policySetting.use;
 
 function readHandledFinalExams(): Record<string, number> {

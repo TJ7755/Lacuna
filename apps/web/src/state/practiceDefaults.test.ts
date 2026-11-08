@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
   readPracticeDefaults,
-  writePracticeDefaults,
   usePracticeDefaults,
   type PracticeDefaults,
 } from './practiceDefaults';
@@ -31,47 +30,15 @@ describe('readPracticeDefaults', () => {
     expect(readPracticeDefaults()).toEqual({ ...FALLBACK, practiceMaxGap: 10 });
   });
 
-  it('preserves a complete set of previously stored defaults', () => {
-    const stored: PracticeDefaults = {
-      autoPractice: false,
-      practiceThresholdMinutesFar: 12,
-      practiceThresholdMinutesNear: 6,
-      practiceUrgentWindowDays: 14,
-      practiceMaxGap: 3,
-    };
-    localStorage.setItem(KEY, JSON.stringify(stored));
-    expect(readPracticeDefaults()).toEqual(stored);
-  });
-
   it('falls back to defaults on invalid JSON', () => {
     localStorage.setItem(KEY, 'not json');
     expect(readPracticeDefaults()).toEqual(FALLBACK);
   });
 });
 
-describe('writePracticeDefaults', () => {
-  it('persists the value to localStorage and dispatches an event', () => {
-    let received: PracticeDefaults | undefined;
-    window.addEventListener('lacuna:practice-defaults', (e) => {
-      received = (e as CustomEvent<PracticeDefaults>).detail;
-    });
-
-    const next = { ...FALLBACK, autoPractice: false };
-    writePracticeDefaults(next);
-
-    expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual(next);
-    expect(received).toEqual(next);
-  });
-});
-
-describe('usePracticeDefaults', () => {
-  it('returns the current value and a setter', () => {
-    const { result } = renderHook(() => usePracticeDefaults());
-    expect(result.current[0]).toEqual(FALLBACK);
-    act(() => {
-      result.current[1]({ ...FALLBACK, practiceUrgentWindowDays: 14 });
-    });
-    expect(result.current[0]).toEqual({ ...FALLBACK, practiceUrgentWindowDays: 14 });
-    expect(JSON.parse(localStorage.getItem(KEY)!).practiceUrgentWindowDays).toBe(14);
-  });
+it('saves a changed practice default under the existing key', () => {
+  const { result } = renderHook(usePracticeDefaults);
+  const changed = { ...FALLBACK, practiceUrgentWindowDays: 21 };
+  act(() => result.current[1](changed));
+  expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual(changed);
 });

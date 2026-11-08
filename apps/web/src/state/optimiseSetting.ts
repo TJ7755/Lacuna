@@ -13,8 +13,6 @@ const setting = createLocalSetting<boolean>({
   serialise: (enabled) => (enabled ? 'on' : 'off'),
 });
 
-export const readAutoOptimiseDefault = setting.read;
-export const writeAutoOptimiseDefault = setting.write;
 export const useAutoOptimiseDefault = setting.use;
 
 /** Whether optimisation is enabled for a deck: the deck override wins, else the global default. */

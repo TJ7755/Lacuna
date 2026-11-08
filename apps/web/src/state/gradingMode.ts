@@ -8,6 +8,4 @@ const setting = createLocalSetting<GradingMode>({
   parse: (raw) => (raw === 'manual' ? 'manual' : 'silent'),
 });
 
-export const readGradingMode = setting.read;
-export const writeGradingMode = setting.write;
 export const useGradingMode = setting.use;
