@@ -28,13 +28,13 @@ export function useScrollMemory(containerRef: RefObject<HTMLElement | null>): vo
   const key = scrollKey(location);
   const keyRef = useRef(key);
   const pathRef = useRef(location.pathname);
-  const restoringUntil = useRef(0);
+  const restoring = useRef(false);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const remember = () => {
-      if (performance.now() < restoringUntil.current) return;
+      if (restoring.current) return;
       positions.set(keyRef.current, container.scrollTop);
     };
     container.addEventListener('scroll', remember, { passive: true });
@@ -54,31 +54,61 @@ export function useScrollMemory(containerRef: RefObject<HTMLElement | null>): vo
       return;
     }
     const target = positions.get(key) ?? 0;
-    const deadline = performance.now() + RESTORE_WINDOW_MS;
-    restoringUntil.current = deadline;
+    restoring.current = true;
     const overflowAnchor = container.style.overflowAnchor;
     // Browser anchoring must not adjust the position this restoration owns.
     container.style.overflowAnchor = 'none';
     let frame = 0;
-    const settle = () => {
-      container.scrollTo({ top: target });
-      // A lazy page may not be tall enough yet; keep trying until it is or time runs out.
-      if (Math.abs(container.scrollTop - target) > 1 && performance.now() < deadline) {
-        frame = requestAnimationFrame(settle);
-      } else {
-        restoringUntil.current = 0;
-        // Keep anchoring suppressed through this layout's queued adjustments.
-        frame = requestAnimationFrame(() => {
-          frame = 0;
-          container.style.overflowAnchor = overflowAnchor;
-        });
-      }
+    let observer: ResizeObserver | undefined;
+    let timeout: number | undefined;
+    let appliedTop: number;
+
+    const stopWaiting = () => {
+      restoring.current = false;
+      observer?.disconnect();
+      window.clearTimeout(timeout);
+      container.removeEventListener('scroll', yieldToScroll);
     };
-    settle();
+    const finish = () => {
+      stopWaiting();
+      // Keep anchoring suppressed through this layout's queued adjustments.
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        container.style.overflowAnchor = overflowAnchor;
+      });
+    };
+    const restore = () => {
+      container.scrollTo({ top: target });
+      appliedTop = container.scrollTop;
+      if (Math.abs(appliedTop - target) <= 1) finish();
+    };
+    const yieldToScroll = () => {
+      const top = container.scrollTop;
+      if (Math.abs(top - appliedTop) <= 1) return;
+      // Shrinking content can clamp the restored position without the learner moving it.
+      const maxTop = container.scrollHeight - container.clientHeight;
+      if (Math.abs(top - Math.min(appliedTop, maxTop)) <= 1) return;
+      positions.set(key, top);
+      finish();
+    };
+
+    restore();
+    if (restoring.current) {
+      // The viewport is fixed in height. Observe its in-flow route and chrome as well
+      // so lazy content can make the saved position reachable without polling every frame.
+      observer = new ResizeObserver(() => {
+        yieldToScroll();
+        if (restoring.current) restore();
+      });
+      observer.observe(container);
+      for (const child of container.children) observer.observe(child);
+      container.addEventListener('scroll', yieldToScroll, { passive: true });
+      timeout = window.setTimeout(finish, RESTORE_WINDOW_MS);
+    }
     return () => {
       cancelAnimationFrame(frame);
-      if (frame !== 0) container.style.overflowAnchor = overflowAnchor;
-      restoringUntil.current = 0;
+      if (restoring.current || frame !== 0) container.style.overflowAnchor = overflowAnchor;
+      stopWaiting();
     };
     // The location key changes on every navigation, including returns to the same URL.
     // eslint-disable-next-line react-hooks/exhaustive-deps

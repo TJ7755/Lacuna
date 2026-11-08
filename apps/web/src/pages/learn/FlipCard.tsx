@@ -1,6 +1,13 @@
 import { storedString } from '../../state/localSetting';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, m as motion, animate, useIsPresent, useMotionValue } from 'motion/react';
+import {
+  AnimatePresence,
+  m as motion,
+  animate,
+  useIsPresent,
+  useMotionValue,
+  useTransform,
+} from 'motion/react';
 import { hapticMedium } from '../../utils/haptic';
 import type { Card, Grade, Occlusion } from '@lacuna/core/db/types';
 import { speedMultiplier, type MotionSpeed } from '../../state/motionSpeed';
@@ -85,7 +92,7 @@ export function FlipCard({
   const m = motionMultiplier ?? speedMultiplier(motionSpeed);
   const isTyping = Boolean(isTypingCard);
   const promptOnly = promptId !== undefined;
-  const [swipe, setSwipe] = useState({ x: 0, hint: null as 'left' | 'right' | null });
+  const [swipeHint, setSwipeHint] = useState<'left' | 'right' | null>(null);
   const audioCard = isAudioCardFront(card.front);
   const [showAudioFront, setShowAudioFront] = useState(false);
   const [hasSwiped, setHasSwiped] = useState(() => {
@@ -147,11 +154,15 @@ export function FlipCard({
   const localX = useMotionValue(0);
   const sharedX = useContext(StudyCardMotionContext);
   const swipeXMotion = sharedX ?? localX;
+  // Motion owns the continuous drag. React only changes which cue is shown.
+  const swipeOpacity = useTransform(swipeXMotion, (offset) =>
+    Math.min(1, Math.abs(offset) / swipeThreshold),
+  );
   const resetSwipe = useCallback(() => {
     if (m === 0) swipeXMotion.jump(0);
     // Critically damped like the study controls' springs: snappy, settling without bounce.
     else animate(swipeXMotion, 0, scaledSpring(m, 480, 2 * Math.sqrt(480)));
-    setSwipe({ x: 0, hint: null });
+    setSwipeHint(null);
   }, [m, swipeXMotion]);
   useEffect(() => () => swipeXMotion.stop(), [swipeXMotion]);
 
@@ -173,7 +184,7 @@ export function FlipCard({
       };
       selectionLenRef.current = window.getSelection()?.toString().length ?? 0;
       containerRef.current?.setPointerCapture?.(e.pointerId);
-      setSwipe({ x: 0, hint: null });
+      setSwipeHint(null);
     },
     [menuOpen, editing, hintsOpen, isPresent, swipeXMotion],
   );
@@ -194,7 +205,7 @@ export function FlipCard({
       swipeXMotion.set(offset);
       const hint: 'left' | 'right' | null =
         offset < -swipeThreshold / 2 ? 'left' : offset > swipeThreshold / 2 ? 'right' : null;
-      setSwipe({ x: offset, hint });
+      setSwipeHint(hint);
     },
     [allowGradingGestures, phase, swipeXMotion],
   );
@@ -266,7 +277,7 @@ export function FlipCard({
       committed.current = false;
       setShowAudioFront(false);
       swipeXMotion.jump(0);
-      setSwipe({ x: 0, hint: null });
+      setSwipeHint(null);
     }
   }, [phase, isPresent, swipeXMotion]);
 
@@ -346,7 +357,7 @@ export function FlipCard({
           isTouchMode &&
           phase === 'answer' &&
           !hasSwiped &&
-          !swipe.hint &&
+          !swipeHint &&
           !menuOpen &&
           !editing &&
           !hintsOpen && (
@@ -402,24 +413,24 @@ export function FlipCard({
             className={cn('relative z-10 ' + surfaceClassName, CARD_SURFACE_CLASS)}
           >
             {/* Keep drag feedback attached to the card throughout the throw. */}
-            {swipe.hint && (
-              <div
+            {swipeHint && (
+              <motion.div
                 aria-hidden="true"
                 className={cn(
                   'pointer-events-none absolute top-3 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium',
-                  swipe.hint === 'right'
+                  swipeHint === 'right'
                     ? 'left-4 bg-positive/10 text-positive'
                     : 'right-4 bg-negative/10 text-negative',
                 )}
-                style={{ opacity: Math.min(1, Math.abs(swipe.x) / swipeThreshold) }}
+                style={{ opacity: swipeOpacity }}
               >
-                {swipe.hint === 'right' ? (
+                {swipeHint === 'right' ? (
                   <CheckIcon width={14} height={14} />
                 ) : (
                   <CloseIcon width={14} height={14} />
                 )}
-                {swipe.hint === 'right' ? 'Yes' : 'No'}
-              </div>
+                {swipeHint === 'right' ? 'Yes' : 'No'}
+              </motion.div>
             )}
             {face(displayedFront ? 'front' : 'back')}
           </motion.div>

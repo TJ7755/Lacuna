@@ -174,7 +174,9 @@ function FlowSplitLiquid({
   });
   const spring = useMemo<Transition>(
     () =>
-      m === 0
+      // Handback hides the liquid before its springs naturally finish. Rest at
+      // the new slots so the invisible SVG stops changing layout every frame.
+      !visible || m === 0
         ? { duration: 0 }
         : departing
           ? liquidSpring(m, true)
@@ -183,11 +185,14 @@ function FlowSplitLiquid({
             : question
               ? { type: 'spring', visualDuration: 0.36 * m, bounce: GATHER_BOUNCE }
               : { type: 'spring', visualDuration: 0.37 * m, bounce: SPLIT_BOUNCE },
-    [m, question, waiting, departing],
+    [visible, m, question, waiting, departing],
   );
   const drain = useMemo<Transition>(
-    () => (m === 0 ? { duration: 0 } : { type: 'spring', visualDuration: 0.22 * m, bounce: 0 }),
-    [m],
+    () =>
+      !visible || m === 0
+        ? { duration: 0 }
+        : { type: 'spring', visualDuration: 0.22 * m, bounce: 0 },
+    [visible, m],
   );
 
   const liquid = (name: string, edge: ReactNode) => (

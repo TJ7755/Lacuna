@@ -30,9 +30,14 @@
   height: 200px;
   margin: 28px 0 22px;
 }
-.qc-review-timeline > svg {
-  width: 100%;
+.qc-review-curve {
   height: 145px;
+  /* Skip painting the animated curve offscreen while its timeline keeps running. */
+  content-visibility: auto;
+}
+.qc-review-curve > svg {
+  width: 100%;
+  height: 100%;
 }
 .qc-review-stop {
   position: absolute;

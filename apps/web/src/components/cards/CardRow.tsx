@@ -33,6 +33,7 @@ const STAGGER_CAP_S = 0.25;
 export const CardRow = React.memo(function CardRow({
   card,
   schedulingConfig,
+  scheduleNow,
   staggerIndex,
   selectMode,
   selected,
@@ -52,18 +53,19 @@ export const CardRow = React.memo(function CardRow({
 }: {
   card: Card;
   schedulingConfig: SchedulerConfig;
+  scheduleNow: number;
   /** Position within the rendered rows, not within `cards`: it only paces the entry stagger. */
   staggerIndex: number;
   selectMode: boolean;
   selected: boolean;
   expanded: boolean;
-  onToggle: () => void;
-  onToggleExpand: () => void;
-  onEdit: () => void;
-  onResume: () => void;
-  onDelete: () => void;
+  onToggle: (id: string) => void;
+  onToggleExpand: (id: string) => void;
+  onEdit: (card: Card) => void;
+  onResume: (card: Card) => void;
+  onDelete: (id: string) => void;
   linked: boolean;
-  onUnlink: () => void;
+  onUnlink?: (card: Card) => void;
   onToggleFlag: (card: Card) => void;
   motionMultiplier?: number;
   skipAnimation?: boolean;
@@ -78,7 +80,7 @@ export const CardRow = React.memo(function CardRow({
   const tags = card.tags ?? [];
   const leech = isLeech(card);
   const flagged = card.flagged === true;
-  const schedule = cardScheduleLabel(card, Date.now());
+  const schedule = cardScheduleLabel(card, scheduleNow);
   const label = useMemo(() => stripEmbeddedImageUrls(card.front), [card.front]);
   // An occlusion card's stored back repeats its front; the region's answer says more.
   const occlusionAnswer =
@@ -120,13 +122,13 @@ export const CardRow = React.memo(function CardRow({
     expanded,
     generated,
     linked,
-    onToggle,
-    onToggleExpand,
+    onToggle: () => onToggle(card.id),
+    onToggleExpand: () => onToggleExpand(card.id),
     onToggleFlag,
-    onEdit,
-    onDelete,
-    onUnlink,
-    onResume,
+    onEdit: () => onEdit(card),
+    onDelete: () => onDelete(card.id),
+    onUnlink: () => onUnlink?.(card),
+    onResume: () => onResume(card),
     m,
   });
 

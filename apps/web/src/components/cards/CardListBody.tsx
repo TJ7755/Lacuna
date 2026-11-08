@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useVirtualList } from '../../hooks/useVirtualList';
 import { occlusionForRegionId } from '../../db/occlusionGeneration';
 import type { Card, Occlusion, SchedulerConfig } from '@lacuna/core/db/types';
@@ -17,6 +17,7 @@ const INTRO_WINDOW_MS = 420;
 export function CardListBody({
   cards,
   schedulingConfig,
+  scheduleNow,
   selectMode,
   selected,
   expandedCardId,
@@ -34,6 +35,7 @@ export function CardListBody({
 }: {
   cards: Card[];
   schedulingConfig: SchedulerConfig;
+  scheduleNow: number;
   selectMode: boolean;
   selected: Set<string>;
   expandedCardId: string | null;
@@ -74,35 +76,38 @@ export function CardListBody({
     const id = window.setTimeout(() => setIntroDone(true), INTRO_WINDOW_MS * motionMultiplier);
     return () => window.clearTimeout(id);
   }, [introDone, cards.length, motionMultiplier]);
+  const toggleExpanded = useCallback(
+    (id: string) => onToggleExpand((previous) => (previous === id ? null : id)),
+    [onToggleExpand],
+  );
+  const renderRow = (card: Card, position: number) => (
+    <CardRow
+      key={card.id}
+      card={card}
+      schedulingConfig={schedulingConfig}
+      scheduleNow={scheduleNow}
+      // After the entrance the window-relative index no longer affects this row.
+      staggerIndex={introDone ? 0 : position}
+      skipAnimation={introDone}
+      selectMode={selectMode}
+      selected={selected.has(card.id)}
+      expanded={expandedCardId === card.id}
+      onToggle={onToggle}
+      onToggleExpand={toggleExpanded}
+      onEdit={onEditCard}
+      onResume={onResume}
+      onDelete={onDelete}
+      linked={linkedCardIds?.has(card.id) === true}
+      onUnlink={onUnlinkCard}
+      onToggleFlag={onToggleFlag}
+      motionMultiplier={motionMultiplier}
+      compactMetadata={compactMetadata}
+      occlusion={occlusionOf(card)}
+    />
+  );
 
   if (!enabled) {
-    return (
-      <div className="grid gap-1">
-        {cards.map((card, i) => (
-          <CardRow
-            key={card.id}
-            card={card}
-            schedulingConfig={schedulingConfig}
-            staggerIndex={i}
-            skipAnimation={introDone}
-            selectMode={selectMode}
-            selected={selected.has(card.id)}
-            expanded={expandedCardId === card.id}
-            onToggle={() => onToggle(card.id)}
-            onToggleExpand={() => onToggleExpand((prev) => (prev === card.id ? null : card.id))}
-            onEdit={() => onEditCard(card)}
-            onResume={() => onResume(card)}
-            onDelete={() => onDelete(card.id)}
-            linked={linkedCardIds?.has(card.id) === true}
-            onUnlink={() => onUnlinkCard?.(card)}
-            onToggleFlag={onToggleFlag}
-            motionMultiplier={motionMultiplier}
-            compactMetadata={compactMetadata}
-            occlusion={occlusionOf(card)}
-          />
-        ))}
-      </div>
-    );
+    return <div className="grid gap-1">{cards.map(renderRow)}</div>;
   }
 
   return (
@@ -116,26 +121,7 @@ export function CardListBody({
             className="absolute left-0 top-0 w-full"
             style={{ transform: `translateY(${start}px)` }}
           >
-            <CardRow
-              card={card}
-              schedulingConfig={schedulingConfig}
-              staggerIndex={position}
-              selectMode={selectMode}
-              selected={selected.has(card.id)}
-              expanded={expandedCardId === card.id}
-              onToggle={() => onToggle(card.id)}
-              onToggleExpand={() => onToggleExpand((prev) => (prev === card.id ? null : card.id))}
-              onEdit={() => onEditCard(card)}
-              onResume={() => onResume(card)}
-              onDelete={() => onDelete(card.id)}
-              linked={linkedCardIds?.has(card.id) === true}
-              onUnlink={() => onUnlinkCard?.(card)}
-              onToggleFlag={onToggleFlag}
-              motionMultiplier={motionMultiplier}
-              skipAnimation={introDone}
-              compactMetadata={compactMetadata}
-              occlusion={occlusionOf(card)}
-            />
+            {renderRow(card, position)}
           </div>
         );
       })}

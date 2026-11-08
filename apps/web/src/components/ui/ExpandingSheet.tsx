@@ -81,15 +81,20 @@ export function ExpandingSheet({
         height,
       });
     };
+    const onScroll = ({ target }: Event) => {
+      // Scrolling the portalled sheet's contents cannot move the cover underneath it.
+      if (target instanceof Element && !target.contains(anchor)) return;
+      measure();
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     window.addEventListener('resize', measure);
-    window.addEventListener('scroll', measure, true);
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', measure);
-      window.removeEventListener('scroll', measure, true);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, [anchor, maxWidth]);
 

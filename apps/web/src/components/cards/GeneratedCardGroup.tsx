@@ -25,6 +25,7 @@ interface GeneratedCardGroupProps {
   owner: GeneratedCardOwner;
   cards: Card[];
   schedulingConfig: SchedulerConfig;
+  scheduleNow: number;
   onEditCard: (card: Card) => void;
   onEditOwner?: (ownerId: string) => void;
   onResume: (card: Card) => void;
@@ -46,6 +47,7 @@ export function GeneratedCardGroup({
   owner,
   cards,
   schedulingConfig,
+  scheduleNow,
   onEditCard,
   onEditOwner,
   onResume,
@@ -85,6 +87,7 @@ export function GeneratedCardGroup({
         <CardListBody
           cards={cards}
           schedulingConfig={schedulingConfig}
+          scheduleNow={scheduleNow}
           selectMode={false}
           selected={EMPTY_SELECTION}
           expandedCardId={expandedCardId}

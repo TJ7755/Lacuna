@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { memo, useLayoutEffect, useRef, useState } from 'react';
 import { m as motion, useAnimationControls } from 'motion/react';
 import { cn } from '../../components/ui/cn';
 import { scaledSpring } from '../../components/ui/motion';
@@ -110,36 +110,14 @@ export function SessionSegments({
         >
           {cardIds.map((id) => {
             const current = currentCardIds.includes(id);
-            const status = outcomes.get(id) ?? (current ? 'current' : 'unseen');
             return (
-              <span
+              <SessionSegment
                 key={id}
-                data-session-card-status={status}
-                className={cn(
-                  'relative min-w-px overflow-hidden rounded-full border',
-                  windowed ? 'shrink-0' : 'flex-1',
-                  current
-                    ? 'border-accent'
-                    : status === 'correct'
-                      ? 'border-positive'
-                      : status === 'wrong'
-                        ? 'border-negative'
-                        : 'border-transparent',
-                  status === 'current' && 'bg-accent/10',
-                  status === 'unseen' && 'bg-ink/10',
-                )}
-                style={{ width: windowed ? segmentWidth : undefined }}
-              >
-                <motion.span
-                  className={cn(
-                    'absolute inset-0 origin-left rounded-full',
-                    status === 'wrong' ? 'bg-negative' : 'bg-positive',
-                  )}
-                  initial={false}
-                  animate={{ scaleX: status === 'correct' || status === 'wrong' ? 1 : 0 }}
-                  transition={scaledSpring(m, 300, 2 * Math.sqrt(300))}
-                />
-              </span>
+                current={current}
+                status={outcomes.get(id) ?? (current ? 'current' : 'unseen')}
+                width={windowed ? segmentWidth : undefined}
+                m={m}
+              />
             );
           })}
         </motion.div>
@@ -147,3 +125,47 @@ export function SessionSegments({
     </div>
   );
 }
+
+// Keep every segment available to the sliding row, while only updating pips
+// whose appearance or geometry has changed.
+const SessionSegment = memo(function SessionSegment({
+  current,
+  status,
+  width,
+  m,
+}: {
+  current: boolean;
+  status: SessionCardOutcome | 'current' | 'unseen';
+  width?: number;
+  m: number;
+}) {
+  return (
+    <span
+      data-session-card-status={status}
+      className={cn(
+        'relative min-w-px overflow-hidden rounded-full border',
+        width === undefined ? 'flex-1' : 'shrink-0',
+        current
+          ? 'border-accent'
+          : status === 'correct'
+            ? 'border-positive'
+            : status === 'wrong'
+              ? 'border-negative'
+              : 'border-transparent',
+        status === 'current' && 'bg-accent/10',
+        status === 'unseen' && 'bg-ink/10',
+      )}
+      style={{ width }}
+    >
+      <motion.span
+        className={cn(
+          'absolute inset-0 origin-left rounded-full',
+          status === 'wrong' ? 'bg-negative' : 'bg-positive',
+        )}
+        initial={false}
+        animate={{ scaleX: status === 'correct' || status === 'wrong' ? 1 : 0 }}
+        transition={scaledSpring(m, 300, 2 * Math.sqrt(300))}
+      />
+    </span>
+  );
+});

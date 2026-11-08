@@ -15,6 +15,7 @@ type GroupedCardListProps = ComponentProps<typeof CardListBody> & {
 export function GroupedCardList({
   cards,
   schedulingConfig,
+  scheduleNow,
   selectMode,
   selected,
   expandedCardId,
@@ -137,6 +138,7 @@ export function GroupedCardList({
                   owner={group.owner}
                   cards={group.cards}
                   schedulingConfig={schedulingConfig}
+                  scheduleNow={scheduleNow}
                   onEditCard={onEditCard}
                   onEditOwner={group.kind === 'sequence' ? onEditSequence : onEditOcclusion}
                   onResume={onResume}
@@ -151,6 +153,7 @@ export function GroupedCardList({
                 <CardListBody
                   cards={looseCards}
                   schedulingConfig={schedulingConfig}
+                  scheduleNow={scheduleNow}
                   selectMode={selectMode}
                   selected={selected}
                   expandedCardId={expandedCardId}
