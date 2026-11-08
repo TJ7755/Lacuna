@@ -828,7 +828,13 @@ test('Electron AI evidence survives native failures without widening execution s
     'if-no-files-found': 'ignore',
   });
   const nativeTest = steps.findIndex((step) => step.run === 'bun run test:e2e:electron-ai');
-  assert.notEqual(nativeTest, -1);
+  const wait = steps.findIndex((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs web');
+  const download = steps.findIndex((step) => step.uses?.startsWith('actions/download-artifact@'));
+  assert.ok(wait >= 0 && wait < download && download < nativeTest);
+  assert.equal(steps[wait].id, 'web-dist');
+  assert.equal(steps[download].with['artifact-ids'], '${{ steps.web-dist.outputs.artifact_id }}');
+  assert.equal(steps[download].with.path, 'dist/');
+  assert.equal(steps[nativeTest].env.LACUNA_BROWSER_PREBUILT, 'true');
   assert.ok(steps.indexOf(evidence) > nativeTest);
 });
 

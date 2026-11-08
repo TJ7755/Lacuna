@@ -7,6 +7,11 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Restore the pinned Node archive
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: ${{ runner.temp }}/lacuna-node-archives
+        key: node-archive-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}-${{ hashFiles('scripts/ci-node-runtime.mjs') }}
     - name: Download and verify the Node release
       shell: bash
       working-directory: ${{ github.workspace }}
