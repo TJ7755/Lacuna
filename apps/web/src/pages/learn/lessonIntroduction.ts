@@ -131,31 +131,19 @@ export function selectIntroductionCard(
   );
 }
 
-/** Project the same chunks into the existing study header, including passes saved before reload. */
 export function introductionProgress(
   introduction: LessonIntroduction,
   cardIds: readonly string[],
-  currentCardIds: readonly string[],
   mastered: ReadonlySet<string>,
 ) {
-  const eligible = new Set(cardIds);
-  const passed = new Set(
-    introduction.attempts.flatMap(([id, attempt]) => (attempt === 'passed' ? [id] : [])),
-  );
-  const assigned = new Set(introduction.chunks.flat());
-  const special = cardIds.filter((id) => !assigned.has(id));
-  const groups = [...introduction.chunks, ...(special.length ? [special] : [])];
-  const ids: string[] = [];
-  const currentIds: string[] = [];
-  const outcomes = new Map<string, 'correct'>();
-  groups.forEach((group, index) => {
-    const members = group.filter((id) => eligible.has(id) || passed.has(id));
-    if (!members.length) return;
-    const id = String(index);
-    ids.push(id);
-    if (currentCardIds.some((current) => members.includes(current))) currentIds.push(id);
-    if (members.every((member) => mastered.has(member) || passed.has(member)))
-      outcomes.set(id, 'correct');
-  });
-  return { ids, currentIds, outcomes, value: ids.length ? outcomes.size / ids.length : 0 };
+  const sessionCards = new Set(cardIds);
+  const completed = new Set(cardIds.filter((id) => mastered.has(id)));
+  // A resumed lesson can exclude cards already passed and recorded as exposed.
+  for (const [id, attempt] of introduction.attempts) {
+    if (attempt === 'passed') {
+      sessionCards.add(id);
+      completed.add(id);
+    }
+  }
+  return { completed: completed.size, total: sessionCards.size };
 }

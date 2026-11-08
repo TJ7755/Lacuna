@@ -168,8 +168,8 @@ test('introduces choices before timed typing and keeps the old practice entry', 
   const recordedRim = page.locator('html');
 
   await expect(view.check).toBeDisabled();
-  const progress = page.getByRole('progressbar', { name: 'Chunks complete' });
-  await expect(progress.locator('[data-session-card-status]')).toHaveCount(3);
+  const progress = page.getByRole('progressbar', { name: 'Session progress' });
+  await expect(progress).toHaveAttribute('aria-valuetext', '0 of 12 cards complete');
   await page.screenshot({ path: testInfo.outputPath('learn-new-cards-choice.png') });
   const hoverLabel = view.choices.nth(1).locator('..');
   await hoverLabel.hover();
@@ -273,6 +273,53 @@ test('introduces choices before timed typing and keeps the old practice entry', 
     view.main.getByRole('button', { name: 'Show answer', exact: true }).last(),
   ).toBeVisible();
   await expect(view.choices).toHaveCount(0);
+});
+
+test('counts completed cards across choices and typing and restores the count on resume', async ({
+  page,
+}, testInfo) => {
+  const { lessonId, cards } = await seedLesson(page);
+  await page.goto(`/#/lesson/${lessonId}/learn`);
+  const view = study(page);
+  const progress = page.getByRole('progressbar', { name: 'Session progress' });
+  const banner = page.getByRole('banner');
+  const expectCompletion = async (count: number) => {
+    const label = `${count} of 12 cards complete`;
+    await expect(banner.getByText(label, { exact: true })).toBeVisible();
+    await expect(progress).toHaveAttribute('aria-valuetext', label);
+    await expect(progress).toHaveAttribute('aria-valuenow', String(Math.round((count / 12) * 100)));
+  };
+
+  for (let index = 0; index < 5; index += 1) {
+    const prompt = await view.prompt.innerText();
+    await choose(view, cards[prompt]);
+    await nextPrompt(view, prompt);
+  }
+  await expect(view.typing).toBeFocused();
+  await expectCompletion(0);
+
+  const typedPrompt = await view.prompt.innerText();
+  const submitTyped = async () => {
+    await view.typing.fill(cards[typedPrompt]);
+    await view.typing.press('Enter');
+    await expect(view.choices).toHaveCount(4);
+    await expectCompletion(1);
+  };
+  await submitTyped();
+  await banner.getByRole('button', { name: 'Undo last answer' }).click();
+  await expect(view.typing).toBeFocused();
+  await expectCompletion(0);
+  await submitTyped();
+  await page.screenshot({ path: testInfo.outputPath('simple-learn-progress-choices.png') });
+
+  const choicePrompt = await view.prompt.innerText();
+  await choose(view, cards[choicePrompt]);
+  await expect(view.typing).toBeFocused();
+  await expectCompletion(1);
+  await page.reload();
+  await expect(view.typing).toBeFocused();
+  await expectCompletion(1);
+  await page.screenshot({ path: testInfo.outputPath('simple-learn-progress-typing.png') });
 });
 
 test('prepares one lesson-wide Jev shortlist and reuses it after reload', async ({ page }) => {
