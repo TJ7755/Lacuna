@@ -273,6 +273,7 @@ for (const inputMode of ['keyboard', 'touch']) {
         expect(viewport.height - notification!.y - notification!.height).toBeLessThanOrEqual(24);
       } else {
         expect(notification!.y + notification!.height).toBeLessThanOrEqual(bounds.y);
+        expect(viewport.height - bounds.y - bounds.height).toBeLessThanOrEqual(24);
       }
     }
     expect(

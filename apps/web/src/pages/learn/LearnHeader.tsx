@@ -300,6 +300,7 @@ export function LearnHeader({
                 (isTouchMode ? (
                   <TouchMenuSheet
                     current={current}
+                    forecast={forecast}
                     onEdit={onEdit}
                     onToggleFlag={onToggleFlag}
                     onBury={onBury}

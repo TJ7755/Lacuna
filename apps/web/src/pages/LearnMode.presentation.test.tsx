@@ -204,39 +204,6 @@ describe('LearnMode presentation', () => {
     expect(dialog.parentElement).toBe(document.body);
   });
 
-  it('anchors touch grading controls to the bottom of the viewport', async () => {
-    // The thumb rests at the bottom of a phone, so grading must live there rather than
-    // in the middle of the screen. Nothing else asserted this, and the redesign plan
-    // wrongly recorded the controls as mid-screen after measuring a resized desktop
-    // browser, which reports no touch points and so renders the pointer layout.
-    localStorage.setItem('lacuna.inputMode', 'touch');
-    const deck = await createCourse('Thumb zone');
-    await createCard(deck.id, 'front_back', 'Thumb question', 'Thumb answer');
-
-    render(
-      <ThemeProvider>
-        <AccentProvider>
-          <ToastProvider>
-            <MemoryRouter initialEntries={['/learn']}>
-              <Routes>
-                <Route path="/learn" element={<LearnMode />} />
-              </Routes>
-            </MemoryRouter>
-          </ToastProvider>
-        </AccentProvider>
-      </ThemeProvider>,
-    );
-
-    expect(await findStudyFaceText('Thumb question')).toBeInTheDocument();
-    // The card surface is itself a button labelled "Show answer"; the grading control is
-    // the real <button> element.
-    const candidates = await screen.findAllByRole('button', { name: /show answer/i });
-    const reveal = candidates.find((element) => element.tagName === 'BUTTON')!;
-    const sheet = reveal.closest('.fixed');
-    expect(sheet).not.toBeNull();
-    expect(sheet).toHaveClass('bottom-0');
-  });
-
   it('does not reset an active session when the default Focus Mode preference changes', async () => {
     const course = await createCourse('Focus preferences');
     const lesson = await createLesson(course.id, 'Stable session');

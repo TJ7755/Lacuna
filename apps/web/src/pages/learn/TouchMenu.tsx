@@ -1,5 +1,5 @@
 import { ModalBackdrop } from '../../components/ui/ModalBackdrop';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { animate, m as motion, useMotionValue, usePresence } from 'motion/react';
 import { expandingActionSpring } from '../../components/ui/motion';
@@ -19,6 +19,7 @@ import {
 
 export function TouchMenuSheet({
   current,
+  forecast,
   onEdit,
   onToggleFlag,
   onBury,
@@ -30,6 +31,7 @@ export function TouchMenuSheet({
   m,
 }: {
   current: Card;
+  forecast?: string;
   onEdit: () => void;
   onToggleFlag: () => void;
   onBury: () => void;
@@ -168,6 +170,7 @@ export function TouchMenuSheet({
           </Button>
         </div>
         <div className="grid min-h-0 gap-1 overflow-y-auto overscroll-contain p-1 sm:grid-cols-2">
+          {forecast && <p className="px-3 pb-2 text-sm text-ink-soft sm:col-span-2">{forecast}</p>}
           {current.sequenceItemId === undefined && current.occlusionRegionId === undefined && (
             <TouchMenuButton
               icon={<EditIcon width={20} height={20} />}
@@ -181,6 +184,7 @@ export function TouchMenuSheet({
           <TouchMenuButton
             icon={<FlagIcon width={20} height={20} />}
             label={current.flagged ? 'Remove flag' : 'Flag card'}
+            description={current.flagged ? undefined : 'Find it later; its schedule is unchanged.'}
             onClick={() => {
               hapticLight();
               onToggleFlag();
@@ -189,6 +193,7 @@ export function TouchMenuSheet({
           <TouchMenuButton
             icon={<ClockIcon width={20} height={20} />}
             label="Bury until tomorrow"
+            description="Back tomorrow."
             onClick={() => {
               hapticLight();
               onBury();
@@ -197,6 +202,7 @@ export function TouchMenuSheet({
           <TouchMenuButton
             icon={<PauseIcon width={20} height={20} />}
             label="Suspend card"
+            description="Out of study until you resume it."
             onClick={() => {
               hapticLight();
               onSuspend();
@@ -228,22 +234,31 @@ export function TouchMenuSheet({
 function TouchMenuButton({
   icon,
   label,
+  description,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
+  description?: string;
   onClick: () => void;
 }) {
+  const descriptionId = useId();
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-describedby={description ? descriptionId : undefined}
       className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium text-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
     >
       <span aria-hidden="true" className="shrink-0 text-ink-faint">
         {icon}
       </span>
       {label}
+      {description && (
+        <span id={descriptionId} hidden>
+          {description}
+        </span>
+      )}
     </button>
   );
 }
