@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { recordUsageAction } from '../../usage/collector';
+import { recordUsageAction } from '../../usage/actions';
 import { canEditLessons, isLessonAuthoringMode } from '../../course/lessonViewMode';
 import { useToast } from '../../components/ui/Toast';
 import { numericAnswerSpecIsValid } from '../../components/items/NumericAnswerEditor';

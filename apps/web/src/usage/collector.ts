@@ -9,6 +9,7 @@ import {
 } from '@lacuna/protocol/usage';
 import type { router as appRouter } from '../routes/router';
 import { readInputMode, resolveInputMode } from '../state/inputMode';
+import { subscribeUsageActions, type UsageActionSource as ActionSource } from './actions';
 import { canCollectUsage, readUsagePreference, subscribeToUsagePreference } from './preference';
 import {
   createUsageOutbox,
@@ -21,7 +22,6 @@ import {
 declare const __APP_VERSION__: string;
 
 type UsageRouter = Pick<typeof appRouter, 'state' | 'subscribe'>;
-type ActionSource = 'button' | 'menu' | 'shortcut' | 'link' | 'form' | 'other';
 type Input = 'pointer' | 'touch' | 'keyboard';
 type View = {
   page: UsagePage;
@@ -43,12 +43,6 @@ const CONTROL =
   '[role^="menuitem"], [role="tab"], [role="switch"], summary, form, select, ' +
   '[role="dialog"], [role="alertdialog"], input[type="checkbox"], input[type="radio"]';
 const PRIVATE = '[inert], [contenteditable="true"], [data-usage-private], .prose-lacuna';
-
-let dispatchAction: ((action: UsageAction, source?: ActionSource) => void) | undefined;
-
-export function recordUsageAction(action: UsageAction, source?: ActionSource): void {
-  dispatchAction?.(action, source);
-}
 
 /** Classification uses fixed control semantics only. Text, hrefs and values never enter a key. */
 export function usageActionForControl(element: Element): UsageAction | undefined {
@@ -462,7 +456,7 @@ export function installUsageCollector(router: UsageRouter): () => void {
     }
   }
 
-  dispatchAction = action;
+  const unsubscribeActions = subscribeUsageActions(action);
   const unsubscribeRouter = router.subscribe(routeChanged);
   const unsubscribePreference = subscribeToUsagePreference(refresh);
   const timer = window.setInterval(() => void flush(), FLUSH_MS);
@@ -479,7 +473,7 @@ export function installUsageCollector(router: UsageRouter): () => void {
   return () => {
     disposed = true;
     active?.abort();
-    if (dispatchAction === action) dispatchAction = undefined;
+    unsubscribeActions();
     unsubscribeRouter();
     unsubscribePreference();
     window.clearTimeout(sourceReset);

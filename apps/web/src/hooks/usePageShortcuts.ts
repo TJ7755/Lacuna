@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { recordUsageAction } from '../usage/collector';
+import { recordUsageAction } from '../usage/actions';
 
 /** Single-key page shortcuts, keyed by lower-case key. Missing or undefined entries are inert. */
 export type PageShortcuts = Record<string, (() => void) | undefined>;

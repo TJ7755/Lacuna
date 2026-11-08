@@ -1,5 +1,5 @@
 import { modifierShortcutLabel } from '../electron/runtime';
-import { recordUsageAction } from '../usage/collector';
+import { recordUsageAction } from '../usage/actions';
 import { QuestionSetPracticeStepper } from '../components/question-sets/QuestionSetPracticeStepper';
 import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
 import { QuestionSetPracticeNavigation } from '../components/question-sets/QuestionSetPracticeNavigation';

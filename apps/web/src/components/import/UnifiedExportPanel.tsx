@@ -2,7 +2,7 @@
 // Course share codes use the dedicated Course-facing Share page.
 
 import { useState } from 'react';
-import { recordUsageAction } from '../../usage/collector';
+import { recordUsageAction } from '../../usage/actions';
 import { Button } from '../ui/Button';
 import { DownloadIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';

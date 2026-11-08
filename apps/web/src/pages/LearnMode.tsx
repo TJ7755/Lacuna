@@ -1,5 +1,5 @@
 import { StudyExitHeader } from '../components/learn/StudyExitHeader';
-import { recordUsageAction } from '../usage/collector';
+import { recordUsageAction } from '../usage/actions';
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import './learn/studyLayout.css';
 import { typedAnswerJudgement, useTypedAutoMark } from './learn/useTypedAutoMark';

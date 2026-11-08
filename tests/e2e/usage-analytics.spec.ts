@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type BrowserContext } from '@playwright/test';
 import { usageBatchSchema, type UsageBatch } from '@lacuna/protocol/usage';
 import { createUsageHandler } from '../../apps/relay/src/usageAnalytics';
 import { MemoryStore } from '../../apps/relay/src/store';
@@ -7,6 +7,15 @@ const SITE = 'https://getlacuna.app';
 const RELAY = 'https://relay.getlacuna.app';
 
 test.use({ serviceWorkers: 'block' });
+
+async function serveHostedApp(context: BrowserContext, baseURL: string | undefined) {
+  await context.route(`${SITE}/**`, async (route) => {
+    const url = new URL(route.request().url());
+    await route.fulfill({
+      response: await route.fetch({ url: `${baseURL}${url.pathname}${url.search}` }),
+    });
+  });
+}
 
 test('a hosted learner controls the complete analytics flow', async ({
   context,
@@ -22,15 +31,10 @@ test('a hosted learner controls the complete analytics flow', async ({
   const requests: UsageBatch[] = [];
   const legacy: string[] = [];
   try {
-    await context.route(`${SITE}/**`, async (route) => {
-      const url = new URL(route.request().url());
-      if (url.pathname.startsWith('/_vercel/')) {
-        legacy.push(url.pathname);
-        return route.abort();
-      }
-      await route.fulfill({
-        response: await route.fetch({ url: `${baseURL}${url.pathname}${url.search}` }),
-      });
+    await serveHostedApp(context, baseURL);
+    await context.route(`${SITE}/_vercel/**`, async (route) => {
+      legacy.push(route.request().url());
+      await route.abort();
     });
     await context.route('https://*.simpleanalyticscdn.com/**', async (route) => {
       legacy.push(route.request().url());
@@ -108,4 +112,30 @@ test('a hosted learner controls the complete analytics flow', async ({
     if (previousSecret === undefined) delete process.env.USAGE_ANALYTICS_ADMIN_SECRET;
     else process.env.USAGE_ANALYTICS_ADMIN_SECRET = previousSecret;
   }
+});
+
+test('a failed analytics download leaves the learner app usable', async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  await serveHostedApp(context, baseURL);
+  let blocked = 0;
+  let recoveryProbes = 0;
+  await context.route(`${SITE}/assets/HostedUsageAnalytics-*.js`, async (route) => {
+    blocked += 1;
+    await route.abort();
+  });
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === '/sw.js' && url.searchParams.has('online-probe')) recoveryProbes += 1;
+  });
+
+  await page.goto(`${SITE}/#/start`);
+  const exit = page.getByRole('button', { name: 'Exit' });
+  await expect(exit).toBeVisible();
+  await exit.click();
+  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+  expect(blocked).toBeGreaterThan(0);
+  expect(recoveryProbes).toBe(0);
 });

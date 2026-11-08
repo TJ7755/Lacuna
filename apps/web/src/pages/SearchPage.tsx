@@ -19,7 +19,7 @@ import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { SearchResultOption } from '../components/search/SearchResultOption';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { hitKey, hitPath, type SearchHit } from '../components/search/searchPresentation';
-import { recordUsageAction } from '../usage/collector';
+import { recordUsageAction } from '../usage/actions';
 
 /** The structured filters offered as quick chips, in display order. */
 const FILTER_CHIPS: { value: CardFilter; label: string }[] = [

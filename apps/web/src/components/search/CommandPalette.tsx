@@ -1,5 +1,5 @@
 import { searchHelp } from '../../pages/help/searchHelp';
-import { recordUsageAction } from '../../usage/collector';
+import { recordUsageAction } from '../../usage/actions';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import {
   useCallback,

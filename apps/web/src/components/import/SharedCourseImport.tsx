@@ -1,5 +1,5 @@
 import { SectionCard } from '../ui/SectionCard';
-import { recordUsageAction } from '../../usage/collector';
+import { recordUsageAction } from '../../usage/actions';
 import { useEffect, useId, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { parseShareCode } from '../../shareLinks/client';

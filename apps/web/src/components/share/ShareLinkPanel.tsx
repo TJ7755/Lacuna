@@ -1,5 +1,5 @@
 import { forwardRef, lazy, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
-import { recordUsageAction } from '../../usage/collector';
+import { recordUsageAction } from '../../usage/actions';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import QRCode from 'react-qr-code';
 import { HOSTED_SERVICE_ORIGIN } from '../../config/origins';

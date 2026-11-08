@@ -1,5 +1,5 @@
 import { lazy, useEffect, useId, useRef, useState } from 'react';
-import { recordUsageAction } from '../../usage/collector';
+import { recordUsageAction } from '../../usage/actions';
 import { useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';

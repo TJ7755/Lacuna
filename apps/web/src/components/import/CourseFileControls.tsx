@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { recordUsageAction } from '../../usage/collector';
+import { recordUsageAction } from '../../usage/actions';
 import { Button } from '../ui/Button';
 import { DownloadIcon, UploadIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';

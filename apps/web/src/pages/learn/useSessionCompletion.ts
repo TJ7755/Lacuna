@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from 'react';
-import { recordUsageAction } from '../../usage/collector';
+import { recordUsageAction } from '../../usage/actions';
 import type { SessionSummary } from '../../course/sessionSummary';
 import { transitionCompletion, type CompletionState } from './sessionMachine';
 

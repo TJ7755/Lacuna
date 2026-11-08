@@ -25,7 +25,7 @@ import { CardImportInput } from './CardImportInput';
 import { CardImportPreview } from './CardImportPreview';
 import './CardImportDialog.css';
 import { countOf } from '../../utils/plural';
-import { recordUsageAction } from '../../usage/collector';
+import { recordUsageAction } from '../../usage/actions';
 
 export interface CardImportDialogProps {
   initialTitle?: string;

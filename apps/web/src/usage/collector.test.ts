@@ -3,7 +3,8 @@ import Dexie from 'dexie';
 import { createMemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { usageBatchSchema } from '@lacuna/protocol/usage';
-import { installUsageCollector, recordUsageAction, usageActionForControl } from './collector';
+import { installUsageCollector, usageActionForControl } from './collector';
+import { recordUsageAction } from './actions';
 import { createUsageOutbox, usageDay, USAGE_DATABASE_NAME } from './outbox';
 
 const preference = vi.hoisted(() => ({ permitted: false, saved: 'unset', notify: () => {} }));
