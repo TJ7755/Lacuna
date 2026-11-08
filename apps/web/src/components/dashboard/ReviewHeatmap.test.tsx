@@ -148,4 +148,39 @@ describe('ReviewHeatmap', () => {
     expect(tooltip).toHaveAttribute('aria-hidden', 'true');
     expect(tooltip).toHaveStyle({ position: 'fixed' });
   });
+
+  it('leaves touch and secondary mouse gestures alone', () => {
+    const { container } = render(<ReviewHeatmap cards={[makeCard()]} days={90} />);
+    const scrollport = container.querySelector('.overflow-x-auto') as HTMLElement;
+    Object.defineProperty(scrollport, 'scrollWidth', { value: 600 });
+    scrollport.scrollLeft = 200;
+    fireEvent.pointerDown(scrollport, {
+      pointerId: 7,
+      pointerType: 'touch',
+      button: 0,
+      clientX: 300,
+    });
+    fireEvent.pointerMove(scrollport, {
+      pointerId: 7,
+      pointerType: 'touch',
+      buttons: 1,
+      clientX: 220,
+    });
+    fireEvent.pointerUp(scrollport, { pointerId: 7, pointerType: 'touch', clientX: 220 });
+    expect(scrollport.scrollLeft).toBe(200);
+
+    fireEvent.pointerDown(scrollport, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 2,
+      clientX: 300,
+    });
+    fireEvent.pointerMove(scrollport, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      buttons: 2,
+      clientX: 220,
+    });
+    expect(scrollport.scrollLeft).toBe(200);
+  });
 });
