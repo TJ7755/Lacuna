@@ -7,9 +7,10 @@ const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_CAS_ATTEMPTS = 5;
 export const RATE_KEY_RE =
-  /^ai-rate\/(?:(?:pairing|channel-mint|share-mint|insights)\/[0-9a-f]{64}|class-code\/[0-9a-f]{64}(?:\/(?:[0-9]|1[0-5]))?)$/;
+  /^ai-rate\/(?:(?:pairing|ai-claim|channel-mint|share-mint|insights)\/[0-9a-f]{64}|class-code\/[0-9a-f]{64}(?:\/(?:[0-9]|1[0-5]))?)$/;
 
-export type RateScope = 'pairing' | 'channel-mint' | 'share-mint' | 'insights' | 'class-code';
+export type RateScope =
+  'pairing' | 'ai-claim' | 'channel-mint' | 'share-mint' | 'insights' | 'class-code';
 
 interface RateRecord {
   version: 1;

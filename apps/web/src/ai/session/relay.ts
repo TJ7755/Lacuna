@@ -436,11 +436,14 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
             browserGeneration,
             queuedFollowUpMessageId: null,
           };
+          // Stop revokes pending tool authority, matching the local session.
+          toolSession.clear();
           publish({
             ...state.snapshot,
             draft: state.snapshot.queuedFollowUp ?? state.snapshot.draft,
             queuedFollowUp: null,
             run: { ...state.snapshot.run, status: 'stop_requested', stopRequestedAt },
+            approval: null,
             activity: {
               runId,
               status: 'stop_requested',
@@ -459,11 +462,30 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
     },
     decide(approvalId, approved) {
       return serialise(async () => {
+        const pendingApproval = state.snapshot.approval;
+        const run = state.snapshot.run;
+        if (
+          !pendingApproval ||
+          pendingApproval.approvalId !== approvalId ||
+          pendingApproval.status !== 'pending' ||
+          !run ||
+          run.status !== 'active'
+        ) {
+          return conflict('That approval is no longer pending.');
+        }
         const decision = await toolSession.decide(approvalId, approved);
         if (!decision.ok)
           return conflict(
             decision.error.kind === 'tool' ? decision.error.error.message : decision.error.message,
           );
+        if (
+          state.snapshot.run?.runId !== run.runId ||
+          state.snapshot.run.status !== 'active' ||
+          state.snapshot.approval?.approvalId !== approvalId ||
+          state.snapshot.approval.status !== 'pending'
+        ) {
+          return conflict('That approval is no longer pending.');
+        }
         const activity =
           decision.effects.activity && state.snapshot.run
             ? { runId: state.snapshot.run.runId, ...decision.effects.activity }

@@ -174,6 +174,50 @@ describe('relay AI session tool calls', () => {
     });
   });
 
+  it('revokes tool authority on Stop and rejects a later approval decision', async () => {
+    const executeToolCall = vi.fn(async (): Promise<ToolExecutionOutcome> => ({
+      ok: true,
+      result: { id: 'course-1', name: 'Biology' },
+      receipt: {
+        callId: 'call-1',
+        toolName: 'lacuna.create_course',
+        requiredScope: 'write',
+        target: { courseId: '__create_course__', label: 'New course: Biology' },
+        completedAt: 2_000,
+      },
+    }));
+    const session = toolSession(executeToolCall);
+    const harness = await activeSession(session);
+    const clear = vi.spyOn(session, 'clear');
+    vi.mocked(harness.crypto.open).mockResolvedValue(
+      mailbox(2, [
+        {
+          eventId: 'event-create-1',
+          type: 'tool_call',
+          runId: 'run-1',
+          callId: 'call-1',
+          toolName: 'lacuna.create_course',
+          input: { name: 'Biology' },
+          createdAt: 2_100,
+        },
+      ]) as JsonValue,
+    );
+    await harness.tick();
+    const approvalId = harness.session.getSnapshot().approval!.approvalId;
+    expect(harness.session.getSnapshot().approval?.status).toBe('pending');
+
+    await harness.session.stop('run-1');
+
+    expect(clear).toHaveBeenCalled();
+    expect(harness.session.getSnapshot().approval).toBeNull();
+    await expect(harness.session.decide(approvalId, true)).resolves.toEqual({
+      ok: false,
+      error: { kind: 'conflict', message: 'That approval is no longer pending.' },
+    });
+    expect(session.getState().grants).toEqual([]);
+    expect(harness.session.getSnapshot().approval).toBeNull();
+  });
+
   it('rejects a tool call after Stop before executing it', async () => {
     const executeToolCall = vi.fn(async (): Promise<ToolExecutionOutcome> => ({
       ok: true,

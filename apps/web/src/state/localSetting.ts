@@ -59,16 +59,23 @@ export function createLocalSetting<T>({
   function use(): [T, (value: T) => void] {
     const [value, setValue] = useState(read);
     useEffect(() => {
+      // Re-read when the setting identity changes so a new key never shows stale state.
+      setValue(read());
       const refresh = () => setValue(read());
       const unsubscribe = subscribe(refresh);
       // A layout effect may have changed the preference before this subscription existed.
       refresh();
       return unsubscribe;
-    }, []);
-    const set = useCallback((next: T) => {
-      write(next);
-      setValue(read());
-    }, []);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [key, event]);
+    const set = useCallback(
+      (next: T) => {
+        write(next);
+        setValue(read());
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      },
+      [key, event],
+    );
     return [value, set];
   }
   return { key, event, read, write, subscribe, use };

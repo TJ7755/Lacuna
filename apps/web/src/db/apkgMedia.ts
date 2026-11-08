@@ -25,13 +25,17 @@ export function replaceMediaRefs(text: string, mediaMap: Map<string, ImportedMed
     if (!media || media.kind !== 'image') return match;
     return `![${alt}](${media.url})`;
   });
-  // Plain text references like filename.jpg (fallback for filenames embedded in text)
-  for (const [filename, media] of mediaMap.entries()) {
+  // Plain text references like filename.jpg (fallback for filenames embedded in text).
+  // Replace longest names first so `a.png` cannot corrupt `aa.png`, and only when the
+  // name stands alone rather than inside a longer token.
+  const plainNames = [...mediaMap.keys()].sort((a, b) => b.length - a.length);
+  for (const filename of plainNames) {
+    const media = mediaMap.get(filename)!;
     const escaped = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const plainRe = new RegExp(escaped, 'g');
+    const plainRe = new RegExp(`(?<![\\w.-])${escaped}(?![\\w.-])`, 'g');
     result = result.replace(
       plainRe,
-      media.kind === 'audio' ? `![audio](${media.url})` : `${media.url}`,
+      media.kind === 'audio' ? `![audio](${media.url})` : `![image](${media.url})`,
     );
   }
   return result;

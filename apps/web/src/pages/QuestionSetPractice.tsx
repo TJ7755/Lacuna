@@ -379,7 +379,7 @@ function PracticeWorkspace({
           )}
         </div>
       )}
-      {progress.blocker.state === 'blocked' && (formDirty || reflectionDirty || progress.error) && (
+      {progress.blocker.state === 'blocked' && (formDirty || reflectionDirty) && (
         <div className="qs-error" role="alert">
           Save or cancel your unfinished changes before leaving.
           <Button

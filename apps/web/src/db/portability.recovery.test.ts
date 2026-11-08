@@ -280,4 +280,42 @@ describe('backup recovery', () => {
     expect(await db.lessonCompletions.get(emptyLesson.id)).toEqual(incomingCompletion);
     expect(await db.practiceMilestones.get('practice-cells')).toEqual(incomingMilestone);
   });
+
+  it('restores missing lineage registries and queued reviews in merge mode', async () => {
+    const course = await createCourse('Biology');
+    await db.lineageIdMappings.put({
+      id: 'lineage-1',
+      courseId: course.id,
+      lessonIds: [],
+      noteIds: [],
+      cardIds: [],
+      sequenceIds: [],
+      lessonSnapshots: {},
+      noteSnapshots: {},
+      cardSnapshots: {},
+    });
+    await db.pendingMergeReviews.put({
+      id: 'review-1',
+      courseId: course.id,
+      lineageId: 'lineage-1',
+      revision: 2,
+      diff: {
+        creates: { lessons: [], notes: [], cards: [] },
+        updates: { lessons: [], notes: [], cards: [] },
+        removals: { lessonIds: [], noteIds: [], cardIds: [] },
+        conflicts: [],
+      },
+      createdAt: 10,
+    });
+    const backup = await exportDatabase();
+    expect(backup.lineageIdMappings).toHaveLength(1);
+    expect(backup.pendingMergeReviews).toHaveLength(1);
+
+    await db.lineageIdMappings.clear();
+    await db.pendingMergeReviews.clear();
+    await importBackup(backup, 'merge');
+
+    expect(await db.lineageIdMappings.get('lineage-1')).toEqual(backup.lineageIdMappings?.[0]);
+    expect(await db.pendingMergeReviews.get('review-1')).toEqual(backup.pendingMergeReviews?.[0]);
+  });
 });

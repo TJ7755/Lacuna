@@ -89,8 +89,9 @@ export function useAttemptProgress(session: QuestionSetAttemptSession, formDirty
     }, 450);
     return () => clearTimeout(timer);
   }, [draftVersion, flush, snapshot.error]);
-  const dirty =
-    drafts.current.size > 0 || snapshot.pending > 0 || Boolean(snapshot.error) || formDirty;
+  // Autosave keeps retrying while a terminal error is surfaced; `dirty`
+  // deliberately excludes it so navigation is not trapped on a failing save.
+  const dirty = drafts.current.size > 0 || snapshot.pending > 0 || formDirty;
   const blocker = useBlocker(dirty);
   useEffect(() => {
     if (blocker.state === 'blocked' && !snapshot.error && !formDirty) {
@@ -101,7 +102,7 @@ export function useAttemptProgress(session: QuestionSetAttemptSession, formDirty
   }, [blocker, flush, snapshot.error, formDirty]);
   useEffect(() => {
     const leave = (event: BeforeUnloadEvent) => {
-      if (drafts.current.size || session.snapshot.pending || session.snapshot.error || formDirty) {
+      if (drafts.current.size || session.snapshot.pending || formDirty) {
         event.preventDefault();
         event.returnValue = '';
       }

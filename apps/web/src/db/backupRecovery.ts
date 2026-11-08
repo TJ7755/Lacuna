@@ -487,6 +487,30 @@ export async function mergeBackupForRecovery(prepared: PreparedBackup): Promise<
     await db.tombstones.bulkPut(merged);
   }
 
+  // Merge lineage registries and queued reviews so merge keeps peer state.
+  // Matches peer sync in mergeSnapshots; tombstones already prune detach receipts there.
+  const localMappings = new Map((await db.lineageIdMappings.toArray()).map((row) => [row.id, row]));
+  for (const incoming of backup.lineageIdMappings ?? []) {
+    const existing = localMappings.get(incoming.id);
+    if (existing && existing.courseId !== incoming.courseId) {
+      throw new Error(`Lineage ${incoming.id} belongs to conflicting Courses.`);
+    }
+    if (!existing) {
+      await db.lineageIdMappings.add(incoming);
+    }
+  }
+  if (backup.pendingMergeReviews && backup.pendingMergeReviews.length > 0) {
+    const existingReviews = new Map(
+      (await db.pendingMergeReviews.toArray()).map((row) => [row.id, row]),
+    );
+    for (const incoming of backup.pendingMergeReviews) {
+      const existing = existingReviews.get(incoming.id);
+      if (!existing || incoming.createdAt > existing.createdAt) {
+        await db.pendingMergeReviews.put(incoming);
+      }
+    }
+  }
+
   if (agentMemories.length > 0) {
     const local = new Map((await db.agentMemories.toArray()).map((memory) => [memory.id, memory]));
     const incomingById = new Map<string, AgentMemory>();

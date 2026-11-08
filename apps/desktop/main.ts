@@ -91,17 +91,33 @@ function readWindowState(): WindowState {
   try {
     const data = fs.readFileSync(STATE_FILE, 'utf-8');
     const parsed = JSON.parse(data) as Partial<WindowState>;
-    return { ...defaults, ...parsed };
+    // A malformed state file must never strand the window: fall back field by
+    // field so one wrong type cannot poison the launch geometry.
+    return {
+      width: isWindowDimension(parsed.width) ? parsed.width : defaults.width,
+      height: isWindowDimension(parsed.height) ? parsed.height : defaults.height,
+      x: Number.isFinite(parsed.x) ? (parsed.x as number) : defaults.x,
+      y: Number.isFinite(parsed.y) ? (parsed.y as number) : defaults.y,
+      maximized: parsed.maximized === true,
+    };
   } catch {
     return defaults;
   }
+}
+
+function isWindowDimension(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 400 && value <= 7680;
 }
 
 let windowStateWrite = Promise.resolve();
 
 function writeWindowState(state: WindowState): Promise<void> {
   windowStateWrite = windowStateWrite
-    .then(() => fs.promises.writeFile(STATE_FILE, JSON.stringify(state), 'utf-8'))
+    .then(async () => {
+      const temporary = `${STATE_FILE}.${process.pid}.tmp`;
+      await fs.promises.writeFile(temporary, JSON.stringify(state), 'utf-8');
+      await fs.promises.rename(temporary, STATE_FILE);
+    })
     .catch(() => {
       // State persistence is best-effort; never let it break the app.
     });

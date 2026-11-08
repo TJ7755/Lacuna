@@ -1,5 +1,5 @@
 // APKG worker orchestration and persistence. ZIP/SQLite parsing stays in apkgParser.
-import type { Card } from '@lacuna/core/db/types';
+import type { Card, MediaAsset } from '@lacuna/core/db/types';
 import { guessMimeType, replaceMediaRefs, type ImportedMediaRef } from './apkgMedia';
 import { db } from './schema';
 import { projectCardsForStorage, reviewHistoryEntriesForCard } from '@lacuna/core/db/reviewHistory';
@@ -92,7 +92,6 @@ export async function importApkgResult(
   targetSchedulingUnitId?: string | (() => Promise<string>),
 ): Promise<{ courseId: string; cards: Card[] }> {
   const { createCourse, createCards } = await import('./repository');
-  const { storeAudioBlob, storeImageBlob } = await import('./assets');
 
   let targetUnit =
     typeof targetSchedulingUnitId === 'string'
@@ -102,37 +101,50 @@ export async function importApkgResult(
     throw new Error('Target scheduling unit not found.');
   }
 
-  // Ingest supported media before creating any deck or card records. Asset writes are
-  // content-addressed and harmless to retry; partially created imports are not.
-  const mediaEntries = await Promise.all(
+  // Images are decoded and audio is hashed outside the write transaction: Dexie
+  // commits the surrounding transaction when it sees an out-of-transaction
+  // await (such as SHA-256 or canvas decode), so every async byte read happens
+  // here. Only synchronous `put` calls run inside the atomic write below.
+  const { prepareAudioAsset, prepareImageAsset } = await import('./assets');
+  const preparedMedia = await Promise.all(
     [...result.media.entries()].map(async ([filename, bytes]) => {
       const mime = guessMimeType(filename);
       const blob = new Blob([new Uint8Array(bytes)], { type: mime });
       if (mime.startsWith('image/')) {
         const dims = await getImageDimensions(blob);
-        const asset = await storeImageBlob(blob, mime, dims?.width ?? 0, dims?.height ?? 0);
-        return [filename, { url: `lacuna-asset://${asset.hash}`, kind: 'image' as const }] as const;
+        const asset = await prepareImageAsset(blob, mime, dims?.width ?? 0, dims?.height ?? 0);
+        return [filename, { asset, kind: 'image' as const }] as const;
       }
       if (mime.startsWith('audio/')) {
-        const asset = await storeAudioBlob(blob, mime);
-        return [filename, { url: `lacuna-asset://${asset.hash}`, kind: 'audio' as const }] as const;
+        const asset = await prepareAudioAsset(blob, mime);
+        return [filename, { asset, kind: 'audio' as const }] as const;
       }
       return null;
     }),
   );
-  const mediaHashMap = new Map<string, ImportedMediaRef>();
-  for (const entry of mediaEntries) {
-    if (entry) mediaHashMap.set(entry[0], entry[1]);
+  const mediaRefs = new Map<string, { asset: MediaAsset; kind: 'image' | 'audio' }>();
+  for (const entry of preparedMedia) {
+    if (entry) mediaRefs.set(entry[0], entry[1]);
   }
 
   let scheduledCards: Card[] = [];
 
-  // Create the Course, cards, and both scheduling-history projections atomically.
-  // This prevents a failed canonical-history write from leaving a partial import.
+  // Create the Course, assets, cards, and both scheduling-history projections
+  // atomically. All media bytes are already prepared above, so the transaction
+  // body performs only synchronous puts: a later card-write failure rolls the
+  // course, assets, and cards back together.
   let courseId = targetUnit?.courseId;
+  const mediaHashMap = new Map<string, ImportedMediaRef>();
+  for (const [filename, staged] of mediaRefs) {
+    mediaHashMap.set(filename, {
+      url: `lacuna-asset://${staged.asset.hash}`,
+      kind: staged.kind,
+    });
+  }
   await db.transaction(
     'rw',
     [
+      db.assets,
       db.courses,
       db.lessons,
       db.courseAssessments,
@@ -144,6 +156,9 @@ export async function importApkgResult(
       db.schedulingPerformance,
     ],
     async () => {
+      if (mediaRefs.size > 0) {
+        await db.assets.bulkPut([...mediaRefs.values()].map((staged) => staged.asset));
+      }
       if (typeof targetSchedulingUnitId === 'function') {
         targetUnit = await db.schedulingUnits.get(await targetSchedulingUnitId());
         if (!targetUnit?.courseId) throw new Error('Target scheduling unit not found.');
@@ -162,8 +177,8 @@ export async function importApkgResult(
         targetUnit.id,
         cards.map((c) => ({
           type: c.type,
-          front: c.front,
-          back: c.back,
+          front: replaceMediaRefs(c.front, mediaHashMap),
+          back: replaceMediaRefs(c.back, mediaHashMap),
           tags: c.tags,
         })),
         { courseId, primaryLessonId: targetUnit.lessonId },
@@ -188,27 +203,18 @@ export async function importApkgResult(
         };
       });
       if (scheduledCards.length > 0) {
+        // Rewrite Anki media markers before the first card write so storage never
+        // holds raw `<img>` / `[sound:]` text when the second write cannot run.
+        for (const card of scheduledCards) {
+          card.front = replaceMediaRefs(card.front, mediaHashMap);
+          card.back = replaceMediaRefs(card.back, mediaHashMap);
+        }
         const history = scheduledCards.flatMap((card) => reviewHistoryEntriesForCard(card));
         await db.cards.bulkPut(projectCardsForStorage(scheduledCards));
         if (history.length > 0) await db.reviewHistory.bulkPut(history);
       }
     },
   );
-
-  // Replace media references in card text with Lacuna asset references.
-  if (mediaHashMap.size > 0) {
-    const rewritten: Card[] = [];
-    for (const card of scheduledCards) {
-      const newFront = replaceMediaRefs(card.front, mediaHashMap);
-      const newBack = replaceMediaRefs(card.back, mediaHashMap);
-      if (newFront !== card.front || newBack !== card.back) {
-        card.front = newFront;
-        card.back = newBack;
-        rewritten.push(card);
-      }
-    }
-    if (rewritten.length > 0) await db.cards.bulkPut(projectCardsForStorage(rewritten));
-  }
 
   return { courseId: courseId!, cards: scheduledCards };
 }
