@@ -50,13 +50,6 @@ async function resetToSeededDashboard(page: Page): Promise<void> {
     });
   }
   await page.getByRole('heading', { name: 'Today', exact: true }).waitFor({ state: 'visible' });
-  const expandSidebar = page.getByRole('button', { name: 'Expand sidebar', exact: true });
-  if (await expandSidebar.isVisible().catch(() => false)) {
-    await expandSidebar.click();
-    await page
-      .getByRole('button', { name: 'Collapse sidebar', exact: true })
-      .waitFor({ state: 'visible' });
-  }
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
@@ -158,7 +151,10 @@ async function performInteraction(page: Page, scenario: InteractionScenario): Pr
     return;
   }
   if (scenario === 'settings') {
-    await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+    await page
+      .getByRole('navigation', { name: 'More', exact: true })
+      .getByRole('link', { name: 'Settings', exact: true })
+      .click();
     return;
   }
   await page
