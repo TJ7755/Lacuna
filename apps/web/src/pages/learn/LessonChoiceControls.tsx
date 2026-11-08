@@ -113,9 +113,14 @@ export function LessonChoiceControls({
       ref={controls}
       data-study-choices
       aria-busy={result === 'checking' || undefined}
-      className="study-controls study-choice-controls mx-auto mt-6 flex w-full max-w-md shrink-0 flex-col gap-3"
+      className="study-controls study-choice-controls mx-auto mt-6 flex w-full shrink-0 flex-col gap-3"
     >
       <motion.div
+        layoutScroll
+        className="overflow-x-auto overscroll-x-contain rounded-3xl"
+        onFocus={(event) =>
+          event.target.closest('label')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        }
         initial={false}
         animate={{ opacity: result ? 0 : 1 }}
         transition={motionTransition('feedback', m)}

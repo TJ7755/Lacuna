@@ -29,7 +29,7 @@ describe('TouchMenuSheet', () => {
       ['Focus mode', 'onToggleFocus'],
       ['Suspend card', 'onSuspend'],
       ['Keyboard shortcuts', 'onShowShortcuts'],
-      ['Cancel', 'onClose'],
+      ['Close card actions', 'onClose'],
     ];
     for (const [name, handler] of actions) {
       fireEvent.click(screen.getByRole('button', { name }));

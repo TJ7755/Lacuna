@@ -234,7 +234,7 @@ test('fits a tall occlusion and keeps its mask aligned on desktop', async ({ pag
 for (const inputMode of ['keyboard', 'touch']) {
   test(`keeps grades hittable beneath feedback in ${inputMode} mode on desktop`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     const { card, lessonId } = await prepareCard(page);
     await seedCard(page, card, 'basic', 3);
     await page.evaluate((inputMode) => {
@@ -254,6 +254,12 @@ for (const inputMode of ['keyboard', 'touch']) {
     await expect(page.locator('[data-study-face="back"]')).toBeVisible();
     const grades = page.getByRole('button', { name: /^(Yes|No)$/ });
     await expectFits(page, grades);
+    if (inputMode === 'touch') {
+      await testInfo.attach('Touch Mode answer and ratings', {
+        body: await page.screenshot(),
+        contentType: 'image/png',
+      });
+    }
     await expect(notifications.getByRole('button', { name: 'Undo' })).toBeVisible();
     const notification = await notifications
       .getByRole('button', { name: 'Undo' })
@@ -267,6 +273,7 @@ for (const inputMode of ['keyboard', 'touch']) {
         expect(viewport.height - notification!.y - notification!.height).toBeLessThanOrEqual(24);
       } else {
         expect(notification!.y + notification!.height).toBeLessThanOrEqual(bounds.y);
+        expect(viewport.height - bounds.y - bounds.height).toBeLessThanOrEqual(24);
       }
     }
     expect(

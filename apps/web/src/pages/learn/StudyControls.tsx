@@ -1,18 +1,11 @@
 import { useId, useLayoutEffect, type RefObject } from 'react';
-import { m as motion } from 'motion/react';
 import type { Grade } from '@lacuna/core/db/types';
-import { Button } from '../../components/ui/Button';
-import { fadeLiftTiming } from '../../components/ui/StepSwap';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';
-import { TouchBottomSheet } from './TouchBottomSheet';
+import { TouchStudyControls } from './TouchStudyControls';
 import type { AutoMark, Phase } from './types';
 import { StudyGradeButton, type StudyGradeFeedback } from './StudyGradeButton';
 import { FlowGradeControls } from './FlowGradeControls';
 
-/**
- * Both phases share a grid cell, reserving the larger height before a flip. Desktop
- * cards use Flow controls; touch cards retain their bottom sheet and typed input.
- */
 export function StudyControls({
   phase,
   feedback,
@@ -58,7 +51,7 @@ export function StudyControls({
     if (!isTypingCard || !input) return;
     if (question) input.focus({ preventScroll: true });
     else if (document.activeElement === input) input.blur();
-  }, [question, isTypingCard, typingInputRef]);
+  }, [question, isTypingCard, isTouchMode, typingInputRef]);
   const grade = (
     input: boolean | Grade,
     variant: 'danger' | 'secondary' | 'primary',
@@ -129,7 +122,10 @@ export function StudyControls({
         : 'flex w-full max-w-md gap-3';
   const typedField = (
     <>
-      <label htmlFor="study-typed-answer" className="mb-2 block text-sm text-ink-soft">
+      <label
+        htmlFor="study-typed-answer"
+        className={isTouchMode ? 'sr-only' : 'mb-2 block text-sm text-ink-soft'}
+      >
         Your answer
       </label>
       <input
@@ -144,8 +140,10 @@ export function StudyControls({
             onReveal();
           }
         }}
-        placeholder="Type your answer…"
-        className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent"
+        placeholder={isTouchMode ? 'Your answer' : 'Type your answer…'}
+        className={`w-full border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent ${
+          isTouchMode ? 'h-14 min-w-0 flex-1 rounded-xl' : 'rounded-lg'
+        }`}
       />
     </>
   );
@@ -182,27 +180,8 @@ export function StudyControls({
           />
         </div>
       )}
-      {isTypingCard && isTouchMode && (
-        <div className="study-controls mt-6 w-full shrink-0">
-          <motion.div
-            className="mx-auto w-full max-w-md"
-            initial={false}
-            animate={{ opacity: question ? 1 : 0 }}
-            transition={fadeLiftTiming(question, m)}
-            inert={!question}
-            aria-hidden={!question}
-          >
-            {typedField}
-            <div className="mt-3 flex justify-center">
-              <Button variant="primary" size="lg" className="w-full" onClick={onReveal}>
-                Check answer
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      )}
       {isTouchMode && (
-        <TouchBottomSheet
+        <TouchStudyControls
           phase={phase}
           feedback={feedback}
           gradingMode={gradingMode}
@@ -210,7 +189,7 @@ export function StudyControls({
           onHide={onHide}
           onAnswer={onAnswer}
           m={m}
-          isTypingCard={isTypingCard}
+          typedField={isTypingCard ? typedField : undefined}
           autoMark={autoMark}
           recallPrompt={recallPrompt}
           recallCorrect={recallCorrect}

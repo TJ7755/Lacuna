@@ -260,14 +260,10 @@ export function LearnStudyPhase({
         tabIndex={-1}
         aria-label="Study card"
         className={
-          'mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col outline-none focus-visible:shadow-none ' +
+          'mx-auto flex min-h-0 w-full flex-1 flex-col outline-none focus-visible:shadow-none ' +
+          (choiceQuestion ? 'max-w-7xl ' : 'max-w-4xl ') +
           'pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] ' +
-          'pt-4 md:pt-6 ' +
-          (isTouchMode && !suppressClassicGrading
-            ? gradingMode === 'manual'
-              ? 'pb-[calc(14rem+env(safe-area-inset-bottom))]'
-              : 'pb-[calc(10rem+env(safe-area-inset-bottom))]'
-            : 'pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-6')
+          'pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:pt-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))]'
         }
       >
         <StreakCelebration moment={streakMoment} multiplier={m} onDone={clearStreakMoment} />
@@ -294,7 +290,7 @@ export function LearnStudyPhase({
           />
         ) : (
           current && (
-            <div className="study-card-slot min-h-0 flex-1">
+            <div className="study-card-slot min-h-0 w-full max-w-[53rem] flex-1 self-center">
               <StudyCardTransition
                 ref={cardTransitionRef}
                 cardId={current.id}
@@ -331,7 +327,6 @@ export function LearnStudyPhase({
                     revealed={phase === 'answer'}
                     motionSpeed={motionSpeed}
                     phase={phase}
-                    isTouchMode={isTouchMode}
                     menuOpen={menuOpen}
                     editing={editing}
                     hintsOpen={hintsOpen}

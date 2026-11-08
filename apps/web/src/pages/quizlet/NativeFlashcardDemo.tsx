@@ -132,7 +132,6 @@ export function NativeFlashcardDemo() {
             motionSpeed={speed}
             motionMultiplier={m}
             phase={phase}
-            isTouchMode={false}
             menuOpen={false}
             editing={false}
             hintsOpen={false}
