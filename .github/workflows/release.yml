@@ -196,6 +196,8 @@ jobs:
           pkg.version = process.env.GITHUB_REF_NAME.slice(1);
           writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
           JS
+      - name: Seed verified Electron and Linux packaging tools
+        run: node scripts/ci-electron-runtime.mjs linux x64 --packaging-tools
       - run: bun run electron:build:linux --config.detectUpdateChannel=false
 
       - name: Verify Linux artefact allowlist

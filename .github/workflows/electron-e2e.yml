@@ -37,6 +37,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - if: runner.os == 'Linux'
         run: bunx playwright install --with-deps chromium
+      - if: runner.os == 'Linux'
+        run: node scripts/ci-electron-runtime.mjs linux x64 --packaging-tools
       - if: runner.os == 'Windows'
         run: node scripts/ci-electron-runtime.mjs win32 x64 --packaging-tools
       - if: runner.os == 'macOS'

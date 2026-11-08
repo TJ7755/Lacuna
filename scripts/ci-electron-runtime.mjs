@@ -9,8 +9,9 @@ import { pipeline } from 'node:stream/promises';
 
 const [platform, arch, packagingTools, ...extraArgs] = process.argv.slice(2);
 assert.ok(
-  (platform === 'win32' && arch === 'x64') || (platform === 'darwin' && arch === 'arm64'),
-  'Expected win32 x64 or darwin arm64',
+  ((platform === 'win32' || platform === 'linux') && arch === 'x64') ||
+    (platform === 'darwin' && arch === 'arm64'),
+  'Expected win32 x64, linux x64 or darwin arm64',
 );
 assert.ok(
   extraArgs.length === 0 &&
@@ -34,7 +35,9 @@ const electronTag = `v${version}`;
 const cacheRoot =
   platform === 'win32'
     ? join(process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local'), 'electron', 'Cache')
-    : join(homedir(), 'Library', 'Caches', 'electron');
+    : platform === 'darwin'
+      ? join(homedir(), 'Library', 'Caches', 'electron')
+      : join(process.env.XDG_CACHE_HOME || join(homedir(), '.cache'), 'electron');
 const cacheKey = createHash('sha256')
   .update(`https://github.com/${electronRepo}/releases/download/${electronTag}`)
   .digest('hex');
@@ -115,10 +118,8 @@ async function seedPackagingTools() {
   const { getCacheDirectory } = builderRequire('app-builder-lib/out/util/electronGet.js');
   const builderCache = getCacheDirectory({ allowEnvVarOverride: true });
   const repo = 'electron-userland/electron-builder-binaries';
-  if (platform === 'win32') {
-    assert.equal(process.arch, 'x64', 'The Windows tool archives require an x64 runner');
-  }
-  // These checksums come from the pinned Builder's icon, legacy Windows and 7-Zip toolsets.
+  assert.equal(process.arch, arch, 'The packaging tools must match the runner architecture');
+  // These checksums come from the pinned Builder's packaging toolsets.
   const windowsTools = [
     [
       'winCodeSign-2.6.0',
@@ -141,13 +142,43 @@ async function seedPackagingTools() {
       'be071f15bd6da2f78fe81c6ddef2009b0c4d8a51f36b780cb806c7e6df95e1b3',
     ],
   ];
+  const linuxTools = [
+    [
+      'appimage-12.0.1',
+      'appimage-12.0.1.7z',
+      'd12ff7eb8f1d1ec4652ca5237a7fbdca33acc0c758045636feca62dc6ecb8ec4',
+    ],
+    [
+      'fpm@2.1.4',
+      'fpm-1.17.0-ruby-3.4.3-linux-amd64.7z',
+      '44b0ec6025c14ec137f56180e62675c0eae36233cdce53d0953d9c73ced8989f',
+    ],
+    [
+      '7zip@1.0.0',
+      '7zip-linux-x64.tar.gz',
+      'd151bb44b2a9d9bfc52813ce4cac042916394a0ab8a56bd5d221a5dc9ef8d5d7',
+    ],
+  ];
+  const macTools = [
+    [
+      'dmg-builder@1.2.5',
+      'dmgbuild-bundle-arm64-75c8a6c.tar.gz',
+      '793404d0c96687e27d5ee40a668d498c92e36a64d6c2906df511031adb33cbeb',
+    ],
+    [
+      '7zip@1.0.0',
+      '7zip-darwin-arm64.tar.gz',
+      '496a341abe210aae1a25bc202ee97f6de6c76a3dc80f91d96616be05502d72c1',
+    ],
+  ];
+  const platformTools = { darwin: macTools, linux: linuxTools, win32: windowsTools };
   const tools = [
     [
       'icons@1.2.3',
       'icons-bundle.tar.gz',
       '4e5bb546c9d3ab0c2bbacc22857467bf415f742a34c2be9dd138779d2fc066f9',
     ],
-    ...(platform === 'win32' ? windowsTools : []),
+    ...platformTools[platform],
   ];
   // Builder's offline archive layout lets it verify the same checksums again before extraction.
   await Promise.all(
