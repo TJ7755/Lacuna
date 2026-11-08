@@ -108,6 +108,31 @@ it('waits for a lazy Path heading before reversing the identity', async () => {
   await waitFor(() => expect(travel).toHaveBeenCalledTimes(1));
 });
 
+it('does not force title layout when card rows enter or leave the window', async () => {
+  prepare();
+  render(
+    <>
+      <span data-course-nav-title="">Biology</span>
+      <div data-route-content="/course/c1/cards">
+        <h1>Cards</h1>
+        <div data-card-rows="" />
+      </div>
+      <CourseTitleTransition courseId="c1" pathname="/course/c1/cards" multiplier={1} />
+    </>,
+  );
+  await act(async () => {});
+  const measureNavigation = vi.spyOn(
+    document.querySelector('[data-course-nav-title]')!,
+    'getBoundingClientRect',
+  );
+  measureNavigation.mockClear();
+  await act(async () => {
+    const rows = document.querySelector('[data-card-rows]')!;
+    rows.replaceChildren(document.createElement('article'));
+  });
+  expect(measureNavigation).not.toHaveBeenCalled();
+});
+
 it('changes endpoints immediately with reduced motion', () => {
   prepare();
   const page = (pathname: string, title: boolean) => (
