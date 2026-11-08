@@ -729,7 +729,7 @@ jobs:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
-      - run: node scripts/ci-electron-runtime.mjs darwin arm64
+      - run: node scripts/ci-electron-runtime.mjs darwin arm64 --packaging-tools
       - run: bun run electron:prepare
       - run: bun run build:assets
       - run: bunx electron-builder --mac --dir --config apps/desktop/electron-builder.yml --publish never
@@ -764,7 +764,7 @@ jobs:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
-      - run: node scripts/ci-electron-runtime.mjs win32 x64 --installer-tools
+      - run: node scripts/ci-electron-runtime.mjs win32 x64 --packaging-tools
       - run: bun run electron:prepare
       - name: Require the current desktop renderer build
         id: renderer

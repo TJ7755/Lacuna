@@ -7,16 +7,15 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
-const [platform, arch, installerTools, ...extraArgs] = process.argv.slice(2);
+const [platform, arch, packagingTools, ...extraArgs] = process.argv.slice(2);
 assert.ok(
   (platform === 'win32' && arch === 'x64') || (platform === 'darwin' && arch === 'arm64'),
   'Expected win32 x64 or darwin arm64',
 );
 assert.ok(
   extraArgs.length === 0 &&
-    (installerTools === undefined ||
-      (installerTools === '--installer-tools' && platform === 'win32')),
-  '--installer-tools is only supported for Windows',
+    (packagingTools === undefined || packagingTools === '--packaging-tools'),
+  'Expected optional --packaging-tools',
 );
 assert.equal(platform, process.platform, 'Electron cache must be seeded on the target OS');
 
@@ -106,19 +105,21 @@ async function seedElectron() {
   console.log(`Verified Electron runtime ${filename}`);
 }
 
-async function seedInstallerTools() {
+async function seedPackagingTools() {
   const builderRequire = createRequire(require.resolve('electron-builder/package.json'));
   assert.equal(
     builderRequire('app-builder-lib/package.json').version,
     '26.18.0',
-    'Recheck installer tool archive checksums',
+    'Recheck packaging tool archive checksums',
   );
   const { getCacheDirectory } = builderRequire('app-builder-lib/out/util/electronGet.js');
   const builderCache = getCacheDirectory({ allowEnvVarOverride: true });
   const repo = 'electron-userland/electron-builder-binaries';
-  assert.equal(process.arch, 'x64', 'The Windows tool archives require an x64 runner');
-  // These checksums come from the pinned Builder's legacy Windows and 7-Zip toolsets.
-  const tools = [
+  if (platform === 'win32') {
+    assert.equal(process.arch, 'x64', 'The Windows tool archives require an x64 runner');
+  }
+  // These checksums come from the pinned Builder's icon, legacy Windows and 7-Zip toolsets.
+  const windowsTools = [
     [
       'winCodeSign-2.6.0',
       'winCodeSign-2.6.0.7z',
@@ -140,6 +141,14 @@ async function seedInstallerTools() {
       'be071f15bd6da2f78fe81c6ddef2009b0c4d8a51f36b780cb806c7e6df95e1b3',
     ],
   ];
+  const tools = [
+    [
+      'icons@1.2.3',
+      'icons-bundle.tar.gz',
+      '4e5bb546c9d3ab0c2bbacc22857467bf415f742a34c2be9dd138779d2fc066f9',
+    ],
+    ...(platform === 'win32' ? windowsTools : []),
+  ];
   // Builder's offline archive layout lets it verify the same checksums again before extraction.
   await Promise.all(
     tools.map(async ([tag, filename, checksum]) => {
@@ -149,4 +158,4 @@ async function seedInstallerTools() {
   );
 }
 
-await Promise.all([seedElectron(), installerTools ? seedInstallerTools() : undefined]);
+await Promise.all([seedElectron(), packagingTools ? seedPackagingTools() : undefined]);
