@@ -87,16 +87,18 @@ jobs:
       - name: Verify the JavaScript CodeQL bundle
         id: javascript-tools
         if: matrix.language == 'javascript-typescript'
-        continue-on-error: true
         shell: bash
         run: |
           bundle="$RUNNER_TEMP/codeql-bundle-javascript-linux64.tar.zst"
-          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --max-time 20 \
+          if curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --max-time 20 \
             -H 'Accept: application/octet-stream' \
             'https://api.github.com/repos/github/codeql-action/releases/assets/692239234' \
-            -o "$bundle"
-          printf '%s  %s\n' '082e798c97831283a2a5f69e9198c51270e5767013d5333daeeab6520af9ce72' "$bundle" | sha256sum --check --strict
-          echo "path=$bundle" >> "$GITHUB_OUTPUT"
+            -o "$bundle" &&
+            printf '%s  %s\n' '082e798c97831283a2a5f69e9198c51270e5767013d5333daeeab6520af9ce72' "$bundle" | sha256sum --check --strict; then
+            echo "path=$bundle" >> "$GITHUB_OUTPUT"
+          else
+            echo '::warning::Verified CodeQL bundle unavailable. Using the default resolver.'
+          fi
       - name: Initialise CodeQL
         uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
