@@ -300,18 +300,26 @@ test('counts completed cards across choices and typing and restores the count on
   await expectCompletion(0);
 
   const typedPrompt = await view.prompt.innerText();
-  const submitTyped = async () => {
+  const checkTyped = async () => {
     await view.typing.fill(cards[typedPrompt]);
     await view.typing.press('Enter');
+    await expect(view.main.getByRole('status').filter({ hasText: 'Marked correct.' })).toHaveClass(
+      'sr-only',
+    );
+  };
+  const continueTyped = async () => {
     await view.advance.click();
     await expect(view.choices).toHaveCount(4);
     await expectCompletion(1);
   };
-  await submitTyped();
+  await checkTyped();
+  await page.screenshot({ path: testInfo.outputPath('simple-learn-typed-feedback.png') });
+  await continueTyped();
   await banner.getByRole('button', { name: 'Undo last answer' }).click();
   await expect(view.typing).toBeFocused();
   await expectCompletion(0);
-  await submitTyped();
+  await checkTyped();
+  await continueTyped();
   await page.screenshot({ path: testInfo.outputPath('simple-learn-progress-choices.png') });
 
   const choicePrompt = await view.prompt.innerText();

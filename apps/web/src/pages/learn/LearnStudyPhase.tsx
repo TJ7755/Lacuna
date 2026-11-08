@@ -366,16 +366,7 @@ export function LearnStudyPhase({
           />
         )}
         {isTypingCard && (
-          // The Flow fill and the card carry the verdict visually; this says it aloud.
-          <div
-            role="status"
-            aria-live="polite"
-            className={
-              showLocalRecall && recallCorrect
-                ? 'mt-3 text-center text-sm text-positive'
-                : 'sr-only'
-            }
-          >
+          <div role="status" className="sr-only">
             {showLocalRecall
               ? recallCorrect
                 ? 'Marked correct.'
