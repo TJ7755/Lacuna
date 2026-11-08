@@ -30,14 +30,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - if: runner.os == 'Linux'
         run: bunx playwright install --with-deps chromium
+      - if: runner.os == 'Linux'
+        run: node scripts/ci-electron-runtime.mjs linux x64 --packaging-tools
+      - if: runner.os == 'Windows'
+        run: node scripts/ci-electron-runtime.mjs win32 x64 --packaging-tools
+      - if: runner.os == 'macOS'
+        run: node scripts/ci-electron-runtime.mjs darwin arm64 --packaging-tools
       - run: bun run ${{ matrix.build }}
       - name: Configure the Linux sandbox helper
         if: runner.os == 'Linux'
@@ -66,12 +71,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
+      - if: runner.os == 'Windows'
+        run: node scripts/ci-electron-runtime.mjs win32 x64
+      - if: runner.os == 'macOS'
+        run: node scripts/ci-electron-runtime.mjs darwin arm64
       - run: bun run test:e2e:electron-ai
       - name: Preserve Electron AI evidence
         if: always()
@@ -87,12 +95,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
+      - run: node scripts/ci-electron-runtime.mjs darwin arm64 --packaging-tools
       - run: bun run electron:prepare
       - run: bun run build:assets
       - run: bunx electron-builder --mac --dir --config apps/desktop/electron-builder.yml --publish never
