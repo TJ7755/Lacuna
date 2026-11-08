@@ -153,7 +153,6 @@ export function NativeFlashcardDemo() {
           typingInputRef={input}
           onTypedAnswer={setTypedAnswer}
           onReveal={() => setRevealed(true)}
-          onHide={() => setRevealed(false)}
           onAnswer={answer}
           m={m}
         />

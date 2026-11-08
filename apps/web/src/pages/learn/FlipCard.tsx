@@ -38,6 +38,7 @@ export function FlipCard({
   motionSpeed,
   motionMultiplier,
   phase,
+  isTouchMode = false,
   menuOpen,
   editing,
   hintsOpen,
@@ -64,6 +65,7 @@ export function FlipCard({
   motionSpeed: MotionSpeed;
   motionMultiplier?: number;
   phase: Phase;
+  isTouchMode?: boolean;
   menuOpen: boolean;
   editing: boolean;
   hintsOpen: boolean;
@@ -119,6 +121,16 @@ export function FlipCard({
       void player.play().catch(() => {});
     }
   }, [audioCard, phase, showAudioFront]);
+
+  const activateFace = useCallback(() => {
+    if (phase === 'question') onReveal();
+    else if (phase === 'answer') {
+      // In Touch Mode the answer face is the way back to the question. The replay
+      // control can still show the audio face without leaving the answer phase.
+      if (audioCard && (!isTouchMode || showAudioFront)) setShowAudioFront((visible) => !visible);
+      else onHide();
+    }
+  }, [phase, audioCard, isTouchMode, showAudioFront, onReveal, onHide]);
 
   useEffect(() => setShowAudioFront(false), [card.id]);
 
@@ -234,14 +246,10 @@ export function FlipCard({
             ? containerRef.current.contains(selection.anchorNode)
             : false;
         resetSwipe();
-        if (!selectionGrew || !isInsideCard) {
-          if (phase === 'question') onReveal();
-          else if (phase === 'answer' && audioCard) setShowAudioFront((visible) => !visible);
-          else if (phase === 'answer') onHide();
-        }
+        if (!selectionGrew || !isInsideCard) activateFace();
       }
     },
-    [allowGradingGestures, phase, audioCard, onReveal, onHide, onAnswer, resetSwipe, swipeXMotion],
+    [allowGradingGestures, phase, activateFace, onAnswer, resetSwipe, swipeXMotion],
   );
 
   const handlePointerCancel = useCallback(
@@ -319,13 +327,12 @@ export function FlipCard({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onKeyDown={(event) => {
-          if (promptOnly || committed.current || !isPresent) return;
+          if (event.target !== event.currentTarget || promptOnly || committed.current || !isPresent)
+            return;
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
           event.stopPropagation();
-          if (phase === 'question') onReveal();
-          else if (phase === 'answer' && audioCard) setShowAudioFront((visible) => !visible);
-          else if (phase === 'answer') onHide();
+          activateFace();
         }}
       >
         <CardSizeMeasurements

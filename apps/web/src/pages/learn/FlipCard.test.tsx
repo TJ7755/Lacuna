@@ -46,13 +46,14 @@ const card: Card = {
   updatedAt: 0,
 };
 
-function renderRevealed(onAnswer = vi.fn()) {
+function renderRevealed(onAnswer = vi.fn(), isTouchMode = false) {
   const onHide = vi.fn();
   render(
     <FlipCard
       card={card}
       revealed
       phase="answer"
+      isTouchMode={isTouchMode}
       motionSpeed="normal"
       menuOpen={false}
       editing={false}
@@ -177,6 +178,24 @@ describe('FlipCard audio replay', () => {
     expect(
       within(card.querySelector('[data-study-face]') as HTMLElement).getByText('audio face'),
     ).toBeInTheDocument();
+  });
+
+  it('lets Touch Mode hide an audio answer without taking over the replay control', () => {
+    const onHide = renderRevealed(vi.fn(), true);
+    const tap = (name: string) => {
+      const face = screen.getByRole('button', { name });
+      fireEvent.pointerDown(face, { pointerId: 1, pointerType: 'touch' });
+      fireEvent.pointerUp(face, { pointerId: 1, pointerType: 'touch' });
+    };
+
+    const replay = screen.getByRole('button', { name: /Hear it again/ });
+    expect(fireEvent.keyDown(replay, { key: 'Enter' })).toBe(true);
+    fireEvent.click(replay);
+    tap('Show answer again');
+    expect(onHide).not.toHaveBeenCalled();
+
+    tap('Hide answer');
+    expect(onHide).toHaveBeenCalledOnce();
   });
 });
 

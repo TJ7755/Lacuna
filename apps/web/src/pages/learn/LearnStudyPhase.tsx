@@ -327,6 +327,7 @@ export function LearnStudyPhase({
                     revealed={phase === 'answer'}
                     motionSpeed={motionSpeed}
                     phase={phase}
+                    isTouchMode={isTouchMode}
                     menuOpen={menuOpen}
                     editing={editing}
                     hintsOpen={hintsOpen}
@@ -425,7 +426,6 @@ export function LearnStudyPhase({
             typingInputRef={typingInputRef}
             onTypedAnswer={setTypedAnswer}
             onReveal={reveal}
-            onHide={hide}
             onAnswer={answerWithUndo}
             m={m}
           />
