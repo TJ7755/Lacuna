@@ -12,10 +12,12 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { Readable } from 'node:stream';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { parse } from 'yaml';
 import { classifyPaths } from './ci-change-scope.mjs';
+import { requireAuditedInstaller } from './windows-ci-upgrade.mjs';
 
 const workflow = parse(
   readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8'),
@@ -93,7 +95,13 @@ test('documentation-only changes resolve required names without running heavy st
   const aggregates = ['test', 'browser-smoke', 'electron-ai'];
   for (const name of required.filter((name) => !aggregates.includes(name))) {
     const job = workflow.jobs[name];
-    assert.equal(job.if, "needs.changes.result == 'success'", name);
+    assert.equal(
+      job.if,
+      name === 'production'
+        ? "${{ !cancelled() && needs.changes.result == 'success' }}"
+        : "needs.changes.result == 'success'",
+      name,
+    );
     const [acknowledgement, ...heavySteps] = job.steps;
     assert.equal(
       acknowledgement.if,
@@ -234,10 +242,13 @@ test('aggregate shell gates fail closed and report each dependency result', () =
 test('browser consumers install the lockfile browser and share the production artefact', () => {
   const jobs = workflow.jobs;
   const consumers = ['browser-pr', 'browser-tests', 'browser-timing'];
-  const producer = jobs.production.steps.find((step) =>
-    step.uses?.startsWith('actions/upload-artifact@'),
-  );
+  const build = jobs['web-build'];
+  const producer = build.steps.find((step) => step.uses?.startsWith('actions/upload-artifact@'));
   assert.ok(producer);
+  assert.equal(build.outputs.artifact_id, '${{ steps.dist.outputs.artifact-id }}');
+  assert.equal(producer.id, 'dist');
+  assert.equal(producer.with.name, 'browser-web-dist-${{ github.run_attempt }}');
+  assert.equal(producer.with.overwrite, undefined);
   for (const name of [...consumers, 'browser-standalone']) {
     const job = jobs[name];
     assert.equal(job['runs-on'], 'ubuntu-24.04');
@@ -251,17 +262,13 @@ test('browser consumers install the lockfile browser and share the production ar
     assert.ok(installPackages >= 0 && installBrowser > installPackages);
     assert.ok(jobs['browser-smoke'].needs.includes(name));
   }
-  for (const name of consumers) {
+  for (const name of [...consumers, 'production']) {
     const job = jobs[name];
-    assert.equal(job.needs, 'changes');
-    const wait = job.steps.find((step) => step.run === 'node scripts/ci-wait-for-production.mjs');
-    assert.equal(wait?.env.GH_TOKEN, '${{ github.token }}');
-    assert.equal(wait?.env.SOURCE_SHA, '${{ github.event.pull_request.head.sha || github.sha }}');
+    assert.deepEqual(job.needs, ['changes', 'web-build']);
     const download = job.steps.find((step) => step.uses?.startsWith('actions/download-artifact@'));
-    assert.ok(job.steps.indexOf(wait) < job.steps.indexOf(download));
-    assert.equal(download.with.name, producer.with.name);
+    assert.equal(download.with['artifact-ids'], '${{ needs.web-build.outputs.artifact_id }}');
     assert.equal(download.with.path, producer.with.path);
-    assert.equal(job.env.LACUNA_BROWSER_PREBUILT, 'true');
+    if (name !== 'production') assert.equal(job.env.LACUNA_BROWSER_PREBUILT, 'true');
   }
   const timing = jobs['browser-timing'];
   assert.deepEqual(timing.strategy.matrix.include, [
@@ -308,6 +315,24 @@ test('browser consumers install the lockfile browser and share the production ar
   assert.equal(smoke.env.CHANGED_SPECS, '${{ needs.changes.outputs.web_specs }}');
   assert.match(smoke.run, /--shard=\$\{\{ matrix.shard \}\}/);
   assert.match(smoke.run, /release-smoke\.spec\.ts \$CHANGED_SPECS$/);
+});
+
+test('production refuses a failed build or a missing artefact ID', () => {
+  const step = workflow.jobs.production.steps.find(
+    (step) => step.name === 'Require the current web build',
+  );
+  for (const [result, id, expected] of [
+    ['success', '123', 0],
+    ['success', '', 1],
+    ['success', '1,2', 1],
+    ['failure', '123', 1],
+    ['skipped', '', 1],
+  ]) {
+    const execution = spawnSync('bash', ['-e', '-c', step.run], {
+      env: { ...process.env, WEB_BUILD_RESULT: result, ARTIFACT_ID: id },
+    });
+    assert.equal(execution.status, expected);
+  }
 });
 
 test('pull requests pass only plain changed web spec names to the browser smoke job', () => {
@@ -583,18 +608,20 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'handwriting',
     'relay',
     'ai-mcp',
+    'web-build',
     'production',
     'browser-pr',
     'browser-tests',
     'browser-standalone',
     'browser-timing',
+    'electron-renderer',
     'electron-ai-tests',
     'windows-installed-upgrade',
     'electron-macos-smoke',
   ];
   // Pull requests run the browser smoke job; master commits retain the full browser suites.
   const postMerge = ['browser-tests', 'browser-standalone', 'browser-timing'];
-  const web = ['production', 'browser-pr'];
+  const web = ['web-build', 'production', 'browser-pr'];
   const all = workers.filter((name) => !postMerge.includes(name));
   for (const [paths, expected] of [
     [['docs/README.md'], []],
@@ -664,8 +691,14 @@ test('Windows evidence is selected conservatively on PRs and pushes', () => {
   const gate = workflow.jobs['electron-ai'];
   const ai = workflow.jobs['electron-ai-tests'];
   const upgrade = workflow.jobs['windows-installed-upgrade'];
+  const renderer = workflow.jobs['electron-renderer'];
   assert.equal(gate.name, 'electron-ai');
-  assert.deepEqual(gate.needs, ['changes', 'electron-ai-tests', 'windows-installed-upgrade']);
+  assert.deepEqual(gate.needs, [
+    'changes',
+    'electron-renderer',
+    'electron-ai-tests',
+    'windows-installed-upgrade',
+  ]);
   assert.equal(gate['runs-on'], 'ubuntu-latest');
   assert.equal(ai['runs-on'], 'windows-latest');
   assert.equal(ai.needs, 'changes');
@@ -678,13 +711,14 @@ test('Windows evidence is selected conservatively on PRs and pushes', () => {
         always: () => true,
       };
       const affected = flag !== 'false';
+      assert.equal(runInNewContext(renderer.if, context), affected);
       assert.equal(runInNewContext(ai.if, context), affected);
       assert.equal(runInNewContext(upgrade.if, context), affected);
     }
   }
 });
 
-test('required Windows check rejects absent or failed AI or installer evidence', () => {
+test('required Windows check rejects absent or failed renderer, AI or installer evidence', () => {
   const job = workflow.jobs['electron-ai'];
   assert.equal(
     render(job.if, 'synchronize', {}, true),
@@ -698,6 +732,7 @@ test('required Windows check rejects absent or failed AI or installer evidence',
         ...process.env,
         SCOPE_RESULT: status,
         WINDOWS_NATIVE: 'false',
+        RENDERER_RESULT: 'skipped',
         AI_RESULT: 'skipped',
         UPGRADE_RESULT: 'skipped',
       },
@@ -706,12 +741,13 @@ test('required Windows check rejects absent or failed AI or installer evidence',
   }
   for (const flag of ['false', 'true', '', 'unknown']) {
     for (const result of ['success', 'skipped', 'failure', 'cancelled', '']) {
-      for (const dependency of ['AI_RESULT', 'UPGRADE_RESULT']) {
+      for (const dependency of ['RENDERER_RESULT', 'AI_RESULT', 'UPGRADE_RESULT']) {
         const execution = spawnSync('bash', ['-e', '-c', step.run], {
           env: {
             ...process.env,
             SCOPE_RESULT: 'success',
             WINDOWS_NATIVE: flag,
+            RENDERER_RESULT: 'success',
             AI_RESULT: 'success',
             UPGRADE_RESULT: 'success',
             [dependency]: result,
@@ -769,35 +805,52 @@ test('Windows upgrade scenarios retain both probes on isolated runners with the 
   assert.ok(job.strategy?.matrix, 'Both upgrade scenarios require isolated matrix runners');
   assert.equal(job.strategy['fail-fast'], false);
   assert.deepEqual(job.strategy.matrix.probe, ['companion', 'release']);
-  const observed = [];
-  for (const probe of job.strategy.matrix.probe) {
-    const steps = job.steps.filter(
-      (step) => !step.if || runInNewContext(step.if, { matrix: { probe }, always: () => true }),
-    );
-    const commands = steps.map((step) => step.run ?? '').join('\n');
-    assert.match(commands, /bun run electron:prepare/);
-    assert.match(commands, /bun run build:assets -- --mode production --base \.\//);
-    assert.match(
-      commands,
-      /electron-builder --win nsis --x64 --config apps\/desktop\/electron-builder.yml --publish never/,
-    );
-    assert.match(commands, /bun run perf:check:electron-package/);
-    const selected = ['windows-upgrade-companion.mjs', 'windows-release-upgrade.mjs'].filter(
-      (script) => commands.includes(script),
-    );
-    assert.equal(selected.length, 1, 'Each runner executes exactly one upgrade scenario');
-    observed.push(...selected);
-    const evidence = steps.find((step) => step.name === 'Preserve installed upgrade evidence');
-    assert.equal(evidence.if, 'always()');
-    assert.ok(
-      evidence.with.name.includes('${{ matrix.probe }}'),
-      'Evidence from both runners must survive',
+  const native = job.steps.findIndex((step) => step.run === 'bun run electron:prepare');
+  const wait = job.steps.findIndex((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs');
+  const download = job.steps.findIndex(
+    (step) => step.with?.name === 'windows-electron-renderer-${{ steps.renderer.outputs.attempt }}',
+  );
+  const upgrade = job.steps.findIndex(
+    (step) => step.run === 'node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }}',
+  );
+  assert.ok(native !== -1 && native < wait && wait < download && download < upgrade);
+  assert.equal(job.steps[wait].id, 'renderer');
+  assert.equal(
+    job.steps[wait].env.SOURCE_SHA,
+    '${{ github.event.pull_request.head.sha || github.sha }}',
+  );
+  assert.equal(job.steps[download].with.path, 'dist/');
+  const producer = workflow.jobs['electron-renderer'].steps.find((step) =>
+    step.uses?.startsWith('actions/upload-artifact@'),
+  );
+  assert.equal(producer.with.name, 'windows-electron-renderer-${{ github.run_attempt }}');
+  assert.equal(producer.with.overwrite, undefined);
+  const evidence = job.steps.find((step) => step.name === 'Preserve installed upgrade evidence');
+  assert.equal(evidence.if, 'always()');
+  assert.equal(evidence.with.name, 'windows-installed-upgrade-results-${{ matrix.probe }}');
+  const coordinator = readFileSync(new URL('./windows-ci-upgrade.mjs', import.meta.url), 'utf8');
+  for (const contract of [
+    "'electron-builder'",
+    "'nsis'",
+    "'--x64'",
+    "'perf:check:electron-package'",
+    "'./windows-upgrade-companion.mjs'",
+    "'./windows-release-upgrade.mjs'",
+  ]) {
+    assert.ok(coordinator.includes(contract), contract);
+  }
+});
+
+test('an upgrade needs a positive package audit signal only when orchestrated by CI', async () => {
+  const env = { LACUNA_CI_UPGRADE_PIPE: '1' };
+  await requireAuditedInstaller(Readable.from([]), {});
+  await requireAuditedInstaller(Readable.from(['audited installer ', 'ready\n']), env);
+  for (const input of [[], ['audited installer ready'], ['unexpected']]) {
+    await assert.rejects(
+      requireAuditedInstaller(Readable.from(input), env),
+      /candidate installer build or package audit failed/,
     );
   }
-  assert.deepEqual(observed.sort(), [
-    'windows-release-upgrade.mjs',
-    'windows-upgrade-companion.mjs',
-  ]);
 });
 
 test('narrow web specs remain registered with the selected browser projects and typecheck', () => {
