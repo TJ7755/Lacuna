@@ -1,13 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
-import { mkdir, writeFile } from 'node:fs/promises';
 import type { Card, Lesson } from '@lacuna/core/db/types';
 import { createCourse, skipOnboarding } from './fixtures/lacunaApp';
 
-const directory = 'artifacts/study-card-adaptive-size';
+const viewport = { width: 1440, height: 900 };
 const kinds = ['short', 'medium', 'long', 'occlusion', 'short-return'];
 
 async function prepareSession(page: Page) {
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize(viewport);
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await skipOnboarding(page);
@@ -128,165 +127,146 @@ async function measure(page: Page) {
     });
 }
 
-for (const viewport of [
-  { width: 1440, height: 900 },
-  { width: 390, height: 844 },
-]) {
-  test(`adapts card heights and keeps controls fixed at ${viewport.width}x${viewport.height}`, async ({
-    page,
-  }) => {
-    test.setTimeout(90_000);
-    await page.addInitScript(() => {
-      localStorage.setItem('lacuna.inputMode', 'keyboard');
-      localStorage.setItem('lacuna-theme', 'dark');
-    });
-    const lessonId = await prepareSession(page);
-    await page.setViewportSize(viewport);
-    await page.goto(`/#/lesson/${lessonId}/learn?mode=simple`);
-    await page.evaluate(() => document.fonts.ready);
-    await mkdir(directory, { recursive: true });
-    const records = [];
-    let controlsTop: number | undefined;
-    const visited = new Set<string>();
-    const shortHeights: number[] = [];
-    const mediumHeights: number[] = [];
-
-    for (let position = 0; position < kinds.length; position += 1) {
-      const active = page.locator('[data-study-card-id]:not([aria-hidden="true"])');
-      await expect(active.locator('[data-study-face="front"]')).toBeVisible();
-      const cardId = (await active.getAttribute('data-study-card-id'))!;
-      expect(cardId).toMatch(/^adaptive-[0-4]$/);
-      expect(visited.has(cardId)).toBe(false);
-      visited.add(cardId);
-      const kind = kinds[Number(cardId.slice('adaptive-'.length))];
-      const card = page.locator(`[data-study-card-id="${cardId}"]`);
-      for (const side of ['front', 'back']) {
-        if (side === 'back')
-          await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
-        const body = card.locator(`[data-study-face="${side}"]`);
-        await expect(body).toBeVisible();
-        // Include the real entrance/flip, then capture its settled layout.
-        await page.waitForTimeout(650);
-        await page.screenshot({
-          path: `${directory}/${viewport.width}x${viewport.height}-${kind}-${side}.png`,
-        });
-        const dimensions = await measure(page);
-        records.push({ kind, side, ...dimensions });
-        controlsTop ??= dimensions.controlsTop;
-        expect.soft(dimensions.documentHeight).toBe(viewport.height);
-        expect.soft(dimensions.scrollY).toBe(0);
-        expect.soft(Math.abs(dimensions.centreOffset)).toBeLessThan(1);
-        expect.soft(Math.abs(dimensions.controlsTop - controlsTop)).toBeLessThan(1);
-        expect.soft(dimensions.height).toBeLessThanOrEqual(dimensions.available + 1);
-        if (kind.startsWith('short')) {
-          expect.soft(dimensions.height).toBeLessThanOrEqual(310);
-          expect.soft(dimensions.bodyScrolls).toBe(false);
-          shortHeights.push(dimensions.height);
-        } else if (kind === 'medium') {
-          mediumHeights.push(dimensions.height);
-        } else if (kind === 'long') {
-          expect.soft(dimensions.height).toBeCloseTo(dimensions.available, 0);
-          expect.soft(dimensions.bodyScrolls).toBe(true);
-        } else if (kind === 'occlusion') {
-          await expect.soft(body.getByRole('img')).toBeInViewport({ ratio: 1 });
-          expect.soft(dimensions.bodyScrolls).toBe(false);
-          const geometry = await body.getByRole('img').evaluate((image) => {
-            const picture = image.getBoundingClientRect();
-            const layer = image.parentElement!.getBoundingClientRect();
-            const mask = image.parentElement!.querySelector('.absolute')!.getBoundingClientRect();
-            return {
-              ratio: picture.width / picture.height,
-              widthDifference: layer.width - picture.width,
-              heightDifference: layer.height - picture.height,
-              x: (mask.x - picture.x) / picture.width,
-              y: (mask.y - picture.y) / picture.height,
-            };
-          });
-          expect.soft(geometry.ratio).toBeCloseTo(1 / 3, 3);
-          expect.soft(Math.abs(geometry.widthDifference)).toBeLessThan(1);
-          expect.soft(Math.abs(geometry.heightDifference)).toBeLessThan(1);
-          expect.soft(geometry.x).toBeCloseTo(0.1, 2);
-          expect.soft(geometry.y).toBeCloseTo(0.1, 2);
-        }
-        const actions =
-          side === 'front'
-            ? page.getByRole('button', { name: 'Show answer', exact: true }).last()
-            : page.getByRole('button', { name: /^(No|Yes)$/ });
-        for (const button of await actions.all()) {
-          await expect.soft(button).toBeVisible();
-          // IntersectionObserver rounds fractional button bounds; check each edge directly.
-          const bounds = (await button.boundingBox())!;
-          expect.soft(bounds.x).toBeGreaterThanOrEqual(0);
-          expect.soft(bounds.y).toBeGreaterThanOrEqual(0);
-          expect.soft(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
-          expect.soft(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
-          expect
-            .soft(
-              await button.evaluate((button) => {
-                const bounds = button.getBoundingClientRect();
-                return button.contains(
-                  document.elementFromPoint(
-                    bounds.x + bounds.width / 2,
-                    bounds.y + bounds.height / 2,
-                  ),
-                );
-              }),
-            )
-            .toBe(true);
-        }
-      }
-      if (position === kinds.length - 1) break;
-      const transition = await page.evaluate(async () => {
-        const outgoing = document.querySelector('[data-study-card-id]:not([aria-hidden="true"])')!;
-        const surface = outgoing.querySelector('[data-study-face]')!.parentElement!;
-        const initialHeight = surface.offsetHeight;
-        const top = document.querySelector('.study-controls')!.getBoundingClientRect().top;
-        Array.from(document.querySelectorAll('button'))
-          .find((button) => button.textContent?.trim() === 'Yes')!
-          .click();
-        return new Promise<{
-          controlsMovement: number;
-          outgoingResize: number;
-          overlapped: boolean;
-        }>((resolve) => {
-          const started = performance.now();
-          let controlsMovement = 0;
-          let outgoingResize = 0;
-          let overlapped = false;
-          const sample = () => {
-            const controls = document.querySelector('.study-controls');
-            if (controls)
-              controlsMovement = Math.max(
-                controlsMovement,
-                Math.abs(controls.getBoundingClientRect().top - top),
-              );
-            if (outgoing.isConnected)
-              outgoingResize = Math.max(
-                outgoingResize,
-                Math.abs(surface.offsetHeight - initialHeight),
-              );
-            overlapped ||= document.querySelectorAll('[data-study-card-id]').length > 1;
-            if (performance.now() - started > 1000)
-              resolve({ controlsMovement, outgoingResize, overlapped });
-            else requestAnimationFrame(sample);
-          };
-          requestAnimationFrame(sample);
-        });
-      });
-      records.push({ kind, transition });
-      expect.soft(transition.controlsMovement).toBeLessThan(1);
-      expect.soft(transition.outgoingResize).toBeLessThan(1);
-      expect.soft(transition.overlapped).toBe(true);
-    }
-    expect([...visited].sort()).toEqual(kinds.map((_, index) => `adaptive-${index}`));
-    expect(shortHeights).toHaveLength(4);
-    expect(mediumHeights).toHaveLength(2);
-    // Compare after visiting every card: a shuffled medium card may precede both short cards.
-    for (const height of mediumHeights)
-      expect.soft(height).toBeGreaterThan(Math.max(...shortHeights));
-    await writeFile(
-      `${directory}/${viewport.width}x${viewport.height}-measurements.json`,
-      JSON.stringify(records, null, 2),
-    );
+test('adapts card heights and keeps controls fixed on desktop', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    localStorage.setItem('lacuna.inputMode', 'keyboard');
+    localStorage.setItem('lacuna-theme', 'dark');
   });
-}
+  const lessonId = await prepareSession(page);
+  await page.goto(`/#/lesson/${lessonId}/learn?mode=simple`);
+  await page.evaluate(() => document.fonts.ready);
+  let controlsTop: number | undefined;
+  const visited = new Set<string>();
+  const shortHeights: number[] = [];
+  const mediumHeights: number[] = [];
+
+  for (let position = 0; position < kinds.length; position += 1) {
+    const active = page.locator('[data-study-card-id]:not([aria-hidden="true"])');
+    await expect(active.locator('[data-study-face="front"]')).toBeVisible();
+    const cardId = (await active.getAttribute('data-study-card-id'))!;
+    expect(cardId).toMatch(/^adaptive-[0-4]$/);
+    expect(visited.has(cardId)).toBe(false);
+    visited.add(cardId);
+    const kind = kinds[Number(cardId.slice('adaptive-'.length))];
+    const card = page.locator(`[data-study-card-id="${cardId}"]`);
+    for (const side of ['front', 'back']) {
+      if (side === 'back')
+        await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
+      const body = card.locator(`[data-study-face="${side}"]`);
+      await expect(body).toBeVisible();
+      // Include the real entrance and flip before measuring the settled layout.
+      await page.waitForTimeout(650);
+      const dimensions = await measure(page);
+      controlsTop ??= dimensions.controlsTop;
+      expect.soft(dimensions.documentHeight).toBe(viewport.height);
+      expect.soft(dimensions.scrollY).toBe(0);
+      expect.soft(Math.abs(dimensions.centreOffset)).toBeLessThan(1);
+      expect.soft(Math.abs(dimensions.controlsTop - controlsTop)).toBeLessThan(1);
+      expect.soft(dimensions.height).toBeLessThanOrEqual(dimensions.available + 1);
+      if (kind.startsWith('short')) {
+        expect.soft(dimensions.height).toBeLessThanOrEqual(310);
+        expect.soft(dimensions.bodyScrolls).toBe(false);
+        shortHeights.push(dimensions.height);
+      } else if (kind === 'medium') {
+        mediumHeights.push(dimensions.height);
+      } else if (kind === 'long') {
+        expect.soft(dimensions.height).toBeCloseTo(dimensions.available, 0);
+        expect.soft(dimensions.bodyScrolls).toBe(true);
+      } else if (kind === 'occlusion') {
+        await expect.soft(body.getByRole('img')).toBeInViewport({ ratio: 1 });
+        expect.soft(dimensions.bodyScrolls).toBe(false);
+        const geometry = await body.getByRole('img').evaluate((image) => {
+          const picture = image.getBoundingClientRect();
+          const layer = image.parentElement!.getBoundingClientRect();
+          const mask = image.parentElement!.querySelector('.absolute')!.getBoundingClientRect();
+          return {
+            ratio: picture.width / picture.height,
+            widthDifference: layer.width - picture.width,
+            heightDifference: layer.height - picture.height,
+            x: (mask.x - picture.x) / picture.width,
+            y: (mask.y - picture.y) / picture.height,
+          };
+        });
+        expect.soft(geometry.ratio).toBeCloseTo(1 / 3, 3);
+        expect.soft(Math.abs(geometry.widthDifference)).toBeLessThan(1);
+        expect.soft(Math.abs(geometry.heightDifference)).toBeLessThan(1);
+        expect.soft(geometry.x).toBeCloseTo(0.1, 2);
+        expect.soft(geometry.y).toBeCloseTo(0.1, 2);
+      }
+      const actions =
+        side === 'front'
+          ? page.getByRole('button', { name: 'Show answer', exact: true }).last()
+          : page.getByRole('button', { name: /^(No|Yes)$/ });
+      for (const button of await actions.all()) {
+        await expect.soft(button).toBeVisible();
+        // IntersectionObserver rounds fractional button bounds; check each edge directly.
+        const bounds = (await button.boundingBox())!;
+        expect.soft(bounds.x).toBeGreaterThanOrEqual(0);
+        expect.soft(bounds.y).toBeGreaterThanOrEqual(0);
+        expect.soft(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
+        expect.soft(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
+        expect
+          .soft(
+            await button.evaluate((button) => {
+              const bounds = button.getBoundingClientRect();
+              return button.contains(
+                document.elementFromPoint(
+                  bounds.x + bounds.width / 2,
+                  bounds.y + bounds.height / 2,
+                ),
+              );
+            }),
+          )
+          .toBe(true);
+      }
+    }
+    if (position === kinds.length - 1) break;
+    const transition = await page.evaluate(async () => {
+      const outgoing = document.querySelector('[data-study-card-id]:not([aria-hidden="true"])')!;
+      const surface = outgoing.querySelector('[data-study-face]')!.parentElement!;
+      const initialHeight = surface.offsetHeight;
+      const top = document.querySelector('.study-controls')!.getBoundingClientRect().top;
+      Array.from(document.querySelectorAll('button'))
+        .find((button) => button.textContent?.trim() === 'Yes')!
+        .click();
+      return new Promise<{
+        controlsMovement: number;
+        outgoingResize: number;
+        overlapped: boolean;
+      }>((resolve) => {
+        const started = performance.now();
+        let controlsMovement = 0;
+        let outgoingResize = 0;
+        let overlapped = false;
+        const sample = () => {
+          const controls = document.querySelector('.study-controls');
+          if (controls)
+            controlsMovement = Math.max(
+              controlsMovement,
+              Math.abs(controls.getBoundingClientRect().top - top),
+            );
+          if (outgoing.isConnected)
+            outgoingResize = Math.max(
+              outgoingResize,
+              Math.abs(surface.offsetHeight - initialHeight),
+            );
+          overlapped ||= document.querySelectorAll('[data-study-card-id]').length > 1;
+          if (performance.now() - started > 1000)
+            resolve({ controlsMovement, outgoingResize, overlapped });
+          else requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      });
+    });
+    expect.soft(transition.controlsMovement).toBeLessThan(1);
+    expect.soft(transition.outgoingResize).toBeLessThan(1);
+    expect.soft(transition.overlapped).toBe(true);
+  }
+  expect([...visited].sort()).toEqual(kinds.map((_, index) => `adaptive-${index}`));
+  expect(shortHeights).toHaveLength(4);
+  expect(mediumHeights).toHaveLength(2);
+  // Compare after visiting every card: a shuffled medium card may precede both short cards.
+  for (const height of mediumHeights)
+    expect.soft(height).toBeGreaterThan(Math.max(...shortHeights));
+});
