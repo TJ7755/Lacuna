@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 
+const REFERENCE_FRAME_MS = 1000 / 60;
+
 /**
  * Deliberately slowed, inertial wheel scrolling for the landing page.
  * Wheel input is intercepted and eased towards its target with a lerp, giving
@@ -15,14 +17,26 @@ export function useSmoothScroll(enabled: boolean, consumeDemoScroll?: (deltaY: n
     let target = window.scrollY;
     let current = window.scrollY;
     let raf = 0;
+    let lastUpdate: number | undefined;
 
     const maxScroll = () => document.documentElement.scrollHeight - window.innerHeight;
 
-    const step = () => {
-      current += (target - current) * 0.09;
+    const advance = (timestamp: number) => {
+      // Keep the original 60 Hz easing over elapsed time on any display.
+      const elapsed = lastUpdate === undefined ? REFERENCE_FRAME_MS : timestamp - lastUpdate;
+      // A frame timestamp can precede a wheel callback processed in the same frame.
+      if (elapsed <= 0) return;
+      lastUpdate = timestamp;
+      const remaining = 0.91 ** (elapsed / REFERENCE_FRAME_MS);
+      current += (target - current) * (1 - remaining);
+    };
+
+    const step = (timestamp: number) => {
+      advance(timestamp);
       if (Math.abs(target - current) < 0.5) {
         current = target;
         raf = 0;
+        lastUpdate = undefined;
       } else {
         raf = requestAnimationFrame(step);
       }
@@ -38,11 +52,14 @@ export function useSmoothScroll(enabled: boolean, consumeDemoScroll?: (deltaY: n
         event.preventDefault();
         if (raf) cancelAnimationFrame(raf);
         raf = 0;
+        lastUpdate = undefined;
         target = window.scrollY;
         current = window.scrollY;
         return;
       }
       event.preventDefault();
+      // Elapsed time before this tick belongs to the previous target.
+      if (lastUpdate !== undefined) advance(performance.now());
       target = Math.min(maxScroll(), Math.max(0, target + delta * 0.85));
       if (!raf) raf = requestAnimationFrame(step);
     };

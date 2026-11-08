@@ -7,10 +7,27 @@ import {
 } from './CardList.testFixtures';
 import { CardList } from './CardList';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import type { Card } from '@lacuna/core/db/types';
 describe('CardList rendering', () => {
   beforeEach(resetCardListFixtures);
+
+  it('updates a visible card’s schedule when its due time passes', async () => {
+    vi.useFakeTimers();
+    try {
+      const now = new Date(2026, 9, 7, 12).getTime();
+      vi.setSystemTime(now);
+      const card = { ...mockCard, lastReviewed: now - 60_000, due: now + 1_000 };
+      render(<CardList cards={[card]} context={mockContext} onEditCard={vi.fn()} />);
+
+      await act(() => vi.advanceTimersByTimeAsync(500));
+      expect(screen.getByText('Later today')).toBeInTheDocument();
+      await act(() => vi.advanceTimersByTimeAsync(500));
+      expect(screen.getByText('Due', { exact: true })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it('keeps lesson selection in its heading and exposes compact card kinds', async () => {
     render(

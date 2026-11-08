@@ -1,5 +1,6 @@
 import {
   createContext,
+  memo,
   useCallback,
   useContext,
   useEffect,
@@ -36,18 +37,20 @@ export function useCardSectionEntranceExpired(durationMs: number) {
   );
 }
 
-function CardSection({
+const CardSection = memo(function CardSection({
+  index,
   sectionKey,
   seen,
   onActiveChange,
-  children,
+  renderSection,
   entranceStartedAt,
   entranceWindowMs,
 }: {
+  index: number;
   sectionKey: string;
   seen: Set<string>;
   onActiveChange: (key: string, active: boolean) => void;
-  children: (previouslyMounted: boolean) => ReactNode;
+  renderSection: (index: number, previouslyMounted: boolean) => ReactNode;
   entranceStartedAt: number;
   entranceWindowMs: number;
 }) {
@@ -77,9 +80,11 @@ function CardSection({
     return () => onActiveChange(sectionKey, false);
   }, [onActiveChange, sectionKey, active]);
   return (
-    <SectionContext.Provider value={context}>{children(previouslyMounted)}</SectionContext.Provider>
+    <SectionContext.Provider value={context}>
+      {renderSection(index, previouslyMounted)}
+    </SectionContext.Provider>
   );
-}
+});
 
 /** Window whole sections as well as their rows: many small image groups must not
  * mount every thumbnail merely because each group is below the row threshold. */
@@ -122,16 +127,11 @@ export function CardSections<T>({
       pinned.has(sectionKey(section)) ? [index] : [],
     ),
   });
-  const renderSection = (section: T, index: number) => (
-    <CardSection
-      sectionKey={sectionKey(section)}
-      seen={seen.current}
-      onActiveChange={setActive}
-      entranceStartedAt={entranceStartedAt}
-      entranceWindowMs={entranceWindowMs}
-    >
-      {(previouslyMounted) => children(section, index, previouslyMounted)}
-    </CardSection>
+  // A scroll moves the window, but the sections that stay mounted keep the same content.
+  const renderSection = useCallback(
+    (index: number, previouslyMounted: boolean) =>
+      children(sections[index], index, previouslyMounted),
+    [children, sections],
   );
   const items = enabled ? virtualItems : sections.map((_, index) => ({ index, start: 0 }));
   return (
@@ -140,16 +140,27 @@ export function CardSections<T>({
       className={enabled ? 'relative' : undefined}
       style={enabled ? { height: totalHeight } : undefined}
     >
-      {items.map(({ index, start }) => (
-        <div
-          key={sectionKey(sections[index])}
-          ref={enabled ? measureRef(index) : undefined}
-          className={enabled ? 'absolute left-0 top-0 w-full' : undefined}
-          style={enabled ? { top: start } : undefined}
-        >
-          {renderSection(sections[index], index)}
-        </div>
-      ))}
+      {items.map(({ index, start }) => {
+        const key = sectionKey(sections[index]);
+        return (
+          <div
+            key={key}
+            ref={enabled ? measureRef(index) : undefined}
+            className={enabled ? 'absolute left-0 top-0 w-full' : undefined}
+            style={enabled ? { top: start } : undefined}
+          >
+            <CardSection
+              index={index}
+              sectionKey={key}
+              seen={seen.current}
+              onActiveChange={setActive}
+              entranceStartedAt={entranceStartedAt}
+              entranceWindowMs={entranceWindowMs}
+              renderSection={renderSection}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

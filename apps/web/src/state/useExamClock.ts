@@ -9,14 +9,16 @@ export function useExamClock(
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const current = Date.now();
-    const midnight = new Date(current);
+    // A boundary may pass between rendering the snapshot and arming its timer.
+    const snapshot = Math.min(now, current);
+    const midnight = new Date(snapshot);
     midnight.setHours(24, 0, 0, 0);
     let next = midnight.getTime();
     for (const date of dates) {
-      if (isUpcomingExamDate(date, current)) next = Math.min(next, date);
+      if (isUpcomingExamDate(date, snapshot)) next = Math.min(next, date);
     }
     for (const expiry of burialExpiries) {
-      if (expiry !== null && expiry !== undefined && expiry > current)
+      if (expiry !== null && expiry !== undefined && expiry > snapshot)
         next = Math.min(next, expiry);
     }
     const timer = setTimeout(() => setNow(Date.now()), Math.max(1, next - current));

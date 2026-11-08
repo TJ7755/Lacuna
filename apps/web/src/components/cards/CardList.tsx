@@ -1,5 +1,5 @@
 import { Input, fieldLabelClassName } from '../ui/Field';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { AnimatePresence, m as motion } from 'motion/react';
 import { Button } from '../ui/Button';
@@ -8,6 +8,7 @@ import { Select } from '../ui/Select';
 import { CheckIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { useExamClock } from '../../state/useExamClock';
 import { GroupedCardList } from './GroupedCardList';
 import { useCardSectionActivity } from './CardSections';
 import type { Card, Occlusion, Sequence } from '@lacuna/core/db/types';
@@ -43,6 +44,7 @@ interface CardListBaseProps {
 }
 
 type CardListProps = CardListBaseProps & { context: CardListContext };
+const NO_EXAM_DATES: readonly number[] = [];
 
 export function CardList({
   cards,
@@ -66,6 +68,13 @@ export function CardList({
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const scheduleBoundaries = useMemo(
+    () => cards.flatMap((card) => (card.suspended ? [] : [card.due, card.buriedUntil])),
+    [cards],
+  );
+  // Refresh the chips at scheduling boundaries independently of scroll renders.
+  useExamClock(NO_EXAM_DATES, scheduleBoundaries);
+  const scheduleNow = Date.now();
   useEffect(() => {
     setExpandedCardId(null);
   }, [schedulingConfig.id]);
@@ -363,6 +372,7 @@ export function CardList({
       <GroupedCardList
         cards={cards}
         schedulingConfig={schedulingConfig}
+        scheduleNow={scheduleNow}
         selectMode={selectMode}
         selected={selected}
         expandedCardId={expandedCardId}
