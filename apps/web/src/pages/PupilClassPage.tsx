@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppLink } from '../components/ui/AppLink';
 import { buttonClassName } from '../components/ui/buttonStyles';
@@ -13,10 +12,9 @@ export function PupilClassPage() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const course = useCourse(courseId);
-  // Memoise the per-course setting so in-app navigation to another course
-  // re-subscribes instead of reading the previous course's stored enrolment.
-  const enrolmentSetting = useMemo(() => createEnrolmentSetting(courseId ?? ''), [courseId]);
-  const [enrolment] = enrolmentSetting.use();
+  // The hook keys its subscription by course, so in-app navigation re-reads
+  // the new course's stored enrolment instead of showing stale state.
+  const [enrolment] = createEnrolmentSetting(courseId ?? '').use();
 
   if (course === undefined) return <PageLoading />;
   if (

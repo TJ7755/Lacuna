@@ -57,26 +57,26 @@ export function createLocalSetting<T>({
     };
   };
   function use(): [T, (value: T) => void] {
-    const [value, setValue] = useState(read);
+    // Key the subscription by setting identity so in-app navigation to another
+    // course re-reads and re-subscribes instead of showing the previous key's value.
+    const identity = `${key} ${event}`;
+    const [snapshot, setSnapshot] = useState({ identity, value: read() });
+    if (snapshot.identity !== identity) {
+      setSnapshot({ identity, value: read() });
+    }
     useEffect(() => {
-      // Re-read when the setting identity changes so a new key never shows stale state.
-      setValue(read());
-      const refresh = () => setValue(read());
+      const refresh = () => setSnapshot({ identity, value: read() });
       const unsubscribe = subscribe(refresh);
       // A layout effect may have changed the preference before this subscription existed.
       refresh();
       return unsubscribe;
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [key, event]);
-    const set = useCallback(
-      (next: T) => {
-        write(next);
-        setValue(read());
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-      },
-      [key, event],
-    );
-    return [value, set];
+    }, [identity]);
+    // `write`/`read` close over the current key/event; identity only retriggers the effect.
+    const set = useCallback((next: T) => {
+      write(next);
+      setSnapshot((current) => ({ identity: current.identity, value: read() }));
+    }, []);
+    return [snapshot.value, set];
   }
   return { key, event, read, write, subscribe, use };
 }
