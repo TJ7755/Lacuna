@@ -1,0 +1,15 @@
+name: Set up the verified Node runtime
+description: Install the exact Node release from the checksum-pinned official archive.
+inputs:
+  node-version:
+    description: The exact Node release expected by this workflow.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Download and verify the Node release
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        LACUNA_CI_NODE_VERSION: ${{ inputs.node-version }}
+      run: node scripts/ci-node-runtime.mjs "$LACUNA_CI_NODE_VERSION"

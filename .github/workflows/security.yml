@@ -24,10 +24,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bun audit --audit-level=high
@@ -40,10 +39,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         with:
           cache-dependency-path: bun.lock
@@ -59,10 +57,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         with:
           cache-dependency-path: bun.lock
