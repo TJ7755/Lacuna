@@ -834,8 +834,8 @@ test('Windows upgrade scenarios retain both probes on isolated runners with the 
     "'nsis'",
     "'--x64'",
     "'perf:check:electron-package'",
-    "'windows-upgrade-companion.mjs'",
-    "'windows-release-upgrade.mjs'",
+    "'./windows-upgrade-companion.mjs'",
+    "'./windows-release-upgrade.mjs'",
   ]) {
     assert.ok(coordinator.includes(contract), contract);
   }

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { build } from 'esbuild';
 import {
@@ -35,9 +35,6 @@ interface AdvanceSample {
 interface ProbeWindow extends Window {
   imageProbe: ImageProbeEntry[];
   imageAdvance?: AdvanceSample;
-  StudyLoadFixture: {
-    seed(images: StudyImageFixture[], files: FileList): Promise<unknown>;
-  };
 }
 
 async function measureAdvance(page: Page, cardId: string) {
@@ -126,6 +123,13 @@ test('measures original-sized JPEG and PNG card advances at 4x CPU slowdown', as
   page,
 }, testInfo) => {
   test.setTimeout(240_000);
+  await page.route('**/__study_image/*', async (route) => {
+    const name = new URL(route.request().url()).pathname.split('/').pop()!;
+    await route.fulfill({
+      contentType: name.endsWith('.png') ? 'image/png' : 'image/jpeg',
+      body: await readFile(join(studyImageFixtureDirectory, name)),
+    });
+  });
   const bundle = await build({
     entryPoints: ['tests/e2e/fixtures/studyImageAdvance.ts'],
     bundle: true,
@@ -136,24 +140,20 @@ test('measures original-sized JPEG and PNG card advances at 4x CPU slowdown', as
     define: { 'import.meta.env.DEV': 'false' },
   });
   await page.route('**/__study_fixture', (route) =>
-    route.fulfill({
-      contentType: 'text/html',
-      body: '<title>Study fixture</title><input type="file" aria-label="Fixture images" multiple>',
-    }),
+    route.fulfill({ contentType: 'text/html', body: '<title>Study fixture</title>' }),
   );
   await page.goto('/__study_fixture');
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
-  const fixture = await test.step('Seed the image-card library', async () => {
-    // Local paths let Chromium read the files directly and keep their bytes out of traces.
-    const input = page.getByLabel('Fixture images');
-    await input.setInputFiles(
-      images.map((image) => join(studyImageFixtureDirectory, image.url.split('/').pop()!)),
-    );
-    return input.evaluate((element: HTMLInputElement, images) => {
-      if (!element.files) throw new Error('The image fixture input is missing its files');
-      return (window as unknown as ProbeWindow).StudyLoadFixture.seed(images, element.files);
-    }, images);
-  });
+  const fixture = await test.step('Seed the image-card library', () =>
+    page.evaluate(
+      async (images) =>
+        (
+          window as unknown as {
+            StudyLoadFixture: { seed(images: unknown): Promise<unknown> };
+          }
+        ).StudyLoadFixture.seed(images),
+      images,
+    ));
   await page.addInitScript(() => {
     // Keep the measured image sequence fixed while the production scheduler shuffles ties.
     Math.random = () => 1 - Number.EPSILON;

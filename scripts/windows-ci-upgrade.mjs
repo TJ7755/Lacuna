@@ -4,7 +4,7 @@ import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { text } from 'node:stream/consumers';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const audited = 'audited installer ready\n';
 
@@ -66,8 +66,10 @@ async function runProbe(probe, scratch, build, env) {
     process.env,
   );
 
-  const script = companion ? 'windows-upgrade-companion.mjs' : 'windows-release-upgrade.mjs';
-  const child = spawn(process.execPath, [`scripts/${script}`, path.join(scratch, filename)], {
+  const script = companion
+    ? new URL('./windows-upgrade-companion.mjs', import.meta.url)
+    : new URL('./windows-release-upgrade.mjs', import.meta.url);
+  const child = spawn(process.execPath, [fileURLToPath(script), path.join(scratch, filename)], {
     env: { ...env, LACUNA_CI_UPGRADE_PIPE: '1' },
     stdio: ['pipe', 'inherit', 'inherit'],
   });
@@ -76,7 +78,7 @@ async function runProbe(probe, scratch, build, env) {
   child.stdin.on('error', () => {});
   const signal = (value) => child.stdin.end(value);
   await Promise.all([
-    requireSuccessfulExit(child, script),
+    requireSuccessfulExit(child, path.basename(script.pathname)),
     build.then(
       () => signal(audited),
       () => signal(''),
