@@ -123,7 +123,9 @@ const RoutePage = forwardRef<
         duration: (direction === 0 ? 0.16 : 0.22) * multiplier,
         ease: [0.16, 1, 0.3, 1],
       }}
-      className="min-h-full w-full"
+      // PopLayout can retain the departing page. Clip its box out of the
+      // scroll range while keeping descendants rendered for animation cleanup.
+      className={present ? 'min-h-full w-full' : 'max-h-0 w-full overflow-clip'}
     >
       {children}
     </motion.div>
