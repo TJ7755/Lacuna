@@ -6,7 +6,6 @@ Production is available at `https://relay.getlacuna.app`, attached to the existi
 `lacuna-relay` Vercel project and its private Blob store. The legacy
 `https://lacuna-relay.vercel.app` endpoint remains an alias, without a redirect,
 for saved sync pairings, older app versions and stored share write credentials.
-Adding the domain does not move or recreate channels, published shares or AI sessions.
 
 Name.com DNS (configured 27 September 2026, TTL 300):
 
@@ -19,9 +18,6 @@ Name.com DNS (configured 27 September 2026, TTL 300):
 Vercel provisions HTTPS for each domain. Use the current project Domains settings
 as the authority if Vercel changes these DNS targets.
 
-Set `RELAY_ALLOWED_ORIGINS` to a comma-separated list to allow additional browser origins,
-such as a preview or self-hosted web build. The defaults live in [the CORS policy](src/cors.ts).
-
 `https://preview.getlacuna.app` uses the production relay. Its exact origin is added through
 `RELAY_ALLOWED_ORIGINS=https://preview.getlacuna.app` in the **Production** environment of
 `lacuna-relay`, not the app project's Preview environment. Preserve any existing entries when
@@ -32,8 +28,6 @@ continue to serve it. The app preview's Vercel Deployment Protection is separate
 ## AI terminal pairing
 
 The short-lived pairing code is a capability; do not paste it into an untrusted task.
-Read [the AI handler](src/aiRelay.ts) and [the client transport](../web/src/ai/relayClient.ts)
-for pairing and mailbox behaviour.
 
 ## Daily maintenance
 
@@ -87,27 +81,13 @@ maintenance schedule is running. Then deploy the learner app. To suspend the
 feature, deploy the relay with `USAGE_ANALYTICS_ENABLED=false` and the learner
 build with `VITE_USAGE_ANALYTICS_ENABLED=false`.
 
-Deploy relay and learner releases together when the learner minor version
-changes. Check relay 429 and 422 response rates before increasing analytics
-capacity. Each function instance limits bursts in memory without retaining
-addresses, while the private store caps each shard across instances.
+Deploy relay and learner releases together when the learner minor version changes. Check relay
+429 and 422 response rates before increasing analytics capacity.
 
 ## Deploy
 
-This directory is its own Vercel project. Do not deploy it as part of the app.
-
-1. Create a new Vercel project with **root directory** `apps/relay`.
-2. Create a private Blob store in the `lhr1` region and connect it to that
-   project.
-3. Leave the runtime as Node.js on Fluid Compute. Do not set `runtime = 'edge'`.
-4. Select framework preset **Other**. Keep the handler named `api/index.ts`; do not
-   rename it to a bracketed filename.
-5. Set `CRON_SECRET` on the project for daily maintenance.
-6. Optionally set `RELAY_MINT_SECRET` for an operator bypass.
-7. Deploy.
-
-Deploy protocol v2 clients and relay together. Deployments are paused until approximately
-22 November 2026; this change does not deploy or alter Vercel settings.
+Use the [workspace deployment procedure](../../docs/maintenance/workspaces.md). Connect a private
+Blob store in `lhr1` and use Node.js on Fluid Compute with the **Other** framework preset.
 
 ## Verify
 

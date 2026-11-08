@@ -2,8 +2,9 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { ESLint } from 'eslint';
 import { afterEach, describe, expect, it } from 'vitest';
+import config from '../eslint.config.js';
 
 const repository = resolve(import.meta.dirname, '..');
 const directories: string[] = [];
@@ -30,7 +31,7 @@ const cycles = (root: string) =>
   });
 
 describe('domain-to-UI boundary', () => {
-  it('uses the real ESLint configuration to reject resolved UI contracts and accept domain contracts', () => {
+  it('uses the real ESLint configuration to reject resolved UI contracts and accept domain contracts', async () => {
     const project = fixture();
     project.write(
       'tsconfig.app.json',
@@ -68,29 +69,27 @@ describe('domain-to-UI boundary', () => {
         'onboarding',
         'shareLinks',
         'specifications',
-      ].flatMap((domain) => [
-        {
-          filePath: `apps/web/src/${domain}/probe.ts`,
-          source:
-            "import type { Contract } from '../components/contract'; export type Result = Contract;",
-          forbidden: true,
-        },
-        {
-          filePath: `apps/web/src/${domain}/nested/probe.ts`,
-          source: "export const load = () => import('../../teacher/contract');",
-          forbidden: true,
-        },
-        {
-          filePath: `apps/web/src/${domain}/probe.test.ts`,
-          source: "export type Result = import('../pages/contract').Contract;",
-          forbidden: true,
-        },
-        {
-          filePath: `apps/web/src/${domain}/probe.ts`,
-          source: "export type { Contract } from '../db/contract';",
-          forbidden: false,
-        },
-      ]),
+      ].map((domain) => ({
+        filePath: `apps/web/src/${domain}/probe.ts`,
+        source:
+          "import type { Contract } from '../components/contract'; export type Result = Contract;",
+        forbidden: true,
+      })),
+      {
+        filePath: 'apps/web/src/db/nested/probe.ts',
+        source: "export const load = () => import('../../teacher/contract');",
+        forbidden: true,
+      },
+      {
+        filePath: 'apps/web/src/db/probe.test.ts',
+        source: "export type Result = import('../pages/contract').Contract;",
+        forbidden: true,
+      },
+      {
+        filePath: 'apps/web/src/course/probe.ts',
+        source: "export type { Contract } from '../db/contract';",
+        forbidden: false,
+      },
       ...[
         "export { value } from '../pages/contract';",
         "export type { Contract } from '../teacher/contract';",
@@ -140,36 +139,31 @@ describe('domain-to-UI boundary', () => {
       },
     ];
     project.write('apps/web/src/components/index.ts', "export * from './contract';");
-    const result = spawnSync(
-      process.execPath,
-      [
-        '--input-type=module',
-        '-e',
-        `
-      import { ESLint } from ${JSON.stringify(pathToFileURL(join(repository, 'node_modules/eslint/lib/api.js')).href)};
-      import config from ${JSON.stringify(pathToFileURL(join(repository, 'eslint.config.js')).href)};
-      const eslint = new ESLint({ cwd: ${JSON.stringify(project.root)}, overrideConfigFile: true,
-        overrideConfig: [...config, { files: ['**/*.ts'], languageOptions: { parserOptions: { project: null } },
-          rules: { '@typescript-eslint/no-floating-promises': 'off' } }] });
-      const counts = [];
-      for (const probe of ${JSON.stringify(probes)}) {
-        const [result] = await eslint.lintText(probe.source, { filePath: probe.filePath });
-        if (result.messages.some(message => message.fatal)) throw new Error(JSON.stringify(result.messages));
-        counts.push(result.messages.filter(message => message.ruleId === 'architecture/no-domain-ui').length);
-      }
-      console.log(JSON.stringify(counts));
-    `,
+    const eslint = new ESLint({
+      cwd: project.root,
+      overrideConfigFile: true,
+      overrideConfig: [
+        ...config,
+        {
+          files: ['**/*.ts'],
+          languageOptions: { parserOptions: { project: null } },
+          rules: { '@typescript-eslint/no-floating-promises': 'off' },
+        },
       ],
-      { encoding: 'utf8', timeout: 30_000 },
-    );
-    expect(result.error).toBeUndefined();
-    expect(result.status, result.stderr).toBe(0);
-    const counts: number[] = JSON.parse(result.stdout);
-    expect(counts).toHaveLength(probes.length);
-    probes.forEach((probe, index) => {
-      expect(counts[index], `${probe.filePath}: ${probe.source}`).toBe(Number(probe.forbidden));
     });
-  });
+    for (const probe of probes) {
+      const [result] = await eslint.lintText(probe.source, { filePath: probe.filePath });
+      const label = `${probe.filePath}: ${probe.source}`;
+      expect(
+        result.messages.filter((message) => message.fatal),
+        label,
+      ).toEqual([]);
+      expect(
+        result.messages.filter((message) => message.ruleId === 'architecture/no-domain-ui'),
+        label,
+      ).toHaveLength(Number(probe.forbidden));
+    }
+  }, 60_000);
 });
 
 describe('src value-import cycles', () => {

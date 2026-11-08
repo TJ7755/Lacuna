@@ -1,21 +1,8 @@
 # Portable Question banks
 
-Each static set and family carries a source title, reference, author and licence, plus a blueprint
-with skill, type, difficulty and context. Record references accurately: a licence string is a
-provenance assertion, not a grant of rights by the application.
-
-Commands run from the application worktree with the repository's Bun version:
-
-```sh
-bun scripts/question-bank.ts validate bank.json
-bun scripts/question-bank.ts materialise bank.json materialised.json
-```
-
-
-## Review before publication
-
-Only tag techniques actually required by a criterion. Review classifications after changing
-the question or rubric. Preserve unclassified content until its demands have been reviewed.
+Record source, author and licence accurately. Confirm publication rights with the source owner
+when the licence is unclear. Tag techniques actually required by a criterion and review the
+classification after changing the question or rubric.
 
 ```sh
 bun scripts/question-bank.ts audit course.lacuna course-audit.json
@@ -23,4 +10,4 @@ bun scripts/question-bank.ts audit bank.json bank-audit.json
 ```
 
 Keep reports containing private or licensed criterion text with their authorised content.
-Review the exact frozen artefact and follow [the publication procedure](../library.md).
+Follow the [publication procedure](../library.md) for the exact frozen artefact.

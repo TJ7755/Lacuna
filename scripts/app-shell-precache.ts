@@ -4,7 +4,6 @@ import type { VitePluginPWAAPI } from 'vite-plugin-pwa';
 type OutputChunk = Rolldown.OutputChunk;
 type StaticChunk = Pick<OutputChunk, 'fileName' | 'imports' | 'isEntry'> & {
   viteMetadata?: { importedCss: Set<string> };
-  moduleIds?: readonly string[];
 };
 
 function collectStaticImports(chunks: readonly StaticChunk[], root: StaticChunk): string[] {
@@ -70,13 +69,13 @@ export function collectOfflineCardsDependencies(chunks: readonly StaticChunk[]):
  * which a learner may never have opened online. Precache that panel, its static imports
  * and their stylesheets, leaving out what the shell already holds.
  */
-export function collectOfflineImportRoute(chunks: readonly StaticChunk[]): string[] {
+export function collectOfflineImportRoute(
+  chunks: readonly (StaticChunk & Pick<OutputChunk, 'moduleIds'>)[],
+): string[] {
   const route = chunks.find((chunk) =>
-    chunk.moduleIds
-      ? chunk.moduleIds.some((id) =>
-          id.replaceAll('\\', '/').endsWith('/src/components/import/ImportPanel.tsx'),
-        )
-      : /^assets\/ImportPanel-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
+    chunk.moduleIds.some((id) =>
+      id.replaceAll('\\', '/').endsWith('/src/components/import/ImportPanel.tsx'),
+    ),
   );
   if (!route) throw new Error('Could not find the Import panel for offline precaching.');
   const eager = new Set([...collectAppShellScripts(chunks), ...collectAppShellStyles(chunks)]);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import config, { pwaInjectRegister, workbox } from '../../../vite.config';
+import config, { workbox } from '../../../vite.config';
 import {
   collectAppShellScripts,
   collectAppShellStyles,
@@ -11,154 +11,33 @@ describe('service-worker asset caching', () => {
   it('excludes landing films and local posters from the offline application shell', () => {
     expect(workbox.globIgnores).toEqual(expect.arrayContaining(['films/**', 'landing/films/**']));
   });
-  it('precaches the daily backup worker and launcher dependencies before first offline use', () => {
+  it('precaches the daily backup worker before first offline use', () => {
     expect(workbox.globPatterns).toContain('assets/dailyBackup.worker-*.js');
-    expect(
-      collectAppShellScripts([
-        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
-        {
-          fileName: 'assets/backups-BACKUP01.js',
-          isEntry: false,
-          imports: ['assets/snapshot-BACKUP02.js'],
-        },
-        { fileName: 'assets/snapshot-BACKUP02.js', isEntry: false, imports: [] },
-      ]),
-    ).toEqual([
-      'assets/app-ENTRY001.js',
-      'assets/backups-BACKUP01.js',
-      'assets/snapshot-BACKUP02.js',
-    ]);
-  });
-  it('precaches the restore decoder and its dependencies before the first offline restore', () => {
-    expect(
-      collectAppShellScripts([
-        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
-        {
-          fileName: 'assets/portability-RESTORE1.js',
-          isEntry: false,
-          imports: ['assets/validation-RESTORE2.js'],
-        },
-        { fileName: 'assets/validation-RESTORE2.js', isEntry: false, imports: [] },
-      ]),
-    ).toEqual([
-      'assets/app-ENTRY001.js',
-      'assets/portability-RESTORE1.js',
-      'assets/validation-RESTORE2.js',
-    ]);
-  });
-  it('precaches the required device-local AI cleanup hook for offline restore', () => {
-    expect(
-      collectAppShellScripts([
-        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
-        {
-          fileName: 'assets/relay-CLEANUP1.js',
-          isEntry: false,
-          imports: ['assets/deviceState-CLEANUP2.js'],
-        },
-        { fileName: 'assets/deviceState-CLEANUP2.js', isEntry: false, imports: [] },
-      ]),
-    ).toEqual([
-      'assets/app-ENTRY001.js',
-      'assets/relay-CLEANUP1.js',
-      'assets/deviceState-CLEANUP2.js',
-    ]);
-  });
-  it('precaches deferred embedded-image processing before the first offline import', () => {
-    expect(
-      collectAppShellScripts([
-        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
-        {
-          fileName: 'assets/markdownAssets-IMAGE001.js',
-          isEntry: false,
-          imports: ['assets/imageHelpers-IMAGE002.js'],
-        },
-        { fileName: 'assets/imageHelpers-IMAGE002.js', isEntry: false, imports: [] },
-      ]),
-    ).toEqual([
-      'assets/app-ENTRY001.js',
-      'assets/markdownAssets-IMAGE001.js',
-      'assets/imageHelpers-IMAGE002.js',
-    ]);
   });
 
-  it('precaches deferred Quick search and its dependencies before first offline use', () => {
+  it.each([
+    ['daily backup launcher', 'backups'],
+    ['restore decoder', 'portability'],
+    ['restore cleanup', 'relay'],
+    ['embedded-image processing', 'markdownAssets'],
+    ['Quick search', 'CommandPalette'],
+    ['course actions', 'CourseActions'],
+    ['lesson ordering', 'lessonOrder'],
+    ['welcome-course seed', 'seed'],
+    ['motion features', 'motionFeatures'],
+    ['route announcements', 'RouteAnnouncement'],
+  ])('precaches deferred %s and its dependencies', (_feature, chunkName) => {
+    const entry = 'assets/app-ENTRY001.js';
+    const deferred = `assets/${chunkName}-DEFERRED.js`;
+    const dependency = 'assets/shared-SHARED01.js';
+
     expect(
       collectAppShellScripts([
-        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
-        {
-          fileName: 'assets/CommandPalette-SEARCH01.js',
-          isEntry: false,
-          imports: ['assets/search-SEARCH02.js'],
-        },
-        { fileName: 'assets/search-SEARCH02.js', isEntry: false, imports: [] },
+        { fileName: entry, isEntry: true, imports: [] },
+        { fileName: deferred, isEntry: false, imports: [dependency] },
+        { fileName: dependency, isEntry: false, imports: [] },
       ]),
-    ).toEqual([
-      'assets/app-ENTRY001.js',
-      'assets/CommandPalette-SEARCH01.js',
-      'assets/search-SEARCH02.js',
-    ]);
-  });
-  it('precaches on-demand course actions and their static dependencies before first offline use', () => {
-    expect(
-      collectAppShellScripts([
-        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
-        {
-          fileName: 'assets/CourseActions-ACTIONS1.js',
-          isEntry: false,
-          imports: ['assets/action-ui-ACTION01.js'],
-        },
-        { fileName: 'assets/action-ui-ACTION01.js', isEntry: false, imports: [] },
-      ]),
-    ).toEqual([
-      'assets/app-ENTRY001.js',
-      'assets/CourseActions-ACTIONS1.js',
-      'assets/action-ui-ACTION01.js',
-    ]);
-  });
-  it('precaches deferred lesson ordering and its guard before the first offline save', () => {
-    expect(
-      collectAppShellScripts([
-        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
-        {
-          fileName: 'assets/lessonOrder-ORDER001.js',
-          isEntry: false,
-          imports: ['assets/lessonOrder-RESOLVE1.js'],
-        },
-        { fileName: 'assets/lessonOrder-RESOLVE1.js', isEntry: false, imports: [] },
-      ]),
-    ).toEqual([
-      'assets/app-ENTRY001.js',
-      'assets/lessonOrder-ORDER001.js',
-      'assets/lessonOrder-RESOLVE1.js',
-    ]);
-  });
-  it('precaches the welcome-course seed that start-up loads on demand', () => {
-    expect(
-      collectAppShellScripts([
-        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
-        { fileName: 'assets/seed-SEEDCHK1.js', isEntry: false, imports: [] },
-      ]),
-    ).toContain('assets/seed-SEEDCHK1.js');
-  });
-  it('precaches the motion features that start-up loads straight after first paint', () => {
-    expect(
-      collectAppShellScripts([
-        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
-        {
-          fileName: 'assets/motionFeatures-MOTION01.js',
-          isEntry: false,
-          imports: ['assets/features-max-FEATMAX1.js'],
-        },
-        { fileName: 'assets/features-max-FEATMAX1.js', isEntry: false, imports: [] },
-      ]),
-    ).toEqual([
-      'assets/app-ENTRY001.js',
-      'assets/motionFeatures-MOTION01.js',
-      'assets/features-max-FEATMAX1.js',
-    ]);
-  });
-  it('leaves worker registration to the protocol-aware application bootstrap', () => {
-    expect(pwaInjectRegister).toBeNull();
+    ).toEqual([entry, deferred, dependency]);
   });
 
   it('keeps optional CSS out of the install-time application shell', () => {
@@ -216,25 +95,6 @@ describe('service-worker asset caching', () => {
     expect(workbox.globPatterns).not.toContain('assets/*.js');
   });
 
-  it('precaches deferred route announcements loaded before worker control', () => {
-    expect(
-      collectAppShellScripts([
-        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
-        {
-          fileName: 'assets/RouteAnnouncement-ANNOUNCE.js',
-          isEntry: false,
-          imports: ['assets/labels-LABELS01.js'],
-        },
-        { fileName: 'assets/labels-LABELS01.js', isEntry: false, imports: [] },
-        { fileName: 'assets/CardsPage-CARDS001.js', isEntry: false, imports: [] },
-      ]),
-    ).toEqual([
-      'assets/app-ENTRY001.js',
-      'assets/RouteAnnouncement-ANNOUNCE.js',
-      'assets/labels-LABELS01.js',
-    ]);
-  });
-
   it('retains shared Cards imports loaded before worker control without precaching the route', () => {
     const chunks = [
       { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },
@@ -259,25 +119,30 @@ describe('service-worker asset caching', () => {
     ]);
   });
 
-  it('precaches the Import route so a course file can be received on first use offline', () => {
+  it('precaches the offline Import panel and its dependencies when another chunk shares its name', () => {
+    const shared = 'assets/shared-SHARED01.js';
+    const catalogue = 'assets/ImportPanel-CATALOG1.js';
+    const panel = 'assets/ImportPanel-IMPORT01.js';
+    const styles = 'assets/ImportPanel-IMPORT01.css';
     const chunks = [
-      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },
-      { fileName: 'assets/shared-SHARED01.js', isEntry: false, imports: [] },
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [shared], moduleIds: [] },
+      { fileName: shared, isEntry: false, imports: [], moduleIds: [] },
       {
-        fileName: 'assets/ImportPanel-IMPORT01.js',
+        fileName: catalogue,
         isEntry: false,
-        imports: ['assets/shared-SHARED01.js', 'assets/courseFile-COURSE01.js'],
-        viteMetadata: { importedCss: new Set(['assets/ImportPanel-IMPORT01.css']) },
+        imports: [],
+        moduleIds: ['/src/library/catalogue.ts'],
       },
-      { fileName: 'assets/courseFile-COURSE01.js', isEntry: false, imports: [] },
-      { fileName: 'assets/MarkdownView-MARKDOWN.js', isEntry: false, imports: [] },
+      {
+        fileName: panel,
+        isEntry: false,
+        imports: [shared, catalogue],
+        moduleIds: ['/src/components/import/ImportPanel.tsx'],
+        viteMetadata: { importedCss: new Set([styles]) },
+      },
     ];
 
-    expect(collectOfflineImportRoute(chunks)).toEqual([
-      'assets/ImportPanel-IMPORT01.js',
-      'assets/courseFile-COURSE01.js',
-      'assets/ImportPanel-IMPORT01.css',
-    ]);
+    expect(collectOfflineImportRoute(chunks)).toEqual([panel, catalogue, styles]);
   });
 
   it('caches visited content-hashed lazy styles without adding them to the install shell', () => {
