@@ -43,21 +43,6 @@ function normalise(text: string): string {
     .trim();
 }
 
-export function questionSetSearchContext(
-  set: QuestionSet,
-  context: QuestionSetSearchContext,
-): string {
-  const lessons = new Map(context.lessons?.map((lesson) => [lesson.id, lesson.name]));
-  const concepts = new Map(context.concepts?.map((concept) => [concept.id, concept.name]));
-  return [
-    ...set.lessonIds.flatMap((id) => lessons.get(id) ?? []),
-    ...referencedQuestionSetConceptIds(set).flatMap((id) => concepts.get(id) ?? []),
-  ]
-    .map(searchableText)
-    .filter(Boolean)
-    .join(', ');
-}
-
 /** AND across words/fields; best location covers most words, then the whole phrase.
  * Ties retain field order and input set order. Callers own course scope and draft visibility.
  * Marking is excluded unless an authorised authoring caller explicitly enables it.
@@ -67,16 +52,26 @@ export function searchQuestionSets<T extends QuestionSet>(
   query: string,
   context: QuestionSetSearchContext = {},
   options: QuestionSetSearchOptions = {},
-): { content: T; location: string; excerpt: string }[] {
+): { content: T; contextLabel: string; location: string; excerpt: string }[] {
+  if (sets.length === 0) return [];
   const phrase = normalise(query);
   const words = [...new Set(phrase.split(' ').filter(Boolean))];
+  const lessons = new Map(context.lessons?.map((lesson) => [lesson.id, lesson.name]));
+  const concepts = new Map(context.concepts?.map((concept) => [concept.id, concept.name]));
   const seen = new Set<string>();
   return sets.flatMap((content) => {
     if (seen.has(content.id)) return [];
     seen.add(content.id);
+    const contextLabel = [
+      ...content.lessonIds.flatMap((id) => lessons.get(id) ?? []),
+      ...referencedQuestionSetConceptIds(content).flatMap((id) => concepts.get(id) ?? []),
+    ]
+      .map(searchableText)
+      .filter(Boolean)
+      .join(', ');
     const fields = [
       { location: 'Title', text: content.title },
-      { location: 'Lesson / Concept', text: questionSetSearchContext(content, context) },
+      { location: 'Lesson / Concept', text: contextLabel },
     ];
     const addQuestions = (set: QuestionSet, prefix = '') => {
       const nodes = flattenQuestionSet(set);
@@ -148,6 +143,7 @@ export function searchQuestionSets<T extends QuestionSet>(
     return [
       {
         content,
+        contextLabel,
         location: best.location,
         excerpt: `${start ? '…' : ''}${excerpt}${best.text.length > start + 180 ? '…' : ''}`,
       },
