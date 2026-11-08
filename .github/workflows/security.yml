@@ -82,11 +82,29 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Keep the JavaScript bundle pin in step with the CodeQL action upgrade.
+      # If this official endpoint is unavailable, let init use its standard resolver.
+      - name: Verify the JavaScript CodeQL bundle
+        id: javascript-tools
+        if: matrix.language == 'javascript-typescript'
+        shell: bash
+        run: |
+          bundle="$RUNNER_TEMP/codeql-bundle-javascript-linux64.tar.zst"
+          if curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --max-time 20 \
+            -H 'Accept: application/octet-stream' \
+            'https://api.github.com/repos/github/codeql-action/releases/assets/692239234' \
+            -o "$bundle" &&
+            printf '%s  %s\n' '082e798c97831283a2a5f69e9198c51270e5767013d5333daeeab6520af9ce72' "$bundle" | sha256sum --check --strict; then
+            echo "path=$bundle" >> "$GITHUB_OUTPUT"
+          else
+            echo '::warning::Verified CodeQL bundle unavailable. Using the default resolver.'
+          fi
       - name: Initialise CodeQL
         uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           languages: ${{ matrix.language }}
           build-mode: none
+          tools: ${{ steps.javascript-tools.outputs.path }}
       - name: Analyse with CodeQL
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:

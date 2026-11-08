@@ -247,6 +247,7 @@ test('browser consumers install the lockfile browser and share the production ar
   assert.ok(producer);
   assert.equal(build.outputs.artifact_id, '${{ steps.dist.outputs.artifact-id }}');
   assert.equal(producer.id, 'dist');
+  assert.equal(producer.name, 'Share the production web build');
   assert.equal(producer.with.name, 'browser-web-dist-${{ github.run_attempt }}');
   assert.equal(producer.with.overwrite, undefined);
   for (const name of [...consumers, 'browser-standalone']) {
@@ -264,10 +265,26 @@ test('browser consumers install the lockfile browser and share the production ar
   }
   for (const name of [...consumers, 'production']) {
     const job = jobs[name];
-    assert.deepEqual(job.needs, ['changes', 'web-build']);
     const download = job.steps.find((step) => step.uses?.startsWith('actions/download-artifact@'));
-    assert.equal(download.with['artifact-ids'], '${{ needs.web-build.outputs.artifact_id }}');
     assert.equal(download.with.path, producer.with.path);
+    if (name === 'browser-tests' || name === 'browser-timing') {
+      assert.equal(job.needs, 'changes');
+      const browser = job.steps.findIndex((step) => step.run?.includes('playwright install'));
+      const wait = job.steps.findIndex(
+        (step) => step.run === 'node scripts/ci-wait-for-renderer.mjs web',
+      );
+      assert.ok(browser >= 0 && browser < wait && wait < job.steps.indexOf(download));
+      assert.equal(job.steps[wait].id, 'web-dist');
+      assert.equal(download.with['artifact-ids'], '${{ steps.web-dist.outputs.artifact_id }}');
+      assert.equal(
+        download.name,
+        'Download production web build ${{ steps.web-dist.outputs.artifact_id }}',
+      );
+      assert.equal(download.with['github-token'], '${{ github.token }}');
+    } else {
+      assert.deepEqual(job.needs, ['changes', 'web-build']);
+      assert.equal(download.with['artifact-ids'], '${{ needs.web-build.outputs.artifact_id }}');
+    }
     if (name !== 'production') assert.equal(job.env.LACUNA_BROWSER_PREBUILT, 'true');
   }
   const timing = jobs['browser-timing'];
@@ -282,6 +299,17 @@ test('browser consumers install the lockfile browser and share the production ar
     ),
   );
   assert.ok(jobs['browser-smoke'].needs.includes('production'));
+  assert.ok(jobs['browser-smoke'].needs.includes('web-build'));
+  const provenance = jobs['browser-smoke'].steps.find(
+    (step) => step.run === 'node scripts/ci-browser-artefact.mjs',
+  );
+  assert.equal(provenance.if, jobs['browser-tests'].if);
+  assert.equal(provenance.if, jobs['browser-timing'].if);
+  assert.equal(provenance.env.WEB_ARTIFACT_ID, '${{ needs.web-build.outputs.artifact_id }}');
+  assert.equal(
+    Number(provenance.env.FUNCTIONAL_SHARDS),
+    jobs['browser-tests'].strategy.matrix.shard.length,
+  );
   assert.equal(
     jobs['browser-smoke'].steps[0].env.PRODUCTION_RESULT,
     '${{ needs.production.result }}',
