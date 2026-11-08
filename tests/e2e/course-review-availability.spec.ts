@@ -25,7 +25,7 @@ for (const width of [320, 390]) {
 }
 
 for (const exam of [false, true]) {
-  test(`recommends due reviews then early exam preparation (exam: ${exam})`, async ({
+  test(`continues from scheduled reviews into early exam preparation when available (exam: ${exam})`, async ({
     page,
   }, testInfo) => {
     const errors: string[] = [];
@@ -126,26 +126,10 @@ for (const exam of [false, true]) {
     await expect(page.locator('[data-study-card-id="review-due"]:not([inert])')).toBeVisible();
     await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
     await page.getByRole('button', { name: 'Yes', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Finish for now' })).toBeVisible();
-    await page.getByRole('button', { name: 'Finish for now' }).click();
-    await expect(page.getByLabel('Today: 0 reviews due')).toBeVisible();
-    await page.screenshot({ path: testInfo.outputPath('dashboard-nothing-due.png') });
-
     if (exam) {
-      await page.getByRole('button', { name: 'Study Biology' }).click();
-      const recommendation = preview.getByRole('list', { name: "Today's session" });
-      await expect(recommendation.getByRole('listitem')).toHaveCount(1);
-      await expect(recommendation).toHaveText(
-        'Practise for exam1 card available (up to 10 reviews)',
-      );
-      await page.screenshot({ path: testInfo.outputPath('early-exam-preparation.png') });
-      await preview.getByRole('button', { name: 'Other ways', exact: true }).click();
-      await expect(
-        preview.getByRole('button', { name: 'Practise for exam', exact: true }),
-      ).toBeVisible();
-      await preview.getByRole('button', { name: 'Start session', exact: true }).click();
-      await expect(page).toHaveURL(/#\/course\/[^/]+\/study$/);
       await expect(page.locator('[data-study-card-id="review-future"]:not([inert])')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
+      await page.screenshot({ path: testInfo.outputPath('early-exam-preparation.png') });
       await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
       await page.getByRole('button', { name: 'Yes', exact: true }).click();
       await expect
@@ -175,7 +159,13 @@ for (const exam of [false, true]) {
           ),
         )
         .toBe(1);
-    } else {
+    }
+
+    await expect(page.getByRole('button', { name: 'Finish for now' })).toBeVisible();
+    await page.getByRole('button', { name: 'Finish for now' }).click();
+    await expect(page.getByLabel('Today: 0 reviews due')).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('dashboard-nothing-due.png') });
+    if (!exam) {
       await expect(page.getByRole('button', { name: 'Study Biology' })).toHaveCount(0);
       await expect(page.getByText('Done for today')).toBeVisible();
     }

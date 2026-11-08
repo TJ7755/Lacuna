@@ -6,7 +6,7 @@ import type * as ReactRouterDom from 'react-router-dom';
 import type { Course } from '@lacuna/core/db/types';
 import type { SessionSummary } from '../components/learn/types';
 import type { QuestionStudySummary } from '../course/sessionSummary';
-import { CATCH_UP_STEP, type StudyFlowStep } from '../course/studyFlowPlanner';
+import { CATCH_UP_STEP, DUE_REVIEW_STEP, type StudyFlowStep } from '../course/studyFlowPlanner';
 import type { CourseStudyFlowSnapshot, StudyFlowPracticeState } from '../course/studyFlowSnapshot';
 import type { AssessmentPracticeOption } from '../course/assessmentPractice';
 import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
@@ -133,6 +133,14 @@ vi.mock('./LearnMode', () => ({
           onClick={() => onStepFinished(answeredSummary({ dailyGoalReached: true }))}
         >
           Reach review goal
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onStepFinished(answeredSummary({ reachedGoal: false, limitReached: true }))
+          }
+        >
+          Reach review limit
         </button>
         <button type="button" onClick={onFlowExit}>
           Exit flow
@@ -462,14 +470,8 @@ describe('CourseStudyFlow', () => {
     await waitFor(() => expect(request()).toMatchObject({ mode: 'catch-up' }));
   });
 
-  it('starts a fresh Learn session when due review continues into Practice', async () => {
-    const practice: StudyFlowStep = {
-      kind: 'practice',
-      nodeKey: 'end',
-      mode: 'recurring',
-      label: 'Practice',
-    };
-    mockFlows = [flow(practice, 0), flow({ ...practice }, 1)];
+  it('starts a fresh Learn session when the next step is another due review', async () => {
+    mockFlows = [flow(DUE_REVIEW_STEP, 0), flow(DUE_REVIEW_STEP, 1)];
     renderFlow('/course/course-1/study?review=due');
     await screen.findByTestId('learn-request');
     expect(learnMounts).toBe(1);
@@ -498,6 +500,34 @@ describe('CourseStudyFlow', () => {
 
     expect(await screen.findByRole('button', { name: /^Continue$/ })).toBeEnabled();
     expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
+  });
+
+  it('continues to a lesson when the daily limit stops scheduled reviews', async () => {
+    mockFlows = [
+      flow(DUE_REVIEW_STEP, 0),
+      flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1),
+    ];
+    renderFlow('/course/course-1/study?review=due');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Reach review limit' }));
+
+    expect(await screen.findByRole('heading', { name: 'Bonding' })).toBeInTheDocument();
+    expect(screen.getByText('Daily review limit reached')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Continue$/ }));
+    await waitFor(() => expect(request()).toMatchObject({ lessonId: 'lesson-2' }));
+  });
+
+  it('keeps scheduled reviews available separately when Resume returns to paused exam practice', async () => {
+    const after = flow(DUE_REVIEW_STEP, 1);
+    after.snapshot.recurringPracticeEligibleCount = 1;
+    mockFlows = [flow(DUE_REVIEW_STEP, 0), after];
+    renderFlow('/course/course-1/study?review=exam');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Pause step' }));
+
+    expect(await screen.findByRole('button', { name: 'Resume' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Review due cards' }));
+    await waitFor(() => expect(request()).toMatchObject({ mode: 'recurring' }));
   });
 
   it('keeps the marked question hand-off and waits for fresh planning before continuing', async () => {

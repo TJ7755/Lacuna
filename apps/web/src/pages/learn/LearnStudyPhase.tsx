@@ -238,7 +238,7 @@ export function LearnStudyPhase({
             }}
             menuOpen={menuOpen}
             setMenuOpen={setMenuOpen}
-            current={current}
+            current={phase === 'finished' ? null : current}
             isTouchMode={isTouchMode}
             onEdit={closingMenu(openEdit)}
             onToggleFlag={closingMenu(toggleFlagCurrent)}
@@ -405,7 +405,7 @@ export function LearnStudyPhase({
             </Button>
           </div>
         )}
-        {!suppressClassicGrading && (
+        {(phase === 'question' || phase === 'answer') && !suppressClassicGrading && (
           <StudyControls
             // Keep the liquid mounted so its draining bead can reform the next pill.
             phase={phase}

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionSummary } from './sessionSummary';
-import { CATCH_UP_STEP, type StudyFlowDecision, type StudyFlowStep } from './studyFlowPlanner';
+import {
+  CATCH_UP_STEP,
+  DUE_REVIEW_STEP,
+  EXAM_PRACTICE_STEP,
+  type StudyFlowDecision,
+  type StudyFlowStep,
+} from './studyFlowPlanner';
 import { continuesWithoutPause } from './studyFlowContinuation';
 
 const practice = (nodeKey: string): StudyFlowStep => ({
@@ -39,6 +45,17 @@ describe('continuesWithoutPause', () => {
     expect(continuesWithoutPause(practice('practice-1'), summary(), next, false)).toBe(true);
   });
 
+  it('continues from a full exam block into scheduled reviews', () => {
+    expect(
+      continuesWithoutPause(
+        EXAM_PRACTICE_STEP,
+        summary({ reachedGoal: false, blockComplete: true }),
+        { kind: 'step', step: DUE_REVIEW_STEP },
+        false,
+      ),
+    ).toBe(true);
+  });
+
   it('keeps the hand-off at a goal, a limit, a break or an exit', () => {
     const done = practice('practice-1');
     expect(continuesWithoutPause(done, summary({ dailyGoalReached: true }), next, false)).toBe(
@@ -68,12 +85,8 @@ describe('continuesWithoutPause', () => {
       kind: 'step',
       step: { ...practice('a'), mode: 'assessment', assessmentId: 'a' } as StudyFlowStep,
     };
-    const exam: StudyFlowDecision = {
-      kind: 'step',
-      step: { kind: 'practice', nodeKey: 'exam', label: 'Practise for exam', mode: 'exam' },
-    };
     const choice: StudyFlowDecision = { kind: 'choice', step: practice('p'), assessments: [] };
-    for (const decision of [lesson, assessment, exam, choice, { kind: 'complete' } as const]) {
+    for (const decision of [lesson, assessment, choice, { kind: 'complete' } as const]) {
       expect(continuesWithoutPause(done, summary(), decision, false)).toBe(false);
     }
     const lessonDone: StudyFlowStep = { kind: 'lesson', lessonId: 'l', label: 'Lesson 1' };
