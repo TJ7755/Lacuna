@@ -40,9 +40,9 @@ describe('course share payload content', () => {
     expect(cards[0].answerMode).toBe('reveal');
   });
 
-  it('preserves distinct spelling requirements for mirror cards in a share code', async () => {
+  it('preserves lesson spelling and distinct mirror card overrides in a share code', async () => {
     const course = await createCourse('Vocabulary');
-    const lesson = await createLesson(course.id, 'French');
+    const lesson = await createLesson(course.id, 'French', { requireCorrectSpelling: true });
     await createLessonCard(
       course.id,
       lesson.id,
@@ -63,6 +63,7 @@ describe('course share payload content', () => {
       [],
       undefined,
       'type',
+      false,
     );
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
@@ -70,8 +71,10 @@ describe('course share payload content', () => {
     const imported = await db.cards.where('courseId').equals(courseIds[0]).toArray();
 
     expect(imported).toHaveLength(2);
+    const [importedLesson] = await db.lessons.where('courseId').equals(courseIds[0]).toArray();
+    expect(importedLesson.requireCorrectSpelling).toBe(true);
     expect(imported.find((card) => card.front === 'Summer')?.requireCorrectSpelling).toBe(true);
-    expect(imported.find((card) => card.front === 'été')?.requireCorrectSpelling).toBeUndefined();
+    expect(imported.find((card) => card.front === 'été')?.requireCorrectSpelling).toBe(false);
   });
 
   it('identifies stripped audio as audio while retaining the legacy omission flag', async () => {

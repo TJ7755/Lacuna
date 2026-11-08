@@ -66,6 +66,7 @@ export function useTypedAutoMark({
   isTypingCard,
   typedAnswer,
   answerStrictness,
+  lessonRequiresCorrectSpelling,
   occlusionAnswerText,
   paused,
   manual = false,
@@ -78,6 +79,7 @@ export function useTypedAutoMark({
   isTypingCard: boolean;
   typedAnswer: string;
   answerStrictness: AnswerStrictness;
+  lessonRequiresCorrectSpelling?: boolean;
   occlusionAnswerText?: string;
   /** Menus, editing and hints suspend automatic dismissal. */
   paused: boolean;
@@ -162,7 +164,15 @@ export function useTypedAutoMark({
       reveal = window.setTimeout(() => setMark(next), Math.max(0, shownAt - performance.now()));
     };
     const pause = window.setTimeout(() => {
-      if (matchesTypedRecall(card, typedAnswer, answerStrictness, occlusionAnswerText)) {
+      if (
+        matchesTypedRecall(
+          card,
+          typedAnswer,
+          answerStrictness,
+          occlusionAnswerText,
+          lessonRequiresCorrectSpelling,
+        )
+      ) {
         show({ state: 'marked', correct: true, provenance: null });
         return;
       }
@@ -178,7 +188,9 @@ export function useTypedAutoMark({
         ),
         expected: expectedText,
         answer: typedAnswer,
-        ...(card.requireCorrectSpelling ? { requireCorrectSpelling: true } : {}),
+        ...((card.requireCorrectSpelling ?? lessonRequiresCorrectSpelling)
+          ? { requireCorrectSpelling: true }
+          : {}),
         signal: controller.signal,
       })
         .then((verdict) => {
@@ -221,6 +233,7 @@ export function useTypedAutoMark({
     card?.back,
     card?.type,
     card?.requireCorrectSpelling,
+    lessonRequiresCorrectSpelling,
     typedAnswer,
     answerStrictness,
     occlusionAnswerText,

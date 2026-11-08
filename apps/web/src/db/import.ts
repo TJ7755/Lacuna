@@ -12,7 +12,7 @@ import { parseCardExportRows } from './importCardExport';
 /** A card ready to be created: the same shape createCards() consumes. */
 export interface ParsedCard {
   answerMode?: AnswerMode;
-  requireCorrectSpelling?: true;
+  requireCorrectSpelling?: boolean;
   type: CardType;
   front: string;
   back: string;

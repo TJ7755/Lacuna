@@ -51,8 +51,8 @@ export type ItemPayload = SharedItemPayload;
 export interface Card {
   /** Absent means inherit the lesson default; unassigned cards default to reveal. */
   answerMode?: AnswerMode;
-  /** Jev requires correct spelling when this card is answered by typing. */
-  requireCorrectSpelling?: true;
+  /** Spelling override for typed answers. Omit to inherit the lesson default. */
+  requireCorrectSpelling?: boolean;
   id: string;
   /** Stable knowledge identity shared by alternate Card presentations. Required after schema v24. */
   conceptId: string;

@@ -54,6 +54,7 @@ export async function applyCreates(
     ...(l.timeZone ? { timeZone: l.timeZone } : {}),
     ...(l.sessionFilter ? { sessionFilter: l.sessionFilter } : {}),
     answerMode: l.answerMode,
+    requireCorrectSpelling: l.requireCorrectSpelling,
     orderIndex: l.orderIndex,
     createdAt,
     updatedAt: createdAt,
@@ -143,9 +144,22 @@ export async function applyCreates(
 // batch can reverse an edge and briefly form a cycle while individual rows are applied.
 export async function applyLineageLessonUpdate(
   id: string,
-  changes: Partial<Lesson>,
+  {
+    requireCorrectSpelling,
+    ...changes
+  }: Partial<Omit<Lesson, 'requireCorrectSpelling'>> & {
+    requireCorrectSpelling?: boolean | null;
+  },
 ): Promise<void> {
-  await db.lessons.update(id, stampUpdatedAt(changes));
+  await db.lessons.update(
+    id,
+    stampUpdatedAt({
+      ...changes,
+      ...(requireCorrectSpelling !== undefined
+        ? { requireCorrectSpelling: requireCorrectSpelling ?? undefined }
+        : {}),
+    }),
+  );
   const lesson = await db.lessons.get(id);
   if (lesson) await syncCourseSchedulingUnits(lesson.courseId);
 }

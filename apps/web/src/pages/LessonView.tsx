@@ -19,6 +19,7 @@ import { useLessonViewData } from '../state/useLessonViewData';
 import { LessonNotesCard } from '../components/notes/LessonNotesCard';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { LessonCardsList } from '../components/cards/LessonCardsList';
+import { LessonSpellingControl } from '../components/cards/LessonSpellingControl';
 import { ArrowRightIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { updateCourse } from '../db/courseRepository';
@@ -215,13 +216,16 @@ export function LessonView() {
                   <DeckFind key={lesson.id} cards={lessonCards} course={course} lesson={lesson} />
                 }
                 footer={
-                  !archived && lessonCards.length > 0 ? (
-                    <SimpleLearnOptions
-                      key={lesson.id}
-                      courseId={course.id}
-                      initialLessonId={lesson.id}
-                    />
-                  ) : undefined
+                  <>
+                    {authoring && <LessonSpellingControl lesson={lesson} />}
+                    {!archived && lessonCards.length > 0 && (
+                      <SimpleLearnOptions
+                        key={lesson.id}
+                        courseId={course.id}
+                        initialLessonId={lesson.id}
+                      />
+                    )}
+                  </>
                 }
               />
             )}

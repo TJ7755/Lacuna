@@ -276,9 +276,9 @@ export function useLearnSession({
     current !== null ? (occlusionMapRef.current.get(current.id) ?? null) : null;
   const presentedAnswerInput = useRef<AnswerResponse['input']>(undefined);
   const [answerInputPreference] = useAnswerInput();
-  const lessonAnswerMode = answerModeLessonsRef.current.get(
-    lessonId ?? current?.primaryLessonId ?? '',
-  )?.answerMode;
+  const answerLesson = answerModeLessonsRef.current.get(lessonId ?? current?.primaryLessonId ?? '');
+  const lessonAnswerMode = answerLesson?.answerMode;
+  const lessonRequiresCorrectSpelling = answerLesson?.requireCorrectSpelling;
   const occlusionAnswerText = currentOcclusionData?.answerText;
   const isTypingCard = useMemo(() => {
     if (!current) return false;
@@ -1219,7 +1219,13 @@ export function useLearnSession({
         const markedBy = !verifiedRecall || typedAnswer.trim() ? options?.markedBy : undefined;
         const correct =
           verifiedRecall && !markedBy
-            ? matchesTypedRecall(cardNow, typedAnswer, answerStrictness)
+            ? matchesTypedRecall(
+                cardNow,
+                typedAnswer,
+                answerStrictness,
+                undefined,
+                lessonRequiresCorrectSpelling,
+              )
             : answerCorrect(input);
         const response: AnswerResponse = {
           retainUndo: options?.retainUndo ?? verifiedRecall,
@@ -1250,6 +1256,7 @@ export function useLearnSession({
       answerScheduled,
       recitationSequence,
       answerStrictness,
+      lessonRequiresCorrectSpelling,
     ],
   );
 
@@ -1427,6 +1434,7 @@ export function useLearnSession({
     revealRecitation,
     occlusion: currentOcclusionData?.occlusion,
     occlusionAnswerText: currentOcclusionData?.answerText,
+    lessonRequiresCorrectSpelling,
     summary,
     canUndo,
     editing,

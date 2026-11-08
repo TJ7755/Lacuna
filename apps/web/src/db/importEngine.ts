@@ -254,7 +254,9 @@ export function parseJsonImport(input: string): ImportParseResult {
       ...(obj.answerMode === 'type' || obj.answerMode === 'reveal'
         ? { answerMode: obj.answerMode }
         : {}),
-      ...(obj.requireCorrectSpelling === true ? { requireCorrectSpelling: true } : {}),
+      ...(typeof obj.requireCorrectSpelling === 'boolean'
+        ? { requireCorrectSpelling: obj.requireCorrectSpelling }
+        : {}),
     };
     const typeVal = typeof obj.type === 'string' ? obj.type.toLowerCase() : '';
     if (typeVal === 'cloze' || hasCloze(front)) {

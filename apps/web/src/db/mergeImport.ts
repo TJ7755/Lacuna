@@ -220,6 +220,7 @@ export async function importLineageFirstTime(
         ...(shareLesson.tz ? { timeZone: shareLesson.tz } : {}),
         ...(shareLesson.sf ? { sessionFilter: shareLesson.sf } : {}),
         answerMode: shareLesson.am,
+        requireCorrectSpelling: shareLesson.rs,
       };
     });
     if (newLessons.length > 0) await db.lessons.bulkAdd(newLessons);

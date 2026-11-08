@@ -64,7 +64,7 @@ function packCards(cards: Card[], preserveIds = false, includeMedia = false): Sh
     const metadata = {
       co: c.conceptId,
       ...(c.answerMode ? { am: c.answerMode } : {}),
-      ...(c.requireCorrectSpelling ? { rs: true as const } : {}),
+      ...(c.requireCorrectSpelling !== undefined ? { rs: c.requireCorrectSpelling } : {}),
     };
 
     if (c.type === 'cloze') {
@@ -218,6 +218,7 @@ export async function buildCourseSharePayload(
         ? { sf: lesson.sessionFilter }
         : {}),
       ...(lesson.answerMode ? { am: lesson.answerMode } : {}),
+      ...(lesson.requireCorrectSpelling !== undefined ? { rs: lesson.requireCorrectSpelling } : {}),
       notes: packNotes(notesByLesson.get(lesson.id) ?? [], !!distribution, includeMedia),
       cards: packCards(cardsByLesson.get(lesson.id) ?? [], true, includeMedia),
       ...(distribution || questionSets.length > 0 || hasPrerequisites ? { i: lesson.id } : {}),
