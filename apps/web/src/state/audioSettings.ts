@@ -3,7 +3,7 @@ import { createLocalSetting, parseJson } from './localSetting';
 export const AUDIO_PLAYBACK_SPEEDS = [0.75, 1, 1.25, 1.5] as const;
 export type AudioPlaybackSpeed = (typeof AUDIO_PLAYBACK_SPEEDS)[number];
 
-export interface AudioSettings {
+interface AudioSettings {
   autoplay: boolean;
   playbackSpeed: AudioPlaybackSpeed;
 }

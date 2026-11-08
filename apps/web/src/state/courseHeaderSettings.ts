@@ -10,7 +10,7 @@ import { createLocalSetting, parseJson } from './localSetting';
 
 type CourseStatId = 'due' | 'unmapped' | 'mastery' | 'exam' | 'lessons';
 
-export interface CourseStatPill {
+interface CourseStatPill {
   id: CourseStatId;
   label: string;
   visible: boolean;
