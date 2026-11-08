@@ -55,11 +55,6 @@ export function cardScheduleLabel(
   };
 }
 
-/** Cards that have been seen and left the New state. */
-export function learntCardCount(cards: readonly Card[]): number {
-  return cards.filter((card) => card.lastReviewed !== null && card.state !== 0).length;
-}
-
 /**
  * Cards in their given order, except that each occlusion's cards are gathered where its
  * first card appears and follow its regions, so "Label 1 of 4" leads its siblings.

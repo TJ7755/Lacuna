@@ -1,5 +1,5 @@
-// Lesson page header: display title (renamable in Edit mode), one meta line,
-// and a trailing slot for the mode pill and study actions. Leaner than
+// Lesson page header: display title (renamable in Edit mode), an optional description,
+// and a trailing slot for the study action. Leaner than
 // CourseHeader, which carries the course cockpit's schedule row.
 
 import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
@@ -11,8 +11,6 @@ interface LessonHeaderProps {
   title: string;
   /** Enables inline title editing. Omit for read-only/shared content. */
   onRename?: (name: string) => void | Promise<void>;
-  /** Small line under the title; callers compose it from real figures. */
-  meta?: ReactNode;
   description?: string;
   /**
    * Replaces the rename button with a lesson actions menu; receives the function that
@@ -20,7 +18,7 @@ interface LessonHeaderProps {
    */
   actions?: (startRename: () => void) => ReactNode;
   contextMenu?: Pick<HTMLAttributes<HTMLDivElement>, 'onContextMenu' | 'onKeyDown'>;
-  /** Right-hand controls: the mode pill and the study actions. */
+  /** Right-hand study controls. */
   children?: ReactNode;
   className?: string;
 }
@@ -28,7 +26,6 @@ interface LessonHeaderProps {
 export function LessonHeader({
   title,
   onRename,
-  meta,
   description,
   actions,
   contextMenu,
@@ -127,7 +124,6 @@ export function LessonHeader({
             </button>
           )}
         </div>
-        {meta && <p className="text-ink-soft tabular-nums">{meta}</p>}
         {description && <p className="max-w-prose text-sm text-ink-soft">{description}</p>}
       </div>
       {children && <div className="flex flex-wrap items-center gap-3">{children}</div>}

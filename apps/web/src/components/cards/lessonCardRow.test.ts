@@ -3,7 +3,6 @@ import type { Card } from '@lacuna/core/db/types';
 import {
   cardKindLabel,
   cardScheduleLabel,
-  learntCardCount,
   orderOcclusionSiblings,
   plainFront,
 } from './lessonCardRow';
@@ -49,16 +48,6 @@ describe('lessonCardRow', () => {
     expect(cardKindLabel(card({ type: 'cloze' }))).toBe('Cloze');
     expect(cardKindLabel(card({ type: 'basic_reversed' }))).toBe('Reversed');
     expect(cardKindLabel(card({ occlusionRegionId: 'r1' }))).toBe('Occlusion');
-  });
-
-  it('counts only cards that have left the New state as learnt', () => {
-    expect(
-      learntCardCount([
-        card(),
-        card({ state: 2, lastReviewed: 1 }),
-        card({ state: 1, lastReviewed: 2 }),
-      ]),
-    ).toBe(2);
   });
 
   it('labels when a card next comes up, agreeing with the Due filter', () => {

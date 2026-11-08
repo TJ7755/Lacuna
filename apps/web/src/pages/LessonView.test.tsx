@@ -18,10 +18,8 @@ const { mockUpdateCourse, mockUpdateLesson } = vi.hoisted(() => ({
 let mockLesson: Lesson | null | undefined;
 let mockCourse: Course | undefined;
 let mockLessons: Lesson[] | undefined;
-let mockExamDates: unknown[] | undefined;
 let mockNotes: Note[] | undefined;
 let mockLessonCards: Card[] | undefined;
-let mockDueReviewCardIds: Set<string>;
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
@@ -52,7 +50,6 @@ vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
   useLesson: () => mockLesson,
   useLessons: () => mockLessons,
-  useCourseAssessments: () => mockExamDates,
   useNotes: () => mockNotes,
   useLessonCards: () => mockLessonCards,
   useLessonCardLinks: () => [],
@@ -60,10 +57,6 @@ vi.mock('../state/useCourseData', () => ({
   useSequences: () => [],
   useOcclusions: () => [],
   useLessonBackingDeck: () => undefined,
-}));
-
-vi.mock('../state/useCourseStudyFlow', () => ({
-  useCourseStudyFlow: () => ({ snapshot: { dueReviewCardIds: mockDueReviewCardIds } }),
 }));
 
 vi.mock('../db/lessonRepository', () => ({
@@ -164,11 +157,9 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  mockDueReviewCardIds = new Set();
   mockLesson = lesson;
   mockCourse = course;
   mockLessons = [lesson];
-  mockExamDates = [];
   mockNotes = [note];
   mockLessonCards = [makeCard('card-1')];
   mockNavigate.mockClear();
@@ -225,23 +216,7 @@ describe('LessonView View mode', () => {
       },
     ];
     renderPage();
-    expect(screen.queryByText(/\d+ due/)).not.toBeInTheDocument();
     expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
-  });
-
-  it('counts only what Review due cards would serve as due', () => {
-    // Overdue but never introduced in a lesson: due review cannot serve it yet.
-    mockLessonCards = [
-      {
-        ...makeCard('unintroduced'),
-        state: 2,
-        stability: 1,
-        lastReviewed: Date.now() - 2 * MS_PER_DAY,
-        due: Date.now() - MS_PER_DAY,
-      },
-    ];
-    renderPage();
-    expect(screen.queryByText(/\d+ due/)).not.toBeInTheDocument();
   });
 
   it('keeps an archived single-lesson course read-only', () => {
@@ -307,10 +282,11 @@ describe('LessonView View mode', () => {
     expect(screen.queryByText('Add your first card')).not.toBeInTheDocument();
   });
 
-  it('summarises learnt cards and notes on one line', () => {
-    mockLessonCards = [makeCard('a'), { ...makeCard('b'), state: 2, lastReviewed: 1 }];
+  it('shows the authored lesson description without a generated summary', () => {
+    mockLesson = { ...lesson, description: 'Revise the key terms.' };
     renderPage();
-    expect(screen.getByText(/^1 of 2 cards learnt, 1 note/)).toBeInTheDocument();
+    expect(screen.getByText('Revise the key terms.')).toBeVisible();
+    expect(screen.queryByText(/cards? learnt/)).not.toBeInTheDocument();
   });
 
   it('starts the lesson from Study lesson, named apart from course-level Study', () => {
