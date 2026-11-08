@@ -115,6 +115,11 @@ export function ReviewHeatmap({
   );
   const [tooltipLeft, setTooltipLeft] = useState<number | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // Click-and-drag panning while the native bar is hidden. Touch and pen keep
+  // native panning and keyboard keeps the roving tab stop, so only the primary
+  // mouse button is claimed here.
+  const drag = useRef({ active: false, captured: false, pointerId: -1, startX: 0, startLeft: 0 });
   const [labelStride, setLabelStride] = useState(days > 7 ? 5 : 1);
 
   // Date labels thin out as columns narrow or text grows, so neighbours never collide.
@@ -134,7 +139,7 @@ export function ReviewHeatmap({
     return () => observer.disconnect();
   }, [compact, days]);
   useLayoutEffect(() => {
-    const scrollport = gridRef.current?.parentElement;
+    const scrollport = scrollRef.current ?? gridRef.current?.parentElement;
     if (scrollport) scrollport.scrollLeft = scrollport.scrollWidth;
   }, [days]);
   const tooltipRef = useRef<HTMLSpanElement>(null);
@@ -184,6 +189,57 @@ export function ReviewHeatmap({
       ?.focus();
   }
 
+  // The native bar is hidden, so a mouse drag pans the strip instead. The gesture
+  // is claimed only after a few pixels of travel, so plain clicks keep their
+  // normal focus and tooltip behaviour. Touch and pen keep native panning;
+  // only the primary mouse button is claimed here.
+  function onScrollPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'mouse' || event.button !== 0 || !scrollRef.current) return;
+    drag.current = {
+      active: true,
+      captured: false,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startLeft: scrollRef.current.scrollLeft,
+    };
+  }
+
+  function onScrollPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const scroller = scrollRef.current;
+    if (!drag.current.active || event.pointerId !== drag.current.pointerId || !scroller) return;
+    if (event.buttons === 0) {
+      drag.current.active = false;
+      drag.current.captured = false;
+      return;
+    }
+    const dx = event.clientX - drag.current.startX;
+    if (Math.abs(dx) < 4) return;
+    if (!drag.current.captured) {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture is a progressive enhancement; dragging still pans.
+      }
+      drag.current.captured = true;
+      // Panning is not keyboard navigation: drop the mousedown focus ring.
+      if (scroller.contains(document.activeElement)) {
+        (document.activeElement as HTMLElement | null)?.blur?.();
+      }
+      setTooltip(null);
+    }
+    scroller.scrollLeft = drag.current.startLeft - dx;
+  }
+
+  function endScrollDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (!drag.current.active || event.pointerId !== drag.current.pointerId) return;
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // The pointer may already have been cancelled or released by the browser.
+    }
+    drag.current = { active: false, captured: false, pointerId: -1, startX: 0, startLeft: 0 };
+  }
+
   const cellCount = columns.length * 7;
   return (
     <section
@@ -197,7 +253,14 @@ export function ReviewHeatmap({
           {total} review{total === 1 ? '' : 's'} in {days} days
         </span>
       </div>
-      <div className="overflow-x-auto pb-1">
+      <div
+        ref={scrollRef}
+        onPointerDown={onScrollPointerDown}
+        onPointerMove={onScrollPointerMove}
+        onPointerUp={endScrollDrag}
+        onPointerCancel={endScrollDrag}
+        className="cursor-grab overflow-x-auto pb-1 [scrollbar-width:none] active:cursor-grabbing [&::-webkit-scrollbar]:hidden"
+      >
         <div
           ref={gridRef}
           role="grid"
