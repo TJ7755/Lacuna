@@ -1,4 +1,3 @@
-import { storedString } from '../../state/localSetting';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   AnimatePresence,
@@ -39,7 +38,6 @@ export function FlipCard({
   motionSpeed,
   motionMultiplier,
   phase,
-  isTouchMode,
   menuOpen,
   editing,
   hintsOpen,
@@ -66,7 +64,6 @@ export function FlipCard({
   motionSpeed: MotionSpeed;
   motionMultiplier?: number;
   phase: Phase;
-  isTouchMode: boolean;
   menuOpen: boolean;
   editing: boolean;
   hintsOpen: boolean;
@@ -95,13 +92,6 @@ export function FlipCard({
   const [swipeHint, setSwipeHint] = useState<'left' | 'right' | null>(null);
   const audioCard = isAudioCardFront(card.front);
   const [showAudioFront, setShowAudioFront] = useState(false);
-  const [hasSwiped, setHasSwiped] = useState(() => {
-    try {
-      return storedString('lacuna.learnHints').read() === '1';
-    } catch {
-      return false;
-    }
-  });
   const swipeRef = useRef({
     x: 0,
     startX: 0,
@@ -229,12 +219,6 @@ export function FlipCard({
         ) {
           committed.current = true;
           hapticMedium();
-          setHasSwiped(true);
-          try {
-            storedString('lacuna.learnHints').write('1');
-          } catch {
-            /* ignore */
-          }
           // The shared transition carries swipe, button and keyboard grades off-screen.
           void onAnswer(dx > 0, 'touch', velocity);
         } else {
@@ -351,45 +335,6 @@ export function FlipCard({
           frontRef={frontRef}
           backRef={backRef}
         />
-
-        {/* Touch swipe indicators — persistent hints that show the available gestures. */}
-        {allowGradingGestures &&
-          isTouchMode &&
-          phase === 'answer' &&
-          !hasSwiped &&
-          !swipeHint &&
-          !menuOpen &&
-          !editing &&
-          !hintsOpen && (
-            <>
-              <motion.div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 left-0 z-20 flex items-center"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 0.5, x: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ delay: 0.6, duration: 0.35 * m, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="flex flex-col items-center gap-1 rounded-r-lg bg-negative/10 px-2 py-3">
-                  <CloseIcon width={16} height={16} className="text-negative" />
-                  <span className="text-[10px] text-negative">Swipe left</span>
-                </div>
-              </motion.div>
-              <motion.div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-center"
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 0.5, x: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ delay: 0.6, duration: 0.35 * m, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="flex flex-col items-center gap-1 rounded-l-lg bg-positive/10 px-2 py-3">
-                  <CheckIcon width={16} height={16} className="text-positive" />
-                  <span className="text-[10px] text-positive">Swipe right</span>
-                </div>
-              </motion.div>
-            </>
-          )}
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.div

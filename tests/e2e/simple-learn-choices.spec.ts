@@ -25,7 +25,7 @@ test.beforeAll(async () => {
 
 async function seedLesson(
   page: Page,
-  source?: { cards: Record<string, string>; suspendedPrompt: string },
+  source?: { cards: Record<string, string>; suspendedPrompt?: string },
 ) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -87,6 +87,52 @@ async function nextPrompt(view: ReturnType<typeof study>, previous: string) {
     .toBe(true);
   return view.prompt.innerText();
 }
+
+test('keeps long choices on one scrollable line and brings keyboard focus into view', async ({
+  page,
+}, testInfo) => {
+  const { lessonId } = await seedLesson(page, {
+    cards: {
+      'Where does the water in a river come from?':
+        'Rainwater runs downhill across the land and collects in streams.',
+      'Why does a river slow down when it reaches the sea?':
+        'The land becomes flatter near the coast and the current spreads out.',
+      'How does sediment reach the mouth of a river?':
+        'The current carries loose sand and mud downstream through the channel.',
+      'Why does a river change shape after a flood?':
+        'Fast water erodes the banks and leaves sediment behind as it recedes.',
+    },
+  });
+  await page.goto(`/#/lesson/${lessonId}/learn`);
+  const { choices, choiceControls, check } = study(page);
+  await expect(choices).toHaveCount(4);
+  const labels = choices.locator('..');
+  const row = choiceControls.locator('.qs-choices').locator('..');
+  const positions = await labels.evaluateAll((labels) =>
+    labels.map((label) => {
+      const text = document.createRange();
+      text.selectNodeContents(label.querySelector('.qs-choice-content')!);
+      return { top: label.getBoundingClientRect().top, lines: text.getClientRects().length };
+    }),
+  );
+  expect(new Set(positions.map(({ top }) => top)).size).toBe(1);
+  expect(positions.map(({ lines }) => lines)).toEqual([1, 1, 1, 1]);
+  expect(await row.evaluate((row) => row.scrollWidth > row.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(1440);
+  await expect(labels.first()).toBeInViewport({ ratio: 1 });
+  await expect(choices.first()).toBeFocused();
+  await testInfo.attach('Single-line choices', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
+  await page.keyboard.press('4');
+  await expect(choices.last()).toBeChecked();
+  await expect(labels.last()).toBeInViewport({ ratio: 1 });
+  await page.keyboard.press('ArrowRight');
+  await expect(choices.first()).toBeChecked();
+  await expect(labels.first()).toBeInViewport({ ratio: 1 });
+  await expect(check).toBeEnabled();
+});
 
 test('introduces choices before timed typing and keeps the old practice entry', async ({
   page,

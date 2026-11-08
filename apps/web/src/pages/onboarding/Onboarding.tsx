@@ -142,10 +142,7 @@ export function Onboarding() {
         className={
           'mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col overflow-hidden ' +
           'pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] ' +
-          'pt-4 md:pt-6 ' +
-          (isTouchMode && step === 'card'
-            ? 'pb-[calc(10rem+env(safe-area-inset-bottom))]'
-            : 'pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-6')
+          'pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:pt-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))]'
         }
       >
         {stepIndex > 0 && (
@@ -250,7 +247,6 @@ function CardStep({
             revealed={phase === 'answer'}
             motionSpeed={motionSpeed}
             phase={phase}
-            isTouchMode={isTouchMode}
             menuOpen={false}
             editing={false}
             hintsOpen={false}

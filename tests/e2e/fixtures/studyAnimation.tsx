@@ -71,7 +71,6 @@ function Harness({
         phase={model.active ? 'answer' : 'question'}
         motionSpeed="normal"
         motionMultiplier={model.m}
-        isTouchMode={false}
         menuOpen={false}
         editing={false}
         hintsOpen={false}

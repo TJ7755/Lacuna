@@ -54,7 +54,6 @@ function renderRevealed(onAnswer = vi.fn()) {
       revealed
       phase="answer"
       motionSpeed="normal"
-      isTouchMode={false}
       menuOpen={false}
       editing={false}
       hintsOpen={false}
@@ -189,7 +188,6 @@ describe('FlipCard hint disclosure', () => {
         revealed={false}
         phase="question"
         motionSpeed="normal"
-        isTouchMode={false}
         menuOpen={false}
         editing={false}
         hintsOpen={false}

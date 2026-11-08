@@ -188,13 +188,19 @@ mark.typed-missed {
 
 .study-choice-controls .qs-choices {
   margin: 0;
-  text-align: center;
 }
 
-.study-choice-controls .qs-choices > div {
-  justify-content: center;
+.study-choice-controls .qs-choices[data-flow] > div {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  max-width: none;
+  margin-inline: auto;
+  border-radius: 9999px;
 }
 
 .study-choice-controls .qs-choices label {
+  flex: none;
   border-radius: 9999px;
+  white-space: nowrap;
 }
