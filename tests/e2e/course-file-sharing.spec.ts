@@ -58,7 +58,7 @@ test('saves and imports course media on first use while offline', async ({ page,
       buffer: Buffer.from(JSON.stringify(file)),
     });
     await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
-    await expect(page.getByText(/Offline imported course —/)).toBeVisible();
+    await expect(page.getByText('Offline imported course', { exact: true })).toBeVisible();
     await page.getByRole('radio', { name: /Steady retention/ }).press('Space');
     await page.getByRole('button', { name: 'Add to my courses' }).click();
     await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeHidden();
