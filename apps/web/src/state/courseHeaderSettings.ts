@@ -23,7 +23,7 @@ export interface CourseHeaderSettings {
 // Two by default: what is due now and how well the course is known. The rest are
 // available but off, because five figures at once read as a dashboard rather than a
 // heading, and most of them are not acted on before pressing Study.
-export const DEFAULT_STAT_PILLS: CourseStatPill[] = [
+const DEFAULT_STAT_PILLS: CourseStatPill[] = [
   { id: 'due', label: 'Cards due now', visible: true },
   { id: 'mastery', label: 'Exam readiness', visible: true },
   { id: 'exam', label: 'Days until the exam', visible: false },
@@ -62,12 +62,6 @@ const setting = createLocalSetting<CourseHeaderSettings>({
     ),
   serialise: JSON.stringify,
 });
-
-export const readStored = setting.read;
-
-export function writeCourseHeaderSettings(settings: Partial<CourseHeaderSettings>): void {
-  setting.write({ ...setting.read(), ...settings });
-}
 
 export function useCourseHeaderSettings(): [
   CourseHeaderSettings,

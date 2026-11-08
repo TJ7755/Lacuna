@@ -34,5 +34,4 @@ const setting = createLocalSetting<PracticeDefaults>({
 });
 
 export const readPracticeDefaults = setting.read;
-export const writePracticeDefaults = setting.write;
 export const usePracticeDefaults = setting.use;

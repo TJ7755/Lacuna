@@ -8,6 +8,4 @@ const setting = createLocalSetting<CourseCardMetric>({
   parse: oneOf(['curriculum', 'coverage', 'today'], 'curriculum'),
 });
 
-export const readCourseCardMetric = setting.read;
-export const writeCourseCardMetric = setting.write;
 export const useCourseCardMetric = setting.use;

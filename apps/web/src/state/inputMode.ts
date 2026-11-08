@@ -74,7 +74,6 @@ const setting = createLocalSetting<InputMode>({
 });
 
 export const readInputMode = setting.read;
-export const writeInputMode = setting.write;
 
 export function resolveInputMode(mode: InputMode): 'keyboard' | 'touch' {
   if (mode === 'auto') return automaticInput();

@@ -7,6 +7,4 @@ const setting = createLocalSetting<boolean>({
   serialise: (enabled) => (enabled ? 'on' : 'off'),
 });
 
-export const readStartInFocusMode = setting.read;
-export const writeStartInFocusMode = setting.write;
 export const useStartInFocusMode = setting.use;

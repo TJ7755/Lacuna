@@ -23,7 +23,7 @@ export const DEFAULT_NAV_ITEMS: SidebarNavItem[] = [
   { id: 'help', label: 'Help', visible: true },
 ];
 
-export const DEFAULTS: SidebarSettings = {
+const DEFAULTS: SidebarSettings = {
   showDueCounts: true,
   compactMode: false,
   navItems: DEFAULT_NAV_ITEMS,
@@ -63,12 +63,6 @@ const setting = createLocalSetting<SidebarSettings>({
     ),
   serialise: JSON.stringify,
 });
-
-export const readStored = setting.read;
-
-export function writeSidebarSettings(settings: Partial<SidebarSettings>): void {
-  setting.write({ ...setting.read(), ...settings });
-}
 
 export function useSidebarSettings(): [SidebarSettings, (patch: Partial<SidebarSettings>) => void] {
   const [settings, setSettings] = setting.use();

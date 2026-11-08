@@ -8,7 +8,7 @@ export interface AudioSettings {
   playbackSpeed: AudioPlaybackSpeed;
 }
 
-export const DEFAULT_AUDIO_SETTINGS: AudioSettings = { autoplay: true, playbackSpeed: 1 };
+const DEFAULT_AUDIO_SETTINGS: AudioSettings = { autoplay: true, playbackSpeed: 1 };
 
 const setting = createLocalSetting<AudioSettings>({
   key: 'lacuna.audioSettings',
@@ -31,5 +31,4 @@ const setting = createLocalSetting<AudioSettings>({
 });
 
 export const readAudioSettings = setting.read;
-export const writeAudioSettings = setting.write;
 export const useAudioSettings = setting.use;

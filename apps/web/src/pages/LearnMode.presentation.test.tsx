@@ -9,14 +9,15 @@ import {
 } from './LearnMode.testFixtures';
 import { LearnMode } from './LearnMode';
 import { describe, expect, it, beforeEach } from 'vitest';
-import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, renderHook, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { db } from '../db/schema';
 import { createCard, createCourse, createLesson, createLessonCard } from '../db/repository';
 import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
 import { AccentProvider } from '../state/AccentContext';
-import { writeStartInFocusMode } from '../state/focusModePreference';
+import { useStartInFocusMode } from '../state/focusModePreference';
+
 describe('LearnMode presentation', () => {
   beforeEach(resetLearnModeFixtures);
 
@@ -234,8 +235,9 @@ describe('LearnMode presentation', () => {
     fireEvent.click(revealCandidates.find((element) => element.tagName === 'BUTTON')!);
     expect(await findStudyFaceText('Visible answer')).toBeInTheDocument();
 
+    const preference = renderHook(useStartInFocusMode);
     await act(async () => {
-      writeStartInFocusMode(true);
+      preference.result.current[1](true);
       // Allow the preference event and any accidentally-triggered async reload to settle.
       await new Promise((resolve) => setTimeout(resolve, 50));
     });

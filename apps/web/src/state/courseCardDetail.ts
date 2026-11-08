@@ -12,7 +12,7 @@ export interface CourseCardDetailSettings {
   activity: boolean;
 }
 
-export const DEFAULTS: CourseCardDetailSettings = {
+const DEFAULTS: CourseCardDetailSettings = {
   nextDue: true,
   breakdown: true,
   activity: true,
@@ -36,12 +36,6 @@ const setting = createLocalSetting<CourseCardDetailSettings>({
     ),
   serialise: JSON.stringify,
 });
-
-export const readCourseCardDetail = setting.read;
-
-export function writeCourseCardDetail(patch: Partial<CourseCardDetailSettings>): void {
-  setting.write({ ...setting.read(), ...patch });
-}
 
 export function useCourseCardDetail(): [
   CourseCardDetailSettings,

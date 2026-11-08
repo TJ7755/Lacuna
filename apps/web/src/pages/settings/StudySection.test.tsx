@@ -1,17 +1,11 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, expect, it } from 'vitest';
-import {
-  readAudioSettings,
-  writeAudioSettings,
-  DEFAULT_AUDIO_SETTINGS,
-} from '../../state/audioSettings';
-import { readAnswerStrictness, writeAnswerStrictness } from '../../state/answerStrictness';
+import { readAudioSettings } from '../../state/audioSettings';
 import { StudySection, CourseDefaultsSection } from './StudySection';
 
 beforeEach(() => {
   localStorage.clear();
-  writeAudioSettings(DEFAULT_AUDIO_SETTINGS);
-  writeAnswerStrictness('standard');
+  localStorage.setItem('lacuna.answerStrictness', 'standard');
 });
 
 it('persists keyboard choices for speed and strictness while retaining autoplay', () => {
@@ -24,7 +18,7 @@ it('persists keyboard choices for speed and strictness while retaining autoplay'
   fireEvent.keyDown(within(strictness).getByRole('radio', { name: 'standard' }), {
     key: 'ArrowRight',
   });
-  expect(readAnswerStrictness()).toBe('exact');
+  expect(localStorage.getItem('lacuna.answerStrictness')).toBe('exact');
   expect(within(strictness).getByRole('radio', { name: 'exact' })).toHaveFocus();
 });
 

@@ -1,64 +1,30 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-import {
-  readCourseCardDetail,
-  writeCourseCardDetail,
-  useCourseCardDetail,
-  DEFAULTS,
-} from './courseCardDetail';
-import { renderHook, act } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, expect, it } from 'vitest';
+import { useCourseCardDetail } from './courseCardDetail';
 
-const KEY = 'lacuna.courseCardDetail';
+const key = 'lacuna.courseCardDetail';
+beforeEach(() => localStorage.clear());
 
-beforeEach(() => {
-  localStorage.clear();
-});
-
-describe('readCourseCardDetail', () => {
-  it('returns defaults when nothing is stored', () => {
-    expect(readCourseCardDetail()).toEqual(DEFAULTS);
-  });
-
-  it('merges stored values over defaults', () => {
-    localStorage.setItem(KEY, JSON.stringify({ activity: false }));
-    const settings = readCourseCardDetail();
-    expect(settings.activity).toBe(false);
-    expect(settings.nextDue).toBe(DEFAULTS.nextDue);
-    expect(settings.breakdown).toBe(DEFAULTS.breakdown);
-  });
-
-  it('falls back to defaults on invalid JSON', () => {
-    localStorage.setItem(KEY, 'not-json');
-    expect(readCourseCardDetail()).toEqual(DEFAULTS);
+it.each([null, 'not-json'])('uses the card detail defaults for %j', (stored) => {
+  if (stored !== null) localStorage.setItem(key, stored);
+  expect(renderHook(useCourseCardDetail).result.current[0]).toEqual({
+    nextDue: true,
+    breakdown: true,
+    activity: true,
   });
 });
 
-describe('writeCourseCardDetail', () => {
-  it('persists a partial patch on top of the current settings', () => {
-    writeCourseCardDetail({ breakdown: false });
-    writeCourseCardDetail({ nextDue: false });
-    const settings = readCourseCardDetail();
-    expect(settings.breakdown).toBe(false);
-    expect(settings.nextDue).toBe(false);
-    expect(settings.activity).toBe(true);
+it('keeps other details when patching a saved preference twice', () => {
+  localStorage.setItem(key, '{"activity":false}');
+  const { result } = renderHook(useCourseCardDetail);
+  expect(result.current[0]).toEqual({ nextDue: true, breakdown: true, activity: false });
+  act(() => {
+    result.current[1]({ breakdown: false });
+    result.current[1]({ nextDue: false });
   });
-});
-
-describe('useCourseCardDetail', () => {
-  it('returns the current settings and a setter', () => {
-    const { result } = renderHook(() => useCourseCardDetail());
-    expect(result.current[0]).toEqual(DEFAULTS);
-    act(() => {
-      result.current[1]({ activity: false });
-    });
-    expect(result.current[0].activity).toBe(false);
-    expect(readCourseCardDetail().activity).toBe(false);
-  });
-
-  it('reacts to changes made elsewhere via the custom event', () => {
-    const { result } = renderHook(() => useCourseCardDetail());
-    act(() => {
-      writeCourseCardDetail({ nextDue: false });
-    });
-    expect(result.current[0].nextDue).toBe(false);
+  expect(JSON.parse(localStorage.getItem(key)!)).toEqual({
+    nextDue: false,
+    breakdown: false,
+    activity: false,
   });
 });
