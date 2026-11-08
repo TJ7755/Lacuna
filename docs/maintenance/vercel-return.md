@@ -9,20 +9,7 @@
   `VERCEL_DEPLOY_ENABLED` with value `false`. Leave it `false` until the checks below pass.
 - [ ] Under **Actions → Secrets → New repository secret**, add `TYPESAFE_API_KEY` with the TypeSafe
   API key for manual Jev evaluations. Do not put this key in a browser environment variable.
-- [ ] In **Vercel → tj7755 → each project → Settings → Build and Deployment → Root Directory**, set:
-
-  | Project | Root Directory |
-  | --- | --- |
-  | `lacuna` | Empty (repository root) |
-  | `lacuna-relay` | `apps/relay` |
-  | `lacuna-gaps` | `apps/gaps` |
-  | `lacuna-library` | `apps/library` |
-
-- [ ] In those Root Directory settings, enable **Include source files outside of the Root Directory
-  in the Build Step** for relay, Gaps and library.
-- [ ] In each project's **Settings → Build and Deployment**, clear stale install/build overrides
-  and the **Ignored Build Step** override. Apply the command/output settings in the
-  [workspace deployment procedure](workspaces.md#maintainer-dashboard-changes).
+- [ ] Apply the [workspace dashboard changes](workspaces.md#maintainer-dashboard-changes).
 - [ ] In **Vercel → tj7755 → Settings → Billing → Spend Management**, set the maintainer-approved
   spend limit and alert threshold; confirm the alert recipients before resuming service.
 - [ ] Preserve production domains, environment variables and deployment protection. Keep Git

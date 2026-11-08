@@ -4,15 +4,9 @@ Lacuna's desktop runtime, build tools and Python tooling have separate certifica
 a browser does not update those stores. The October 2026 eMudhra incident therefore requires
 runtime updates as well as the Python lockfile changes.
 
-The versioned manifests, workflow configuration and `.bun-version` hold the current runtime pins.
-Bun uses a stable release containing both the
-[eMudhra distrust fix](https://github.com/oven-sh/bun/pull/46159) and the
-[Brotli decoder fix](https://github.com/oven-sh/bun/pull/46392).
-
-Downloads use versioned stable release URLs. A changed download fails the checksum check rather
-than silently changing the runtime. When updating Bun, review its certificate and Brotli decoder
-behaviour, update all manifests and platform checksums together, and regenerate lockfiles only
-with the selected Bun release.
+When updating Bun, retain the [eMudhra distrust fix](https://github.com/oven-sh/bun/pull/46159)
+and [Brotli decoder fix](https://github.com/oven-sh/bun/pull/46392). Update platform checksums
+together and regenerate lockfiles only with the selected release.
 
 For a fresh local checkout, run `node apps/relay/scripts/security-bun.mjs --install` using a patched Node
 release. Run commands through `node apps/relay/scripts/security-bun.mjs <arguments>` to use that exact
