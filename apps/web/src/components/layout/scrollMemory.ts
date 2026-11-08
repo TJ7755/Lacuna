@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 import { useLocation, useNavigationType } from 'react-router-dom';
+import { restoreScrollPosition } from './scrollRestoration';
 
 /** Where each page was left, keyed by path and query so a filtered list keeps its own place. */
 const positions = new Map<string, number>();
@@ -12,9 +13,6 @@ export interface ReturningState {
 function scrollKey(location: { pathname: string; search: string }): string {
   return `${location.pathname}${location.search}`;
 }
-
-/** How long a return keeps trying to reach its old position while lazy content loads. */
-const RESTORE_WINDOW_MS = 1200;
 
 /**
  * Remember the scroll container's position for every page, and put it back when the
@@ -59,56 +57,22 @@ export function useScrollMemory(containerRef: RefObject<HTMLElement | null>): vo
     // Browser anchoring must not adjust the position this restoration owns.
     container.style.overflowAnchor = 'none';
     let frame = 0;
-    let observer: ResizeObserver | undefined;
-    let timeout: number | undefined;
-    let appliedTop: number;
-
-    const stopWaiting = () => {
-      restoring.current = false;
-      observer?.disconnect();
-      window.clearTimeout(timeout);
-      container.removeEventListener('scroll', yieldToScroll);
-    };
-    const finish = () => {
-      stopWaiting();
-      // Keep anchoring suppressed through this layout's queued adjustments.
-      frame = requestAnimationFrame(() => {
-        frame = 0;
-        container.style.overflowAnchor = overflowAnchor;
-      });
-    };
-    const restore = () => {
-      container.scrollTo({ top: target });
-      appliedTop = container.scrollTop;
-      if (Math.abs(appliedTop - target) <= 1) finish();
-    };
-    const yieldToScroll = () => {
-      const top = container.scrollTop;
-      if (Math.abs(top - appliedTop) <= 1) return;
-      // Shrinking content can clamp the restored position without the learner moving it.
-      const maxTop = container.scrollHeight - container.clientHeight;
-      if (Math.abs(top - Math.min(appliedTop, maxTop)) <= 1) return;
-      positions.set(key, top);
-      finish();
-    };
-
-    restore();
-    if (restoring.current) {
-      // The viewport is fixed in height. Observe its in-flow route and chrome as well
-      // so lazy content can make the saved position reachable without polling every frame.
-      observer = new ResizeObserver(() => {
-        yieldToScroll();
-        if (restoring.current) restore();
-      });
-      observer.observe(container);
-      for (const child of container.children) observer.observe(child);
-      container.addEventListener('scroll', yieldToScroll, { passive: true });
-      timeout = window.setTimeout(finish, RESTORE_WINDOW_MS);
-    }
+    const cancel = restoreScrollPosition(container, target, {
+      onFinish: (learnerPosition) => {
+        if (learnerPosition !== undefined) positions.set(key, learnerPosition);
+        restoring.current = false;
+        // Keep anchoring suppressed through this layout's queued adjustments.
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          container.style.overflowAnchor = overflowAnchor;
+        });
+      },
+    });
     return () => {
       cancelAnimationFrame(frame);
       if (restoring.current || frame !== 0) container.style.overflowAnchor = overflowAnchor;
-      stopWaiting();
+      cancel?.();
+      restoring.current = false;
     };
     // The location key changes on every navigation, including returns to the same URL.
     // eslint-disable-next-line react-hooks/exhaustive-deps
