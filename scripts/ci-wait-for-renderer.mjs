@@ -22,17 +22,18 @@ export async function waitForRenderer({
   assert.match(String(attempt), /^[1-9]\d*$/);
   assert.match(sourceSha ?? '', /^[a-f0-9]{40}$/);
   assert.ok(token, 'The workflow read token is required');
+  const runUrl = `https://api.github.com/repos/${repository}/actions/runs/${runId}`;
+  const read = async (path) => {
+    const response = await request(`${runUrl}/${path}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+      signal: AbortSignal.timeout(10_000),
+    });
+    assert.ok(response.ok, `Cannot read workflow ${path}: HTTP ${response.status}`);
+    return response.json();
+  };
   const deadline = Date.now() + timeoutMs;
   for (let index = 0; index < polls && Date.now() < deadline; index++) {
-    const response = await request(
-      `https://api.github.com/repos/${repository}/actions/runs/${runId}/jobs?filter=latest&per_page=100`,
-      {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
-        signal: AbortSignal.timeout(10_000),
-      },
-    );
-    assert.ok(response.ok, `Cannot read build status: HTTP ${response.status}`);
-    const { jobs, total_count: count } = await response.json();
+    const { jobs, total_count: count } = await read(`attempts/${attempt}/jobs?per_page=100`);
     assert.ok(
       Array.isArray(jobs) && Number.isInteger(count) && count < 100,
       'The job inventory is incomplete; update pagination before expanding the workflow',
@@ -51,16 +52,46 @@ export async function waitForRenderer({
       );
       if (producer.status === 'completed') {
         assert.equal(producer.conclusion, 'success', 'The desktop renderer job did not pass');
-        assert.ok(
-          producer.steps?.some(
-            (step) =>
-              step.name === 'Share the desktop renderer build' &&
-              step.status === 'completed' &&
-              step.conclusion === 'success',
-          ),
-          'The desktop renderer job did not publish its build',
+        const publication = producer.steps?.find(
+          (step) =>
+            step.name === 'Share the desktop renderer build' &&
+            step.status === 'completed' &&
+            step.conclusion === 'success',
         );
-        return producer.run_attempt;
+        assert.ok(publication, 'The desktop renderer job did not publish its build');
+        const started = Date.parse(publication.started_at);
+        const finished = Date.parse(producer.completed_at);
+        assert.ok(
+          Number.isFinite(started) && started <= finished,
+          'Invalid build publication time',
+        );
+
+        // GitHub can copy successful jobs into a partial retry with a new attempt
+        // number. The original publication times and artefact name stay fixed.
+        for (let candidate = producer.run_attempt; candidate > 0; candidate--) {
+          const name = `windows-electron-renderer-${candidate}`;
+          const { artifacts, total_count: count } = await read(`artifacts?name=${name}`);
+          assert.ok(
+            Array.isArray(artifacts) && artifacts.length === count && count <= 1,
+            `Ambiguous desktop renderer artefact: ${name}`,
+          );
+          const artifact = artifacts[0];
+          if (!artifact) continue;
+          assert.equal(artifact.name, name, 'Unexpected desktop renderer artefact');
+          assert.equal(artifact.workflow_run?.id, Number(runId), 'Artefact belongs to another run');
+          assert.equal(
+            artifact.workflow_run.head_sha,
+            sourceSha,
+            'Artefact built another source commit',
+          );
+          const created = Date.parse(artifact.created_at);
+          assert.ok(Number.isFinite(created), 'Invalid artefact creation time');
+          if (created < started || created > finished) continue;
+          assert.equal(artifact.expired, false, 'The desktop renderer artefact has expired');
+          assert.ok(Number.isSafeInteger(artifact.id) && artifact.id > 0, 'Invalid artefact ID');
+          return artifact.id;
+        }
+        throw new Error('No desktop renderer artefact matches the successful publication');
       }
       assert.ok(
         ['queued', 'in_progress', 'waiting', 'pending', 'requested'].includes(producer.status),
@@ -76,12 +107,12 @@ export async function waitForRenderer({
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const attempt = await waitForRenderer({
+  const artifactId = await waitForRenderer({
     repository: process.env.GITHUB_REPOSITORY,
     runId: process.env.GITHUB_RUN_ID,
     attempt: process.env.GITHUB_RUN_ATTEMPT,
     sourceSha: process.env.SOURCE_SHA,
     token: process.env.GH_TOKEN,
   });
-  appendFileSync(process.env.GITHUB_OUTPUT, `attempt=${attempt}\n`);
+  appendFileSync(process.env.GITHUB_OUTPUT, `artifact_id=${artifactId}\n`);
 }

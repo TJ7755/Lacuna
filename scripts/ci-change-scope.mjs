@@ -5,12 +5,14 @@ const DOCS_PREFIXES = ['docs/', '.github/ISSUE_TEMPLATE/'];
 const DOCS_FILES = new Set(['.github/PULL_REQUEST_TEMPLATE.md']);
 const BROWSER_CI_FILES = new Set([
   '.github/actions/setup-bun/action.yml',
+  '.github/actions/setup-node/action.yml',
   '.github/workflows/ci.yml',
   'scripts/browser-ci-summary.mjs',
   'scripts/check-browser.mjs',
   'scripts/ci-browser-shards.mjs',
   'scripts/ci-browser-timings.json',
   'scripts/ci-change-scope.mjs',
+  'scripts/ci-node-runtime.mjs',
   'tests/config/playwright.web.ci.config.ts',
   'tests/config/playwright.web.config.ts',
   'tests/config/playwright.web.isolated.config.ts',

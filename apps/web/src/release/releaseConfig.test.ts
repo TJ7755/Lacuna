@@ -401,14 +401,11 @@ describe('release configuration', () => {
       const references = [...workflow.matchAll(/^\s+- uses: (\S+)(?: # (\S+))?$/gm)];
       expect(references.length).toBeGreaterThan(0);
       for (const [, reference, version] of references) {
-        if (reference === './.github/actions/setup-bun') {
-          // This action is versioned with the checkout, rather than fetched from another repository.
-          const action = readFileSync(
-            resolve(root, '.github/actions/setup-bun/action.yml'),
-            'utf8',
-          );
-          for (const [, reference] of action.matchAll(/uses: (\S+)/g)) {
-            expect(reference).toMatch(/^[\w.-]+\/[\w.-]+@[a-f0-9]{40}$/);
+        if (['./.github/actions/setup-bun', './.github/actions/setup-node'].includes(reference)) {
+          // The checkout versions these actions and their nested references still require pins.
+          const action = readFileSync(resolve(root, reference, 'action.yml'), 'utf8');
+          for (const [, nested] of action.matchAll(/uses: (\S+)/g)) {
+            expect(nested).toMatch(/^[\w.-]+\/[\w.-]+@[a-f0-9]{40}$/);
           }
           continue;
         }

@@ -26,10 +26,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - run: node --test scripts/check-docs.test.mjs scripts/check-browser.test.mjs scripts/check-gaps-browser-registration.test.mjs
       - run: node scripts/check-docs.mjs
 
@@ -90,11 +89,10 @@ jobs:
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
       - run: bun install --frozen-lockfile
@@ -116,11 +114,10 @@ jobs:
         if: needs.changes.outputs.lint != 'false'
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         if: needs.changes.outputs.lint != 'false'
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         if: needs.changes.outputs.lint != 'false'
       - run: bun install --frozen-lockfile
@@ -145,10 +142,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
 
@@ -185,10 +181,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: ${{ matrix.command }}
@@ -205,10 +200,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           version: 0.13.4
@@ -280,10 +274,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         with:
           cache-dependency-path: bun.lock
@@ -306,11 +299,10 @@ jobs:
         if: needs.changes.outputs.relay != 'false'
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         if: needs.changes.outputs.relay != 'false'
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         with:
           cache-dependency-path: bun.lock
@@ -341,11 +333,10 @@ jobs:
         if: needs.changes.outputs.ai_mcp != 'false'
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         if: needs.changes.outputs.ai_mcp != 'false'
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         if: needs.changes.outputs.ai_mcp != 'false'
       - run: bun install --frozen-lockfile
@@ -373,10 +364,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bun run build:assets
@@ -411,11 +401,10 @@ jobs:
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
       - run: bun install --frozen-lockfile
@@ -451,10 +440,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bunx --no-install playwright install --only-shell chromium
@@ -499,10 +487,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bunx --no-install playwright install --only-shell chromium
@@ -542,10 +529,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bunx --no-install playwright install --only-shell chromium
@@ -582,10 +568,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bunx --no-install playwright install --only-shell chromium
@@ -673,10 +658,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bun run build:assets -- --mode production --base ./
@@ -697,12 +681,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
+      - run: node scripts/ci-electron-runtime.mjs win32 x64
       - run: bun run test:e2e:electron-ai
       - name: Preserve Electron AI test evidence
         if: always()
@@ -740,12 +724,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
+      - run: node scripts/ci-electron-runtime.mjs darwin arm64 --packaging-tools
       - run: bun run electron:prepare
       - run: bun run build:assets
       - run: bunx electron-builder --mac --dir --config apps/desktop/electron-builder.yml --publish never
@@ -775,12 +759,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
+      - run: node scripts/ci-electron-runtime.mjs win32 x64 --packaging-tools
       - run: bun run electron:prepare
       - name: Require the current desktop renderer build
         id: renderer
@@ -790,7 +774,8 @@ jobs:
         run: node scripts/ci-wait-for-renderer.mjs
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.1
         with:
-          name: windows-electron-renderer-${{ steps.renderer.outputs.attempt }}
+          artifact-ids: ${{ steps.renderer.outputs.artifact_id }}
+          github-token: ${{ github.token }}
           path: dist/
       - name: Build and audit the NSIS installer while preparing the upgrade baseline
         env:
