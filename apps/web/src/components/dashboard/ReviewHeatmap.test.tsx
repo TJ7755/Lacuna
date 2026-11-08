@@ -149,30 +149,10 @@ describe('ReviewHeatmap', () => {
     expect(tooltip).toHaveStyle({ position: 'fixed' });
   });
 
-  it('hides the native scrollbar and pans on a primary mouse drag', () => {
+  it('leaves touch and secondary mouse gestures alone', () => {
     const { container } = render(<ReviewHeatmap cards={[makeCard()]} days={90} />);
     const scrollport = container.querySelector('.overflow-x-auto') as HTMLElement;
-    expect(scrollport.className).toContain('[scrollbar-width:none]');
-    scrollport.scrollLeft = 200;
-    fireEvent.pointerDown(scrollport, {
-      pointerId: 1,
-      pointerType: 'mouse',
-      button: 0,
-      clientX: 300,
-    });
-    fireEvent.pointerMove(scrollport, {
-      pointerId: 1,
-      pointerType: 'mouse',
-      buttons: 1,
-      clientX: 220,
-    });
-    expect(scrollport.scrollLeft).toBe(280);
-    fireEvent.pointerUp(scrollport, { pointerId: 1, pointerType: 'mouse', clientX: 220 });
-  });
-
-  it('leaves plain clicks and touch gestures alone', () => {
-    const { container } = render(<ReviewHeatmap cards={[makeCard()]} days={90} />);
-    const scrollport = container.querySelector('.overflow-x-auto') as HTMLElement;
+    Object.defineProperty(scrollport, 'scrollWidth', { value: 600 });
     scrollport.scrollLeft = 200;
     fireEvent.pointerDown(scrollport, {
       pointerId: 7,

@@ -116,10 +116,7 @@ export function ReviewHeatmap({
   const [tooltipLeft, setTooltipLeft] = useState<number | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  // Click-and-drag panning while the native bar is hidden. Touch and pen keep
-  // native panning and keyboard keeps the roving tab stop, so only the primary
-  // mouse button is claimed here.
-  const drag = useRef({ active: false, captured: false, pointerId: -1, startX: 0, startLeft: 0 });
+  const drag = useRef({ active: false, panning: false, pointerId: -1, startX: 0, startLeft: 0 });
   const [labelStride, setLabelStride] = useState(days > 7 ? 5 : 1);
 
   // Date labels thin out as columns narrow or text grows, so neighbours never collide.
@@ -139,7 +136,7 @@ export function ReviewHeatmap({
     return () => observer.disconnect();
   }, [compact, days]);
   useLayoutEffect(() => {
-    const scrollport = scrollRef.current ?? gridRef.current?.parentElement;
+    const scrollport = scrollRef.current;
     if (scrollport) scrollport.scrollLeft = scrollport.scrollWidth;
   }, [days]);
   const tooltipRef = useRef<HTMLSpanElement>(null);
@@ -189,39 +186,39 @@ export function ReviewHeatmap({
       ?.focus();
   }
 
-  // The native bar is hidden, so a mouse drag pans the strip instead. The gesture
-  // is claimed only after a few pixels of travel, so plain clicks keep their
-  // normal focus and tooltip behaviour. Touch and pen keep native panning;
-  // only the primary mouse button is claimed here.
   function onScrollPointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    if (event.pointerType !== 'mouse' || event.button !== 0 || !scrollRef.current) return;
+    const scroller = event.currentTarget;
+    if (
+      event.pointerType !== 'mouse' ||
+      event.button !== 0 ||
+      scroller.scrollWidth <= scroller.clientWidth ||
+      !(event.target instanceof Element)
+    ) {
+      return;
+    }
     drag.current = {
       active: true,
-      captured: false,
+      panning: false,
       pointerId: event.pointerId,
       startX: event.clientX,
-      startLeft: scrollRef.current.scrollLeft,
+      startLeft: scroller.scrollLeft,
     };
+    // Capture on the pressed element so clicks keep their target and even the
+    // first move can leave the scrollport. Captured events still bubble here.
+    event.target.setPointerCapture(event.pointerId);
   }
 
   function onScrollPointerMove(event: React.PointerEvent<HTMLDivElement>) {
     const scroller = scrollRef.current;
     if (!drag.current.active || event.pointerId !== drag.current.pointerId || !scroller) return;
-    if (event.buttons === 0) {
-      drag.current.active = false;
-      drag.current.captured = false;
+    if ((event.buttons & 1) === 0) {
+      endScrollDrag(event);
       return;
     }
     const dx = event.clientX - drag.current.startX;
-    if (Math.abs(dx) < 4) return;
-    if (!drag.current.captured) {
-      try {
-        event.currentTarget.setPointerCapture(event.pointerId);
-      } catch {
-        // Pointer capture is a progressive enhancement; dragging still pans.
-      }
-      drag.current.captured = true;
-      // Panning is not keyboard navigation: drop the mousedown focus ring.
+    if (!drag.current.panning) {
+      if (Math.abs(dx) < 4) return;
+      drag.current.panning = true;
       if (scroller.contains(document.activeElement)) {
         (document.activeElement as HTMLElement | null)?.blur?.();
       }
@@ -232,12 +229,10 @@ export function ReviewHeatmap({
 
   function endScrollDrag(event: React.PointerEvent<HTMLDivElement>) {
     if (!drag.current.active || event.pointerId !== drag.current.pointerId) return;
-    try {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    } catch {
-      // The pointer may already have been cancelled or released by the browser.
+    if (event.target instanceof Element && event.target.hasPointerCapture(event.pointerId)) {
+      event.target.releasePointerCapture(event.pointerId);
     }
-    drag.current = { active: false, captured: false, pointerId: -1, startX: 0, startLeft: 0 };
+    drag.current = { active: false, panning: false, pointerId: -1, startX: 0, startLeft: 0 };
   }
 
   const cellCount = columns.length * 7;
