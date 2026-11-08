@@ -255,10 +255,9 @@ test('measures original-sized JPEG and PNG card advances at 4x CPU slowdown', as
       .press('Enter');
     await expect(page.locator('[data-study-face="back"]').last()).toBeVisible();
     const nextId = `biology-card-${String(i).padStart(3, '0')}`;
-    // Session hand-offs are deliberate pauses, not Card-to-Card paint samples.
+    // The scheduler opens a fresh block every ten reviews. Sample paints within each block.
     if (i % 10 === 0) {
       await page.getByRole('button', { name: 'Yes', exact: true }).click();
-      await page.getByRole('button', { name: 'Continue', exact: true }).click();
       await expect(
         page.locator(`[data-study-card-id="${nextId}"]:not([inert]) [data-study-face="front"]`),
       ).toBeVisible();
