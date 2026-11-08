@@ -94,7 +94,7 @@ for (const width of [1280, 390]) {
       'href',
       'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
     );
-    await expect(about).toContainText('no report does not mean no study');
+    await expect(about).toContainText(/no report does not mean no study/i);
     await page.screenshot({ path: testInfo.outputPath('gaps-about.png'), fullPage: true });
 
     // Legacy learner links must remain teacher-only on this build, including reloads.
