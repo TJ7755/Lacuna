@@ -7,11 +7,7 @@ import { m as motion } from 'motion/react';
 import { cn } from '../../components/ui/cn';
 import { scaledSpring } from '../../components/ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import {
-  DEFAULT_REQUEST_RETENTION,
-  MAX_REQUEST_RETENTION,
-  MIN_REQUEST_RETENTION,
-} from '@lacuna/core/fsrs/params';
+import { MAX_REQUEST_RETENTION, MIN_REQUEST_RETENTION } from '@lacuna/core/fsrs/params';
 
 /** Named anchor points for the target-retention slider. */
 const RETENTION_PRESETS = [
@@ -39,12 +35,6 @@ export function TargetRecallCard({
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const percent = Math.round(retention * 100);
-  const note =
-    retention > DEFAULT_REQUEST_RETENTION
-      ? 'More thorough than the default: more reviews, fewer lapses.'
-      : retention < DEFAULT_REQUEST_RETENTION
-        ? 'Lighter than the default: fewer reviews, more forgetting.'
-        : null;
 
   return (
     <div>
@@ -95,7 +85,6 @@ export function TargetRecallCard({
           );
         })}
       </div>
-      {note && <p className="mt-3 text-sm text-ink-soft">{note}</p>}
     </div>
   );
 }
