@@ -50,9 +50,27 @@ for (const width of [1280, 390]) {
         const search = panel.getByRole('searchbox', { name: 'Search the course library' });
         await expect(search).toBeFocused();
         await search.fill('biology');
-        await expect(panel.getByRole('button', { name: /^Biology/ }).first()).toBeVisible();
-        const lastCourse = panel.getByRole('button', { name: /^Biology/ }).last();
-        await lastCourse.click({ trial: true });
+        const subjects = panel.getByRole('list', { name: 'Library subjects' });
+        const lastCourse = subjects
+          .getByRole('list', { name: 'Biology courses' })
+          .getByRole('button')
+          .last();
+        // Results mount before the disclosure has expanded enough to scroll to its last row.
+        await expect
+          .poll(() =>
+            lastCourse.evaluate((course) => {
+              const list = course.closest('.import-library-subjects')!;
+              return (
+                course.getBoundingClientRect().bottom -
+                  list.getBoundingClientRect().top +
+                  list.scrollTop <=
+                list.scrollHeight + 1
+              );
+            }),
+          )
+          .toBe(true);
+        await subjects.hover();
+        await page.mouse.wheel(0, await subjects.evaluate((list) => list.scrollHeight));
         await expect(lastCourse).toBeInViewport();
         await checkBounds();
       }

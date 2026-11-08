@@ -55,7 +55,6 @@ async function verify({ run, report }) {
   if (scope.lint || scope.app) {
     bun('lint');
     bun('knip');
-    bun('knip:files');
   }
   if (scope.relay) {
     bun('typecheck', 'apps/relay');

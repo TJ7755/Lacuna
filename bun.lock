@@ -107,6 +107,12 @@
         "zod": "4.6.7",
       },
       "devDependencies": {
+        "@electron/asar": "4.3.1",
+        "@lacuna/core": "workspace:*",
+        "@playwright/test": "^1.64.1",
+        "@typescript/native": "npm:typescript@^7.0.2",
+        "electron": "^45.1.0",
+        "electron-builder": "^26.18.0",
         "esbuild": "^0.28.2",
       },
     },
