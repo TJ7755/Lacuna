@@ -128,13 +128,18 @@ function markRanges(
   ranges: Range[],
   className?: string,
 ) {
+  // Both lists follow the answer's text order. Keep a range available to the
+  // next node when it crosses an inline formatting boundary.
+  let firstRange = 0;
   for (const { node, start, end } of nodes) {
-    const overlaps = ranges.filter((range) => range.start < end && range.end > start);
-    if (!overlaps.length) continue;
+    while (firstRange < ranges.length && ranges[firstRange].end <= start) firstRange++;
+    if (firstRange === ranges.length) break;
+    if (ranges[firstRange].start >= end) continue;
     const fragment = document.createDocumentFragment();
     const value = node.data;
     let cursor = 0;
-    for (const range of overlaps) {
+    for (let i = firstRange; i < ranges.length && ranges[i].start < end; i++) {
+      const range = ranges[i];
       const from = Math.max(range.start, start) - start;
       const to = Math.min(range.end, end) - start;
       fragment.append(value.slice(cursor, from));
