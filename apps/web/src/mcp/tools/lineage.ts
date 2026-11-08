@@ -82,6 +82,7 @@ function toShareLessonInput(
     tz: lesson.tz,
     sf: lesson.sf,
     am: lesson.am,
+    rs: lesson.rs,
     notes: lesson.notes.map((note): ShareNoteInput => {
       if (!note.oi)
         throw new McpToolException({
@@ -129,6 +130,7 @@ function toExistingLesson(lesson: Lesson): ExistingLesson {
     timeZone: lesson.timeZone,
     sessionFilter: lesson.sessionFilter === 'new' ? undefined : lesson.sessionFilter,
     answerMode: lesson.answerMode,
+    requireCorrectSpelling: lesson.requireCorrectSpelling,
     orderIndex: lesson.orderIndex,
   };
 }

@@ -19,8 +19,8 @@ import { SharePayloadSchema } from './sharePayloadSchema';
 /** A single card in a share payload. `k` is the kind. */
 export interface ShareCard {
   am?: 'reveal' | 'type';
-  /** Mirrors Card.requireCorrectSpelling when the author requires it. */
-  rs?: true;
+  /** Spelling override. Omitted when this card inherits the lesson default. */
+  rs?: boolean;
   id?: string;
   /**
    * 0 = front/back, 1 = cloze, 2 = reversible front/back pair (expands to two
@@ -60,6 +60,7 @@ export interface ShareLesson {
   /** Advisory prerequisites by payload-scoped Lesson i, never array position. */
   pr?: string[];
   am?: 'reveal' | 'type';
+  rs?: boolean;
   n: string; // name
   d?: string; // description
   x?: 0 | 1; // isExtension

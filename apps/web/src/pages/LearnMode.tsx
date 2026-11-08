@@ -177,6 +177,7 @@ function LearnSession({
     isLinesModeCard,
     recitationSequence,
     occlusionAnswerText,
+    lessonRequiresCorrectSpelling,
     summary,
     canUndo,
     editing,
@@ -265,6 +266,7 @@ function LearnSession({
     isTypingCard: presentedAnswerInput === 'typed',
     typedAnswer,
     answerStrictness,
+    lessonRequiresCorrectSpelling,
     occlusionAnswerText,
     paused: editing || menuOpen || hintsOpen || leaveConfirmationOpen,
     manual: manualRestoredCardId === current?.id,
@@ -286,9 +288,22 @@ function LearnSession({
       verifyTypedRecall
         ? phase === 'answer' &&
           current !== null &&
-          matchesTypedRecall(current, typedAnswer, answerStrictness)
+          matchesTypedRecall(
+            current,
+            typedAnswer,
+            answerStrictness,
+            undefined,
+            lessonRequiresCorrectSpelling,
+          )
         : undefined,
-    [verifyTypedRecall, phase, current, typedAnswer, answerStrictness],
+    [
+      verifyTypedRecall,
+      phase,
+      current,
+      typedAnswer,
+      answerStrictness,
+      lessonRequiresCorrectSpelling,
+    ],
   );
   const showLocalRecall =
     recallCorrect !== undefined &&
@@ -457,6 +472,7 @@ function LearnSession({
               rankedChoices={choiceQuestion ? rankedChoices.get(choiceQuestion.id) : undefined}
               gradingMode={gradingMode}
               answerStrictness={answerStrictness}
+              lessonRequiresCorrectSpelling={lessonRequiresCorrectSpelling}
               typedAutoMark={typedAutoMark}
               typedJudgement={typedJudgement}
               studyFocusRef={studyFocusRef}

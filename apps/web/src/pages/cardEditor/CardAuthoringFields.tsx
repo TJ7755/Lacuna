@@ -6,7 +6,7 @@ import { NumericAnswerEditor } from '../../components/items/NumericAnswerEditor'
 import { MarkSchemeEditor } from '../../components/items/MarkSchemeEditor';
 import { TagInput } from '../../components/ui/TagInput';
 import { ContentDisclosure } from '../../components/ui/ContentDisclosure';
-import { Toggle } from '../../components/ui/Toggle';
+import { Select } from '../../components/ui/Select';
 import { CheckIcon } from '../../components/ui/icons';
 import { cn } from '../../components/ui/cn';
 import { scaledSpring } from '../../components/ui/motion';
@@ -285,11 +285,26 @@ export function CardAuthoringFields({
           </div>
 
           {canConfigureSpelling && (
-            <Toggle
-              label="Require correct spelling"
-              checked={requireCorrectSpelling}
-              onChange={(value) => modifyDraftField(setRequireCorrectSpelling, value)}
-            />
+            <label className="flex min-w-0 flex-col gap-2 text-sm font-semibold text-ink">
+              <span>Spelling</span>
+              <Select
+                className="w-full min-w-0"
+                value={
+                  requireCorrectSpelling === undefined ? 'inherit' : String(requireCorrectSpelling)
+                }
+                onChange={(event) => {
+                  const value = event.target.value;
+                  modifyDraftField(
+                    setRequireCorrectSpelling,
+                    value === 'inherit' ? undefined : value === 'true',
+                  );
+                }}
+              >
+                <option value="inherit">Lesson default</option>
+                <option value="true">Require correct spelling</option>
+                <option value="false">Allow spelling mistakes</option>
+              </Select>
+            </label>
           )}
 
           {canReverse && (

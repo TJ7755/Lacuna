@@ -95,6 +95,7 @@ export function toShareLessonInput(lesson: LineagePayload['lessons'][number]): S
     tz: lesson.tz,
     sf: lesson.sf,
     am: lesson.am,
+    rs: lesson.rs,
     notes: lesson.notes.map((note): ShareNoteInput => {
       if (!note.oi) throw new Error('Lineage payload note is missing its originating id.');
       return { i: note.oi, n: note.n, c: note.c };
@@ -129,6 +130,7 @@ export function toExistingLesson(lesson: Lesson): ExistingLesson {
     timeZone: lesson.timeZone,
     sessionFilter: lesson.sessionFilter === 'new' ? undefined : lesson.sessionFilter,
     answerMode: lesson.answerMode,
+    requireCorrectSpelling: lesson.requireCorrectSpelling,
     orderIndex: lesson.orderIndex,
   };
 }
@@ -246,6 +248,7 @@ function lessonSnapshotsEqual(a: LineageLessonSnapshot, b: LineageLessonSnapshot
     a.timeZone === b.timeZone &&
     a.sessionFilter === b.sessionFilter &&
     a.answerMode === b.answerMode &&
+    Boolean(a.requireCorrectSpelling) === Boolean(b.requireCorrectSpelling) &&
     a.orderIndex === b.orderIndex
   );
 }

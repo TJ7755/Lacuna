@@ -55,6 +55,7 @@ export function FlipCard({
   onRevealHint,
   hintAffectsScheduling,
   answerStrictness,
+  lessonRequiresCorrectSpelling,
   occlusion,
   occlusionAnswerText,
 }: {
@@ -81,6 +82,7 @@ export function FlipCard({
   hintStep?: 0 | 1 | 2;
   onRevealHint?: () => void;
   hintAffectsScheduling?: boolean;
+  lessonRequiresCorrectSpelling?: boolean;
   answerStrictness: AnswerStrictness;
   /** The owning Occlusion for an occlusion-generated card, resolved by useLearnSession. */
   occlusion?: Occlusion;
@@ -292,6 +294,7 @@ export function FlipCard({
       typedAnswer={typedAnswer}
       typedJudgement={typedJudgement}
       answerStrictness={answerStrictness}
+      lessonRequiresCorrectSpelling={lessonRequiresCorrectSpelling}
       occlusion={occlusion}
       occlusionAnswerText={occlusionAnswerText}
       motionMultiplier={m}

@@ -130,7 +130,7 @@ export function useCardEditorSave({
           : editing
             ? card?.answerMode
             : undefined;
-      const storedSpelling = canConfigureSpelling && requireCorrectSpelling ? true : undefined;
+      const storedSpelling = canConfigureSpelling ? requireCorrectSpelling : undefined;
       const storedType: CardType = isStructured || isAudio ? 'front_back' : type;
       const backValue = isCloze || isStructured ? '' : back;
       const payload: ItemPayload | undefined = isNumeric

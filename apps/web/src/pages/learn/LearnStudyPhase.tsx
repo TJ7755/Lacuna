@@ -44,6 +44,7 @@ export function LearnStudyPhase({
   rankedChoices,
   gradingMode,
   answerStrictness,
+  lessonRequiresCorrectSpelling,
   typedAutoMark,
   typedJudgement,
   studyFocusRef,
@@ -73,6 +74,7 @@ export function LearnStudyPhase({
   choiceCandidates: readonly LessonChoiceCard[];
   rankedChoices?: readonly string[];
   gradingMode: ReturnType<typeof useGradingMode>[0];
+  lessonRequiresCorrectSpelling?: boolean;
   answerStrictness: ReturnType<typeof useAnswerStrictness>[0];
   typedAutoMark: ReturnType<typeof useTypedAutoMark>;
   typedJudgement: ReturnType<typeof typedAnswerJudgement>;
@@ -344,6 +346,7 @@ export function LearnStudyPhase({
                     onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
                     hintAffectsScheduling={!isSimpleMode && gradingMode === 'silent'}
                     answerStrictness={answerStrictness}
+                    lessonRequiresCorrectSpelling={lessonRequiresCorrectSpelling}
                     occlusion={occlusion}
                     occlusionAnswerText={occlusionAnswerText}
                   />

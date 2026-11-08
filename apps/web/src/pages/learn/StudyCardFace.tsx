@@ -22,6 +22,7 @@ export function StudyCardFace({
   typedAnswer,
   typedJudgement,
   answerStrictness,
+  lessonRequiresCorrectSpelling,
   occlusion,
   occlusionAnswerText,
   motionMultiplier,
@@ -41,6 +42,7 @@ export function StudyCardFace({
   typedAnswer?: string;
   /** Automatic marking's reading of the typed answer, replacing the word comparison. */
   typedJudgement?: TypedAnswerJudgement;
+  lessonRequiresCorrectSpelling?: boolean;
   answerStrictness: AnswerStrictness;
   occlusion?: Occlusion;
   occlusionAnswerText?: string;
@@ -54,11 +56,19 @@ export function StudyCardFace({
       side === 'back' && isTyping && typedAnswer !== undefined
         ? {
             answer: typedAnswer,
-            options: typedComparisonOptions(card, answerStrictness),
+            options: typedComparisonOptions(card, answerStrictness, lessonRequiresCorrectSpelling),
             judgement: typedJudgement,
           }
         : undefined,
-    [side, isTyping, typedAnswer, typedJudgement, card, answerStrictness],
+    [
+      side,
+      isTyping,
+      typedAnswer,
+      typedJudgement,
+      card,
+      answerStrictness,
+      lessonRequiresCorrectSpelling,
+    ],
   );
 
   return (
