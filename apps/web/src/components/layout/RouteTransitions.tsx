@@ -101,15 +101,11 @@ const RoutePage = forwardRef<
     const page = pageRef.current;
     if (!page) return;
     if (present) {
-      page.hidden = false;
       page.removeAttribute('aria-hidden');
       return;
     }
     const focused = document.activeElement;
     if (focused instanceof HTMLElement && page.contains(focused)) focused.blur();
-    // Motion can retain the departing page after this commit. Exclude it from
-    // the scroll range before the shell tries to restore the incoming page.
-    page.hidden = true;
     page.setAttribute('aria-hidden', 'true');
   }, [present]);
 
@@ -127,7 +123,9 @@ const RoutePage = forwardRef<
         duration: (direction === 0 ? 0.16 : 0.22) * multiplier,
         ease: [0.16, 1, 0.3, 1],
       }}
-      className="min-h-full w-full"
+      // PopLayout can retain the departing page. Clip its box out of the
+      // scroll range while keeping descendants rendered for animation cleanup.
+      className={present ? 'min-h-full w-full' : 'max-h-0 w-full overflow-clip'}
     >
       {children}
     </motion.div>
