@@ -288,14 +288,14 @@ test('browser consumers install the lockfile browser and share the production ar
   );
   assert.deepEqual(
     jobs['browser-tests'].strategy.matrix.shard,
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+    Array.from({ length: 28 }, (_, index) => index + 1),
   );
-  assert.deepEqual(jobs['browser-tests'].strategy.matrix.lane, [1, 2]);
+  assert.equal(jobs['browser-tests'].strategy.matrix.lane, undefined);
   assert.ok(
     jobs['browser-tests'].steps.some(
       (step) =>
         step.run ===
-        'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/16 ${{ matrix.lane }}/2',
+        'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/${{ strategy.job-total }}',
     ),
   );
   const functionalEvidence = jobs['browser-tests'].steps.find(
@@ -539,6 +539,11 @@ test('Security records the tested workflow commit for guarded recovery', () => {
 });
 
 test('scope collection uses NUL records, pipefail and conservative push classification', () => {
+  const checkout = workflow.jobs.changes.steps.find((step) =>
+    step.uses?.startsWith('actions/checkout@'),
+  );
+  assert.equal(render(checkout.with['fetch-depth'], 'synchronize'), '0');
+  assert.equal(render(checkout.with['fetch-depth']), '1');
   const scope = workflow.jobs.changes.steps.find((step) => step.id === 'scope');
   assert.match(scope.run, /git diff --name-status -z --find-renames/);
   assert.match(scope.run, /--name-status/);
@@ -805,6 +810,9 @@ test('Windows upgrade scenarios retain both probes on isolated runners with the 
   assert.ok(job.strategy?.matrix, 'Both upgrade scenarios require isolated matrix runners');
   assert.equal(job.strategy['fail-fast'], false);
   assert.deepEqual(job.strategy.matrix.probe, ['companion', 'release']);
+  const install = job.steps.findIndex(
+    (step) => step.run === "bun install --frozen-lockfile --filter '@lacuna/desktop'",
+  );
   const native = job.steps.findIndex((step) => step.run === 'bun run electron:prepare');
   const wait = job.steps.findIndex((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs');
   const download = job.steps.findIndex(
@@ -813,7 +821,9 @@ test('Windows upgrade scenarios retain both probes on isolated runners with the 
   const upgrade = job.steps.findIndex(
     (step) => step.run === 'node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }}',
   );
-  assert.ok(native !== -1 && native < wait && wait < download && download < upgrade);
+  assert.ok(
+    install >= 0 && install < native && native < wait && wait < download && download < upgrade,
+  );
   assert.equal(job.steps[wait].id, 'renderer');
   assert.equal(
     job.steps[wait].env.SOURCE_SHA,

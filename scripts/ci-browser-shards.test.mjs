@@ -133,7 +133,7 @@ test('real Playwright test-list parsing preserves parameterised, serial and skip
           test.skip('skipped case', () => {});
         });`,
       );
-    const list = (args = [], allowEmpty = false) => {
+    const list = (args = []) => {
       const result = spawnSync(
         process.execPath,
         [
@@ -158,12 +158,7 @@ test('real Playwright test-list parsing preserves parameterised, serial and skip
         },
       );
       assert.equal(result.status, 0, result.stderr || result.stdout);
-      const discovery = JSON.parse(result.stdout);
-      if (allowEmpty && discovery.suites.length === 0) {
-        assert.deepEqual(discovery.errors, []);
-        return [];
-      }
-      return inventory(discovery);
+      return inventory(JSON.parse(result.stdout));
     };
     const all = list();
     const selected = [];
@@ -172,12 +167,7 @@ test('real Playwright test-list parsing preserves parameterised, serial and skip
       writeFileSync(path, shard.files.map((file) => `[chromium-functional] > ${file}`).join('\n'));
       const actual = list(['--test-list', path]);
       verifyInventory(shard.tests, actual);
-      const lanes = [1, 2].map((lane) => list(['--test-list', path, `--shard=${lane}/2`], true));
-      verifyInventory(actual, lanes.flat());
-      for (const file of shard.files) {
-        assert.equal(lanes.filter((lane) => lane.some((test) => test.file === file)).length, 1);
-      }
-      selected.push(...lanes.flat());
+      selected.push(...actual);
     }
     verifyInventory(all, selected);
     assert.equal(selected.length, 9);
