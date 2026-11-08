@@ -25,10 +25,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - name: Validate release tag
         shell: bash
         run: |
@@ -86,10 +85,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
 
       - run: bun install --frozen-lockfile
@@ -104,6 +102,8 @@ jobs:
           pkg.version = process.env.GITHUB_REF_NAME.slice(1);
           writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
           JS
+      - name: Seed verified Electron and Windows packaging tools
+        run: node scripts/ci-electron-runtime.mjs win32 x64 --packaging-tools
       - run: bun run test:e2e:electron-ai
       - run: bun run electron:build:win --config.detectUpdateChannel=false
       - run: bun run perf:check:electron-package
@@ -179,10 +179,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
 
       - run: bun install --frozen-lockfile
@@ -265,11 +264,15 @@ jobs:
               exit 1
             fi
           else
+            notes=(--generate-notes)
+            if [[ "$GITHUB_REF_NAME" == *-beta.nightly.* ]]; then
+              notes=(--notes "Nightly desktop build from $GITHUB_SHA. Windows and Linux beta.")
+            fi
             gh release create "$GITHUB_REF_NAME" \
               --repo "$GITHUB_REPOSITORY" \
               --draft \
               --prerelease \
-              --generate-notes \
+              "${notes[@]}" \
               --title "Lacuna ${GITHUB_REF_NAME#v} Beta"
           fi
 
@@ -311,23 +314,28 @@ jobs:
 
       - name: Find release notes
         id: notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           notes="docs/releases/${GITHUB_REF_NAME#v}.md"
           if [[ -s "$notes" ]]; then
             echo "file=$notes" >> "$GITHUB_OUTPUT"
           elif [[ "$GITHUB_REF_NAME" == *-beta.nightly.* ]]; then
-            printf 'Nightly desktop build from %s. Windows and Linux beta.\n' "$GITHUB_SHA" > /tmp/nightly-notes.md
-            echo "file=/tmp/nightly-notes.md" >> "$GITHUB_OUTPUT"
+            draft_notes="$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json body --jq .body)"
+            if [[ -z "${draft_notes//[[:space:]]/}" ]]; then
+              draft_notes="Nightly desktop build from $GITHUB_SHA. Windows and Linux beta."
+            fi
+            printf '%s\n' "$draft_notes" > "$RUNNER_TEMP/nightly-notes.md"
+            echo "file=$RUNNER_TEMP/nightly-notes.md" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::$notes is missing, so the draft waits for manual publication."
           fi
 
       - if: steps.notes.outputs.file
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - if: steps.notes.outputs.file
         uses: ./.github/actions/setup-bun
       - if: steps.notes.outputs.file
