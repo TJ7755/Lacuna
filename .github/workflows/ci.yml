@@ -848,6 +848,18 @@ jobs:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile --filter '@lacuna/desktop'
+      - name: Cache Windows packaging archives
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          # Cache only the archives that the next step verifies, never extracted tools.
+          path: |
+            ~/AppData/Local/electron/Cache/*/electron-v*-win32-x64.zip
+            ~/AppData/Local/electron-builder/Cache/winCodeSign-2.6.0/winCodeSign-2.6.0.7z
+            ~/AppData/Local/electron-builder/Cache/nsis-3.0.4.1/nsis-3.0.4.1.7z
+            ~/AppData/Local/electron-builder/Cache/nsis-resources-3.4.1/nsis-resources-3.4.1.7z
+            ~/AppData/Local/electron-builder/Cache/7zip@1.0.0/7zip-win-x64.tar.gz
+            ~/AppData/Local/electron-builder/Cache/icons@1.2.3/icons-bundle.tar.gz
+          key: electron-win-packaging-archives-v1-${{ runner.arch }}-${{ hashFiles('node_modules/electron/checksums.json', 'apps/desktop/node_modules/electron/checksums.json') || hashFiles('bun.lock') }}-${{ hashFiles('scripts/ci-electron-runtime.mjs') }}
       - run: node scripts/ci-electron-runtime.mjs win32 x64 --packaging-tools
       - run: bun run electron:prepare
       - name: Require the current desktop renderer build
