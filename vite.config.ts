@@ -127,7 +127,6 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(packageJson.version),
     // Vercel serves the analytics endpoint itself. Do not inject a script that
     // will 404 on local previews, Electron or other static hosts.
-    __VERCEL_ANALYTICS_ENABLED__: JSON.stringify(process.env.VERCEL === '1'),
   },
   resolve: {
     dedupe: ['react', 'react-dom', 'motion'],

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { recordUsageAction } from '../usage/collector';
 
 /** Single-key page shortcuts, keyed by lower-case key. Missing or undefined entries are inert. */
 export type PageShortcuts = Record<string, (() => void) | undefined>;
@@ -32,6 +33,7 @@ export function usePageShortcuts(shortcuts: PageShortcuts) {
       if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       e.preventDefault();
       e.stopImmediatePropagation();
+      if (e.isTrusted) recordUsageAction('shortcut', 'shortcut');
       action();
     };
     window.addEventListener('keydown', onKey, true);

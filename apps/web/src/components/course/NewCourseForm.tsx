@@ -1,4 +1,5 @@
 import { lazy, useEffect, useId, useRef, useState } from 'react';
+import { recordUsageAction } from '../../usage/collector';
 import { useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -141,6 +142,7 @@ export function NewCourseForm({
     }
     setNameError(null);
     setSaving(true);
+    recordUsageAction('create-started');
     try {
       const [{ createCourse }, { createLesson }] = await Promise.all([
         import('../../db/courseRepository'),
@@ -151,6 +153,7 @@ export function NewCourseForm({
         schedulingMode === 'exam' ? { schedulingMode, examDate, timeZone } : { schedulingMode },
       );
       await createLesson(course.id, 'Lesson 1');
+      recordUsageAction('create-completed');
       onClose();
       void navigate(onboardingDestination(`/course/${course.id}`), {
         state: { focusNewCard: true },

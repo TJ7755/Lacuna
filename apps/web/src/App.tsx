@@ -27,6 +27,7 @@ import {
 } from './onboarding/onboardingState';
 import { replacementLifecycle } from './db/replacementLifecycle';
 import { scheduleBackgroundWork } from './routes/idlePrefetch';
+import { HostedUsageAnalytics } from './usage/HostedUsageAnalytics';
 
 export { router } from './routes/router';
 
@@ -277,6 +278,7 @@ export function App() {
               )}
               <RouterWithQuotaWarning />
               <LandingTransition />
+              <HostedUsageAnalytics />
             </ToastProvider>
           </FontScaleProvider>
         </AccentProvider>

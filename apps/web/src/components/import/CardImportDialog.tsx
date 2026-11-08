@@ -25,6 +25,7 @@ import { CardImportInput } from './CardImportInput';
 import { CardImportPreview } from './CardImportPreview';
 import './CardImportDialog.css';
 import { countOf } from '../../utils/plural';
+import { recordUsageAction } from '../../usage/collector';
 
 export interface CardImportDialogProps {
   initialTitle?: string;
@@ -136,7 +137,9 @@ export function CardImportDialog({
   const canContinue =
     count > 0 && !limitError && !sourceError && !source.reading && (!titleLabel || !!title.trim());
   function cancel() {
-    if (!busyRef.current) onCancel();
+    if (busyRef.current) return;
+    recordUsageAction('import-cancelled');
+    onCancel();
   }
   async function confirm() {
     if (!canContinue || busyRef.current || (finalStep && !canImport)) return;
@@ -156,8 +159,10 @@ export function CardImportDialog({
     setBusy(true);
     onBusyChange?.(true);
     setError('');
+    recordUsageAction('import-started');
     try {
       await onImport(content, title.trim());
+      recordUsageAction('import-completed');
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Could not import cards. Your input has been kept.',

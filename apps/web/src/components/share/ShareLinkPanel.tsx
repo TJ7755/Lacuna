@@ -1,4 +1,5 @@
 import { forwardRef, lazy, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { recordUsageAction } from '../../usage/collector';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import QRCode from 'react-qr-code';
 import { HOSTED_SERVICE_ORIGIN } from '../../config/origins';
@@ -161,6 +162,7 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
       const result = replaceLink
         ? await publishShareLink(course.id, { replaceLink: true })
         : await publishShareLink(course.id);
+      recordUsageAction('share-completed');
       if (!mounted.current) return;
       const created = link === null || replaceLink;
       setLink({ shareId: result.shareId, revision: result.revision });

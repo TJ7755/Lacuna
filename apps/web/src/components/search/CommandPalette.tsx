@@ -1,4 +1,5 @@
 import { searchHelp } from '../../pages/help/searchHelp';
+import { recordUsageAction } from '../../usage/collector';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import {
   useCallback,
@@ -183,6 +184,8 @@ function CommandPaletteDialog({
   const allResults = useMemo(() => search(deferredQuery), [search, deferredQuery]);
   const results = limit === undefined ? allResults : allResults.slice(0, limit);
   const hasVisibleResults = query.trim() !== '' && results.length > 0;
+  const opened = useRef(false);
+  const searched = useRef(false);
   const resultList = useRef<HTMLUListElement>(null);
   const selectionChanged = useRef(false);
   useEffect(() => {
@@ -195,11 +198,19 @@ function CommandPaletteDialog({
 
   // Reset and focus when the palette mounts.
   useEffect(() => {
+    if (!opened.current) recordUsageAction('search-opened');
+    opened.current = true;
     setQuery('');
     setActive(0);
     const id = requestAnimationFrame(() => inputRef.current?.focus());
     return () => cancelAnimationFrame(id);
   }, []);
+
+  const searching = query.trim() !== '';
+  useEffect(() => {
+    if (searching && !searched.current) recordUsageAction('search-used');
+    searched.current = searching;
+  }, [searching]);
 
   // AppShell removes `inert` from the page after this dialog unmounts. Return
   // focus on the next frame so the browser can accept focus on the trigger.
@@ -224,6 +235,7 @@ function CommandPaletteDialog({
   function go(index: number) {
     const hit = results[index];
     if (!hit) return;
+    recordUsageAction('search-result-opened');
     closeForNavigation();
     void navigate(
       hitPath(hit),

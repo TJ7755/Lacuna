@@ -2,6 +2,7 @@
 // Course share codes use the dedicated Course-facing Share page.
 
 import { useState } from 'react';
+import { recordUsageAction } from '../../usage/collector';
 import { Button } from '../ui/Button';
 import { DownloadIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
@@ -150,6 +151,7 @@ export function UnifiedExportPanel() {
           break;
         }
       }
+      recordUsageAction('export-completed');
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Export failed.', 'negative');
     } finally {
