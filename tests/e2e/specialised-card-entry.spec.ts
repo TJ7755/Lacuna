@@ -167,6 +167,7 @@ test('cloze retains two repeat-saves, its type and tags', async ({ page }) => {
   await page.getByRole('button', { name: /^Card options/ }).click();
   await page.getByRole('textbox', { name: 'Add tags' }).fill('chemistry');
   await page.getByRole('textbox', { name: 'Add tags' }).press('Enter');
+  const removeTag = page.getByRole('button', { name: 'Remove chemistry' });
   for (let entry = 1; entry <= 2; entry++) {
     await text.fill(`Water is {{c1::H2O}}. Example ${entry}`);
     await text.press('Tab');
@@ -178,9 +179,11 @@ test('cloze retains two repeat-saves, its type and tags', async ({ page }) => {
       'aria-pressed',
       'true',
     );
-    await expect(page.getByText('chemistry', { exact: true })).toBeVisible();
+    await expect(removeTag).toBeVisible();
     await expect(page.getByText(`${entry} added`, { exact: true })).toBeVisible();
   }
+  await removeTag.click();
+  await expect(page.getByRole('button', { name: 'chemistry', exact: true })).toBeVisible();
 });
 
 test('failed numeric writes retain content for retry and route recovery', async ({ page }) => {
