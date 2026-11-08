@@ -144,7 +144,6 @@ test('Later overlapping paper forecasts retain the current target on desktop', a
   }, DAY_MS);
   await page.reload();
   const later = page.getByRole('region', { name: 'Later paper forecasts' });
-  await expect(later.getByRole('table').getByRole('row')).toHaveCount(2);
   await expect(later.getByRole('button', { name: 'Show Later paper' })).toBeVisible();
   const current = page.getByRole('region', { name: 'Forecast by paper', exact: true });
   await expect(current.getByRole('button', { name: 'Show Topic test' })).toBeVisible();

@@ -7,7 +7,6 @@ import { ArrowRightIcon, ClockIcon, UnlockIcon } from '../components/ui/icons';
 import { SectionCard } from '../components/ui/SectionCard';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { ShareLinkError } from '../shareLinks/client';
-import { countOf } from '../utils/plural';
 import {
   dayLabel,
   itemsToRevisit,
@@ -215,7 +214,7 @@ export function TodayPage({
                   </h2>
                   <span className="text-sm text-ink-faint max-sm:hidden">
                     {summary
-                      ? `${countOf(summary.reports, 'report')}, ${summary.revisit} to revisit`
+                      ? `${summary.reports} ${summary.reports === 1 ? 'report' : 'reports'}, ${summary.revisit} to revisit`
                       : session
                         ? 'Unlocked'
                         : 'Locked'}

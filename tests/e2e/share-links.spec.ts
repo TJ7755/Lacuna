@@ -269,7 +269,7 @@ async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, lin
   await student.goto(`/#/s/${code}`);
   await expect(student.getByRole('heading', { name: 'Shared course', exact: true })).toBeVisible();
   await expect(student.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
-  await expect(student.getByText(/Link biology —/)).toBeVisible();
+  await expect(student.getByText('Link biology', { exact: true })).toBeVisible();
   await student.getByRole('radio', { name: /Exam date/ }).press('Space');
   await student.getByRole('button', { name: 'Add to my courses' }).click();
   await expect

@@ -57,7 +57,7 @@ function computeHeaderInfo({
       };
     case 'cram':
       return {
-        title: `${deckName} (revision plan)`,
+        title: `${deckName} (Revision plan)`,
         subtitle: revisionNextWindowDay ? `Next ${revisionNextWindowDay}` : tagPart,
       };
     case 'filtered-due':
