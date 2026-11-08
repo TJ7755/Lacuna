@@ -101,11 +101,15 @@ const RoutePage = forwardRef<
     const page = pageRef.current;
     if (!page) return;
     if (present) {
+      page.hidden = false;
       page.removeAttribute('aria-hidden');
       return;
     }
     const focused = document.activeElement;
     if (focused instanceof HTMLElement && page.contains(focused)) focused.blur();
+    // Motion can retain the departing page after this commit. Exclude it from
+    // the scroll range before the shell tries to restore the incoming page.
+    page.hidden = true;
     page.setAttribute('aria-hidden', 'true');
   }, [present]);
 
