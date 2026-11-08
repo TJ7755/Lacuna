@@ -58,6 +58,28 @@ test('a copied successful job on a retry still selects the artefact it actually 
   );
 });
 
+test('a copied web build selects its own published artefact during browser setup', async () => {
+  const renderer = producer('completed', 'success');
+  const web = {
+    ...renderer,
+    name: 'web-build',
+    steps: [{ ...publication, name: 'Share the production web build' }],
+  };
+  const published = { ...artifact(1), name: 'browser-web-dist-1' };
+  const unrelated = {
+    ...artifact(2),
+    name: 'browser-web-dist-2',
+    created_at: '2026-11-08T08:41:00Z',
+  };
+  assert.equal(
+    await waitForRenderer({
+      ...options([[renderer, web]], [artifact(2), unrelated, published]),
+      kind: 'web',
+    }),
+    published.id,
+  );
+});
+
 test('Windows setup can overlap a renderer build that must complete before use', async () => {
   const states = [
     [],

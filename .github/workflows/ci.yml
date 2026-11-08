@@ -188,7 +188,7 @@ jobs:
         run: bun run test:coverage:recovery -- --maxWorkers=100%
       - name: Verify CI predicates and browser diagnostics without browsers
         if: ${{ !cancelled() && steps.install.outcome == 'success' && matrix.suite == 'critical' }}
-        run: node --test scripts/vercel-deploy-scope.test.mjs scripts/deploy-prerequisites.test.mjs scripts/nightly-release.test.mjs scripts/local-checks.test.mjs scripts/security-runtime.test.mjs scripts/ci-workflow.test.mjs scripts/ci-recover-stale-jobs.test.mjs scripts/browser-ci-summary.test.mjs scripts/ci-browser-shards.test.mjs scripts/ci-wait-for-renderer.test.mjs
+        run: node --test scripts/vercel-deploy-scope.test.mjs scripts/deploy-prerequisites.test.mjs scripts/nightly-release.test.mjs scripts/local-checks.test.mjs scripts/security-runtime.test.mjs scripts/ci-workflow.test.mjs scripts/ci-recover-stale-jobs.test.mjs scripts/browser-ci-summary.test.mjs scripts/ci-browser-artefact.test.mjs scripts/ci-browser-shards.test.mjs scripts/ci-wait-for-renderer.test.mjs
 
   python-tools:
     needs: changes
@@ -372,7 +372,8 @@ jobs:
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bun run build:assets
-      - id: dist
+      - name: Share the production web build
+        id: dist
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: browser-web-dist-${{ github.run_attempt }}
@@ -475,7 +476,8 @@ jobs:
           if-no-files-found: ignore
 
   browser-tests:
-    needs: [changes, web-build]
+    name: browser-tests (${{ matrix.shard }})
+    needs: changes
     if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-24.04
     env:
@@ -524,9 +526,17 @@ jobs:
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bunx --no-install playwright install --only-shell chromium
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - name: Require the current production web build
+        id: web-dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci-wait-for-renderer.mjs web
+      - name: Download production web build ${{ steps.web-dist.outputs.artifact_id }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          artifact-ids: ${{ needs.web-build.outputs.artifact_id }}
+          artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
+          github-token: ${{ github.token }}
           path: dist/
       - run: node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/${{ strategy.job-total }}
       - name: Preserve browser test evidence
@@ -577,7 +587,8 @@ jobs:
 
   # Timing cases run serially on each runner without competing functional workers.
   browser-timing:
-    needs: [changes, web-build]
+    name: browser-timing (${{ matrix.project }}, ${{ matrix.shard }}, ${{ matrix.total }})
+    needs: changes
     if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-24.04
     env:
@@ -616,9 +627,17 @@ jobs:
         env:
           STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
         run: bun -e 'import { largeStudyImages } from "./tests/e2e/fixtures/largeStudyImages"; await largeStudyImages()'
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - name: Require the current production web build
+        id: web-dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci-wait-for-renderer.mjs web
+      - name: Download production web build ${{ steps.web-dist.outputs.artifact_id }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          artifact-ids: ${{ needs.web-build.outputs.artifact_id }}
+          artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
+          github-token: ${{ github.token }}
           path: dist/
       - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=${{ matrix.project }} --workers=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
         env:
@@ -636,7 +655,16 @@ jobs:
   # Keep the existing branch-protection check name and require every browser job.
   browser-smoke:
     name: browser-smoke
-    needs: [changes, production, browser-pr, browser-tests, browser-timing, browser-standalone]
+    needs:
+      [
+        changes,
+        web-build,
+        production,
+        browser-pr,
+        browser-tests,
+        browser-timing,
+        browser-standalone,
+      ]
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
@@ -680,6 +708,18 @@ jobs:
             echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT timing=$TIMING_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
             exit 1
           fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
+        with:
+          persist-credentials: false
+      - name: Require browser evidence for the exact production build
+        if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          WEB_ARTIFACT_ID: ${{ needs.web-build.outputs.artifact_id }}
+          FUNCTIONAL_SHARDS: '28'
+        run: node scripts/ci-browser-artefact.mjs
 
   electron-renderer:
     needs: changes

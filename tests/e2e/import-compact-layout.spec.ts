@@ -6,7 +6,7 @@ import { currentSharePayload } from './fixtures/currentSharePayload';
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   test(`keeps compact import controls aligned and step motion usable with ${reducedMotion}`, async ({
     page,
-  }, testInfo) => {
+  }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.emulateMedia({ reducedMotion, colorScheme: 'light' });
     await enterFreshLacuna(page);
@@ -29,13 +29,6 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     ).toBeLessThanOrEqual(1);
     await expect(progress).toContainText('Step 1 of 3');
     await expect(panel.getByRole('button', { name: 'Review cards' })).toBeDisabled();
-
-    async function screenshot(name: string) {
-      const path = testInfo.outputPath(`${name}.png`);
-      await surface.screenshot({ path });
-      await testInfo.attach(name, { path, contentType: 'image/png' });
-    }
-    await screenshot('compact-import-empty');
 
     await input.fill('bonjour\thello\nmerci\tthanks');
     await panel.locator('summary').click();
@@ -72,8 +65,6 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await expect(panel.locator('[data-step="input"]')).toHaveCount(0);
     await expect(panel.locator('[data-step="review"] h2')).toBeFocused();
     await expect(progress).toContainText('Step 2 of 3');
-    await settle(surface);
-    await screenshot('compact-import-review');
 
     await panel.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(input).toHaveValue('bonjour\thello\nmerci\tthanks');
@@ -81,8 +72,6 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await panel.locator('summary').click();
     await expect(panel.getByRole('combobox', { name: 'Format' })).toHaveValue('tsv');
     await panel.locator('summary').click();
-    await settle(surface);
-    await screenshot('compact-import-filled');
 
     await sources.click();
     await expect(page.getByRole('button', { name: /Text or spreadsheet/ })).toBeFocused();
@@ -92,22 +81,16 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   });
 }
 
-test('keeps shared-course input compact and opens the file preview', async ({ page }, testInfo) => {
+test('keeps shared-course input compact and opens the file preview', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ colorScheme: 'light' });
   await enterFreshLacuna(page);
   await openImport(page);
   await page.getByRole('button', { name: /Lacuna course/ }).click();
   const panel = page.locator('.import-panel');
-  const surface = page.locator('.flow-expansion').filter({ has: panel });
   const input = panel.getByRole('textbox', { name: 'Share link or code to import' });
   await expect(input).toBeFocused();
   await expect(panel.getByRole('button', { name: 'Read code' })).toBeDisabled();
-  await settle(surface);
-  const path = testInfo.outputPath('compact-shared-course.png');
-  await surface.screenshot({ path });
-  await testInfo.attach('compact shared-course input', { path, contentType: 'image/png' });
-
   await input.fill('not a valid course');
   await panel.getByRole('button', { name: 'Read code' }).click();
   await expect(panel.getByRole('alert')).toBeVisible();
