@@ -150,15 +150,15 @@ export function renderMarkdownToHtml(
   if (optional.highlight)
     rehypePlugins.push([optional.highlight, { detect: true, ignoreMissing: true }]);
 
-  // Generated labels and short answers often contain no Markdown at all. Keep
-  // this allow-list narrow: indentation, list prefixes, entities, autolinks and
-  // every formatting delimiter still need the full parser and sanitiser.
+  // Plain card prose can include full stops before spaces or at the end. Keep
+  // list prefixes, autolinks and other Markdown syntax on the full parser path.
   const plainText =
     !optional.math &&
     !optional.highlight &&
     prepared === prepared.trim() &&
-    /^[\p{L}\p{N}][\p{L}\p{N} ,;:!?'"()–—-]*$/u.test(prepared) &&
-    !/^\d+\)/.test(prepared);
+    /^[\p{L}\p{N}](?:[\p{L}\p{N} ,;:!?'"()–—-]|\.(?= |$))*$/u.test(prepared) &&
+    !/^\d+[.)]/.test(prepared) &&
+    !/www\./i.test(prepared);
   const html = plainText
     ? renderToStaticMarkup(<p>{prepared}</p>)
     : renderToStaticMarkup(
