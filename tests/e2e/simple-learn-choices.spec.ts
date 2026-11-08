@@ -278,6 +278,7 @@ test('introduces choices before timed typing and keeps the old practice entry', 
 test('counts completed cards across choices and typing and restores the count on resume', async ({
   page,
 }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem('lacuna-theme', 'light'));
   const { lessonId, cards } = await seedLesson(page);
   await page.goto(`/#/lesson/${lessonId}/learn`);
   const view = study(page);
@@ -302,6 +303,7 @@ test('counts completed cards across choices and typing and restores the count on
   const submitTyped = async () => {
     await view.typing.fill(cards[typedPrompt]);
     await view.typing.press('Enter');
+    await view.advance.click();
     await expect(view.choices).toHaveCount(4);
     await expectCompletion(1);
   };

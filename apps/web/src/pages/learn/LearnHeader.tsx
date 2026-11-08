@@ -134,6 +134,7 @@ export function LearnHeader({
   onUndo,
   cardActions = true,
   cardCompletion,
+  segmentNoun,
 }: {
   mode: LearnModeType;
   plannedRevision: boolean;
@@ -172,6 +173,8 @@ export function LearnHeader({
   /** False for a card that is not stored, which has nothing to edit, flag, bury or suspend. */
   cardActions?: boolean;
   cardCompletion?: { completed: number; total: number };
+  /** What each segment represents in the spoken position. */
+  segmentNoun?: string;
 }) {
   const info = computeHeaderInfo({
     singleDeck,
@@ -268,6 +271,7 @@ export function LearnHeader({
               value={displayedProgress}
               label={progressName}
               m={m}
+              noun={segmentNoun}
             />
           ) : (
             <SessionProgressTrack
