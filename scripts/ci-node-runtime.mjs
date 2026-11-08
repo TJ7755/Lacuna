@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFile, mkdtemp, unlink, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const version = '24.22.1';
@@ -32,28 +32,31 @@ assert.ok(checksum, `No Node archive is pinned for ${target}`);
 const directoryName = `node-v${version}-${target}`;
 const archiveName = `${directoryName}${windows ? '.zip' : '.tar.gz'}`;
 const url = `https://nodejs.org/dist/v${version}/${archiveName}`;
-console.log(`Downloading ${url}`);
-const archive = await download(url).catch((error) => {
-  console.warn(`Node archive download failed, retrying: ${error.message}`);
-  return download(url);
+const cache = path.join(RUNNER_TEMP, 'lacuna-node-archives');
+const archivePath = path.join(cache, archiveName);
+const digest = (archive) => createHash('sha256').update(archive).digest('hex');
+const cached = await readFile(archivePath).catch((error) => {
+  if (error.code !== 'ENOENT') throw error;
+  return null;
 });
-assert.equal(
-  createHash('sha256').update(archive).digest('hex'),
-  checksum,
-  'Node checksum mismatch',
-);
+if (cached && digest(cached) === checksum) {
+  console.log(`Verified cached Node archive ${archiveName}`);
+} else {
+  console.log(`Downloading ${url}`);
+  const archive = await download(url).catch((error) => {
+    console.warn(`Node archive download failed, retrying: ${error.message}`);
+    return download(url);
+  });
+  assert.equal(digest(archive), checksum, 'Node checksum mismatch');
+  await mkdir(cache, { recursive: true });
+  await writeFile(archivePath, archive);
+}
 
 // Git tar on Windows can interpret drive letters as remote hosts and cannot read ZIP files.
 if (windows) assert.ok(SystemRoot, 'SystemRoot is required to locate Windows tar');
 const tar = windows ? path.join(SystemRoot, 'System32', 'tar.exe') : 'tar';
 const scratch = await mkdtemp(path.join(RUNNER_TEMP, 'lacuna-node-'));
-const archivePath = path.join(scratch, archiveName);
-await writeFile(archivePath, archive);
-try {
-  execFileSync(tar, ['-xf', archiveName], { cwd: scratch, stdio: 'inherit', windowsHide: true });
-} finally {
-  await unlink(archivePath);
-}
+execFileSync(tar, ['-xf', archivePath], { cwd: scratch, stdio: 'inherit', windowsHide: true });
 
 const bin = path.join(scratch, directoryName, windows ? '' : 'bin');
 const executable = path.join(bin, windows ? 'node.exe' : 'node');
