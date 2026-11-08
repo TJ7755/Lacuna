@@ -71,6 +71,27 @@ production deployment. Redeploy after adding or rotating it.
 To run the same functions **off Vercel** against a Blob store, set
 `BLOB_READ_WRITE_TOKEN` instead. Do not commit a token.
 
+## Usage analytics rollout
+
+Before rollout, record the assessment for the UK
+[PECR statistical purposes exception](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/what-are-the-exceptions/).
+Confirm hosting request-log access and retention, the lawful basis for any
+personal data processed by the hosting service, and the assessment where the service is likely to be accessed by children
+under the [Children's Code](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/childrens-information/childrens-code-guidance-and-resources/age-appropriate-design-a-code-of-practice-for-online-services/).
+
+Generate an independent secret with `openssl rand -hex 32` and set it as
+`USAGE_ANALYTICS_ADMIN_SECRET` in the Production environment of `lacuna-relay`.
+Deploy the relay and check `/usage/dashboard` using HTTP Basic username
+`analytics` and the secret as the password. Check that the existing daily
+maintenance schedule is running. Then deploy the learner app. To suspend the
+feature, deploy the relay with `USAGE_ANALYTICS_ENABLED=false` and the learner
+build with `VITE_USAGE_ANALYTICS_ENABLED=false`.
+
+Deploy relay and learner releases together when the learner minor version
+changes. Check relay 429 and 422 response rates before increasing analytics
+capacity. Each function instance limits bursts in memory without retaining
+addresses, while the private store caps each shard across instances.
+
 ## Deploy
 
 This directory is its own Vercel project. Do not deploy it as part of the app.

@@ -1,4 +1,5 @@
 import { SectionCard } from '../ui/SectionCard';
+import { recordUsageAction } from '../../usage/actions';
 import { useEffect, useId, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { parseShareCode } from '../../shareLinks/client';
@@ -283,6 +284,7 @@ export function SharedCourseImport({
     setError('');
     onBusyChange?.(true);
     let importedCourseId: string | undefined;
+    recordUsageAction('import-started');
     try {
       const payload = pending.file?.payload ?? (await decodeShare(pending.raw));
       const choice = pending.scheduling;
@@ -312,6 +314,7 @@ export function SharedCourseImport({
       } else {
         message = await importContent();
       }
+      recordUsageAction('import-completed');
       notify(message, 'positive');
       setPending(null);
       setInput('');

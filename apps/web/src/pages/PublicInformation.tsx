@@ -79,7 +79,7 @@ export function Privacy() {
       <section>
         <h2>Website analytics and hosting</h2>
         <p>
-          The production getlacuna.app website loads Simple Analytics to measure visits. Its
+          Some public pages on getlacuna.app load Simple Analytics to measure visits. Its
           documentation describes page views, referral sources and device/browser information,
           without analytics cookies or stored IP addresses. This is separate from your study
           database. Read{' '}
@@ -89,13 +89,13 @@ export function Privacy() {
           .
         </p>
         <p>
-          Web builds deployed on Vercel also enable Vercel Web Analytics in the application. It
-          measures page views and visit information such as referrers, browser, device and
-          approximate location. See{' '}
-          <a href="https://vercel.com/docs/analytics/privacy-policy">
-            Vercel Web Analytics privacy information
-          </a>
-          .
+          Lacuna uses usage analytics solely to improve the hosted app. Your browser remembers your
+          choice and, when analytics is on, uses device storage to count visits and repeat use and
+          to send batches of counts and timings. Reports use fixed names for pages and actions and
+          omit learning content, search text, page addresses and persistent browser identifiers.
+          Analytics uses no cookies and respects Do Not Track and Global Privacy Control. Lacuna
+          keeps aggregate reports for up to 90 days. Turn off Usage analytics in Settings to stop
+          collection and discard pending reports.
         </p>
         <p>
           The website and hosted services run on Vercel. Serving pages, relay requests and

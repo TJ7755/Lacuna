@@ -16,7 +16,6 @@ afterEach(() => {
 });
 
 it('discards the prerender before revealing the root, even before React commits', () => {
-  vi.stubGlobal('__VERCEL_ANALYTICS_ENABLED__', false);
   document.documentElement.setAttribute('data-app-starting', '');
   document.body.innerHTML = '<div id="root"><main class="landing-page">Landing</main></div>';
   const root = document.getElementById('root')!;

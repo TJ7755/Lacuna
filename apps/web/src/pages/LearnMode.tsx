@@ -1,4 +1,5 @@
 import { StudyExitHeader } from '../components/learn/StudyExitHeader';
+import { recordUsageAction } from '../usage/actions';
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import './learn/studyLayout.css';
 import { typedAnswerJudgement, useTypedAutoMark } from './learn/useTypedAutoMark';
@@ -73,6 +74,7 @@ function LearnSession({
   const exitDecisionPendingRef = useRef(false);
   const deferredCompletionRef = useRef<SessionSummary | null>(null);
   const completionDeliveriesRef = useRef(0);
+  const studyStarted = useRef(false);
   const stepFinished = useCallback(
     (summary: SessionSummary) => {
       completionDeliveriesRef.current += 1;
@@ -212,6 +214,13 @@ function LearnSession({
     choiceTarget && canOfferChoices(choiceTarget, choiceCandidates) ? choiceTarget : undefined;
 
   const isTypingCard = phase === 'answer' ? presentedAnswerInput === 'typed' : isTypingQuestion;
+
+  useEffect(() => {
+    if (phase === 'question' && current && !studyStarted.current) {
+      studyStarted.current = true;
+      recordUsageAction('study-started');
+    }
+  }, [phase, current]);
 
   useEffect(() => {
     if (phase === 'question' && !isTypingCard) setTypedAnswer('');
@@ -390,6 +399,7 @@ function LearnSession({
             if (!(await settleCompletion())) {
               throw new Error('Session completion could not be saved.');
             }
+            if (phase !== 'finished') recordUsageAction('study-exited');
           } catch (error) {
             leavingSessionRef.current = false;
             throw error;

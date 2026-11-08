@@ -161,6 +161,8 @@ export default [
             { from: 'tests/e2e/gaps-daily-flow.spec.ts', to: 'apps/relay/src/store.ts' },
             { from: 'tests/e2e/share-links.spec.ts', to: 'apps/relay/src/relay.ts' },
             { from: 'tests/e2e/share-links.spec.ts', to: 'apps/relay/src/store.ts' },
+            { from: 'tests/e2e/usage-analytics.spec.ts', to: 'apps/relay/src/usageAnalytics.ts' },
+            { from: 'tests/e2e/usage-analytics.spec.ts', to: 'apps/relay/src/store.ts' },
             { from: 'scripts/library-publish-cli.test.ts', to: 'apps/relay/src/relay.ts' },
             { from: 'scripts/library-publish-cli.test.ts', to: 'apps/relay/src/store.ts' },
             { from: 'scripts/library-publish.test.ts', to: 'apps/relay/src/relay.ts' },

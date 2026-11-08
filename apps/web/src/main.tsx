@@ -1,6 +1,6 @@
 import './index.css';
 import { installStaleChunkRecovery } from './pwa/staleChunkRecovery';
-import { installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
+import { registerProductionServiceWorker } from './webBootstrap';
 import { renderApp } from './appRoot';
 
 async function clearDevelopmentPwaState(): Promise<void> {
@@ -26,7 +26,6 @@ function start(): void {
   // Importing this shared chunk for warm-up must never mount a second root.
   if (document.documentElement.hasAttribute('data-landing-entry')) return;
   installStaleChunkRecovery();
-  installSimpleAnalytics();
   void registerProductionServiceWorker();
   if (!import.meta.env.DEV && !document.documentElement.hasAttribute('data-app-starting')) {
     void import('./landingBootstrap');

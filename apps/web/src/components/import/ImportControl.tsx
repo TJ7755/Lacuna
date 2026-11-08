@@ -165,6 +165,7 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
           aria-controls={expanded ? panelId : undefined}
           aria-busy={pending || undefined}
           disabled={busy}
+          data-usage-action={open ? undefined : 'import-opened'}
           onPointerEnter={prefetch}
           onFocus={prefetch}
           onClick={() => changeOpen(!open)}

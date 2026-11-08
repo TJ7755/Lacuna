@@ -17,6 +17,7 @@ import { CourseHeaderSection } from './settings/CourseHeaderSection';
 import { CourseDefaultsSection, StudySection } from './settings/StudySection';
 import { SyncSection } from './settings/SyncSection';
 import { JevSection } from './settings/JevSection';
+import { UsageAnalyticsSection } from './settings/UsageAnalyticsSection';
 import { SettingsDisclosure } from './settings/SettingsDisclosure';
 import { Rise } from '../components/analytics/Arrival';
 import { FeedbackSection } from '../components/feedback/FeedbackSection';
@@ -40,6 +41,7 @@ const DATA_ANCHORS = [
   'settings-data-links',
   'settings-sync',
   'settings-export',
+  'settings-usage-analytics',
 ];
 const INTEGRATION_ANCHORS = ['settings-install', 'settings-jev', 'settings-mcp'];
 const COMMON_ANCHORS = new Set(['settings-appearance', 'settings-input', 'settings-pomodoro']);
@@ -110,6 +112,7 @@ export function Settings() {
             <DataLinksSection />
             <SyncSection />
             <DataPortabilitySection motionMultiplier={motionMultiplier} />
+            <UsageAnalyticsSection />
           </SettingsDisclosure>
         </Rise>
         <Rise index={6}>

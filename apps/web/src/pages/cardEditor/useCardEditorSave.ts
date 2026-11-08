@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { recordUsageAction } from '../../usage/actions';
 import { canEditLessons, isLessonAuthoringMode } from '../../course/lessonViewMode';
 import { useToast } from '../../components/ui/Toast';
 import { numericAnswerSpecIsValid } from '../../components/items/NumericAnswerEditor';
@@ -160,6 +161,7 @@ export function useCardEditorSave({
         if (card.type === 'basic_reversed' && card.reverseCardId) {
           await updateCard(card.reverseCardId, { front: backValue, back: front });
         }
+        recordUsageAction('edit-saved');
         draft.clearSavedDraft();
         flashSaved();
         // Let the confirmation flourish play briefly before leaving the page.
@@ -235,6 +237,7 @@ export function useCardEditorSave({
           storedSpelling,
         );
       }
+      recordUsageAction('create-completed');
       draft.clearSavedDraft();
       if (andAnother) {
         // Stay on the page for rapid entry: clear the content, keep the type and tags
