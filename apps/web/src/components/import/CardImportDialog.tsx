@@ -206,8 +206,8 @@ export function CardImportDialog({
                     : step === 'review'
                       ? 'Review cards'
                       : 'Choose destination'}
-                  {' · '}
-                  Step {stepNumber} of {separateDestination ? 3 : 2}
+                  {' (Step '}
+                  {stepNumber} of {separateDestination ? 3 : 2})
                 </span>
                 <span aria-hidden="true">
                   {stepNumber} / {separateDestination ? 3 : 2}
@@ -307,10 +307,8 @@ export function CardImportDialog({
                     </strong>
                     <span>
                       cards
-                      {!source.apkg && (
-                        <small>
-                          {cards.length} original · {reverse ? eligible : 0} reverse
-                        </small>
+                      {!source.apkg && reverse && eligible > 0 && (
+                        <small>Including {eligible} reversed</small>
                       )}
                     </span>
                   </div>

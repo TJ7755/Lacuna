@@ -127,7 +127,7 @@ for (const width of [1440]) {
     const preview = page.getByRole('region', { name: 'Session preview' });
     const recommendation = preview.getByRole('list', { name: "Today's session" });
     await expect(recommendation.getByRole('listitem')).toHaveCount(1);
-    await expect(recommendation).toHaveText('Year twoLearn new cards · 1 card');
+    await expect(recommendation).toHaveText('Year twoLearn 1 new card');
     await preview.getByRole('button', { name: 'Other ways', exact: true }).click();
     await expect(
       preview.getByRole('button', { name: 'Review earlier material', exact: true }),
@@ -143,7 +143,7 @@ for (const width of [1440]) {
     await expect(page.getByText('Year two recall', { exact: true })).toHaveCount(0);
     await page.goto(courseUrl);
     await page.getByRole('button', { name: 'Study', exact: true }).click();
-    await expect(recommendation).toHaveText('Year twoLearn new cards · 1 card');
+    await expect(recommendation).toHaveText('Year twoLearn 1 new card');
     await preview.getByRole('button', { name: 'Start session', exact: true }).click();
     await expect(
       page.locator('[data-study-face="front"]').getByText('Year two recall', { exact: true }),

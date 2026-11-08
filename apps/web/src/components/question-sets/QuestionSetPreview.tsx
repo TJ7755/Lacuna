@@ -40,7 +40,7 @@ export function QuestionSetPreview({
               {answer.allocations.map((a, i) => (
                 <section key={a.id} className="qs-source">
                   <p className="qs-kicker">
-                    Criterion {i + 1} · {a.maxMarks} {a.maxMarks === 1 ? 'mark' : 'marks'}
+                    Criterion {i + 1} ({a.maxMarks} {a.maxMarks === 1 ? 'mark' : 'marks'})
                   </p>
                   <MarkdownView enlargeImages source={a.criterion} />
                   {a.explanation && <MarkdownView enlargeImages source={a.explanation} />}

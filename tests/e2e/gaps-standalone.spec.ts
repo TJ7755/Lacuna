@@ -80,7 +80,7 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeAttached();
     await expect(page.getByRole('heading', { name: 'Connect your first class' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Teacher keys' })).toHaveCount(0);
-    await expect(page).toHaveTitle('Gaps · Lacuna');
+    await expect(page).toHaveTitle('Gaps – Lacuna');
     await expect(page.getByRole('link', { name: 'Open Share in Lacuna' })).toHaveAttribute(
       'href',
       'https://getlacuna.app/#/share',

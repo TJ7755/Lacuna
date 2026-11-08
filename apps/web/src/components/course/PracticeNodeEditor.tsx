@@ -213,7 +213,7 @@ export function PracticeNodeEditor({
         </div>
       </AnimatedDisclosure>
       <p className="mt-3 text-sm text-ink-faint">
-        {countOf(draft.lessonIds?.length ?? lessons.length, 'lesson')} ·{' '}
+        {countOf(draft.lessonIds?.length ?? lessons.length, 'lesson')},{' '}
         {Math.min(parseCardCount(draft.cardCount) ?? scope.length, scope.length)} cards
       </p>
     </PathEditorSurface>

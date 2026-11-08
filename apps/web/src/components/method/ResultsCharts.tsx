@@ -75,7 +75,7 @@ export function OverallResults() {
             <li key={m.name}>
               <div className="mb-1 flex items-baseline justify-between gap-4">
                 <span className="font-body text-sm text-ink-soft">
-                  {m.name} <span className="text-ink-faint">· {m.note}</span>
+                  {m.name} <span className="text-ink-faint">({m.note})</span>
                 </span>
                 <span className="font-body text-sm tabular-nums text-ink">
                   {value.toFixed(decimals)}
@@ -221,7 +221,7 @@ export function LagResults() {
       <figcaption className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 font-body text-sm text-ink-faint">
         <span className="inline-flex items-center gap-2">
           <span className="inline-block size-2.5 rounded-sm bg-negative/70" aria-hidden />
-          FSRS-6 · log loss, lower is better
+          FSRS-6 log loss (lower is better)
         </span>
         <span className="inline-flex items-center gap-2">
           <span className="inline-block size-2.5 rounded-sm bg-accent-ink" aria-hidden />

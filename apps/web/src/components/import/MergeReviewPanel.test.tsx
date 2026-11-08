@@ -177,7 +177,7 @@ describe('MergeReviewPanel', () => {
       mockReview!.diff.updates.cards[0].tags = ['Published'];
       renderPanel();
       fireEvent.click(screen.getAllByRole('button', { name: 'Expand detail' })[0]);
-      expect(screen.getByText('Tags · Added')).toBeInTheDocument();
+      expect(screen.getByText('Tags (Added)')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
     } finally {
       cards[1].tags = tags;
@@ -191,12 +191,12 @@ describe('MergeReviewPanel', () => {
   it('renders the header, auto-applied summary and all outstanding sections', () => {
     renderPanel();
     expect(screen.getByRole('heading', { name: 'Biology' })).toBeTruthy();
-    expect(screen.getByText('Update from Ms Teacher · revision 3')).toBeTruthy();
+    expect(screen.getByText('Update from Ms Teacher (revision 3)')).toBeTruthy();
     expect(screen.getByText('1 new item was added automatically.')).toBeTruthy();
     expect(screen.getByText('Updates')).toBeTruthy();
     expect(screen.getByText('Removals')).toBeTruthy();
     expect(screen.getByText('Conflicts')).toBeTruthy();
-    expect(screen.getByText("You've edited this item.")).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Take theirs' })).toBeEnabled();
   });
 
   it('accepts a single update with the right reference', () => {
@@ -260,8 +260,8 @@ describe('MergeReviewPanel', () => {
     expect(within(row).getByText('Current')).toBeInTheDocument();
     expect(within(row).getByText('Incoming')).toBeInTheDocument();
     fireEvent.click(within(row).getByRole('button', { name: 'Expand detail' }));
-    expect(within(row).getByText('Front · Unchanged')).toBeInTheDocument();
-    expect(within(row).getByText('Back · Changed')).toBeInTheDocument();
+    expect(within(row).getByText('Front (Unchanged)')).toBeInTheDocument();
+    expect(within(row).getByText('Back (Changed)')).toBeInTheDocument();
     expect(within(row).getByText('**New back**')).toBeInTheDocument();
   });
 
@@ -279,11 +279,11 @@ describe('MergeReviewPanel', () => {
     for (const button of screen.getAllByRole('button', { name: 'Expand detail' }))
       fireEvent.click(button);
     const conflicts = screen.getByText('Conflicts').closest('section')!;
-    expect(within(conflicts).getByText('Back · Removed')).toBeInTheDocument();
+    expect(within(conflicts).getByText('Back (Removed)')).toBeInTheDocument();
     expect(within(conflicts).getByText('Old back')).toBeInTheDocument();
-    expect(screen.getByText('Description · Added')).toBeInTheDocument();
-    expect(screen.getByText('Name · Changed')).toBeInTheDocument();
-    expect(screen.getByText('Content · Removed')).toBeInTheDocument();
+    expect(screen.getByText('Description (Added)')).toBeInTheDocument();
+    expect(screen.getByText('Name (Changed)')).toBeInTheDocument();
+    expect(screen.getByText('Content (Removed)')).toBeInTheDocument();
   });
 
   it('moves decision focus to the next row then a completion target, announcing each result', async () => {

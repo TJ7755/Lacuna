@@ -212,7 +212,7 @@ export async function expectShareLinkRevision(revision: number) {
   await waitFor(() => {
     const heading = screen.getByRole('heading', { name: 'Share link', level: 2 });
     expect(
-      within(heading.parentElement!).getByText(new RegExp(`^Revision ${revision}(?: ·|$)`)),
+      within(heading.parentElement!).getByText(new RegExp(`^Revision ${revision}(?:\\.|$)`)),
     ).toBeVisible();
   });
 }

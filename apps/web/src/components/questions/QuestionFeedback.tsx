@@ -91,8 +91,7 @@ export function QuestionFeedback({
 
       {scheduleWithheld && (
         <p className="mt-6 rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm leading-6 text-ink-soft">
-          The attempt and raw marks have been retained. It has not changed this Question’s schedule
-          because the checker abstained or you disputed its verdict.
+          Attempt saved. Schedule unchanged.
         </p>
       )}
 
@@ -102,15 +101,11 @@ export function QuestionFeedback({
           onClick={() => setCorrecting(true)}
           className="mt-6 inline-flex min-h-11 items-center text-sm text-ink-soft underline decoration-line-strong underline-offset-4 hover:text-ink"
         >
-          Record an optional correction
+          Record a correction
         </button>
       )}
       {correcting && !attempt.correction && (
         <div className="mt-6 rounded-[18px] bg-ink/[0.04] p-4">
-          <p className="mb-4 text-sm leading-6 text-ink-soft">
-            Work the problem again. This is stored separately and never rewrites your first
-            submission.
-          </p>
           {attempt.resolvedPayload.kind === 'numeric' ? (
             <MathsAnswerInput value={answer} onChange={setAnswer} label="Corrected answer" />
           ) : (

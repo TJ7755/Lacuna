@@ -41,19 +41,15 @@ function describeStep(
   if (step.kind === 'lesson') {
     const cards = lessonCardsById.get(step.lessonId) ?? [];
     const fresh = cards.filter((card) => card.lastReviewed === null).length;
-    const introducing = fresh > 0 && snapshot.learnFirst !== false;
     return {
       key: `lesson:${step.lessonId}`,
       title: step.label,
-      detail: `${introducing ? 'Learn new cards' : 'Learn'} · ${
+      detail:
         cards.length === 0
-          ? 'Notes only'
+          ? 'Read notes'
           : fresh === cards.length
-            ? countOf(fresh, introducing ? 'card' : 'new card')
-            : fresh > 0
-              ? `${countOf(cards.length, 'card')}, ${fresh} new`
-              : countOf(cards.length, 'card')
-      }`,
+            ? `Learn ${countOf(fresh, 'new card')}`
+            : `Learn ${countOf(cards.length, 'card')}${fresh > 0 ? ` (${fresh} new)` : ''}`,
       minutes:
         cards.length === 0
           ? undefined
@@ -78,7 +74,7 @@ function describeStep(
     return {
       key: `practice:${step.nodeKey}`,
       title: step.mode === 'recurring' ? 'Review due cards' : step.label,
-      detail: `${countOf(count, 'card')} available · up to ${STUDY_REVIEW_BLOCK_SIZE} reviews`,
+      detail: `${countOf(count, 'card')} available (up to ${STUDY_REVIEW_BLOCK_SIZE} reviews)`,
       minutes: count > 0 ? minutesFor(STUDY_REVIEW_BLOCK_SIZE, meanReviewSeconds) : undefined,
     };
   }

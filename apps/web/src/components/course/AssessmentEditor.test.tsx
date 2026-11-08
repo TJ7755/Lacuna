@@ -107,9 +107,9 @@ describe('AssessmentEditor', () => {
       'aria-pressed',
       'true',
     );
-    expect(screen.getByText(/2 lessons · 2 cards/)).toBeInTheDocument();
+    expect(screen.getByText(/2 lessons, 2 cards/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Path position'), { target: { value: 'l1' } });
-    expect(screen.getByText(/1 lesson · 1 card/)).toBeInTheDocument();
+    expect(screen.getByText(/1 lesson, 1 card/)).toBeInTheDocument();
   });
 
   it('keeps custom coverage explicit and rejects an empty lesson selection', () => {
@@ -122,7 +122,7 @@ describe('AssessmentEditor', () => {
     expect(
       screen.queryByText('Custom assessment coverage must contain at least one lesson.'),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/1 lesson · 1 card/)).toBeInTheDocument();
+    expect(screen.getByText(/1 lesson, 1 card/)).toBeInTheDocument();
   });
 
   it('allows explicit coverage beyond the assessment path position', () => {
@@ -131,7 +131,7 @@ describe('AssessmentEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Choose lessons' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Bonding' }));
     expect(screen.getByRole('checkbox', { name: 'Bonding' })).toBeChecked();
-    expect(screen.getByText(/1 lesson · 1 card/)).toBeInTheDocument();
+    expect(screen.getByText(/1 lesson, 1 card/)).toBeInTheDocument();
   });
 
   it('shows stale references and keeps the draft unsaveable', () => {
@@ -155,7 +155,7 @@ describe('AssessmentEditor', () => {
     expect(screen.getByText('What is a proton?')).toBeInTheDocument();
     expect(screen.queryByText('What is a bond?')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('What is a proton?'));
-    expect(screen.getByText(/2 lessons · 1 card/)).toBeInTheDocument();
+    expect(screen.getByText(/2 lessons, 1 card/)).toBeInTheDocument();
   });
 
   it('lists exclusion choices as readable text rather than raw markup', () => {

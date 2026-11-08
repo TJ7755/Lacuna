@@ -172,8 +172,7 @@ describe('StudySheet', () => {
     mockFlows.chem.snapshot.recurringPracticeEligibleCount = 6;
     renderSheet('chem');
     const steps = screen.getByRole('list', { name: "Today's session" });
-    expect(steps).toHaveTextContent('Atomic structureLearn new cards · 2 cards, 1 new');
-    expect(steps).toHaveTextContent('2 cards, 1 new');
+    expect(steps).toHaveTextContent('Atomic structureLearn 2 cards (1 new)');
     expect(steps).not.toHaveTextContent('Review due cards');
     expect(steps.querySelector('[aria-hidden="true"]')).toBeNull();
     expect(steps).not.toHaveTextContent('min');

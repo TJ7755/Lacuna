@@ -42,7 +42,7 @@ function computeHeaderInfo({
 }) {
   // unitDisplayName overrides the unit's own name for lesson scope, whose
   // scheduling unit is the parent Course rather than the lesson itself.
-  const deckName = unitDisplayName ?? (singleDeck ? singleDeck.name : 'Review today · all courses');
+  const deckName = unitDisplayName ?? (singleDeck ? singleDeck.name : 'Review all courses');
   const tagPart = tagFilter ? `tag "${tagFilter}"` : '';
 
   const filterLabels = filterParams.map((f) => FILTER_LABELS[f] ?? f);
@@ -57,37 +57,37 @@ function computeHeaderInfo({
       };
     case 'cram':
       return {
-        title: `${deckName} · Revision plan`,
+        title: `${deckName} (Revision plan)`,
         subtitle: revisionNextWindowDay ? `Next ${revisionNextWindowDay}` : tagPart,
       };
     case 'filtered-due':
       return {
-        title: `${deckName} · ${filterPart}`,
+        title: `${deckName} (${filterPart})`,
         subtitle: tagPart,
       };
     case 'filtered-new':
       return {
-        title: `${deckName} · ${filterPart}`,
+        title: `${deckName} (${filterPart})`,
         subtitle: tagPart,
       };
     case 'filtered-leech':
       return {
-        title: `${deckName} · ${filterPart}`,
+        title: `${deckName} (${filterPart})`,
         subtitle: tagPart,
       };
     case 'filtered-flagged':
       return {
-        title: `${deckName} · ${filterPart}`,
+        title: `${deckName} (${filterPart})`,
         subtitle: tagPart,
       };
     case 'filtered-suspended':
       return {
-        title: `${deckName} · ${filterPart}`,
+        title: `${deckName} (${filterPart})`,
         subtitle: tagPart,
       };
     case 'filtered':
       return {
-        title: `${deckName} · ${filterPart}`,
+        title: `${deckName} (${filterPart})`,
         subtitle: tagPart,
       };
     default:
@@ -240,7 +240,7 @@ export function LearnHeader({
             </h1>
             {cardPosition && (
               <span className="shrink-0 text-ink-soft tabular-nums">
-                · {segmentNoun === 'Chunk' ? 'Chunk ' : ''}
+                {segmentNoun === 'Chunk' ? 'Chunk ' : ''}
                 {cardPosition}
               </span>
             )}

@@ -277,11 +277,10 @@ export function BackupsSection() {
                   {persistence.supported ? (
                     <>
                       {persistence.persisted ? (
-                        'The browser will not delete this data under storage pressure.'
+                        'Protected from storage pressure.'
                       ) : (
                         <>
-                          This browser may clear Lacuna’s data, for example on shared or
-                          school-managed devices. Keep a copy with{' '}
+                          This browser may clear Lacuna’s data. Use{' '}
                           <a
                             className="text-accent-ink underline"
                             href="#/settings#settings-backups"
@@ -326,7 +325,7 @@ export function BackupsSection() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-semibold text-ink">
                   <FolderIcon width={16} height={16} />
-                  Folder copy · {folder ?? 'Not configured'}
+                  Folder copy ({folder ?? 'Not configured'})
                 </div>
                 {mirror?.state === 'saved' ? (
                   <p role="status" className="mt-1 flex items-center gap-1.5 text-xs text-positive">
@@ -382,8 +381,7 @@ export function BackupsSection() {
           </div>
         ) : (
           <p className="text-xs text-ink-faint">
-            This browser cannot mirror backups to a folder; restore points are kept in the browser
-            only. Use “Export all data” below for an off-device copy.
+            Restore points stay in this browser. Export all data for a separate copy.
           </p>
         )}
       </BackupHero>

@@ -276,7 +276,7 @@ describe('QuestionsPage navigation', () => {
       screen.getByRole('img', { name: 'Latest score 72%. Recent scores: 48%, 72%' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/last tried 3 days ago/)).toBeInTheDocument();
-    expect(screen.getByText(/not tried yet/)).toBeInTheDocument();
+    expect(screen.getByText('No score yet')).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', { name: 'Attempt' })[1]);
     expect(startAttempt).toHaveBeenCalledWith('set-new', 'practice');
     await waitFor(() =>

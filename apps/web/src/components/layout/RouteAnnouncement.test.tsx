@@ -4,25 +4,25 @@ import RouteAnnouncement from './RouteAnnouncement';
 
 it('announces the shared-course page for share links', async () => {
   render(<RouteAnnouncement pathname="/s/aaaabbbbccccddddeeeeffffgggghhhh" />);
-  await waitFor(() => expect(document.title).toBe('Shared course · Lacuna'));
+  await waitFor(() => expect(document.title).toBe('Shared course – Lacuna'));
   expect(await screen.findByRole('status')).toHaveTextContent('Shared course');
 });
 
 it('keeps announcing known pages', async () => {
   const { unmount } = render(<RouteAnnouncement pathname="/share" />);
-  await waitFor(() => expect(document.title).toBe('Share · Lacuna'));
+  await waitFor(() => expect(document.title).toBe('Share – Lacuna'));
   unmount();
 });
 
 it('names and announces the teacher view', async () => {
   render(<RouteAnnouncement pathname="/teach" />);
-  await waitFor(() => expect(document.title).toBe('Gaps · Lacuna'));
+  await waitFor(() => expect(document.title).toBe('Gaps – Lacuna'));
   expect(await screen.findByRole('status')).toHaveTextContent('Gaps');
 });
 
 it('announces the removed share prototype as a missing page', async () => {
   render(<RouteAnnouncement pathname="/share-prototype" />);
-  await waitFor(() => expect(document.title).toBe('Page not found · Lacuna'));
+  await waitFor(() => expect(document.title).toBe('Page not found – Lacuna'));
   expect(await screen.findByRole('status')).toHaveTextContent('Page not found');
 });
 
@@ -33,12 +33,12 @@ it('names the question set editor', async () => {
 
 it('names and announces a joined pupil class', async () => {
   render(<RouteAnnouncement pathname="/gaps/biology" />);
-  await waitFor(() => expect(document.title).toBe('Gaps · Lacuna'));
+  await waitFor(() => expect(document.title).toBe('Gaps – Lacuna'));
   expect(await screen.findByRole('status')).toHaveTextContent('Gaps');
 });
 
 it('names and announces onboarding', async () => {
   render(<RouteAnnouncement pathname="/start" />);
-  await waitFor(() => expect(document.title).toBe('Get started · Lacuna'));
+  await waitFor(() => expect(document.title).toBe('Get started – Lacuna'));
   expect(await screen.findByRole('status')).toHaveTextContent('Get started');
 });

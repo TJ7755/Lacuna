@@ -113,7 +113,7 @@ describe('LibraryPage', () => {
     expect(screen.getAllByRole('button', { expanded: false })).toHaveLength(1);
     fireEvent.click(cover('Religious Studies'));
     const sheet = await screen.findByRole('dialog', { name: 'Religious Studies' });
-    expect(sheet).toHaveTextContent('AQA GCSE · 8062');
+    expect(sheet).toHaveTextContent('AQA GCSE (8062)');
     expect(sheet).toHaveTextContent('optional Themes A–F modules');
     expect(sheet).toHaveTextContent('1, 1, 4 and 6-mark question styles');
     expect(sheet).toHaveTextContent('1,272 cards');
@@ -142,7 +142,7 @@ describe('LibraryPage', () => {
 
     const sheet = await screen.findByRole('dialog', { name: 'Physics' });
     expect(physics).toHaveAttribute('aria-expanded', 'true');
-    expect(within(sheet).getByText('OCR GCSE · J249')).toBeInTheDocument();
+    expect(within(sheet).getByText('OCR GCSE (J249)')).toBeInTheDocument();
     expect(within(sheet).getByText('Explore energy, forces and matter.')).toBeInTheDocument();
     expect(within(sheet).getByText('30 practice sets, 75 marks')).toBeInTheDocument();
     expect(within(sheet).getByText('Forces')).toBeInTheDocument();

@@ -106,7 +106,7 @@ export function PredictionAccuracyCard({ prediction }: { prediction: PredictionA
   return (
     <ChartCard
       title="Prediction accuracy"
-      description="Brier score · lower is better"
+      description="Brier score (lower is better)"
       data={{
         columns: ['Date', 'Brier score', 'Predicted recall (%)', 'Actual recall (%)'],
         rows: prediction.map((point) => [
@@ -266,7 +266,7 @@ export function LessonBreakdownCard({
             cursor={s.cursorBar}
             labelFormatter={(name, payload) => {
               const cards = (payload[0]?.payload as Point | undefined)?.cardCount;
-              return cards === undefined ? name : `${name} · ${countOf(cards, 'card')}`;
+              return cards === undefined ? name : `${name} (${countOf(cards, 'card')})`;
             }}
             formatter={(v, name) => [`${v}%`, name === 'masteryPct' ? objectiveLabel : 'Reviewed']}
           />

@@ -63,7 +63,7 @@ it('offers a recovery download only after persistence succeeds without claiming 
   expect(await screen.findByRole('status')).toHaveTextContent('Class protected');
   expect(store.create).toHaveBeenCalledWith(shareId, passphrase);
   expect(screen.getByRole('button', { name: 'Download encrypted recovery file' })).toBeEnabled();
-  expect(screen.getByText(/Protecting this class does not start reporting/)).toBeInTheDocument();
+  expect(screen.getByText('Pupils choose whether to share results.')).toBeInTheDocument();
   expect(screen.queryByDisplayValue(passphrase)).not.toBeInTheDocument();
   expect(store.close).toHaveBeenCalled();
 });

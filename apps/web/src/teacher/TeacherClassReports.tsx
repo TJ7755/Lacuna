@@ -56,15 +56,6 @@ export function DemoClassPage({ onExit }: { onExit(): void }) {
           </button>
         </div>
       </header>
-      <SectionCard className="mb-6 p-5 text-sm text-ink-soft">
-        <p className="font-semibold text-ink">
-          Fictional demo: six invented pupils and answers. Nothing is saved or sent.
-        </p>
-        <p className="mt-2">
-          Choose “Explain osmosis.” to inspect the shared answer, or choose a pupil. Some evidence
-          is self marked or unknown; it is not a verified assessment.
-        </p>
-      </SectionCard>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <SlidingTabs<'results' | 'pupils'>
           label="Class view"
@@ -75,7 +66,7 @@ export function DemoClassPage({ onExit }: { onExit(): void }) {
             { value: 'pupils', label: 'Pupils' },
           ]}
         />
-        <p className="text-sm text-ink-faint">6 fictional reports · 3 questions</p>
+        <p className="text-sm text-ink-faint">Nothing is saved or sent.</p>
       </div>
       <div key={reset}>
         {tab === 'results' ? <Results reports={reports} /> : <Pupils reports={reports} />}

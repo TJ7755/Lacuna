@@ -164,8 +164,7 @@ export function TeacherKeySetup({
           Keep this private to reopen the class
         </legend>
         <p className="text-sm text-ink-soft">
-          Your recovery file and its code or passphrase are for you. Do not send them to pupils.
-          Keep the file and code or passphrase separately.
+          Keep the recovery file and its code or passphrase private and separate.
         </p>
         {prepared ? (
           <div className="gaps-fade space-y-5">
@@ -174,13 +173,10 @@ export function TeacherKeySetup({
                 <CheckIcon width={20} height={20} />
               </span>
               <p role="status" className="font-semibold">
-                Class protected. Download its recovery file.
+                Class protected
               </p>
             </div>
-            <p className="text-sm text-ink-soft">
-              Keep the file and passphrase apart. Protecting this class does not start reporting:
-              pupils join and choose to share.
-            </p>
+            <p className="text-sm text-ink-soft">Pupils choose whether to share results.</p>
             <button
               type="button"
               onClick={download}
@@ -188,11 +184,7 @@ export function TeacherKeySetup({
             >
               Download encrypted recovery file
             </button>
-            {downloaded && (
-              <p className="gaps-fade text-sm text-ink-soft">
-                Download requested. Keep it somewhere safe.
-              </p>
-            )}
+            {downloaded && <p className="gaps-fade text-sm text-ink-soft">Download requested</p>}
             {onContinue && downloaded && (
               <button
                 type="button"
@@ -310,9 +302,7 @@ export function TeacherKeySetup({
       </fieldset>
       <fieldset className="border-t border-line pt-4">
         <legend className="font-semibold">Give this to pupils</legend>
-        <p className="mt-2 text-sm text-ink-soft">
-          The class code or join link from Invite, after opening the class.
-        </p>
+        <p className="mt-2 text-sm text-ink-soft">Class code or join link from Invite.</p>
       </fieldset>
       {error && (
         <p role="alert" className="gaps-shake text-sm text-negative">

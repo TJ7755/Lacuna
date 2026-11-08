@@ -26,7 +26,7 @@ describe('planStudySession', () => {
       {
         key: 'lesson:l1',
         title: 'Cell structure',
-        detail: 'Learn new cards · 3 cards, 1 new',
+        detail: 'Learn 3 cards (1 new)',
         minutes: 1,
       },
     ]);
@@ -41,7 +41,7 @@ describe('planStudySession', () => {
       lessonCardsById: new Map([['l1', [card(false), card(false)]]]),
       meanReviewSeconds: 12,
     });
-    expect(plan.steps[0]?.detail).toBe('Learn new cards · 2 cards');
+    expect(plan.steps[0]?.detail).toBe('Learn 2 new cards');
   });
 
   it('lists due reviews once when they are the step itself', () => {
@@ -55,7 +55,7 @@ describe('planStudySession', () => {
       {
         key: 'practice:due-review',
         title: 'Review due cards',
-        detail: '30 cards available · up to 10 reviews',
+        detail: '30 cards available (up to 10 reviews)',
         minutes: 2,
       },
     ]);
@@ -69,9 +69,7 @@ describe('planStudySession', () => {
       lessonCardsById: new Map([['l1', []]]),
       meanReviewSeconds: 8,
     });
-    expect(plan.steps).toEqual([
-      { key: 'lesson:l1', title: 'Intro', detail: 'Learn · Notes only' },
-    ]);
+    expect(plan.steps).toEqual([{ key: 'lesson:l1', title: 'Intro', detail: 'Read notes' }]);
     expect(plan.totalMinutes).toBeUndefined();
   });
 
@@ -89,7 +87,7 @@ describe('planStudySession', () => {
       {
         key: 'practice:p1',
         title: 'Card practice',
-        detail: '1 card available · up to 10 reviews',
+        detail: '1 card available (up to 10 reviews)',
         minutes: 2,
       },
     ]);

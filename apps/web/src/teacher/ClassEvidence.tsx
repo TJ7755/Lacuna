@@ -17,6 +17,13 @@ export function activityCount(report: DailyEvidence) {
   return `${report.events.length} ${report.events.length === 1 ? 'activity' : 'activities'}`;
 }
 
+function answerOutcome(event: DailyEvidenceEvent) {
+  const details = [markingLabel(event)];
+  if (event.disputed) details.push('disputed by the pupil');
+  if (event.shortened) details.push('shortened for this report');
+  return `${outcomeLabel(event)} (${details.join(', ')})`;
+}
+
 /** A grid row that opens beneath its pupil or the item headings, spanning the visible grid. */
 export function DetailRow({
   open,
@@ -170,11 +177,7 @@ function EventRow({ event, highlighted }: { event: DailyEvidenceEvent; highlight
               })}
             </ul>
           )}
-          <p className="mt-2 text-xs text-ink-faint">
-            {outcomeLabel(event)} · {markingLabel(event)}
-            {event.disputed && ' · disputed by the pupil'}
-            {event.shortened && ' · shortened for this report'}
-          </p>
+          <p className="mt-2 text-xs text-ink-faint">{answerOutcome(event)}</p>
         </div>
       </div>
     </li>
@@ -206,9 +209,7 @@ export function ItemAnswers({ item }: { item: ItemSummary }) {
                   {[...new Set(group.answers.map(({ report }) => report.pupil.label))].join(', ')}
                 </p>
                 <p className="mt-1.5 text-xs text-ink-soft">
-                  {outcomeLabel(group.answers[0].event)} · {markingLabel(group.answers[0].event)}
-                  {group.answers[0].event.disputed && ' · disputed by the pupil'}
-                  {group.answers[0].event.shortened && ' · shortened for this report'}
+                  {answerOutcome(group.answers[0].event)}
                 </p>
               </div>
             </div>

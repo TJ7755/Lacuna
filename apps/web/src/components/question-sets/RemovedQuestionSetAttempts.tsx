@@ -10,7 +10,7 @@ export function RemovedQuestionSetAttempts({ courseId }: { courseId: string }) {
   if (!attempts.length) return null;
   return (
     <QuestionSetPanel
-      title={`Attempts from removed sets · ${attempts.length}`}
+      title={`Attempts from removed sets (${attempts.length})`}
       className="qs-history"
     >
       <QuestionSetAttemptList

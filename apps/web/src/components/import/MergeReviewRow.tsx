@@ -14,7 +14,6 @@ export interface RowAction {
 export function MergeReviewRow({
   row,
   note,
-  consequence,
   expanded,
   onToggle,
   primary,
@@ -23,7 +22,6 @@ export function MergeReviewRow({
 }: {
   row: ReviewRowModel;
   note?: string;
-  consequence: string;
   expanded: boolean;
   onToggle: () => void;
   primary: RowAction;
@@ -67,7 +65,6 @@ export function MergeReviewRow({
               data-merge-primary={index === 0 || undefined}
               onClick={action.onClick}
               disabled={pending}
-              aria-describedby={`${id}-consequence`}
               className={cn(
                 'min-h-11 rounded-full px-3 py-1 text-sm font-medium transition-colors disabled:opacity-50',
                 action.emphasis
@@ -80,13 +77,10 @@ export function MergeReviewRow({
           ))}
         </div>
       </div>
-      <p id={`${id}-consequence`} className="mt-2 text-xs text-ink-soft">
-        {consequence}
-      </p>
       {!expanded && preview && (
         <div className="mt-3 space-y-1 text-sm">
           <p className="text-xs text-accent-ink">
-            {changed.map((field) => `${field.label} · ${field.state}`).join('; ') ||
+            {changed.map((field) => `${field.label} (${field.state})`).join(', ') ||
               'Unchanged content'}
           </p>
           <p className="flex gap-2">
@@ -114,7 +108,7 @@ export function MergeReviewRow({
               )}
             >
               <p className="mb-2 text-sm font-medium text-ink">
-                {field.label} · {field.state}
+                {field.label} ({field.state})
               </p>
               <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                 {(['before', 'after'] as const).map((version) => (

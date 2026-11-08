@@ -83,7 +83,7 @@ export function AssessmentDetailSheet({
           <div className="min-w-0">
             <h2 className="break-words font-display text-2xl">{assessment.name}</h2>
             <p className="mt-1 text-sm text-ink-soft">
-              {assessment.kind === 'final' ? 'Final assessment' : 'Checkpoint'} ·{' '}
+              {assessment.kind === 'final' ? 'Final assessment' : 'Checkpoint'},{' '}
               {assessment.examDate === undefined
                 ? 'steady retention'
                 : formatDateTime(assessment.examDate, assessment.timeZone)}
@@ -104,7 +104,7 @@ export function AssessmentDetailSheet({
             <h3 className="text-sm font-medium text-ink">Coverage</h3>
             <p className="mt-1 text-sm text-ink-soft">
               {resolved.coveredLessons.length} lesson
-              {resolved.coveredLessons.length === 1 ? '' : 's'} · {resolved.cards.length} card
+              {resolved.coveredLessons.length === 1 ? '' : 's'}, {resolved.cards.length} card
               {resolved.cards.length === 1 ? '' : 's'}
             </p>
             <ul className="mt-3 space-y-1 text-sm text-ink-soft">

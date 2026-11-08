@@ -164,7 +164,7 @@ export function ItemStagingCandidateRow({
             <p className="mt-1 text-sm text-ink-soft">
               Primary skill practised: {candidate.targetConcept}
               {candidate.prerequisiteConcepts.length > 0
-                ? ` · Prerequisites: ${candidate.prerequisiteConcepts.join(', ')}`
+                ? ` (requires ${candidate.prerequisiteConcepts.join(', ')})`
                 : ''}
             </p>
           )}

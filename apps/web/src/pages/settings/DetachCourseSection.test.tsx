@@ -26,7 +26,9 @@ describe('DetachCourseSection', () => {
     render(<DetachCourseSection courseId="course-1" autoAcceptUpdates={false} />);
     fireEvent.click(screen.getByRole('button', { name: 'Detach course' }));
 
-    expect(screen.getByText('Detach this course?')).toBeInTheDocument();
+    expect(
+      screen.getByText('Detach this course? Future updates arrive as a separate course.'),
+    ).toBeInTheDocument();
     expect(detachCourse).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -49,7 +51,9 @@ describe('DetachCourseSection', () => {
     });
 
     expect(notify).toHaveBeenCalledWith('The course could not be found.', 'negative');
-    expect(screen.getByText('Detach this course?')).toBeInTheDocument();
+    expect(
+      screen.getByText('Detach this course? Future updates arrive as a separate course.'),
+    ).toBeInTheDocument();
   });
 
   it('notifies when the auto-accept update fails', async () => {
@@ -79,11 +83,7 @@ describe('DetachCourseSection', () => {
   it('shows the auto-accept toggle reflecting the current preference', () => {
     render(<DetachCourseSection courseId="course-1" autoAcceptUpdates={true} />);
     expect(screen.getByText('Apply updates automatically')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'The author’s changes apply without review. Any that clash with your edits still wait for you.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Conflicts still require review.')).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Apply updates automatically' })).toHaveAttribute(
       'aria-checked',
       'true',

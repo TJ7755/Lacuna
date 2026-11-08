@@ -30,7 +30,7 @@ for (const viewport of [
     ).toBeVisible();
     await expect(page.getByText(/Pupils choose whether to share results/)).toBeVisible();
     await expect(page.locator('.landing-page')).toHaveCount(0);
-    await expect(page).toHaveTitle('Gaps · Lacuna');
+    await expect(page).toHaveTitle('Gaps – Lacuna');
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);

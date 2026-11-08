@@ -182,7 +182,7 @@ describe('SharePage alternatives', () => {
     });
     render(<SharePage />);
     otherWay('Share code');
-    expect(screen.getByText(/^Revision 3 · published/)).toBeInTheDocument();
+    expect(screen.getByText('Revision 3', { exact: true })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Create share code' }));
     await screen.findByRole('textbox', { name: 'Generated share code' });
     fireEvent.click(screen.getByRole('button', { name: 'Publish update' }));

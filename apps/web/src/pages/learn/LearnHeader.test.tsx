@@ -58,7 +58,7 @@ it('keeps results coloured while those lines are recited again', () => {
 it("names the current card's place in Simple Learn's pip bar, not the cards cleared", () => {
   const props = headerProps();
   render(<LearnHeader {...props} />);
-  expect(screen.getByText('· 4 of 4')).toBeInTheDocument();
+  expect(screen.getByText('4 of 4')).toBeInTheDocument();
   expect(screen.getByText('Card 4 of 4')).toBeInTheDocument();
 });
 

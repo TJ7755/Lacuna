@@ -47,7 +47,7 @@ test('Leech count links to the leech cards it counts', async ({ page }) => {
   const leeches = page.locator('section', {
     has: page.getByRole('heading', { name: 'Cards you often miss by course' }),
   });
-  await expect(leeches).toContainText('Cards you keep forgetting.');
+  await expect(leeches.getByRole('button', { name: 'View data' })).toBeVisible();
   await leeches.getByRole('link', { name: 'Show cards you often miss' }).click();
   await expect(page).toHaveURL(/#\/search\?filter=leech$/);
   await expect(page.getByText('Stubborn fact').first()).toBeVisible();

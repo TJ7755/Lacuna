@@ -145,11 +145,9 @@ export function CourseSettings() {
                     ]}
                   />
                 </SettingRow>
-                <p className="text-sm text-ink-soft">
-                  {objective === 'securedTopics'
-                    ? 'Brings as many cards as possible to 90% recall by exam day.'
-                    : 'Lifts your overall exam-day recall the most.'}
-                </p>
+                {objective === 'securedTopics' && (
+                  <p className="text-sm text-ink-soft">Targets 90% recall on more cards.</p>
+                )}
               </div>
 
               <div className="border-t border-ink/10 pt-6">
@@ -187,7 +185,7 @@ export function CourseSettings() {
           <CourseSettingsDisclosure
             title="Course details"
             summary={
-              [examBoard, specification].filter(Boolean).join(' · ') ||
+              [examBoard, specification].filter(Boolean).join(' ') ||
               'Name, exam board and specification'
             }
           >

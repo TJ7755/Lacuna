@@ -231,7 +231,7 @@ test('classifies undecided points on request, keeps the author’s choices and l
 
   await expect(classify).toBeEnabled();
   await classify.click();
-  await expect(bar.getByRole('status')).toContainText('1/2 tagged · 1 unsure');
+  await expect(bar.getByRole('status')).toContainText('1/2 tagged, 1 unsure');
   await evidence('technique-classified');
   expect(requests).toHaveLength(1);
   expect(requests[0]!.points.map((point) => point.criterion)).toEqual([
@@ -257,5 +257,5 @@ test('classifies undecided points on request, keeps the author’s choices and l
   );
   await page.keyboard.press('Escape');
   // The summary follows the set as it stands, including choices made since the run.
-  await expect(bar.getByRole('status')).toContainText('2/2 tagged · 1 not counted');
+  await expect(bar.getByRole('status')).toContainText('2/2 tagged, 1 not counted');
 });

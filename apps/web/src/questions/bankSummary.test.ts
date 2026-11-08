@@ -74,10 +74,10 @@ describe('formatQuestionMeta', () => {
     typicalSeconds: 120,
   };
   it('joins marks and time, and drops what is missing', () => {
-    expect(formatQuestionMeta(base)).toBe('3 marks · 2 min');
+    expect(formatQuestionMeta(base)).toBe('3 marks, 2 min');
     expect(formatQuestionMeta({ ...base, typicalSeconds: null })).toBe('3 marks');
     expect(formatQuestionMeta({ ...base, marksAvailable: 1, typicalSeconds: 20 })).toBe(
-      '1 mark · 20 s',
+      '1 mark, 20 s',
     );
     expect(formatQuestionMeta({ ...base, marksAvailable: null, typicalSeconds: null })).toBeNull();
   });

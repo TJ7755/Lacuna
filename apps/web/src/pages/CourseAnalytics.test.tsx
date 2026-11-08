@@ -284,7 +284,6 @@ describe('CourseAnalytics', () => {
     expect(screen.queryByRole('button', { name: /Revise for/ })).not.toBeInTheDocument();
     const papers = screen.getByRole('region', { name: 'Forecast by paper' });
     expect(within(papers).getAllByRole('row')).toHaveLength(3);
-    expect(papers).toHaveTextContent('3 cards in total, matching the headline.');
 
     fireEvent.click(within(papers).getByRole('button', { name: 'Show Topic test' }));
     const scoped = screen.getByRole('region', { name: 'Topic test' });

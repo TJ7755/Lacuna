@@ -51,10 +51,10 @@ function makeContext(overrides: Partial<ExamDateContext> = {}): ExamDateContext 
 
 describe('reviewFeedbackMessage', () => {
   it.each([
-    [1, NOW + 60_000, 'Again · retry in 1 minute'],
-    [2, NOW + 4 * 60 * 60_000, 'Hard · again in 4 hours'],
-    [3, NOW + 4 * 24 * 60 * 60_000, 'Good · again in 4 days'],
-    [4, NOW + 60 * 24 * 60 * 60_000, 'Easy · again in 2 months'],
+    [1, NOW + 60_000, 'Again, retry in 1 minute'],
+    [2, NOW + 4 * 60 * 60_000, 'Hard, again in 4 hours'],
+    [3, NOW + 4 * 24 * 60 * 60_000, 'Good, again in 4 days'],
+    [4, NOW + 60 * 24 * 60 * 60_000, 'Easy, again in 2 months'],
   ] as const)('describes grade %s and its next interval', (grade, due, expected) => {
     expect(reviewFeedbackMessage(grade, due, NOW)).toBe(expected);
   });
@@ -66,7 +66,7 @@ describe('reviewRetentionMessage', () => {
     const deck = makeDeck();
     const expected = Math.round(predictedRetrievabilityAtHorizon(card, deck, NOW) * 100);
     expect(reviewRetentionMessage(3, card, deck, undefined, NOW)).toBe(
-      `Good · ${expected}% recall at exam`,
+      `Good, ${expected}% recall at exam`,
     );
   });
 
@@ -75,7 +75,7 @@ describe('reviewRetentionMessage', () => {
     const deck = makeDeck({ examDate: undefined });
     const context = makeContext({ courseExamDate: NOW + 30 * MS_PER_DAY });
     const message = reviewRetentionMessage(3, card, deck, context, NOW);
-    expect(message).toMatch(/^Good · \d+% recall at exam$/);
+    expect(message).toMatch(/^Good, \d+% recall at exam$/);
   });
 
   it('returns null without any exam date', () => {

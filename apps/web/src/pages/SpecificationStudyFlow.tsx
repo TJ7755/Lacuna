@@ -160,7 +160,7 @@ export function SpecificationStudyFlow({
   return (
     <StudyFlowMessage
       title={recallFinished ? 'Scoped practice complete' : 'No practice ready for this point'}
-      detail={`${entry.scope.title}: no fresh exam questions or eligible recall cards are ready. Existing lesson access and introductions still apply; repeated questions are not counted as fresh practice.`}
+      detail={entry.scope.title}
       onExit={leave}
     />
   );

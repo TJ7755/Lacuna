@@ -121,12 +121,9 @@ export function TodayPage({
       </div>
 
       <SectionCard className="gaps-rise mb-6 flex flex-wrap items-center justify-between gap-5 p-6">
-        <div>
-          <h2 className="font-display text-xl font-semibold tracking-tight">See Gaps in action</h2>
-          <p className="mt-1 text-sm text-ink-soft">
-            Explore Biology results from six fictional pupils. Nothing is saved or sent.
-          </p>
-        </div>
+        <h2 className="font-display text-xl font-semibold tracking-tight">
+          Fictional Biology class
+        </h2>
         <button
           type="button"
           onClick={onExploreDemo}
@@ -144,9 +141,6 @@ export function TodayPage({
               <h2 className="font-display text-3xl font-semibold tracking-tight">
                 Connect your first class
               </h2>
-              <p className="mt-3 max-w-sm text-ink-soft">
-                Paste a published course or class link, or restore a saved connection file.
-              </p>
             </>
           )}
           <div ref={first} className="mt-10 w-full max-w-sm text-left">
@@ -220,7 +214,7 @@ export function TodayPage({
                   </h2>
                   <span className="text-sm text-ink-faint max-sm:hidden">
                     {summary
-                      ? `${summary.reports} reports · ${summary.revisit} to revisit`
+                      ? `${summary.reports} ${summary.reports === 1 ? 'report' : 'reports'}, ${summary.revisit} to revisit`
                       : session
                         ? 'Unlocked'
                         : 'Locked'}

@@ -100,7 +100,7 @@ for (const width of [1280, 390]) {
     const choice = picker.getByRole('radio', { name: /Cell practice/ });
     await expect(choice).toBeVisible();
     await expect(picker.getByText(/Question 1: Explain selective permeability/)).toBeVisible();
-    await expect(picker.getByText(/1 question · 1 answerable part · 1 mark/)).toBeVisible();
+    await expect(picker.getByText(/1 question, 1 answerable part, 1 mark/)).toBeVisible();
     await page.screenshot({ path: test.info().outputPath(`picker-${width}.png`) });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       width,

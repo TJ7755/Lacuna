@@ -47,7 +47,7 @@ export function ExamLens() {
           <div key={label} className={`qc-review-stop stop-${i}`}>
             <span>{i === 3 ? (exam ? '15' : '∞') : `0${i + 1}`}</span>
             <b>{label}</b>
-            {i === 3 && <small>{exam ? 'June · example' : 'Your own pace'}</small>}
+            {i === 3 && <small>{exam ? 'June (example)' : 'Your own pace'}</small>}
           </div>
         ))}
       </div>

@@ -199,10 +199,9 @@ export function ShareLinkImport({
     <StepSwap stepKey={state.status}>
       {state.status === 'loading' ? (
         <section role="status" className="rounded-3xl bg-surface card-surface p-6">
-          <h2 className="mb-1 font-display text-xl">
+          <h2 className="font-display text-xl">
             {chosen ? 'Loading this course…' : 'Loading this link…'}
           </h2>
-          <p className="text-sm text-ink-soft">The course preview will appear when it is ready.</p>
         </section>
       ) : state.status === 'unavailable' ? (
         retry(

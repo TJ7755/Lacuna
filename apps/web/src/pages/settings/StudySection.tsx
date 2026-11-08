@@ -22,19 +22,15 @@ import { useAfterFinalExamPolicy, type AfterFinalExamPolicy } from '../../state/
 import { PillSwitch, SegmentedPills, SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
 
 const STRICTNESS_DESCRIPTIONS: Record<AnswerStrictness, string> = {
-  lenient: 'Typed answers ignore case and punctuation.',
-  standard: 'Typed answers ignore case but not punctuation.',
-  exact: 'Typed answers must match case and punctuation.',
+  lenient: 'Ignores case and punctuation.',
+  standard: 'Ignores case. Matches punctuation.',
+  exact: 'Matches case and punctuation.',
 };
 
-const FINAL_EXAM_POLICIES: Array<{
-  value: AfterFinalExamPolicy;
-  label: string;
-  description: string;
-}> = [
-  { value: 'ask', label: 'Ask me', description: 'Choose when the final exam passes.' },
-  { value: 'archive', label: 'Archive automatically', description: 'Move it out of active study.' },
-  { value: 'keep-revising', label: 'Keep revising', description: 'Continue steady maintenance.' },
+const FINAL_EXAM_POLICIES: Array<{ value: AfterFinalExamPolicy; label: string }> = [
+  { value: 'ask', label: 'Ask me' },
+  { value: 'archive', label: 'Archive automatically' },
+  { value: 'keep-revising', label: 'Keep revising' },
 ];
 
 export function StudySection() {
@@ -58,7 +54,6 @@ export function StudySection() {
 
       <SettingToggle
         title="Show advanced details"
-        description="Show scheduler settings and technical statistics. Your study schedule stays the same."
         checked={showAdvancedDetails}
         onChange={setShowAdvancedDetails}
       />
@@ -66,7 +61,6 @@ export function StudySection() {
       <SettingToggle
         bordered
         title="Manual four-point grading"
-        description="Off: Lacuna infers a grade from correctness and response time. On: choose Again, Hard, Good or Easy."
         checked={gradingMode === 'manual'}
         onChange={(checked) => setGradingMode(checked ? 'manual' : 'silent')}
       />
@@ -74,7 +68,6 @@ export function StudySection() {
       <SettingToggle
         bordered
         title="Autoplay audio cards"
-        description="Your browser may require you to start the first clip manually."
         checked={audioSettings.autoplay}
         onChange={(autoplay) => setAudioSettings({ ...audioSettings, autoplay })}
       />
@@ -101,9 +94,6 @@ export function StudySection() {
       <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <div className="min-w-0 flex-1 basis-64">
           <div className="font-semibold text-ink">Answer cards by</div>
-          <p className="mt-1 text-sm text-ink-soft">
-            When Jev is on, typed answers are marked automatically.
-          </p>
         </div>
         <SegmentedPills
           label="Answer cards by"
@@ -139,20 +129,14 @@ export function StudySection() {
       <SettingToggle
         bordered
         title="Recite poems and scripts aloud"
-        description="Off: type each line from memory. On: say the lines aloud, then reveal them and mark any you got wrong."
         checked={recitationInput === 'aloud'}
         onChange={(checked) => setRecitationInput(checked ? 'aloud' : 'type')}
       />
 
-      <div className="mt-6 flex items-start justify-between gap-3 pt-0">
-        <div className="min-w-0">
-          <label htmlFor="start-in-focus-mode" className="font-semibold text-ink">
-            Start Learn sessions in focus mode
-          </label>
-          <p className="mt-1 text-sm text-ink-soft">
-            Hides session controls on open. Press Esc to leave.
-          </p>
-        </div>
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <label htmlFor="start-in-focus-mode" className="min-w-0 font-semibold text-ink">
+          Start Learn sessions in focus mode
+        </label>
         <PillSwitch
           id="start-in-focus-mode"
           checked={startInFocusMode}
@@ -169,7 +153,6 @@ export function CourseDefaultsSection() {
   const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
   const [afterFinalExam, setAfterFinalExam] = useAfterFinalExamPolicy();
-  const finalExamDescriptionId = useId();
 
   return (
     <SettingsCard id="settings-course-defaults">
@@ -193,33 +176,20 @@ export function CourseDefaultsSection() {
           value={afterFinalExam}
           options={FINAL_EXAM_POLICIES}
           onChange={setAfterFinalExam}
-          describedBy={finalExamDescriptionId}
           className="mt-3 w-fit max-w-full"
         />
-        <p id={finalExamDescriptionId} className="mt-2 text-sm text-ink-soft">
-          {FINAL_EXAM_POLICIES.find((policy) => policy.value === afterFinalExam)?.description}
-        </p>
       </div>
 
       {showAdvancedDetails && (
         <InlineSettingsDisclosure
           className="group mt-6 pt-0"
-          headerClassName="flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-          header={
-            <>
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
-                <span className="mt-1 block text-sm text-ink-soft">
-                  Fit default scheduling to your review history.
-                </span>
-              </span>
-            </>
-          }
+          headerClassName="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+          header={<span className="text-sm font-medium text-ink">Advanced scheduling</span>}
         >
           <div className="mt-5 rounded-2xl bg-ink/[0.04] p-4">
             <SettingToggle
               title="Optimise scheduling"
-              description={`Fits FSRS weights after ${MIN_OPTIMISE_REVIEWS} reviews. Changes require confirmation and can be overridden per course.`}
+              description={`Available after ${MIN_OPTIMISE_REVIEWS} reviews.`}
               checked={autoOptimise}
               onChange={setAutoOptimise}
             />
@@ -230,21 +200,12 @@ export function CourseDefaultsSection() {
       {showAdvancedDetails && (
         <InlineSettingsDisclosure
           className="group mt-6 pt-0"
-          headerClassName="flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-          header={
-            <>
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
-                <span className="mt-1 block text-sm text-ink-soft">
-                  Adjust when practice nodes appear on course paths.
-                </span>
-              </span>
-            </>
-          }
+          headerClassName="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+          header={<span className="text-sm font-medium text-ink">Advanced practice timing</span>}
         >
-          <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="mt-5 grid grid-cols-2 items-end gap-4 sm:grid-cols-4">
             <NumberField
-              label="Threshold (far)"
+              label="Backlog before revision period"
               value={practiceDefaults.practiceThresholdMinutesFar}
               suffix="min"
               min={1}
@@ -257,7 +218,7 @@ export function CourseDefaultsSection() {
               }
             />
             <NumberField
-              label="Threshold (near)"
+              label="Backlog during revision period"
               value={practiceDefaults.practiceThresholdMinutesNear}
               suffix="min"
               min={1}
@@ -271,6 +232,7 @@ export function CourseDefaultsSection() {
             />
             <NumberField
               label="Revision period"
+              ariaLabel="Revision period (days before exam)"
               value={practiceDefaults.practiceUrgentWindowDays}
               suffix="days"
               min={0}
@@ -283,7 +245,7 @@ export function CourseDefaultsSection() {
               }
             />
             <NumberField
-              label="Max gap"
+              label="Maximum lesson gap"
               value={practiceDefaults.practiceMaxGap}
               suffix="lessons"
               min={1}
@@ -296,10 +258,6 @@ export function CourseDefaultsSection() {
               }
             />
           </div>
-          <p className="mt-3 text-xs text-ink-faint">
-            The near threshold applies once an exam is within the revision period; the far threshold
-            applies otherwise. Max gap forces a practice node after this many lessons without one.
-          </p>
         </InlineSettingsDisclosure>
       )}
     </SettingsCard>
@@ -320,7 +278,7 @@ function SettingToggle({
   bordered?: boolean;
 }) {
   return (
-    <div className={cn('flex items-start justify-between gap-3', bordered && 'mt-6 pt-0')}>
+    <div className={cn('flex items-center justify-between gap-3', bordered && 'mt-6')}>
       <div className="min-w-0">
         <div className="font-semibold text-ink">{title}</div>
         {description && <p className="mt-1 text-sm text-ink-soft">{description}</p>}

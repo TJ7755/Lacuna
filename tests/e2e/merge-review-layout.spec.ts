@@ -126,7 +126,7 @@ for (const fontScale of [1, 1.35]) {
     await detail.focus();
     await detail.press('Enter');
     await expect(page.getByRole('button', { name: 'Collapse detail' })).toBeFocused();
-    await expect(page.getByText('Description · Added')).toBeVisible();
+    await expect(page.getByText('Description (Added)')).toBeVisible();
     await expect(page.getByRole('img', { name: 'Diagram' })).toBeVisible();
     expect(
       await page.locator('main').evaluate((main) => main.scrollWidth <= main.clientWidth),

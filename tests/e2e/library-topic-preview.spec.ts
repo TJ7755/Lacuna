@@ -18,7 +18,7 @@ for (const width of [1280, 768]) {
     await page.evaluate(() => document.fonts.ready);
     await page.screenshot({ path: info.outputPath('edexcel-gcse-biology-topics.png') });
 
-    await expect(sheet).toContainText('Pearson Edexcel GCSE · 1BI0');
+    await expect(sheet).toContainText('Pearson Edexcel GCSE (1BI0)');
     await expect(sheet).toContainText(
       'Higher-tier GCSE Biology, including shared Foundation content',
     );

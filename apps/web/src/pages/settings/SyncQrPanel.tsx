@@ -33,14 +33,9 @@ export function SyncQrPanel({
       className="rounded-2xl bg-paper p-5 outline-none"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <SettingsSubsectionHeading className="font-display text-lg font-semibold tracking-tight">
-            Pair another device
-          </SettingsSubsectionHeading>
-          <p className="text-xs text-ink-soft">
-            Show this only while the other device is ready to scan.
-          </p>
-        </div>
+        <SettingsSubsectionHeading className="font-display text-lg font-semibold tracking-tight">
+          Pair another device
+        </SettingsSubsectionHeading>
         <Button variant="ghost" size="sm" aria-label="Hide pairing QR" onClick={onDismiss}>
           <CloseIcon width={16} height={16} />
         </Button>
@@ -65,8 +60,7 @@ export function SyncQrPanel({
           Copy pairing link
         </Button>
         <p className="max-w-sm text-center text-xs text-ink-faint">
-          This QR contains the channel access key. It is not a backup and should not be shared
-          publicly. Copy the link for devices without a camera.
+          Keep the pairing QR and link private.
         </p>
       </div>
     </div>

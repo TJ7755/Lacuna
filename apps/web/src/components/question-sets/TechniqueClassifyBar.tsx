@@ -155,10 +155,10 @@ function ClassificationResult({
   ].filter(Boolean);
   return (
     <>
-      {parts.join(' · ')}
+      {parts.join(', ')}
       {summary.knowledge > 0 && (
         <span className="is-warning" title="Knowledge points do not count towards techniques">
-          {' · '}
+          {', '}
           {summary.knowledge} not counted{' '}
           <button type="button" onClick={onCountKnowledge}>
             Count {summary.knowledge === 1 ? 'it' : 'them'}

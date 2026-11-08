@@ -309,7 +309,7 @@ for (const width of [1280, 390]) {
       await capture(page, info, 'multipart-complete');
       await page.goto(library);
       await page.getByRole('button', { name: `Practise ${density}`, exact: true }).click();
-      await expect(page.getByText(/No unseen questions remain/)).toBeVisible();
+      await expect(page.getByText('No unseen questions left.')).toBeVisible();
       await page.getByRole('button', { name: 'Practise familiar questions', exact: true }).click();
       await expect(page.locator('article.qs-paper')).toBeVisible();
       await page.getByRole('button', { name: 'Exit', exact: true }).click();
@@ -332,7 +332,7 @@ for (const width of [1280, 390]) {
         await page.getByRole('button', { name: 'Exit', exact: true }).click();
       }
       await page.getByRole('button', { name: `Practise ${density}`, exact: true }).click();
-      await expect(page.getByText(/No unseen questions remain/)).toBeVisible();
+      await expect(page.getByText('No unseen questions left.')).toBeVisible();
       await page.getByRole('button', { name: 'Practise familiar questions', exact: true }).click();
       await expect(page.locator('article.qs-paper')).toBeVisible();
       await page.reload();

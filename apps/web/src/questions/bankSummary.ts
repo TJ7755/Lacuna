@@ -66,14 +66,14 @@ function formatTypicalTime(seconds: number): string {
   return seconds < 60 ? `${Math.max(1, Math.round(seconds))} s` : `${Math.round(seconds / 60)} min`;
 }
 
-/** "3 marks · 2 min", dropping whichever half the app has no data for. */
+/** Show marks and typical time when available. */
 export function formatQuestionMeta(summary: QuestionBankSummary): string | null {
   const parts: string[] = [];
   if (summary.marksAvailable !== null) {
     parts.push(`${summary.marksAvailable} ${summary.marksAvailable === 1 ? 'mark' : 'marks'}`);
   }
   if (summary.typicalSeconds !== null) parts.push(formatTypicalTime(summary.typicalSeconds));
-  return parts.length ? parts.join(' · ') : null;
+  return parts.length ? parts.join(', ') : null;
 }
 
 /** Bold the generated parameter values in a rendered prompt, leaving maths spans alone. */

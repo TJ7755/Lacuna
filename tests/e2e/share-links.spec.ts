@@ -184,7 +184,7 @@ async function expectShareLinkRevision(page: Page, revision: number): Promise<vo
   await expect(
     panel.getByRole('heading', { name: 'Share link', exact: true, level: 2 }),
   ).toBeVisible();
-  await expect(panel.getByText(new RegExp(`^Revision ${revision} ·`))).toBeVisible();
+  await expect(panel.getByText(new RegExp(`^Revision ${revision}(?:\\.|$)`))).toBeVisible();
 }
 
 async function createShareLink(page: Page): Promise<string> {
@@ -269,7 +269,7 @@ async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, lin
   await student.goto(`/#/s/${code}`);
   await expect(student.getByRole('heading', { name: 'Shared course', exact: true })).toBeVisible();
   await expect(student.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
-  await expect(student.getByText(/Link biology —/)).toBeVisible();
+  await expect(student.getByText('Link biology', { exact: true })).toBeVisible();
   await student.getByRole('radio', { name: /Exam date/ }).press('Space');
   await student.getByRole('button', { name: 'Add to my courses' }).click();
   await expect
@@ -431,7 +431,7 @@ test('copies an existing link without the publishing device credentials', async 
   );
   await page.reload();
   const panel = page.getByRole('region', { name: 'Share link', exact: true });
-  await expect(panel.getByText(/Copy and pass on this link/)).toBeVisible();
+  await expect(panel.getByText(/Managed on the publishing device/)).toBeVisible();
   await expect(panel.getByRole('button', { name: 'Replace link', exact: true })).toBeHidden();
   await panel.getByRole('button', { name: 'Copy', exact: true }).click();
   await expect

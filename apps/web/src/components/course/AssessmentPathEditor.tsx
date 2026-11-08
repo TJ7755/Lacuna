@@ -299,7 +299,7 @@ export function AssessmentPathEditor({
       </AnimatedDisclosure>
       {draft.coverageMode !== 'custom' && (
         <p className="mt-3 text-sm text-ink-faint">
-          {resolved.coveredLessons.length} lesson{resolved.coveredLessons.length === 1 ? '' : 's'} ·{' '}
+          {resolved.coveredLessons.length} lesson{resolved.coveredLessons.length === 1 ? '' : 's'},{' '}
           {resolved.cards.length} card{resolved.cards.length === 1 ? '' : 's'}
         </p>
       )}

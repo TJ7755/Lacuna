@@ -70,9 +70,7 @@ describe('ItemStagingCandidateRow', () => {
     expect(screen.getByText('Valid')).toBeInTheDocument();
     expect(screen.getByText('2 of 3 fixtures pass')).toBeInTheDocument();
     expect(
-      screen.getByText(
-        'Primary skill practised: Linear equations · Prerequisites: Inverse operations',
-      ),
+      screen.getByText('Primary skill practised: Linear equations (requires Inverse operations)'),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));

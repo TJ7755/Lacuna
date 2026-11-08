@@ -48,13 +48,13 @@ describe('SharePage', () => {
     expect(picker).toHaveTextContent('Test Course');
     expect(picker).not.toHaveTextContent('Archived');
     fireEvent.click(picker);
-    const archivedItem = screen.getByRole('menuitem', { name: /^Old course · Archived/ });
-    expect(archivedItem).toHaveTextContent('1 lesson · 1 card');
+    const archivedItem = screen.getByRole('menuitem', { name: /^Old course \(Archived\)/ });
+    expect(archivedItem).toHaveTextContent('1 lesson, 1 card');
     expect(screen.getByRole('menuitem', { name: /^Test Course/ })).not.toHaveTextContent(
       'Archived',
     );
     fireEvent.click(archivedItem);
-    expect(picker).toHaveTextContent('Old course · Archived');
+    expect(picker).toHaveTextContent('Old course (Archived)');
   });
 
   it('marks an archived course opened directly from its sharing URL', () => {
@@ -62,7 +62,7 @@ describe('SharePage', () => {
     sharePageState.mockSearchParams = new URLSearchParams('courseId=archived');
     render(<SharePage />);
     expect(screen.getByRole('button', { name: 'Course to share' })).toHaveTextContent(
-      'Old course · Archived',
+      'Old course (Archived)',
     );
   });
 
@@ -70,7 +70,7 @@ describe('SharePage', () => {
     given({ ...mockCourse, archived: true });
     render(<SharePage />);
     expect(within(screen.getByRole('banner')).getByRole('paragraph')).toHaveTextContent(
-      'Test Course · Archived',
+      'Test Course (Archived)',
     );
     expect(screen.queryByRole('button', { name: 'Course to share' })).not.toBeInTheDocument();
   });
@@ -155,7 +155,7 @@ describe('SharePage', () => {
     render(<SharePage />);
     fireEvent.click(screen.getByRole('button', { name: 'Course to share' }));
     expect(screen.getByRole('menuitem', { name: /^Test Course/ })).toHaveTextContent(
-      '1 lesson · 1 card',
+      '1 lesson, 1 card',
     );
   });
 });

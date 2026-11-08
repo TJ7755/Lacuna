@@ -34,9 +34,9 @@ describe('PracticeSettingsSection', () => {
       screen.queryByLabelText('Maximum lesson gap for automatic practice'),
     ).not.toBeInTheDocument();
     act(() => writeAdvancedDetails(true));
-    expect(screen.getByText('Threshold (exam not near)')).toBeInTheDocument();
-    expect(screen.getByText('Threshold (exam near)')).toBeInTheDocument();
-    expect(screen.getByText('Urgent window')).toBeInTheDocument();
+    expect(screen.getByText('Backlog before revision period (min)')).toBeInTheDocument();
+    expect(screen.getByText('Backlog during revision period (min)')).toBeInTheDocument();
+    expect(screen.getByText('Revision period (days before exam)')).toBeInTheDocument();
     expect(screen.getByText('Maximum lesson gap')).toBeInTheDocument();
     const summary = screen.getByRole('button', { name: /Advanced practice timing/ });
     expect(summary).toHaveAttribute('aria-expanded', 'false');
@@ -45,13 +45,13 @@ describe('PracticeSettingsSection', () => {
     );
     expect(
       screen.getByRole('spinbutton', {
-        name: 'Practice threshold when the exam is not near, in minutes',
+        name: 'Backlog before revision period (min)',
         hidden: true,
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('spinbutton', {
-        name: 'Practice threshold when the exam is near, in minutes',
+        name: 'Backlog during revision period (min)',
         hidden: true,
       }),
     ).toBeInTheDocument();

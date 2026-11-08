@@ -59,22 +59,22 @@ export function SharePage() {
             items={courses.map((candidate) => {
               const summary = summaries?.[candidate.id];
               return {
-                label: `${candidate.name}${candidate.archived ? ' · Archived' : ''}`,
-                description: `${countOf(summary?.lessonCount ?? 0, 'lesson')} · ${countOf(summary?.cardCount ?? 0, 'card')}`,
+                label: `${candidate.name}${candidate.archived ? ' (Archived)' : ''}`,
+                description: `${countOf(summary?.lessonCount ?? 0, 'lesson')}, ${countOf(summary?.cardCount ?? 0, 'card')}`,
                 onSelect: () => setChosenId(candidate.id),
               };
             })}
           >
             <span className="inline-flex min-w-0 max-w-[min(28rem,calc(100vw-9rem))] items-center gap-2">
               <span className="truncate">{course.name}</span>
-              {course.archived && <span className="shrink-0 text-ink-soft"> · Archived</span>}
+              {course.archived && <span className="shrink-0 text-ink-soft"> (Archived)</span>}
             </span>
           </Menu>
         )}
         {course && courses?.length === 1 && (
           <p className="flex min-w-0 max-w-full items-center gap-2 text-lg text-ink-soft">
             <span className="truncate">{course.name}</span>
-            {course.archived && <span className="shrink-0"> · Archived</span>}
+            {course.archived && <span className="shrink-0"> (Archived)</span>}
           </p>
         )}
       </header>

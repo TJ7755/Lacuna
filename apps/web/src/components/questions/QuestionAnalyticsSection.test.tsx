@@ -66,8 +66,8 @@ describe('QuestionAnalyticsSection', () => {
 
     render(<QuestionAnalyticsSection analytics={analytics} />);
 
-    expect(screen.getByText('Fixed · first presentation')).toBeInTheDocument();
-    expect(screen.getByText('Generated · repeated variants')).toBeInTheDocument();
+    expect(screen.getByText('Fixed (first presentation)')).toBeInTheDocument();
+    expect(screen.getByText('Generated (repeated variants)')).toBeInTheDocument();
     expect(screen.getByText('Criterion 0')).toBeInTheDocument();
     expect(screen.queryByText('No question attempts yet.')).not.toBeInTheDocument();
   });
@@ -139,8 +139,8 @@ describe('QuestionAnalyticsSection', () => {
 
     render(<QuestionAnalyticsSection analytics={analytics} />);
 
-    expect(screen.getByText('Generated · novel variants')).toBeInTheDocument();
-    expect(screen.getByText('Generated · repeated variants')).toBeInTheDocument();
+    expect(screen.getByText('Generated (novel variants)')).toBeInTheDocument();
+    expect(screen.getByText('Generated (repeated variants)')).toBeInTheDocument();
     expect(screen.getByText('Recorded marks')).toBeInTheDocument();
     expect(
       screen.getByRole('table', { name: 'Question performance' }).parentElement?.parentElement,

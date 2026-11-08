@@ -65,7 +65,6 @@ export function CardImportInput({
             <FileTextIcon width={24} height={24} />
           </span>
           <strong>{source.filename}</strong>
-          <p>{source.apkg.cards.length} cards · Anki package</p>
           <p>Includes scheduling history and media.</p>
           <button type="button" onClick={() => source.changeText('')}>
             Use text instead

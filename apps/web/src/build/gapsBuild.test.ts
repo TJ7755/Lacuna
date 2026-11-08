@@ -159,7 +159,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       'sw.js',
     ]);
     const html = await readFile(join(directory, 'index.html'), 'utf8');
-    expect(html).toContain('<title>Gaps · Lacuna</title>');
+    expect(html).toContain('<title>Gaps – Lacuna</title>');
     expect(html).not.toMatch(/manifest|src\/main\.tsx|simpleanalytics/i);
     const eagerScripts = await Promise.all(
       [...eager].map((file) => readFile(join(directory, file))),

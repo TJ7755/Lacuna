@@ -60,8 +60,7 @@ export function TeacherEmptyState({ standalone = false }: { standalone?: boolean
         {standalone ? 'Connect your first class' : 'No published courses here'}
       </h2>
       <p className="mt-3 max-w-2xl text-sm text-ink-soft">
-        Open the Share page on the device where you published your course and choose Connect to
-        Gaps. Gaps and Lacuna use separate browser storage; your existing courses are kept.
+        Open Share on the device that published the course.
       </p>
       <a href="https://getlacuna.app/#/share" className={`${buttonClassName('secondary')} mt-5`}>
         Open sharing on the main site

@@ -153,16 +153,12 @@ export function CreateGapsClass({
             </button>
           </div>
           <p className="text-sm text-ink-soft">
-            You need this code and the file to open the class on another device. This is the only
-            time the code is shown.
+            Save both privately. You need both to reopen the class. This code is shown once.
           </p>
-          <p className="text-sm text-ink-soft">Do not send this code or file to pupils.</p>
         </fieldset>
         <fieldset className="border-t border-line pt-4">
           <legend className="font-semibold">Give this to pupils</legend>
-          <p className="mt-2 text-sm text-ink-soft">
-            The class code or join link from Invite, after continuing to the class.
-          </p>
+          <p className="mt-2 text-sm text-ink-soft">Class code or join link from Invite.</p>
         </fieldset>
         <button
           type="button"

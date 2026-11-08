@@ -263,7 +263,7 @@ function CoverFace({ course, headingId }: { course: LibraryCourse; headingId?: s
   return (
     <Root className="flex h-full w-full flex-col p-6 md:p-7">
       <span className="block pr-12 text-sm text-ink-soft">
-        {course.qualification} · {courseCodes(course)}
+        {course.qualification} ({courseCodes(course)})
       </span>
       <Title
         id={headingId}
