@@ -808,7 +808,7 @@ test('Windows upgrade scenarios retain both probes on isolated runners with the 
   const native = job.steps.findIndex((step) => step.run === 'bun run electron:prepare');
   const wait = job.steps.findIndex((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs');
   const download = job.steps.findIndex(
-    (step) => step.with?.name === 'windows-electron-renderer-${{ steps.renderer.outputs.attempt }}',
+    (step) => step.with?.['artifact-ids'] === '${{ steps.renderer.outputs.artifact_id }}',
   );
   const upgrade = job.steps.findIndex(
     (step) => step.run === 'node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }}',
@@ -819,6 +819,7 @@ test('Windows upgrade scenarios retain both probes on isolated runners with the 
     job.steps[wait].env.SOURCE_SHA,
     '${{ github.event.pull_request.head.sha || github.sha }}',
   );
+  assert.equal(job.steps[download].with['github-token'], '${{ github.token }}');
   assert.equal(job.steps[download].with.path, 'dist/');
   const producer = workflow.jobs['electron-renderer'].steps.find((step) =>
     step.uses?.startsWith('actions/upload-artifact@'),
