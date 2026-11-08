@@ -239,7 +239,7 @@ function FlowSplitLiquid({
   const verdict = useMotionValue(landed && !departing ? 1 : 0);
   const verdictScale = useTransform(verdict, (value) => Math.max(0, value));
   // How far the verdict has risen through the bead from beneath it.
-  const rise = useMotionValue(landed ? 1 : 0);
+  const rise = useMotionValue(0);
   const riseY = useTransform(rise, (value) => (1 - value) * bead.height * VERDICT_RISE);
   // The whole bead swells as the colour reaches its top, then settles in diminishing bobs.
   const bob = useMotionValue(1);

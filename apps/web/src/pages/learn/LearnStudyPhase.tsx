@@ -373,8 +373,8 @@ export function LearnStudyPhase({
             role="status"
             aria-live="polite"
             className={
-              showLocalRecall
-                ? `mt-3 text-center text-sm ${recallCorrect ? 'text-positive' : 'text-negative'}`
+              showLocalRecall && recallCorrect
+                ? 'mt-3 text-center text-sm text-positive'
                 : 'sr-only'
             }
           >

@@ -240,8 +240,17 @@ test('introduces choices before timed typing and keeps the old practice entry', 
       await expect(view.typing).toBeFocused();
       await view.typing.fill('incorrect answer');
       await page.keyboard.press('Enter');
-      await expect(view.main.getByText('Marked incorrect.', { exact: true })).toBeVisible();
+      const verdict = view.main.locator(
+        '[data-flow-state="bead"] [data-flow-verdict][data-flow-colour]',
+      );
+      await expect(verdict).toBeVisible();
+      await expect(verdict).toHaveAttribute('style', /fill: var\(--color-negative\)/);
+      await expect(
+        view.main.getByRole('status').filter({ hasText: 'Marked incorrect.' }),
+      ).toHaveClass('sr-only');
       await expect(view.advance).toBeFocused();
+      if (!typed)
+        await page.screenshot({ path: testInfo.outputPath('learn-new-cards-typed-incorrect.png') });
       await page.keyboard.press('Enter');
       await expect.poll(async () => (await readReviews(page)).length).toBe(reviewCount + 1);
       expect(await readReviews(page)).toEqual(

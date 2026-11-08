@@ -41,6 +41,7 @@ export function StudyControls({
   m: number;
 }) {
   const question = phase === 'question';
+  const localIncorrect = isTypingCard && !question && recallCorrect === false && !autoMark;
   const recallPromptId = useId();
   const selfRating =
     Boolean(recallPrompt) && !question && gradingMode === 'silent' && !(isTypingCard && autoMark);
@@ -145,6 +146,24 @@ export function StudyControls({
       />
     </>
   );
+  const flow = (
+    <FlowGradeControls
+      question={question}
+      autoMark={
+        isTypingCard ? (localIncorrect ? { pending: false, correct: false } : autoMark) : undefined
+      }
+      departing={departing}
+      grades={localIncorrect ? [] : grades}
+      negativeIndex={recallCorrect === undefined && gradingMode === 'manual' ? 0 : undefined}
+      rowClassName={gradeRowClassName}
+      revealLabel={isTypingCard ? 'Check answer' : 'Show answer'}
+      revealLead={
+        isTypingCard && !isTouchMode ? <div className="mb-3">{typedField}</div> : undefined
+      }
+      onReveal={onReveal}
+      m={m}
+    />
+  );
   // While automatic marking owns the answer the grades stay away: the learner
   // self-marks only when it is off or leaves the verdict to them.
   return (
@@ -164,19 +183,12 @@ export function StudyControls({
               {recallPrompt}
             </p>
           )}
-          <FlowGradeControls
-            question={question}
-            autoMark={isTypingCard ? autoMark : undefined}
-            departing={departing}
-            grades={grades}
-            negativeIndex={recallCorrect === undefined && gradingMode === 'manual' ? 0 : undefined}
-            rowClassName={gradeRowClassName}
-            revealLabel={isTypingCard ? 'Check answer' : 'Show answer'}
-            revealLead={isTypingCard ? <div className="mb-3">{typedField}</div> : undefined}
-            onReveal={onReveal}
-            m={m}
-          />
+          {flow}
+          {localIncorrect && <div className="mx-auto mt-3 flex w-full max-w-md">{grades}</div>}
         </div>
+      )}
+      {isTouchMode && localIncorrect && (
+        <div className="mx-auto mt-4 w-full max-w-xl shrink-0">{flow}</div>
       )}
       {isTouchMode && (
         <TouchStudyControls
