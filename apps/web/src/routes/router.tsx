@@ -75,8 +75,7 @@ const QuestionLearnMode = lazy(loadQuestionLearnMode);
 const MergeReviewPanel = lazy(loadMergeReviewPanel);
 const Landing = lazy(loadLanding);
 // Not in loaders: onboarding reaches the route prefetcher, which imports the loaders.
-const loadOnboarding = () =>
-  import('../pages/onboarding/Onboarding').then((module) => ({ default: module.Onboarding }));
+const loadOnboarding = () => import('../pages/onboarding/Onboarding');
 const Onboarding = lazy(loadOnboarding);
 const Download = lazy(loadDownload);
 const Method = lazy(loadMethod);

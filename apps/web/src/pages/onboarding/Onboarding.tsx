@@ -8,6 +8,8 @@ import { ImportPanel } from '../../components/import/ImportPanel';
 import { AnimatedDisclosure } from '../../components/ui/AnimatedDisclosure';
 import { Button } from '../../components/ui/Button';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
+import { JevConsentNotice } from '../../jev/JevConsentNotice';
+import { JEV_CONSENT_VERSION, useJevController, useJevSettings } from '../../jev';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useAnswerStrictness } from '../../state/answerStrictness';
 import { useIsTouchMode } from '../../state/inputMode';
@@ -51,7 +53,7 @@ const FIRST_CARD: Card = {
 };
 
 // The required steps lead straight into the chosen material.
-const STEPS = ['card', 'exam', 'content'] as const;
+const STEPS = ['card', 'exam', 'marking', 'content'] as const;
 type Step = (typeof STEPS)[number];
 type ContentIntent = 'create' | 'import' | null;
 
@@ -63,7 +65,7 @@ const EXAM_WORDING: Record<CourseSchedulingMode, { label: string; detail: string
 const NO_FILTERS: never[] = [];
 const noop = () => {};
 
-export function Onboarding() {
+export default function Onboarding() {
   const navigate = useNavigate();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -77,6 +79,7 @@ export function Onboarding() {
   const [target, setTarget] = useState<CourseSchedulingMode>(initialTarget?.mode ?? 'steady');
   const [examDate, setExamDate] = useState(() => initialTarget?.examDate ?? defaultExamDate());
   const [examDateValid, setExamDateValid] = useState(true);
+  const [wantsAiMarking, setWantsAiMarking] = useState(true);
   // Only a course the learner has just made or imported; anything else goes to Today.
   const destination = then && /^\/course\/[^/?#]+(?:\/lesson\/[^/?#]+)?$/.test(then) ? then : '/';
   useLayoutEffect(() => {
@@ -181,6 +184,12 @@ export function Onboarding() {
                 setExamDateValid={setExamDateValid}
                 onDone={advance}
               />
+            ) : step === 'marking' ? (
+              <MarkingStep
+                wantsAiMarking={wantsAiMarking}
+                onChoice={setWantsAiMarking}
+                onDone={advance}
+              />
             ) : (
               <ContentStep
                 intent={contentIntent}
@@ -282,7 +291,7 @@ function CardStep({
   );
 }
 
-/** Step 2: the study target, asked as a plain question. Step 3 applies it to the new course. */
+/** The study target is applied when the learner makes or imports their first course. */
 function ExamStep({
   target,
   setTarget,
@@ -368,8 +377,79 @@ function StepHeading({ children, compact = false }: { children: string; compact?
   );
 }
 
+function MarkingStep({
+  wantsAiMarking,
+  onChoice,
+  onDone,
+}: {
+  wantsAiMarking: boolean;
+  onChoice: (enabled: boolean) => void;
+  onDone: () => void;
+}) {
+  const settings = useJevSettings();
+  const jev = useJevController();
+  const enabled = settings.enabled && settings.acceptedConsentVersion === JEV_CONSENT_VERSION;
+  const [understood, setUnderstood] = useState(enabled);
+  const ready = !wantsAiMarking || understood;
+
+  return (
+    <form
+      className="flex min-h-0 flex-1 flex-col"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!ready) return;
+        if (wantsAiMarking && !enabled) jev.enable(JEV_CONSENT_VERSION);
+        if (!wantsAiMarking && enabled) jev.disable();
+        onDone();
+      }}
+    >
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="mx-auto w-full max-w-lg px-1 pt-2">
+          <fieldset>
+            <legend className="contents">
+              <StepHeading>Would you like AI marking?</StepHeading>
+            </legend>
+            <p className="-mt-3 mb-3 text-sm leading-6 text-ink-soft">
+              AI can mark typed flashcard answers and written practice answers.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {[true, false].map((choice) => (
+                <label
+                  key={String(choice)}
+                  className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl bg-ink/[0.04] px-4 py-2 text-sm font-semibold text-ink hover:bg-ink/[0.07] has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent-ink"
+                >
+                  <input
+                    type="radio"
+                    name="onboarding-ai-marking"
+                    checked={wantsAiMarking === choice}
+                    onChange={() => onChoice(choice)}
+                    className="h-4 w-4 shrink-0 accent-accent-ink"
+                  />
+                  {choice ? 'Yes' : 'No'}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          {wantsAiMarking && (
+            <div className="mt-3">
+              <JevConsentNotice checked={understood} onChange={setUnderstood} />
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="study-controls mt-4 w-full shrink-0">
+        <div className="mx-auto w-full max-w-lg">
+          <Button type="submit" variant="primary" size="lg" className="w-full" disabled={!ready}>
+            Continue
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
 /**
- * Step 3: the real import surface, or a new empty course. Each of them finishes by opening
+ * The real import surface, or a new empty course. Each of them finishes by opening
  * its course through the existing onboarding completion handover.
  */
 function ContentStep({
