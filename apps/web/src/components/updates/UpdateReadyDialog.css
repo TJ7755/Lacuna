@@ -83,7 +83,6 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 0 12px 14px 2px;
-  scrollbar-width: thin;
   font-size: 14px;
   line-height: 1.6;
   color: hsl(var(--ink-soft));

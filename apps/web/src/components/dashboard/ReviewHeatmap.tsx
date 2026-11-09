@@ -254,7 +254,7 @@ export function ReviewHeatmap({
         onPointerMove={onScrollPointerMove}
         onPointerUp={endScrollDrag}
         onPointerCancel={endScrollDrag}
-        className="cursor-grab overflow-x-auto pb-1 [scrollbar-width:none] active:cursor-grabbing [&::-webkit-scrollbar]:hidden"
+        className="cursor-grab overflow-x-auto pb-1 active:cursor-grabbing"
       >
         <div
           ref={gridRef}
