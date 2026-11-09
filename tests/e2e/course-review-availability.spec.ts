@@ -30,6 +30,7 @@ for (const exam of [false, true]) {
   }, testInfo) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    if (exam) await page.route('**/api/ai/**', (route) => route.abort());
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterWithWelcomeCourse(page);
     await createCourse(page, 'Biology');
@@ -43,7 +44,15 @@ for (const exam of [false, true]) {
 
     await page.evaluate(
       async ({ courseId, exam }) => {
-        if (!exam) localStorage.setItem('lacuna.studyMode', 'simple');
+        if (exam) {
+          localStorage.setItem(
+            'lacuna.jevSettings',
+            JSON.stringify({ enabled: true, acceptedConsentVersion: 2 }),
+          );
+          localStorage.setItem('lacuna.jevInstallation', 'a'.repeat(64));
+        } else {
+          localStorage.setItem('lacuna.studyMode', 'simple');
+        }
         await new Promise<void>((resolve, reject) => {
           const request = indexedDB.open('lacuna');
           request.onerror = () => reject(request.error);
@@ -149,7 +158,29 @@ for (const exam of [false, true]) {
       await expect(page.getByText('1 card reviewed', { exact: true })).toBeVisible();
       await expect(page.getByRole('progressbar', { name: 'Session progress' })).toHaveCount(0);
       await page.screenshot({ path: testInfo.outputPath('quiet-card-practice.png') });
-      await page.clock.setFixedTime(new Date(Date.now() + 3_600_000));
+      // Make another card due while the assessment block is open.
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve, reject) => {
+            const open = indexedDB.open('lacuna');
+            open.onerror = () => reject(open.error);
+            open.onsuccess = () => {
+              const database = open.result;
+              const transaction = database.transaction('cards', 'readwrite');
+              transaction.oncomplete = () => {
+                database.close();
+                resolve();
+              };
+              transaction.onerror = () => {
+                database.close();
+                reject(transaction.error);
+              };
+              const cards = transaction.objectStore('cards');
+              const later = cards.get('review-later');
+              later.onsuccess = () => cards.put({ ...later.result, due: Date.now() - 1 });
+            };
+          }),
+      );
       await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
       await page.getByRole('button', { name: 'Yes', exact: true }).click();
       await expect

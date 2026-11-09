@@ -272,7 +272,9 @@ describe('StudySheet', () => {
     });
     mockFlows.chem.snapshot.recurringPracticeEligibleCount = 6;
     renderSheet('chem');
-    expect(screen.getByText('About 3 min')).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: "Today's session" })).toHaveTextContent(
+      'Card practice',
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study');
   });
