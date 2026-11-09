@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
+import { CARD_PRACTICE_LABEL } from '../../course/studySessionPlan';
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card } from '@lacuna/core/db/types';
 import {
@@ -134,6 +135,7 @@ export function LearnHeader({
   onUndo,
   cardActions = true,
   cardCompletion,
+  cardPracticeReviewedCount,
   segmentNoun,
 }: {
   mode: LearnModeType;
@@ -173,6 +175,7 @@ export function LearnHeader({
   /** False for a card that is not stored, which has nothing to edit, flag, bury or suspend. */
   cardActions?: boolean;
   cardCompletion?: { completed: number; total: number };
+  cardPracticeReviewedCount?: number;
   /** What each segment represents in the spoken position. */
   segmentNoun?: string;
 }) {
@@ -191,9 +194,13 @@ export function LearnHeader({
     : cardCompletion && cardCompletion.total > 0
       ? cardCompletion.completed / cardCompletion.total
       : sessionProgress;
-  const completionText = cardCompletion
-    ? `${cardCompletion.completed.toLocaleString('en-GB')} of ${countOf(cardCompletion.total, 'card')} complete`
-    : undefined;
+  const quietPractice = cardPracticeReviewedCount !== undefined;
+  const title = quietPractice ? CARD_PRACTICE_LABEL : info.title;
+  const completionText = quietPractice
+    ? `${countOf(cardPracticeReviewedCount, 'card')} reviewed`
+    : cardCompletion
+      ? `${cardCompletion.completed.toLocaleString('en-GB')} of ${countOf(cardCompletion.total, 'card')} complete`
+      : undefined;
   // Segmented practice names the card's place in the bar, as its announcement does. Other
   // modes count progress through the session: their queues serve cards in their own order.
   const sessionTotal = sessionCardIds.length;
@@ -240,12 +247,14 @@ export function LearnHeader({
         <div className="min-w-10 flex-1 overflow-hidden">
           <div
             className={cn(
-              'mb-2 flex min-w-0 items-baseline text-[13px] md:text-sm',
-              completionText ? 'flex-wrap justify-between gap-x-3' : 'gap-1',
+              'flex min-w-0 items-baseline text-[13px] md:text-sm',
+              !quietPractice && 'mb-2',
+              completionText ? 'flex-wrap gap-x-3' : 'gap-1',
+              cardCompletion && 'justify-between',
             )}
           >
-            <h1 className="max-w-full truncate font-bold text-ink" title={info.title}>
-              {info.title}
+            <h1 className="max-w-full truncate font-bold text-ink" title={title}>
+              {title}
             </h1>
             {(completionText ?? cardPosition) && (
               <span
@@ -260,27 +269,28 @@ export function LearnHeader({
               </span>
             )}
           </div>
-          {info.subtitle && (
+          {!quietPractice && info.subtitle && (
             <p className="mb-1 hidden truncate text-xs text-ink-faint md:block">{info.subtitle}</p>
           )}
-          {mode === 'simple' && !cardCompletion ? (
-            <SessionSegments
-              cardIds={sessionCardIds}
-              outcomes={sessionCardOutcomes}
-              currentCardIds={currentCardIds}
-              value={displayedProgress}
-              label={progressName}
-              m={m}
-              noun={segmentNoun}
-            />
-          ) : (
-            <SessionProgressTrack
-              value={displayedProgress}
-              label={progressName}
-              valueText={completionText}
-              m={m}
-            />
-          )}
+          {!quietPractice &&
+            (mode === 'simple' && !cardCompletion ? (
+              <SessionSegments
+                cardIds={sessionCardIds}
+                outcomes={sessionCardOutcomes}
+                currentCardIds={currentCardIds}
+                value={displayedProgress}
+                label={progressName}
+                m={m}
+                noun={segmentNoun}
+              />
+            ) : (
+              <SessionProgressTrack
+                value={displayedProgress}
+                label={progressName}
+                valueText={completionText}
+                m={m}
+              />
+            ))}
         </div>
 
         {/* A planned revision window is a countdown rather than progress through a pile of

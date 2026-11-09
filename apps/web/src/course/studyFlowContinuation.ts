@@ -6,10 +6,11 @@ export function mayContinueWithoutPause(
   completed: StudyFlowStep,
   summary: SessionSummary,
   pauseAfterBlock: boolean,
+  quietStudy = false,
 ): boolean {
   return (
     completed.kind === 'practice' &&
-    completed.mode !== 'assessment' &&
+    (quietStudy || completed.mode !== 'assessment') &&
     (summary.reachedGoal || summary.blockComplete === true) &&
     !summary.limitReached &&
     !summary.timeLimitReached &&
@@ -25,19 +26,21 @@ export function mayContinueWithoutPause(
  * without the full-screen hand-off. Contiguous card practice can continue after
  * a review block or an exhausted pool. The next step must be ordinary Practice
  * with no alternative to choose, and no break, daily goal or limit may be due.
- * Lessons, assessments, breaks and the end of the flow keep their transition.
+ * The default Study flow presents assessment practice as another card block.
+ * Explicit study choices keep their assessment hand-offs.
  */
 export function continuesWithoutPause(
   completed: StudyFlowStep,
   summary: SessionSummary,
   next: StudyFlowDecision,
   pauseAfterBlock: boolean,
+  quietStudy = false,
 ): next is { kind: 'step'; step: Extract<StudyFlowStep, { kind: 'practice' }> } {
   return (
-    mayContinueWithoutPause(completed, summary, pauseAfterBlock) &&
+    mayContinueWithoutPause(completed, summary, pauseAfterBlock, quietStudy) &&
     next.kind === 'step' &&
     next.step.kind === 'practice' &&
-    next.step.mode !== 'assessment' &&
+    (quietStudy || next.step.mode !== 'assessment') &&
     !(
       completed.kind === 'practice' &&
       completed.mode === 'catch-up' &&

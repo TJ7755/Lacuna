@@ -123,9 +123,7 @@ test('desktop Study starts at the current lesson and introduces earlier cards be
   await expect(page.getByRole('heading', { name: current.name, exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   const handoff = page.getByRole('main', { name: 'Study progress', exact: true });
-  await expect(
-    handoff.getByRole('heading', { name: 'Review earlier material', exact: true }),
-  ).toBeVisible();
+  await expect(handoff.getByRole('heading', { name: 'Card practice', exact: true })).toBeVisible();
   await handoff.getByRole('button', { name: 'Finish for now', exact: true }).click();
   await expect(page).toHaveURL(courseUrl);
   expect(await readAll(page, 'reviewHistory')).toHaveLength(0);
@@ -134,7 +132,7 @@ test('desktop Study starts at the current lesson and introduces earlier cards be
   ]);
 
   await study.click();
-  await expect(preview.getByText('Review earlier material', { exact: true })).toBeVisible();
+  await expect(preview.getByText('Card practice', { exact: true })).toBeVisible();
   await capture(page, info, 'study-preview-earlier-material');
   await preview.getByRole('button', { name: 'Start session', exact: true }).click();
   await expect(page.locator(`[data-study-card-id="${earlier.id}"]`)).toBeVisible();

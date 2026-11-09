@@ -1,4 +1,4 @@
-import { useCallback, useId, type RefObject } from 'react';
+import { useCallback, useId, useRef, type RefObject } from 'react';
 import { AnimatePresence } from 'motion/react';
 import type { Card, ItemPayload } from '@lacuna/core/db/types';
 import { LessonChoiceControls } from './LessonChoiceControls';
@@ -6,6 +6,7 @@ import type { LessonChoiceCard } from './simpleLearnQuestions';
 import { Button } from '../../components/ui/Button';
 import { CardEditOverlay } from '../../components/cards/CardEditOverlay';
 import { KeyHints } from '../../components/ui/KeyHints';
+import { useUnclaimedFocus } from '../../hooks/useUnclaimedFocus';
 import { NumericStudyFace } from '../../components/items/NumericStudyFace';
 import { WorkingStudyFace } from '../../components/items/WorkingStudyFace';
 import { UnknownItemFace } from '../../components/items/UnknownItemFace';
@@ -29,6 +30,8 @@ import type { useStudyFocus } from './useStudyFocus';
 
 export function LearnStudyPhase({
   session,
+  reviewedCardIds,
+  reviewConfirmation,
   view,
   feedback,
   mode,
@@ -60,6 +63,8 @@ export function LearnStudyPhase({
   m,
 }: {
   session: ReturnType<typeof useLearnSession>;
+  reviewedCardIds?: ReadonlySet<string>;
+  reviewConfirmation?: { onContinue: () => void; busy: boolean };
   view: ReturnType<typeof useLearnView>;
   feedback: ReturnType<typeof useLearnAnswerFeedback>;
   mode: LearnModeType;
@@ -112,6 +117,7 @@ export function LearnStudyPhase({
     predictedRecall,
     sessionCardIds,
     sessionCardOutcomes,
+    reviewEvents,
     currentCardIds,
     openEdit,
     toggleFlagCurrent,
@@ -178,6 +184,15 @@ export function LearnStudyPhase({
     },
     [cardTransitionRef, continueIntroduction, serial],
   );
+  const reviewedThisBlock = new Set<string>();
+  if (reviewedCardIds !== undefined) {
+    for (const { cardId } of reviewEvents) {
+      if (cardId !== undefined && !reviewedCardIds.has(cardId)) reviewedThisBlock.add(cardId);
+    }
+  }
+  const confirmationRef = useRef<HTMLDivElement>(null);
+  useUnclaimedFocus(confirmationRef, reviewConfirmation !== undefined && !reviewConfirmation.busy);
+
   return (
     <>
       {/* In-session card editor: fixes a card without leaving the session (timer paused). */}
@@ -194,7 +209,7 @@ export function LearnStudyPhase({
       </AnimatePresence>
       {/* Help overlay (opened with ?) */}
       <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
-      {focusMode && !focusChromeVisible && !menuOpen && (
+      {focusMode && !focusChromeVisible && !menuOpen && !reviewConfirmation && (
         <button
           type="button"
           aria-label="Show study controls"
@@ -207,9 +222,15 @@ export function LearnStudyPhase({
       )}
       {/* Shared top bar: hidden in Focus Mode until the top edge is reached. */}
       <AnimatePresence>
-        {(!focusMode || focusChromeVisible || menuOpen) && (
+        {(!focusMode || focusChromeVisible || menuOpen || reviewConfirmation) && (
           <LearnHeader
-            canUndo={canUndo}
+            cardPracticeReviewedCount={
+              reviewedCardIds === undefined
+                ? undefined
+                : reviewedCardIds.size + reviewedThisBlock.size
+            }
+            canUndo={canUndo && !reviewConfirmation?.busy}
+            cardActions={reviewedCardIds === undefined || phase !== 'finished'}
             onUndo={() => void undoWithTransitionCancel()}
             key="learn-header"
             mode={mode}
@@ -421,6 +442,18 @@ export function LearnStudyPhase({
             onAnswer={answerWithUndo}
             m={m}
           />
+        )}
+        {reviewConfirmation && (
+          <div ref={confirmationRef} className="mt-5 flex justify-center">
+            <Button
+              variant="primary"
+              size="lg"
+              disabled={reviewConfirmation.busy}
+              onClick={reviewConfirmation.onContinue}
+            >
+              Continue
+            </Button>
+          </div>
         )}
       </main>
     </>

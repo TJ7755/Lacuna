@@ -43,6 +43,8 @@ export type { LearnSessionRequest } from '../course/learnSessionRequest';
 interface LearnModeProps {
   /** Supplied by CourseStudyFlow; omitted for the existing route-driven sessions. */
   request?: LearnSessionRequest;
+  /** Card reviews from earlier blocks in the ordinary Study flow. */
+  reviewedCardIds?: ReadonlySet<string>;
   /** Emits only after progression writes have completed, so the caller can safely re-plan. */
   onStepFinished?: (summary: SessionSummary) => void;
   /** Leaves the whole continuous flow rather than merely ending the current step. */
@@ -63,6 +65,7 @@ export function LearnMode(props: LearnModeProps = {}) {
 
 function LearnSession({
   request,
+  reviewedCardIds,
   onStepFinished,
   onFlowExit,
   sessionId,
@@ -381,6 +384,13 @@ function LearnSession({
     );
   }
 
+  // Automatic marks keep their existing confirmation and Undo. In ordinary Study
+  // this action stays on the card screen while the next block is still undecided.
+  const reviewConfirmation =
+    reviewedCardIds !== undefined && phase === 'finished' && summary && canUndo
+      ? { onContinue: () => void confirmReport(() => {}), busy: confirmingCompletion }
+      : undefined;
+
   return (
     <StudyEntrance className="min-h-dvh overflow-x-clip bg-paper">
       <SessionExitGuard
@@ -423,7 +433,10 @@ function LearnSession({
         onExplicitLeave={backOut}
       />
       <AnimatePresence mode="wait" initial={false}>
-        {phase === 'finished' && summary && (showConfirmedReport || canUndo) ? (
+        {phase === 'finished' &&
+        summary &&
+        (showConfirmedReport || canUndo) &&
+        !reviewConfirmation ? (
           <motion.div
             key="finished"
             initial={{ opacity: 0 }}
@@ -457,6 +470,8 @@ function LearnSession({
           >
             <LearnStudyPhase
               session={session}
+              reviewedCardIds={reviewedCardIds}
+              reviewConfirmation={reviewConfirmation}
               view={view}
               feedback={feedback}
               mode={mode}
