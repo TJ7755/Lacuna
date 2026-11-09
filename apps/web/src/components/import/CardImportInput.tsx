@@ -1,6 +1,6 @@
 import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 import { Select } from '../ui/Select';
-import { Button } from '../ui/Button';
+import { Button, buttonClassName } from '../ui/Button';
 import { useRef, useState } from 'react';
 import { FORMAT_LABELS, type ImportFormat } from '../../db/importEngine';
 import { ChevronDownIcon, FileTextIcon, UploadIcon } from '../ui/icons';
@@ -10,9 +10,11 @@ import { countOf } from '../../utils/plural';
 export function CardImportInput({
   source,
   preferPackage = false,
+  panel = false,
 }: {
   source: ReturnType<typeof useCardImportSource>;
   preferPackage?: boolean;
+  panel?: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -76,8 +78,13 @@ export function CardImportInput({
             <UploadIcon width={24} height={24} />
           </span>
           <strong>Drop an Anki package here</strong>
-          <p>Import cards with their media and scheduling history.</p>
-          <button type="button" onClick={() => fileRef.current?.click()} disabled={source.reading}>
+          {!panel && <p>Import cards with their media and scheduling history.</p>}
+          <button
+            type="button"
+            className={panel ? buttonClassName('secondary') : undefined}
+            onClick={() => fileRef.current?.click()}
+            disabled={source.reading}
+          >
             Choose Anki package
           </button>
         </div>

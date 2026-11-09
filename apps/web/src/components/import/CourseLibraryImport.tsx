@@ -72,7 +72,7 @@ export function CourseLibraryImport({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.12 * multiplier }}
-      className="import-panel import-course-library"
+      className="import-panel"
       onKeyDown={(event: KeyboardEvent) => {
         if (event.key !== 'Escape' || event.defaultPrevented) return;
         event.preventDefault();
@@ -80,7 +80,7 @@ export function CourseLibraryImport({
         goBack();
       }}
     >
-      <header className="mb-3 flex items-center justify-start">
+      <header className="import-step-header">
         <Button
           ref={back}
           type="button"
@@ -89,7 +89,7 @@ export function CourseLibraryImport({
           onClick={goBack}
           variant="ghost"
           hoverScale={false}
-          style={{ paddingInline: 12, gap: 6 }}
+          className="import-back gap-1.5"
         >
           <ChevronLeftIcon width={16} height={16} />
           {chosen ? 'Course library' : backLabel}

@@ -178,7 +178,7 @@ export function ImportPanel({
       disabled={busy}
       aria-label={libraryCourse ? 'Back to the course library' : 'Back to import sources'}
       onClick={back}
-      className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+      className="import-back inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full text-sm font-semibold text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
     >
       <ChevronLeftIcon width={16} height={16} />
       {libraryCourse ? 'Course library' : 'Sources'}
@@ -204,10 +204,10 @@ export function ImportPanel({
             direction={source ? 1 : -1}
           >
             <>
-              <header className={source && !cardSource ? 'mb-4 flex items-center' : 'sr-only'}>
-                <h2 className="sr-only">Import</h2>
-                {source && !cardSource && sourceNavigation}
-              </header>
+              <h2 className="sr-only">Import</h2>
+              {source && !cardSource && (
+                <header className="import-step-header">{sourceNavigation}</header>
+              )}
               {!source ? (
                 <>
                   <div className="import-sources">
@@ -232,7 +232,7 @@ export function ImportPanel({
                     ))}
                   </div>
                   <div
-                    className="import-drop"
+                    className="import-drop import-drop-zone"
                     data-dragging={dragging}
                     onDragOver={(event) => {
                       event.preventDefault();
@@ -248,7 +248,9 @@ export function ImportPanel({
                       chooseFile(event.dataTransfer.files[0]);
                     }}
                   >
-                    <UploadIcon width={28} height={28} />
+                    <span className="import-drop-icon" aria-hidden="true">
+                      <UploadIcon width={22} height={22} />
+                    </span>
                     <h2>Drop a file here</h2>
                     <p>Lacuna, Anki, CSV, TSV, Markdown, JSON or text</p>
                     <input
@@ -289,7 +291,7 @@ export function ImportPanel({
                 )
               ) : source === 'class' ? (
                 <form
-                  className="space-y-4 p-5"
+                  className="grid gap-4"
                   aria-label="Join a class"
                   onSubmit={(event) => {
                     event.preventDefault();
@@ -301,7 +303,7 @@ export function ImportPanel({
                     void navigate(`/s/${code}`);
                   }}
                 >
-                  <h2 className="font-display text-xl">Join a class</h2>
+                  <h2 className="font-display text-xl font-semibold">Join a class</h2>
                   <Field label="Class code" error={classError ?? undefined}>
                     <Input
                       id="join-class-code"
@@ -317,7 +319,7 @@ export function ImportPanel({
                       className="font-mono text-xl"
                     />
                   </Field>
-                  <Button type="submit" variant="primary">
+                  <Button type="submit" variant="primary" className="justify-self-end">
                     Join class
                   </Button>
                 </form>

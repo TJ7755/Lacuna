@@ -7,14 +7,6 @@
   border-radius: 0;
   background: transparent;
 }
-.card-import-panel .card-import-header {
-  justify-content: space-between;
-  padding: 0 0 16px;
-}
-.card-import-panel .card-import-header > button {
-  display: inline-flex;
-  width: auto;
-}
 .card-import-progress {
   margin-left: auto;
   color: hsl(var(--ink-faint));
@@ -41,25 +33,20 @@
 .card-import-panel .card-import-input textarea {
   height: 140px;
   min-height: 100px;
+  display: block;
   resize: none;
 }
 .card-import-panel .card-import-input-label {
   margin-bottom: 8px;
 }
-.card-import-panel .card-import-package {
-  min-height: 180px;
-  padding: 16px;
-}
-.card-import-panel .card-import-package-icon {
-  width: 40px;
-  height: 40px;
-  margin: 0;
+.card-import-panel [data-package-empty='true'] .card-import-package button {
+  text-decoration: none;
 }
 .card-import-panel .card-import-reverse {
   margin: 0;
 }
 .card-import-panel .card-import-total {
-  margin: 4px 0 0;
+  margin: 0;
 }
 .card-import-panel .card-import-total strong {
   font-size: 32px;
@@ -99,10 +86,10 @@
   padding: 12px;
 }
 .card-import-panel .card-import-face-label {
-  margin-bottom: 6px;
+  margin: 0 0 6px;
 }
 .card-import-panel .card-import-footer {
-  padding: 12px 0 0;
+  padding: var(--import-section-gap) 0 0;
   background: transparent;
 }
 .card-import-panel .card-import-actions {
