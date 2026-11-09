@@ -1,5 +1,33 @@
+/** Stable boundary consumed by the study and settings UI. */
+import { useSyncExternalStore } from 'react';
 import { JEV_PROVIDER } from '@lacuna/core/jev/types';
+import { jevEngine } from './engine';
+import type { JevController } from '@lacuna/core/jev/types';
+export * from '@lacuna/core/jev/types';
+export * from './protocol';
+export { createJevEngine, JEV_SETTINGS_STORAGE_KEY } from './engine';
+export function useJevSettings() {
+  return useSyncExternalStore(jevEngine.subscribe, jevEngine.settings);
+}
+export function useJevStatus() {
+  return useSyncExternalStore(jevEngine.subscribe, jevEngine.status);
+}
+export function useJevController(): JevController {
+  return jevEngine;
+}
+export function useJevTypedMarker() {
+  useJevSettings();
+  useJevStatus();
+  return jevEngine.marker();
+}
+export { useJevAllocationMarking, markJevAttempt } from './attempts';
+export { useLessonDistractors } from './lessonDistractors';
+export { splitJevExpectedAnswer, type JevExpectedAnswerPart } from './answerParts';
+/** Technique classification is an explicit authoring action, never a background request. */
+export const classifyTechniques: typeof jevEngine.classifyTechniques = (request, signal) =>
+  jevEngine.classifyTechniques(request, signal);
 
+// Keep consent in the lazy Jev module both setup and Settings already load.
 export function JevConsentNotice({
   checked,
   onChange,
@@ -21,7 +49,7 @@ export function JevConsentNotice({
         tabIndex={scrollableTerms ? 0 : undefined}
         className={
           scrollableTerms
-            ? 'h-36 space-y-3 overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface-raised px-4 py-3 [scrollbar-gutter:stable] [scrollbar-width:thin] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink'
+            ? 'h-36 space-y-3 overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface-raised px-4 py-3 [scrollbar-color:hsl(var(--ink-faint))_transparent] [scrollbar-gutter:stable] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink'
             : 'space-y-3'
         }
       >

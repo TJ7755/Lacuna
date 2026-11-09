@@ -3,7 +3,7 @@ import { useId, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { DialogPanel } from '../../components/ui/DialogPanel';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { JevConsentNotice } from '../../jev/JevConsentNotice';
+import { JevConsentNotice } from '../../jev';
 
 interface JevConsentDialogProps {
   open: boolean;
