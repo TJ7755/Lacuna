@@ -1,4 +1,4 @@
-import { classifyPaths, parseNameStatus } from './ci-change-scope.mjs';
+import { classifyPaths, isQuestionBankFixture, parseNameStatus } from './ci-change-scope.mjs';
 
 export const projects = [
   { name: 'lacuna', id: 'prj_pT9dbirIR497NHQ36nymeNS13Axk' },
@@ -8,7 +8,10 @@ export const projects = [
 ];
 
 export function affectedProjects(paths) {
-  const scope = classifyPaths(paths);
+  // The examples are consumed by tests, so keep them out of deployment selection.
+  const deployPaths = paths.filter((path) => !isQuestionBankFixture(path));
+  if (paths.length && !deployPaths.length) return [];
+  const scope = classifyPaths(deployPaths);
   return projects.filter(({ name }) =>
     name === 'lacuna-relay'
       ? scope.relay

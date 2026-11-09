@@ -46,6 +46,77 @@ describe('isDocsOnly', () => {
 });
 
 describe('area scope', () => {
+  it('runs app tests for question-bank fixtures while keeping the prose docs-only', () => {
+    for (const path of [
+      'docs/question-bank/examples/numeric-family.json',
+      'docs/question-bank/examples/static-multipart.json',
+    ]) {
+      expect(isDocsOnly([path])).toBe(false);
+      expect(classifyPaths(parseNameStatus(`D\0${path}\0`))).toMatchObject({
+        docs_only: false,
+        app: true,
+        docs: true,
+        electron: false,
+        relay: false,
+      });
+    }
+    expect(isDocsOnly(['docs/question-bank/contract.md'])).toBe(true);
+  });
+
+  it('adds the browser consumers of changed fixtures to the surviving changed specs', () => {
+    const run = (input: string) =>
+      execFileSync('node', ['scripts/ci-change-scope.mjs', '--name-status'], {
+        input,
+        encoding: 'utf8',
+      })
+        .trimEnd()
+        .split('\n')
+        .at(-1);
+    expect(run('M\0docs/question-bank/examples/static-multipart.json\0')).toBe(
+      'web_specs=concept-practice.spec.ts',
+    );
+    expect(run('M\0docs/question-bank/examples/numeric-family.json\0')).toBe(
+      'web_specs=concept-practice.spec.ts question-technique-authoring.spec.ts',
+    );
+    expect(
+      run(
+        [
+          'M\0docs/question-bank/examples/numeric-family.json\0',
+          'M\0tests/e2e/concept-practice.spec.ts\0',
+          'D\0tests/e2e/deleted.spec.ts\0',
+          'R100\0tests/e2e/old.spec.ts\0tests/e2e/new.spec.ts\0',
+          'M\0tests/e2e/unsafe.spec.ts\n\0',
+        ].join(''),
+      ),
+    ).toBe('web_specs=concept-practice.spec.ts new.spec.ts question-technique-authoring.spec.ts');
+  });
+
+  it('selects only affected standalone suites, including site source and spec renames', () => {
+    for (const [paths, expected] of [
+      [['apps/gaps/sw.js'], ['gaps']],
+      [['apps/web/src/teacher/ClassAccess.tsx'], ['gaps']],
+      [['apps/web/src/insights/ownerStore.ts'], ['gaps', 'reporting']],
+      [['tests/e2e/fixtures/gaps.ts'], ['gaps']],
+      [['apps/library/vite.config.ts'], ['library']],
+      [['apps/web/src/library/LibraryPage.tsx'], ['library']],
+      [['apps/web/src/components/import/QualificationGuidance.tsx'], ['library']],
+      [['tests/e2e/library-topic-preview.spec.ts', 'apps/web/src/App.tsx'], ['library']],
+      [['tests/e2e/gaps-daily-flow.spec.ts'], ['reporting']],
+      [
+        parseNameStatus('R100\0tests/e2e/gaps-standalone.spec.ts\0apps/library/index.html\0'),
+        ['gaps', 'library'],
+      ],
+      [['tests/e2e/study-flip.spec.ts', 'apps/web/src/App.tsx'], []],
+      [['.github/workflows/ci.yml'], ['gaps', 'library', 'reporting']],
+      [[], ['gaps', 'library', 'reporting']],
+    ] as const) {
+      expect(
+        classifyPaths(paths).standalone_suites.map(({ site }) => site),
+        paths.join(', '),
+      ).toEqual(expected);
+    }
+  });
+
   it('selects the full browser pipeline for CI changes, including renames and mixed scope', () => {
     expect(classifyPaths(['apps/web/src/App.tsx']).browser_ci).toBe(false);
     expect(classifyPaths(['unknown/file', '.github/workflows/ci.yml']).browser_ci).toBe(true);
@@ -91,7 +162,7 @@ describe('area scope', () => {
     ]) {
       expect(
         Object.entries(classifyPaths([path]))
-          .filter(([area]) => !['docs_only', 'browser_ci'].includes(area))
+          .filter(([area]) => !['docs_only', 'browser_ci', 'standalone_suites'].includes(area))
           .map(([, selected]) => selected)
           .every(Boolean),
         path,
@@ -162,7 +233,7 @@ describe('area scope', () => {
       'tests/e2e/mobile-pwa-smoke.spec.ts',
       'tests/e2e/gaps-standalone.spec.ts',
     ]) {
-      expect(classifyPaths([path])).toEqual({
+      expect(classifyPaths([path])).toMatchObject({
         docs_only: false,
         app: false,
         electron: false,
@@ -192,7 +263,7 @@ describe('area scope', () => {
     ]) {
       expect(
         Object.entries(classifyPaths([path]))
-          .filter(([area]) => !['docs_only', 'browser_ci'].includes(area))
+          .filter(([area]) => !['docs_only', 'browser_ci', 'standalone_suites'].includes(area))
           .map(([, selected]) => selected)
           .every(Boolean),
         path,

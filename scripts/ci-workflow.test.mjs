@@ -132,10 +132,22 @@ test('documentation-only changes resolve required names without running heavy st
 });
 
 const fullBrowserResults = ['RESULT', 'TIMING_RESULT', 'STANDALONE_RESULT'];
+const fullStandaloneSuites = JSON.stringify(classifyPaths([]).standalone_suites);
 const gateCases = (job) =>
   job === 'browser-smoke'
     ? [
-        { event: 'pull_request', browserCI: 'false', ignored: fullBrowserResults },
+        {
+          event: 'pull_request',
+          browserCI: 'false',
+          standaloneSuites: '[]',
+          ignored: fullBrowserResults,
+        },
+        {
+          event: 'pull_request',
+          browserCI: 'false',
+          standaloneSuites: JSON.stringify(classifyPaths(['apps/gaps/sw.js']).standalone_suites),
+          ignored: ['RESULT', 'TIMING_RESULT'],
+        },
         { event: 'pull_request', browserCI: 'true', ignored: [] },
         { event: 'pull_request', browserCI: '', ignored: [] },
         { event: 'push', browserCI: 'false', ignored: ['PR_RESULT'] },
@@ -146,7 +158,12 @@ test('aggregate shell gates fail closed and report each dependency result', () =
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-gates-'));
   try {
     for (const job of ['test', 'browser-smoke'])
-      for (const { event, browserCI, ignored } of gateCases(job)) {
+      for (const {
+        event,
+        browserCI,
+        standaloneSuites = fullStandaloneSuites,
+        ignored,
+      } of gateCases(job)) {
         const step = workflow.jobs[job].steps[0];
         const results = Object.keys(step.env).filter(
           (key) => key.endsWith('RESULT') && !ignored.includes(key),
@@ -163,6 +180,7 @@ test('aggregate shell gates fail closed and report each dependency result', () =
             PYTHON: 'true',
             EVENT_NAME: event,
             BROWSER_CI: browserCI ?? '',
+            STANDALONE_SUITES: standaloneSuites,
             GITHUB_STEP_SUMMARY: summary,
             ...Object.fromEntries(ignored.map((key) => [key, 'skipped'])),
             ...Object.fromEntries(results.map((key) => [key, 'success'])),
@@ -184,6 +202,7 @@ test('aggregate shell gates fail closed and report each dependency result', () =
             .filter((key) => !['SCOPE_RESULT', 'DOCUMENTATION_RESULT'].includes(key))
             .map((key) => [key, 'skipped']),
         );
+        docs.STANDALONE_RESULT = 'skipped';
         assert.equal(
           run({
             ...docs,
@@ -192,6 +211,7 @@ test('aggregate shell gates fail closed and report each dependency result', () =
             ELECTRON: 'false',
             HANDWRITING: 'false',
             PYTHON: 'false',
+            STANDALONE_SUITES: '[]',
           }).status,
           0,
         );
@@ -203,11 +223,12 @@ test('aggregate shell gates fail closed and report each dependency result', () =
             ELECTRON: 'false',
             HANDWRITING: 'false',
             PYTHON: 'false',
+            STANDALONE_SUITES: '[]',
             SCOPE_RESULT: 'failure',
           }).status,
           1,
         );
-        for (const key of Object.keys(docs)) {
+        for (const key of Object.keys(docs).filter((key) => key in step.env)) {
           assert.equal(
             run({
               ...docs,
@@ -216,6 +237,7 @@ test('aggregate shell gates fail closed and report each dependency result', () =
               ELECTRON: 'false',
               HANDWRITING: 'false',
               PYTHON: 'false',
+              STANDALONE_SUITES: '[]',
               [key]: 'failure',
             }).status,
             1,
@@ -228,6 +250,7 @@ test('aggregate shell gates fail closed and report each dependency result', () =
               ELECTRON: 'false',
               HANDWRITING: 'false',
               PYTHON: 'false',
+              STANDALONE_SUITES: '[]',
               [key]: 'cancelled',
             }).status,
             1,
@@ -395,8 +418,11 @@ test('pull requests pass only plain changed web spec names to the browser smoke 
     }
     git('add', '.');
     git('-c', 'user.name=CI', '-c', 'user.email=ci@example.invalid', 'commit', '-q', '-m', 'head');
-    // The untracked link lets the step run the real scope classifier.
-    symlinkSync(new URL('.', import.meta.url).pathname, join(directory, 'scripts'));
+    mkdirSync(join(directory, 'scripts'));
+    copyFileSync(
+      new URL('./ci-change-scope.mjs', import.meta.url),
+      join(directory, 'scripts/ci-change-scope.mjs'),
+    );
     const step = workflow.jobs.changes.steps.find((step) => step.id === 'scope');
     const output = join(directory, 'output');
     const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', step.run], {
@@ -575,7 +601,7 @@ test('scope collection uses NUL records, pipefail and conservative push classifi
   const scope = workflow.jobs.changes.steps.find((step) => step.id === 'scope');
   assert.match(scope.run, /git diff --name-status -z --find-renames/);
   assert.match(scope.run, /--name-status/);
-  assert.match(scope.run, /unknown-root-path/);
+  assert.match(scope.run, /node scripts\/ci-change-scope\.mjs < \/dev\/null/);
   // GitHub's default bash invocation has pipefail; specify it explicitly to make the contract visible.
   assert.equal(scope.shell, 'bash');
 });
@@ -599,10 +625,12 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
               PRODUCTION_RESULT: 'APP',
               RESULT: 'APP',
               TIMING_RESULT: 'APP',
-              STANDALONE_RESULT: 'SITES',
+              STANDALONE_RESULT: 'STANDALONE_SUITES',
             };
       for (const [dependency, area] of Object.entries(dependencies)) {
-        for (const flag of ['false', 'true', '', 'unknown']) {
+        const unaffected = area === 'STANDALONE_SUITES' ? '[]' : 'false';
+        const selected = area === 'STANDALONE_SUITES' ? fullStandaloneSuites : 'true';
+        for (const flag of [unaffected, selected, '', 'unknown']) {
           for (const result of ['success', 'skipped', 'failure', 'cancelled', '']) {
             const env = {
               ...process.env,
@@ -612,6 +640,7 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
               HANDWRITING: 'false',
               PYTHON: 'false',
               ELECTRON: 'false',
+              STANDALONE_SUITES: '[]',
               [dependency]: result,
               [area]: flag,
               GITHUB_STEP_SUMMARY: join(directory, 'summary'),
@@ -619,7 +648,7 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
             const execution = spawnSync('bash', ['-e', '-c', step.run], { env, encoding: 'utf8' });
             assert.equal(
               execution.status,
-              result === 'success' || (result === 'skipped' && flag === 'false') ? 0 : 1,
+              result === 'success' || (result === 'skipped' && flag === unaffected) ? 0 : 1,
               `${job} ${dependency} ${flag} ${result}`,
             );
           }
@@ -632,6 +661,14 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
 });
 
 test('controlled path fixtures select the expected existing worker jobs', () => {
+  assert.equal(
+    workflow.jobs.changes.outputs.standalone_suites,
+    '${{ steps.scope.outputs.standalone_suites }}',
+  );
+  assert.equal(
+    workflow.jobs['browser-standalone'].strategy.matrix.include,
+    '${{ fromJSON(needs.changes.outputs.standalone_suites) }}',
+  );
   const workers = [
     'typecheck',
     'lint',
@@ -652,7 +689,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'windows-installed-upgrade',
     'electron-macos-smoke',
   ];
-  // Pull requests run the browser smoke job; master commits retain the full browser suites.
+  // Ordinary PRs run smoke, plus standalone suites selected by their changed paths.
   const postMerge = ['browser-tests', 'browser-standalone', 'browser-timing'];
   const web = ['web-build', 'production', 'browser-pr'];
   const all = workers.filter((name) => !postMerge.includes(name));
@@ -664,25 +701,29 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     ],
     [['tooling/handwriting-maths/src/main.ts'], ['lint', 'handwriting']],
     [['tooling/short-term-memory/stm_harness/contract.py'], ['lint', 'python-tools']],
-    [['apps/library/index.html'], ['lint', ...web]],
+    [['apps/library/index.html'], ['lint', ...web, 'browser-standalone']],
     [['tests/e2e/study-flip.spec.ts'], ['typecheck', 'lint', ...web]],
     [['tests/e2e/mobile-pwa-smoke.spec.ts'], ['typecheck', 'lint', ...web]],
-    [['tests/e2e/gaps-standalone.spec.ts'], ['typecheck', 'lint', ...web]],
+    [['tests/e2e/gaps-standalone.spec.ts'], ['typecheck', 'lint', ...web, 'browser-standalone']],
     [['tests/e2e/fixtures/videoEmbeds.ts'], all],
     [['tests/config/playwright.web.config.ts'], workers],
     [['tests/e2e/study-flip.spec.ts', 'apps/web/src/App.tsx'], all],
     [
       ['docs/README.md', 'apps/gaps/sw.js', 'tooling/handwriting-maths/src/main.ts'],
-      ['lint', 'handwriting', ...web],
+      ['lint', 'handwriting', ...web, 'browser-standalone'],
     ],
     [['apps/web/src/fsrs/coefficients/model.json'], all],
     [['apps/relay/shared/insights/index.ts'], all],
-    [['apps/library/vercel.json'], all],
+    [['apps/library/vercel.json'], [...all, 'browser-standalone']],
+    [
+      ['docs/question-bank/examples/numeric-family.json'],
+      ['typecheck', 'lint', 'test-unit', 'test-coverage', ...web],
+    ],
     [['.github/workflows/ci.yml'], workers],
     [['unknown/file'], all],
   ]) {
     const outputs = Object.fromEntries(
-      Object.entries(classifyPaths(paths)).map(([key, value]) => [key, String(value)]),
+      Object.entries(classifyPaths(paths)).map(([key, value]) => [key, JSON.stringify(value)]),
     );
     const context = {
       github: { event_name: 'pull_request' },
@@ -977,7 +1018,12 @@ test('web spec aggregate gates retain every browser result and allow only unaffe
   try {
     const scope = classifyPaths(['tests/e2e/study-flip.spec.ts']);
     for (const name of ['test', 'browser-smoke'])
-      for (const { event, browserCI, ignored } of gateCases(name)) {
+      for (const {
+        event,
+        browserCI,
+        standaloneSuites = fullStandaloneSuites,
+        ignored,
+      } of gateCases(name)) {
         const step = workflow.jobs[name].steps[0];
         const results = Object.keys(step.env).filter(
           (key) => key.endsWith('RESULT') && !ignored.includes(key),
@@ -985,12 +1031,13 @@ test('web spec aggregate gates retain every browser result and allow only unaffe
         const env = {
           ...process.env,
           ...Object.fromEntries(
-            Object.entries(scope).map(([key, value]) => [key.toUpperCase(), String(value)]),
+            Object.entries(scope).map(([key, value]) => [key.toUpperCase(), JSON.stringify(value)]),
           ),
           ...Object.fromEntries(ignored.map((key) => [key, 'skipped'])),
           ...Object.fromEntries(results.map((key) => [key, 'success'])),
           EVENT_NAME: event,
           BROWSER_CI: browserCI ?? '',
+          STANDALONE_SUITES: standaloneSuites,
           GITHUB_STEP_SUMMARY: join(directory, 'summary'),
         };
         if (name === 'test')
@@ -1037,8 +1084,10 @@ test('push scope still selects the full matrix regardless of changed web specs',
     );
     assert.equal(outputs.docs_only, 'false');
     assert.equal(outputs.browser_ci, 'false');
+    assert.equal(outputs.standalone_suites, fullStandaloneSuites);
     for (const [area, value] of Object.entries(outputs))
-      if (!['docs_only', 'browser_ci'].includes(area)) assert.equal(value, 'true', area);
+      if (!['docs_only', 'browser_ci', 'standalone_suites'].includes(area))
+        assert.equal(value, 'true', area);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
