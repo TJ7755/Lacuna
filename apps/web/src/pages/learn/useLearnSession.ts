@@ -1439,6 +1439,7 @@ export function useLearnSession({
     editTagSuggestions,
     sessionCardIds,
     sessionCardOutcomes,
+    reviewEvents: events.current,
     schedulerProgress,
     predictedRecall:
       !isSimpleMode && !plannedRevision && ctxRef.current

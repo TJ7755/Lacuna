@@ -37,6 +37,7 @@ import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import { StudyQuestionStep } from '../components/learn/StudyQuestionStep';
 import { StepSwap } from '../components/ui/StepSwap';
 import { continuesWithoutPause, mayContinueWithoutPause } from '../course/studyFlowContinuation';
+import { CARD_PRACTICE_LABEL } from '../course/studySessionPlan';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
 const SpecificationStudyFlow = lazy(() =>
   import('./SpecificationStudyFlow').then((module) => ({
@@ -103,6 +104,8 @@ function CourseStudyFlowInner() {
       : null;
   });
   const entryPracticeNodeKey = searchParams.get('practiceNode');
+  const quietStudy = !entryAssessmentId && !entryPracticeNodeKey && !searchParams.has('review');
+  const [reviewedCardIds, setReviewedCardIds] = useState<ReadonlySet<string>>(() => new Set());
   // The choice is made in the study sheet before this route is entered and arrives as a
   // query parameter, so the flow no longer presents an entry screen of its own.
   const [transition, setTransition] = useState<TransitionState | null>(null);
@@ -237,12 +240,21 @@ function CourseStudyFlowInner() {
       // instance must never re-plan or overwrite the next step's transition.
       if (stepGeneration <= completedGenerationRef.current) return;
       completedGenerationRef.current = stepGeneration;
+      if (quietStudy && completed.kind === 'practice') {
+        setReviewedCardIds((previous) => {
+          const reviewed = new Set(previous);
+          for (const event of summary.events) {
+            if (event.cardId !== undefined) reviewed.add(event.cardId);
+          }
+          return reviewed;
+        });
+      }
       touchActiveStudyFlow(courseId);
       setPreviousStep(completed);
       setTransition({ summary, completedStep: completed, completedGeneration: stepGeneration });
       setRefreshKey((value) => value + 1);
     },
-    [courseId, currentStep, displayStep, stepGeneration],
+    [courseId, currentStep, displayStep, quietStudy, stepGeneration],
   );
 
   const handleQuestionFinished = useCallback(
@@ -293,24 +305,36 @@ function CourseStudyFlowInner() {
   const awaitingContinuation =
     transition !== null &&
     'events' in transition.summary &&
-    mayContinueWithoutPause(transition.completedStep, transition.summary, pauseAfterBlock) &&
+    mayContinueWithoutPause(
+      transition.completedStep,
+      transition.summary,
+      pauseAfterBlock,
+      quietStudy,
+    ) &&
     (nextFlow === null ||
       continuesWithoutPause(
         transition.completedStep,
         transition.summary,
         nextFlow.decision,
         pauseAfterBlock,
+        quietStudy,
       ));
   useEffect(() => {
     if (!transition || !nextFlow || !('events' in transition.summary)) return;
     const { decision } = nextFlow;
     if (
-      continuesWithoutPause(transition.completedStep, transition.summary, decision, pauseAfterBlock)
+      continuesWithoutPause(
+        transition.completedStep,
+        transition.summary,
+        decision,
+        pauseAfterBlock,
+        quietStudy,
+      )
     ) {
       setCurrentStep(decision.step);
       setTransition(null);
     }
-  }, [nextFlow, pauseAfterBlock, transition]);
+  }, [nextFlow, pauseAfterBlock, quietStudy, transition]);
 
   const reviewDueCards = useCallback(() => {
     if (!courseId) return;
@@ -341,6 +365,8 @@ function CourseStudyFlowInner() {
   let scene: string;
   let body: ReactNode;
   if (transition && !awaitingContinuation) {
+    const label = (step: StudyFlowStep) =>
+      quietStudy && step.kind === 'practice' ? CARD_PRACTICE_LABEL : step.label;
     const planningNextStep = transitionComplete && flow?.generation !== refreshKey;
     const catchUpIsNext =
       flow?.decision.kind === 'step' &&
@@ -356,8 +382,8 @@ function CourseStudyFlowInner() {
     scene = 'transition';
     body = (
       <StudyStepTransition
-        completedLabel={transition.completedStep.label}
-        nextLabel={nextStep?.label}
+        completedLabel={label(transition.completedStep)}
+        nextLabel={nextStep && label(nextStep)}
         summary={transition.summary}
         progress={flow?.generation === refreshKey ? flow.progress : undefined}
         nextReason={nextQuestions?.reason}
@@ -413,6 +439,9 @@ function CourseStudyFlowInner() {
     body = (
       <LearnMode
         request={request}
+        reviewedCardIds={
+          quietStudy && displayStep.kind === 'practice' ? reviewedCardIds : undefined
+        }
         showConfirmedReport={false}
         onStepFinished={handleStepFinished}
         onFlowExit={finishFlow}

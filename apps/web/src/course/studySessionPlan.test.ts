@@ -1,15 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Card } from '@lacuna/core/db/types';
-import type { CourseStudyFlowSnapshot, StudyFlowPracticeState } from './studyFlowSnapshot';
 import { DUE_REVIEW_STEP } from './studyFlowPlanner';
 import { planStudySession } from './studySessionPlan';
-
-function snapshot(due: number, practices: Partial<StudyFlowPracticeState>[] = []) {
-  return {
-    recurringPracticeEligibleCount: due,
-    practiceByKey: new Map(practices.map((p) => [p.nodeKey!, p as StudyFlowPracticeState])),
-  } as unknown as CourseStudyFlowSnapshot;
-}
 
 const card = (reviewed: boolean) => ({ lastReviewed: reviewed ? 1 : null }) as Card;
 
@@ -17,7 +9,6 @@ describe('planStudySession', () => {
   it('previews one recommended block without guessing the later queue', () => {
     const plan = planStudySession({
       decision: { kind: 'step', step: { kind: 'lesson', lessonId: 'l1', label: 'Cell structure' } },
-      snapshot: snapshot(6),
       lessonCardsById: new Map([['l1', [card(true), card(true), card(false)]]]),
       meanReviewSeconds: 12,
     });
@@ -37,35 +28,31 @@ describe('planStudySession', () => {
   it('counts a wholly new lesson once rather than as cards and new cards', () => {
     const plan = planStudySession({
       decision: { kind: 'step', step: { kind: 'lesson', lessonId: 'l1', label: 'Cells' } },
-      snapshot: snapshot(0),
       lessonCardsById: new Map([['l1', [card(false), card(false)]]]),
       meanReviewSeconds: 12,
     });
     expect(plan.steps[0]?.detail).toBe('Learn 2 new cards');
   });
 
-  it('lists due reviews once when they are the step itself', () => {
+  it('previews scheduled reviews as card practice without a block estimate', () => {
     const plan = planStudySession({
       decision: { kind: 'step', step: DUE_REVIEW_STEP },
-      snapshot: snapshot(30),
       lessonCardsById: new Map(),
       meanReviewSeconds: 8,
     });
     expect(plan.steps).toEqual([
       {
         key: 'practice:due-review',
-        title: 'Review due cards',
-        detail: '30 cards available (up to 10 reviews)',
-        minutes: 2,
+        title: 'Card practice',
       },
     ]);
     expect(plan.startsWithDueReview).toBe(true);
+    expect(plan.totalMinutes).toBeUndefined();
   });
 
   it('leaves the total out when a step has nothing to estimate from', () => {
     const plan = planStudySession({
       decision: { kind: 'step', step: { kind: 'lesson', lessonId: 'l1', label: 'Intro' } },
-      snapshot: snapshot(0),
       lessonCardsById: new Map([['l1', []]]),
       meanReviewSeconds: 8,
     });
@@ -73,13 +60,17 @@ describe('planStudySession', () => {
     expect(plan.totalMinutes).toBeUndefined();
   });
 
-  it('counts a card practice step by its eligible cards', () => {
+  it('previews assessment practice under the same card activity', () => {
     const plan = planStudySession({
       decision: {
         kind: 'step',
-        step: { kind: 'practice', nodeKey: 'p1', mode: 'curricular', label: 'Card practice' },
+        step: {
+          kind: 'practice',
+          nodeKey: 'p1',
+          mode: 'assessment',
+          label: 'Prepare for Steady retention',
+        },
       },
-      snapshot: snapshot(0, [{ nodeKey: 'p1', eligibleCount: 1 }]),
       lessonCardsById: new Map(),
       meanReviewSeconds: 8,
     });
@@ -87,8 +78,6 @@ describe('planStudySession', () => {
       {
         key: 'practice:p1',
         title: 'Card practice',
-        detail: '1 card available (up to 10 reviews)',
-        minutes: 2,
       },
     ]);
   });
@@ -97,7 +86,6 @@ describe('planStudySession', () => {
     expect(
       planStudySession({
         decision: { kind: 'complete' },
-        snapshot: snapshot(0),
         lessonCardsById: new Map(),
         meanReviewSeconds: 8,
       }).steps,

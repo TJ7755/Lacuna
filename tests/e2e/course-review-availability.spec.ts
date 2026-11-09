@@ -25,11 +25,12 @@ for (const width of [320, 390]) {
 }
 
 for (const exam of [false, true]) {
-  test(`continues from scheduled reviews into early exam preparation when available (exam: ${exam})`, async ({
+  test(`keeps scheduled reviews and assessment practice in one card activity (exam: ${exam})`, async ({
     page,
   }, testInfo) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    if (exam) await page.route('**/api/ai/**', (route) => route.abort());
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterWithWelcomeCourse(page);
     await createCourse(page, 'Biology');
@@ -43,14 +44,22 @@ for (const exam of [false, true]) {
 
     await page.evaluate(
       async ({ courseId, exam }) => {
-        localStorage.setItem('lacuna.studyMode', 'simple');
+        if (exam) {
+          localStorage.setItem(
+            'lacuna.jevSettings',
+            JSON.stringify({ enabled: true, acceptedConsentVersion: 2 }),
+          );
+          localStorage.setItem('lacuna.jevInstallation', 'a'.repeat(64));
+        } else {
+          localStorage.setItem('lacuna.studyMode', 'simple');
+        }
         await new Promise<void>((resolve, reject) => {
           const request = indexedDB.open('lacuna');
           request.onerror = () => reject(request.error);
           request.onsuccess = () => {
             const database = request.result;
             const transaction = database.transaction(
-              ['cards', 'courseAssessments', 'lessons', 'lessonCompletions'],
+              ['cards', 'courses', 'courseAssessments', 'lessons', 'lessonCompletions'],
               'readwrite',
             );
             transaction.oncomplete = () => {
@@ -71,12 +80,14 @@ for (const exam of [false, true]) {
               for (const [id, front, due, stability] of [
                 ['review-due', 'Due card', now - 1, 1e8],
                 ['review-future', 'Future weak card', now + day, 0.5],
+                ...(exam ? [['review-later', 'Later review', now + 1_800_000, 1e8] as const] : []),
               ] as const) {
                 cards.put({
                   ...template,
                   id,
                   front,
-                  primaryLessonId: null,
+                  primaryLessonId: exam && id === 'review-future' ? template.primaryLessonId : null,
+                  answerMode: exam && id === 'review-due' ? 'type' : template.answerMode,
                   state: 2,
                   due,
                   stability,
@@ -93,6 +104,9 @@ for (const exam of [false, true]) {
                   .put({ lessonId: lesson.id, completedAt: now, updatedAt: now });
             };
             if (exam) {
+              const courses = transaction.objectStore('courses');
+              const course = courses.get(courseId);
+              course.onsuccess = () => courses.put({ ...course.result, learnFirst: false });
               const assessments = transaction.objectStore('courseAssessments');
               const rows = assessments.index('courseId').getAll(courseId);
               rows.onsuccess = () => {
@@ -100,7 +114,7 @@ for (const exam of [false, true]) {
                   if (assessment.kind === 'final')
                     assessments.put({
                       ...assessment,
-                      name: 'Biology exam',
+                      name: 'Steady retention',
                       schedulingMode: 'exam',
                       examDate: now + 7 * day, // Inside the default early-practice window.
                       timeZone: 'UTC',
@@ -120,46 +134,89 @@ for (const exam of [false, true]) {
     await page.getByRole('button', { name: 'Study Biology' }).click();
     const preview = page.getByRole('region', { name: 'Session preview' });
     await expect(preview.getByRole('list', { name: "Today's session" })).toHaveText(
-      'Review due cards1 card available (up to 10 reviews)',
+      'Card practice',
     );
     await preview.getByRole('button', { name: 'Start session' }).click();
     await expect(page.locator('[data-study-card-id="review-due"]:not([inert])')).toBeVisible();
-    await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
-    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+    const title = page.getByRole('heading', { name: 'Card practice', exact: true });
+    await expect(title).toBeVisible();
+    await expect(page.getByText('0 cards reviewed', { exact: true })).toBeVisible();
     if (exam) {
+      await page.getByRole('textbox', { name: 'Your answer' }).fill('Answer');
+      await page.getByRole('button', { name: 'Check answer' }).click();
+      const confirm = page
+        .getByRole('main', { name: 'Study card' })
+        .getByRole('button', { name: 'Continue', exact: true });
+      await expect(confirm).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Undo last answer' })).toBeEnabled();
+      await expect(page.getByRole('main', { name: 'Session report' })).toHaveCount(0);
+      await confirm.click();
+
       await expect(page.locator('[data-study-card-id="review-future"]:not([inert])')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
-      await page.screenshot({ path: testInfo.outputPath('early-exam-preparation.png') });
+      await expect(title).toBeVisible();
+      await expect(page.getByText('1 card reviewed', { exact: true })).toBeVisible();
+      await expect(page.getByRole('progressbar', { name: 'Session progress' })).toHaveCount(0);
+      await page.screenshot({ path: testInfo.outputPath('quiet-card-practice.png') });
+      // Make another card due while the assessment block is open.
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve, reject) => {
+            const open = indexedDB.open('lacuna');
+            open.onerror = () => reject(open.error);
+            open.onsuccess = () => {
+              const database = open.result;
+              const transaction = database.transaction('cards', 'readwrite');
+              transaction.oncomplete = () => {
+                database.close();
+                resolve();
+              };
+              transaction.onerror = () => {
+                database.close();
+                reject(transaction.error);
+              };
+              const cards = transaction.objectStore('cards');
+              const later = cards.get('review-later');
+              later.onsuccess = () => cards.put({ ...later.result, due: Date.now() - 1 });
+            };
+          }),
+      );
       await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
       await page.getByRole('button', { name: 'Yes', exact: true }).click();
       await expect
         .poll(() =>
           page.evaluate(
             () =>
-              new Promise<number>((resolve, reject) => {
+              new Promise<string[]>((resolve, reject) => {
                 const request = indexedDB.open('lacuna');
                 request.onerror = () => reject(request.error);
                 request.onsuccess = () => {
                   const database = request.result;
-                  const count = database
+                  const reviews = database
                     .transaction('reviewHistory')
                     .objectStore('reviewHistory')
                     .index('cardId')
-                    .count('review-future');
-                  count.onsuccess = () => {
+                    .getAll('review-future');
+                  reviews.onsuccess = () => {
                     database.close();
-                    resolve(count.result);
+                    resolve(reviews.result.map((review) => review.sessionKind));
                   };
-                  count.onerror = () => {
+                  reviews.onerror = () => {
                     database.close();
-                    reject(count.error);
+                    reject(reviews.error);
                   };
                 };
               }),
           ),
         )
-        .toBe(1);
+        .toEqual(['assessment-revision']);
+      await expect(page.locator('[data-study-card-id="review-later"]:not([inert])')).toBeVisible();
+      await expect(title).toBeVisible();
+      await expect(page.getByText('2 cards reviewed', { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
     }
+    await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
+    await page.getByRole('button', { name: 'Yes', exact: true }).click();
 
     await expect(page.getByRole('button', { name: 'Finish for now' })).toBeVisible();
     await page.getByRole('button', { name: 'Finish for now' }).click();

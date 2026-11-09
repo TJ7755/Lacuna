@@ -1,16 +1,12 @@
 // Preview only the next block. Later work is selected from fresh evidence after it finishes.
 
 import type { Card } from '@lacuna/core/db/types';
-import type { CourseStudyFlowSnapshot } from './studyFlowSnapshot';
-import {
-  STUDY_REVIEW_BLOCK_SIZE,
-  type StudyFlowDecision,
-  type StudyFlowStep,
-} from './studyFlowPlanner';
+import type { StudyFlowDecision, StudyFlowStep } from './studyFlowPlanner';
 import { countOf } from '../utils/plural';
 
 /** Allow time for a first exposure, recall and a retry. */
 const NEW_CARD_REVIEW_EQUIVALENTS = 3;
+export const CARD_PRACTICE_LABEL = 'Card practice';
 
 interface StudySessionPlanStep {
   key: string;
@@ -34,7 +30,6 @@ function minutesFor(reviewEquivalents: number, meanReviewSeconds: number): numbe
 
 function describeStep(
   step: StudyFlowStep,
-  snapshot: CourseStudyFlowSnapshot,
   lessonCardsById: ReadonlyMap<string, Card[]>,
   meanReviewSeconds: number,
 ): StudySessionPlanStep {
@@ -60,22 +55,9 @@ function describeStep(
     };
   }
   if (step.kind === 'practice') {
-    const count =
-      step.mode === 'catch-up'
-        ? (snapshot.catchUpEligibleCount ?? 0)
-        : step.mode === 'assessment'
-          ? (snapshot.assessmentOptions.find((option) => option.assessmentId === step.assessmentId)
-              ?.eligibleCount ?? 0)
-          : step.mode === 'exam'
-            ? snapshot.examPracticeEligibleCount
-            : step.mode === 'recurring'
-              ? snapshot.recurringPracticeEligibleCount
-              : (snapshot.practiceByKey.get(step.nodeKey)?.eligibleCount ?? 0);
     return {
       key: `practice:${step.nodeKey}`,
-      title: step.mode === 'recurring' ? 'Review due cards' : step.label,
-      detail: `${countOf(count, 'card')} available (up to ${STUDY_REVIEW_BLOCK_SIZE} reviews)`,
-      minutes: count > 0 ? minutesFor(STUDY_REVIEW_BLOCK_SIZE, meanReviewSeconds) : undefined,
+      title: CARD_PRACTICE_LABEL,
     };
   }
   return {
@@ -87,12 +69,10 @@ function describeStep(
 
 export function planStudySession({
   decision,
-  snapshot,
   lessonCardsById,
   meanReviewSeconds,
 }: {
   decision: StudyFlowDecision;
-  snapshot: CourseStudyFlowSnapshot;
   lessonCardsById: ReadonlyMap<string, Card[]>;
   meanReviewSeconds: number;
 }): StudySessionPlan {
@@ -101,7 +81,7 @@ export function planStudySession({
   }
   const first = decision.step;
   const startsWithDueReview = first.kind === 'practice' && first.mode === 'recurring';
-  const steps = [describeStep(first, snapshot, lessonCardsById, meanReviewSeconds)];
+  const steps = [describeStep(first, lessonCardsById, meanReviewSeconds)];
   const totalMinutes = steps.every((step) => step.minutes !== undefined)
     ? steps.reduce((sum, step) => sum + step.minutes!, 0)
     : undefined;
