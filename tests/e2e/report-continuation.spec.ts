@@ -27,6 +27,7 @@ for (const answer of ['manual', 'automatic-continue', 'automatic-undo'] as const
         ).ReportFixture.seed(automatic),
       answer !== 'manual',
     );
+    await page.reload();
     await page.goto(`/#/course/${courseId}`);
     await page.getByRole('button', { name: 'Study', exact: true }).click();
     await chooseScheduledStudy(page);
