@@ -1,6 +1,8 @@
 import { coursePaths } from '../apps/web/src/pages/courses/content.ts';
 import { createServer, type Plugin, type ViteDevServer } from 'vite';
 
+export const coursePageTemplate = 'apps/web/src/pages/courses/index.html';
+
 interface PublicPage {
   /** The built HTML path reported by transformIndexHtml. */
   path: string;
@@ -28,13 +30,36 @@ export function publicPagePrerenderPlugin(): Plugin {
   ];
   return {
     name: 'lacuna-public-page-prerender',
-    apply: 'build',
+    configureServer(server) {
+      server.middlewares.use((request, _response, next) => {
+        const url = request.url ?? '';
+        const [path] = url.split('?', 1);
+        const courseDirectory = `${base}courses/`;
+        if (
+          path === courseDirectory ||
+          path === courseDirectory + 'index' ||
+          path === courseDirectory + 'index.html'
+        ) {
+          request.url = `${base}${coursePageTemplate}${url.slice(path.length)}`;
+        }
+        next();
+      });
+    },
+    hotUpdate({ file, server }) {
+      if (
+        this.environment.name === 'client' &&
+        file === server.config.root + '/' + coursePageTemplate
+      ) {
+        this.environment.hot.send({ type: 'full-reload', path: '/courses/index.html' });
+      }
+    },
     configResolved(config) {
       base = config.base;
     },
     transformIndexHtml: {
       order: 'post',
       async handler(html, context) {
+        if (context.server) return html;
         const page = pages.find((candidate) =>
           candidate.path === 'index.html'
             ? context.path === '/index.html' || context.path === 'index.html'
@@ -136,7 +161,7 @@ export function publicPagePrerenderPlugin(): Plugin {
     generateBundle: {
       order: 'post',
       async handler(_options, bundle) {
-        const template = bundle['courses/index.html'];
+        const template = bundle[coursePageTemplate];
         if (!template || template.type !== 'asset') return;
         const server = await createServer({
           configFile: false,
@@ -151,18 +176,26 @@ export function publicPagePrerenderPlugin(): Plugin {
           const html = String(template.source);
           for (const path of coursePaths) {
             const markup = await render(path);
-            const source = html
+            // Relative-base builds need asset URLs relative to the published page.
+            const pageHtml =
+              base === './'
+                ? html.replace(
+                    /((?:src|href)=")(?:\.\.\/)+/g,
+                    (_match, attribute: string) =>
+                      attribute + '../'.repeat(path.split('/').length - 2),
+                  )
+                : html;
+            const source = pageHtml
               .replace(/<!--course-head-->[\s\S]*?<!--\/course-head-->/, () => renderHead(path))
               .replace(/<!--course-body-->[\s\S]*?<!--\/course-body-->/, () => markup);
 
-            if (path === '/courses/') template.source = source;
-            else
-              this.emitFile({
-                type: 'asset',
-                fileName: `${path.slice(1)}index.html`,
-                source,
-              });
+            this.emitFile({
+              type: 'asset',
+              fileName: `${path.slice(1)}index.html`,
+              source,
+            });
           }
+          delete bundle[coursePageTemplate];
         } finally {
           await server.close();
         }
