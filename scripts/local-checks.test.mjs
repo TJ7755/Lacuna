@@ -298,6 +298,24 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
     assert.equal(result.report.commands.length, 1);
   });
 
+  for (const [path, site, spec] of [
+    ['apps/gaps/index.html', '--gaps', 'gaps-standalone.spec.ts'],
+    ['apps/library/index.html', '--library', 'library-standalone.spec.ts'],
+    ['tests/e2e/gaps-worker-migration.spec.ts', '--gaps', 'gaps-worker-migration.spec.ts'],
+    ['tests/e2e/library-topic-preview.spec.ts', '--library', 'library-topic-preview.spec.ts'],
+  ]) {
+    test(`${path} runs the affected standalone browser suite`, (t) => {
+      const { change, run } = fixture(t);
+      change(path);
+      const result = run('verify.mjs');
+      assert.equal(result.status, 0, result.stderr);
+      const checks = result.report.commands.filter(({ args }) => args[1] === 'verify:browser');
+      assert.equal(checks.length, 1);
+      assert.ok(checks[0].args.includes(site));
+      assert.ok(checks[0].args.includes(spec));
+    });
+  }
+
   test('unknown changes and explicit full mode select the CONTRIBUTING matrix and expose native gaps', (t) => {
     const { change, run } = fixture(t);
     change('unknown/new.txt');

@@ -4,6 +4,23 @@ import { evidence, git, installations } from './local-checks.mjs';
 const usage =
   'Usage: bun run verify -- [--base <commit>] [--full] [--plan]\nDefault: changes since HEAD plus staged/unstaged changes. --base includes committed changes since its merge base.\nStage new files first. --plan records selection without executing checks; it is not a validation pass.\nExit 2 means local checks passed but required platform evidence remains outstanding.';
 
+// The ordinary web preview skips these specs because they need their own site builds.
+const standaloneSpecs = {
+  gaps: [
+    'gaps-standalone.spec.ts',
+    'gaps-worker-migration.spec.ts',
+    'gaps-teacher-keys.spec.ts',
+    'gaps-course-connection.spec.ts',
+    'gaps-artefact-labels.spec.ts',
+    'gaps-demo.spec.ts',
+  ],
+  library: [
+    'library-standalone.spec.ts',
+    'library-topic-preview.spec.ts',
+    'qualification-guidance.spec.ts',
+  ],
+};
+
 async function verify({ run, report }) {
   const args = process.argv.slice(2).filter((arg) => arg !== '--');
   let base = 'HEAD';
@@ -85,6 +102,23 @@ async function verify({ run, report }) {
       'OS browser dependencies must already be installed; browser launches validate them. No --with-deps or global package changes are performed.';
     add('bun', ['x', 'playwright', 'install', 'chromium', 'webkit']);
     bun('test:e2e:web', '.', ['--', '--workers=1']);
+    for (const [site, specs] of Object.entries(standaloneSpecs)) {
+      if (
+        scope.app ||
+        paths.some(
+          (path) =>
+            path.startsWith(`apps/${site}/`) || specs.some((spec) => path === `tests/e2e/${spec}`),
+        )
+      ) {
+        bun('verify:browser', '.', [
+          '--',
+          `--${site}`,
+          '--project=chromium',
+          '--workers=1',
+          ...specs,
+        ]);
+      }
+    }
   }
   if (scope.electron) {
     if (process.platform === 'win32') {
