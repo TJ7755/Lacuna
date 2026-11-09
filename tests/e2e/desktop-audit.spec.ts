@@ -54,7 +54,7 @@ test('a card follows a held pointer without spring lag', async ({ page }) => {
 for (const width of [768, 1024]) {
   test(`course tabs and authoring remain usable at ${width}px with enlarged text`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     await enterWithWelcomeCourse(page);
     await page
@@ -66,6 +66,8 @@ for (const width of [768, 1024]) {
       document.documentElement.style.fontSize = '150%';
     });
     const navigation = page.getByRole('navigation', { name: 'Course sections' });
+    await expect(page.locator('html')).toHaveCSS('scrollbar-width', 'none');
+    await expect(navigation).toHaveCSS('scrollbar-width', 'none');
     for (const name of ['Cards', 'Questions', 'Settings', 'Path']) {
       await navigation.getByRole('link', { name, exact: true }).click();
       await expect(navigation.getByRole('link', { name, exact: true })).toHaveAttribute(
@@ -75,6 +77,9 @@ for (const width of [768, 1024]) {
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
       ).toBeLessThanOrEqual(1);
+    }
+    if (width === 1024) {
+      await navigation.screenshot({ path: testInfo.outputPath('course-tabs-no-scrollbar.png') });
     }
     await navigation.getByRole('link', { name: 'Cards', exact: true }).click();
     await page.getByRole('button', { name: 'New card', exact: true }).click();

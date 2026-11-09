@@ -88,7 +88,7 @@ async function nextPrompt(view: ReturnType<typeof study>, previous: string) {
   return view.prompt.innerText();
 }
 
-test('keeps long choices on one scrollable line and brings keyboard focus into view', async ({
+test('lays out long choices in pairs or a single column without overflow', async ({
   page,
 }, testInfo) => {
   const { lessonId } = await seedLesson(page, {
@@ -104,27 +104,28 @@ test('keeps long choices on one scrollable line and brings keyboard focus into v
     },
   });
   await page.goto(`/#/lesson/${lessonId}/learn`);
-  const { choices, choiceControls, check } = study(page);
+  const { main, choices, choiceControls, check } = study(page);
   await expect(choices).toHaveCount(4);
   const labels = choices.locator('..');
-  const row = choiceControls.locator('.qs-choices').locator('..');
-  const positions = await labels.evaluateAll((labels) =>
-    labels.map((label) => {
-      const text = document.createRange();
-      text.selectNodeContents(label.querySelector('.qs-choice-content')!);
-      return { top: label.getBoundingClientRect().top, lines: text.getClientRects().length };
-    }),
-  );
-  expect(new Set(positions.map(({ top }) => top)).size).toBe(1);
-  expect(positions.map(({ lines }) => lines)).toEqual([1, 1, 1, 1]);
-  expect(await row.evaluate((row) => row.scrollWidth > row.clientWidth)).toBe(true);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(1440);
-  await expect(labels.first()).toBeInViewport({ ratio: 1 });
   await expect(choices.first()).toBeFocused();
-  await testInfo.attach('Single-line choices', {
-    body: await page.screenshot(),
-    contentType: 'image/png',
-  });
+
+  const rowSizes = () =>
+    labels.evaluateAll((labels) => {
+      const rows = new Map<number, number>();
+      for (const label of labels) {
+        const { top } = label.getBoundingClientRect();
+        rows.set(top, (rows.get(top) ?? 0) + 1);
+      }
+      return Array.from(rows.values());
+    });
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  await expect.poll(rowSizes).toEqual([2, 2]);
+  await page.screenshot({ path: testInfo.outputPath('learn-choices-pairs.png') });
+  await page.setViewportSize({ width: 768, height: 900 });
+  await expect.poll(rowSizes).toEqual([1, 1, 1, 1]);
+  expect(await choiceControls.evaluate((area) => area.scrollWidth - area.clientWidth)).toBe(0);
+  for (const label of await labels.all()) await expect(label).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: testInfo.outputPath('learn-choices-stacked.png') });
   await page.keyboard.press('4');
   await expect(choices.last()).toBeChecked();
   await expect(labels.last()).toBeInViewport({ ratio: 1 });
@@ -132,6 +133,24 @@ test('keeps long choices on one scrollable line and brings keyboard focus into v
   await expect(choices.first()).toBeChecked();
   await expect(labels.first()).toBeInViewport({ ratio: 1 });
   await expect(check).toBeEnabled();
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect.poll(rowSizes).toEqual([2, 2]);
+  await expect(choices.first()).toBeFocused();
+
+  await page.setViewportSize({ width: 768, height: 320 });
+  await expect.poll(rowSizes).toEqual([1, 1, 1, 1]);
+  await main.evaluate((area) => {
+    area.scrollTop = 0;
+  });
+  await expect(main.locator('.study-card-slot')).toBeInViewport({ ratio: 0.9 });
+  await check.scrollIntoViewIfNeeded();
+  await expect(check).toBeInViewport({ ratio: 1 });
+  expect(await main.evaluate((area) => area.scrollTop)).toBeGreaterThan(0);
+  await check.click();
+  await expect(
+    main.locator('[data-study-card-id]:not([inert]) [data-study-face="back"]'),
+  ).toBeInViewport({ ratio: 0.5 });
 });
 
 test('introduces choices before timed typing and keeps the old practice entry', async ({
@@ -168,6 +187,11 @@ test('introduces choices before timed typing and keeps the old practice entry', 
   const recordedRim = page.locator('html');
 
   await expect(view.check).toBeDisabled();
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const tops = await view.choices
+    .locator('..')
+    .evaluateAll((labels) => labels.map((label) => label.getBoundingClientRect().top));
+  expect(new Set(tops).size).toBe(1);
   const progress = page.getByRole('progressbar', { name: 'Session progress' });
   await expect(progress).toHaveAttribute('aria-valuetext', '0 of 12 cards complete');
   await page.screenshot({ path: testInfo.outputPath('learn-new-cards-choice.png') });
