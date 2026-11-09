@@ -317,7 +317,7 @@ export async function listConceptPractice(
     );
 }
 
-export class ConceptPracticeExhaustedError extends Error {
+class ConceptPracticeExhaustedError extends Error {
   constructor(public readonly reason: 'no-due-concepts' | 'no-unseen-questions' | 'no-questions') {
     super(
       reason === 'no-unseen-questions'

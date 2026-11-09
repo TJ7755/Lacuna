@@ -239,6 +239,7 @@ export default defineConfig({
                 const path = id.replaceAll('\\', '/');
                 return (
                   path === '\0vite/preload-helper.js' ||
+                  path === '\0vite/modulepreload-polyfill.js' ||
                   /\/src\/(?:webBootstrap|landingHandover|pwa\/staleChunkRecovery|onboarding\/onboardingState)\.ts$/.test(
                     path,
                   ) ||

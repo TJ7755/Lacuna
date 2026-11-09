@@ -4,11 +4,11 @@ import { DEFAULT_RELAY_URL, getShareBytes, parseShareManifest } from './client';
 import { listShareImports } from './linkStore';
 
 /** Default minimum time between relay checks for one share link. */
-export const SHARE_POLL_THROTTLE_MS = 3_600_000;
+const SHARE_POLL_THROTTLE_MS = 3_600_000;
 
 const THROTTLE_KEY = 'lacuna.sharePollCheckedAt';
 
-export type SharePollStatus = 'updated' | 'up-to-date' | 'throttled' | 'skipped' | 'failed';
+type SharePollStatus = 'updated' | 'up-to-date' | 'throttled' | 'skipped' | 'failed';
 
 /** Per-course outcome of a poll, for the caller to toast. Only `updated` needs one:
  *  the merged revision queues through the existing pending-review badge. */
