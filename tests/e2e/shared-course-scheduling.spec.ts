@@ -34,7 +34,7 @@ for (const width of [1280, 390]) {
       animations: 'disabled',
       path: testInfo.outputPath(`scheduling-preview-${width}.png`),
     });
-    await expect(add).toBeDisabled();
+    await expect(add).toBeEnabled();
     await expect(page.getByText(/Teacher suggests/)).toBeVisible();
     await page.getByRole('radio', { name: /Exam date/ }).press('Space');
     await expect(page.getByText('Exam date and time', { exact: true })).toBeVisible();

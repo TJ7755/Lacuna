@@ -139,15 +139,12 @@ it('starts a suggestion-free course with the onboarding choice', async () => {
   expect((await db.courseAssessments.toArray())[0].schedulingMode).toBe('steady');
 });
 
-it('requires a choice for a code, including the keyboard shortcut, then confirms the suggestion', async () => {
+it('uses the suggested date for a code when the learner selects an exam', async () => {
   render(<SharedCourseImport />);
   const input = screen.getByLabelText('Share link or code to import');
   fireEvent.change(input, { target: { value: `LAC0${btoa(JSON.stringify(payload()))}` } });
   fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
   const add = await screen.findByRole('button', { name: 'Add to my courses' });
-  expect(add).toBeDisabled();
-  fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
-  expect(await db.courses.count()).toBe(0);
   fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
   expect(screen.getByLabelText('Exam instant')).toHaveValue(String(teacherDate));
   fireEvent.click(add);
@@ -186,7 +183,7 @@ it('changes a file suggestion, refuses invalid input, and retains the choice on 
 });
 
 it.each([true, false])(
-  'chooses no fixed exam for an initial link file (teacher date present: %s)',
+  'defaults to steady retention for an initial link file (teacher date present: %s)',
   async (dated) => {
     const source = payload();
     if (!dated) {
@@ -196,10 +193,8 @@ it.each([true, false])(
     const onImported = vi.fn();
     render(<SharedCourseImport initialFile={courseFile(source)} onImported={onImported} />);
     const add = await screen.findByRole('button', { name: 'Add to my courses' });
-    expect(add).toBeDisabled();
-    const steady = screen.getByRole('radio', { name: /Steady retention/ });
-    expect(steady).not.toBeChecked();
-    fireEvent.click(steady);
+    expect(screen.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
+    expect(add).toBeEnabled();
     fireEvent.click(add);
     await waitFor(() => expect(onImported).toHaveBeenCalledOnce());
     const courseId = onImported.mock.calls[0][0];

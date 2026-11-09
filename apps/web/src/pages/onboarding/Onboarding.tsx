@@ -74,7 +74,7 @@ export function Onboarding() {
   const [step, setStep] = useState<Step>('card');
   const [contentIntent, setContentIntent] = useState<ContentIntent>(null);
   const [initialTarget] = useState(chosenStudyTarget);
-  const [target, setTarget] = useState<CourseSchedulingMode | null>(initialTarget?.mode ?? null);
+  const [target, setTarget] = useState<CourseSchedulingMode>(initialTarget?.mode ?? 'steady');
   const [examDate, setExamDate] = useState(() => initialTarget?.examDate ?? defaultExamDate());
   const [examDateValid, setExamDateValid] = useState(true);
   // Only a course the learner has just made or imported; anything else goes to Today.
@@ -292,7 +292,7 @@ function ExamStep({
   setExamDateValid,
   onDone,
 }: {
-  target: CourseSchedulingMode | null;
+  target: CourseSchedulingMode;
   setTarget: (mode: CourseSchedulingMode) => void;
   examDate: number;
   setExamDate: (date: number) => void;
@@ -301,7 +301,7 @@ function ExamStep({
   onDone: () => void;
 }) {
   const [timeZone] = useState(getLocalTimeZone);
-  const ready = target === 'steady' || (target === 'exam' && examDateValid);
+  const ready = target === 'steady' || examDateValid;
 
   return (
     <form

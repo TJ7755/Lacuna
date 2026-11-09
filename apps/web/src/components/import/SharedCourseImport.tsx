@@ -46,7 +46,7 @@ interface PendingShareImport {
   raw: string;
   file?: CourseFile;
   scheduling?: {
-    mode: CourseSchedulingMode | null;
+    mode: CourseSchedulingMode;
     examDate: number;
     timeZone: string;
     valid: boolean;
@@ -90,9 +90,8 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
     raw,
     scheduling: payload.course
       ? {
-          // Onboarding has just asked, so its answer (and the learner's own date) wins. Otherwise
-          // a teacher's suggested date is never taken as confirmed: the learner chooses.
-          mode: chosen?.mode ?? null,
+          // Onboarding's answer wins. Otherwise use steady retention until the learner selects an exam.
+          mode: chosen?.mode ?? 'steady',
           examDate: chosen?.examDate ?? suggestedDate ?? defaultExamDate(),
           timeZone,
           valid: true,
@@ -260,9 +259,8 @@ export function SharedCourseImport({
 
   const schedulingReady =
     !pending?.scheduling ||
-    (pending.scheduling.mode !== null &&
-      (pending.scheduling.mode === 'steady' ||
-        (pending.scheduling.valid && Number.isFinite(pending.scheduling.examDate))));
+    pending.scheduling.mode === 'steady' ||
+    (pending.scheduling.valid && Number.isFinite(pending.scheduling.examDate));
 
   function updateScheduling(changes: Partial<NonNullable<PendingShareImport['scheduling']>>) {
     setPending((current) => {
