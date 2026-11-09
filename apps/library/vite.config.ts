@@ -4,10 +4,11 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import tailwindcss from '@tailwindcss/vite';
 
-const repository = fileURLToPath(new URL('.', import.meta.url));
+const repositoryUrl = new URL('../../', import.meta.url);
+const repository = fileURLToPath(repositoryUrl);
 
 export default defineConfig({
-  root: fileURLToPath(new URL('apps/library', import.meta.url)),
+  root: fileURLToPath(new URL('.', import.meta.url)),
   publicDir: `${repository}public`,
   plugins: [
     react(),
@@ -28,7 +29,7 @@ export default defineConfig({
           this.emitFile({
             type: 'asset',
             fileName,
-            source: readFileSync(new URL(`public/${fileName}`, import.meta.url)),
+            source: readFileSync(new URL(`public/${fileName}`, repositoryUrl)),
           });
         }
       },
@@ -40,7 +41,7 @@ export default defineConfig({
   },
   server: { fs: { allow: [repository] } },
   build: {
-    outDir: fileURLToPath(new URL('apps/library/dist', import.meta.url)),
+    outDir: fileURLToPath(new URL('dist', import.meta.url)),
     emptyOutDir: true,
     copyPublicDir: false,
   },

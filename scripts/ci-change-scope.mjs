@@ -74,7 +74,7 @@ export function classifyPaths(paths) {
     }
     // Shared runtime, bootstrap, protocols and consumed training fixtures must stay full.
     if (
-      /(^|\/)(package\.json|bun\.lock|uv\.lock|vercel\.json)$/.test(path) ||
+      /(^|\/)(package\.json|bun\.lock|uv\.lock|vercel\.json|vite\.config\.ts)$/.test(path) ||
       path.startsWith('apps/relay/shared/') ||
       path.startsWith('apps/relay/scripts/') ||
       path.startsWith('tooling/short-term-memory/coefficients/') ||
@@ -110,9 +110,9 @@ export function classifyPaths(paths) {
       // Fixtures can be shared with Electron; only web spec entry points are isolated.
       Object.assign(scope, { web_tests: true, sites: true, lint: true });
     } else if (
-      ['apps/gaps/', 'apps/library/', 'courses/', 'compare/'].some((prefix) =>
-        path.startsWith(prefix),
-      )
+      path.startsWith('apps/gaps/') ||
+      path.startsWith('apps/library/') ||
+      path === 'apps/web/src/pages/quizlet/index.html'
     ) {
       Object.assign(scope, { sites: true, lint: true });
     } else {

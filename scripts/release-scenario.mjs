@@ -33,11 +33,21 @@ let exitCode = 1;
 
 try {
   exitCode = await new Promise((resolveExit, reject) => {
-    const child = spawn(process.execPath, ['node_modules/vitest/vitest.mjs', 'run', ...testFiles], {
-      cwd: root,
-      env: { ...process.env, LACUNA_RELEASE_PROFILE: temporaryProfile },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    const child = spawn(
+      process.execPath,
+      [
+        'node_modules/vitest/vitest.mjs',
+        'run',
+        '--config',
+        'tests/config/vitest.config.ts',
+        ...testFiles,
+      ],
+      {
+        cwd: root,
+        env: { ...process.env, LACUNA_RELEASE_PROFILE: temporaryProfile },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
     child.stdout.on('data', (chunk) => {
       process.stdout.write(chunk);
       output += chunk;

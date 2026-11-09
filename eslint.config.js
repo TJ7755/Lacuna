@@ -42,11 +42,11 @@ export default [
       parserOptions: {
         ecmaFeatures: { jsx: true },
         project: [
-          './tsconfig.app.json',
-          './tsconfig.node.json',
-          './tsconfig.server.json',
-          './tsconfig.release-tooling.json',
-          './tsconfig.lint.json',
+          './config/typescript/tsconfig.app.json',
+          './config/typescript/tsconfig.node.json',
+          './config/typescript/tsconfig.server.json',
+          './config/typescript/tsconfig.release-tooling.json',
+          './config/typescript/tsconfig.lint.json',
           './scripts/electron-performance/tsconfig.json',
           './apps/desktop/tsconfig.json',
           './apps/desktop/tsconfig.preload.json',
@@ -131,6 +131,7 @@ export default [
     files: [
       '{apps/web/src,apps/ai/server,apps/desktop,tests,apps/ai/api,scripts,tooling}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}',
       '*.config.ts',
+      'apps/{gaps,library}/vite.config.ts',
     ],
     plugins: { 'relay-contract': { rules: { 'no-deep-imports': relayImportsRule } } },
     rules: {

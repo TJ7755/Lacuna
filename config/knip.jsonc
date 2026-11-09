@@ -69,8 +69,9 @@
         "tooling/semantic-answer-match/scripts/*.ts",
         "!apps/desktop/dist-electron/**",
       ],
+      "vitest": { "config": ["tests/config/vitest.config.ts"] },
       "vite": {
-        "config": ["vite.config.ts", "vite.gaps.config.ts", "vite.library.config.ts"],
+        "config": ["vite.config.ts", "apps/gaps/vite.config.ts", "apps/library/vite.config.ts"],
       },
     },
     "apps/relay": {

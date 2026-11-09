@@ -3,8 +3,40 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runInNewContext } from 'node:vm';
 import { Window } from 'happy-dom';
+import { createServer } from 'vite';
+import { publicPagePrerenderPlugin } from './public-page-prerender.ts';
 
 const pagePath = 'dist/compare/quizlet/index.html';
+
+test('Vite development serves the public index URLs from their page templates', async () => {
+  const base = '/preview/';
+  const server = await createServer({
+    base,
+    configFile: false,
+    plugins: [publicPagePrerenderPlugin()],
+    optimizeDeps: { noDiscovery: true },
+    server: { host: '127.0.0.1', port: 0, ws: false, watch: null },
+  });
+  try {
+    await server.listen();
+    const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
+    for (const [directory, page] of [
+      ['compare/quizlet/', 'quizlet'],
+      ['courses/', 'courses'],
+    ]) {
+      for (const suffix of ['', 'index?from=test', 'index.html']) {
+        const url = origin + base + directory + suffix;
+        const response = await fetch(url, { headers: { accept: 'text/html' } });
+        assert.equal(response.status, 200, url);
+        assert.equal(response.url, url);
+        const html = await response.text();
+        assert.ok(html.includes(`${base}apps/web/src/pages/${page}/entry-client.tsx`), url);
+      }
+    }
+  } finally {
+    await server.close();
+  }
+});
 
 test('homepage selects one entry before fetching modules and keeps critical styles eager', async () => {
   const html = readFileSync('dist/index.html', 'utf8');
@@ -75,6 +107,7 @@ test('public pages describe their identity and comparison intent without invente
 });
 test('comparison ships crawlable HTML, metadata and resolved assets', async () => {
   assert.ok(existsSync(pagePath), 'The comparison must be a built public HTML page');
+  assert.ok(!existsSync('dist/apps/web/src/pages/quizlet/index.html'));
   const html = readFileSync(pagePath, 'utf8');
   const view = new Window();
   try {
