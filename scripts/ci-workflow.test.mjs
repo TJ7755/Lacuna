@@ -418,8 +418,11 @@ test('pull requests pass only plain changed web spec names to the browser smoke 
     }
     git('add', '.');
     git('-c', 'user.name=CI', '-c', 'user.email=ci@example.invalid', 'commit', '-q', '-m', 'head');
-    // The untracked link lets the step run the real scope classifier.
-    symlinkSync(new URL('.', import.meta.url).pathname, join(directory, 'scripts'));
+    mkdirSync(join(directory, 'scripts'));
+    copyFileSync(
+      new URL('./ci-change-scope.mjs', import.meta.url),
+      join(directory, 'scripts/ci-change-scope.mjs'),
+    );
     const step = workflow.jobs.changes.steps.find((step) => step.id === 'scope');
     const output = join(directory, 'output');
     const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', step.run], {
@@ -622,10 +625,12 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
               PRODUCTION_RESULT: 'APP',
               RESULT: 'APP',
               TIMING_RESULT: 'APP',
-              STANDALONE_RESULT: 'SITES',
+              STANDALONE_RESULT: 'STANDALONE_SUITES',
             };
       for (const [dependency, area] of Object.entries(dependencies)) {
-        for (const flag of ['false', 'true', '', 'unknown']) {
+        const unaffected = area === 'STANDALONE_SUITES' ? '[]' : 'false';
+        const selected = area === 'STANDALONE_SUITES' ? fullStandaloneSuites : 'true';
+        for (const flag of [unaffected, selected, '', 'unknown']) {
           for (const result of ['success', 'skipped', 'failure', 'cancelled', '']) {
             const env = {
               ...process.env,
@@ -635,6 +640,7 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
               HANDWRITING: 'false',
               PYTHON: 'false',
               ELECTRON: 'false',
+              STANDALONE_SUITES: '[]',
               [dependency]: result,
               [area]: flag,
               GITHUB_STEP_SUMMARY: join(directory, 'summary'),
@@ -642,7 +648,7 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
             const execution = spawnSync('bash', ['-e', '-c', step.run], { env, encoding: 'utf8' });
             assert.equal(
               execution.status,
-              result === 'success' || (result === 'skipped' && flag === 'false') ? 0 : 1,
+              result === 'success' || (result === 'skipped' && flag === unaffected) ? 0 : 1,
               `${job} ${dependency} ${flag} ${result}`,
             );
           }
