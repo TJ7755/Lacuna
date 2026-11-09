@@ -106,8 +106,10 @@ test('an imported first course opens directly', async ({ page }) => {
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
-  await page.getByRole('radio', { name: /^Not yet/ }).press('Space');
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(page.getByRole('radio', { name: /^Not yet/ })).toBeChecked();
+  const next = page.getByRole('button', { name: 'Continue', exact: true });
+  await expect(next).toBeEnabled();
+  await next.click();
   await page.getByRole('button', { name: 'Import', exact: true }).click();
   await page.getByLabel('Import file', { exact: true }).setInputFiles({
     name: 'Welcome.lacuna',

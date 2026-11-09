@@ -52,10 +52,7 @@ for (const width of [1280, 390]) {
     await page.goto(`/#/s/${shareId}`);
     await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
     const add = page.getByRole('button', { name: 'Add to my courses' });
-    await expect(add).toBeDisabled();
-    const steady = page.getByRole('radio', { name: /Steady retention/ });
-    await steady.press('Space');
-    await expect(steady).toBeChecked();
+    await expect(add).toBeEnabled();
     await add.press('Enter');
     await expect
       .poll(() =>
