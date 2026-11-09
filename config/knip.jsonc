@@ -10,8 +10,9 @@
     // Protocol minimum and maximum deliberately have equal values.
     "apps/web/src/sync/crypto.ts": ["duplicates"],
 
+    // The Jev test passes a repository-relative script and its `live` subcommand to Bun.
+    "scripts/jev-evaluation.test.ts": ["unresolved", "binaries"],
     // Bun subprocess arguments are repository-relative commands, not module imports.
-    "scripts/jev-evaluation.test.ts": ["unresolved"],
     "scripts/question-bank.test.ts": ["unresolved"],
   },
   "workspaces": {
