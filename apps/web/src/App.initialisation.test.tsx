@@ -51,7 +51,6 @@ vi.mock('./db/seed', () => ({
   isFirstRun: dependencies.isFirstRun,
   settleFirstRun: dependencies.settleFirstRun,
 }));
-vi.mock('./db/assetCache', () => ({ revokeAllCachedUrls: vi.fn() }));
 vi.mock('./sync/triggers', () => ({ installSyncTriggers: vi.fn(() => vi.fn()) }));
 vi.mock('./hooks/useStorageQuotaWarning', () => ({ useStorageQuotaWarning: vi.fn() }));
 vi.mock('./components/layout/AppShell', () => ({ AppShell: () => null }));
