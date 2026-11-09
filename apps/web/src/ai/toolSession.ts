@@ -214,6 +214,11 @@ export class AiToolSession {
     }
   }
 
+  ownsApproval(approvalId: string, connectionId: string, runId: string): boolean {
+    const approval = this.approvals.get(approvalId);
+    return approval?.connectionId === connectionId && approval.runId === runId;
+  }
+
   async decide(approvalId: string, approved: boolean): Promise<AiToolDecisionResult> {
     const record = this.approvals.get(approvalId);
     if (!record)

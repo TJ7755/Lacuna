@@ -8,6 +8,7 @@ import {
 } from '../relayProtocol';
 import { AiToolSession } from '../toolSession';
 import type { ToolExecutionOutcome, ToolExecutionRequest } from '../../mcp/executor';
+import { createCourse } from '../../db/courseRepository';
 import type { RelaySessionCrypto } from './relay';
 import { TERMINAL_PUBLIC_KEY, relaySessionHarness } from './relay.testHarness';
 
@@ -216,6 +217,53 @@ describe('relay AI session tool calls', () => {
     });
     expect(session.getState().grants).toEqual([]);
     expect(harness.session.getSnapshot().approval).toBeNull();
+  });
+
+  it('cannot grant a pending approval when an expired claim is replaced', async () => {
+    const course = await createCourse('Biology');
+    const executeToolCall =
+      vi.fn<(request: ToolExecutionRequest) => Promise<ToolExecutionOutcome>>();
+    const session = toolSession(executeToolCall);
+    const harness = await activeSession(session);
+    vi.mocked(harness.crypto.open).mockResolvedValue(
+      mailbox(2, [
+        {
+          eventId: 'event-rename',
+          type: 'tool_call',
+          runId: 'run-1',
+          callId: 'call-1',
+          toolName: 'lacuna.update_course',
+          input: { courseId: course.id, name: 'Renamed biology' },
+          createdAt: 2_100,
+        },
+      ]) as JsonValue,
+    );
+    await harness.tick();
+    const pending = harness.session.getSnapshot().approval;
+    expect(pending).toMatchObject({ kind: 'write_grant', status: 'pending' });
+
+    harness.setNow(20_001);
+    vi.mocked(harness.crypto.open).mockResolvedValue(
+      mailbox(3, [
+        {
+          eventId: 'event-reclaim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-2',
+          claimedAt: 20_001,
+          leaseExpiresAt: 30_000,
+        },
+      ]) as JsonValue,
+    );
+    await harness.tick();
+
+    expect(harness.session.getSnapshot().run).toMatchObject({ status: 'active', runId: 'run-2' });
+    expect(harness.session.getSnapshot().approval).toBeNull();
+    await expect(harness.session.decide(pending!.approvalId, true)).resolves.toMatchObject({
+      ok: false,
+    });
+    expect(session.getState().grants).toEqual([]);
+    expect(executeToolCall).not.toHaveBeenCalled();
   });
 
   it('rejects a tool call after Stop before executing it', async () => {

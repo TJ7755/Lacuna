@@ -91,6 +91,34 @@ async function openSet(page: Page) {
   await expect(page.getByRole('heading', { name: 'Cells', exact: true })).toBeVisible();
 }
 
+test('can leave practice after a terminal draft save failure', async ({ page }) => {
+  await openSet(page);
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
+  await expect(answer).toBeVisible();
+  await page.evaluate(() => {
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (
+      this: IDBObjectStore,
+      ...args: Parameters<IDBObjectStore['put']>
+    ) {
+      if (this.name === 'questionSetAttempts') {
+        throw new DOMException('Attempt write failed', 'QuotaExceededError');
+      }
+      return put.apply(this, args);
+    };
+  });
+  await answer.fill('Unsaved answer');
+  await expect(page.getByRole('button', { name: 'Retry save' })).toBeVisible();
+  await page.getByRole('button', { name: 'Exit', exact: true }).click();
+  await page.getByRole('button', { name: 'Stay here' }).click();
+  await expect(answer).toHaveValue('Unsaved answer');
+  await page.getByRole('button', { name: 'Exit', exact: true }).click();
+  await page.getByRole('button', { name: 'Leave without saving' }).click();
+  await expect(page).not.toHaveURL(/\/attempts\//);
+  await expect(answer).toHaveCount(0);
+});
+
 for (const width of [1280, 390]) {
   test(`navigation retains draft answers in both directions at ${width}px`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });

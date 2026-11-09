@@ -639,6 +639,12 @@ describe('AI relay', () => {
     const handle = createHandler(new MemoryStore());
     const ip = '198.51.100.40';
     for (let index = 0; index < 10; index += 1) {
+      const malformed = await handle(
+        jsonRequest('/ai/claim', 'POST', undefined, { 'x-vercel-forwarded-for': ip }),
+      );
+      expect(malformed.status).toBe(404);
+    }
+    for (let index = 0; index < 10; index += 1) {
       const response = await handle(
         jsonRequest(
           '/ai/claim',

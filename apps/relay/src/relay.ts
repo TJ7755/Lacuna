@@ -74,19 +74,7 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
             }
           }
           return await handleAiRelayRoute(store, request, route, now);
-        case 'ai-claim': {
-          // Only the unauthenticated claim endpoint is throttled: pairing codes
-          // are guessable, while peer/mailbox reads require a 256-bit bearer
-          // token and poll roughly once per second when connected.
-          const permit = await consumeRatePermit(store, request, now(), 'ai-claim');
-          if (permit === 'limited') {
-            return json(429, request, { error: 'too many requests' });
-          }
-          if (permit === 'unavailable') {
-            return json(503, request, { error: 'rate limit unavailable' });
-          }
-          return await handleAiRelayRoute(store, request, route, now);
-        }
+        case 'ai-claim':
         case 'ai-session':
         case 'ai-peer':
         case 'ai-mailbox':

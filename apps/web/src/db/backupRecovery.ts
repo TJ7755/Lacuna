@@ -23,6 +23,8 @@ import type {
   SchedulingPerformance,
   Tombstone,
   AgentMemory,
+  LineageIdMapping,
+  PendingMergeReview,
 } from '@lacuna/core/db/types';
 import {
   projectCardsForStorage,
@@ -36,6 +38,7 @@ import { mergeQuestionSetAttemptPair } from '../questions/questionSetAttemptMerg
 import { mergeQuestionSetRecords } from '../questions/questionSetMerge';
 import { assertQuestionSetPracticeNodeReferences } from './questionSetPracticeNode';
 import type { PreparedBackup } from './backupPreparation';
+import { mergeLineageMappings, newestWins } from '../sync/snapshotRecords';
 
 /** Apply prepared rows within the caller-owned atomic write transaction. */
 export async function mergeBackupForRecovery(prepared: PreparedBackup): Promise<void> {
@@ -487,29 +490,7 @@ export async function mergeBackupForRecovery(prepared: PreparedBackup): Promise<
     await db.tombstones.bulkPut(merged);
   }
 
-  // Merge lineage registries and queued reviews so merge keeps peer state.
-  // Matches peer sync in mergeSnapshots; tombstones already prune detach receipts there.
-  const localMappings = new Map((await db.lineageIdMappings.toArray()).map((row) => [row.id, row]));
-  for (const incoming of backup.lineageIdMappings ?? []) {
-    const existing = localMappings.get(incoming.id);
-    if (existing && existing.courseId !== incoming.courseId) {
-      throw new Error(`Lineage ${incoming.id} belongs to conflicting Courses.`);
-    }
-    if (!existing) {
-      await db.lineageIdMappings.add(incoming);
-    }
-  }
-  if (backup.pendingMergeReviews && backup.pendingMergeReviews.length > 0) {
-    const existingReviews = new Map(
-      (await db.pendingMergeReviews.toArray()).map((row) => [row.id, row]),
-    );
-    for (const incoming of backup.pendingMergeReviews) {
-      const existing = existingReviews.get(incoming.id);
-      if (!existing || incoming.createdAt > existing.createdAt) {
-        await db.pendingMergeReviews.put(incoming);
-      }
-    }
-  }
+  await mergeRecoveryLineage(backup.lineageIdMappings ?? [], backup.pendingMergeReviews ?? []);
 
   if (agentMemories.length > 0) {
     const local = new Map((await db.agentMemories.toArray()).map((memory) => [memory.id, memory]));
@@ -540,6 +521,59 @@ export async function mergeBackupForRecovery(prepared: PreparedBackup): Promise<
     await db.questionSets.toArray(),
     await db.practiceMilestones.toArray(),
   );
+}
+
+async function mergeRecoveryLineage(
+  mappings: LineageIdMapping[],
+  reviews: PendingMergeReview[],
+): Promise<void> {
+  if (mappings.length === 0 && reviews.length === 0) return;
+
+  // An older backup cannot restore tracking for a course that was detached locally.
+  const courseIds = [...new Set([...mappings, ...reviews].map((row) => row.courseId))];
+  const courses = await db.courses.bulkGet(courseIds);
+  const lineageByCourse = new Map(
+    courses.map((course) => [course?.id, course?.distributedCopy?.lineageId]),
+  );
+  const incomingMappings = mappings.filter((row) => lineageByCourse.get(row.courseId) === row.id);
+  const localMappings = await db.lineageIdMappings.toArray();
+  const mergedMappings = mergeLineageMappings(localMappings, incomingMappings);
+  const incomingMappingIds = new Set(incomingMappings.map((row) => row.id));
+  if (incomingMappingIds.size > 0) {
+    await db.lineageIdMappings.bulkPut(
+      mergedMappings.filter((row) => incomingMappingIds.has(row.id)),
+    );
+  }
+
+  const mappingOwners = new Map(mergedMappings.map((row) => [row.id, row.courseId]));
+  const hasReviewLineage = (row: PendingMergeReview) =>
+    lineageByCourse.get(row.courseId) === row.lineageId &&
+    mappingOwners.get(row.lineageId) === row.courseId;
+  const incomingReviews = reviews.filter(hasReviewLineage);
+  if (incomingReviews.length === 0) return;
+
+  const localReviews = await db.pendingMergeReviews.toArray();
+  const reviewOwners = new Map(localReviews.map((row) => [row.id, row.courseId]));
+  for (const row of incomingReviews) {
+    const owner = reviewOwners.get(row.id);
+    if (owner !== undefined && owner !== row.courseId) {
+      throw new Error(`Pending review ${row.id} belongs to conflicting Courses.`);
+    }
+    reviewOwners.set(row.id, row.courseId);
+  }
+  const reviewCourses = new Set(incomingReviews.map((row) => row.courseId));
+  const affectedLocal = localReviews.filter((row) => reviewCourses.has(row.courseId));
+  const mergedReviews = newestWins(
+    affectedLocal.filter(hasReviewLineage),
+    incomingReviews,
+    (row) => row.courseId,
+    (row) => row.createdAt,
+  );
+  const retained = new Set(mergedReviews.map((row) => row.id));
+  await db.pendingMergeReviews.bulkDelete(
+    affectedLocal.filter((row) => !retained.has(row.id)).map((row) => row.id),
+  );
+  await db.pendingMergeReviews.bulkPut(mergedReviews);
 }
 
 function updatedRecordWins(

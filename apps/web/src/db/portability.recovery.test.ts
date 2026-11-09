@@ -281,13 +281,21 @@ describe('backup recovery', () => {
     expect(await db.practiceMilestones.get('practice-cells')).toEqual(incomingMilestone);
   });
 
-  it('restores missing lineage registries and queued reviews in merge mode', async () => {
+  it('restores lineage membership and the newest queued review for a linked course', async () => {
     const course = await createCourse('Biology');
+    await db.courses.update(course.id, {
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    });
     await db.lineageIdMappings.put({
       id: 'lineage-1',
       courseId: course.id,
       lessonIds: [],
-      noteIds: [],
+      noteIds: ['backup-note'],
       cardIds: [],
       sequenceIds: [],
       lessonSnapshots: {},
@@ -311,11 +319,26 @@ describe('backup recovery', () => {
     expect(backup.lineageIdMappings).toHaveLength(1);
     expect(backup.pendingMergeReviews).toHaveLength(1);
 
-    await db.lineageIdMappings.clear();
-    await db.pendingMergeReviews.clear();
+    const mapping = backup.lineageIdMappings![0]!;
+    const review = backup.pendingMergeReviews![0]!;
+    await db.lineageIdMappings.put({ ...mapping, noteIds: ['local-note'] });
+    await db.pendingMergeReviews.delete(review.id);
+    await db.pendingMergeReviews.put({ ...review, id: 'older-review', createdAt: 9 });
     await importBackup(backup, 'merge');
 
-    expect(await db.lineageIdMappings.get('lineage-1')).toEqual(backup.lineageIdMappings?.[0]);
-    expect(await db.pendingMergeReviews.get('review-1')).toEqual(backup.pendingMergeReviews?.[0]);
+    expect(await db.lineageIdMappings.get(mapping.id)).toMatchObject({
+      noteIds: ['backup-note', 'local-note'],
+    });
+    expect(await db.pendingMergeReviews.where('courseId').equals(course.id).toArray()).toEqual([
+      review,
+    ]);
+
+    await db.courses.update(course.id, { distributedCopy: undefined });
+    await db.lineageIdMappings.delete(mapping.id);
+    await db.pendingMergeReviews.delete(review.id);
+    await importBackup(backup, 'merge');
+
+    expect(await db.lineageIdMappings.get(mapping.id)).toBeUndefined();
+    expect(await db.pendingMergeReviews.where('courseId').equals(course.id).count()).toBe(0);
   });
 });

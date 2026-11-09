@@ -118,6 +118,8 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
       state.persisted?.toolSessionState,
     );
 
+  state.snapshot = withoutStaleApproval(state.snapshot);
+
   const { getEncryptionKey, pushMailbox } = createRelayMailboxTransport(state, {
     options,
     crypto,
@@ -144,8 +146,18 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
     persistence.save({ snapshot: state.snapshot, connection: state.persisted });
   }
 
+  function withoutStaleApproval(snapshot: AiSessionSnapshot): AiSessionSnapshot {
+    if (snapshot.approval?.status !== 'pending') return snapshot;
+    const connectionId = state.persisted?.credentials.sessionId;
+    return connectionId &&
+      snapshot.run?.status === 'active' &&
+      toolSession.ownsApproval(snapshot.approval.approvalId, connectionId, snapshot.run.runId)
+      ? snapshot
+      : { ...snapshot, approval: null };
+  }
+
   function publish(next: Omit<AiSessionSnapshot, 'revision'>): void {
-    state.snapshot = { ...next, revision: state.snapshot.revision + 1 };
+    state.snapshot = withoutStaleApproval({ ...next, revision: state.snapshot.revision + 1 });
     persist();
     listeners.forEach((listener) => listener());
   }
@@ -464,12 +476,15 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
       return serialise(async () => {
         const pendingApproval = state.snapshot.approval;
         const run = state.snapshot.run;
+        const connectionId = state.persisted?.credentials.sessionId;
         if (
           !pendingApproval ||
           pendingApproval.approvalId !== approvalId ||
           pendingApproval.status !== 'pending' ||
+          !connectionId ||
           !run ||
-          run.status !== 'active'
+          run.status !== 'active' ||
+          !toolSession.ownsApproval(approvalId, connectionId, run.runId)
         ) {
           return conflict('That approval is no longer pending.');
         }

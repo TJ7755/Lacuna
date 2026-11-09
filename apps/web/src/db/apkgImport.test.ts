@@ -230,7 +230,12 @@ describe('importApkgResult', () => {
   it('rewrites only standalone plain-text media names without corrupting longer tokens', async () => {
     vi.stubGlobal('Image', undefined);
     const result = makeResult({
-      cards: [makeCard({ front: 'see aa.png and myimg.pngfile', back: 'a.png' })],
+      cards: [
+        makeCard({
+          front: 'See aa.png. Keep éa.png, myimg.pngfile and https://example.test/a.png.',
+          back: '![a.png](a.png) and a.png',
+        }),
+      ],
       media: new Map([
         ['a.png', new TextEncoder().encode('a bytes')],
         ['aa.png', new TextEncoder().encode('aa bytes')],
@@ -246,8 +251,12 @@ describe('importApkgResult', () => {
       asset.blob instanceof Blob ? asset.blob.size : asset.blob.byteLength;
     const aa = images.find((asset) => sizeOf(asset) === 'aa bytes'.length)!;
     const a = images.find((asset) => sizeOf(asset) === 'a bytes'.length)!;
-    expect(card.front).toBe(`see ![image](lacuna-asset://${aa.hash}) and myimg.pngfile`);
-    expect(card.back).toBe(`![image](lacuna-asset://${a.hash})`);
+    expect(card.front).toBe(
+      `See ![image](lacuna-asset://${aa.hash}). Keep éa.png, myimg.pngfile and https://example.test/a.png.`,
+    );
+    expect(card.back).toBe(
+      `![a.png](lacuna-asset://${a.hash}) and ![image](lacuna-asset://${a.hash})`,
+    );
   });
 
   it('rolls back prepared media when card persistence fails', async () => {

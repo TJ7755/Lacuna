@@ -203,12 +203,6 @@ export async function importApkgResult(
         };
       });
       if (scheduledCards.length > 0) {
-        // Rewrite Anki media markers before the first card write so storage never
-        // holds raw `<img>` / `[sound:]` text when the second write cannot run.
-        for (const card of scheduledCards) {
-          card.front = replaceMediaRefs(card.front, mediaHashMap);
-          card.back = replaceMediaRefs(card.back, mediaHashMap);
-        }
         const history = scheduledCards.flatMap((card) => reviewHistoryEntriesForCard(card));
         await db.cards.bulkPut(projectCardsForStorage(scheduledCards));
         if (history.length > 0) await db.reviewHistory.bulkPut(history);

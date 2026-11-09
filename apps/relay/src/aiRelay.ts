@@ -3,6 +3,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { decodeAiSessionMetadata, type AiSessionMetadata } from './aiSessionMetadata.js';
 import { canonicalEtag, type BlobStore } from './store.js';
 import { relayCorsHeaders } from './cors.js';
+import { consumeRatePermit } from './rateLimit.js';
 
 export const AI_PAIRING_TTL_MS = 10 * 60 * 1000;
 export const AI_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -100,6 +101,10 @@ async function claimSession(
   if (request.method !== 'POST') return json(405, request, { error: 'method not allowed' });
   const id = normaliseSessionId(presentedCode);
   if (id === null) return json(404, request, { error: 'not found' });
+  // Spend permits on plausible guesses before touching session metadata.
+  const permit = await consumeRatePermit(store, request, now(), 'ai-claim');
+  if (permit === 'limited') return json(429, request, { error: 'too many requests' });
+  if (permit === 'unavailable') return json(503, request, { error: 'rate limit unavailable' });
   const stored = await liveMetadata(store, id, now);
   if (!stored) return json(404, request, { error: 'not found' });
   // The capability is the session id, so compare it in constant time like the bearer tokens.

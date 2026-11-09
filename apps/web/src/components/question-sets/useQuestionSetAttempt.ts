@@ -89,8 +89,7 @@ export function useAttemptProgress(session: QuestionSetAttemptSession, formDirty
     }, 450);
     return () => clearTimeout(timer);
   }, [draftVersion, flush, snapshot.error]);
-  // Autosave keeps retrying while a terminal error is surfaced; `dirty`
-  // deliberately excludes it so navigation is not trapped on a failing save.
+  // Keep unsaved text protected until the learner explicitly leaves after a save error.
   const dirty = drafts.current.size > 0 || snapshot.pending > 0 || formDirty;
   const blocker = useBlocker(dirty);
   useEffect(() => {
