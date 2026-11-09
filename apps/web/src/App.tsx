@@ -14,7 +14,6 @@ import { db, ensurePreMigrationSnapshot, openDatabase, type DbOpenResult } from 
 import { UnsupportedSchemaError } from './db/schemaFloor';
 import { stampMissingLessonViewModes } from './db/lessonViewModeMigration';
 import { requestPersistentStorage } from './db/persistence';
-import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
 import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
 import { loadMcpBridgeController } from './routes/loaders';
@@ -199,16 +198,6 @@ export function App() {
         });
     });
   }, [ready]);
-
-  useEffect(() => {
-    const handler = () => revokeAllCachedUrls();
-    window.addEventListener('beforeunload', handler);
-    window.addEventListener('pagehide', handler);
-    return () => {
-      window.removeEventListener('beforeunload', handler);
-      window.removeEventListener('pagehide', handler);
-    };
-  }, []);
 
   useEffect(() => {
     if (!ready) return;

@@ -163,6 +163,7 @@ test('crawl files advertise the active catalogue and generated hierarchy', async
 });
 
 test('course pages ship the complete catalogue content and metadata without JavaScript', async () => {
+  assert.ok(!existsSync('dist/apps/web/src/pages/courses/index.html'));
   const { libraryCourses } = await import('../apps/web/src/library/catalogue.ts');
   const { Window } = await import('happy-dom');
   const view = new Window();

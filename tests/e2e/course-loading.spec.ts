@@ -96,7 +96,7 @@ for (const width of [1280, 375]) {
 
     if (width === 1280) {
       const surface = page.locator('.flow-expansion').filter({ has: preview });
-      const disclosure = surface.getByText('8 lessons', { exact: true });
+      const disclosure = surface.getByRole('button', { name: '8 lessons', exact: true });
       const lessons = surface.getByRole('list', { name: 'Lessons', exact: true });
       await expect(disclosure).toBeVisible();
       await expect(lessons).toBeHidden();
@@ -106,7 +106,29 @@ for (const width of [1280, 375]) {
         contentType: 'image/png',
       });
 
-      await disclosure.press('Enter');
+      // Capture the opening from its first frame, before Playwright waits for it to settle.
+      const sampleOpening = () =>
+        disclosure.evaluate(
+          (button: HTMLButtonElement) =>
+            new Promise<number[]>((resolve) => {
+              const box = button.parentElement!;
+              const heights = [box.offsetHeight];
+              const start = performance.now();
+              button.click();
+              const sample = () => {
+                heights.push(box.offsetHeight);
+                if (performance.now() - start < 600) requestAnimationFrame(sample);
+                else resolve(heights);
+              };
+              requestAnimationFrame(sample);
+            }),
+        );
+      const heights = await sampleOpening();
+      const closedHeight = heights[0];
+      const openHeight = heights.at(-1)!;
+      expect(openHeight).toBeGreaterThan(closedHeight);
+      expect(heights.some((height) => height > closedHeight && height < openHeight)).toBe(true);
+      await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
       await expect(lessons).toBeVisible();
       await expect(lessons.getByText('Life processes', { exact: true })).toBeInViewport();
       await settle(surface);
@@ -120,6 +142,19 @@ for (const width of [1280, 375]) {
         lessons.getByText('Active transport across membranes', { exact: true }),
       ).toBeInViewport();
       await disclosure.press('Space');
+      await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+      await expect(lessons).toBeHidden();
+      await settle(surface);
+
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const reducedHeights = await sampleOpening();
+      expect(reducedHeights.at(-1)).toBe(openHeight);
+      expect(
+        reducedHeights.every((height) => height === closedHeight || height === openHeight),
+      ).toBe(true);
+      await expect(lessons).toBeVisible();
+      await disclosure.press('Enter');
+      await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
       await expect(lessons).toBeHidden();
     }
 

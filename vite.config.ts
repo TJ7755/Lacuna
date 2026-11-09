@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import packageJson from './package.json' with { type: 'json' };
 import { settingsStaticClosurePlugin } from './scripts/settings-static-closure.ts';
 import { topicPagesPlugin } from './scripts/course-topics.ts';
-import { publicPagePrerenderPlugin } from './scripts/public-page-prerender.ts';
+import { coursePageTemplate, publicPagePrerenderPlugin } from './scripts/public-page-prerender.ts';
 import { appShellPrecachePlugin } from './scripts/app-shell-precache.ts';
 
 // Cross-origin isolation headers required by the FSRS WASM trainer worker.
@@ -168,7 +168,7 @@ export default defineConfig({
       input: {
         index: 'index.html',
         quizlet: 'compare/quizlet/index.html',
-        courses: 'courses/index.html',
+        courses: coursePageTemplate,
       },
       output: {
         assetFileNames: 'assets/[name]-[hash][extname]',

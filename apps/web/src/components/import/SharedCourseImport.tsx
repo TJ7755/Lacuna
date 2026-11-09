@@ -31,7 +31,8 @@ import type { CourseRecord, CourseSchedulingMode } from '@lacuna/core/db/types';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useToast } from '../ui/Toast';
 import { Button } from '../ui/Button';
-import { CameraIcon, ChevronDownIcon, CloseIcon } from '../ui/icons';
+import { CameraIcon, CloseIcon } from '../ui/icons';
+import { ContentDisclosure } from '../ui/ContentDisclosure';
 import { fieldLabelClassName } from '../ui/Field';
 import { chosenStudyTarget } from '../../onboarding/onboardingState';
 import { defaultExamDate, formatDateTime, getLocalTimeZone } from '../../utils/datetime';
@@ -526,16 +527,10 @@ export function SharedCourseImport({
                 )}
               </div>
               {!pending.merge && pending.summary.deckNames.length > 0 && (
-                <details className="group mt-4 rounded-2xl border border-line bg-surface">
-                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink [&::-webkit-details-marker]:hidden">
-                    {countOf(pending.summary.deckNames.length, 'lesson')}
-                    <ChevronDownIcon
-                      width={16}
-                      height={16}
-                      aria-hidden="true"
-                      className="shrink-0 text-ink-soft group-open:rotate-180"
-                    />
-                  </summary>
+                <ContentDisclosure
+                  label={countOf(pending.summary.deckNames.length, 'lesson')}
+                  className="mt-4 rounded-2xl border border-line bg-surface [&>button]:w-full [&>button]:justify-between [&>button]:rounded-2xl [&>button]:px-4 [&>button]:text-ink [&>button:focus-visible]:ring-inset [&>button:focus-visible]:ring-offset-0"
+                >
                   <ul
                     aria-label="Lessons"
                     tabIndex={0}
@@ -547,7 +542,7 @@ export function SharedCourseImport({
                       </li>
                     ))}
                   </ul>
-                </details>
+                </ContentDisclosure>
               )}
             </div>
           </motion.div>

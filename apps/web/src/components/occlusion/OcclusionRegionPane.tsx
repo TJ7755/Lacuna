@@ -11,8 +11,7 @@ import { cn } from '../ui/cn';
 import { CloseIcon } from '../ui/icons';
 import type { OcclusionRegion } from '@lacuna/core/db/types';
 
-/** Display-only names — never persisted — derived from a region's position among
- *  same-role regions, matching the chosen mockup (design/arc6/mockups-occlusion.html). */
+/** Number display names within each role. These names are never persisted. */
 function occlusionRegionNames(regions: OcclusionRegion[]): Map<string, string> {
   const names = new Map<string, string>();
   let labelIndex = 0;

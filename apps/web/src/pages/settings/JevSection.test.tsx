@@ -43,7 +43,9 @@ describe('JevSection', () => {
     const dialog = screen.getByRole('alertdialog', {
       name: 'Before you turn on automatic marking',
     });
-    expect(dialog).toHaveTextContent('Jev sends study text to TypeSafe AI in the United States');
+    expect(dialog).toHaveTextContent(
+      'AI marking sends study text to TypeSafe AI in the United States',
+    );
     expect(dialog).toHaveTextContent('Do not include personal data about yourself or anyone else');
     expect(dialog).toHaveTextContent('chooses multiple-choice options from lesson material');
     expect(dialog).toHaveTextContent('zero data retention enabled');
@@ -52,7 +54,7 @@ describe('JevSection', () => {
     fireEvent.click(turnOn);
     expect(state.enable).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /I understand/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /read this/ }));
     fireEvent.click(turnOn);
     expect(state.enable).toHaveBeenCalledWith(JEV_CONSENT_VERSION);
   });
