@@ -79,6 +79,8 @@ for (const width of [1280, 390, 320]) {
 
 for (const width of [1280, 390, 320]) {
   test(`browse and open courses without learner startup at ${width}px`, async ({ page }, info) => {
+    // This walkthrough opens every course and can exceed the default timeout locally.
+    test.setTimeout(90_000);
     await page.setViewportSize({ width, height: 900 });
     const errors: string[] = [];
     const backgroundRequests: string[] = [];
