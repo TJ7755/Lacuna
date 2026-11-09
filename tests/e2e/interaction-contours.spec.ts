@@ -34,6 +34,26 @@ for (const theme of ['light', 'dark']) {
   });
 }
 
+test('flipping a hovered study card leaves no rectangular feedback behind', async ({
+  page,
+}, info) => {
+  await page.goto('/#/start', { waitUntil: 'domcontentloaded' });
+
+  const card = page
+    .locator('[data-study-card-id]')
+    .getByRole('button', { name: /^(Show|Hide) answer$/ });
+  await card.hover();
+  await card.click();
+
+  const feedbackDuringFlip = await card.locator(':scope > .flow-feedback-layer').count();
+  await info.attach('Hovered card reveal', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
+  await expect(card.locator('[data-study-face="back"]')).toBeVisible();
+  expect(feedbackDuringFlip).toBe(0);
+});
+
 test('shared feedback preserves contours through hover, press and focus', async ({ page }) => {
   await enterFreshLacuna(page);
   // Exercise the installed document-level feedback owner with both unstyled and
