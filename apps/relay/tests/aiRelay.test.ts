@@ -640,7 +640,10 @@ describe('AI relay', () => {
     const ip = '198.51.100.40';
     for (let index = 0; index < 10; index += 1) {
       const malformed = await handle(
-        jsonRequest('/ai/claim', 'POST', undefined, { 'x-vercel-forwarded-for': ip }),
+        new Request('http://relay.test/ai/claim', {
+          method: 'POST',
+          headers: { Origin: ORIGIN, 'x-vercel-forwarded-for': ip },
+        }),
       );
       expect(malformed.status).toBe(404);
     }
