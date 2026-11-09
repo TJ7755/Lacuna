@@ -52,6 +52,7 @@ jobs:
       web_tests: ${{ steps.scope.outputs.web_tests }}
       web_specs: ${{ steps.scope.outputs.web_specs }}
       browser_ci: ${{ steps.scope.outputs.browser_ci }}
+      standalone_suites: ${{ steps.scope.outputs.standalone_suites }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -66,13 +67,8 @@ jobs:
         run: |
           if [ "$EVENT_NAME" = pull_request ]; then
             git diff --name-status -z --find-renames "$BASE_SHA...$HEAD_SHA" | node scripts/ci-change-scope.mjs --name-status >> "$GITHUB_OUTPUT"
-            # Changed web spec entry points join the pull-request browser smoke run.
-            # Only plain spec file names reach the later command line.
-            specs=$(git diff --name-only --diff-filter=d "$BASE_SHA...$HEAD_SHA" |
-              { grep -E '^tests/e2e/[A-Za-z0-9._-]+\.spec\.ts$' || true; } | sed 's|^tests/e2e/||' | tr '\n' ' ')
-            echo "web_specs=${specs% }" >> "$GITHUB_OUTPUT"
           else
-            printf 'unknown-root-path\n' | node scripts/ci-change-scope.mjs >> "$GITHUB_OUTPUT"
+            node scripts/ci-change-scope.mjs < /dev/null >> "$GITHUB_OUTPUT"
           fi
 
   typecheck:
@@ -554,18 +550,12 @@ jobs:
   # These sites and feature flags require their own isolated builds.
   browser-standalone:
     needs: changes
-    if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
+    if: needs.changes.outputs.standalone_suites != '[]'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - site: gaps
-            command: PLAYWRIGHT_WEB_PORT=4317 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts gaps-teacher-keys.spec.ts gaps-course-connection.spec.ts gaps-artefact-labels.spec.ts gaps-demo.spec.ts
-          - site: library
-            command: PLAYWRIGHT_WEB_PORT=4347 bun run verify:browser -- --library --project=chromium library-standalone.spec.ts
-          - site: reporting
-            command: VITE_GAPS_REPORTING_ENABLED=true PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --project=chromium gaps-daily-flow.spec.ts
+        include: ${{ fromJSON(needs.changes.outputs.standalone_suites) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -576,7 +566,21 @@ jobs:
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bunx --no-install playwright install --only-shell chromium
-      - run: ${{ matrix.command }}
+      - name: Verify standalone suite
+        shell: bash
+        env:
+          SITE: ${{ matrix.site }}
+          SPECS: ${{ matrix.specs }}
+          PLAYWRIGHT_WEB_PORT: ${{ matrix.port }}
+        run: |
+          args=()
+          if [ "$SITE" = reporting ]; then
+            export VITE_GAPS_REPORTING_ENABLED=true
+          else
+            args+=("--$SITE")
+          fi
+          read -r -a specs <<< "$SPECS"
+          bun run verify:browser -- "${args[@]}" --project=chromium "${specs[@]}"
       - name: Preserve standalone browser evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -678,6 +682,7 @@ jobs:
           ELECTRON: ${{ needs.changes.outputs.electron }}
           EVENT_NAME: ${{ github.event_name }}
           BROWSER_CI: ${{ needs.changes.outputs.browser_ci }}
+          STANDALONE_SUITES: ${{ needs.changes.outputs.standalone_suites }}
           PRODUCTION_RESULT: ${{ needs.production.result }}
           PR_RESULT: ${{ needs.browser-pr.result }}
           RESULT: ${{ needs.browser-tests.result }}
@@ -694,6 +699,8 @@ jobs:
             PR_WEB=$WEB
             if [ "$BROWSER_CI" = false ]; then FULL_WEB=false; fi
           fi
+          STANDALONE=true
+          if [ "$STANDALONE_SUITES" = '[]' ]; then STANDALONE=false; fi
           ok() { [ "$1" = success ] || { [ "$2" = false ] && [ "$1" = skipped ]; }; }
           {
             echo '### Browser dependencies'
@@ -704,7 +711,7 @@ jobs:
             echo "- Isolated timing projects: $TIMING_RESULT"
             echo "- Standalone sites: $STANDALONE_RESULT"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$FULL_WEB"; then
+          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$STANDALONE"; then
             echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT timing=$TIMING_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
             exit 1
           fi

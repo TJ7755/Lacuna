@@ -6,6 +6,16 @@ import { affectedProjects } from './vercel-deploy-scope.mjs';
 test('documentation changes deploy nothing', () => {
   assert.deepEqual(affectedProjects(['docs/maintenance/release.md']), []);
 });
+
+test('question-bank fixtures select tests without deploying sites', () => {
+  const fixture = 'docs/question-bank/examples/numeric-family.json';
+  assert.deepEqual(affectedProjects([fixture]), []);
+  assert.deepEqual(affectedProjects([fixture, 'docs/question-bank/contract.md']), []);
+  assert.deepEqual(
+    affectedProjects([fixture, 'apps/gaps/sw.js']),
+    affectedProjects(['apps/gaps/sw.js']),
+  );
+});
 test('shared and unknown changes fail open to all projects', () => {
   for (const paths of [[], ['bun.lock'], ['packages/core/src/index.ts']]) {
     assert.equal(affectedProjects(paths).length, 4);
