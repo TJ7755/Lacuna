@@ -25,7 +25,7 @@ for (const viewport of [
 
     await expect(page.getByRole('button', { name: 'Continue setup' })).toBeInViewport();
     await expect(reveal).toBeInViewport({ ratio: 1 });
-    await expect(page.getByText('Step 1 of 3', { exact: true })).toBeAttached();
+    await expect(page.getByText('Step 1 of 4', { exact: true })).toBeAttached();
 
     // Another honest No keeps the same practice available.
     await reveal.click();
@@ -42,7 +42,7 @@ for (const viewport of [
       await expect(
         page.getByRole('heading', { name: 'Do you have an exam coming up?' }),
       ).toBeVisible();
-      await expect(page.getByText('Step 2 of 3', { exact: true })).toBeAttached();
+      await expect(page.getByText('Step 2 of 4', { exact: true })).toBeAttached();
     } else {
       // Leaving never requires falsely claiming recall.
       await page.getByRole('button', { name: 'Exit', exact: true }).click();

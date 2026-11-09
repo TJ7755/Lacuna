@@ -36,8 +36,7 @@ const VISUAL_CLASSES: Record<OcclusionRegionVisual, string> = {
   draft: 'rounded-[3px] border border-dashed border-ink-faint bg-ink-faint/12',
 };
 
-/** Visuals that show a centred "?" mark — the question being asked, matching the chosen
- *  label-box study mockup (design/arc6/mockups-occlusion.html). */
+/** The question mark identifies the region the learner is asked about. */
 const QUESTION_MARK_VISUALS = new Set<OcclusionRegionVisual>(['target', 'ring']);
 
 export interface OcclusionMaskLayerProps {

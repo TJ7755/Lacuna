@@ -1,8 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
-// #816: a fresh profile tries a card, answers the exam question, makes a course and
-// finishes onboarding inside it, with the exam answer carried into the course.
+// #816: setup saves the study target and the marking choice before opening the first course.
 test('a new learner corrects setup and opens their first course directly', async ({
   page,
 }, testInfo) => {
@@ -31,18 +30,28 @@ test('a new learner corrects setup and opens their first course directly', async
   const selectedDate = await date.textContent();
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  await expect(page.getByRole('heading', { name: 'What do you want to learn?' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Create my own', exact: true })).toBeInViewport();
-  await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeInViewport();
+  const markingHeading = page.getByRole('heading', { name: 'Would you like AI marking?' });
+  const terms = page.getByRole('region', { name: 'AI marking terms' });
+  const privacyPolicy = terms.getByRole('link', { name: 'TypeSafe AI privacy policy' });
+  const consent = page.getByRole('checkbox', { name: /read this/ });
+  const next = page.getByRole('button', { name: 'Continue', exact: true });
+  await expect(markingHeading).toBeFocused();
+  await expect(page.getByRole('radio', { name: 'Yes', exact: true })).toBeChecked();
+  await expect(terms.getByText(/sends study text to TypeSafe AI/)).toBeInViewport({ ratio: 1 });
+  await expect(page.getByText(/read this/)).toBeInViewport({ ratio: 1 });
+  await expect(consent).not.toBeChecked();
+  await expect(next).toBeDisabled();
+  await page.screenshot({
+    path: testInfo.outputPath('onboarding-ai-marking-default.png'),
+    animations: 'disabled',
+  });
+  await expect(privacyPolicy).not.toBeInViewport();
+
   await expect(page.getByRole('button', { name: 'Back', exact: true }).locator('svg')).toHaveCSS(
     'width',
     '22px',
   );
   await expect(page.getByRole('button', { name: 'Appearance', exact: true })).toHaveCount(0);
-  await page.screenshot({
-    path: testInfo.outputPath('onboarding-material-choices.png'),
-    animations: 'disabled',
-  });
   await page.getByRole('button', { name: 'Back', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Do you have an exam coming up?' })).toBeFocused();
@@ -52,10 +61,27 @@ test('a new learner corrects setup and opens their first course directly', async
     path: testInfo.outputPath('onboarding-exam-back.png'),
     animations: 'disabled',
   });
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await next.click();
   const expectedExam = await page.evaluate(
     () => JSON.parse(sessionStorage.getItem('lacuna-onboarding-target')!).examDate as number,
   );
+  await expect(markingHeading).toBeFocused();
+  await terms.press('End');
+  await expect(privacyPolicy).toBeInViewport({ ratio: 1 });
+  await consent.check();
+  await expect(next).toBeEnabled();
+  await page.screenshot({
+    path: testInfo.outputPath('onboarding-ai-marking-acknowledged.png'),
+    animations: 'disabled',
+  });
+  await next.click();
+  await expect(page.getByRole('heading', { name: 'What do you want to learn?' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Create my own', exact: true })).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeInViewport();
+  await page.screenshot({
+    path: testInfo.outputPath('onboarding-material-choices.png'),
+    animations: 'disabled',
+  });
   await page.getByRole('button', { name: 'Create my own' }).click();
   const form = page.getByRole('form', { name: 'New course' });
   // The exam answer from step 2 stands, so the form does not ask again.
@@ -72,6 +98,8 @@ test('a new learner corrects setup and opens their first course directly', async
   });
   await page.goto('/#/settings#settings-study');
   await expect(page.getByRole('switch', { name: 'Show advanced details' })).not.toBeChecked();
+  await page.goto('/#/settings#settings-jev');
+  await expect(page.getByRole('switch', { name: 'Mark my answers automatically' })).toBeChecked();
   const assessment = await page.evaluate(
     () =>
       new Promise<{ schedulingMode?: string; examDate?: number }>((resolve, reject) => {
@@ -100,7 +128,9 @@ test('a new learner corrects setup and opens their first course directly', async
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 });
 
-test('an imported first course opens directly', async ({ page }) => {
+test('a learner can decline AI marking and open their first imported course', async ({
+  page,
+}, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
@@ -109,6 +139,14 @@ test('an imported first course opens directly', async ({ page }) => {
   await expect(page.getByRole('radio', { name: /^Not yet/ })).toBeChecked();
   const next = page.getByRole('button', { name: 'Continue', exact: true });
   await expect(next).toBeEnabled();
+  await next.click();
+  await expect(page.getByRole('heading', { name: 'Would you like AI marking?' })).toBeFocused();
+  await page.getByRole('radio', { name: 'No', exact: true }).check();
+  await expect(page.getByRole('checkbox', { name: /read this/ })).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath('onboarding-ai-marking-declined.png'),
+    animations: 'disabled',
+  });
   await next.click();
   await page.getByRole('button', { name: 'Import', exact: true }).click();
   await page.getByLabel('Import file', { exact: true }).setInputFiles({
@@ -121,4 +159,8 @@ test('an imported first course opens directly', async ({ page }) => {
   await expect(page).toHaveURL(/#\/course\/[^/?]+$/);
   await expect(page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('lacuna-onboarding'))).toBe('done');
+  await page.goto('/#/settings#settings-jev');
+  await expect(
+    page.getByRole('switch', { name: 'Mark my answers automatically' }),
+  ).not.toBeChecked();
 });

@@ -38,6 +38,8 @@ for (const width of [1280, 640]) {
     ).toBeVisible();
     await page.getByRole('radio', { name: /^Not yet/ }).press('Space');
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await page.getByRole('radio', { name: 'No', exact: true }).check();
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'What do you want to learn?' })).toBeVisible();
 
     const counts = await page.evaluate(
