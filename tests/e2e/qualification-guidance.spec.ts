@@ -14,6 +14,8 @@ for (const width of [1280, 640]) {
     await page.getByRole('button', { name: 'Yes', exact: true }).click();
     await page.getByRole('radio', { name: /^Not yet/ }).press('Space');
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await page.getByRole('radio', { name: 'No', exact: true }).check();
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await page.getByRole('button', { name: 'Import', exact: true }).click();
     await page.getByRole('button', { name: /^Course library/ }).click();
     await page.getByRole('button', { name: /^Biology \d+ courses$/ }).click();

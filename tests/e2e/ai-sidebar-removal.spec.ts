@@ -58,7 +58,7 @@ for (const provider of ['external', 'hosted']) {
     expect(requests).toEqual([]);
 
     await page.getByRole('switch', { name: 'Mark my answers automatically' }).click();
-    await page.getByRole('checkbox', { name: /I understand/ }).check();
+    await page.getByRole('alertdialog').getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Turn on', exact: true }).click();
     await expect(page.getByLabel('Access code')).toHaveCount(0);
     await expect(page.getByRole('switch', { name: 'Mark my answers automatically' })).toBeChecked();
