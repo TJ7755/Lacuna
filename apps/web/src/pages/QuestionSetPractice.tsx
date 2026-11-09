@@ -416,8 +416,7 @@ function PracticeWorkspace({
       <article
         className={`qs-paper rounded-3xl bg-surface card-surface ${marking ? 'qs-paper-marking' : ''}`}
       >
-        {/* Leave room for the 2px focus outline and its 3px offset while height is clipped. */}
-        <MeasuredHeight className="[overflow-clip-margin:5px]">
+        <MeasuredHeight>
           <StepSwap
             stepKey={`${active.id}:${marking}`}
             direction={transition.direction}
