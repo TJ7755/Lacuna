@@ -169,9 +169,11 @@ describe('Vercel configuration', () => {
     // never depend on Google Fonts.
     const config = await readFile('vercel.json', 'utf8');
     const pages = await Promise.all(
-      ['index.html', 'compare/quizlet/index.html', 'apps/web/src/pages/courses/index.html'].map(
-        (path) => readFile(path, 'utf8'),
-      ),
+      [
+        'index.html',
+        'apps/web/src/pages/quizlet/index.html',
+        'apps/web/src/pages/courses/index.html',
+      ].map((path) => readFile(path, 'utf8')),
     );
     for (const source of [config, ...pages]) {
       expect(source).not.toMatch(/fonts\.(?:googleapis|gstatic)\.com/);

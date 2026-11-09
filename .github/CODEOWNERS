@@ -4,16 +4,18 @@
 * @TJ7755
 
 # High-consequence boundaries (kept explicit so future ownership can be split safely).
-/src/db/** @TJ7755
-/src/fsrs/** @TJ7755
-/src/sync/** @TJ7755
-/electron/** @TJ7755
-/relay/** @TJ7755
+/apps/web/src/db/** @TJ7755
+/packages/core/src/db/** @TJ7755
+/apps/web/src/fsrs/** @TJ7755
+/packages/core/src/fsrs/** @TJ7755
+/apps/web/src/sync/** @TJ7755
+/apps/desktop/** @TJ7755
+/apps/relay/** @TJ7755
 /tooling/lacuna-ai-mcp/** @TJ7755
 
 # User-facing workflows, accessibility and project policy.
-/src/components/** @TJ7755
-/src/pages/** @TJ7755
+/apps/web/src/components/** @TJ7755
+/apps/web/src/pages/** @TJ7755
 /docs/** @TJ7755
 /*.md @TJ7755
 /.github/** @TJ7755

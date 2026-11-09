@@ -1,5 +1,5 @@
 {
-  "extends": "../../../tsconfig.server.json",
+  "extends": "../../../config/typescript/tsconfig.server.json",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",

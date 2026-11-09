@@ -949,11 +949,15 @@ test('narrow web specs remain registered with the selected browser projects and 
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-  const typecheck = JSON.parse(readFileSync('tsconfig.release-tooling.json', 'utf8'));
-  assert.ok(typecheck.include.includes('tests/e2e/**/*.ts'));
+  const typecheck = JSON.parse(
+    readFileSync('config/typescript/tsconfig.release-tooling.json', 'utf8'),
+  );
+  assert.ok(typecheck.include.includes('../../tests/e2e/**/*.ts'));
   const projects = JSON.parse(readFileSync('tsconfig.json', 'utf8'));
   assert.ok(
-    projects.references.some((project) => project.path === './tsconfig.release-tooling.json'),
+    projects.references.some(
+      (project) => project.path === './config/typescript/tsconfig.release-tooling.json',
+    ),
   );
 });
 
