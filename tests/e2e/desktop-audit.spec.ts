@@ -56,16 +56,24 @@ for (const width of [768, 1024]) {
     page,
   }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('lacuna-theme', 'light'));
     await enterWithWelcomeCourse(page);
     await page
       .getByRole('region', { name: 'Today, most urgent first' })
       .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
       .click();
+    const navigation = page.getByRole('navigation', { name: 'Course sections' });
+    if (width === 1024) {
+      await expect(navigation.getByRole('link', { name: 'Path', exact: true })).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
+      await navigation.screenshot({ path: testInfo.outputPath('course-tabs-no-scrollbar.png') });
+    }
     await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '150%';
     });
-    const navigation = page.getByRole('navigation', { name: 'Course sections' });
     await expect(page.locator('html')).toHaveCSS('scrollbar-width', 'none');
     await expect(navigation).toHaveCSS('scrollbar-width', 'none');
     for (const name of ['Cards', 'Questions', 'Settings', 'Path']) {
@@ -77,9 +85,6 @@ for (const width of [768, 1024]) {
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
       ).toBeLessThanOrEqual(1);
-    }
-    if (width === 1024) {
-      await navigation.screenshot({ path: testInfo.outputPath('course-tabs-no-scrollbar.png') });
     }
     await navigation.getByRole('link', { name: 'Cards', exact: true }).click();
     await page.getByRole('button', { name: 'New card', exact: true }).click();

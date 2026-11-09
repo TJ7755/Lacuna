@@ -44,7 +44,7 @@ async function enableJev(page: Page) {
   await page.route('**/api/ai/session', (route) =>
     route.fulfill({ json: { token: 'preview-session', expiresAt: Date.now() + 600_000 } }),
   );
-  await page.evaluate(() => {
+  await page.addInitScript(() => {
     localStorage.setItem('lacuna.jevInstallation', 'a'.repeat(64));
     localStorage.setItem(
       'lacuna.jevSettings',
@@ -357,12 +357,12 @@ test('counts completed cards across choices and typing and restores the count on
 });
 
 test('prepares one lesson-wide Jev shortlist and reuses it after reload', async ({ page }) => {
+  await enableJev(page);
   const { lessonId, cards } = await seedLesson(page);
   let releaseRankings!: () => void;
   const held = new Promise<void>((resolve) => {
     releaseRankings = resolve;
   });
-  await enableJev(page);
   let preparationRequests = 0;
   const expectedChoices = new Map<string, string[]>();
   await page.route('**/api/ai/jev', async (route) => {
@@ -422,11 +422,11 @@ test('withholds suspended choices and lets a Jev-marked recall be resubmitted af
 }) => {
   const prompt = 'What is the French for aeroplane?';
   const suspendedPrompt = 'What is the French for ferry?';
+  await enableJev(page);
   const { lessonId } = await seedLesson(page, {
     cards: { [prompt]: 'avion', [suspendedPrompt]: 'ferry' },
     suspendedPrompt,
   });
-  await enableJev(page);
   let marks = 0;
   await page.route('**/api/ai/jev', async (route) => {
     expect(route.request().postDataJSON()).toMatchObject({
