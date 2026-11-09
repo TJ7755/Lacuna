@@ -49,10 +49,8 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
     return (
       <p className="text-sm text-ink-soft">
         {reference
-          ? `Specification ${reference.specificationId} has no supplied metadata. Tier, route and point coverage cannot be resolved.`
-          : 'Custom course: no specification metadata supplied.'}{' '}
-        Use the free-text details below, or import a course with specification metadata to choose
-        tiers and routes.
+          ? `No metadata for specification ${reference.specificationId}.`
+          : 'Custom course: no specification metadata supplied.'}
       </p>
     );
   }
@@ -108,7 +106,7 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
         <div className="min-w-0">
           <h3 className="font-semibold text-ink">{spec.title}</h3>
           <p className="mt-1 text-sm text-ink-soft">
-            {boards[spec.board]} · {qualifications[spec.qualification]} · {spec.code} · First exam{' '}
+            {boards[spec.board]} {qualifications[spec.qualification]} {spec.code}, first exam{' '}
             {spec.firstExamination}
           </p>
         </div>
@@ -133,8 +131,7 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
       {!editable && (
         <p className="flex items-start gap-2 text-sm text-ink-soft">
           <LockIcon width={16} height={16} className="mt-0.5 shrink-0" />
-          This published course is locked. The publisher owns its specification selection. Use the
-          existing detach option below if you want to edit your own copy.
+          Detach the course to change its specification.
         </p>
       )}
       {draft ? (
@@ -196,14 +193,15 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
           <div className="flex flex-wrap gap-2 text-xs text-ink-soft">
             {(spec.tiers.length > 0 || reference?.tier) && (
               <span className="rounded-lg bg-ink/[0.06] px-2 py-1">
-                Tier ·{' '}
+                Tier (
                 {spec.tiers.find((tier) => tier.id === reference?.tier)?.name ??
                   (reference?.tier ? `Unavailable (${reference.tier})` : 'Not chosen')}
+                )
               </span>
             )}
             {(spec.routes.length > 0 || reference?.routeIds?.length) && (
               <span className="rounded-lg bg-ink/[0.06] px-2 py-1">
-                Routes ·{' '}
+                Routes (
                 {reference?.routeIds?.length
                   ? reference.routeIds
                       .map(
@@ -213,6 +211,7 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
                       )
                       .join(', ')
                   : 'Not chosen'}
+                )
               </span>
             )}
           </div>
@@ -262,12 +261,6 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
                   </li>
                 ))}
               </ul>
-            )}
-            {draft && (
-              <p className="text-xs text-ink-faint">
-                Cards, review history, lesson order and assessment definitions stay unchanged. Paper
-                coverage follows the chosen tier and routes.
-              </p>
             )}
           </>
         )}

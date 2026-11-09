@@ -2,9 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   finalExamNeedsDecision,
   markFinalExamHandled,
-  readAfterFinalExamPolicy,
   readHandledFinalExam,
-  writeAfterFinalExamPolicy,
 } from './finalExamLifecycle';
 import type { Course } from '@lacuna/core/db/types';
 
@@ -17,13 +15,6 @@ const course = {
 beforeEach(() => localStorage.clear());
 
 describe('final-exam lifecycle decisions', () => {
-  it('persists a separate device-local policy and rejects unknown stored values', () => {
-    expect(readAfterFinalExamPolicy()).toBe('ask');
-    writeAfterFinalExamPolicy('archive');
-    expect(readAfterFinalExamPolicy()).toBe('archive');
-    localStorage.setItem('lacuna.afterFinalExam', 'nonsense');
-    expect(readAfterFinalExamPolicy()).toBe('ask');
-  });
   it('asks only after the final exam has passed', () => {
     expect(finalExamNeedsDecision(course, 999)).toBe(false);
     expect(finalExamNeedsDecision(course, 1_001)).toBe(true);

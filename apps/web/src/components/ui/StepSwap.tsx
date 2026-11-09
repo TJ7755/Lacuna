@@ -19,7 +19,7 @@ export function stepSwapTiming(multiplier: number) {
   };
 }
 
-export function fadeLiftTiming(entering: boolean, multiplier: number) {
+function fadeLiftTiming(entering: boolean, multiplier: number) {
   return {
     duration: (entering ? 0.26 : 0.1) * multiplier,
     delay: (entering ? 0.16 : 0) * multiplier,
@@ -81,7 +81,7 @@ const StepSwapSurface = forwardRef<
  * Crossfades one step of a surface into the next without remounting the chrome.
  * Forward is a short slide from the right, back from the left; direction 0 fades
  * in place and must not write a transform, or `position: fixed` descendants
- * (Learn's grading sheet) would pin to this wrapper. `popLayout` keeps the
+ * would pin to this wrapper. `popLayout` keeps the
  * incoming step in flow so the panel height changes to the new content rather
  * than stacking both steps. The opt-in fade-lift effect separates the outgoing
  * and incoming controls with a short pause, avoiding an overlapping crossfade.

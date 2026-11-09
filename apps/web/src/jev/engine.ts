@@ -10,6 +10,11 @@ import {
   jevAllocationBatchRequestSchema,
   jevTechniqueClassificationRequestSchema,
   jevTechniqueClassificationResultSchema,
+  jevLessonDistractorRequestSchema,
+  jevLessonDistractorResultSchema,
+  validLessonDistractorRankings,
+  type JevLessonDistractorRequest,
+  type JevLessonDistractorResult,
   type JevTechniqueClassificationRequest,
   type JevTechniqueClassificationResult,
   type JevAllocationInput,
@@ -393,6 +398,30 @@ export function createJevEngine(
       return result;
     });
   }
+  /** Optional preparation shares consent and transport with marking, but never changes its pause state. */
+  async function rankLessonDistractors(
+    request: JevLessonDistractorRequest,
+    externalSignal: AbortSignal,
+  ): Promise<JevLessonDistractorResult | null> {
+    const parsed = jevLessonDistractorRequestSchema.safeParse(request);
+    if (!parsed.success || !eligible() || externalSignal.aborted) return null;
+    const signal = AbortSignal.any([
+      generation.signal,
+      externalSignal,
+      AbortSignal.timeout(30_000),
+    ]);
+    try {
+      const result = jevLessonDistractorResultSchema.parse(await post(parsed.data, signal));
+      if (signal.aborted || !eligible() || !validLessonDistractorRankings(parsed.data, result))
+        return null;
+      lastUsedAt = Date.now();
+      publish();
+      return result;
+    } catch {
+      // Rate limits, provider errors and interrupted preparation leave local choices in use.
+      return null;
+    }
+  }
   async function markTyped(request: JevTypedAnswerRequest): Promise<JevTypedVerdict> {
     const result = await decide(
       {
@@ -400,6 +429,7 @@ export function createJevEngine(
         prompt: request.prompt,
         expected: request.expected,
         answer: request.answer.normalize('NFC').trim().replace(/\s+/g, ' '),
+        ...(request.requireCorrectSpelling ? { requireCorrectSpelling: true } : {}),
       },
       request.signal,
       JEV_TYPED_TIMEOUT_MS,
@@ -477,6 +507,7 @@ export function createJevEngine(
     decide,
     decideAllocations,
     classifyTechniques,
+    rankLessonDistractors,
     markTyped,
     eligible,
     cancellationSignal: () => generation.signal,

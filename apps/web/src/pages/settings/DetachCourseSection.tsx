@@ -53,16 +53,10 @@ export function DetachCourseSection({ courseId, autoAcceptUpdates }: DetachCours
   return (
     <SettingsCard>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0 flex-[1_1_20rem]">
-          <h2 className="font-semibold text-ink">Shared course</h2>
-          <p className="mt-1 text-sm text-ink-soft">
-            Managed by its author. Detach it to edit freely; later updates will then arrive as a
-            separate course.
-          </p>
-        </div>
+        <h2 className="min-w-0 flex-[1_1_20rem] font-semibold text-ink">Shared course</h2>
         {confirming ? (
           <ConfirmInline
-            message="Detach this course?"
+            message="Detach this course? Future updates arrive as a separate course."
             confirmLabel="Detach"
             variant="destructive"
             onConfirm={() => void handleDetach()}
@@ -79,10 +73,7 @@ export function DetachCourseSection({ courseId, autoAcceptUpdates }: DetachCours
           <label htmlFor="auto-accept-updates" className="text-sm font-medium text-ink">
             Apply updates automatically
           </label>
-          <p className="mt-1 text-sm text-ink-soft">
-            The author’s changes apply without review. Any that clash with your edits still wait for
-            you.
-          </p>
+          <p className="mt-1 text-sm text-ink-soft">Conflicts still require review.</p>
         </div>
         <Toggle
           id="auto-accept-updates"

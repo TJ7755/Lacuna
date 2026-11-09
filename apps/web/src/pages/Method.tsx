@@ -157,7 +157,7 @@ export function Method() {
             forgets, and the model pays a price that depends on how confident it was.
           </p>
           <Formula label="loss equals minus the sum of y times the log of p and one minus y times the log of one minus p">
-            loss = −[ y·ln(p) + (1−y)·ln(1−p) ]
+            loss = −[ y × ln(p) + (1−y) × ln(1−p) ]
           </Formula>
           <p className="mt-5 max-w-2xl leading-relaxed text-ink-soft">
             The logarithm makes this brutal on confident wrong answers: predicting 99.9% and being

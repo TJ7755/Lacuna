@@ -149,7 +149,7 @@ export function QuestionTechniqueCell({
           {visible.length ? (
             visible.map((item, index) => (
               <span key={item.name} className={item.unsure ? 'is-unsure' : undefined}>
-                {index > 0 && <span className="qs-technique-sep"> · </span>}
+                {index > 0 && <span className="qs-technique-sep">, </span>}
                 {item.name}
               </span>
             ))

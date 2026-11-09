@@ -101,7 +101,7 @@ export function QuestionSetOverview() {
         <div className="min-w-0">
           <h1 className="font-display text-4xl font-semibold tracking-tight">{content.title}</h1>
           <p className="mt-2 text-sm text-ink-faint">
-            {content.questions.length} {content.questions.length === 1 ? 'question' : 'questions'} ·{' '}
+            {content.questions.length} {content.questions.length === 1 ? 'question' : 'questions'},{' '}
             {marks} {marks === 1 ? 'mark' : 'marks'}
           </p>
         </div>

@@ -132,19 +132,20 @@ describe('vercel routing contract', () => {
 });
 
 describe('runtime import specifiers', () => {
-  it('gives every relative import a .js extension', () => {
+  it('uses .js for JavaScript modules and explicit attributes for JSON modules', () => {
     const files = listTypeScriptFiles(join(relayRoot, 'src'))
       .concat(listTypeScriptFiles(join(relayRoot, 'api')))
       .concat(listTypeScriptFiles(join(relayRoot, 'tests')));
     expect(files.length).toBeGreaterThan(0);
 
     const missing: string[] = [];
-    const specifier = /from\s+['"](\.[^'"]+)['"]/g;
+    const specifier = /from\s+['"](\.[^'"]+)['"](\s+with\s*\{\s*type:\s*['"]json['"]\s*\})?/g;
     for (const file of files) {
       const source = readFileSync(file, 'utf8');
       for (const match of source.matchAll(specifier)) {
         const spec = match[1]!;
-        if (!spec.endsWith('.js')) {
+        const typedJson = spec.endsWith('.json') && match[2];
+        if (!spec.endsWith('.js') && !typedJson) {
           missing.push(`${relative(relayRoot, file)}: ${spec}`);
         }
       }

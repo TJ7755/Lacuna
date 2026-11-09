@@ -109,7 +109,7 @@ async function waitForDevTools(
             typeof target.url === 'string' &&
             target.url.startsWith('app:') &&
             typeof target.title === 'string' &&
-            (target.title === 'Lacuna' || target.title.endsWith(' · Lacuna')),
+            (target.title === 'Lacuna' || target.title.endsWith(' – Lacuna')),
         );
         if (rendererReady) {
           rendererReadyAt ??= Date.now();

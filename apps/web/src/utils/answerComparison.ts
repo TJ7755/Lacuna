@@ -52,7 +52,7 @@ function stripPunctuation(word: string): string {
 function normaliseWord(word: string, options: Required<AnswerComparisonOptions>): string {
   // Canonical forms represent the same letters, regardless of keyboard or import source.
   let result = word.normalize('NFC');
-  if (options.ignorePunctuation) result = stripPunctuation(result);
+  if (options.ignorePunctuation) result = stripPunctuation(result.replace(/’/g, "'"));
   if (options.ignoreCase) result = result.toLowerCase();
   return result;
 }

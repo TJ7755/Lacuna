@@ -27,11 +27,11 @@ export function TeacherHomeView({ children }: { children?: ReactNode }) {
               relay; connecting a class does not turn it on.
             </p>
             <p>
-              Pupils can choose Send latest progress to share a partial snapshot of today’s UTC day.
-              Refresh results in the class view to read their latest accepted update.
+              Pupils can choose Send latest progress to share a partial snapshot of their current
+              local day. Refresh results in the class view to read their latest accepted update.
             </p>
             <p>
-              Automatic reports cover the latest completed UTC day when pupils open Lacuna online.
+              Automatic reports cover each pupil’s previous local day when they open Lacuna online.
               Missed days are not backfilled. No report does not mean no study.
             </p>
             <p>
@@ -60,8 +60,7 @@ export function TeacherEmptyState({ standalone = false }: { standalone?: boolean
         {standalone ? 'Connect your first class' : 'No published courses here'}
       </h2>
       <p className="mt-3 max-w-2xl text-sm text-ink-soft">
-        Open the Share page on the device where you published your course and choose Connect to
-        Gaps. Gaps and Lacuna use separate browser storage; your existing courses are kept.
+        Open Share on the device that published the course.
       </p>
       <a href="https://getlacuna.app/#/share" className={`${buttonClassName('secondary')} mt-5`}>
         Open sharing on the main site

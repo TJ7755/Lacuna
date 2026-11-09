@@ -81,7 +81,7 @@ for (const viewport of [
     // The topic test and the rest of the course fall on different dates: one row per paper.
     const papers = page.getByRole('region', { name: 'Forecast by paper' });
     await expect(papers.getByRole('button', { name: 'Show Topic test' })).toBeVisible();
-    await expect(papers).toContainText('in total, matching the headline.');
+    await expect(papers.getByRole('table').getByRole('row')).toHaveCount(3);
     await capture(page, testInfo, `${viewport.name}-whole-course`);
     await capture(page, testInfo, `${viewport.name}-forecast-by-paper`, papers);
 
@@ -144,11 +144,10 @@ test('Later overlapping paper forecasts retain the current target on desktop', a
   }, DAY_MS);
   await page.reload();
   const later = page.getByRole('region', { name: 'Later paper forecasts' });
-  await expect(later).toContainText('They do not change your current study target.');
   await expect(later.getByRole('button', { name: 'Show Later paper' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Forecast by paper', exact: true })).toContainText(
-    'in total, matching the headline.',
-  );
+  const current = page.getByRole('region', { name: 'Forecast by paper', exact: true });
+  await expect(current.getByRole('button', { name: 'Show Topic test' })).toBeVisible();
+  await expect(current.getByRole('button', { name: 'Show Later paper' })).toHaveCount(0);
   await capture(page, testInfo, 'desktop-later-paper-forecasts', later);
   await later.getByRole('button', { name: 'Show Later paper' }).click();
   await expect(page).toHaveURL(/assessment=later-paper/);

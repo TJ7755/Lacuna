@@ -142,3 +142,15 @@ it('lets the explicit standalone pass override the lesson setting and query filt
     filterParams: ['due'],
   });
 });
+
+it('adds introductions only to the ordinary Learn first lesson entry', () => {
+  const route = { lessonId: 'lesson' };
+  expect(resolve({ route }).introduceNewCards).toBe(true);
+  expect(resolve({ route, lessonLearnFirst: false }).introduceNewCards).toBe(false);
+  expect(
+    resolve({ route, searchParams: new URLSearchParams('mode=simple') }).introduceNewCards,
+  ).toBe(false);
+  expect(
+    resolve({ route, searchParams: new URLSearchParams('filter=new') }).introduceNewCards,
+  ).toBe(false);
+});

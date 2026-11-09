@@ -45,7 +45,10 @@ it('distinguishes loading from no published courses', () => {
     </MemoryRouter>,
   );
   expect(screen.getByRole('heading', { name: 'No published courses here' })).toBeInTheDocument();
-  expect(screen.getByText(/separate browser storage/i)).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Open sharing on the main site' })).toHaveAttribute(
+    'href',
+    'https://getlacuna.app/#/share',
+  );
   expect(screen.getByRole('link', { name: 'Open Lacuna' })).toHaveAttribute(
     'href',
     'https://getlacuna.app/#/',

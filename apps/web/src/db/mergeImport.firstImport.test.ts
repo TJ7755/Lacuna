@@ -13,12 +13,15 @@ describe('mergeImport: first import of a lineage', () => {
     await db.open();
   });
 
-  it('carries answer modes through first import and later author updates', async () => {
-    const sharedLesson = lessonOne({ am: 'type' });
+  it('carries answer modes and spelling through first import and later author updates', async () => {
+    const sharedLesson = lessonOne({ am: 'type', rs: true });
     sharedLesson.cards[0].am = 'reveal';
+    sharedLesson.cards[0].rs = false;
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [sharedLesson] }));
     expect((await db.lessons.get('lesson-1'))?.answerMode).toBe('type');
+    expect((await db.lessons.get('lesson-1'))?.requireCorrectSpelling).toBe(true);
     expect((await db.cards.get('card-1'))?.answerMode).toBe('reveal');
+    expect((await db.cards.get('card-1'))?.requireCorrectSpelling).toBe(false);
     await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': true });
     const updatedLesson = lessonOne({ am: 'reveal' });
     updatedLesson.cards[0].am = 'type';
@@ -27,10 +30,19 @@ describe('mergeImport: first import of a lineage', () => {
       coursePayload({ rv: 2, at: 2000, lessons: [updatedLesson] }),
     );
     expect((await db.lessons.get('lesson-1'))?.answerMode).toBe('reveal');
+    expect((await db.lessons.get('lesson-1'))?.requireCorrectSpelling).toBeUndefined();
     expect((await db.cards.get('card-1'))?.answerMode).toBe('type');
+    expect((await db.cards.get('card-1'))?.requireCorrectSpelling).toBeUndefined();
     await mergeLineageUpdate(course.id, coursePayload({ rv: 3, at: 3000, lessons: [lessonOne()] }));
     expect((await db.lessons.get('lesson-1'))?.answerMode).toBeUndefined();
     expect((await db.cards.get('card-1'))?.answerMode).toBeUndefined();
+
+    await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': false });
+    const unchanged = await mergeLineageUpdate(
+      course.id,
+      coursePayload({ rv: 4, at: 4000, lessons: [lessonOne({ rs: false })] }),
+    );
+    expect(unchanged.queuedForReview).toBe(false);
   });
 
   it("carries the teacher's retention, new-card limit and steady scheduling into the copy", async () => {

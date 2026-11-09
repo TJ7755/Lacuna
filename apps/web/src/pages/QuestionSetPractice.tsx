@@ -1,4 +1,5 @@
 import { modifierShortcutLabel } from '../electron/runtime';
+import { recordUsageAction } from '../usage/actions';
 import { QuestionSetPracticeStepper } from '../components/question-sets/QuestionSetPracticeStepper';
 import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
 import { QuestionSetPracticeNavigation } from '../components/question-sets/QuestionSetPracticeNavigation';
@@ -134,6 +135,12 @@ function PracticeWorkspace({
   const [reflectionDirty, setReflectionDirty] = useState(false);
   const progress = useAttemptProgress(session, formDirty || reflectionDirty);
   const attempt = progress.record;
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current || attempt.status === 'complete') return;
+    started.current = true;
+    recordUsageAction('study-started');
+  }, [attempt.status]);
   const completed = useRef<string | null>(null);
   useEffect(() => {
     if (study && attempt.status === 'complete' && completed.current !== attempt.id) {
@@ -312,6 +319,13 @@ function PracticeWorkspace({
           disabled={formDirty || reflectionDirty}
           onClick={() =>
             void perform(async () => {
+              if (!progress.error) {
+                const saved = await progress.flush().then(
+                  () => true,
+                  () => false,
+                );
+                if (saved && attempt.status !== 'complete') recordUsageAction('study-exited');
+              }
               if (study) study.onExit();
               else await navigate(origin?.questionSetReturnTo ?? base);
             })
@@ -429,7 +443,7 @@ function PracticeWorkspace({
                     label={[
                       ...(criterion ? [dimensionNames[criterion.allocation.dimension]] : []),
                       `${answer.maxMarks} ${answer.maxMarks === 1 ? 'mark' : 'marks'}`,
-                    ].join(' · ')}
+                    ].join(', ')}
                   />
                 </header>
 
@@ -577,9 +591,11 @@ function PracticeWorkspace({
               }}
               onComplete={() =>
                 void perform(() =>
-                  progress.run((current) =>
-                    completeQuestionSetAttempt(current.id, current.revisionId),
-                  ),
+                  progress.run(async (current) => {
+                    const result = await completeQuestionSetAttempt(current.id, current.revisionId);
+                    recordUsageAction('study-completed');
+                    return result;
+                  }),
                 )
               }
               returnTo={origin?.questionSetReturnTo ?? base}

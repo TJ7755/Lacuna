@@ -23,6 +23,8 @@ export interface UseLearnKeyboardShortcutsParams {
    *  item (its own study face owns submission) and for one whose payload this
    *  client can't render at all (UnknownItemFace). */
   suppressClassicGrading: boolean;
+  /** An introductory answer can still be revealed or hidden without self-grading. */
+  allowRevealWhenGradingSuppressed?: boolean;
   openEdit: () => void;
   hintsOpen: boolean;
   setHintsOpen: (open: boolean) => void;
@@ -59,6 +61,7 @@ export function useLearnKeyboardShortcuts({
   current,
   isTypingCard,
   suppressClassicGrading,
+  allowRevealWhenGradingSuppressed = false,
   openEdit,
   hintsOpen,
   setHintsOpen,
@@ -84,9 +87,11 @@ export function useLearnKeyboardShortcuts({
       // While the user is typing into any input, textarea, select, or content-editable
       // element, card shortcuts stay inert so keystrokes don't accidentally grade.
       const target = e.target as HTMLElement | null;
+      const choiceRadio =
+        target instanceof HTMLElement && target.matches('[data-study-choices] input[type="radio"]');
       if (
         target &&
-        (target.tagName === 'INPUT' ||
+        ((target.tagName === 'INPUT' && !choiceRadio) ||
           target.tagName === 'TEXTAREA' ||
           target.tagName === 'SELECT' ||
           target.isContentEditable)
@@ -153,7 +158,7 @@ export function useLearnKeyboardShortcuts({
         void undoLast();
         return;
       }
-      if (suppressClassicGrading) return;
+      if (suppressClassicGrading && !allowRevealWhenGradingSuppressed) return;
       if (phase === 'question' && (keyMatches(e, bindings.reveal) || e.code === 'ArrowUp')) {
         e.preventDefault();
         reveal();
@@ -163,6 +168,7 @@ export function useLearnKeyboardShortcuts({
           hide();
           return;
         }
+        if (suppressClassicGrading) return;
         if (gradingMode === 'manual') {
           if (keyMatches(e, bindings.again)) {
             e.preventDefault();
@@ -204,6 +210,7 @@ export function useLearnKeyboardShortcuts({
     current,
     isTypingCard,
     suppressClassicGrading,
+    allowRevealWhenGradingSuppressed,
     openEdit,
     hintsOpen,
     setHintsOpen,

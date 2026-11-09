@@ -8,6 +8,5 @@ const setting = createLocalSetting<AnswerInputPreference>({
   parse: oneOf(['course', 'type', 'reveal'], 'course'),
 });
 
-export const readAnswerInput = setting.read;
 export const writeAnswerInput = setting.write;
 export const useAnswerInput = setting.use;

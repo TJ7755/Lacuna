@@ -50,7 +50,7 @@ export function SyncStatus() {
     ? `Synced ${formatRelativeTime(state.lastSuccessfulSyncAt)}`
     : 'Not yet synced';
   const needsAttention = Boolean(state.lastError) || !state.lastSuccessfulSyncAt;
-  const accessibleLabel = `${label}${state.lastError ? ' · Sync failed' : ''} · Open sync`;
+  const accessibleLabel = `${label}${state.lastError ? '. Sync failed' : ''}. Open sync`;
   const tone = state.lastError
     ? 'bg-negative/10 px-3 text-negative hover:bg-negative/15'
     : needsAttention

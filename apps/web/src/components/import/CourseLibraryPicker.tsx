@@ -96,7 +96,7 @@ export function CourseLibraryPicker({
                         data-press=""
                         type="button"
                         className="import-library-course"
-                        aria-label={`${course.subject} ${course.qualification} · ${courseCodes(course)}`}
+                        aria-label={`${course.subject} ${course.qualification} (${courseCodes(course)})`}
                         onClick={() => onChoose(course, resolveCourseShareUrl(course.shareUrl)!)}
                         whileTap={multiplier > 0 ? { scale: 0.99 } : undefined}
                         transition={spring}

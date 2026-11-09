@@ -46,6 +46,23 @@ describe('isDocsOnly', () => {
 });
 
 describe('area scope', () => {
+  it('selects the full browser pipeline for CI changes, including renames and mixed scope', () => {
+    expect(classifyPaths(['apps/web/src/App.tsx']).browser_ci).toBe(false);
+    expect(classifyPaths(['unknown/file', '.github/workflows/ci.yml']).browser_ci).toBe(true);
+    for (const path of [
+      'scripts/ci-browser-timings.json',
+      'scripts/ci-change-scope.mjs',
+      'tests/config/playwright.web.config.ts',
+      'tests/config/playwright.web.isolated.config.ts',
+    ]) {
+      expect(classifyPaths([path]).browser_ci, path).toBe(true);
+    }
+    expect(
+      classifyPaths(parseNameStatus('R100\0tests/config/playwright.web.ci.config.ts\0docs/a.md\0'))
+        .browser_ci,
+    ).toBe(true);
+  });
+
   it('keeps app, root configuration, workflows, shared contracts and unknown paths full', () => {
     for (const path of [
       'apps/web/src/App.tsx',
@@ -71,8 +88,9 @@ describe('area scope', () => {
       'new-area/file.ts',
     ]) {
       expect(
-        Object.values(classifyPaths([path]))
-          .slice(1)
+        Object.entries(classifyPaths([path]))
+          .filter(([area]) => !['docs_only', 'browser_ci'].includes(area))
+          .map(([, selected]) => selected)
           .every(Boolean),
         path,
       ).toBe(true);
@@ -152,6 +170,7 @@ describe('area scope', () => {
         ai_mcp: false,
         lint: true,
         web_tests: true,
+        browser_ci: false,
       });
     }
     for (const path of [
@@ -166,8 +185,9 @@ describe('area scope', () => {
       'tests/setup.ts',
     ]) {
       expect(
-        Object.values(classifyPaths([path]))
-          .slice(1)
+        Object.entries(classifyPaths([path]))
+          .filter(([area]) => !['docs_only', 'browser_ci'].includes(area))
+          .map(([, selected]) => selected)
           .every(Boolean),
         path,
       ).toBe(true);

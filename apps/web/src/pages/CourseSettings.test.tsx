@@ -192,9 +192,7 @@ describe('CourseSettings', () => {
     mockMotion.multiplier = 0;
     mockCourse = { ...mockCourse!, examObjective: 'securedTopics' };
     renderPage();
-    expect(
-      screen.getByText('Brings as many cards as possible to 90% recall by exam day.'),
-    ).toBeVisible();
+    expect(screen.getByText('Targets 90% recall on more cards.')).toBeVisible();
   });
 
   it('exposes common edits directly and keeps secondary settings collapsed with reduced motion', async () => {
@@ -502,7 +500,7 @@ describe('CourseSettings', () => {
   it('accepts a zero value for the far/near thresholds and urgent window on blur', () => {
     renderPage();
     openSettings('Auto-practice');
-    const farInput = screen.getByLabelText(/Threshold \(exam not near\)/);
+    const farInput = screen.getByLabelText(/Backlog before revision period/);
     fireEvent.change(farInput, { target: { value: '0' } });
     fireEvent.blur(farInput);
     expect(mockUpdateCourse).toHaveBeenCalledWith(
@@ -510,7 +508,7 @@ describe('CourseSettings', () => {
       expect.objectContaining({ practiceThresholdMinutesFar: 0 }),
     );
 
-    const nearInput = screen.getByLabelText(/Threshold \(exam near\)/);
+    const nearInput = screen.getByLabelText(/Backlog during revision period/);
     fireEvent.change(nearInput, { target: { value: '0' } });
     fireEvent.blur(nearInput);
     expect(mockUpdateCourse).toHaveBeenCalledWith(
@@ -518,7 +516,7 @@ describe('CourseSettings', () => {
       expect.objectContaining({ practiceThresholdMinutesNear: 0 }),
     );
 
-    const urgentInput = screen.getByLabelText(/Urgent window/);
+    const urgentInput = screen.getByLabelText(/Revision period \(days before exam\)/);
     fireEvent.change(urgentInput, { target: { value: '0' } });
     fireEvent.blur(urgentInput);
     expect(mockUpdateCourse).toHaveBeenCalledWith(

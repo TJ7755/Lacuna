@@ -40,6 +40,8 @@
       ],
 
       "entry": [
+        // The local Node setup composite action invokes this bootstrap.
+        "scripts/ci-node-runtime.mjs",
         // Manually invoked generator preserves the historical production compatibility fixtures.
         "scripts/generate-production-compatibility.ts",
         // MCP consent smoke commands are invoked manually.
@@ -99,6 +101,14 @@
     },
     "apps/desktop": {
       "entry": ["{main,preload}.ts", "mcp/{server,companion,aiCompanion,aiCompanionEntry}.ts"],
+      // The Windows installer jobs install this workspace, then run the preparation,
+      // packaging and upgrade probes from the repository root.
+      "ignoreDependencies": [
+        "@electron/asar",
+        "@lacuna/core",
+        "@playwright/test",
+        "electron-builder",
+      ],
       "project": ["**/*.{js,mjs,cjs,ts,tsx,mts,cts}", "!dist*/**"],
     },
     "apps/ai": {

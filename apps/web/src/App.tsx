@@ -1,6 +1,6 @@
 import { storedString } from './state/localSetting';
 import { buttonClassName } from './components/ui/buttonStyles';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
 import { RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './state/ThemeContext';
@@ -27,6 +27,8 @@ import {
 } from './onboarding/onboardingState';
 import { replacementLifecycle } from './db/replacementLifecycle';
 import { scheduleBackgroundWork } from './routes/idlePrefetch';
+import { usageAnalyticsAvailable } from './usage/preference';
+import { claimRouteImportFailure } from './pwa/routeImportFailures';
 
 export { router } from './routes/router';
 
@@ -50,6 +52,34 @@ const DesktopUpdateController = lazy(() =>
     default: module.DesktopUpdateController,
   })),
 );
+const HostedUsageAnalytics = lazy(() =>
+  import('./usage/HostedUsageAnalytics')
+    .then(({ HostedUsageAnalytics }) => ({ default: HostedUsageAnalytics }))
+    .catch((error) => {
+      claimRouteImportFailure(error);
+      return { default: ({ children }: { children: ReactNode }) => <>{children}</> };
+    }),
+);
+
+function StartingApp() {
+  const m = getMotionMultiplier();
+  return (
+    <div className="grid h-screen place-items-center text-ink">
+      <motion.span
+        className="font-display text-3xl tracking-tight"
+        initial={{ opacity: 0, y: 8, scale: 0.96 }}
+        animate={{ opacity: [0, 1, 1, 0.6, 1], y: 0, scale: 1 }}
+        transition={{
+          opacity: { duration: 1.6 * m, repeat: Infinity, ease: 'easeInOut' },
+          y: { duration: 0.4 * m, ease: [0.16, 1, 0.3, 1] },
+          scale: { duration: 0.4 * m, ease: [0.16, 1, 0.3, 1] },
+        }}
+      >
+        Lacuna
+      </motion.span>
+    </div>
+  );
+}
 
 function isPublicEntry(hash: string): boolean {
   // Public links and comparison CTAs must preserve a new visitor’s destination
@@ -239,25 +269,14 @@ export function App() {
     );
   }
 
-  if (!ready) {
-    const m = getMotionMultiplier();
-    return (
-      <div className="grid h-screen place-items-center text-ink">
-        <motion.span
-          className="font-display text-3xl tracking-tight"
-          initial={{ opacity: 0, y: 8, scale: 0.96 }}
-          animate={{ opacity: [0, 1, 1, 0.6, 1], y: 0, scale: 1 }}
-          transition={{
-            opacity: { duration: 1.6 * m, repeat: Infinity, ease: 'easeInOut' },
-            y: { duration: 0.4 * m, ease: [0.16, 1, 0.3, 1] },
-            scale: { duration: 0.4 * m, ease: [0.16, 1, 0.3, 1] },
-          }}
-        >
-          Lacuna
-        </motion.span>
-      </div>
-    );
-  }
+  if (!ready) return <StartingApp />;
+
+  const learnerApp = (
+    <>
+      <RouterWithQuotaWarning />
+      <LandingTransition />
+    </>
+  );
 
   return (
     <ErrorBoundary label="the application">
@@ -275,8 +294,13 @@ export function App() {
                   <McpBridgeController />
                 </Suspense>
               )}
-              <RouterWithQuotaWarning />
-              <LandingTransition />
+              {usageAnalyticsAvailable() ? (
+                <Suspense fallback={<StartingApp />}>
+                  <HostedUsageAnalytics>{learnerApp}</HostedUsageAnalytics>
+                </Suspense>
+              ) : (
+                learnerApp
+              )}
             </ToastProvider>
           </FontScaleProvider>
         </AccentProvider>

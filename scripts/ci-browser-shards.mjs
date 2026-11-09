@@ -147,6 +147,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     assert.match(args[0] ?? '', /^[1-9]\d*\/[1-9]\d*$/);
     const [current, total] = args[0].split('/').map(Number);
     assert.ok(current <= total, 'Shard index exceeds total');
+    assert.equal(args.length, 1, 'Pass exactly one whole-file shard');
     const discovered = inventory(listTests());
     const shards = planShards(discovered, JSON.parse(readFileSync(timingPath, 'utf8')), total);
     const selected = shards[current - 1];
@@ -155,7 +156,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     mkdirSync(evidence, { recursive: true });
     const list = resolve(evidence, 'functional-shard.txt');
     writeFileSync(list, selected.files.map((file) => `[${project}] > ${file}`).join('\n'));
-    // Ask Playwright itself to prove that its selector retained exactly the planned identities.
+    // Verify selection against Playwright before running every case in these files.
     verifyInventory(selected.tests, inventory(listTests(['--test-list', list])));
     writeFileSync(
       resolve(evidence, 'functional-shard-plan.json'),

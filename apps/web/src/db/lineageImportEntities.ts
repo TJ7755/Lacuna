@@ -54,6 +54,7 @@ export async function applyCreates(
     ...(l.timeZone ? { timeZone: l.timeZone } : {}),
     ...(l.sessionFilter ? { sessionFilter: l.sessionFilter } : {}),
     answerMode: l.answerMode,
+    requireCorrectSpelling: l.requireCorrectSpelling,
     orderIndex: l.orderIndex,
     createdAt,
     updatedAt: createdAt,
@@ -115,6 +116,7 @@ export async function applyCreates(
       tags: c.tags ?? [],
       payload: c.payload,
       answerMode: c.answerMode,
+      requireCorrectSpelling: c.requireCorrectSpelling,
       suspended: false,
       buriedUntil: null,
     });
@@ -142,9 +144,22 @@ export async function applyCreates(
 // batch can reverse an edge and briefly form a cycle while individual rows are applied.
 export async function applyLineageLessonUpdate(
   id: string,
-  changes: Partial<Lesson>,
+  {
+    requireCorrectSpelling,
+    ...changes
+  }: Partial<Omit<Lesson, 'requireCorrectSpelling'>> & {
+    requireCorrectSpelling?: boolean | null;
+  },
 ): Promise<void> {
-  await db.lessons.update(id, stampUpdatedAt(changes));
+  await db.lessons.update(
+    id,
+    stampUpdatedAt({
+      ...changes,
+      ...(requireCorrectSpelling !== undefined
+        ? { requireCorrectSpelling: requireCorrectSpelling ?? undefined }
+        : {}),
+    }),
+  );
   const lesson = await db.lessons.get(id);
   if (lesson) await syncCourseSchedulingUnits(lesson.courseId);
 }
@@ -152,9 +167,16 @@ export async function applyLineageLessonUpdate(
 /** Apply a card update, routing a lesson move through `assignCardsToLesson` so the
  *  backing deck, scheduling unit and review history follow the card. */
 export async function applyCardUpdate(courseId: string, update: CardUpdate): Promise<void> {
-  const { id, primaryLessonId, ...changes } = update;
+  const { id, primaryLessonId, requireCorrectSpelling, ...changes } = update;
   if (primaryLessonId !== undefined) await assignCardsToLesson([id], courseId, primaryLessonId);
-  if (Object.keys(changes).length > 0) await updateCard(id, changes);
+  if (Object.keys(changes).length > 0 || requireCorrectSpelling !== undefined) {
+    await updateCard(id, {
+      ...changes,
+      ...(requireCorrectSpelling !== undefined
+        ? { requireCorrectSpelling: requireCorrectSpelling ?? undefined }
+        : {}),
+    });
+  }
 }
 
 /** Deterministic, so every device that imports the lineage converges on one row. */

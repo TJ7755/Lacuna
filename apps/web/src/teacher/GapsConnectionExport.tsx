@@ -80,15 +80,10 @@ export function GapsConnectionExport({
     >
       <h3 className="font-display text-xl">Connect this course to Gaps</h3>
       <p className="text-sm text-ink-soft">
-        Download an encrypted connection file, then import it at gaps.getlacuna.app. The file gives
-        Gaps ownership access to this share link. Keep it and its passphrase separately; do not send
-        them to pupils.
+        This file grants control of the share link. Keep it and the passphrase private and separate.
       </p>
       <fieldset disabled={busy} className="space-y-4">
-        <Field
-          label="Connection passphrase"
-          hint="Use several unrelated words, at least 16 characters. You will enter this in Gaps to open the file."
-        >
+        <Field label="Connection passphrase" hint="At least 16 characters">
           <Input
             type="password"
             value={phrase}
@@ -104,22 +99,24 @@ export function GapsConnectionExport({
             autoComplete="new-password"
           />
         </Field>
-        <button type="submit" className={buttonClassName('primary')}>
-          {busy ? 'Encrypting connection…' : 'Download connection file'}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setOpen(false);
-            setPhrase('');
-            setConfirmation('');
-            setError(null);
-            setDownloaded(false);
-          }}
-          className={`${buttonClassName('ghost')} ml-2`}
-        >
-          Close
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="submit" className={buttonClassName('primary')}>
+            {busy ? 'Encrypting connection…' : 'Download connection file'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setPhrase('');
+              setConfirmation('');
+              setError(null);
+              setDownloaded(false);
+            }}
+            className={buttonClassName('ghost')}
+          >
+            Close
+          </button>
+        </div>
       </fieldset>
       {error && (
         <p role="alert" className="text-sm text-negative">
@@ -128,11 +125,9 @@ export function GapsConnectionExport({
       )}
       {downloaded && (
         <p role="status" className="text-sm text-ink">
-          Connection file prepared.{' '}
           <a className="underline" href="https://gaps.getlacuna.app">
-            Open Gaps to import it
+            Import the connection file in Gaps
           </a>
-          . This does not enable pupil results.
         </p>
       )}
     </form>

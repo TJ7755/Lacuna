@@ -8,7 +8,6 @@ const setting = createLocalSetting<boolean>({
   parse: (raw) => raw !== 'false',
 });
 
-export const readAdvancedDetails = setting.read;
 export const writeAdvancedDetails = setting.write;
 export const useAdvancedDetails = setting.use;
 

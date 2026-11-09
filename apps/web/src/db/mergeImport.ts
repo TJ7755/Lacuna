@@ -220,6 +220,7 @@ export async function importLineageFirstTime(
         ...(shareLesson.tz ? { timeZone: shareLesson.tz } : {}),
         ...(shareLesson.sf ? { sessionFilter: shareLesson.sf } : {}),
         answerMode: shareLesson.am,
+        requireCorrectSpelling: shareLesson.rs,
       };
     });
     if (newLessons.length > 0) await db.lessons.bulkAdd(newLessons);
@@ -292,6 +293,7 @@ export async function importLineageFirstTime(
           tags: shareCard.g ?? [],
           payload: shareCard.p as ItemPayload | undefined,
           answerMode: shareCard.am,
+          requireCorrectSpelling: shareCard.rs,
           suspended: false,
           buriedUntil: null,
         };

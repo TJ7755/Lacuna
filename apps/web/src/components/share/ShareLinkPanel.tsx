@@ -1,4 +1,5 @@
 import { forwardRef, lazy, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { recordUsageAction } from '../../usage/actions';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import QRCode from 'react-qr-code';
 import { HOSTED_SERVICE_ORIGIN } from '../../config/origins';
@@ -11,7 +12,6 @@ import {
   unpublishShareLink,
 } from '../../shareLinks/publish';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import { formatRelativeTime } from '../../utils/datetime';
 import { Button } from '../ui/Button';
 import { buttonClassName } from '../ui/buttonStyles';
 import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
@@ -162,6 +162,7 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
       const result = replaceLink
         ? await publishShareLink(course.id, { replaceLink: true })
         : await publishShareLink(course.id);
+      recordUsageAction('share-completed');
       if (!mounted.current) return;
       const created = link === null || replaceLink;
       setLink({ shareId: result.shareId, revision: result.revision });
@@ -283,59 +284,31 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
                 </div>
                 <p className="mt-3 text-sm text-ink-faint">
                   Revision {link.revision}
-                  {course.distribution?.shareId === link.shareId && (
-                    <> · updated {formatRelativeTime(course.distribution.publishedAt)}</>
-                  )}
+                  {state === 'forwarded' && '. Updates from the publisher.'}
+                  {state === 'unmanaged' && '. Managed on the publishing device.'}
                 </p>
-                {state === 'forwarded' && (
-                  <p className="mt-3 text-sm text-ink-soft">
-                    Pass on this link to keep receiving the publisher’s updates. To use this course
-                    with your own class, paste the link into{' '}
-                    <a className="underline" href="https://gaps.getlacuna.app">
-                      Gaps
-                    </a>
-                    .
-                  </p>
-                )}
                 {state === 'unmanaged' && (
-                  <div className="mt-3 text-sm text-ink-soft">
-                    <p>
-                      Copy and pass on this link. Updates still come from the device that publishes
-                      it.
-                    </p>
-                    <p className="mt-2">
-                      For your own class, paste the link into{' '}
-                      <a className="underline" href="https://gaps.getlacuna.app">
-                        Gaps
-                      </a>
-                      .
-                    </p>
-                    <details className="mt-4">
-                      <summary>Link management</summary>
-                      <p className="mt-3">
-                        Only the original publishing device can update this link. Replacing it
-                        creates a separate link that existing recipients will not follow.
-                      </p>
-                      <div className="mt-3">
-                        <ConfirmInlineSwap
-                          active={confirmingReplace}
-                          onCancel={() => setConfirmingReplace(false)}
-                          message="Replace the link? The old link stays live until it expires."
-                          confirmLabel="Yes, replace it"
-                          onConfirm={() => publish(true)}
+                  <details className="mt-4 text-sm text-ink-soft">
+                    <summary>Link management</summary>
+                    <div className="mt-3">
+                      <ConfirmInlineSwap
+                        active={confirmingReplace}
+                        onCancel={() => setConfirmingReplace(false)}
+                        message="Existing recipients keep the old link until it expires. They will need the new link."
+                        confirmLabel="Yes, replace it"
+                        onConfirm={() => publish(true)}
+                        disabled={busy}
+                      >
+                        <Button
+                          variant="secondary"
+                          onClick={() => setConfirmingReplace(true)}
                           disabled={busy}
                         >
-                          <Button
-                            variant="secondary"
-                            onClick={() => setConfirmingReplace(true)}
-                            disabled={busy}
-                          >
-                            Replace link
-                          </Button>
-                        </ConfirmInlineSwap>
-                      </div>
-                    </details>
-                  </div>
+                          Replace link
+                        </Button>
+                      </ConfirmInlineSwap>
+                    </div>
+                  </details>
                 )}
                 {state === 'live' && (
                   <div className="mt-4 flex flex-wrap items-center gap-2">

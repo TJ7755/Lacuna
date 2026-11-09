@@ -88,14 +88,11 @@ export function Invite({
         {!code ? (
           <div className="flex flex-col items-center py-8 text-center">
             <StudyDrawing kind="course" className="mb-6 h-24 w-24" />
-            <p className="mt-3 max-w-sm text-ink-soft">
-              Pupils join with a class code, then choose whether to share.
-            </p>
             <button
               type="button"
               disabled={busy}
               onClick={() => void publish()}
-              className={`${buttonClassName('primary', 'lg')} gaps-press mt-8`}
+              className={`${buttonClassName('primary', 'lg')} gaps-press`}
             >
               {busy && <Spinner />}
               {busy ? 'Preparing class code…' : 'Publish class code'}
@@ -113,8 +110,7 @@ export function Invite({
             </Field>
             {shortCode && (
               <p className="text-sm text-ink-soft">
-                Pupils open getlacuna.app, choose Import, then Join a class, and enter this code.
-                The pupil join link is an alternative.
+                Pupils enter the code in Lacuna under Import → Join a class.
               </p>
             )}
             {shortCode && (
@@ -159,8 +155,7 @@ export function Invite({
       <fieldset className="mt-8 border-t border-line pt-5">
         <legend className="font-semibold">Keep this private to reopen the class</legend>
         <p className="mt-2 text-sm text-ink-soft">
-          Your recovery code and file are for you. Do not send them to pupils. Older classes use
-          their connection and recovery files with their passphrases.
+          Recovery files, codes and passphrases are private.
         </p>
       </fieldset>
       {error && (

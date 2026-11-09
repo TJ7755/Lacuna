@@ -301,6 +301,15 @@ describe('StudyStepTransition', () => {
     expect(actions.onContinue).toHaveBeenCalledOnce();
   });
 
+  it('ends card practice when the daily review limit prevents any more reviews', () => {
+    renderTransition({ summary: { ...summary(false), limitReached: true }, nextLabel: undefined });
+
+    expect(screen.getByRole('heading', { name: 'Daily review limit reached' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Resume' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Finish for now' })).toBeEnabled();
+  });
+
   it('makes actions available before the entrance finishes', () => {
     vi.spyOn(motionSettings, 'speedMultiplier').mockReturnValue(1);
     const onContinue = vi.fn();
@@ -390,6 +399,6 @@ describe('StudyStepTransition', () => {
       />,
     );
 
-    expect(screen.getByText('74% predicted readiness · ±8% uncertainty')).toBeInTheDocument();
+    expect(screen.getByText('74% predicted readiness (±8% uncertainty)')).toBeInTheDocument();
   });
 });

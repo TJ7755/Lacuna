@@ -1,11 +1,14 @@
 import { createHandler } from '../src/relay.js';
 import { createVercelStore } from '../src/store.js';
+import { createUsageHandler } from '../src/usageAnalytics.js';
 
-const handle = createHandler(createVercelStore());
+const store = createVercelStore();
+const handle = createHandler(store);
+const handleUsage = createUsageHandler(store);
 
 export default {
-  fetch(request: Request) {
-    return handle(request);
+  async fetch(request: Request) {
+    return (await handleUsage(request)) ?? handle(request);
   },
 };
 

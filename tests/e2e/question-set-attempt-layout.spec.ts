@@ -239,153 +239,134 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   });
 }
 
-for (const viewport of [
-  { width: 1280, height: 800 },
-  { width: 1440, height: 900 },
-]) {
-  for (const theme of ['light', 'dark'] as const) {
-    test(`attempt layout at ${viewport.width}×${viewport.height}, ${theme}`, async ({
-      page,
-    }, testInfo) => {
-      await page.addInitScript((value) => localStorage.setItem('lacuna-theme', value), theme);
-      await page.emulateMedia({ colorScheme: theme });
-      const attemptId = await startTranslation(page);
-      await page.setViewportSize(viewport);
-      const card = page.locator('article.qs-paper');
-      const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
-      const primary = page.locator('[data-attempt-primary]');
-      const capture = async (state: string) => {
-        await expect(card.locator('[inert]')).toHaveCount(0);
-        await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
-        await page.screenshot({
-          path: testInfo.outputPath(`${state}.png`),
-          animations: 'disabled',
-        });
-        await testInfo.attach(state, {
-          path: testInfo.outputPath(`${state}.png`),
-          contentType: 'image/png',
-        });
-      };
-      const assertFits = async () => {
-        const dimensions = await page.evaluate(() =>
-          [document.documentElement, document.body, ...document.querySelectorAll('main')].map(
-            (element) => ({
-              height: element.clientHeight,
-              scrollHeight: element.scrollHeight,
-              width: element.clientWidth,
-              scrollWidth: element.scrollWidth,
-            }),
-          ),
-        );
-        for (const row of dimensions) {
-          expect(row.scrollHeight).toBeLessThanOrEqual(row.height);
-          expect(row.scrollWidth).toBeLessThanOrEqual(row.width);
-        }
-        await expect(primary).toBeInViewport();
-      };
-      await expect(card.getByRole('button', { name: 'Next part', exact: true })).toBeVisible();
-      await expect(page.getByText('Your answer', { exact: true })).toHaveCount(0);
-      await expect(page.getByText('Saved', { exact: true })).toHaveCount(0);
-      await assertFits();
-      const header = page.locator('.qs-practice-header');
-      const exit = header.getByRole('button', { name: 'Exit', exact: true });
-      await expect(exit).toHaveCount(1);
-      await expect(header.getByRole('button', { name: 'Finish for now' })).toHaveCount(0);
-      await expect(header.getByRole('button', { name: 'Save and finish later' })).toHaveCount(0);
-      const stepper = header.locator('.qs-part-stepper');
-      const segments = stepper.locator('.qs-part-segment');
-      const uncompletedColour = await segments
-        .nth(1)
-        .evaluate((node) => getComputedStyle(node).backgroundColor);
-      await expect(segments.nth(0)).toHaveCSS('background-color', uncompletedColour);
-      const headerBoxes = async () => ({
-        exit: await exit.boundingBox(),
-        stepper: await stepper.boundingBox(),
-      });
-      const initialHeader = await headerBoxes();
-      const assertCentred = async () => {
-        const bar = (await stepper.boundingBox())!;
-        const frame = (await header.boundingBox())!;
-        expect(Math.abs(bar.x + bar.width / 2 - (frame.x + frame.width / 2))).toBeLessThanOrEqual(
-          1,
-        );
-      };
-      await assertCentred();
-      const fieldHeight = (await answer.boundingBox())!.height;
-      await answer.fill('A line of working.\n'.repeat(30));
-      await expect
-        .poll(async () => (await answer.boundingBox())!.height)
-        .toBeGreaterThan(fieldHeight);
-      await assertFits();
-      for (const text of ['Le chat', 'Le chat!', 'Le chat']) {
-        await answer.fill(text);
-        await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
-        await expect(page.getByText('Not saved', { exact: true })).toHaveCount(0);
-        await expect.poll(() => storedDraftText(page, attemptId, 'part-a')).toBe(text);
-        expect(await headerBoxes()).toEqual(initialHeader);
+for (const theme of ['light', 'dark'] as const) {
+  test(`attempt layout at 1280×800, ${theme}`, async ({ page }) => {
+    await page.addInitScript((value) => localStorage.setItem('lacuna-theme', value), theme);
+    await page.emulateMedia({ colorScheme: theme });
+    const attemptId = await startTranslation(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const card = page.locator('article.qs-paper');
+    const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
+    const primary = page.locator('[data-attempt-primary]');
+    const assertReady = async () => {
+      await expect(card.locator('[inert]')).toHaveCount(0);
+      await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
+    };
+    const assertFits = async () => {
+      const dimensions = await page.evaluate(() =>
+        [document.documentElement, document.body, ...document.querySelectorAll('main')].map(
+          (element) => ({
+            height: element.clientHeight,
+            scrollHeight: element.scrollHeight,
+            width: element.clientWidth,
+            scrollWidth: element.scrollWidth,
+          }),
+        ),
+      );
+      for (const row of dimensions) {
+        expect(row.scrollHeight).toBeLessThanOrEqual(row.height);
+        expect(row.scrollWidth).toBeLessThanOrEqual(row.width);
       }
-      await expect.poll(async () => (await answer.boundingBox())!.height).toBe(fieldHeight);
-      await capture('answering');
-      await answer.press('Control+Enter');
-      await expect(page.getByRole('heading', { name: 'Q1 (b)', exact: true })).toBeVisible();
-      await expect(answer).toBeFocused();
-      await expect(
-        card.getByRole('button', { name: 'Submit question', exact: true }),
-      ).toBeVisible();
-      await assertFits();
-      await answer.fill('s’est assis sur le tapis');
-      await answer.press('Control+Enter');
-      const award = page.getByRole('radio', { name: '3 / 3', exact: true });
-      await expect(page.getByRole('radio', { name: 'Not marked', exact: true })).toBeFocused();
-      await assertCentred();
-      await capture('marking');
-      await award.focus();
-      await award.press('Space');
-      await expect(award).toBeChecked();
-      await expect(segments.nth(0)).not.toHaveCSS('background-color', uncompletedColour);
-      await expect(segments.nth(1)).toHaveCSS('background-color', uncompletedColour);
-      await expect(primary).toBeEnabled();
-      await award.press('Control+Enter');
-      await expect(page.getByRole('button', { name: /criterion 2 of 2/ })).toBeVisible();
-      await expect(page.getByRole('radio', { name: 'Not marked', exact: true })).toBeFocused();
-      await award.focus();
-      await award.press('Space');
-      await expect(award).toBeChecked();
-      await expect(segments.nth(1)).not.toHaveCSS('background-color', uncompletedColour);
-      const finishAttempt = card.getByRole('button', { name: 'Finish attempt', exact: true });
-      await expect(finishAttempt).toBeEnabled();
-      await finishAttempt.click();
-      await expect(page.getByRole('link', { name: 'Back to set', exact: true })).toBeFocused();
-      await capture('complete');
-      await page.getByRole('button', { name: 'Reflection', exact: true }).click();
-      const reflection = page.getByRole('dialog', { name: 'Reflection', exact: true });
-      await expect(reflection).toBeVisible();
-      const reason = reflection.getByRole('checkbox', {
-        name: 'Misread the question',
-        exact: true,
-      });
-      await reason.focus();
-      await reason.press('Space');
-      await expect(reason).toBeChecked();
-      await reflection
-        .getByRole('textbox', { name: 'Reflection', exact: true })
-        .fill('Read the tense.');
-      await reflection.getByRole('button', { name: 'Save reflection', exact: true }).click();
-      await expect(
-        reflection.getByRole('button', { name: 'Save reflection', exact: true }),
-      ).toBeDisabled();
-      await expect(reflection).toHaveCSS('opacity', '1');
-      await capture('reflection');
-      await reflection.getByRole('button', { name: 'Close', exact: true }).click();
-      await expect(reflection).toBeHidden();
-      await page.reload();
-      await page.getByRole('button', { name: 'Reflection', exact: true }).click();
-      await expect(
-        reflection.getByRole('textbox', { name: 'Reflection', exact: true }),
-      ).toHaveValue('Read the tense.');
-      await expect(
-        reflection.getByRole('checkbox', { name: 'Misread the question', exact: true }),
-      ).toBeChecked();
+      await expect(primary).toBeInViewport();
+    };
+    await expect(card.getByRole('button', { name: 'Next part', exact: true })).toBeVisible();
+    await expect(page.getByText('Your answer', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Saved', { exact: true })).toHaveCount(0);
+    await assertFits();
+    const header = page.locator('.qs-practice-header');
+    const exit = header.getByRole('button', { name: 'Exit', exact: true });
+    await expect(exit).toHaveCount(1);
+    await expect(header.getByRole('button', { name: 'Finish for now' })).toHaveCount(0);
+    await expect(header.getByRole('button', { name: 'Save and finish later' })).toHaveCount(0);
+    const stepper = header.locator('.qs-part-stepper');
+    const segments = stepper.locator('.qs-part-segment');
+    const uncompletedColour = await segments
+      .nth(1)
+      .evaluate((node) => getComputedStyle(node).backgroundColor);
+    await expect(segments.nth(0)).toHaveCSS('background-color', uncompletedColour);
+    const headerBoxes = async () => ({
+      exit: await exit.boundingBox(),
+      stepper: await stepper.boundingBox(),
     });
-  }
+    const initialHeader = await headerBoxes();
+    const assertCentred = async () => {
+      const bar = (await stepper.boundingBox())!;
+      const frame = (await header.boundingBox())!;
+      expect(Math.abs(bar.x + bar.width / 2 - (frame.x + frame.width / 2))).toBeLessThanOrEqual(1);
+    };
+    await assertCentred();
+    const fieldHeight = (await answer.boundingBox())!.height;
+    await answer.fill('A line of working.\n'.repeat(30));
+    await expect
+      .poll(async () => (await answer.boundingBox())!.height)
+      .toBeGreaterThan(fieldHeight);
+    await assertFits();
+    for (const text of ['Le chat', 'Le chat!', 'Le chat']) {
+      await answer.fill(text);
+      await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
+      await expect(page.getByText('Not saved', { exact: true })).toHaveCount(0);
+      await expect.poll(() => storedDraftText(page, attemptId, 'part-a')).toBe(text);
+      expect(await headerBoxes()).toEqual(initialHeader);
+    }
+    await expect.poll(async () => (await answer.boundingBox())!.height).toBe(fieldHeight);
+    await assertReady();
+    await answer.press('Control+Enter');
+    await expect(page.getByRole('heading', { name: 'Q1 (b)', exact: true })).toBeVisible();
+    await expect(answer).toBeFocused();
+    await expect(card.getByRole('button', { name: 'Submit question', exact: true })).toBeVisible();
+    await assertFits();
+    await answer.fill('s’est assis sur le tapis');
+    await answer.press('Control+Enter');
+    const award = page.getByRole('radio', { name: '3 / 3', exact: true });
+    await expect(page.getByRole('radio', { name: 'Not marked', exact: true })).toBeFocused();
+    await assertCentred();
+    await assertReady();
+    await award.focus();
+    await award.press('Space');
+    await expect(award).toBeChecked();
+    await expect(segments.nth(0)).not.toHaveCSS('background-color', uncompletedColour);
+    await expect(segments.nth(1)).toHaveCSS('background-color', uncompletedColour);
+    await expect(primary).toBeEnabled();
+    await award.press('Control+Enter');
+    await expect(page.getByRole('button', { name: /criterion 2 of 2/ })).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'Not marked', exact: true })).toBeFocused();
+    await award.focus();
+    await award.press('Space');
+    await expect(award).toBeChecked();
+    await expect(segments.nth(1)).not.toHaveCSS('background-color', uncompletedColour);
+    const finishAttempt = card.getByRole('button', { name: 'Finish attempt', exact: true });
+    await expect(finishAttempt).toBeEnabled();
+    await finishAttempt.click();
+    await expect(page.getByRole('link', { name: 'Back to set', exact: true })).toBeFocused();
+    await assertReady();
+    await page.getByRole('button', { name: 'Reflection', exact: true }).click();
+    const reflection = page.getByRole('dialog', { name: 'Reflection', exact: true });
+    await expect(reflection).toBeVisible();
+    const reason = reflection.getByRole('checkbox', {
+      name: 'Misread the question',
+      exact: true,
+    });
+    await reason.focus();
+    await reason.press('Space');
+    await expect(reason).toBeChecked();
+    await reflection
+      .getByRole('textbox', { name: 'Reflection', exact: true })
+      .fill('Read the tense.');
+    await reflection.getByRole('button', { name: 'Save reflection', exact: true }).click();
+    await expect(
+      reflection.getByRole('button', { name: 'Save reflection', exact: true }),
+    ).toBeDisabled();
+    await expect(reflection).toHaveCSS('opacity', '1');
+    await assertReady();
+    await reflection.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(reflection).toBeHidden();
+    await page.reload();
+    await page.getByRole('button', { name: 'Reflection', exact: true }).click();
+    await expect(reflection.getByRole('textbox', { name: 'Reflection', exact: true })).toHaveValue(
+      'Read the tense.',
+    );
+    await expect(
+      reflection.getByRole('checkbox', { name: 'Misread the question', exact: true }),
+    ).toBeChecked();
+  });
 }

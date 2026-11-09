@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { callJevDecision, callJevAllocationBatch } from './provider';
+import { callJevDecision, callJevAllocationBatch, callJevLessonDistractors } from './provider';
 import type { JevAllocationInput } from '../../../web/src/jev/protocol';
 
 it.each([
@@ -531,6 +531,62 @@ it('asks equivalence, answer kind and part coverage together while leaving gradi
 });
 
 it.each([
+  [undefined, 0.9, 1],
+  [true, 0.9, 0],
+  [true, 0.72, null],
+] as const)(
+  'marks the same spelling slip according to the author policy %s (kind confidence %s)',
+  async (requireCorrectSpelling, confidence, value) => {
+    const fetcher = vi.fn().mockResolvedValue(
+      Response.json({
+        model: 'jev-1.14.0',
+        answers: {
+          decision: { type: 'noul', noul: 0.99 },
+          kind: {
+            type: 'choice',
+            choice: 'spelling',
+            confidence,
+            probabilities: {
+              same: 1 - confidence,
+              spelling: confidence,
+              imprecise: 0,
+              partial: 0,
+              wrong: 0,
+              blank: 0,
+            },
+          },
+        },
+        usage: { input_tokens: 12, output_tokens: 1 },
+      }),
+    );
+    const state = {
+      prompt: 'Give the verb meaning to make room for',
+      expected: 'accommodate',
+      answer: 'acommodate',
+    };
+    const result = await callJevDecision(
+      { purpose: 'typed-equivalence', ...state, requireCorrectSpelling },
+      'key',
+      new AbortController().signal,
+      fetcher,
+    );
+    expect(result).toMatchObject({
+      value,
+      confidence: requireCorrectSpelling ? confidence : 0.99,
+      feedback: { kind: 'spelling', parts: [] },
+    });
+    const request = JSON.parse(fetcher.mock.calls[0][1].body);
+    expect(request.state).toEqual(state);
+    if (requireCorrectSpelling) {
+      expect(request.questions.decision.instructions).toContain('with correct spelling');
+      expect(request.questions.decision.criteria.false).toContain('spelling error');
+    } else {
+      expect(request.questions.decision.instructions).toContain('Judge meaning');
+    }
+  },
+);
+
+it.each([
   [0.6999, null],
   [0.7, 'same'],
 ] as const)(
@@ -637,4 +693,59 @@ it('classifies every point against every technique and applies the two threshold
     { name: 'Quote the data', description: 'Cite a table value.' },
   ]);
   expect(wire.state.points).toHaveLength(2);
+});
+
+it('asks one lesson distractor Choice per target and filters the probability tail', async () => {
+  const cards = [
+    { prompt: 'Capital of France?', answer: 'Paris' },
+    { answer: 'Lyon' },
+    { answer: 'London' },
+    { answer: 'Berlin' },
+    { answer: 'Rome' },
+    { answer: 'Brussels' },
+    { answer: 'Amsterdam' },
+    { answer: 'Madrid' },
+    { answer: '  paris  ' },
+  ];
+  const fetcher = vi.fn().mockResolvedValue(
+    Response.json({
+      model: 'jev-1.14.0',
+      answers: {
+        answer_0: {
+          type: 'choice',
+          choice: 'answer_1',
+          confidence: 0.6,
+          probabilities: {
+            answer_1: 0.38,
+            answer_2: 0.2,
+            answer_3: 0.15,
+            answer_4: 0.1,
+            answer_5: 0.08,
+            answer_6: 0.05,
+            answer_7: 0.04,
+          },
+        },
+      },
+      usage: { input_tokens: 200, output_tokens: 8 },
+    }),
+  );
+  const result = await callJevLessonDistractors(
+    { purpose: 'lesson-distractors', cards, targets: [0] },
+    'test-key',
+    new AbortController().signal,
+    fetcher,
+  );
+  const request = JSON.parse(fetcher.mock.calls[0][1].body);
+  expect(Object.keys(request.questions)).toEqual(['answer_0']);
+  expect(Object.keys(request.questions.answer_0.criteria)).toEqual([
+    'answer_1',
+    'answer_2',
+    'answer_3',
+    'answer_4',
+    'answer_5',
+    'answer_6',
+    'answer_7',
+  ]);
+  expect(request.state).toEqual({ cards });
+  expect(result).toEqual({ model: 'jev-1.14.0', inputTokens: 200, rankings: [[1, 2, 3, 4]] });
 });

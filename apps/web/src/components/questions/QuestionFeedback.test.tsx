@@ -44,7 +44,7 @@ describe('QuestionFeedback', () => {
 
     expect(screen.getByText('0 / 1 marks')).toBeInTheDocument();
     expect(screen.getByText(/The answer is 4/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Record an optional correction' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Record a correction' }));
     fireEvent.change(screen.getByLabelText('Corrected answer'), { target: { value: '4' } });
     fireEvent.click(screen.getByRole('button', { name: 'Record correction' }));
 
@@ -79,6 +79,6 @@ describe('QuestionFeedback', () => {
     );
 
     expect(screen.getByText('Checker review needed')).toBeInTheDocument();
-    expect(screen.getByText(/has not changed this Question’s schedule/)).toBeInTheDocument();
+    expect(screen.getByText('Attempt saved. Schedule unchanged.')).toBeInTheDocument();
   });
 });

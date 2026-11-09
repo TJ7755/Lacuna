@@ -11,6 +11,7 @@ import {
   rateLimitForKey,
 } from './rateLimit.js';
 import { canonicalEtag, type BlobStore, type ListedObject } from './store.js';
+import { cleanupExpiredUsage } from './usageAnalytics.js';
 
 export const AI_CLEANUP_GRACE_MS = 24 * 60 * 60 * 1000;
 
@@ -25,6 +26,9 @@ export async function handleAiMaintenanceRoute(
   const channels = await cleanupExpiredChannels(store, now);
   const shares = await cleanupExpiredShares(store, now);
   const insights = await cleanupExpiredInsights(store, now);
+  await cleanupExpiredUsage(store, now).catch(() => {
+    console.error('Usage analytics cleanup failed');
+  });
   return maintenanceJson(200, { ...ai, ...channels, ...shares, ...insights });
 }
 

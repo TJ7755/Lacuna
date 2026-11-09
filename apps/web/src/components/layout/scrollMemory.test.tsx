@@ -20,6 +20,7 @@ function scrollTo(main: HTMLElement, top: number) {
 
 afterEach(() => {
   clearScrollMemory();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 
@@ -35,6 +36,23 @@ function setup() {
     main.scrollTop = options.top ?? 0;
   }) as typeof main.scrollTo;
   return main;
+}
+
+function mockResize() {
+  let callback: (() => void) | undefined;
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(onResize: () => void) {
+        callback = onResize;
+      }
+      observe() {}
+      disconnect() {
+        callback = undefined;
+      }
+    },
+  );
+  return () => callback?.();
 }
 
 it('starts a new page at the top and restores the old one on Back', () => {
@@ -61,10 +79,37 @@ it('keeps its place when only the query changes', () => {
   expect(main.scrollTop).toBe(200);
 });
 
-it.each(['loaded', 'cancelled'])(
+it('lets a learner scroll away while waiting for the saved position to become reachable', () => {
+  vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+  const resize = mockResize();
+  const main = setup();
+  scrollTo(main, 640);
+  act(() => void go('/course/c1/cards/x/edit'));
+
+  let maxScrollTop = 300;
+  Object.defineProperty(main, 'scrollHeight', {
+    get: () => main.clientHeight + maxScrollTop,
+  });
+  main.scrollTo = ((options: ScrollToOptions) => {
+    main.scrollTop = Math.min(maxScrollTop, options.top ?? 0);
+  }) as typeof main.scrollTo;
+
+  act(() => void go(-1));
+  expect(main.scrollTop).toBe(300);
+  scrollTo(main, 180);
+  maxScrollTop = 800;
+  resize();
+  vi.advanceTimersToNextFrame();
+  expect(main.scrollTop).toBe(180);
+});
+
+it.each(['loaded', 'cancelled', 'timed out'])(
   'restores browser anchoring after a lazy return is %s',
   async (outcome) => {
-    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+    vi.useFakeTimers({
+      toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout'],
+    });
+    const resize = mockResize();
     const main = setup();
     scrollTo(main, 640);
     act(() => void go('/course/c1/cards/x/edit'));
@@ -75,10 +120,13 @@ it.each(['loaded', 'cancelled'])(
     expect(main.style.overflowAnchor).toBe('none');
     if (outcome === 'loaded') {
       main.scrollTo = scroll;
-      await act(() => vi.runAllTimers());
+      resize();
+      vi.advanceTimersToNextFrame();
       expect(main.scrollTop).toBe(640);
-    } else {
+    } else if (outcome === 'cancelled') {
       act(() => void go('/course/c2/cards'));
+    } else {
+      await act(() => vi.runAllTimers());
     }
     expect(main.style.overflowAnchor).toBe('auto');
   },

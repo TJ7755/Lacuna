@@ -25,19 +25,24 @@ export function FlowExpansionSurface({
     const shell = element?.parentElement;
     if (!element || !paint || !shell) return;
     const content = shell.querySelector<HTMLElement>('[data-flow-expansion-content]');
-    let width = triggerWidth,
-      height = triggerHeight;
-    const draw = () => {
+    const measure = () => {
+      // Read all geometry before changing the SVG or clip. The resize observer
+      // runs on every animated resize, so a late read would force a second layout.
+      const width = shell.offsetWidth;
+      const height = shell.offsetHeight;
+      const borderLeft = shell.clientLeft;
+      const borderTop = shell.clientTop;
+      const contentLeft = (content?.offsetLeft ?? 0) + borderLeft;
+      const contentTop = (content?.offsetTop ?? 0) + borderTop;
+
       const outline = expansionOutline(width, height, triggerHeight);
-      const d = flowPath(outline);
+      element.style.cssText = `left:${-4 - borderLeft}px;top:${-4 - borderTop}px;width:${width + 8}px;height:${height + 8}px`;
       element.setAttribute('viewBox', `-4 -4 ${width + 8} ${height + 8}`);
-      paint.setAttribute('d', d);
-      paint.setAttribute('stroke', 'hsl(var(--line))');
-      paint.setAttribute('stroke-width', '1');
+      paint.setAttribute('d', flowPath(outline));
       if (content) {
         const local = outline.map((point) => ({
-          x: point.x - content.offsetLeft - shell.clientLeft,
-          y: point.y - content.offsetTop - shell.clientTop,
+          x: point.x - contentLeft,
+          y: point.y - contentTop,
         }));
         content.style.clipPath = `path('${flowPath(local)}')`;
       }
@@ -55,12 +60,6 @@ export function FlowExpansionSurface({
         `color-mix(in srgb, hsl(var(--accent-fg)) ${mix}%, hsl(var(--ink)))`,
       );
     };
-    const measure = () => {
-      width = shell.offsetWidth;
-      height = shell.offsetHeight;
-      element.style.cssText = `left:${-4 - shell.clientLeft}px;top:${-4 - shell.clientTop}px;width:${width + 8}px;height:${height + 8}px`;
-      draw();
-    };
     const observer = new ResizeObserver(measure);
     observer.observe(shell);
     measure();
@@ -72,7 +71,7 @@ export function FlowExpansionSurface({
   }, [triggerWidth, triggerHeight, prominent]);
   return (
     <svg ref={svg} aria-hidden="true" className="flow-expansion-paint">
-      <path ref={path} data-flow-surface-paint />
+      <path ref={path} data-flow-surface-paint stroke="hsl(var(--line))" strokeWidth={1} />
     </svg>
   );
 }

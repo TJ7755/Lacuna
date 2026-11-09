@@ -216,7 +216,7 @@ describe('SearchPage', () => {
     render(<RouterProvider router={router} />);
     expect(screen.queryByText('No results')).not.toBeInTheDocument();
     const gesture = screen.getByRole('option', { name: /How do I study with touch gestures/ });
-    expect(gesture).toHaveTextContent('Help · Studying');
+    expect(gesture).toHaveTextContent('Help (Studying)');
     fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter' });
     expect(router.state.location.pathname).toBe('/help');
     expect(router.state.location.hash).toBe('#touch-gestures');

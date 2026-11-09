@@ -15,8 +15,7 @@ type TitleFrame = {
   color: string;
 };
 
-function measure(element: HTMLElement): TitleFrame {
-  const rect = element.getBoundingClientRect();
+function measure(element: HTMLElement, rect = element.getBoundingClientRect()): TitleFrame {
   const style = getComputedStyle(element);
   const page = element.closest<HTMLElement>('[data-route-content]');
   const transform = page ? getComputedStyle(page).transform : 'none';
@@ -67,6 +66,7 @@ export function CourseTitleTransition({
     let hidden: HTMLElement[] = [];
     let disposed = false;
     let generation = 0;
+    const pageSelector = `[data-route-content="${CSS.escape(pathname)}"]`;
     const restore = () => {
       hidden.forEach((element) => element.style.removeProperty('clip-path'));
       hidden = [];
@@ -75,20 +75,34 @@ export function CourseTitleTransition({
       restore();
       layer.style.visibility = 'hidden';
     };
-    const rest = (element: HTMLElement, heading: boolean) => {
+    const rest = (element: HTMLElement, heading: boolean, rect: DOMRect) => {
       settled.current = {
-        frame: measure(element),
+        frame: measure(element, rect),
         heading,
         name: element.textContent ?? '',
         pathname,
       };
     };
-    const update = () => {
+    const update = (mutations?: MutationRecord[]) => {
       if (disposed) return;
       const navigation = document.querySelector<HTMLElement>('[data-course-nav-title]');
-      const page = document.querySelector(`[data-route-content="${CSS.escape(pathname)}"]`);
+      const page = document.querySelector(pageSelector);
       if (page?.querySelector('input[aria-label="Course name"]')) return;
       const title = page?.querySelector<HTMLElement>('[data-course-title-text]') ?? null;
+      // Windowed rows can change on every scroll frame. Once the title rests in the
+      // bar, changes confined to a page without its own title cannot move it.
+      if (
+        mutations &&
+        page &&
+        navigation &&
+        target === navigation &&
+        !source &&
+        !title &&
+        layer.style.visibility !== 'visible' &&
+        mutations.every(({ target }) => page.contains(target))
+      ) {
+        return;
+      }
       const titleRect = title?.getBoundingClientRect();
       const navRect = navigation?.getBoundingClientRect();
       const heading =
@@ -97,9 +111,10 @@ export function CourseTitleTransition({
         titleRect.bottom > navRect.bottom &&
         titleRect.top < window.innerHeight;
       const next = heading ? title : navigation;
-      if (!next || next.getBoundingClientRect().width === 0) return;
+      const rect = heading ? titleRect : navRect;
+      if (!next || !rect?.width) return;
       if (next === target) {
-        if (layer.style.visibility !== 'visible') rest(next, heading);
+        if (layer.style.visibility !== 'visible') rest(next, heading, rect);
         return;
       }
       target = next;
@@ -114,10 +129,10 @@ export function CourseTitleTransition({
       if (!travels) {
         stop.current?.();
         finish();
-        rest(next, heading);
+        rest(next, heading, rect);
         return;
       }
-      const frame = measure(next);
+      const frame = measure(next, rect);
       settled.current = { frame, heading, name, pathname };
       const currentGeneration = ++generation;
       const presented = moving || !from ? measure(layer) : from.frame;

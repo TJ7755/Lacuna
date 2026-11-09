@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { useLayoutEffect } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { useExamClock } from './useExamClock';
 
@@ -29,6 +30,21 @@ it('reschedules changed dates without polling between boundaries', async () => {
   expect(result.current).toBe(1200);
   unmount();
   expect(vi.getTimerCount()).toBe(0);
+});
+
+it('catches a boundary crossed between rendering and subscribing', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1000);
+  const { result } = renderHook(() => {
+    const now = useExamClock([], [1001]);
+    // Layout effects run after the snapshot is read but before the timer is armed.
+    useLayoutEffect(() => {
+      vi.setSystemTime(1002);
+    }, []);
+    return now;
+  });
+  await act(() => vi.advanceTimersByTime(1));
+  expect(result.current).toBe(1003);
 });
 
 it('refreshes at burial expiry and local midnight without database writes', async () => {

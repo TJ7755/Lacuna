@@ -2,12 +2,26 @@ import { Button } from '../../components/ui/Button';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { cn } from '../../components/ui/cn';
 import { ChevronDownIcon, MenuIcon } from '../../components/ui/icons';
-import { DEFAULT_NAV_ITEMS, useSidebarSettings } from '../../state/sidebarSettings';
+import { DEFAULT_NAV_ITEMS, FOOTER_NAV, useSidebarSettings } from '../../state/sidebarSettings';
 import { PillSwitch, SETTINGS_HEADING_ROW_CLASS, SettingRow, SettingsCard } from './SettingsUi';
 
 export function SidebarSection() {
   const [sidebarSettings, setSidebarSettings] = useSidebarSettings();
   const visibleCount = sidebarSettings.navItems.filter((item) => item.visible).length;
+
+  function move(id: string, offset: number) {
+    const items = sidebarSettings.navItems.filter(
+      (item) => FOOTER_NAV.has(item.id) === FOOTER_NAV.has(id),
+    );
+    const index = items.findIndex((item) => item.id === id);
+    const neighbour = items[index + offset];
+    if (!neighbour) return;
+    const next = [...sidebarSettings.navItems];
+    const from = next.findIndex((item) => item.id === id);
+    const to = next.findIndex((item) => item.id === neighbour.id);
+    [next[from], next[to]] = [next[to], next[from]];
+    setSidebarSettings({ navItems: next });
+  }
 
   return (
     <SettingsCard id="settings-sidebar">
@@ -34,62 +48,68 @@ export function SidebarSection() {
       </SettingRow>
 
       <div className="mt-3">
-        <div className="py-3 font-semibold text-ink">Primary navigation</div>
-        <div className="flex flex-col gap-2">
-          {sidebarSettings.navItems.map((item, index) => {
-            const canMoveUp = index > 0;
-            const canMoveDown = index < sidebarSettings.navItems.length - 1;
-            const canHide = item.visible ? visibleCount > 1 : true;
-            const label = item.id === 'search' ? 'Search entry' : item.label;
-            return (
-              <div
-                key={item.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-ink/[0.04] px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
-              >
-                <div className="col-span-2 row-start-2 flex gap-0.5 sm:col-span-1 sm:col-start-1 sm:row-start-1">
-                  <MoveButton
-                    direction="up"
-                    label={label}
-                    disabled={!canMoveUp}
-                    onClick={() => {
-                      const next = [...sidebarSettings.navItems];
-                      const [removed] = next.splice(index, 1);
-                      next.splice(index - 1, 0, removed);
-                      setSidebarSettings({ navItems: next });
-                    }}
-                  />
-                  <MoveButton
-                    direction="down"
-                    label={label}
-                    disabled={!canMoveDown}
-                    onClick={() => {
-                      const next = [...sidebarSettings.navItems];
-                      const [removed] = next.splice(index, 1);
-                      next.splice(index + 1, 0, removed);
-                      setSidebarSettings({ navItems: next });
-                    }}
-                  />
-                </div>
-                <span className="col-start-1 row-start-1 min-w-0 break-words text-sm text-ink sm:col-start-2">
-                  {label}
-                </span>
-                <div className="col-start-2 row-start-1 sm:col-start-3">
-                  <PillSwitch
-                    checked={item.visible}
-                    disabled={!canHide}
-                    ariaLabel={`Show ${label}`}
-                    onChange={(checked) => {
-                      const next = sidebarSettings.navItems.map((navItem) =>
-                        navItem.id === item.id ? { ...navItem, visible: checked } : navItem,
-                      );
-                      setSidebarSettings({ navItems: next });
-                    }}
-                  />
-                </div>
+        {[false, true].map((footer) => {
+          const items = sidebarSettings.navItems.filter(
+            (item) => FOOTER_NAV.has(item.id) === footer,
+          );
+          return (
+            <div
+              key={String(footer)}
+              role="group"
+              aria-label={footer ? 'More' : 'Primary navigation'}
+            >
+              <div className="py-3 font-semibold text-ink">
+                {footer ? 'More' : 'Primary navigation'}
               </div>
-            );
-          })}
-        </div>
+              <div className="flex flex-col gap-2">
+                {items.map((item, index) => {
+                  const canMoveUp = index > 0;
+                  const canMoveDown = index < items.length - 1;
+                  const canHide =
+                    item.id !== 'settings' && (item.visible ? visibleCount > 1 : true);
+                  const label = item.id === 'search' ? 'Search entry' : item.label;
+                  return (
+                    <div
+                      key={item.id}
+                      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-ink/[0.04] px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
+                    >
+                      <div className="col-span-2 row-start-2 flex gap-0.5 sm:col-span-1 sm:col-start-1 sm:row-start-1">
+                        <MoveButton
+                          direction="up"
+                          label={label}
+                          disabled={!canMoveUp}
+                          onClick={() => move(item.id, -1)}
+                        />
+                        <MoveButton
+                          direction="down"
+                          label={label}
+                          disabled={!canMoveDown}
+                          onClick={() => move(item.id, 1)}
+                        />
+                      </div>
+                      <span className="col-start-1 row-start-1 min-w-0 break-words text-sm text-ink sm:col-start-2">
+                        {label}
+                      </span>
+                      <div className="col-start-2 row-start-1 sm:col-start-3">
+                        <PillSwitch
+                          checked={item.visible}
+                          disabled={!canHide}
+                          ariaLabel={`Show ${label}`}
+                          onChange={(checked) => {
+                            const next = sidebarSettings.navItems.map((navItem) =>
+                              navItem.id === item.id ? { ...navItem, visible: checked } : navItem,
+                            );
+                            setSidebarSettings({ navItems: next });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
         <div className="mt-3 flex justify-end">
           <Button
             variant="ghost"

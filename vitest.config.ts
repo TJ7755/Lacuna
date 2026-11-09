@@ -1,4 +1,6 @@
 import { configDefaults, defineConfig } from 'vitest/config';
+import recoveryConfig from './tests/config/vitest.recovery.config.ts';
+import riskConfig from './tests/config/vitest.risk.config.ts';
 
 const nodeTests = [
   'apps/web/src/fsrs/**/*.test.ts',
@@ -13,6 +15,12 @@ const browserStorageTests = [
   'apps/web/src/course/localLessonOrder.test.ts',
   'apps/web/src/fsrs/optimise.persistence.test.ts',
 ];
+// The required risk and recovery jobs already run these files in happy-dom.
+const coverageOwnedTests =
+  process.env.LACUNA_CI_SEPARATE_COVERAGE === 'true'
+    ? [...(riskConfig.test?.include ?? []), ...(recoveryConfig.test?.include ?? [])]
+    : [];
+
 export default defineConfig({
   test: {
     allowOnly: !process.env.CI,
@@ -33,7 +41,7 @@ export default defineConfig({
         test: {
           name: 'browser',
           include: ['apps/web/src/**/*.test.ts', 'apps/web/src/**/*.test.tsx'],
-          exclude: [...configDefaults.exclude, ...nodeTests],
+          exclude: [...configDefaults.exclude, ...nodeTests, ...coverageOwnedTests],
           setupFiles: ['./tests/setup.ts'],
         },
       },

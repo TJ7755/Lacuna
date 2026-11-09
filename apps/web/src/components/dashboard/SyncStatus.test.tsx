@@ -32,14 +32,14 @@ describe('Today sync status', () => {
 
   it('links healthy status to the existing sync destination using the existing labels', async () => {
     await renderStatus(paired);
-    const link = screen.getByRole('link', { name: 'Synced just now · Open sync' });
+    const link = screen.getByRole('link', { name: 'Synced just now. Open sync' });
     expect(link).toHaveAttribute('href', '/settings');
     expect(link).toHaveTextContent('Synced just now');
   });
 
   it('keeps a first sync pending visibly labelled', async () => {
     await renderStatus({ channelId: 'channel' });
-    expect(screen.getByRole('link', { name: 'Not yet synced · Open sync' })).toHaveTextContent(
+    expect(screen.getByRole('link', { name: 'Not yet synced. Open sync' })).toHaveTextContent(
       'Not yet synced',
     );
   });
@@ -50,7 +50,7 @@ describe('Today sync status', () => {
     ['Passphrase required', { channelId: 'channel' }, 'Not yet synced'],
   ])('keeps a stored error visible: %s', async (lastError, state, label) => {
     await renderStatus({ ...state, lastError });
-    const link = screen.getByRole('link', { name: `${label} · Sync failed · Open sync` });
+    const link = screen.getByRole('link', { name: `${label}. Sync failed. Open sync` });
     expect(link).toHaveAttribute('href', '/settings');
     expect(link).toHaveTextContent('Sync failed');
   });
@@ -68,7 +68,7 @@ describe('Today sync status', () => {
     await act(async () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
-    expect(screen.getByRole('link')).toHaveAccessibleName('Synced just now · Open sync');
+    expect(screen.getByRole('link')).toHaveAccessibleName('Synced just now. Open sync');
 
     vi.mocked(readSyncState).mockResolvedValue(undefined);
     await act(async () => {

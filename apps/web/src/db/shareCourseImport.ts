@@ -35,6 +35,7 @@ function unpackCard(sc: ShareCard): ParsedCard[] {
   const attributes = {
     ...(sc.g?.length ? { tags: sc.g } : {}),
     ...(sc.am ? { answerMode: sc.am } : {}),
+    ...(sc.rs !== undefined ? { requireCorrectSpelling: sc.rs } : {}),
   };
   if (sc.p !== undefined) {
     assertValidCardPayload(sc.k === 1 ? 'cloze' : 'front_back', sc.p);
@@ -243,6 +244,7 @@ async function importCourseSharePayload(
         ...(shareLesson.tz ? { timeZone: shareLesson.tz } : {}),
         ...(shareLesson.sf ? { sessionFilter: shareLesson.sf } : {}),
         ...(shareLesson.am ? { answerMode: shareLesson.am } : {}),
+        ...(shareLesson.rs !== undefined ? { requireCorrectSpelling: shareLesson.rs } : {}),
       }));
       if (importedLessons.length > 0) await db.lessons.bulkAdd(importedLessons);
       const lessonIds = importedLessons.map((lesson) => lesson.id);

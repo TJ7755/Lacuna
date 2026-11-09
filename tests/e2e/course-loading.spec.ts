@@ -55,7 +55,7 @@ for (const width of [1280, 375]) {
     await page.getByRole('button', { name: 'Course library', exact: true }).click();
     const search = page.getByRole('searchbox', { name: 'Search the course library' });
     await search.fill('8461');
-    const choose = page.getByRole('button', { name: 'Biology AQA GCSE · 8461', exact: true });
+    const choose = page.getByRole('button', { name: 'Biology AQA GCSE (8461)', exact: true });
     await choose.click();
     await expect.poll(() => requests).toBe(1);
     const loading = page.getByRole('status').filter({ hasText: 'Loading this course' });

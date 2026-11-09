@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { completeRevealedIntroduction } from './lacunaApp';
 
 export async function addCard(page: Page, courseId: string, front: string): Promise<void> {
   await page.goto(`/#/course/${courseId}/cards`);
@@ -44,12 +45,6 @@ export async function deleteOnlyCard(page: Page, courseId: string): Promise<void
   await expect(page.getByText('This course has no cards yet.', { exact: true })).toBeVisible();
 }
 
-export async function reviewOnlyCard(page: Page, courseId: string): Promise<string> {
-  const cardId = await completeOnlyCard(page, courseId);
-  await expect.poll(async () => (await readAll(page, 'reviewHistory')).length > 0).toBe(true);
-  return cardId;
-}
-
 export async function suppressStudyEndSync(page: Page): Promise<void> {
   // This scenario drives a deliberate manual write collision; automatic
   // study-end sync has separate trigger coverage and would race that barrier.
@@ -60,7 +55,11 @@ export async function suppressStudyEndSync(page: Page): Promise<void> {
   });
 }
 
-async function completeOnlyCard(page: Page, courseId: string): Promise<string> {
+export async function reviewOnlyCard(
+  page: Page,
+  courseId: string,
+  answer: string,
+): Promise<string> {
   await page.goto(`/#/course/${courseId}`);
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   const routeChoice = page
@@ -75,13 +74,13 @@ async function completeOnlyCard(page: Page, courseId: string): Promise<string> {
   await expect(studyCard).toBeVisible();
   const cardId = await studyCard.getAttribute('data-study-card-id');
   if (!cardId) throw new Error('The study card has no persisted identity.');
-  await page.keyboard.press('Space');
-  await page.keyboard.press('Y');
+  await completeRevealedIntroduction(page, answer);
   await expect(
     page
       .getByRole('main', { name: 'Study progress' })
       .getByRole('img', { name: 'Completed', exact: true }),
   ).toBeVisible();
+  await expect.poll(async () => (await readAll(page, 'reviewHistory')).length > 0).toBe(true);
   return cardId;
 }
 

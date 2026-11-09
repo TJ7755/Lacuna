@@ -6,7 +6,6 @@ import { createPortal } from 'react-dom';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { flattenQuestionSet } from '../../questions/questionSetAuthoring';
 import {
-  questionSetSearchContext,
   searchQuestionSets,
   type QuestionSetSearchContext,
 } from '../../questions/questionSetSearch';
@@ -81,26 +80,25 @@ export function QuestionSetPicker({
           label="Question set"
           value={selected}
           onChange={setSelected}
-          options={results.map(({ content, location, excerpt }) => ({
+          options={results.map(({ content, contextLabel, location, excerpt }) => ({
             value: content.id,
             label: content.title || 'Untitled set',
             description: (
               <>
+                <small>{contextLabel || 'No linked lesson or Concept'}</small>
                 <small>
-                  {questionSetSearchContext(content, context) || 'No linked lesson or Concept'}
-                </small>
-                <small>
-                  {countOf(content.questions.length, 'question')} ·{' '}
+                  {countOf(content.questions.length, 'question')},{' '}
                   {countOf(
                     flattenQuestionSet(content).filter((row) => row.node.answer).length,
                     'answerable part',
-                  )}{' '}
-                  · {countOf(questionSetMarks(content), 'mark')}
+                  )}
+                  , {countOf(questionSetMarks(content), 'mark')}
                 </small>
                 {content.bank && (
                   <small>
-                    {Object.values(content.bank.blueprint).join(' · ')} ·{' '}
-                    {content.bank.source.title}
+                    {[...Object.values(content.bank.blueprint), content.bank.source.title]
+                      .filter(Boolean)
+                      .join(', ')}
                   </small>
                 )}
                 {query.trim() && (

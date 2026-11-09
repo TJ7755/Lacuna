@@ -1,6 +1,12 @@
-import { storedString } from '../../state/localSetting';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, m as motion, animate, useIsPresent, useMotionValue } from 'motion/react';
+import {
+  AnimatePresence,
+  m as motion,
+  animate,
+  useIsPresent,
+  useMotionValue,
+  useTransform,
+} from 'motion/react';
 import { hapticMedium } from '../../utils/haptic';
 import type { Card, Grade, Occlusion } from '@lacuna/core/db/types';
 import { speedMultiplier, type MotionSpeed } from '../../state/motionSpeed';
@@ -27,16 +33,18 @@ const CARD_SURFACE_CLASS =
  */
 export function FlipCard({
   card,
+  promptId,
   revealed,
   motionSpeed,
   motionMultiplier,
   phase,
-  isTouchMode,
+  isTouchMode = false,
   menuOpen,
   editing,
   hintsOpen,
   onReveal,
   onHide,
+  allowGradingGestures = true,
   onAnswer,
   typedAnswer,
   typedJudgement,
@@ -47,20 +55,24 @@ export function FlipCard({
   onRevealHint,
   hintAffectsScheduling,
   answerStrictness,
+  lessonRequiresCorrectSpelling,
   occlusion,
   occlusionAnswerText,
 }: {
   card: Card;
+  /** A recognition prompt has the ordinary card surface but no reveal action. */
+  promptId?: string;
   revealed: boolean;
   motionSpeed: MotionSpeed;
   motionMultiplier?: number;
   phase: Phase;
-  isTouchMode: boolean;
+  isTouchMode?: boolean;
   menuOpen: boolean;
   editing: boolean;
   hintsOpen: boolean;
   onReveal: () => void;
   onHide: () => void;
+  allowGradingGestures?: boolean;
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard', velocity?: number) => void;
   typedAnswer?: string;
   typedJudgement?: TypedAnswerJudgement;
@@ -70,6 +82,7 @@ export function FlipCard({
   hintStep?: 0 | 1 | 2;
   onRevealHint?: () => void;
   hintAffectsScheduling?: boolean;
+  lessonRequiresCorrectSpelling?: boolean;
   answerStrictness: AnswerStrictness;
   /** The owning Occlusion for an occlusion-generated card, resolved by useLearnSession. */
   occlusion?: Occlusion;
@@ -79,16 +92,10 @@ export function FlipCard({
 }) {
   const m = motionMultiplier ?? speedMultiplier(motionSpeed);
   const isTyping = Boolean(isTypingCard);
-  const [swipe, setSwipe] = useState({ x: 0, hint: null as 'left' | 'right' | null });
+  const promptOnly = promptId !== undefined;
+  const [swipeHint, setSwipeHint] = useState<'left' | 'right' | null>(null);
   const audioCard = isAudioCardFront(card.front);
   const [showAudioFront, setShowAudioFront] = useState(false);
-  const [hasSwiped, setHasSwiped] = useState(() => {
-    try {
-      return storedString('lacuna.learnHints').read() === '1';
-    } catch {
-      return false;
-    }
-  });
   const swipeRef = useRef({
     x: 0,
     startX: 0,
@@ -117,6 +124,16 @@ export function FlipCard({
     }
   }, [audioCard, phase, showAudioFront]);
 
+  const activateFace = useCallback(() => {
+    if (phase === 'question') onReveal();
+    else if (phase === 'answer') {
+      // In Touch Mode the answer face is the way back to the question. The replay
+      // control can still show the audio face without leaving the answer phase.
+      if (audioCard && (!isTouchMode || showAudioFront)) setShowAudioFront((visible) => !visible);
+      else onHide();
+    }
+  }, [phase, audioCard, isTouchMode, showAudioFront, onReveal, onHide]);
+
   useEffect(() => setShowAudioFront(false), [card.id]);
 
   useEffect(() => {
@@ -141,11 +158,15 @@ export function FlipCard({
   const localX = useMotionValue(0);
   const sharedX = useContext(StudyCardMotionContext);
   const swipeXMotion = sharedX ?? localX;
+  // Motion owns the continuous drag. React only changes which cue is shown.
+  const swipeOpacity = useTransform(swipeXMotion, (offset) =>
+    Math.min(1, Math.abs(offset) / swipeThreshold),
+  );
   const resetSwipe = useCallback(() => {
     if (m === 0) swipeXMotion.jump(0);
     // Critically damped like the study controls' springs: snappy, settling without bounce.
     else animate(swipeXMotion, 0, scaledSpring(m, 480, 2 * Math.sqrt(480)));
-    setSwipe({ x: 0, hint: null });
+    setSwipeHint(null);
   }, [m, swipeXMotion]);
   useEffect(() => () => swipeXMotion.stop(), [swipeXMotion]);
 
@@ -167,7 +188,7 @@ export function FlipCard({
       };
       selectionLenRef.current = window.getSelection()?.toString().length ?? 0;
       containerRef.current?.setPointerCapture?.(e.pointerId);
-      setSwipe({ x: 0, hint: null });
+      setSwipeHint(null);
     },
     [menuOpen, editing, hintsOpen, isPresent, swipeXMotion],
   );
@@ -182,15 +203,15 @@ export function FlipCard({
       if (!swipeRef.current.axis && Math.max(Math.abs(dx), Math.abs(dy)) > 8) {
         swipeRef.current.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
       }
-      if (swipeRef.current.axis !== 'x' || phase !== 'answer') return;
+      if (!allowGradingGestures || swipeRef.current.axis !== 'x' || phase !== 'answer') return;
       const offset = swipeRef.current.startOffset + dx;
       swipeRef.current.x = offset;
       swipeXMotion.set(offset);
       const hint: 'left' | 'right' | null =
         offset < -swipeThreshold / 2 ? 'left' : offset > swipeThreshold / 2 ? 'right' : null;
-      setSwipe({ x: offset, hint });
+      setSwipeHint(hint);
     },
-    [phase, swipeXMotion],
+    [allowGradingGestures, phase, swipeXMotion],
   );
 
   const handlePointerUp = useCallback(
@@ -204,15 +225,14 @@ export function FlipCard({
       const velocity = swipeXMotion.getVelocity();
       if (axis) {
         const flick = Math.abs(dx) > 12 && Math.abs(velocity) > 650 && dx * velocity > 0;
-        if (axis === 'x' && (Math.abs(dx) > swipeThreshold || flick) && phase === 'answer') {
+        if (
+          allowGradingGestures &&
+          axis === 'x' &&
+          (Math.abs(dx) > swipeThreshold || flick) &&
+          phase === 'answer'
+        ) {
           committed.current = true;
           hapticMedium();
-          setHasSwiped(true);
-          try {
-            storedString('lacuna.learnHints').write('1');
-          } catch {
-            /* ignore */
-          }
           // The shared transition carries swipe, button and keyboard grades off-screen.
           void onAnswer(dx > 0, 'touch', velocity);
         } else {
@@ -228,14 +248,10 @@ export function FlipCard({
             ? containerRef.current.contains(selection.anchorNode)
             : false;
         resetSwipe();
-        if (!selectionGrew || !isInsideCard) {
-          if (phase === 'question') onReveal();
-          else if (phase === 'answer' && audioCard) setShowAudioFront((visible) => !visible);
-          else if (phase === 'answer') onHide();
-        }
+        if (!selectionGrew || !isInsideCard) activateFace();
       }
     },
-    [phase, audioCard, onReveal, onHide, onAnswer, resetSwipe, swipeXMotion],
+    [allowGradingGestures, phase, activateFace, onAnswer, resetSwipe, swipeXMotion],
   );
 
   const handlePointerCancel = useCallback(
@@ -255,7 +271,7 @@ export function FlipCard({
       committed.current = false;
       setShowAudioFront(false);
       swipeXMotion.jump(0);
-      setSwipe({ x: 0, hint: null });
+      setSwipeHint(null);
     }
   }, [phase, isPresent, swipeXMotion]);
 
@@ -268,6 +284,7 @@ export function FlipCard({
     <StudyCardFace
       card={card}
       side={side}
+      promptId={side === 'front' && !measuring ? promptId : undefined}
       audioCard={audioCard}
       audioAutoplay={audioCard && side === 'front'}
       isLinesModeCard={isLinesModeCard}
@@ -277,6 +294,7 @@ export function FlipCard({
       typedAnswer={typedAnswer}
       typedJudgement={typedJudgement}
       answerStrictness={answerStrictness}
+      lessonRequiresCorrectSpelling={lessonRequiresCorrectSpelling}
       occlusion={occlusion}
       occlusionAnswerText={occlusionAnswerText}
       motionMultiplier={m}
@@ -293,25 +311,31 @@ export function FlipCard({
     >
       <div
         ref={containerRef}
-        role="button"
-        tabIndex={0}
+        role={promptOnly ? undefined : 'button'}
+        data-study-reveal-only={!promptOnly && !allowGradingGestures ? true : undefined}
+        tabIndex={promptOnly ? undefined : 0}
         aria-label={
-          displayedFront ? (revealed ? 'Show answer again' : 'Show answer') : 'Hide answer'
+          promptOnly
+            ? undefined
+            : displayedFront
+              ? revealed
+                ? 'Show answer again'
+                : 'Show answer'
+              : 'Hide answer'
         }
-        className="relative w-full cursor-pointer"
+        className={cn('relative w-full', !promptOnly && 'cursor-pointer')}
         style={{ transformStyle: 'preserve-3d', touchAction: 'pan-y' }}
-        onPointerDown={handlePointerDown}
+        onPointerDown={promptOnly ? undefined : handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onKeyDown={(event) => {
-          if (committed.current || !isPresent) return;
+          if (event.target !== event.currentTarget || promptOnly || committed.current || !isPresent)
+            return;
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
           event.stopPropagation();
-          if (phase === 'question') onReveal();
-          else if (phase === 'answer' && audioCard) setShowAudioFront((visible) => !visible);
-          else if (phase === 'answer') onHide();
+          activateFace();
         }}
       >
         <CardSizeMeasurements
@@ -321,44 +345,6 @@ export function FlipCard({
           frontRef={frontRef}
           backRef={backRef}
         />
-
-        {/* Touch swipe indicators — persistent hints that show the available gestures. */}
-        {isTouchMode &&
-          phase === 'answer' &&
-          !hasSwiped &&
-          !swipe.hint &&
-          !menuOpen &&
-          !editing &&
-          !hintsOpen && (
-            <>
-              <motion.div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 left-0 z-20 flex items-center"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 0.5, x: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ delay: 0.6, duration: 0.35 * m, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="flex flex-col items-center gap-1 rounded-r-lg bg-negative/10 px-2 py-3">
-                  <CloseIcon width={16} height={16} className="text-negative" />
-                  <span className="text-[10px] text-negative">Swipe left</span>
-                </div>
-              </motion.div>
-              <motion.div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-center"
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 0.5, x: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ delay: 0.6, duration: 0.35 * m, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="flex flex-col items-center gap-1 rounded-l-lg bg-positive/10 px-2 py-3">
-                  <CheckIcon width={16} height={16} className="text-positive" />
-                  <span className="text-[10px] text-positive">Swipe right</span>
-                </div>
-              </motion.div>
-            </>
-          )}
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
@@ -382,24 +368,24 @@ export function FlipCard({
             className={cn('relative z-10 ' + surfaceClassName, CARD_SURFACE_CLASS)}
           >
             {/* Keep drag feedback attached to the card throughout the throw. */}
-            {swipe.hint && (
-              <div
+            {swipeHint && (
+              <motion.div
                 aria-hidden="true"
                 className={cn(
                   'pointer-events-none absolute top-3 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium',
-                  swipe.hint === 'right'
+                  swipeHint === 'right'
                     ? 'left-4 bg-positive/10 text-positive'
                     : 'right-4 bg-negative/10 text-negative',
                 )}
-                style={{ opacity: Math.min(1, Math.abs(swipe.x) / swipeThreshold) }}
+                style={{ opacity: swipeOpacity }}
               >
-                {swipe.hint === 'right' ? (
+                {swipeHint === 'right' ? (
                   <CheckIcon width={14} height={14} />
                 ) : (
                   <CloseIcon width={14} height={14} />
                 )}
-                {swipe.hint === 'right' ? 'Yes' : 'No'}
-              </div>
+                {swipeHint === 'right' ? 'Yes' : 'No'}
+              </motion.div>
             )}
             {face(displayedFront ? 'front' : 'back')}
           </motion.div>

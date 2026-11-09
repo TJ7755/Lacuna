@@ -54,7 +54,7 @@ it('holds a verdict behind the leave dialogue until the learner chooses Stay', a
     <ThemeProvider>
       <AccentProvider>
         <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
             <Routes>
               <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
             </Routes>

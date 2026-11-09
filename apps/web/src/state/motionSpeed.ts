@@ -20,8 +20,8 @@ const setting = createLocalSetting<MotionSpeed>({
   parse: (raw) => (raw === 'slow' || raw === 'fast' ? raw : 'normal'),
 });
 
-export const readMotionSpeed = setting.read;
-export const writeMotionSpeed = setting.write;
+const readMotionSpeed = setting.read;
+const writeMotionSpeed = setting.write;
 
 export function speedMultiplier(speed?: MotionSpeed): number {
   if (prefersReducedMotion()) return 0;

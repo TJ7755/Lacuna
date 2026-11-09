@@ -7,7 +7,7 @@ import type {
   QuestionSetAttemptRecord,
   QuestionSetResponseValue,
 } from '@lacuna/core/questions/questionSetAttempts';
-import { DAY_MS, isoDayStartMs } from '@lacuna/protocol/insights/index';
+import { utcReportingWindow } from '@lacuna/protocol/insights/index';
 import {
   DailyEvidenceTooLargeError,
   encodeDailyEvidence,
@@ -15,14 +15,15 @@ import {
   type DailyEvidenceEvent,
 } from './evidence';
 
-type Collection = Pick<DailyEvidence, 'shareId' | 'day' | 'pupil'> & { courseId: string };
+type Collection = Pick<DailyEvidence, 'shareId' | 'day' | 'pupil' | 'window'> & {
+  courseId: string;
+};
 const CAPS = { reviews: 200, questions: 100, papers: 5 };
 const bounded = (value: string, max: number) => value.slice(0, max);
 
 /** Read a bounded, consistent local snapshot; no writes, network or scheduler access. */
 export async function collectDailyEvidence(options: Collection): Promise<Uint8Array<ArrayBuffer>> {
-  const start = isoDayStartMs(options.day),
-    end = start + DAY_MS;
+  const { start, end } = options.window ?? utcReportingWindow(options.day);
   const during = (at?: number) => at !== undefined && at >= start && at < end;
   const snapshot = await db.transaction(
     'r',
@@ -127,6 +128,7 @@ export async function collectDailyEvidence(options: Collection): Promise<Uint8Ar
       encodeDailyEvidence({
         shareId: options.shareId,
         day: options.day,
+        window: options.window,
         pupil: options.pupil,
         events: [...events, row],
         omitted: omitted + rows.length,
@@ -143,6 +145,7 @@ export async function collectDailyEvidence(options: Collection): Promise<Uint8Ar
   return encodeDailyEvidence({
     shareId: options.shareId,
     day: options.day,
+    window: options.window,
     pupil: options.pupil,
     events,
     omitted,

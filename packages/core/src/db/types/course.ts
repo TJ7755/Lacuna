@@ -331,6 +331,8 @@ export interface Lesson {
   prerequisiteLessonIds?: string[];
   /** Default for cards without their own answer mode. */
   answerMode?: AnswerMode;
+  /** Default spelling requirement for typed answers in this lesson. */
+  requireCorrectSpelling?: boolean;
   id: string;
   courseId: string;
   name: string;

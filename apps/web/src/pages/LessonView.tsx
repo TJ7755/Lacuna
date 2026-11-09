@@ -2,7 +2,7 @@ import { DeckFind } from '../components/search/DeckFind';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestionSets';
 // Lesson view page — a study destination first, notes/cards second. A header
-// (title, one meta line, a Study/Edit pill and the study action) sits above a large
+// (title, optional description and study action) sits above a large
 // reading card for the notes beside a compact "Cards in this lesson" list. The
 // workspace renders in one of two modes, resolved by src/course/lessonViewMode.ts:
 // View (read-only) or Edit (the same layout with edit controls faded in, and
@@ -19,22 +19,18 @@ import { useLessonViewData } from '../state/useLessonViewData';
 import { LessonNotesCard } from '../components/notes/LessonNotesCard';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { LessonCardsList } from '../components/cards/LessonCardsList';
-import { learntCardCount } from '../components/cards/lessonCardRow';
+import { LessonSpellingControl } from '../components/cards/LessonSpellingControl';
 import { ArrowRightIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { updateCourse } from '../db/courseRepository';
 import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
 import { LessonHeader } from '../components/course/LessonHeader';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
-import { courseHeaderStats } from '../course/headerStats';
-import { lessonMetaParts } from '../course/lessonMeta';
 import {
   canEditLessons,
   isLessonAuthoringMode,
   resolveLessonViewMode,
 } from '../course/lessonViewMode';
-import { progressValue } from '../fsrs/objective';
-import { calendarDaysUntil } from '../utils/datetime';
 import { reorderLessons, updateLesson } from '../db/lessonRepository';
 import { moveLessonIds } from '../components/course/useLessonPathReorder';
 import {
@@ -56,17 +52,10 @@ export function LessonView() {
     (useLocation().state as { focusNewCard?: boolean } | null)?.focusNewCard === true;
   const { notify } = useToast();
   const lessonMenu = useRef<MenuHandle>(null);
-  const {
-    lesson,
-    course,
-    lessons,
-    examDates,
-    notes,
-    lessonCards,
-    dueReviewCardIds,
-    studyReady,
-    lessonDeck,
-  } = useLessonViewData(courseId, lessonId);
+  const { lesson, course, lessons, notes, lessonCards, lessonDeck } = useLessonViewData(
+    courseId,
+    lessonId,
+  );
 
   const shortcutArchived = course?.archived === true;
   usePageShortcuts({
@@ -90,10 +79,8 @@ export function LessonView() {
     lesson === undefined ||
     course === undefined ||
     lessons === undefined ||
-    examDates === undefined ||
     notes === undefined ||
-    lessonCards === undefined ||
-    !studyReady
+    lessonCards === undefined
   ) {
     return <PageLoading />;
   }
@@ -118,14 +105,6 @@ export function LessonView() {
 
   const archived = course.archived === true;
 
-  // Header figures, scoped to this lesson's own cards (reusing the same FSRS
-  // helpers CoursePath uses at course scope — see CoursePath.tsx and
-  // fsrs/eligibility.ts, fsrs/objective.ts).
-  const now = Date.now();
-  const lessonMastery = progressValue(lessonCards, course, now);
-  const { nearestExam, examUrgent } = courseHeaderStats(course, examDates, lessonMastery, now);
-  // Due means what Review due cards serves, counted within this lesson.
-  const lessonDueCount = lessonCards.filter((card) => dueReviewCardIds?.has(card.id)).length;
   const viewMode = archived ? 'study' : resolveLessonViewMode(course);
   const switchToEdit =
     !archived && canEditLessons(course)
@@ -137,16 +116,6 @@ export function LessonView() {
   const authoring = !archived && isLessonAuthoringMode(course);
   const emptyAuthoring =
     authoring && viewMode === 'edit' && lessonCards.length === 0 && notes.length === 0;
-  const metaParts = lessonMetaParts({
-    learnt: learntCardCount(lessonCards),
-    total: lessonCards.length,
-    noteCount: notes.length,
-    dueCount: lessonDueCount,
-    daysToExam:
-      nearestExam === undefined ? undefined : Math.max(calendarDaysUntil(nearestExam, now), 0),
-  });
-  // The first two parts are the empty card/note counters; keep any exam countdown.
-  const visibleMetaParts = emptyAuthoring ? metaParts.slice(2) : metaParts;
   const lessonPosition = lessons.findIndex((candidate) => candidate.id === lesson.id);
   const lessonStudyPath = `/lesson/${encodeURIComponent(lesson.id)}/learn`;
 
@@ -157,13 +126,6 @@ export function LessonView() {
           <LessonHeader
             title={lesson.name}
             description={lesson.description || undefined}
-            meta={
-              visibleMetaParts.length > 0 && (
-                <span className={examUrgent ? 'text-warning-fg' : undefined}>
-                  {visibleMetaParts.join(' · ')}
-                </span>
-              )
-            }
             onRename={
               authoring
                 ? async (name) => {
@@ -254,13 +216,16 @@ export function LessonView() {
                   <DeckFind key={lesson.id} cards={lessonCards} course={course} lesson={lesson} />
                 }
                 footer={
-                  !archived && lessonCards.length > 0 ? (
-                    <SimpleLearnOptions
-                      key={lesson.id}
-                      courseId={course.id}
-                      initialLessonId={lesson.id}
-                    />
-                  ) : undefined
+                  <>
+                    {authoring && <LessonSpellingControl lesson={lesson} />}
+                    {!archived && lessonCards.length > 0 && (
+                      <SimpleLearnOptions
+                        key={lesson.id}
+                        courseId={course.id}
+                        initialLessonId={lesson.id}
+                      />
+                    )}
+                  </>
                 }
               />
             )}

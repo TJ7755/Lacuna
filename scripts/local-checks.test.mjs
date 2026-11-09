@@ -288,8 +288,8 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
     assert.equal(result.report.scope.app, false);
     const lintIndex = result.report.plan.findIndex(({ args }) => args[1] === 'lint');
     assert.deepEqual(
-      result.report.plan.slice(lintIndex, lintIndex + 3),
-      ['lint', 'knip', 'knip:files'].map((script) => ({
+      result.report.plan.slice(lintIndex, lintIndex + 2),
+      ['lint', 'knip'].map((script) => ({
         command: 'bun',
         args: ['run', script],
         cwd: '.',
@@ -332,15 +332,15 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
     assert.deepEqual(browser.env, { CI: 'true' });
     const lintIndex = result.report.commands.findIndex(({ args }) => args[1] === 'lint');
     assert.deepEqual(
-      result.report.commands.slice(lintIndex, lintIndex + 3).map(({ args }) => args),
-      ['lint', 'knip', 'knip:files'].map((script) => ['run', script]),
+      result.report.commands.slice(lintIndex, lintIndex + 2).map(({ args }) => args),
+      ['lint', 'knip'].map((script) => ['run', script]),
     );
   });
 
   test('lint and unused-code failures preserve their status and stop subsequent checks', (t) => {
     const { change, run } = fixture(t);
     change('tooling/handwriting-maths/src/main.ts');
-    const scripts = ['lint', 'knip', 'knip:files'];
+    const scripts = ['lint', 'knip'];
     for (const [index, script] of scripts.entries()) {
       const result = run('verify.mjs', [], { FAKE_FAIL_SCRIPT: script, FAKE_STATUS: '23' });
       assert.equal(result.status, 23, script);

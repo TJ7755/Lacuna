@@ -134,6 +134,7 @@ const ShareCardSchema = z
     // Stable Concept identity within a v3 payload. Optional only for v2 compatibility.
     co: z.string().optional(),
     am: z.enum(['reveal', 'type']).optional(),
+    rs: z.boolean().optional(),
   })
   .superRefine((card, context) => {
     if (card.p !== undefined && card.k !== 0) {
@@ -161,6 +162,7 @@ const ShareNoteSchema = z.object({
 const ShareLessonSchema = z.object({
   pr: z.array(z.string().min(1)).optional(),
   am: z.enum(['reveal', 'type']).optional(),
+  rs: z.boolean().optional(),
   n: z.string().min(1),
   d: z.string().optional(), // description
   x: z.union([z.literal(0), z.literal(1)]).optional(), // isExtension

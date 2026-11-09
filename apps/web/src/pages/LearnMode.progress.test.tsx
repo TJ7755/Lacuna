@@ -30,7 +30,7 @@ describe('LearnMode progress', () => {
       <ThemeProvider>
         <AccentProvider>
           <ToastProvider>
-            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
               <Routes>
                 <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
               </Routes>
@@ -133,7 +133,7 @@ describe('LearnMode progress', () => {
 
     const firstQuestion = (await findStudyFaceText(/undo question/i)).textContent;
     await answerYes();
-    expect(await screen.findByText(/^(Easy|Good|Hard) · \d+% recall at exam$/)).toBeInTheDocument();
+    expect(await screen.findByText(/^(Easy|Good|Hard), \d+% recall at exam$/)).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
 
     await waitFor(async () => expect(await db.reviewHistory.count()).toBe(0));
@@ -319,7 +319,7 @@ describe('LearnMode progress', () => {
       <ThemeProvider>
         <AccentProvider>
           <ToastProvider>
-            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
               <Routes>
                 <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
               </Routes>

@@ -69,7 +69,10 @@ test('every Bun workflow uses the security guard and manifests share its pin', (
     for (const job of Object.values(workflow.jobs)) {
       for (const step of job.steps ?? []) {
         assert.ok(!step.uses?.startsWith('oven-sh/setup-bun@'), `${file} bypasses the Bun guard`);
-        if (step.uses?.startsWith('actions/setup-node@')) {
+        if (
+          step.uses === './.github/actions/setup-node' ||
+          step.uses?.startsWith('actions/setup-node@')
+        ) {
           assert.equal(step.with['node-version'], '24.22.1', file);
         }
       }
@@ -108,6 +111,35 @@ test('Vercel builds use the verified Bun bootstrap instead of vulnerable bunx do
       `https://github.com/oven-sh/bun/releases/download/bun-v${version}/${name}`,
     );
     assert.match(asset.sha256, /^[a-f0-9]{64}$/);
+  }
+});
+
+test('CI rejects a changed Node archive before publishing its executable path', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'lacuna-node-checksum-'));
+  try {
+    const output = join(directory, 'github-path');
+    const mock = 'globalThis.fetch = async () => new Response("changed archive")';
+    writeFileSync(output, '');
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--import',
+        `data:text/javascript,${encodeURIComponent(mock)}`,
+        'scripts/ci-node-runtime.mjs',
+        '24.22.1',
+      ],
+      {
+        env: { ...process.env, GITHUB_PATH: output, RUNNER_TEMP: directory },
+        encoding: 'utf8',
+        timeout: 10_000,
+      },
+    );
+    assert.equal(result.error, undefined);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Node checksum mismatch/);
+    assert.equal(readFileSync(output, 'utf8'), '');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
 });
 

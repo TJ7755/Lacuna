@@ -37,8 +37,7 @@ export function CourseEntrySection({ courseId }: { courseId: string }) {
           </label>
         </h3>
         <p id={hintId} className="mt-1 text-sm text-ink-soft">
-          Joining part-way? Pick your class’s current lesson. Earlier lessons stay open and nothing
-          is marked complete.
+          Earlier lessons remain open.
         </p>
       </div>
       <Select

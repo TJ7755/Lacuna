@@ -24,10 +24,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bun audit --audit-level=high
@@ -40,10 +39,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         with:
           cache-dependency-path: bun.lock
@@ -59,10 +57,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/setup-node
         with:
           node-version: '24.22.1'
-          package-manager-cache: false
       - uses: ./.github/actions/setup-bun
         with:
           cache-dependency-path: bun.lock
@@ -81,15 +78,45 @@ jobs:
       fail-fast: false
       matrix:
         language: [javascript-typescript, actions]
+        include:
+          - language: javascript-typescript
+            archive: codeql-bundle-javascript-linux64.tar.zst
+            asset: '692239234'
+            sha256: 082e798c97831283a2a5f69e9198c51270e5767013d5333daeeab6520af9ce72
+          - language: actions
+            archive: codeql-bundle-actions-linux64.tar.zst
+            asset: '692238277'
+            sha256: f12b84c1ed3540c54691257ddea1b72b62f785c8bb3eca907562c6a8a2361d32
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Keep the v2.27.4 bundle pins in step with the CodeQL action upgrade.
+      # If this official endpoint is unavailable, let init use its standard resolver.
+      - name: Verify the CodeQL bundle
+        id: bundle
+        shell: bash
+        env:
+          CODEQL_ARCHIVE: ${{ matrix.archive }}
+          CODEQL_ASSET: ${{ matrix.asset }}
+          CODEQL_SHA256: ${{ matrix.sha256 }}
+        run: |
+          bundle="$RUNNER_TEMP/$CODEQL_ARCHIVE"
+          if curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --max-time 20 \
+            -H 'Accept: application/octet-stream' \
+            "https://api.github.com/repos/github/codeql-action/releases/assets/$CODEQL_ASSET" \
+            -o "$bundle" &&
+            printf '%s  %s\n' "$CODEQL_SHA256" "$bundle" | sha256sum --check --strict; then
+            echo "path=$bundle" >> "$GITHUB_OUTPUT"
+          else
+            echo '::warning::Verified CodeQL bundle unavailable. Using the default resolver.'
+          fi
       - name: Initialise CodeQL
         uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           languages: ${{ matrix.language }}
           build-mode: none
+          tools: ${{ steps.bundle.outputs.path }}
       - name: Analyse with CodeQL
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:

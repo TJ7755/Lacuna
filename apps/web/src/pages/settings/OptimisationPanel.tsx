@@ -145,22 +145,11 @@ export function OptimisationPanel({
       <InlineSettingsDisclosure
         className="group"
         label="Scheduling optimisation"
-        headerClassName="mt-1 flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-        header={
-          <>
-            <span className="min-w-0 text-sm text-ink-soft">
-              {enabled ? 'Enabled' : 'Disabled'} for this {entityLabel}. Open to fit scheduling to
-              your review history or reset its weights to the recommended defaults.
-            </span>
-          </>
-        }
+        headerClassName="mt-1 flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        header={<span className="text-sm text-ink-soft">{enabled ? 'On' : 'Off'}</span>}
       >
         <div className="mt-5 border-t border-line pt-5">
-          <div className="flex items-start justify-between gap-3">
-            <p className="min-w-0 text-sm text-ink-soft">
-              Fit this {entityLabel}&apos;s scheduler to its own review history. Changes apply only
-              after confirmation, and Lacuna takes a restore point first.
-            </p>
+          <div className="flex items-center justify-between gap-3">
             <Toggle
               checked={enabled}
               onChange={(checked) => void onUpdate({ autoOptimise: checked })}
@@ -179,9 +168,7 @@ export function OptimisationPanel({
                   transition={{ duration: 0.16 * m }}
                   className="text-sm text-ink-faint"
                 >
-                  Optimisation needs at least {MIN_OPTIMISE_REVIEWS} reviews so that a held-out
-                  validation portion is large enough to judge the fit honestly. This {entityLabel}{' '}
-                  has {reviews}. Keep revising and it will become available.
+                  {reviews} of {MIN_OPTIMISE_REVIEWS} reviews needed.
                 </motion.p>
               ) : !enabled ? (
                 <motion.p
@@ -192,8 +179,7 @@ export function OptimisationPanel({
                   transition={{ duration: 0.16 * m }}
                   className="text-sm text-ink-faint"
                 >
-                  Optimisation is turned off for this {entityLabel}. Enable it above to fit the
-                  weights.
+                  Enable optimisation to fit weights.
                 </motion.p>
               ) : optimiser.status === 'running' ? (
                 <motion.div
@@ -223,14 +209,10 @@ export function OptimisationPanel({
                   </p>
                   {optimiser.result.scored === 0 ? (
                     <p className="mb-3 text-sm text-ink-faint">
-                      Not enough recent reviews to validate out of sample. The default weights are
-                      recommended.
+                      Too few recent reviews to validate.
                     </p>
                   ) : !optimiser.result.isOutOfSampleWin ? (
-                    <p className="mb-3 text-sm text-negative">
-                      The fitted weights did not beat the current weights on unseen data. Keep the
-                      current weights for now.
-                    </p>
+                    <p className="mb-3 text-sm text-negative">No improvement on unseen reviews.</p>
                   ) : null}
                   <div className="flex flex-wrap gap-2">
                     {optimiser.result.isOutOfSampleWin && optimiser.result.scored > 0 && (

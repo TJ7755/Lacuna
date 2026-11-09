@@ -116,7 +116,7 @@ test('refresh rejects duplicated, failed and retried evidence', () => {
 test('real Playwright test-list parsing preserves parameterised, serial and skipped identities', () => {
   const directory = realpathSync(mkdtempSync(join(tmpdir(), 'lacuna-browser-shards-')));
   try {
-    symlinkSync(resolve('node_modules'), join(directory, 'node_modules'), 'dir');
+    symlinkSync(resolve('node_modules'), join(directory, 'node_modules'), 'junction');
     mkdirSync(join(directory, 'nested'));
     writeFileSync(
       join(directory, 'playwright.config.mjs'),
@@ -179,7 +179,7 @@ test('real Playwright test-list parsing preserves parameterised, serial and skip
 test('the shard CLI executes tests and retains its selector and plan after output cleanup', () => {
   const directory = realpathSync(mkdtempSync(join(tmpdir(), 'lacuna-browser-shard-run-')));
   try {
-    symlinkSync(resolve('node_modules'), join(directory, 'node_modules'), 'dir');
+    symlinkSync(resolve('node_modules'), join(directory, 'node_modules'), 'junction');
     for (const path of ['scripts', 'tests/config', 'tests/e2e', 'test-results'])
       mkdirSync(join(directory, path), { recursive: true });
     for (const file of ['ci-browser-shards.mjs', 'ci-browser-timings.json'])

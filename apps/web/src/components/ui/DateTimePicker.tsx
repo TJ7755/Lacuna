@@ -155,7 +155,7 @@ export function DateTimePicker({
     todayYear,
   ]);
 
-  const display = `${pad(selectedDay)} ${MONTHS[selectedMonth].slice(0, 3)} ${selectedYear} · ${pad(hours)}:${pad(minutes)}`;
+  const display = `${pad(selectedDay)} ${MONTHS[selectedMonth].slice(0, 3)} ${selectedYear} at ${pad(hours)}:${pad(minutes)}`;
 
   const closePicker = useCallback((restoreFocus: boolean) => {
     setOpen(false);

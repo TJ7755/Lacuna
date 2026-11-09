@@ -185,3 +185,22 @@ mark.typed-missed {
     opacity: 0.7;
   }
 }
+
+.study-choice-controls .qs-choices {
+  margin: 0;
+}
+
+.study-choice-controls .qs-choices[data-flow] > div {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  max-width: none;
+  margin-inline: auto;
+  border-radius: 9999px;
+}
+
+.study-choice-controls .qs-choices label {
+  flex: none;
+  border-radius: 9999px;
+  white-space: nowrap;
+}

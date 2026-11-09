@@ -39,8 +39,8 @@ async function fetchDecksAndCards() {
   const courseNameMap = new Map(courses.map((c) => [c.id, c.name]));
   const courseColourMap = new Map(courses.map((c) => [c.id, c.colour ?? '']));
   const lessonNameMap = new Map(lessons.map((l) => [l.id, l.name]));
-  const lessonAnswerModes = new Map(lessons.map((lesson) => [lesson.id, lesson.answerMode]));
-  return { courseNameMap, courseColourMap, lessonNameMap, lessonAnswerModes, cards };
+  const lessonsById = new Map(lessons.map((lesson) => [lesson.id, lesson]));
+  return { courseNameMap, courseColourMap, lessonNameMap, lessonsById, cards };
 }
 
 /**
@@ -222,7 +222,11 @@ export async function exportCardsJson(): Promise<string> {
     tags: c.tags ?? [],
     deck: resolveDeckDisplay(c, maps).name,
     type: c.type,
-    answerMode: c.answerMode ?? maps.lessonAnswerModes.get(c.primaryLessonId ?? '') ?? 'reveal',
+    answerMode:
+      c.answerMode ?? maps.lessonsById.get(c.primaryLessonId ?? '')?.answerMode ?? 'reveal',
+    requireCorrectSpelling:
+      c.requireCorrectSpelling ??
+      maps.lessonsById.get(c.primaryLessonId ?? '')?.requireCorrectSpelling,
   }));
   return JSON.stringify(items, null, 2);
 }

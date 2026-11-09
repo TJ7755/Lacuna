@@ -9,7 +9,12 @@ import {
 } from './TeacherClassReports.testSupport';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { expect, it } from 'vitest';
-import { DAY_MS, isoDayLabel, isoDayStartMs } from '@lacuna/protocol/insights/index';
+import {
+  DAY_MS,
+  isoDayLabel,
+  isoDayStartMs,
+  localReportingDayLabel,
+} from '@lacuna/protocol/insights/index';
 import { createClassSessions } from './classSessions';
 import { dayLabel } from './classInsights';
 
@@ -34,7 +39,7 @@ it('reads only after an explicit unlock and preserves unknown, self-marked and d
   fireEvent.click(pupil);
   expect(pupil).toHaveAttribute('aria-expanded', 'true');
   const dialog = await screen.findByRole('region', { name: 'Evidence for Pupil A' });
-  expect(within(dialog).getByText(/Unknown \/ 2 marks · Self marked/)).toBeInTheDocument();
+  expect(within(dialog).getByText(/Unknown \/ 2 marks \(Self marked,/)).toBeInTheDocument();
   expect(within(dialog).getByText(/disputed by the pupil/)).toBeInTheDocument();
   expect(within(dialog).getByText(/shortened for this report/)).toBeInTheDocument();
   expect(within(dialog).getByText(/Membrane/)).toHaveTextContent('Membrane Unknown / 2');
@@ -78,15 +83,15 @@ it('reads an earlier day on request and keeps days already read for this session
   expect(screen.getByRole('button', { name: 'Next day' })).toBeDisabled();
 });
 
-it('opens today’s UTC day and explains explicit partial snapshots and refreshing', async () => {
+it('opens today’s local day and explains explicit partial snapshots and refreshing', async () => {
   render(<Harness />);
   await unlock();
   await screen.findByText(/No report does not mean no study/);
   expect(mocks.read).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ isoDay: isoDayLabel(Date.now()) }),
+    expect.objectContaining({ isoDay: localReportingDayLabel(Date.now()) }),
   );
-  expect(screen.getByText('Today (UTC)')).toBeVisible();
-  expect(screen.getByText(/Partial UTC results/)).toHaveTextContent(
+  expect(screen.getByText('Today')).toBeVisible();
+  expect(screen.getByText(/Partial results/)).toHaveTextContent(
     /Ask pupils to Send latest progress.*Refresh results/,
   );
   expect(screen.getByRole('button', { name: 'Next day' })).toBeDisabled();
@@ -187,7 +192,7 @@ it('aborts a pending refresh when navigating and ignores its late result', async
   fireEvent.click(screen.getByRole('button', { name: 'Next day' }));
   await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(4));
   await screen.findByText(/No report does not mean no study/);
-  expect(screen.getByText('Today (UTC)')).toBeVisible();
+  expect(screen.getByText('Today')).toBeVisible();
 });
 
 it('aborts a pending refresh on lock without repopulating the revoked session', async () => {

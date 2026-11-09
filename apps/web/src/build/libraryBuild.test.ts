@@ -43,7 +43,7 @@ it('builds only the library and its shared presentation, without learner startup
     ]);
     expect(files.filter((file) => /(?:worker|manifest|\.wasm$|\.lacuna$)/i.test(file))).toEqual([]);
     expect(await readFile(join(directory, 'index.html'), 'utf8')).toContain(
-      '<title>Library · Lacuna</title>',
+      '<title>Library – Lacuna</title>',
     );
     const scriptBytes = await Promise.all(
       scripts.map(async (file) => gzipSync(await readFile(join(directory, file))).byteLength),

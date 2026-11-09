@@ -106,9 +106,7 @@ describe('SyncPairingFlow', () => {
     it('joins with a trimmed channel id', async () => {
       const { onManualJoin } = openManual();
       expect(screen.getByLabelText('Channel id')).toHaveFocus();
-      expect(
-        screen.getByText(/Enter the recovery passphrase chosen when sync was first set up/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Use your existing passphrase/)).toBeInTheDocument();
       type('Channel id', ` ${channelId} `);
       type('Recovery passphrase', passphrase);
       fireEvent.click(screen.getByRole('button', { name: 'Join channel' }));
@@ -160,9 +158,7 @@ describe('SyncPairingFlow', () => {
 
       expect(await screen.findByText('https://relay.example')).toBeInTheDocument();
       expect(decodePairingCode).toHaveBeenCalledWith('lacuna-pairing-code');
-      expect(
-        screen.getByText(/You can reuse your existing recovery passphrase/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/You can reuse your passphrase/)).toBeInTheDocument();
       expect(scannerStop).toHaveBeenCalled();
       await waitFor(() =>
         expect(screen.getByLabelText('Recovery passphrase for this device')).toHaveFocus(),
@@ -235,9 +231,7 @@ describe('SyncPairingFlow', () => {
       Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: undefined });
       renderFlow('join');
       expect(screen.getByRole('button', { name: 'Scan pairing QR' })).toBeDisabled();
-      expect(
-        screen.getByText('Camera scanning is unavailable in this browser.'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Camera unavailable.')).toBeInTheDocument();
     });
   });
 });

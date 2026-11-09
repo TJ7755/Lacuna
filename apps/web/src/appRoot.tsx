@@ -1,7 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LazyMotion } from 'motion/react';
-import { Analytics } from '@vercel/analytics/react';
 import { App } from './App';
 import { installPressFeedback } from './components/ui/pressFeedback';
 import { installTypingFeedback } from './components/ui/typingFeedback';
@@ -22,7 +21,6 @@ export function renderApp(): void {
     <StrictMode>
       <LazyMotion features={loadMotionFeatures}>
         <App />
-        {__VERCEL_ANALYTICS_ENABLED__ && <Analytics />}
       </LazyMotion>
     </StrictMode>,
   );

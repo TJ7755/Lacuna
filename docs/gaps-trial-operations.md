@@ -6,17 +6,8 @@ Use the [school notice](gaps-school-notice.md) and the
 
 ## Deploy the teacher project and migrate hostnames
 
-Use the separate `lacuna-gaps` project for `gaps.getlacuna.app` and its
-`teach.getlacuna.app` redirect. Do not change the learner project's build command.
-Confirm team `tj7755`, production branch `master`, Root Directory `apps/gaps`, and
-inclusion of source files outside that directory. Keep the frozen-lockfile
-install/build commands in [apps/gaps/vercel.json](../apps/gaps/vercel.json); they run from
-the repository root (`cd ../..`) and produce `apps/gaps/dist`. Use the repository's pinned Bun.
-
-Git-triggered deployments are disabled. Clear the old dashboard Ignored Build Step override.
-Production builds run in GitHub Actions and upload prebuilt output; there are no PR previews.
-Follow the enable gate and manual dispatch procedure in
-[workspace deployments](maintenance/workspaces.md#github-built-production-deployments).
+Use `lacuna-gaps` for `gaps.getlacuna.app` and the `teach.getlacuna.app` redirect. Follow the
+[workspace deployment procedure](maintenance/workspaces.md#github-built-production-deployments).
 
 Inspect the linked project and team before deployment; a link to `lacuna` is the
 wrong target. Stage with `bunx vercel deploy --prod --skip-domain`, verify the
@@ -67,17 +58,12 @@ synthetic share afterwards and verify its payload returns 404. Keep browser trac
 and video disabled: they can retain authorisation material. A successful synthetic
 flow does not prove that every pupil's device has delivered.
 
-Check failed requests by route/status in a bounded time window. Distinguish a
-disabled gate (503), a request limit (429), an expired day (410), a rejected
-credential (401), a duplicate slot conflict (409) and a server failure. Missing
-reports are not an attendance count. Preserve self-reported/unknown evidence.
+Check request counts and status by route in a bounded time window. Preserve self-reported and
+unknown evidence when investigating missing reports.
 
 ## Verify retention maintenance
 
-Provision production `CRON_SECRET` on `lacuna-relay` for scheduled maintenance.
-Keep it a server-only Secret, never a browser variable or repository file.
-After adding or changing it, deploy the reviewed relay source: a saved variable
-does not update a running deployment.
+Follow the [relay secret setup](../apps/relay/README.md#environment).
 
 Check a real scheduled invocation for a 200 response. A schedule alone, a 401,
 or an unauthenticated manual request does not prove cleanup ran. An authorised
@@ -96,25 +82,26 @@ lag; they are not a final invoice or a spending cap. The account's Pro credit is
 shared with other projects, and the subscription charge is separate from usage
 consuming that credit. Do not attribute all account costs to Gaps.
 
-Compare builds, functions and Blob usage, rather than counting encrypted reports
-alone. Keep Git-triggered deployments disabled; production builds run on GitHub when
-the deployment enable variable is set. Do not add paid monitoring, databases or account-wide pause rules for this
-trial without a concrete need and the owner's choice about effects on other apps.
+Compare builds, functions and Blob usage. Obtain the owner's approval before adding paid services
+or account-wide pause rules.
+
 Check [current Blob pricing](https://vercel.com/docs/vercel-blob/usage-and-pricing)
 and [Pro credit rules](https://vercel.com/docs/plans/pro-plan) when reviewing them.
 
 ## After the class starts
 
 After the first explicit publication, have the teacher refresh today's results
-and confirm they can read the snapshot. After the first completed UTC day with
+and confirm they can read the snapshot. After the first completed local day with
 the class, also confirm automatic daily delivery. Ask about missing reports privately;
 first check consent, class invitation, app version and whether the app was opened
 online. Record only aggregate operational findings publicly.
 
-Review spend and the next scheduled maintenance result after the first day, then
-after the first week. This is an operator procedure, not a newly installed
-recurring automation. Keep the epic open for the real teacher's observations and
-the first-class follow-through; do not mark them complete from synthetic tests.
+After a reporting update, refresh both Lacuna and Gaps on the trial devices.
+Check the new day boundary on a date without a pre-update UTC report. If a
+publication fails during rollout, retry after the relay deployment finishes.
+
+Review spend and the next scheduled maintenance result after the first day and week. Record the
+teacher's observations and first-class follow-through on the trial issue.
 
 ## Disable the trial
 

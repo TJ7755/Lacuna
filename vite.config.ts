@@ -84,8 +84,6 @@ export const workbox = {
 
 // Registration is gated by the page protocol in apps/web/src/webBootstrap.ts so the
 // packaged app never tries to install a worker from app://.
-export const pwaInjectRegister = null;
-
 // Lacuna is a static, serverless single-page application.
 export default defineConfig({
   plugins: [
@@ -97,7 +95,7 @@ export default defineConfig({
     appShellPrecachePlugin(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: pwaInjectRegister,
+      injectRegister: null,
       manifest: false, // Use the custom manifest in public/
       workbox,
       devOptions: {
@@ -127,7 +125,6 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(packageJson.version),
     // Vercel serves the analytics endpoint itself. Do not inject a script that
     // will 404 on local previews, Electron or other static hosts.
-    __VERCEL_ANALYTICS_ENABLED__: JSON.stringify(process.env.VERCEL === '1'),
   },
   resolve: {
     dedupe: ['react', 'react-dom', 'motion'],

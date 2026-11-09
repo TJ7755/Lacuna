@@ -1,101 +1,56 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-import {
-  readStored,
-  writeSidebarSettings,
-  useSidebarSettings,
-  DEFAULT_NAV_ITEMS,
-  DEFAULTS,
-} from './sidebarSettings';
-import { renderHook, act } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, expect, it } from 'vitest';
+import { useSidebarSettings } from './sidebarSettings';
 
-const KEY = 'lacuna.sidebarSettings';
+const key = 'lacuna.sidebarSettings';
+beforeEach(() => localStorage.clear());
 
-beforeEach(() => {
-  localStorage.clear();
+it.each([null, 'not-json'])('uses the sidebar defaults for %j', (stored) => {
+  if (stored !== null) localStorage.setItem(key, stored);
+  const { result } = renderHook(useSidebarSettings);
+  expect(result.current[0]).toMatchObject({ compactMode: false, showDueCounts: true });
+  expect(result.current[0].navItems.map((item) => item.id)).toEqual([
+    'dashboard',
+    'search',
+    'share',
+    'analytics',
+    'settings',
+    'help',
+  ]);
 });
 
-describe('readStored', () => {
-  it('returns defaults when nothing is stored', () => {
-    const settings = readStored();
-    expect(settings.showDueCounts).toBe(DEFAULTS.showDueCounts);
-    expect(settings.compactMode).toBe(DEFAULTS.compactMode);
-    expect(settings.navItems).toEqual(DEFAULT_NAV_ITEMS);
-  });
-
-  it('ignores retired archive visibility controls', () => {
-    localStorage.setItem(
-      KEY,
-      JSON.stringify({
-        showArchived: false,
-        compactMode: true,
-        navItems: [
-          { id: 'archived', label: 'Archived', visible: false },
-          { id: 'dashboard', label: 'Dashboard', visible: true },
-        ],
-      }),
-    );
-
-    expect(readStored()).toMatchObject({ compactMode: true });
-    expect(readStored()).not.toHaveProperty('showArchived');
-    expect(readStored().navItems.some((item) => item.id === 'archived')).toBe(false);
-  });
-
-  it('returns merged nav items when stored items are missing new defaults', () => {
-    const stored = {
+it('keeps saved sidebar choices and restores access to Settings', () => {
+  localStorage.setItem(
+    key,
+    JSON.stringify({
+      showArchived: false,
       showDueCounts: false,
-      navItems: [{ id: 'dashboard', label: 'Dashboard', visible: true }],
-    };
-    localStorage.setItem(KEY, JSON.stringify(stored));
-    const settings = readStored();
-    expect(settings.showDueCounts).toBe(false);
-    expect(settings.navItems.length).toBeGreaterThanOrEqual(DEFAULT_NAV_ITEMS.length);
-    expect(settings.navItems.find((item) => item.id === 'search')).toEqual({
-      id: 'search',
-      label: 'Search',
-      visible: true,
-    });
-  });
-
-  it('falls back to defaults on invalid JSON', () => {
-    localStorage.setItem(KEY, 'not-json');
-    const settings = readStored();
-    expect(settings.showDueCounts).toBe(DEFAULTS.showDueCounts);
-  });
-
-  it('drops stored nav items whose id no longer exists as a default, preserving surviving order', () => {
-    const stored = {
       navItems: [
         { id: 'settings', label: 'Settings', visible: false },
-        { id: 'learn', label: 'Study today', visible: true }, // stale/removed nav item
+        { id: 'learn', label: 'Study today', visible: true },
+        { id: 'archived', label: 'Archived', visible: false },
         { id: 'dashboard', label: 'Dashboard', visible: true },
       ],
-    };
-    localStorage.setItem(KEY, JSON.stringify(stored));
-    const settings = readStored();
-    expect(settings.navItems.find((n) => n.id === 'learn')).toBeUndefined();
-    // Surviving items keep their stored order and visibility ahead of any merged defaults.
-    expect(settings.navItems[0]).toEqual({ id: 'settings', label: 'Settings', visible: false });
-    expect(settings.navItems[1]).toEqual({ id: 'dashboard', label: 'Today', visible: true });
-  });
-});
-
-describe('useSidebarSettings', () => {
-  it('returns the current settings and a setter', () => {
-    const { result } = renderHook(() => useSidebarSettings());
-    expect(result.current[0].showDueCounts).toBe(true);
-    act(() => {
-      result.current[1]({ compactMode: true });
-    });
-    expect(result.current[0].compactMode).toBe(true);
-  });
-});
-
-describe('writeSidebarSettings', () => {
-  it('persists partial settings to localStorage', () => {
-    writeSidebarSettings({ compactMode: true });
-    const raw = localStorage.getItem(KEY);
-    expect(raw).toBeTruthy();
-    const parsed = JSON.parse(raw!);
-    expect(parsed.compactMode).toBe(true);
+    }),
+  );
+  const { result } = renderHook(useSidebarSettings);
+  expect(result.current[0]).not.toHaveProperty('showArchived');
+  expect(result.current[0].navItems.map((item) => item.id)).toEqual([
+    'settings',
+    'dashboard',
+    'search',
+    'share',
+    'analytics',
+    'help',
+  ]);
+  expect(result.current[0].navItems.slice(0, 3)).toEqual([
+    { id: 'settings', label: 'Settings', visible: true },
+    { id: 'dashboard', label: 'Today', visible: true },
+    { id: 'search', label: 'Search', visible: true },
+  ]);
+  act(() => result.current[1]({ compactMode: true }));
+  expect(JSON.parse(localStorage.getItem(key)!)).toMatchObject({
+    showDueCounts: false,
+    compactMode: true,
   });
 });

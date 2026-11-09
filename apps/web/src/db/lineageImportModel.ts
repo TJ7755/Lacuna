@@ -95,6 +95,7 @@ export function toShareLessonInput(lesson: LineagePayload['lessons'][number]): S
     tz: lesson.tz,
     sf: lesson.sf,
     am: lesson.am,
+    rs: lesson.rs,
     notes: lesson.notes.map((note): ShareNoteInput => {
       if (!note.oi) throw new Error('Lineage payload note is missing its originating id.');
       return { i: note.oi, n: note.n, c: note.c };
@@ -113,6 +114,7 @@ export function toShareCardInput(card: ShareCard): ShareCardInput {
     g: card.g,
     p: card.p as ItemPayload | undefined,
     am: card.am,
+    rs: card.rs,
   };
 }
 
@@ -128,6 +130,7 @@ export function toExistingLesson(lesson: Lesson): ExistingLesson {
     timeZone: lesson.timeZone,
     sessionFilter: lesson.sessionFilter === 'new' ? undefined : lesson.sessionFilter,
     answerMode: lesson.answerMode,
+    requireCorrectSpelling: lesson.requireCorrectSpelling,
     orderIndex: lesson.orderIndex,
   };
 }
@@ -152,6 +155,7 @@ export function toExistingCard(card: Card): ExistingCard {
     tags: card.tags,
     payload: card.payload,
     answerMode: card.answerMode,
+    requireCorrectSpelling: card.requireCorrectSpelling,
   };
 }
 
@@ -172,6 +176,7 @@ export function cardSnapshot(card: ExistingCard): LineageCardSnapshot {
     tags: card.tags,
     payload: card.payload,
     answerMode: card.answerMode,
+    requireCorrectSpelling: card.requireCorrectSpelling,
   };
 }
 
@@ -243,6 +248,7 @@ function lessonSnapshotsEqual(a: LineageLessonSnapshot, b: LineageLessonSnapshot
     a.timeZone === b.timeZone &&
     a.sessionFilter === b.sessionFilter &&
     a.answerMode === b.answerMode &&
+    Boolean(a.requireCorrectSpelling) === Boolean(b.requireCorrectSpelling) &&
     a.orderIndex === b.orderIndex
   );
 }
@@ -264,6 +270,7 @@ function cardSnapshotsEqual(a: LineageCardSnapshot, b: LineageCardSnapshot): boo
     a.back === b.back &&
     tagsEqual(a.tags, b.tags) &&
     a.answerMode === b.answerMode &&
+    a.requireCorrectSpelling === b.requireCorrectSpelling &&
     jsonValuesEqual(a.payload, b.payload)
   );
 }

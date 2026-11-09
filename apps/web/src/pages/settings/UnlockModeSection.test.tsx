@@ -19,7 +19,7 @@ describe('UnlockModeSection', () => {
     expect(screen.queryByText('Days between lessons')).not.toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Open' })).toHaveAttribute('aria-checked', 'true');
     // Only the selected mode is described, so the picker stays compact.
-    expect(screen.getByText(/work ahead freely/)).toBeInTheDocument();
+    expect(screen.getByText(/All lessons are open from the start/)).toBeInTheDocument();
     expect(screen.queryByText(/device clock/)).not.toBeInTheDocument();
   });
 

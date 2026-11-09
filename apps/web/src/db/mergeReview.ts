@@ -181,6 +181,7 @@ async function takeIncomingConflict(
       timeZone: inc.tz,
       sessionFilter: inc.sf,
       answerMode: inc.am,
+      requireCorrectSpelling: inc.rs ?? null,
     });
   } else if (kind === 'note') {
     const inc = incoming as ShareNoteInput;
@@ -200,6 +201,7 @@ async function takeIncomingConflict(
       tags: inc.g ?? [],
       payload: inc.p,
       answerMode: inc.am,
+      requireCorrectSpelling: inc.rs,
     });
   }
   await refreshSnapshot(kind, entityId, mapping);

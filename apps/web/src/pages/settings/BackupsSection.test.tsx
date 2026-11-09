@@ -283,7 +283,7 @@ describe('BackupsSection', () => {
       });
       render(<BackupsSection />);
 
-      expect(await screen.findByText('Folder copy · Backups')).toBeInTheDocument();
+      expect(await screen.findByText('Folder copy (Backups)')).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Save restore point' }));
 
       expect(await screen.findByRole('alert')).toHaveTextContent(message);
@@ -302,7 +302,7 @@ describe('BackupsSection', () => {
     });
     render(<BackupsSection />);
 
-    await screen.findByText('Folder copy · Backups');
+    await screen.findByText('Folder copy (Backups)');
     expect(screen.queryByText(/^Copied /)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Save restore point' }));
 
@@ -321,7 +321,7 @@ describe('BackupsSection', () => {
         }),
     );
     render(<BackupsSection />);
-    await screen.findByText('Folder copy · Backups');
+    await screen.findByText('Folder copy (Backups)');
 
     fireEvent.click(screen.getByRole('button', { name: 'Save restore point' }));
     await waitFor(() =>

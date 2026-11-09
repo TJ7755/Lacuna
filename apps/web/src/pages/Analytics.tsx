@@ -185,7 +185,6 @@ export function Analytics() {
         <FadeInView y={12} className={CELL}>
           <ChartCard
             title="Predicted exam-day recall"
-            description="Each point is a day you studied, averaging the courses studied that day."
             data={{
               columns: ['Date', 'Predicted recall (%)', 'Courses'],
               rows: trajectory.map((point) => [
@@ -267,7 +266,6 @@ export function Analytics() {
         <FadeInView y={12} className={CELL}>
           <ChartCard
             title="Observed recall by card age"
-            description="How often you recalled cards in past reviews, by how long you had been studying each one."
             data={{
               columns: ['Card age', 'Observed recall (%)', 'Reviews'],
               rows: retention.map((point) => [point.ageLabel, point.retention, point.count]),
@@ -300,7 +298,7 @@ export function Analytics() {
           <FadeInView y={12} className={CELL}>
             <ChartCard
               title="Stability profile"
-              description="Days until each card's recall is likely to fall to 90%. Longer means more durable; new cards have no estimate yet."
+              description="Days until recall falls to 90%"
               data={{
                 columns: ['Stability', 'Cards'],
                 rows: profile.map((point) => [point.range, point.count]),
@@ -325,7 +323,6 @@ export function Analytics() {
         <FadeInView y={12} className={CELL}>
           <ChartCard
             title={advancedDetails ? 'Leech count by course' : 'Cards you often miss by course'}
-            description="Cards you keep forgetting. Rewording or splitting them usually helps more than reviewing again."
             action={
               <Link
                 to="/search?filter=leech"

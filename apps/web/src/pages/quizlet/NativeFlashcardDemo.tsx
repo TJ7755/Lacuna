@@ -132,7 +132,6 @@ export function NativeFlashcardDemo() {
             motionSpeed={speed}
             motionMultiplier={m}
             phase={phase}
-            isTouchMode={false}
             menuOpen={false}
             editing={false}
             hintsOpen={false}
@@ -154,7 +153,6 @@ export function NativeFlashcardDemo() {
           typingInputRef={input}
           onTypedAnswer={setTypedAnswer}
           onReveal={() => setRevealed(true)}
-          onHide={() => setRevealed(false)}
           onAnswer={answer}
           m={m}
         />

@@ -25,6 +25,7 @@ import { CardImportInput } from './CardImportInput';
 import { CardImportPreview } from './CardImportPreview';
 import './CardImportDialog.css';
 import { countOf } from '../../utils/plural';
+import { recordUsageAction } from '../../usage/actions';
 
 export interface CardImportDialogProps {
   initialTitle?: string;
@@ -136,7 +137,9 @@ export function CardImportDialog({
   const canContinue =
     count > 0 && !limitError && !sourceError && !source.reading && (!titleLabel || !!title.trim());
   function cancel() {
-    if (!busyRef.current) onCancel();
+    if (busyRef.current) return;
+    recordUsageAction('import-cancelled');
+    onCancel();
   }
   async function confirm() {
     if (!canContinue || busyRef.current || (finalStep && !canImport)) return;
@@ -156,8 +159,10 @@ export function CardImportDialog({
     setBusy(true);
     onBusyChange?.(true);
     setError('');
+    recordUsageAction('import-started');
     try {
       await onImport(content, title.trim());
+      recordUsageAction('import-completed');
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Could not import cards. Your input has been kept.',
@@ -206,8 +211,8 @@ export function CardImportDialog({
                     : step === 'review'
                       ? 'Review cards'
                       : 'Choose destination'}
-                  {' · '}
-                  Step {stepNumber} of {separateDestination ? 3 : 2}
+                  {' (Step '}
+                  {stepNumber} of {separateDestination ? 3 : 2})
                 </span>
                 <span aria-hidden="true">
                   {stepNumber} / {separateDestination ? 3 : 2}
@@ -307,10 +312,8 @@ export function CardImportDialog({
                     </strong>
                     <span>
                       cards
-                      {!source.apkg && (
-                        <small>
-                          {cards.length} original · {reverse ? eligible : 0} reverse
-                        </small>
+                      {!source.apkg && reverse && eligible > 0 && (
+                        <small>Including {eligible} reversed</small>
                       )}
                     </span>
                   </div>

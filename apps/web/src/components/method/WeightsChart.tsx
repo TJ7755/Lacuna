@@ -139,7 +139,7 @@ export function WeightsChart() {
       <div aria-live="polite">
         <StepSwap stepKey={String(selected)}>
           <p className="mt-4 min-h-14 border-t border-line pt-3 text-sm leading-relaxed text-ink-soft">
-            <span className="text-sm text-ink-faint">{COEFFICIENTS[selected].name} · </span>
+            <span className="text-sm text-ink-faint">{COEFFICIENTS[selected].name}. </span>
             {COEFFICIENTS[selected].reading}
           </p>
         </StepSwap>

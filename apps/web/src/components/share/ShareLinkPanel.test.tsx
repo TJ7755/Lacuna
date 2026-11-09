@@ -96,7 +96,7 @@ it('forwards an imported course link without publishing a new lineage', async ()
   );
   expect(screen.queryByRole('button', { name: 'Create share link' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Update link' })).not.toBeInTheDocument();
-  expect(screen.getByText(/publisher’s updates/)).toBeVisible();
+  expect(screen.getByText(/Updates from the publisher/)).toBeVisible();
   expect(screen.getByRole('link', { name: 'Set up a class in Gaps' })).toHaveAttribute(
     'href',
     `https://gaps.getlacuna.app/#course=${shareId}`,

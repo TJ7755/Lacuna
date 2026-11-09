@@ -4,7 +4,14 @@ import { AnimatedDisclosure } from '../../components/ui/AnimatedDisclosure';
 import { Button } from '../../components/ui/Button';
 import { ConfirmInlineSwap } from '../../components/ui/ConfirmInline';
 import { useToast } from '../../components/ui/Toast';
-import { ClockIcon, QrCodeIcon, ShareIcon, TrashIcon, UnlockIcon } from '../../components/ui/icons';
+import {
+  ClockIcon,
+  QrCodeIcon,
+  RefreshIcon,
+  ShareIcon,
+  TrashIcon,
+  UnlockIcon,
+} from '../../components/ui/icons';
 import { readSyncState } from '../../db/mutationStamp';
 import type { SyncState } from '@lacuna/core/db/types';
 import { readRememberedCredentials } from '../../sync/credentials';
@@ -31,7 +38,8 @@ function errorMessage(error: unknown, fallback: string): string {
 export function SyncSection() {
   const { notify } = useToast();
   const [syncState, setSyncState] = useState<SyncState | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [readState, setReadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [readAttempt, setReadAttempt] = useState(0);
   const [mode, setMode] = useState<PairingMode>('idle');
   const [pairOpen, setPairOpen] = useState(false);
   const [busy, setBusy] = useState<BusyAction>(null);
@@ -60,22 +68,22 @@ export function SyncSection() {
 
   useEffect(() => {
     let active = true;
+    setReadState('loading');
     void readSyncState()
       .then((state) => {
         if (!active) return;
         setSyncState(pairedState(state));
         setUnlocked(readRememberedCredentials(state ?? undefined));
-        setLoaded(true);
+        setReadState('ready');
       })
-      .catch((error) => {
+      .catch(() => {
         if (!active) return;
-        setLoaded(true);
-        notify(errorMessage(error, 'Could not read sync status.'), 'negative');
+        setReadState('error');
       });
     return () => {
       active = false;
     };
-  }, [notify, setUnlocked]);
+  }, [readAttempt, setUnlocked]);
 
   useSyncCredentialPrivacy({ unlocked, showQr, qrValue, qrPanelRef, setShowQr, setQrValue });
 
@@ -293,8 +301,25 @@ export function SyncSection() {
             Another device
           </SettingsSectionHeading>
         </div>
-        {!loaded ? (
-          <span className="text-sm text-ink-faint">Reading sync status…</span>
+        {readState === 'loading' ? (
+          <span role="status" className="text-sm text-ink-faint">
+            Reading sync status…
+          </span>
+        ) : readState === 'error' ? (
+          <div className="flex items-center gap-2">
+            <span role="status" className="text-sm text-negative">
+              Sync status unavailable.
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              aria-label="Retry sync status"
+              title="Retry sync status"
+              onClick={() => setReadAttempt((attempt) => attempt + 1)}
+            >
+              <RefreshIcon width={18} height={18} />
+            </Button>
+          </div>
         ) : !syncState ? (
           <Button
             key="pair"
@@ -310,7 +335,7 @@ export function SyncSection() {
         ) : null}
       </div>
 
-      {loaded && syncState && (
+      {readState === 'ready' && syncState && (
         <div className="mt-3 flex flex-col gap-5">
           <StatusPanel state={syncState} />
           <div className="flex flex-wrap items-center gap-2">
@@ -344,7 +369,7 @@ export function SyncSection() {
                 size="sm"
                 className="px-3 text-positive"
                 aria-label="Lock"
-                title="Unlocked — this device remembers its key, so sync works without the passphrase."
+                title="Lock sync"
                 onClick={() => void handleLock()}
                 disabled={busy !== null}
               >
@@ -370,11 +395,8 @@ export function SyncSection() {
                 }
                 type="password"
                 autoComplete="current-password"
-                placeholder="Needed to sync, show the QR or delete the channel"
               />
-              <p className="mt-2 text-xs text-ink-faint">
-                This is used locally to open the encrypted recovery key. It is never sent to Lacuna.
-              </p>
+              <p className="mt-2 text-xs text-ink-faint">Your passphrase stays on this device.</p>
             </div>
           )}
 

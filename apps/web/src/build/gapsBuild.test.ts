@@ -136,7 +136,9 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       ),
     ).toEqual([]);
     expect(modules.join('\n')).not.toMatch(/node_modules\/(?:motion|react-router|ai|ts-fsrs)\//);
-    const files = (await readdir(directory, { recursive: true })).sort();
+    const files = (await readdir(directory, { recursive: true }))
+      .map((file) => file.replaceAll('\\', '/'))
+      .sort();
     expect(await readFile(join(directory, 'sw.js'), 'utf8')).toBe(
       await readFile('apps/gaps/sw.js', 'utf8'),
     );
@@ -157,7 +159,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       'sw.js',
     ]);
     const html = await readFile(join(directory, 'index.html'), 'utf8');
-    expect(html).toContain('<title>Gaps · Lacuna</title>');
+    expect(html).toContain('<title>Gaps – Lacuna</title>');
     expect(html).not.toMatch(/manifest|src\/main\.tsx|simpleanalytics/i);
     const eagerScripts = await Promise.all(
       [...eager].map((file) => readFile(join(directory, file))),

@@ -28,26 +28,28 @@ export function ExamLens() {
             : 'Illustration of ongoing reviews'
         }
       >
-        <svg viewBox="0 0 720 160" preserveAspectRatio="none" aria-hidden="true">
-          <path
-            d="M20 105C120 105 105 50 200 50S270 105 350 105 440 50 515 50 600 105 690 105"
-            fill="none"
-            stroke="hsl(var(--line-strong))"
-            strokeWidth="2"
-          />
-          <path
-            className="qc-timeline-draw"
-            d="M20 105C120 105 105 50 200 50S270 105 350 105 440 50 515 50 600 105 690 105"
-            fill="none"
-            stroke="hsl(var(--accent))"
-            strokeWidth="3"
-          />
-        </svg>
+        <div className="qc-review-curve" aria-hidden="true">
+          <svg viewBox="0 0 720 160" preserveAspectRatio="none">
+            <path
+              d="M20 105C120 105 105 50 200 50S270 105 350 105 440 50 515 50 600 105 690 105"
+              fill="none"
+              stroke="hsl(var(--line-strong))"
+              strokeWidth="2"
+            />
+            <path
+              className="qc-timeline-draw"
+              d="M20 105C120 105 105 50 200 50S270 105 350 105 440 50 515 50 600 105 690 105"
+              fill="none"
+              stroke="hsl(var(--accent))"
+              strokeWidth="3"
+            />
+          </svg>
+        </div>
         {['Learn', 'Recall', 'Revisit', exam ? 'Exam day' : 'Keep going'].map((label, i) => (
           <div key={label} className={`qc-review-stop stop-${i}`}>
             <span>{i === 3 ? (exam ? '15' : '∞') : `0${i + 1}`}</span>
             <b>{label}</b>
-            {i === 3 && <small>{exam ? 'June · example' : 'Your own pace'}</small>}
+            {i === 3 && <small>{exam ? 'June (example)' : 'Your own pace'}</small>}
           </div>
         ))}
       </div>

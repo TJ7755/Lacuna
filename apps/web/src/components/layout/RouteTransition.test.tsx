@@ -233,17 +233,17 @@ describe('RouteTransition', () => {
 
   it('updates the title and announces consecutive route changes', async () => {
     const router = renderRoutes('/settings');
-    await waitFor(() => expect(document.title).toBe('Settings · Lacuna'));
+    await waitFor(() => expect(document.title).toBe('Settings – Lacuna'));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Settings'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Navigate' }));
-    await waitFor(() => expect(document.title).toBe('Study course · Lacuna'));
+    await waitFor(() => expect(document.title).toBe('Study course – Lacuna'));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Study course'));
 
     await act(async () => {
       await router.navigate(-1);
     });
-    await waitFor(() => expect(document.title).toBe('Settings · Lacuna'));
+    await waitFor(() => expect(document.title).toBe('Settings – Lacuna'));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Settings'));
   });
 
@@ -258,7 +258,7 @@ describe('RouteTransition', () => {
     });
 
     expect(button).toHaveFocus();
-    expect(document.title).toBe('Settings · Lacuna');
+    expect(document.title).toBe('Settings – Lacuna');
     expect(screen.getByRole('status')).toHaveTextContent('Settings');
   });
 

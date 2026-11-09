@@ -54,7 +54,9 @@ describe('automatic final-answer Undo', () => {
         <ThemeProvider>
           <AccentProvider>
             <ToastProvider>
-              <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+              <MemoryRouter
+                initialEntries={[`/lesson/${lesson.id}/learn${simple ? '?mode=simple' : ''}`]}
+              >
                 <Routes>
                   <Route
                     path="/lesson/:lessonId/learn"

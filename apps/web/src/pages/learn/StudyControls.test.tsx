@@ -22,7 +22,6 @@ describe('StudyControls typed answers', () => {
           typingInputRef={createRef<HTMLInputElement>()}
           onTypedAnswer={vi.fn()}
           onReveal={onReveal}
-          onHide={vi.fn()}
           onAnswer={vi.fn()}
           m={0}
         />
@@ -53,7 +52,6 @@ it.each([false, true])(
       typingInputRef: createRef<HTMLInputElement>(),
       onTypedAnswer: vi.fn(),
       onReveal: vi.fn(),
-      onHide: vi.fn(),
       onAnswer: vi.fn(),
       m: 1,
     };
@@ -88,7 +86,6 @@ describe('StudyControls automatic marking', () => {
     typingInputRef: createRef<HTMLInputElement>(),
     onTypedAnswer: vi.fn(),
     onReveal: vi.fn(),
-    onHide: vi.fn(),
     onAnswer: vi.fn(),
     m: 0,
   };
@@ -195,7 +192,6 @@ describe('StudyControls Flow fill', () => {
     typingInputRef: createRef<HTMLInputElement>(),
     onTypedAnswer: vi.fn(),
     onReveal: vi.fn(),
-    onHide: vi.fn(),
     onAnswer: vi.fn(),
     m: 0,
   };

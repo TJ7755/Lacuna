@@ -103,6 +103,7 @@ const review = object({
 });
 export const cardContent = object({
   answerMode,
+  requireCorrectSpelling: z.boolean().optional(),
   type: z.enum(['front_back', 'basic_reversed', 'cloze', 'typing']),
   front: text,
   back: text,
@@ -146,6 +147,7 @@ export const card = cardContent
     'Payload requires a front/back card',
   );
 export const lessonContent = object({
+  requireCorrectSpelling: z.boolean().optional(),
   prerequisiteLessonIds: ids.optional(),
   answerMode,
   name: text,

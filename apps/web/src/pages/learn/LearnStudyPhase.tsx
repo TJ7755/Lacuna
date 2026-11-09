@@ -1,6 +1,9 @@
-import type { RefObject } from 'react';
+import { useCallback, useId, type RefObject } from 'react';
 import { AnimatePresence } from 'motion/react';
 import type { Card, ItemPayload } from '@lacuna/core/db/types';
+import { LessonChoiceControls } from './LessonChoiceControls';
+import type { LessonChoiceCard } from './simpleLearnQuestions';
+import { Button } from '../../components/ui/Button';
 import { CardEditOverlay } from '../../components/cards/CardEditOverlay';
 import { KeyHints } from '../../components/ui/KeyHints';
 import { NumericStudyFace } from '../../components/items/NumericStudyFace';
@@ -34,8 +37,14 @@ export function LearnStudyPhase({
   isTouchMode,
   suppressClassicGrading,
   isTypingCard,
+  recallCorrect,
+  showLocalRecall,
+  choiceQuestion,
+  choiceCandidates,
+  rankedChoices,
   gradingMode,
   answerStrictness,
+  lessonRequiresCorrectSpelling,
   typedAutoMark,
   typedJudgement,
   studyFocusRef,
@@ -46,6 +55,7 @@ export function LearnStudyPhase({
   filterParams,
   tagFilter,
   cardDeparting,
+  leaveConfirmationOpen,
   setCardDeparting,
   m,
 }: {
@@ -58,7 +68,13 @@ export function LearnStudyPhase({
   isTouchMode: boolean;
   suppressClassicGrading: boolean;
   isTypingCard: boolean;
+  recallCorrect?: boolean;
+  showLocalRecall: boolean;
+  choiceQuestion?: LessonChoiceCard;
+  choiceCandidates: readonly LessonChoiceCard[];
+  rankedChoices?: readonly string[];
   gradingMode: ReturnType<typeof useGradingMode>[0];
+  lessonRequiresCorrectSpelling?: boolean;
   answerStrictness: ReturnType<typeof useAnswerStrictness>[0];
   typedAutoMark: ReturnType<typeof useTypedAutoMark>;
   typedJudgement: ReturnType<typeof typedAnswerJudgement>;
@@ -70,12 +86,17 @@ export function LearnStudyPhase({
   filterParams: CardFilter[];
   tagFilter: string | null;
   cardDeparting: boolean;
+  leaveConfirmationOpen: boolean;
   setCardDeparting: (departing: boolean) => void;
   m: number;
 }) {
   const {
     editing,
     current,
+    introductionPresentation,
+    cardCompletion,
+    checkIntroduction,
+    continueIntroduction,
     editTagSuggestions,
     handleEdited,
     cancelEdit,
@@ -137,6 +158,26 @@ export function LearnStudyPhase({
     answerWithUndo,
     gradeFeedback,
   } = feedback;
+  const familiarising = introductionPresentation.stage === 'familiarise';
+  const serial = introductionPresentation.serial;
+  const promptId = `${useId()}-${serial}`;
+  const checkChoice = useCallback(
+    (correct: boolean) => {
+      if (!checkIntroduction(serial, correct)) return false;
+      reveal();
+      return true;
+    },
+    [checkIntroduction, reveal, serial],
+  );
+  const advanceChoice = useCallback(
+    (correct: boolean) => {
+      const commit = () => continueIntroduction(serial);
+      const transition = cardTransitionRef.current;
+      if (transition) transition.dismiss(correct, commit);
+      else commit();
+    },
+    [cardTransitionRef, continueIntroduction, serial],
+  );
   return (
     <>
       {/* In-session card editor: fixes a card without leaving the session (timer paused). */}
@@ -179,6 +220,7 @@ export function LearnStudyPhase({
             singleDeck={singleDeck}
             unitDisplayName={unitDisplayName}
             sessionProgress={isSimpleMode ? simpleProgress : schedulerProgress}
+            cardCompletion={cardCompletion}
             predictedRecall={predictedRecall}
             sessionCardIds={sessionCardIds}
             sessionCardOutcomes={sessionCardOutcomes}
@@ -197,7 +239,7 @@ export function LearnStudyPhase({
             }}
             menuOpen={menuOpen}
             setMenuOpen={setMenuOpen}
-            current={current}
+            current={phase === 'finished' ? null : current}
             isTouchMode={isTouchMode}
             onEdit={closingMenu(openEdit)}
             onToggleFlag={closingMenu(toggleFlagCurrent)}
@@ -218,14 +260,10 @@ export function LearnStudyPhase({
         tabIndex={-1}
         aria-label="Study card"
         className={
-          'mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col outline-none focus-visible:shadow-none ' +
+          'mx-auto flex min-h-0 w-full flex-1 flex-col outline-none focus-visible:shadow-none ' +
+          (choiceQuestion ? 'max-w-7xl ' : 'max-w-4xl ') +
           'pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] ' +
-          'pt-4 md:pt-6 ' +
-          (isTouchMode && !suppressClassicGrading
-            ? gradingMode === 'manual'
-              ? 'pb-[calc(14rem+env(safe-area-inset-bottom))]'
-              : 'pb-[calc(10rem+env(safe-area-inset-bottom))]'
-            : 'pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-6')
+          'pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:pt-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))]'
         }
       >
         <StreakCelebration moment={streakMoment} multiplier={m} onDone={clearStreakMoment} />
@@ -252,7 +290,7 @@ export function LearnStudyPhase({
           />
         ) : (
           current && (
-            <div className="study-card-slot min-h-0 flex-1">
+            <div className="study-card-slot min-h-0 w-full max-w-[53rem] flex-1 self-center">
               <StudyCardTransition
                 ref={cardTransitionRef}
                 cardId={current.id}
@@ -285,6 +323,7 @@ export function LearnStudyPhase({
                 ) : (
                   <FlipCard
                     card={current}
+                    promptId={choiceQuestion ? promptId : undefined}
                     revealed={phase === 'answer'}
                     motionSpeed={motionSpeed}
                     phase={phase}
@@ -294,6 +333,7 @@ export function LearnStudyPhase({
                     hintsOpen={hintsOpen}
                     onReveal={reveal}
                     onHide={hide}
+                    allowGradingGestures={!familiarising && recallCorrect === undefined}
                     onAnswer={(input, source, velocity) => answerWithUndo(input, source, velocity)}
                     typedAnswer={typedAnswer}
                     typedJudgement={typedJudgement}
@@ -304,6 +344,7 @@ export function LearnStudyPhase({
                     onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
                     hintAffectsScheduling={!isSimpleMode && gradingMode === 'silent'}
                     answerStrictness={answerStrictness}
+                    lessonRequiresCorrectSpelling={lessonRequiresCorrectSpelling}
                     occlusion={occlusion}
                     occlusionAnswerText={occlusionAnswerText}
                   />
@@ -313,25 +354,57 @@ export function LearnStudyPhase({
           )
         )}
 
+        {choiceQuestion && (
+          <LessonChoiceControls
+            key={serial}
+            card={choiceQuestion}
+            promptId={promptId}
+            candidates={choiceCandidates}
+            rankedIds={rankedChoices ?? []}
+            onCheck={checkChoice}
+            onAdvance={advanceChoice}
+            paused={editing || menuOpen || hintsOpen || leaveConfirmationOpen}
+            departing={cardDeparting}
+            m={m}
+          />
+        )}
         {isTypingCard && (
-          // The Flow fill and the card carry the verdict visually; this says it aloud.
-          <div aria-live="polite" className="sr-only">
-            {typedAutoMark.state === 'checking'
-              ? 'Checking your answer.'
-              : typedAutoMark.state === 'marked'
-                ? typedAutoMark.correct
-                  ? 'Marked correct.'
-                  : 'Marked incorrect.'
-                : ''}
+          <div role="status" className="sr-only">
+            {showLocalRecall
+              ? recallCorrect
+                ? 'Marked correct.'
+                : 'Marked incorrect.'
+              : typedAutoMark.state === 'checking'
+                ? 'Checking your answer.'
+                : typedAutoMark.state === 'marked'
+                  ? typedAutoMark.correct
+                    ? 'Marked correct.'
+                    : 'Marked incorrect.'
+                  : ''}
           </div>
         )}
-        {!suppressClassicGrading && (
+        {familiarising && !choiceQuestion && phase === 'answer' && (
+          <div className="mt-5 flex justify-center">
+            <Button
+              variant="primary"
+              size="lg"
+              data-study-continue
+              onClick={() => {
+                if (checkIntroduction(serial, true)) continueIntroduction(serial);
+              }}
+            >
+              Continue
+            </Button>
+          </div>
+        )}
+        {(phase === 'question' || phase === 'answer') && !suppressClassicGrading && (
           <StudyControls
             // Keep the liquid mounted so its draining bead can reform the next pill.
             phase={phase}
             departing={cardDeparting}
             feedback={gradeFeedback}
             isTypingCard={isTypingCard}
+            recallCorrect={recallCorrect}
             isTouchMode={isTouchMode}
             autoMark={
               typedAutoMark.state === 'checking'
@@ -345,7 +418,6 @@ export function LearnStudyPhase({
             typingInputRef={typingInputRef}
             onTypedAnswer={setTypedAnswer}
             onReveal={reveal}
-            onHide={hide}
             onAnswer={answerWithUndo}
             m={m}
           />

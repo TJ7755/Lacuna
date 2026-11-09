@@ -33,6 +33,7 @@ describe('CardEditor — numeric items', () => {
         [],
         { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
         undefined,
+        undefined,
       ),
     );
   });
@@ -121,6 +122,7 @@ describe('CardEditor — working items', () => {
           ],
         },
         undefined,
+        undefined,
       ),
     );
   });
@@ -183,6 +185,7 @@ describe('CardEditor — working items', () => {
           kind: 'working',
           fixtures: [expect.objectContaining({ studentAnswer: ['4'], expectedMarks: 1 })],
         }),
+        undefined,
         undefined,
       ),
     );

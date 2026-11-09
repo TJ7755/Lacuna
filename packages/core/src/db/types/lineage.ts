@@ -73,6 +73,7 @@ export interface LineageIdMapping {
 export interface LineageLessonSnapshot {
   prerequisiteLessonIds?: string[];
   answerMode?: AnswerMode;
+  requireCorrectSpelling?: boolean;
   name: string;
   description?: string;
   isExtension: boolean;
@@ -93,6 +94,7 @@ export interface LineageNoteSnapshot {
 /** The subset of a Card's fields `lineageDiff.ts` diffs on — content only, never FSRS fields. */
 export interface LineageCardSnapshot {
   answerMode?: AnswerMode;
+  requireCorrectSpelling?: boolean;
   type: CardType;
   front: string;
   back: string;

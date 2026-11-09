@@ -380,7 +380,7 @@ function FixtureRow({
     <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-ink/[0.04] px-4 py-3">
       <div className="min-w-0 flex-1">
         <div className="text-sm text-ink-soft">Fixture {index + 1}</div>
-        <div className="mt-1 truncate font-mono text-sm text-ink">{lines.join(' · ')}</div>
+        <div className="mt-1 truncate font-mono text-sm text-ink">{lines.join(', ')}</div>
       </div>
       <span className="text-sm tabular-nums text-ink-soft">
         Expected {fixture.expectedMarks}, got {result?.marksEarned ?? '—'}

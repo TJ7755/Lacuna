@@ -120,9 +120,9 @@ for (const width of [1280, 390]) {
     await page.getByLabel(/^Recovery passphrase/).fill(phrase);
     await page.getByLabel('Repeat recovery passphrase').fill(phrase);
     await page.getByRole('button', { name: 'Protect class reports', exact: true }).click();
-    await expect(
-      page.getByText('Class protected. Download its recovery file.', { exact: true }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Class protected', { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
     await page.getByRole('button', { name: 'Back to unlock' }).click();
     await expect(unlock.getByLabel('Connection passphrase', { exact: true })).toBeFocused();
     await expect(

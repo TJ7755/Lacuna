@@ -122,17 +122,19 @@ export function CourseInsightsSection({
             Share insights with your teacher
           </label>
           <p className="mt-1 text-sm text-ink-soft">
-            Your prompts, answers, marks, criterion results and card recall are encrypted so only
-            your teacher can read them. They may be able to recognise you from this detail. Reports
-            include activity already recorded today and yesterday.
+            {enrolment
+              ? 'Encrypted so only your teacher can read it.'
+              : 'Connect with a class code to enable sharing.'}
           </p>
-          <p className="mt-1 text-sm text-ink-faint">
-            {lastPublished !== null
-              ? `Last successful publication: ${new Date(lastPublished).toLocaleString('en-GB', { timeZone: 'UTC' })} UTC.`
-              : lastSent === null
-                ? 'Nothing has been sent yet.'
-                : `Last daily report: ${lastSent}.`}
-          </p>
+          {enrolment && (
+            <p className="mt-1 text-sm text-ink-faint">
+              {lastPublished !== null
+                ? `Last successful publication: ${new Date(lastPublished).toLocaleString('en-GB')}.`
+                : lastSent === null
+                  ? 'Nothing has been sent yet.'
+                  : `Last daily report: ${lastSent}.`}
+            </p>
+          )}
         </div>
         <Toggle
           id={`insights-opt-in-${courseId}`}
@@ -170,10 +172,15 @@ export function CourseInsightsSection({
       >
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ink-soft">
           <li>
+            Your prompts, answers, marks, criterion results and card recall are encrypted so only
+            your teacher can read them. They may be able to recognise you from this detail. Reports
+            include activity already recorded today and yesterday.
+          </li>
+          <li>
             Send latest progress publishes today’s completed work immediately. Send again after more
             work to update the same daily report, without counting it twice. While this app is open
-            and online, yesterday’s report is also sent automatically. Days use UTC; missed days are
-            not sent later, and long answers or busy days may be shortened.
+            and online, yesterday’s report is also sent automatically. Days use this device’s time
+            zone. Missed days are skipped, and long answers or busy days may be shortened.
           </li>
           <li>
             The service sees the course, reporting day, submission time and packet size, but not

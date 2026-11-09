@@ -82,6 +82,7 @@ function toShareLessonInput(
     tz: lesson.tz,
     sf: lesson.sf,
     am: lesson.am,
+    rs: lesson.rs,
     notes: lesson.notes.map((note): ShareNoteInput => {
       if (!note.oi)
         throw new McpToolException({
@@ -113,6 +114,7 @@ function toShareCardInput(
     g: card.g,
     p: card.p as ItemPayload | undefined,
     am: card.am,
+    rs: card.rs,
   };
 }
 
@@ -128,6 +130,7 @@ function toExistingLesson(lesson: Lesson): ExistingLesson {
     timeZone: lesson.timeZone,
     sessionFilter: lesson.sessionFilter === 'new' ? undefined : lesson.sessionFilter,
     answerMode: lesson.answerMode,
+    requireCorrectSpelling: lesson.requireCorrectSpelling,
     orderIndex: lesson.orderIndex,
   };
 }
@@ -152,6 +155,7 @@ function toExistingCard(card: Card): ExistingCard {
     tags: card.tags,
     payload: card.payload,
     answerMode: card.answerMode,
+    requireCorrectSpelling: card.requireCorrectSpelling,
   };
 }
 

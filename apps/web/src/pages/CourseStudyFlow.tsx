@@ -47,6 +47,7 @@ const SpecificationStudyFlow = lazy(() =>
 interface TransitionState {
   summary: StudyStepSummary;
   completedStep: StudyFlowStep;
+  completedGeneration: number;
 }
 
 export function CourseStudyFlow() {
@@ -105,6 +106,9 @@ function CourseStudyFlowInner() {
   // The choice is made in the study sheet before this route is entered and arrives as a
   // query parameter, so the flow no longer presents an entry screen of its own.
   const [transition, setTransition] = useState<TransitionState | null>(null);
+  // Keep the outgoing block during planning. The next generation needs a fresh
+  // Learn instance even when the planner returns the same step object again.
+  const stepGeneration = transition?.completedGeneration ?? refreshKey;
   const flow = useCourseStudyFlow(
     courseId,
     refreshKey,
@@ -231,33 +235,34 @@ function CourseStudyFlowInner() {
       if (!completed || !courseId) return;
       // Explicit report continuation may repeat completion; an outgoing Learn
       // instance must never re-plan or overwrite the next step's transition.
-      if (refreshKey <= completedGenerationRef.current) return;
-      completedGenerationRef.current = refreshKey;
+      if (stepGeneration <= completedGenerationRef.current) return;
+      completedGenerationRef.current = stepGeneration;
       touchActiveStudyFlow(courseId);
       setPreviousStep(completed);
-      setTransition({ summary, completedStep: completed });
+      setTransition({ summary, completedStep: completed, completedGeneration: stepGeneration });
       setRefreshKey((value) => value + 1);
     },
-    [courseId, currentStep, displayStep, refreshKey],
+    [courseId, currentStep, displayStep, stepGeneration],
   );
 
   const handleQuestionFinished = useCallback(
     (summary: QuestionStudySummary) => {
       const completed = currentStep ?? displayStep;
-      if (!completed || !courseId || refreshKey <= completedGenerationRef.current) return;
-      completedGenerationRef.current = refreshKey;
+      if (!completed || !courseId || stepGeneration <= completedGenerationRef.current) return;
+      completedGenerationRef.current = stepGeneration;
       touchActiveStudyFlow(courseId);
       setPreviousStep(completed);
-      setTransition({ completedStep: completed, summary });
+      setTransition({ summary, completedStep: completed, completedGeneration: stepGeneration });
       setRefreshKey((value) => value + 1);
     },
-    [courseId, currentStep, displayStep, refreshKey],
+    [courseId, currentStep, displayStep, stepGeneration],
   );
 
   const transitionComplete =
     transition !== null &&
     (!('events' in transition.summary) ||
       transition.summary.reachedGoal ||
+      transition.summary.limitReached ||
       transition.summary.blockComplete === true);
 
   const continueFlow = useCallback(() => {
@@ -283,32 +288,29 @@ function CourseStudyFlowInner() {
   // Contiguous Practice continues without the full-screen hand-off once the planner
   // has the next step; see continuesWithoutPause for the boundaries that still pause.
   const nextFlow = flow?.generation === refreshKey ? flow : null;
+  // A fresh Learn block starts a new timer. Timed study requires a deliberate restart.
+  const pauseAfterBlock = pomodoro.breakPending || (flow?.course.sessionTimeLimitMinutes ?? 0) > 0;
   const awaitingContinuation =
     transition !== null &&
     'events' in transition.summary &&
-    mayContinueWithoutPause(transition.completedStep, transition.summary, pomodoro.breakPending) &&
+    mayContinueWithoutPause(transition.completedStep, transition.summary, pauseAfterBlock) &&
     (nextFlow === null ||
       continuesWithoutPause(
         transition.completedStep,
         transition.summary,
         nextFlow.decision,
-        pomodoro.breakPending,
+        pauseAfterBlock,
       ));
   useEffect(() => {
     if (!transition || !nextFlow || !('events' in transition.summary)) return;
     const { decision } = nextFlow;
     if (
-      continuesWithoutPause(
-        transition.completedStep,
-        transition.summary,
-        decision,
-        pomodoro.breakPending,
-      )
+      continuesWithoutPause(transition.completedStep, transition.summary, decision, pauseAfterBlock)
     ) {
       setCurrentStep(decision.step);
       setTransition(null);
     }
-  }, [nextFlow, pomodoro.breakPending, transition]);
+  }, [nextFlow, pauseAfterBlock, transition]);
 
   const reviewDueCards = useCallback(() => {
     if (!courseId) return;
@@ -345,7 +347,9 @@ function CourseStudyFlowInner() {
       flow.decision.step.kind === 'practice' &&
       flow.decision.step.mode === 'catch-up';
     const nextStep =
-      !planningNextStep && (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice')
+      transitionComplete &&
+      !planningNextStep &&
+      (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice')
         ? flow.decision.step
         : undefined;
     const nextQuestions = nextStep?.kind === 'exam-questions' ? nextStep : undefined;
@@ -360,11 +364,16 @@ function CourseStudyFlowInner() {
         nextConceptId={nextQuestions?.conceptId}
         canReviewDueCards={
           transition.completedStep !== DUE_REVIEW_STEP &&
+          nextStep !== DUE_REVIEW_STEP &&
           !planningNextStep &&
+          !flow?.snapshot.reviewLimitReached &&
           (flow?.snapshot.recurringPracticeEligibleCount ?? 0) > 0
         }
         canReviewEarlierMaterial={
-          !planningNextStep && !catchUpIsNext && (flow?.snapshot.catchUpEligibleCount ?? 0) > 0
+          !planningNextStep &&
+          !catchUpIsNext &&
+          !flow?.snapshot.reviewLimitReached &&
+          (flow?.snapshot.catchUpEligibleCount ?? 0) > 0
         }
         onReviewEarlierMaterial={() => {
           if (pomodoro.breakPending) pomodoro.deferBreak();
@@ -381,7 +390,7 @@ function CourseStudyFlowInner() {
       />
     );
   } else if (displayStep?.kind === 'exam-questions') {
-    scene = `questions-${frozenScopeRef.current.serial}`;
+    scene = `questions-${frozenScopeRef.current.serial}-${stepGeneration}`;
     body = (
       <StudyQuestionStep
         key={scene}
@@ -400,7 +409,7 @@ function CourseStudyFlowInner() {
     // One scene per committed step. A finished session never serves another card,
     // so StepSwap must not hand the next step to the outgoing Learn instance when
     // the planner answers before its exit completes (#402).
-    scene = `learn-${frozenScopeRef.current.serial}`;
+    scene = `learn-${frozenScopeRef.current.serial}-${stepGeneration}`;
     body = (
       <LearnMode
         request={request}

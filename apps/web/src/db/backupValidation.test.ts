@@ -66,6 +66,30 @@ describe('backup record validation', () => {
     expect(await db.lessons.get(lesson.id)).toMatchObject({ name: 'Lesson' });
   });
 
+  it('restores a lesson spelling default and a card override from a serialised backup', async () => {
+    const course = await createCourse('Vocabulary');
+    const lesson = await createLesson(course.id, 'French', { requireCorrectSpelling: true });
+    const card = await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'Summer',
+      'été',
+      [],
+      undefined,
+      'type',
+      false,
+    );
+    const backup = await exportDatabase();
+    const file = new File([JSON.stringify(backup)], 'backup.json');
+    await db.lessons.update(lesson.id, { requireCorrectSpelling: undefined });
+    await db.cards.update(card.id, { requireCorrectSpelling: undefined });
+
+    await importBackup(await readBackupFile(file), 'replace');
+    expect((await db.lessons.get(lesson.id))?.requireCorrectSpelling).toBe(true);
+    expect((await db.cards.get(card.id))?.requireCorrectSpelling).toBe(false);
+  });
+
   it('rejects invalid nested scheduling, review and content fields', async () => {
     const course = await createCourse('Nested records');
     const lesson = await createLesson(course.id, 'Lesson');

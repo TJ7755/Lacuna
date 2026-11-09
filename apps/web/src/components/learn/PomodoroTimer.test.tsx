@@ -34,7 +34,7 @@ describe('PomodoroTimer', () => {
   it('opens a named timer panel from a round trigger that reports its state', () => {
     formattedTime = '24:54';
     render(<PomodoroTimer />);
-    const button = screen.getByRole('button', { name: 'Focus · 24:54' });
+    const button = screen.getByRole('button', { name: 'Focus 24:54' });
     expect(button).toHaveClass('rounded-full');
     expect(button).toHaveAttribute('aria-expanded', 'false');
 
@@ -49,7 +49,7 @@ describe('PomodoroTimer', () => {
 
 it('moves focus into the timer, wraps Tab and returns focus on Escape', () => {
   render(<PomodoroTimer />);
-  const trigger = screen.getByRole('button', { name: /^Focus ·/ });
+  const trigger = screen.getByRole('button', { name: /^Focus / });
   trigger.focus();
   fireEvent.click(trigger);
   const pause = screen.getByRole('button', { name: 'Pause' });

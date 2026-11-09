@@ -94,7 +94,7 @@ describe('checkpoint assessment details', () => {
     expect(screen.getByRole('dialog', { name: 'Paper 1 details' })).toBeInTheDocument();
     expect(screen.getByText('Atoms')).toBeInTheDocument();
     expect(screen.getByText('What is a proton?')).toBeInTheDocument();
-    expect(screen.getByText(/1 lesson · 0 cards/)).toBeInTheDocument();
+    expect(screen.getByText(/1 lesson, 0 cards/)).toBeInTheDocument();
     expect(screen.queryByText('Scope is valid')).not.toBeInTheDocument();
     expect(screen.queryByText('Needs author review')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Revise/ })).not.toBeInTheDocument();
@@ -116,7 +116,7 @@ describe('checkpoint assessment details', () => {
     );
     expect(
       screen.getByRole('heading', { level: 2, name: 'Paper 1' }).nextElementSibling,
-    ).toHaveTextContent(/^Checkpoint · /);
+    ).toHaveTextContent(/^Checkpoint, /);
     expect(screen.queryByText('Exclusions')).not.toBeInTheDocument();
     expect(screen.queryByText('None')).not.toBeInTheDocument();
   });

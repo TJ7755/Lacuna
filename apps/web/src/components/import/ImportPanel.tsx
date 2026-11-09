@@ -317,10 +317,6 @@ export function ImportPanel({
                       className="font-mono text-xl"
                     />
                   </Field>
-                  <p className="text-sm text-ink-soft">
-                    Your teacher gives you this code. Preview the course, then choose whether to
-                    share insights with your teacher.
-                  </p>
                   <Button type="submit" variant="primary">
                     Join class
                   </Button>

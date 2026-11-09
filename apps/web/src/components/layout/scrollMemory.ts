@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 import { useLocation, useNavigationType } from 'react-router-dom';
+import { restoreScrollPosition } from './scrollRestoration';
 
 /** Where each page was left, keyed by path and query so a filtered list keeps its own place. */
 const positions = new Map<string, number>();
@@ -13,9 +14,6 @@ function scrollKey(location: { pathname: string; search: string }): string {
   return `${location.pathname}${location.search}`;
 }
 
-/** How long a return keeps trying to reach its old position while lazy content loads. */
-const RESTORE_WINDOW_MS = 1200;
-
 /**
  * Remember the scroll container's position for every page, and put it back when the
  * learner returns, by the browser's Back or Forward or by an in-app return that sets
@@ -28,13 +26,13 @@ export function useScrollMemory(containerRef: RefObject<HTMLElement | null>): vo
   const key = scrollKey(location);
   const keyRef = useRef(key);
   const pathRef = useRef(location.pathname);
-  const restoringUntil = useRef(0);
+  const restoring = useRef(false);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const remember = () => {
-      if (performance.now() < restoringUntil.current) return;
+      if (restoring.current) return;
       positions.set(keyRef.current, container.scrollTop);
     };
     container.addEventListener('scroll', remember, { passive: true });
@@ -54,31 +52,27 @@ export function useScrollMemory(containerRef: RefObject<HTMLElement | null>): vo
       return;
     }
     const target = positions.get(key) ?? 0;
-    const deadline = performance.now() + RESTORE_WINDOW_MS;
-    restoringUntil.current = deadline;
+    restoring.current = true;
     const overflowAnchor = container.style.overflowAnchor;
     // Browser anchoring must not adjust the position this restoration owns.
     container.style.overflowAnchor = 'none';
     let frame = 0;
-    const settle = () => {
-      container.scrollTo({ top: target });
-      // A lazy page may not be tall enough yet; keep trying until it is or time runs out.
-      if (Math.abs(container.scrollTop - target) > 1 && performance.now() < deadline) {
-        frame = requestAnimationFrame(settle);
-      } else {
-        restoringUntil.current = 0;
+    const cancel = restoreScrollPosition(container, target, {
+      onFinish: (learnerPosition) => {
+        if (learnerPosition !== undefined) positions.set(key, learnerPosition);
+        restoring.current = false;
         // Keep anchoring suppressed through this layout's queued adjustments.
         frame = requestAnimationFrame(() => {
           frame = 0;
           container.style.overflowAnchor = overflowAnchor;
         });
-      }
-    };
-    settle();
+      },
+    });
     return () => {
       cancelAnimationFrame(frame);
-      if (frame !== 0) container.style.overflowAnchor = overflowAnchor;
-      restoringUntil.current = 0;
+      if (restoring.current || frame !== 0) container.style.overflowAnchor = overflowAnchor;
+      cancel?.();
+      restoring.current = false;
     };
     // The location key changes on every navigation, including returns to the same URL.
     // eslint-disable-next-line react-hooks/exhaustive-deps

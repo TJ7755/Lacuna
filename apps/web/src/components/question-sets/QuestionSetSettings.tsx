@@ -52,7 +52,7 @@ export function QuestionSetSettings({
               />
               {e.name}
               {e.examDate
-                ? ` · ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(e.examDate)}`
+                ? ` (${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(e.examDate)})`
                 : ''}
             </label>
           ))}

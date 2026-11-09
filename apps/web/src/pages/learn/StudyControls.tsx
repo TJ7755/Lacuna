@@ -1,18 +1,11 @@
 import { useId, useLayoutEffect, type RefObject } from 'react';
-import { m as motion } from 'motion/react';
 import type { Grade } from '@lacuna/core/db/types';
-import { Button } from '../../components/ui/Button';
-import { fadeLiftTiming } from '../../components/ui/StepSwap';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';
-import { TouchBottomSheet } from './TouchBottomSheet';
+import { TouchStudyControls } from './TouchStudyControls';
 import type { AutoMark, Phase } from './types';
 import { StudyGradeButton, type StudyGradeFeedback } from './StudyGradeButton';
 import { FlowGradeControls } from './FlowGradeControls';
 
-/**
- * Both phases share a grid cell, reserving the larger height before a flip. Desktop
- * cards use Flow controls; touch cards retain their bottom sheet and typed input.
- */
 export function StudyControls({
   phase,
   feedback,
@@ -23,10 +16,10 @@ export function StudyControls({
   typingInputRef,
   onTypedAnswer,
   onReveal,
-  onHide,
   onAnswer,
   autoMark,
   recallPrompt,
+  recallCorrect,
   departing = false,
   m,
 }: {
@@ -39,15 +32,16 @@ export function StudyControls({
   typingInputRef: RefObject<HTMLInputElement | null>;
   onTypedAnswer: (value: string) => void;
   onReveal: () => void;
-  onHide: () => void;
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
   /** Automatic marking of a typed answer: still judging, or the verdict it reached. */
   autoMark?: AutoMark;
   recallPrompt?: string;
+  recallCorrect?: boolean;
   departing?: boolean;
   m: number;
 }) {
   const question = phase === 'question';
+  const localIncorrect = isTypingCard && !question && recallCorrect === false && !autoMark;
   const recallPromptId = useId();
   const selfRating =
     Boolean(recallPrompt) && !question && gradingMode === 'silent' && !(isTypingCard && autoMark);
@@ -56,7 +50,7 @@ export function StudyControls({
     if (!isTypingCard || !input) return;
     if (question) input.focus({ preventScroll: true });
     else if (document.activeElement === input) input.blur();
-  }, [question, isTypingCard, typingInputRef]);
+  }, [question, isTypingCard, isTouchMode, typingInputRef]);
   const grade = (
     input: boolean | Grade,
     variant: 'danger' | 'secondary' | 'primary',
@@ -64,6 +58,7 @@ export function StudyControls({
   ) => (
     <StudyGradeButton
       key={String(input)}
+      data-study-continue={recallCorrect !== undefined || undefined}
       grade={input}
       feedback={feedback}
       m={m}
@@ -77,52 +72,59 @@ export function StudyControls({
   );
   // The primary grade comes last: the Flow controls draw its fill.
   const grades =
-    gradingMode === 'manual'
-      ? [
-          grade(
-            1,
-            'danger',
-            <>
-              <CloseIcon width={18} height={18} />
-              Again
-            </>,
-          ),
-          grade(2, 'secondary', 'Hard'),
-          grade(3, 'secondary', 'Good'),
-          grade(
-            4,
-            'primary',
-            <>
-              <CheckIcon width={18} height={18} />
-              Easy
-            </>,
-          ),
-        ]
-      : [
-          grade(
-            false,
-            'danger',
-            <>
-              <CloseIcon width={18} height={18} />
-              No
-            </>,
-          ),
-          grade(
-            true,
-            'primary',
-            <>
-              <CheckIcon width={18} height={18} />
-              Yes
-            </>,
-          ),
-        ];
+    recallCorrect !== undefined
+      ? [grade(recallCorrect, 'primary', 'Continue')]
+      : gradingMode === 'manual'
+        ? [
+            grade(
+              1,
+              'danger',
+              <>
+                <CloseIcon width={18} height={18} />
+                Again
+              </>,
+            ),
+            grade(2, 'secondary', 'Hard'),
+            grade(3, 'secondary', 'Good'),
+            grade(
+              4,
+              'primary',
+              <>
+                <CheckIcon width={18} height={18} />
+                Easy
+              </>,
+            ),
+          ]
+        : [
+            grade(
+              false,
+              'danger',
+              <>
+                <CloseIcon width={18} height={18} />
+                No
+              </>,
+            ),
+            grade(
+              true,
+              'primary',
+              <>
+                <CheckIcon width={18} height={18} />
+                Yes
+              </>,
+            ),
+          ];
   const gradeRowClassName =
-    gradingMode === 'manual'
-      ? 'grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4'
-      : 'flex w-full max-w-md gap-3';
+    recallCorrect !== undefined
+      ? 'flex w-full max-w-md'
+      : gradingMode === 'manual'
+        ? 'grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4'
+        : 'flex w-full max-w-md gap-3';
   const typedField = (
     <>
-      <label htmlFor="study-typed-answer" className="mb-2 block text-sm text-ink-soft">
+      <label
+        htmlFor="study-typed-answer"
+        className={isTouchMode ? 'sr-only' : 'mb-2 block text-sm text-ink-soft'}
+      >
         Your answer
       </label>
       <input
@@ -137,10 +139,30 @@ export function StudyControls({
             onReveal();
           }
         }}
-        placeholder="Type your answer…"
-        className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent"
+        placeholder={isTouchMode ? 'Your answer' : 'Type your answer…'}
+        className={`w-full border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent ${
+          isTouchMode ? 'h-14 min-w-0 flex-1 rounded-xl' : 'rounded-lg'
+        }`}
       />
     </>
+  );
+  const flow = (
+    <FlowGradeControls
+      question={question}
+      autoMark={
+        isTypingCard ? (localIncorrect ? { pending: false, correct: false } : autoMark) : undefined
+      }
+      departing={departing}
+      grades={localIncorrect ? [] : grades}
+      negativeIndex={recallCorrect === undefined && gradingMode === 'manual' ? 0 : undefined}
+      rowClassName={gradeRowClassName}
+      revealLabel={isTypingCard ? 'Check answer' : 'Show answer'}
+      revealLead={
+        isTypingCard && !isTouchMode ? <div className="mb-3">{typedField}</div> : undefined
+      }
+      onReveal={onReveal}
+      m={m}
+    />
   );
   // While automatic marking owns the answer the grades stay away: the learner
   // self-marks only when it is off or leaves the verdict to them.
@@ -161,51 +183,25 @@ export function StudyControls({
               {recallPrompt}
             </p>
           )}
-          <FlowGradeControls
-            question={question}
-            autoMark={isTypingCard ? autoMark : undefined}
-            departing={departing}
-            grades={grades}
-            negativeIndex={gradingMode === 'manual' ? 0 : undefined}
-            rowClassName={gradeRowClassName}
-            revealLabel={isTypingCard ? 'Check answer' : 'Show answer'}
-            revealLead={isTypingCard ? <div className="mb-3">{typedField}</div> : undefined}
-            onReveal={onReveal}
-            m={m}
-          />
+          {flow}
+          {localIncorrect && <div className="mx-auto mt-3 flex w-full max-w-md">{grades}</div>}
         </div>
       )}
-      {isTypingCard && isTouchMode && (
-        <div className="study-controls mt-6 w-full shrink-0">
-          <motion.div
-            className="mx-auto w-full max-w-md"
-            initial={false}
-            animate={{ opacity: question ? 1 : 0 }}
-            transition={fadeLiftTiming(question, m)}
-            inert={!question}
-            aria-hidden={!question}
-          >
-            {typedField}
-            <div className="mt-3 flex justify-center">
-              <Button variant="primary" size="lg" className="w-full" onClick={onReveal}>
-                Check answer
-              </Button>
-            </div>
-          </motion.div>
-        </div>
+      {isTouchMode && localIncorrect && (
+        <div className="mx-auto mt-4 w-full max-w-xl shrink-0">{flow}</div>
       )}
       {isTouchMode && (
-        <TouchBottomSheet
+        <TouchStudyControls
           phase={phase}
           feedback={feedback}
           gradingMode={gradingMode}
           onReveal={onReveal}
-          onHide={onHide}
           onAnswer={onAnswer}
           m={m}
-          isTypingCard={isTypingCard}
+          typedField={isTypingCard ? typedField : undefined}
           autoMark={autoMark}
           recallPrompt={recallPrompt}
+          recallCorrect={recallCorrect}
         />
       )}
     </>

@@ -24,6 +24,7 @@ import { TouchMenuSheet } from './TouchMenu';
 import { FILTER_LABELS } from './types';
 import type { LearnModeType, SessionCardOutcome, StudyUnit } from './types';
 import { SessionSegments } from './SessionSegments';
+import { countOf } from '../../utils/plural';
 
 function computeHeaderInfo({
   singleDeck,
@@ -42,7 +43,7 @@ function computeHeaderInfo({
 }) {
   // unitDisplayName overrides the unit's own name for lesson scope, whose
   // scheduling unit is the parent Course rather than the lesson itself.
-  const deckName = unitDisplayName ?? (singleDeck ? singleDeck.name : 'Review today · all courses');
+  const deckName = unitDisplayName ?? (singleDeck ? singleDeck.name : 'Review all courses');
   const tagPart = tagFilter ? `tag "${tagFilter}"` : '';
 
   const filterLabels = filterParams.map((f) => FILTER_LABELS[f] ?? f);
@@ -57,37 +58,37 @@ function computeHeaderInfo({
       };
     case 'cram':
       return {
-        title: `${deckName} · Revision plan`,
+        title: `${deckName} (Revision plan)`,
         subtitle: revisionNextWindowDay ? `Next ${revisionNextWindowDay}` : tagPart,
       };
     case 'filtered-due':
       return {
-        title: `${deckName} · ${filterPart}`,
+        title: `${deckName} (${filterPart})`,
         subtitle: tagPart,
       };
     case 'filtered-new':
       return {
-        title: `${deckName} · ${filterPart}`,
+        title: `${deckName} (${filterPart})`,
         subtitle: tagPart,
       };
     case 'filtered-leech':
       return {
-        title: `${deckName} · ${filterPart}`,
+        title: `${deckName} (${filterPart})`,
         subtitle: tagPart,
       };
     case 'filtered-flagged':
       return {
-        title: `${deckName} · ${filterPart}`,
+        title: `${deckName} (${filterPart})`,
         subtitle: tagPart,
       };
     case 'filtered-suspended':
       return {
-        title: `${deckName} · ${filterPart}`,
+        title: `${deckName} (${filterPart})`,
         subtitle: tagPart,
       };
     case 'filtered':
       return {
-        title: `${deckName} · ${filterPart}`,
+        title: `${deckName} (${filterPart})`,
         subtitle: tagPart,
       };
     default:
@@ -132,6 +133,7 @@ export function LearnHeader({
   canUndo = false,
   onUndo,
   cardActions = true,
+  cardCompletion,
   segmentNoun,
 }: {
   mode: LearnModeType;
@@ -170,7 +172,8 @@ export function LearnHeader({
   onUndo?: () => void;
   /** False for a card that is not stored, which has nothing to edit, flag, bury or suspend. */
   cardActions?: boolean;
-  /** What each Simple Learn segment stands for when it is not a card. */
+  cardCompletion?: { completed: number; total: number };
+  /** What each segment represents in the spoken position. */
   segmentNoun?: string;
 }) {
   const info = computeHeaderInfo({
@@ -185,8 +188,13 @@ export function LearnHeader({
     ? revisionWindowBudgetSeconds > 0
       ? 1 - revisionSecondsRemaining / revisionWindowBudgetSeconds
       : 0
-    : sessionProgress;
-  // Simple Learn names the card's place in the pip bar, as its announcement does. Other
+    : cardCompletion && cardCompletion.total > 0
+      ? cardCompletion.completed / cardCompletion.total
+      : sessionProgress;
+  const completionText = cardCompletion
+    ? `${cardCompletion.completed.toLocaleString('en-GB')} of ${countOf(cardCompletion.total, 'card')} complete`
+    : undefined;
+  // Segmented practice names the card's place in the bar, as its announcement does. Other
   // modes count progress through the session: their queues serve cards in their own order.
   const sessionTotal = sessionCardIds.length;
   const pipIndex = mode === 'simple' ? sessionCardIds.indexOf(currentCardIds[0]) : -1;
@@ -230,18 +238,32 @@ export function LearnHeader({
           <span className="max-md:sr-only">Exit</span>
         </Button>
         <div className="min-w-10 flex-1 overflow-hidden">
-          <div className="mb-2 flex min-w-0 items-baseline gap-1 text-[13px] md:text-sm">
-            <h1 className="truncate font-bold text-ink" title={info.title}>
+          <div
+            className={cn(
+              'mb-2 flex min-w-0 items-baseline text-[13px] md:text-sm',
+              completionText ? 'flex-wrap justify-between gap-x-3' : 'gap-1',
+            )}
+          >
+            <h1 className="max-w-full truncate font-bold text-ink" title={info.title}>
               {info.title}
             </h1>
-            {cardPosition && (
-              <span className="shrink-0 text-ink-soft tabular-nums">· {cardPosition}</span>
+            {(completionText ?? cardPosition) && (
+              <span
+                className={cn(
+                  'shrink-0 text-ink-soft tabular-nums',
+                  completionText && 'max-w-full [overflow-wrap:anywhere]',
+                )}
+                aria-live={completionText ? 'polite' : undefined}
+                aria-atomic={completionText ? true : undefined}
+              >
+                {completionText ?? cardPosition}
+              </span>
             )}
           </div>
           {info.subtitle && (
             <p className="mb-1 hidden truncate text-xs text-ink-faint md:block">{info.subtitle}</p>
           )}
-          {mode === 'simple' ? (
+          {mode === 'simple' && !cardCompletion ? (
             <SessionSegments
               cardIds={sessionCardIds}
               outcomes={sessionCardOutcomes}
@@ -252,7 +274,12 @@ export function LearnHeader({
               noun={segmentNoun}
             />
           ) : (
-            <SessionProgressTrack value={displayedProgress} label={progressName} m={m} />
+            <SessionProgressTrack
+              value={displayedProgress}
+              label={progressName}
+              valueText={completionText}
+              m={m}
+            />
           )}
         </div>
 
@@ -441,7 +468,17 @@ function forecastLabel(unit: StudyUnit | null, now: number = Date.now()): string
     : `forecast recall in ${MAINTENANCE_HORIZON_DAYS} days`;
 }
 
-function SessionProgressTrack({ value, label, m }: { value: number; label: string; m: number }) {
+function SessionProgressTrack({
+  value,
+  label,
+  valueText,
+  m,
+}: {
+  value: number;
+  label: string;
+  valueText?: string;
+  m: number;
+}) {
   const progress = Math.max(0, Math.min(1, value));
   return (
     // This track is now the session's only progress indicator, so it carries the
@@ -453,6 +490,7 @@ function SessionProgressTrack({ value, label, m }: { value: number; label: strin
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(progress * 100)}
+      aria-valuetext={valueText}
     >
       <motion.div
         initial={false}

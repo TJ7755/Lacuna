@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseRecallPractice, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   test(`Again gains its red surface before the liquid hands back (${reducedMotion})`, async ({
@@ -22,7 +22,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       .getByRole('link', { name: 'Path', exact: true })
       .click();
     await page.getByRole('button', { name: 'Study', exact: true }).click();
-    await chooseScheduledStudy(page);
+    await chooseRecallPractice(page);
     const reveal = page.getByRole('button', { name: 'Show answer', exact: true }).last();
     await expect(reveal).toBeVisible();
     const liquid = page.locator('[data-flow-layer]');

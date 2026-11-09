@@ -109,7 +109,7 @@ it('imports with the onboarding exam date over a teacher suggestion, without ask
   const add = await screen.findByRole('button', { name: 'Add to my courses' });
   expect(add).toBeEnabled();
   expect(screen.queryByRole('radio')).not.toBeInTheDocument();
-  expect(screen.getByText(/Reviews build up to your exam on/)).toBeInTheDocument();
+  expect(screen.getByText(/^Exam on /)).toBeInTheDocument();
   fireEvent.click(add);
   await waitFor(async () => expect(await db.courseAssessments.count()).toBe(1));
   expect((await db.courseAssessments.toArray())[0]).toMatchObject({
@@ -197,8 +197,9 @@ it.each([true, false])(
     render(<SharedCourseImport initialFile={courseFile(source)} onImported={onImported} />);
     const add = await screen.findByRole('button', { name: 'Add to my courses' });
     expect(add).toBeDisabled();
-    expect(screen.getByText(/no fixed exam/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
+    const steady = screen.getByRole('radio', { name: /Steady retention/ });
+    expect(steady).not.toBeChecked();
+    fireEvent.click(steady);
     fireEvent.click(add);
     await waitFor(() => expect(onImported).toHaveBeenCalledOnce());
     const courseId = onImported.mock.calls[0][0];

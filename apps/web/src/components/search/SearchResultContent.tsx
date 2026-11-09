@@ -28,7 +28,7 @@ export const SearchResultContent = memo(function SearchResultContent({
           <span className={titleClass}>
             <HighlightedText text={hit.topic.question} query={query} />
           </span>
-          <span className="text-xs text-ink-faint">Help · {hit.topic.group}</span>
+          <span className="text-xs text-ink-faint">Help ({hit.topic.group})</span>
         </span>
       </>
     );
@@ -47,7 +47,7 @@ export const SearchResultContent = memo(function SearchResultContent({
         ? 'Course'
         : hit.kind === 'lesson'
           ? hit.course.name
-          : `${hit.course.name} · ${hit.lesson.name}`;
+          : `${hit.lesson.name} in ${hit.course.name}`;
     const content =
       hit.kind === 'course'
         ? hit.course.description

@@ -112,6 +112,7 @@ const incomingCard = object({
   g: strings.optional(),
   p: payload.optional(),
   am: answerMode,
+  rs: z.boolean().optional(),
 });
 const incomingNote = object({ i: id, n: text, c: text });
 const incomingLesson = object({
@@ -127,6 +128,7 @@ const incomingLesson = object({
   notes: z.array(incomingNote),
   cards: z.array(incomingCard),
   am: answerMode,
+  rs: z.boolean().optional(),
 });
 
 export const stateSchemas = {
@@ -323,9 +325,13 @@ export const stateSchemas = {
     diff: object({
       creates: object({ lessons: z.array(lesson), notes: z.array(note), cards: z.array(card) }),
       updates: object({
-        lessons: z.array(lessonContent.partial().extend({ id })),
+        lessons: z.array(
+          lessonContent.partial().extend({ id, requireCorrectSpelling: z.boolean().nullish() }),
+        ),
         notes: z.array(noteContent.partial().extend({ id })),
-        cards: z.array(cardContent.partial().extend({ id })),
+        cards: z.array(
+          cardContent.partial().extend({ id, requireCorrectSpelling: z.boolean().nullish() }),
+        ),
       }),
       removals: object({ lessonIds: ids, noteIds: ids, cardIds: ids }),
       conflicts: z.array(

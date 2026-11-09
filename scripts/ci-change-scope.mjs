@@ -3,6 +3,25 @@ import { pathToFileURL } from 'node:url';
 
 const DOCS_PREFIXES = ['docs/', '.github/ISSUE_TEMPLATE/'];
 const DOCS_FILES = new Set(['.github/PULL_REQUEST_TEMPLATE.md']);
+const BROWSER_CI_FILES = new Set([
+  '.github/actions/setup-bun/action.yml',
+  '.github/actions/setup-node/action.yml',
+  '.github/workflows/ci.yml',
+  'scripts/browser-ci-summary.mjs',
+  'scripts/check-browser.mjs',
+  'scripts/ci-browser-artefact.mjs',
+  'scripts/ci-browser-shards.mjs',
+  'scripts/ci-browser-timings.json',
+  'scripts/ci-change-scope.mjs',
+  'scripts/ci-node-runtime.mjs',
+  'scripts/ci-wait-for-renderer.mjs',
+  'tests/config/playwright.web.ci.config.ts',
+  'tests/config/playwright.web.config.ts',
+  'tests/config/playwright.web.isolated.config.ts',
+  'tests/e2e/fixtures/largeStudyImages.ts',
+  'tests/e2e/study-grade-load.spec.ts',
+  'tests/e2e/study-image-advance.spec.ts',
+]);
 const AREAS = [
   'app',
   'electron',
@@ -28,13 +47,19 @@ export function isDocsOnly(paths) {
   return paths.length > 0 && paths.every(isDocsPath);
 }
 
-function fullScope() {
-  return { docs_only: false, ...Object.fromEntries(AREAS.map((area) => [area, true])) };
+function fullScope(browser_ci = false) {
+  return { docs_only: false, ...Object.fromEntries(AREAS.map((area) => [area, true])), browser_ci };
 }
 
 export function classifyPaths(paths) {
   if (!Array.isArray(paths) || paths.length === 0) return fullScope();
-  const scope = { docs_only: false, ...Object.fromEntries(AREAS.map((area) => [area, false])) };
+  // A pull request changing browser CI must exercise the jobs normally reserved for master.
+  const browser_ci = paths.some((path) => BROWSER_CI_FILES.has(path));
+  const scope = {
+    docs_only: false,
+    ...Object.fromEntries(AREAS.map((area) => [area, false])),
+    browser_ci,
+  };
   for (const path of paths) {
     if (
       typeof path !== 'string' ||
@@ -42,7 +67,7 @@ export function classifyPaths(paths) {
       /[\0\r\n\\]/.test(path) ||
       path.split('/').some((part) => !part || part === '.' || part === '..')
     )
-      return fullScope();
+      return fullScope(browser_ci);
     if (isDocsPath(path)) {
       scope.docs = true;
       continue;
@@ -55,11 +80,11 @@ export function classifyPaths(paths) {
       path.startsWith('tooling/short-term-memory/coefficients/') ||
       path.startsWith('tooling/short-term-memory/tests/fixtures/')
     )
-      return fullScope();
+      return fullScope(browser_ci);
     if (/^apps\/web\/src\/.+\.css$/.test(path)) {
       // Stylesheets alone cannot alter native authority. Retain the existing broad
       // non-Windows checks, without clearing native risk from another changed path.
-      Object.assign(scope, { ...fullScope(), windows_native: scope.windows_native });
+      Object.assign(scope, { ...fullScope(browser_ci), windows_native: scope.windows_native });
     } else if (path.startsWith('apps/relay/')) {
       // App unit/browser fixtures and the standalone MCP tests import apps/relay/src directly.
       Object.assign(scope, { relay: true, app: true, sites: true, ai_mcp: true });
@@ -91,7 +116,7 @@ export function classifyPaths(paths) {
     ) {
       Object.assign(scope, { sites: true, lint: true });
     } else {
-      return fullScope();
+      return fullScope(browser_ci);
     }
   }
   scope.docs_only = isDocsOnly(paths);

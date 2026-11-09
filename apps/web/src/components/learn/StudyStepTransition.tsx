@@ -69,18 +69,21 @@ export function StudyStepTransition({
   const cardSummary = 'events' in summary ? summary : undefined;
   const questionSummary = 'kind' in summary ? summary : undefined;
   const incomplete = cardSummary ? !cardSummary.reachedGoal && !cardSummary.blockComplete : false;
+  const dailyLimitReached = cardSummary?.limitReached === true;
+  const canResume = incomplete && !dailyLimitReached;
   // The finished step's controls are gone; hand the keyboard to the primary action.
   const actionsRef = useRef<HTMLDivElement>(null);
   useUnclaimedFocus(actionsRef, !planningNextStep);
 
   const nextWindowDay = cardSummary?.revision?.nextWindowDay;
-  const heading = incomplete
+  const heading = canResume
     ? completedLabel
     : nextWindowDay
       ? `Next revision window: ${formatPlanDay(nextWindowDay)}`
       : planningNextStep
         ? undefined
-        : (nextLabel ?? 'Nothing else is ready right now');
+        : (nextLabel ??
+          (dailyLimitReached ? 'Daily review limit reached' : 'Nothing else is ready right now'));
 
   const results = cardSummary
     ? cardSummary.events.map((event) => event.correct)
@@ -122,7 +125,11 @@ export function StudyStepTransition({
               )}
             </span>
             <span className="min-w-0 [overflow-wrap:anywhere]">
-              {incomplete ? 'Step paused' : completedLabel}
+              {dailyLimitReached && nextLabel
+                ? 'Daily review limit reached'
+                : incomplete
+                  ? 'Step paused'
+                  : completedLabel}
             </span>
           </p>
           <ResultStrip results={results} label={resultLabel} />
@@ -150,8 +157,8 @@ export function StudyStepTransition({
           {cardSummary?.revision?.predictedReadiness !== undefined &&
             cardSummary.revision.readinessUncertainty !== undefined && (
               <p className="mt-4 text-base text-ink-soft">
-                {Math.round(cardSummary.revision.predictedReadiness * 100)}% predicted readiness · ±
-                {Math.round(cardSummary.revision.readinessUncertainty * 100)}% uncertainty
+                {Math.round(cardSummary.revision.predictedReadiness * 100)}% predicted readiness (±
+                {Math.round(cardSummary.revision.readinessUncertainty * 100)}% uncertainty)
               </p>
             )}
 
@@ -162,7 +169,7 @@ export function StudyStepTransition({
                   Take a break
                 </Button>
               )}
-              {(incomplete || nextLabel || planningNextStep) && (
+              {(canResume || nextLabel || planningNextStep) && (
                 <Button
                   variant={breakPending ? 'secondary' : 'primary'}
                   size="lg"
@@ -174,7 +181,7 @@ export function StudyStepTransition({
                     ? 'Planning next step…'
                     : breakPending
                       ? 'Continue without break'
-                      : incomplete
+                      : canResume
                         ? 'Resume'
                         : 'Continue'}
                   <span className="study-transition-arrow" aria-hidden="true">
@@ -189,12 +196,12 @@ export function StudyStepTransition({
                   Dismiss break
                 </Button>
               )}
-              {canReviewEarlierMaterial && (
+              {canReviewEarlierMaterial && !dailyLimitReached && (
                 <Button variant="ghost" size="md" onClick={onReviewEarlierMaterial}>
                   Review earlier material
                 </Button>
               )}
-              {canReviewDueCards && (
+              {canReviewDueCards && !dailyLimitReached && (
                 <Button variant="ghost" size="md" onClick={onReviewDueCards}>
                   Review due cards
                 </Button>

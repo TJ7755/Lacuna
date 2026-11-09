@@ -47,10 +47,10 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
             <div className="mt-0.5 text-xs text-ink-faint">
               {describePosition(node.position)}
               {node.lessonIds && node.lessonIds.length > 0
-                ? ` · ${countOf(node.lessonIds.length, 'lesson')}`
-                : ' · all lessons'}
-              {node.cardCount ? ` · ${countOf(node.cardCount, 'card')}` : ''}
-              {node.randomize ? ' · randomised' : ''}
+                ? `, ${countOf(node.lessonIds.length, 'lesson')}`
+                : ', all lessons'}
+              {node.cardCount ? `, ${countOf(node.cardCount, 'card')}` : ''}
+              {node.randomize ? ', randomised' : ''}
             </div>
           </div>
         </div>

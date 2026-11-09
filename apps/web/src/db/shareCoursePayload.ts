@@ -61,7 +61,11 @@ function packCards(cards: Card[], preserveIds = false, includeMedia = false): Sh
     const occRef = c.occlusionRegionId ? { oc: c.occlusionRegionId } : {};
     const payload = c.payload ? { p: c.payload } : {};
     const identity = preserveIds ? { id: c.id } : {};
-    const metadata = { co: c.conceptId, ...(c.answerMode ? { am: c.answerMode } : {}) };
+    const metadata = {
+      co: c.conceptId,
+      ...(c.answerMode ? { am: c.answerMode } : {}),
+      ...(c.requireCorrectSpelling !== undefined ? { rs: c.requireCorrectSpelling } : {}),
+    };
 
     if (c.type === 'cloze') {
       out.push({
@@ -101,7 +105,11 @@ function packCards(cards: Card[], preserveIds = false, includeMedia = false): Sh
     const partner =
       !preserveIds &&
       (byContent.get(key(c.back, c.front)) ?? []).find(
-        (p) => p.id !== c.id && !consumed.has(p.id) && p.answerMode === c.answerMode,
+        (p) =>
+          p.id !== c.id &&
+          !consumed.has(p.id) &&
+          p.answerMode === c.answerMode &&
+          p.requireCorrectSpelling === c.requireCorrectSpelling,
       );
     if (partner) {
       out.push({ k: 2, f: front.markdown, b: back.markdown, ...tags, ...mediaFlag, ...metadata });
@@ -210,6 +218,7 @@ export async function buildCourseSharePayload(
         ? { sf: lesson.sessionFilter }
         : {}),
       ...(lesson.answerMode ? { am: lesson.answerMode } : {}),
+      ...(lesson.requireCorrectSpelling !== undefined ? { rs: lesson.requireCorrectSpelling } : {}),
       notes: packNotes(notesByLesson.get(lesson.id) ?? [], !!distribution, includeMedia),
       cards: packCards(cardsByLesson.get(lesson.id) ?? [], true, includeMedia),
       ...(distribution || questionSets.length > 0 || hasPrerequisites ? { i: lesson.id } : {}),

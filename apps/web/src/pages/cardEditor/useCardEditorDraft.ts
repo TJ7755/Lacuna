@@ -20,6 +20,7 @@ export function useCardEditorDraft({
   // Which way the form moves when the type changes: towards the pill that was chosen.
   const [formDirection, setFormDirection] = useState(0);
   const [answerMode, setAnswerMode] = useState<AnswerMode>();
+  const [requireCorrectSpelling, setRequireCorrectSpelling] = useState<boolean>();
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [numericAnswer, setNumericAnswer] = useState<NumericAnswerSpec>(EMPTY_NUMERIC_ANSWER);
@@ -49,6 +50,7 @@ export function useCardEditorDraft({
       tags,
       alsoReverse,
       answerMode,
+      spellingOverride: requireCorrectSpelling ?? null,
       payload:
         type === 'numeric'
           ? { v: 1, kind: 'numeric', answer: numericAnswer }
@@ -100,6 +102,7 @@ export function useCardEditorDraft({
     draftKeyRef.current = currentDraftKey;
     setLoaded(false);
     setAnswerMode(undefined);
+    setRequireCorrectSpelling(undefined);
     setDraftDirty(false);
     setDraftPrompt(false);
     // Deliberately keyed on the draft key alone; form state is read through persistDraftRef.
@@ -139,6 +142,7 @@ export function useCardEditorDraft({
                 : card.type,
         );
         setAnswerMode(card.answerMode);
+        setRequireCorrectSpelling(card.requireCorrectSpelling);
         setFront(card.front);
         setBack(card.back);
         if (card.payload?.kind === 'numeric') setNumericAnswer(card.payload.answer);
@@ -162,6 +166,13 @@ export function useCardEditorDraft({
         : draft.type,
     );
     setAnswerMode(draft.answerMode);
+    const spellingOverride =
+      draft.spellingOverride === undefined
+        ? draft.requireCorrectSpelling === undefined
+          ? card?.requireCorrectSpelling
+          : draft.requireCorrectSpelling || undefined
+        : (draft.spellingOverride ?? undefined);
+    setRequireCorrectSpelling(spellingOverride);
     setFront(draft.front);
     setBack(draft.back);
     setTags(draft.tags);
@@ -192,6 +203,7 @@ export function useCardEditorDraft({
               : card.type,
       );
       setAnswerMode(card.answerMode);
+      setRequireCorrectSpelling(card.requireCorrectSpelling);
       setFront(card.front);
       setBack(card.back);
       setTags(card.tags ?? []);
@@ -220,6 +232,7 @@ export function useCardEditorDraft({
     tags,
     alsoReverse,
     answerMode,
+    requireCorrectSpelling,
     numericAnswer,
     workingCompilation,
     workingFixtures,
@@ -252,6 +265,7 @@ export function useCardEditorDraft({
     values: {
       type,
       answerMode,
+      requireCorrectSpelling,
       front,
       back,
       numericAnswer,
@@ -263,6 +277,7 @@ export function useCardEditorDraft({
     },
     setters: {
       setAnswerMode,
+      setRequireCorrectSpelling,
       setFront,
       setBack,
       setNumericAnswer,

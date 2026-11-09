@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { requireAuditedInstaller } from './windows-ci-upgrade.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
@@ -129,6 +130,11 @@ try {
     `The baseline companion exited early: ${companionStderr}`,
   );
   report.companionPid = companion.pid;
+  await requireAuditedInstaller();
+  assert.ok(
+    companion.exitCode === null && companion.signalCode === null,
+    'The old companion must still be running at upgrade time.',
+  );
   await processSnapshot('before upgrade with live companion');
   await install(currentInstaller, installDirectory, 'upgrade');
   await processSnapshot('after upgrade');

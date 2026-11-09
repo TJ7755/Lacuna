@@ -3,12 +3,12 @@ import { createLocalSetting, parseJson } from './localSetting';
 export const AUDIO_PLAYBACK_SPEEDS = [0.75, 1, 1.25, 1.5] as const;
 export type AudioPlaybackSpeed = (typeof AUDIO_PLAYBACK_SPEEDS)[number];
 
-export interface AudioSettings {
+interface AudioSettings {
   autoplay: boolean;
   playbackSpeed: AudioPlaybackSpeed;
 }
 
-export const DEFAULT_AUDIO_SETTINGS: AudioSettings = { autoplay: true, playbackSpeed: 1 };
+const DEFAULT_AUDIO_SETTINGS: AudioSettings = { autoplay: true, playbackSpeed: 1 };
 
 const setting = createLocalSetting<AudioSettings>({
   key: 'lacuna.audioSettings',
@@ -31,5 +31,4 @@ const setting = createLocalSetting<AudioSettings>({
 });
 
 export const readAudioSettings = setting.read;
-export const writeAudioSettings = setting.write;
 export const useAudioSettings = setting.use;

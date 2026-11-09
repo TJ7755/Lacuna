@@ -47,6 +47,7 @@ describe('CardEditor — supporting options', () => {
         ['cells'],
         undefined,
         undefined,
+        undefined,
       ),
     );
   });
@@ -110,6 +111,7 @@ describe('CardEditor — authored answer mode', () => {
         [],
         undefined,
         'type',
+        undefined,
       ),
     );
   });
@@ -165,6 +167,7 @@ describe('CardEditor — authored answer mode', () => {
             'Draft question',
             'Draft answer',
             [],
+            undefined,
             undefined,
             undefined,
           ),

@@ -79,7 +79,7 @@ export function Privacy() {
       <section>
         <h2>Website analytics and hosting</h2>
         <p>
-          The production getlacuna.app website loads Simple Analytics to measure visits. Its
+          Some public pages on getlacuna.app load Simple Analytics to measure visits. Its
           documentation describes page views, referral sources and device/browser information,
           without analytics cookies or stored IP addresses. This is separate from your study
           database. Read{' '}
@@ -89,13 +89,13 @@ export function Privacy() {
           .
         </p>
         <p>
-          Web builds deployed on Vercel also enable Vercel Web Analytics in the application. It
-          measures page views and visit information such as referrers, browser, device and
-          approximate location. See{' '}
-          <a href="https://vercel.com/docs/analytics/privacy-policy">
-            Vercel Web Analytics privacy information
-          </a>
-          .
+          Lacuna uses usage analytics solely to improve the hosted app. Your browser remembers your
+          choice and, when analytics is on, uses device storage to count visits and repeat use and
+          to send batches of counts and timings. Reports use fixed names for pages and actions and
+          omit learning content, search text, page addresses and persistent browser identifiers.
+          Analytics uses no cookies and respects Do Not Track and Global Privacy Control. Lacuna
+          keeps aggregate reports for up to 90 days. Turn off Usage analytics in Settings to stop
+          collection and discard pending reports.
         </p>
         <p>
           The website and hosted services run on Vercel. Serving pages, relay requests and
@@ -105,21 +105,23 @@ export function Privacy() {
         </p>
       </section>
       <section>
-        <h2>Optional Jev automatic marking</h2>
+        <h2>Optional Jev assistance</h2>
         <p>
-          Jev is off by default. Turning it on requires accepting a warning and connecting an access
-          code. Answers needing automatic judgement are sent with their question and expected answer
-          or mark-scheme text through Lacuna’s hosted service to TypeSafe AI in the United States.
-          This is external processing, not on-device marking. Do not include personal data in
-          answers or cards submitted for marking.
+          Jev is off by default. When you enable it, Lacuna’s hosted service sends relevant study
+          text to TypeSafe AI in the United States. That includes questions, answers and mark
+          schemes for marking, lesson questions and candidate answers for multiple choice, and
+          authored marking points and technique descriptions for classification. Keep personal data
+          out of material you use with Jev.
         </p>
         <p>
-          TypeSafe says it does not train or fine-tune models on submitted inputs. Its policy gives
-          no fixed deletion period; treat submitted text as retained. Read the{' '}
-          <a href="https://typesafe.ai/legal/privacy-policy">TypeSafe AI privacy policy</a>.
-          Lacuna’s hosted access and usage controls also use Upstash Redis for request limits and
-          usage counters. Turning Jev off stops further marking requests; manual marking remains
-          available.
+          Lacuna’s TypeSafe organisation has zero data retention enabled for request content.
+          TypeSafe says it does not train Jev on submissions. Its{' '}
+          <a href="https://help.typesafe.ai/articles/5974925716-how-is-submitted-data-used-or-retained">
+            data handling information
+          </a>{' '}
+          explains processing and operational telemetry. Lacuna uses a hashed installation ID and
+          usage counters in Upstash Redis to enforce request limits. Cached judgements and lesson
+          shortlists are stored on the device. Turning Jev off stops new requests.
         </p>
       </section>
       <section>
@@ -151,8 +153,7 @@ export function Terms() {
         <h2>Free and open source</h2>
         <p>
           Lacuna is free and open source, with no subscription. You can study without creating an
-          account. Optional hosted features depend on network access, service availability and, for
-          Jev automatic marking, an access code.
+          account. Optional hosted features depend on network access and service availability.
         </p>
       </section>
       <section>

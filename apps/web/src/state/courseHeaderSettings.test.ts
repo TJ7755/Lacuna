@@ -1,60 +1,44 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { DEFAULT_STAT_PILLS, readStored, writeCourseHeaderSettings } from './courseHeaderSettings';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, expect, it } from 'vitest';
+import { useCourseHeaderSettings } from './courseHeaderSettings';
 
-beforeEach(() => {
-  localStorage.clear();
+const key = 'lacuna.courseHeaderSettings';
+beforeEach(() => localStorage.clear());
+
+it.each([null, 'not-json'])('shows the default pills for %j', (stored) => {
+  if (stored !== null) localStorage.setItem(key, stored);
+  const { result } = renderHook(useCourseHeaderSettings);
+  expect(result.current[0].statPills.filter((pill) => pill.visible).map((pill) => pill.id)).toEqual(
+    ['due', 'mastery'],
+  );
 });
 
-describe('courseHeaderSettings', () => {
-  it('shows due and mastery by default, and offers the rest', () => {
-    const visible = readStored()
-      .statPills.filter((pill) => pill.visible)
-      .map((pill) => pill.id);
-    expect(visible).toEqual(['due', 'mastery']);
-  });
-
-  it('keeps a hidden pill hidden across reads', () => {
-    const hidden = DEFAULT_STAT_PILLS.map((pill) =>
-      pill.id === 'mastery' ? { ...pill, visible: false } : pill,
-    );
-    writeCourseHeaderSettings({ statPills: hidden });
-    expect(readStored().statPills.find((pill) => pill.id === 'mastery')?.visible).toBe(false);
-  });
-
-  it('adds pills introduced after the reader last saved, without disturbing their choices', () => {
-    // A stored set from an earlier version, missing pills added since.
-    localStorage.setItem(
-      'lacuna.courseHeaderSettings',
-      JSON.stringify({ statPills: [{ id: 'due', label: 'Cards due now', visible: false }] }),
-    );
-    const { statPills } = readStored();
-    expect(statPills).toHaveLength(DEFAULT_STAT_PILLS.length);
-    expect(statPills[0]).toMatchObject({ id: 'due', visible: false });
-    expect(statPills.find((pill) => pill.id === 'exam')?.visible).toBe(false);
-  });
-
-  it('drops stored pills that no longer exist', () => {
-    localStorage.setItem(
-      'lacuna.courseHeaderSettings',
-      JSON.stringify({ statPills: [{ id: 'retired', label: 'Retired', visible: true }] }),
-    );
-    expect(readStored().statPills).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: 'retired' })]),
-    );
-  });
-
-  it('takes the current label for a stored pill, so renames reach every reader', () => {
-    localStorage.setItem(
-      'lacuna.courseHeaderSettings',
-      JSON.stringify({ statPills: [{ id: 'mastery', label: 'Mastery', visible: false }] }),
-    );
-    const pill = readStored().statPills.find((entry) => entry.id === 'mastery');
-    expect(pill).toMatchObject({ visible: false });
-    expect(pill?.label).toBe(DEFAULT_STAT_PILLS.find((def) => def.id === 'mastery')?.label);
-  });
-
-  it('falls back to defaults on unparseable storage', () => {
-    localStorage.setItem('lacuna.courseHeaderSettings', 'not json');
-    expect(readStored().statPills).toHaveLength(DEFAULT_STAT_PILLS.length);
-  });
+it('keeps saved pill choices in order while adopting the current pills and labels', () => {
+  localStorage.setItem(
+    key,
+    JSON.stringify({
+      statPills: [
+        { id: 'mastery', label: 'Mastery', visible: false },
+        { id: 'retired', label: 'Retired', visible: true },
+        { id: 'due', label: 'Cards due now', visible: true },
+      ],
+    }),
+  );
+  const { result } = renderHook(useCourseHeaderSettings);
+  const { statPills } = result.current[0];
+  expect(statPills.map((pill) => pill.id)).toEqual([
+    'mastery',
+    'due',
+    'exam',
+    'unmapped',
+    'lessons',
+  ]);
+  expect(statPills[0]).toEqual({ id: 'mastery', label: 'Exam readiness', visible: false });
+  expect(statPills[2].visible).toBe(false);
+  act(() =>
+    result.current[1]({
+      statPills: statPills.map((pill) => (pill.id === 'due' ? { ...pill, visible: false } : pill)),
+    }),
+  );
+  expect(JSON.parse(localStorage.getItem(key)!).statPills[1].visible).toBe(false);
 });

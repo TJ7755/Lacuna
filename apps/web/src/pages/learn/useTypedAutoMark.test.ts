@@ -77,22 +77,58 @@ describe('useTypedAutoMark', () => {
     expect(result.current).toMatchObject({ state: 'marked', correct: true, provenance: null });
   });
 
-  it('marks a word-for-word match locally without asking the marker', () => {
-    jev.marker = vi.fn();
-    const { result, onMarked } = setup('Paris');
-    act(() => {
-      vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
-    });
-    act(() => {
-      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
-    });
-    expect(result.current).toMatchObject({ state: 'marked', correct: true, provenance: null });
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-    expect(onMarked).toHaveBeenCalledWith(true, null);
-    expect(jev.marker).not.toHaveBeenCalled();
-  });
+  it.each([undefined, true] as const)(
+    'marks a word-for-word match locally with spelling required %s',
+    (requireCorrectSpelling) => {
+      jev.marker = vi.fn();
+      const { result, onMarked } = setup('Paris', { card: { ...card, requireCorrectSpelling } });
+      act(() => {
+        vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
+      });
+      act(() => {
+        vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
+      });
+      expect(result.current).toMatchObject({ state: 'marked', correct: true, provenance: null });
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(onMarked).toHaveBeenCalledWith(true, null);
+      expect(jev.marker).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([undefined, true] as const)(
+    'checks spelling-sensitive punctuation with Jev when spelling is required %s',
+    async (requireCorrectSpelling) => {
+      const expected = 'rock ’n’ roll';
+      const answer = 'rock n roll';
+      jev.marker = vi.fn().mockResolvedValue({
+        outcome: 'incorrect',
+        provenance,
+        feedback: { kind: 'spelling', parts: [] },
+      });
+      const { result } = setup(answer, {
+        card: { ...card, back: expected, requireCorrectSpelling },
+        answerStrictness: 'lenient',
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
+      });
+      act(() => {
+        vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
+      });
+
+      if (requireCorrectSpelling) {
+        expect(jev.marker).toHaveBeenCalledWith(
+          expect.objectContaining({ expected, answer, requireCorrectSpelling: true }),
+        );
+        expect(result.current).toMatchObject({ state: 'marked', correct: false, provenance });
+      } else {
+        expect(jev.marker).not.toHaveBeenCalled();
+        expect(result.current).toMatchObject({ state: 'marked', correct: true, provenance: null });
+      }
+    },
+  );
 
   it('applies a confident verdict for a mismatched answer, with provenance', async () => {
     jev.marker = vi.fn().mockResolvedValue({ outcome: 'correct', provenance });

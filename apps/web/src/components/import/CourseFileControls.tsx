@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { recordUsageAction } from '../../usage/actions';
 import { Button } from '../ui/Button';
 import { DownloadIcon, UploadIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
@@ -31,6 +32,7 @@ export function CourseFileExportButton({
           .trim()
           .slice(0, 100) || 'Course';
       downloadTextFile(text, `${filename}.lacuna`, 'application/json');
+      recordUsageAction('export-completed');
       notify('Course file saved with media.', 'positive');
     } catch (error) {
       notify(

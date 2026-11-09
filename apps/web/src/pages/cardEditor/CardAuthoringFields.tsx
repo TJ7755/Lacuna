@@ -6,6 +6,7 @@ import { NumericAnswerEditor } from '../../components/items/NumericAnswerEditor'
 import { MarkSchemeEditor } from '../../components/items/MarkSchemeEditor';
 import { TagInput } from '../../components/ui/TagInput';
 import { ContentDisclosure } from '../../components/ui/ContentDisclosure';
+import { Select } from '../../components/ui/Select';
 import { CheckIcon } from '../../components/ui/icons';
 import { cn } from '../../components/ui/cn';
 import { scaledSpring } from '../../components/ui/motion';
@@ -45,6 +46,7 @@ export function CardAuthoringFields({
     workingFixtures,
     tags,
     answerMode,
+    requireCorrectSpelling,
     alsoReverse,
   } = draft.values;
   const {
@@ -55,6 +57,7 @@ export function CardAuthoringFields({
     setWorkingFixtures,
     setTags,
     setAnswerMode,
+    setRequireCorrectSpelling,
     setAlsoReverse,
     setDraftDirty,
   } = draft.setters;
@@ -77,6 +80,7 @@ export function CardAuthoringFields({
     isStructured,
     clozeValid,
     canReverse,
+    canConfigureSpelling,
     formKind,
     formKey,
     shakeField,
@@ -265,7 +269,8 @@ export function CardAuthoringFields({
         defaultOpen={editing && tags.length > 0}
         className="border-t border-line pt-2"
       >
-        <div className="flex flex-col gap-4 pt-3">
+        {/* Leave room for the extended hit areas of tag suggestions and the spelling switch. */}
+        <div className="flex flex-col gap-5 pt-3">
           <div>
             <div className="mb-2 text-sm text-ink-soft">Tags</div>
             <TagInput
@@ -278,6 +283,29 @@ export function CardAuthoringFields({
               placeholder="Add tags"
             />
           </div>
+
+          {canConfigureSpelling && (
+            <label className="flex min-w-0 flex-col gap-2 text-sm font-semibold text-ink">
+              <span>Spelling</span>
+              <Select
+                className="w-full min-w-0"
+                value={
+                  requireCorrectSpelling === undefined ? 'inherit' : String(requireCorrectSpelling)
+                }
+                onChange={(event) => {
+                  const value = event.target.value;
+                  modifyDraftField(
+                    setRequireCorrectSpelling,
+                    value === 'inherit' ? undefined : value === 'true',
+                  );
+                }}
+              >
+                <option value="inherit">Lesson default</option>
+                <option value="true">Require correct spelling</option>
+                <option value="false">Allow spelling mistakes</option>
+              </Select>
+            </label>
+          )}
 
           {canReverse && (
             <div className="pb-1">

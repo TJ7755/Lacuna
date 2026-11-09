@@ -19,6 +19,7 @@ import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { SearchResultOption } from '../components/search/SearchResultOption';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { hitKey, hitPath, type SearchHit } from '../components/search/searchPresentation';
+import { recordUsageAction } from '../usage/actions';
 
 /** The structured filters offered as quick chips, in display order. */
 const FILTER_CHIPS: { value: CardFilter; label: string }[] = [
@@ -87,10 +88,15 @@ export function SearchPage() {
   const visible = results.slice(0, limit);
   const searching = query.trim() !== '' || filters.size > 0;
   const hasResults = searching && visible.length > 0;
+  const searchStarted = useRef(false);
 
   useEffect(() => {
     searchInput.current?.focus({ preventScroll: true });
   }, []);
+  useEffect(() => {
+    if (searching && !searchStarted.current) recordUsageAction('search-used');
+    searchStarted.current = searching;
+  }, [searching]);
   useEffect(() => {
     setActive(0);
   }, [criteria]);
@@ -149,7 +155,10 @@ export function SearchPage() {
     } else if (event.key === 'Enter' && hasResults && query === searchQuery) {
       event.preventDefault();
       const hit = visible[active];
-      if (hit) void navigate(hitPath(hit));
+      if (hit) {
+        recordUsageAction('search-result-opened', 'shortcut');
+        void navigate(hitPath(hit));
+      }
     }
   }
 
@@ -280,7 +289,10 @@ export function SearchPage() {
                     id={`search-option-${index}`}
                     selected={index === active}
                     onSelect={() => setActive(index)}
-                    onOpen={() => void navigate(hitPath(hit))}
+                    onOpen={() => {
+                      recordUsageAction('search-result-opened');
+                      void navigate(hitPath(hit));
+                    }}
                   />
                 ))}
               </div>

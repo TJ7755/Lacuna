@@ -115,6 +115,8 @@ export function ReviewHeatmap({
   );
   const [tooltipLeft, setTooltipLeft] = useState<number | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const drag = useRef({ active: false, panning: false, pointerId: -1, startX: 0, startLeft: 0 });
   const [labelStride, setLabelStride] = useState(days > 7 ? 5 : 1);
 
   // Date labels thin out as columns narrow or text grows, so neighbours never collide.
@@ -134,7 +136,7 @@ export function ReviewHeatmap({
     return () => observer.disconnect();
   }, [compact, days]);
   useLayoutEffect(() => {
-    const scrollport = gridRef.current?.parentElement;
+    const scrollport = scrollRef.current;
     if (scrollport) scrollport.scrollLeft = scrollport.scrollWidth;
   }, [days]);
   const tooltipRef = useRef<HTMLSpanElement>(null);
@@ -184,6 +186,55 @@ export function ReviewHeatmap({
       ?.focus();
   }
 
+  function onScrollPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    const scroller = event.currentTarget;
+    if (
+      event.pointerType !== 'mouse' ||
+      event.button !== 0 ||
+      scroller.scrollWidth <= scroller.clientWidth ||
+      !(event.target instanceof Element)
+    ) {
+      return;
+    }
+    drag.current = {
+      active: true,
+      panning: false,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startLeft: scroller.scrollLeft,
+    };
+    // Capture on the pressed element so clicks keep their target and even the
+    // first move can leave the scrollport. Captured events still bubble here.
+    event.target.setPointerCapture(event.pointerId);
+  }
+
+  function onScrollPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const scroller = scrollRef.current;
+    if (!drag.current.active || event.pointerId !== drag.current.pointerId || !scroller) return;
+    if ((event.buttons & 1) === 0) {
+      endScrollDrag(event);
+      return;
+    }
+    const dx = event.clientX - drag.current.startX;
+    if (!drag.current.panning) {
+      if (Math.abs(dx) < 4) return;
+      drag.current.panning = true;
+      if (scroller.contains(document.activeElement)) {
+        (document.activeElement as HTMLElement | null)?.blur?.();
+      }
+      setTooltip(null);
+    }
+    scroller.scrollLeft = drag.current.startLeft - dx;
+  }
+
+  function endScrollDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (!drag.current.active || event.pointerId !== drag.current.pointerId) return;
+    if (event.target instanceof Element && event.target.hasPointerCapture(event.pointerId)) {
+      event.target.releasePointerCapture(event.pointerId);
+    }
+    drag.current = { active: false, panning: false, pointerId: -1, startX: 0, startLeft: 0 };
+  }
+
   const cellCount = columns.length * 7;
   return (
     <section
@@ -197,7 +248,14 @@ export function ReviewHeatmap({
           {total} review{total === 1 ? '' : 's'} in {days} days
         </span>
       </div>
-      <div className="overflow-x-auto pb-1">
+      <div
+        ref={scrollRef}
+        onPointerDown={onScrollPointerDown}
+        onPointerMove={onScrollPointerMove}
+        onPointerUp={endScrollDrag}
+        onPointerCancel={endScrollDrag}
+        className="cursor-grab overflow-x-auto pb-1 [scrollbar-width:none] active:cursor-grabbing [&::-webkit-scrollbar]:hidden"
+      >
         <div
           ref={gridRef}
           role="grid"

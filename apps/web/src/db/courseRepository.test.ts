@@ -102,14 +102,16 @@ describe('createCourse', () => {
   });
 
   it('seeds practice fields from the global practice defaults', async () => {
-    const { writePracticeDefaults } = await import('../state/practiceDefaults');
-    writePracticeDefaults({
-      autoPractice: false,
-      practiceThresholdMinutesFar: 90,
-      practiceThresholdMinutesNear: 45,
-      practiceUrgentWindowDays: 14,
-      practiceMaxGap: 8,
-    });
+    localStorage.setItem(
+      'lacuna.practiceDefaults',
+      JSON.stringify({
+        autoPractice: false,
+        practiceThresholdMinutesFar: 90,
+        practiceThresholdMinutesNear: 45,
+        practiceUrgentWindowDays: 14,
+        practiceMaxGap: 8,
+      }),
+    );
 
     const course = await createCourse('Chemistry');
 

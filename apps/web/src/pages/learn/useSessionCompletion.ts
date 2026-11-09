@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef } from 'react';
+import { recordUsageAction } from '../../usage/actions';
 import type { SessionSummary } from '../../course/sessionSummary';
 import { transitionCompletion, type CompletionState } from './sessionMachine';
 
@@ -45,6 +46,7 @@ export function useSessionCompletion({
     const commit = async (): Promise<boolean> => {
       try {
         const deliveredSummary = await persist(summary);
+        recordUsageAction('study-completed');
         state.current = transitionCompletion(state.current, { type: 'confirmed' }).state;
         clearUndo();
         if (read().mounted) present(deliveredSummary, true);

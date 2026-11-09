@@ -54,6 +54,11 @@ function answerMode(value: 'reveal' | 'type' | undefined) {
   return value === 'type' ? 'Type answer' : value === 'reveal' ? 'Reveal answer' : '';
 }
 
+function spelling(value: boolean | null | undefined, inherited: string) {
+  if (value === null || value === undefined) return inherited;
+  return value ? 'Require correct spelling' : 'Allow spelling mistakes';
+}
+
 function payloadText(payload: ItemPayload | undefined): string {
   if (!payload) return '';
   if (payload.kind === 'scaffold') return 'Scaffold';
@@ -114,6 +119,15 @@ function lessonFields(
     field('Time zone', existing?.timeZone, incoming.timeZone),
     field('Study filter', existing?.sessionFilter, incoming.sessionFilter),
     field('Answer mode', answerMode(existing?.answerMode), answerMode(incoming.answerMode)),
+    ...(Boolean(existing?.requireCorrectSpelling) !== Boolean(incoming.requireCorrectSpelling)
+      ? [
+          field(
+            'Spelling',
+            spelling(existing?.requireCorrectSpelling, 'Allow spelling mistakes'),
+            spelling(incoming.requireCorrectSpelling, 'Allow spelling mistakes'),
+          ),
+        ]
+      : []),
     field(
       'Position',
       existing ? String(existing.orderIndex + 1) : '',
@@ -151,6 +165,15 @@ function cardFields(existing: Card | undefined, next: CardUpdate): ReviewField[]
     field('Card type', type(existing?.type), type(incoming.type)),
     field('Tags', existing?.tags?.join(', '), incoming.tags?.join(', ')),
     field('Answer mode', answerMode(existing?.answerMode), answerMode(incoming.answerMode)),
+    ...((existing?.requireCorrectSpelling ?? null) !== (incoming.requireCorrectSpelling ?? null)
+      ? [
+          field(
+            'Spelling',
+            spelling(existing?.requireCorrectSpelling, 'Lesson default'),
+            spelling(incoming.requireCorrectSpelling, 'Lesson default'),
+          ),
+        ]
+      : []),
     field('Answer specification', payloadText(existing?.payload), payloadText(incoming.payload)),
   ];
 }
@@ -249,6 +272,7 @@ export function buildMergeReviewRows(
               timeZone: next.tz,
               sessionFilter: next.sf,
               answerMode: next.am,
+              requireCorrectSpelling: next.rs ?? null,
             },
             lessonMap,
           ),
@@ -283,6 +307,7 @@ export function buildMergeReviewRows(
             tags: next.g ?? [],
             payload: next.p,
             answerMode: next.am,
+            requireCorrectSpelling: next.rs ?? null,
           }),
         ),
       );

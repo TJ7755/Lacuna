@@ -250,15 +250,19 @@ export function parseJsonImport(input: string): ImportParseResult {
       continue;
     }
 
-    const answerMode: Pick<ParsedCard, 'answerMode'> =
-      obj.answerMode === 'type' || obj.answerMode === 'reveal'
+    const answerOptions: Pick<ParsedCard, 'answerMode' | 'requireCorrectSpelling'> = {
+      ...(obj.answerMode === 'type' || obj.answerMode === 'reveal'
         ? { answerMode: obj.answerMode }
-        : {};
+        : {}),
+      ...(typeof obj.requireCorrectSpelling === 'boolean'
+        ? { requireCorrectSpelling: obj.requireCorrectSpelling }
+        : {}),
+    };
     const typeVal = typeof obj.type === 'string' ? obj.type.toLowerCase() : '';
     if (typeVal === 'cloze' || hasCloze(front)) {
-      cards.push({ type: 'cloze', front, back, ...(tags ? { tags } : {}), ...answerMode });
+      cards.push({ type: 'cloze', front, back, ...(tags ? { tags } : {}), ...answerOptions });
     } else if (back) {
-      cards.push({ type: 'front_back', front, back, ...(tags ? { tags } : {}), ...answerMode });
+      cards.push({ type: 'front_back', front, back, ...(tags ? { tags } : {}), ...answerOptions });
     } else {
       skipped++;
     }

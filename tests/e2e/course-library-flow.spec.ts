@@ -142,7 +142,7 @@ test('keeps the library coherent through a cold download and backtracking', asyn
     expect(Math.abs(searchBounds.x - subjectsBounds.x)).toBeLessThan(1);
     expect(Math.abs(searchBounds.width - subjectsBounds.width)).toBeLessThan(1);
     await search.fill('8461');
-    await page.getByRole('button', { name: 'Biology AQA GCSE · 8461', exact: true }).click();
+    await page.getByRole('button', { name: 'Biology AQA GCSE (8461)', exact: true }).click();
     await page.getByRole('button', { name: 'Back to the course library' }).press('Escape');
     await expect(search).toBeFocused();
     await expect(search).toHaveValue('8461');

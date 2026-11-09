@@ -123,5 +123,5 @@ it('surfaces a concurrent ownership rejection and leaves the draft and stored se
   expect(screen.getByRole('button', { name: 'Save selection' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   expect(screen.getByRole('button', { name: 'Change selection' })).toBeDisabled();
-  expect(screen.getByText(/The publisher owns its specification selection/)).toBeVisible();
+  expect(screen.getByText(/Detach the course to change its specification/)).toBeVisible();
 });

@@ -5,6 +5,10 @@ const DRAFT_PREFIX = 'lacuna:draft';
 
 export interface DraftData {
   answerMode?: AnswerMode;
+  /** Legacy drafts stored only the card toggle. */
+  requireCorrectSpelling?: boolean;
+  /** Null records a deliberate return to the lesson default. */
+  spellingOverride?: boolean | null;
   front: string;
   back: string;
   tags: string[];

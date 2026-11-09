@@ -47,6 +47,7 @@ export function ExpandingCreateControl({
   const root = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState(0);
   const [verticalOffset, setVerticalOffset] = useState(0);
+  const [spaceBelowAnchor, setSpaceBelowAnchor] = useState<number>();
   const [availableHeight, setAvailableHeight] = useState<number>();
   const [formWidth, setFormWidth] = useState<number>();
   const [retainForm, setRetainForm] = useState(open);
@@ -86,6 +87,7 @@ export function ExpandingCreateControl({
       const height = Math.min(formHeight ?? triggerHeight + 240, window.innerHeight - 36);
       const top = Math.max(18, Math.min(bounds.top, window.innerHeight - 18 - height));
       setVerticalOffset(top - bounds.top);
+      setSpaceBelowAnchor(window.innerHeight - 18 - bounds.top);
       // The shell rises to fit the form. Give its scroller the final viewport budget
       // immediately so a growing form does not change width as the shell moves.
       setAvailableHeight(Math.max(triggerHeight, window.innerHeight - 36));
@@ -123,7 +125,7 @@ export function ExpandingCreateControl({
         initial={false}
         animate={{
           x: open ? offset : 0,
-          y: open ? verticalOffset : 0,
+          '--create-offset-y': `${open ? verticalOffset : 0}px`,
           width: open ? 'min(448px, calc(100vw - 36px))' : closedWidth,
           height: open
             ? formHeight === undefined
@@ -131,6 +133,14 @@ export function ExpandingCreateControl({
               : Math.min(formHeight, availableHeight ?? formHeight)
             : triggerHeight,
           borderRadius: open ? 36 : triggerHeight / 2,
+        }}
+        // Translation percentages use the current surface height. Clamp each frame so
+        // the downward motion cannot outrun the shrinking surface and scroll the page.
+        style={{
+          y:
+            (open || retainForm) && spaceBelowAnchor !== undefined
+              ? `min(var(--create-offset-y, 0px), calc(${spaceBelowAnchor}px - 100%))`
+              : 'var(--create-offset-y, 0px)',
         }}
         transition={transition}
         // Keep drafts and selection alive until the shape has actually closed.

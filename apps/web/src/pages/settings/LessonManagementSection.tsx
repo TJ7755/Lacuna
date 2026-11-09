@@ -116,15 +116,9 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0 flex-[1_1_20rem]">
-          <h3 className="font-semibold text-ink">{locked ? 'Lesson order' : 'Manage lessons'}</h3>
-          {locked && (
-            <p className="mt-1 text-sm text-ink-soft">
-              Reorder lessons for your copy. Updates from the author and your progress are kept, and
-              new lessons follow their place in the publisher’s order.
-            </p>
-          )}
-        </div>
+        <h3 className="min-w-0 flex-[1_1_20rem] font-semibold text-ink">
+          {locked ? 'Local lesson order' : 'Manage lessons'}
+        </h3>
         {locked && data?.course.localLessonOrder && (
           <Button variant="secondary" size="sm" disabled={saving} onClick={() => void reset()}>
             Use publisher order

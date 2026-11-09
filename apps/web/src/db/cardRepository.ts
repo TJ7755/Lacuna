@@ -78,7 +78,10 @@ export async function createCard(
   front: string,
   back: string,
   tags: string[] = [],
-  opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'payload' | 'answerMode'> & {
+  opts?: Pick<
+    Card,
+    'courseId' | 'primaryLessonId' | 'payload' | 'answerMode' | 'requireCorrectSpelling'
+  > & {
     conceptId?: string;
   },
 ): Promise<Card> {
@@ -138,6 +141,7 @@ export async function createCard(
           primaryLessonId,
           payload: opts?.payload,
           answerMode: opts?.answerMode,
+          requireCorrectSpelling: opts?.requireCorrectSpelling,
         },
         now,
       );
@@ -162,6 +166,7 @@ export async function createCards(
     tags?: string[];
     payload?: ItemPayload;
     answerMode?: AnswerMode;
+    requireCorrectSpelling?: boolean;
     conceptId?: string;
   }[],
   opts?: { courseId?: string | null; primaryLessonId?: string | null; skipValidation?: boolean },
@@ -215,6 +220,7 @@ export async function createCards(
               back: draft.back,
               payload: draft.payload,
               answerMode: draft.answerMode,
+              requireCorrectSpelling: draft.requireCorrectSpelling,
               stability: null,
               difficulty: null,
               lastReviewed: null,
@@ -257,7 +263,7 @@ export async function createCardWithReverse(
   front: string,
   back: string,
   tags: string[] = [],
-  opts?: { courseId?: string | null; primaryLessonId?: string | null; answerMode?: AnswerMode },
+  opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'answerMode' | 'requireCorrectSpelling'>,
 ): Promise<{ card: Card; reverse: Card }> {
   return db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
     const card = await createCard(deckId, 'front_back', front, back, tags, opts);
@@ -278,7 +284,7 @@ export async function createBasicReversedPair(
   front: string,
   back: string,
   tags: string[] = [],
-  opts?: { courseId?: string | null; primaryLessonId?: string | null; answerMode?: AnswerMode },
+  opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'answerMode' | 'requireCorrectSpelling'>,
 ): Promise<{ card: Card; reverse: Card }> {
   return db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
     const reverse = await createCard(deckId, 'front_back', back, front, tags, opts);
@@ -309,6 +315,7 @@ export async function createLessonCard(
   tags: string[] = [],
   payload?: ItemPayload,
   answerMode?: AnswerMode,
+  requireCorrectSpelling?: boolean,
 ): Promise<Card> {
   const deckId = await ensureLessonDeck(courseId, lessonId);
   return createCard(deckId, type, front, back, tags, {
@@ -316,6 +323,7 @@ export async function createLessonCard(
     primaryLessonId: lessonId,
     payload,
     answerMode,
+    requireCorrectSpelling,
   });
 }
 
@@ -327,12 +335,14 @@ export async function createLessonCardWithReverse(
   back: string,
   tags: string[] = [],
   answerMode?: AnswerMode,
+  requireCorrectSpelling?: boolean,
 ): Promise<{ card: Card; reverse: Card }> {
   const deckId = await ensureLessonDeck(courseId, lessonId);
   return createCardWithReverse(deckId, front, back, tags, {
     courseId,
     primaryLessonId: lessonId,
     answerMode,
+    requireCorrectSpelling,
   });
 }
 
@@ -344,12 +354,14 @@ export async function createLessonBasicReversedPair(
   back: string,
   tags: string[] = [],
   answerMode?: AnswerMode,
+  requireCorrectSpelling?: boolean,
 ): Promise<{ card: Card; reverse: Card }> {
   const deckId = await ensureLessonDeck(courseId, lessonId);
   return createBasicReversedPair(deckId, front, back, tags, {
     courseId,
     primaryLessonId: lessonId,
     answerMode,
+    requireCorrectSpelling,
   });
 }
 
@@ -365,6 +377,7 @@ export async function createCourseCard(
   tags: string[] = [],
   payload?: ItemPayload,
   answerMode?: AnswerMode,
+  requireCorrectSpelling?: boolean,
 ): Promise<Card> {
   const deckId = await ensureCourseBankDeck(courseId);
   return createCard(deckId, type, front, back, tags, {
@@ -372,6 +385,7 @@ export async function createCourseCard(
     primaryLessonId: null,
     payload,
     answerMode,
+    requireCorrectSpelling,
   });
 }
 
@@ -382,12 +396,14 @@ export async function createCourseCardWithReverse(
   back: string,
   tags: string[] = [],
   answerMode?: AnswerMode,
+  requireCorrectSpelling?: boolean,
 ): Promise<{ card: Card; reverse: Card }> {
   const deckId = await ensureCourseBankDeck(courseId);
   return createCardWithReverse(deckId, front, back, tags, {
     courseId,
     primaryLessonId: null,
     answerMode,
+    requireCorrectSpelling,
   });
 }
 
@@ -398,12 +414,14 @@ export async function createCourseBasicReversedPair(
   back: string,
   tags: string[] = [],
   answerMode?: AnswerMode,
+  requireCorrectSpelling?: boolean,
 ): Promise<{ card: Card; reverse: Card }> {
   const deckId = await ensureCourseBankDeck(courseId);
   return createBasicReversedPair(deckId, front, back, tags, {
     courseId,
     primaryLessonId: null,
     answerMode,
+    requireCorrectSpelling,
   });
 }
 

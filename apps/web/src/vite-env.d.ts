@@ -18,8 +18,6 @@ import type { DesktopUpdateState } from './electron/updateTypes';
 export {};
 
 declare global {
-  const __VERCEL_ANALYTICS_ENABLED__: boolean;
-
   interface Window {
     electronAPI?: {
       platform: string;

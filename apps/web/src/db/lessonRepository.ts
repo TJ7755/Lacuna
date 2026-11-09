@@ -2,6 +2,7 @@ import { assertLessonPrerequisites } from './lessonPrerequisites';
 import { syncCourseSchedulingUnits } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
 import { earlierLessonIds } from '../course/courseEntry';
+import { isLessonAuthoringMode } from '../course/lessonViewMode';
 import {
   lessonCardExposureId,
   recordTombstone,
@@ -98,6 +99,25 @@ export async function updateLesson(id: string, changes: Partial<Lesson>): Promis
   } catch (err) {
     throw friendlyDbError(err);
   }
+}
+
+export async function setLessonSpellingRequirement(
+  courseId: string,
+  lessonId: string,
+  requireCorrectSpelling: boolean,
+): Promise<void> {
+  await db.transaction('rw', [db.courses, db.lessons], async () => {
+    const course = await db.courses.get(courseId);
+    if (!course || course.archived || !isLessonAuthoringMode(course)) {
+      throw new Error('Switch to Edit mode to change spelling requirements.');
+    }
+    const lesson = await db.lessons.get(lessonId);
+    if (!lesson || lesson.courseId !== courseId) throw new Error('Lesson not found.');
+    await db.lessons.update(
+      lessonId,
+      stampUpdatedAt({ requireCorrectSpelling: requireCorrectSpelling ? true : undefined }),
+    );
+  });
 }
 
 /**

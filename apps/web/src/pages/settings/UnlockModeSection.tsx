@@ -8,19 +8,17 @@ const MODES: readonly { value: UnlockMode; label: string; description: string }[
   {
     value: 'open',
     label: 'Open',
-    description: 'Every lesson is unlocked from the start, so you can work ahead freely.',
+    description: 'All lessons are open from the start.',
   },
   {
     value: 'semi-linear',
     label: 'Semi-linear',
-    description: 'Each lesson unlocks once the previous one is completed.',
+    description: 'Complete each lesson to unlock the next.',
   },
   {
     value: 'linear',
     label: 'Linear',
-    description:
-      'Lessons unlock on a schedule of dates. This uses your device clock, so treat it as an ' +
-      'honour system rather than a hard lock.',
+    description: 'Lessons unlock by date, using your device clock.',
   },
 ];
 
@@ -82,9 +80,7 @@ export function UnlockModeSection({
             value={linearCadence.intervalDays}
             min={1}
             onCommit={onIntervalDaysCommit}
-            hint={
-              <>Overriding one lesson&apos;s date on its own page moves the later lessons too.</>
-            }
+            hint="Changing an unlock date moves later dates too."
           />
         </div>
       )}

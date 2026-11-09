@@ -18,7 +18,7 @@ export default defineConfig({
   },
   webServer: {
     cwd: fileURLToPath(new URL('../..', import.meta.url)),
-    command: 'bun run build:assets && bunx vite preview --host localhost --port 5173 --strictPort',
+    command: `${process.env.LACUNA_BROWSER_PREBUILT === 'true' ? '' : 'bun run build:assets && '}bunx vite preview --host localhost --port 5173 --strictPort`,
     url: 'http://localhost:5173',
     reuseExistingServer: false,
     timeout: 120_000,

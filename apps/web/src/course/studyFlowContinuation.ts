@@ -5,41 +5,39 @@ import type { StudyFlowDecision, StudyFlowStep } from './studyFlowPlanner';
 export function mayContinueWithoutPause(
   completed: StudyFlowStep,
   summary: SessionSummary,
-  breakPending: boolean,
+  pauseAfterBlock: boolean,
 ): boolean {
   return (
     completed.kind === 'practice' &&
     completed.mode !== 'assessment' &&
-    completed.mode !== 'exam' &&
-    summary.reachedGoal &&
+    (summary.reachedGoal || summary.blockComplete === true) &&
     !summary.limitReached &&
     !summary.timeLimitReached &&
     !summary.dailyGoalReached &&
     // A step that ended without a single answer must not chain into another one.
     summary.events.length > 0 &&
-    !breakPending
+    !pauseAfterBlock
   );
 }
 
 /**
  * Whether the study flow should move from a finished step straight into the next
- * without the full-screen hand-off. Only contiguous Practice continues: the step
- * cleared its work rather than stopping at a review goal or limit, no break is due,
- * and the planner's next step is ordinary Practice with no alternative to choose.
+ * without the full-screen hand-off. Contiguous card practice can continue after
+ * a review block or an exhausted pool. The next step must be ordinary Practice
+ * with no alternative to choose, and no break, daily goal or limit may be due.
  * Lessons, assessments, breaks and the end of the flow keep their transition.
  */
 export function continuesWithoutPause(
   completed: StudyFlowStep,
   summary: SessionSummary,
   next: StudyFlowDecision,
-  breakPending: boolean,
+  pauseAfterBlock: boolean,
 ): next is { kind: 'step'; step: Extract<StudyFlowStep, { kind: 'practice' }> } {
   return (
-    mayContinueWithoutPause(completed, summary, breakPending) &&
+    mayContinueWithoutPause(completed, summary, pauseAfterBlock) &&
     next.kind === 'step' &&
     next.step.kind === 'practice' &&
     next.step.mode !== 'assessment' &&
-    next.step.mode !== 'exam' &&
     !(
       completed.kind === 'practice' &&
       completed.mode === 'catch-up' &&

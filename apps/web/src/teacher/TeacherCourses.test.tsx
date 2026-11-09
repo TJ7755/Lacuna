@@ -42,7 +42,7 @@ it('offers the demo before any connection form and opens it with one click', () 
 });
 
 it.each([{ courses: [] }, { courses: [biology] }])(
-  'labels the UTC reporting day explicitly for %j',
+  'shows the reporting date for %j',
   ({ courses }) => {
     render(
       <TodayPage
@@ -55,7 +55,7 @@ it.each([{ courses: [] }, { courses: [biology] }])(
         onExploreDemo={vi.fn()}
       />,
     );
-    expect(screen.getByText('Reports for Monday 19 October (UTC)')).toBeVisible();
+    expect(screen.getByText('Reports for Monday 19 October')).toBeVisible();
   },
 );
 
@@ -166,7 +166,7 @@ it('makes the first locked class the default next step and summarises unlocked o
       onExploreDemo={vi.fn()}
     />,
   );
-  expect(screen.getByText('1 reports · 1 to revisit')).toBeVisible();
+  expect(screen.getByText('1 report, 1 to revisit')).toBeVisible();
   expect(screen.getByRole('heading', { name: 'Today’s loaded results' })).toBeVisible();
   expect(screen.queryByRole('heading', { name: 'Yesterday' })).not.toBeInTheDocument();
   const unlock = screen.getByRole('button', { name: 'Unlock GCSE Chemistry' });
