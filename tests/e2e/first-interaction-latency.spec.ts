@@ -8,7 +8,7 @@ const CLICK_TO_USABLE_CEILING_MS = 250;
 const CARDS_CHUNK = /\/assets\/CardsPage-[^/?]+\.js(?:\?|$)/;
 const CARDS_ACKNOWLEDGEMENT = {
   selector:
-    'nav[aria-label="Course sections"] a[aria-label="Cards"][aria-current="page"] [data-course-tab-indicator]',
+    'nav[aria-label="Course sections"]:has(a[aria-label="Cards"][aria-current="page"]) [data-course-tab-indicator]',
 };
 const CARDS_MEANINGFUL = { selector: 'main h1', text: 'Cards' };
 

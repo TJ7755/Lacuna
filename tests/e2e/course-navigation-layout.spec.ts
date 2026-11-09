@@ -50,32 +50,92 @@ async function openSeededCourse(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
-test('dragging the course selection previews then opens the released section', async ({ page }) => {
-  await openSeededCourse(page);
-  const navigation = page.locator('nav[aria-label="Course sections"]:visible');
-  const path = await navigation.getByRole('link', { name: 'Path', exact: true }).boundingBox();
-  const cards = await navigation.getByRole('link', { name: 'Cards', exact: true }).boundingBox();
-  await page.mouse.move(path!.x + path!.width / 2, path!.y + path!.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(cards!.x + cards!.width / 2, cards!.y + cards!.height / 2, { steps: 12 });
-  await expect(navigation.getByRole('link', { name: 'Path', exact: true })).toHaveAttribute(
-    'aria-current',
-    'page',
-  );
-  await page.mouse.up();
-  await expect(page).toHaveURL(/\/cards$/);
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Welcome to Lacuna', exact: true }),
-  ).toHaveCount(0);
-  await expect(navigation).toHaveCount(1);
-  await expect(navigation.getByRole('link', { name: 'Cards', exact: true })).toHaveAttribute(
-    'aria-current',
-    'page',
-  );
-  await navigation.getByRole('link', { name: 'Cards', exact: true }).press('ArrowRight');
-  await expect(page).toHaveURL(/\/questions$/);
-});
+test.describe('touch course navigation', () => {
+  test.use({ hasTouch: true, serviceWorkers: 'block' });
 
+  test('the course selection follows the finger and settles directly into the released tab', async ({
+    page,
+  }) => {
+    // Keep Cards loading through release so the route cannot hide a recoil.
+    let finishLoadingCards!: () => void;
+    const cardsReady = new Promise<void>((resolve) => {
+      finishLoadingCards = resolve;
+    });
+    await page.route(/\/assets\/CardsPage-[^/?]+\.js(?:\?|$)/, async (route) => {
+      await cardsReady;
+      await route.continue();
+    });
+    await openSeededCourse(page);
+    const navigation = page.locator('nav[aria-label="Course sections"]:visible');
+    const path = navigation.getByRole('link', { name: 'Path', exact: true });
+    const cards = navigation.getByRole('link', { name: 'Cards', exact: true });
+    const indicator = navigation.locator('[data-course-tab-indicator]');
+    const centre = (node: Element) => {
+      const box = node.getBoundingClientRect();
+      return box.x + box.width / 2;
+    };
+    const start = (await path.boundingBox())!;
+    const startX = await path.evaluate(centre);
+    const targetX = await cards.evaluate(centre);
+    const releaseX = Math.round(startX + (targetX - startX) * 0.7);
+    const y = Math.round(start.y + start.height / 2);
+    const touch = await page.context().newCDPSession(page);
+    await touch.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: Math.round(startX), y }],
+    });
+    await touch.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: releaseX, y }],
+    });
+    await expect
+      .poll(async () => Math.abs((await indicator.evaluate(centre)) - releaseX))
+      .toBeLessThan(2);
+    await expect(path).toHaveAttribute('aria-current', 'page');
+
+    const frames = await navigation.evaluateHandle((nav) => ({
+      finished: new Promise<number[]>((resolve) => {
+        window.addEventListener(
+          'pointerup',
+          () => {
+            const started = performance.now();
+            const positions: number[] = [];
+            function sample() {
+              const box = nav.querySelector('[data-course-tab-indicator]')?.getBoundingClientRect();
+              positions.push(box ? box.x + box.width / 2 : NaN);
+              if (performance.now() - started >= 250) resolve(positions);
+              else requestAnimationFrame(sample);
+            }
+            requestAnimationFrame(sample);
+          },
+          { once: true, capture: true },
+        );
+      }),
+    }));
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    const positions = await frames.evaluate((result) => result.finished);
+    await expect(path).toHaveAttribute('aria-current', 'page');
+    finishLoadingCards();
+    await frames.dispose();
+    await touch.detach();
+
+    expect(positions.length).toBeGreaterThan(1);
+    expect(Math.min(...positions), JSON.stringify(positions)).toBeGreaterThan(releaseX - 2);
+    expect(Math.max(...positions), JSON.stringify(positions)).toBeGreaterThan(releaseX + 2);
+    expect(Math.max(...positions), JSON.stringify(positions)).toBeLessThan(targetX + 2);
+    await expect(page).toHaveURL(/\/cards$/);
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Welcome to Lacuna', exact: true }),
+    ).toHaveCount(0);
+    await expect(navigation).toHaveCount(1);
+    await expect(cards).toHaveAttribute('aria-current', 'page');
+    await expect
+      .poll(async () => Math.abs((await indicator.evaluate(centre)) - targetX))
+      .toBeLessThan(2);
+    await cards.press('ArrowRight');
+    await expect(page).toHaveURL(/\/questions$/);
+  });
+});
 test('settings retain accessible speed stops and shared switches', async ({ page }) => {
   await openSeededCourse(page);
   await page.goto('/#/settings');
