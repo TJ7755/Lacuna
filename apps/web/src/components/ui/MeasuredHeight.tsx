@@ -5,7 +5,13 @@ import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { expandingActionSpring } from './motion';
 
 /** Measures the incoming in-flow step; StepSwap keeps departing steps absolute. */
-export function MeasuredHeight({ children }: { children: ReactNode }) {
+export function MeasuredHeight({
+  children,
+  className = '',
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   const content = useRef<HTMLDivElement>(null);
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
@@ -55,7 +61,7 @@ export function MeasuredHeight({ children }: { children: ReactNode }) {
       animate={{ height: multiplier > 0 ? (height ?? 'auto') : 'auto' }}
       transition={expandingActionSpring(multiplier)}
       onAnimationComplete={release}
-      className="overflow-clip"
+      className={`overflow-clip ${className}`}
     >
       <div ref={content} className="flow-root">
         {children}
