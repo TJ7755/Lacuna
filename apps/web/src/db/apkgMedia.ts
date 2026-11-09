@@ -4,37 +4,29 @@ export interface ImportedMediaRef {
 }
 
 export function replaceMediaRefs(text: string, mediaMap: Map<string, ImportedMediaRef>): string {
-  let result = text;
-  // Anki's native audio marker.
-  result = result.replace(/\[sound:([^\]]+)\]/gi, (match, filename) => {
-    const media = mediaMap.get(filename);
-    if (!media || media.kind !== 'audio') return match;
-    return `![audio](${media.url})`;
+  if (mediaMap.size === 0) return text;
+  const plainNames = [...mediaMap.keys()]
+    .sort((a, b) => b.length - a.length)
+    .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|');
+  const structured =
+    /\[sound:(?<audio>[^\]]+)\]|<img\s+[^>]*src=["'](?<image>[^"']+)["'][^>]*>|!\[(?<alt>[^\]]*)\]\((?<markdown>[^)]+)\)/;
+  const otherMarkup = /\[[^\]]*\]\([^)]+\)|\b(?:[a-z][a-z0-9+.-]*:\/\/|www\.)[^\s<>()]+/;
+  const word = '\\p{L}\\p{N}\\p{M}_';
+  const plain = `(?<![${word}./\\\\-])(?<filename>${plainNames})(?![${word}/\\\\-]|\\.[${word}])`;
+  const references = new RegExp(`${structured.source}|${otherMarkup.source}|${plain}`, 'giu');
+  return text.replace(references, (match, ...parts) => {
+    const { audio, image, alt, markdown, filename } = parts.at(-1);
+    const media = mediaMap.get(audio ?? image ?? markdown ?? filename);
+    if (
+      !media ||
+      (audio && media.kind !== 'audio') ||
+      ((image || markdown) && media.kind !== 'image')
+    ) {
+      return match;
+    }
+    return `![${alt ?? media.kind}](${media.url})`;
   });
-  // HTML img tags: <img src="filename.jpg">
-  const imgRe = /<img\s+[^>]*src=["']([^"']+)["'][^>]*>/gi;
-  result = result.replace(imgRe, (match, src) => {
-    const media = mediaMap.get(src);
-    if (!media || media.kind !== 'image') return match;
-    return `![image](${media.url})`;
-  });
-  // Markdown image syntax: ![alt](filename.jpg)
-  const mdImgRe = /!\[([^\]]*)\]\(([^)]+)\)/g;
-  result = result.replace(mdImgRe, (match, alt, src) => {
-    const media = mediaMap.get(src);
-    if (!media || media.kind !== 'image') return match;
-    return `![${alt}](${media.url})`;
-  });
-  // Plain text references like filename.jpg (fallback for filenames embedded in text)
-  for (const [filename, media] of mediaMap.entries()) {
-    const escaped = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const plainRe = new RegExp(escaped, 'g');
-    result = result.replace(
-      plainRe,
-      media.kind === 'audio' ? `![audio](${media.url})` : `${media.url}`,
-    );
-  }
-  return result;
 }
 
 export function guessMimeType(filename: string): string {

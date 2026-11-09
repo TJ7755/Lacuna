@@ -189,10 +189,19 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
       )}
       {blocker.state === 'blocked' && (
         <div className="qs-error">
-          <p>Save this draft before leaving.</p>
-          <Button variant="secondary" onClick={() => blocker.reset()}>
+          <p>
+            {snapshot.phase === 'error'
+              ? 'Unsaved changes will be lost if you leave.'
+              : 'Save this draft before leaving.'}
+          </p>
+          <Button variant="ghost" onClick={() => blocker.reset()}>
             Stay here
           </Button>
+          {snapshot.phase === 'error' && (
+            <Button variant="secondary" onClick={() => blocker.proceed()}>
+              Leave without saving
+            </Button>
+          )}
         </div>
       )}
       {confirm && (

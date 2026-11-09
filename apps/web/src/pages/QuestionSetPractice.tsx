@@ -319,8 +319,13 @@ function PracticeWorkspace({
           disabled={formDirty || reflectionDirty}
           onClick={() =>
             void perform(async () => {
-              await progress.flush();
-              if (attempt.status !== 'complete') recordUsageAction('study-exited');
+              if (!progress.error) {
+                const saved = await progress.flush().then(
+                  () => true,
+                  () => false,
+                );
+                if (saved && attempt.status !== 'complete') recordUsageAction('study-exited');
+              }
               if (study) study.onExit();
               else await navigate(origin?.questionSetReturnTo ?? base);
             })
@@ -387,15 +392,25 @@ function PracticeWorkspace({
           )}
         </div>
       )}
-      {progress.blocker.state === 'blocked' && (formDirty || reflectionDirty || progress.error) && (
+      {progress.blocker.state === 'blocked' && (progress.error || formDirty || reflectionDirty) && (
         <div className="qs-error" role="alert">
-          Save or cancel your unfinished changes before leaving.
+          {progress.error
+            ? 'Unsaved changes will be lost if you leave.'
+            : 'Save or cancel your unfinished changes before leaving.'}
           <Button
             variant="ghost"
             onClick={() => progress.blocker.state === 'blocked' && progress.blocker.reset()}
           >
             Stay here
           </Button>
+          {progress.error && (
+            <Button
+              variant="secondary"
+              onClick={() => progress.blocker.state === 'blocked' && progress.blocker.proceed()}
+            >
+              Leave without saving
+            </Button>
+          )}
         </div>
       )}
       <article

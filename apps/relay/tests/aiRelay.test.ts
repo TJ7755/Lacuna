@@ -634,6 +634,62 @@ describe('AI relay', () => {
     );
     expect(pairingSession.status).toBe(201);
   });
+
+  it('throttles unauthenticated claim probing', async () => {
+    const handle = createHandler(new MemoryStore());
+    const ip = '198.51.100.40';
+    for (let index = 0; index < 10; index += 1) {
+      const malformed = await handle(
+        new Request('http://relay.test/ai/claim', {
+          method: 'POST',
+          headers: { Origin: ORIGIN, 'x-vercel-forwarded-for': ip },
+        }),
+      );
+      expect(malformed.status).toBe(404);
+    }
+    for (let index = 0; index < 10; index += 1) {
+      const response = await handle(
+        jsonRequest(
+          '/ai/claim',
+          'POST',
+          {
+            terminalPublicKey: TERMINAL_PUBLIC_KEY,
+            client: { name: 'Probe' },
+          },
+          { 'x-vercel-forwarded-for': ip, 'X-Lacuna-Pairing-Code': 'AAAA-AAAA-AAAA-AAAA-AAAA' },
+        ),
+      );
+      expect(response.status).toBe(404);
+    }
+    const limited = await handle(
+      jsonRequest(
+        '/ai/claim',
+        'POST',
+        {
+          terminalPublicKey: TERMINAL_PUBLIC_KEY,
+          client: { name: 'Probe' },
+        },
+        { 'x-vercel-forwarded-for': ip, 'X-Lacuna-Pairing-Code': 'AAAA-AAAA-AAAA-AAAA-AAAA' },
+      ),
+    );
+    expect(limited.status).toBe(429);
+    // A different address retains its own budget.
+    const gauge = await handle(
+      jsonRequest(
+        '/ai/claim',
+        'POST',
+        {
+          terminalPublicKey: TERMINAL_PUBLIC_KEY,
+          client: { name: 'Probe' },
+        },
+        {
+          'x-vercel-forwarded-for': '198.51.100.41',
+          'X-Lacuna-Pairing-Code': 'AAAA-AAAA-AAAA-AAAA-AAAA',
+        },
+      ),
+    );
+    expect(gauge.status).toBe(404);
+  });
 });
 
 async function paired(store: BlobStore = new MemoryStore()) {

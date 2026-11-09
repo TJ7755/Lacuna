@@ -128,7 +128,8 @@ export async function prepareImageAsset(
   };
 }
 
-export async function storeAudioBlob(blob: Blob, mimeType = blob.type): Promise<MediaAsset> {
+/** Prepare an audio row without persisting it, for caller-owned atomic transactions. */
+export async function prepareAudioAsset(blob: Blob, mimeType = blob.type): Promise<MediaAsset> {
   const normalisedMimeType = mimeType.toLowerCase().split(';', 1)[0];
   if (!SUPPORTED_AUDIO_MIME_TYPES.has(normalisedMimeType)) {
     throw new Error('Use an MP3, M4A, MP4, Ogg, WAV or WebM audio file.');
@@ -139,13 +140,17 @@ export async function storeAudioBlob(blob: Blob, mimeType = blob.type): Promise<
   if (blob.size === 0) throw new Error('The selected audio file is empty.');
 
   const hash = await sha256Blob(blob);
-  const asset: MediaAsset = {
+  return {
     hash,
     blob: new Uint8Array(await blobToArrayBuffer(blob)),
     mimeType: normalisedMimeType,
     kind: 'audio',
     createdAt: Date.now(),
   };
+}
+
+export async function storeAudioBlob(blob: Blob, mimeType = blob.type): Promise<MediaAsset> {
+  const asset = await prepareAudioAsset(blob, mimeType);
   await db.assets.put(asset);
   return asset;
 }

@@ -226,4 +226,53 @@ describe('importApkgResult', () => {
     expect(persisted.history).toEqual([]);
     expect((await hydrateCardsWithHistory([persisted]))[0]).toEqual(card);
   });
+
+  it('rewrites only standalone plain-text media names without corrupting longer tokens', async () => {
+    vi.stubGlobal('Image', undefined);
+    const result = makeResult({
+      cards: [
+        makeCard({
+          front: 'See aa.png. Keep éa.png, myimg.pngfile and https://example.test/a.png.',
+          back: '![a.png](a.png) and a.png',
+        }),
+      ],
+      media: new Map([
+        ['a.png', new TextEncoder().encode('a bytes')],
+        ['aa.png', new TextEncoder().encode('aa bytes')],
+        ['img.png', new TextEncoder().encode('img bytes')],
+      ]),
+    });
+
+    const imported = await importApkgResult(result);
+    const images = (await db.assets.toArray()).filter((asset) => asset.kind === 'image');
+    expect(images).toHaveLength(3);
+    const card = imported.cards[0];
+    const sizeOf = (asset: (typeof images)[number]): number =>
+      asset.blob instanceof Blob ? asset.blob.size : asset.blob.byteLength;
+    const aa = images.find((asset) => sizeOf(asset) === 'aa bytes'.length)!;
+    const a = images.find((asset) => sizeOf(asset) === 'a bytes'.length)!;
+    expect(card.front).toBe(
+      `See ![image](lacuna-asset://${aa.hash}). Keep éa.png, myimg.pngfile and https://example.test/a.png.`,
+    );
+    expect(card.back).toBe(
+      `![a.png](lacuna-asset://${a.hash}) and ![image](lacuna-asset://${a.hash})`,
+    );
+  });
+
+  it('rolls back prepared media when card persistence fails', async () => {
+    vi.stubGlobal('Image', undefined);
+    const bulkPut = vi
+      .spyOn(db.cards, 'bulkPut')
+      .mockRejectedValueOnce(new Error('cards write failed'));
+
+    const result = makeResult({
+      cards: [makeCard({ front: '<img src="diagram.png">' })],
+      media: new Map([['diagram.png', new TextEncoder().encode('image bytes')]]),
+    });
+    await expect(importApkgResult(result)).rejects.toThrow('cards write failed');
+    expect(await db.courses.count()).toBe(0);
+    expect(await db.cards.count()).toBe(0);
+    expect(await db.assets.count()).toBe(0);
+    bulkPut.mockRestore();
+  });
 });

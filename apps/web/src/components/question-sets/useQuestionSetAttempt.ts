@@ -89,8 +89,8 @@ export function useAttemptProgress(session: QuestionSetAttemptSession, formDirty
     }, 450);
     return () => clearTimeout(timer);
   }, [draftVersion, flush, snapshot.error]);
-  const dirty =
-    drafts.current.size > 0 || snapshot.pending > 0 || Boolean(snapshot.error) || formDirty;
+  // Keep unsaved text protected until the learner explicitly leaves after a save error.
+  const dirty = drafts.current.size > 0 || snapshot.pending > 0 || formDirty;
   const blocker = useBlocker(dirty);
   useEffect(() => {
     if (blocker.state === 'blocked' && !snapshot.error && !formDirty) {
@@ -101,7 +101,7 @@ export function useAttemptProgress(session: QuestionSetAttemptSession, formDirty
   }, [blocker, flush, snapshot.error, formDirty]);
   useEffect(() => {
     const leave = (event: BeforeUnloadEvent) => {
-      if (drafts.current.size || session.snapshot.pending || session.snapshot.error || formDirty) {
+      if (drafts.current.size || session.snapshot.pending || formDirty) {
         event.preventDefault();
         event.returnValue = '';
       }

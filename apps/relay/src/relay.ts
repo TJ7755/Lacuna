@@ -74,8 +74,8 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
             }
           }
           return await handleAiRelayRoute(store, request, route, now);
-        case 'ai-session':
         case 'ai-claim':
+        case 'ai-session':
         case 'ai-peer':
         case 'ai-mailbox':
         case 'ai-invalid':

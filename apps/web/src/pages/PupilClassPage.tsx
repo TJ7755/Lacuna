@@ -12,6 +12,8 @@ export function PupilClassPage() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const course = useCourse(courseId);
+  // The hook keys its subscription by course, so in-app navigation re-reads
+  // the new course's stored enrolment instead of showing stale state.
   const [enrolment] = createEnrolmentSetting(courseId ?? '').use();
 
   if (course === undefined) return <PageLoading />;

@@ -118,6 +118,8 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
       state.persisted?.toolSessionState,
     );
 
+  state.snapshot = withoutStaleApproval(state.snapshot);
+
   const { getEncryptionKey, pushMailbox } = createRelayMailboxTransport(state, {
     options,
     crypto,
@@ -144,8 +146,18 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
     persistence.save({ snapshot: state.snapshot, connection: state.persisted });
   }
 
+  function withoutStaleApproval(snapshot: AiSessionSnapshot): AiSessionSnapshot {
+    if (snapshot.approval?.status !== 'pending') return snapshot;
+    const connectionId = state.persisted?.credentials.sessionId;
+    return connectionId &&
+      snapshot.run?.status === 'active' &&
+      toolSession.ownsApproval(snapshot.approval.approvalId, connectionId, snapshot.run.runId)
+      ? snapshot
+      : { ...snapshot, approval: null };
+  }
+
   function publish(next: Omit<AiSessionSnapshot, 'revision'>): void {
-    state.snapshot = { ...next, revision: state.snapshot.revision + 1 };
+    state.snapshot = withoutStaleApproval({ ...next, revision: state.snapshot.revision + 1 });
     persist();
     listeners.forEach((listener) => listener());
   }
@@ -436,11 +448,14 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
             browserGeneration,
             queuedFollowUpMessageId: null,
           };
+          // Stop revokes pending tool authority, matching the local session.
+          toolSession.clear();
           publish({
             ...state.snapshot,
             draft: state.snapshot.queuedFollowUp ?? state.snapshot.draft,
             queuedFollowUp: null,
             run: { ...state.snapshot.run, status: 'stop_requested', stopRequestedAt },
+            approval: null,
             activity: {
               runId,
               status: 'stop_requested',
@@ -459,11 +474,33 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
     },
     decide(approvalId, approved) {
       return serialise(async () => {
+        const pendingApproval = state.snapshot.approval;
+        const run = state.snapshot.run;
+        const connectionId = state.persisted?.credentials.sessionId;
+        if (
+          !pendingApproval ||
+          pendingApproval.approvalId !== approvalId ||
+          pendingApproval.status !== 'pending' ||
+          !connectionId ||
+          !run ||
+          run.status !== 'active' ||
+          !toolSession.ownsApproval(approvalId, connectionId, run.runId)
+        ) {
+          return conflict('That approval is no longer pending.');
+        }
         const decision = await toolSession.decide(approvalId, approved);
         if (!decision.ok)
           return conflict(
             decision.error.kind === 'tool' ? decision.error.error.message : decision.error.message,
           );
+        if (
+          state.snapshot.run?.runId !== run.runId ||
+          state.snapshot.run.status !== 'active' ||
+          state.snapshot.approval?.approvalId !== approvalId ||
+          state.snapshot.approval.status !== 'pending'
+        ) {
+          return conflict('That approval is no longer pending.');
+        }
         const activity =
           decision.effects.activity && state.snapshot.run
             ? { runId: state.snapshot.run.runId, ...decision.effects.activity }

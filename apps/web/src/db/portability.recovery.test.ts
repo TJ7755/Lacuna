@@ -280,4 +280,65 @@ describe('backup recovery', () => {
     expect(await db.lessonCompletions.get(emptyLesson.id)).toEqual(incomingCompletion);
     expect(await db.practiceMilestones.get('practice-cells')).toEqual(incomingMilestone);
   });
+
+  it('restores lineage membership and the newest queued review for a linked course', async () => {
+    const course = await createCourse('Biology');
+    await db.courses.update(course.id, {
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    });
+    await db.lineageIdMappings.put({
+      id: 'lineage-1',
+      courseId: course.id,
+      lessonIds: [],
+      noteIds: ['backup-note'],
+      cardIds: [],
+      sequenceIds: [],
+      lessonSnapshots: {},
+      noteSnapshots: {},
+      cardSnapshots: {},
+    });
+    await db.pendingMergeReviews.put({
+      id: 'review-1',
+      courseId: course.id,
+      lineageId: 'lineage-1',
+      revision: 2,
+      diff: {
+        creates: { lessons: [], notes: [], cards: [] },
+        updates: { lessons: [], notes: [], cards: [] },
+        removals: { lessonIds: [], noteIds: [], cardIds: [] },
+        conflicts: [],
+      },
+      createdAt: 10,
+    });
+    const backup = await exportDatabase();
+    expect(backup.lineageIdMappings).toHaveLength(1);
+    expect(backup.pendingMergeReviews).toHaveLength(1);
+
+    const mapping = backup.lineageIdMappings![0]!;
+    const review = backup.pendingMergeReviews![0]!;
+    await db.lineageIdMappings.put({ ...mapping, noteIds: ['local-note'] });
+    await db.pendingMergeReviews.delete(review.id);
+    await db.pendingMergeReviews.put({ ...review, id: 'older-review', createdAt: 9 });
+    await importBackup(backup, 'merge');
+
+    expect(await db.lineageIdMappings.get(mapping.id)).toMatchObject({
+      noteIds: ['backup-note', 'local-note'],
+    });
+    expect(await db.pendingMergeReviews.where('courseId').equals(course.id).toArray()).toEqual([
+      review,
+    ]);
+
+    await db.courses.update(course.id, { distributedCopy: undefined });
+    await db.lineageIdMappings.delete(mapping.id);
+    await db.pendingMergeReviews.delete(review.id);
+    await importBackup(backup, 'merge');
+
+    expect(await db.lineageIdMappings.get(mapping.id)).toBeUndefined();
+    expect(await db.pendingMergeReviews.where('courseId').equals(course.id).count()).toBe(0);
+  });
 });
