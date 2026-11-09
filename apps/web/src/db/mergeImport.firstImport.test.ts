@@ -45,17 +45,20 @@ describe('mergeImport: first import of a lineage', () => {
     expect(unchanged.queuedForReview).toBe(false);
   });
 
-  it("carries the teacher's retention, new-card limit and steady scheduling into the copy", async () => {
+  it("carries the teacher's study settings and lesson release date into the copy", async () => {
+    const releaseDate = Date.UTC(2026, 8, 1);
     const { course } = await importLineageFirstTime(
       coursePayload({
-        course: { n: 'Biology', o: 0, c: 1000, um: 'open', r: 0.8, p: 7, sm: 1 },
-        lessons: [lessonOne()],
+        course: { n: 'Biology', o: 0, c: 1000, um: 'open', r: 0.8, p: 7, sm: 1, lf: 0 },
+        lessons: [lessonOne({ rd: releaseDate })],
       }),
     );
     const stored = await db.courses.get(course.id);
     expect(stored?.fsrsParameters.requestRetention).toBe(0.8);
     expect(stored?.newCardsPerDay).toBe(7);
+    expect(stored?.learnFirst).toBe(false);
     expect(course.schedulingMode).toBe('steady');
+    expect((await db.lessons.get('lesson-1'))?.releaseDate).toBe(releaseDate);
   });
 
   it('imports a plain, untracked copy when the lineage ids are already in use (detached copy)', async () => {
