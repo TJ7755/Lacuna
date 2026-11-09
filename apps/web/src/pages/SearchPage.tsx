@@ -17,6 +17,7 @@ import { useAdvancedDetails } from '../state/advancedDetails';
 import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { SearchResultOption } from '../components/search/SearchResultOption';
+import { searchQuestionSetHits } from '../components/search/searchQuestionSetHits';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { hitKey, hitPath, type SearchHit } from '../components/search/searchPresentation';
 import { recordUsageAction } from '../usage/actions';
@@ -74,6 +75,7 @@ export function SearchPage() {
             .map((topic): SearchHit => ({ kind: 'help', topic }))
         : []),
       ...searchCourseContent(searchQuery, scope.courses, scope.lessons, searchData?.notes ?? []),
+      ...searchQuestionSetHits(searchQuery, searchData),
       ...searchQuestionsInScope(searchQuery, {
         ...scope,
         questions: searchData?.questions ?? [],

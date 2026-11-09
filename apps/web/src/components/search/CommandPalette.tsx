@@ -26,6 +26,7 @@ import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { StudyDrawing } from '../ui/StudyDrawing';
 import { SearchResultOption } from './SearchResultOption';
+import { searchQuestionSetHits } from './searchQuestionSetHits';
 import { hitKey, hitPath, type SearchHit } from './searchPresentation';
 
 /** A single ordered list of Help, navigation, Card and Question hits. */
@@ -60,7 +61,7 @@ function GlobalPaletteDialog({
   returnFocusTarget?: RefObject<HTMLElement | null>;
 }) {
   const searchData = useSearchData();
-  // Help and course/lesson/note hits precede Question and Card hits, capped together
+  // Help and navigation hits precede Question Sets, Questions and Cards, capped together
   // so the palette never grows unbounded on a broad query.
   const search = useCallback(
     (query: string): PaletteHit[] => {
@@ -82,7 +83,13 @@ function GlobalPaletteDialog({
             .slice(0, 3)
             .map((topic) => ({ kind: 'help', topic }))
         : [];
-      return [...helpHits, ...courseHits, ...questionHits, ...cardHits];
+      return [
+        ...helpHits,
+        ...courseHits,
+        ...searchQuestionSetHits(query, searchData),
+        ...questionHits,
+        ...cardHits,
+      ];
     },
     [searchData],
   );

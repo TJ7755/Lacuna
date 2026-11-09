@@ -77,6 +77,27 @@ export const SearchResultContent = memo(function SearchResultContent({
       </>
     );
   }
+  if (hit.kind === 'question-set') {
+    const title = hit.questionSet.title;
+    return (
+      <>
+        <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-accent-soft text-accent-ink">
+          <FileTextIcon width={14} height={14} />
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className={titleClass}>
+            <HighlightedText text={matchPreview(title, query, max)} query={query} />
+          </span>
+          <span className="truncate text-xs text-ink-faint">Question set · {hit.course.name}</span>
+          {hit.excerpt && hit.excerpt !== title && (
+            <span className={secondaryClass}>
+              <HighlightedText text={matchPreview(hit.excerpt, query, max)} query={query} />
+            </span>
+          )}
+        </span>
+      </>
+    );
+  }
   const question = hit.kind === 'question' ? hit.question : null;
   const card = hit.kind === 'card' ? hit.card : null;
   const title = card

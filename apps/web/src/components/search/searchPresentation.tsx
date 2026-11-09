@@ -1,3 +1,5 @@
+import type { Course } from '@lacuna/core/db/types';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import type { HelpTopic } from '../../pages/help/helpTopics';
 import {
   plainPreview,
@@ -7,7 +9,15 @@ import {
   type ScopedSearchResult,
 } from '@lacuna/core/db/search';
 
-export type SearchHit = CourseContentHit | ScopedSearchResult | { kind: 'help'; topic: HelpTopic };
+export interface QuestionSetHit {
+  kind: 'question-set';
+  questionSet: QuestionSetRecord;
+  course: Course;
+  excerpt: string;
+}
+
+export type SearchHit =
+  CourseContentHit | ScopedSearchResult | QuestionSetHit | { kind: 'help'; topic: HelpTopic };
 
 export function hitPath(hit: SearchHit): string {
   switch (hit.kind) {
@@ -17,6 +27,8 @@ export function hitPath(hit: SearchHit): string {
       return cardEditPath(hit.card);
     case 'question':
       return questionEditPath(hit.question);
+    case 'question-set':
+      return `/course/${hit.course.id}/question-sets/${hit.questionSet.id}`;
     case 'course':
       return `/course/${hit.course.id}`;
     case 'lesson':
@@ -27,6 +39,7 @@ export function hitPath(hit: SearchHit): string {
 
 export function hitKey(hit: SearchHit): string {
   if (hit.kind === 'help') return `help-${hit.topic.id}`;
+  if (hit.kind === 'question-set') return `question-set-${hit.questionSet.id}`;
   const id =
     hit.kind === 'card'
       ? hit.card.id
