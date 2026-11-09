@@ -94,7 +94,7 @@ export function LearnStudyPhase({
     editing,
     current,
     introductionPresentation,
-    introductionProgress,
+    cardCompletion,
     checkIntroduction,
     continueIntroduction,
     editTagSuggestions,
@@ -219,12 +219,11 @@ export function LearnStudyPhase({
             revisionNextWindowDay={revisionNextWindowDay}
             singleDeck={singleDeck}
             unitDisplayName={unitDisplayName}
-            sessionProgress={
-              introductionProgress?.value ?? (isSimpleMode ? simpleProgress : schedulerProgress)
-            }
+            sessionProgress={isSimpleMode ? simpleProgress : schedulerProgress}
+            cardCompletion={cardCompletion}
             predictedRecall={predictedRecall}
-            sessionCardIds={introductionProgress?.ids ?? sessionCardIds}
-            sessionCardOutcomes={introductionProgress?.outcomes ?? sessionCardOutcomes}
+            sessionCardIds={sessionCardIds}
+            sessionCardOutcomes={sessionCardOutcomes}
             filterParams={filterParams}
             tagFilter={tagFilter}
             onExit={() => exitGuardRef.current?.requestLeave()}
@@ -251,8 +250,7 @@ export function LearnStudyPhase({
               setHintsOpen(true);
             }}
             m={m}
-            currentCardIds={introductionProgress?.currentIds ?? currentCardIds}
-            segmentNoun={introductionProgress ? 'Chunk' : undefined}
+            currentCardIds={currentCardIds}
           />
         )}
       </AnimatePresence>
@@ -371,16 +369,7 @@ export function LearnStudyPhase({
           />
         )}
         {isTypingCard && (
-          // The Flow fill and the card carry the verdict visually; this says it aloud.
-          <div
-            role="status"
-            aria-live="polite"
-            className={
-              showLocalRecall && recallCorrect
-                ? 'mt-3 text-center text-sm text-positive'
-                : 'sr-only'
-            }
-          >
+          <div role="status" className="sr-only">
             {showLocalRecall
               ? recallCorrect
                 ? 'Marked correct.'

@@ -119,17 +119,16 @@ it('keeps typed misses in recall after FSRS changes and resumes only already-ass
   expect(resumed?.last).toEqual({ cardId: fresh.id, first: false });
 });
 
-it('keeps a completed chunk in the progress bar after its exposed cards leave the resumed pool', () => {
+it('counts completed cards across chunks, including exposed cards outside the resumed pool', () => {
   const cards = Array.from({ length: 6 }, (_, index) => card(String(index + 1), 'lesson'));
   let introduction = prepareIntroduction(cards, undefined)!;
   for (const id of ['1', '2', '3', '4']) {
     introduction = recordIntroductionAttempt(introduction, id, 'passed');
   }
   introduction = recordIntroductionAttempt(introduction, '5', 'retry');
-  expect(introductionProgress(introduction, ['5', '6'], ['5'], new Set())).toEqual({
-    ids: ['0', '1'],
-    currentIds: ['1'],
-    outcomes: new Map([['0', 'correct']]),
-    value: 0.5,
+  introduction = recordIntroductionAttempt(introduction, '6', 'passed');
+  expect(introductionProgress(introduction, ['5', '6', 'old'], new Set(['6', 'old']))).toEqual({
+    completed: 6,
+    total: 7,
   });
 });

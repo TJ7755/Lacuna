@@ -411,11 +411,9 @@ export function useLearnSession({
   const revisionSessionRef = useRef(sessionCell(machineState, 'revision')).current;
   const introduction = machineState.current.introduction;
   const masteredInPass = simpleMastered.current;
-  const chunkProgress = useMemo(
-    () =>
-      introduction &&
-      introductionProgress(introduction, sessionCardIds, currentCardIds, masteredInPass),
-    [introduction, sessionCardIds, currentCardIds, masteredInPass],
+  const cardCompletion = useMemo(
+    () => introduction && introductionProgress(introduction, sessionCardIds, masteredInPass),
+    [introduction, sessionCardIds, masteredInPass],
   );
 
   const timerStart = useRef(0);
@@ -1414,7 +1412,7 @@ export function useLearnSession({
         ? lessonChoiceSource?.cards
         : undefined,
     introductionPresentation,
-    introductionProgress: chunkProgress,
+    cardCompletion,
     checkIntroduction,
     continueIntroduction,
     hintStep,
