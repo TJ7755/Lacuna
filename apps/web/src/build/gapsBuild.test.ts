@@ -1,4 +1,3 @@
-import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -17,7 +16,6 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
     modules: string[];
   };
   try {
-    const configFile = existsSync('vite.gaps.config.ts') ? 'vite.gaps.config.ts' : 'vite.config.ts';
     // A separate process keeps Vite's prerender React instance out of the test renderer.
     execFileSync(
       'bun',
@@ -29,7 +27,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       const modules = [];
       const chunks = [];
       await build({
-        configFile: ${JSON.stringify(configFile)},
+        configFile: 'apps/gaps/vite.config.ts',
         logLevel: 'error',
         build: { outDir: ${JSON.stringify(directory)}, emptyOutDir: true },
         plugins: [{

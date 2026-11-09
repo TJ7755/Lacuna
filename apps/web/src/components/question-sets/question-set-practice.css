@@ -97,6 +97,10 @@
 .qs-practice .qs-paper {
   padding: 28px;
 }
+.qs-practice .qs-paper > .overflow-clip {
+  /* The measured height clips the step. Allow the 2px focus outline and its 3px offset. */
+  overflow-clip-margin: 5px;
+}
 .qs-practice .qs-paper-marking {
   padding: 48px 56px;
 }

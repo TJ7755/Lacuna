@@ -208,7 +208,7 @@ export function ExpandingCreateControl({
             >
               {/* The edge fade indicates overflow without a scrollbar changing the form width. */}
               <div
-                className="scroll-edge-fade overflow-y-auto overscroll-contain text-left supports-[animation-timeline:scroll()]:[scrollbar-width:none]"
+                className="scroll-edge-fade overflow-y-auto overscroll-contain text-left"
                 style={{
                   maxHeight:
                     availableHeight === undefined ? undefined : availableHeight - triggerHeight,

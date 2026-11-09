@@ -12,7 +12,7 @@
   "devDependencies": {
     "@electron/asar": "4.3.1",
     "@lacuna/core": "workspace:*",
-    "@playwright/test": "^1.64.1",
+    "@playwright/test": "^1.65.0",
     "@typescript/native": "npm:typescript@^7.0.2",
     "electron": "^45.2.3",
     "electron-builder": "^26.18.0",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { QuestionSetChoices } from '../../components/question-sets/QuestionSetChoices';
 import '../../components/question-sets/question-set-controls.css';
@@ -36,6 +36,53 @@ export function LessonChoiceControls({
   const [selected, setSelected] = useState('');
   const [result, setResult] = useState<'checking' | 'correct' | 'incorrect'>();
   const controls = useRef<HTMLDivElement>(null);
+  const choiceArea = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const area = choiceArea.current;
+    const track = area?.querySelector<HTMLElement>('.qs-choices > div');
+    if (!area || !track) return;
+    let measuredWidth = 0;
+
+    const measure = () => {
+      measuredWidth = parseFloat(getComputedStyle(area).width);
+      // Measure the actual pills unwrapped before choosing a layout.
+      track.dataset.choiceLayout = 'line';
+      const style = getComputedStyle(track);
+      if (parseFloat(style.width) <= measuredWidth) return;
+
+      const widths = Array.from(track.children, (label) =>
+        parseFloat(getComputedStyle(label).width),
+      );
+      const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      const gap = parseFloat(style.columnGap);
+      const rowWidth = (row: number[]) =>
+        row.reduce((sum, width) => sum + width, padding + gap * Math.max(0, row.length - 1));
+      const pairWidth = Math.max(rowWidth(widths.slice(0, 2)), rowWidth(widths.slice(2)));
+
+      if (pairWidth <= measuredWidth) {
+        track.style.setProperty('--choice-pair-width', `${Math.ceil(pairWidth)}px`);
+        track.dataset.choiceLayout = 'pairs';
+      } else {
+        delete track.dataset.choiceLayout;
+      }
+    };
+
+    measure();
+    const observer =
+      typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver(([entry]) => {
+            if (Math.abs(entry.contentRect.width - measuredWidth) > 0.01) measure();
+          });
+    observer?.observe(area);
+    document.fonts?.addEventListener('loadingdone', measure);
+    return () => {
+      observer?.disconnect();
+      document.fonts?.removeEventListener('loadingdone', measure);
+    };
+  }, []);
+
   const submit = useCallback(() => {
     if (paused || !selected || result) return;
     if (onCheck(selected === card.answer)) setResult('checking');
@@ -116,11 +163,8 @@ export function LessonChoiceControls({
       className="study-controls study-choice-controls mx-auto mt-6 flex w-full shrink-0 flex-col gap-3"
     >
       <motion.div
-        layoutScroll
-        className="overflow-x-auto overscroll-x-contain rounded-3xl"
-        onFocus={(event) =>
-          event.target.closest('label')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-        }
+        ref={choiceArea}
+        onFocus={(event) => event.target.closest('label')?.scrollIntoView({ block: 'nearest' })}
         initial={false}
         animate={{ opacity: result ? 0 : 1 }}
         transition={motionTransition('feedback', m)}

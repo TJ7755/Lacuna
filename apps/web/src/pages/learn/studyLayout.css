@@ -192,15 +192,44 @@ mark.typed-missed {
 
 .study-choice-controls .qs-choices[data-flow] > div {
   display: flex;
+  flex-direction: column;
   flex-wrap: nowrap;
   width: max-content;
-  max-width: none;
   margin-inline: auto;
-  border-radius: 9999px;
+  text-align: center;
 }
 
 .study-choice-controls .qs-choices label {
   flex: none;
   border-radius: 9999px;
+  overflow-wrap: anywhere;
+}
+
+.study-choice-controls .qs-choices > div[data-choice-layout] {
+  flex-direction: row;
   white-space: nowrap;
+}
+
+.study-choice-controls .qs-choices > div[data-choice-layout='line'] {
+  max-width: none;
+  border-radius: 9999px;
+}
+
+.study-choice-controls .qs-choices > div[data-choice-layout='pairs'] {
+  width: var(--choice-pair-width);
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: 0;
+}
+
+/* Keep the first two choices together even when the third could also fit. */
+.study-choice-controls .qs-choices > div[data-choice-layout='pairs']::after {
+  content: '';
+  flex: 0 0 100%;
+  block-size: 2px;
+  order: 1;
+}
+
+.study-choice-controls .qs-choices > div[data-choice-layout='pairs'] > label:nth-child(n + 3) {
+  order: 2;
 }

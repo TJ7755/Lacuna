@@ -53,7 +53,7 @@ describe('PWA assets', () => {
     expect(manifest.icons.filter((icon) => icon.purpose === 'maskable')).toHaveLength(1);
   });
 
-  it.each(['index.html', 'compare/quizlet/index.html'])(
+  it.each(['index.html', 'apps/web/src/pages/quizlet/index.html'])(
     'links crawlable favicons sized for Google Search from %s',
     async (page) => {
       const html = await readFile(resolve(projectRoot, page), 'utf8');

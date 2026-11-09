@@ -34,10 +34,10 @@ describe('domain-to-UI boundary', () => {
   it('uses the real ESLint configuration to reject resolved UI contracts and accept domain contracts', async () => {
     const project = fixture();
     project.write(
-      'tsconfig.app.json',
+      'config/typescript/tsconfig.app.json',
       JSON.stringify({
         compilerOptions: {
-          paths: { '@ui/*': ['./apps/web/src/components/*'] },
+          paths: { '@ui/*': ['../../apps/web/src/components/*'] },
         },
       }),
     );
@@ -243,8 +243,8 @@ describe('src value-import cycles', () => {
   it('resolves runtime aliases and indexes without adding explicit type-only edges', () => {
     const project = fixture();
     project.write(
-      'tsconfig.app.json',
-      JSON.stringify({ compilerOptions: { paths: { '@source/*': ['./apps/web/src/*'] } } }),
+      'config/typescript/tsconfig.app.json',
+      JSON.stringify({ compilerOptions: { paths: { '@source/*': ['../../apps/web/src/*'] } } }),
     );
     project.write('apps/web/src/a.ts', "import { b } from '@source/b'; export const a = () => b;");
     project.write('apps/web/src/b/index.js', "import { a } from '../a'; export const b = () => a;");

@@ -1,5 +1,5 @@
 import { useCallback, useId, useRef, type RefObject } from 'react';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card, ItemPayload } from '@lacuna/core/db/types';
 import { LessonChoiceControls } from './LessonChoiceControls';
 import type { LessonChoiceCard } from './simpleLearnQuestions';
@@ -170,10 +170,12 @@ export function LearnStudyPhase({
   const checkChoice = useCallback(
     (correct: boolean) => {
       if (!checkIntroduction(serial, correct)) return false;
+      // The answer is revealed on the card above the choices in short windows.
+      if (studyFocusRef.current) studyFocusRef.current.scrollTop = 0;
       reveal();
       return true;
     },
-    [checkIntroduction, reveal, serial],
+    [checkIntroduction, reveal, serial, studyFocusRef],
   );
   const advanceChoice = useCallback(
     (correct: boolean) => {
@@ -276,13 +278,14 @@ export function LearnStudyPhase({
         )}
       </AnimatePresence>
       {/* Reserve the controls first; only the card body may scroll. */}
-      <main
+      <motion.main
         ref={studyFocusRef}
+        layoutScroll={Boolean(choiceQuestion)}
         tabIndex={-1}
         aria-label="Study card"
         className={
           'mx-auto flex min-h-0 w-full flex-1 flex-col outline-none focus-visible:shadow-none ' +
-          (choiceQuestion ? 'max-w-7xl ' : 'max-w-4xl ') +
+          (choiceQuestion ? 'max-w-7xl overflow-y-auto ' : 'max-w-4xl ') +
           'pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] ' +
           'pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:pt-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))]'
         }
@@ -311,7 +314,12 @@ export function LearnStudyPhase({
           />
         ) : (
           current && (
-            <div className="study-card-slot min-h-0 w-full max-w-[53rem] flex-1 self-center">
+            <div
+              className={
+                'study-card-slot w-full max-w-[53rem] flex-1 self-center ' +
+                (choiceQuestion ? 'min-h-40' : 'min-h-0')
+              }
+            >
               <StudyCardTransition
                 ref={cardTransitionRef}
                 cardId={current.id}
@@ -455,7 +463,7 @@ export function LearnStudyPhase({
             </Button>
           </div>
         )}
-      </main>
+      </motion.main>
     </>
   );
 }

@@ -250,7 +250,7 @@ export function Sidebar({
         <div
           // The scrollbar is hidden, so a fade marks the edge with more courses beyond it.
           className={cn(
-            'scroll-edge-fade flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+            'scroll-edge-fade flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-2',
             sidebarSettings.compactMode ? 'gap-0' : 'gap-0.5',
           )}
         >
@@ -345,7 +345,7 @@ export function Sidebar({
           <SidebarLabel className="flex h-11 shrink-0 items-center px-3 pb-2 font-display text-sm text-ink-soft">
             Gaps
           </SidebarLabel>
-          <div className="scroll-edge-fade min-h-0 overflow-x-hidden overflow-y-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="scroll-edge-fade min-h-0 overflow-x-hidden overflow-y-auto pb-2">
             {classCourses.map((course) => (
               <NavItem
                 key={course.id}

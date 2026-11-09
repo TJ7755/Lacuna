@@ -43,9 +43,9 @@ export function previewBrowser({ directory = root, env = process.env, execute = 
       'vite',
       'preview',
       ...(env.LACUNA_BROWSER_SITE === 'gaps'
-        ? ['--config', 'vite.gaps.config.ts']
+        ? ['--config', 'apps/gaps/vite.config.ts']
         : env.LACUNA_BROWSER_SITE === 'library'
-          ? ['--config', 'vite.library.config.ts']
+          ? ['--config', 'apps/library/vite.config.ts']
           : []),
       '--host',
       '127.0.0.1',

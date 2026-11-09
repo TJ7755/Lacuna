@@ -5,7 +5,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 import packageJson from './package.json' with { type: 'json' };
 import { settingsStaticClosurePlugin } from './scripts/settings-static-closure.ts';
 import { topicPagesPlugin } from './scripts/course-topics.ts';
-import { coursePageTemplate, publicPagePrerenderPlugin } from './scripts/public-page-prerender.ts';
+import {
+  coursePageTemplate,
+  publicPagePrerenderPlugin,
+  quizletPageTemplate,
+} from './scripts/public-page-prerender.ts';
 import { appShellPrecachePlugin } from './scripts/app-shell-precache.ts';
 
 // Cross-origin isolation headers required by the FSRS WASM trainer worker.
@@ -167,7 +171,7 @@ export default defineConfig({
     rolldownOptions: {
       input: {
         index: 'index.html',
-        quizlet: 'compare/quizlet/index.html',
+        quizlet: quizletPageTemplate,
         courses: coursePageTemplate,
       },
       output: {
@@ -241,6 +245,7 @@ export default defineConfig({
                 const path = id.replaceAll('\\', '/');
                 return (
                   path === '\0vite/preload-helper.js' ||
+                  path === '\0vite/modulepreload-polyfill.js' ||
                   /\/src\/(?:webBootstrap|landingHandover|pwa\/staleChunkRecovery|onboarding\/onboardingState)\.ts$/.test(
                     path,
                   ) ||

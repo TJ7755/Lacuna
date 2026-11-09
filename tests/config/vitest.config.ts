@@ -1,6 +1,7 @@
+import { fileURLToPath } from 'node:url';
 import { configDefaults, defineConfig } from 'vitest/config';
-import recoveryConfig from './tests/config/vitest.recovery.config.ts';
-import riskConfig from './tests/config/vitest.risk.config.ts';
+import recoveryConfig from './vitest.recovery.config.ts';
+import riskConfig from './vitest.risk.config.ts';
 
 const nodeTests = [
   'apps/web/src/fsrs/**/*.test.ts',
@@ -22,6 +23,7 @@ const coverageOwnedTests =
     : [];
 
 export default defineConfig({
+  root: fileURLToPath(new URL('../..', import.meta.url)),
   test: {
     allowOnly: !process.env.CI,
     environment: 'happy-dom',
