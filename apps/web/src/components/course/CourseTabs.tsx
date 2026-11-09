@@ -52,7 +52,7 @@ export function CourseTabs({ courseId }: { courseId: string }) {
           className="pointer-events-none absolute inset-y-1 left-0 -translate-x-1/2 rounded-full bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.08)]"
         />
       )}
-      {COURSE_SECTIONS.map(({ label, short, suffix }, index) => {
+      {COURSE_SECTIONS.map(({ label, suffix }, index) => {
         const to = `${base}${suffix}`;
         const active = index === activeIndex;
         return (
@@ -64,8 +64,6 @@ export function CourseTabs({ courseId }: { courseId: string }) {
             // The held indicator is this control's own press feedback.
             data-press=""
             aria-current={active ? 'page' : undefined}
-            // The accessible name stays the full label at every width, so the shortened
-            // mobile text is a visual abbreviation rather than a different control.
             aria-label={label}
             onPointerEnter={() => prefetchRoute(to)}
             onPointerDown={() => prefetchRoute(to)}
@@ -93,8 +91,7 @@ export function CourseTabs({ courseId }: { courseId: string }) {
               active ? 'text-ink' : 'text-ink-soft hover:text-ink',
             )}
           >
-            <span className="relative z-10 sm:hidden">{short}</span>
-            <span className="relative z-10 hidden sm:inline">{label}</span>
+            <span className="relative z-10">{label}</span>
           </Link>
         );
       })}

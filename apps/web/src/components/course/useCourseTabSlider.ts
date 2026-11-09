@@ -2,8 +2,6 @@ import { useCallback, useLayoutEffect, useRef, useState, type PointerEvent } fro
 import { animate, useMotionValue } from 'motion/react';
 import { scaledSpring } from '../ui/motion';
 
-const CURRENT_TAB = 'a[aria-current="page"]';
-
 /** Keep the same indicator under the pointer and through the route change. */
 export function useCourseTabSlider(
   activeIndex: number,
@@ -76,7 +74,7 @@ export function useCourseTabSlider(
   }, [activeIndex, locationKey, settle, width]);
 
   function settleCurrent(nav: HTMLElement) {
-    const tab = nav.querySelector<HTMLElement>(CURRENT_TAB);
+    const tab = nav.querySelectorAll('a')[activeIndex];
     if (tab) settle(tab);
   }
 
