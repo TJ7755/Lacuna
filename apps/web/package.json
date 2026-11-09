@@ -7,7 +7,7 @@
     "@lacuna/core": "workspace:*",
     "@lacuna/protocol": "workspace:*",
     "react": "^19.3.1",
-    "motion": "14.9.0",
+    "motion": "14.10.1",
     "react-router-dom": "^7.18.5",
     "react-dom": "^19.3.1",
     "@vercel/analytics": "^2.0.1",
@@ -19,7 +19,7 @@
     "sql.js": "^1.15.2",
     "ts-fsrs": "^6.0.0",
     "@open-spaced-repetition/binding": "^0.6.0",
-    "@napi-rs/wasm-runtime": "1.2.6",
+    "@napi-rs/wasm-runtime": "1.2.7",
     "mathjs": "^15.2.0",
     "html5-qrcode": "^2.3.8",
     "react-qr-code": "^2.2.0",
@@ -32,7 +32,7 @@
     "rehype-highlight": "^7.0.1",
     "rehype-raw": "^7.0.0",
     "rehype-sanitize": "^6.0.0",
-    "mermaid": "^12.2.0",
+    "mermaid": "^12.3.0",
     "dompurify": "^3.4.17"
   },
   "devDependencies": {

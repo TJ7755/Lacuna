@@ -204,13 +204,15 @@ export default defineConfig({
               includeDependenciesRecursively: false,
             },
             {
-              name: 'dexie',
-              test: /[\\/]node_modules[\\/](?:dexie|dexie-react-hooks)[\\/]/,
-              includeDependenciesRecursively: false,
-            },
-            {
               name: 'database',
-              test: /[\\/]src[\\/](?:utils[\\/]id|db[\\/](?:database|schema|reviewActivityProjection|reviewActivityRead|schemaFloor|assessmentMigration|backingDecks|schedulingUnitBuilder|reviewHistory|mutationStamp|preMigrationSnapshots))\.ts$/,
+              test(id) {
+                return (
+                  /[\\/]node_modules[\\/](?:dexie|dexie-react-hooks)[\\/]/.test(id) ||
+                  /[\\/]src[\\/](?:utils[\\/]id|db[\\/](?:database|schema|reviewActivityProjection|reviewActivityRead|schemaFloor|assessmentMigration|backingDecks|schedulingUnitBuilder|reviewHistory|mutationStamp|preMigrationSnapshots))\.ts$/.test(
+                    id,
+                  )
+                );
+              },
               includeDependenciesRecursively: false,
             },
             {
