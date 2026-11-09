@@ -31,11 +31,13 @@ test('a new learner corrects setup and opens their first course directly', async
   await page.getByRole('button', { name: 'Continue' }).click();
 
   const markingHeading = page.getByRole('heading', { name: 'Would you like AI marking?' });
+  const terms = page.getByRole('region', { name: 'AI marking terms' });
+  const privacyPolicy = terms.getByRole('link', { name: 'TypeSafe AI privacy policy' });
   const consent = page.getByRole('checkbox', { name: /read this/ });
   const next = page.getByRole('button', { name: 'Continue', exact: true });
   await expect(markingHeading).toBeFocused();
   await expect(page.getByRole('radio', { name: 'Yes', exact: true })).toBeChecked();
-  await expect(page.getByText(/sends study text to TypeSafe AI/)).toBeVisible();
+  await expect(terms.getByText(/sends study text to TypeSafe AI/)).toBeInViewport({ ratio: 1 });
   await expect(page.getByText(/read this/)).toBeInViewport({ ratio: 1 });
   await expect(consent).not.toBeChecked();
   await expect(next).toBeDisabled();
@@ -43,6 +45,7 @@ test('a new learner corrects setup and opens their first course directly', async
     path: testInfo.outputPath('onboarding-ai-marking-default.png'),
     animations: 'disabled',
   });
+  await expect(privacyPolicy).not.toBeInViewport();
 
   await expect(page.getByRole('button', { name: 'Back', exact: true }).locator('svg')).toHaveCSS(
     'width',
@@ -63,6 +66,8 @@ test('a new learner corrects setup and opens their first course directly', async
     () => JSON.parse(sessionStorage.getItem('lacuna-onboarding-target')!).examDate as number,
   );
   await expect(markingHeading).toBeFocused();
+  await terms.press('End');
+  await expect(privacyPolicy).toBeInViewport({ ratio: 1 });
   await consent.check();
   await expect(next).toBeEnabled();
   await page.screenshot({
@@ -73,6 +78,10 @@ test('a new learner corrects setup and opens their first course directly', async
   await expect(page.getByRole('heading', { name: 'What do you want to learn?' })).toBeFocused();
   await expect(page.getByRole('button', { name: 'Create my own', exact: true })).toBeInViewport();
   await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeInViewport();
+  await page.screenshot({
+    path: testInfo.outputPath('onboarding-material-choices.png'),
+    animations: 'disabled',
+  });
   await page.getByRole('button', { name: 'Create my own' }).click();
   const form = page.getByRole('form', { name: 'New course' });
   // The exam answer from step 2 stands, so the form does not ask again.

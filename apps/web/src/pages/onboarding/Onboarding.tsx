@@ -394,7 +394,7 @@ function MarkingStep({
 
   return (
     <form
-      className="flex min-h-0 flex-1 flex-col"
+      className="min-h-0 flex-1 overflow-y-auto"
       onSubmit={(event) => {
         event.preventDefault();
         if (!ready) return;
@@ -403,46 +403,41 @@ function MarkingStep({
         onDone();
       }}
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <div className="mx-auto w-full max-w-lg px-1 pt-2">
-          <fieldset>
-            <legend className="contents">
-              <StepHeading>Would you like AI marking?</StepHeading>
-            </legend>
-            <p className="-mt-3 mb-3 text-sm leading-6 text-ink-soft">
-              AI can mark typed flashcard answers and written practice answers.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {[true, false].map((choice) => (
-                <label
-                  key={String(choice)}
-                  className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl bg-ink/[0.04] px-4 py-2 text-sm font-semibold text-ink hover:bg-ink/[0.07] has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent-ink"
-                >
-                  <input
-                    type="radio"
-                    name="onboarding-ai-marking"
-                    checked={wantsAiMarking === choice}
-                    onChange={() => onChoice(choice)}
-                    className="h-4 w-4 shrink-0 accent-accent-ink"
-                  />
-                  {choice ? 'Yes' : 'No'}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          {wantsAiMarking && (
-            <div className="mt-3">
-              <JevConsentNotice checked={understood} onChange={setUnderstood} />
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="study-controls mt-4 w-full shrink-0">
-        <div className="mx-auto w-full max-w-lg">
-          <Button type="submit" variant="primary" size="lg" className="w-full" disabled={!ready}>
-            Continue
-          </Button>
-        </div>
+      <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center gap-5 px-1 py-4">
+        <fieldset className="text-center">
+          <legend className="contents">
+            <StepHeading>Would you like AI marking?</StepHeading>
+          </legend>
+          <div className="grid grid-cols-2 gap-3">
+            {[true, false].map((choice) => (
+              <label
+                key={String(choice)}
+                className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-line bg-surface-raised px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-ink/[0.07] has-[:checked]:border-accent-ink/40 has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent-ink"
+              >
+                <input
+                  type="radio"
+                  name="onboarding-ai-marking"
+                  checked={wantsAiMarking === choice}
+                  onChange={() => onChoice(choice)}
+                  className="h-4 w-4 shrink-0 accent-accent-ink"
+                />
+                {choice ? 'Yes' : 'No'}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {wantsAiMarking && (
+          <JevConsentNotice checked={understood} onChange={setUnderstood} scrollableTerms />
+        )}
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          className="mx-auto w-full max-w-52 shrink-0"
+          disabled={!ready}
+        >
+          Continue
+        </Button>
       </div>
     </form>
   );
