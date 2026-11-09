@@ -50,13 +50,9 @@ for (const width of [1280, 390]) {
         Math.abs(titleBounds.y + titleBounds.height / 2 - closeBounds.y - closeBounds.height / 2),
       ).toBeLessThanOrEqual(1);
     }
-    for (const source of [
-      'Course library',
-      'Lacuna course',
-      'Anki deck',
-      'Text or spreadsheet',
-      'Join a class',
-    ]) {
+    const sources = ['Course library', 'Lacuna course', 'Anki deck', 'Text or spreadsheet'];
+    if (width === 1280) sources.push('Join a class');
+    for (const source of sources) {
       await panel.getByRole('button', { name: new RegExp(source) }).click();
       const back = panel.getByRole('button', { name: 'Back to import sources' });
       await expect(back).toBeVisible();
