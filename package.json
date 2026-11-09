@@ -175,7 +175,7 @@
     "node": "^22.23.4 || ^24.22.1 || >=26.12.1"
   },
   "patchedDependencies": {
-    "mermaid@12.2.0": "patches/mermaid@12.2.0.patch",
+    "mermaid@12.3.0": "patches/mermaid@12.3.0.patch",
     "deepmerge@4.3.1": "patches/deepmerge@4.3.1.patch"
   },
   "workspaces": [

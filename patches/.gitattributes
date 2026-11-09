@@ -1,0 +1,2 @@
+# Mermaid publishes LF source. Keep its patch context in the same line endings on Windows.
+mermaid@*.patch text eol=lf
