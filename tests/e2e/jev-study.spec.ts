@@ -40,6 +40,8 @@ async function start(page: Page, enabled = true, simple = false, globalTyping = 
     },
     { enabled, globalTyping },
   );
+  // The Jev engine reads its settings when the document starts.
+  await page.reload();
   await page.goto(`/#/lesson/${seeded.lessonId}/learn?${simple ? 'mode=simple' : 'filter=new'}`);
   await expect(page.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
   return seeded;

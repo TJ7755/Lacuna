@@ -51,6 +51,7 @@ async function enableJev(page: Page) {
       JSON.stringify({ enabled: true, acceptedConsentVersion: 2 }),
     );
   });
+  await page.reload();
 }
 
 function study(page: Page) {

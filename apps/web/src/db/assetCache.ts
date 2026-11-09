@@ -173,7 +173,8 @@ export function revokeAllCachedUrls(): void {
   tail = null;
 }
 
-/** Test-only cache size probe. */
-export function _cacheSizeForTests(): number {
-  return cache.size;
+// Register teardown with the cache so loading the application shell need not load asset handling.
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', revokeAllCachedUrls);
+  window.addEventListener('pagehide', revokeAllCachedUrls);
 }
