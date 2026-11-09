@@ -147,13 +147,13 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
         }}
         transition={transition}
         style={{ containerType: 'inline-size', containerName: 'import-surface' }}
-        className={`absolute right-0 top-0 flow-expansion overflow-hidden bg-surface-raised ring-1 ring-inset ${expanded ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
+        className={`absolute right-0 top-0 flow-expansion import-surface overflow-hidden bg-surface-raised ring-1 ring-inset ${expanded ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
       >
         <FlowExpansionSurface triggerWidth={100} triggerHeight={triggerHeight} />
         {expanded && (
           <span
             aria-hidden="true"
-            className="import-control-title absolute left-5 top-3 font-display text-lg font-semibold text-ink"
+            className="import-control-title absolute font-display text-lg font-semibold text-ink"
           >
             Import
           </span>
@@ -172,7 +172,7 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
           data-press="none"
           data-flow-feedback
           transition={transition}
-          className="absolute right-0 top-0 z-10 flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink disabled:opacity-40"
+          className={`absolute right-0 top-0 z-10 flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink disabled:opacity-40 ${expanded ? 'import-control-close hover:bg-ink/5' : ''}`}
         >
           {pending ? 'Loading…' : open ? 'Close' : 'Import'}
         </motion.button>

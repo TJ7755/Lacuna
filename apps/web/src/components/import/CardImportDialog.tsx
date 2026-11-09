@@ -196,7 +196,7 @@ export function CardImportDialog({
           </div>
         </div>
       ) : (
-        <header className="card-import-header">
+        <header className={panel ? 'import-step-header' : 'card-import-header'}>
           {/* On the Import page, the page's own title and Back link already do these jobs. */}
           <h2 id="card-import-heading" className="sr-only">
             Import cards
@@ -339,7 +339,7 @@ export function CardImportDialog({
             {step !== 'destination' && (
               <div className="card-import-content">
                 {step === 'input' ? (
-                  <CardImportInput source={source} preferPackage={preferPackage} />
+                  <CardImportInput source={source} preferPackage={preferPackage} panel={panel} />
                 ) : (
                   <CardImportPreview
                     cards={cards}
@@ -362,6 +362,7 @@ export function CardImportDialog({
           {step !== 'input' ? (
             <Button
               variant="ghost"
+              className={panel ? 'import-back' : undefined}
               disabled={busy}
               onClick={() => {
                 setError('');

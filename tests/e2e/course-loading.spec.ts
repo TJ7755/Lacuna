@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
 import { currentSharePayload } from './fixtures/currentSharePayload';
+import { settle } from './fixtures/flowEvidence';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -9,6 +10,16 @@ for (const width of [1280, 375]) {
     page,
   }, testInfo) => {
     await page.setViewportSize({ width, height: 800 });
+    const lessonNames = [
+      'Life processes',
+      'Animal cell structures',
+      'Plant cell structures',
+      'Enzymes as biological catalysts',
+      'Temperature and enzyme activity',
+      'Respiration and ATP',
+      'Diffusion across cell membranes',
+      'Active transport across membranes',
+    ];
     const file = JSON.stringify({
       format: 'lacuna-course',
       version: 1,
@@ -18,7 +29,11 @@ for (const width of [1280, 375]) {
         at: 1000,
         li: 'loading-biology',
         course: { n: 'Loading biology', o: 0, c: 0, e: 0, um: 'open' },
-        lessons: [{ n: 'Cells', notes: [], cards: [{ k: 0, f: 'Question', b: 'Answer' }] }],
+        lessons: lessonNames.map((name) => ({
+          n: name,
+          notes: [],
+          cards: [{ k: 0, f: 'Question', b: 'Answer' }],
+        })),
       }),
     });
     let finish: (status: number) => void = () => {};
@@ -60,7 +75,9 @@ for (const width of [1280, 375]) {
     await expect.poll(() => requests).toBe(1);
     const loading = page.getByRole('status').filter({ hasText: 'Loading this course' });
     const back = page.getByRole('button', { name: 'Back to the course library' });
-    await page.screenshot({ path: testInfo.outputPath(`course-loading-${width}.png`) });
+    if (width === 1280) {
+      await page.screenshot({ path: testInfo.outputPath('course-loading.png') });
+    }
     await expect(loading).toBeVisible();
     await expect(back).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Try again' })).toBeHidden();
@@ -73,8 +90,39 @@ for (const width of [1280, 375]) {
     await expect(page.getByRole('heading', { name: 'This course is unavailable' })).toBeHidden();
     await expect(back).toBeEnabled();
     finish(200);
-    await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+    const preview = page.getByRole('heading', { name: 'Loading biology', exact: true });
+    await expect(preview).toBeVisible();
     await expect(loading).toBeHidden();
+
+    if (width === 1280) {
+      const surface = page.locator('.flow-expansion').filter({ has: preview });
+      const disclosure = surface.getByText('8 lessons', { exact: true });
+      const lessons = surface.getByRole('list', { name: 'Lessons', exact: true });
+      await expect(disclosure).toBeVisible();
+      await expect(lessons).toBeHidden();
+      await settle(surface);
+      await testInfo.attach('Course preview with lessons closed', {
+        body: await surface.screenshot(),
+        contentType: 'image/png',
+      });
+
+      await disclosure.press('Enter');
+      await expect(lessons).toBeVisible();
+      await expect(lessons.getByText('Life processes', { exact: true })).toBeInViewport();
+      await settle(surface);
+      await testInfo.attach('Course preview with lessons open', {
+        body: await surface.screenshot(),
+        contentType: 'image/png',
+      });
+
+      await lessons.press('End');
+      await expect(
+        lessons.getByText('Active transport across membranes', { exact: true }),
+      ).toBeInViewport();
+      await disclosure.press('Space');
+      await expect(lessons).toBeHidden();
+    }
+
     await back.click();
     await expect(search).toHaveValue('8461');
 
@@ -89,7 +137,7 @@ for (const width of [1280, 375]) {
     await cancelled;
     finish(200);
     await expect(loading).toBeHidden();
-    await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeHidden();
+    await expect(preview).toBeHidden();
     await expect(page).toHaveURL(/#\/$/);
 
     await page.goto(`/#/s/${'a'.repeat(32)}`);

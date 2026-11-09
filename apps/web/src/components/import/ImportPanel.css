@@ -1,5 +1,21 @@
+.import-surface,
 .import-panel {
-  padding: 8px 20px 20px;
+  --import-gutter: 24px;
+  --import-section-gap: 16px;
+}
+.import-panel {
+  padding: 12px var(--import-gutter) var(--import-gutter);
+}
+.import-step-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: var(--import-section-gap);
+}
+.import-back {
+  flex-shrink: 0;
+  margin-inline-start: -4px;
+  padding-inline: 4px 12px;
 }
 .import-panel .shared-course-import {
   border: 0;
@@ -7,8 +23,22 @@
   padding: 0;
   background: transparent;
 }
+.import-control-title,
+.import-control-close {
+  inset-block-start: 6px;
+}
 .import-control-title {
+  inset-inline-start: var(--import-gutter);
+  display: flex;
+  align-items: center;
+  min-height: 44px;
   visibility: hidden;
+}
+.import-control-close {
+  inset-inline-end: calc(var(--import-gutter) - 12px);
+  width: auto;
+  min-width: 44px;
+  padding-inline: 12px;
 }
 @container import-surface (min-width: 240px) {
   .import-control-title {
@@ -33,9 +63,9 @@
 }
 .import-sources button {
   display: grid;
-  grid-template-columns: 24px 1fr;
-  column-gap: 14px;
-  padding: 14px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 2px 12px;
+  padding: 12px 14px;
   border-radius: var(--flow-control-radius, 20px);
   text-align: left;
   background: hsl(var(--surface));
@@ -59,18 +89,33 @@
   color: hsl(var(--ink-soft));
 }
 .import-drop {
-  margin-top: 12px;
-  padding: 20px 16px;
+  margin-top: var(--import-section-gap);
+}
+.import-drop-zone,
+.import-panel .card-import-package {
+  min-height: 0;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border-radius: var(--flow-control-radius, 20px);
   background: hsl(var(--ink) / 0.04);
   text-align: center;
 }
-.import-drop > svg {
-  color: hsl(var(--ink-soft));
+.import-drop-icon,
+.import-panel .card-import-package-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  border-radius: 14px;
+  background: hsl(var(--surface-raised));
+}
+.import-drop-zone > button,
+.import-panel .card-import-package > button {
+  margin-top: 4px;
 }
 .import-drop[data-dragging='true'] {
   background: hsl(var(--accent-soft));
@@ -82,14 +127,14 @@
 .import-destination {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--import-section-gap, 16px);
 }
 .import-destination > label {
   display: flex;
   flex-direction: column;
   gap: 8px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .import-destination fieldset > div {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -168,7 +213,7 @@
   transition: background-color var(--import-motion-duration, 150ms);
 }
 .import-library-subject {
-  grid-template-columns: 1fr auto 16px;
+  grid-template-columns: minmax(0, 1fr) auto 16px;
   min-height: 56px;
 }
 .import-library-subject:hover,
@@ -208,9 +253,6 @@
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: center;
-}
-.import-course-library {
-  padding: 8px 24px 24px;
 }
 .import-library p:empty {
   display: none;

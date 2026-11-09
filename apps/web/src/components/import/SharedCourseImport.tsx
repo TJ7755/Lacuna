@@ -31,7 +31,7 @@ import type { CourseRecord, CourseSchedulingMode } from '@lacuna/core/db/types';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useToast } from '../ui/Toast';
 import { Button } from '../ui/Button';
-import { CameraIcon, CloseIcon } from '../ui/icons';
+import { CameraIcon, ChevronDownIcon, CloseIcon } from '../ui/icons';
 import { fieldLabelClassName } from '../ui/Field';
 import { chosenStudyTarget } from '../../onboarding/onboardingState';
 import { defaultExamDate, formatDateTime, getLocalTimeZone } from '../../utils/datetime';
@@ -327,6 +327,9 @@ export function SharedCourseImport({
     }
   }
 
+  const PreviewHeading = chosen ? 'h2' : 'h3';
+  const chosenCourseName = chosen ? pending?.summary.courseName : undefined;
+
   return (
     <SectionCard
       className="shared-course-import rounded-3xl bg-surface card-surface p-6"
@@ -339,12 +342,9 @@ export function SharedCourseImport({
         else if (input.trim() && !importing) void handleInspect();
       }}
     >
-      <h2 className={chosen ? 'mb-5 font-display text-xl' : 'sr-only'}>
-        {chosen ? 'Add this course' : 'Import a shared course'}
-      </h2>
-
       {!chosen && (
         <>
+          <h2 className="sr-only">Import a shared course</h2>
           <div className="mb-2 flex items-center justify-between gap-3">
             <label htmlFor={inputId} className={fieldLabelClassName}>
               Link or code
@@ -439,12 +439,12 @@ export function SharedCourseImport({
             animate={{ opacity: 1 }}
             exit={m > 0 ? { opacity: 0 } : undefined}
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-5"
+            className={chosen ? undefined : 'mt-5'}
           >
             <div className="rounded-2xl bg-accent-soft/50 p-5">
-              <h3 className="mb-2 font-display text-lg">
-                {pending.merge ? 'Course update' : 'Ready to import'}
-              </h3>
+              <PreviewHeading className="mb-3 break-words font-display text-lg">
+                {pending.merge ? 'Course update' : chosenCourseName || 'Ready to import'}
+              </PreviewHeading>
               {pending.merge ? (
                 <p className="mb-3 text-sm text-ink-soft">
                   {pending.merge.stale ? (
@@ -462,7 +462,11 @@ export function SharedCourseImport({
                   )}
                 </p>
               ) : pending.summary.kind === 'course' ? (
-                <p className="mb-3 text-sm font-semibold text-ink">{pending.summary.courseName}</p>
+                !chosenCourseName && (
+                  <p className="mb-3 text-sm font-semibold text-ink">
+                    {pending.summary.courseName}
+                  </p>
+                )
               ) : (
                 <p className="mb-3 text-sm text-ink-soft">
                   {countOf(pending.summary.cardCount, 'card')}
@@ -522,16 +526,28 @@ export function SharedCourseImport({
                 )}
               </div>
               {!pending.merge && pending.summary.deckNames.length > 0 && (
-                <ul className="mt-4 flex flex-wrap gap-1.5">
-                  {pending.summary.deckNames.map((name, i) => (
-                    <li
-                      key={`${name}-${i}`}
-                      className="rounded-full bg-ink/[0.06] px-3 py-1 text-xs text-ink-soft"
-                    >
-                      {name}
-                    </li>
-                  ))}
-                </ul>
+                <details className="group mt-4 rounded-2xl border border-line bg-surface">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink [&::-webkit-details-marker]:hidden">
+                    {countOf(pending.summary.deckNames.length, 'lesson')}
+                    <ChevronDownIcon
+                      width={16}
+                      height={16}
+                      aria-hidden="true"
+                      className="shrink-0 text-ink-soft group-open:rotate-180"
+                    />
+                  </summary>
+                  <ul
+                    aria-label="Lessons"
+                    tabIndex={0}
+                    className="max-h-48 divide-y divide-line overflow-y-auto overscroll-contain rounded-b-2xl border-t border-line text-sm text-ink-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink"
+                  >
+                    {pending.summary.deckNames.map((name, i) => (
+                      <li key={`${name}-${i}`} className="break-words px-4 py-2">
+                        {name}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
             </div>
           </motion.div>

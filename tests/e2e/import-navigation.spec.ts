@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { createCourse, enterFreshLacuna, openImport } from './fixtures/lacunaApp';
+import { settle } from './fixtures/flowEvidence';
 
 for (const width of [1280, 390]) {
-  test(`opens imports inside Today and keeps the panel usable at ${width}px`, async ({ page }) => {
+  test(`opens imports inside Today and keeps the panel usable at ${width}px`, async ({
+    page,
+  }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
     await enterFreshLacuna(page);
     await openImport(page);
@@ -27,17 +30,51 @@ for (const width of [1280, 390]) {
         })
         .toBeLessThanOrEqual(844);
     };
+    const capture = async (name: string) => {
+      if (width !== 1280) return;
+      await settle(surface);
+      await testInfo.attach(name, { body: await surface.screenshot(), contentType: 'image/png' });
+    };
     await checkBounds();
-    for (const source of ['Course library', 'Lacuna course', 'Anki deck', 'Text or spreadsheet']) {
+    await capture('Import sources');
+
+    const sourceRow = panel.getByRole('button', { name: /Course library/ });
+    const sourceBounds = (await sourceRow.boundingBox())!;
+    if (width === 1280) {
+      const title = surface.locator('.import-control-title');
+      const close = surface.getByRole('button', { name: 'Close', exact: true });
+      const titleBounds = (await title.boundingBox())!;
+      const closeBounds = (await close.boundingBox())!;
+      expect(Math.abs(titleBounds.x - sourceBounds.x)).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(titleBounds.y + titleBounds.height / 2 - closeBounds.y - closeBounds.height / 2),
+      ).toBeLessThanOrEqual(1);
+    }
+    const sources = ['Course library', 'Lacuna course', 'Anki deck', 'Text or spreadsheet'];
+    if (width === 1280) sources.push('Join a class');
+    for (const source of sources) {
       await panel.getByRole('button', { name: new RegExp(source) }).click();
       const back = panel.getByRole('button', { name: 'Back to import sources' });
       await expect(back).toBeVisible();
       await checkBounds();
+      await capture(source);
+      if (width === 1280) {
+        const backIcon = (await back.locator('svg').boundingBox())!;
+        expect(Math.abs(backIcon.x - sourceBounds.x)).toBeLessThanOrEqual(1);
+      }
+      if (source === 'Join a class') {
+        const code = panel.getByRole('textbox', { name: 'Class code' });
+        await expect(code).toBeFocused();
+        const codeBounds = (await code.boundingBox())!;
+        expect(Math.abs(codeBounds.x - sourceBounds.x)).toBeLessThanOrEqual(1);
+        expect(Math.abs(codeBounds.width - sourceBounds.width)).toBeLessThanOrEqual(1);
+      }
       if (source === 'Text or spreadsheet') {
         await panel.getByRole('textbox', { name: 'Paste your cards' }).fill('Hello,Bonjour');
         await panel.getByRole('button', { name: 'Review cards' }).click();
         await expect(panel.getByRole('button', { name: 'Choose destination' })).toBeVisible();
         await checkBounds();
+        await capture('Card review');
         await panel.getByRole('button', { name: 'Choose destination' }).click();
         const examDate = panel.getByRole('radio', { name: /Exam date/ });
         await examDate.focus();
@@ -45,6 +82,7 @@ for (const width of [1280, 390]) {
         await expect(examDate).toBeChecked();
         await expect(panel.getByText('Exam date and time', { exact: true })).toBeVisible();
         await checkBounds();
+        await capture('Card destination');
       }
       if (source === 'Course library') {
         const search = panel.getByRole('searchbox', { name: 'Search the course library' });

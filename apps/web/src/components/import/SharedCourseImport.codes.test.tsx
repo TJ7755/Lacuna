@@ -384,7 +384,7 @@ it('routes a typed short class code to the invitation importer', () => {
   expect(window.location.hash).toBe('#/s/K7QM4XTP');
 });
 
-it('offers import after the warning and before a long lesson list', async () => {
+it('offers import after the warning and before the lesson disclosure', async () => {
   vi.mocked(summariseShare).mockReturnValueOnce({
     kind: 'course',
     courseName: 'Large biology',
@@ -404,9 +404,8 @@ it('offers import after the warning and before a long lesson list', async () => 
   const add = await screen.findByRole('button', { name: 'Add to my courses' });
   const warning = screen.getByText(/Images and audio .* will appear as placeholders/);
   expect(warning.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(
-    add.compareDocumentPosition(screen.getByText('Lesson 1')) & Node.DOCUMENT_POSITION_FOLLOWING,
-  ).toBeTruthy();
+  const lessons = screen.getByText('164 lessons');
+  expect(add.compareDocumentPosition(lessons) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   expect(screen.queryByRole('button', { name: 'Add to my courses' })).not.toBeInTheDocument();
 });
