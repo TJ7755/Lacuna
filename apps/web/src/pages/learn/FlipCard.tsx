@@ -312,6 +312,7 @@ export function FlipCard({
       <div
         ref={containerRef}
         role={promptOnly ? undefined : 'button'}
+        data-press="none"
         data-study-reveal-only={!promptOnly && !allowGradingGestures ? true : undefined}
         tabIndex={promptOnly ? undefined : 0}
         aria-label={
