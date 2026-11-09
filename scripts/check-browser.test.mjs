@@ -213,7 +213,7 @@ test('previews Gaps with its own root and config', () => {
         'vite',
         'preview',
         '--config',
-        'vite.gaps.config.ts',
+        'apps/gaps/vite.config.ts',
       ]);
       assert.equal(args[args.indexOf('--outDir') + 1], '/isolated/run/dist');
       return { status: 0 };
@@ -246,7 +246,7 @@ test('selects and previews the isolated Library build', () => {
         'vite',
         'preview',
         '--config',
-        'vite.library.config.ts',
+        'apps/library/vite.config.ts',
       ]);
       return { status: 0 };
     },

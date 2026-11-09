@@ -4,10 +4,11 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import tailwindcss from '@tailwindcss/vite';
 
-const repository = fileURLToPath(new URL('.', import.meta.url));
+const repositoryUrl = new URL('../../', import.meta.url);
+const repository = fileURLToPath(repositoryUrl);
 
 export default defineConfig({
-  root: fileURLToPath(new URL('apps/gaps', import.meta.url)),
+  root: fileURLToPath(new URL('.', import.meta.url)),
   // Resolve shared fonts during development; copy only the explicit asset list below.
   publicDir: `${repository}public`,
   plugins: [
@@ -25,7 +26,7 @@ export default defineConfig({
         this.emitFile({
           type: 'asset',
           fileName: 'sw.js',
-          source: readFileSync(new URL('apps/gaps/sw.js', import.meta.url)),
+          source: readFileSync(new URL('sw.js', import.meta.url)),
         });
         const files = ['icon.svg'];
         for (const name of ['InstrumentSans', 'SpaceGrotesk', 'JetBrainsMono']) {
@@ -35,7 +36,7 @@ export default defineConfig({
           this.emitFile({
             type: 'asset',
             fileName,
-            source: readFileSync(new URL(`public/${fileName}`, import.meta.url)),
+            source: readFileSync(new URL(`public/${fileName}`, repositoryUrl)),
           });
         }
       },
@@ -50,7 +51,7 @@ export default defineConfig({
     // HTML uses an absolute source path so the deployed root stays index.html.
   },
   build: {
-    outDir: fileURLToPath(new URL('apps/gaps/dist', import.meta.url)),
+    outDir: fileURLToPath(new URL('dist', import.meta.url)),
     emptyOutDir: true,
     copyPublicDir: false,
   },

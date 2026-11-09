@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.cache/typescript/node.tsbuildinfo",
+    "tsBuildInfoFile": "../../node_modules/.cache/typescript/node.tsbuildinfo",
     "target": "ES2022",
     "lib": ["ES2023"],
     "module": "ESNext",
@@ -13,9 +13,9 @@
     "strict": true
   },
   "include": [
-    "vite.config.ts",
-    "scripts/electron-package-audit*.ts",
-    "vite.gaps.config.ts",
-    "vite.library.config.ts"
+    "../../vite.config.ts",
+    "../../scripts/electron-package-audit*.ts",
+    "../../apps/gaps/vite.config.ts",
+    "../../apps/library/vite.config.ts"
   ]
 }

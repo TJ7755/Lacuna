@@ -17,7 +17,7 @@ it('builds only the library and its shared presentation, without learner startup
       import { writeFileSync } from 'node:fs';
       const modules = [];
       await build({
-        configFile: 'vite.library.config.ts', logLevel: 'error',
+        configFile: 'apps/library/vite.config.ts', logLevel: 'error',
         build: { outDir: ${JSON.stringify(directory)}, emptyOutDir: true },
         plugins: [{ name: 'inspect-library-graph', generateBundle(_options, bundle) {
           for (const item of Object.values(bundle)) {

@@ -1,4 +1,4 @@
-import { resolve, relative, sep } from 'node:path';
+import { dirname, resolve, relative, sep } from 'node:path';
 import ts from 'typescript';
 
 function importsRule(message, forbiddenTarget) {
@@ -30,12 +30,12 @@ function importsRule(message, forbiddenTarget) {
       const root = context.cwd;
       const local = (file) => relative(root, file).split(sep).join('/');
       const importer = local(context.filename);
-      const config =
-        ts.readConfigFile(resolve(root, 'tsconfig.app.json'), ts.sys.readFile).config ?? {};
+      const configFile = resolve(root, 'config/typescript/tsconfig.app.json');
+      const config = ts.readConfigFile(configFile, ts.sys.readFile).config ?? {};
       const { options } = ts.parseJsonConfigFileContent(
         config,
         { ...ts.sys, readDirectory: () => [] },
-        root,
+        dirname(configFile),
       );
       const compilerOptions = {
         ...options,

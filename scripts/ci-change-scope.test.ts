@@ -79,6 +79,8 @@ describe('area scope', () => {
       'apps/relay/package.json',
       'apps/gaps/vercel.json',
       'apps/library/vercel.json',
+      'apps/gaps/vite.config.ts',
+      'apps/library/vite.config.ts',
       'apps/relay/vercel.json',
       'tooling/short-term-memory/uv.lock',
       'apps/relay/shared/insights/index.ts',
@@ -127,8 +129,12 @@ describe('area scope', () => {
       app: true,
       electron: true,
     });
-    for (const site of ['apps/gaps', 'apps/library', 'courses', 'compare']) {
-      expect(classifyPaths([`${site}/index.html`])).toMatchObject({
+    for (const template of [
+      'apps/gaps/index.html',
+      'apps/library/index.html',
+      'apps/web/src/pages/quizlet/index.html',
+    ]) {
+      expect(classifyPaths([template])).toMatchObject({
         sites: true,
         lint: true,
         app: false,

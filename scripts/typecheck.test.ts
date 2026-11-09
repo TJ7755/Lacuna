@@ -20,12 +20,14 @@ describe('web typechecking', () => {
     try {
       write('tsconfig.json', readFileSync(join(root, 'tsconfig.json'), 'utf8'));
       for (const name of ['app', 'node', 'release-tooling']) {
-        const config = JSON.parse(readFileSync(join(root, `tsconfig.${name}.json`), 'utf8')) as {
+        const config = JSON.parse(
+          readFileSync(join(root, `config/typescript/tsconfig.${name}.json`), 'utf8'),
+        ) as {
           compilerOptions: { types?: string[] };
         };
         // The fixture has no imports; retain the real options and include patterns.
         config.compilerOptions.types = [];
-        write(`tsconfig.${name}.json`, JSON.stringify(config));
+        write(`config/typescript/tsconfig.${name}.json`, JSON.stringify(config));
       }
       const sources = ['apps/web/src/probe.ts', 'vite.config.ts', 'tests/e2e/probe.ts'];
       for (const source of sources) write(source, 'export const probe: number = "invalid";\n');

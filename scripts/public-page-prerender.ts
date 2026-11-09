@@ -2,6 +2,13 @@ import { coursePaths } from '../apps/web/src/pages/courses/content.ts';
 import { createServer, type Plugin, type ViteDevServer } from 'vite';
 
 export const coursePageTemplate = 'apps/web/src/pages/courses/index.html';
+export const quizletPageTemplate = 'apps/web/src/pages/quizlet/index.html';
+
+const quizletPageOutput = 'compare/quizlet/index.html';
+const relocatedPages = [
+  { template: coursePageTemplate, output: 'courses/index.html' },
+  { template: quizletPageTemplate, output: quizletPageOutput },
+];
 
 interface PublicPage {
   /** The built HTML path reported by transformIndexHtml. */
@@ -16,9 +23,18 @@ interface PublicPage {
 export function publicPagePrerenderPlugin(): Plugin {
   let renderer: ViteDevServer | undefined;
   let base = '/';
+  function htmlAtOutputPath(html: string, fileName: string): string {
+    if (base !== './') return html;
+    // Vite resolves assets from the template's depth in relative-base builds.
+    const prefix = '../'.repeat(fileName.split('/').length - 1);
+    return html.replace(
+      /((?:src|href)=")(?:\.\.\/)+/g,
+      (_match, attribute: string) => attribute + prefix,
+    );
+  }
   const pages: PublicPage[] = [
     {
-      path: '/compare/quizlet/index.html',
+      path: quizletPageTemplate,
       module: '/apps/web/src/pages/quizlet/entry-server.tsx',
       placeholder: '<!--public-page-->',
     },
@@ -34,23 +50,20 @@ export function publicPagePrerenderPlugin(): Plugin {
       server.middlewares.use((request, _response, next) => {
         const url = request.url ?? '';
         const [path] = url.split('?', 1);
-        const courseDirectory = `${base}courses/`;
-        if (
-          path === courseDirectory ||
-          path === courseDirectory + 'index' ||
-          path === courseDirectory + 'index.html'
-        ) {
-          request.url = `${base}${coursePageTemplate}${url.slice(path.length)}`;
-        }
+        const page = relocatedPages.find(({ output }) => {
+          const directory = base + output.slice(0, -'index.html'.length);
+          return path === directory || path === directory + 'index' || path === base + output;
+        });
+        if (page) request.url = `${base}${page.template}${url.slice(path.length)}`;
         next();
       });
     },
     hotUpdate({ file, server }) {
-      if (
-        this.environment.name === 'client' &&
-        file === server.config.root + '/' + coursePageTemplate
-      ) {
-        this.environment.hot.send({ type: 'full-reload', path: '/courses/index.html' });
+      if (this.environment.name === 'client') {
+        const page = relocatedPages.find(
+          ({ template }) => file === `${server.config.root}/${template}`,
+        );
+        if (page) this.environment.hot.send({ type: 'full-reload', path: `/${page.output}` });
       }
     },
     configResolved(config) {
@@ -60,11 +73,7 @@ export function publicPagePrerenderPlugin(): Plugin {
       order: 'post',
       async handler(html, context) {
         if (context.server) return html;
-        const page = pages.find((candidate) =>
-          candidate.path === 'index.html'
-            ? context.path === '/index.html' || context.path === 'index.html'
-            : context.path.endsWith(candidate.path),
-        );
+        const page = pages.find((candidate) => candidate.path === context.path.replace(/^\//, ''));
         if (!page) return html;
         renderer = await createServer({
           configFile: false,
@@ -85,7 +94,7 @@ export function publicPagePrerenderPlugin(): Plugin {
           if (markup.includes('/src/'))
             throw new Error('Unresolved public-page asset in rendered HTML.');
           let renderedHtml = html.replace(page.placeholder, markup);
-          if (page.path !== 'index.html') return renderedHtml;
+          if (page.path === quizletPageTemplate) return renderedHtml;
 
           // Prerendered content needs its lazy entry's CSS before JavaScript runs.
           // Follow static imports only: unrelated app routes must stay lazy.
@@ -161,6 +170,15 @@ export function publicPagePrerenderPlugin(): Plugin {
     generateBundle: {
       order: 'post',
       async handler(_options, bundle) {
+        const comparison = bundle[quizletPageTemplate];
+        if (comparison?.type === 'asset') {
+          this.emitFile({
+            type: 'asset',
+            fileName: quizletPageOutput,
+            source: htmlAtOutputPath(String(comparison.source), quizletPageOutput),
+          });
+          delete bundle[quizletPageTemplate];
+        }
         const template = bundle[coursePageTemplate];
         if (!template || template.type !== 'asset') return;
         const server = await createServer({
@@ -176,22 +194,14 @@ export function publicPagePrerenderPlugin(): Plugin {
           const html = String(template.source);
           for (const path of coursePaths) {
             const markup = await render(path);
-            // Relative-base builds need asset URLs relative to the published page.
-            const pageHtml =
-              base === './'
-                ? html.replace(
-                    /((?:src|href)=")(?:\.\.\/)+/g,
-                    (_match, attribute: string) =>
-                      attribute + '../'.repeat(path.split('/').length - 2),
-                  )
-                : html;
-            const source = pageHtml
+            const fileName = `${path.slice(1)}index.html`;
+            const source = htmlAtOutputPath(html, fileName)
               .replace(/<!--course-head-->[\s\S]*?<!--\/course-head-->/, () => renderHead(path))
               .replace(/<!--course-body-->[\s\S]*?<!--\/course-body-->/, () => markup);
 
             this.emitFile({
               type: 'asset',
-              fileName: `${path.slice(1)}index.html`,
+              fileName,
               source,
             });
           }

@@ -9,7 +9,6 @@ import {
   resolveAssetUrl,
   resolveAssetMarkdownCached,
   revokeAllCachedUrls,
-  _cacheSizeForTests,
 } from './assetCache';
 
 describe('asset object URL cache', () => {
@@ -120,24 +119,26 @@ describe('asset object URL cache', () => {
     expect(resolved).toBe('![img](blob:cached)');
   });
 
-  it('revokes every cached URL and clears the cache at teardown', async () => {
+  it.each(['beforeunload', 'pagehide'])('revokes cached URLs on %s', async (event) => {
     const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL');
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:xyz');
-    await db.assets.put({
-      hash: 'h3',
-      blob: new Blob(['x'], { type: 'image/png' }),
-      mimeType: 'image/png',
-      width: 4,
-      height: 3,
-      createdAt: 0,
-    });
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:xyz');
+    try {
+      await db.assets.put({
+        hash: 'h3',
+        blob: new Blob(['x'], { type: 'image/png' }),
+        mimeType: 'image/png',
+        width: 4,
+        height: 3,
+        createdAt: 0,
+      });
 
-    await resolveAssetUrl('h3');
-    expect(_cacheSizeForTests()).toBe(1);
-
-    revokeAllCachedUrls();
-    expect(_cacheSizeForTests()).toBe(0);
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:xyz');
-    revokeObjectURL.mockRestore();
+      await expect(resolveAssetUrl('h3')).resolves.toBe('blob:xyz');
+      window.dispatchEvent(new Event(event));
+      expect(peekCachedAssetUrl('h3')).toBeUndefined();
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:xyz');
+    } finally {
+      createObjectURL.mockRestore();
+      revokeObjectURL.mockRestore();
+    }
   });
 });

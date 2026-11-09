@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join, relative, resolve, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
 
 // Domain owners must not depend on UI composition, including through type imports.
@@ -26,14 +26,14 @@ const declarationExtension = /\.d\.[cm]?ts$/;
 const sourcePath = (root, file) => relative(root, file).split(sep).join('/');
 
 function createResolver(root, { runtime = false } = {}) {
-  const configFile = join(root, 'tsconfig.app.json');
+  const configFile = join(root, 'config/typescript/tsconfig.app.json');
   const config = existsSync(configFile)
     ? ts.readConfigFile(configFile, ts.sys.readFile).config
     : {};
   const { options } = ts.parseJsonConfigFileContent(
     config,
     { ...ts.sys, readDirectory: () => [] },
-    root,
+    dirname(configFile),
   );
   const compilerOptions = {
     ...options,
