@@ -27,6 +27,7 @@ import { useScrollMemory } from './scrollMemory';
 import { RouteTransitions } from './RouteTransitions';
 import { ErrorBoundary } from './ErrorBoundary';
 import { OverlayLoadBoundary } from './OverlayLoadBoundary';
+import { QuickSearchPending } from './QuickSearchPending';
 import type { StudySheet as StudySheetComponent } from '../learn/StudySheet';
 import { StudySheetProvider, useStudySheetState } from '../learn/StudySheetContext';
 import { CourseSectionBar } from '../course/CourseSectionBar';
@@ -233,6 +234,8 @@ function AppShellLayout() {
               ? document.activeElement
               : null;
           setMobileOpen(false);
+        } else {
+          requestAnimationFrame(() => paletteReturnFocusRef.current?.focus());
         }
         setPaletteOpen(!paletteOpen);
         return;
@@ -454,7 +457,14 @@ function AppShellLayout() {
       </div>
       {paletteOpen && (
         <OverlayLoadBoundary label="Quick search" onClose={() => setPaletteOpen(false)}>
-          <Suspense fallback={null}>
+          <Suspense
+            fallback={
+              <QuickSearchPending
+                onClose={() => setPaletteOpen(false)}
+                returnFocusTarget={paletteReturnFocusRef}
+              />
+            }
+          >
             <CommandPalette
               open={paletteOpen}
               onClose={() => setPaletteOpen(false)}
