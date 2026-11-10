@@ -37,7 +37,7 @@ concurrency:
 jobs:
   web:
     if: github.event_name != 'workflow_dispatch' || inputs.comparison_base == ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -45,7 +45,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
-      - run: bunx playwright install --with-deps chromium
+      - run: bunx --no-install playwright install --only-shell chromium
       - run: bun run build:assets
       - run: bun run perf:check
       - name: Verify first interactions and animation behaviour

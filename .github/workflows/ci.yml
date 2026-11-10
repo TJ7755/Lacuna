@@ -54,11 +54,13 @@ jobs:
       browser_ci: ${{ steps.scope.outputs.browser_ci }}
       standalone_suites: ${{ steps.scope.outputs.standalone_suites }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - &scope-checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
           persist-credentials: false
-      - id: scope
+      - &classify-scope
+        id: scope
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -70,6 +72,35 @@ jobs:
           else
             node scripts/ci-change-scope.mjs < /dev/null >> "$GITHUB_OUTPUT"
           fi
+
+  # Start the build before test jobs compete for runners.
+  web-build:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact_id: ${{ steps.dist.outputs.artifact-id }}
+    steps:
+      - *scope-checkout
+      - *classify-scope
+      - uses: ./.github/actions/setup-node
+        if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
+        with:
+          node-version: '24.22.1'
+      - uses: ./.github/actions/setup-bun
+        if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
+      - run: bun install --frozen-lockfile
+        if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
+      - run: bun run build:assets
+        if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
+      - name: Share the production web build
+        if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
+        id: dist
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-web-dist-${{ github.run_attempt }}
+          path: dist/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
 
   typecheck:
     name: typecheck
@@ -352,32 +383,6 @@ jobs:
         if: needs.changes.outputs.ai_mcp != 'false'
         working-directory: tooling/lacuna-ai-mcp
 
-  web-build:
-    needs: changes
-    if: needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false'
-    runs-on: ubuntu-latest
-    outputs:
-      artifact_id: ${{ steps.dist.outputs.artifact-id }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-node
-        with:
-          node-version: '24.22.1'
-      - uses: ./.github/actions/setup-bun
-      - run: bun install --frozen-lockfile
-      - run: bun run build:assets
-      - name: Share the production web build
-        id: dist
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: browser-web-dist-${{ github.run_attempt }}
-          path: dist/
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 1
-
   production:
     name: production
     needs: [changes, web-build]
@@ -482,36 +487,7 @@ jobs:
       fail-fast: false
       matrix:
         shard:
-          [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-            24,
-            25,
-            26,
-            27,
-            28,
-          ]
+          [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -532,7 +508,6 @@ jobs:
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
-          github-token: ${{ github.token }}
           path: dist/
       - run: node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/${{ strategy.job-total }}
       - name: Preserve browser test evidence
@@ -641,7 +616,6 @@ jobs:
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
-          github-token: ${{ github.token }}
           path: dist/
       - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=${{ matrix.project }} --workers=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
         env:
@@ -725,7 +699,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           WEB_ARTIFACT_ID: ${{ needs.web-build.outputs.artifact_id }}
-          FUNCTIONAL_SHARDS: '28'
+          FUNCTIONAL_SHARDS: '24'
         run: node scripts/ci-browser-artefact.mjs
 
   electron-renderer:
@@ -774,7 +748,6 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
-          github-token: ${{ github.token }}
           path: dist/
       - run: bun run test:e2e:electron-ai
         env:
