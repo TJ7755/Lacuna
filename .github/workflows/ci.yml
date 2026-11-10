@@ -13,6 +13,9 @@ permissions:
   contents: read
   actions: read
 
+env:
+  FUNCTIONAL_SHARDS: '19'
+
 # Retries cannot cancel newer validation. Master pushes supersede older pushes.
 # Base retargets require reopening the PR (or pushing a commit) to validate the new merge.
 concurrency:
@@ -21,6 +24,9 @@ concurrency:
 
 jobs:
   documentation:
+    # Let the longer browser jobs claim runners before this short independent check.
+    needs: web-build
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -80,15 +86,15 @@ jobs:
       artifact_id: ${{ steps.dist.outputs.artifact-id }}
     steps:
       - *scope-checkout
-      - *classify-scope
-      - uses: ./.github/actions/setup-node
-        if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
-        with:
-          node-version: '24.22.1'
+      - parallel:
+          - *classify-scope
+          - uses: ./.github/actions/setup-node
+            with:
+              node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
+        if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
         with:
           cache-packages: 'false'
-        if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
       - run: bun install --frozen-lockfile
         if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
       - run: bun run build:assets
@@ -124,6 +130,8 @@ jobs:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
       - run: bun run typecheck
@@ -153,10 +161,12 @@ jobs:
         if: needs.changes.outputs.lint != 'false'
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.lint != 'false'
-      - run: bun run lint
+      - run: bun run lint:source --concurrency=2
         if: needs.changes.outputs.lint != 'false'
         env:
           LACUNA_CI_LINT: 'true'
+      - run: node scripts/check-import-cycles.mjs
+        if: needs.changes.outputs.lint != 'false'
       - name: Check unused code and files
         if: needs.changes.outputs.lint != 'false'
         run: bun run knip
@@ -177,6 +187,8 @@ jobs:
         with:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
 
       # Each shard spends most of its time importing modules and creating DOM
@@ -213,6 +225,8 @@ jobs:
         with:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
         id: install
       - run: ${{ matrix.command }}
@@ -222,6 +236,9 @@ jobs:
       - name: Verify CI predicates and browser diagnostics without browsers
         if: ${{ !cancelled() && steps.install.outcome == 'success' && matrix.suite == 'critical' }}
         run: node --test scripts/vercel-deploy-scope.test.mjs scripts/deploy-prerequisites.test.mjs scripts/nightly-release.test.mjs scripts/local-checks.test.mjs scripts/security-runtime.test.mjs scripts/ci-workflow.test.mjs scripts/ci-recover-stale-jobs.test.mjs scripts/browser-ci-summary.test.mjs scripts/ci-browser-artefact.test.mjs scripts/ci-browser-shards.test.mjs scripts/ci-wait-for-renderer.test.mjs
+      - name: Verify browser project inventory
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && matrix.suite == 'critical' }}
+        run: bun run test:ci:unit -- apps/web/src/release/browserCiConfig.test.ts
 
   # Start the shorter independent checks after the first wave of runners.
   python-tools:
@@ -265,7 +282,7 @@ jobs:
         electron-macos-smoke,
       ]
     if: ${{ always() && !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Verify test jobs passed
         env:
@@ -341,7 +358,7 @@ jobs:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
         with:
-          cache-dependency-path: bun.lock
+          cache-packages: 'false'
         if: needs.changes.outputs.relay != 'false'
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.relay != 'false'
@@ -418,6 +435,8 @@ jobs:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -439,14 +458,12 @@ jobs:
   # Browser pipeline changes exercise the full matrix before merge.
   browser-pr:
     needs: [changes, web-build]
-    if: github.event_name == 'pull_request' && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
+    if: github.event_name == 'pull_request' && needs.changes.outputs.browser_ci == 'false' && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: true
       matrix:
-        # The full matrix already runs every changed spec. Exercise the PR-only
-        # command once in that case, without scheduling three redundant runners.
-        shard: ${{ fromJSON(needs.changes.outputs.web_specs && needs.changes.outputs.browser_ci == 'false' && '[1, 2, 3, 4]' || '[1]') }}
+        shard: ${{ fromJSON(needs.changes.outputs.web_specs && '[1, 2, 3, 4]' || '[1]') }}
     env:
       LACUNA_BROWSER_PREBUILT: 'true'
     steps:
@@ -495,7 +512,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -506,20 +523,28 @@ jobs:
       - uses: ./.github/actions/setup-bun
         with:
           cache-packages: 'false'
-      - run: bun install --frozen-lockfile
-      - run: bunx --no-install playwright install --only-shell chromium
-      - name: Require the current production web build
+      - &require-web-build
+        name: Require the current production web build
         id: web-dist
+        background: true
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node scripts/ci-wait-for-renderer.mjs web
-      - name: Download production web build ${{ steps.web-dist.outputs.artifact_id }}
+      - run: bun install --frozen-lockfile
+      - name: Plan the functional browser shard
+        id: browser-plan
+        background: true
+        run: node scripts/ci-browser-shards.mjs plan ${{ matrix.shard }}/${{ env.FUNCTIONAL_SHARDS }}
+      - run: bunx --no-install playwright install --only-shell chromium
+      - wait: [web-dist, browser-plan]
+      - &download-web-build
+        name: Download production web build ${{ steps.web-dist.outputs.artifact_id }}
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
           path: dist/
-      - run: node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/${{ strategy.job-total }}
+      - run: node scripts/ci-browser-shards.mjs run-prepared ${{ matrix.shard }}/${{ env.FUNCTIONAL_SHARDS }}
         env:
           CI_PEER_JOB_TOKEN: ${{ github.token }}
       - name: Preserve browser test evidence
@@ -578,6 +603,68 @@ jobs:
           path: artifacts/browser-checks/
           if-no-files-found: ignore
 
+  # Start the longest timing case before the functional matrix competes for runners.
+  browser-image-timing:
+    name: browser-timing (chromium-image-performance, 1, 1)
+    runs-on: ubuntu-24.04
+    env:
+      LACUNA_BROWSER_PREBUILT: 'true'
+    steps:
+      - *scope-checkout
+      - *classify-scope
+      - uses: ./.github/actions/setup-node
+        if: &image-scope (github.event_name != 'pull_request' || steps.scope.outputs.browser_ci != 'false') && (steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false')
+        with:
+          node-version: '24.22.1'
+      - uses: ./.github/actions/setup-bun
+        if: *image-scope
+        with:
+          cache-packages: 'false'
+      - name: Require the current production web build
+        if: *image-scope
+        id: web-dist
+        background: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci-wait-for-renderer.mjs web
+      - run: bun install --frozen-lockfile
+        if: *image-scope
+      - run: bunx --no-install playwright install --only-shell chromium
+        if: *image-scope
+      - name: Cache the deterministic image fixture
+        if: *image-scope
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/lacuna-study-images-v1
+          key: study-images-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'tests/e2e/fixtures/largeStudyImages.ts') }}
+      - name: Prepare original-sized study images
+        if: *image-scope
+        env:
+          STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
+        run: bun -e 'import { largeStudyImages } from "./tests/e2e/fixtures/largeStudyImages"; await largeStudyImages()'
+      - wait: web-dist
+      - name: Download production web build ${{ steps.web-dist.outputs.artifact_id }}
+        if: *image-scope
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
+          path: dist/
+      - run: node scripts/ci-browser-shards.mjs timing --project=chromium-image-performance --workers=1 --retries=1 --max-failures=1 --shard=1/1
+        if: *image-scope
+        env:
+          CI_PEER_JOB_TOKEN: ${{ github.token }}
+          STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
+      - name: Preserve browser timing evidence
+        if: always() && ((github.event_name != 'pull_request' || steps.scope.outputs.browser_ci != 'false') && (steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'))
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-results-chromium-image-performance-1
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
   # Timing cases run serially on each runner without competing functional workers.
   browser-timing:
     name: browser-timing (${{ matrix.project }}, ${{ matrix.shard }}, ${{ matrix.total }})
@@ -590,15 +677,15 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - project: chromium-image-performance
-            shard: 1
-            total: 1
           - project: chromium-study-performance
             shard: 1
-            total: 2
+            total: 3
           - project: chromium-study-performance
             shard: 2
-            total: 2
+            total: 3
+          - project: chromium-study-performance
+            shard: 3
+            total: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -609,33 +696,14 @@ jobs:
       - uses: ./.github/actions/setup-bun
         with:
           cache-packages: 'false'
+      - *require-web-build
       - run: bun install --frozen-lockfile
       - run: bunx --no-install playwright install --only-shell chromium
-      - name: Cache the deterministic image fixture
-        if: matrix.project == 'chromium-image-performance'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ runner.temp }}/lacuna-study-images-v1
-          key: study-images-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'tests/e2e/fixtures/largeStudyImages.ts') }}
-      - name: Prepare original-sized study images
-        if: matrix.project == 'chromium-image-performance'
+      - wait: web-dist
+      - *download-web-build
+      - run: node scripts/ci-browser-shards.mjs timing --project=${{ matrix.project }} --workers=1 --retries=0 --max-failures=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
         env:
-          STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
-        run: bun -e 'import { largeStudyImages } from "./tests/e2e/fixtures/largeStudyImages"; await largeStudyImages()'
-      - name: Require the current production web build
-        id: web-dist
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: node scripts/ci-wait-for-renderer.mjs web
-      - name: Download production web build ${{ steps.web-dist.outputs.artifact_id }}
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
-          path: dist/
-      - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=${{ matrix.project }} --workers=1 --retries=${{ matrix.project == 'chromium-image-performance' && '1' || '0' }} --max-failures=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
-        env:
-          STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
+          CI_PEER_JOB_TOKEN: ${{ github.token }}
       - name: Preserve browser timing evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -656,6 +724,7 @@ jobs:
         production,
         browser-pr,
         browser-tests,
+        browser-image-timing,
         browser-timing,
         browser-standalone,
       ]
@@ -676,18 +745,19 @@ jobs:
           PRODUCTION_RESULT: ${{ needs.production.result }}
           PR_RESULT: ${{ needs.browser-pr.result }}
           RESULT: ${{ needs.browser-tests.result }}
+          IMAGE_TIMING_RESULT: ${{ needs.browser-image-timing.result }}
           TIMING_RESULT: ${{ needs.browser-timing.result }}
           STANDALONE_RESULT: ${{ needs.browser-standalone.result }}
         run: |
           # A skipped dependency passes only with an explicit unaffected scope.
           WEB=true
           if [ "$APP" = false ] && [ "$SITES" = false ]; then WEB=false; fi
-          # Require the full suites for master commits and browser pipeline changes.
+          # The full suites include the release smoke and changed specs.
           PR_WEB=false
           FULL_WEB=$WEB
-          if [ "$EVENT_NAME" = pull_request ]; then
+          if [ "$EVENT_NAME" = pull_request ] && [ "$BROWSER_CI" = false ]; then
             PR_WEB=$WEB
-            if [ "$BROWSER_CI" = false ]; then FULL_WEB=false; fi
+            FULL_WEB=false
           fi
           STANDALONE=true
           if [ "$STANDALONE_SUITES" = '[]' ]; then STANDALONE=false; fi
@@ -698,24 +768,28 @@ jobs:
             echo "- Production: $PRODUCTION_RESULT"
             echo "- Pull-request smoke: $PR_RESULT"
             echo "- Functional shards: $RESULT"
-            echo "- Isolated timing projects: $TIMING_RESULT"
+            echo "- Image timing: $IMAGE_TIMING_RESULT"
+            echo "- Study timing: $TIMING_RESULT"
             echo "- Standalone sites: $STANDALONE_RESULT"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$STANDALONE"; then
-            echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT timing=$TIMING_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
+          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$IMAGE_TIMING_RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$STANDALONE"; then
+            echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT images=$IMAGE_TIMING_RESULT timing=$TIMING_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
         with:
           persist-credentials: false
+          sparse-checkout: |
+            scripts/ci-browser-artefact.mjs
+            scripts/ci-wait-for-renderer.mjs
+          sparse-checkout-cone-mode: false
       - name: Require browser evidence for the exact production build
         if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           WEB_ARTIFACT_ID: ${{ needs.web-build.outputs.artifact_id }}
-          FUNCTIONAL_SHARDS: '18'
         run: node scripts/ci-browser-artefact.mjs
 
   electron-renderer:
@@ -757,7 +831,7 @@ jobs:
         with:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
-      - run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile --filter '@lacuna/desktop'
       - run: node scripts/ci-electron-runtime.mjs win32 x64
       - name: Require the current production web build
         id: web-dist
@@ -784,7 +858,7 @@ jobs:
     name: electron-ai
     needs: [changes, electron-renderer, electron-ai-tests, windows-installed-upgrade]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Require Windows AI and installer evidence
         env:
@@ -840,9 +914,7 @@ jobs:
           if-no-files-found: ignore
 
   windows-installed-upgrade:
-    needs: changes
-    # Native-risk pull requests and every master push retain both installer probes.
-    if: needs.changes.outputs.windows_native != 'false'
+    # Start checkout and scope detection while the renderer builds.
     runs-on: windows-latest
     # NSIS uses machine-wide process discovery and installation markers.
     # Keep each upgrade scenario isolated while removing their serial dependency.
@@ -851,46 +923,66 @@ jobs:
       matrix:
         probe: [companion, release]
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
+      - *scope-checkout
+      - *classify-scope
       - uses: ./.github/actions/setup-node
+        if: steps.scope.outputs.windows_native != 'false'
         with:
           node-version: '24.22.1'
+      - name: Download the pinned Windows upgrade baseline
+        if: steps.scope.outputs.windows_native != 'false'
+        id: baseline
+        background: true
+        timeout-minutes: 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }} --prefetch-baseline
       - uses: ./.github/actions/setup-bun
-      - run: bun install --frozen-lockfile --filter '@lacuna/desktop'
-      - name: Cache Windows packaging archives
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          # Cache only the archives that the next step verifies, never extracted tools.
-          path: |
-            ~/AppData/Local/electron/Cache/*/electron-v*-win32-x64.zip
-            ~/AppData/Local/electron-builder/Cache/winCodeSign-2.6.0/winCodeSign-2.6.0.7z
-            ~/AppData/Local/electron-builder/Cache/nsis-3.0.4.1/nsis-3.0.4.1.7z
-            ~/AppData/Local/electron-builder/Cache/nsis-resources-3.4.1/nsis-resources-3.4.1.7z
-            ~/AppData/Local/electron-builder/Cache/7zip@1.0.0/7zip-win-x64.tar.gz
-            ~/AppData/Local/electron-builder/Cache/icons@1.2.3/icons-bundle.tar.gz
-          key: electron-win-packaging-archives-v1-${{ runner.arch }}-${{ hashFiles('node_modules/electron/checksums.json', 'apps/desktop/node_modules/electron/checksums.json') || hashFiles('bun.lock') }}-${{ hashFiles('scripts/ci-electron-runtime.mjs') }}
-      - run: node scripts/ci-electron-runtime.mjs win32 x64 --packaging-tools
-      - run: bun run electron:prepare
-      - name: Require the current desktop renderer build
-        id: renderer
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: node scripts/ci-wait-for-renderer.mjs
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.1
-        with:
-          artifact-ids: ${{ steps.renderer.outputs.artifact_id }}
-          github-token: ${{ github.token }}
-          path: dist/
+        if: steps.scope.outputs.windows_native != 'false'
+      - parallel:
+          - run: bun install --frozen-lockfile --filter '@lacuna/desktop'
+            if: steps.scope.outputs.windows_native != 'false'
+          - name: Cache Windows packaging archives
+            if: steps.scope.outputs.windows_native != 'false'
+            uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+            with:
+              # The runtime check verifies every archive before packaging uses it.
+              path: |
+                ~/AppData/Local/electron/Cache/*/electron-v*-win32-x64.zip
+                ~/AppData/Local/electron-builder/Cache/winCodeSign-2.6.0/winCodeSign-2.6.0.7z
+                ~/AppData/Local/electron-builder/Cache/nsis-3.0.4.1/nsis-3.0.4.1.7z
+                ~/AppData/Local/electron-builder/Cache/nsis-resources-3.4.1/nsis-resources-3.4.1.7z
+                ~/AppData/Local/electron-builder/Cache/7zip@1.0.0/7zip-win-x64.tar.gz
+                ~/AppData/Local/electron-builder/Cache/icons@1.2.3/icons-bundle.tar.gz
+              key: electron-win-packaging-archives-v2-${{ runner.arch }}-${{ hashFiles('scripts/ci-electron-runtime.mjs') }}-${{ hashFiles('bun.lock') }}
+              restore-keys: |
+                electron-win-packaging-archives-v2-${{ runner.arch }}-${{ hashFiles('scripts/ci-electron-runtime.mjs') }}-
+                electron-win-packaging-archives-v1-${{ runner.arch }}-
+          - name: Require the current desktop renderer build
+            if: steps.scope.outputs.windows_native != 'false'
+            id: renderer
+            env:
+              GH_TOKEN: ${{ github.token }}
+              SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+            run: node scripts/ci-wait-for-renderer.mjs
+      - parallel:
+          - run: node scripts/ci-electron-runtime.mjs win32 x64 --packaging-tools
+            if: steps.scope.outputs.windows_native != 'false'
+          - run: bun run electron:prepare
+            if: steps.scope.outputs.windows_native != 'false'
+          - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.1
+            if: steps.scope.outputs.windows_native != 'false'
+            with:
+              artifact-ids: ${{ steps.renderer.outputs.artifact_id }}
+              github-token: ${{ github.token }}
+              path: dist/
       - name: Build and audit the NSIS installer while preparing the upgrade baseline
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }}
+        if: steps.scope.outputs.windows_native != 'false'
+        run: node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }} --use-prefetched-baseline
+      - wait: baseline
 
       - name: Preserve installed upgrade evidence
-        if: always()
+        if: always() && steps.scope.outputs.windows_native != 'false'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-installed-upgrade-results-${{ matrix.probe }}

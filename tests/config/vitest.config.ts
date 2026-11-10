@@ -33,6 +33,8 @@ const coverageOwnedBrowserTests = separateCoverage
       ...criticalBrowserTests,
       ...(riskConfig.test?.include ?? []),
       ...(recoveryConfig.test?.include ?? []),
+      // The browser inventory runs alongside the CI predicate checks.
+      'apps/web/src/release/browserCiConfig.test.ts',
     ]
   : [];
 

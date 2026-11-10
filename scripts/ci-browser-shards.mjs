@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
@@ -133,6 +133,25 @@ function listTests(extra = []) {
   return JSON.parse(result.stdout);
 }
 
+function prepareShard(shard, total, evidence) {
+  const discovered = inventory(listTests());
+  const shards = planShards(discovered, JSON.parse(readFileSync(timingPath, 'utf8')), total);
+  const plan = {
+    shard,
+    total,
+    discovered: discovered.map(({ id }) => id),
+    shards: shards.map(({ files, tests, estimatedMs }) => ({
+      files,
+      identities: tests.map(({ id }) => id),
+      estimatedMs,
+    })),
+  };
+  // Playwright clears outputDir before reading --test-list, so keep inputs outside it.
+  mkdirSync(evidence, { recursive: true });
+  writeFileSync(resolve(evidence, 'functional-shard-plan.json'), JSON.stringify(plan, null, 2));
+  return plan;
+}
+
 export async function firstFailedPeer(read, runId, attempt, signal) {
   let warned = false;
   // Share the workflow token's API budget with renderer and artefact verification.
@@ -211,7 +230,15 @@ async function runPlaywright(args) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const [command, ...args] = process.argv.slice(2);
-  if (command === 'refresh') {
+  if (command === 'timing') {
+    process.exitCode = await runPlaywright([
+      'node_modules/playwright/cli.js',
+      'test',
+      '-c',
+      config,
+      ...args,
+    ]);
+  } else if (command === 'refresh') {
     const [commit, run, ...paths] = args;
     assert.match(commit ?? '', /^[a-f0-9]{40}$/);
     assert.match(run ?? '', /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/actions\/runs\/\d+$/);
@@ -223,39 +250,25 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const source = { commit, run, playwright: reports[0].config.version };
     writeFileSync(timingPath, `${JSON.stringify(refreshTimings(reports, source), null, 2)}\n`);
   } else {
-    assert.equal(command, 'run', 'Use run current/total or refresh commit run-url reports...');
+    assert.ok(['plan', 'run', 'run-prepared'].includes(command), 'Unknown browser shard command');
     assert.match(args[0] ?? '', /^[1-9]\d*\/[1-9]\d*$/);
     const [current, total] = args[0].split('/').map(Number);
     assert.ok(current <= total, 'Shard index exceeds total');
     assert.equal(args.length, 1, 'Pass exactly one whole-file shard');
-    const discovered = inventory(listTests());
-    const shards = planShards(discovered, JSON.parse(readFileSync(timingPath, 'utf8')), total);
-    const selected = shards[current - 1];
-    // Playwright clears outputDir before reading --test-list, so keep inputs outside it.
     const evidence = resolve('artifacts/ci-browser-shards');
-    mkdirSync(evidence, { recursive: true });
+    const plan =
+      command === 'run-prepared'
+        ? JSON.parse(readFileSync(resolve(evidence, 'functional-shard-plan.json'), 'utf8'))
+        : prepareShard(current, total, evidence);
+    assert.equal(plan.shard, current);
+    assert.equal(plan.total, total);
+    if (command === 'plan') process.exit(0);
+    const selected = plan.shards[current - 1];
     const list = resolve(evidence, 'functional-shard.txt');
     writeFileSync(list, selected.files.map((file) => `[${project}] > ${file}`).join('\n'));
-    // Verify selection against Playwright before running every case in these files.
-    verifyInventory(selected.tests, inventory(listTests(['--test-list', list])));
-    writeFileSync(
-      resolve(evidence, 'functional-shard-plan.json'),
-      JSON.stringify(
-        {
-          shard: current,
-          total,
-          discovered: discovered.map(({ id }) => id),
-          shards: shards.map(({ files, tests, estimatedMs }) => ({
-            files,
-            identities: tests.map(({ id }) => id),
-            estimatedMs,
-          })),
-        },
-        null,
-        2,
-      ),
-    );
-    process.exitCode = await runPlaywright([
+    const reportPath = resolve('test-results/browser-results.json');
+    rmSync(reportPath, { force: true });
+    const status = await runPlaywright([
       'node_modules/playwright/cli.js',
       'test',
       '-c',
@@ -266,5 +279,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       '--workers=3',
       '--max-failures=1',
     ]);
+    if (status === 0) {
+      verifyInventory(
+        selected.identities.map((id) => ({ id })),
+        inventory(JSON.parse(readFileSync(reportPath, 'utf8'))),
+      );
+    }
+    process.exitCode = status;
   }
 }

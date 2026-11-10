@@ -126,6 +126,9 @@ describe('area scope', () => {
       'tests/config/playwright.web.config.ts',
       'tests/config/playwright.web.isolated.config.ts',
       'tests/e2e/study-session-load.spec.ts',
+      'tests/e2e/fixtures/studyImageAdvance.ts',
+      'tests/e2e/fixtures/lacunaApp.ts',
+      'tests/e2e/fixtures/welcomeCourseSeed.ts',
     ]) {
       expect(classifyPaths([path]).browser_ci, path).toBe(true);
     }

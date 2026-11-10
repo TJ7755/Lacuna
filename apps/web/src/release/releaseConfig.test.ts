@@ -464,7 +464,7 @@ describe('release configuration', () => {
 
   it('requires documentation checks even when heavy jobs are skipped', () => {
     const documentation = workflowJob(ciWorkflow, 'documentation');
-    expect(parse(ciWorkflow).jobs.documentation.if).toBeUndefined();
+    expect(parse(ciWorkflow).jobs.documentation.if).toBe('${{ !cancelled() }}');
     expect(documentation).not.toContain('docs_only');
     expect(documentation).toContain('node scripts/check-docs.mjs');
     expect(documentation).not.toContain('bun install');

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
 
 const builds = {
@@ -33,14 +34,20 @@ export function readWorkflowRun({ repository, runId, token, request = fetch }) {
   };
 }
 
-export async function readAttemptJobs(read, attempt) {
+export async function readAttemptJobs(read, attempt, sleep = delay) {
   assert.match(String(attempt), /^[1-9]\d*$/);
-  const { jobs, total_count: count } = await read(`attempts/${attempt}/jobs?per_page=100`);
-  assert.ok(
-    Array.isArray(jobs) && jobs.length === count && count < 100,
-    'The job inventory is incomplete; update pagination before expanding the workflow',
-  );
-  return jobs;
+  const endpoint = `attempts/${attempt}/jobs?per_page=100`;
+  for (const pause of [0, 250, 750, 2_000]) {
+    if (pause) await sleep(pause);
+    const { jobs, total_count: count } = await read(endpoint);
+    assert.ok(
+      Array.isArray(jobs) && Number.isSafeInteger(count) && count >= 0 && count < 100,
+      'The job inventory is incomplete; update pagination before expanding the workflow',
+    );
+    // GitHub can register newly eligible matrix jobs while serving this endpoint.
+    if (jobs.length === count) return jobs;
+  }
+  throw new Error('The job inventory is incomplete after retrying');
 }
 
 // Consumer setup can overlap the build. Partial retries can reuse a successful
@@ -64,6 +71,12 @@ export async function waitForRenderer({
   assert.match(sourceSha ?? '', /^[a-f0-9]{40}$/);
   const read = readWorkflowRun({ repository, runId, token, request });
   const deadline = Date.now() + timeoutMs;
+  const pollIntervals = [
+    ...Array(kind === 'web' ? 8 : 3).fill(3_000),
+    ...Array(5).fill(15_000),
+    ...Array(4).fill(30_000),
+  ];
+  const steadyInterval = kind === 'web' ? 300_000 : 60_000;
   for (let index = 0; index < polls && Date.now() < deadline; index++) {
     const jobs = await readAttemptJobs(read, attempt);
     const producers = jobs.filter((job) => job.name === build.job);
@@ -126,11 +139,10 @@ export async function waitForRenderer({
         'Unknown build state',
       );
     }
-    // Give the large browser matrix a slower poll interval during a producer stall.
+    // Browser consumers start their lookup during install. Keep fast polling
+    // through a normal build, then back off during a producer stall.
     if (index + 1 < polls) {
-      const steadyInterval = kind === 'web' ? 300_000 : 60_000;
-      const interval =
-        index < 3 ? 3_000 : index < 8 ? 15_000 : index < 12 ? 30_000 : steadyInterval;
+      const interval = pollIntervals[index] ?? steadyInterval;
       await sleep(Math.min(interval, Math.max(0, deadline - Date.now())));
     }
   }

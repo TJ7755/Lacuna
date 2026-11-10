@@ -1,10 +1,15 @@
-import { expect, test } from '@playwright/test';
-import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
+import { expect, test, type Page } from '@playwright/test';
+import { importWelcomeCourse, openEmptyDashboard } from './fixtures/lacunaApp';
+
+async function openPopulatedDashboard(page: Page) {
+  await openEmptyDashboard(page);
+  await importWelcomeCourse(page, { restart: true });
+}
 
 for (const width of [768, 1024, 1920]) {
   test(`analytics values remain accessible with enlarged text at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await enterWithWelcomeCourse(page);
+    await openPopulatedDashboard(page);
     await page.goto('/#/analytics');
     await expect(page.getByRole('heading', { name: 'Workload ahead' })).toBeVisible();
     await page.evaluate(() => {
@@ -27,7 +32,7 @@ for (const width of [768, 1024, 1920]) {
 
 test('a card follows a held pointer without spring lag', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await enterWithWelcomeCourse(page);
+  await openPopulatedDashboard(page);
   await page
     .getByRole('complementary')
     .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
@@ -54,10 +59,10 @@ test('a card follows a held pointer without spring lag', async ({ page }) => {
 for (const width of [768, 1024]) {
   test(`course tabs and authoring remain usable at ${width}px with enlarged text`, async ({
     page,
-  }, testInfo) => {
+  }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(() => localStorage.setItem('lacuna-theme', 'light'));
-    await enterWithWelcomeCourse(page);
+    await openPopulatedDashboard(page);
     await page
       .getByRole('region', { name: 'Today, most urgent first' })
       .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
@@ -68,7 +73,6 @@ for (const width of [768, 1024]) {
         'aria-current',
         'page',
       );
-      await navigation.screenshot({ path: testInfo.outputPath('course-tabs-no-scrollbar.png') });
     }
     await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
     await page.evaluate(() => {
@@ -98,7 +102,7 @@ for (const width of [768, 1024]) {
 
 test('mouse lesson dragging carries the lesson and moves its neighbour aside', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1200 });
-  await enterWithWelcomeCourse(page);
+  await openPopulatedDashboard(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })

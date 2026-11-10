@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { createCourse, openEmptyDashboard } from './fixtures/lacunaApp';
 
 async function openEditor(page: Page, type: string) {
-  await enterFreshLacuna(page);
+  await openEmptyDashboard(page);
   await createCourse(page, 'Specialised entry');
   await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('button', { name: 'More card types' }).click();

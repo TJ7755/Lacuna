@@ -133,7 +133,7 @@ test('documentation-only changes resolve required names without running heavy st
   }
 });
 
-const fullBrowserResults = ['RESULT', 'TIMING_RESULT', 'STANDALONE_RESULT'];
+const fullBrowserResults = ['RESULT', 'IMAGE_TIMING_RESULT', 'TIMING_RESULT', 'STANDALONE_RESULT'];
 const fullStandaloneSuites = JSON.stringify(classifyPaths([]).standalone_suites);
 const gateCases = (job) =>
   job === 'browser-smoke'
@@ -148,10 +148,10 @@ const gateCases = (job) =>
           event: 'pull_request',
           browserCI: 'false',
           standaloneSuites: JSON.stringify(classifyPaths(['apps/gaps/sw.js']).standalone_suites),
-          ignored: ['RESULT', 'TIMING_RESULT'],
+          ignored: ['RESULT', 'IMAGE_TIMING_RESULT', 'TIMING_RESULT'],
         },
-        { event: 'pull_request', browserCI: 'true', ignored: [] },
-        { event: 'pull_request', browserCI: '', ignored: [] },
+        { event: 'pull_request', browserCI: 'true', ignored: ['PR_RESULT'] },
+        { event: 'pull_request', browserCI: '', ignored: ['PR_RESULT'] },
         { event: 'push', browserCI: 'false', ignored: ['PR_RESULT'] },
       ]
     : [{ event: 'pull_request', ignored: [] }];
@@ -266,10 +266,15 @@ test('aggregate shell gates fail closed and report each dependency result', () =
 
 test('browser consumers install the lockfile browser and share the production artefact', () => {
   const jobs = workflow.jobs;
-  const consumers = ['browser-pr', 'browser-tests', 'browser-timing'];
+  const consumers = ['browser-pr', 'browser-tests', 'browser-image-timing', 'browser-timing'];
   const build = jobs['web-build'];
   assert.equal(build.needs, undefined);
-  assert.deepEqual(build.steps.slice(0, 2), jobs.changes.steps);
+  const [checkout, scope] = jobs.changes.steps;
+  assert.deepEqual(build.steps[0], checkout);
+  assert.deepEqual(build.steps[1].parallel, [
+    scope,
+    { uses: './.github/actions/setup-node', with: { 'node-version': '24.22.1' } },
+  ]);
   for (const step of build.steps.slice(2)) {
     assert.equal(
       step.if,
@@ -285,12 +290,11 @@ test('browser consumers install the lockfile browser and share the production ar
   assert.equal(producer.with.overwrite, undefined);
   for (const name of [...consumers, 'browser-standalone']) {
     const job = jobs[name];
+    const { steps } = job;
     assert.equal(job['runs-on'], 'ubuntu-24.04');
     assert.equal(job.container, undefined);
-    const installPackages = job.steps.findIndex(
-      (step) => step.run === 'bun install --frozen-lockfile',
-    );
-    const installBrowser = job.steps.findIndex(
+    const installPackages = steps.findIndex((step) => step.run === 'bun install --frozen-lockfile');
+    const installBrowser = steps.findIndex(
       (step) => step.run === 'bunx --no-install playwright install --only-shell chromium',
     );
     assert.ok(installPackages >= 0 && installBrowser > installPackages);
@@ -298,16 +302,28 @@ test('browser consumers install the lockfile browser and share the production ar
   }
   for (const name of [...consumers, 'production']) {
     const job = jobs[name];
-    const download = job.steps.find((step) => step.uses?.startsWith('actions/download-artifact@'));
+    const { steps } = job;
+    const download = steps.find((step) => step.uses?.startsWith('actions/download-artifact@'));
     assert.equal(download.with.path, producer.with.path);
-    if (name === 'browser-tests' || name === 'browser-timing') {
-      assert.equal(job.needs, 'changes');
-      const browser = job.steps.findIndex((step) => step.run?.includes('playwright install'));
-      const wait = job.steps.findIndex(
-        (step) => step.run === 'node scripts/ci-wait-for-renderer.mjs web',
-      );
-      assert.ok(browser >= 0 && browser < wait && wait < job.steps.indexOf(download));
-      assert.equal(job.steps[wait].id, 'web-dist');
+    if (name !== 'browser-pr' && name !== 'production') {
+      assert.deepEqual(job.needs, name === 'browser-image-timing' ? undefined : 'changes');
+      const browser = steps.find((step) => step.run?.includes('playwright install'));
+      const lookup = steps.find((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs web');
+      assert.equal(lookup.id, 'web-dist');
+      assert.equal(lookup.background, true);
+      const join = steps.findIndex((step) => [step.wait].flat().includes(lookup.id));
+      assert.ok(steps.indexOf(lookup) < steps.indexOf(browser));
+      assert.ok(steps.indexOf(browser) < join && join < steps.indexOf(download));
+      if (name.startsWith('browser-tests')) {
+        const plan = steps.find((step) => step.id === 'browser-plan');
+        assert.equal(plan.background, true);
+        assert.equal(
+          plan.run,
+          'node scripts/ci-browser-shards.mjs plan ${{ matrix.shard }}/${{ env.FUNCTIONAL_SHARDS }}',
+        );
+        assert.ok(steps.indexOf(plan) < steps.indexOf(browser));
+        assert.ok(steps[join].wait.includes(plan.id));
+      }
       assert.equal(download.with['artifact-ids'], '${{ steps.web-dist.outputs.artifact_id }}');
       assert.equal(
         download.name,
@@ -321,10 +337,18 @@ test('browser consumers install the lockfile browser and share the production ar
     if (name !== 'production') assert.equal(job.env.LACUNA_BROWSER_PREBUILT, 'true');
   }
   const timing = jobs['browser-timing'];
+  const image = jobs['browser-image-timing'];
+  assert.equal(image.name, 'browser-timing (chromium-image-performance, 1, 1)');
+  assert.deepEqual(image.steps.slice(0, 2), jobs.changes.steps);
+  const imageRun = image.steps.find((step) =>
+    step.run?.includes('--project=chromium-image-performance'),
+  );
+  assert.match(imageRun.run, /--workers=1 --retries=1 --max-failures=1 --shard=1\/1$/);
+  assert.equal(imageRun.env.STUDY_IMAGE_FIXTURE_DIR, '${{ runner.temp }}/lacuna-study-images-v1');
   assert.deepEqual(timing.strategy.matrix.include, [
-    { project: 'chromium-image-performance', shard: 1, total: 1 },
-    { project: 'chromium-study-performance', shard: 1, total: 2 },
-    { project: 'chromium-study-performance', shard: 2, total: 2 },
+    { project: 'chromium-study-performance', shard: 1, total: 3 },
+    { project: 'chromium-study-performance', shard: 2, total: 3 },
+    { project: 'chromium-study-performance', shard: 3, total: 3 },
   ]);
   assert.ok(
     timing.steps.some((step) =>
@@ -339,24 +363,21 @@ test('browser consumers install the lockfile browser and share the production ar
   assert.equal(provenance.if, jobs['browser-tests'].if);
   assert.equal(provenance.if, jobs['browser-timing'].if);
   assert.equal(provenance.env.WEB_ARTIFACT_ID, '${{ needs.web-build.outputs.artifact_id }}');
-  assert.equal(
-    Number(provenance.env.FUNCTIONAL_SHARDS),
-    jobs['browser-tests'].strategy.matrix.shard.length,
-  );
+  const functionalShards = Number(workflow.env.FUNCTIONAL_SHARDS);
+  assert.ok(Number.isInteger(functionalShards) && functionalShards > 0 && functionalShards <= 32);
   assert.equal(
     jobs['browser-smoke'].steps[0].env.PRODUCTION_RESULT,
     '${{ needs.production.result }}',
   );
   assert.deepEqual(
     jobs['browser-tests'].strategy.matrix.shard,
-    Array.from({ length: 18 }, (_, index) => index + 1),
+    Array.from({ length: functionalShards }, (_, index) => index + 1),
   );
-  assert.equal(jobs['browser-tests'].strategy.matrix.lane, undefined);
   assert.ok(
     jobs['browser-tests'].steps.some(
       (step) =>
         step.run ===
-        'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/${{ strategy.job-total }}',
+        'node scripts/ci-browser-shards.mjs run-prepared ${{ matrix.shard }}/${{ env.FUNCTIONAL_SHARDS }}',
     ),
   );
   const functionalEvidence = jobs['browser-tests'].steps.find(
@@ -634,6 +655,7 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
           : {
               PRODUCTION_RESULT: 'APP',
               RESULT: 'APP',
+              IMAGE_TIMING_RESULT: 'APP',
               TIMING_RESULT: 'APP',
               STANDALONE_RESULT: 'STANDALONE_SUITES',
             };
@@ -692,6 +714,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'production',
     'browser-pr',
     'browser-tests',
+    'browser-image-timing',
     'browser-standalone',
     'browser-timing',
     'electron-renderer',
@@ -700,12 +723,23 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'electron-macos-smoke',
   ];
   // Ordinary PRs run smoke, plus standalone suites selected by their changed paths.
-  const postMerge = ['browser-tests', 'browser-standalone', 'browser-timing'];
+  const postMerge = [
+    'browser-tests',
+    'browser-image-timing',
+    'browser-standalone',
+    'browser-timing',
+  ];
   const web = ['web-build', 'production', 'browser-pr'];
   const all = workers.filter((name) => !postMerge.includes(name));
+  const full = workers.filter((name) => name !== 'browser-pr');
   function runs(name, event_name, outputs) {
     const job = workflow.jobs[name];
-    const predicate = ['web-build', 'electron-renderer'].includes(name)
+    const predicate = [
+      'web-build',
+      'browser-image-timing',
+      'electron-renderer',
+      'windows-installed-upgrade',
+    ].includes(name)
       ? job.steps[2].if
       : required.includes(name)
         ? job.steps[1].if
@@ -730,7 +764,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     [['tests/e2e/mobile-pwa-smoke.spec.ts'], ['typecheck', 'lint', ...web]],
     [['tests/e2e/gaps-standalone.spec.ts'], ['typecheck', 'lint', ...web, 'browser-standalone']],
     [['tests/e2e/fixtures/videoEmbeds.ts'], all],
-    [['tests/config/playwright.web.config.ts'], workers],
+    [['tests/config/playwright.web.config.ts'], full],
     [['tests/e2e/study-flip.spec.ts', 'apps/web/src/App.tsx'], all],
     [
       ['docs/README.md', 'apps/gaps/sw.js', 'tooling/handwriting-maths/src/main.ts'],
@@ -743,7 +777,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
       ['docs/question-bank/examples/numeric-family.json'],
       ['typecheck', 'lint', 'test-unit', 'test-coverage', ...web],
     ],
-    [['.github/workflows/ci.yml'], workers],
+    [['.github/workflows/ci.yml'], full],
     [['unknown/file'], all],
   ]) {
     const outputs = Object.fromEntries(
@@ -756,17 +790,24 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     Object.entries(classifyPaths(['unknown/file'])).map(([key, value]) => [key, String(value)]),
   );
   const selected = workers.filter((name) => runs(name, 'push', push));
-  assert.deepEqual(selected.sort(), workers.filter((name) => name !== 'browser-pr').sort());
+  assert.deepEqual(selected.sort(), [...full].sort());
   for (const browser_ci of [undefined, '', 'unknown']) {
     for (const name of postMerge) {
+      const outputs = { app: 'true', sites: 'true', browser_ci };
       assert.ok(
-        runInNewContext(workflow.jobs[name].if, {
-          github: { event_name: 'pull_request' },
-          needs: {
-            changes: { result: 'success', outputs: { app: 'true', sites: 'true', browser_ci } },
+        runInNewContext(
+          name === 'browser-image-timing'
+            ? workflow.jobs[name].steps[2].if
+            : workflow.jobs[name].if,
+          {
+            github: { event_name: 'pull_request' },
+            needs: {
+              changes: { result: 'success', outputs },
+            },
+            steps: { scope: { outputs } },
+            cancelled: () => false,
           },
-          cancelled: () => false,
-        }),
+        ),
         `${name} for browser_ci=${browser_ci}`,
       );
     }
@@ -785,12 +826,13 @@ test('Windows evidence is selected conservatively on PRs and pushes', () => {
     'electron-ai-tests',
     'windows-installed-upgrade',
   ]);
-  assert.equal(gate['runs-on'], 'ubuntu-latest');
+  assert.equal(gate['runs-on'], 'ubuntu-slim');
   assert.equal(ai['runs-on'], 'windows-latest');
   assert.equal(ai.needs, 'changes');
   assert.equal(renderer.needs, undefined);
   assert.deepEqual(renderer.steps.slice(0, 2), workflow.jobs.changes.steps);
-  assert.equal(upgrade.needs, 'changes');
+  assert.equal(upgrade.needs, undefined);
+  assert.deepEqual(upgrade.steps.slice(0, 2), workflow.jobs.changes.steps);
   for (const event_name of ['pull_request', 'push']) {
     for (const flag of ['true', 'false', '', undefined, 'unknown']) {
       const context = {
@@ -803,7 +845,10 @@ test('Windows evidence is selected conservatively on PRs and pushes', () => {
       for (const step of renderer.steps.slice(2))
         assert.equal(runInNewContext(step.if, context), affected);
       assert.equal(runInNewContext(ai.if, context), affected);
-      assert.equal(runInNewContext(upgrade.if, context), affected);
+      for (const step of upgrade.steps.slice(2).flatMap((step) => step.parallel ?? [step])) {
+        if (step.wait) continue;
+        assert.equal(runInNewContext(step.if, context), affected);
+      }
     }
   }
 });
@@ -902,34 +947,42 @@ test('Windows upgrade scenarios retain both probes on isolated runners with the 
   assert.ok(job.strategy?.matrix, 'Both upgrade scenarios require isolated matrix runners');
   assert.equal(job.strategy['fail-fast'], false);
   assert.deepEqual(job.strategy.matrix.probe, ['companion', 'release']);
-  const install = job.steps.findIndex(
-    (step) => step.run === "bun install --frozen-lockfile --filter '@lacuna/desktop'",
-  );
-  const native = job.steps.findIndex((step) => step.run === 'bun run electron:prepare');
-  const wait = job.steps.findIndex((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs');
-  const download = job.steps.findIndex(
-    (step) => step.with?.['artifact-ids'] === '${{ steps.renderer.outputs.artifact_id }}',
-  );
-  const upgrade = job.steps.findIndex(
-    (step) => step.run === 'node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }}',
-  );
-  assert.ok(
-    install >= 0 && install < native && native < wait && wait < download && download < upgrade,
-  );
-  assert.equal(job.steps[wait].id, 'renderer');
+  const [, , node, baseline, bun, preflight, prepare, upgrade, joinBaseline] = job.steps;
+  assert.equal(node.uses, './.github/actions/setup-node');
+  assert.equal(baseline.id, 'baseline');
+  assert.equal(baseline.background, true);
+  assert.equal(baseline['timeout-minutes'], 2);
   assert.equal(
-    job.steps[wait].env.SOURCE_SHA,
-    '${{ github.event.pull_request.head.sha || github.sha }}',
+    baseline.run,
+    'node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }} --prefetch-baseline',
   );
-  assert.equal(job.steps[download].with['github-token'], '${{ github.token }}');
-  assert.equal(job.steps[download].with.path, 'dist/');
+  assert.equal(baseline.env.GH_TOKEN, '${{ github.token }}');
+  assert.equal(bun.uses, './.github/actions/setup-bun');
+  const [install, cache, wait] = preflight.parallel;
+  assert.equal(install.run, "bun install --frozen-lockfile --filter '@lacuna/desktop'");
+  assert.match(cache.uses, /^actions\/cache@/);
+  assert.match(cache.with.key, /hashFiles\('bun\.lock'\)/);
+  assert.equal(wait.run, 'node scripts/ci-wait-for-renderer.mjs');
+  assert.equal(wait.id, 'renderer');
+  assert.equal(wait.env.SOURCE_SHA, '${{ github.event.pull_request.head.sha || github.sha }}');
+  const [verify, native, download] = prepare.parallel;
+  assert.equal(verify.run, 'node scripts/ci-electron-runtime.mjs win32 x64 --packaging-tools');
+  assert.equal(native.run, 'bun run electron:prepare');
+  assert.equal(download.with['artifact-ids'], '${{ steps.renderer.outputs.artifact_id }}');
+  assert.equal(download.with['github-token'], '${{ github.token }}');
+  assert.equal(download.with.path, 'dist/');
+  assert.equal(
+    upgrade.run,
+    'node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }} --use-prefetched-baseline',
+  );
+  assert.equal(joinBaseline.wait, baseline.id);
   const producer = workflow.jobs['electron-renderer'].steps.find((step) =>
     step.uses?.startsWith('actions/upload-artifact@'),
   );
   assert.equal(producer.with.name, 'windows-electron-renderer-${{ github.run_attempt }}');
   assert.equal(producer.with.overwrite, undefined);
   const evidence = job.steps.find((step) => step.name === 'Preserve installed upgrade evidence');
-  assert.equal(evidence.if, 'always()');
+  assert.equal(evidence.if, "always() && steps.scope.outputs.windows_native != 'false'");
   assert.equal(evidence.with.name, 'windows-installed-upgrade-results-${{ matrix.probe }}');
   const coordinator = readFileSync(new URL('./windows-ci-upgrade.mjs', import.meta.url), 'utf8');
   for (const contract of [

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna, importWelcomeCourse, openImport } from './fixtures/lacunaApp';
+import { importWelcomeCourse, openEmptyDashboard, openImport } from './fixtures/lacunaApp';
 import { FLOW_EVIDENCE as evidence, contentRect as labelGeometry } from './fixtures/flowEvidence';
 
 test.use({
@@ -35,7 +35,7 @@ test('cold Study acknowledges input and Escape cancels before the chunk arrives'
     await route.continue();
   });
   try {
-    await enterFreshLacuna(page);
+    await openEmptyDashboard(page);
     await importWelcomeCourse(page);
     const study = page.getByRole('button', { name: 'Study Welcome to Lacuna' });
     await study.click();
@@ -68,7 +68,7 @@ test('warm Study opens its preview without a loading state', async ({ page }) =>
   page.on('requestfinished', (request) => {
     if (/\/assets\/StudySheet-[^/]+\.js$/.test(request.url())) warmed();
   });
-  await enterFreshLacuna(page);
+  await openEmptyDashboard(page);
   await importWelcomeCourse(page);
   // The shell fetches the preview while idle, before anyone presses Study.
   await chunk;
@@ -99,7 +99,7 @@ test('Study fills the viewport through resize and Escape cancels its pending des
     await route.continue();
   });
   try {
-    await enterFreshLacuna(page);
+    await openEmptyDashboard(page);
     await importWelcomeCourse(page);
     await page.getByRole('button', { name: 'Study Welcome to Lacuna' }).click();
     await page
@@ -151,7 +151,7 @@ test('forecast arrival keeps actionable queue coordinates and failed chunks reco
     await route.abort();
   });
   try {
-    await enterFreshLacuna(page);
+    await openEmptyDashboard(page);
     await importWelcomeCourse(page);
     const study = page.getByRole('button', { name: 'Study Welcome to Lacuna' });
     await expect(study).toBeEnabled();
@@ -184,7 +184,7 @@ test('forecast arrival keeps actionable queue coordinates and failed chunks reco
 test('Today surfaces keep labels pinned through hover, press, reversal and reduced motion', async ({
   page,
 }) => {
-  await enterFreshLacuna(page);
+  await openEmptyDashboard(page);
   if (evidence) await page.screenshot({ path: `${evidence}/today-empty-1470.png` });
   const create = page.locator('main').getByRole('button', { name: 'New course', exact: true });
   await create.hover();
@@ -263,8 +263,8 @@ test('Today surfaces keep labels pinned through hover, press, reversal and reduc
 test('mixed forecast horizons and legend selection have native keyboard parity', async ({
   page,
 }) => {
-  await enterFreshLacuna(page);
-  await importWelcomeCourse(page);
+  await openEmptyDashboard(page);
+  await importWelcomeCourse(page, { restart: true });
   const file = JSON.parse(
     readFileSync(new URL('./fixtures/welcome-course.lacuna', import.meta.url), 'utf8'),
   );
@@ -303,7 +303,7 @@ test('mixed forecast horizons and legend selection have native keyboard parity',
 test('cold reload shows actionable rows before optional motion features arrive', async ({
   page,
 }) => {
-  await enterFreshLacuna(page);
+  await openEmptyDashboard(page);
   await importWelcomeCourse(page);
   let release = () => {};
   const gate = new Promise<void>((resolve) => {

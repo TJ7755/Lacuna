@@ -2,11 +2,6 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
 
-const homepage = readFileSync(
-  resolve(process.env.LACUNA_BROWSER_RUN_DIR ?? '.', 'dist/index.html'),
-  'utf8',
-);
-
 test('the landing page is styled before JavaScript loads', async ({ page }) => {
   await page.route('**/*', (route) =>
     route.request().resourceType() === 'script' ? route.abort() : route.continue(),
@@ -57,6 +52,10 @@ for (const scenario of [
     );
     // Paint the actual built document before any external CSS or modules arrive.
     // Dev HTML has no landing tree and cannot reproduce this pre-module paint.
+    const homepage = readFileSync(
+      resolve(process.env.LACUNA_BROWSER_RUN_DIR ?? '.', 'dist/index.html'),
+      'utf8',
+    );
     await page.route('**/*', (route) =>
       route.request().resourceType() === 'document'
         ? route.fulfill({ contentType: 'text/html', body: homepage })

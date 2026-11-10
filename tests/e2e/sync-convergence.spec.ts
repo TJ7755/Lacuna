@@ -3,7 +3,7 @@ import type { Card, Grade } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { applyReview, makeEngine } from '../../apps/web/src/fsrs/fsrs';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { createCourse, openEmptyDashboard } from './fixtures/lacunaApp';
 import {
   addCard,
   addLessonCard,
@@ -29,7 +29,7 @@ interface TombstoneRow {
 
 async function preparePeers(browser: Browser, page: Page, initialFront?: string) {
   test.setTimeout(120_000);
-  await enterFreshLacuna(page);
+  await openEmptyDashboard(page);
   await createCourse(page, 'Concurrent revision');
   const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
   if (initialFront) {
@@ -59,7 +59,7 @@ async function preparePeers(browser: Browser, page: Page, initialFront?: string)
   const peerContext = await browser.newContext();
   const peer = await peerContext.newPage();
   await relay.attach(peer);
-  await enterFreshLacuna(peer);
+  await openEmptyDashboard(peer);
   await peer.goto('/#/settings#settings-sync');
   await peer.locator('#settings-sync').getByRole('button', { name: 'Pair', exact: true }).click();
   await peer.getByRole('dialog').getByRole('button', { name: 'Join another device' }).click();

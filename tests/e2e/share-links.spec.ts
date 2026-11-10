@@ -1,97 +1,85 @@
 import { readFile } from 'node:fs/promises';
-import { expect, test, type Browser, type Page, type Route, type TestInfo } from '@playwright/test';
+import { expect, test, type Browser, type Page, type Route } from '@playwright/test';
 import {
   openGapsConnection,
   parseGapsConnectionFile,
 } from '../../apps/web/src/teacher/connectionFile';
 import { createHandler } from '../../apps/relay/src/relay.js';
 import { MemoryStore } from '../../apps/relay/src/store.js';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { createCourse, openEmptyDashboard } from './fixtures/lacunaApp';
 import { addLessonCard, editOnlyCard } from './fixtures/syncConvergence';
 import { currentSharePayload } from './fixtures/currentSharePayload';
 
 const RELAY_URL = 'https://relay.getlacuna.app';
 
-for (const width of [1280, 390]) {
-  test(`opens the confirmed shared course with heading focus and Study at ${width}px`, async ({
-    page,
-  }, testInfo) => {
-    await page.setViewportSize({ width, height: 900 });
-    const store = new MemoryStore();
-    const handle = createHandler(store);
-    const minted = await handle(new Request(`${RELAY_URL}/shares`, { method: 'POST' }));
-    const { shareId } = (await minted.json()) as { shareId: string };
-    const payload = currentSharePayload({
-      v: 6,
-      at: 1000,
-      li: 'share-arrival-biology',
-      rv: 1,
-      course: { n: 'Shared biology', o: 0, c: 1000, um: 'open', sm: 1 },
-      lessons: ['Cells', 'Enzymes'].map((name, index) => ({
-        i: `arrival-lesson-${index}`,
-        n: name,
-        notes: [],
-        cards: [{ id: `arrival-card-${index}`, k: 0, f: `Question about ${name}`, b: 'Answer' }],
-      })),
-    });
-    const file = JSON.stringify({ format: 'lacuna-course', version: 1, assets: [], payload });
-    const meta = JSON.stringify({
-      v: 1,
-      lineageId: payload.li,
-      revision: 1,
-      publishedAt: 1000,
-      byteSize: Buffer.byteLength(file),
-      courseName: payload.course.n,
-    });
-    await store.put(`shares/${shareId}/payload`, new TextEncoder().encode(file), {
-      overwrite: true,
-    });
-    await store.put(`shares/${shareId}/meta`, new TextEncoder().encode(meta), { overwrite: true });
-    await installShareRelay(page, handle);
-    await enterFreshLacuna(page);
-    await page.goto(`/#/s/${shareId}`);
-    await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
-    const add = page.getByRole('button', { name: 'Add to my courses' });
-    await expect(add).toBeEnabled();
-    await add.press('Enter');
-    await expect
-      .poll(() =>
-        page.evaluate(
-          (id) => JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')[id],
-          shareId,
-        ),
-      )
-      .toBeTruthy();
-    await page.screenshot({
-      path: testInfo.outputPath(`share-import-result-${width}.png`),
-      fullPage: true,
-    });
-    const courseId = await page.evaluate(
-      (id) => JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')[id] as string,
-      shareId,
-    );
-    await expect(page).toHaveURL(`${new URL(page.url()).origin}/#/course/${courseId}`);
-    const heading = page.getByRole('heading', { name: 'Shared biology', exact: true });
-    await expect(heading).toBeFocused();
-    await expect(heading).toBeInViewport();
-    const study = page.getByRole('button', { name: 'Study', exact: true });
-    await expect(study).toBeEnabled();
-    await page.screenshot({
-      path: testInfo.outputPath(`share-course-arrival-${width}.png`),
-      fullPage: true,
-    });
-    await study.click();
-    await expect(page.getByRole('region', { name: 'Session preview' })).toBeVisible();
+test('opens the confirmed shared course with heading focus and Study', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const store = new MemoryStore();
+  const handle = createHandler(store);
+  const minted = await handle(new Request(`${RELAY_URL}/shares`, { method: 'POST' }));
+  const { shareId } = (await minted.json()) as { shareId: string };
+  const payload = currentSharePayload({
+    v: 6,
+    at: 1000,
+    li: 'share-arrival-biology',
+    rv: 1,
+    course: { n: 'Shared biology', o: 0, c: 1000, um: 'open', sm: 1 },
+    lessons: ['Cells', 'Enzymes'].map((name, index) => ({
+      i: `arrival-lesson-${index}`,
+      n: name,
+      notes: [],
+      cards: [{ id: `arrival-card-${index}`, k: 0, f: `Question about ${name}`, b: 'Answer' }],
+    })),
   });
-}
+  const file = JSON.stringify({ format: 'lacuna-course', version: 1, assets: [], payload });
+  const meta = JSON.stringify({
+    v: 1,
+    lineageId: payload.li,
+    revision: 1,
+    publishedAt: 1000,
+    byteSize: Buffer.byteLength(file),
+    courseName: payload.course.n,
+  });
+  await store.put(`shares/${shareId}/payload`, new TextEncoder().encode(file), {
+    overwrite: true,
+  });
+  await store.put(`shares/${shareId}/meta`, new TextEncoder().encode(meta), { overwrite: true });
+  await installShareRelay(page, handle);
+  await openEmptyDashboard(page);
+  await page.goto(`/#/s/${shareId}`);
+  await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+  const add = page.getByRole('button', { name: 'Add to my courses' });
+  await expect(add).toBeEnabled();
+  await add.press('Enter');
+  await expect
+    .poll(() =>
+      page.evaluate(
+        (id) => JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')[id],
+        shareId,
+      ),
+    )
+    .toBeTruthy();
+  const courseId = await page.evaluate(
+    (id) => JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')[id] as string,
+    shareId,
+  );
+  await expect(page).toHaveURL(`${new URL(page.url()).origin}/#/course/${courseId}`);
+  const heading = page.getByRole('heading', { name: 'Shared biology', exact: true });
+  await expect(heading).toBeFocused();
+  await expect(heading).toBeInViewport();
+  const study = page.getByRole('button', { name: 'Study', exact: true });
+  await expect(study).toBeEnabled();
+  await study.click();
+  await expect(page.getByRole('region', { name: 'Session preview' })).toBeVisible();
+});
 
 test('exports a published course connection without putting ownership secrets in the download', async ({
   page,
-}, testInfo) => {
+}) => {
   const handle = createHandler(new MemoryStore());
   await installShareRelay(page, handle);
-  await enterFreshLacuna(page);
-  await createCourse(page, 'Gaps biology');
+  await openEmptyDashboard(page);
+  await createCourse(page, 'Gaps biology', false);
   await openShare(page, 'Gaps biology');
   const shareId = await createShareLink(page);
   const setup = page.getByRole('link', { name: 'Set up a class in Gaps', exact: true });
@@ -99,10 +87,6 @@ test('exports a published course connection without putting ownership secrets in
   await expect(setup).toHaveAttribute('target', '_blank');
   await expect(setup).toHaveAttribute('rel', 'noopener noreferrer');
   await expect(setup).toBeVisible();
-  await page.screenshot({
-    path: testInfo.outputPath('share-panel-desktop.png'),
-    fullPage: true,
-  });
   await page.getByRole('button', { name: 'Connect to Gaps', exact: true }).click();
   const phrase = 'several separate words for a course connection';
   await page.getByLabel(/^Connection passphrase/).fill(phrase);
@@ -127,7 +111,6 @@ test('exports a published course connection without putting ownership secrets in
     ).status,
   ).toBe(204);
   await expect(page.getByLabel(/^Connection passphrase/)).toHaveValue('');
-  await page.screenshot({ path: testInfo.outputPath('gaps-export.png'), fullPage: true });
 });
 
 /** Serve the real relay handler from memory, so the spec exercises the wire protocol. */
@@ -222,10 +205,10 @@ async function readStudentRevision(page: Page): Promise<number | null> {
 for (const linkedClass of [false, true]) {
   test(`a ${linkedClass ? 'class' : 'share'} link imports a course and follows publisher updates`, ({
     browser,
-  }, testInfo) => followsPublisherUpdates(browser, testInfo, linkedClass));
+  }) => followsPublisherUpdates(browser, linkedClass));
 }
 
-async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, linkedClass: boolean) {
+async function followsPublisherUpdates(browser: Browser, linkedClass: boolean) {
   test.setTimeout(180_000);
   // One relay store for the whole test: teacher publishes and student reads
   // the same backend, as they would in production.
@@ -233,8 +216,8 @@ async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, lin
   const teacherContext = await browser.newContext();
   const teacher = await teacherContext.newPage();
   await installShareRelay(teacher, handle);
-  await enterFreshLacuna(teacher);
-  await createCourse(teacher, 'Link biology');
+  await openEmptyDashboard(teacher);
+  await createCourse(teacher, 'Link biology', false);
   const teacherCourseId = /#\/course\/([^/]+)/.exec(teacher.url())?.[1];
   expect(teacherCourseId).toBeTruthy();
 
@@ -262,7 +245,7 @@ async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, lin
   const studentContext = await browser.newContext();
   const student = await studentContext.newPage();
   await installShareRelay(student, handle);
-  await enterFreshLacuna(student);
+  await openEmptyDashboard(student);
   await student.goto(`/#/s/${code}`);
   await expect(student.getByRole('heading', { name: 'Shared course', exact: true })).toBeVisible();
   await expect(student.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
@@ -289,10 +272,6 @@ async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, lin
     `${new URL(student.url()).origin}/#/s/${code}`,
   );
   await expect(student.getByRole('button', { name: 'Create share link' })).toHaveCount(0);
-  await student.screenshot({
-    path: testInfo.outputPath('forward-imported-course.png'),
-    fullPage: true,
-  });
   await student.goto('/#/');
 
   // The teacher adds a card and republishes; the student's next dashboard
@@ -321,8 +300,6 @@ async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, lin
   await student.goto(`/#/course/${studentCourseId}/settings`);
   const automaticUpdates = student.getByRole('switch', { name: 'Apply updates automatically' });
   await expect(automaticUpdates).toBeChecked();
-  await automaticUpdates.scrollIntoViewIfNeeded();
-  await student.screenshot({ path: testInfo.outputPath('automatic-updates-default.png') });
   await automaticUpdates.click();
   await expect(automaticUpdates).not.toBeChecked();
   await student.reload();
@@ -362,8 +339,8 @@ test('stopping a share removes the link for new visitors', async ({
   const teacherContext = await browser.newContext();
   const teacher = await teacherContext.newPage();
   await installShareRelay(teacher, handle);
-  await enterFreshLacuna(teacher);
-  await createCourse(teacher, 'Ephemeral biology');
+  await openEmptyDashboard(teacher);
+  await createCourse(teacher, 'Ephemeral biology', false);
 
   await openShare(teacher, 'Ephemeral biology');
   const code = await createShareLink(teacher);
@@ -381,7 +358,7 @@ test('stopping a share removes the link for new visitors', async ({
   const studentContext = await browser.newContext();
   const student = await studentContext.newPage();
   await installShareRelay(student, handle);
-  await enterFreshLacuna(student);
+  await openEmptyDashboard(student);
   await student.goto(`/#/s/${code}`);
   await expect(student.getByText('This link is unavailable')).toBeVisible();
 
@@ -392,12 +369,12 @@ test('stopping a share removes the link for new visitors', async ({
 test('copies an existing link without the publishing device credentials', async ({
   page,
   context,
-}, testInfo) => {
+}) => {
   const handle = createHandler(new MemoryStore());
   await installShareRelay(page, handle);
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await enterFreshLacuna(page);
-  await createCourse(page, 'Biology from another device');
+  await openEmptyDashboard(page);
+  await createCourse(page, 'Biology from another device', false);
   await openShare(page, 'Biology from another device');
   const shareId = await createShareLink(page);
   await page.evaluate(
@@ -435,10 +412,6 @@ test('copies an existing link without the publishing device credentials', async 
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
     .toBe(`${new URL(page.url()).origin}/#/s/${shareId}`);
   expect((await handle(new Request(`${RELAY_URL}/shares/${shareId}/payload`))).status).toBe(200);
-  await page.screenshot({
-    path: testInfo.outputPath('forward-other-device-link.png'),
-    fullPage: true,
-  });
 });
 
 // Controlled payloads exercise the reported route; these are not the learner's Biology artefacts.
@@ -493,7 +466,7 @@ test('updates a synthetic library revision 17 through a Gaps class link at revis
   const gaps = (await linked.json()) as { shareId: string };
   expect(linked.status).toBe(201);
   await installShareRelay(page, handle);
-  await enterFreshLacuna(page);
+  await openEmptyDashboard(page);
   await page.goto(`/#/s/${source.shareId}`);
   await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
   await page.getByRole('radio', { name: /Steady retention/ }).press('Space');

@@ -1,36 +1,16 @@
-import { build } from 'esbuild';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { openEmptyDashboard } from './fixtures/lacunaApp';
 import type { Card } from '@lacuna/core/db/types';
-import type * as CardFitFixture from './fixtures/studyCardFit';
-
-declare global {
-  interface Window {
-    StudyCardFitFixture: typeof CardFitFixture;
-  }
-}
+import { seedStudyCards } from './fixtures/studyCards';
 
 const viewport = { width: 1280, height: 800 };
-let fixture: string;
-
-test.beforeAll(async () => {
-  const bundle = await build({
-    entryPoints: ['tests/e2e/fixtures/studyCardFit.ts'],
-    bundle: true,
-    write: false,
-    platform: 'browser',
-    format: 'iife',
-    globalName: 'StudyCardFitFixture',
-    define: { 'import.meta.env.DEV': 'false' },
-  });
-  fixture = bundle.outputFiles[0].text;
-});
 
 async function prepareCard(page: Page) {
   await page.setViewportSize(viewport);
-  await openEmptyDashboard(page);
-  await page.addScriptTag({ content: fixture });
-  return page.evaluate(() => window.StudyCardFitFixture.seed());
+  const {
+    cards: [card],
+    lessonId,
+  } = await seedStudyCards(page, 'Card fit', [['Question', 'Answer']]);
+  return { card, lessonId };
 }
 
 async function seedCard(page: Page, card: Card, kind: string, copies = 1) {

@@ -1,41 +1,24 @@
 import { expect, test, type Page } from '@playwright/test';
-import type { Card, Lesson } from '@lacuna/core/db/types';
-import { createCourse, skipOnboarding } from './fixtures/lacunaApp';
+import { seedStudyCards } from './fixtures/studyCards';
 
 const viewport = { width: 1440, height: 900 };
 const kinds = ['short', 'medium', 'long', 'occlusion', 'short-return'];
 
 async function prepareSession(page: Page) {
   await page.setViewportSize(viewport);
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await skipOnboarding(page);
-  await createCourse(page, 'Adaptive cards');
-  const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
-  await page.getByRole('button', { name: 'Edit mode' }).click();
-  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
-  await page.getByRole('textbox', { name: 'Front', exact: true }).fill('Leucocytes');
-  await page.getByRole('textbox', { name: 'Back', exact: true }).fill('White blood cells.');
-  await page.getByRole('button', { name: 'Add card', exact: true }).click();
-  await expect(page).not.toHaveURL(/\/cards\/new$/);
+  const {
+    courseId,
+    lessonId,
+    cards: [original],
+  } = await seedStudyCards(page, 'Adaptive cards', [['Leucocytes', 'White blood cells.']]);
 
-  return page.evaluate(
-    async ({ courseId, kinds }) => {
+  await page.evaluate(
+    async ({ courseId, lessonId, original, kinds }) => {
       const database = await new Promise<IDBDatabase>((resolve, reject) => {
         const request = indexedDB.open('lacuna');
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
       });
-      const read = <T>(store: string) =>
-        new Promise<T[]>((resolve, reject) => {
-          const request = database.transaction(store).objectStore(store).getAll();
-          request.onsuccess = () => resolve(request.result as T[]);
-          request.onerror = () => reject(request.error);
-        });
-      const original = (await read<Card>('cards')).find((card) => card.courseId === courseId)!;
-      const lesson = (await read<Lesson>('lessons')).find(
-        (lesson) => lesson.courseId === courseId,
-      )!;
       const canvas = document.createElement('canvas');
       canvas.width = 600;
       canvas.height = 1800;
@@ -77,7 +60,7 @@ async function prepareSession(page: Page) {
       transaction.objectStore('occlusions').put({
         id: 'adaptive-occlusion',
         courseId,
-        primaryLessonId: lesson.id,
+        primaryLessonId: lessonId,
         name: 'Tall diagram',
         assetHash: 'adaptive-image',
         createdAt: Date.now(),
@@ -101,10 +84,10 @@ async function prepareSession(page: Page) {
         transaction.onerror = () => reject(transaction.error);
       });
       database.close();
-      return lesson.id;
     },
-    { courseId, kinds },
+    { courseId, lessonId, original, kinds },
   );
+  return lessonId;
 }
 
 async function measure(page: Page) {

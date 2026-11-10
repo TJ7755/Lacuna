@@ -15,8 +15,9 @@ declare global {
   }
 }
 
-for (const firstLesson of [false, true]) {
-  for (const gesture of [false, true]) {
+// Give each isolated gesture timing shard one new lesson and one large course.
+for (const gesture of [false, true]) {
+  for (const firstLesson of [true, false]) {
     test(`grades visibly via ${gesture ? 'swipe' : 'Easy'} in ${firstLesson ? 'a new 13-card lesson' : 'a large course'}`, async ({
       page,
     }, testInfo) => {

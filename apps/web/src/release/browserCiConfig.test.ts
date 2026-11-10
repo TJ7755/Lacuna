@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { expect, it } from 'vitest';
@@ -96,9 +96,6 @@ function cases(suites: Suite[], ancestors: string[] = []): string[] {
 // scripts/ci-browser-shards.mjs plans functional shards and verifies their inventory at run time.
 it('partitions the complete local Chromium suite across the functional and isolated timing projects', () => {
   const directory = mkdtempSync(resolve(tmpdir(), 'lacuna-browser-discovery-'));
-  // One spec reads the built homepage during discovery. No browser or test body runs here.
-  mkdirSync(resolve(directory, 'dist'));
-  writeFileSync(resolve(directory, 'dist/index.html'), '');
 
   function list(config: string, project: string, ...args: string[]): Listing {
     const result = spawnSync(
@@ -136,12 +133,12 @@ it('partitions the complete local Chromium suite across the functional and isola
     const local = list('playwright.web.config.ts', 'chromium');
     const functional = list('playwright.web.ci.config.ts', 'chromium-functional');
     const image = list('playwright.web.ci.config.ts', 'chromium-image-performance', '--workers=1');
-    const study = [1, 2].map((shard) =>
+    const study = [1, 2, 3].map((shard) =>
       list(
         'playwright.web.ci.config.ts',
         'chromium-study-performance',
         '--workers=1',
-        `--shard=${shard}/2`,
+        `--shard=${shard}/3`,
       ),
     );
     const functionalCases = cases(functional.suites);
@@ -150,6 +147,7 @@ it('partitions the complete local Chromium suite across the functional and isola
     const allCiCases = [...functionalCases, ...imageCases, ...studyCases];
 
     expect(cases(local.suites).length).toBeGreaterThan(0);
+    expect(functionalCases.some((name) => name.startsWith('release-smoke.spec.ts:'))).toBe(true);
     expect(allCiCases.sort()).toEqual(cases(local.suites).sort());
     expect(new Set(allCiCases).size).toBe(allCiCases.length);
     expect(studyCases.filter((name) => name.startsWith('study-grade-load.spec.ts:'))).toHaveLength(

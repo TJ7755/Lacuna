@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna, importWelcomeCourse } from './fixtures/lacunaApp';
+import {
+  enterFreshLacuna,
+  enterWithWelcomeCourse,
+  importWelcomeCourse,
+} from './fixtures/lacunaApp';
 import { FLOW_EVIDENCE as evidence, settle } from './fixtures/flowEvidence';
 
 test.use({
@@ -53,8 +57,7 @@ for (const origin of ['Today', 'course']) {
   test(`Study carries opaque paint through cancellation and normal start from ${origin}`, async ({
     page,
   }) => {
-    await enterFreshLacuna(page);
-    await importWelcomeCourse(page);
+    await enterWithWelcomeCourse(page);
     if (origin === 'course') {
       await page
         .getByRole('region', { name: 'Today, most urgent first' })

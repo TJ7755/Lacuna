@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { waitForRenderer } from './ci-wait-for-renderer.mjs';
+import { readAttemptJobs, waitForRenderer } from './ci-wait-for-renderer.mjs';
 
 const sourceSha = 'a'.repeat(40);
 const publication = {
@@ -139,18 +139,41 @@ test('unavailable and truncated API responses cannot authorise a download', asyn
   await assert.rejects(waitForRenderer({ ...options([[]]), timeoutMs: 0 }), /Timed out/);
 });
 
+test('temporarily incomplete job inventory is retried without accepting a partial list', async () => {
+  const jobs = [producer('completed', 'success')];
+  let reads = 0;
+  const sleep = async () => {};
+  const read = async () => ({ jobs, total_count: ++reads < 3 ? 2 : 1 });
+  assert.deepEqual(await readAttemptJobs(read, 2, sleep), jobs);
+  assert.equal(reads, 3);
+  await assert.rejects(
+    readAttemptJobs(async () => ({ jobs, total_count: 2 }), 2, sleep),
+    /incomplete after retrying/,
+  );
+});
+
 test('slow builds back off within the shared repository API budget', async () => {
-  const delays = [];
-  await waitForRenderer({
-    ...options([...Array.from({ length: 14 }, () => []), [producer('completed', 'success')]]),
-    sleep: async (delay) => {
-      delays.push(delay);
-    },
-  });
-  assert.deepEqual(delays, [
-    ...Array(3).fill(3_000),
-    ...Array(5).fill(15_000),
-    ...Array(4).fill(30_000),
-    ...Array(2).fill(60_000),
-  ]);
+  for (const [kind, fastPolls, steadyInterval] of [
+    ['renderer', 3, 60_000],
+    ['web', 8, 300_000],
+  ]) {
+    const delays = [];
+    await assert.rejects(
+      waitForRenderer({
+        ...options(Array.from({ length: fastPolls + 12 }, () => [])),
+        kind,
+        timeoutMs: 600_000,
+        sleep: async (delay) => {
+          delays.push(delay);
+        },
+      }),
+      /Timed out/,
+    );
+    assert.deepEqual(delays, [
+      ...Array(fastPolls).fill(3_000),
+      ...Array(5).fill(15_000),
+      ...Array(4).fill(30_000),
+      ...Array(2).fill(steadyInterval),
+    ]);
+  }
 });

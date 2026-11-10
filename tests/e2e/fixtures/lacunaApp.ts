@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
-import { expect, type Page } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+import { expect, type Page, type Route } from '@playwright/test';
+import type * as WelcomeCourseSeed from './welcomeCourseSeed';
 
 export async function chooseScheduledStudy(page: Page) {
   const sheet = page.getByRole('region', { name: 'Session preview' });
@@ -95,18 +97,24 @@ export async function openImport(page: Page) {
 const WELCOME_COURSE = readFileSync(new URL('./welcome-course.lacuna', import.meta.url), 'utf8');
 const DAY_MS = 86_400_000;
 
-/** Imports the retired Welcome to Lacuna course, which many specs use as a populated course. */
-export async function importWelcomeCourse(page: Page, { restart = false } = {}) {
+function welcomeCourseFile() {
   const file = JSON.parse(WELCOME_COURSE);
   file.payload.at = Date.now();
   file.payload.course.c = Date.now();
-  file.payload.course.e = Date.now() + 60 * DAY_MS;
-  for (const exam of file.payload.exams) exam.e = file.payload.course.e;
+  const examDate = Date.now() + 60 * DAY_MS;
+  file.payload.course.e = examDate;
+  for (const exam of file.payload.exams) exam.e = examDate;
+  return { text: JSON.stringify(file), examDate };
+}
+
+/** Imports the retired Welcome to Lacuna course through the file picker. */
+export async function importWelcomeCourse(page: Page, { restart = false } = {}) {
+  const { text } = welcomeCourseFile();
   await openImport(page);
   await page.getByLabel('Import file', { exact: true }).setInputFiles({
     name: 'Welcome to Lacuna.lacuna',
     mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify(file)),
+    buffer: Buffer.from(text),
   });
   await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
   const examDate = page.getByRole('radio', { name: /Exam date/ });
@@ -133,10 +141,50 @@ export async function importWelcomeCourse(page: Page, { restart = false } = {}) 
   await expect(page.getByRole('button', { name: 'More for Welcome to Lacuna' })).toBeVisible();
 }
 
-/** A fresh browser holding only the Welcome to Lacuna course, as new installs once had. */
+let welcomeCourseBundle: Promise<string> | undefined;
+
+/** Open Today on a fresh browser holding the retired Welcome to Lacuna course. */
 export async function enterWithWelcomeCourse(page: Page) {
-  await enterFreshLacuna(page);
-  await importWelcomeCourse(page, { restart: true });
+  if (page.url() !== 'about:blank') throw new Error('Welcome course setup needs a fresh page.');
+  welcomeCourseBundle ??= import('esbuild').then(async ({ build }) => {
+    const bundle = await build({
+      entryPoints: [fileURLToPath(new URL('./welcomeCourseSeed.ts', import.meta.url))],
+      bundle: true,
+      write: false,
+      platform: 'browser',
+      format: 'esm',
+      define: { 'import.meta.env.DEV': 'false' },
+    });
+    return bundle.outputFiles[0].text;
+  });
+  const script = await welcomeCourseBundle;
+  const bootstrapPath = '/__lacuna_welcome_fixture';
+  const modulePath = `${bootstrapPath}.js`;
+  const fixtureRequests = /\/__lacuna_welcome_fixture(?:\.js)?$/;
+  const serveFixture = (route: Route) =>
+    new URL(route.request().url()).pathname === modulePath
+      ? route.fulfill({ contentType: 'text/javascript', body: script })
+      : route.fulfill({
+          contentType: 'text/html',
+          body: '<!doctype html><title>Welcome fixture</title>',
+        });
+
+  // Seed on the app's origin before loading any of its real route chunks.
+  await page.route(fixtureRequests, serveFixture);
+  try {
+    await page.goto(bootstrapPath);
+    await page.evaluate(
+      async ({ modulePath, text, examDate }) => {
+        const fixture: typeof WelcomeCourseSeed = await import(modulePath);
+        await fixture.seed(text, examDate);
+      },
+      { modulePath, ...welcomeCourseFile() },
+    );
+  } finally {
+    await page.unroute(fixtureRequests, serveFixture);
+  }
+  await openEmptyDashboard(page);
+  await expect(page.getByRole('button', { name: 'More for Welcome to Lacuna' })).toBeVisible();
 }
 
 /** Creates a course, then selects its first lesson for authoring unless the caller needs the ladder. */

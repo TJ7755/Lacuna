@@ -25,8 +25,9 @@ export async function requireBrowserArtefact({
   const expected = new Set([
     ...Array.from({ length: functionalShards }, (_, index) => `browser-tests (${index + 1})`),
     'browser-timing (chromium-image-performance, 1, 1)',
-    'browser-timing (chromium-study-performance, 1, 2)',
-    'browser-timing (chromium-study-performance, 2, 2)',
+    'browser-timing (chromium-study-performance, 1, 3)',
+    'browser-timing (chromium-study-performance, 2, 3)',
+    'browser-timing (chromium-study-performance, 3, 3)',
   ]);
   const read = readWorkflowRun({ repository, runId, token, request });
   const jobs = await readAttemptJobs(read, attempt);

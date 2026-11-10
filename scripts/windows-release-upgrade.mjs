@@ -39,6 +39,7 @@ const auditedInstaller = requireAuditedInstaller();
 // The baseline can boot while packaging runs. Surface a failed audit when we
 // await it below, even if the coordinator closes stdin during baseline setup.
 void auditedInstaller.catch(() => {});
+const { promise: candidateReady, resolve: publishCandidate } = Promise.withResolvers();
 const server = createServer(async (request, response) => {
   const name = decodeURIComponent(new URL(request.url, 'http://localhost').pathname.slice(1));
   if (
@@ -50,7 +51,11 @@ const server = createServer(async (request, response) => {
     return;
   }
   try {
-    await auditedInstaller;
+    // Hold the startup update check until the baseline has finished studying.
+    if (!(await candidateReady)) {
+      response.writeHead(404).end();
+      return;
+    }
     const data = await readFile(path.join('release', name));
     response.writeHead(200, { 'Content-Length': data.length });
     response.end(data);
@@ -199,6 +204,7 @@ try {
   assert(before.courses.length > 0);
   report.stages.push('baseline installed and study database populated');
   await auditedInstaller;
+  publishCandidate(true);
   await page.evaluate(() => window.electronAPI.updater.checkForUpdates());
   await expect
     .poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase, {
@@ -263,6 +269,7 @@ try {
   report.error = String(error);
   throw error;
 } finally {
+  publishCandidate(false);
   server.close();
   await mkdir('test-results/windows-release-upgrade', { recursive: true });
   await writeFile(
