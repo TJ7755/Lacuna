@@ -25,11 +25,9 @@ const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const declarationExtension = /\.d\.[cm]?ts$/;
 const sourcePath = (root, file) => relative(root, file).split(sep).join('/');
 
-function createResolver(root, { runtime = false } = {}) {
+function createImportResolver(root, { runtime = false } = {}) {
   const configFile = join(root, 'config/typescript/tsconfig.app.json');
-  const config = existsSync(configFile)
-    ? ts.readConfigFile(configFile, ts.sys.readFile).config
-    : {};
+  const config = ts.readConfigFile(configFile, ts.sys.readFile).config ?? {};
   const { options } = ts.parseJsonConfigFileContent(
     config,
     { ...ts.sys, readDirectory: () => [] },
@@ -49,21 +47,27 @@ function createResolver(root, { runtime = false } = {}) {
       }
     : ts.sys;
   const cache = ts.createModuleResolutionCache(root, (file) => file, compilerOptions);
-  return (specifier, importer) => {
-    const resolved = ts.resolveModuleName(
-      specifier.split(/[?#]/, 1)[0],
-      importer,
-      compilerOptions,
-      host,
-      cache,
-    ).resolvedModule;
-    if (!resolved) return;
-    let file = resolve(resolved.resolvedFileName);
-    if (file.startsWith(join(root, 'packages') + sep) && sourceExtension.test(file)) return file;
-    const local = sourcePath(join(root, 'apps/web/src'), file);
-    if (!local.startsWith('../') && !local.startsWith('/') && sourceExtension.test(file))
-      return file;
-  };
+  return (specifier, importer) =>
+    ts.resolveModuleName(specifier.split(/[?#]/, 1)[0], importer, compilerOptions, host, cache)
+      .resolvedModule;
+}
+
+const ciLintResolvers = new Map();
+
+export function lintImportResolver(root) {
+  // CI lints a fixed checkout in one invocation. In editors, module resolution
+  // must still see files created, moved or deleted since the preceding lint.
+  if (process.env.LACUNA_CI_LINT !== 'true') return createImportResolver(root);
+  if (!ciLintResolvers.has(root)) ciLintResolvers.set(root, createImportResolver(root));
+  return ciLintResolvers.get(root);
+}
+
+function localImportPath(root, resolved) {
+  if (!resolved) return;
+  const file = resolve(resolved.resolvedFileName);
+  if (file.startsWith(join(root, 'packages') + sep) && sourceExtension.test(file)) return file;
+  const local = sourcePath(join(root, 'apps/web/src'), file);
+  if (!local.startsWith('../') && !local.startsWith('/') && sourceExtension.test(file)) return file;
 }
 
 export const domainUiRule = {
@@ -103,14 +107,14 @@ export const domainUiRule = {
       !domainDirectories.some((directory) => importerPath.startsWith(`apps/web/src/${directory}/`))
     )
       return {};
-    const resolveImport = createResolver(root);
+    const resolveImport = lintImportResolver(root);
     const check = (node, source) => {
       const specifier =
         source?.type === 'TemplateLiteral' && source.expressions.length === 0
           ? source.quasis[0].value.cooked
           : source?.value;
       if (typeof specifier !== 'string') return;
-      const target = resolveImport(specifier, importer);
+      const target = localImportPath(root, resolveImport(specifier, importer));
       if (
         target &&
         (/^apps\/web\/src\/(?:pages|components|teacher)\//.test(sourcePath(root, target)) ||
@@ -152,7 +156,7 @@ function valueSpecifiers(clause) {
 }
 
 function importGraph(root) {
-  const resolveImport = createResolver(root, { runtime: true });
+  const resolveImport = createImportResolver(root, { runtime: true });
   const graph = new Map();
   const walk = (directory) => {
     for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) =>
@@ -170,7 +174,7 @@ function importGraph(root) {
         const imports = new Set();
         const add = (literal) => {
           if (!literal || !ts.isStringLiteralLike(literal)) return;
-          const target = resolveImport(literal.text, file);
+          const target = localImportPath(root, resolveImport(literal.text, file));
           if (target) imports.add(target);
         };
         const visit = (node) => {

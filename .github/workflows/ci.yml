@@ -151,6 +151,8 @@ jobs:
         if: needs.changes.outputs.lint != 'false'
       - run: bun run lint
         if: needs.changes.outputs.lint != 'false'
+        env:
+          LACUNA_CI_LINT: 'true'
       - name: Check unused code and files
         if: needs.changes.outputs.lint != 'false'
         run: bun run knip
@@ -159,7 +161,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.app != 'false'
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         shard: [1, 2, 3, 4, 5, 6, 7]
     runs-on: ubuntu-latest
@@ -175,7 +177,7 @@ jobs:
 
       # Each shard spends most of its time importing modules and creating DOM
       # environments, so use every runner core rather than the one-worker local default.
-      - run: bun run test:ci:unit -- --shard=${{ matrix.shard }}/${{ strategy.job-total }} --maxWorkers=100% --reporter=default --reporter=json --outputFile=test-results/unit.json
+      - run: bun run test:ci:unit -- --bail=1 --shard=${{ matrix.shard }}/${{ strategy.job-total }} --maxWorkers=100% --reporter=default --reporter=json --outputFile=test-results/unit.json
         env:
           LACUNA_CI_SEPARATE_COVERAGE: 'true'
       - name: Preserve unit timings and failures
@@ -191,7 +193,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.app != 'false'
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - suite: critical
@@ -435,7 +437,7 @@ jobs:
     if: github.event_name == 'pull_request' && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-24.04
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         shard: ${{ fromJSON(needs.changes.outputs.web_specs && '[1, 2, 3, 4]' || '[1]') }}
     env:
@@ -456,7 +458,7 @@ jobs:
           path: dist/
       - name: Run release smoke
         if: needs.changes.outputs.web_specs == ''
-        run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-functional release-smoke.spec.ts
+        run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-functional --max-failures=1 release-smoke.spec.ts
       # Playwright allows empty shards. Require an unsharded smoke inventory once.
       - name: Verify release smoke discovery
         if: needs.changes.outputs.web_specs != '' && matrix.shard == 1
@@ -465,7 +467,7 @@ jobs:
         if: needs.changes.outputs.web_specs != ''
         env:
           CHANGED_SPECS: ${{ needs.changes.outputs.web_specs }}
-        run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-functional --shard=${{ matrix.shard }}/4 release-smoke.spec.ts $CHANGED_SPECS
+        run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-functional --max-failures=1 --shard=${{ matrix.shard }}/4 release-smoke.spec.ts $CHANGED_SPECS
       - name: Preserve browser test evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -484,10 +486,11 @@ jobs:
     env:
       LACUNA_BROWSER_PREBUILT: 'true'
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        shard:
-          [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+        # Four workers per runner let the browser matrix share the hosted
+        # runner quota with native, coverage and security checks.
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -496,6 +499,8 @@ jobs:
         with:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
       - run: bunx --no-install playwright install --only-shell chromium
       - name: Require the current production web build
@@ -528,7 +533,7 @@ jobs:
     if: needs.changes.outputs.standalone_suites != '[]'
     runs-on: ubuntu-24.04
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include: ${{ fromJSON(needs.changes.outputs.standalone_suites) }}
     steps:
@@ -573,7 +578,7 @@ jobs:
     env:
       LACUNA_BROWSER_PREBUILT: 'true'
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - project: chromium-image-performance
@@ -593,6 +598,8 @@ jobs:
         with:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
       - run: bunx --no-install playwright install --only-shell chromium
       - name: Cache the deterministic image fixture
@@ -617,7 +624,7 @@ jobs:
         with:
           artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
           path: dist/
-      - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=${{ matrix.project }} --workers=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
+      - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=${{ matrix.project }} --workers=1 --retries=0 --max-failures=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
         env:
           STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
       - name: Preserve browser timing evidence
@@ -699,7 +706,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           WEB_ARTIFACT_ID: ${{ needs.web-build.outputs.artifact_id }}
-          FUNCTIONAL_SHARDS: '24'
+          FUNCTIONAL_SHARDS: '16'
         run: node scripts/ci-browser-artefact.mjs
 
   electron-renderer:
@@ -792,10 +799,21 @@ jobs:
         with:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
       - run: node scripts/ci-electron-runtime.mjs darwin arm64 --packaging-tools
       - run: bun run electron:prepare
-      - run: bun run build:assets
+      - name: Require the current production web build
+        id: web-dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci-wait-for-renderer.mjs web
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
+          path: dist/
       - run: bunx electron-builder --mac --dir --config apps/desktop/electron-builder.yml --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
