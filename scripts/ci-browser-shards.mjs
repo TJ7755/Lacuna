@@ -211,7 +211,15 @@ async function runPlaywright(args) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const [command, ...args] = process.argv.slice(2);
-  if (command === 'refresh') {
+  if (command === 'timing') {
+    process.exitCode = await runPlaywright([
+      'node_modules/playwright/cli.js',
+      'test',
+      '-c',
+      config,
+      ...args,
+    ]);
+  } else if (command === 'refresh') {
     const [commit, run, ...paths] = args;
     assert.match(commit ?? '', /^[a-f0-9]{40}$/);
     assert.match(run ?? '', /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/actions\/runs\/\d+$/);

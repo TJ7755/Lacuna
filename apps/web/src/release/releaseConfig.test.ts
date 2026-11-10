@@ -504,11 +504,38 @@ describe('release configuration', () => {
     expect(securityWorkflow).toContain("cron: '31 3 * * 1'");
     expect(securityWorkflow).toMatch(/^permissions:\n {2}contents: read/m);
 
-    expect(securityWorkflow.match(/bun install --frozen-lockfile/g)).toHaveLength(3);
+    expect(securityWorkflow.match(/bun install --frozen-lockfile/g)).toHaveLength(1);
     expect(securityWorkflow.match(/bun audit --audit-level=high/g)).toHaveLength(3);
-    expect(securityWorkflow).toContain('working-directory: apps/relay');
-    expect(securityWorkflow).toContain('working-directory: tooling/handwriting-maths');
-    expect(securityWorkflow).not.toContain('continue-on-error: true');
+    const jobs = parse(securityWorkflow).jobs;
+    const root = jobs['audit-root'];
+    expect(root.outputs).toEqual({
+      relay: '${{ steps.relay.outcome }}',
+      handwriting: '${{ steps.handwriting.outcome }}',
+    });
+    for (const [audit, directory, outcome] of [
+      ['root', undefined, '${{ steps.root.outcome }}'],
+      ['relay', 'apps/relay', '${{ needs.audit-root.outputs.relay }}'],
+      ['handwriting', 'tooling/handwriting-maths', '${{ needs.audit-root.outputs.handwriting }}'],
+    ] as const) {
+      const auditStep = root.steps.find((step: { id?: string }) => step.id === audit);
+      expect(auditStep).toMatchObject({
+        run: 'bun audit --audit-level=high',
+        'continue-on-error': true,
+      });
+      expect(auditStep['working-directory']).toBe(directory);
+      const job = jobs[`audit-${audit}`];
+      if (audit !== 'root') expect(job.needs).toBe('audit-root');
+      const gate = job.steps.at(-1);
+      expect(gate.env.AUDIT_OUTCOME).toBe(outcome);
+      expect((audit === 'root' ? gate : job).if).toBe('${{ !cancelled() }}');
+      for (const result of ['success', 'failure', 'cancelled', 'skipped', '']) {
+        const { status, error } = spawnSync('bash', ['-c', gate.run], {
+          env: { ...process.env, AUDIT_OUTCOME: result },
+        });
+        expect(error).toBeUndefined();
+        expect(status).toBe(result === 'success' ? 0 : 1);
+      }
+    }
     expect(securityWorkflow).not.toContain('|| true');
     expect(securityWorkflow).not.toContain('bun audit --ignore');
 

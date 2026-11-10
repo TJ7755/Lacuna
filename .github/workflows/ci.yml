@@ -635,8 +635,9 @@ jobs:
         with:
           artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
           path: dist/
-      - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=${{ matrix.project }} --workers=1 --retries=${{ matrix.project == 'chromium-image-performance' && '1' || '0' }} --max-failures=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
+      - run: node scripts/ci-browser-shards.mjs timing --project=${{ matrix.project }} --workers=1 --retries=${{ matrix.project == 'chromium-image-performance' && '1' || '0' }} --max-failures=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
         env:
+          CI_PEER_JOB_TOKEN: ${{ github.token }}
           STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
       - name: Preserve browser timing evidence
         if: always()

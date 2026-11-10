@@ -43,6 +43,8 @@
       "entry": [
         // The local Node setup composite action invokes this bootstrap.
         "scripts/ci-node-runtime.mjs",
+        // Playwright launches this server through its webServer command.
+        "scripts/ci-electron-preview.mjs",
         // Manually invoked generator preserves the historical production compatibility fixtures.
         "scripts/generate-production-compatibility.ts",
         // MCP consent smoke commands are invoked manually.
