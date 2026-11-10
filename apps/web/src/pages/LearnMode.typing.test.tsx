@@ -22,7 +22,7 @@ beforeEach(async () => {
 });
 
 describe('typed study accessibility', () => {
-  it('keeps a visible answer label after typing and submits once on Enter', async () => {
+  it('keeps the answer field accessible without a visible label and submits once on Enter', async () => {
     const course = await createCourse('Vocabulary');
     const lesson = await createLesson(course.id, 'French', { answerMode: 'type' });
     await createLessonCard(course.id, lesson.id, 'front_back', 'Cat', 'chat');
@@ -40,7 +40,7 @@ describe('typed study accessibility', () => {
     // A lesson without notes starts on its first card.
     const input = await screen.findByRole('textbox', { name: 'Your answer' });
     fireEvent.change(input, { target: { value: 'chat' } });
-    expect(screen.getByText('Your answer', { selector: 'label' })).toBeVisible();
+    expect(screen.queryByText('Your answer', { exact: true })).not.toBeInTheDocument();
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(await screen.findByRole('button', { name: 'Yes' })).toBeInTheDocument();
     expect(await db.reviewHistory.count()).toBe(0);

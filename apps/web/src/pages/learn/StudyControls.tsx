@@ -120,31 +120,24 @@ export function StudyControls({
         ? 'grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4'
         : 'flex w-full max-w-md gap-3';
   const typedField = (
-    <>
-      <label
-        htmlFor="study-typed-answer"
-        className={isTouchMode ? 'sr-only' : 'mb-2 block text-sm text-ink-soft'}
-      >
-        Your answer
-      </label>
-      <input
-        id="study-typed-answer"
-        ref={typingInputRef}
-        type="text"
-        value={typedAnswer}
-        onChange={(event) => onTypedAnswer(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
-            event.preventDefault();
-            onReveal();
-          }
-        }}
-        placeholder={isTouchMode ? 'Your answer' : 'Type your answer…'}
-        className={`w-full border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent ${
-          isTouchMode ? 'h-14 min-w-0 flex-1 rounded-xl' : 'rounded-lg'
-        }`}
-      />
-    </>
+    <input
+      id="study-typed-answer"
+      ref={typingInputRef}
+      type="text"
+      aria-label="Your answer"
+      value={typedAnswer}
+      onChange={(event) => onTypedAnswer(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+          event.preventDefault();
+          onReveal();
+        }
+      }}
+      placeholder={isTouchMode ? 'Your answer' : 'Type your answer…'}
+      className={`w-full border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent ${
+        isTouchMode ? 'h-14 min-w-0 flex-1 rounded-xl' : 'rounded-lg'
+      }`}
+    />
   );
   const flow = (
     <FlowGradeControls
@@ -157,9 +150,7 @@ export function StudyControls({
       negativeIndex={recallCorrect === undefined && gradingMode === 'manual' ? 0 : undefined}
       rowClassName={gradeRowClassName}
       revealLabel={isTypingCard ? 'Check answer' : 'Show answer'}
-      revealLead={
-        isTypingCard && !isTouchMode ? <div className="mb-3">{typedField}</div> : undefined
-      }
+      revealLead={isTypingCard && !isTouchMode ? typedField : undefined}
       onReveal={onReveal}
       m={m}
     />
