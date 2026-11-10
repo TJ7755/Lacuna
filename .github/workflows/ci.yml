@@ -169,7 +169,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        shard: [1, 2, 3, 4, 5]
+        shard: [1, 2, 3, 4, 5, 6]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -224,6 +224,9 @@ jobs:
       - name: Verify CI predicates and browser diagnostics without browsers
         if: ${{ !cancelled() && steps.install.outcome == 'success' && matrix.suite == 'critical' }}
         run: node --test scripts/vercel-deploy-scope.test.mjs scripts/deploy-prerequisites.test.mjs scripts/nightly-release.test.mjs scripts/local-checks.test.mjs scripts/security-runtime.test.mjs scripts/ci-workflow.test.mjs scripts/ci-recover-stale-jobs.test.mjs scripts/browser-ci-summary.test.mjs scripts/ci-browser-artefact.test.mjs scripts/ci-browser-shards.test.mjs scripts/ci-wait-for-renderer.test.mjs
+      - name: Verify browser project inventory
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && matrix.suite == 'critical' }}
+        run: bun run test:ci:unit -- apps/web/src/release/browserCiConfig.test.ts
 
   # Start the shorter independent checks after the first wave of runners.
   python-tools:

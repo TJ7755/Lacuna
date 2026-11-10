@@ -2,6 +2,7 @@ import { seed as seedHeavy } from '../../../scripts/performance-heavy/fixture';
 import type { Card } from '@lacuna/core/db/types';
 import { db } from '../../../apps/web/src/db/schema';
 import { assetUrl, storeImageBlob } from '../../../apps/web/src/db/assets';
+import { createRestorePoint } from '../../../apps/web/src/db/backupRestorePoint';
 import { reviewHistoryEntriesForCard } from '@lacuna/core/db/reviewHistory';
 import type { StudyImageFixture } from './largeStudyImages';
 import { buildCardConcept } from '../../../apps/web/src/questions/concepts';
@@ -10,6 +11,9 @@ import { buildCardConcept } from '../../../apps/web/src/questions/concepts';
 export async function seed(images: StudyImageFixture[]) {
   await seedHeavy(true);
   await db.open();
+  // Measure a learner with a current restore point. The daily backup worker
+  // otherwise snapshots the entire image library while grades are being saved.
+  await createRestorePoint(() => {});
   const originals = await db.cards.toArray();
   const history = await db.reviewHistory.toArray();
   const cards: Card[] = Array.from({ length: 322 }, (_, i) => {
