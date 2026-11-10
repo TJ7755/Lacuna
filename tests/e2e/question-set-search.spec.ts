@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { createCourse, openEmptyDashboard } from './fixtures/lacunaApp';
 
 const width = 1280;
 
 test(`finds prompt wording and replaces a saved path activity at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await enterFreshLacuna(page);
+  await openEmptyDashboard(page);
   await createCourse(page, 'Biology search', false);
   const coursePath = new URL(page.url()).hash.slice(1);
   await page.goto(`/#${coursePath}/questions`);

@@ -82,6 +82,7 @@ const BROWSER_CI_FILES = new Set([
   'tests/e2e/fixtures/largeStudyImages.ts',
   'tests/e2e/study-grade-load.spec.ts',
   'tests/e2e/study-image-advance.spec.ts',
+  'tests/e2e/study-session-load.spec.ts',
 ]);
 const AREAS = [
   'app',

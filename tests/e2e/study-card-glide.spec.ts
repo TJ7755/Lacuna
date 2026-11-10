@@ -1,13 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
-import { chooseRecallPractice, createCourse, skipOnboarding } from './fixtures/lacunaApp';
+import { chooseRecallPractice, createCourse, openEmptyDashboard } from './fixtures/lacunaApp';
 
 test.use({ hasTouch: true });
 
 async function startStudy(page: Page) {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await skipOnboarding(page);
+  await openEmptyDashboard(page);
   await createCourse(page, 'Card glide');
   await page.getByRole('button', { name: 'Edit mode' }).click();
   for (const front of ['Glide one', 'Glide two', 'Glide three']) {

@@ -125,6 +125,7 @@ describe('area scope', () => {
       'scripts/ci-change-scope.mjs',
       'tests/config/playwright.web.config.ts',
       'tests/config/playwright.web.isolated.config.ts',
+      'tests/e2e/study-session-load.spec.ts',
     ]) {
       expect(classifyPaths([path]).browser_ci, path).toBe(true);
     }

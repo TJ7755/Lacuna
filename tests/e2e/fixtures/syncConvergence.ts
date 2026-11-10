@@ -36,6 +36,7 @@ export async function editOnlyCard(page: Page, courseId: string, front: string):
   await page.getByTitle('Edit card').click();
   await page.getByRole('textbox', { name: 'Front' }).fill(front);
   await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/cards$`));
   await expect(page.getByText(front, { exact: true }).last()).toBeVisible();
 }
 

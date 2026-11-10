@@ -6,6 +6,7 @@ if (!chromium) throw new Error('The web config must provide the Chromium project
 
 const imageAdvance = '**/study-image-advance.spec.ts';
 const studyGrade = '**/study-grade-load.spec.ts';
+const studySession = '**/study-session-load.spec.ts';
 
 // Functional workers stay separate from serial timing cases. Preserve ordinary local coverage.
 export default defineConfig({
@@ -14,7 +15,9 @@ export default defineConfig({
     {
       ...chromium,
       name: 'chromium-functional',
-      testIgnore: [chromium.testIgnore ?? [], imageAdvance, studyGrade].flat(),
+      testIgnore: [chromium.testIgnore ?? [], imageAdvance, studyGrade, studySession].flat(),
+      // Screenshots cover the first failure. Record a trace only on the retry.
+      use: { ...chromium.use, trace: process.env.CI ? 'on-first-retry' : chromium.use?.trace },
     },
     {
       ...chromium,
@@ -29,7 +32,7 @@ export default defineConfig({
     {
       ...chromium,
       name: 'chromium-study-performance',
-      testMatch: studyGrade,
+      testMatch: [studyGrade, studySession],
       // Let Playwright shard independent cases. Each runner still measures one at a time.
       fullyParallel: true,
       workers: 1,

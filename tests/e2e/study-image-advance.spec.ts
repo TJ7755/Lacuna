@@ -1,6 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { once } from 'node:events';
+import { createReadStream } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
+import { basename, join } from 'node:path';
 import { build } from 'esbuild';
 import {
   largeStudyImages,
@@ -113,6 +116,54 @@ async function measureAdvance(page: Page, cardId: string) {
 
 let images: StudyImageFixture[];
 
+async function seedImageLibrary(page: Page) {
+  const fixtureOrigin = new URL(page.url()).origin;
+  const files = new Map(images.map((image) => [image.url, image]));
+  const server = createServer((request, response) => {
+    const image = files.get(request.url ?? '');
+    if (request.method !== 'GET' || !image) {
+      response.writeHead(404).end();
+      return;
+    }
+    const file = createReadStream(join(studyImageFixtureDirectory, basename(image.url)));
+    file.on('error', (error) => response.destroy(error));
+    response.once('close', () => file.destroy());
+    response.writeHead(200, {
+      'Access-Control-Allow-Origin': fixtureOrigin,
+      'Cache-Control': 'no-store',
+      'Content-Type': image.mimeType,
+    });
+    file.pipe(response);
+  });
+  // Stream the original files over loopback. Playwright interception serialises
+  // each response through its protocol; it is unnecessary for fixture seeding.
+  const listening = once(server, 'listening');
+  server.listen(0, '127.0.0.1');
+  await listening;
+  try {
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Missing image fixture port');
+    return await page.evaluate(
+      (images) =>
+        (
+          window as unknown as {
+            StudyLoadFixture: { seed(images: unknown): Promise<unknown> };
+          }
+        ).StudyLoadFixture.seed(images),
+      images.map((image) => {
+        const url = new URL(`http://127.0.0.1:${address.port}`);
+        url.pathname = image.url;
+        return { ...image, url: url.href };
+      }),
+    );
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+      server.closeAllConnections();
+    });
+  }
+}
+
 test.beforeAll('Generate original-sized JPEG and PNG fixtures', async () => {
   // Cold image compression must not consume the browser measurement deadline.
   test.setTimeout(600_000);
@@ -123,13 +174,6 @@ test('measures original-sized JPEG and PNG card advances at 4x CPU slowdown', as
   page,
 }, testInfo) => {
   test.setTimeout(240_000);
-  await page.route('**/__study_image/*', async (route) => {
-    const name = new URL(route.request().url()).pathname.split('/').pop()!;
-    await route.fulfill({
-      contentType: name.endsWith('.png') ? 'image/png' : 'image/jpeg',
-      body: await readFile(join(studyImageFixtureDirectory, name)),
-    });
-  });
   const bundle = await build({
     entryPoints: ['tests/e2e/fixtures/studyImageAdvance.ts'],
     bundle: true,
@@ -139,21 +183,10 @@ test('measures original-sized JPEG and PNG card advances at 4x CPU slowdown', as
     globalName: 'StudyLoadFixture',
     define: { 'import.meta.env.DEV': 'false' },
   });
-  await page.route('**/__study_fixture', (route) =>
-    route.fulfill({ contentType: 'text/html', body: '<title>Study fixture</title>' }),
-  );
-  await page.goto('/__study_fixture');
+  // Keep the app's storage origin and address space without booting its scripts.
+  await page.goto('/robots.txt');
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
-  const fixture = await test.step('Seed the image-card library', () =>
-    page.evaluate(
-      async (images) =>
-        (
-          window as unknown as {
-            StudyLoadFixture: { seed(images: unknown): Promise<unknown> };
-          }
-        ).StudyLoadFixture.seed(images),
-      images,
-    ));
+  const fixture = await test.step('Seed the image-card library', () => seedImageLibrary(page));
   await page.addInitScript(() => {
     // Keep the measured image sequence fixed while the production scheduler shuffles ties.
     Math.random = () => 1 - Number.EPSILON;

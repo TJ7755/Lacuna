@@ -1,12 +1,12 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { createCourse, openEmptyDashboard } from './fixtures/lacunaApp';
 import type { Card, Lesson } from '@lacuna/core/db/types';
 
 const viewport = { width: 1280, height: 800 };
 
 async function prepareCard(page: Page) {
   await page.setViewportSize(viewport);
-  await enterFreshLacuna(page);
+  await openEmptyDashboard(page);
   await createCourse(page, 'Card fit');
   const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
   await page.getByRole('button', { name: 'Edit mode' }).click();
