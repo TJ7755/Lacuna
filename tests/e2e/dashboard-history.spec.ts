@@ -1,5 +1,9 @@
 import { expect, test, type CDPSession, type Page } from '@playwright/test';
-import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
+import {
+  enterFreshLacuna,
+  enterWithWelcomeCourse,
+  importWelcomeCourse,
+} from './fixtures/lacunaApp';
 
 test.use({ serviceWorkers: 'block', viewport: { width: 1440, height: 1000 } });
 
@@ -130,7 +134,8 @@ test('cached Today keeps its forecast when first opening the optional calculatio
     await expect
       .poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)))
       .toBe(true);
-    await enterWithWelcomeCourse(page);
+    await enterFreshLacuna(page);
+    await importWelcomeCourse(page, { restart: true });
     await expect(page.getByRole('img', { name: 'Exam-day forecast', exact: true })).toBeVisible();
     await observeForecastWork(page);
     await page

@@ -135,7 +135,7 @@ export async function importWelcomeCourse(page: Page, { restart = false } = {}) 
 
 /** A fresh browser holding only the Welcome to Lacuna course, as new installs once had. */
 export async function enterWithWelcomeCourse(page: Page) {
-  await enterFreshLacuna(page);
+  await openEmptyDashboard(page);
   await importWelcomeCourse(page, { restart: true });
 }
 

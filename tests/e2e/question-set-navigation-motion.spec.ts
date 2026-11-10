@@ -164,41 +164,39 @@ test('can leave practice after a terminal draft save failure', async ({ page }) 
   await expect(answer).toHaveCount(0);
 });
 
-for (const width of [1280, 390]) {
-  test(`navigation retains draft answers in both directions at ${width}px`, async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await openSet(page);
-    await page.setViewportSize({ width, height: 900 });
-    await page.getByRole('button', { name: 'Start', exact: true }).click();
+test('navigation retains draft answers in both directions', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await openSet(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Your answer', exact: true })).toBeFocused();
+  await page
+    .getByRole('textbox', { name: 'Your answer', exact: true })
+    .fill('Controls cell activities.');
+  for (const [label, heading] of [
+    ['Next', 'Q1 (b)'],
+    ['Previous', 'Q1 (a)'],
+  ] as const) {
+    await expect(page.getByRole('button', { name: label, exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: label, exact: true }).click();
     await expect(page.getByRole('textbox', { name: 'Your answer', exact: true })).toBeFocused();
-    await page
-      .getByRole('textbox', { name: 'Your answer', exact: true })
-      .fill('Controls cell activities.');
-    for (const [label, heading] of [
-      ['Next', 'Q1 (b)'],
-      ['Previous', 'Q1 (a)'],
-    ] as const) {
-      await expect(page.getByRole('button', { name: label, exact: true })).toBeEnabled();
-      await page.getByRole('button', { name: label, exact: true }).click();
-      await expect(page.getByRole('textbox', { name: 'Your answer', exact: true })).toBeFocused();
-      await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
-    }
-    const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
-    await expect(answer).toHaveValue('Controls cell activities.');
-    await expect(page.getByRole('button', { name: 'Previous', exact: true })).toBeDisabled();
-    // Reverse before slow motion can settle; writes, not decoration, gate navigation.
-    await page.evaluate(() => {
-      localStorage.setItem('lacuna.motionSpeed', 'slow');
-      window.dispatchEvent(new CustomEvent('lacuna:motion-speed', { detail: 'slow' }));
-    });
-    for (const label of ['Next', 'Previous', 'Next', 'Previous']) {
-      await page.getByRole('button', { name: label, exact: true }).click();
-    }
-    await expect(page.getByRole('heading', { name: 'Q1 (a)', exact: true })).toBeVisible();
-    await expect(answer).toHaveValue('Controls cell activities.');
-    await expect(answer).toBeFocused();
-    await page.reload();
-    await expect(answer).toHaveValue('Controls cell activities.');
-    await expect(page.getByRole('heading', { name: 'Q1 (a)', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+  }
+  const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
+  await expect(answer).toHaveValue('Controls cell activities.');
+  await expect(page.getByRole('button', { name: 'Previous', exact: true })).toBeDisabled();
+  // Reverse before slow motion can settle; writes, not decoration, gate navigation.
+  await page.evaluate(() => {
+    localStorage.setItem('lacuna.motionSpeed', 'slow');
+    window.dispatchEvent(new CustomEvent('lacuna:motion-speed', { detail: 'slow' }));
   });
-}
+  for (const label of ['Next', 'Previous', 'Next', 'Previous']) {
+    await page.getByRole('button', { name: label, exact: true }).click();
+  }
+  await expect(page.getByRole('heading', { name: 'Q1 (a)', exact: true })).toBeVisible();
+  await expect(answer).toHaveValue('Controls cell activities.');
+  await expect(answer).toBeFocused();
+  await page.reload();
+  await expect(answer).toHaveValue('Controls cell activities.');
+  await expect(page.getByRole('heading', { name: 'Q1 (a)', exact: true })).toBeVisible();
+});

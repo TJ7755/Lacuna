@@ -21,6 +21,9 @@ concurrency:
 
 jobs:
   documentation:
+    # Let the longer browser jobs claim runners before this short independent check.
+    needs: web-build
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -124,6 +127,8 @@ jobs:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
       - run: bun run typecheck
@@ -169,7 +174,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -179,6 +184,8 @@ jobs:
         with:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
 
       # Each shard spends most of its time importing modules and creating DOM
@@ -215,6 +222,8 @@ jobs:
         with:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
         id: install
       - run: ${{ matrix.command }}
@@ -511,19 +520,21 @@ jobs:
       - uses: ./.github/actions/setup-bun
         with:
           cache-packages: 'false'
-      - run: bun install --frozen-lockfile
-      - run: bunx --no-install playwright install --only-shell chromium
-      - name: Require the current production web build
-        id: web-dist
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: node scripts/ci-wait-for-renderer.mjs web
-      - name: Download production web build ${{ steps.web-dist.outputs.artifact_id }}
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
-          path: dist/
+      - parallel:
+          - run: bun install --frozen-lockfile
+          - name: Require the current production web build
+            id: web-dist
+            env:
+              GH_TOKEN: ${{ github.token }}
+              SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+            run: node scripts/ci-wait-for-renderer.mjs web
+      - parallel:
+          - run: bunx --no-install playwright install --only-shell chromium
+          - name: Download production web build ${{ steps.web-dist.outputs.artifact_id }}
+            uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+            with:
+              artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
+              path: dist/
       - run: node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/${{ strategy.job-total }}
         env:
           CI_PEER_JOB_TOKEN: ${{ github.token }}

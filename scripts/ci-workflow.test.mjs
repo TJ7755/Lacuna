@@ -285,12 +285,11 @@ test('browser consumers install the lockfile browser and share the production ar
   assert.equal(producer.with.overwrite, undefined);
   for (const name of [...consumers, 'browser-standalone']) {
     const job = jobs[name];
+    const steps = job.steps.flatMap((step) => step.parallel ?? [step]);
     assert.equal(job['runs-on'], 'ubuntu-24.04');
     assert.equal(job.container, undefined);
-    const installPackages = job.steps.findIndex(
-      (step) => step.run === 'bun install --frozen-lockfile',
-    );
-    const installBrowser = job.steps.findIndex(
+    const installPackages = steps.findIndex((step) => step.run === 'bun install --frozen-lockfile');
+    const installBrowser = steps.findIndex(
       (step) => step.run === 'bunx --no-install playwright install --only-shell chromium',
     );
     assert.ok(installPackages >= 0 && installBrowser > installPackages);
@@ -298,16 +297,23 @@ test('browser consumers install the lockfile browser and share the production ar
   }
   for (const name of [...consumers, 'production']) {
     const job = jobs[name];
-    const download = job.steps.find((step) => step.uses?.startsWith('actions/download-artifact@'));
+    const steps = job.steps.flatMap((step) => step.parallel ?? [step]);
+    const download = steps.find((step) => step.uses?.startsWith('actions/download-artifact@'));
     assert.equal(download.with.path, producer.with.path);
     if (name === 'browser-tests' || name === 'browser-timing') {
       assert.equal(job.needs, 'changes');
-      const browser = job.steps.findIndex((step) => step.run?.includes('playwright install'));
-      const wait = job.steps.findIndex(
-        (step) => step.run === 'node scripts/ci-wait-for-renderer.mjs web',
-      );
-      assert.ok(browser >= 0 && browser < wait && wait < job.steps.indexOf(download));
-      assert.equal(job.steps[wait].id, 'web-dist');
+      const browser = steps.find((step) => step.run?.includes('playwright install'));
+      const wait = steps.find((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs web');
+      assert.equal(wait.id, 'web-dist');
+      assert.ok(steps.indexOf(wait) < steps.indexOf(download));
+      if (name === 'browser-tests') {
+        const [prepare, fetch] = job.steps.filter((step) => step.parallel);
+        assert.ok(prepare.parallel.includes(wait));
+        assert.ok(fetch.parallel.includes(browser) && fetch.parallel.includes(download));
+        assert.ok(job.steps.indexOf(prepare) < job.steps.indexOf(fetch));
+      } else {
+        assert.ok(steps.indexOf(browser) < steps.indexOf(wait));
+      }
       assert.equal(download.with['artifact-ids'], '${{ steps.web-dist.outputs.artifact_id }}');
       assert.equal(
         download.name,
