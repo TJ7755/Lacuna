@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { waitForRenderer } from './ci-wait-for-renderer.mjs';
+import { readAttemptJobs, waitForRenderer } from './ci-wait-for-renderer.mjs';
 
 const sourceSha = 'a'.repeat(40);
 const publication = {
@@ -137,6 +137,19 @@ test('unavailable and truncated API responses cannot authorise a download', asyn
   await assert.rejects(waitForRenderer({ ...options([[]]), token: '' }));
   await assert.rejects(waitForRenderer({ ...options([[]]), attempt: '0' }));
   await assert.rejects(waitForRenderer({ ...options([[]]), timeoutMs: 0 }), /Timed out/);
+});
+
+test('temporarily incomplete job inventory is retried without accepting a partial list', async () => {
+  const jobs = [producer('completed', 'success')];
+  let reads = 0;
+  const sleep = async () => {};
+  const read = async () => ({ jobs, total_count: ++reads < 3 ? 2 : 1 });
+  assert.deepEqual(await readAttemptJobs(read, 2, sleep), jobs);
+  assert.equal(reads, 3);
+  await assert.rejects(
+    readAttemptJobs(async () => ({ jobs, total_count: 2 }), 2, sleep),
+    /incomplete after retrying/,
+  );
 });
 
 test('slow builds back off within the shared repository API budget', async () => {

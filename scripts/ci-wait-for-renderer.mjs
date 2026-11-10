@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
 
 const builds = {
@@ -33,14 +34,20 @@ export function readWorkflowRun({ repository, runId, token, request = fetch }) {
   };
 }
 
-export async function readAttemptJobs(read, attempt) {
+export async function readAttemptJobs(read, attempt, sleep = delay) {
   assert.match(String(attempt), /^[1-9]\d*$/);
-  const { jobs, total_count: count } = await read(`attempts/${attempt}/jobs?per_page=100`);
-  assert.ok(
-    Array.isArray(jobs) && jobs.length === count && count < 100,
-    'The job inventory is incomplete; update pagination before expanding the workflow',
-  );
-  return jobs;
+  const endpoint = `attempts/${attempt}/jobs?per_page=100`;
+  for (const pause of [0, 250, 750, 2_000]) {
+    if (pause) await sleep(pause);
+    const { jobs, total_count: count } = await read(endpoint);
+    assert.ok(
+      Array.isArray(jobs) && Number.isSafeInteger(count) && count >= 0 && count < 100,
+      'The job inventory is incomplete; update pagination before expanding the workflow',
+    );
+    // GitHub can register newly eligible matrix jobs while serving this endpoint.
+    if (jobs.length === count) return jobs;
+  }
+  throw new Error('The job inventory is incomplete after retrying');
 }
 
 // Consumer setup can overlap the build. Partial retries can reuse a successful
