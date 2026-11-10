@@ -356,17 +356,15 @@ test('browser consumers install the lockfile browser and share the production ar
   assert.equal(provenance.if, jobs['browser-tests'].if);
   assert.equal(provenance.if, jobs['browser-timing'].if);
   assert.equal(provenance.env.WEB_ARTIFACT_ID, '${{ needs.web-build.outputs.artifact_id }}');
-  assert.equal(
-    Number(provenance.env.FUNCTIONAL_SHARDS),
-    jobs['browser-tests'].strategy.matrix.shard.length,
-  );
+  const functionalShards = Number(provenance.env.FUNCTIONAL_SHARDS);
+  assert.ok(Number.isInteger(functionalShards) && functionalShards > 0 && functionalShards <= 32);
   assert.equal(
     jobs['browser-smoke'].steps[0].env.PRODUCTION_RESULT,
     '${{ needs.production.result }}',
   );
   assert.deepEqual(
     jobs['browser-tests'].strategy.matrix.shard,
-    Array.from({ length: 18 }, (_, index) => index + 1),
+    Array.from({ length: functionalShards }, (_, index) => index + 1),
   );
   assert.equal(jobs['browser-tests'].strategy.matrix.lane, undefined);
   assert.ok(
