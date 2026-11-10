@@ -4,8 +4,6 @@ import { useExamClock } from './useExamClock';
 import { db } from '../db/schema';
 import type { Concept } from '@lacuna/core/questions/types';
 import { dailyReviewCounts, hydrateCardsWithHistory } from '../db/reviewHistoryRead';
-import { readReviewActivity } from '../db/reviewActivityRead';
-import type { ReviewActivity } from '../fsrs/heatmap';
 import { performanceForCourseBackingDecks } from '../db/backingDecks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { retainedLiveQuery } from './retainedLiveQuery';
@@ -29,8 +27,6 @@ interface CourseStudyFlowRecords {
   course: Course | null;
   lessons: Lesson[];
   cards: Card[];
-  /** Path presentation needs timestamps; active Study keeps full card histories. */
-  activity?: ReviewActivity;
   concepts?: Concept[];
   questionPractice?: ConceptPracticeItem[];
   examSkillPractice?: ExamSkillPracticeItem[];
@@ -83,29 +79,14 @@ export function useCourseStudyFlowRecords(
 
 // Presentation retains results; the study conductor keeps its existing fresh-generation contract.
 export const useCoursePathRecords = retainedLiveQuery((courseId) =>
-  readCourseStudyFlowRecords(courseId, 0, undefined, false),
+  readCourseStudyFlowRecords(courseId, 0, undefined, 'path'),
 );
-
-async function pathReviewActivity(cards: Card[]): Promise<ReviewActivity> {
-  const [activity, legacy] = await Promise.all([
-    readReviewActivity(cards),
-    // Current stored cards have no history projection. Preserve the adapter's
-    // canonical precedence and legacy-only events only where old records need it.
-    hydrateCardsWithHistory(cards.filter((card) => card.history?.length > 0)),
-  ]);
-  for (const card of legacy)
-    activity.set(
-      card.id,
-      card.history.map((review) => review.timestamp),
-    );
-  return activity;
-}
 
 async function readCourseStudyFlowRecords(
   courseId: string | undefined,
   refreshKey = 0,
   sittingStartedAt?: number,
-  includeQuestionPractice = true,
+  mode: 'path' | 'study' = 'study',
 ): Promise<CourseStudyFlowRecords> {
   if (!courseId) {
     return {
@@ -158,40 +139,34 @@ async function readCourseStudyFlowRecords(
   }
   const course = hydrateCourse(courseRecord, finalAssessmentForCourse(courseId, assessments));
   // The Path only plans question practice when it is the course's sole study content.
-  const planQuestions = includeQuestionPractice || (rawCards.length === 0 && lessons.length === 0);
+  const study = mode === 'study';
+  const planQuestions = study || (rawCards.length === 0 && lessons.length === 0);
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [
-    cards,
-    activity,
-    links,
-    exposures,
-    completions,
-    performance,
-    reviewCounts,
-    questionSetCount,
-  ] = await Promise.all([
-    includeQuestionPractice ? hydrateCardsWithHistory(rawCards) : rawCards,
-    includeQuestionPractice ? undefined : pathReviewActivity(rawCards),
-    lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
-    lessonIds.length > 0
-      ? db.transaction('r', db.lessonCardExposures, async () => {
-          // Exact ranges use getAll rather than a cursor callback for every card.
-          // Sort lesson IDs to retain the anyOf index/primary-key result order.
-          const exposures = await Promise.all(
-            [...lessonIds]
-              .sort()
-              .map((id) => db.lessonCardExposures.where('lessonId').equals(id).toArray()),
-          );
-          return exposures.flat();
-        })
-      : [],
-    lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-    performanceForCourseBackingDecks(courseId, rawCards),
-    course.dailyReviewGoal || course.maxReviewsPerDay
-      ? dailyReviewCounts('course')
-      : new Map<string, number>(),
-    planQuestions ? db.questionSets.where('courseId').equals(courseId).count() : 0,
-  ]);
+  const [cards, links, exposures, completions, performance, reviewCounts, questionSetCount] =
+    await Promise.all([
+      study ? hydrateCardsWithHistory(rawCards) : rawCards,
+      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+      lessonIds.length > 0
+        ? db.transaction('r', db.lessonCardExposures, async () => {
+            // Exact ranges use getAll rather than a cursor callback for every card.
+            // Sort lesson IDs to retain the anyOf index/primary-key result order.
+            const exposures = await Promise.all(
+              [...lessonIds]
+                .sort()
+                .map((id) => db.lessonCardExposures.where('lessonId').equals(id).toArray()),
+            );
+            return exposures.flat();
+          })
+        : [],
+      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
+      study || practiceNodes.some((node) => node.type === 'manual')
+        ? performanceForCourseBackingDecks(courseId, rawCards)
+        : [],
+      study && (course.dailyReviewGoal || course.maxReviewsPerDay)
+        ? dailyReviewCounts('course')
+        : new Map<string, number>(),
+      planQuestions ? db.questionSets.where('courseId').equals(courseId).count() : 0,
+    ]);
   const questionContext = {
     course,
     lessons,
@@ -203,7 +178,7 @@ async function readCourseStudyFlowRecords(
     concepts,
   };
   const questionScopeConceptIds = planQuestions ? questionStudyScope(questionContext) : [];
-  const questionScopeLessonIds = planQuestions
+  const questionScopeLessonIds = study
     ? questionStudyLessonScope({ ...questionContext, completions })
     : [];
   const questionPractice =
@@ -213,7 +188,7 @@ async function readCourseStudyFlowRecords(
         )
       : [];
   const examSkillPractice =
-    planQuestions && questionSetCount > 0
+    study && questionSetCount > 0
       ? await import('../questions/examSkillPractice').then(({ listExamSkillPractice }) =>
           listExamSkillPractice(courseId, Date.now(), {
             sittingStartedAt,
@@ -226,7 +201,6 @@ async function readCourseStudyFlowRecords(
     course,
     lessons,
     cards,
-    activity,
     concepts,
     questionPractice,
     examSkillPractice,

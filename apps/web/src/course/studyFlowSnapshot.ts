@@ -9,9 +9,9 @@ import type {
   LessonCardExposure,
   LessonCardLink,
   PracticeMilestone,
+  PracticeNode,
 } from '@lacuna/core/db/types';
 import type { ExamDateContext } from '../fsrs/examDate';
-import type { ReviewActivity } from '../fsrs/heatmap';
 import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
 import type { ConceptPracticeNeeds } from '../questions/techniqueEvidence';
 import type { PathNode, PracticePathNode } from './path';
@@ -81,7 +81,7 @@ export interface CourseStudyFlowSnapshot {
   questionPracticeExhausted?: boolean;
 }
 
-export interface BuildCourseStudyFlowSnapshotInput {
+interface BuildCoursePracticeStatesInput {
   course: Course;
   nodes: PathNode[];
   cards: Card[];
@@ -90,9 +90,11 @@ export interface BuildCourseStudyFlowSnapshotInput {
   examDateContext: ExamDateContext;
   meanReviewSeconds: number;
   practiceMilestones?: PracticeMilestone[];
-  reviewsToday?: number;
-  activity?: ReviewActivity;
   now?: number;
+}
+
+export interface BuildCourseStudyFlowSnapshotInput extends BuildCoursePracticeStatesInput {
+  reviewsToday?: number;
 }
 
 /** Course-wide mean across the distinct scheduling units owning its cards. */
@@ -139,12 +141,11 @@ function thresholdMinutes(course: Course, nearestAssessmentDate?: number): numbe
 }
 
 /**
- * Builds every fact the conductor and course path need from one immutable
- * course snapshot. A curricular milestone keeps its fixed path prefix, while
+ * A curricular milestone keeps its fixed path prefix, while
  * its live session uses the current reached scope; later lessons cannot rewrite
  * or revive the earlier milestone.
  */
-export function buildCourseStudyFlowSnapshot({
+export function buildCoursePracticeStates({
   course,
   nodes,
   cards,
@@ -153,10 +154,8 @@ export function buildCourseStudyFlowSnapshot({
   examDateContext,
   meanReviewSeconds,
   practiceMilestones = [],
-  reviewsToday = 0,
-  activity,
   now = Date.now(),
-}: BuildCourseStudyFlowSnapshotInput): CourseStudyFlowSnapshot {
+}: BuildCoursePracticeStatesInput) {
   const milestoneByKey = new Map(
     practiceMilestones.map((milestone) => [milestone.nodeKey, milestone]),
   );
@@ -187,29 +186,20 @@ export function buildCourseStudyFlowSnapshot({
     priorKnowledgeLessonIds: earlier,
     now,
   };
-  const recurringScope = practiceCardScope(
-    cards,
-    links,
-    exposures,
-    { reachedLessonIds, requireExposure: course.learnFirst !== false },
-    now,
-    course.leechThreshold,
-  );
-  const recurringAssessmentOptions = assessmentPracticeOptions(assessmentContext, cards, false);
-  const curricularScope =
-    earlier.size === 0
-      ? recurringScope
-      : practiceCardScope(
-          cards,
-          links,
-          exposures,
-          {
-            reachedLessonIds: curricularReachedLessonIds,
-            requireExposure: course.learnFirst !== false,
-          },
-          now,
-          course.leechThreshold,
-        );
+  const sessionScopeFor = (practiceNode?: PracticeNode) =>
+    practiceCardScope(
+      cards,
+      links,
+      exposures,
+      {
+        reachedLessonIds: curricularReachedLessonIds,
+        practiceNode,
+        requireExposure: course.learnFirst !== false,
+      },
+      now,
+      course.leechThreshold,
+    );
+  let automaticSessionScope: Card[] | undefined;
   const provisional: Array<
     StudyFlowPracticeState & { manual: boolean; pathIndex: number; nearestAssessmentDate?: number }
   > = [];
@@ -243,19 +233,8 @@ export function buildCourseStudyFlowSnapshot({
       : curricularReachedLessonIds;
     const sessionScope =
       node.nodeType === 'practice-auto'
-        ? curricularScope
-        : practiceCardScope(
-            cards,
-            links,
-            exposures,
-            {
-              reachedLessonIds: curricularReachedLessonIds,
-              practiceNode: node.practiceNode,
-              requireExposure: course.learnFirst !== false,
-            },
-            now,
-            course.leechThreshold,
-          );
+        ? (automaticSessionScope ??= sessionScopeFor())
+        : sessionScopeFor(node.practiceNode);
     const assessmentOptions = assessmentPracticeOptions(assessmentContext, sessionScope);
     const sessionEligibleCount = eligiblePracticePool(
       sessionScope,
@@ -330,6 +309,26 @@ export function buildCourseStudyFlowSnapshot({
     practiceByKey.set(practice.nodeKey, state);
   }
 
+  return { assessmentContext, practiceByKey };
+}
+
+/** Plan a Study session from the authoritative course snapshot. */
+export function buildCourseStudyFlowSnapshot(
+  input: BuildCourseStudyFlowSnapshotInput,
+): CourseStudyFlowSnapshot {
+  const {
+    course,
+    nodes,
+    cards,
+    links,
+    exposures,
+    examDateContext,
+    reviewsToday = 0,
+    now = Date.now(),
+  } = input;
+  const { assessmentContext, practiceByKey } = buildCoursePracticeStates({ ...input, now });
+  const { lessons, priorKnowledgeLessonIds: earlier, reachedLessonIds } = assessmentContext;
+
   // Scheduled reviews cannot be gated by lesson membership or exposure.
   const dueReviewCardIds = new Set(dueReviewPool(cards, course, now).map((card) => card.id));
   const activeManualNodeKeys = new Set(
@@ -378,7 +377,6 @@ export function buildCourseStudyFlowSnapshot({
       now,
       earlier,
       true,
-      activity,
     ).length,
     catchUpPriorityCount: catchUpPracticePool(
       cards,
@@ -389,8 +387,6 @@ export function buildCourseStudyFlowSnapshot({
       reachedLessonIds,
       now,
       earlier,
-      false,
-      activity,
     ).length,
     readiness: buildStudyReadiness({ course, cards, examDateContext, now }),
     archived: course.archived === true,
@@ -402,6 +398,6 @@ export function buildCourseStudyFlowSnapshot({
     examPracticeEligibleCount: examPracticePool(cards, course, examDateContext, now).length,
     cardCount: cards.length,
     dueReviewCardIds,
-    assessmentOptions: recurringAssessmentOptions,
+    assessmentOptions: assessmentPracticeOptions(assessmentContext, cards, false),
   };
 }

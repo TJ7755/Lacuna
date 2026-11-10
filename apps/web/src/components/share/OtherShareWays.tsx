@@ -4,7 +4,6 @@ import QRCode from 'react-qr-code';
 import { referencedAssetHashes } from '../../db/assets';
 import { publishCourse } from '../../db/courseRepository';
 import { exportCardsSimple } from '../../db/export';
-import { buildCourseShareCode, buildCourseShareCodeQR } from '../../db/share';
 import type { Card, Course } from '@lacuna/core/db/types';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { CourseFileExportButton } from '../import/CourseFileControls';
@@ -175,18 +174,18 @@ export function OtherShareControls({
   }
 
   async function createCode() {
-    const result = await run(
-      () => buildCourseShareCode(course.id),
-      'Could not generate a share code.',
-    );
+    const result = await run(async () => {
+      const { buildCourseShareCode } = await import('../../db/share');
+      return buildCourseShareCode(course.id);
+    }, 'Could not generate a share code.');
     if (result !== undefined) setCode(result);
   }
 
   async function createQr() {
-    const result = await run(
-      () => buildCourseShareCodeQR(course.id),
-      'Could not generate a QR code.',
-    );
+    const result = await run(async () => {
+      const { buildCourseShareCodeQR } = await import('../../db/share');
+      return buildCourseShareCodeQR(course.id);
+    }, 'Could not generate a QR code.');
     if (result === undefined) return;
     if (result.length > MAX_QR_ALPHANUMERIC_CHARS) {
       notify(
@@ -215,6 +214,7 @@ export function OtherShareControls({
       // Keep an already-generated code in step with the new revision rather than
       // leaving a stale pre-publish code on screen.
       if (code) {
+        const { buildCourseShareCode } = await import('../../db/share');
         const refreshed = await buildCourseShareCode(course.id);
         if (mounted.current) setCode(refreshed);
       }

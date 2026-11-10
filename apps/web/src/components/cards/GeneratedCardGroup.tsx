@@ -33,7 +33,7 @@ interface GeneratedCardGroupProps {
   linkedCardIds?: ReadonlySet<string>;
   onUnlinkCard?: (card: Card) => void;
   motionMultiplier: number;
-  occlusions?: Occlusion[];
+  occlusionByRegion: ReadonlyMap<string, Occlusion>;
   compactMetadata?: boolean;
 }
 
@@ -55,7 +55,7 @@ export function GeneratedCardGroup({
   linkedCardIds,
   onUnlinkCard,
   motionMultiplier,
-  occlusions,
+  occlusionByRegion,
   compactMetadata,
 }: GeneratedCardGroupProps) {
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
@@ -101,7 +101,7 @@ export function GeneratedCardGroup({
           onUnlinkCard={onUnlinkCard}
           motionMultiplier={motionMultiplier}
           compactMetadata={compactMetadata}
-          occlusions={occlusions}
+          occlusionByRegion={occlusionByRegion}
         />
       </div>
     </div>

@@ -1,9 +1,7 @@
-import { useCourseDataClock } from './useExamClock';
 // Reactive data hooks for the Course / Lesson model. Mirrors useData.ts exactly:
 // useLiveQuery, undefined-while-loading convention, same dependency-array style.
 // Read-only — no write operations live here.
 
-import { computeCourseSummaries, type CourseSummary } from './courseSummaries';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigationCourses } from './CourseNavigationData';
 import { db } from '../db/schema';
@@ -272,45 +270,4 @@ export function useCourseAssessments(courseId: string | undefined): CourseAssess
       courseId ? db.courseAssessments.where('courseId').equals(courseId).sortBy('examDate') : [],
     [courseId],
   );
-}
-
-// ---------------------------------------------------------------------------
-// Summary computation
-// ---------------------------------------------------------------------------
-
-/**
- * Per-course summary statistics for the dashboard, recomputed reactively as
- * courses, lessons, cards or exam dates change.
- */
-export function useCourseSummaries(): Record<string, CourseSummary> | undefined {
-  const [clock, setClockBoundaries] = useCourseDataClock();
-  return useLiveQuery(async () => {
-    const [records, lessons, cards, assessments, concepts, links] = await db.transaction(
-      'r',
-      [db.courses, db.lessons, db.cards, db.courseAssessments, db.concepts, db.lessonCards],
-      () =>
-        Promise.all([
-          db.courses.toArray(),
-          db.lessons.toArray(),
-          db.cards.toArray(),
-          db.courseAssessments.toArray(),
-          db.concepts.toArray(),
-          db.lessonCards.toArray(),
-        ]),
-    );
-    setClockBoundaries({
-      exams: [...lessons, ...assessments].map((row) => row.examDate),
-      burials: cards.map((card) => card.buriedUntil),
-    });
-    return computeCourseSummaries(
-      hydrateCourses(records, assessments),
-      lessons,
-      await hydrateCardsWithHistory(cards),
-      assessments,
-      Date.now(),
-      { links, exposures: [], completions: [] },
-      undefined,
-      concepts,
-    );
-  }, [clock]);
 }

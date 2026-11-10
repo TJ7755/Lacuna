@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useVirtualList } from '../../hooks/useVirtualList';
-import { occlusionForRegionId } from '../../db/occlusionGeneration';
 import type { Card, Occlusion, SchedulerConfig } from '@lacuna/core/db/types';
 import { CardRow } from './CardRow';
-import { useCardSectionEntranceExpired } from './CardSections';
+import { useCardSectionActivity, useCardSectionEntranceExpired } from './CardSections';
 
-const VIRTUAL_THRESHOLD = 20;
+// Moderate image groups can still extend beyond the viewport and decode together.
+const VIRTUAL_THRESHOLD = 12;
 
 /** Longest possible entry animation: the capped stagger plus one row's fade. */
 const INTRO_WINDOW_MS = 420;
@@ -30,7 +30,7 @@ export function CardListBody({
   linkedCardIds,
   onUnlinkCard,
   motionMultiplier,
-  occlusions,
+  occlusionByRegion,
   compactMetadata = false,
 }: {
   cards: Card[];
@@ -48,22 +48,37 @@ export function CardListBody({
   linkedCardIds?: ReadonlySet<string>;
   onUnlinkCard?: (card: Card) => void;
   motionMultiplier: number;
-  /** Occlusions that may own these cards, so occlusion rows can show their diagram. */
-  occlusions?: Occlusion[];
+  occlusionByRegion: ReadonlyMap<string, Occlusion>;
   compactMetadata?: boolean;
 }) {
   const enabled = cards.length > VIRTUAL_THRESHOLD;
-  const occlusionOf = (card: Card) =>
-    card.occlusionRegionId !== undefined && card.occlusionRegionId !== null && occlusions
-      ? occlusionForRegionId(occlusions, card.occlusionRegionId)
-      : undefined;
+  const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
+  const focusedIndex = useMemo(
+    () => (focusedCardId === null ? -1 : cards.findIndex((card) => card.id === focusedCardId)),
+    [cards, focusedCardId],
+  );
+  useCardSectionActivity(focusedIndex !== -1);
+  const pinnedIndices = useMemo(() => {
+    if (!enabled || (focusedIndex === -1 && expandedCardId === null)) return undefined;
+    const expandedIndex =
+      expandedCardId === null ? -1 : cards.findIndex((card) => card.id === expandedCardId);
+    return [focusedIndex, expandedIndex].filter((index) => index >= 0);
+  }, [enabled, cards, focusedIndex, expandedCardId]);
   const { totalHeight, virtualItems, measureRef, containerRef } = useVirtualList({
     itemCount: cards.length,
     estimateSize: 100,
     gap: 4,
     overscan: 5,
     enabled,
+    pinnedIndices,
   });
+
+  useLayoutEffect(() => {
+    // Filtering or crossing the windowing threshold can remove the focused DOM node.
+    if (focusedCardId !== null && !containerRef.current?.contains(document.activeElement)) {
+      setFocusedCardId(null);
+    }
+  }, [containerRef, enabled, focusedCardId, focusedIndex]);
 
   // Cards fade in once, as the list's own entrance, and never again. Scrolling a
   // virtual window is not an entrance: rows revealed by scrolling previously
@@ -102,29 +117,42 @@ export function CardListBody({
       onToggleFlag={onToggleFlag}
       motionMultiplier={motionMultiplier}
       compactMetadata={compactMetadata}
-      occlusion={occlusionOf(card)}
+      occlusion={
+        card.occlusionRegionId === null || card.occlusionRegionId === undefined
+          ? undefined
+          : occlusionByRegion.get(card.occlusionRegionId)
+      }
     />
   );
 
-  if (!enabled) {
-    return <div className="grid gap-1">{cards.map(renderRow)}</div>;
-  }
-
   return (
-    <div ref={containerRef} className="relative" style={{ height: totalHeight }}>
-      {virtualItems.map(({ index, start }, position) => {
-        const card = cards[index];
-        return (
-          <div
-            key={card.id}
-            ref={measureRef(index)}
-            className="absolute left-0 top-0 w-full"
-            style={{ transform: `translateY(${start}px)` }}
-          >
-            {renderRow(card, position)}
-          </div>
-        );
-      })}
+    <div
+      ref={containerRef}
+      className={enabled ? 'relative' : 'grid gap-1'}
+      style={enabled ? { height: totalHeight } : undefined}
+      onFocus={(event) => {
+        const row = event.target.closest<HTMLElement>('[data-card-row]');
+        if (row && event.currentTarget.contains(row)) setFocusedCardId(row.dataset.cardRow ?? null);
+      }}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setFocusedCardId(null);
+      }}
+    >
+      {enabled
+        ? virtualItems.map(({ index, start }, position) => {
+            const card = cards[index];
+            return (
+              <div
+                key={card.id}
+                ref={measureRef(index)}
+                className="absolute left-0 top-0 w-full"
+                style={{ transform: `translateY(${start}px)` }}
+              >
+                {renderRow(card, position)}
+              </div>
+            );
+          })
+        : cards.map(renderRow)}
     </div>
   );
 }

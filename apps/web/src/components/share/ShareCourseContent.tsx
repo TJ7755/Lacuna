@@ -1,5 +1,5 @@
 import type { Course } from '@lacuna/core/db/types';
-import { useCourseCards } from '../../state/useCourseData';
+import { useCourseCardProjections } from '../../state/useCourseData';
 import { OtherShareWaysFrame, OtherShareControls } from './OtherShareWays';
 import { ShareLinkPanel } from './ShareLinkPanel';
 
@@ -17,6 +17,6 @@ export function ShareCourseContent({ course, highlight }: { course: Course; high
 
 function CourseAlternatives({ course }: { course: Course }) {
   // Remount the query with the course so its previous cards cannot be exported.
-  const cards = useCourseCards(course.id);
+  const cards = useCourseCardProjections(course.id);
   return <OtherShareControls course={course} cards={cards} />;
 }

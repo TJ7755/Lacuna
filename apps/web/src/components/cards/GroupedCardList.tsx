@@ -5,8 +5,9 @@ import { CardListBody } from './CardListBody';
 import { GeneratedCardGroup } from './GeneratedCardGroup';
 import { CardSections } from './CardSections';
 
-type GroupedCardListProps = ComponentProps<typeof CardListBody> & {
+type GroupedCardListProps = Omit<ComponentProps<typeof CardListBody>, 'occlusionByRegion'> & {
   sequences?: Sequence[];
+  occlusions?: Occlusion[];
   onEditSequence?: (sequenceId: string) => void;
   onEditOcclusion?: (occlusionId: string) => void;
 };
@@ -46,7 +47,7 @@ export function GroupedCardList({
     owner: { id: string; name: string };
     cards: Card[];
   }
-  const generatedGroups = useMemo(() => {
+  const { generatedGroups, occlusionByRegion } = useMemo(() => {
     const sequenceByItem = new Map<string, Sequence>();
     for (const sequence of sequences ?? [])
       for (const item of sequence.items) {
@@ -92,7 +93,7 @@ export function GroupedCardList({
         (a, b) => (order.get(a.occlusionRegionId!) ?? 0) - (order.get(b.occlusionRegionId!) ?? 0),
       );
     }
-    return [...byOwner.values()];
+    return { generatedGroups: [...byOwner.values()], occlusionByRegion };
   }, [cards, sequences, occlusions]);
 
   const groupedCardIds = useMemo(
@@ -147,7 +148,7 @@ export function GroupedCardList({
                   onUnlinkCard={onUnlinkCard}
                   motionMultiplier={motionMultiplier}
                   compactMetadata={compactMetadata}
-                  occlusions={occlusions}
+                  occlusionByRegion={occlusionByRegion}
                 />
               ) : (
                 <CardListBody
@@ -167,7 +168,7 @@ export function GroupedCardList({
                   onUnlinkCard={onUnlinkCard}
                   motionMultiplier={motionMultiplier}
                   compactMetadata={compactMetadata}
-                  occlusions={occlusions}
+                  occlusionByRegion={occlusionByRegion}
                 />
               )
             }

@@ -1,5 +1,5 @@
 import { buttonClassName } from '../components/ui/buttonStyles';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
@@ -9,7 +9,8 @@ import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { Menu } from '../components/ui/Menu';
 import { SectionCard } from '../components/ui/SectionCard';
 import type { Course } from '@lacuna/core/db/types';
-import { useCourses, useCourseSummaries } from '../state/useCourseData';
+import { useNavigationCourses } from '../state/CourseNavigationData';
+import { useSidebarData } from '../state/useCourseData';
 import { countOf } from '../utils/plural';
 
 /**
@@ -32,8 +33,12 @@ export function defaultShareCourse(
 
 /** Share one course: a link by default, with a file, code, QR code or text as alternatives. */
 export function SharePage() {
-  const courses = useCourses();
-  const summaries = useCourseSummaries();
+  const navigationCourses = useNavigationCourses();
+  const courses = useMemo(
+    () => navigationCourses?.toSorted((left, right) => left.createdAt - right.createdAt),
+    [navigationCourses],
+  );
+  const summaries = useSidebarData()?.summaries;
   const [searchParams] = useSearchParams();
   const [chosenId, setChosenId] = useState<string | null>(() => searchParams.get('courseId'));
   const course = courses ? defaultShareCourse(courses, chosenId) : undefined;

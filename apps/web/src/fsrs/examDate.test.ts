@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeExamDateContext, resolveCardExamDate } from './examDate';
+import { makeExamDateContext, resolveCardExamDate, resolveCardExamDates } from './examDate';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, Course, CourseAssessment, Lesson } from '@lacuna/core/db/types';
 import type { Concept } from '@lacuna/core/questions/types';
@@ -191,6 +191,35 @@ describe('resolveCardExamDate', () => {
     expect(resolveCardExamDate(makeCard(), ctx, NOW)).toBe(course.examDate);
   });
 
+  it('resolves a batch in input order with linked coverage, exclusions and lesson overrides', () => {
+    const course = makeCourse();
+    const override = makeLesson({ id: 'override', orderIndex: 1, examDate: NOW + 80 * MS_PER_DAY });
+    const near = makeExamDate({
+      examDate: NOW + 10 * MS_PER_DAY,
+      excludedCardIds: ['c1'],
+    });
+    const far = makeExamDate({ id: 'far', examDate: NOW + 40 * MS_PER_DAY });
+    const ctx = makeExamDateContext(
+      course,
+      [makeLesson(), override],
+      [far, near],
+      [{ id: 'link', lessonId: 'lesson1', cardId: 'linked', createdAt: NOW, updatedAt: NOW }],
+    );
+    const cards = [
+      makeCard(),
+      makeCard({ id: 'override-card', primaryLessonId: override.id }),
+      makeCard({ id: 'linked', primaryLessonId: null }),
+      makeCard({ id: 'unassigned', primaryLessonId: null }),
+    ];
+
+    expect(resolveCardExamDates(cards, ctx, NOW)).toEqual([
+      far.examDate,
+      override.examDate,
+      near.examDate,
+      course.examDate,
+    ]);
+  });
+
   it('advances shared knowledge through its papers and maintains recall after the last one', () => {
     const course = makeCourse({
       specificationRef: paperSpecificationReference,
@@ -267,7 +296,7 @@ describe('resolveCardExamDate', () => {
     }));
     const ctx = makeExamDateContext(course, [makeLesson()], [first, final], [], concepts);
 
-    expect(cards.map((card) => resolveCardExamDate(card, ctx, NOW))).toEqual([
+    expect(resolveCardExamDates(cards, ctx, NOW)).toEqual([
       first.examDate,
       final.examDate,
       undefined,

@@ -332,7 +332,7 @@ describe('CardsPage', () => {
     ).toEqual(order);
   });
 
-  it('bounds mounted lesson sections even when each lesson is below the row virtualisation threshold', () => {
+  it('bounds mounted lesson sections even when each lesson is below the row virtualisation threshold', async () => {
     mockCourse = course;
     mockLessons = Array.from({ length: 100 }, (_, index) => ({
       ...lesson1,
@@ -352,6 +352,7 @@ describe('CardsPage', () => {
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search all cards' }), {
       target: { value: 'deck:"Topic 99"' },
     });
+    expect(await screen.findByText('1 card')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Topic 99/ })).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(1);
   });
@@ -421,7 +422,29 @@ describe('CardsPage', () => {
     expect(screen.getByText('Card editor')).toBeInTheDocument();
   });
 
-  it('filters cards by search text', () => {
+  it('keeps the search input responsive while an embedded-image deck is searched', async () => {
+    mockCourse = course;
+    mockLessons = [];
+    const image = 'A'.repeat(300_000);
+    mockCards = Array.from({ length: 200 }, (_, index) =>
+      makeCard({
+        id: String(index),
+        front: `Recall image ${index}\n\n![Diagram](data:image/png;base64,${image})`,
+      }),
+    );
+    renderPage();
+
+    const input = screen.getByRole('searchbox', { name: 'Search all cards' });
+    fireEvent.change(input, { target: { value: 'Recall image 198' } });
+    expect(input).toHaveValue('Recall image 198');
+    expect(screen.getByText('200 cards')).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'Recall image 199' } });
+    expect(await screen.findByText('1 card')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit card 199' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit card 198' })).not.toBeInTheDocument();
+  });
+  it('filters cards by search text', async () => {
     mockCourse = course;
     mockLessons = [lesson1];
     mockCards = [
@@ -432,6 +455,7 @@ describe('CardsPage', () => {
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search all cards' }), {
       target: { value: 'apple' },
     });
+    expect(await screen.findByText('1 card')).toBeInTheDocument();
     expect(screen.getByTestId('card-list-count').textContent).toBe('1');
   });
 
@@ -500,7 +524,7 @@ describe('CardsPage', () => {
     },
   ])(
     'keeps the latest search and filters when editing a $owner',
-    ({ primaryLessonId, editLabel, destination }) => {
+    async ({ primaryLessonId, editLabel, destination }) => {
       mockCourse = course;
       mockLessons = [lesson1];
       mockCards = [makeCard({ id: 'c1', primaryLessonId, front: 'Apple', flagged: true })];
@@ -510,7 +534,7 @@ describe('CardsPage', () => {
         target: { value: 'apple' },
       });
       fireEvent.click(screen.getByRole('button', { name: /Flagged/ }));
-      fireEvent.click(screen.getByRole('button', { name: editLabel }));
+      fireEvent.click(await screen.findByRole('button', { name: editLabel }));
 
       expect(screen.getByTestId('editor-path')).toHaveTextContent(destination);
       expect(screen.getByTestId('editor-origin')).toHaveTextContent(
@@ -519,7 +543,7 @@ describe('CardsPage', () => {
     },
   );
 
-  it('finds course cards through the shared tag syntax and restores shortcut focus', () => {
+  it('finds course cards through the shared tag syntax and restores shortcut focus', async () => {
     mockCourse = course;
     mockLessons = [lesson1];
     mockCards = [
@@ -527,12 +551,13 @@ describe('CardsPage', () => {
       makeCard({ id: 'c2', primaryLessonId: 'lesson-1', front: 'Stone', tags: ['mineral'] }),
     ];
     renderPage();
-    const trigger = screen.getAllByText('New card')[0];
+    const trigger = screen.getByRole('button', { name: 'Edit card c1' });
     trigger.focus();
     fireEvent.keyDown(trigger, { key: 'f', ctrlKey: true });
     const input = screen.getByRole('searchbox', { name: 'Search all cards' });
     expect(input).toHaveFocus();
     fireEvent.change(input, { target: { value: 'tag:fruit' } });
+    expect(await screen.findByText('1 card')).toBeInTheDocument();
     expect(screen.getByTestId('card-list-count').textContent).toBe('1');
     fireEvent.keyDown(input, { key: 'Escape' });
     expect(input).toHaveValue('');
@@ -572,10 +597,14 @@ describe('CardsPage', () => {
     expect(screen.getByTestId('card-list-count').textContent).toBe('1');
   });
 
-  it('restores search and filters from the address, so a return keeps them', () => {
+  it('applies restored search and filters before showing any actionable results', async () => {
     mockCourse = course;
     mockLessons = [lesson1];
-    mockCards = [makeCard({ id: 'c1', primaryLessonId: 'lesson-1' })];
+    mockCards = [
+      makeCard({ id: 'c1', primaryLessonId: lesson1.id, due: 1 }),
+      makeCard({ id: 'c2', primaryLessonId: lesson1.id, due: 1, front: 'Supply' }),
+      makeCard({ id: 'c3', primaryLessonId: lesson1.id, front: 'Supply' }),
+    ];
     renderPage('/course/course-1/cards?q=supply&f=due');
     expect(screen.getByRole('searchbox', { name: 'Search all cards' })).toHaveValue('supply');
     expect(
@@ -583,5 +612,9 @@ describe('CardsPage', () => {
         name: /Due/,
       }),
     ).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByTestId('card-list')).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Edit card c2' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit card c1' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit card c3' })).not.toBeInTheDocument();
   });
 });

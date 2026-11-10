@@ -6,11 +6,6 @@ import { HOSTED_SERVICE_ORIGIN } from '../../config/origins';
 import type { Course } from '@lacuna/core/db/types';
 import { formatShareLink } from '../../shareLinks/client';
 import { readShareCredentials } from '../../shareLinks/credentials';
-import {
-  publishShareLink,
-  ShareLinkNeedsReplacementError,
-  unpublishShareLink,
-} from '../../shareLinks/publish';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { Button } from '../ui/Button';
 import { buttonClassName } from '../ui/buttonStyles';
@@ -159,9 +154,15 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
     actionFocus.remember();
     setBusy(true);
     try {
-      const result = replaceLink
-        ? await publishShareLink(course.id, { replaceLink: true })
-        : await publishShareLink(course.id);
+      const { publishShareLink, ShareLinkNeedsReplacementError } =
+        await import('../../shareLinks/publish');
+      const request = replaceLink
+        ? publishShareLink(course.id, { replaceLink: true })
+        : publishShareLink(course.id);
+      const result = await request.catch((error: unknown) => {
+        if (mounted.current && error instanceof ShareLinkNeedsReplacementError) setManaged(false);
+        throw error;
+      });
       recordUsageAction('share-completed');
       if (!mounted.current) return;
       const created = link === null || replaceLink;
@@ -175,11 +176,6 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
       );
     } catch (error) {
       if (!mounted.current) return;
-      if (error instanceof ShareLinkNeedsReplacementError) {
-        setManaged(false);
-        notify(error.message, 'negative');
-        return;
-      }
       notify(error instanceof Error ? error.message : 'Could not create a share link.', 'negative');
     } finally {
       if (mounted.current) setBusy(false);
@@ -191,6 +187,7 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
     setConfirmingStop(false);
     setBusy(true);
     try {
+      const { unpublishShareLink } = await import('../../shareLinks/publish');
       await unpublishShareLink(course.id);
       if (!mounted.current) return;
       setLink(null);

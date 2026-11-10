@@ -26,7 +26,7 @@ import {
 } from './onboarding/onboardingState';
 import { replacementLifecycle } from './db/replacementLifecycle';
 import { scheduleBackgroundWork } from './routes/idlePrefetch';
-import { usageAnalyticsAvailable } from './usage/preference';
+import { readUsagePreference, usageAnalyticsAvailable } from './usage/preference';
 import { claimRouteImportFailure } from './pwa/routeImportFailures';
 
 export { router } from './routes/router';
@@ -91,6 +91,9 @@ function isPublicEntry(hash: string): boolean {
 export function App() {
   const [ready, setReady] = useState(false);
   const [initError, setInitError] = useState<Exclude<DbOpenResult, { ok: true }> | null>(null);
+  const [startupUsagePreference] = useState(() =>
+    usageAnalyticsAvailable() ? readUsagePreference() : null,
+  );
   const initStarted = useRef(false);
 
   useEffect(() => replacementLifecycle.register(relayAiDeviceStateParticipant), []);
@@ -260,6 +263,9 @@ export function App() {
 
   if (!ready) return <StartingApp />;
 
+  // First-time consent still opens before the learner can interact. With a saved
+  // choice, an optional analytics download should never delay the learner app.
+  const waitForConsent = startupUsagePreference === 'unset';
   const learnerApp = (
     <>
       <RouterWithQuotaWarning />
@@ -283,13 +289,12 @@ export function App() {
                   <McpBridgeController />
                 </Suspense>
               )}
-              {usageAnalyticsAvailable() ? (
-                <Suspense fallback={<StartingApp />}>
-                  <HostedUsageAnalytics>{learnerApp}</HostedUsageAnalytics>
+              {startupUsagePreference !== null && (
+                <Suspense fallback={waitForConsent ? <StartingApp /> : null}>
+                  <HostedUsageAnalytics>{waitForConsent ? learnerApp : null}</HostedUsageAnalytics>
                 </Suspense>
-              ) : (
-                learnerApp
               )}
+              {!waitForConsent && learnerApp}
             </ToastProvider>
           </FontScaleProvider>
         </AccentProvider>

@@ -92,7 +92,7 @@ export function CoursePath() {
     lessonCardsById,
     now,
     examDateContext,
-    studyFlowSnapshot,
+    dueReviewCardIds,
     practiceProgressByKey,
     visibleNodes,
   } = useCoursePathData(records);
@@ -210,8 +210,7 @@ export function CoursePath() {
     </AnimatePresence>
   );
 
-  const dueReviewCardIds = studyFlowSnapshot?.dueReviewCardIds;
-  const dueCardCount = dueReviewCardIds?.size ?? 0;
+  const dueCardCount = dueReviewCardIds.size;
   // Course cards reviewed since the start of today fill the ring beside Study.
   const todayStart = startOfDay(now, course.timeZone);
   const doneToday = (courseCards ?? []).filter(
@@ -239,7 +238,7 @@ export function CoursePath() {
     const cards = lessonCardsById.get(lessonId) ?? [];
     return {
       cardCount: cards.length,
-      dueCount: cards.filter((card) => dueReviewCardIds?.has(card.id)).length,
+      dueCount: cards.filter((card) => dueReviewCardIds.has(card.id)).length,
       masteryPct: Math.round(progressValue(cards, course, now, examDateContext) * 100),
     };
   };

@@ -11,7 +11,7 @@
 //    the deck's exam-day trajectory stays honest while a session paces new material.
 
 import { startOfDay } from '../utils/datetime';
-import { resolveCardExamDate, type ExamDateContext } from './examDate';
+import { resolveCardExamDates, type ExamDateContext } from './examDate';
 import { simContext } from './forwardSim';
 import { worthwhileAssessmentPractice } from './assessmentTiming';
 import { makeEngine } from './fsrs';
@@ -97,9 +97,10 @@ export function eligiblePracticePool(
 ): Card[] {
   if (course.archived) return [];
   const ctx = simContext(course, makeEngine(course.fsrsParameters));
-  return scope.filter((card) => {
-    if (!isAvailable(card, now)) return false;
-    const examDate = resolveCardExamDate(card, examDateContext, now);
+  const available = availableCards(scope, now);
+  const dates = resolveCardExamDates(available, examDateContext, now);
+  return available.filter((card, index) => {
+    const examDate = dates[index];
     if (examDate === undefined || examDate < now) {
       return card.state === 0 || (card.due !== null && card.due <= now);
     }
@@ -119,8 +120,16 @@ export function examPracticePool(
   examDateContext: ExamDateContext,
   now: number = Date.now(),
 ): Card[] {
-  return eligiblePracticePool(cards, course, examDateContext, now).filter((card) => {
-    const examDate = resolveCardExamDate(card, examDateContext, now);
-    return examDate !== undefined && examDate >= now;
+  if (course.archived) return [];
+  const ctx = simContext(course, makeEngine(course.fsrsParameters));
+  const available = availableCards(cards, now);
+  const dates = resolveCardExamDates(available, examDateContext, now);
+  return available.filter((card, index) => {
+    const examDate = dates[index];
+    return (
+      examDate !== undefined &&
+      examDate >= now &&
+      (card.state === 0 || worthwhileAssessmentPractice(card, examDate, now, ctx))
+    );
   });
 }

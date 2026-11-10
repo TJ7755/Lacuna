@@ -41,20 +41,19 @@ export function makeExamDateContext(
   };
 }
 
-/** Whether the authoritative assessment coverage contains this Card. */
-function assessmentApplies(
+function assessmentCards(
   assessment: CourseAssessment,
-  card: Card,
+  cards: Card[],
   ctx: ExamDateContext,
-): boolean {
+): Card[] {
   return resolveAssessmentCoverage(
     assessment,
     [...ctx.lessonsById.values()],
-    [card],
+    cards,
     ctx.lessonCardLinks ?? [],
     ctx.preferredLessonIds,
     ctx.specificationContext,
-  ).cards.some((coveredCard) => coveredCard.id === card.id);
+  ).cards;
 }
 
 /**
@@ -65,6 +64,38 @@ export function resolveCardExamDate(
   card: Card,
   ctx: ExamDateContext,
   now: number = Date.now(),
+): number | undefined {
+  return findCardExamDate(
+    card,
+    ctx,
+    now,
+    (assessment) => assessmentCards(assessment, [card], ctx).length > 0,
+  );
+}
+
+/** Resolve dates in Card order, sharing each assessment's coverage within this calculation. */
+export function resolveCardExamDates(
+  cards: Card[],
+  ctx: ExamDateContext,
+  now: number,
+): (number | undefined)[] {
+  const coverage = new Map<CourseAssessment, Set<Card>>();
+  function applies(assessment: CourseAssessment, card: Card) {
+    let covered = coverage.get(assessment);
+    if (!covered) {
+      covered = new Set(assessmentCards(assessment, cards, ctx));
+      coverage.set(assessment, covered);
+    }
+    return covered.has(card);
+  }
+  return cards.map((card) => findCardExamDate(card, ctx, now, applies));
+}
+
+function findCardExamDate(
+  card: Card,
+  ctx: ExamDateContext,
+  now: number,
+  applies: (assessment: CourseAssessment, card: Card) => boolean,
 ): number | undefined {
   // 1. An upcoming lesson override wins.
   if (card.primaryLessonId !== null && card.primaryLessonId !== undefined) {
@@ -86,7 +117,7 @@ export function resolveCardExamDate(
     ) {
       continue;
     }
-    if (!assessmentApplies(assessment, card, ctx)) continue;
+    if (!applies(assessment, card)) continue;
     if (nearest === undefined || assessment.examDate < nearest) {
       nearest = assessment.examDate;
     }

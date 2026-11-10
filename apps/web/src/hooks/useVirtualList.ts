@@ -88,9 +88,9 @@ export function useVirtualList({
         raf = null;
         const rect = el.getBoundingClientRect();
         const rootRect =
-          root instanceof Window
-            ? { top: 0, bottom: window.innerHeight, height: window.innerHeight }
-            : root.getBoundingClientRect();
+          root instanceof HTMLElement
+            ? root.getBoundingClientRect()
+            : { top: 0, height: window.innerHeight };
         // Keep negative offsets: later lesson lists can sit below the viewport.
         // Clamping to zero gives every off-screen list a full viewport of rows.
         const offset = rootRect.top - rect.top;
@@ -234,8 +234,16 @@ export function useVirtualList({
 
     const items: VirtualItem[] = [];
     const indices = new Set<number>();
+    // A section can contain hundreds of rows. Count-based overscan alone can
+    // start rendering its image groups screens before they are needed.
+    const overscanDistance = Math.min(overscan * estimateSize, containerHeight);
     for (let i = startIndex; i <= endIndex; i++) {
-      indices.add(i);
+      if (
+        starts[i] <= endOffset + overscanDistance &&
+        starts[i] + heights[i] >= startOffset - overscanDistance
+      ) {
+        indices.add(i);
+      }
     }
     for (const index of pinnedIndices ?? []) {
       if (index >= 0 && index < itemCount) indices.add(index);
@@ -250,7 +258,17 @@ export function useVirtualList({
     }
 
     return items;
-  }, [enabled, itemCount, starts, heights, overscan, scrollOffset, containerHeight, pinnedIndices]);
+  }, [
+    enabled,
+    itemCount,
+    starts,
+    heights,
+    overscan,
+    scrollOffset,
+    containerHeight,
+    pinnedIndices,
+    estimateSize,
+  ]);
 
   const scrollToIndex = useCallback(
     (index: number) => {
@@ -260,13 +278,13 @@ export function useVirtualList({
       for (let i = 0; i < index; i++) {
         offset += (itemHeights.current[i] ?? estimateSize) + gap;
       }
-      const containerTop = el.getBoundingClientRect().top + window.scrollY;
+      const top = el.getBoundingClientRect().top;
       const root = scrollParent(el);
-      if (root instanceof Window) {
-        window.scrollTo({ top: containerTop + offset, behavior: 'smooth' });
-      } else {
-        const relativeTop = el.getBoundingClientRect().top - root.getBoundingClientRect().top;
+      if (root instanceof HTMLElement) {
+        const relativeTop = top - root.getBoundingClientRect().top;
         root.scrollTo({ top: root.scrollTop + relativeTop + offset, behavior: 'smooth' });
+      } else {
+        window.scrollTo({ top: top + window.scrollY + offset, behavior: 'smooth' });
       }
     },
     [estimateSize, gap],
