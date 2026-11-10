@@ -282,7 +282,7 @@ jobs:
         electron-macos-smoke,
       ]
     if: ${{ always() && !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Verify test jobs passed
         env:
@@ -618,6 +618,68 @@ jobs:
           path: artifacts/browser-checks/
           if-no-files-found: ignore
 
+  # Start the longest timing case before the functional matrix competes for runners.
+  browser-image-timing:
+    name: browser-timing (chromium-image-performance, 1, 1)
+    runs-on: ubuntu-24.04
+    env:
+      LACUNA_BROWSER_PREBUILT: 'true'
+    steps:
+      - *scope-checkout
+      - *classify-scope
+      - uses: ./.github/actions/setup-node
+        if: &image-scope (github.event_name != 'pull_request' || steps.scope.outputs.browser_ci != 'false') && (steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false')
+        with:
+          node-version: '24.22.1'
+      - uses: ./.github/actions/setup-bun
+        if: *image-scope
+        with:
+          cache-packages: 'false'
+      - name: Require the current production web build
+        if: *image-scope
+        id: web-dist
+        background: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci-wait-for-renderer.mjs web
+      - run: bun install --frozen-lockfile
+        if: *image-scope
+      - run: bunx --no-install playwright install --only-shell chromium
+        if: *image-scope
+      - name: Cache the deterministic image fixture
+        if: *image-scope
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/lacuna-study-images-v1
+          key: study-images-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'tests/e2e/fixtures/largeStudyImages.ts') }}
+      - name: Prepare original-sized study images
+        if: *image-scope
+        env:
+          STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
+        run: bun -e 'import { largeStudyImages } from "./tests/e2e/fixtures/largeStudyImages"; await largeStudyImages()'
+      - wait: web-dist
+      - name: Download production web build ${{ steps.web-dist.outputs.artifact_id }}
+        if: *image-scope
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
+          path: dist/
+      - run: node scripts/ci-browser-shards.mjs timing --project=chromium-image-performance --workers=1 --retries=1 --max-failures=1 --shard=1/1
+        if: *image-scope
+        env:
+          CI_PEER_JOB_TOKEN: ${{ github.token }}
+          STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
+      - name: Preserve browser timing evidence
+        if: always() && ((github.event_name != 'pull_request' || steps.scope.outputs.browser_ci != 'false') && (steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'))
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-results-chromium-image-performance-1
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
   # Timing cases run serially on each runner without competing functional workers.
   browser-timing:
     name: browser-timing (${{ matrix.project }}, ${{ matrix.shard }}, ${{ matrix.total }})
@@ -630,9 +692,6 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - project: chromium-image-performance
-            shard: 1
-            total: 1
           - project: chromium-study-performance
             shard: 1
             total: 3
@@ -655,23 +714,11 @@ jobs:
       - *require-web-build
       - run: bun install --frozen-lockfile
       - run: bunx --no-install playwright install --only-shell chromium
-      - name: Cache the deterministic image fixture
-        if: matrix.project == 'chromium-image-performance'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ runner.temp }}/lacuna-study-images-v1
-          key: study-images-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'tests/e2e/fixtures/largeStudyImages.ts') }}
-      - name: Prepare original-sized study images
-        if: matrix.project == 'chromium-image-performance'
-        env:
-          STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
-        run: bun -e 'import { largeStudyImages } from "./tests/e2e/fixtures/largeStudyImages"; await largeStudyImages()'
       - wait: web-dist
       - *download-web-build
-      - run: node scripts/ci-browser-shards.mjs timing --project=${{ matrix.project }} --workers=1 --retries=${{ matrix.project == 'chromium-image-performance' && '1' || '0' }} --max-failures=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
+      - run: node scripts/ci-browser-shards.mjs timing --project=${{ matrix.project }} --workers=1 --retries=0 --max-failures=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
         env:
           CI_PEER_JOB_TOKEN: ${{ github.token }}
-          STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
       - name: Preserve browser timing evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -693,11 +740,12 @@ jobs:
         browser-pr,
         browser-tests,
         browser-tests-late,
+        browser-image-timing,
         browser-timing,
         browser-standalone,
       ]
     if: ${{ always() && !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Require all browser jobs
         env:
@@ -714,6 +762,7 @@ jobs:
           PR_RESULT: ${{ needs.browser-pr.result }}
           RESULT: ${{ needs.browser-tests.result }}
           LATE_RESULT: ${{ needs.browser-tests-late.result }}
+          IMAGE_TIMING_RESULT: ${{ needs.browser-image-timing.result }}
           TIMING_RESULT: ${{ needs.browser-timing.result }}
           STANDALONE_RESULT: ${{ needs.browser-standalone.result }}
         run: |
@@ -737,11 +786,12 @@ jobs:
             echo "- Pull-request smoke: $PR_RESULT"
             echo "- Functional shards: $RESULT"
             echo "- Later functional shards: $LATE_RESULT"
-            echo "- Isolated timing projects: $TIMING_RESULT"
+            echo "- Image timing: $IMAGE_TIMING_RESULT"
+            echo "- Study timing: $TIMING_RESULT"
             echo "- Standalone sites: $STANDALONE_RESULT"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$LATE_RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$STANDALONE"; then
-            echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT late=$LATE_RESULT timing=$TIMING_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
+          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$LATE_RESULT" "$FULL_WEB" || ! ok "$IMAGE_TIMING_RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$STANDALONE"; then
+            echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT late=$LATE_RESULT images=$IMAGE_TIMING_RESULT timing=$TIMING_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -826,7 +876,7 @@ jobs:
     name: electron-ai
     needs: [changes, electron-renderer, electron-ai-tests, windows-installed-upgrade]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Require Windows AI and installer evidence
         env:
@@ -897,6 +947,14 @@ jobs:
         if: steps.scope.outputs.windows_native != 'false'
         with:
           node-version: '24.22.1'
+      - name: Download the pinned Windows upgrade baseline
+        if: steps.scope.outputs.windows_native != 'false'
+        id: baseline
+        background: true
+        timeout-minutes: 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }} --prefetch-baseline
       - uses: ./.github/actions/setup-bun
         if: steps.scope.outputs.windows_native != 'false'
       - parallel:
@@ -938,9 +996,8 @@ jobs:
               path: dist/
       - name: Build and audit the NSIS installer while preparing the upgrade baseline
         if: steps.scope.outputs.windows_native != 'false'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }}
+        run: node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }} --use-prefetched-baseline
+      - wait: baseline
 
       - name: Preserve installed upgrade evidence
         if: always() && steps.scope.outputs.windows_native != 'false'
