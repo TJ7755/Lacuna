@@ -1,24 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
-import { chooseRecallPractice, createCourse, openEmptyDashboard } from './fixtures/lacunaApp';
+import { chooseRecallPractice } from './fixtures/lacunaApp';
+import { seedStudyCards } from './fixtures/studyCards';
 
 test.use({ hasTouch: true });
 
 async function startStudy(page: Page) {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await openEmptyDashboard(page);
-  await createCourse(page, 'Card glide');
-  await page.getByRole('button', { name: 'Edit mode' }).click();
-  for (const front of ['Glide one', 'Glide two', 'Glide three']) {
-    await page.getByRole('button', { name: 'New card', exact: true }).first().click();
-    await page.getByRole('textbox', { name: 'Front' }).fill(front);
-    await page.getByRole('textbox', { name: 'Back' }).fill('Glide answer');
-    await page.getByRole('button', { name: 'Add card', exact: true }).click();
-    await expect(page).not.toHaveURL(/\/cards\/new$/);
-  }
-  await page
-    .getByRole('navigation', { name: 'Course sections' })
-    .getByRole('link', { name: 'Path', exact: true })
-    .click();
+  const { courseId } = await seedStudyCards(
+    page,
+    'Card glide',
+    ['Glide one', 'Glide two', 'Glide three'].map((front) => [front, 'Glide answer']),
+  );
+  await page.goto(`/#/course/${courseId}`);
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseRecallPractice(page);
   await page.setViewportSize({ width: 390, height: 900 });

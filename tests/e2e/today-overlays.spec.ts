@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna, importWelcomeCourse, openImport } from './fixtures/lacunaApp';
+import { enterFreshLacuna, enterWithWelcomeCourse, openImport } from './fixtures/lacunaApp';
 import { settle } from './fixtures/flowEvidence';
 
 test.use({ serviceWorkers: 'block', viewport: { width: 1280, height: 600 } });
@@ -32,8 +32,7 @@ test('short Today creation and import show their initial choices without scrolli
 
 test('an open course menu stays usable after the desktop window narrows', async ({ page }) => {
   await page.setViewportSize({ width: 1470, height: 956 });
-  await enterFreshLacuna(page);
-  await importWelcomeCourse(page);
+  await enterWithWelcomeCourse(page);
   await page.getByRole('button', { name: 'More for Welcome to Lacuna' }).click();
   const archive = page.getByRole('menuitem', { name: 'Archive', exact: true });
   await expect(archive).toBeVisible();
@@ -44,8 +43,7 @@ test('an open course menu stays usable after the desktop window narrows', async 
 });
 
 test('course actions remain usable when an optional action download fails', async ({ page }) => {
-  await enterFreshLacuna(page);
-  await importWelcomeCourse(page);
+  await enterWithWelcomeCourse(page);
   await page.route('**/assets/CourseActions-*.js', (route) => route.abort());
   await page.reload();
   const more = page.getByRole('button', { name: 'More for Welcome to Lacuna' });
@@ -61,8 +59,7 @@ test('course actions remain usable when an optional action download fails', asyn
 test('an expanded multi-course forecast fits its surface in a short desktop window', async ({
   page,
 }) => {
-  await enterFreshLacuna(page);
-  await importWelcomeCourse(page);
+  await enterWithWelcomeCourse(page);
   const template = readFileSync(
     new URL('./fixtures/welcome-course.lacuna', import.meta.url),
     'utf8',

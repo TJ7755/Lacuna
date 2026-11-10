@@ -20,6 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      relay: ${{ steps.relay.outcome }}
+      handwriting: ${{ steps.handwriting.outcome }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -29,43 +32,52 @@ jobs:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
-      - run: bun audit --audit-level=high
+      # Keep all three results, even when an earlier audit reports a vulnerability.
+      - name: Audit root dependencies
+        id: root
+        continue-on-error: true
+        run: bun audit --audit-level=high
+      - name: Audit relay dependencies
+        id: relay
+        continue-on-error: true
+        run: bun audit --audit-level=high
+        working-directory: apps/relay
+      - name: Audit handwriting dependencies
+        id: handwriting
+        continue-on-error: true
+        run: bun audit --audit-level=high
+        working-directory: tooling/handwriting-maths
+      - name: Require a passing root audit
+        if: ${{ !cancelled() }}
+        env:
+          AUDIT_OUTCOME: ${{ steps.root.outcome }}
+        run: &require-audit |
+          if [ "$AUDIT_OUTCOME" != success ]; then
+            echo "Dependency audit did not pass: ${AUDIT_OUTCOME:-missing outcome}"
+            exit 1
+          fi
 
   audit-relay:
+    needs: audit-root
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    permissions: {}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-node
-        with:
-          node-version: '24.22.1'
-      - uses: ./.github/actions/setup-bun
-        with:
-          cache-dependency-path: bun.lock
-      - run: bun install --frozen-lockfile
-      - run: bun audit --audit-level=high
-        working-directory: apps/relay
+      - name: Require a passing relay audit
+        env:
+          AUDIT_OUTCOME: ${{ needs.audit-root.outputs.relay }}
+        run: *require-audit
 
   audit-handwriting:
+    needs: audit-root
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    permissions: {}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-node
-        with:
-          node-version: '24.22.1'
-      - uses: ./.github/actions/setup-bun
-        with:
-          cache-dependency-path: bun.lock
-      - run: bun install --frozen-lockfile
-      - run: bun audit --audit-level=high
-        working-directory: tooling/handwriting-maths
+      - name: Require a passing handwriting audit
+        env:
+          AUDIT_OUTCOME: ${{ needs.audit-root.outputs.handwriting }}
+        run: *require-audit
 
   codeql:
     name: CodeQL (${{ matrix.language }})

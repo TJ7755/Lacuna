@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
 import webConfig from './playwright.web.config';
 
@@ -11,6 +12,19 @@ const studySession = '**/study-session-load.spec.ts';
 // Functional workers stay separate from serial timing cases. Preserve ordinary local coverage.
 export default defineConfig({
   ...webConfig,
+  reporter: process.env.CI
+    ? webConfig.reporter
+    : [
+        ['list'],
+        [
+          'json',
+          {
+            outputFile: fileURLToPath(
+              new URL('../../test-results/browser-results.json', import.meta.url),
+            ),
+          },
+        ],
+      ],
   projects: [
     {
       ...chromium,

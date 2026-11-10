@@ -705,7 +705,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
   const all = workers.filter((name) => !postMerge.includes(name));
   function runs(name, event_name, outputs) {
     const job = workflow.jobs[name];
-    const predicate = ['web-build', 'electron-renderer'].includes(name)
+    const predicate = ['web-build', 'electron-renderer', 'windows-installed-upgrade'].includes(name)
       ? job.steps[2].if
       : required.includes(name)
         ? job.steps[1].if
@@ -790,7 +790,8 @@ test('Windows evidence is selected conservatively on PRs and pushes', () => {
   assert.equal(ai.needs, 'changes');
   assert.equal(renderer.needs, undefined);
   assert.deepEqual(renderer.steps.slice(0, 2), workflow.jobs.changes.steps);
-  assert.equal(upgrade.needs, 'changes');
+  assert.equal(upgrade.needs, undefined);
+  assert.deepEqual(upgrade.steps.slice(0, 2), workflow.jobs.changes.steps);
   for (const event_name of ['pull_request', 'push']) {
     for (const flag of ['true', 'false', '', undefined, 'unknown']) {
       const context = {
@@ -803,7 +804,8 @@ test('Windows evidence is selected conservatively on PRs and pushes', () => {
       for (const step of renderer.steps.slice(2))
         assert.equal(runInNewContext(step.if, context), affected);
       assert.equal(runInNewContext(ai.if, context), affected);
-      assert.equal(runInNewContext(upgrade.if, context), affected);
+      for (const step of upgrade.steps.slice(2))
+        assert.equal(runInNewContext(step.if, context), affected);
     }
   }
 });
@@ -929,7 +931,7 @@ test('Windows upgrade scenarios retain both probes on isolated runners with the 
   assert.equal(producer.with.name, 'windows-electron-renderer-${{ github.run_attempt }}');
   assert.equal(producer.with.overwrite, undefined);
   const evidence = job.steps.find((step) => step.name === 'Preserve installed upgrade evidence');
-  assert.equal(evidence.if, 'always()');
+  assert.equal(evidence.if, "always() && steps.scope.outputs.windows_native != 'false'");
   assert.equal(evidence.with.name, 'windows-installed-upgrade-results-${{ matrix.probe }}');
   const coordinator = readFileSync(new URL('./windows-ci-upgrade.mjs', import.meta.url), 'utf8');
   for (const contract of [

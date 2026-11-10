@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
@@ -236,8 +236,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     mkdirSync(evidence, { recursive: true });
     const list = resolve(evidence, 'functional-shard.txt');
     writeFileSync(list, selected.files.map((file) => `[${project}] > ${file}`).join('\n'));
-    // Verify selection against Playwright before running every case in these files.
-    verifyInventory(selected.tests, inventory(listTests(['--test-list', list])));
     writeFileSync(
       resolve(evidence, 'functional-shard-plan.json'),
       JSON.stringify(
@@ -255,7 +253,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
         2,
       ),
     );
-    process.exitCode = await runPlaywright([
+    const reportPath = resolve('test-results/browser-results.json');
+    rmSync(reportPath, { force: true });
+    const status = await runPlaywright([
       'node_modules/playwright/cli.js',
       'test',
       '-c',
@@ -266,5 +266,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       '--workers=3',
       '--max-failures=1',
     ]);
+    if (status === 0) {
+      verifyInventory(selected.tests, inventory(JSON.parse(readFileSync(reportPath, 'utf8'))));
+    }
+    process.exitCode = status;
   }
 }

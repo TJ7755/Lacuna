@@ -210,7 +210,8 @@ test('the shard CLI executes tests and retains its selector and plan after outpu
       join(directory, 'tests/config/playwright.web.ci.config.ts'),
       `export default {
       testDir: '../e2e', outputDir: '../../test-results', workers: 1,
-      reporter: 'list', projects: [{ name: 'chromium-functional' }]
+      reporter: [['list'], ['json', { outputFile: '../../test-results/browser-results.json' }]],
+      projects: [{ name: 'chromium-functional' }]
     };`,
     );
     writeFileSync(
