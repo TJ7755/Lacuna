@@ -43,8 +43,8 @@ export type { LearnSessionRequest } from '../course/learnSessionRequest';
 interface LearnModeProps {
   /** Supplied by CourseStudyFlow; omitted for the existing route-driven sessions. */
   request?: LearnSessionRequest;
-  /** Card reviews from earlier blocks in the ordinary Study flow. */
-  reviewedCardIds?: ReadonlySet<string>;
+  /** Ordinary Study's contiguous card practice. */
+  quietCardPractice?: boolean;
   /** Emits only after progression writes have completed, so the caller can safely re-plan. */
   onStepFinished?: (summary: SessionSummary) => void;
   /** Leaves the whole continuous flow rather than merely ending the current step. */
@@ -65,7 +65,7 @@ export function LearnMode(props: LearnModeProps = {}) {
 
 function LearnSession({
   request,
-  reviewedCardIds,
+  quietCardPractice,
   onStepFinished,
   onFlowExit,
   sessionId,
@@ -153,6 +153,7 @@ function LearnSession({
   const session = useLearnSession({
     enabled: sessionReady,
     ...sessionOptions,
+    quietCardPractice,
     answerStrictness,
     sessionId,
     navigate,
@@ -218,6 +219,7 @@ function LearnSession({
     choiceTarget && canOfferChoices(choiceTarget, choiceCandidates) ? choiceTarget : undefined;
 
   const isTypingCard = phase === 'answer' ? presentedAnswerInput === 'typed' : isTypingQuestion;
+  const holdingFinalAnswer = quietCardPractice === true && phase === 'finished' && canUndo;
 
   useEffect(() => {
     if (phase === 'question' && current && !studyStarted.current) {
@@ -251,6 +253,7 @@ function LearnSession({
     current,
     typedAnswer,
     verifyTypedRecall,
+    quietCardPractice,
   });
   const {
     cardTransitionRef,
@@ -265,13 +268,14 @@ function LearnSession({
 
   const typedAutoMark = useTypedAutoMark({
     card: current,
-    phase,
-    isTypingCard: presentedAnswerInput === 'typed',
+    phase: holdingFinalAnswer ? 'answer' : phase,
+    isTypingCard: presentedAnswerInput === 'typed' || (holdingFinalAnswer && isTypingCard),
     typedAnswer,
     answerStrictness,
     lessonRequiresCorrectSpelling,
     occlusionAnswerText,
-    paused: editing || menuOpen || hintsOpen || leaveConfirmationOpen,
+    // Keep the verdict visible during Undo without resubmitting the answer.
+    paused: holdingFinalAnswer || editing || menuOpen || hintsOpen || leaveConfirmationOpen,
     manual: manualRestoredCardId === current?.id,
     onHold: () => cardTransitionRef.current?.cancel(),
     m,
@@ -384,13 +388,6 @@ function LearnSession({
     );
   }
 
-  // Automatic marks keep their existing confirmation and Undo. In ordinary Study
-  // this action stays on the card screen while the next block is still undecided.
-  const reviewConfirmation =
-    reviewedCardIds !== undefined && phase === 'finished' && summary && canUndo
-      ? { onContinue: () => void confirmReport(() => {}), busy: confirmingCompletion }
-      : undefined;
-
   return (
     <StudyEntrance className="min-h-dvh overflow-x-clip bg-paper">
       <SessionExitGuard
@@ -435,8 +432,7 @@ function LearnSession({
       <AnimatePresence mode="wait" initial={false}>
         {phase === 'finished' &&
         summary &&
-        (showConfirmedReport || canUndo) &&
-        !reviewConfirmation ? (
+        (showConfirmedReport || (canUndo && !quietCardPractice)) ? (
           <motion.div
             key="finished"
             initial={{ opacity: 0 }}
@@ -470,8 +466,7 @@ function LearnSession({
           >
             <LearnStudyPhase
               session={session}
-              reviewedCardIds={reviewedCardIds}
-              reviewConfirmation={reviewConfirmation}
+              quietCardPractice={quietCardPractice}
               view={view}
               feedback={feedback}
               mode={mode}

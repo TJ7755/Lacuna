@@ -354,9 +354,10 @@ describe('useLearnSession Undo presentation', () => {
       await waitFor(() => expect(hook.result.current.current?.id).toBe(card.id));
       act(() => hook.result.current.reveal());
       await act(async () => {
-        expect((await hook.result.current.answer(true, { retainUndo: true })).undoAvailable).toBe(
-          true,
-        );
+        expect(await hook.result.current.answer(true, { retainUndo: true })).toMatchObject({
+          undoAvailable: true,
+          completionPending: true,
+        });
       });
       await waitFor(() => expect(hook.result.current.phase).toBe('finished'));
       expect(hook.result.current.canUndo).toBe(true);

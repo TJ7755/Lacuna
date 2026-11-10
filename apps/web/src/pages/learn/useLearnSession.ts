@@ -67,6 +67,7 @@ type SessionSchedulingConfig = SchedulerConfig & {
 
 export interface UseLearnSessionParams {
   enabled?: boolean;
+  quietCardPractice?: boolean;
   courseId: string | undefined;
   lessonId: string | undefined;
   sessionId: string | undefined;
@@ -110,6 +111,7 @@ export interface UseLearnSessionParams {
  */
 export function useLearnSession({
   enabled = true,
+  quietCardPractice = false,
   courseId,
   lessonId,
   sessionId,
@@ -338,6 +340,7 @@ export function useLearnSession({
   );
   const sessionCardOutcomesRef = useRef(sessionCell(machineState, 'outcomes')).current;
   const [schedulerProgress, setSchedulerProgress] = useState(0);
+  const [serveableCardCount, setServeableCardCount] = useState(0);
   const [revisionSecondsRemaining, setRevisionSecondsRemaining] = useState(0);
   const [revisionWindowBudgetSeconds, setRevisionWindowBudgetSeconds] = useState(0);
   const [revisionNextWindowDay, setRevisionNextWindowDay] = useState<string | undefined>();
@@ -564,13 +567,18 @@ export function useLearnSession({
     [onStepFinished],
   );
   const reportCompletionError = useCallback(
-    (cause: unknown) => {
-      notify(
-        cause instanceof Error ? cause.message : 'Could not finish the study window.',
-        'negative',
-      );
+    (cause: unknown, retry: () => void) => {
+      const message = cause instanceof Error ? cause.message : 'Could not finish the study window.';
+      if (quietCardPractice) {
+        notify(message, 'negative', {
+          actionLabel: 'Retry',
+          onAction: retry,
+          replaceKey: 'learn-answer',
+          keepVisible: true,
+        });
+      } else notify(message, 'negative');
     },
-    [notify],
+    [notify, quietCardPractice],
   );
   const persistCompletion = useCallback(
     async (nextSummary: SessionSummary): Promise<SessionSummary> => {
@@ -901,6 +909,7 @@ export function useLearnSession({
     sessionCardOutcomesRef.current = new Map();
     setSessionCardOutcomes(sessionCardOutcomesRef.current);
     setSchedulerProgress(0);
+    setServeableCardCount(0);
     setRevisionSecondsRemaining(0);
     setRevisionWindowBudgetSeconds(0);
     setRevisionNextWindowDay(undefined);
@@ -988,6 +997,7 @@ export function useLearnSession({
       occlusionMapRef.current = data.occlusions;
       progressBefore.current = data.progressBefore;
       setSchedulerProgress(data.schedulerProgress);
+      setServeableCardCount(data.serveableCardCount);
       reviewsDayStart.current = data.reviewsDayStart;
       reviewsByDeck.current = data.reviewsByDeck;
       setLimitOverride(false);
@@ -1194,7 +1204,7 @@ export function useLearnSession({
         /** Automatic typed verdicts retain Undo through the final report. */
         retainUndo?: boolean;
       },
-    ): Promise<AnswerResult> => {
+    ): Promise<AnswerResult & { completionPending?: true }> => {
       if (submitting.current) return { undoAvailable: false };
       submitting.current = true;
       const phaseNow = phaseRef.current;
@@ -1239,10 +1249,13 @@ export function useLearnSession({
           t: machineMarked ? (performance.now() - timerStart.current) / 1000 : responseTime.current,
           distracted: distraction.wasDistracted(),
         };
-        if (!isSimpleMode) return await answerScheduled(cardNow, response);
-        const result = await answerSimple(cardNow, response);
-        lastIntroduction.current = null;
-        return result;
+        const result = isSimpleMode
+          ? await answerSimple(cardNow, response)
+          : await answerScheduled(cardNow, response);
+        if (isSimpleMode) lastIntroduction.current = null;
+        return completion.pending && result.undoAvailable
+          ? { ...result, completionPending: true }
+          : result;
       } finally {
         submitting.current = false;
       }
@@ -1252,6 +1265,7 @@ export function useLearnSession({
       isSimpleMode,
       answerSimple,
       answerScheduled,
+      completion,
       recitationSequence,
       answerStrictness,
       lessonRequiresCorrectSpelling,
@@ -1441,6 +1455,15 @@ export function useLearnSession({
     sessionCardOutcomes,
     reviewEvents: events.current,
     schedulerProgress,
+    // The scheduler can retry a card or end the block early. Count known
+    // reviews as they arrive, bounded by the same limit as card selection.
+    reviewBlockSize:
+      phase === 'finished'
+        ? events.current.length
+        : Math.min(
+            requestReviewLimit ?? 0,
+            Math.max(serveableCardCount, events.current.length + 1),
+          ),
     predictedRecall:
       !isSimpleMode && !plannedRevision && ctxRef.current
         ? cachedSessionProgress(cardsRef.current, ctxRef.current)

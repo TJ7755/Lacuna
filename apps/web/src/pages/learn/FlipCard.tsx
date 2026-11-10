@@ -92,7 +92,7 @@ export function FlipCard({
 }) {
   const m = motionMultiplier ?? speedMultiplier(motionSpeed);
   const isTyping = Boolean(isTypingCard);
-  const promptOnly = promptId !== undefined;
+  const staticFace = promptId !== undefined || phase === 'finished';
   const [swipeHint, setSwipeHint] = useState<'left' | 'right' | null>(null);
   const audioCard = isAudioCardFront(card.front);
   const [showAudioFront, setShowAudioFront] = useState(false);
@@ -275,7 +275,7 @@ export function FlipCard({
     }
   }, [phase, isPresent, swipeXMotion]);
 
-  const displayedFront = !revealed || showAudioFront;
+  const displayedFront = !revealed || (phase !== 'finished' && showAudioFront);
   const surfaceClassName =
     'study-card-surface flex min-h-[12rem] flex-col items-center justify-center rounded-3xl border bg-surface px-6 py-10 md:min-h-[14rem] md:px-12 md:py-14';
 
@@ -285,7 +285,7 @@ export function FlipCard({
       card={card}
       side={side}
       promptId={side === 'front' && !measuring ? promptId : undefined}
-      audioCard={audioCard}
+      audioCard={audioCard && phase !== 'finished'}
       audioAutoplay={audioCard && side === 'front'}
       isLinesModeCard={isLinesModeCard}
       hintStep={hintStep}
@@ -311,12 +311,12 @@ export function FlipCard({
     >
       <div
         ref={containerRef}
-        role={promptOnly ? undefined : 'button'}
+        role={staticFace ? undefined : 'button'}
         data-press="none"
-        data-study-reveal-only={!promptOnly && !allowGradingGestures ? true : undefined}
-        tabIndex={promptOnly ? undefined : 0}
+        data-study-reveal-only={!staticFace && !allowGradingGestures ? true : undefined}
+        tabIndex={staticFace ? undefined : 0}
         aria-label={
-          promptOnly
+          staticFace
             ? undefined
             : displayedFront
               ? revealed
@@ -324,14 +324,14 @@ export function FlipCard({
                 : 'Show answer'
               : 'Hide answer'
         }
-        className={cn('relative w-full', !promptOnly && 'cursor-pointer')}
+        className={cn('relative w-full', !staticFace && 'cursor-pointer')}
         style={{ transformStyle: 'preserve-3d', touchAction: 'pan-y' }}
-        onPointerDown={promptOnly ? undefined : handlePointerDown}
+        onPointerDown={staticFace ? undefined : handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onKeyDown={(event) => {
-          if (event.target !== event.currentTarget || promptOnly || committed.current || !isPresent)
+          if (event.target !== event.currentTarget || staticFace || committed.current || !isPresent)
             return;
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
