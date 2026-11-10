@@ -292,6 +292,45 @@ for (const inputMode of ['keyboard', 'touch']) {
   });
 }
 
+test('the typed answer field lifts and fades into the grade transition', async ({ page }) => {
+  const { card, lessonId } = await prepareCard(page);
+  await seedCard(page, card, 'typed');
+  await page.evaluate(() => {
+    localStorage.setItem('lacuna.inputMode', 'keyboard');
+    localStorage.setItem('lacuna.gradingMode', 'manual');
+  });
+  await page.goto(`/#/lesson/${lessonId}/learn?mode=simple`);
+  const input = page.getByRole('textbox', { name: 'Your answer', exact: true });
+  const check = page.getByRole('button', { name: 'Check answer', exact: true });
+  await input.fill('Answer');
+  const frames = await input.evaluate(
+    async (field, button) => {
+      const offset = () => field.getBoundingClientRect().top - button.getBoundingClientRect().top;
+      const start = offset();
+      const frames: { opacity: number; lift: number }[] = [];
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      const deadline = performance.now() + 1_000;
+      do {
+        await new Promise(requestAnimationFrame);
+        let opacity = 1;
+        for (let element: Element | null = field; element; element = element.parentElement) {
+          opacity *= Number(getComputedStyle(element).opacity);
+        }
+        frames.push({ opacity, lift: start - offset() });
+        if (opacity === 0) break;
+      } while (performance.now() < deadline);
+      return frames;
+    },
+    await check.elementHandle(),
+  );
+  expect(frames.some(({ opacity, lift }) => opacity > 0 && opacity < 1 && lift > 1)).toBe(true);
+  expect(frames.at(-1)?.opacity).toBe(0);
+  await expect(input).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Easy', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Hide answer', exact: true }).click();
+  await expect(input).toBeFocused();
+});
+
 test('typed feedback stays compact and clear of the next answer on desktop', async ({ page }) => {
   const { card, lessonId } = await prepareCard(page);
   await seedCard(page, card, 'typed', 3);

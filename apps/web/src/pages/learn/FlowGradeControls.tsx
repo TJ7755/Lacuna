@@ -41,7 +41,7 @@ interface FlowControlsProps {
   rowClassName: string;
   revealLabel?: ReactNode;
   revealDisabled?: boolean;
-  /** Content above the reveal pill that fades with it, such as a typed answer field. */
+  /** The typed answer field above the reveal pill. */
   revealLead?: ReactNode;
   onReveal: () => void;
   m: number;
@@ -591,19 +591,32 @@ export function FlowGradeControls({
           m={m}
         />
       )}
-      <motion.div
+      <div
         ref={revealRef}
         data-flow-reveal
         className={'relative col-start-1 row-start-1 mx-auto w-full max-w-md self-start' + chrome}
-        initial={false}
-        style={m === 0 ? { opacity: question ? 1 : 0 } : undefined}
-        animate={m > 0 ? { opacity: question ? 1 : 0 } : undefined}
-        transition={question ? motionTransition('feedback', m) : { duration: 0.08 * m }}
         inert={!question}
         aria-hidden={!question}
       >
-        {revealLead}
-        <div ref={pillRef}>
+        {hasRevealLead && (
+          <motion.div
+            // Keep the card and action positions steady with the label gone.
+            className="pt-7 pb-3"
+            initial={false}
+            style={m === 0 ? { opacity: question ? 1 : 0, y: 0 } : undefined}
+            animate={m > 0 ? { opacity: question ? 1 : 0, y: question ? 0 : -8 } : undefined}
+            transition={motionTransition('feedback', m)}
+          >
+            {revealLead}
+          </motion.div>
+        )}
+        <motion.div
+          ref={pillRef}
+          initial={false}
+          style={m === 0 ? { opacity: question ? 1 : 0 } : undefined}
+          animate={m > 0 ? { opacity: question ? 1 : 0 } : undefined}
+          transition={question ? motionTransition('feedback', m) : { duration: 0.08 * m }}
+        >
           <Button
             variant="primary"
             size="lg"
@@ -613,8 +626,8 @@ export function FlowGradeControls({
           >
             {revealLabel}
           </Button>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
       <div
         ref={rowRef}
         className={`relative col-start-1 row-start-1 mx-auto self-start ${rowClassName}`}
