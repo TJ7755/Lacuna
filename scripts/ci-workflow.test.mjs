@@ -99,7 +99,9 @@ test('documentation-only changes resolve required names without running heavy st
       job.if,
       name === 'production'
         ? "${{ !cancelled() && needs.changes.result == 'success' }}"
-        : "needs.changes.result == 'success'",
+        : ['relay', 'ai-mcp'].includes(name)
+          ? "needs.changes.result == 'success' && !cancelled()"
+          : "needs.changes.result == 'success'",
       name,
     );
     const [acknowledgement, ...heavySteps] = job.steps;
@@ -347,7 +349,7 @@ test('browser consumers install the lockfile browser and share the production ar
   );
   assert.deepEqual(
     jobs['browser-tests'].strategy.matrix.shard,
-    Array.from({ length: 16 }, (_, index) => index + 1),
+    Array.from({ length: 21 }, (_, index) => index + 1),
   );
   assert.equal(jobs['browser-tests'].strategy.matrix.lane, undefined);
   assert.ok(
@@ -703,12 +705,16 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
   const all = workers.filter((name) => !postMerge.includes(name));
   function runs(name, event_name, outputs) {
     const job = workflow.jobs[name];
-    const predicate =
-      name === 'web-build' ? job.steps[2].if : required.includes(name) ? job.steps[1].if : job.if;
+    const predicate = ['web-build', 'electron-renderer'].includes(name)
+      ? job.steps[2].if
+      : required.includes(name)
+        ? job.steps[1].if
+        : job.if;
     return runInNewContext(predicate, {
       github: { event_name },
       needs: { changes: { result: 'success', outputs } },
       steps: { scope: { outputs } },
+      cancelled: () => false,
     });
   }
   for (const [paths, expected] of [
@@ -756,7 +762,10 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
       assert.ok(
         runInNewContext(workflow.jobs[name].if, {
           github: { event_name: 'pull_request' },
-          needs: { changes: { outputs: { app: 'true', sites: 'true', browser_ci } } },
+          needs: {
+            changes: { result: 'success', outputs: { app: 'true', sites: 'true', browser_ci } },
+          },
+          cancelled: () => false,
         }),
         `${name} for browser_ci=${browser_ci}`,
       );
@@ -779,16 +788,20 @@ test('Windows evidence is selected conservatively on PRs and pushes', () => {
   assert.equal(gate['runs-on'], 'ubuntu-latest');
   assert.equal(ai['runs-on'], 'windows-latest');
   assert.equal(ai.needs, 'changes');
+  assert.equal(renderer.needs, undefined);
+  assert.deepEqual(renderer.steps.slice(0, 2), workflow.jobs.changes.steps);
   assert.equal(upgrade.needs, 'changes');
   for (const event_name of ['pull_request', 'push']) {
     for (const flag of ['true', 'false', '', undefined, 'unknown']) {
       const context = {
         github: { event_name },
         needs: { changes: { outputs: { windows_native: flag } } },
+        steps: { scope: { outputs: { windows_native: flag } } },
         always: () => true,
       };
       const affected = flag !== 'false';
-      assert.equal(runInNewContext(renderer.if, context), affected);
+      for (const step of renderer.steps.slice(2))
+        assert.equal(runInNewContext(step.if, context), affected);
       assert.equal(runInNewContext(ai.if, context), affected);
       assert.equal(runInNewContext(upgrade.if, context), affected);
     }

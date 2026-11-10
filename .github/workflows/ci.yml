@@ -86,6 +86,8 @@ jobs:
         with:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-packages: 'false'
         if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
       - run: bun install --frozen-lockfile
         if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
@@ -146,6 +148,8 @@ jobs:
         with:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-packages: 'false'
         if: needs.changes.outputs.lint != 'false'
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.lint != 'false'
@@ -219,9 +223,10 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' && matrix.suite == 'critical' }}
         run: node --test scripts/vercel-deploy-scope.test.mjs scripts/deploy-prerequisites.test.mjs scripts/nightly-release.test.mjs scripts/local-checks.test.mjs scripts/security-runtime.test.mjs scripts/ci-workflow.test.mjs scripts/ci-recover-stale-jobs.test.mjs scripts/browser-ci-summary.test.mjs scripts/ci-browser-artefact.test.mjs scripts/ci-browser-shards.test.mjs scripts/ci-wait-for-renderer.test.mjs
 
+  # Start the shorter independent checks after the first wave of runners.
   python-tools:
-    needs: changes
-    if: needs.changes.outputs.python != 'false'
+    needs: [changes, web-build]
+    if: needs.changes.result == 'success' && !cancelled() && needs.changes.outputs.python != 'false'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -295,8 +300,8 @@ jobs:
           fi
 
   handwriting:
-    needs: changes
-    if: needs.changes.outputs.handwriting != 'false'
+    needs: [changes, web-build]
+    if: needs.changes.result == 'success' && !cancelled() && needs.changes.outputs.handwriting != 'false'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -318,8 +323,8 @@ jobs:
 
   relay:
     name: relay
-    needs: changes
-    if: needs.changes.result == 'success'
+    needs: [changes, web-build]
+    if: needs.changes.result == 'success' && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - name: Report unaffected scope
@@ -352,8 +357,8 @@ jobs:
 
   ai-mcp:
     name: ai-mcp
-    needs: changes
-    if: needs.changes.result == 'success'
+    needs: [changes, web-build]
+    if: needs.changes.result == 'success' && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - name: Report unaffected scope
@@ -488,9 +493,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        # Four workers per runner let the browser matrix share the hosted
-        # runner quota with native, coverage and security checks.
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -529,8 +532,8 @@ jobs:
 
   # These sites and feature flags require their own isolated builds.
   browser-standalone:
-    needs: changes
-    if: needs.changes.outputs.standalone_suites != '[]'
+    needs: [changes, web-build]
+    if: needs.changes.result == 'success' && !cancelled() && needs.changes.outputs.standalone_suites != '[]'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: true
@@ -624,7 +627,7 @@ jobs:
         with:
           artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
           path: dist/
-      - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=${{ matrix.project }} --workers=1 --retries=0 --max-failures=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
+      - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=${{ matrix.project }} --workers=1 --retries=${{ matrix.project == 'chromium-image-performance' && '1' || '0' }} --max-failures=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
         env:
           STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
       - name: Preserve browser timing evidence
@@ -706,24 +709,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           WEB_ARTIFACT_ID: ${{ needs.web-build.outputs.artifact_id }}
-          FUNCTIONAL_SHARDS: '16'
+          FUNCTIONAL_SHARDS: '21'
         run: node scripts/ci-browser-artefact.mjs
 
   electron-renderer:
-    needs: changes
-    if: needs.changes.outputs.windows_native != 'false'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
+      - *scope-checkout
+      - *classify-scope
       - uses: ./.github/actions/setup-node
+        if: steps.scope.outputs.windows_native != 'false'
         with:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
+        if: steps.scope.outputs.windows_native != 'false'
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
+        if: steps.scope.outputs.windows_native != 'false'
       - run: bun run build:assets -- --mode production --base ./
+        if: steps.scope.outputs.windows_native != 'false'
       - name: Share the desktop renderer build
+        if: steps.scope.outputs.windows_native != 'false'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-electron-renderer-${{ github.run_attempt }}

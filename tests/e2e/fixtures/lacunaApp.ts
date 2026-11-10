@@ -53,6 +53,22 @@ export async function enterFreshLacuna(page: Page) {
   await skipOnboarding(page);
 }
 
+/** Start with the preferences of a fresh learner who already exited onboarding. */
+export async function openEmptyDashboard(page: Page) {
+  // This fixture also loads in the Node-only installed Windows probe.
+  await page.addInitScript(() => {
+    if (window !== window.top || location.hash !== '#/' || localStorage.getItem('lacuna-seeded'))
+      return;
+    localStorage.setItem('lacuna-seeded', '1');
+    localStorage.setItem('lacuna-seed-assets-v3', '1');
+    localStorage.setItem('lacuna-onboarding', 'done');
+    if (localStorage.getItem('lacuna.advancedDetails') === null)
+      localStorage.setItem('lacuna.advancedDetails', 'false');
+  });
+  await page.goto('/#/');
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+}
+
 /** A fresh install starts with onboarding; Exit leaves it for an empty Today. */
 export async function skipOnboarding(page: Page) {
   await expect(page).toHaveURL(/#\/start$/);

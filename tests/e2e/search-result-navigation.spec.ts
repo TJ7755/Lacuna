@@ -39,7 +39,7 @@ test.describe('desktop search result navigation', () => {
     await expect(dialog.getByRole('option')).toHaveCount(40);
     await expect(dialog.locator('[aria-live="polite"]')).toHaveText('40 of 100 results available');
     await page.mouse.move(0, 0);
-    for (let i = 0; i < 39; i++) await quickInput.press('ArrowDown');
+    for (let i = 0; i < 39; i++) await page.keyboard.press('ArrowDown');
     const activeQuick = dialog.getByRole('option', { selected: true });
     await expect(activeQuick).toHaveText(/Palatine 039/);
     await expect
@@ -75,7 +75,7 @@ test.describe('desktop search result navigation', () => {
     await page.mouse.move(0, 0);
     await input.focus();
     for (let i = 1; i <= 80; i++) {
-      await input.press('ArrowDown');
+      await page.keyboard.press('ArrowDown');
       await expect(page.getByRole('option', { selected: true })).toHaveText(
         new RegExp(`Palatine ${String(i).padStart(3, '0')}`),
       );
