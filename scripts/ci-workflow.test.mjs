@@ -266,6 +266,14 @@ test('browser consumers install the lockfile browser and share the production ar
   const jobs = workflow.jobs;
   const consumers = ['browser-pr', 'browser-tests', 'browser-timing'];
   const build = jobs['web-build'];
+  assert.equal(build.needs, undefined);
+  assert.deepEqual(build.steps.slice(0, 2), jobs.changes.steps);
+  for (const step of build.steps.slice(2)) {
+    assert.equal(
+      step.if,
+      "steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'",
+    );
+  }
   const producer = build.steps.find((step) => step.uses?.startsWith('actions/upload-artifact@'));
   assert.ok(producer);
   assert.equal(build.outputs.artifact_id, '${{ steps.dist.outputs.artifact-id }}');
@@ -303,7 +311,7 @@ test('browser consumers install the lockfile browser and share the production ar
         download.name,
         'Download production web build ${{ steps.web-dist.outputs.artifact_id }}',
       );
-      assert.equal(download.with['github-token'], '${{ github.token }}');
+      assert.equal(download.with['github-token'], undefined);
     } else {
       assert.deepEqual(job.needs, ['changes', 'web-build']);
       assert.equal(download.with['artifact-ids'], '${{ needs.web-build.outputs.artifact_id }}');
@@ -693,6 +701,16 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
   const postMerge = ['browser-tests', 'browser-standalone', 'browser-timing'];
   const web = ['web-build', 'production', 'browser-pr'];
   const all = workers.filter((name) => !postMerge.includes(name));
+  function runs(name, event_name, outputs) {
+    const job = workflow.jobs[name];
+    const predicate =
+      name === 'web-build' ? job.steps[2].if : required.includes(name) ? job.steps[1].if : job.if;
+    return runInNewContext(predicate, {
+      github: { event_name },
+      needs: { changes: { result: 'success', outputs } },
+      steps: { scope: { outputs } },
+    });
+  }
   for (const [paths, expected] of [
     [['docs/README.md'], []],
     [
@@ -725,28 +743,13 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     const outputs = Object.fromEntries(
       Object.entries(classifyPaths(paths)).map(([key, value]) => [key, JSON.stringify(value)]),
     );
-    const context = {
-      github: { event_name: 'pull_request' },
-      needs: { changes: { result: 'success', outputs } },
-    };
-    const selected = workers.filter((name) => {
-      const job = workflow.jobs[name];
-      const predicate = required.includes(name) ? job.steps[1].if : job.if;
-      return runInNewContext(predicate, context);
-    });
+    const selected = workers.filter((name) => runs(name, 'pull_request', outputs));
     assert.deepEqual(selected.sort(), [...expected].sort(), paths.join(', '));
   }
   const push = Object.fromEntries(
     Object.entries(classifyPaths(['unknown/file'])).map(([key, value]) => [key, String(value)]),
   );
-  const selected = workers.filter((name) => {
-    const job = workflow.jobs[name];
-    const predicate = required.includes(name) ? job.steps[1].if : job.if;
-    return runInNewContext(predicate, {
-      github: { event_name: 'push' },
-      needs: { changes: { result: 'success', outputs: push } },
-    });
-  });
+  const selected = workers.filter((name) => runs(name, 'push', push));
   assert.deepEqual(selected.sort(), workers.filter((name) => name !== 'browser-pr').sort());
   for (const browser_ci of [undefined, '', 'unknown']) {
     for (const name of postMerge) {
@@ -874,6 +877,7 @@ test('Electron AI evidence survives native failures without widening execution s
   assert.ok(wait >= 0 && wait < download && download < nativeTest);
   assert.equal(steps[wait].id, 'web-dist');
   assert.equal(steps[download].with['artifact-ids'], '${{ steps.web-dist.outputs.artifact_id }}');
+  assert.equal(steps[download].with['github-token'], undefined);
   assert.equal(steps[download].with.path, 'dist/');
   assert.equal(steps[nativeTest].env.LACUNA_BROWSER_PREBUILT, 'true');
   assert.ok(steps.indexOf(evidence) > nativeTest);

@@ -35,6 +35,10 @@ const profile = path.join(root, 'profile');
 const executablePath = path.join(directory, 'Lacuna.exe');
 const report = { baseline: pinned.version, target: version, stages: [] };
 let application;
+const auditedInstaller = requireAuditedInstaller();
+// The baseline can boot while packaging runs. Surface a failed audit when we
+// await it below, even if the coordinator closes stdin during baseline setup.
+void auditedInstaller.catch(() => {});
 const server = createServer(async (request, response) => {
   const name = decodeURIComponent(new URL(request.url, 'http://localhost').pathname.slice(1));
   if (
@@ -46,6 +50,7 @@ const server = createServer(async (request, response) => {
     return;
   }
   try {
+    await auditedInstaller;
     const data = await readFile(path.join('release', name));
     response.writeHead(200, { 'Content-Length': data.length });
     response.end(data);
@@ -163,19 +168,8 @@ async function cleanUp() {
 
 try {
   await install(baseline);
-  await requireAuditedInstaller();
   await pointInstalledUpdaterAtFeed();
   let page = await open(pinned.version);
-  await page.evaluate(() => window.electronAPI.updater.checkForUpdates());
-  await expect
-    .poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase, {
-      timeout: 180_000,
-    })
-    .toBe('downloaded');
-  assert.equal(
-    (await page.evaluate(() => window.electronAPI.updater.getState())).availableVersion,
-    version,
-  );
   await importWelcomeCourse(page);
   // One authored card gives the baseline a deterministic introduction and typed recall.
   const studyCourse = 'Upgrade study records';
@@ -204,6 +198,17 @@ try {
   const before = await snapshot(page);
   assert(before.courses.length > 0);
   report.stages.push('baseline installed and study database populated');
+  await auditedInstaller;
+  await page.evaluate(() => window.electronAPI.updater.checkForUpdates());
+  await expect
+    .poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase, {
+      timeout: 180_000,
+    })
+    .toBe('downloaded');
+  assert.equal(
+    (await page.evaluate(() => window.electronAPI.updater.getState())).availableVersion,
+    version,
+  );
   await application.evaluate(({ app }) => {
     const { createRequire } = process.getBuiltinModule('node:module');
     const updater = createRequire(`${app.getAppPath()}/package.json`)(
