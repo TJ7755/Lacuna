@@ -269,8 +269,13 @@ test('browser consumers install the lockfile browser and share the production ar
   const consumers = ['browser-pr', 'browser-tests', 'browser-timing'];
   const build = jobs['web-build'];
   assert.equal(build.needs, undefined);
-  assert.deepEqual(build.steps.slice(0, 2), jobs.changes.steps);
-  for (const step of build.steps.slice(2).flatMap((step) => step.parallel ?? [step])) {
+  const [checkout, scope] = jobs.changes.steps;
+  assert.deepEqual(build.steps[0], checkout);
+  assert.deepEqual(build.steps[1].parallel, [
+    scope,
+    { uses: './.github/actions/setup-node', with: { 'node-version': '24.22.1' } },
+  ]);
+  for (const step of build.steps.slice(2)) {
     assert.equal(
       step.if,
       "steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'",
@@ -719,7 +724,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
   function runs(name, event_name, outputs) {
     const job = workflow.jobs[name];
     const predicate = ['web-build', 'electron-renderer', 'windows-installed-upgrade'].includes(name)
-      ? (job.steps[2].parallel?.[0] ?? job.steps[2]).if
+      ? job.steps[2].if
       : required.includes(name)
         ? job.steps[1].if
         : job.if;

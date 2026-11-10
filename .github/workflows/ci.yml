@@ -83,16 +83,15 @@ jobs:
       artifact_id: ${{ steps.dist.outputs.artifact-id }}
     steps:
       - *scope-checkout
-      - *classify-scope
       - parallel:
+          - *classify-scope
           - uses: ./.github/actions/setup-node
-            if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
             with:
               node-version: '24.22.1'
-          - uses: ./.github/actions/setup-bun
-            if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
-            with:
-              cache-packages: 'false'
+      - uses: ./.github/actions/setup-bun
+        if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
         if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
       - run: bun run build:assets
