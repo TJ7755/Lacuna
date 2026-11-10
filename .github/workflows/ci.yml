@@ -509,11 +509,11 @@ jobs:
     runs-on: ubuntu-24.04
     env: &functional-browser-env
       LACUNA_BROWSER_PREBUILT: 'true'
-      FUNCTIONAL_EARLY_SHARDS: '15'
+      FUNCTIONAL_EARLY_SHARDS: '17'
     strategy:
       fail-fast: true
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
     steps: &functional-browser-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -571,7 +571,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        shard: [16, 17, 18, 19, 20, 21, 22]
+        shard: [18, 19, 20, 21, 22]
     steps: *functional-browser-steps
 
   # These sites and feature flags require their own isolated builds.
@@ -748,6 +748,10 @@ jobs:
         if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
         with:
           persist-credentials: false
+          sparse-checkout: |
+            scripts/ci-browser-artefact.mjs
+            scripts/ci-wait-for-renderer.mjs
+          sparse-checkout-cone-mode: false
       - name: Require browser evidence for the exact production build
         if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
         env:
