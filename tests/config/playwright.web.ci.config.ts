@@ -20,6 +20,9 @@ export default defineConfig({
       ...chromium,
       name: 'chromium-image-performance',
       testMatch: imageAdvance,
+      // The test attaches paint timings and still captures failure screenshots.
+      // Tracing copies hundreds of MB of fixture media and instruments each action.
+      use: { ...chromium.use, trace: 'off' },
       fullyParallel: false,
       workers: 1,
     },
