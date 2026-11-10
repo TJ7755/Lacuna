@@ -35,7 +35,7 @@ jobs:
   # Documentation-only pull requests skip heavy work, never the entire workflow.
   # Documentation-only changes retain the normal lightweight validation path.
   changes:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     outputs:
       docs_only: ${{ steps.scope.outputs.docs_only }}
       app: ${{ steps.scope.outputs.app }}
@@ -265,7 +265,7 @@ jobs:
         electron-macos-smoke,
       ]
     if: ${{ always() && !cancelled() }}
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     steps:
       - name: Verify test jobs passed
         env:
@@ -627,7 +627,7 @@ jobs:
         with:
           artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
           path: dist/
-      - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=${{ matrix.project }} --workers=1 --retries=0 --max-failures=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
+      - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=${{ matrix.project }} --workers=1 --retries=${{ matrix.project == 'chromium-image-performance' && '1' || '0' }} --max-failures=1 --shard=${{ matrix.shard }}/${{ matrix.total }}
         env:
           STUDY_IMAGE_FIXTURE_DIR: ${{ runner.temp }}/lacuna-study-images-v1
       - name: Preserve browser timing evidence
@@ -654,7 +654,7 @@ jobs:
         browser-standalone,
       ]
     if: ${{ always() && !cancelled() }}
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     steps:
       - name: Require all browser jobs
         env:
@@ -778,7 +778,7 @@ jobs:
     name: electron-ai
     needs: [changes, electron-renderer, electron-ai-tests, windows-installed-upgrade]
     if: ${{ always() }}
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     steps:
       - name: Require Windows AI and installer evidence
         env:

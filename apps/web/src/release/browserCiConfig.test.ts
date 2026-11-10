@@ -152,15 +152,20 @@ it('partitions the complete local Chromium suite across the functional and isola
     expect(cases(local.suites).length).toBeGreaterThan(0);
     expect(allCiCases.sort()).toEqual(cases(local.suites).sort());
     expect(new Set(allCiCases).size).toBe(allCiCases.length);
-    expect(studyCases).toHaveLength(5);
-    expect(studyCases.every((name) => name.startsWith('study-grade-load.spec.ts:'))).toBe(true);
+    expect(studyCases.filter((name) => name.startsWith('study-grade-load.spec.ts:'))).toHaveLength(
+      5,
+    );
+    expect(
+      studyCases.filter((name) => name.startsWith('study-session-load.spec.ts:')),
+    ).toHaveLength(1);
     expect(imageCases).toHaveLength(1);
     expect(imageCases[0]).toMatch(/^study-image-advance.spec.ts:/);
     expect(
       functionalCases.every(
         (name) =>
           !name.startsWith('study-image-advance.spec.ts:') &&
-          !name.startsWith('study-grade-load.spec.ts:'),
+          !name.startsWith('study-grade-load.spec.ts:') &&
+          !name.startsWith('study-session-load.spec.ts:'),
       ),
     ).toBe(true);
     for (const shard of study) {

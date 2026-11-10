@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { expect, type Page } from '@playwright/test';
-import { SEED_ASSET_REPAIR_FLAG_KEY, SEED_FLAG_KEY } from '../../../apps/web/src/db/seedFlags';
 
 export async function chooseScheduledStudy(page: Page) {
   const sheet = page.getByRole('region', { name: 'Session preview' });
@@ -56,17 +55,16 @@ export async function enterFreshLacuna(page: Page) {
 
 /** Start with the preferences of a fresh learner who already exited onboarding. */
 export async function openEmptyDashboard(page: Page) {
-  await page.addInitScript(
-    ({ seedKey, repairKey }) => {
-      if (window !== window.top || location.hash !== '#/' || localStorage.getItem(seedKey)) return;
-      localStorage.setItem(seedKey, '1');
-      localStorage.setItem(repairKey, '1');
-      localStorage.setItem('lacuna-onboarding', 'done');
-      if (localStorage.getItem('lacuna.advancedDetails') === null)
-        localStorage.setItem('lacuna.advancedDetails', 'false');
-    },
-    { seedKey: SEED_FLAG_KEY, repairKey: SEED_ASSET_REPAIR_FLAG_KEY },
-  );
+  // This fixture also loads in the Node-only installed Windows probe.
+  await page.addInitScript(() => {
+    if (window !== window.top || location.hash !== '#/' || localStorage.getItem('lacuna-seeded'))
+      return;
+    localStorage.setItem('lacuna-seeded', '1');
+    localStorage.setItem('lacuna-seed-assets-v3', '1');
+    localStorage.setItem('lacuna-onboarding', 'done');
+    if (localStorage.getItem('lacuna.advancedDetails') === null)
+      localStorage.setItem('lacuna.advancedDetails', 'false');
+  });
   await page.goto('/#/');
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 }

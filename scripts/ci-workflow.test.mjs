@@ -785,7 +785,7 @@ test('Windows evidence is selected conservatively on PRs and pushes', () => {
     'electron-ai-tests',
     'windows-installed-upgrade',
   ]);
-  assert.equal(gate['runs-on'], 'ubuntu-slim');
+  assert.equal(gate['runs-on'], 'ubuntu-latest');
   assert.equal(ai['runs-on'], 'windows-latest');
   assert.equal(ai.needs, 'changes');
   assert.equal(renderer.needs, undefined);
