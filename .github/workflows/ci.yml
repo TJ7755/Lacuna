@@ -13,6 +13,9 @@ permissions:
   contents: read
   actions: read
 
+env:
+  FUNCTIONAL_SHARDS: '22'
+
 # Retries cannot cancel newer validation. Master pushes supersede older pushes.
 # Base retargets require reopening the PR (or pushing a commit) to validate the new merge.
 concurrency:
@@ -504,13 +507,14 @@ jobs:
     needs: changes
     if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-24.04
-    env:
+    env: &functional-browser-env
       LACUNA_BROWSER_PREBUILT: 'true'
+      FUNCTIONAL_EARLY_SHARDS: '15'
     strategy:
       fail-fast: true
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
-    steps:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps: &functional-browser-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -532,7 +536,7 @@ jobs:
       - name: Plan the functional browser shard
         id: browser-plan
         background: true
-        run: node scripts/ci-browser-shards.mjs plan ${{ matrix.shard }}/${{ strategy.job-total }}
+        run: node scripts/ci-browser-shards.mjs plan ${{ matrix.shard }}/${{ env.FUNCTIONAL_SHARDS }}
       - run: bunx --no-install playwright install --only-shell chromium
       - wait: [web-dist, browser-plan]
       - &download-web-build
@@ -541,7 +545,7 @@ jobs:
         with:
           artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
           path: dist/
-      - run: node scripts/ci-browser-shards.mjs run-prepared ${{ matrix.shard }}/${{ strategy.job-total }}
+      - run: node scripts/ci-browser-shards.mjs run-prepared ${{ matrix.shard }}/${{ env.FUNCTIONAL_SHARDS }}
         env:
           CI_PEER_JOB_TOKEN: ${{ github.token }}
       - name: Preserve browser test evidence
@@ -555,6 +559,20 @@ jobs:
             artifacts/browser-checks/
             artifacts/ci-browser-shards/
           if-no-files-found: ignore
+
+  # Give the larger shards first access to runners. The planner gives these
+  # later shards less work so they can start after the artefact is published.
+  browser-tests-late:
+    name: browser-tests (${{ matrix.shard }})
+    needs: [changes, web-build]
+    if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
+    runs-on: ubuntu-24.04
+    env: *functional-browser-env
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [16, 17, 18, 19, 20, 21, 22]
+    steps: *functional-browser-steps
 
   # These sites and feature flags require their own isolated builds.
   browser-standalone:
@@ -674,6 +692,7 @@ jobs:
         production,
         browser-pr,
         browser-tests,
+        browser-tests-late,
         browser-timing,
         browser-standalone,
       ]
@@ -694,6 +713,7 @@ jobs:
           PRODUCTION_RESULT: ${{ needs.production.result }}
           PR_RESULT: ${{ needs.browser-pr.result }}
           RESULT: ${{ needs.browser-tests.result }}
+          LATE_RESULT: ${{ needs.browser-tests-late.result }}
           TIMING_RESULT: ${{ needs.browser-timing.result }}
           STANDALONE_RESULT: ${{ needs.browser-standalone.result }}
         run: |
@@ -716,11 +736,12 @@ jobs:
             echo "- Production: $PRODUCTION_RESULT"
             echo "- Pull-request smoke: $PR_RESULT"
             echo "- Functional shards: $RESULT"
+            echo "- Later functional shards: $LATE_RESULT"
             echo "- Isolated timing projects: $TIMING_RESULT"
             echo "- Standalone sites: $STANDALONE_RESULT"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$STANDALONE"; then
-            echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT timing=$TIMING_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
+          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$LATE_RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$STANDALONE"; then
+            echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT late=$LATE_RESULT timing=$TIMING_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -733,7 +754,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           WEB_ARTIFACT_ID: ${{ needs.web-build.outputs.artifact_id }}
-          FUNCTIONAL_SHARDS: '22'
         run: node scripts/ci-browser-artefact.mjs
 
   electron-renderer:

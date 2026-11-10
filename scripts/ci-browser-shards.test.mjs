@@ -105,6 +105,20 @@ test('cost history affects placement but cannot remove discovery entries', () =>
   }
 });
 
+test('later shards receive less work and retain the complete test inventory', () => {
+  const tests = inventory(report(spec('slow', 'slow.spec.ts'), spec('fast', 'fast.spec.ts')));
+  const shards = planShards(tests, timings, 2, 1);
+  assert.deepEqual(
+    shards.map((shard) => shard.files),
+    [['slow.spec.ts'], ['fast.spec.ts']],
+  );
+  verifyInventory(
+    tests,
+    shards.flatMap((shard) => shard.tests),
+  );
+  assert.throws(() => planShards(tests, timings, 2, 3), /Invalid early shard count/);
+});
+
 test('refresh rejects duplicated, failed and retried evidence', () => {
   const successful = report(spec('a', 'a.spec.ts'));
   assert.deepEqual(refreshTimings([successful], { run: 'example' }), {

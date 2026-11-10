@@ -37,8 +37,12 @@ export function inventory(report) {
   return tests;
 }
 
-export function planShards(tests, timings, total) {
+export function planShards(tests, timings, total, early = total) {
   assert.ok(Number.isSafeInteger(total) && total > 0, 'Invalid shard count');
+  assert.ok(
+    Number.isSafeInteger(early) && early > 0 && early <= total,
+    'Invalid early shard count',
+  );
   const costs = Object.values(timings.files)
     .map(({ tests, durationMs }) => {
       assert.ok(Number.isSafeInteger(tests) && tests > 0, 'Invalid historical test count');
@@ -61,13 +65,21 @@ export function planShards(tests, timings, total) {
       Math.max(1, group.tests.filter((test) => test.active).length) *
       (previous ? previous.durationMs / previous.tests : fallback);
   }
-  const shards = Array.from({ length: total }, () => ({ files: [], tests: [], estimatedMs: 0 }));
-  for (const group of [...files.values()].sort(
+  const shards = Array.from({ length: total }, (_, index) => ({
+    files: [],
+    tests: [],
+    estimatedMs: 0,
+    weight: index < early ? 1 : 3,
+  }));
+  const groups = [...files.values()].sort(
     (a, b) => b.estimatedMs - a.estimatedMs || a.file.localeCompare(b.file),
-  )) {
-    const shard = shards.reduce((best, next) =>
-      next.estimatedMs < best.estimatedMs ? next : best,
-    );
+  );
+  for (const [index, group] of groups.entries()) {
+    const empty = shards.filter((shard) => !shard.files.length);
+    const candidates = groups.length - index === empty.length ? empty : shards;
+    // Reserve most of the work for runners that can start before the build finishes.
+    const score = (shard) => (shard.estimatedMs + group.estimatedMs) * shard.weight;
+    const shard = candidates.reduce((best, next) => (score(next) < score(best) ? next : best));
     shard.files.push(group.file);
     shard.tests.push(...group.tests);
     shard.estimatedMs += group.estimatedMs;
@@ -133,12 +145,13 @@ function listTests(extra = []) {
   return JSON.parse(result.stdout);
 }
 
-function prepareShard(shard, total, evidence) {
+function prepareShard(shard, total, early, evidence) {
   const discovered = inventory(listTests());
-  const shards = planShards(discovered, JSON.parse(readFileSync(timingPath, 'utf8')), total);
+  const shards = planShards(discovered, JSON.parse(readFileSync(timingPath, 'utf8')), total, early);
   const plan = {
     shard,
     total,
+    early,
     discovered: discovered.map(({ id }) => id),
     shards: shards.map(({ files, tests, estimatedMs }) => ({
       files,
@@ -253,15 +266,17 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     assert.ok(['plan', 'run', 'run-prepared'].includes(command), 'Unknown browser shard command');
     assert.match(args[0] ?? '', /^[1-9]\d*\/[1-9]\d*$/);
     const [current, total] = args[0].split('/').map(Number);
+    const early = Number(process.env.FUNCTIONAL_EARLY_SHARDS ?? total);
     assert.ok(current <= total, 'Shard index exceeds total');
     assert.equal(args.length, 1, 'Pass exactly one whole-file shard');
     const evidence = resolve('artifacts/ci-browser-shards');
     const plan =
       command === 'run-prepared'
         ? JSON.parse(readFileSync(resolve(evidence, 'functional-shard-plan.json'), 'utf8'))
-        : prepareShard(current, total, evidence);
+        : prepareShard(current, total, early, evidence);
     assert.equal(plan.shard, current);
     assert.equal(plan.total, total);
+    assert.equal(plan.early, early);
     if (command === 'plan') process.exit(0);
     const selected = plan.shards[current - 1];
     const list = resolve(evidence, 'functional-shard.txt');

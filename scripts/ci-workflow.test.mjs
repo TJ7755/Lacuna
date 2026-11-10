@@ -133,7 +133,7 @@ test('documentation-only changes resolve required names without running heavy st
   }
 });
 
-const fullBrowserResults = ['RESULT', 'TIMING_RESULT', 'STANDALONE_RESULT'];
+const fullBrowserResults = ['RESULT', 'LATE_RESULT', 'TIMING_RESULT', 'STANDALONE_RESULT'];
 const fullStandaloneSuites = JSON.stringify(classifyPaths([]).standalone_suites);
 const gateCases = (job) =>
   job === 'browser-smoke'
@@ -148,7 +148,7 @@ const gateCases = (job) =>
           event: 'pull_request',
           browserCI: 'false',
           standaloneSuites: JSON.stringify(classifyPaths(['apps/gaps/sw.js']).standalone_suites),
-          ignored: ['RESULT', 'TIMING_RESULT'],
+          ignored: ['RESULT', 'LATE_RESULT', 'TIMING_RESULT'],
         },
         { event: 'pull_request', browserCI: 'true', ignored: ['PR_RESULT'] },
         { event: 'pull_request', browserCI: '', ignored: ['PR_RESULT'] },
@@ -266,7 +266,7 @@ test('aggregate shell gates fail closed and report each dependency result', () =
 
 test('browser consumers install the lockfile browser and share the production artefact', () => {
   const jobs = workflow.jobs;
-  const consumers = ['browser-pr', 'browser-tests', 'browser-timing'];
+  const consumers = ['browser-pr', 'browser-tests', 'browser-tests-late', 'browser-timing'];
   const build = jobs['web-build'];
   assert.equal(build.needs, undefined);
   const [checkout, scope] = jobs.changes.steps;
@@ -305,8 +305,11 @@ test('browser consumers install the lockfile browser and share the production ar
     const { steps } = job;
     const download = steps.find((step) => step.uses?.startsWith('actions/download-artifact@'));
     assert.equal(download.with.path, producer.with.path);
-    if (name === 'browser-tests' || name === 'browser-timing') {
-      assert.equal(job.needs, 'changes');
+    if (name !== 'browser-pr' && name !== 'production') {
+      assert.deepEqual(
+        job.needs,
+        name === 'browser-tests-late' ? ['changes', 'web-build'] : 'changes',
+      );
       const browser = steps.find((step) => step.run?.includes('playwright install'));
       const lookup = steps.find((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs web');
       assert.equal(lookup.id, 'web-dist');
@@ -314,12 +317,12 @@ test('browser consumers install the lockfile browser and share the production ar
       const join = steps.findIndex((step) => [step.wait].flat().includes(lookup.id));
       assert.ok(steps.indexOf(lookup) < steps.indexOf(browser));
       assert.ok(steps.indexOf(browser) < join && join < steps.indexOf(download));
-      if (name === 'browser-tests') {
+      if (name.startsWith('browser-tests')) {
         const plan = steps.find((step) => step.id === 'browser-plan');
         assert.equal(plan.background, true);
         assert.equal(
           plan.run,
-          'node scripts/ci-browser-shards.mjs plan ${{ matrix.shard }}/${{ strategy.job-total }}',
+          'node scripts/ci-browser-shards.mjs plan ${{ matrix.shard }}/${{ env.FUNCTIONAL_SHARDS }}',
         );
         assert.ok(steps.indexOf(plan) < steps.indexOf(browser));
         assert.ok(steps[join].wait.includes(plan.id));
@@ -354,24 +357,33 @@ test('browser consumers install the lockfile browser and share the production ar
     (step) => step.run === 'node scripts/ci-browser-artefact.mjs',
   );
   assert.equal(provenance.if, jobs['browser-tests'].if);
+  assert.equal(provenance.if, jobs['browser-tests-late'].if);
   assert.equal(provenance.if, jobs['browser-timing'].if);
   assert.equal(provenance.env.WEB_ARTIFACT_ID, '${{ needs.web-build.outputs.artifact_id }}');
-  const functionalShards = Number(provenance.env.FUNCTIONAL_SHARDS);
+  const functionalShards = Number(workflow.env.FUNCTIONAL_SHARDS);
+  const earlyShards = Number(jobs['browser-tests'].env.FUNCTIONAL_EARLY_SHARDS);
   assert.ok(Number.isInteger(functionalShards) && functionalShards > 0 && functionalShards <= 32);
+  assert.ok(Number.isInteger(earlyShards) && earlyShards > 0 && earlyShards < functionalShards);
   assert.equal(
     jobs['browser-smoke'].steps[0].env.PRODUCTION_RESULT,
     '${{ needs.production.result }}',
   );
   assert.deepEqual(
     jobs['browser-tests'].strategy.matrix.shard,
-    Array.from({ length: functionalShards }, (_, index) => index + 1),
+    Array.from({ length: earlyShards }, (_, index) => index + 1),
   );
-  assert.equal(jobs['browser-tests'].strategy.matrix.lane, undefined);
+  assert.deepEqual(
+    jobs['browser-tests-late'].strategy.matrix.shard,
+    Array.from({ length: functionalShards - earlyShards }, (_, index) => earlyShards + index + 1),
+  );
+  assert.equal(jobs['browser-tests-late'].name, jobs['browser-tests'].name);
+  assert.deepEqual(jobs['browser-tests-late'].env, jobs['browser-tests'].env);
+  assert.deepEqual(jobs['browser-tests-late'].steps, jobs['browser-tests'].steps);
   assert.ok(
     jobs['browser-tests'].steps.some(
       (step) =>
         step.run ===
-        'node scripts/ci-browser-shards.mjs run-prepared ${{ matrix.shard }}/${{ strategy.job-total }}',
+        'node scripts/ci-browser-shards.mjs run-prepared ${{ matrix.shard }}/${{ env.FUNCTIONAL_SHARDS }}',
     ),
   );
   const functionalEvidence = jobs['browser-tests'].steps.find(
@@ -649,6 +661,7 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
           : {
               PRODUCTION_RESULT: 'APP',
               RESULT: 'APP',
+              LATE_RESULT: 'APP',
               TIMING_RESULT: 'APP',
               STANDALONE_RESULT: 'STANDALONE_SUITES',
             };
@@ -707,6 +720,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'production',
     'browser-pr',
     'browser-tests',
+    'browser-tests-late',
     'browser-standalone',
     'browser-timing',
     'electron-renderer',
@@ -715,7 +729,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'electron-macos-smoke',
   ];
   // Ordinary PRs run smoke, plus standalone suites selected by their changed paths.
-  const postMerge = ['browser-tests', 'browser-standalone', 'browser-timing'];
+  const postMerge = ['browser-tests', 'browser-tests-late', 'browser-standalone', 'browser-timing'];
   const web = ['web-build', 'production', 'browser-pr'];
   const all = workers.filter((name) => !postMerge.includes(name));
   const full = workers.filter((name) => name !== 'browser-pr');
