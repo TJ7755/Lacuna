@@ -308,7 +308,7 @@ test('browser consumers install the lockfile browser and share the production ar
     if (name !== 'browser-pr' && name !== 'production') {
       assert.deepEqual(
         job.needs,
-        name === 'browser-tests-late' ? ['changes', 'web-build'] : 'changes',
+        name === 'browser-tests-late' ? ['changes', 'documentation'] : 'changes',
       );
       const browser = steps.find((step) => step.run?.includes('playwright install'));
       const lookup = steps.find((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs web');

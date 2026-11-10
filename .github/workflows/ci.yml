@@ -25,7 +25,7 @@ concurrency:
 jobs:
   documentation:
     # Let the longer browser jobs claim runners before this short independent check.
-    needs: web-build
+    needs: changes
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
@@ -560,11 +560,11 @@ jobs:
             artifacts/ci-browser-shards/
           if-no-files-found: ignore
 
-  # Give the larger shards first access to runners. The planner gives these
-  # later shards less work so they can start after the artefact is published.
+  # Give the larger shards first access to runners. The short documentation
+  # check releases the smaller shards before the build's downstream jobs queue.
   browser-tests-late:
     name: browser-tests (${{ matrix.shard }})
-    needs: [changes, web-build]
+    needs: [changes, documentation]
     if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-24.04
     env: *functional-browser-env
