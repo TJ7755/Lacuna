@@ -8,8 +8,9 @@ const names = [
   'browser-tests (1)',
   'browser-tests (2)',
   'browser-timing (chromium-image-performance, 1, 1)',
-  'browser-timing (chromium-study-performance, 1, 2)',
-  'browser-timing (chromium-study-performance, 2, 2)',
+  'browser-timing (chromium-study-performance, 1, 3)',
+  'browser-timing (chromium-study-performance, 2, 3)',
+  'browser-timing (chromium-study-performance, 3, 3)',
 ];
 const successfulJobs = () =>
   names.map((name) => ({

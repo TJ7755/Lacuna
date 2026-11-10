@@ -323,8 +323,9 @@ test('browser consumers install the lockfile browser and share the production ar
   const timing = jobs['browser-timing'];
   assert.deepEqual(timing.strategy.matrix.include, [
     { project: 'chromium-image-performance', shard: 1, total: 1 },
-    { project: 'chromium-study-performance', shard: 1, total: 2 },
-    { project: 'chromium-study-performance', shard: 2, total: 2 },
+    { project: 'chromium-study-performance', shard: 1, total: 3 },
+    { project: 'chromium-study-performance', shard: 2, total: 3 },
+    { project: 'chromium-study-performance', shard: 3, total: 3 },
   ]);
   assert.ok(
     timing.steps.some((step) =>
@@ -805,7 +806,7 @@ test('Windows evidence is selected conservatively on PRs and pushes', () => {
       for (const step of renderer.steps.slice(2))
         assert.equal(runInNewContext(step.if, context), affected);
       assert.equal(runInNewContext(ai.if, context), affected);
-      for (const step of upgrade.steps.slice(2))
+      for (const step of upgrade.steps.slice(2).flatMap((step) => step.parallel ?? [step]))
         assert.equal(runInNewContext(step.if, context), affected);
     }
   }
@@ -905,27 +906,23 @@ test('Windows upgrade scenarios retain both probes on isolated runners with the 
   assert.ok(job.strategy?.matrix, 'Both upgrade scenarios require isolated matrix runners');
   assert.equal(job.strategy['fail-fast'], false);
   assert.deepEqual(job.strategy.matrix.probe, ['companion', 'release']);
-  const install = job.steps.findIndex(
-    (step) => step.run === "bun install --frozen-lockfile --filter '@lacuna/desktop'",
-  );
-  const native = job.steps.findIndex((step) => step.run === 'bun run electron:prepare');
-  const wait = job.steps.findIndex((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs');
-  const download = job.steps.findIndex(
-    (step) => step.with?.['artifact-ids'] === '${{ steps.renderer.outputs.artifact_id }}',
-  );
-  const upgrade = job.steps.findIndex(
-    (step) => step.run === 'node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }}',
-  );
-  assert.ok(
-    install >= 0 && install < native && native < wait && wait < download && download < upgrade,
-  );
-  assert.equal(job.steps[wait].id, 'renderer');
-  assert.equal(
-    job.steps[wait].env.SOURCE_SHA,
-    '${{ github.event.pull_request.head.sha || github.sha }}',
-  );
-  assert.equal(job.steps[download].with['github-token'], '${{ github.token }}');
-  assert.equal(job.steps[download].with.path, 'dist/');
+  const [, , node, bun, preflight, prepare, upgrade] = job.steps;
+  assert.equal(node.uses, './.github/actions/setup-node');
+  assert.equal(bun.uses, './.github/actions/setup-bun');
+  const [install, cache, wait] = preflight.parallel;
+  assert.equal(install.run, "bun install --frozen-lockfile --filter '@lacuna/desktop'");
+  assert.match(cache.uses, /^actions\/cache@/);
+  assert.match(cache.with.key, /hashFiles\('bun\.lock'\)/);
+  assert.equal(wait.run, 'node scripts/ci-wait-for-renderer.mjs');
+  assert.equal(wait.id, 'renderer');
+  assert.equal(wait.env.SOURCE_SHA, '${{ github.event.pull_request.head.sha || github.sha }}');
+  const [verify, native, download] = prepare.parallel;
+  assert.equal(verify.run, 'node scripts/ci-electron-runtime.mjs win32 x64 --packaging-tools');
+  assert.equal(native.run, 'bun run electron:prepare');
+  assert.equal(download.with['artifact-ids'], '${{ steps.renderer.outputs.artifact_id }}');
+  assert.equal(download.with['github-token'], '${{ github.token }}');
+  assert.equal(download.with.path, 'dist/');
+  assert.equal(upgrade.run, 'node scripts/windows-ci-upgrade.mjs ${{ matrix.probe }}');
   const producer = workflow.jobs['electron-renderer'].steps.find((step) =>
     step.uses?.startsWith('actions/upload-artifact@'),
   );

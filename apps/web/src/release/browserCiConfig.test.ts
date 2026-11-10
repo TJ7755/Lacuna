@@ -136,12 +136,12 @@ it('partitions the complete local Chromium suite across the functional and isola
     const local = list('playwright.web.config.ts', 'chromium');
     const functional = list('playwright.web.ci.config.ts', 'chromium-functional');
     const image = list('playwright.web.ci.config.ts', 'chromium-image-performance', '--workers=1');
-    const study = [1, 2].map((shard) =>
+    const study = [1, 2, 3].map((shard) =>
       list(
         'playwright.web.ci.config.ts',
         'chromium-study-performance',
         '--workers=1',
-        `--shard=${shard}/2`,
+        `--shard=${shard}/3`,
       ),
     );
     const functionalCases = cases(functional.suites);

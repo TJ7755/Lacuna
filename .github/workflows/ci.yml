@@ -600,10 +600,13 @@ jobs:
             total: 1
           - project: chromium-study-performance
             shard: 1
-            total: 2
+            total: 3
           - project: chromium-study-performance
             shard: 2
-            total: 2
+            total: 3
+          - project: chromium-study-performance
+            shard: 3
+            total: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -863,38 +866,43 @@ jobs:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
         if: steps.scope.outputs.windows_native != 'false'
-      - run: bun install --frozen-lockfile --filter '@lacuna/desktop'
-        if: steps.scope.outputs.windows_native != 'false'
-      - name: Cache Windows packaging archives
-        if: steps.scope.outputs.windows_native != 'false'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          # Cache only the archives that the next step verifies, never extracted tools.
-          path: |
-            ~/AppData/Local/electron/Cache/*/electron-v*-win32-x64.zip
-            ~/AppData/Local/electron-builder/Cache/winCodeSign-2.6.0/winCodeSign-2.6.0.7z
-            ~/AppData/Local/electron-builder/Cache/nsis-3.0.4.1/nsis-3.0.4.1.7z
-            ~/AppData/Local/electron-builder/Cache/nsis-resources-3.4.1/nsis-resources-3.4.1.7z
-            ~/AppData/Local/electron-builder/Cache/7zip@1.0.0/7zip-win-x64.tar.gz
-            ~/AppData/Local/electron-builder/Cache/icons@1.2.3/icons-bundle.tar.gz
-          key: electron-win-packaging-archives-v1-${{ runner.arch }}-${{ hashFiles('node_modules/electron/checksums.json', 'apps/desktop/node_modules/electron/checksums.json') || hashFiles('bun.lock') }}-${{ hashFiles('scripts/ci-electron-runtime.mjs') }}
-      - run: node scripts/ci-electron-runtime.mjs win32 x64 --packaging-tools
-        if: steps.scope.outputs.windows_native != 'false'
-      - run: bun run electron:prepare
-        if: steps.scope.outputs.windows_native != 'false'
-      - name: Require the current desktop renderer build
-        if: steps.scope.outputs.windows_native != 'false'
-        id: renderer
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: node scripts/ci-wait-for-renderer.mjs
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.1
-        if: steps.scope.outputs.windows_native != 'false'
-        with:
-          artifact-ids: ${{ steps.renderer.outputs.artifact_id }}
-          github-token: ${{ github.token }}
-          path: dist/
+      - parallel:
+          - run: bun install --frozen-lockfile --filter '@lacuna/desktop'
+            if: steps.scope.outputs.windows_native != 'false'
+          - name: Cache Windows packaging archives
+            if: steps.scope.outputs.windows_native != 'false'
+            uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+            with:
+              # The runtime check verifies every archive before packaging uses it.
+              path: |
+                ~/AppData/Local/electron/Cache/*/electron-v*-win32-x64.zip
+                ~/AppData/Local/electron-builder/Cache/winCodeSign-2.6.0/winCodeSign-2.6.0.7z
+                ~/AppData/Local/electron-builder/Cache/nsis-3.0.4.1/nsis-3.0.4.1.7z
+                ~/AppData/Local/electron-builder/Cache/nsis-resources-3.4.1/nsis-resources-3.4.1.7z
+                ~/AppData/Local/electron-builder/Cache/7zip@1.0.0/7zip-win-x64.tar.gz
+                ~/AppData/Local/electron-builder/Cache/icons@1.2.3/icons-bundle.tar.gz
+              key: electron-win-packaging-archives-v2-${{ runner.arch }}-${{ hashFiles('scripts/ci-electron-runtime.mjs') }}-${{ hashFiles('bun.lock') }}
+              restore-keys: |
+                electron-win-packaging-archives-v2-${{ runner.arch }}-${{ hashFiles('scripts/ci-electron-runtime.mjs') }}-
+                electron-win-packaging-archives-v1-${{ runner.arch }}-
+          - name: Require the current desktop renderer build
+            if: steps.scope.outputs.windows_native != 'false'
+            id: renderer
+            env:
+              GH_TOKEN: ${{ github.token }}
+              SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+            run: node scripts/ci-wait-for-renderer.mjs
+      - parallel:
+          - run: node scripts/ci-electron-runtime.mjs win32 x64 --packaging-tools
+            if: steps.scope.outputs.windows_native != 'false'
+          - run: bun run electron:prepare
+            if: steps.scope.outputs.windows_native != 'false'
+          - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.1
+            if: steps.scope.outputs.windows_native != 'false'
+            with:
+              artifact-ids: ${{ steps.renderer.outputs.artifact_id }}
+              github-token: ${{ github.token }}
+              path: dist/
       - name: Build and audit the NSIS installer while preparing the upgrade baseline
         if: steps.scope.outputs.windows_native != 'false'
         env:
