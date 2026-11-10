@@ -1,37 +1,36 @@
+import { build } from 'esbuild';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { createCourse, openEmptyDashboard } from './fixtures/lacunaApp';
-import type { Card, Lesson } from '@lacuna/core/db/types';
+import { openEmptyDashboard } from './fixtures/lacunaApp';
+import type { Card } from '@lacuna/core/db/types';
+import type * as CardFitFixture from './fixtures/studyCardFit';
+
+declare global {
+  interface Window {
+    StudyCardFitFixture: typeof CardFitFixture;
+  }
+}
 
 const viewport = { width: 1280, height: 800 };
+let fixture: string;
+
+test.beforeAll(async () => {
+  const bundle = await build({
+    entryPoints: ['tests/e2e/fixtures/studyCardFit.ts'],
+    bundle: true,
+    write: false,
+    platform: 'browser',
+    format: 'iife',
+    globalName: 'StudyCardFitFixture',
+    define: { 'import.meta.env.DEV': 'false' },
+  });
+  fixture = bundle.outputFiles[0].text;
+});
 
 async function prepareCard(page: Page) {
   await page.setViewportSize(viewport);
   await openEmptyDashboard(page);
-  await createCourse(page, 'Card fit');
-  const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
-  await page.getByRole('button', { name: 'Edit mode' }).click();
-  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
-  await page.getByRole('textbox', { name: 'Front' }).fill('Question');
-  await page.getByRole('textbox', { name: 'Back' }).fill('Answer');
-  await page.getByRole('button', { name: 'Add card', exact: true }).click();
-  await expect(page).not.toHaveURL(/\/cards\/new$/);
-  return page.evaluate(async (courseId) => {
-    const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('lacuna');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const read = <T>(store: string) =>
-      new Promise<T[]>((resolve, reject) => {
-        const request = database.transaction(store).objectStore(store).getAll();
-        request.onsuccess = () => resolve(request.result as T[]);
-        request.onerror = () => reject(request.error);
-      });
-    const card = (await read<Card>('cards')).find((card) => card.courseId === courseId)!;
-    const lesson = (await read<Lesson>('lessons')).find((lesson) => lesson.courseId === courseId)!;
-    database.close();
-    return { card, lessonId: lesson.id };
-  }, courseId);
+  await page.addScriptTag({ content: fixture });
+  return page.evaluate(() => window.StudyCardFitFixture.seed());
 }
 
 async function seedCard(page: Page, card: Card, kind: string, copies = 1) {

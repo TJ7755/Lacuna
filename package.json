@@ -34,7 +34,7 @@
     "test": "vitest run --config tests/config/vitest.config.ts",
     "test:ci:unit": "vitest run --config tests/config/vitest.config.ts",
     "test:ai-mcp": "bun run --cwd tooling/lacuna-ai-mcp test",
-    "test:coverage": "vitest run --config tests/config/vitest.config.ts apps/web/src/course/path*.test.ts apps/web/src/course/unlock.test.ts apps/web/src/fsrs/session*.test.ts apps/web/src/pages/learn/practiceQueue.test.tsx apps/web/src/db/lineageDiff.test.ts --coverage",
+    "test:coverage": "LACUNA_CRITICAL_COVERAGE=true vitest run --config tests/config/vitest.config.ts --coverage",
     "test:coverage:recovery": "vitest run --config tests/config/vitest.recovery.config.ts --coverage",
     "test:coverage:risk": "vitest run --config tests/config/vitest.risk.config.ts --coverage",
     "test:e2e:web": "playwright test -c tests/config/playwright.web.config.ts",

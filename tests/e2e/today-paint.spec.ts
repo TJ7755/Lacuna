@@ -8,7 +8,7 @@ test.use({
   colorScheme: 'light',
   locale: 'en-GB',
   timezoneId: 'Europe/London',
-  video: { mode: 'on', size: { width: 1470, height: 956 } },
+  video: evidence ? { mode: 'on', size: { width: 1470, height: 956 } } : 'off',
 });
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-10-26T12:00:00Z'));
@@ -46,7 +46,7 @@ test('normal switch edge click retains its target through hover and selection', 
   await expect(toggle).toHaveAttribute('aria-checked', before === 'true' ? 'false' : 'true');
   await settle(toggle);
   expect(await hit()).toBe(true);
-  await page.screenshot({ path: `${evidence}/switch-after-edge-click.png` });
+  if (evidence) await page.screenshot({ path: `${evidence}/switch-after-edge-click.png` });
 });
 
 for (const origin of ['Today', 'course']) {
@@ -70,7 +70,7 @@ for (const origin of ['Today', 'course']) {
     await study.click();
     const sheet = page.getByRole('region', { name: 'Session preview' });
     await settle(sheet);
-    await page.screenshot({ path: `${evidence}/study-settled-${origin}.png` });
+    if (evidence) await page.screenshot({ path: `${evidence}/study-settled-${origin}.png` });
     await page.evaluate(() =>
       window.addEventListener('lacuna:landing-transition', (event) => {
         (window as unknown as { launchColour: string }).launchColour = (
@@ -141,5 +141,5 @@ test('empty toolbar stays beside its instruction and the short desktop keeps Stu
   expect(bounds.y + bounds.height).toBeLessThanOrEqual(600);
   await expect(page.getByLabel('Today: 0 reviews due', { exact: true })).toBeVisible();
   await expect(page.locator('main').getByText('0 min', { exact: true })).toBeHidden();
-  await page.screenshot({ path: `${evidence}/today-short-1280x600.png` });
+  if (evidence) await page.screenshot({ path: `${evidence}/today-short-1280x600.png` });
 });

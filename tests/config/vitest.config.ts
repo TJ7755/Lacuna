@@ -16,11 +16,25 @@ const browserStorageTests = [
   'apps/web/src/course/localLessonOrder.test.ts',
   'apps/web/src/fsrs/optimise.persistence.test.ts',
 ];
-// The required risk and recovery jobs already run these files in happy-dom.
-const coverageOwnedTests =
-  process.env.LACUNA_CI_SEPARATE_COVERAGE === 'true'
-    ? [...(riskConfig.test?.include ?? []), ...(recoveryConfig.test?.include ?? [])]
-    : [];
+const criticalNodeTests = [
+  'apps/web/src/course/path*.test.ts',
+  'apps/web/src/course/unlock.test.ts',
+  'apps/web/src/fsrs/session*.test.ts',
+];
+const criticalBrowserTests = [
+  'apps/web/src/pages/learn/practiceQueue.test.tsx',
+  'apps/web/src/db/lineageDiff.test.ts',
+];
+const criticalCoverage = process.env.LACUNA_CRITICAL_COVERAGE === 'true';
+// CI runs these tests in the required coverage jobs. Local unit runs remain complete.
+const separateCoverage = process.env.LACUNA_CI_SEPARATE_COVERAGE === 'true' && !criticalCoverage;
+const coverageOwnedBrowserTests = separateCoverage
+  ? [
+      ...criticalBrowserTests,
+      ...(riskConfig.test?.include ?? []),
+      ...(recoveryConfig.test?.include ?? []),
+    ]
+  : [];
 
 export default defineConfig({
   root: fileURLToPath(new URL('../..', import.meta.url)),
@@ -35,22 +49,28 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          include: nodeTests,
-          exclude: [...configDefaults.exclude, ...browserStorageTests],
+          include: criticalCoverage ? criticalNodeTests : nodeTests,
+          exclude: [
+            ...configDefaults.exclude,
+            ...browserStorageTests,
+            ...(separateCoverage ? criticalNodeTests : []),
+          ],
         },
       },
       {
         test: {
           name: 'browser',
-          include: ['apps/web/src/**/*.test.ts', 'apps/web/src/**/*.test.tsx'],
-          exclude: [...configDefaults.exclude, ...nodeTests, ...coverageOwnedTests],
+          include: criticalCoverage
+            ? criticalBrowserTests
+            : ['apps/web/src/**/*.test.ts', 'apps/web/src/**/*.test.tsx'],
+          exclude: [...configDefaults.exclude, ...nodeTests, ...coverageOwnedBrowserTests],
           setupFiles: ['./tests/setup.ts'],
         },
       },
       {
         test: {
           name: 'browser-storage',
-          include: browserStorageTests,
+          include: criticalCoverage ? [] : browserStorageTests,
           setupFiles: ['./tests/setup.ts'],
         },
       },

@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
+import { readAttemptJobs, readWorkflowRun } from './ci-wait-for-renderer.mjs';
 
 const config = 'tests/config/playwright.web.ci.config.ts';
 const project = 'chromium-functional';
@@ -110,6 +113,7 @@ export function refreshTimings(reports, source) {
 
 function listTests(extra = []) {
   const env = { ...process.env };
+  delete env.CI_PEER_JOB_TOKEN;
   for (const key of Object.keys(env)) if (key.startsWith('PLAYWRIGHT_JSON_OUTPUT')) delete env[key];
   const result = spawnSync(
     process.execPath,
@@ -127,6 +131,82 @@ function listTests(extra = []) {
   );
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return JSON.parse(result.stdout);
+}
+
+export async function firstFailedPeer(read, runId, attempt, signal) {
+  let warned = false;
+  // Share the workflow token's API budget with renderer and artefact verification.
+  for (let poll = 0; poll < 6 && !signal.aborted; poll++) {
+    try {
+      const jobs = await readAttemptJobs(read, attempt);
+      const failure = jobs.find(
+        (job) =>
+          job.run_id === Number(runId) &&
+          job.run_attempt === Number(attempt) &&
+          job.status === 'completed' &&
+          ['failure', 'timed_out'].includes(job.conclusion),
+      );
+      if (failure) return failure.name;
+    } catch (error) {
+      if (!signal.aborted && !warned) {
+        console.warn(
+          'Could not inspect peer CI jobs. Continuing browser validation.',
+          error.message,
+        );
+        warned = true;
+      }
+    }
+    if (poll < 5) await delay(12_000, undefined, { signal }).catch(() => {});
+  }
+}
+
+async function runPlaywright(args) {
+  const { CI_PEER_JOB_TOKEN: token, ...env } = process.env;
+  if (!token) return spawnSync(process.execPath, args, { stdio: 'inherit' }).status ?? 1;
+
+  const { GITHUB_REPOSITORY: repository, GITHUB_RUN_ID: runId, GITHUB_RUN_ATTEMPT: attempt } = env;
+  const controller = new AbortController();
+  const { signal } = controller;
+  const read = readWorkflowRun({
+    repository,
+    runId,
+    token,
+    request: (url, options) =>
+      fetch(url, { ...options, signal: AbortSignal.any([signal, options.signal]) }),
+  });
+  const child = spawn(process.execPath, args, { env, stdio: 'inherit', detached: true });
+  let peerFailure;
+  let forceStop;
+  function interrupt() {
+    if (forceStop) return;
+    child.kill('SIGINT');
+    // Let Playwright write its interrupted report before stopping a stuck process group.
+    forceStop = setTimeout(() => {
+      try {
+        process.kill(-child.pid, 'SIGKILL');
+      } catch (error) {
+        if (error.code !== 'ESRCH') console.error(error);
+      }
+    }, 5_000);
+  }
+  process.once('SIGINT', interrupt);
+  process.once('SIGTERM', interrupt);
+  const watch = firstFailedPeer(read, runId, attempt, signal).then((failure) => {
+    if (!failure || signal.aborted) return;
+    peerFailure = failure;
+    console.error(`Stopping this browser shard because ${failure} failed in this attempt.`);
+    interrupt();
+  });
+  try {
+    const [code] = await once(child, 'close');
+    return peerFailure ? 1 : (code ?? 1);
+  } finally {
+    controller.abort();
+    await watch;
+    clearTimeout(forceStop);
+    process.removeListener('SIGINT', interrupt);
+    process.removeListener('SIGTERM', interrupt);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
@@ -175,21 +255,16 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
         2,
       ),
     );
-    const result = spawnSync(
-      process.execPath,
-      [
-        'node_modules/playwright/cli.js',
-        'test',
-        '-c',
-        config,
-        `--project=${project}`,
-        '--test-list',
-        list,
-        '--workers=3',
-        '--max-failures=1',
-      ],
-      { stdio: 'inherit' },
-    );
-    process.exitCode = result.status ?? 1;
+    process.exitCode = await runPlaywright([
+      'node_modules/playwright/cli.js',
+      'test',
+      '-c',
+      config,
+      `--project=${project}`,
+      '--test-list',
+      list,
+      '--workers=3',
+      '--max-failures=1',
+    ]);
   }
 }

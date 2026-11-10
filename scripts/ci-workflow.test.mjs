@@ -349,7 +349,7 @@ test('browser consumers install the lockfile browser and share the production ar
   );
   assert.deepEqual(
     jobs['browser-tests'].strategy.matrix.shard,
-    Array.from({ length: 21 }, (_, index) => index + 1),
+    Array.from({ length: 18 }, (_, index) => index + 1),
   );
   assert.equal(jobs['browser-tests'].strategy.matrix.lane, undefined);
   assert.ok(
