@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type Dispatch,
@@ -18,6 +19,11 @@ import type { useLearnSession } from './useLearnSession';
 
 type Session = ReturnType<typeof useLearnSession>;
 
+interface CompletionUndoToast {
+  dismissed: boolean;
+  show: () => void;
+}
+
 export function useLearnAnswerFeedback({
   answer,
   undoLast,
@@ -30,6 +36,7 @@ export function useLearnAnswerFeedback({
   current,
   typedAnswer,
   verifyTypedRecall,
+  quietCardPractice,
 }: {
   answer: Session['answer'];
   undoLast: Session['undoLast'];
@@ -42,6 +49,7 @@ export function useLearnAnswerFeedback({
   current: Card | null;
   typedAnswer: string;
   verifyTypedRecall: boolean;
+  quietCardPractice?: boolean;
 }) {
   const [gradeFeedback, setGradeFeedback] = useState<StudyGradeFeedback>();
   const cardTransitionRef = useRef<StudyCardTransitionHandle>(null);
@@ -57,6 +65,13 @@ export function useLearnAnswerFeedback({
   const clearStreakMoment = useCallback(() => setStreakMoment(null), []);
   const undoInFlightRef = useRef(false);
   const completionInFlightRef = useRef(false);
+  const completionUndoToastRef = useRef<CompletionUndoToast | null>(null);
+  useEffect(
+    () => () => {
+      completionUndoToastRef.current = null;
+    },
+    [],
+  );
   const lastTypedAnswerRef = useRef<{ cardId: string; answer: string; verified: boolean } | null>(
     null,
   );
@@ -65,6 +80,7 @@ export function useLearnAnswerFeedback({
   const undoWithTransitionCancel = useCallback(async () => {
     if (undoInFlightRef.current || completionInFlightRef.current) return;
     undoInFlightRef.current = true;
+    const completionUndoToast = completionUndoToastRef.current;
     setMenuOpen(false);
     try {
       cardTransitionRef.current?.cancel();
@@ -74,28 +90,35 @@ export function useLearnAnswerFeedback({
       if (typed) setManualRestoredCardId(typed.verified ? null : typed.cardId);
       // Restore verified recall to the input so only an intentional resubmission is marked.
       const restored = await undoLast({ reveal: typed !== null && !typed.verified });
+      if (restored) completionUndoToastRef.current = null;
       if (restored && typed?.cardId === restored.id) {
         setTypedAnswer(typed.answer);
         lastTypedAnswerRef.current = null;
       }
     } finally {
       undoInFlightRef.current = false;
+      // Keep Undo available for a retry if its save failed as the toast dismissed.
+      if (completionUndoToast?.dismissed && completionUndoToastRef.current === completionUndoToast)
+        completionUndoToast.show();
     }
   }, [undoLast, setMenuOpen, setTypedAnswer]);
 
-  const confirmReport = async (then: () => void, leaving = false) => {
-    if (completionInFlightRef.current || undoInFlightRef.current) return;
-    completionInFlightRef.current = true;
-    setConfirmingCompletion(true);
-    if (leaving) leavingSessionRef.current = true;
-    try {
-      if (await confirmCompletion()) then();
-      else leavingSessionRef.current = false;
-    } finally {
-      completionInFlightRef.current = false;
-      setConfirmingCompletion(false);
-    }
-  };
+  const confirmReport = useCallback(
+    async (then: () => void, leaving = false) => {
+      if (completionInFlightRef.current || undoInFlightRef.current) return;
+      completionInFlightRef.current = true;
+      setConfirmingCompletion(true);
+      if (leaving) leavingSessionRef.current = true;
+      try {
+        if (await confirmCompletion()) then();
+        else if (leaving) leavingSessionRef.current = false;
+      } finally {
+        completionInFlightRef.current = false;
+        setConfirmingCompletion(false);
+      }
+    },
+    [confirmCompletion, leavingSessionRef],
+  );
 
   const answerWithUndo = useCallback(
     (
@@ -124,11 +147,36 @@ export function useLearnAnswerFeedback({
                 ? { cardId: current.id, answer: typedAnswer, verified: verifyTypedRecall }
                 : null;
             if (result.undoAvailable) {
-              notify(result.feedbackMessage ?? 'Answer recorded', 'neutral', {
-                actionLabel: 'Undo',
-                onAction: () => void undoWithTransitionCancel(),
-                replaceKey: 'learn-answer',
-              });
+              const message = result.feedbackMessage ?? 'Answer recorded';
+              if (quietCardPractice && result.completionPending) {
+                cardTransitionRef.current?.cancel();
+                const showUndo = () => {
+                  const toast = { dismissed: false, show: showUndo };
+                  completionUndoToastRef.current = toast;
+                  notify(message, 'neutral', {
+                    actionLabel: 'Undo',
+                    onAction: () => {
+                      if (completionUndoToastRef.current === toast) void undoWithTransitionCancel();
+                    },
+                    onDismiss: () => {
+                      toast.dismissed = true;
+                      if (completionUndoToastRef.current !== toast || undoInFlightRef.current)
+                        return;
+                      completionUndoToastRef.current = null;
+                      if (!leavingSessionRef.current) void confirmReport(() => {});
+                    },
+                    replaceKey: 'learn-answer',
+                    keepVisible: true,
+                  });
+                };
+                showUndo();
+              } else {
+                notify(message, 'neutral', {
+                  actionLabel: 'Undo',
+                  onAction: () => void undoWithTransitionCancel(),
+                  replaceKey: 'learn-answer',
+                });
+              }
             }
             setAnswerSaveStatus(undefined);
           } catch (error) {
@@ -165,6 +213,9 @@ export function useLearnAnswerFeedback({
       current,
       typedAnswer,
       verifyTypedRecall,
+      quietCardPractice,
+      leavingSessionRef,
+      confirmReport,
     ],
   );
 

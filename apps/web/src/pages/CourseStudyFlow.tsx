@@ -105,7 +105,6 @@ function CourseStudyFlowInner() {
   });
   const entryPracticeNodeKey = searchParams.get('practiceNode');
   const quietStudy = !entryAssessmentId && !entryPracticeNodeKey && !searchParams.has('review');
-  const [reviewedCardIds, setReviewedCardIds] = useState<ReadonlySet<string>>(() => new Set());
   // The choice is made in the study sheet before this route is entered and arrives as a
   // query parameter, so the flow no longer presents an entry screen of its own.
   const [transition, setTransition] = useState<TransitionState | null>(null);
@@ -240,21 +239,12 @@ function CourseStudyFlowInner() {
       // instance must never re-plan or overwrite the next step's transition.
       if (stepGeneration <= completedGenerationRef.current) return;
       completedGenerationRef.current = stepGeneration;
-      if (quietStudy && completed.kind === 'practice') {
-        setReviewedCardIds((previous) => {
-          const reviewed = new Set(previous);
-          for (const event of summary.events) {
-            if (event.cardId !== undefined) reviewed.add(event.cardId);
-          }
-          return reviewed;
-        });
-      }
       touchActiveStudyFlow(courseId);
       setPreviousStep(completed);
       setTransition({ summary, completedStep: completed, completedGeneration: stepGeneration });
       setRefreshKey((value) => value + 1);
     },
-    [courseId, currentStep, displayStep, quietStudy, stepGeneration],
+    [courseId, currentStep, displayStep, stepGeneration],
   );
 
   const handleQuestionFinished = useCallback(
@@ -439,9 +429,7 @@ function CourseStudyFlowInner() {
     body = (
       <LearnMode
         request={request}
-        reviewedCardIds={
-          quietStudy && displayStep.kind === 'practice' ? reviewedCardIds : undefined
-        }
+        quietCardPractice={quietStudy && displayStep.kind === 'practice'}
         showConfirmedReport={false}
         onStepFinished={handleStepFinished}
         onFlowExit={finishFlow}

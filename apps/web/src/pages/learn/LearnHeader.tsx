@@ -135,7 +135,8 @@ export function LearnHeader({
   onUndo,
   cardActions = true,
   cardCompletion,
-  cardPracticeReviewedCount,
+  quietCardPractice = false,
+  reviewBlock,
   segmentNoun,
 }: {
   mode: LearnModeType;
@@ -175,7 +176,8 @@ export function LearnHeader({
   /** False for a card that is not stored, which has nothing to edit, flag, bury or suspend. */
   cardActions?: boolean;
   cardCompletion?: { completed: number; total: number };
-  cardPracticeReviewedCount?: number;
+  quietCardPractice?: boolean;
+  reviewBlock?: { total: number; outcomes: readonly SessionCardOutcome[]; active: boolean };
   /** What each segment represents in the spoken position. */
   segmentNoun?: string;
 }) {
@@ -194,13 +196,20 @@ export function LearnHeader({
     : cardCompletion && cardCompletion.total > 0
       ? cardCompletion.completed / cardCompletion.total
       : sessionProgress;
-  const quietPractice = cardPracticeReviewedCount !== undefined;
-  const title = quietPractice ? CARD_PRACTICE_LABEL : info.title;
-  const completionText = quietPractice
-    ? `${countOf(cardPracticeReviewedCount, 'card')} reviewed`
-    : cardCompletion
-      ? `${cardCompletion.completed.toLocaleString('en-GB')} of ${countOf(cardCompletion.total, 'card')} complete`
-      : undefined;
+  const title = quietCardPractice ? CARD_PRACTICE_LABEL : info.title;
+  const completionText = cardCompletion
+    ? `${cardCompletion.completed.toLocaleString('en-GB')} of ${countOf(cardCompletion.total, 'card')} complete`
+    : undefined;
+  // The scheduler selects cards as answers arrive. Segments represent review
+  // slots in order, so a repeated card still fills the slot it used.
+  const reviewSegments = reviewBlock && {
+    cardIds: Array.from({ length: reviewBlock.total }, (_, index) => String(index)),
+    outcomes: new Map(reviewBlock.outcomes.map((outcome, index) => [String(index), outcome])),
+    currentCardIds: reviewBlock.active ? [String(reviewBlock.outcomes.length)] : [],
+    value: reviewBlock.outcomes.length / Math.max(1, reviewBlock.total),
+    valueText: `${reviewBlock.outcomes.length} of ${countOf(reviewBlock.total, 'review')} complete`,
+    noun: 'Review',
+  };
   // Segmented practice names the card's place in the bar, as its announcement does. Other
   // modes count progress through the session: their queues serve cards in their own order.
   const sessionTotal = sessionCardIds.length;
@@ -247,8 +256,7 @@ export function LearnHeader({
         <div className="min-w-10 flex-1 overflow-hidden">
           <div
             className={cn(
-              'flex min-w-0 items-baseline text-[13px] md:text-sm',
-              !quietPractice && 'mb-2',
+              'mb-2 flex min-w-0 items-baseline text-[13px] md:text-sm',
               completionText ? 'flex-wrap gap-x-3' : 'gap-1',
               cardCompletion && 'justify-between',
             )}
@@ -256,7 +264,7 @@ export function LearnHeader({
             <h1 className="max-w-full truncate font-bold text-ink" title={title}>
               {title}
             </h1>
-            {(completionText ?? cardPosition) && (
+            {!quietCardPractice && (completionText ?? cardPosition) && (
               <span
                 className={cn(
                   'shrink-0 text-ink-soft tabular-nums',
@@ -269,11 +277,11 @@ export function LearnHeader({
               </span>
             )}
           </div>
-          {!quietPractice && info.subtitle && (
+          {!quietCardPractice && info.subtitle && (
             <p className="mb-1 hidden truncate text-xs text-ink-faint md:block">{info.subtitle}</p>
           )}
-          {!quietPractice &&
-            (mode === 'simple' && !cardCompletion ? (
+          {reviewSegments || (mode === 'simple' && !cardCompletion) ? (
+            reviewSegments?.cardIds.length !== 0 && (
               <SessionSegments
                 cardIds={sessionCardIds}
                 outcomes={sessionCardOutcomes}
@@ -282,15 +290,17 @@ export function LearnHeader({
                 label={progressName}
                 m={m}
                 noun={segmentNoun}
+                {...reviewSegments}
               />
-            ) : (
-              <SessionProgressTrack
-                value={displayedProgress}
-                label={progressName}
-                valueText={completionText}
-                m={m}
-              />
-            ))}
+            )
+          ) : (
+            <SessionProgressTrack
+              value={displayedProgress}
+              label={progressName}
+              valueText={completionText}
+              m={m}
+            />
+          )}
         </div>
 
         {/* A planned revision window is a countdown rather than progress through a pile of

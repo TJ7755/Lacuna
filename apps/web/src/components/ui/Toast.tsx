@@ -30,6 +30,8 @@ interface ToastOptions {
   onDismiss?: () => void;
   /** Replaces an existing toast with the same key instead of leaving stale actions stacked. */
   replaceKey?: string;
+  /** Keep the action available when newer notifications would crowd it out. */
+  keepVisible?: boolean;
 }
 
 interface ToastContextValue {
@@ -46,6 +48,7 @@ interface ToastItem {
   onAction?: () => void;
   onDismiss?: () => void;
   replaceKey?: string;
+  keepVisible?: boolean;
   duration: number;
 }
 
@@ -81,12 +84,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             onAction: options?.onAction,
             onDismiss: options?.onDismiss,
             replaceKey: options?.replaceKey,
+            keepVisible: options?.keepVisible,
             duration,
           },
         ];
-        // Prune the oldest toasts so the stack never grows without limit.
+        // Keep an action with a time-sensitive consequence visible for its full lifetime.
         if (next.length > MAX_TOASTS) {
-          return next.slice(next.length - MAX_TOASTS);
+          const oldestDismissable = next.findIndex((toast) => !toast.keepVisible);
+          next.splice(Math.max(0, oldestDismissable), 1);
         }
         return next;
       });

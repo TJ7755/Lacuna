@@ -11,6 +11,7 @@ export function SessionSegments({
   outcomes,
   currentCardIds,
   value,
+  valueText,
   label,
   m,
   noun = 'Card',
@@ -19,6 +20,7 @@ export function SessionSegments({
   outcomes: Map<string, SessionCardOutcome>;
   currentCardIds: readonly string[];
   value: number;
+  valueText?: string;
   label: string;
   m: number;
   /** What each segment stands for, in the spoken position. */
@@ -84,6 +86,7 @@ export function SessionSegments({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(Math.max(0, Math.min(1, value)) * 100)}
+      aria-valuetext={valueText}
       title={`${countOf(cardIds.length, noun.toLowerCase())} in this session`}
     >
       <span className="sr-only" aria-live="polite" aria-atomic="true">

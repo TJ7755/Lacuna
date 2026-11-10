@@ -9,7 +9,7 @@ interface CompletionEnvironment {
   persist(summary: SessionSummary): Promise<SessionSummary>;
   present(summary: SessionSummary, confirmed: boolean): void;
   clearUndo(): void;
-  reportError(cause: unknown): void;
+  reportError(cause: unknown, retry: () => void): void;
   setProgress(value: number): void;
 }
 
@@ -56,7 +56,9 @@ export function useSessionCompletion({
           type: 'failed',
           retainUndo: read().retainUndo,
         }).state;
-        reportError(cause);
+        reportError(cause, () => {
+          if (read().mounted && state.current.pending === summary) void confirm();
+        });
         return false;
       } finally {
         pendingWrite.current = null;

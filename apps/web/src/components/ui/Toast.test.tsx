@@ -118,23 +118,33 @@ describe('ToastProvider', () => {
     await waitFor(() => expect(screen.queryByText('Keep this change?')).not.toBeInTheDocument());
   });
 
-  it('keeps an action toast available while keyboard focus is inside it', async () => {
+  it('keeps a focused, protected action available through a burst of notifications', async () => {
     const onDismiss = vi.fn();
     function ActionToast() {
       const { notify } = useToast();
       return (
-        <button
-          onClick={() =>
-            notify('Undoable change', 'neutral', {
-              actionLabel: 'Undo',
-              onAction: vi.fn(),
-              duration: 150,
-              onDismiss,
-            })
-          }
-        >
-          Show undo toast
-        </button>
+        <>
+          <button
+            onClick={() =>
+              notify('Undoable change', 'neutral', {
+                actionLabel: 'Undo',
+                onAction: vi.fn(),
+                duration: 150,
+                onDismiss,
+                keepVisible: true,
+              })
+            }
+          >
+            Show undo toast
+          </button>
+          <button
+            onClick={() => {
+              for (let index = 0; index < 5; index++) notify(`Notification ${index}`);
+            }}
+          >
+            More notifications
+          </button>
+        </>
       );
     }
     render(
@@ -148,6 +158,7 @@ describe('ToastProvider', () => {
     fireEvent.mouseEnter(toast);
     fireEvent.focus(undo);
     fireEvent.mouseLeave(toast);
+    fireEvent.click(screen.getByRole('button', { name: 'More notifications' }));
 
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 220));

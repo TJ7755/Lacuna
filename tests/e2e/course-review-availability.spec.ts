@@ -80,7 +80,12 @@ for (const exam of [false, true]) {
               for (const [id, front, due, stability] of [
                 ['review-due', 'Due card', now - 1, 1e8],
                 ['review-future', 'Future weak card', now + day, 0.5],
-                ...(exam ? [['review-later', 'Later review', now + 1_800_000, 1e8] as const] : []),
+                ...(exam
+                  ? ([
+                      ['review-later', 'Later review', now + 1_800_000, 1e8],
+                      ['review-later-extra', 'Another later review', now + 1_800_000, 1e8],
+                    ] as const)
+                  : []),
               ] as const) {
                 cards.put({
                   ...template,
@@ -140,25 +145,25 @@ for (const exam of [false, true]) {
     await expect(page.locator('[data-study-card-id="review-due"]:not([inert])')).toBeVisible();
     const title = page.getByRole('heading', { name: 'Card practice', exact: true });
     await expect(title).toBeVisible();
-    await expect(page.getByText('0 cards reviewed', { exact: true })).toBeVisible();
+    const progress = page.getByRole('progressbar', { name: 'Session progress' });
+    const segments = progress.locator('[data-session-card-status]');
+    await expect(progress).toHaveAttribute('aria-valuetext', '0 of 1 review complete');
+    await expect(segments).toHaveCount(1);
     if (exam) {
       await page.getByRole('textbox', { name: 'Your answer' }).fill('Answer');
       await page.getByRole('button', { name: 'Check answer' }).click();
-      const confirm = page
-        .getByRole('main', { name: 'Study card' })
-        .getByRole('button', { name: 'Continue', exact: true });
-      await expect(confirm).toBeVisible();
+      await expect(progress).toHaveAttribute('aria-valuetext', '1 of 1 review complete');
       await expect(page.getByRole('button', { name: 'Undo last answer' })).toBeEnabled();
+      await expect(page.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
       await expect(page.getByRole('main', { name: 'Session report' })).toHaveCount(0);
-      await confirm.click();
 
-      await expect(page.locator('[data-study-card-id="review-future"]:not([inert])')).toBeVisible();
+      await expect(page.locator('[data-study-card-id="review-future"]:not([inert])')).toBeVisible({
+        timeout: 15_000,
+      });
       await expect(page.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
       await expect(title).toBeVisible();
-      await expect(page.getByText('1 card reviewed', { exact: true })).toBeVisible();
-      await expect(page.getByRole('progressbar', { name: 'Session progress' })).toHaveCount(0);
-      await page.screenshot({ path: testInfo.outputPath('quiet-card-practice.png') });
-      // Make another card due while the assessment block is open.
+      await expect(progress).toHaveAttribute('aria-valuetext', '0 of 1 review complete');
+      // Make two more cards due while the assessment block is open.
       await page.evaluate(
         () =>
           new Promise<void>((resolve, reject) => {
@@ -176,8 +181,10 @@ for (const exam of [false, true]) {
                 reject(transaction.error);
               };
               const cards = transaction.objectStore('cards');
-              const later = cards.get('review-later');
-              later.onsuccess = () => cards.put({ ...later.result, due: Date.now() - 1 });
+              for (const id of ['review-later', 'review-later-extra']) {
+                const later = cards.get(id);
+                later.onsuccess = () => cards.put({ ...later.result, due: Date.now() - 1 });
+              }
             };
           }),
       );
@@ -210,9 +217,16 @@ for (const exam of [false, true]) {
           ),
         )
         .toEqual(['assessment-revision']);
-      await expect(page.locator('[data-study-card-id="review-later"]:not([inert])')).toBeVisible();
+      await expect(page.locator('[data-study-card-id^="review-later"]:not([inert])')).toBeVisible();
       await expect(title).toBeVisible();
-      await expect(page.getByText('2 cards reviewed', { exact: true })).toBeVisible();
+      await expect(progress).toHaveAttribute('aria-valuetext', '0 of 2 reviews complete');
+      await expect(segments).toHaveCount(2);
+      await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
+      await page.getByRole('button', { name: 'Yes', exact: true }).click();
+      await expect(progress).toHaveAttribute('aria-valuetext', '1 of 2 reviews complete');
+      await expect(segments.first()).toHaveAttribute('data-session-card-status', 'correct');
+      await expect(segments.last()).toHaveAttribute('data-session-card-status', 'current');
+      await page.screenshot({ path: testInfo.outputPath('quiet-card-practice.png') });
       await expect(page.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
     }
     await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
