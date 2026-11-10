@@ -156,6 +156,11 @@ async function snapshot(page) {
   );
 }
 
+async function cleanUp() {
+  if (application) await application.close();
+  await rm(root, { recursive: true, force: true, maxRetries: 3 });
+}
+
 try {
   await install(baseline);
   await requireAuditedInstaller();
@@ -259,11 +264,9 @@ try {
     'test-results/windows-release-upgrade/report.json',
     JSON.stringify(report, null, 2),
   );
-  try {
-    if (application) await application.close();
-    await rm(root, { recursive: true, force: true, maxRetries: 3 });
-  } catch (error) {
-    if (report.result !== 'failed') throw error;
-    console.warn('Upgrade probe cleanup failed:', error);
+  if (report.result === 'failed') {
+    await cleanUp().catch((error) => console.warn('Upgrade probe cleanup failed:', error));
+  } else {
+    await cleanUp();
   }
 }

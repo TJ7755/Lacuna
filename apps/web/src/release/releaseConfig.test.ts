@@ -273,6 +273,20 @@ describe('release configuration', () => {
         artefact: 'lacuna-linux-x64',
         paths: ['release/*.AppImage', 'release/*.deb', 'release/latest-linux.yml'],
       },
+      {
+        job: 'build-mac',
+        runner: 'macos-latest',
+        build: 'bun run electron:build:mac',
+        label: 'macOS',
+        artefact: 'lacuna-mac-arm64',
+        paths: [
+          'release/Lacuna-*-arm64.dmg',
+          'release/Lacuna-*-arm64.dmg.blockmap',
+          'release/Lacuna-*-arm64-mac.zip',
+          'release/Lacuna-*-arm64-mac.zip.blockmap',
+          'release/latest-mac.yml',
+        ],
+      },
     ] as const;
 
     for (const platform of githubPlatforms) {
@@ -289,7 +303,9 @@ describe('release configuration', () => {
           '      contents: read\n      id-token: write',
       );
       expect(job).not.toContain('contents: write');
-      for (const path of platform.paths) expect(allowlistCheck).toContain(path);
+      if (platform.job !== 'build-mac') {
+        for (const path of platform.paths) expect(allowlistCheck).toContain(path);
+      }
       if (platform.job === 'build-win') {
         expect(allowlistCheck).toContain('shell: pwsh');
         expect(allowlistCheck).toContain('Get-ChildItem -Path $pattern -File');
@@ -300,9 +316,12 @@ describe('release configuration', () => {
         expect(job.indexOf('bun run perf:check:electron-package')).toBeLessThan(
           job.indexOf(allowlistCheck),
         );
-      } else {
+      } else if (platform.job === 'build-linux') {
         expect(allowlistCheck).toContain('shell: bash');
         expect(allowlistCheck).toContain('compgen -G "$pattern"');
+      } else {
+        expect(allowlistCheck).toContain('unzip -tq');
+        expect(allowlistCheck).toContain('hdiutil verify');
       }
       expect(attest).toMatch(/uses: actions\/attest@[a-f0-9]{40} # v4\.\d+\.\d+/);
       expect(blockScalarValues(attest, 'subject-path')).toEqual(platform.paths);
@@ -326,13 +345,10 @@ describe('release configuration', () => {
     expect(windowsJob.indexOf('bun run test:e2e:electron-package')).toBeLessThan(
       windowsJob.indexOf('name: Attest Windows artefacts'),
     );
-    expect(releaseWorkflow).not.toContain('  build-mac:');
-    expect(releaseWorkflow).not.toContain('runs-on: macos-15');
-    expect(releaseWorkflow).not.toContain('lacuna-macos-arm64');
     expect(releaseWorkflow).not.toContain('release/*.AppImage.blockmap');
 
     const publisher = workflowJob(releaseWorkflow, 'publish-draft');
-    expect(publisher).toContain('needs: [build-win, build-linux]');
+    expect(publisher).toContain('needs: [build-win, build-linux, build-mac]');
     expect(publisher).toContain(
       'permissions:\n      artifact-metadata: write\n      attestations: write\n' +
         '      contents: write\n      id-token: write',
@@ -372,7 +388,6 @@ describe('release configuration', () => {
     expect(publisher).toContain('! -name SHA256SUMS-github.txt');
     expect(publisher).not.toContain('gh release delete-asset');
     expect(releaseWorkflow).not.toContain('--publish always');
-    expect(releaseWorkflow.match(/actions\/attest@[a-f0-9]{40} # v4\.\d+\.\d+/g)).toHaveLength(3);
     expect(releaseWorkflow).not.toMatch(/actions\/attest@[a-f0-9]{40} # v[1-3](?:\D|$)/);
     expect(
       Object.values(
@@ -380,7 +395,7 @@ describe('release configuration', () => {
       )
         .flatMap((job) => job.steps)
         .filter((step) => step.uses?.startsWith('actions/attest@')),
-    ).toHaveLength(3);
+    ).toHaveLength(githubPlatforms.length + 1);
   });
 
   it('retains required first-party action sources throughout CI and release workflows', () => {

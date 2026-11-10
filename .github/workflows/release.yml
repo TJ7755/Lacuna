@@ -264,7 +264,7 @@ jobs:
           name: macos-package-test-results
           path: test-results/
           if-no-files-found: ignore
-      - name: Verify macOS artefacts
+      - name: Verify macOS artefact allowlist
         env:
           VERSION: ${{ github.ref_name }}
         run: |
