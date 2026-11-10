@@ -64,6 +64,12 @@ export async function waitForRenderer({
   assert.match(sourceSha ?? '', /^[a-f0-9]{40}$/);
   const read = readWorkflowRun({ repository, runId, token, request });
   const deadline = Date.now() + timeoutMs;
+  const pollIntervals = [
+    ...Array(kind === 'web' ? 8 : 3).fill(3_000),
+    ...Array(5).fill(15_000),
+    ...Array(4).fill(30_000),
+  ];
+  const steadyInterval = kind === 'web' ? 300_000 : 60_000;
   for (let index = 0; index < polls && Date.now() < deadline; index++) {
     const jobs = await readAttemptJobs(read, attempt);
     const producers = jobs.filter((job) => job.name === build.job);
@@ -126,11 +132,10 @@ export async function waitForRenderer({
         'Unknown build state',
       );
     }
-    // Give the large browser matrix a slower poll interval during a producer stall.
+    // Browser consumers start their lookup during install. Keep fast polling
+    // through a normal build, then back off during a producer stall.
     if (index + 1 < polls) {
-      const steadyInterval = kind === 'web' ? 300_000 : 60_000;
-      const interval =
-        index < 3 ? 3_000 : index < 8 ? 15_000 : index < 12 ? 30_000 : steadyInterval;
+      const interval = pollIntervals[index] ?? steadyInterval;
       await sleep(Math.min(interval, Math.max(0, deadline - Date.now())));
     }
   }

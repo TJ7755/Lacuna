@@ -285,7 +285,7 @@ test('browser consumers install the lockfile browser and share the production ar
   assert.equal(producer.with.overwrite, undefined);
   for (const name of [...consumers, 'browser-standalone']) {
     const job = jobs[name];
-    const steps = job.steps.flatMap((step) => step.parallel ?? [step]);
+    const { steps } = job;
     assert.equal(job['runs-on'], 'ubuntu-24.04');
     assert.equal(job.container, undefined);
     const installPackages = steps.findIndex((step) => step.run === 'bun install --frozen-lockfile');
@@ -297,23 +297,18 @@ test('browser consumers install the lockfile browser and share the production ar
   }
   for (const name of [...consumers, 'production']) {
     const job = jobs[name];
-    const steps = job.steps.flatMap((step) => step.parallel ?? [step]);
+    const { steps } = job;
     const download = steps.find((step) => step.uses?.startsWith('actions/download-artifact@'));
     assert.equal(download.with.path, producer.with.path);
     if (name === 'browser-tests' || name === 'browser-timing') {
       assert.equal(job.needs, 'changes');
       const browser = steps.find((step) => step.run?.includes('playwright install'));
-      const wait = steps.find((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs web');
-      assert.equal(wait.id, 'web-dist');
-      assert.ok(steps.indexOf(wait) < steps.indexOf(download));
-      if (name === 'browser-tests') {
-        const [prepare, fetch] = job.steps.filter((step) => step.parallel);
-        assert.ok(prepare.parallel.includes(wait));
-        assert.ok(fetch.parallel.includes(browser) && fetch.parallel.includes(download));
-        assert.ok(job.steps.indexOf(prepare) < job.steps.indexOf(fetch));
-      } else {
-        assert.ok(steps.indexOf(browser) < steps.indexOf(wait));
-      }
+      const lookup = steps.find((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs web');
+      assert.equal(lookup.id, 'web-dist');
+      assert.equal(lookup.background, true);
+      const join = steps.findIndex((step) => step.wait === lookup.id);
+      assert.ok(steps.indexOf(lookup) < steps.indexOf(browser));
+      assert.ok(steps.indexOf(browser) < join && join < steps.indexOf(download));
       assert.equal(download.with['artifact-ids'], '${{ steps.web-dist.outputs.artifact_id }}');
       assert.equal(
         download.name,

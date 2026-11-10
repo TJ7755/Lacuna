@@ -140,17 +140,27 @@ test('unavailable and truncated API responses cannot authorise a download', asyn
 });
 
 test('slow builds back off within the shared repository API budget', async () => {
-  const delays = [];
-  await waitForRenderer({
-    ...options([...Array.from({ length: 14 }, () => []), [producer('completed', 'success')]]),
-    sleep: async (delay) => {
-      delays.push(delay);
-    },
-  });
-  assert.deepEqual(delays, [
-    ...Array(3).fill(3_000),
-    ...Array(5).fill(15_000),
-    ...Array(4).fill(30_000),
-    ...Array(2).fill(60_000),
-  ]);
+  for (const [kind, fastPolls, steadyInterval] of [
+    ['renderer', 3, 60_000],
+    ['web', 8, 300_000],
+  ]) {
+    const delays = [];
+    await assert.rejects(
+      waitForRenderer({
+        ...options(Array.from({ length: fastPolls + 12 }, () => [])),
+        kind,
+        timeoutMs: 600_000,
+        sleep: async (delay) => {
+          delays.push(delay);
+        },
+      }),
+      /Timed out/,
+    );
+    assert.deepEqual(delays, [
+      ...Array(fastPolls).fill(3_000),
+      ...Array(5).fill(15_000),
+      ...Array(4).fill(30_000),
+      ...Array(2).fill(steadyInterval),
+    ]);
+  }
 });
