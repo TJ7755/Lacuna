@@ -14,7 +14,6 @@ import {
   PauseIcon,
   RestoreIcon,
 } from '../../components/ui/icons';
-import { Button } from '../../components/ui/Button';
 import { StudyExitButton } from '../../components/learn/StudyExitButton';
 import { STUDY_HEADER_ROW } from '../../components/learn/studyHeaderLayout';
 import { PomodoroTimer } from '../../components/learn/PomodoroTimer';
