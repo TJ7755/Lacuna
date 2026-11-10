@@ -14,7 +14,7 @@ permissions:
   actions: read
 
 env:
-  FUNCTIONAL_SHARDS: '22'
+  FUNCTIONAL_SHARDS: '19'
 
 # Retries cannot cancel newer validation. Master pushes supersede older pushes.
 # Base retargets require reopening the PR (or pushing a commit) to validate the new merge.
@@ -25,7 +25,7 @@ concurrency:
 jobs:
   documentation:
     # Let the longer browser jobs claim runners before this short independent check.
-    needs: changes
+    needs: web-build
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
@@ -507,14 +507,13 @@ jobs:
     needs: changes
     if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-24.04
-    env: &functional-browser-env
+    env:
       LACUNA_BROWSER_PREBUILT: 'true'
-      FUNCTIONAL_EARLY_SHARDS: '17'
     strategy:
       fail-fast: true
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-    steps: &functional-browser-steps
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -559,20 +558,6 @@ jobs:
             artifacts/browser-checks/
             artifacts/ci-browser-shards/
           if-no-files-found: ignore
-
-  # Give the larger shards first access to runners. The short documentation
-  # check releases the smaller shards before the build's downstream jobs queue.
-  browser-tests-late:
-    name: browser-tests (${{ matrix.shard }})
-    needs: [changes, documentation]
-    if: (github.event_name != 'pull_request' || needs.changes.outputs.browser_ci != 'false') && (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
-    runs-on: ubuntu-24.04
-    env: *functional-browser-env
-    strategy:
-      fail-fast: true
-      matrix:
-        shard: [18, 19, 20, 21, 22]
-    steps: *functional-browser-steps
 
   # These sites and feature flags require their own isolated builds.
   browser-standalone:
@@ -739,13 +724,12 @@ jobs:
         production,
         browser-pr,
         browser-tests,
-        browser-tests-late,
         browser-image-timing,
         browser-timing,
         browser-standalone,
       ]
     if: ${{ always() && !cancelled() }}
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     steps:
       - name: Require all browser jobs
         env:
@@ -761,7 +745,6 @@ jobs:
           PRODUCTION_RESULT: ${{ needs.production.result }}
           PR_RESULT: ${{ needs.browser-pr.result }}
           RESULT: ${{ needs.browser-tests.result }}
-          LATE_RESULT: ${{ needs.browser-tests-late.result }}
           IMAGE_TIMING_RESULT: ${{ needs.browser-image-timing.result }}
           TIMING_RESULT: ${{ needs.browser-timing.result }}
           STANDALONE_RESULT: ${{ needs.browser-standalone.result }}
@@ -785,13 +768,12 @@ jobs:
             echo "- Production: $PRODUCTION_RESULT"
             echo "- Pull-request smoke: $PR_RESULT"
             echo "- Functional shards: $RESULT"
-            echo "- Later functional shards: $LATE_RESULT"
             echo "- Image timing: $IMAGE_TIMING_RESULT"
             echo "- Study timing: $TIMING_RESULT"
             echo "- Standalone sites: $STANDALONE_RESULT"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$LATE_RESULT" "$FULL_WEB" || ! ok "$IMAGE_TIMING_RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$STANDALONE"; then
-            echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT late=$LATE_RESULT images=$IMAGE_TIMING_RESULT timing=$TIMING_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
+          if [ "$SCOPE_RESULT" != success ] || ! ok "$PRODUCTION_RESULT" "$WEB" || ! ok "$PR_RESULT" "$PR_WEB" || ! ok "$RESULT" "$FULL_WEB" || ! ok "$IMAGE_TIMING_RESULT" "$FULL_WEB" || ! ok "$TIMING_RESULT" "$FULL_WEB" || ! ok "$STANDALONE_RESULT" "$STANDALONE"; then
+            echo "Browser jobs did not pass: scope=$SCOPE_RESULT event=$EVENT_NAME smoke=$PR_RESULT functional=$RESULT images=$IMAGE_TIMING_RESULT timing=$TIMING_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

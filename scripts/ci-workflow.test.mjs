@@ -133,13 +133,7 @@ test('documentation-only changes resolve required names without running heavy st
   }
 });
 
-const fullBrowserResults = [
-  'RESULT',
-  'LATE_RESULT',
-  'IMAGE_TIMING_RESULT',
-  'TIMING_RESULT',
-  'STANDALONE_RESULT',
-];
+const fullBrowserResults = ['RESULT', 'IMAGE_TIMING_RESULT', 'TIMING_RESULT', 'STANDALONE_RESULT'];
 const fullStandaloneSuites = JSON.stringify(classifyPaths([]).standalone_suites);
 const gateCases = (job) =>
   job === 'browser-smoke'
@@ -154,7 +148,7 @@ const gateCases = (job) =>
           event: 'pull_request',
           browserCI: 'false',
           standaloneSuites: JSON.stringify(classifyPaths(['apps/gaps/sw.js']).standalone_suites),
-          ignored: ['RESULT', 'LATE_RESULT', 'IMAGE_TIMING_RESULT', 'TIMING_RESULT'],
+          ignored: ['RESULT', 'IMAGE_TIMING_RESULT', 'TIMING_RESULT'],
         },
         { event: 'pull_request', browserCI: 'true', ignored: ['PR_RESULT'] },
         { event: 'pull_request', browserCI: '', ignored: ['PR_RESULT'] },
@@ -272,13 +266,7 @@ test('aggregate shell gates fail closed and report each dependency result', () =
 
 test('browser consumers install the lockfile browser and share the production artefact', () => {
   const jobs = workflow.jobs;
-  const consumers = [
-    'browser-pr',
-    'browser-tests',
-    'browser-tests-late',
-    'browser-image-timing',
-    'browser-timing',
-  ];
+  const consumers = ['browser-pr', 'browser-tests', 'browser-image-timing', 'browser-timing'];
   const build = jobs['web-build'];
   assert.equal(build.needs, undefined);
   const [checkout, scope] = jobs.changes.steps;
@@ -318,14 +306,7 @@ test('browser consumers install the lockfile browser and share the production ar
     const download = steps.find((step) => step.uses?.startsWith('actions/download-artifact@'));
     assert.equal(download.with.path, producer.with.path);
     if (name !== 'browser-pr' && name !== 'production') {
-      assert.deepEqual(
-        job.needs,
-        name === 'browser-image-timing'
-          ? undefined
-          : name === 'browser-tests-late'
-            ? ['changes', 'documentation']
-            : 'changes',
-      );
+      assert.deepEqual(job.needs, name === 'browser-image-timing' ? undefined : 'changes');
       const browser = steps.find((step) => step.run?.includes('playwright install'));
       const lookup = steps.find((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs web');
       assert.equal(lookup.id, 'web-dist');
@@ -380,28 +361,18 @@ test('browser consumers install the lockfile browser and share the production ar
     (step) => step.run === 'node scripts/ci-browser-artefact.mjs',
   );
   assert.equal(provenance.if, jobs['browser-tests'].if);
-  assert.equal(provenance.if, jobs['browser-tests-late'].if);
   assert.equal(provenance.if, jobs['browser-timing'].if);
   assert.equal(provenance.env.WEB_ARTIFACT_ID, '${{ needs.web-build.outputs.artifact_id }}');
   const functionalShards = Number(workflow.env.FUNCTIONAL_SHARDS);
-  const earlyShards = Number(jobs['browser-tests'].env.FUNCTIONAL_EARLY_SHARDS);
   assert.ok(Number.isInteger(functionalShards) && functionalShards > 0 && functionalShards <= 32);
-  assert.ok(Number.isInteger(earlyShards) && earlyShards > 0 && earlyShards < functionalShards);
   assert.equal(
     jobs['browser-smoke'].steps[0].env.PRODUCTION_RESULT,
     '${{ needs.production.result }}',
   );
   assert.deepEqual(
     jobs['browser-tests'].strategy.matrix.shard,
-    Array.from({ length: earlyShards }, (_, index) => index + 1),
+    Array.from({ length: functionalShards }, (_, index) => index + 1),
   );
-  assert.deepEqual(
-    jobs['browser-tests-late'].strategy.matrix.shard,
-    Array.from({ length: functionalShards - earlyShards }, (_, index) => earlyShards + index + 1),
-  );
-  assert.equal(jobs['browser-tests-late'].name, jobs['browser-tests'].name);
-  assert.deepEqual(jobs['browser-tests-late'].env, jobs['browser-tests'].env);
-  assert.deepEqual(jobs['browser-tests-late'].steps, jobs['browser-tests'].steps);
   assert.ok(
     jobs['browser-tests'].steps.some(
       (step) =>
@@ -684,7 +655,6 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
           : {
               PRODUCTION_RESULT: 'APP',
               RESULT: 'APP',
-              LATE_RESULT: 'APP',
               IMAGE_TIMING_RESULT: 'APP',
               TIMING_RESULT: 'APP',
               STANDALONE_RESULT: 'STANDALONE_SUITES',
@@ -744,7 +714,6 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     'production',
     'browser-pr',
     'browser-tests',
-    'browser-tests-late',
     'browser-image-timing',
     'browser-standalone',
     'browser-timing',
@@ -756,7 +725,6 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
   // Ordinary PRs run smoke, plus standalone suites selected by their changed paths.
   const postMerge = [
     'browser-tests',
-    'browser-tests-late',
     'browser-image-timing',
     'browser-standalone',
     'browser-timing',
