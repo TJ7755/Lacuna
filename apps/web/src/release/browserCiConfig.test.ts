@@ -6,6 +6,10 @@ import { expect, it } from 'vitest';
 
 const root = resolve(import.meta.dirname, '../../../..');
 
+// Temporary negative control for measuring hosted CI failure latency.
+const failureTimingProbe: never = 'intentional CI timing control';
+void failureTimingProbe;
+
 it('serves only the isolated build, refuses port reuse and separates reports', () => {
   const directory = resolve(tmpdir(), "lacuna browser's evidence");
   const result = spawnSync(
