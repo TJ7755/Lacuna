@@ -84,14 +84,15 @@ jobs:
     steps:
       - *scope-checkout
       - *classify-scope
-      - uses: ./.github/actions/setup-node
-        if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
-        with:
-          node-version: '24.22.1'
-      - uses: ./.github/actions/setup-bun
-        with:
-          cache-packages: 'false'
-        if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
+      - parallel:
+          - uses: ./.github/actions/setup-node
+            if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
+            with:
+              node-version: '24.22.1'
+          - uses: ./.github/actions/setup-bun
+            if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
+            with:
+              cache-packages: 'false'
       - run: bun install --frozen-lockfile
         if: steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'
       - run: bun run build:assets
@@ -174,7 +175,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -529,15 +530,19 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node scripts/ci-wait-for-renderer.mjs web
       - run: bun install --frozen-lockfile
+      - name: Plan the functional browser shard
+        id: browser-plan
+        background: true
+        run: node scripts/ci-browser-shards.mjs plan ${{ matrix.shard }}/${{ strategy.job-total }}
       - run: bunx --no-install playwright install --only-shell chromium
-      - wait: web-dist
+      - wait: [web-dist, browser-plan]
       - &download-web-build
         name: Download production web build ${{ steps.web-dist.outputs.artifact_id }}
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
           path: dist/
-      - run: node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/${{ strategy.job-total }}
+      - run: node scripts/ci-browser-shards.mjs run-prepared ${{ matrix.shard }}/${{ strategy.job-total }}
         env:
           CI_PEER_JOB_TOKEN: ${{ github.token }}
       - name: Preserve browser test evidence

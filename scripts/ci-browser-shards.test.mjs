@@ -225,8 +225,8 @@ test('the shard CLI executes tests and retains its selector and plan after outpu
     );
     const sentinel = join(directory, 'test-results/old-output.txt');
     writeFileSync(sentinel, 'must be cleared');
-    const run = (env = {}) =>
-      spawnSync(process.execPath, ['scripts/ci-browser-shards.mjs', 'run', '1/1'], {
+    const run = (command, env = {}) =>
+      spawnSync(process.execPath, ['scripts/ci-browser-shards.mjs', command, '1/1'], {
         cwd: directory,
         encoding: 'utf8',
         env: {
@@ -238,7 +238,10 @@ test('the shard CLI executes tests and retains its selector and plan after outpu
           ...env,
         },
       });
-    const result = run();
+    const prepared = run('plan');
+    assert.equal(prepared.status, 0, prepared.stderr || prepared.stdout);
+    assert.equal(existsSync(sentinel), true, 'Discovery must not start the browser run');
+    const result = run('run-prepared');
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.equal(readFileSync(join(directory, 'executed.txt'), 'utf8'), 'executed');
     assert.equal(existsSync(sentinel), false, 'Playwright must have cleared its output directory');
@@ -259,7 +262,7 @@ test('the shard CLI executes tests and retains its selector and plan after outpu
         jobs: [{ run_id: 42, run_attempt: 2, status: 'completed', conclusion: 'failure', name: 'lint' }]
       }));`,
     );
-    const interrupted = run({
+    const interrupted = run('run', {
       NODE_OPTIONS: `--import=${pathToFileURL(api).href}`,
       CI_PEER_JOB_TOKEN: 'read-token',
       GITHUB_REPOSITORY: 'example/repo',

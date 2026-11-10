@@ -67,7 +67,7 @@ test('every Bun workflow uses the security guard and manifests share its pin', (
     if (!file.endsWith('.yml')) continue;
     const workflow = parse(readFileSync(new URL(`.github/workflows/${file}`, root), 'utf8'));
     for (const job of Object.values(workflow.jobs)) {
-      for (const step of job.steps ?? []) {
+      for (const step of (job.steps ?? []).flatMap((step) => step.parallel ?? [step])) {
         assert.ok(!step.uses?.startsWith('oven-sh/setup-bun@'), `${file} bypasses the Bun guard`);
         if (
           step.uses === './.github/actions/setup-node' ||

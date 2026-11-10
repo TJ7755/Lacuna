@@ -270,7 +270,7 @@ test('browser consumers install the lockfile browser and share the production ar
   const build = jobs['web-build'];
   assert.equal(build.needs, undefined);
   assert.deepEqual(build.steps.slice(0, 2), jobs.changes.steps);
-  for (const step of build.steps.slice(2)) {
+  for (const step of build.steps.slice(2).flatMap((step) => step.parallel ?? [step])) {
     assert.equal(
       step.if,
       "steps.scope.outputs.app != 'false' || steps.scope.outputs.sites != 'false'",
@@ -306,9 +306,19 @@ test('browser consumers install the lockfile browser and share the production ar
       const lookup = steps.find((step) => step.run === 'node scripts/ci-wait-for-renderer.mjs web');
       assert.equal(lookup.id, 'web-dist');
       assert.equal(lookup.background, true);
-      const join = steps.findIndex((step) => step.wait === lookup.id);
+      const join = steps.findIndex((step) => [step.wait].flat().includes(lookup.id));
       assert.ok(steps.indexOf(lookup) < steps.indexOf(browser));
       assert.ok(steps.indexOf(browser) < join && join < steps.indexOf(download));
+      if (name === 'browser-tests') {
+        const plan = steps.find((step) => step.id === 'browser-plan');
+        assert.equal(plan.background, true);
+        assert.equal(
+          plan.run,
+          'node scripts/ci-browser-shards.mjs plan ${{ matrix.shard }}/${{ strategy.job-total }}',
+        );
+        assert.ok(steps.indexOf(plan) < steps.indexOf(browser));
+        assert.ok(steps[join].wait.includes(plan.id));
+      }
       assert.equal(download.with['artifact-ids'], '${{ steps.web-dist.outputs.artifact_id }}');
       assert.equal(
         download.name,
@@ -358,7 +368,7 @@ test('browser consumers install the lockfile browser and share the production ar
     jobs['browser-tests'].steps.some(
       (step) =>
         step.run ===
-        'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/${{ strategy.job-total }}',
+        'node scripts/ci-browser-shards.mjs run-prepared ${{ matrix.shard }}/${{ strategy.job-total }}',
     ),
   );
   const functionalEvidence = jobs['browser-tests'].steps.find(
@@ -709,7 +719,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
   function runs(name, event_name, outputs) {
     const job = workflow.jobs[name];
     const predicate = ['web-build', 'electron-renderer', 'windows-installed-upgrade'].includes(name)
-      ? job.steps[2].if
+      ? (job.steps[2].parallel?.[0] ?? job.steps[2]).if
       : required.includes(name)
         ? job.steps[1].if
         : job.if;

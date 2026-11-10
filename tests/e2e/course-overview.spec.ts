@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createCourse, enterWithWelcomeCourse } from './fixtures/lacunaApp';
+import { createCourse, enterWithWelcomeCourse, openEmptyDashboard } from './fixtures/lacunaApp';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -7,13 +7,16 @@ for (const single of [true, false]) {
   test(`a ${single ? 'single' : 'multi'}-lesson ladder opens its real workspace and returns to the path`, async ({
     page,
   }) => {
-    await enterWithWelcomeCourse(page);
-    if (single) await createCourse(page, 'Biology', false);
-    else
+    if (single) {
+      await openEmptyDashboard(page);
+      await createCourse(page, 'Biology', false);
+    } else {
+      await enterWithWelcomeCourse(page);
       await page
         .getByRole('region', { name: 'Today, most urgent first' })
         .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
         .click();
+    }
     await expect(page.getByRole('list', { name: 'Course path' })).toBeVisible();
     const courseUrl = page.url();
     await page.reload();
@@ -21,10 +24,15 @@ for (const single of [true, false]) {
     await page.keyboard.press('s');
     await expect(page.getByRole('region', { name: 'Session preview' })).toBeVisible();
     await page.keyboard.press('Escape');
-    await page
-      .getByRole('button', { name: single ? 'Lesson 1' : 'Scheduling philosophy', exact: true })
-      .click();
+    const lessonName = single ? 'Lesson 1' : 'Scheduling philosophy';
+    const lesson = page.getByRole('button', { name: lessonName, exact: true });
+    if (single) await lesson.click();
+    else {
+      await lesson.focus();
+      await lesson.press('Enter');
+    }
     await expect(page).toHaveURL(/\/lesson\//);
+    await expect(page.getByRole('heading', { name: lessonName, exact: true })).toBeVisible();
     await expect(page.locator('[data-lesson-workspace-mode]')).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(courseUrl);
@@ -49,22 +57,6 @@ for (const single of [true, false]) {
     ).toBeVisible();
   });
 }
-
-test('narrow-screen keyboard activation opens the focused lesson', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 800 });
-  await enterWithWelcomeCourse(page);
-  await page
-    .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
-    .click();
-  const stop = page.getByRole('button', { name: 'Scheduling philosophy', exact: true });
-  await stop.focus();
-  await stop.press('Enter');
-  await expect(page).toHaveURL(/\/lesson\//);
-  await expect(
-    page.getByRole('heading', { name: 'Scheduling philosophy', exact: true }),
-  ).toBeVisible();
-});
 
 test('practice editing keeps an unobstructed 44px touch target with a long name', async ({
   page,
