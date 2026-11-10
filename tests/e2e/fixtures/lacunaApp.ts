@@ -80,7 +80,7 @@ const WELCOME_COURSE = readFileSync(new URL('./welcome-course.lacuna', import.me
 const DAY_MS = 86_400_000;
 
 /** Imports the retired Welcome to Lacuna course, which many specs use as a populated course. */
-export async function importWelcomeCourse(page: Page) {
+export async function importWelcomeCourse(page: Page, { restart = false } = {}) {
   const file = JSON.parse(WELCOME_COURSE);
   file.payload.at = Date.now();
   file.payload.course.c = Date.now();
@@ -98,21 +98,29 @@ export async function importWelcomeCourse(page: Page) {
   await expect(examDate).toBeChecked();
   await page.getByRole('button', { name: 'Add to my courses' }).click();
   await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeHidden();
-  // Let the import's toast expire so it cannot cover or stack with the spec's own. Hovering
-  // pauses it, and the pointer is still where the Add button was.
-  await page.mouse.move(0, 0);
-  await expect(page.getByText(/^Added 1 course and \d+ cards\.$/)).toBeHidden({ timeout: 10_000 });
+  const added = page.getByText(/^Added 1 course and \d+ cards\.$/);
+  await expect(added).toBeVisible();
+  if (!restart) {
+    // Hovering pauses the toast. Keep the same app session for specs that import mid-flow.
+    await page.mouse.move(0, 0);
+    await expect(added).toBeHidden({ timeout: 10_000 });
+  }
   // Set the hash rather than navigating, so packaged Electron's app: origin works too.
   await page.evaluate(() => {
     window.location.hash = '#/';
   });
+  if (restart) {
+    // The success toast follows the database commit. Reload to clear transient UI state.
+    await page.reload();
+  }
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'More for Welcome to Lacuna' })).toBeVisible();
 }
 
 /** A fresh browser holding only the Welcome to Lacuna course, as new installs once had. */
 export async function enterWithWelcomeCourse(page: Page) {
   await enterFreshLacuna(page);
-  await importWelcomeCourse(page);
+  await importWelcomeCourse(page, { restart: true });
 }
 
 /** Creates a course, then selects its first lesson for authoring unless the caller needs the ladder. */

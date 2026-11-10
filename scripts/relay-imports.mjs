@@ -1,5 +1,5 @@
-import { dirname, resolve, relative, sep } from 'node:path';
-import ts from 'typescript';
+import { relative, sep } from 'node:path';
+import { lintImportResolver } from './import-architecture.mjs';
 
 function importsRule(message, forbiddenTarget) {
   return {
@@ -30,32 +30,14 @@ function importsRule(message, forbiddenTarget) {
       const root = context.cwd;
       const local = (file) => relative(root, file).split(sep).join('/');
       const importer = local(context.filename);
-      const configFile = resolve(root, 'config/typescript/tsconfig.app.json');
-      const config = ts.readConfigFile(configFile, ts.sys.readFile).config ?? {};
-      const { options } = ts.parseJsonConfigFileContent(
-        config,
-        { ...ts.sys, readDirectory: () => [] },
-        dirname(configFile),
-      );
-      const compilerOptions = {
-        ...options,
-        moduleResolution: ts.ModuleResolutionKind.Bundler,
-        allowJs: true,
-      };
-      const cache = ts.createModuleResolutionCache(root, (file) => file, compilerOptions);
+      const resolveImport = lintImportResolver(root);
       const check = (node, source) => {
         const specifier =
           source?.type === 'TemplateLiteral' && source.expressions.length === 0
             ? source.quasis[0].value.cooked
             : source?.value;
         if (typeof specifier !== 'string') return;
-        const resolved = ts.resolveModuleName(
-          specifier.split(/[?#]/, 1)[0],
-          context.filename,
-          compilerOptions,
-          ts.sys,
-          cache,
-        ).resolvedModule;
+        const resolved = resolveImport(specifier, context.filename);
         if (!resolved || resolved.isExternalLibraryImport) return;
         const target = local(resolved.resolvedFileName);
         const forbidden = forbiddenTarget(importer, target);
