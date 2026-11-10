@@ -233,8 +233,74 @@ jobs:
             release/latest-linux.yml
           if-no-files-found: error
 
+  build-mac:
+    needs: verify
+    if: "!contains(github.ref_name, '-beta.nightly.')"
+    runs-on: macos-latest
+    permissions:
+      artifact-metadata: write
+      attestations: write
+      contents: read
+      id-token: write
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
+        with:
+          node-version: '24.22.1'
+      - uses: ./.github/actions/setup-bun
+      - run: bun install --frozen-lockfile
+      - run: node scripts/ci-electron-runtime.mjs darwin arm64 --packaging-tools
+      - run: bun run test:e2e:electron-ai
+      - run: bun run electron:build:mac --config.detectUpdateChannel=false
+      - run: bun run test:e2e:electron-package
+      - name: Preserve macOS package test evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-package-test-results
+          path: test-results/
+          if-no-files-found: ignore
+      - name: Verify macOS artefact allowlist
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          base="release/Lacuna-${VERSION#v}-arm64"
+          unzip -tq "$base-mac.zip"
+          hdiutil verify "$base.dmg"
+          test -s "$base-mac.zip.blockmap"
+          test -s "$base.dmg.blockmap"
+          test -s release/latest-mac.yml
+      - name: Attest macOS artefacts
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            release/Lacuna-*-arm64.dmg
+            release/Lacuna-*-arm64.dmg.blockmap
+            release/Lacuna-*-arm64-mac.zip
+            release/Lacuna-*-arm64-mac.zip.blockmap
+            release/latest-mac.yml
+      - name: Upload macOS artefacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lacuna-mac-arm64
+          path: |
+            release/Lacuna-*-arm64.dmg
+            release/Lacuna-*-arm64.dmg.blockmap
+            release/Lacuna-*-arm64-mac.zip
+            release/Lacuna-*-arm64-mac.zip.blockmap
+            release/latest-mac.yml
+          if-no-files-found: error
+
   publish-draft:
-    needs: [build-win, build-linux]
+    needs: [build-win, build-linux, build-mac]
+    if: >-
+      !cancelled() && needs.build-win.result == 'success' && needs.build-linux.result == 'success' &&
+      (needs.build-mac.result == 'success' ||
+        (contains(github.ref_name, '-beta.nightly.') && needs.build-mac.result == 'skipped'))
     runs-on: ubuntu-latest
     permissions:
       artifact-metadata: write
@@ -252,6 +318,13 @@ jobs:
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: lacuna-linux-x64
+          path: release-assets
+
+      - name: Download lacuna-mac-arm64
+        if: needs.build-mac.result == 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lacuna-mac-arm64
           path: release-assets
 
       - name: Create or preserve draft release
@@ -348,5 +421,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NOTES: ${{ steps.notes.outputs.file }}
+          PLATFORM_SCOPE: ${{ contains(github.ref_name, '-beta.nightly.') && '--windows-linux-only' || '--all-platforms' }}
         shell: bash
-        run: bun run release publish "${GITHUB_REF_NAME#v}" --windows-linux-only --notes "$NOTES"
+        run: bun run release publish "${GITHUB_REF_NAME#v}" "$PLATFORM_SCOPE" --notes "$NOTES"

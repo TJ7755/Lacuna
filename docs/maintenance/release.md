@@ -3,8 +3,8 @@
 Merging a version bump with release notes into master is the maintainer's publication decision.
 The [tag workflow](../../.github/workflows/release-tag.yml) and
 [release workflow](../../.github/workflows/release.yml) own automation, job names and asset lists.
-Windows/Linux-only unsigned limited
-betas are supported; macOS packages are a separate local step, not an implicit publication blocker.
+Numbered betas ship Windows x64, Linux x64 and Apple Silicon macOS packages. Nightly betas ship
+Windows and Linux.
 
 ## Routine release
 
@@ -30,10 +30,11 @@ Use the pinned tools from [CONTRIBUTING](../../CONTRIBUTING.md) and authenticate
 if needed.
 
 - Prepare a draft: `bun run release draft <version>`.
-- Verify the candidate: `bun run release verify <version>`.
+- Verify a numbered beta: `bun run release verify <version> --all-platforms`.
+- Publish a verified all-platform beta draft:
+  `bun run release publish <version> --all-platforms --notes path/to/notes.md`.
 - Publish the verified Windows/Linux beta:
   `bun run release publish <version> --windows-linux-only --notes path/to/notes.md`.
-- Verify local macOS packages separately using the procedure below.
 
 Retain reports from `artifacts/releases/`. Do not bypass gates after a failure or
 expired wait.
@@ -54,7 +55,7 @@ a private draft is not an update-feed test. Use a disposable installation, never
 working profile. Electron AI verification needs its configured port free so another server cannot
 stand in for the intended build. Companion relaunch during Windows installation is a separate risk.
 
-## macOS manual packages
+## Local macOS package verification
 
 On Apple Silicon at the exact release commit:
 
@@ -74,11 +75,9 @@ shasum -a 256 \
   release/latest-mac.yml > release/SHA256SUMS-macos.txt
 ```
 
-Upload those six files explicitly with `gh release upload` to the matching draft after Actions has
-created it. The local manifest provides integrity, not GitHub build provenance. Verify the GitHub
-assets and their manifest separately with `gh attestation verify PATH_TO_ASSET -R TJ7755/Lacuna`
-and the appropriate SHA-256 tool. Never replace a published release. Never broaden uploads to `release/**`: it contains intermediates and
-unpacked applications. The exact allowlists live in the workflow and
+Keep the local manifest with the verification evidence. Publish the attested packages from the
+release workflow. Never replace a published release or broaden uploads to `release/**`, which
+contains intermediates and unpacked applications. The exact allowlists live in the workflow and
 [release asset verifier](../../scripts/release-assets.mjs).
 
 ## Signing and rollout policy

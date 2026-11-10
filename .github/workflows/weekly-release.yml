@@ -103,5 +103,5 @@ jobs:
           git commit -m "Release ${VERSION}"
           git push origin "$branch"
           gh pr create --base master --head "$branch" --title "Release ${VERSION}" \
-            --body "Daily release. Merging publishes the Windows and Linux beta with docs/releases/${VERSION}.md as its notes."
+            --body "Daily release. Merging publishes the desktop beta with docs/releases/${VERSION}.md as its notes."
           gh pr merge "$branch" --auto --squash

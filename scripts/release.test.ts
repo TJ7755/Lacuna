@@ -11,18 +11,28 @@ afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true });
 });
 
-function fixture() {
+function fixture(macos = false) {
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-release-test-'));
   directories.push(directory);
   const version = '0.2.11';
-  const names = releaseAssets(version);
+  const names = releaseAssets(version, { macos });
   const write = (name: string, data: string | Buffer) => writeFileSync(join(directory, name), data);
   // Small deterministic bytes exercise integrity checks; these are not application packages.
   for (const name of names) write(name, `test bytes for ${name}`);
-  write(names[1], gzipSync(JSON.stringify({ files: [{ sizes: [10], checksums: ['test'] }] })));
+  for (const name of names.filter((asset) => asset.endsWith('.blockmap'))) {
+    write(name, gzipSync(JSON.stringify({ files: [{ sizes: [10], checksums: ['test'] }] })));
+  }
   for (const [name, targets] of [
     ['latest.yml', [names[0]]],
     ['latest-linux.yml', [names[4], names[5]]],
+    ...(macos
+      ? [
+          [
+            'latest-mac.yml',
+            [`Lacuna-${version}-arm64-mac.zip`, `Lacuna-${version}-arm64.dmg`],
+          ] as const,
+        ]
+      : []),
   ] as const) {
     const files = targets.map((url) => {
       const bytes = readFileSync(join(directory, url));
@@ -32,7 +42,7 @@ function fixture() {
   }
   const manifest = () =>
     write(
-      names[7],
+      'SHA256SUMS-github.txt',
       names
         .slice(0, -1)
         .map(
@@ -89,6 +99,13 @@ describe('release asset verification', () => {
     f.manifest();
     expect(() => verifyAssets(f.directory, f.version)).toThrow(/block map/);
   });
+  it('checks the macOS updater targets against the actual DMG and ZIP', () => {
+    const f = fixture(true);
+    expect(verifyAssets(f.directory, f.version, { macos: true }).macosBlockmaps).toBe('pass');
+    f.write(`Lacuna-${f.version}-arm64-mac.zip`, 'different archive');
+    f.manifest();
+    expect(() => verifyAssets(f.directory, f.version, { macos: true })).toThrow(/latest-mac.yml/);
+  });
 });
 
 describe('release orchestration gates', () => {
@@ -132,6 +149,19 @@ describe('release orchestration gates', () => {
     expect(() => publicationAssets(assets.slice(1), '0.2.11')).toThrow();
     expect(() => publicationAssets([...assets, { name: 'mac.dmg' }], '0.2.11')).toThrow();
   });
+  it('requires the complete macOS set for all-platform publication', () => {
+    const version = '0.2.11';
+    const options = { macos: true };
+    const assets = releaseAssets(version, options).map((name: string) => ({ name }));
+    expect(() => publicationAssets(assets, version, options)).not.toThrow();
+    expect(() =>
+      publicationAssets(
+        assets.filter(({ name }) => name !== 'latest-mac.yml'),
+        version,
+        options,
+      ),
+    ).toThrow();
+  });
   it('ignores download counters but detects replaced assets', () => {
     const before = { isDraft: true, assets: [{ name: 'installer', id: 1, downloadCount: 0 }] };
     expect(
@@ -148,8 +178,13 @@ describe('release orchestration gates', () => {
 });
 
 describe('release command orchestration', () => {
-  function commands({ failAttestation = false, replaceAsset = false, failCi = false } = {}) {
-    const f = fixture();
+  function commands({
+    failAttestation = false,
+    replaceAsset = false,
+    failCi = false,
+    macos = false,
+  } = {}) {
+    const f = fixture(macos);
     const calls: string[][] = [];
     let views = 0;
     let published = false;
@@ -206,7 +241,7 @@ describe('release command orchestration', () => {
     const publishArgs = [
       'publish',
       f.version,
-      '--windows-linux-only',
+      macos ? '--all-platforms' : '--windows-linux-only',
       '--notes',
       join(f.directory, 'notes.md'),
     ];
@@ -238,7 +273,7 @@ describe('release command orchestration', () => {
     const edit = f.calls.find((args) => args[1] === 'edit');
     expect(edit).toContain('--draft=false');
     expect(readFileSync(edit![edit!.indexOf('--notes-file') + 1], 'utf8')).toContain(
-      'no macOS package',
+      'Windows and Linux beta.',
     );
   });
   it('publishes from inside the release workflow without waiting for its own run', async () => {
@@ -249,6 +284,15 @@ describe('release command orchestration', () => {
     await main(f.publishArgs, { ...f.dependencies, env });
     expect(f.calls.filter((args) => args.includes('--paginate'))).toHaveLength(1);
     expect(f.calls.some((args) => args[1] === 'edit')).toBe(true);
+  });
+  it('attests all three platforms and records macOS manual updates before publication', async () => {
+    const f = commands({ macos: true });
+    await main(f.publishArgs, f.dependencies);
+    expect(f.calls.filter((args) => args[0] === 'attestation')).toHaveLength(13);
+    const edit = f.calls.find((args) => args[1] === 'edit');
+    expect(readFileSync(edit![edit!.indexOf('--notes-file') + 1], 'utf8')).toContain(
+      'Linux DEB and macOS require manual updates',
+    );
   });
   it.each([{ failAttestation: true }, { replaceAsset: true }])(
     'never publishes when verification fails: %j',

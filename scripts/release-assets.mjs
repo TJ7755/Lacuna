@@ -11,7 +11,7 @@ const yaml = createRequire(require.resolve('electron-updater'))('js-yaml');
 export const digest = (bytes, algorithm, encoding = 'hex') =>
   createHash(algorithm).update(bytes).digest(encoding);
 
-export function releaseAssets(version) {
+export function releaseAssets(version, { macos = false } = {}) {
   assert.match(
     version,
     /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-beta\.nightly\.[1-9]\d*\.[1-9]\d*)?$/,
@@ -25,12 +25,21 @@ export function releaseAssets(version) {
     `Lacuna-${version}.AppImage`,
     `lacuna_${version}_amd64.deb`,
     'latest-linux.yml',
+    ...(macos
+      ? [
+          `Lacuna-${version}-arm64-mac.zip`,
+          `Lacuna-${version}-arm64-mac.zip.blockmap`,
+          `Lacuna-${version}-arm64.dmg`,
+          `Lacuna-${version}-arm64.dmg.blockmap`,
+          'latest-mac.yml',
+        ]
+      : []),
     'SHA256SUMS-github.txt',
   ];
 }
 
-export function verifyAssets(directory, version) {
-  const expected = releaseAssets(version);
+export function verifyAssets(directory, version, { macos = false } = {}) {
+  const expected = releaseAssets(version, { macos });
   const read = (name) => readFileSync(join(directory, name));
   for (const name of expected)
     assert(statSync(join(directory, name)).size > 0, `Empty asset: ${name}`);
@@ -48,10 +57,17 @@ export function verifyAssets(directory, version) {
     assert.equal(digest(read(name), 'sha256'), hash, `SHA-256 mismatch: ${name}`);
     verified.add(name);
   }
-  for (const [name, targets] of [
+  const feeds = [
     ['latest.yml', [`Lacuna-Setup-${version}.exe`]],
     ['latest-linux.yml', [`Lacuna-${version}.AppImage`, `lacuna_${version}_amd64.deb`]],
-  ]) {
+  ];
+  if (macos) {
+    feeds.push([
+      'latest-mac.yml',
+      [`Lacuna-${version}-arm64-mac.zip`, `Lacuna-${version}-arm64.dmg`],
+    ]);
+  }
+  for (const [name, targets] of feeds) {
     const metadata = yaml.load(read(name).toString());
     assert.equal(metadata.version, version, `${name}: version mismatch`);
     assert.deepEqual(
@@ -71,11 +87,13 @@ export function verifyAssets(directory, version) {
       `${name}: legacy SHA-512 mismatch`,
     );
   }
-  const blockmap = JSON.parse(gunzipSync(read(`Lacuna-Setup-${version}.exe.blockmap`)));
-  assert(blockmap.files.length > 0, 'Empty Windows block map');
-  for (const file of blockmap.files) {
-    assert(file.sizes.length > 0, 'Empty block map file');
-    assert.equal(file.sizes.length, file.checksums.length, 'Invalid block map entries');
+  for (const name of expected.filter((asset) => asset.endsWith('.blockmap'))) {
+    const blockmap = JSON.parse(gunzipSync(read(name)));
+    assert(blockmap.files.length > 0, `${name}: empty block map`);
+    for (const file of blockmap.files) {
+      assert(file.sizes.length > 0, `${name}: empty block map file`);
+      assert.equal(file.sizes.length, file.checksums.length, `${name}: invalid block map entries`);
+    }
   }
   return {
     version,
@@ -83,5 +101,6 @@ export function verifyAssets(directory, version) {
     sha256: 'pass',
     updaterMetadata: 'pass',
     windowsBlockmap: 'pass',
+    ...(macos ? { macosBlockmaps: 'pass' } : {}),
   };
 }
