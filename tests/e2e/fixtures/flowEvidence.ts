@@ -1,6 +1,6 @@
 import { type Locator } from '@playwright/test';
 
-export const FLOW_EVIDENCE = process.env.LACUNA_TODAY_EVIDENCE ?? '/tmp/lacuna-today-candidate2';
+export const FLOW_EVIDENCE = process.env.CI ? undefined : process.env.LACUNA_TODAY_EVIDENCE;
 
 /** Wait for presented geometry and colour, not just a non-empty DOM rectangle. */
 export async function settle(element: Locator) {

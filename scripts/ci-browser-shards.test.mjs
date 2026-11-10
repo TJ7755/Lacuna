@@ -14,7 +14,14 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
-import { inventory, planShards, refreshTimings, verifyInventory } from './ci-browser-shards.mjs';
+import { pathToFileURL } from 'node:url';
+import {
+  firstFailedPeer,
+  inventory,
+  planShards,
+  refreshTimings,
+  verifyInventory,
+} from './ci-browser-shards.mjs';
 
 const spec = (id, file, active = true) => ({
   id,
@@ -113,6 +120,17 @@ test('refresh rejects duplicated, failed and retried evidence', () => {
   assert.throws(() => refreshTimings([retried], {}));
 });
 
+test('fast failure reacts only to a definitive failure in the same workflow attempt', async () => {
+  const jobs = [
+    { name: 'old attempt', run_id: 42, run_attempt: 1, status: 'completed', conclusion: 'failure' },
+    { name: 'other run', run_id: 43, run_attempt: 2, status: 'completed', conclusion: 'failure' },
+    { name: 'cancelled', run_id: 42, run_attempt: 2, status: 'completed', conclusion: 'cancelled' },
+    { name: 'lint', run_id: 42, run_attempt: 2, status: 'completed', conclusion: 'failure' },
+  ];
+  const read = async () => ({ jobs, total_count: jobs.length });
+  assert.equal(await firstFailedPeer(read, 42, 2, new AbortController().signal), 'lint');
+});
+
 test('real Playwright test-list parsing preserves parameterised, serial and skipped identities', () => {
   const directory = realpathSync(mkdtempSync(join(tmpdir(), 'lacuna-browser-shards-')));
   try {
@@ -182,7 +200,11 @@ test('the shard CLI executes tests and retains its selector and plan after outpu
     symlinkSync(resolve('node_modules'), join(directory, 'node_modules'), 'junction');
     for (const path of ['scripts', 'tests/config', 'tests/e2e', 'test-results'])
       mkdirSync(join(directory, path), { recursive: true });
-    for (const file of ['ci-browser-shards.mjs', 'ci-browser-timings.json'])
+    for (const file of [
+      'ci-browser-shards.mjs',
+      'ci-browser-timings.json',
+      'ci-wait-for-renderer.mjs',
+    ])
       copyFileSync(resolve('scripts', file), join(directory, 'scripts', file));
     writeFileSync(
       join(directory, 'tests/config/playwright.web.ci.config.ts'),
@@ -196,22 +218,26 @@ test('the shard CLI executes tests and retains its selector and plan after outpu
       `
       import { test } from '@playwright/test';
       import { writeFileSync } from 'node:fs';
+      if (process.env.CI_PEER_JOB_TOKEN) throw new Error('The job token reached a test process');
       test('executes the selected test', () => writeFileSync('executed.txt', 'executed'));
     `,
     );
     const sentinel = join(directory, 'test-results/old-output.txt');
     writeFileSync(sentinel, 'must be cleared');
-    const result = spawnSync(process.execPath, ['scripts/ci-browser-shards.mjs', 'run', '1/1'], {
-      cwd: directory,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        CI: 'true',
-        PLAYWRIGHT_JSON_OUTPUT_FILE: '',
-        PLAYWRIGHT_JSON_OUTPUT_DIR: '',
-        PLAYWRIGHT_JSON_OUTPUT_NAME: '',
-      },
-    });
+    const run = (env = {}) =>
+      spawnSync(process.execPath, ['scripts/ci-browser-shards.mjs', 'run', '1/1'], {
+        cwd: directory,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          CI: 'true',
+          PLAYWRIGHT_JSON_OUTPUT_FILE: '',
+          PLAYWRIGHT_JSON_OUTPUT_DIR: '',
+          PLAYWRIGHT_JSON_OUTPUT_NAME: '',
+          ...env,
+        },
+      });
+    const result = run();
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.equal(readFileSync(join(directory, 'executed.txt'), 'utf8'), 'executed');
     assert.equal(existsSync(sentinel), false, 'Playwright must have cleared its output directory');
@@ -223,6 +249,24 @@ test('the shard CLI executes tests and retains its selector and plan after outpu
     const plan = JSON.parse(readFileSync(join(evidence, 'functional-shard-plan.json'), 'utf8'));
     assert.equal(plan.shard, 1);
     assert.deepEqual(plan.shards[0].identities, plan.discovered);
+
+    const api = join(directory, 'peer-api.mjs');
+    writeFileSync(
+      api,
+      `globalThis.fetch = async () => new Response(JSON.stringify({
+        total_count: 1,
+        jobs: [{ run_id: 42, run_attempt: 2, status: 'completed', conclusion: 'failure', name: 'lint' }]
+      }));`,
+    );
+    const interrupted = run({
+      NODE_OPTIONS: `--import=${pathToFileURL(api).href}`,
+      CI_PEER_JOB_TOKEN: 'read-token',
+      GITHUB_REPOSITORY: 'example/repo',
+      GITHUB_RUN_ID: '42',
+      GITHUB_RUN_ATTEMPT: '2',
+    });
+    assert.equal(interrupted.status, 1, interrupted.stderr);
+    assert.match(interrupted.stderr, /Stopping this browser shard because lint failed/);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

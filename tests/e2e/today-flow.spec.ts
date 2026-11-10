@@ -1,13 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { enterFreshLacuna, importWelcomeCourse, openImport } from './fixtures/lacunaApp';
-import { contentRect as labelGeometry } from './fixtures/flowEvidence';
+import { FLOW_EVIDENCE as evidence, contentRect as labelGeometry } from './fixtures/flowEvidence';
 
-const evidence = process.env.LACUNA_TODAY_EVIDENCE ?? '/tmp/lacuna-today-candidate2';
 test.use({
   serviceWorkers: 'block',
   viewport: { width: 1470, height: 956 },
-  video: 'on',
+  video: evidence ? 'on' : 'off',
   locale: 'en-GB',
   timezoneId: 'Europe/London',
 });
@@ -45,7 +44,7 @@ test('cold Study acknowledges input and Escape cancels before the chunk arrives'
     const pending = page.getByRole('status', { name: 'Loading study options' });
     await expect(pending).toBeVisible();
     expect((await pending.boundingBox())!.height).toBeGreaterThanOrEqual(16);
-    await page.screenshot({ path: `${evidence}/study-pending.png` });
+    if (evidence) await page.screenshot({ path: `${evidence}/study-pending.png` });
     await page.keyboard.press('Escape');
     await expect(study).not.toHaveAttribute('aria-busy');
     release();
@@ -54,7 +53,7 @@ test('cold Study acknowledges input and Escape cancels before the chunk arrives'
     await expect(study).toBeFocused();
     await study.press('Enter');
     await expect(page.getByRole('region', { name: 'Session preview' })).toBeVisible();
-    await page.screenshot({ path: `${evidence}/today-session-preview-1470.png` });
+    if (evidence) await page.screenshot({ path: `${evidence}/today-session-preview-1470.png` });
     await page.keyboard.press('Escape');
   } finally {
     release();
@@ -118,10 +117,12 @@ test('Study fills the viewport through resize and Escape cancels its pending des
     await expect
       .poll(() => surface.boundingBox())
       .toEqual({ x: 0, y: 0, width: 2000, height: 1159 });
-    await testInfo.attach('study-cover-full-viewport', {
-      body: await page.screenshot(),
-      contentType: 'image/png',
-    });
+    if (evidence) {
+      await testInfo.attach('study-cover-full-viewport', {
+        body: await page.screenshot(),
+        contentType: 'image/png',
+      });
+    }
     await page.keyboard.press('Escape');
     await expect(cover).toBeHidden();
     await expect(page).toHaveURL(/#\/$/);
@@ -157,12 +158,12 @@ test('forecast arrival keeps actionable queue coordinates and failed chunks reco
     await page.waitForTimeout(750);
     const before = await study.boundingBox();
     expect(before!.y + before!.height).toBeLessThanOrEqual(600);
-    await page.screenshot({ path: `${evidence}/forecast-pending.png` });
+    if (evidence) await page.screenshot({ path: `${evidence}/forecast-pending.png` });
     release();
     await expect(
       page.getByRole('alert').filter({ hasText: 'Could not load forecast.' }),
     ).toBeVisible();
-    await page.screenshot({ path: `${evidence}/forecast-failed.png` });
+    if (evidence) await page.screenshot({ path: `${evidence}/forecast-failed.png` });
     const fetched: string[] = [];
     page.on('request', (request) => {
       if (request.url().includes('ForecastChart')) fetched.push(request.url());
@@ -174,7 +175,7 @@ test('forecast arrival keeps actionable queue coordinates and failed chunks reco
     expect(after!.y).toBeCloseTo(before!.y, 0);
     expect(after!.x).toBeCloseTo(before!.x, 0);
     expect(fetched.some((url) => url !== failedUrl && url.includes('ForecastChart'))).toBe(true);
-    await page.screenshot({ path: `${evidence}/forecast-recovered.png` });
+    if (evidence) await page.screenshot({ path: `${evidence}/forecast-recovered.png` });
   } finally {
     release();
   }
@@ -184,7 +185,7 @@ test('Today surfaces keep labels pinned through hover, press, reversal and reduc
   page,
 }) => {
   await enterFreshLacuna(page);
-  await page.screenshot({ path: `${evidence}/today-empty-1470.png` });
+  if (evidence) await page.screenshot({ path: `${evidence}/today-empty-1470.png` });
   const create = page.locator('main').getByRole('button', { name: 'New course', exact: true });
   await create.hover();
   await page.waitForTimeout(400);
@@ -192,16 +193,16 @@ test('Today surfaces keep labels pinned through hover, press, reversal and reduc
   await page.mouse.down();
   await page.waitForTimeout(110);
   expect(await labelGeometry(create)).toEqual(before);
-  await page.screenshot({ path: `${evidence}/new-course-pressed.png` });
+  if (evidence) await page.screenshot({ path: `${evidence}/new-course-pressed.png` });
   await page.mouse.up();
   const form = page.getByRole('form', { name: 'New course' });
   const input = form.getByRole('textbox', { name: 'Course name' });
   await expect(input).toBeFocused();
   await page.keyboard.type('Immediate input');
   await expect(input).toHaveValue('Immediate input');
-  await page.screenshot({ path: `${evidence}/new-course-expanding.png` });
+  if (evidence) await page.screenshot({ path: `${evidence}/new-course-expanding.png` });
   await page.waitForTimeout(600);
-  await page.screenshot({ path: `${evidence}/today-new-course-1470.png` });
+  if (evidence) await page.screenshot({ path: `${evidence}/today-new-course-1470.png` });
   await create.click();
   await page.waitForTimeout(75);
   await create.click({ force: true });
@@ -224,7 +225,7 @@ test('Today surfaces keep labels pinned through hover, press, reversal and reduc
     .locator('..')
     .boundingBox();
   expect(second!.y).toBeGreaterThan(first!.y);
-  await page.screenshot({ path: `${evidence}/new-course-enlarged-reduced.png` });
+  if (evidence) await page.screenshot({ path: `${evidence}/new-course-enlarged-reduced.png` });
   await page.keyboard.press('Escape');
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '';
@@ -233,7 +234,7 @@ test('Today surfaces keep labels pinned through hover, press, reversal and reduc
   await importWelcomeCourse(page);
   await expect(page.getByRole('img', { name: 'Exam-day forecast', exact: true })).toBeVisible();
   await page.waitForTimeout(1000);
-  await page.screenshot({ path: `${evidence}/today-welcome-course-1470.png` });
+  if (evidence) await page.screenshot({ path: `${evidence}/today-welcome-course-1470.png` });
   const study = page.getByRole('button', { name: 'Study Welcome to Lacuna' });
   await page.mouse.move(0, 0);
   await page.waitForTimeout(400);
@@ -244,17 +245,19 @@ test('Today surfaces keep labels pinned through hover, press, reversal and reduc
   await page.mouse.down();
   await page.waitForTimeout(100);
   expect(await labelGeometry(study)).toEqual(label);
-  await page.screenshot({ path: `${evidence}/study-pressed.png` });
+  if (evidence) await page.screenshot({ path: `${evidence}/study-pressed.png` });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect
     .poll(() => study.evaluate((element) => getComputedStyle(element, '::before').transform))
     .toBe('none');
   await page.mouse.move(0, 0);
   await page.mouse.up();
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await page.getByRole('button', { name: 'Toggle colour theme' }).click();
-  await page.waitForTimeout(600);
-  await page.screenshot({ path: `${evidence}/today-welcome-course-dark-1470.png` });
+  if (evidence) {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.getByRole('button', { name: 'Toggle colour theme' }).click();
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `${evidence}/today-welcome-course-dark-1470.png` });
+  }
 });
 
 test('mixed forecast horizons and legend selection have native keyboard parity', async ({
@@ -291,7 +294,7 @@ test('mixed forecast horizons and legend selection have native keyboard parity',
   await page.keyboard.press('Tab');
   await page.mouse.move(0, 0);
   await expect(course).toHaveAttribute('aria-pressed', 'true');
-  await page.screenshot({ path: `${evidence}/multi-course-selected.png` });
+  if (evidence) await page.screenshot({ path: `${evidence}/multi-course-selected.png` });
   await course.focus();
   await page.keyboard.press('Space');
   await expect(course).toHaveAttribute('aria-pressed', 'false');
@@ -340,7 +343,7 @@ test('cold reload shows actionable rows before optional motion features arrive',
         }),
       )
       .toBe(1);
-    await page.screenshot({ path: `${evidence}/cold-reload-motion-pending.png` });
+    if (evidence) await page.screenshot({ path: `${evidence}/cold-reload-motion-pending.png` });
   } finally {
     release();
   }

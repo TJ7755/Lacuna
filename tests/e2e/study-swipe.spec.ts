@@ -4,7 +4,10 @@ import { chooseRecallPractice, createCourse, enterFreshLacuna } from './fixtures
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   for (const input of ['swipe', 'keyboard', 'button'] as const) {
     const width = input === 'keyboard' && reducedMotion === 'no-preference' ? 1280 : 390;
-    for (const direction of [-1, 1]) {
+    // Reduced motion uses the same immediate handoff in both directions.
+    // Cover each input and both outcomes without repeating the full matrix.
+    const directions = reducedMotion === 'reduce' ? [input === 'keyboard' ? 1 : -1] : [-1, 1];
+    for (const direction of directions) {
       test(`${input} sends ${direction < 0 ? 'No' : 'Yes'} at ${width}px with motion ${reducedMotion}`, async ({
         page,
       }) => {

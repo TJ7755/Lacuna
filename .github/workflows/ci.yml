@@ -167,7 +167,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7]
+        shard: [1, 2, 3, 4, 5, 6]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -444,7 +444,9 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        shard: ${{ fromJSON(needs.changes.outputs.web_specs && '[1, 2, 3, 4]' || '[1]') }}
+        # The full matrix already runs every changed spec. Exercise the PR-only
+        # command once in that case, without scheduling three redundant runners.
+        shard: ${{ fromJSON(needs.changes.outputs.web_specs && needs.changes.outputs.browser_ci == 'false' && '[1, 2, 3, 4]' || '[1]') }}
     env:
       LACUNA_BROWSER_PREBUILT: 'true'
     steps:
@@ -493,7 +495,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -518,6 +520,8 @@ jobs:
           artifact-ids: ${{ steps.web-dist.outputs.artifact_id }}
           path: dist/
       - run: node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/${{ strategy.job-total }}
+        env:
+          CI_PEER_JOB_TOKEN: ${{ github.token }}
       - name: Preserve browser test evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -532,8 +536,8 @@ jobs:
 
   # These sites and feature flags require their own isolated builds.
   browser-standalone:
-    needs: [changes, web-build]
-    if: needs.changes.result == 'success' && !cancelled() && needs.changes.outputs.standalone_suites != '[]'
+    needs: changes
+    if: needs.changes.outputs.standalone_suites != '[]'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: true
@@ -547,6 +551,8 @@ jobs:
         with:
           node-version: '24.22.1'
       - uses: ./.github/actions/setup-bun
+        with:
+          cache-packages: 'false'
       - run: bun install --frozen-lockfile
       - run: bunx --no-install playwright install --only-shell chromium
       - name: Verify standalone suite
@@ -709,7 +715,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           WEB_ARTIFACT_ID: ${{ needs.web-build.outputs.artifact_id }}
-          FUNCTIONAL_SHARDS: '21'
+          FUNCTIONAL_SHARDS: '18'
         run: node scripts/ci-browser-artefact.mjs
 
   electron-renderer:
