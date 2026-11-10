@@ -150,6 +150,7 @@ it('partitions the complete local Chromium suite across the functional and isola
     const allCiCases = [...functionalCases, ...imageCases, ...studyCases];
 
     expect(cases(local.suites).length).toBeGreaterThan(0);
+    expect(functionalCases.some((name) => name.startsWith('release-smoke.spec.ts:'))).toBe(true);
     expect(allCiCases.sort()).toEqual(cases(local.suites).sort());
     expect(new Set(allCiCases).size).toBe(allCiCases.length);
     expect(studyCases.filter((name) => name.startsWith('study-grade-load.spec.ts:'))).toHaveLength(

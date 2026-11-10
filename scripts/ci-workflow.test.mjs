@@ -150,8 +150,8 @@ const gateCases = (job) =>
           standaloneSuites: JSON.stringify(classifyPaths(['apps/gaps/sw.js']).standalone_suites),
           ignored: ['RESULT', 'TIMING_RESULT'],
         },
-        { event: 'pull_request', browserCI: 'true', ignored: [] },
-        { event: 'pull_request', browserCI: '', ignored: [] },
+        { event: 'pull_request', browserCI: 'true', ignored: ['PR_RESULT'] },
+        { event: 'pull_request', browserCI: '', ignored: ['PR_RESULT'] },
         { event: 'push', browserCI: 'false', ignored: ['PR_RESULT'] },
       ]
     : [{ event: 'pull_request', ignored: [] }];
@@ -703,6 +703,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
   const postMerge = ['browser-tests', 'browser-standalone', 'browser-timing'];
   const web = ['web-build', 'production', 'browser-pr'];
   const all = workers.filter((name) => !postMerge.includes(name));
+  const full = workers.filter((name) => name !== 'browser-pr');
   function runs(name, event_name, outputs) {
     const job = workflow.jobs[name];
     const predicate = ['web-build', 'electron-renderer', 'windows-installed-upgrade'].includes(name)
@@ -730,7 +731,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     [['tests/e2e/mobile-pwa-smoke.spec.ts'], ['typecheck', 'lint', ...web]],
     [['tests/e2e/gaps-standalone.spec.ts'], ['typecheck', 'lint', ...web, 'browser-standalone']],
     [['tests/e2e/fixtures/videoEmbeds.ts'], all],
-    [['tests/config/playwright.web.config.ts'], workers],
+    [['tests/config/playwright.web.config.ts'], full],
     [['tests/e2e/study-flip.spec.ts', 'apps/web/src/App.tsx'], all],
     [
       ['docs/README.md', 'apps/gaps/sw.js', 'tooling/handwriting-maths/src/main.ts'],
@@ -743,7 +744,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
       ['docs/question-bank/examples/numeric-family.json'],
       ['typecheck', 'lint', 'test-unit', 'test-coverage', ...web],
     ],
-    [['.github/workflows/ci.yml'], workers],
+    [['.github/workflows/ci.yml'], full],
     [['unknown/file'], all],
   ]) {
     const outputs = Object.fromEntries(
@@ -756,7 +757,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     Object.entries(classifyPaths(['unknown/file'])).map(([key, value]) => [key, String(value)]),
   );
   const selected = workers.filter((name) => runs(name, 'push', push));
-  assert.deepEqual(selected.sort(), workers.filter((name) => name !== 'browser-pr').sort());
+  assert.deepEqual(selected.sort(), [...full].sort());
   for (const browser_ci of [undefined, '', 'unknown']) {
     for (const name of postMerge) {
       assert.ok(

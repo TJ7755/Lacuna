@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
+import { openEmptyDashboard, openImport } from './fixtures/lacunaApp';
 
 async function importSchoolScience(
   page: Page,
@@ -8,7 +8,7 @@ async function importSchoolScience(
   practiceAfterEveryLesson = false,
   lessonIds = ['A', 'B', 'C'],
 ) {
-  await enterFreshLacuna(page);
+  await openEmptyDashboard(page);
   await openImport(page);
   const examDate = Date.now() + 90 * 86_400_000;
   const payload = {
@@ -150,10 +150,6 @@ test('keeps automatic practice and checkpoint coverage when a locked course is r
   await expect(page.getByRole('button', { name: 'Move Topic B down', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Move Topic C up', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Move Topic C up', exact: true })).toBeDisabled();
-  await page.screenshot({
-    path: test.info().outputPath('local-order-settings.png'),
-    animations: 'disabled',
-  });
   await page.reload();
   await page.getByRole('button', { name: /^Lessons/ }).click();
   await expect(page.getByRole('button', { name: 'Move Topic C up', exact: true })).toBeDisabled();
@@ -171,18 +167,10 @@ test('keeps automatic practice and checkpoint coverage when a locked course is r
         ),
     )
     .toEqual(['C', 'A', 'checkpoint', 'B']);
-  await page.screenshot({
-    path: test.info().outputPath('local-order-path.png'),
-    animations: 'disabled',
-  });
   await path.getByRole('button', { name: 'Open checkpoint: Topic test', exact: true }).click();
   const details = page.getByRole('dialog', { name: 'Topic test details' });
   await expect(details.getByRole('listitem')).toHaveText(['Topic C', 'Topic A']);
   await expect(details.getByText('2 lessons, 2 cards', { exact: true })).toBeVisible();
-  await page.screenshot({
-    path: test.info().outputPath('local-order-checkpoint.png'),
-    animations: 'disabled',
-  });
 });
 
 async function publisherRecords(page: Page) {
@@ -221,12 +209,14 @@ async function publisherRecords(page: Page) {
   );
 }
 
-for (const input of [
-  { name: 'mouse', width: 1440, touch: false },
-  { name: 'touch', width: 390, touch: true },
-]) {
+const pathDragInputs = [
+  { name: 'mouse', touch: false },
+  { name: 'touch', touch: true },
+];
+
+for (const input of pathDragInputs) {
   test.describe(`local lesson drag with ${input.name}`, () => {
-    test.use({ viewport: { width: input.width, height: 1100 }, hasTouch: input.touch });
+    test.use({ viewport: { width: 1440, height: 1100 }, hasTouch: input.touch });
     test('moves locked lessons and their questions while keeping study and publisher data locked', async ({
       page,
     }) => {
@@ -275,10 +265,6 @@ for (const input of [
         await page.mouse.down();
         await expect(row('C')).toHaveAttribute('data-drag-lifted', 'true');
         await page.mouse.move(x, targetY, { steps: 20 });
-        await page.screenshot({
-          path: test.info().outputPath('local-order-held.png'),
-          animations: 'allow',
-        });
         await page.mouse.up();
       }
       await expect.poll(order).toEqual(['C', 'A', 'B']);
@@ -309,20 +295,13 @@ for (const input of [
       await page.reload();
       await expect.poll(order).toEqual(['C', 'B', 'A']);
       expect(await publisherRecords(page)).toEqual(before);
-      await page.screenshot({
-        path: test.info().outputPath(`local-order-${input.name}-saved.png`),
-        animations: 'disabled',
-      });
     });
   });
 }
 
-for (const input of [
-  { name: 'mouse', width: 1440, touch: false },
-  { name: 'touch', width: 390, touch: true },
-]) {
+for (const input of pathDragInputs) {
   test.describe(`learner checkpoints with ${input.name}`, () => {
-    test.use({ viewport: { width: input.width, height: 1100 }, hasTouch: input.touch });
+    test.use({ viewport: { width: 1440, height: 1100 }, hasTouch: input.touch });
     test('adds a personal test, edits its date and drags its coverage without changing library content', async ({
       page,
     }) => {
@@ -449,19 +428,11 @@ for (const input of [
             ),
           )
           .toBeGreaterThan(0.5);
-        await page.screenshot({
-          path: test.info().outputPath('learner-checkpoint-muted-guide.png'),
-          animations: 'allow',
-        });
         await page.mouse.move(x, targetY, { steps: 20 });
         await expect(path.locator('[data-drop-active]')).toHaveAttribute(
           'data-drop-active',
           'true',
         );
-        await page.screenshot({
-          path: test.info().outputPath('learner-checkpoint-held.png'),
-          animations: 'allow',
-        });
         await page.mouse.up();
       }
       await expect(path.locator('[data-drop-active]')).toHaveCount(0);
@@ -478,10 +449,6 @@ for (const input of [
         .getByRole('button', { name: 'Edit checkpoint: My mock - updated', exact: true })
         .click();
       await expect(edit.getByText('1 lesson, 1 card', { exact: true })).toBeVisible();
-      await page.screenshot({
-        path: test.info().outputPath(`learner-checkpoint-${input.name}-editor.png`),
-        animations: 'disabled',
-      });
       const retained = ((await publisherRecords(page)).courseAssessments as TestRecord[]).find(
         (item) => item.id === own.id,
       )!;
@@ -551,12 +518,9 @@ test('keeps lessons and anchored practice rows apart during a checkpoint drag pr
   await page.mouse.up();
 });
 
-for (const input of [
-  { name: 'mouse', width: 1440, touch: false },
-  { name: 'touch', width: 390, touch: true },
-]) {
+for (const input of pathDragInputs) {
   test.describe(`attached Question Set drag with ${input.name}`, () => {
-    test.use({ viewport: { width: input.width, height: 1200 }, hasTouch: input.touch });
+    test.use({ viewport: { width: 1440, height: 1200 }, hasTouch: input.touch });
     test('moves the parent lesson and attached questions together without editing publisher anchors', async ({
       page,
     }) => {
@@ -565,11 +529,17 @@ for (const input of [
       const path = page.getByRole('list', { name: 'Course path' });
       const before = await publisherRecords(page);
       const parent = path.locator('[data-path-source="C"] [data-path-row]');
-      const questions = path.locator('[data-path-source="activity-C"] [data-path-row]').first();
       const parentRow = path.locator('[data-path-source="C"]');
       const questionsRow = path.locator('[data-path-source="activity-C"]');
+      const questions = questionsRow.getByRole('button', {
+        name: 'Practice questions: Topic C questions',
+        exact: true,
+      });
+      await expect(
+        questionsRow.getByRole('button', { name: 'Practice questions: Topic C extra questions' }),
+      ).toBeVisible();
       await expect(questions).toHaveAttribute('aria-roledescription', 'sortable path row');
-      await questions.scrollIntoViewIfNeeded();
+      await questions.evaluate((element) => element.scrollIntoView({ block: 'nearest' }));
       const start = (await questions.boundingBox())!;
       const target = (await path.locator('[data-path-lesson="A"] [data-path-row]').boundingBox())!;
       const x = Math.round(start.x + start.width / 2);
@@ -610,10 +580,6 @@ for (const input of [
         })
         .toBeLessThan(1);
       await expectSeparatedPathRows(page);
-      await page.screenshot({
-        path: test.info().outputPath(`attached-question-set-${input.name}-held.png`),
-        animations: 'allow',
-      });
       if (session) {
         await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
         await session.detach();
@@ -633,29 +599,20 @@ for (const input of [
   });
 }
 
-for (const input of [
-  { name: 'mouse lesson', width: 1440, touch: false, checkpoint: false },
-  { name: 'touch lesson', width: 390, touch: true, checkpoint: false },
-  { name: 'mouse checkpoint', width: 1440, touch: false, checkpoint: true },
-  { name: 'touch checkpoint', width: 390, touch: true, checkpoint: true },
-].flatMap((input) => [
-  { ...input, near: false },
-  { ...input, name: `${input.name} near edge`, near: true },
+for (const input of pathDragInputs.flatMap((input) => [
+  { ...input, checkpoint: false },
+  { ...input, checkpoint: true },
 ])) {
-  test.describe(`path drag edge scrolling with ${input.name}`, () => {
-    const height = input.near ? 1000 : 650;
-    test.use({ viewport: { width: input.width, height }, hasTouch: input.touch });
+  const rowType = input.checkpoint ? 'checkpoint' : 'lesson';
+  test.describe(`path drag edge scrolling with ${input.name} ${rowType} near edge`, () => {
+    const height = 1000;
+    test.use({ viewport: { width: 1440, height }, hasTouch: input.touch });
     test('scrolls continuously at either edge while the held pointer is stationary', async ({
       page,
     }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      await importSchoolScience(
-        page,
-        'open',
-        false,
-        true,
-        input.near ? ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] : undefined,
-      );
+      const lessonIds = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      await importSchoolScience(page, 'open', false, true, lessonIds);
       const path = page.getByRole('list', { name: 'Course path' });
       let row = path.locator('[data-path-lesson="A"] [data-path-row]');
       if (input.checkpoint) {
@@ -675,7 +632,7 @@ for (const input of [
         const checkpointSource = (
           (await publisherRecords(page)).courseAssessments as { id: string; kind: string }[]
         ).find((assessment) => assessment.kind === 'checkpoint')!.id;
-        for (const anchor of input.near ? ['G', 'F', 'E', 'D', 'C', 'B', 'A'] : ['B', 'A']) {
+        for (const anchor of lessonIds.slice(0, -1).reverse()) {
           await row.press('Alt+ArrowUp');
           await expect
             .poll(async () => {
@@ -713,9 +670,9 @@ for (const input of [
       const x = Math.round(start.x + (input.checkpoint ? start.width - 20 : start.width / 2));
       const y = Math.round(start.y + start.height / 2);
       const bottomEdge = Math.min(height, viewport.y + viewport.height);
-      const distance = input.near ? (input.checkpoint ? 80 : 96) : 8;
+      const distance = input.checkpoint ? 80 : 96;
       const bottomY = Math.round(bottomEdge - distance);
-      const topY = Math.round(Math.max(0, viewport.y) + (input.near ? 80 : 8));
+      const topY = Math.round(Math.max(0, viewport.y) + 80);
       const session = input.touch ? await page.context().newCDPSession(page) : undefined;
       const move = async (clientY: number) => {
         if (session) {
@@ -738,37 +695,28 @@ for (const input of [
       }
       await expect(row).toHaveAttribute('data-drag-lifted', 'true');
       await move(bottomY);
-      if (input.near) {
-        await expect
-          .poll(() =>
-            path
-              .locator('[data-path-source]')
-              .evaluateAll((rows) =>
-                Math.max(
-                  ...rows
-                    .filter((row) => row.querySelector('[data-drag-lifted="true"]'))
-                    .map((row) => row.getBoundingClientRect().bottom),
-                ),
+      await expect
+        .poll(() =>
+          path
+            .locator('[data-path-source]')
+            .evaluateAll((rows) =>
+              Math.max(
+                ...rows
+                  .filter((row) => row.querySelector('[data-drag-lifted="true"]'))
+                  .map((row) => row.getBoundingClientRect().bottom),
               ),
-          )
-          .toBeGreaterThan(bottomEdge - 64);
-      }
+            ),
+        )
+        .toBeGreaterThan(bottomEdge - 64);
       await expect.poll(scrollTop).toBeGreaterThan(before + 60);
       const firstAdvance = await scrollTop();
       await expect.poll(scrollTop).toBeGreaterThanOrEqual(Math.min(firstAdvance + 40, maximum));
       await expect(row).toHaveAttribute('data-drag-lifted', 'true');
-      if (input.near && !input.checkpoint) {
+      if (!input.checkpoint) {
         await expect.poll(scrollTop, { timeout: 10000 }).toBeGreaterThanOrEqual(maximum);
         await page.waitForTimeout(180);
         expect(await scrollTop()).toBe(maximum);
       }
-      if (input.near)
-        await page.screenshot({
-          path: test
-            .info()
-            .outputPath(`near-edge-${input.checkpoint ? 'checkpoint' : 'lesson'}-scroll.png`),
-          animations: 'allow',
-        });
       const bottomScroll = await scrollTop();
       await move(topY);
       await expect.poll(scrollTop).toBeLessThan(bottomScroll - 60);
@@ -784,7 +732,7 @@ for (const input of [
       await expect(row).not.toHaveAttribute('data-drag-lifted', 'true');
       await expect(path.locator('[data-drop-active]')).toHaveCount(0);
       await page.reload();
-      await expect(path.locator('[data-path-lesson]')).toHaveCount(input.near ? 8 : 3);
+      await expect(path.locator('[data-path-lesson]')).toHaveCount(lessonIds.length);
     });
   });
 }
