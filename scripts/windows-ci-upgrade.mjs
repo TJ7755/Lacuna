@@ -48,7 +48,7 @@ async function buildInstaller(env) {
       'never',
     ],
     // Use faster lossless compression for CI. The release builds with its usual compression.
-    { ...env, ELECTRON_BUILDER_COMPRESSION_LEVEL: '3' },
+    { ...env, ELECTRON_BUILDER_COMPRESSION_LEVEL: '1' },
   );
   await run('bun', ['run', 'perf:check:electron-package'], env);
 }
