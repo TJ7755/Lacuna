@@ -486,9 +486,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Use more of each runner's four cores before asking for more runners.
-        # The separate timing jobs still use one worker each.
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        shard:
+          [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -700,7 +699,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           WEB_ARTIFACT_ID: ${{ needs.web-build.outputs.artifact_id }}
-          FUNCTIONAL_SHARDS: '16'
+          FUNCTIONAL_SHARDS: '24'
         run: node scripts/ci-browser-artefact.mjs
 
   electron-renderer:

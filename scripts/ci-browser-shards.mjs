@@ -185,7 +185,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
         `--project=${project}`,
         '--test-list',
         list,
-        '--workers=4',
       ],
       { stdio: 'inherit' },
     );
