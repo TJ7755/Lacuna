@@ -3,6 +3,7 @@ import {
   chooseScheduledStudy,
   enterFreshLacuna,
   enterWithWelcomeCourse,
+  openEmptyDashboard,
 } from './fixtures/lacunaApp';
 
 test('first launch reaches an empty dashboard', async ({ page }) => {
@@ -19,7 +20,7 @@ test('first launch reaches an empty dashboard', async ({ page }) => {
 });
 
 test('creates a course with its first lesson', async ({ page }) => {
-  await enterWithWelcomeCourse(page);
+  await openEmptyDashboard(page);
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
   const nameInput = page.getByRole('textbox', { name: 'Course name' });
   await page.getByRole('radio', { name: /Steady retention/ }).focus();
