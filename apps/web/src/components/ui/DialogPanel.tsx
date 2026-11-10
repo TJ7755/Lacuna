@@ -12,6 +12,8 @@ interface DialogPanelProps {
   role?: 'dialog' | 'alertdialog';
   /** Anchored popovers share the surface and motion without a modal overlay. */
   modal?: boolean;
+  /** Reveal a panel positioned immediately below its trigger. */
+  belowTrigger?: boolean;
   describedBy?: string;
   testId?: string;
   tabIndex?: number;
@@ -41,6 +43,7 @@ export function DialogPanel({
   label,
   role = 'dialog',
   modal = true,
+  belowTrigger = false,
   describedBy,
   testId,
   tabIndex,
@@ -56,6 +59,7 @@ export function DialogPanel({
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const present = useIsPresent();
+  const hidden = belowTrigger ? { opacity: 0, y: -6 } : { opacity: 0, y: 16, scale: 0.98 };
   const panel = (
     <motion.div
       ref={!modal ? trapRef : undefined}
@@ -74,9 +78,9 @@ export function DialogPanel({
       aria-describedby={describedBy}
       data-testid={testId}
       tabIndex={tabIndex}
-      initial={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : false}
+      initial={m > 0 ? hidden : false}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : undefined}
+      exit={m > 0 ? hidden : undefined}
       layout={layout && m > 0 ? 'position' : undefined}
       transition={scaledSpring(m, 320, 30)}
       className={cn(
