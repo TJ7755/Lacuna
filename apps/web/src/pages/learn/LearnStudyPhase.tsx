@@ -226,7 +226,11 @@ export function LearnStudyPhase({
       )}
       {/* Shared top bar: hidden in Focus Mode until the top edge is reached. */}
       <AnimatePresence>
-        {(!focusMode || focusChromeVisible || menuOpen || awaitingUndo) && (
+        {(!focusMode ||
+          focusChromeVisible ||
+          menuOpen ||
+          awaitingUndo ||
+          leaveConfirmationOpen) && (
           <LearnHeader
             quietCardPractice={quietCardPractice}
             reviewBlock={reviewBlock}
@@ -248,7 +252,7 @@ export function LearnStudyPhase({
             sessionCardOutcomes={sessionCardOutcomes}
             filterParams={filterParams}
             tagFilter={tagFilter}
-            onExit={() => exitGuardRef.current?.requestLeave()}
+            onExit={(anchor) => exitGuardRef.current?.requestLeave(anchor)}
             focusMode={focusMode}
             onToggleFocus={() => {
               setFocusMode((value) => !value);
@@ -257,7 +261,7 @@ export function LearnStudyPhase({
             onToggleFullscreen={() => void toggleFullscreen()}
             isFullscreen={isFullscreen}
             onPointerLeave={() => {
-              if (focusMode && !menuOpen) setFocusChromeVisible(false);
+              if (focusMode && !menuOpen && !leaveConfirmationOpen) setFocusChromeVisible(false);
             }}
             menuOpen={menuOpen}
             setMenuOpen={setMenuOpen}
@@ -279,6 +283,7 @@ export function LearnStudyPhase({
       {/* Reserve the controls first; only the card body may scroll. */}
       <motion.main
         ref={studyFocusRef}
+        inert={leaveConfirmationOpen}
         layoutScroll={Boolean(choiceQuestion)}
         tabIndex={-1}
         aria-label="Study card"

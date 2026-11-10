@@ -13,9 +13,9 @@ import {
   MoreIcon,
   PauseIcon,
   RestoreIcon,
-  CloseIcon,
 } from '../../components/ui/icons';
 import { Button } from '../../components/ui/Button';
+import { StudyExitButton } from '../../components/learn/StudyExitButton';
 import { STUDY_HEADER_ROW } from '../../components/learn/studyHeaderLayout';
 import { PomodoroTimer } from '../../components/learn/PomodoroTimer';
 import { cn } from '../../components/ui/cn';
@@ -152,7 +152,7 @@ export function LearnHeader({
   sessionCardOutcomes: Map<string, SessionCardOutcome>;
   filterParams: CardFilter[];
   tagFilter: string | null;
-  onExit: () => void;
+  onExit: (anchor: HTMLDivElement) => void;
   focusMode: boolean;
   onToggleFocus: () => void;
   onToggleFullscreen: () => void;
@@ -244,15 +244,7 @@ export function LearnHeader({
       <div className={`${STUDY_HEADER_ROW} gap-2 md:gap-4`}>
         {/* One Exit for every width, leading the row: a pill with its label, and a
             round icon button on a phone. */}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={onExit}
-          className="h-11 shrink-0 px-4 max-md:w-11 max-md:px-0"
-        >
-          <CloseIcon width={16} height={16} aria-hidden="true" />
-          <span className="max-md:sr-only">Exit</span>
-        </Button>
+        <StudyExitButton onExit={onExit} compact />
         <div className="min-w-10 flex-1 overflow-hidden">
           <div
             className={cn(

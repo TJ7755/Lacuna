@@ -71,7 +71,10 @@ function LearnSession({
   sessionId,
   showConfirmedReport = true,
 }: LearnModeProps) {
-  const [leaveConfirmationOpen, setLeaveConfirmationOpen] = useState(false);
+  const [
+    { open: leaveConfirmationOpen, anchored: leaveConfirmationAnchored },
+    setLeaveConfirmation,
+  ] = useState({ open: false, anchored: false });
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
   const exitDecisionPendingRef = useRef(false);
@@ -88,9 +91,9 @@ function LearnSession({
     [onStepFinished],
   );
   const handleLeaveOpenChange = useCallback(
-    (open: boolean) => {
+    (open: boolean, anchored: boolean) => {
       exitDecisionPendingRef.current = open;
-      setLeaveConfirmationOpen(open);
+      setLeaveConfirmation({ open, anchored });
       if (open || leavingSessionRef.current) return;
       const deferred = deferredCompletionRef.current;
       deferredCompletionRef.current = null;
@@ -343,7 +346,7 @@ function LearnSession({
     undoLast: undoWithTransitionCancel,
     menuOpen,
     setMenuOpen,
-    editing,
+    editing: editing || leaveConfirmationOpen,
     current,
     isTypingCard,
     suppressClassicGrading: suppressClassicGrading || verifyTypedRecall,
@@ -430,7 +433,8 @@ function LearnSession({
         onExplicitLeave={backOut}
       />
       <AnimatePresence mode="wait" initial={false}>
-        {phase === 'finished' &&
+        {!leaveConfirmationAnchored &&
+        phase === 'finished' &&
         summary &&
         (showConfirmedReport || (canUndo && !quietCardPractice)) ? (
           <motion.div

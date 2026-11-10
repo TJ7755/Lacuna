@@ -1,4 +1,5 @@
 import { AnimatePresence } from 'motion/react';
+import { createPortal } from 'react-dom';
 import { DialogPanel } from './DialogPanel';
 import {
   forwardRef,
@@ -24,11 +25,11 @@ export interface NavigationGuardProps {
   onAttempt?: (source: 'navigation' | 'unload') => void;
   onConfirm?: () => unknown | Promise<unknown>;
   onExplicitLeave?: () => unknown | Promise<unknown>;
-  onOpenChange?: (open: boolean) => void;
+  onOpenChange?: (open: boolean, anchored: boolean) => void;
 }
 
 export interface NavigationGuardHandle {
-  requestLeave: () => void;
+  requestLeave: (anchor?: HTMLElement) => void;
 }
 
 function resolveActive(active: NavigationGuardProps['active']): boolean {
@@ -101,27 +102,17 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
     }, [active, onAttempt, onConfirm, onExplicitLeave]);
     const [confirming, setConfirming] = useState(false);
     const [explicitAttempt, setExplicitAttempt] = useState(false);
+    const [anchor, setAnchor] = useState<HTMLElement>();
     const blocked = blocker?.state === 'blocked' || explicitAttempt;
+    const anchored = explicitAttempt && Boolean(anchor?.isConnected);
     useEffect(() => {
-      onOpenChange?.(blocked);
-    }, [blocked, onOpenChange]);
-    const trapRef = useFocusTrap(blocked, { autoFocusSelector: '[data-guard-stay]' });
+      onOpenChange?.(blocked, anchored);
+    }, [anchored, blocked, onOpenChange]);
+    const trapRef = useFocusTrap(blocked, {
+      autoFocusSelector: '[data-guard-stay]',
+      returnFocus: !anchored,
+    });
     const messageId = useId();
-
-    useImperativeHandle(
-      ref,
-      () => ({
-        requestLeave() {
-          if (!resolveActive(activeRef.current)) {
-            void onExplicitLeaveRef.current?.();
-            return;
-          }
-          onAttemptRef.current?.('navigation');
-          setExplicitAttempt(true);
-        },
-      }),
-      [],
-    );
 
     useEffect(() => {
       const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -134,11 +125,56 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
       return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, []);
 
-    const stay = () => {
+    const stay = useCallback(() => {
       if (blocker?.state === 'blocked') blocker.reset();
       setExplicitAttempt(false);
       setConfirming(false);
-    };
+    }, [blocker]);
+
+    const cancel = useCallback(() => {
+      stay();
+      if (anchored) anchor?.querySelector('button')?.focus({ preventScroll: true });
+    }, [anchor, anchored, stay]);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        requestLeave(triggerAnchor) {
+          if (blocked) {
+            if (anchored && triggerAnchor === anchor && !confirming) cancel();
+            return;
+          }
+          if (!resolveActive(activeRef.current)) {
+            void onExplicitLeaveRef.current?.();
+            return;
+          }
+          onAttemptRef.current?.('navigation');
+          setAnchor(triggerAnchor);
+          setExplicitAttempt(true);
+        },
+      }),
+      [anchor, anchored, blocked, cancel, confirming],
+    );
+
+    useEffect(() => {
+      if (!anchored) return;
+      const dismiss = (event: PointerEvent) => {
+        if (!confirming && event.target instanceof Node && !anchor?.contains(event.target))
+          cancel();
+      };
+      const escape = (event: KeyboardEvent) => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (!confirming) cancel();
+      };
+      document.addEventListener('pointerdown', dismiss);
+      document.addEventListener('keydown', escape, true);
+      return () => {
+        document.removeEventListener('pointerdown', dismiss);
+        document.removeEventListener('keydown', escape, true);
+      };
+    }, [anchor, anchored, cancel, confirming]);
 
     const leave = async () => {
       if (!blocked || confirming) return;
@@ -152,49 +188,62 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
           setExplicitAttempt(false);
         }
       } catch {
-        if (blocker?.state === 'blocked') blocker.reset();
-        setExplicitAttempt(false);
+        cancel();
       } finally {
         setConfirming(false);
       }
     };
 
+    const confirmation = (modal: boolean) => (
+      <DialogPanel
+        modal={modal}
+        belowTrigger={!modal}
+        label={title}
+        describedBy={messageId}
+        trapRef={trapRef}
+        className={
+          modal
+            ? 'max-w-md overflow-y-auto p-6'
+            : 'absolute left-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-4rem))] p-4'
+        }
+        onKeyDown={(event) => {
+          event.stopPropagation();
+          if (event.key === 'Escape' && !confirming) {
+            event.preventDefault();
+            cancel();
+          }
+        }}
+      >
+        <h2 className="font-display text-xl text-ink">{title}</h2>
+        <p id={messageId} className="mt-2 text-sm leading-6 text-ink-soft">
+          {message}
+        </p>
+        <div
+          className={
+            modal
+              ? 'mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end'
+              : 'mt-4 flex flex-wrap justify-end gap-2'
+          }
+        >
+          <Button data-guard-stay="" type="button" onClick={cancel} disabled={confirming}>
+            {stayLabel}
+          </Button>
+          <Button type="button" variant="danger" onClick={() => void leave()} disabled={confirming}>
+            {confirming ? 'Leaving…' : leaveLabel}
+          </Button>
+        </div>
+      </DialogPanel>
+    );
+
     return (
-      <AnimatePresence>
-        {blocked && (
-          <DialogPanel
-            label={title}
-            describedBy={messageId}
-            trapRef={trapRef}
-            className="max-w-md overflow-y-auto p-6"
-            onKeyDown={(event) => {
-              event.stopPropagation();
-              if (event.key === 'Escape' && !confirming) {
-                event.preventDefault();
-                stay();
-              }
-            }}
-          >
-            <h2 className="font-display text-xl text-ink">{title}</h2>
-            <p id={messageId} className="mt-2 text-sm leading-6 text-ink-soft">
-              {message}
-            </p>
-            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button data-guard-stay="" type="button" onClick={stay} disabled={confirming}>
-                {stayLabel}
-              </Button>
-              <Button
-                type="button"
-                variant="danger"
-                onClick={() => void leave()}
-                disabled={confirming}
-              >
-                {confirming ? 'Leaving…' : leaveLabel}
-              </Button>
-            </div>
-          </DialogPanel>
-        )}
-      </AnimatePresence>
+      <>
+        <AnimatePresence>{blocked && !anchored && confirmation(true)}</AnimatePresence>
+        {anchor &&
+          createPortal(
+            <AnimatePresence>{blocked && anchored && confirmation(false)}</AnimatePresence>,
+            anchor,
+          )}
+      </>
     );
   },
 );

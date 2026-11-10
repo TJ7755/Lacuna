@@ -60,6 +60,7 @@ function QuestionSession() {
   const answerWriteRef = useRef<Promise<void> | null>(null);
   const [busy, setBusy] = useState(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
+  const [leaveConfirmationOpen, setLeaveConfirmationOpen] = useState(false);
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
 
@@ -296,6 +297,7 @@ function QuestionSession() {
     <main className="min-h-screen bg-paper px-4 pb-12 text-ink md:px-8">
       <SessionExitGuard
         ref={exitGuardRef}
+        onOpenChange={setLeaveConfirmationOpen}
         active={() => activeAttemptRef.current?.status === 'shown'}
         itemName="Question"
         answeredCount={answeredCount}
@@ -307,7 +309,7 @@ function QuestionSession() {
         <QuestionSessionHeader
           completed={answeredCount}
           total={uniqueQuestionCount}
-          onExit={exit}
+          onExit={(anchor) => exitGuardRef.current?.requestLeave(anchor)}
         />
 
         <PageLoadingBoundary pending={!attempt && !startError} animateArrival={false}>
@@ -340,6 +342,7 @@ function QuestionSession() {
           ) : attempt ? (
             <motion.div
               key={`${attempt.id}:${attempt.status}`}
+              inert={leaveConfirmationOpen}
               initial={multiplier > 0 ? { opacity: 0, y: 14, scale: 0.985 } : false}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.4 * multiplier, ease: MOTION_EASING.emphasised }}

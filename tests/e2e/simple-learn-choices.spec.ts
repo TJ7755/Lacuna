@@ -219,7 +219,24 @@ test('introduces choices before timed typing and keeps the old practice entry', 
   expect(await readReviews(page)).toHaveLength(0);
   await expect(recordedRim).toHaveAttribute('data-tested-study-rim', 'negative');
   const leave = page.getByRole('dialog', { name: 'Leave this session?' });
-  await leave.getByRole('button', { name: 'Stay' }).click();
+  const stay = leave.getByRole('button', { name: 'Stay' });
+  await expect(stay).toBeFocused();
+  await page.screenshot({
+    path: testInfo.outputPath('study-exit-confirmation.png'),
+    animations: 'disabled',
+  });
+  await expect(
+    page.getByRole('banner').getByRole('dialog', { name: 'Leave this session?' }),
+  ).toBeVisible();
+  await expect(leave).not.toHaveAttribute('aria-modal', 'true');
+  await page.keyboard.press('Escape');
+  await expect(exitButton).toBeFocused();
+  await expect(leave).toHaveCount(0);
+  await exitButton.click();
+  await expect(stay).toBeFocused();
+  await exitButton.click();
+  await expect(leave).toHaveCount(0);
+  await view.main.focus();
   await expect(view.revealed).toHaveText(cards[first]);
   await nextPrompt(view, first);
 
