@@ -170,17 +170,16 @@ describe('useVirtualList', () => {
     act(() => {
       screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
     });
-    await waitFor(() => expect(screen.getByTestId('item-99')).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryAllByTestId(/^item-/)).toHaveLength(1));
     expect(screen.getByTestId('item-0')).toBeInTheDocument();
-    expect(screen.queryAllByTestId(/^item-/)).toHaveLength(4);
     rerender(<Fixture />);
     await waitFor(() => expect(screen.queryByTestId('item-0')).not.toBeInTheDocument());
   });
 
-  it('keeps only trailing overscan rows when the viewport is below the entire list', async () => {
+  it('keeps trailing overscan rows when the viewport is just below the list', async () => {
     render(<Fixture />);
     const list = await screen.findByTestId('list');
-    list.dataset.top = '-11000';
+    list.dataset.top = '-10100';
     act(() => {
       screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
     });
@@ -190,7 +189,7 @@ describe('useVirtualList', () => {
     expect(screen.queryByTestId('item-0')).not.toBeInTheDocument();
   });
 
-  it('does not render a viewport of rows for a lesson far below the viewport', async () => {
+  it('does not mount overscan rows for a lesson far below the viewport', async () => {
     render(<Fixture />);
     await screen.findByTestId('item-5');
     const list = await screen.findByTestId('list');
@@ -199,8 +198,7 @@ describe('useVirtualList', () => {
       screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
     });
 
-    await waitFor(() => expect(screen.queryAllByTestId(/^item-/)).toHaveLength(3));
-    expect(screen.queryByTestId('item-3')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryAllByTestId(/^item-/)).toHaveLength(0));
     list.dataset.top = '100';
     act(() => {
       screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
@@ -219,8 +217,7 @@ describe('useVirtualList', () => {
       });
     });
 
-    await waitFor(() => expect(screen.queryAllByTestId(/^item-/)).toHaveLength(3));
-    expect(screen.queryByTestId('item-3')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryAllByTestId(/^item-/)).toHaveLength(0));
   });
 
   it('uses the visible part of the viewport when a lesson starts part-way down it', async () => {

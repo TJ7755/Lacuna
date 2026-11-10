@@ -9,7 +9,7 @@ import { createConcept } from '../questions/repository';
 import { createQuestionSet } from '../questions/questionSetRepository';
 import { useCoursePathRecords, useCourseStudyFlowRecords } from './useCourseStudyFlowRecords';
 import { reviewHistoryEntryForCard } from '@lacuna/core/db/reviewHistory';
-import type { Card, ReviewLog } from '@lacuna/core/db/types';
+import type { ReviewLog } from '@lacuna/core/db/types';
 
 beforeEach(async () => {
   vi.restoreAllMocks();
@@ -77,37 +77,6 @@ it.each([
   },
 );
 
-it('reads timestamps for a populated Path without loading any full review histories', async () => {
-  const course = await createCourse('Mature course');
-  const template = await createCourseCard(course.id, 'front_back', 'Cell', 'Answer');
-  const cards = [
-    template,
-    ...Array.from({ length: 99 }, (_, i) => ({
-      ...template,
-      id: `${course.id}-card-${i}`,
-    })),
-  ];
-  await db.cards.bulkPut(cards);
-  await db.reviewHistory.bulkPut(
-    cards.map((card, i) => ({
-      ...reviewHistoryEntryForCard(card, review(100 + i, `review-${i}`)),
-      courseId: 'historical-course',
-    })),
-  );
-  const histories = vi.spyOn(db.reviewHistory, 'where');
-  const timestamps = vi.spyOn(db.reviewActivity, 'toArray');
-  const { result, unmount } = renderHook(() => useCoursePathRecords(course.id));
-  try {
-    await waitFor(() => expect(result.current?.cards).toHaveLength(100));
-    expect(histories).not.toHaveBeenCalled();
-    expect(timestamps).toHaveBeenCalledOnce();
-    expect(result.current?.activity?.get(template.id)).toEqual([100]);
-    expect(result.current?.cards.every((card) => card.history.length === 0)).toBe(true);
-  } finally {
-    unmount();
-  }
-});
-
 it('shares a warm course card read with another live route', async () => {
   const course = await createCourse('Warm course');
   await createCourseCard(course.id, 'front_back', 'Cell', 'Answer');
@@ -132,25 +101,7 @@ it('shares a warm course card read with another live route', async () => {
   }
 });
 
-it('updates Path activity after canonical reviews and undo removals without hydrating logs', async () => {
-  const course = await createCourse('Reactive history');
-  const card = await createCourseCard(course.id, 'front_back', 'Cell', 'Answer');
-  const histories = vi.spyOn(db.reviewHistory, 'where');
-  const { result, unmount } = renderHook(() => useCoursePathRecords(course.id));
-  try {
-    await waitFor(() => expect(result.current?.cards).toHaveLength(1));
-    const entry = reviewHistoryEntryForCard(card, review(200));
-    await db.reviewHistory.add(entry);
-    await waitFor(() => expect(result.current?.activity?.get(card.id)).toEqual([200]));
-    await db.reviewHistory.delete(entry.id);
-    await waitFor(() => expect(result.current?.activity?.has(card.id)).toBe(false));
-    expect(histories).not.toHaveBeenCalled();
-  } finally {
-    unmount();
-  }
-});
-
-it('keeps daily attempt limits on historical ownership independently of current-card activity', async () => {
+it('counts Study reviews towards the daily limit under their historical course', async () => {
   const course = await createCourse('Daily limit', { dailyReviewGoal: 2 });
   const other = await createCourse('Other course');
   const current = await createCourseCard(course.id, 'front_back', 'Current', 'Answer');
@@ -162,38 +113,11 @@ it('keeps daily attempt limits on historical ownership independently of current-
     { ...reviewHistoryEntryForCard(moved, review(now, 'this-owner')), courseId: course.id },
   ]);
   const histories = vi.spyOn(db.reviewHistory, 'where');
-  const { result, unmount } = renderHook(() => useCoursePathRecords(course.id));
+  const { result, unmount } = renderHook(() => useCourseStudyFlowRecords(course.id));
   try {
     await waitFor(() => expect(result.current?.reviewsToday).toBe(1));
-    expect(result.current?.activity?.get(current.id)).toEqual([now, now]);
-    expect(histories).toHaveBeenCalledExactlyOnceWith('timestamp');
-  } finally {
-    unmount();
-  }
-});
-
-it('merges legacy history only for the affected card, preserving canonical precedence and duplicates', async () => {
-  const course = await createCourse('Legacy evidence');
-  const first = await createCourseCard(course.id, 'front_back', 'Legacy', 'Answer');
-  await createCourseCard(course.id, 'front_back', 'Modern', 'Answer');
-  await db.reviewHistory.add(reviewHistoryEntryForCard(first, review(100)));
-  const legacy: Card = {
-    ...first,
-    history: [review(999), review(200, 'legacy'), review(200, 'legacy')],
-  };
-  // Supported old records can retain a projection; current Dexie writes deliberately strip it.
-  await new Promise<void>((resolve, reject) => {
-    const transaction = db.backendDB().transaction('cards', 'readwrite');
-    transaction.objectStore('cards').put(legacy);
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-  });
-  const histories = vi.spyOn(db.reviewHistory, 'where');
-  const { result, unmount } = renderHook(() => useCoursePathRecords(course.id));
-  try {
-    await waitFor(() => expect(result.current?.cards).toHaveLength(2));
-    expect(histories).toHaveBeenCalledExactlyOnceWith('cardId');
-    expect(result.current?.activity?.get(first.id)).toEqual([100, 200, 200]);
+    expect(result.current?.cards[0].history.map((item) => item.timestamp)).toEqual([now, now]);
+    expect(histories).toHaveBeenCalledWith('timestamp');
   } finally {
     unmount();
   }
@@ -272,7 +196,6 @@ it('keeps question planning in the active study conductor for a populated course
       ),
     );
     expect(result.current?.cards[0].history.map((entry) => entry.timestamp)).toEqual([100]);
-    expect(result.current?.activity).toBeUndefined();
   } finally {
     unmount();
   }

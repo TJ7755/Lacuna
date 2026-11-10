@@ -133,7 +133,10 @@ export const CardRow = React.memo(function CardRow({
   });
 
   return (
-    <div className={cn('group relative rounded-2xl bg-surface transition-colors duration-200')}>
+    <div
+      data-card-row={card.id}
+      className={cn('group relative rounded-2xl bg-surface transition-colors duration-200')}
+    >
       {/* Action tray revealed behind the card on swipe-left */}
       <motion.div
         data-card-swipe-tray

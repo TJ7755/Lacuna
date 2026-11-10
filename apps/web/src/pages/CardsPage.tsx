@@ -14,7 +14,16 @@ import {
   COURSE_PAGE_TITLE,
 } from '../components/course/coursePageLayout';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
-import { useCallback, useDeferredValue, useLayoutEffect, useMemo, useRef } from 'react';
+import {
+  startTransition,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { originFrom } from '../utils/editorOrigin';
 import {
@@ -28,7 +37,13 @@ import {
 import { CardsResults } from '../components/cards/CardsResults';
 import { PlusIcon } from '../components/ui/icons';
 import { CardsToolbar, CARD_FILTER_CHIPS } from '../components/cards/CardsToolbar';
-import { filterSessionCardPool, searchCardsInScope, type CardFilter } from '@lacuna/core/db/search';
+import {
+  filterSessionCardPool,
+  searchCardsInScopeInBatches,
+  warmCardSearchContent,
+  type CardFilter,
+  type SearchScope,
+} from '@lacuna/core/db/search';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import type { Card } from '@lacuna/core/db/types';
@@ -58,6 +73,8 @@ function readFilters(value: string | null): ReadonlySet<CardFilter> {
   return new Set((value ?? '').split(',').filter((part): part is CardFilter => known.has(part)));
 }
 
+const NO_CARDS: Card[] = [];
+
 export function CardsPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const go = useCardsNavigate();
@@ -67,7 +84,9 @@ export function CardsPage() {
   const filterParam = params.get('f');
   const filters = useMemo(() => readFilters(filterParam), [filterParam]);
   const deferredSearch = useDeferredValue(search);
-  const setSearch = (value: string) =>
+  const restoreFindFocus = useRef(false);
+  const setSearch = (value: string, restoreFocus = false) => {
+    restoreFindFocus.current = restoreFocus;
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -78,6 +97,7 @@ export function CardsPage() {
       // A transition-owned input can restore an older value between keystrokes.
       { replace: true, flushSync: true },
     );
+  };
   const setFilters = (value: ReadonlySet<CardFilter>) =>
     setParams(
       (prev) => {
@@ -107,6 +127,22 @@ export function CardsPage() {
   const occlusions = useOcclusions(courseId);
   const backingDecks = useCourseBankBackingDecks(courseId);
   const query = deferredSearch.trim();
+  const hasSearch = search.trim() !== '';
+  useEffect(() => {
+    if (!cards?.length || hasSearch || typeof window.requestIdleCallback !== 'function') return;
+    // Prime only large authored text in spare browser time, and stop on input.
+    let index = 0;
+    let idle: number;
+    const warm = (deadline: IdleDeadline) => {
+      const end = performance.now() + 6;
+      while (index < cards.length && deadline.timeRemaining() > 2 && performance.now() < end) {
+        warmCardSearchContent(cards[index++]!);
+      }
+      if (index < cards.length) idle = window.requestIdleCallback(warm);
+    };
+    idle = window.requestIdleCallback(warm);
+    return () => window.cancelIdleCallback(idle);
+  }, [cards, hasSearch]);
   useScopedFindShortcut(
     cards?.length
       ? () => {
@@ -133,29 +169,81 @@ export function CardsPage() {
     }
     return counts;
   }, [cards, course?.leechThreshold]);
-  const { byLesson, unassigned, lessonsWithCards, shownCount } = useMemo(() => {
-    const availableLessons = lessons ?? [];
-    const availableCards = filterSessionCardPool(cards ?? [], {
+  const availableCards = useMemo(() => {
+    if (query) return NO_CARDS;
+    if (!filters.size) return cards ?? NO_CARDS;
+    return filterSessionCardPool(cards ?? NO_CARDS, {
       filters: [...filters],
       leechThreshold: course?.leechThreshold,
     });
+  }, [cards, filters, course?.leechThreshold, query]);
+  const scope = useMemo<SearchScope | null>(
+    () =>
+      course && lessons && cards && occlusions
+        ? { cards, courses: [course], lessons, occlusions }
+        : null,
+    [course, lessons, cards, occlusions],
+  );
+  const [result, setResult] = useState<{
+    query: string;
+    filters: ReadonlySet<CardFilter>;
+    scope: SearchScope;
+    cards: Card[];
+  }>();
+  useEffect(() => {
+    if (!query || !scope) {
+      setResult(scope ? { query: '', filters, scope, cards: availableCards } : undefined);
+      return;
+    }
+    const controller = new AbortController();
+    void searchCardsInScopeInBatches(
+      query,
+      scope,
+      { parseQuery: true, filters: [...filters] },
+      controller.signal,
+    ).then((hits) => {
+      if (!hits || controller.signal.aborted) return;
+      startTransition(() =>
+        setResult((previous) => {
+          const lastCards = previous?.scope === scope ? previous.cards : scope.cards;
+          const sameOrder =
+            hits.length === lastCards.length && hits.every((hit, i) => hit.card === lastCards[i]);
+          return {
+            query,
+            filters,
+            scope,
+            cards: sameOrder ? lastCards : hits.map((hit) => hit.card),
+          };
+        }),
+      );
+    });
+    return () => controller.abort();
+  }, [query, filters, scope, availableCards]);
+  // Keep the last committed list for this course during typing. Until the
+  // requested query and scope settle, those cards are only a visual preview.
+  const currentResult = query && result?.scope.courses[0]?.id === courseId ? result : undefined;
+  const waitingForFirstResult = Boolean(query && !currentResult);
+  const pending =
+    search.trim() !== query ||
+    Boolean(
+      query &&
+      (currentResult?.scope !== scope ||
+        currentResult?.query !== query ||
+        currentResult?.filters !== filters),
+    );
+  useLayoutEffect(() => {
+    if (!restoreFindFocus.current || search !== '' || pending) return;
+    restoreFindFocus.current = false;
+    const target = findReturnFocus.current;
+    if (target?.isConnected && document.activeElement === searchRef.current) target.focus();
+  }, [pending, search]);
+  const matches = query ? (currentResult?.cards ?? NO_CARDS) : availableCards;
+  const { byLesson, unassigned, lessonsWithCards, shownCount } = useMemo(() => {
+    const availableLessons = lessons ?? [];
     const lessonIdSet = new Set(availableLessons.map((lesson) => lesson.id));
     const byLesson = new Map<string, Card[]>();
     const unassigned: Card[] = [];
     let shownCount = 0;
-    const matches =
-      query && course
-        ? searchCardsInScope(
-            query,
-            {
-              cards: availableCards,
-              courses: [course],
-              lessons: availableLessons,
-              occlusions: occlusions ?? [],
-            },
-            { parseQuery: true },
-          ).map((hit) => hit.card)
-        : availableCards;
     for (const card of matches) {
       shownCount += 1;
       if (card.primaryLessonId && lessonIdSet.has(card.primaryLessonId)) {
@@ -174,7 +262,7 @@ export function CardsPage() {
         (lesson) => (byLesson.get(lesson.id)?.length ?? 0) > 0,
       ),
     };
-  }, [cards, lessons, occlusions, query, filters, course]);
+  }, [lessons, matches]);
 
   usePageShortcuts({
     '/': cards && cards.length > 0 ? () => searchRef.current?.focus() : undefined,
@@ -225,8 +313,8 @@ export function CardsPage() {
           onKeyDown={(event) => {
             if (event.key === 'Escape' && event.target === searchRef.current) {
               event.preventDefault();
-              setSearch('');
-              findReturnFocus.current?.focus();
+              if (search === '' && !pending) findReturnFocus.current?.focus();
+              else setSearch('', true);
             }
           }}
         >
@@ -237,7 +325,8 @@ export function CardsPage() {
             filters={filters}
             onToggleFilter={toggleFilter}
             counts={filterCounts}
-            shown={shownCount}
+            shown={waitingForFirstResult ? undefined : shownCount}
+            pending={pending}
           />
         </div>
       )}
@@ -250,11 +339,17 @@ export function CardsPage() {
           </h2>
           <p className="text-sm text-ink-soft">Choose New card to start building your recall.</p>
         </div>
+      ) : waitingForFirstResult ? (
+        <PageLoading />
       ) : noMatches ? (
         <div className={`${BUCKET_CLASS} p-6 text-center md:p-8`}>
           <StudyDrawing kind="search" className="mx-auto mb-5" />
           <p className="text-ink-soft">
-            {search.trim() ? <>No cards match &ldquo;{search}&rdquo;.</> : 'No cards match.'}
+            {currentResult?.query ? (
+              <>No cards match &ldquo;{currentResult.query}&rdquo;.</>
+            ) : (
+              'No cards match.'
+            )}
           </p>
           {hasCriteria && (
             <button
@@ -277,7 +372,7 @@ export function CardsPage() {
           )}
         </div>
       ) : (
-        <div className={`${BUCKET_CLASS} flex flex-col`}>
+        <div className={`${BUCKET_CLASS} flex flex-col`} inert={pending}>
           <CardsResults
             courseId={courseId!}
             courseName={course.name}

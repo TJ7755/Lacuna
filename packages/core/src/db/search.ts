@@ -240,6 +240,18 @@ function cardContent(card: Card) {
   return cached;
 }
 
+/** Warm sizeable image imports in idle slices. Very large fields wait for a query. */
+export function warmCardSearchContent(card: Card): void {
+  const length = card.front.length + card.back.length;
+  if (
+    length >= 4096 &&
+    length <= 512_000 &&
+    (/data:image\//i.test(card.front) || /data:image\//i.test(card.back))
+  ) {
+    cardContent(card);
+  }
+}
+
 function indexOutsideContent(query: string, content: string, fields: string[]): number {
   // Queries spanning fields contain their two-space separator, or start/end
   // inside it (normalising accents can expose edge spaces after trimming).
@@ -260,9 +272,50 @@ function indexOutsideContent(query: string, content: string, fields: string[]): 
  */
 export function searchCardsInScope(
   query: string,
-  { cards, courses, lessons, occlusions }: SearchScope,
+  scope: SearchScope,
   options: SearchOptions = {},
 ): ScopedCardSearchResult[] {
+  const search = rankCardsInScope(query, scope, options, false);
+  let step = search.next();
+  while (!step.done) step = search.next();
+  return step.value;
+}
+
+/** Let the browser paint and accept newer input during a cold, image-heavy search. */
+export async function searchCardsInScopeInBatches(
+  query: string,
+  scope: SearchScope,
+  options: SearchOptions,
+  signal: AbortSignal,
+): Promise<ScopedCardSearchResult[] | null> {
+  if (signal.aborted) return null;
+  const search = rankCardsInScope(query, scope, options, true);
+  const channel = new MessageChannel();
+  try {
+    while (!signal.aborted) {
+      // A posted message yields a browser task without the nested timer delay.
+      await new Promise<void>((resolve) => {
+        channel.port1.onmessage = () => resolve();
+        channel.port2.postMessage(null);
+      });
+      if (signal.aborted) break;
+      const step = search.next();
+      if (step.done) return step.value;
+    }
+    return null;
+  } finally {
+    channel.port1.close();
+    channel.port2.close();
+  }
+}
+
+function* rankCardsInScope(
+  query: string,
+  { cards, courses, lessons, occlusions }: SearchScope,
+  options: SearchOptions,
+  cooperative: boolean,
+): Generator<void, ScopedCardSearchResult[], void> {
+  let sliceEnd = cooperative ? performance.now() + 8 : 0;
   const now = options.now ?? Date.now();
   const parsed = options.parseQuery ? parseAdvancedQuery(query) : null;
   const filters = [...(options.filters ?? []), ...(parsed?.filters ?? [])];
@@ -290,7 +343,12 @@ export function searchCardsInScope(
   }
   const ranked: { result: ScopedCardSearchResult; score: number; front: string }[] = [];
 
+  let scanned = 0;
   for (const card of cards) {
+    if (cooperative && ++scanned % 8 === 0 && performance.now() >= sliceEnd) {
+      yield;
+      sliceEnd = performance.now() + 8;
+    }
     const course = card.courseId ? courseById.get(card.courseId) : undefined;
     if (!course) continue;
     const lesson = card.primaryLessonId ? lessonById.get(card.primaryLessonId) : undefined;

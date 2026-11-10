@@ -43,10 +43,13 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+vi.mock('../state/CourseNavigationData', () => ({
+  useNavigationCourses: () => sharePageState.mockCourses,
+}));
+
 vi.mock('../state/useCourseData', () => ({
-  useCourses: () => sharePageState.mockCourses,
-  useCourseSummaries: () => sharePageState.mockSummaries,
-  useCourseCards: () => sharePageState.mockCourseCards,
+  useSidebarData: () => ({ summaries: sharePageState.mockSummaries }),
+  useCourseCardProjections: () => sharePageState.mockCourseCards,
 }));
 
 vi.mock('../db/courseRepository', () => ({

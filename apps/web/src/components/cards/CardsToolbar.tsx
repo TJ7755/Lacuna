@@ -27,6 +27,7 @@ export function CardsToolbar({
   onToggleFilter,
   counts,
   shown,
+  pending,
 }: {
   search: string;
   searchRef?: Ref<HTMLInputElement>;
@@ -35,7 +36,8 @@ export function CardsToolbar({
   onToggleFilter: (filter: CardFilter) => void;
   /** How many of the course's cards each chip would show on its own. */
   counts: Record<CardFilter, number>;
-  shown: number;
+  shown?: number;
+  pending: boolean;
 }) {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
@@ -83,8 +85,12 @@ export function CardsToolbar({
           );
         })}
       </div>
-      <span aria-live="polite" className="ml-auto text-sm font-semibold text-ink-soft tabular-nums">
-        {shown} {shown === 1 ? 'card' : 'cards'}
+      <span
+        aria-live="polite"
+        aria-busy={pending}
+        className="ml-auto text-sm font-semibold text-ink-soft tabular-nums"
+      >
+        {shown !== undefined && `${shown} ${shown === 1 ? 'card' : 'cards'}`}
       </span>
     </div>
   );

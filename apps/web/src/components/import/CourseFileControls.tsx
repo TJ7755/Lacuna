@@ -3,13 +3,7 @@ import { recordUsageAction } from '../../usage/actions';
 import { Button } from '../ui/Button';
 import { DownloadIcon, UploadIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
-import { downloadTextFile } from '../../db/export';
-import {
-  buildCourseFile,
-  decodeCourseFile,
-  MAX_COURSE_FILE_BYTES,
-  type CourseFile,
-} from '../../db/courseFile';
+import type { CourseFile } from '../../db/courseFile';
 
 export function CourseFileExportButton({
   courseId,
@@ -25,6 +19,10 @@ export function CourseFileExportButton({
     if (!courseId || saving) return;
     setSaving(true);
     try {
+      const [{ buildCourseFile }, { downloadTextFile }] = await Promise.all([
+        import('../../db/courseFile'),
+        import('../../db/export'),
+      ]);
       const text = await buildCourseFile(courseId);
       const filename =
         name
@@ -70,6 +68,7 @@ export function CourseFileImportButton({
   async function inspect(file: File, generation: number) {
     setReading(true);
     try {
+      const { decodeCourseFile, MAX_COURSE_FILE_BYTES } = await import('../../db/courseFile');
       if (file.size > MAX_COURSE_FILE_BYTES)
         throw new Error('The course file exceeds the 100 MB limit.');
       await onInspect(await decodeCourseFile(await file.text()), generation);

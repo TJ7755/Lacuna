@@ -49,6 +49,9 @@ test('bounds off-screen lesson rows and reveals later cards when scrolling', asy
     'Recall item 0-1-99: explain the relationship between energy and motion.',
     { exact: true },
   );
+  const firstCardId = await rows.first().getAttribute('data-card-id');
+  const focusedDetails = page.locator(`[data-card-id="${firstCardId}"] [data-card-details]`);
+  await focusedDetails.focus();
   // Newly measured rows can change the estimated end of the list after a large jump.
   await expect(async () => {
     await main.evaluate((element) => {
@@ -56,6 +59,9 @@ test('bounds off-screen lesson rows and reveals later cards when scrolling', asy
     });
     await expect(lastCard).toBeInViewport({ timeout: 500 });
   }).toPass({ timeout: 5000 });
+  await expect(focusedDetails).toBeFocused();
+  await focusedDetails.blur();
+  await expect(focusedDetails).toHaveCount(0);
   await expect.poll(() => rows.count()).toBeLessThanOrEqual(22);
 
   await main.evaluate((element) => {

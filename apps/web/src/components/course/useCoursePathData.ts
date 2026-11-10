@@ -1,19 +1,13 @@
 import { useMemo } from 'react';
 import type { useCoursePathRecords } from '../../state/useCourseStudyFlowRecords';
-import { availableCards, dueCards } from '../../fsrs/eligibility';
+import { dueReviewPool } from '../../fsrs/eligibility';
 import { progressValue } from '../../fsrs/objective';
 import { buildDeckSecondsMap } from '../../fsrs/stats';
 import { makeExamDateContext } from '../../fsrs/examDate';
 import { buildPath } from '../../course/path';
 import { coreCourseCards, lessonCardMembershipByLesson } from '../../course/lessonMembership';
-import {
-  currentAssessmentPracticeContext,
-  type AssessmentPracticeOption,
-} from '../../course/assessmentPractice';
-import {
-  buildCourseStudyFlowSnapshot,
-  courseMeanReviewSeconds,
-} from '../../course/studyFlowSnapshot';
+import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
+import { buildCoursePracticeStates, courseMeanReviewSeconds } from '../../course/studyFlowSnapshot';
 import { isLessonAuthoringMode } from '../../course/lessonViewMode';
 
 interface PracticeNodeProgress {
@@ -76,64 +70,25 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
     [courseCards, lessonLinks, lessons],
   );
 
-  // Live review-due count and mean review time, feeding shouldInsertPractice
-  // (addendum 2 §H). Deliberately review-only (dueCards): practice-node pacing
-  // is about FSRS review pressure, so it ignores mastery, unlike the header's
-  // due count (see courseDueReviewCards).
   const now = Date.now();
-  const { reviewDueCount, meanReviewSeconds, nearestPracticeAssessmentDate } = useMemo(() => {
-    const currentPractice = course
-      ? currentAssessmentPracticeContext({
-          course,
-          assessments: assessments ?? [],
-          practiceNodes: practiceNodes ?? [],
-          lessons: lessons ?? [],
-          cards: courseCards ?? [],
-          concepts,
-          links: lessonLinks ?? [],
-          exposures: exposures ?? [],
-          now,
-        })
-      : { scope: [], assessmentOptions: [] };
-    const scope = currentPractice.scope;
-    const reviewDueCount = dueCards(availableCards(scope, now), now).length;
-    const deckSeconds = buildDeckSecondsMap(perf ?? []);
-    const meanReviewSeconds = courseMeanReviewSeconds(courseCards ?? [], deckSeconds);
-    const nearestPracticeAssessmentDate = currentPractice.assessmentOptions[0]?.examDate;
-    return { reviewDueCount, meanReviewSeconds, nearestPracticeAssessmentDate };
-    // `now` is deliberately excluded: recomputation is scoped to data changes
-    // (cards/perf), not wall-clock drift, and live-query updates re-render anyway.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    assessments,
-    course,
-    courseCards,
-    concepts,
-    exposures,
-    lessonLinks,
-    lessons,
-    perf,
-    practiceNodes,
-  ]);
-
   const nodes = useMemo(
     () =>
       course && lessons && assessments && practiceNodes
         ? buildPath(
-            course,
+            // Automatic Practice stops belong to Study and have no row on the Path.
+            { ...course, autoPractice: false },
             lessons,
             assessments,
             lessonCardsById,
             practiceNodes,
-            reviewDueCount,
-            meanReviewSeconds,
+            undefined,
+            undefined,
             now,
             {
               exposures: exposures ?? [],
               lessonCompletions: lessonCompletions ?? [],
               practiceMilestones: practiceMilestones ?? [],
             },
-            nearestPracticeAssessmentDate,
           )
         : [],
     // `now` is deliberately excluded: recomputation is scoped to data changes,
@@ -145,12 +100,9 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
       assessments,
       lessonCardsById,
       practiceNodes,
-      reviewDueCount,
-      meanReviewSeconds,
       exposures,
       lessonCompletions,
       practiceMilestones,
-      nearestPracticeAssessmentDate,
     ],
   );
 
@@ -162,40 +114,44 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
     [course, lessons, assessments, lessonLinks, concepts],
   );
 
-  const studyFlowSnapshot = useMemo(
+  const dueReviewCardIds = useMemo(
     () =>
-      course && examDateContext
-        ? buildCourseStudyFlowSnapshot({
+      new Set(course ? dueReviewPool(courseCards ?? [], course, now).map((card) => card.id) : []),
+    [course, courseCards, now],
+  );
+  const practiceByKey = useMemo(
+    () =>
+      course && examDateContext && nodes.some((node) => node.nodeType === 'practice-manual')
+        ? buildCoursePracticeStates({
             course,
             nodes,
             cards: courseCards ?? [],
             links: lessonLinks ?? [],
             exposures: exposures ?? [],
             examDateContext,
-            meanReviewSeconds,
-            practiceMilestones: practiceMilestones ?? [],
-            reviewsToday: records?.reviewsToday,
-            activity: records?.activity,
+            meanReviewSeconds: courseMeanReviewSeconds(
+              courseCards ?? [],
+              buildDeckSecondsMap(perf ?? []),
+            ),
+            practiceMilestones,
             now,
-          })
-        : null,
+          }).practiceByKey
+        : undefined,
     [
       course,
       courseCards,
       examDateContext,
       exposures,
       lessonLinks,
-      meanReviewSeconds,
       nodes,
+      perf,
       practiceMilestones,
-      records?.reviewsToday,
-      records?.activity,
       now,
     ],
   );
   const practiceProgressByKey = useMemo(() => {
     const result = new Map<string, PracticeNodeProgress>();
-    for (const practice of studyFlowSnapshot?.practiceByKey.values() ?? []) {
+    for (const practice of practiceByKey?.values() ?? []) {
       result.set(practice.nodeKey, {
         fraction: practice.totalCount > 0 ? practice.securedCount / practice.totalCount : 0,
         eligibleCount: practice.eligibleCount,
@@ -205,16 +161,15 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
       });
     }
     return result;
-  }, [studyFlowSnapshot]);
+  }, [practiceByKey]);
   const visibleNodes = useMemo(
     () =>
       nodes.filter((node) => {
-        if (node.nodeType === 'practice-auto') return false;
         if (node.nodeType !== 'practice-manual') return true;
-        const practice = studyFlowSnapshot?.practiceByKey.get(node.nodeKey);
+        const practice = practiceByKey?.get(node.nodeKey);
         return authoring || practice?.active === true || practice?.completed === true;
       }),
-    [authoring, nodes, studyFlowSnapshot],
+    [authoring, nodes, practiceByKey],
   );
 
   const data = {
@@ -233,7 +188,7 @@ export function useCoursePathData(records: ReturnType<typeof useCoursePathRecord
     now,
     nodes,
     examDateContext,
-    studyFlowSnapshot,
+    dueReviewCardIds,
     practiceProgressByKey,
     visibleNodes,
   };
