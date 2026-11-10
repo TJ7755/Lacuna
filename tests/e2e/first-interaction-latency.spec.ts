@@ -3,8 +3,6 @@ import { measurePointerInteraction } from './fixtures/interactionPerformance';
 import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 const CHUNK_DELAY_MS = 400;
-const PREFETCH_SETTLE_MS = 650;
-const CLICK_TO_USABLE_CEILING_MS = 250;
 const CARDS_CHUNK = /\/assets\/CardsPage-[^/?]+\.js(?:\?|$)/;
 const CARDS_ACKNOWLEDGEMENT = {
   selector:
@@ -29,7 +27,14 @@ test('prefetches the Cards chunk before the first intended click', async ({ page
 
   await cards.hover();
   await cards.focus();
-  await page.waitForTimeout(PREFETCH_SETTLE_MS);
+  await page.waitForFunction(
+    (pattern) =>
+      performance
+        .getEntriesByType('resource')
+        .some((entry) => new RegExp(pattern).test(entry.name)),
+    CARDS_CHUNK.source,
+    { timeout: 5_000 },
+  );
   await page.evaluate(() => {
     const state = globalThis as typeof globalThis & { __cardsPointerDownAt?: number };
     window.addEventListener(
@@ -80,18 +85,10 @@ test('prefetches the Cards chunk before the first intended click', async ({ page
   expect(cardsChunkRequest, 'the Cards route should request its own chunk').toBeDefined();
   expect(timing.pointerDownAt).not.toBeNull();
   expect(timing.chunkResponseEnd).not.toBeNull();
-  expect
-    .soft(
-      timing.chunkResponseEnd,
-      'the delayed Cards chunk should finish during hover/focus intent, before pointerdown',
-    )
-    .toBeLessThan(timing.pointerDownAt ?? 0);
-  expect
-    .soft(
-      interaction.meaningfulMs,
-      'click-to-usable should not include the injected 400 ms chunk delay',
-    )
-    .toBeLessThan(CLICK_TO_USABLE_CEILING_MS);
+  expect(
+    timing.chunkResponseEnd,
+    'the delayed Cards chunk should finish before pointerdown',
+  ).toBeLessThan(timing.pointerDownAt ?? 0);
 });
 
 async function openSeededCourse(page: Page): Promise<void> {

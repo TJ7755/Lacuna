@@ -8,7 +8,13 @@ import path from 'node:path';
 import { expect } from '@playwright/test';
 import { launchInstalledElectron } from './installed-electron-probe.mjs';
 import { requireAuditedInstaller } from './windows-ci-upgrade.mjs';
-import { importWelcomeCourse, skipOnboarding } from '../tests/e2e/fixtures/lacunaApp.ts';
+import {
+  chooseScheduledStudy,
+  completeRevealedIntroduction,
+  createCourse,
+  importWelcomeCourse,
+  skipOnboarding,
+} from '../tests/e2e/fixtures/lacunaApp.ts';
 
 assert.equal(process.platform, 'win32', 'Run this probe on an isolated Windows runner.');
 const version = JSON.parse(await readFile('package.json', 'utf8')).version;
@@ -166,32 +172,29 @@ try {
     version,
   );
   await importWelcomeCourse(page);
-  await expect.poll(async () => (await snapshot(page)).cards?.length ?? 0).toBeGreaterThan(0);
+  // One authored card gives the baseline a deterministic introduction and typed recall.
+  const studyCourse = 'Upgrade study records';
+  await createCourse(page, studyCourse);
+  await page.getByRole('button', { name: 'Edit mode' }).click();
+  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
+  await page.getByRole('textbox', { name: 'Front' }).fill('What is the capital of France?');
+  await page.getByRole('textbox', { name: 'Back' }).fill('Paris');
+  await page.getByRole('button', { name: 'Add card', exact: true }).click();
+  await expect(page).not.toHaveURL(/\/cards\/new$/);
   await page
     .getByRole('navigation', { name: 'Courses' })
-    .getByRole('link', { name: 'Welcome to Lacuna' })
+    .getByRole('link', { name: studyCourse, exact: true })
     .click();
   await page.getByRole('button', { name: 'Study', exact: true }).last().click();
-  // These steps drive the baseline release's interface, so they follow the version being replaced.
+  await chooseScheduledStudy(page);
+  await completeRevealedIntroduction(page, 'Paris');
   await page
-    .getByRole('region', { name: 'Session preview' })
-    .getByRole('button', { name: 'Start session' })
-    .first()
+    .getByRole('main', { name: 'Study progress' })
+    .getByRole('button', { name: 'Finish for now' })
     .click();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page
-    .getByRole('button', { name: /Show answer/i })
-    .last()
-    .click();
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
   await expect
     .poll(async () => (await snapshot(page)).reviewHistory?.length ?? 0)
     .toBeGreaterThan(0);
-  await page.getByRole('button', { name: 'Exit', exact: true }).click();
-  await page
-    .getByRole('dialog', { name: 'Leave this session?' })
-    .getByRole('button', { name: 'Leave', exact: true })
-    .click();
   await expect(page.getByRole('button', { name: 'Study', exact: true }).last()).toBeVisible();
   const before = await snapshot(page);
   assert(before.courses.length > 0);
@@ -251,11 +254,16 @@ try {
   throw error;
 } finally {
   server.close();
-  if (application) await application.close();
   await mkdir('test-results/windows-release-upgrade', { recursive: true });
   await writeFile(
     'test-results/windows-release-upgrade/report.json',
     JSON.stringify(report, null, 2),
   );
-  await rm(root, { recursive: true, force: true, maxRetries: 3 });
+  try {
+    if (application) await application.close();
+    await rm(root, { recursive: true, force: true, maxRetries: 3 });
+  } catch (error) {
+    if (report.result !== 'failed') throw error;
+    console.warn('Upgrade probe cleanup failed:', error);
+  }
 }

@@ -14,11 +14,11 @@ const root = resolve(import.meta.dirname, '..');
 
 export { workflowState } from './release-workflow-state.mjs';
 
-export function publicationAssets(assets, version) {
+export function publicationAssets(assets, version, { macos = false } = {}) {
   assert.deepEqual(
     assets.map((asset) => asset.name).sort(),
-    releaseAssets(version).sort(),
-    'Windows/Linux publication requires exactly the eight verified assets. Use the documented manual process for macOS.',
+    releaseAssets(version, { macos }).sort(),
+    'Publication requires exactly the verified assets for the selected platforms',
   );
 }
 
@@ -36,7 +36,8 @@ export async function main(args, { execute, reportDirectory, env = process.env }
   if (command === '--help' || !command) {
     console.log(
       'Usage: bun run release <draft|verify|publish> <0.2.11>\n' +
-        'publish requires --windows-linux-only --notes <file>. Draft never publishes.\n' +
+        'verify accepts --all-platforms.\n' +
+        'publish requires --all-platforms or --windows-linux-only, then --notes <file>.\n' +
         'Use GH_PATH for a gh executable outside PATH; authenticate with gh auth login or GH_TOKEN.',
     );
     return;
@@ -44,15 +45,23 @@ export async function main(args, { execute, reportDirectory, env = process.env }
   assert(['draft', 'verify', 'publish'].includes(command), 'Unknown release command');
   releaseAssets(version);
   const tag = `v${version}`;
+  const macos = options[0] === '--all-platforms';
   let notes;
   if (command === 'publish') {
     assert(
-      options.length === 3 && options[0] === '--windows-linux-only' && options[1] === '--notes',
-      'publish requires --windows-linux-only --notes <file>',
+      options.length === 3 &&
+        (macos || options[0] === '--windows-linux-only') &&
+        options[1] === '--notes',
+      'publish requires --all-platforms or --windows-linux-only, then --notes <file>',
     );
     notes = readFileSync(resolve(options[2]), 'utf8').trim();
     assert(notes.length > 0, 'Release notes must not be empty');
-  } else assert.equal(options.length, 0, 'Unexpected options');
+  } else {
+    assert(
+      options.length === 0 || (command === 'verify' && options.length === 1 && macos),
+      'Unexpected options',
+    );
+  }
 
   function run(program, argv, inherit = false) {
     if (execute) return execute(program, argv);
@@ -159,7 +168,10 @@ export async function main(args, { execute, reportDirectory, env = process.env }
     await waitFor(['release'], [tag], releaseEvents);
     const draft = release();
     assert(draft.isDraft, 'Release is already published; refusing to change it');
-    console.log(`Draft ready: ${draft.url}\nNext: bun run release verify ${version}`);
+    const verifyScope = draft.assets.some(({ name }) => name === 'latest-mac.yml')
+      ? ' --all-platforms'
+      : '';
+    console.log(`Draft ready: ${draft.url}\nNext: bun run release verify ${version}${verifyScope}`);
     return;
   }
 
@@ -179,12 +191,12 @@ export async function main(args, { execute, reportDirectory, env = process.env }
       before.isDraft && before.isPrerelease,
       'Only an unpublished beta draft may be published',
     );
-    publicationAssets(before.assets, version);
+    publicationAssets(before.assets, version, { macos });
   }
   const reportRoot = reportDirectory ?? join(root, 'artifacts', 'releases', tag);
   mkdirSync(reportRoot, { recursive: true });
   const directory = mkdtempSync(join(reportRoot, 'verification-'));
-  for (const asset of releaseAssets(version)) {
+  for (const asset of releaseAssets(version, { macos })) {
     gh('release', 'download', tag, '--repo', repository, '--pattern', asset, '--dir', directory);
     run(
       process.env.GH_PATH || 'gh',
@@ -205,7 +217,7 @@ export async function main(args, { execute, reportDirectory, env = process.env }
     );
   }
   const report = {
-    ...verifyAssets(directory, version),
+    ...verifyAssets(directory, version, { macos }),
     commit: sha,
     provenance: 'pass',
     verifiedAt: new Date().toISOString(),
@@ -230,11 +242,17 @@ export async function main(args, { execute, reportDirectory, env = process.env }
       'Release tag changed during verification',
     );
     const notesPath = join(directory, 'release-notes.md');
+    const platforms = macos
+      ? 'Windows, Linux and Apple Silicon macOS beta.'
+      : 'Windows and Linux beta.';
+    const manual = macos
+      ? 'Windows portable, Linux DEB and macOS'
+      : 'Windows portable and Linux DEB';
     writeFileSync(
       notesPath,
-      `${notes}\n\nWindows and Linux beta; no macOS package in this release. ` +
-        'Packages are unsigned. Windows NSIS and Linux AppImage support automatic updates; ' +
-        'Windows portable and Linux DEB require manual updates.\n',
+      `${notes}\n\n${platforms} ` +
+        'Packages are unsigned. Windows NSIS and Linux AppImage support automatic updates. ' +
+        `${manual} require manual updates.\n`,
     );
     gh(
       'release',
