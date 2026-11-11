@@ -24,7 +24,12 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     const assessments = page.getByRole('region', { name: 'Assessments', exact: true });
     const row = assessments.locator('button[data-path-row]').filter({ hasText: original.name });
     await row.click();
-    const details = page.getByRole('dialog', { name: `${original.name} details`, exact: true });
+    // Keep the closing, aria-hidden dialog matched until it actually unmounts.
+    const details = page.getByRole('dialog', {
+      name: `${original.name} details`,
+      exact: true,
+      includeHidden: true,
+    });
     await expect(details).toBeVisible();
     await expect.poll(async () => Math.round((await details.boundingBox())!.width)).toBe(520);
     await expect(details.getByRole('textbox', { name: 'Name', exact: true })).toHaveCount(0);
