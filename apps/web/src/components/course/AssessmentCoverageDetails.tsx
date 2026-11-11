@@ -1,4 +1,4 @@
-import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
+import type { ResolvedAssessmentCoverage } from '../../course/assessmentCoverage';
 import type { Card, CourseAssessment } from '@lacuna/core/db/types';
 
 /** The authored scope remains visible when only the assessment date is editable. */
@@ -9,7 +9,7 @@ export function AssessmentCoverageDetails({
 }: {
   assessment: CourseAssessment;
   cards: Card[];
-  resolved: ReturnType<typeof resolveAssessmentCoverage>;
+  resolved: ResolvedAssessmentCoverage;
 }) {
   const excludedNames = assessment.excludedCardIds.map(
     (id) => cards.find((card) => card.id === id)?.front ?? `Missing card: ${id}`,

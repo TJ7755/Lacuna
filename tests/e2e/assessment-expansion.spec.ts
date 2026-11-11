@@ -8,7 +8,10 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     page,
   }, info) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.emulateMedia({ reducedMotion });
+    await page.emulateMedia({
+      reducedMotion,
+      colorScheme: reducedMotion === 'reduce' ? 'dark' : 'light',
+    });
     await enterWithWelcomeCourse(page);
     await page
       .getByRole('complementary')
@@ -47,7 +50,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       animations: 'disabled',
     });
     await details.getByRole('button', { name: 'Done', exact: true }).click();
-    await expect(details).toBeHidden();
+    await expect(details).toHaveCount(0);
     await expect(row).toBeFocused();
     const edited = (await readAll<CourseAssessment>(page, 'courseAssessments')).find(
       (entry) => entry.id === original.id,
@@ -75,7 +78,9 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       animations: 'disabled',
     });
     await confirmation.getByRole('button', { name: 'Delete', exact: true }).click();
-    await expect(details).toBeHidden();
+    // The dialog becomes aria-hidden at the start of its closing animation.
+    // Wait for unmount before reloading, after onClosed clears the deep link.
+    await expect(details).toHaveCount(0);
     await page.reload();
     const retained = (await readAll<CourseAssessment>(page, 'courseAssessments')).find(
       (entry) => entry.id === original.id,
@@ -94,7 +99,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     });
     await details.getByRole('button', { name: 'Add exam date', exact: true }).click();
     await details.getByRole('button', { name: 'Done', exact: true }).click();
-    await expect(details).toBeHidden();
+    await expect(details).toHaveCount(0);
     await expect
       .poll(
         async () =>
