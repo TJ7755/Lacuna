@@ -23,7 +23,6 @@ import { courseHeaderStats } from '../course/headerStats';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { QuestionSetPathEditor } from '../components/course/QuestionSetPathEditor';
 import { AssessmentPathEditor } from '../components/course/AssessmentPathEditor';
-import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
 import { lockHintFor } from '../components/course/lockHint';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { useStudySheet } from '../components/learn/StudySheetContext';
@@ -170,13 +169,17 @@ export function CoursePath() {
     <AnimatePresence>
       {selectedAssessmentId &&
         assessments.find((assessment) => assessment.id === selectedAssessmentId) && (
-          <AssessmentDetailSheet
+          <AssessmentPathEditor
+            key={selectedAssessmentId}
+            courseId={course.id}
             assessment={assessments.find((assessment) => assessment.id === selectedAssessmentId)!}
+            schedulingOnly
             lessons={lessons}
             cards={courseCards}
             links={lessonLinks}
             preferredLessonIds={courseLessonOrderPreference(course)}
-            onClose={() => {
+            timeZone={course.timeZone}
+            onSaved={() => {
               setSelectedAssessmentId(null);
             }}
           />

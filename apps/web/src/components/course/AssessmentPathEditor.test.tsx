@@ -114,9 +114,57 @@ it('requires anchored confirmation before deleting a checkpoint', async () => {
   fireEvent.click(within(confirmation).getByRole('button', { name: 'Delete' }));
   await waitFor(() => expect(deleteCourseAssessment).toHaveBeenCalledWith('exam'));
 });
-it('never offers deletion of the final assessment', () => {
+it('offers removal of the final exam date without deleting the assessment', async () => {
   editor('final');
-  expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+    target: { value: 'Summer exam' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Remove exam date' }));
+  const confirmation = screen.getByRole('dialog', { name: 'Remove exam date' });
+  fireEvent.click(within(confirmation).getByRole('button', { name: 'Delete' }));
+  await waitFor(() =>
+    expect(updateCourseAssessment).toHaveBeenCalledWith(
+      'exam',
+      expect.objectContaining({
+        name: 'Summer exam',
+        schedulingMode: 'steady',
+        examDate: undefined,
+      }),
+    ),
+  );
+  expect(deleteCourseAssessment).not.toHaveBeenCalled();
+});
+
+it('adds a date without requiring or clearing authored coverage confirmation', async () => {
+  render(
+    <ToastProvider>
+      <AssessmentPathEditor
+        courseId="course"
+        assessment={{
+          ...assessment,
+          kind: 'final',
+          schedulingMode: 'steady',
+          examDate: undefined,
+          needsAuthorConfirmation: true,
+        }}
+        schedulingOnly
+        lessons={lessons}
+        cards={cards}
+        links={[]}
+        onSaved={vi.fn()}
+      />
+    </ToastProvider>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Add exam date' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+  await waitFor(() =>
+    expect(updateCourseAssessment).toHaveBeenCalledWith('exam', {
+      examDate: expect.any(Number),
+      timeZone: undefined,
+      schedulingMode: undefined,
+    }),
+  );
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
 
 it('searches and bulk-selects lessons without hiding the selection, then prunes exclusions on removal', async () => {

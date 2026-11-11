@@ -24,6 +24,7 @@ export function PathEditorSurface({
   onSave,
   onClosed,
   onDelete,
+  deleteLabel = 'Delete',
   deleteNoun,
   cancellable = false,
   wide = false,
@@ -33,6 +34,7 @@ export function PathEditorSurface({
   onSave: () => boolean | Promise<boolean>;
   onClosed: () => void;
   onDelete?: () => Promise<boolean>;
+  deleteLabel?: string;
   deleteNoun?: string;
   cancellable?: boolean;
   wide?: boolean;
@@ -226,7 +228,7 @@ export function PathEditorSurface({
           {children}
           <footer className="mt-5 flex items-center justify-between gap-3">
             {onDelete ? (
-              <PathEditorPopover label="Delete" quiet negative>
+              <PathEditorPopover label={deleteLabel} quiet negative>
                 <p className="px-3 py-2 text-sm">Delete this {deleteNoun}?</p>
                 <Button
                   variant="danger"
