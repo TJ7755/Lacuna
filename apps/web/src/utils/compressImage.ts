@@ -70,8 +70,10 @@ export async function compressImageBlob(
   if (!ctx) throw new Error('Could not process the image.');
   ctx.drawImage(bitmap, 0, 0, width, height);
 
-  // JPEG discards alpha; other supported transparent raster formats need PNG too.
-  const preservesTransparency = ['image/png', 'image/webp', 'image/gif'].includes(blob.type);
+  // JPEG discards alpha; rasterised SVGs can have transparent backgrounds too.
+  const preservesTransparency = ['image/png', 'image/webp', 'image/gif', 'image/svg+xml'].includes(
+    blob.type,
+  );
   const mimeType = preservesTransparency ? 'image/png' : 'image/jpeg';
   const compressed = await canvasToBlob(canvas, mimeType);
   return { blob: compressed, width, height };
