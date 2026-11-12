@@ -249,12 +249,16 @@ test(`sets paper dates and preserves scoped learner evidence at ${width}px`, asy
     .getByRole('region', { name: 'Assessments', exact: true })
     .getByRole('button', { name: /1: First paper/ })
     .click();
-  const details = page.getByRole('dialog', { name: '1: First paper details', exact: true });
+  const details = page.getByRole('dialog', {
+    name: '1: First paper details',
+    exact: true,
+    includeHidden: true,
+  });
   await expect(details.getByText('1 lesson, 1 card', { exact: true })).toBeVisible();
   await expect(details.getByRole('button', { name: /Revise/ })).toHaveCount(0);
   await capture(page, testInfo, `paper-coverage-details-${width}`);
-  await details.getByRole('button', { name: 'Close assessment details', exact: true }).click();
-  await expect(details).toBeHidden();
+  await details.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(details).toHaveCount(0);
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   const preview = page.getByRole('region', { name: 'Session preview' });
   await preview.getByRole('button', { name: 'Other ways', exact: true }).click();
