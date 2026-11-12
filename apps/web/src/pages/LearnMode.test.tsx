@@ -137,10 +137,10 @@ describe('LearnMode scope', () => {
     )!;
     expect(flipCard).toHaveAttribute('tabindex', '0');
     fireEvent.keyDown(flipCard, { key: 'Enter' });
-    expect(screen.queryByRole('button', { name: /^yes$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^yes$/i })).toBeInTheDocument();
     expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
     expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(0);
-    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes' }));
     await recallCard('A1');
     await waitFor(async () => {
       expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(1);

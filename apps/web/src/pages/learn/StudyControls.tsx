@@ -19,7 +19,6 @@ export function StudyControls({
   onAnswer,
   autoMark,
   recallPrompt,
-  recallCorrect,
   departing = false,
   m,
 }: {
@@ -36,12 +35,10 @@ export function StudyControls({
   /** Automatic marking of a typed answer: still judging, or the verdict it reached. */
   autoMark?: AutoMark;
   recallPrompt?: string;
-  recallCorrect?: boolean;
   departing?: boolean;
   m: number;
 }) {
   const question = phase === 'question';
-  const localIncorrect = isTypingCard && !question && recallCorrect === false && !autoMark;
   const recallPromptId = useId();
   const selfRating =
     Boolean(recallPrompt) && !question && gradingMode === 'silent' && !(isTypingCard && autoMark);
@@ -58,7 +55,7 @@ export function StudyControls({
   ) => (
     <StudyGradeButton
       key={String(input)}
-      data-study-continue={recallCorrect !== undefined || undefined}
+      data-study-continue={(isTypingCard && (input === true || input === 3)) || undefined}
       grade={input}
       feedback={feedback}
       m={m}
@@ -72,53 +69,49 @@ export function StudyControls({
   );
   // The primary grade comes last: the Flow controls draw its fill.
   const grades =
-    recallCorrect !== undefined
-      ? [grade(recallCorrect, 'primary', 'Continue')]
-      : gradingMode === 'manual'
-        ? [
-            grade(
-              1,
-              'danger',
-              <>
-                <CloseIcon width={18} height={18} />
-                Again
-              </>,
-            ),
-            grade(2, 'secondary', 'Hard'),
-            grade(3, 'secondary', 'Good'),
-            grade(
-              4,
-              'primary',
-              <>
-                <CheckIcon width={18} height={18} />
-                Easy
-              </>,
-            ),
-          ]
-        : [
-            grade(
-              false,
-              'danger',
-              <>
-                <CloseIcon width={18} height={18} />
-                No
-              </>,
-            ),
-            grade(
-              true,
-              'primary',
-              <>
-                <CheckIcon width={18} height={18} />
-                Yes
-              </>,
-            ),
-          ];
+    gradingMode === 'manual'
+      ? [
+          grade(
+            1,
+            'danger',
+            <>
+              <CloseIcon width={18} height={18} />
+              Again
+            </>,
+          ),
+          grade(2, 'secondary', 'Hard'),
+          grade(3, 'secondary', 'Good'),
+          grade(
+            4,
+            'primary',
+            <>
+              <CheckIcon width={18} height={18} />
+              Easy
+            </>,
+          ),
+        ]
+      : [
+          grade(
+            false,
+            'danger',
+            <>
+              <CloseIcon width={18} height={18} />
+              No
+            </>,
+          ),
+          grade(
+            true,
+            'primary',
+            <>
+              <CheckIcon width={18} height={18} />
+              Yes
+            </>,
+          ),
+        ];
   const gradeRowClassName =
-    recallCorrect !== undefined
-      ? 'flex w-full max-w-md'
-      : gradingMode === 'manual'
-        ? 'grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4'
-        : 'flex w-full max-w-md gap-3';
+    gradingMode === 'manual'
+      ? 'grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4'
+      : 'flex w-full max-w-md gap-3';
   const typedField = (
     <input
       id="study-typed-answer"
@@ -142,12 +135,10 @@ export function StudyControls({
   const flow = (
     <FlowGradeControls
       question={question}
-      autoMark={
-        isTypingCard ? (localIncorrect ? { pending: false, correct: false } : autoMark) : undefined
-      }
+      autoMark={isTypingCard ? autoMark : undefined}
       departing={departing}
-      grades={localIncorrect ? [] : grades}
-      negativeIndex={recallCorrect === undefined && gradingMode === 'manual' ? 0 : undefined}
+      grades={grades}
+      negativeIndex={gradingMode === 'manual' ? 0 : undefined}
       rowClassName={gradeRowClassName}
       revealLabel={isTypingCard ? 'Check answer' : 'Show answer'}
       revealLead={isTypingCard && !isTouchMode ? typedField : undefined}
@@ -175,11 +166,7 @@ export function StudyControls({
             </p>
           )}
           {flow}
-          {localIncorrect && <div className="mx-auto mt-3 flex w-full max-w-md">{grades}</div>}
         </div>
-      )}
-      {isTouchMode && localIncorrect && (
-        <div className="mx-auto mt-4 w-full max-w-xl shrink-0">{flow}</div>
       )}
       {isTouchMode && (
         <TouchStudyControls
@@ -192,7 +179,6 @@ export function StudyControls({
           typedField={isTypingCard ? typedField : undefined}
           autoMark={autoMark}
           recallPrompt={recallPrompt}
-          recallCorrect={recallCorrect}
         />
       )}
     </>

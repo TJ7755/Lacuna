@@ -63,7 +63,7 @@ test('makes the revealed answer readable during the deliberate card flip', async
   expect(elapsed).toBeGreaterThan(300);
   expect(elapsed).toBeLessThan(650);
   const study = page.getByRole('main', { name: 'Study card' });
-  const advance = study.getByRole('button', { name: 'Continue', exact: true });
+  const advance = study.getByRole('button', { name: 'Yes', exact: true });
   await advance.click();
   await study.getByRole('textbox', { name: 'Your answer' }).fill(backText);
   await study.getByRole('button', { name: 'Check answer', exact: true }).click();

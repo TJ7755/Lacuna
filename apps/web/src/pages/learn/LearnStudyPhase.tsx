@@ -38,8 +38,6 @@ export function LearnStudyPhase({
   isTouchMode,
   suppressClassicGrading,
   isTypingCard,
-  recallCorrect,
-  showLocalRecall,
   choiceQuestion,
   choiceCandidates,
   rankedChoices,
@@ -70,8 +68,6 @@ export function LearnStudyPhase({
   isTouchMode: boolean;
   suppressClassicGrading: boolean;
   isTypingCard: boolean;
-  recallCorrect?: boolean;
-  showLocalRecall: boolean;
   choiceQuestion?: LessonChoiceCard;
   choiceCandidates: readonly LessonChoiceCard[];
   rankedChoices?: readonly string[];
@@ -366,7 +362,7 @@ export function LearnStudyPhase({
                     hintsOpen={hintsOpen}
                     onReveal={reveal}
                     onHide={hide}
-                    allowGradingGestures={!familiarising && recallCorrect === undefined}
+                    allowGradingGestures={!familiarising}
                     onAnswer={(input, source, velocity) => answerWithUndo(input, source, velocity)}
                     typedAnswer={typedAnswer}
                     typedJudgement={typedJudgement}
@@ -403,17 +399,13 @@ export function LearnStudyPhase({
         )}
         {isTypingCard && (
           <div role="status" className="sr-only">
-            {showLocalRecall
-              ? recallCorrect
-                ? 'Marked correct.'
-                : 'Marked incorrect.'
-              : typedAutoMark.state === 'checking'
-                ? 'Checking your answer.'
-                : typedAutoMark.state === 'marked'
-                  ? typedAutoMark.correct
-                    ? 'Marked correct.'
-                    : 'Marked incorrect.'
-                  : ''}
+            {typedAutoMark.state === 'checking'
+              ? 'Checking your answer.'
+              : typedAutoMark.state === 'marked'
+                ? typedAutoMark.correct
+                  ? 'Marked correct.'
+                  : 'Marked incorrect.'
+                : ''}
           </div>
         )}
         {familiarising && !choiceQuestion && phase === 'answer' && (
@@ -426,7 +418,7 @@ export function LearnStudyPhase({
                 if (checkIntroduction(serial, true)) continueIntroduction(serial);
               }}
             >
-              Continue
+              Yes
             </Button>
           </div>
         )}
@@ -437,7 +429,6 @@ export function LearnStudyPhase({
             departing={cardDeparting}
             feedback={gradeFeedback}
             isTypingCard={isTypingCard}
-            recallCorrect={recallCorrect}
             isTouchMode={isTouchMode}
             autoMark={
               typedAutoMark.state === 'checking'

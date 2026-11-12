@@ -54,7 +54,6 @@ import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
 import { emptySessionState, sessionCell, simpleSessionCell } from './sessionRuntime';
 import { resolveLearnSessionScope } from './sessionScope';
 import { clearSimpleSession, saveSimpleSession } from './simpleSessionPersistence';
-import { matchesTypedRecall } from './typedRecall';
 import type { LearnModeType, LessonNotesScreen, Phase, StudyUnit } from './types';
 import { useSessionCompletion } from './useSessionCompletion';
 
@@ -129,7 +128,6 @@ export function useLearnSession({
   reviewSessionKind,
   isSimpleMode,
   introduceNewCards = false,
-  answerStrictness = 'lenient',
   standaloneSimple = false,
   examPractice = false,
   catchUpPractice = false,
@@ -1225,16 +1223,8 @@ export function useLearnSession({
         const verifiedRecall = introductionPresentationRef.current.stage === 'recall';
         const typedAnswer = options?.typedAnswer ?? '';
         const markedBy = !verifiedRecall || typedAnswer.trim() ? options?.markedBy : undefined;
-        const correct =
-          verifiedRecall && !markedBy
-            ? matchesTypedRecall(
-                cardNow,
-                typedAnswer,
-                answerStrictness,
-                undefined,
-                lessonRequiresCorrectSpelling,
-              )
-            : answerCorrect(input);
+        // A fallback self-mark is the learner's decision, just as in ordinary review.
+        const correct = answerCorrect(input);
         const response: AnswerResponse = {
           retainUndo: options?.retainUndo ?? verifiedRecall,
           input: reviewAnswerInput(
@@ -1244,7 +1234,7 @@ export function useLearnSession({
           ),
           markedBy,
           correct,
-          manualGrade: !verifiedRecall && typeof input === 'number' ? input : null,
+          manualGrade: typeof input === 'number' ? input : null,
           machineMarked,
           t: machineMarked ? (performance.now() - timerStart.current) / 1000 : responseTime.current,
           distracted: distraction.wasDistracted(),
@@ -1260,16 +1250,7 @@ export function useLearnSession({
         submitting.current = false;
       }
     },
-    [
-      distraction,
-      isSimpleMode,
-      answerSimple,
-      answerScheduled,
-      completion,
-      recitationSequence,
-      answerStrictness,
-      lessonRequiresCorrectSpelling,
-    ],
+    [distraction, isSimpleMode, answerSimple, answerScheduled, completion, recitationSequence],
   );
 
   /** Drop the current card from the live pool after a suspend/bury, then move on. */
