@@ -18,6 +18,29 @@ test('edits a checkpoint in place, excludes a card and persists a dragged anchor
   await expect(editor).toBeHidden();
   const row = page.getByRole('button', { name: 'Edit checkpoint: Mid-course check', exact: true });
   await row.click();
+  for (const value of ['', 'Discard this name']) {
+    for (const method of ['escape', 'outside', 'cancel']) {
+      await page.getByRole('textbox', { name: 'Name' }).fill(value);
+      if (method === 'escape') await page.keyboard.press('Escape');
+      else if (method === 'outside')
+        await page.locator('[data-path-editor-backdrop]').click({ position: { x: 4, y: 4 } });
+      else await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await expect(page.getByRole('dialog')).toBeHidden();
+      await expect(row).toBeFocused();
+      await row.click();
+      await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('Mid-course check');
+    }
+  }
+  const exclusion = page.getByRole('button', { name: 'Leave some cards out' });
+  await expect(exclusion).toBeVisible();
+  const alignment = await exclusion.evaluate((button) => ({
+    left: button.getBoundingClientRect().left,
+    padding: getComputedStyle(button).paddingLeft,
+    summaryLeft: button.parentElement!.previousElementSibling!.getBoundingClientRect().left,
+  }));
+  expect(alignment.left).toBe(alignment.summaryLeft);
+  expect(alignment.padding).toBe('0px');
+  await page.screenshot({ path: 'artifacts/path-editor-dismiss.png' });
   await page.getByRole('textbox', { name: 'Name' }).fill('Paper one');
   await page.getByRole('button', { name: 'Leave some cards out' }).click();
   const picker = page.getByRole('dialog', { name: 'Excluded cards' });

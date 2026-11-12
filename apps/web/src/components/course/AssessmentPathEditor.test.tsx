@@ -95,11 +95,11 @@ it('toggles excluded cards in a picker and adds the except chip to the sentence'
     ),
   );
 });
-it('keeps an empty name open on Escape and focuses the field', async () => {
+it('keeps an empty name open on Done and focuses the field', async () => {
   const saved = editor();
   const name = screen.getByRole('textbox', { name: 'Name' });
   fireEvent.change(name, { target: { value: ' ' } });
-  fireEvent.keyDown(name, { key: 'Escape' });
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
   await screen.findByText('Enter a name.');
   expect(name).toHaveFocus();
   expect(saved).not.toHaveBeenCalled();

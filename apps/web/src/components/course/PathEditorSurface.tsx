@@ -26,7 +26,6 @@ export function PathEditorSurface({
   onDelete,
   deleteLabel = 'Delete',
   deleteNoun,
-  cancellable = false,
   wide = false,
   children,
 }: {
@@ -36,7 +35,6 @@ export function PathEditorSurface({
   onDelete?: () => Promise<boolean>;
   deleteLabel?: string;
   deleteNoun?: string;
-  cancellable?: boolean;
   wide?: boolean;
   children: ReactNode;
 }) {
@@ -173,8 +171,7 @@ export function PathEditorSurface({
 
   function dismiss() {
     if (pending.current || closing) return;
-    if (cancellable) setClosing(true);
-    else void finish();
+    setClosing(true);
   }
 
   return createPortal(
@@ -243,11 +240,9 @@ export function PathEditorSurface({
               <span />
             )}
             <div className="flex items-center gap-3">
-              {cancellable && (
-                <Button variant="ghost" disabled={busy || closing} onClick={dismiss}>
-                  Cancel
-                </Button>
-              )}
+              <Button variant="ghost" disabled={busy || closing} onClick={dismiss}>
+                Cancel
+              </Button>
               <Button variant="primary" disabled={busy || closing} onClick={() => void finish()}>
                 {busy ? 'Saving…' : 'Done'}
               </Button>
