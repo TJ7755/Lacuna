@@ -39,6 +39,7 @@ export function TouchStudyControls({
   const grade = (input: boolean | Grade, label: ReactNode) => (
     <StudyGradeButton
       grade={input}
+      data-study-continue={input === true || input === 3 || undefined}
       feedback={feedback}
       m={m}
       variant={input === true || input === 4 ? 'primary' : 'secondary'}

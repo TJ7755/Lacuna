@@ -51,7 +51,7 @@ test('authors, persists and studies a card through the keyboard', async ({ page 
     studyCard.locator('[data-study-face="back"]').getByText(back, { exact: true }),
   ).toBeVisible();
   const study = page.getByRole('main', { name: 'Study card' });
-  const continueCard = study.getByRole('button', { name: 'Continue', exact: true });
+  const continueCard = study.getByRole('button', { name: 'Yes', exact: true });
   await expect(continueCard).toBeFocused();
   await page.keyboard.press('Enter');
   const answer = study.getByRole('textbox', { name: 'Your answer' });

@@ -150,7 +150,7 @@ for (const width of [1440]) {
     ).toBeVisible();
     await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
     const study = page.getByRole('main', { name: 'Study card' });
-    const nextCard = study.getByRole('button', { name: 'Continue', exact: true });
+    const nextCard = study.getByRole('button', { name: 'Yes', exact: true });
     await nextCard.click();
     await page.getByRole('textbox', { name: 'Your answer' }).fill('Year two answer');
     await page.getByRole('button', { name: 'Check answer', exact: true }).click();

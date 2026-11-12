@@ -20,7 +20,7 @@ export async function chooseRecallPractice(page: Page, lessonName?: string) {
 
 export async function completeRevealedIntroduction(page: Page, answer: string) {
   const study = page.getByRole('main', { name: 'Study card' });
-  const next = study.getByRole('button', { name: 'Continue', exact: true });
+  const next = study.getByRole('button', { name: 'Yes', exact: true });
   await study.getByRole('button', { name: 'Show answer', exact: true }).last().click();
   await next.click();
   await study.getByRole('textbox', { name: 'Your answer' }).fill(answer);

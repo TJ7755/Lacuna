@@ -298,7 +298,9 @@ function LearnSession({
       : current?.id,
     phase,
     editing || menuOpen || hintsOpen,
-    familiarising && !choiceQuestion && phase === 'answer',
+    phase === 'answer' &&
+      ((familiarising && !choiceQuestion) ||
+        (isTypingCard && typedAutoMark.state !== 'checking' && typedAutoMark.state !== 'marked')),
   );
 
   useEffect(() => {
