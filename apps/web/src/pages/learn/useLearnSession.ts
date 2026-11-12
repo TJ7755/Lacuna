@@ -1251,16 +1251,7 @@ export function useLearnSession({
         submitting.current = false;
       }
     },
-    [
-      distraction,
-      isSimpleMode,
-      answerSimple,
-      answerScheduled,
-      completion,
-      recitationSequence,
-      answerStrictness,
-      lessonRequiresCorrectSpelling,
-    ],
+    [distraction, isSimpleMode, answerSimple, answerScheduled, completion, recitationSequence],
   );
 
   /** Drop the current card from the live pool after a suspend/bury, then move on. */

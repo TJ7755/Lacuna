@@ -39,7 +39,7 @@ export async function familiariseCard() {
   fireEvent.keyDown(await screen.findByRole('button', { name: /^Show answer$/i }), {
     key: 'Enter',
   });
-  fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Yes' }));
 }
 
 export async function recallCard(answer: string) {
@@ -47,7 +47,7 @@ export async function recallCard(answer: string) {
     target: { value: answer },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Yes' }));
 }
 
 /** Leaves the notes screen; a lesson without notes opens on its first card instead. */
