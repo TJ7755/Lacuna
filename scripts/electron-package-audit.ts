@@ -30,8 +30,8 @@ const WINDOWS_PACKAGE_BUDGET = {
   // chunk that keeps the chart's recovery entry independent of the first attempt, and the
   // exam-technique catalogue, form and authoring chunks shared by the question-set editor
   // and course settings, plus the leave guard shared by the sequence and occlusion
-  // editors. Archive and payload byte limits still apply.
-  payloadFileCount: 722,
+  // editors and shared Flow expansion controls. Archive and payload byte limits still apply.
+  payloadFileCount: 723,
   sourceMapBytes: 0,
   buildOnlyAssetBytes: 10_000,
   localeBytes: 1_300_000,
