@@ -139,7 +139,7 @@ export function ExpandingSheet({
           onClick={onClose}
           disabled={closeDisabled}
           aria-label={closeLabel}
-          title="Close (Esc)"
+          title={closeLabel}
           data-dialog-close
           initial={m > 0 ? { opacity: 0 } : false}
           animate={m > 0 ? { opacity: present ? 1 : 0 } : undefined}
