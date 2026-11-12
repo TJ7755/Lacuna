@@ -216,6 +216,13 @@ function FlowSplitLiquid({
     </filter>
   );
   const centred = { transformBox: 'fill-box', transformOrigin: 'center' } as const;
+  // Verdict ink changes the SVG's bounds as it rises. Scale about the measured
+  // bead centre, rather than letting those changing bounds move the pivot.
+  const beadOrigin = {
+    transformBox: 'view-box',
+    originX: `${centreX(bead)}px`,
+    originY: `${centreY(bead)}px`,
+  } as const;
   const outline = (colour: string) => (
     <>
       <feMorphology in="liquid" operator="erode" radius="1" result="inner" />
@@ -335,7 +342,7 @@ function FlowSplitLiquid({
         )}
       </defs>
       <motion.g
-        style={centred}
+        style={beadOrigin}
         initial={false}
         animate={{ scale: pulsing ? [1, 1.16, 1] : 1 }}
         transition={
@@ -346,8 +353,8 @@ function FlowSplitLiquid({
       >
         <motion.g
           style={{
+            ...beadOrigin,
             scale: bob,
-            transformOrigin: `${centreX(bead)}px ${centreY(bead)}px`,
           }}
         >
           <g filter={`url(#${id}-shell)`} style={{ fill: 'var(--color-surface-raised)' }}>
@@ -447,9 +454,11 @@ function FlowSplitLiquid({
                 cy={centreY(bead) + bead.height * 0.45}
                 r={bead.height * 1.05}
                 style={{
+                  transformBox: 'view-box',
                   y: riseY,
                   scale: verdictScale,
-                  transformOrigin: `${centreX(bead)}px ${centreY(bead) + bead.height * 0.45}px`,
+                  originX: `${centreX(bead)}px`,
+                  originY: `${centreY(bead) + bead.height * 0.45}px`,
                 }}
               />
             </g>

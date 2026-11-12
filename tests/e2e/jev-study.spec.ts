@@ -2,6 +2,12 @@ import { build } from 'esbuild';
 import { expect, test, type Page } from '@playwright/test';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
 
+interface VerdictFrame {
+  transform: string;
+  centre: number;
+  width: number;
+}
+
 let fixture: string;
 test.beforeAll(async () => {
   const bundle = await build({
@@ -187,13 +193,19 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         await page.screenshot({ path: test.info().outputPath('grey-waiting.png') });
 
         await page.locator('[data-flow-verdict] circle').evaluate((element) => {
-          (window as unknown as { flowVerdictFrames: Promise<string[]> }).flowVerdictFrames =
+          (window as unknown as { flowVerdictFrames: Promise<VerdictFrame[]> }).flowVerdictFrames =
             new Promise((resolve) => {
-              const scales: string[] = [];
+              const scales: VerdictFrame[] = [];
               const started = performance.now();
               const sample = () => {
-                scales.push(getComputedStyle(element).transform);
-                if (performance.now() - started < 500) requestAnimationFrame(sample);
+                const surface = element.closest('svg')!.querySelector(':scope > g use')!;
+                const bounds = surface.getBoundingClientRect();
+                scales.push({
+                  transform: getComputedStyle(element).transform,
+                  centre: bounds.x + bounds.width / 2,
+                  width: bounds.width,
+                });
+                if (performance.now() - started < 1200) requestAnimationFrame(sample);
                 else resolve(scales);
               };
               sample();
@@ -214,9 +226,17 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           await page.screenshot({ path: test.info().outputPath('verdict-welling.png') });
         }
         const scales = await page.evaluate(
-          () => (window as unknown as { flowVerdictFrames: Promise<string[]> }).flowVerdictFrames,
+          () =>
+            (window as unknown as { flowVerdictFrames: Promise<VerdictFrame[]> }).flowVerdictFrames,
         );
-        if (reducedMotion !== 'reduce') expect(new Set(scales).size).toBeGreaterThan(2);
+        const centres = scales.map((sample) => sample.centre);
+        expect(Math.max(...centres) - Math.min(...centres)).toBeLessThan(0.1);
+        const widths = scales.map((sample) => sample.width);
+        if (reducedMotion !== 'reduce') {
+          // The verdict still swells and settles while its centre stays fixed.
+          expect(Math.max(...widths) - Math.min(...widths)).toBeGreaterThan(5);
+          expect(new Set(scales.map((sample) => sample.transform)).size).toBeGreaterThan(2);
+        }
         await expect(layer).toBeVisible();
         await expect(page.getByRole('button', { name: 'Yes', exact: true })).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'No', exact: true })).toHaveCount(0);
