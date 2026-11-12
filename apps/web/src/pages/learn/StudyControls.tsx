@@ -55,7 +55,7 @@ export function StudyControls({
   ) => (
     <StudyGradeButton
       key={String(input)}
-      data-study-continue={input === true || input === 3 || undefined}
+      data-study-continue={(isTypingCard && (input === true || input === 3)) || undefined}
       grade={input}
       feedback={feedback}
       m={m}
