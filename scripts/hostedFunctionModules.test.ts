@@ -1,17 +1,15 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 import { expect, test } from 'vitest';
 
 test('hosted functions load after Vercel-style ESM transpilation', async () => {
   const root = resolve(import.meta.dirname, '..');
-  const entries = [
-    'apps/ai/api/ai/session.ts',
-    'apps/ai/api/ai/inference.ts',
-    'apps/ai/api/ai/jev.ts',
-  ];
+  const entries = ['api/ai/session.ts', 'api/ai/inference.ts', 'api/ai/jev.ts'];
   const traced = await build({
     entryPoints: entries.map((entry) => join(root, entry)),
     bundle: true,
@@ -23,8 +21,23 @@ test('hosted functions load after Vercel-style ESM transpilation', async () => {
     write: false,
     logLevel: 'silent',
   });
-  const output = mkdtempSync(join(root, '.hosted-esm-'));
+  // A deployed function cannot fall back to the checkout's TypeScript workspace packages.
+  const output = mkdtempSync(join(tmpdir(), 'lacuna-hosted-esm-'));
   try {
+    writeFileSync(join(output, 'package.json'), JSON.stringify({ type: 'module' }));
+    mkdirSync(join(output, 'node_modules'));
+    const require = createRequire(import.meta.url);
+    symlinkSync(
+      resolve(require.resolve('zod/package.json'), '..'),
+      join(output, 'node_modules/zod'),
+      'junction',
+    );
+    mkdirSync(join(output, 'node_modules/@vercel'));
+    symlinkSync(
+      dirname(require.resolve('@vercel/functions')),
+      join(output, 'node_modules/@vercel/functions'),
+      'junction',
+    );
     await build({
       entryPoints: Object.keys(traced.metafile!.inputs).map((input) => resolve(root, input)),
       outbase: root,

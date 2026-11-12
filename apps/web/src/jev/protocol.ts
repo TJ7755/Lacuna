@@ -1,11 +1,14 @@
 import { z } from 'zod';
-import { jevDiagnosticRequestSchema, jevDiagnosisSchema } from '@lacuna/core/jev/diagnosis';
+import {
+  jevDiagnosticRequestSchema,
+  jevDiagnosisSchema,
+} from '../../../../packages/core/src/jev/diagnosis.js';
 import {
   COURSE_TECHNIQUE_LIMIT,
   courseTechniqueIdSchema,
   TECHNIQUE_NAME_MAX,
   TECHNIQUE_TEXT_MAX,
-} from '@lacuna/core/questions/techniqueTags';
+} from '../../../../packages/core/src/questions/techniqueTags.js';
 
 export const JEV_MODEL = 'jev-1.14.0';
 export const JEV_TYPED_CORRECT_THRESHOLD = 0.75;

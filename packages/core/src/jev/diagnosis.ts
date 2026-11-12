@@ -6,7 +6,7 @@ import {
   SCIENCE_TECHNIQUES,
   validTechniqueSelection,
   type TechniqueTags,
-} from '@lacuna/core/questions/techniqueTags';
+} from '../questions/techniqueTags.js';
 
 export const JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD = 0.85;
 export const JEV_DIAGNOSTIC_OUTCOMES = ['gap', 'no-gap', 'insufficient-evidence'] as const;

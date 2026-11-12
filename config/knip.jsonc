@@ -30,10 +30,9 @@
         // Browser optimiser imports dynamic-wasi and its vendored worker imports the runtime.
         "@napi-rs/wasm-runtime",
         "@open-spaced-repetition/binding",
-        // Root installation supplies web analytics, relay storage and AI request lifetimes.
+        // Root installation supplies web analytics and relay storage.
         "@vercel/analytics",
         "@vercel/blob",
-        "@vercel/functions",
         // Web dynamic imports load sanitisation and QR scanning; verification imports mathjs/number.
         "dompurify",
         "html5-qrcode",
