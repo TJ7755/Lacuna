@@ -439,3 +439,11 @@
   overflow: visible;
   filter: drop-shadow(0 1px 1px hsl(var(--line-strong)));
 }
+
+[data-flow-expanded-trigger] {
+  position: relative;
+  z-index: 10;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}

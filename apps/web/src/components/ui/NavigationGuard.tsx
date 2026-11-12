@@ -1,6 +1,7 @@
 import { AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { DialogPanel } from './DialogPanel';
+import { ExpandingActionPanel } from './ExpandingActionPanel';
 import {
   forwardRef,
   useCallback,
@@ -114,6 +115,18 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
     });
     const messageId = useId();
 
+    useLayoutEffect(() => {
+      const button = anchor?.querySelector('button');
+      if (!anchor || !anchored || !button) return;
+      const zIndex = anchor.style.zIndex;
+      anchor.style.zIndex = '30';
+      button.setAttribute('aria-expanded', String(blocked));
+      return () => {
+        anchor.style.zIndex = zIndex;
+        button.setAttribute('aria-expanded', 'false');
+      };
+    }, [anchor, anchored, blocked]);
+
     useEffect(() => {
       const handleBeforeUnload = (event: BeforeUnloadEvent) => {
         if (!resolveActive(activeRef.current)) return;
@@ -194,46 +207,67 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
       }
     };
 
-    const confirmation = (modal: boolean) => (
-      <DialogPanel
-        modal={modal}
-        belowTrigger={!modal}
-        label={title}
-        describedBy={messageId}
-        trapRef={trapRef}
-        className={
-          modal
-            ? 'max-w-md overflow-y-auto p-6'
-            : 'absolute left-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-4rem))] p-4'
+    const confirmation = (modal: boolean) => {
+      const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        event.stopPropagation();
+        if (event.key === 'Escape' && !confirming) {
+          event.preventDefault();
+          cancel();
         }
-        onKeyDown={(event) => {
-          event.stopPropagation();
-          if (event.key === 'Escape' && !confirming) {
-            event.preventDefault();
-            cancel();
-          }
-        }}
-      >
-        <h2 className="font-display text-xl text-ink">{title}</h2>
-        <p id={messageId} className="mt-2 text-sm leading-6 text-ink-soft">
-          {message}
-        </p>
-        <div
-          className={
-            modal
-              ? 'mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end'
-              : 'mt-4 flex flex-wrap justify-end gap-2'
-          }
+      };
+      const content = (
+        <>
+          <h2 className="font-display text-xl text-ink">{title}</h2>
+          <p id={messageId} className="mt-2 text-sm leading-6 text-ink-soft">
+            {message}
+          </p>
+          <div
+            className={
+              modal
+                ? 'mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end'
+                : 'mt-4 flex flex-wrap justify-end gap-2'
+            }
+          >
+            <Button data-guard-stay="" type="button" onClick={cancel} disabled={confirming}>
+              {stayLabel}
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => void leave()}
+              disabled={confirming}
+            >
+              {confirming ? 'Leaving…' : leaveLabel}
+            </Button>
+          </div>
+        </>
+      );
+      const button = anchor?.querySelector('button');
+      return !modal && button ? (
+        <ExpandingActionPanel
+          anchor={button}
+          align="start"
+          width={352}
+          label={title}
+          describedBy={messageId}
+          trapRef={trapRef}
+          onKeyDown={onKeyDown}
+          className="p-4"
         >
-          <Button data-guard-stay="" type="button" onClick={cancel} disabled={confirming}>
-            {stayLabel}
-          </Button>
-          <Button type="button" variant="danger" onClick={() => void leave()} disabled={confirming}>
-            {confirming ? 'Leaving…' : leaveLabel}
-          </Button>
-        </div>
-      </DialogPanel>
-    );
+          {content}
+        </ExpandingActionPanel>
+      ) : (
+        <DialogPanel
+          label={title}
+          describedBy={messageId}
+          trapRef={trapRef}
+          className="max-w-md overflow-y-auto p-6"
+          onKeyDown={onKeyDown}
+        >
+          {content}
+        </DialogPanel>
+      );
+    };
 
     return (
       <>
