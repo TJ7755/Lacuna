@@ -38,8 +38,6 @@ export function LearnStudyPhase({
   isTouchMode,
   suppressClassicGrading,
   isTypingCard,
-  recallCorrect,
-  showLocalRecall,
   choiceQuestion,
   choiceCandidates,
   rankedChoices,
@@ -70,8 +68,6 @@ export function LearnStudyPhase({
   isTouchMode: boolean;
   suppressClassicGrading: boolean;
   isTypingCard: boolean;
-  recallCorrect?: boolean;
-  showLocalRecall: boolean;
   choiceQuestion?: LessonChoiceCard;
   choiceCandidates: readonly LessonChoiceCard[];
   rankedChoices?: readonly string[];
@@ -403,17 +399,13 @@ export function LearnStudyPhase({
         )}
         {isTypingCard && (
           <div role="status" className="sr-only">
-            {showLocalRecall
-              ? recallCorrect
-                ? 'Marked correct.'
-                : 'Marked incorrect.'
-              : typedAutoMark.state === 'checking'
-                ? 'Checking your answer.'
-                : typedAutoMark.state === 'marked'
-                  ? typedAutoMark.correct
-                    ? 'Marked correct.'
-                    : 'Marked incorrect.'
-                  : ''}
+            {typedAutoMark.state === 'checking'
+              ? 'Checking your answer.'
+              : typedAutoMark.state === 'marked'
+                ? typedAutoMark.correct
+                  ? 'Marked correct.'
+                  : 'Marked incorrect.'
+                : ''}
           </div>
         )}
         {familiarising && !choiceQuestion && phase === 'answer' && (

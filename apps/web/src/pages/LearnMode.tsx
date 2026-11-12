@@ -292,15 +292,13 @@ function LearnSession({
   });
 
   const typedJudgement = useMemo(() => typedAnswerJudgement(typedAutoMark), [typedAutoMark]);
-  const recallCorrect = undefined;
-  const showLocalRecall = false;
   const studyFocusRef = useStudyFocus(
     current && introductionPresentation.stage
       ? `${current.id}:${introductionPresentation.serial}`
       : current?.id,
     phase,
     editing || menuOpen || hintsOpen,
-    showLocalRecall || (familiarising && !choiceQuestion && phase === 'answer'),
+    familiarising && !choiceQuestion && phase === 'answer',
   );
 
   useEffect(() => {
@@ -453,8 +451,6 @@ function LearnSession({
               isTouchMode={isTouchMode}
               suppressClassicGrading={suppressClassicGrading}
               isTypingCard={isTypingCard}
-              recallCorrect={recallCorrect}
-              showLocalRecall={showLocalRecall}
               choiceQuestion={choiceQuestion}
               choiceCandidates={choiceCandidates}
               rankedChoices={choiceQuestion ? rankedChoices.get(choiceQuestion.id) : undefined}

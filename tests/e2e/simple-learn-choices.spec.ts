@@ -67,7 +67,7 @@ function study(page: Page) {
     choices: main.getByRole('radio'),
     typing: main.getByRole('textbox', { name: 'Your answer' }),
     check: main.getByRole('button', { name: 'Check answer', exact: true }),
-    advance: main.getByRole('button', { name: 'Continue', exact: true }),
+    advance: main.getByRole('button', { name: 'Yes', exact: true }),
   };
 }
 
@@ -282,18 +282,14 @@ test('introduces choices before timed typing and keeps the old practice entry', 
       await expect(view.typing).toBeFocused();
       await view.typing.fill('incorrect answer');
       await page.keyboard.press('Enter');
-      const verdict = view.main.locator(
-        '[data-flow-state="bead"] [data-flow-verdict][data-flow-colour]',
-      );
-      await expect(verdict).toBeVisible();
-      await expect(verdict).toHaveAttribute('style', /fill: var\(--color-negative\)/);
+      await expect(view.main.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
+      await expect(view.main.locator('[data-flow-state="bead"]')).toHaveCount(0);
       await expect(
         view.main.getByRole('status').filter({ hasText: 'Marked incorrect.' }),
-      ).toHaveClass('sr-only');
-      await expect(view.advance).toBeFocused();
+      ).toHaveCount(0);
       if (!typed)
-        await page.screenshot({ path: testInfo.outputPath('learn-new-cards-typed-incorrect.png') });
-      await page.keyboard.press('Enter');
+        await page.screenshot({ path: testInfo.outputPath('learn-new-cards-typed-fallback.png') });
+      await view.main.getByRole('button', { name: 'No', exact: true }).click();
       await expect.poll(async () => (await readReviews(page)).length).toBe(reviewCount + 1);
       expect(await readReviews(page)).toEqual(
         Array.from({ length: reviewCount + 1 }, () =>
@@ -345,9 +341,8 @@ test('counts completed cards across choices and typing and restores the count on
   const checkTyped = async () => {
     await view.typing.fill(cards[typedPrompt]);
     await view.typing.press('Enter');
-    await expect(view.main.getByRole('status').filter({ hasText: 'Marked correct.' })).toHaveClass(
-      'sr-only',
-    );
+    await expect(view.main.getByRole('button', { name: 'No', exact: true })).toBeVisible();
+    await expect(view.main.locator('[data-flow-state="bead"]')).toHaveCount(0);
   };
   const continueTyped = async () => {
     await view.advance.click();

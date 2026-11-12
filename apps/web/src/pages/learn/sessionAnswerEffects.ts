@@ -184,7 +184,16 @@ export function createSessionAnswerEffects({
       : schedulingUnitsRef.current.values().next().value;
   const answerSimple = async (
     cardNow: Card,
-    { correct, machineMarked, t, distracted, markedBy, retainUndo, input }: AnswerResponse,
+    {
+      correct,
+      manualGrade,
+      machineMarked,
+      t,
+      distracted,
+      markedBy,
+      retainUndo,
+      input,
+    }: AnswerResponse,
   ): Promise<AnswerResult> => {
     const deck = answerUnit(cardNow);
     if (!deck) return { undoAvailable: false };
@@ -221,7 +230,7 @@ export function createSessionAnswerEffects({
         },
         grading: {
           machineMarked,
-          manualGrade: null,
+          manualGrade,
           correct,
           responseTimeSec: t,
           hintUsed,

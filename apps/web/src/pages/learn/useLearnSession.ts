@@ -1235,7 +1235,7 @@ export function useLearnSession({
           ),
           markedBy,
           correct,
-          manualGrade: !verifiedRecall && typeof input === 'number' ? input : null,
+          manualGrade: typeof input === 'number' ? input : null,
           machineMarked,
           t: machineMarked ? (performance.now() - timerStart.current) / 1000 : responseTime.current,
           distracted: distraction.wasDistracted(),
