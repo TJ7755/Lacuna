@@ -191,6 +191,12 @@ export function ImportPanel({
       className="import-panel"
       style={{ '--import-motion-duration': `${200 * multiplier}ms` } as CSSProperties}
       {...keys}
+      onKeyDown={(event) => {
+        keys.onKeyDown(event);
+        // An active editor owns Escape even when it keeps a draft instead of cancelling.
+        // A surrounding sheet must not interpret that refusal as permission to close.
+        if (event.key === 'Escape' && source) event.preventDefault();
+      }}
     >
       <motion.div
         initial={false}
