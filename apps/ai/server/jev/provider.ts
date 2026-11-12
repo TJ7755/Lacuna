@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { splitJevExpectedAnswer } from '../../../web/src/jev/answerParts.js';
-import { JEV_DIAGNOSTIC_OUTCOMES } from '@lacuna/core/jev/diagnosis';
+import { JEV_DIAGNOSTIC_OUTCOMES } from '../../../../packages/core/src/jev/diagnosis.js';
 import { diagnosticQuestions, readDiagnosis } from './diagnosis.js';
 import {
   JEV_MODEL,

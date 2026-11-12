@@ -5,8 +5,8 @@ import {
   JEV_DIAGNOSTIC_OUTCOMES,
   type JevDiagnosticRequest,
   type JevDiagnosis,
-} from '@lacuna/core/jev/diagnosis';
-import { SCIENCE_TECHNIQUES } from '@lacuna/core/questions/techniqueTags';
+} from '../../../../packages/core/src/jev/diagnosis.js';
+import { SCIENCE_TECHNIQUES } from '../../../../packages/core/src/questions/techniqueTags.js';
 
 const descriptions = {
   knowledge: {
