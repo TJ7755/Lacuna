@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 import { expect, test } from 'vitest';
@@ -34,7 +34,7 @@ test('hosted functions load after Vercel-style ESM transpilation', async () => {
     );
     mkdirSync(join(output, 'node_modules/@vercel'));
     symlinkSync(
-      resolve(require.resolve('@vercel/functions/package.json'), '..'),
+      dirname(require.resolve('@vercel/functions')),
       join(output, 'node_modules/@vercel/functions'),
       'junction',
     );

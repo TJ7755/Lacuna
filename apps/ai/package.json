@@ -4,7 +4,6 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "@lacuna/core": "workspace:*",
     "@vercel/functions": "^3.11.0",
     "ai": "^7.0.163",
     "zod": "4.6.7",
