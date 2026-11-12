@@ -366,7 +366,7 @@ export function LearnStudyPhase({
                     hintsOpen={hintsOpen}
                     onReveal={reveal}
                     onHide={hide}
-                    allowGradingGestures={!familiarising && recallCorrect === undefined}
+                    allowGradingGestures={!familiarising}
                     onAnswer={(input, source, velocity) => answerWithUndo(input, source, velocity)}
                     typedAnswer={typedAnswer}
                     typedJudgement={typedJudgement}
@@ -426,7 +426,7 @@ export function LearnStudyPhase({
                 if (checkIntroduction(serial, true)) continueIntroduction(serial);
               }}
             >
-              Continue
+              Yes
             </Button>
           </div>
         )}
@@ -437,7 +437,6 @@ export function LearnStudyPhase({
             departing={cardDeparting}
             feedback={gradeFeedback}
             isTypingCard={isTypingCard}
-            recallCorrect={recallCorrect}
             isTouchMode={isTouchMode}
             autoMark={
               typedAutoMark.state === 'checking'

@@ -20,7 +20,6 @@ import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
 import { useToast } from '../components/ui/Toast';
 import { useLessonDistractors } from '../jev';
-import { matchesTypedRecall } from './learn/typedRecall';
 import { canOfferChoices, lessonChoiceCandidates } from './learn/simpleLearnQuestions';
 import { filterSimpleLearnCardPool } from './learn/sessionPool';
 import { useLearnSession } from './learn/useLearnSession';
@@ -293,33 +292,8 @@ function LearnSession({
   });
 
   const typedJudgement = useMemo(() => typedAnswerJudgement(typedAutoMark), [typedAutoMark]);
-  const recallCorrect = useMemo(
-    () =>
-      verifyTypedRecall
-        ? phase === 'answer' &&
-          current !== null &&
-          matchesTypedRecall(
-            current,
-            typedAnswer,
-            answerStrictness,
-            undefined,
-            lessonRequiresCorrectSpelling,
-          )
-        : undefined,
-    [
-      verifyTypedRecall,
-      phase,
-      current,
-      typedAnswer,
-      answerStrictness,
-      lessonRequiresCorrectSpelling,
-    ],
-  );
-  const showLocalRecall =
-    recallCorrect !== undefined &&
-    phase === 'answer' &&
-    typedAutoMark.state !== 'checking' &&
-    typedAutoMark.state !== 'marked';
+  const recallCorrect = undefined;
+  const showLocalRecall = false;
   const studyFocusRef = useStudyFocus(
     current && introductionPresentation.stage
       ? `${current.id}:${introductionPresentation.serial}`
@@ -349,7 +323,7 @@ function LearnSession({
     editing: editing || leaveConfirmationOpen,
     current,
     isTypingCard,
-    suppressClassicGrading: suppressClassicGrading || verifyTypedRecall,
+    suppressClassicGrading,
     allowRevealWhenGradingSuppressed: verifyTypedRecall || (familiarising && !choiceQuestion),
     openEdit,
     hintsOpen,

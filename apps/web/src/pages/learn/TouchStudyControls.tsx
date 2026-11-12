@@ -20,7 +20,6 @@ export function TouchStudyControls({
   typedField,
   autoMark,
   recallPrompt,
-  recallCorrect,
 }: {
   phase: Phase;
   feedback?: StudyGradeFeedback;
@@ -31,7 +30,6 @@ export function TouchStudyControls({
   typedField?: ReactNode;
   autoMark?: AutoMark;
   recallPrompt?: string;
-  recallCorrect?: boolean;
 }) {
   const recallPromptId = useId();
   const question = phase === 'question';
@@ -91,17 +89,7 @@ export function TouchStudyControls({
               {typedField ? 'Check answer' : 'Show answer'}
             </Button>
           </>
-        ) : autoMark ? null : recallCorrect !== undefined ? (
-          <Button
-            variant="primary"
-            size="lg"
-            className={cn(ACTION, 'w-full')}
-            data-study-continue
-            onClick={() => onAnswer(recallCorrect, 'touch')}
-          >
-            Continue
-          </Button>
-        ) : manual ? (
+        ) : autoMark ? null : manual ? (
           <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
             {grade(1, 'Again')}
             {grade(2, 'Hard')}

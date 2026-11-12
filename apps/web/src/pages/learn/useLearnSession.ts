@@ -54,7 +54,6 @@ import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
 import { emptySessionState, sessionCell, simpleSessionCell } from './sessionRuntime';
 import { resolveLearnSessionScope } from './sessionScope';
 import { clearSimpleSession, saveSimpleSession } from './simpleSessionPersistence';
-import { matchesTypedRecall } from './typedRecall';
 import type { LearnModeType, LessonNotesScreen, Phase, StudyUnit } from './types';
 import { useSessionCompletion } from './useSessionCompletion';
 
@@ -1225,16 +1224,8 @@ export function useLearnSession({
         const verifiedRecall = introductionPresentationRef.current.stage === 'recall';
         const typedAnswer = options?.typedAnswer ?? '';
         const markedBy = !verifiedRecall || typedAnswer.trim() ? options?.markedBy : undefined;
-        const correct =
-          verifiedRecall && !markedBy
-            ? matchesTypedRecall(
-                cardNow,
-                typedAnswer,
-                answerStrictness,
-                undefined,
-                lessonRequiresCorrectSpelling,
-              )
-            : answerCorrect(input);
+        // A fallback self-mark is the learner's decision, just as in ordinary review.
+        const correct = answerCorrect(input);
         const response: AnswerResponse = {
           retainUndo: options?.retainUndo ?? verifiedRecall,
           input: reviewAnswerInput(
