@@ -70,7 +70,7 @@ describe('compressImageBlob', () => {
     expect(result.height).toBe(600);
   });
 
-  it.each(['image/png', 'image/webp', 'image/gif'])(
+  it.each(['image/png', 'image/webp', 'image/gif', 'image/svg+xml'])(
     'uses a transparency-preserving encoding for %s uploads',
     async (mimeType) => {
       setSourceDimensions(800, 600);
