@@ -8,6 +8,7 @@ import { ImportPanel } from '../../components/import/ImportPanel';
 import { AnimatedDisclosure } from '../../components/ui/AnimatedDisclosure';
 import { Button } from '../../components/ui/Button';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
+import { ExpandingSheet } from '../../components/ui/ExpandingSheet';
 import { JEV_CONSENT_VERSION, JevConsentNotice, useJevController, useJevSettings } from '../../jev';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useAnswerStrictness } from '../../state/answerStrictness';
@@ -106,7 +107,10 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="study-session flex h-dvh flex-col overflow-hidden">
+    <div
+      className="study-session flex h-dvh flex-col overflow-hidden"
+      inert={step === 'content' && contentIntent !== null}
+    >
       <LearnHeader
         mode="simple"
         plannedRevision={false}
@@ -193,6 +197,7 @@ export default function Onboarding() {
               <ContentStep
                 intent={contentIntent}
                 onIntent={setContentIntent}
+                busy={importing}
                 onBusyChange={setImporting}
               />
             )}
@@ -425,9 +430,9 @@ function MarkingStep({
             ))}
           </div>
         </fieldset>
-        {wantsAiMarking && (
+        <AnimatedDisclosure open={wantsAiMarking}>
           <JevConsentNotice checked={understood} onChange={setUnderstood} scrollableTerms />
-        )}
+        </AnimatedDisclosure>
         <Button
           type="submit"
           variant="primary"
@@ -449,54 +454,84 @@ function MarkingStep({
 function ContentStep({
   intent,
   onIntent,
+  busy,
   onBusyChange,
 }: {
   intent: ContentIntent;
   onIntent: (intent: ContentIntent) => void;
+  busy: boolean;
   onBusyChange: (busy: boolean) => void;
 }) {
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+  const close = () => {
+    if (!busy) onIntent(null);
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       {/* Top-aligned: the panel changes height as sources open and searches narrow. */}
       <div className="mx-auto w-full max-w-md py-2 md:pt-8">
-        <StepHeading key={intent ?? 'choices'}>What do you want to learn?</StepHeading>
-        {!intent ? (
-          <div className="grid grid-cols-2 gap-3">
+        <StepHeading>What do you want to learn?</StepHeading>
+        <div className="grid grid-cols-2 gap-3">
+          {(['create', 'import'] as const).map((choice) => (
             <Button
+              key={choice}
               variant="secondary"
-              onClick={() => onIntent('create')}
+              aria-haspopup="dialog"
+              aria-expanded={intent === choice}
+              onClick={(event) => {
+                setAnchor(event.currentTarget);
+                onIntent(choice);
+              }}
+              // The expanding sheet owns the movement from the resting tile.
+              hoverScale={false}
+              pressScale={false}
               className="min-h-36 flex-col gap-4 px-3"
-              style={{ borderRadius: '1.5rem' }}
+              style={{
+                borderRadius: '1.5rem',
+                visibility: intent === choice ? 'hidden' : undefined,
+              }}
             >
-              <PlusIcon width={32} height={32} />
-              Create my own
+              {choice === 'create' ? (
+                <PlusIcon width={32} height={32} />
+              ) : (
+                <UploadIcon width={32} height={32} />
+              )}
+              {choice === 'create' ? 'Create my own' : 'Import'}
             </Button>
-            <Button
-              variant="secondary"
-              onClick={() => onIntent('import')}
-              className="min-h-36 flex-col gap-4 px-3"
-              style={{ borderRadius: '1.5rem' }}
+          ))}
+        </div>
+        <AnimatePresence>
+          {intent && anchor && (
+            <ExpandingSheet
+              key={intent}
+              anchor={anchor}
+              maxWidth={448}
+              closeLabel="Close"
+              closeDisabled={busy}
+              onClose={close}
+              autoFocusSelector={intent === 'create' ? 'input' : '.import-sources button'}
+              face={(headingId) => (
+                <header className="flex min-h-36 flex-col items-center justify-center gap-4 px-12 py-6">
+                  {intent === 'create' ? (
+                    <PlusIcon width={32} height={32} />
+                  ) : (
+                    <UploadIcon width={32} height={32} />
+                  )}
+                  <h2 id={headingId} className="text-sm font-semibold">
+                    {intent === 'create' ? 'Create my own' : 'Import'}
+                  </h2>
+                </header>
+              )}
             >
-              <UploadIcon width={32} height={32} />
-              Import
-            </Button>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-3xl bg-surface-raised card-surface">
-            {intent === 'create' ? (
-              <NewCourseForm
-                inline
-                library={false}
-                onClose={() => onIntent(null)}
-                onBusyChange={onBusyChange}
-              />
-            ) : (
-              <div className="pt-2">
-                <ImportPanel onClose={() => onIntent(null)} onBusyChange={onBusyChange} />
-              </div>
-            )}
-          </div>
-        )}
+              {intent === 'create' ? (
+                <NewCourseForm inline library={false} onClose={close} onBusyChange={onBusyChange} />
+              ) : (
+                <ImportPanel onClose={close} onBusyChange={onBusyChange} />
+              )}
+            </ExpandingSheet>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

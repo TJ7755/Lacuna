@@ -145,7 +145,7 @@ export function ExpandingSheet({
           animate={m > 0 ? { opacity: present ? 1 : 0 } : undefined}
           style={m === 0 ? { opacity: present ? 1 : 0 } : undefined}
           transition={{ duration: 0.12 * m }}
-          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink disabled:opacity-40"
+          className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink disabled:opacity-40"
         >
           <CloseIcon width={18} height={18} />
         </motion.button>
