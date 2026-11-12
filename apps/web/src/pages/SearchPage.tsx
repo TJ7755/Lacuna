@@ -1,15 +1,9 @@
-import { searchHelp } from './help/searchHelp';
 import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useNavigationType, useSearchParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { useSearchData } from '../state/useSearchData';
-import {
-  searchCardsInScope,
-  searchCourseContent,
-  searchQuestionsInScope,
-  type CardFilter,
-} from '@lacuna/core/db/search';
+import type { CardFilter } from '@lacuna/core/db/search';
 import { cn } from '../components/ui/cn';
 import { SearchIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -17,7 +11,7 @@ import { useAdvancedDetails } from '../state/advancedDetails';
 import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { SearchResultOption } from '../components/search/SearchResultOption';
-import { searchQuestionSetHits } from '../components/search/searchQuestionSetHits';
+import { globalSearch } from '../components/search/globalSearch';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { hitKey, hitPath, type SearchHit } from '../components/search/searchPresentation';
 import { recordUsageAction } from '../usage/actions';
@@ -61,28 +55,10 @@ export function SearchPage() {
   const selectionChanged = useRef(false);
   const criteria = `${searchQuery}:${[...filters].join(',')}`;
 
-  const results = useMemo<SearchHit[]>(() => {
-    const scope = {
-      cards: searchData?.cards ?? [],
-      courses: searchData?.courses ?? [],
-      lessons: searchData?.lessons ?? [],
-    };
-    // Structured filters narrow only Cards; a text query still matches other content.
-    return [
-      ...(searchQuery.trim()
-        ? searchHelp(searchQuery)
-            .slice(0, 3)
-            .map((topic): SearchHit => ({ kind: 'help', topic }))
-        : []),
-      ...searchCourseContent(searchQuery, scope.courses, scope.lessons, searchData?.notes ?? []),
-      ...searchQuestionSetHits(searchQuery, searchData),
-      ...searchQuestionsInScope(searchQuery, {
-        ...scope,
-        questions: searchData?.questions ?? [],
-      }),
-      ...searchCardsInScope(searchQuery, scope, { filters: [...filters] }),
-    ];
-  }, [searchQuery, searchData, filters]);
+  const results = useMemo<SearchHit[]>(
+    () => globalSearch(searchQuery, searchData, [...filters]),
+    [searchQuery, searchData, filters],
+  );
   const limit =
     Number.isFinite(shown) && shown > PAGE_SIZE
       ? Math.min(Math.floor(shown), Math.max(PAGE_SIZE, results.length))

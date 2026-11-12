@@ -1,6 +1,7 @@
 import type { Course } from '@lacuna/core/db/types';
 import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import type { HelpTopic } from '../../pages/help/helpTopics';
+import { isAudioCardFront } from '../../media/audio';
 import {
   plainPreview,
   cardEditPath,
@@ -18,6 +19,13 @@ export interface QuestionSetHit {
 
 export type SearchHit =
   CourseContentHit | ScopedSearchResult | QuestionSetHit | { kind: 'help'; topic: HelpTopic };
+
+/** Keep media-only primary labels identical in rendering and relevance scoring. */
+export function cardMedia(front: string): { kind: 'audio' | 'image'; label: string } | null {
+  if (isAudioCardFront(front)) return { kind: 'audio', label: 'Audio clip' };
+  const image = /!\[([^\]]*)\]\([^)]+\)/.exec(front);
+  return image ? { kind: 'image', label: image[1].trim() || 'Image' } : null;
+}
 
 export function hitPath(hit: SearchHit): string {
   switch (hit.kind) {

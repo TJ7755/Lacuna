@@ -1,4 +1,3 @@
-import { searchHelp } from '../../pages/help/searchHelp';
 import { recordUsageAction } from '../../usage/actions';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import {
@@ -15,18 +14,14 @@ import { useNavigate } from 'react-router-dom';
 import { AppLink as Link } from '../ui/AppLink';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import { useSearchData } from '../../state/useSearchData';
-import {
-  searchCardsInScope,
-  searchCourseContent,
-  searchQuestionsInScope,
-} from '@lacuna/core/db/search';
+import { searchCardsInScope } from '@lacuna/core/db/search';
 import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 import { SearchIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { StudyDrawing } from '../ui/StudyDrawing';
 import { SearchResultOption } from './SearchResultOption';
-import { searchQuestionSetHits } from './searchQuestionSetHits';
+import { globalSearch } from './globalSearch';
 import { hitKey, hitPath, type SearchHit } from './searchPresentation';
 
 /** A single ordered list of Help, navigation, Card and Question hits. */
@@ -61,36 +56,9 @@ function GlobalPaletteDialog({
   returnFocusTarget?: RefObject<HTMLElement | null>;
 }) {
   const searchData = useSearchData();
-  // Help and navigation hits precede Question Sets, Questions and Cards, capped together
-  // so the palette never grows unbounded on a broad query.
+  // Rank the complete list before applying the palette's result cap.
   const search = useCallback(
-    (query: string): PaletteHit[] => {
-      const courses = searchData?.courses ?? [];
-      const lessons = searchData?.lessons ?? [];
-      const courseHits = searchCourseContent(query, courses, lessons, searchData?.notes ?? []);
-      const cardHits = searchCardsInScope(query, {
-        cards: searchData?.cards ?? [],
-        courses,
-        lessons,
-      });
-      const questionHits = searchQuestionsInScope(query, {
-        questions: searchData?.questions ?? [],
-        courses,
-        lessons,
-      });
-      const helpHits: PaletteHit[] = query.trim()
-        ? searchHelp(query)
-            .slice(0, 3)
-            .map((topic) => ({ kind: 'help', topic }))
-        : [];
-      return [
-        ...helpHits,
-        ...courseHits,
-        ...searchQuestionSetHits(query, searchData),
-        ...questionHits,
-        ...cardHits,
-      ];
-    },
+    (query: string): PaletteHit[] => globalSearch(query, searchData),
     [searchData],
   );
   return (

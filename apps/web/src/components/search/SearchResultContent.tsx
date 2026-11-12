@@ -1,7 +1,22 @@
-import { HelpIcon, FileTextIcon, FolderIcon, GridIcon, FlagIcon, TagIcon } from '../ui/icons';
+import {
+  HelpIcon,
+  FileTextIcon,
+  FolderIcon,
+  GridIcon,
+  FlagIcon,
+  TagIcon,
+  ImageIcon,
+  PlayIcon,
+} from '../ui/icons';
 import { GeneratedCardBadge } from '../cards/GeneratedCardBadge';
 import { memo } from 'react';
-import { HighlightedText, hasTextMatch, matchPreview, type SearchHit } from './searchPresentation';
+import {
+  cardMedia,
+  HighlightedText,
+  hasTextMatch,
+  matchPreview,
+  type SearchHit,
+} from './searchPresentation';
 
 /** The same matched content and ownership labels in both search surfaces. */
 export const SearchResultContent = memo(function SearchResultContent({
@@ -111,8 +126,15 @@ export const SearchResultContent = memo(function SearchResultContent({
       ? question.explanation
       : question!.generatorKey;
   const tags = card?.tags ?? question?.tags ?? [];
+  const media = card ? cardMedia(card.front) : null;
+  const MediaIcon = media?.kind === 'audio' ? PlayIcon : ImageIcon;
   return (
     <>
+      {media && (
+        <span className="grid h-7 w-7 flex-none place-items-center rounded-lg bg-accent-soft text-accent-ink">
+          <MediaIcon width={14} height={14} />
+        </span>
+      )}
       {compact && question && (
         <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-accent-soft text-accent-ink">
           <FileTextIcon width={14} height={14} />
@@ -121,7 +143,7 @@ export const SearchResultContent = memo(function SearchResultContent({
       <span className="flex min-w-0 flex-col gap-0.5">
         <span className={titleClass}>
           <HighlightedText
-            text={matchPreview(title, query, max) || '(empty front)'}
+            text={matchPreview(title, query, max) || media?.label || '(empty front)'}
             query={query}
           />
         </span>
