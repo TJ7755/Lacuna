@@ -128,7 +128,6 @@ export function useLearnSession({
   reviewSessionKind,
   isSimpleMode,
   introduceNewCards = false,
-  answerStrictness = 'lenient',
   standaloneSimple = false,
   examPractice = false,
   catchUpPractice = false,
