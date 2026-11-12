@@ -7,11 +7,7 @@ import { expect, test } from 'vitest';
 
 test('hosted functions load after Vercel-style ESM transpilation', async () => {
   const root = resolve(import.meta.dirname, '..');
-  const entries = [
-    'apps/ai/api/ai/session.ts',
-    'apps/ai/api/ai/inference.ts',
-    'apps/ai/api/ai/jev.ts',
-  ];
+  const entries = ['api/ai/session.ts', 'api/ai/inference.ts', 'api/ai/jev.ts'];
   const traced = await build({
     entryPoints: entries.map((entry) => join(root, entry)),
     bundle: true,

@@ -11,5 +11,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["../../apps/ai/server/**/*.ts", "../../apps/ai/api/**/*.ts"]
+  "include": ["../../api/**/*.ts", "../../apps/ai/server/**/*.ts", "../../apps/ai/api/**/*.ts"]
 }
