@@ -84,7 +84,7 @@ export function ExpandingActionPanel({
     return () => anchor.removeAttribute('data-flow-expanded-trigger');
   }, [anchor]);
 
-  const closed = { ...origin, x: 0, y: 0, borderRadius: origin.height / 2 };
+  const closed = { ...origin, x: 0, y: 0 };
   return (
     <motion.div
       ref={trapRef}
@@ -98,7 +98,7 @@ export function ExpandingActionPanel({
         if (event.key !== 'Tab') onKeyDown?.(event);
       }}
       initial={multiplier > 0 ? closed : false}
-      animate={{ ...bounds, borderRadius: 36 }}
+      animate={bounds}
       exit={closed}
       transition={expandingActionSpring(multiplier)}
       className={`flow-expansion absolute top-0 z-0 bg-surface-raised text-ink card-surface ${align === 'end' ? 'right-0' : 'left-0'}`}
