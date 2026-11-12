@@ -340,12 +340,7 @@ describe('LearnMode scope', () => {
       const prompt = card.textContent ?? '';
       seen.add(prompt);
       if (index === 2) break;
-      if (prompt === 'New Q') {
-        await familiariseCard();
-        await recallCard('A');
-      } else {
-        await answerYes();
-      }
+      await familiariseCard();
       await waitFor(() => expect(queryStudyFaceText(prompt)).toBeUndefined());
     }
     expect(seen).toEqual(new Set(['Due Q', 'Not Due Q', 'New Q']));
@@ -387,12 +382,7 @@ describe('LearnMode scope', () => {
       const prompt = card.textContent ?? '';
       seen.add(prompt);
       if (index === 2) break;
-      if (prompt === 'New Q') {
-        await familiariseCard();
-        await recallCard('A');
-      } else {
-        await answerYes();
-      }
+      await familiariseCard();
       await waitFor(() => expect(queryStudyFaceText(prompt)).toBeUndefined());
     }
     expect(seen).toEqual(new Set(['Due Q', 'Not Due Q', 'New Q']));

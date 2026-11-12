@@ -23,7 +23,7 @@ export function QuestionSetChoices({
 }: {
   label: string;
   value: string;
-  options: { value: string; label: string; description?: ReactNode }[];
+  options: { value: string; label: ReactNode; description?: ReactNode }[];
   onChange: (value: string) => void;
   disabled?: boolean;
   describedBy?: string;

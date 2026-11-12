@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
+import { MarkdownView } from '../../components/markdown/MarkdownView';
 import { QuestionSetChoices } from '../../components/question-sets/QuestionSetChoices';
 import '../../components/question-sets/question-set-controls.css';
 import { motionTransition } from '../../components/ui/motion';
@@ -175,7 +176,10 @@ export function LessonChoiceControls({
           label="Choose an answer"
           describedBy={promptId}
           value={selected}
-          options={choices.map((answer) => ({ value: answer, label: answer }))}
+          options={choices.map((answer) => ({
+            value: answer,
+            label: <MarkdownView source={answer} literalNumericAnswer />,
+          }))}
           onChange={setSelected}
           disabled={Boolean(result)}
           flow

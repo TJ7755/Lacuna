@@ -44,3 +44,7 @@ export async function reviews() {
     responseTimeSec,
   }));
 }
+
+export async function markPreviouslyStudied() {
+  await db.cards.toCollection().modify({ state: 1, reps: 1, lastReviewed: Date.now() });
+}
