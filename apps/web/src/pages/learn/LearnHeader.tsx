@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
 import { CARD_PRACTICE_LABEL } from '../../course/studySessionPlan';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -17,6 +17,8 @@ import {
 import { StudyExitButton } from '../../components/learn/StudyExitButton';
 import { STUDY_HEADER_ROW } from '../../components/learn/studyHeaderLayout';
 import { PomodoroTimer } from '../../components/learn/PomodoroTimer';
+import { ExpandingActionPanel } from '../../components/ui/ExpandingActionPanel';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { cn } from '../../components/ui/cn';
 import { scaledSpring } from '../../components/ui/motion';
 import type { CardFilter } from '@lacuna/core/db/search';
@@ -180,6 +182,16 @@ export function LearnHeader({
   /** What each segment represents in the spoken position. */
   segmentNoun?: string;
 }) {
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  const menuPanel = useFocusTrap(menuOpen && !isTouchMode);
+  useEffect(() => {
+    if (!menuOpen || isTouchMode) return;
+    const outside = (event: PointerEvent) => {
+      if (!menuTrigger.current?.parentElement?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', outside);
+    return () => document.removeEventListener('pointerdown', outside);
+  }, [menuOpen, isTouchMode, setMenuOpen]);
   const info = computeHeaderInfo({
     singleDeck,
     unitDisplayName,
@@ -303,8 +315,9 @@ export function LearnHeader({
         )}
 
         {cardActions && (
-          <div className="relative">
+          <div className={cn('relative', menuOpen && 'z-30')}>
             <button
+              ref={menuTrigger}
               type="button"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Card actions"
@@ -312,9 +325,7 @@ export function LearnHeader({
               title="Card actions"
               className={cn(
                 'flex h-11 w-11 items-center justify-center rounded-full border transition-colors',
-                menuOpen
-                  ? 'border-ink bg-ink text-paper'
-                  : 'border-line-strong bg-surface text-ink hover:border-ink/40',
+                'border-line-strong bg-surface text-ink hover:border-ink/40',
               )}
             >
               <motion.span
@@ -343,68 +354,79 @@ export function LearnHeader({
                     m={m}
                   />
                 ) : (
-                  <motion.div
-                    initial={m > 0 ? { opacity: 0, y: -6 } : false}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={m > 0 ? { opacity: 0, y: -6 } : undefined}
-                    transition={{
-                      y: scaledSpring(m, 480, 2 * Math.sqrt(480)),
-                      opacity: { duration: 0.12 * m },
-                    }}
-                    className="absolute right-0 top-[52px] z-20 w-[260px] origin-top-right overflow-hidden rounded-[18px] bg-surface p-1.5 card-surface"
-                  >
-                    {forecast && <p className="px-3 py-2.5 text-sm text-ink-soft">{forecast}</p>}
-                    {current.sequenceItemId === undefined &&
-                      current.occlusionRegionId === undefined && (
-                        <MenuItem
-                          icon={<EditIcon width={16} height={16} />}
-                          label="Edit card"
-                          onClick={onEdit}
-                        />
-                      )}
-                    <MenuItem
-                      icon={<FlagIcon width={16} height={16} />}
-                      label={current.flagged ? 'Remove flag' : 'Flag card'}
-                      description={
-                        current.flagged ? undefined : 'Find it later; its schedule is unchanged.'
-                      }
-                      onClick={onToggleFlag}
-                    />
-                    <MenuItem
-                      icon={<ClockIcon width={16} height={16} />}
-                      label="Bury until tomorrow"
-                      description="Back tomorrow."
-                      onClick={onBury}
-                    />
-                    <MenuItem
-                      icon={<PauseIcon width={16} height={16} />}
-                      label="Suspend card"
-                      description="Out of study until you resume it."
-                      onClick={onSuspend}
-                    />
-                    <div className="mx-2 my-1.5 h-px bg-line" />
-                    <MenuItem
-                      icon={<FocusIcon width={16} height={16} />}
-                      label={focusMode ? 'Leave focus mode' : 'Focus mode'}
-                      onClick={onToggleFocus}
-                    />
-                    <MenuItem
-                      icon={
-                        isFullscreen ? (
-                          <RestoreIcon width={16} height={16} />
-                        ) : (
-                          <FullscreenIcon width={16} height={16} />
-                        )
-                      }
-                      label={isFullscreen ? 'Leave full screen' : 'Full screen'}
-                      onClick={onToggleFullscreen}
-                    />
-                    <MenuItem
-                      icon={<KeyboardIcon width={16} height={16} />}
-                      label="Keyboard shortcuts"
-                      onClick={onShowShortcuts}
-                    />
-                  </motion.div>
+                  menuTrigger.current && (
+                    <ExpandingActionPanel
+                      anchor={menuTrigger.current}
+                      label="Card actions"
+                      width={260}
+                      multiplier={m}
+                      trapRef={menuPanel}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setMenuOpen(false);
+                          // The study body's overlay handoff runs after this event.
+                          requestAnimationFrame(() =>
+                            menuTrigger.current?.focus({ preventScroll: true }),
+                          );
+                        }
+                      }}
+                      className="p-1.5"
+                    >
+                      {forecast && <p className="px-3 py-2.5 text-sm text-ink-soft">{forecast}</p>}
+                      {current.sequenceItemId === undefined &&
+                        current.occlusionRegionId === undefined && (
+                          <MenuItem
+                            icon={<EditIcon width={16} height={16} />}
+                            label="Edit card"
+                            onClick={onEdit}
+                          />
+                        )}
+                      <MenuItem
+                        icon={<FlagIcon width={16} height={16} />}
+                        label={current.flagged ? 'Remove flag' : 'Flag card'}
+                        description={
+                          current.flagged ? undefined : 'Find it later; its schedule is unchanged.'
+                        }
+                        onClick={onToggleFlag}
+                      />
+                      <MenuItem
+                        icon={<ClockIcon width={16} height={16} />}
+                        label="Bury until tomorrow"
+                        description="Back tomorrow."
+                        onClick={onBury}
+                      />
+                      <MenuItem
+                        icon={<PauseIcon width={16} height={16} />}
+                        label="Suspend card"
+                        description="Out of study until you resume it."
+                        onClick={onSuspend}
+                      />
+                      <div className="mx-2 my-1.5 h-px bg-line" />
+                      <MenuItem
+                        icon={<FocusIcon width={16} height={16} />}
+                        label={focusMode ? 'Leave focus mode' : 'Focus mode'}
+                        onClick={onToggleFocus}
+                      />
+                      <MenuItem
+                        icon={
+                          isFullscreen ? (
+                            <RestoreIcon width={16} height={16} />
+                          ) : (
+                            <FullscreenIcon width={16} height={16} />
+                          )
+                        }
+                        label={isFullscreen ? 'Leave full screen' : 'Full screen'}
+                        onClick={onToggleFullscreen}
+                      />
+                      <MenuItem
+                        icon={<KeyboardIcon width={16} height={16} />}
+                        label="Keyboard shortcuts"
+                        onClick={onShowShortcuts}
+                      />
+                    </ExpandingActionPanel>
+                  )
                 ))}
             </AnimatePresence>
           </div>

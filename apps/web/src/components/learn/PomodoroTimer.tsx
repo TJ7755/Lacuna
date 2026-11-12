@@ -1,4 +1,4 @@
-import { DialogPanel } from '../ui/DialogPanel';
+import { ExpandingActionPanel } from '../ui/ExpandingActionPanel';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { usePomodoro } from '../../hooks/usePomodoro';
@@ -57,6 +57,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
   const m = speedMultiplier(motionSpeed);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const popupRef = useFocusTrap(open);
 
   /* close on Esc or outside click */
@@ -100,9 +101,10 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
       : 'Pomodoro timer';
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className={`relative ${open ? 'z-30' : ''}`}>
       {/* ===== Compact face ===== */}
       <button
+        ref={trigger}
         type="button"
         onClick={() => setOpen((v) => !v)}
         title={compactLabel}
@@ -175,15 +177,15 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
 
       {/* ===== Expanded popup ===== */}
       <AnimatePresence>
-        {open && (
-          <DialogPanel
-            modal={false}
+        {open && trigger.current && (
+          <ExpandingActionPanel
+            anchor={trigger.current}
+            width={240}
             trapRef={popupRef}
             label="Pomodoro timer"
             onKeyDown={(event) => {
               if (event.key === 'Escape') setOpen(false);
             }}
-            className="absolute right-0 top-[52px] z-30 w-60 origin-top-right"
           >
             <div className="px-4 py-4">
               {/* header */}
@@ -292,7 +294,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
                 )}
               </div>
             </div>
-          </DialogPanel>
+          </ExpandingActionPanel>
         )}
       </AnimatePresence>
     </div>
