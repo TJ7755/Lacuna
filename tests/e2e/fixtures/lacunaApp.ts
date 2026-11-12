@@ -18,9 +18,13 @@ export async function chooseRecallPractice(page: Page, lessonName?: string) {
   await expect(sheet).toBeHidden();
 }
 
-export async function completeRevealedIntroduction(page: Page, answer: string) {
+export async function completeRevealedIntroduction(
+  page: Page,
+  answer: string,
+  advanceLabel: 'Yes' | 'Continue' = 'Yes',
+) {
   const study = page.getByRole('main', { name: 'Study card' });
-  const next = study.getByRole('button', { name: 'Yes', exact: true });
+  const next = study.getByRole('button', { name: advanceLabel, exact: true });
   await study.getByRole('button', { name: 'Show answer', exact: true }).last().click();
   await next.click();
   await study.getByRole('textbox', { name: 'Your answer' }).fill(answer);

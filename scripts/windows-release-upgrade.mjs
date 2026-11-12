@@ -191,7 +191,8 @@ try {
     .click();
   await page.getByRole('button', { name: 'Study', exact: true }).last().click();
   await chooseScheduledStudy(page);
-  await completeRevealedIntroduction(page, 'Paris');
+  // The pinned released baseline predates the learner-choice controls.
+  await completeRevealedIntroduction(page, 'Paris', 'Continue');
   await page
     .getByRole('main', { name: 'Study progress' })
     .getByRole('button', { name: 'Finish for now' })
