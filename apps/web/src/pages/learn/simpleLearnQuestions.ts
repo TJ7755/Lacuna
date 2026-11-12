@@ -1,5 +1,10 @@
 import type { Card } from '@lacuna/core/db/types';
 import { markdownAnswerShape } from '../../components/markdown/markdownAnswers';
+import {
+  prepareNumericAnswer,
+  renderMarkdownToHtml,
+} from '../../components/markdown/markdownRenderer';
+import maths from '../../components/markdown/optionalMarkdownMath';
 import { lessonDistractorAnswerKey } from '../../jev/protocol';
 
 export interface LessonChoiceCard {
@@ -8,11 +13,31 @@ export interface LessonChoiceCard {
   answer: string;
 }
 
-function shortPlainText(source: string, maxLength: number) {
+function shortChoiceSource(source: string, maxLength: number) {
   const trimmed = source.trim();
   if (!trimmed || trimmed.length > maxLength || /[\r\n]/.test(trimmed)) return null;
   const { text, hasVisual } = markdownAnswerShape(trimmed);
-  return !hasVisual && text === trimmed.replace(/\s+/g, ' ') ? text : null;
+  return !hasVisual && text && text.length <= maxLength ? trimmed : null;
+}
+
+function renderedChoiceIdentity(source: string) {
+  const body = new DOMParser().parseFromString(
+    renderMarkdownToHtml(prepareNumericAnswer(source), false, false, { math: maths }),
+    'text/html',
+  ).body;
+  // KaTeX's text includes the authored TeX annotation. Compare its MathML instead,
+  // keeping superscripts distinct from subscripts and equivalent braces equal.
+  for (const formula of body.querySelectorAll('.katex')) {
+    formula.querySelectorAll('annotation').forEach((annotation) => annotation.remove());
+    formula.replaceWith(
+      `\uFFFC${formula.querySelector('math')?.outerHTML ?? formula.textContent}\uFFFC`,
+    );
+  }
+  return body.textContent ?? '';
+}
+
+function choiceAnswerKey(source: string) {
+  return lessonDistractorAnswerKey(renderedChoiceIdentity(source));
 }
 
 function distinctText(text: string) {
@@ -44,22 +69,23 @@ export function lessonChoiceCandidates(cards: readonly Card[]): LessonChoiceCard
     if (!rawPrompt) continue;
     const { text: prompt, hasVisual } = markdownAnswerShape(rawPrompt);
     if (hasVisual || !prompt || prompt.length > 180) continue;
-    const promptKey = distinctText(prompt);
+    const promptKey = distinctText(renderedChoiceIdentity(rawPrompt));
     promptCounts.set(promptKey, (promptCounts.get(promptKey) ?? 0) + 1);
-    // Formatted prompts may need the familiarisation face, but can still duplicate plain prompts.
-    if (/[\r\n]/.test(rawPrompt) || prompt !== rawPrompt.replace(/\s+/g, ' ')) continue;
-    const answer = shortPlainText(card.back, 80);
-    if (answer) entries.push({ id: card.id, prompt, answer });
+    if (/[\r\n]/.test(rawPrompt) || rawPrompt.length > 180) continue;
+    const answer = shortChoiceSource(card.back, 80);
+    if (answer) entries.push({ id: card.id, prompt: rawPrompt, answer });
   }
-  return entries.filter(({ prompt }) => promptCounts.get(distinctText(prompt)) === 1);
+  return entries.filter(
+    ({ prompt }) => promptCounts.get(distinctText(renderedChoiceIdentity(prompt))) === 1,
+  );
 }
 
 export function canOfferChoices(
   target: LessonChoiceCard,
   cards: readonly LessonChoiceCard[],
 ): boolean {
-  const expected = lessonDistractorAnswerKey(target.answer);
-  return cards.some((candidate) => lessonDistractorAnswerKey(candidate.answer) !== expected);
+  const expected = choiceAnswerKey(target.answer);
+  return cards.some((candidate) => choiceAnswerKey(candidate.answer) !== expected);
 }
 
 /** Sample ranked, still-eligible distractors and fill any gaps locally. */
@@ -69,11 +95,11 @@ export function lessonChoices(
   rankedIds: readonly string[],
 ): string[] {
   const byId = new Map(cards.map((card) => [card.id, card]));
-  const seen = new Set([lessonDistractorAnswerKey(target.answer)]);
+  const seen = new Set([choiceAnswerKey(target.answer)]);
   const distractors: string[] = [];
   const add = (candidate: LessonChoiceCard | undefined) => {
     if (!candidate || distractors.length === 3) return;
-    const key = lessonDistractorAnswerKey(candidate.answer);
+    const key = choiceAnswerKey(candidate.answer);
     if (seen.has(key)) return;
     seen.add(key);
     distractors.push(candidate.answer);

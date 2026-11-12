@@ -56,9 +56,8 @@ export function prepareIntroduction(
 ): LessonIntroduction | undefined {
   const previous = saved ?? { chunks: [], attempts: [] };
   const assigned = new Set(previous.chunks.flat());
-  const newCards = queue.filter(
-    (card) => !assigned.has(card.id) && card.state === 0 && canIntroduceCard(card),
-  );
+  // Learn is an explicit introduction request, even after earlier practice changed FSRS state.
+  const newCards = queue.filter((card) => !assigned.has(card.id) && canIntroduceCard(card));
   if (!saved && newCards.length === 0) return;
   const chunks = [...previous.chunks];
   for (let index = 0; index < newCards.length; index += CHUNK_SIZE) {

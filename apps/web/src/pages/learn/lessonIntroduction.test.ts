@@ -87,7 +87,7 @@ it('sees all four cards first, then opens at most two chunks while interleaving 
   expect(reachedThirdChunk).toBe(true);
 });
 
-it('keeps typed misses in recall after FSRS changes and resumes only already-assigned non-new cards', () => {
+it('introduces previously studied cards and keeps typed misses in recall when resumed', () => {
   const fresh = card('fresh', 'lesson');
   const old = card('old', 'lesson', { state: 1 });
   const cards = [fresh, old];
@@ -96,7 +96,7 @@ it('keeps typed misses in recall after FSRS changes and resumes only already-ass
   state.simple.queue = cards;
   state.introduction = prepareIntroduction(cards, undefined);
   const beforeRecognition = snapshotSession(state);
-  expect(introductionStage(state.introduction, old.id)).toBeUndefined();
+  expect(introductionStage(state.introduction, old.id)).toBe('familiarise');
 
   state = transitionSession(state, {
     type: 'introduction-checked',
@@ -115,7 +115,7 @@ it('keeps typed misses in recall after FSRS changes and resumes only already-ass
   const restored = restoreIntroduction(JSON.parse(JSON.stringify(state.introduction)));
   const resumed = prepareIntroduction(state.simple.queue, restored);
   expect(introductionStage(resumed, fresh.id)).toBe('recall');
-  expect(introductionStage(resumed, old.id)).toBeUndefined();
+  expect(introductionStage(resumed, old.id)).toBe('familiarise');
   expect(resumed?.last).toEqual({ cardId: fresh.id, first: false });
 });
 

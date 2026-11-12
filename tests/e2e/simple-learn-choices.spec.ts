@@ -40,6 +40,50 @@ async function seedLesson(
 
 const readReviews = (page: Page) => page.evaluate(() => window.SimpleLearnChoicesFixture.reviews());
 
+test('offers rendered maths choices after earlier study, before Jev rankings arrive', async ({
+  page,
+}, testInfo) => {
+  await enableJev(page);
+  const { lessonId } = await seedLesson(page, {
+    cards: {
+      'What is the derivative of $e^x$?': '$e^x$',
+      'What is the derivative of $x$?': '$1$',
+      'What is the derivative of $x^2$?': '$2x$',
+    },
+  });
+  await page.evaluate(() => window.SimpleLearnChoicesFixture.markPreviouslyStudied());
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requests = 0;
+  await page.route('**/api/ai/jev', async (route) => {
+    requests++;
+    await held;
+    await route.fulfill({ status: 503, body: '' });
+  });
+  try {
+    await page.goto(`/#/lesson/${lessonId}/learn`);
+    const main = page.getByRole('main', { name: 'Study card' });
+    await expect(main.getByRole('radio')).toHaveCount(3);
+    await expect(main.locator('[data-study-choices] .katex')).toHaveCount(3);
+    await expect.poll(() => requests).toBe(1);
+    await testInfo.attach('maths-choices-after-study', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
+    await page.reload();
+    await expect(main.getByRole('radio')).toHaveCount(3);
+    await main.getByRole('radio').first().press('Space');
+    await main.getByRole('button', { name: 'Check answer', exact: true }).click();
+    await expect(
+      main.locator('[data-study-card-id]:not([inert]) [data-study-face="back"]'),
+    ).toBeVisible();
+  } finally {
+    release();
+  }
+});
+
 async function enableJev(page: Page) {
   await page.route('**/api/ai/session', (route) =>
     route.fulfill({ json: { token: 'preview-session', expiresAt: Date.now() + 600_000 } }),
@@ -229,6 +273,8 @@ test('introduces choices before timed typing and keeps the old practice entry', 
     page.getByRole('banner').getByRole('dialog', { name: 'Leave this session?' }),
   ).toBeVisible();
   await expect(leave).not.toHaveAttribute('aria-modal', 'true');
+  // Assert the verdict while the prompt pauses it; dismissal resumes its timer.
+  await expect(view.revealed).toHaveText(cards[first]);
   await page.keyboard.press('Escape');
   await expect(exitButton).toBeFocused();
   await expect(leave).toHaveCount(0);
@@ -237,7 +283,6 @@ test('introduces choices before timed typing and keeps the old practice entry', 
   await exitButton.click();
   await expect(leave).toHaveCount(0);
   await view.main.focus();
-  await expect(view.revealed).toHaveText(cards[first]);
   await nextPrompt(view, first);
 
   const firstChunk = new Set([first]);
