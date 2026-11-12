@@ -45,8 +45,19 @@ for (const answer of ['manual', 'automatic-advance', 'automatic-undo'] as const)
     const report = page.getByRole('main', { name: 'Session report' });
     const transition = page.getByRole('main', { name: 'Study progress' });
     if (answer === 'manual') {
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
       await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
       await page.getByRole('button', { name: 'Yes', exact: true }).click();
+      await expect(
+        page.getByLabel('Notifications').getByRole('button', { name: 'Undo', exact: true }),
+      ).toBeVisible();
+      const departingCard = page.locator('[data-study-card-id]');
+      await expect(departingCard).toHaveAttribute('inert');
+      await expect(departingCard).not.toBeInViewport();
+      await page.screenshot({
+        path: testInfo.outputPath('final-card-departed.png'),
+        fullPage: true,
+      });
     } else {
       await page.getByRole('textbox', { name: 'Your answer' }).fill('Crimson');
       await page.getByRole('button', { name: 'Check answer', exact: true }).click();
