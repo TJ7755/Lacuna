@@ -149,7 +149,7 @@ export function useLearnAnswerFeedback({
             if (result.undoAvailable) {
               const message = result.feedbackMessage ?? 'Answer recorded';
               if (quietCardPractice && result.completionPending) {
-                cardTransitionRef.current?.cancel();
+                // Undo can restore the card without interrupting its accepted departure.
                 const showUndo = () => {
                   const toast = { dismissed: false, show: showUndo };
                   completionUndoToastRef.current = toast;

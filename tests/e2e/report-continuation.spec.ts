@@ -44,6 +44,7 @@ for (const answer of ['manual', 'automatic-advance', 'automatic-undo'] as const)
     await chooseScheduledStudy(page);
     const report = page.getByRole('main', { name: 'Session report' });
     const transition = page.getByRole('main', { name: 'Study progress' });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     if (answer === 'manual') {
       await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
       await page.getByRole('button', { name: 'Yes', exact: true }).click();
@@ -56,11 +57,9 @@ for (const answer of ['manual', 'automatic-advance', 'automatic-undo'] as const)
         .getByRole('button', { name: 'Undo', exact: true });
       await expect(undo).toBeVisible();
       await expect(studyCard.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
-      const answerFace = studyCard.locator(
-        '[data-study-card-id]:not([inert]) [data-study-face="back"]',
-      );
-      await expect(answerFace).toBeInViewport();
-      await expect(answerFace.getByText('Right, in your own words')).toBeVisible();
+      const departingCard = studyCard.locator('[data-study-card-id]');
+      await expect(departingCard).toHaveAttribute('inert');
+      await expect(departingCard).not.toBeInViewport();
       await expect(report).toBeHidden();
       await expect(transition).toBeHidden();
       await page.screenshot({ path: testInfo.outputPath('provisional-card.png'), fullPage: true });
