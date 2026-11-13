@@ -7,10 +7,8 @@
 // objective.ts) and from the eligibility rules (see eligibility.ts).
 //
 // Equal scores use session-scoped random ranks when initial cards are captured.
-// Single unit: ordering is exactly the per-unit objective order (delegated to
-// cooldown.selectNextCard) so behaviour is unchanged. Multiple units: each card is
-// scored by its own unit's objective, those scores are normalised within the unit,
-// and weighted by an exam-proximity urgency so nearer exams are served first.
+// Upcoming exam dates order eligible work first. Within a deadline, each card is
+// scored by its unit's objective, with scores normalised across multiple units.
 //
 // A "unit" is anything satisfying SchedulerConfig (a Deck or a Course) paired with
 // a SessionUnitScope describing which cards belong to it: a deck's own cards, a
@@ -33,7 +31,7 @@ import {
   type CourseNewCardBudget,
 } from './courseNewCardBudget';
 import { cramScore } from './cram';
-import type { ExamDateContext } from './examDate';
+import { isUpcomingExamDate, resolveCardExamDate, type ExamDateContext } from './examDate';
 import { daysUntil } from '../utils/datetime';
 import type { Card, SchedulerConfig, SchedulingUnitRecord } from '@lacuna/core/db/types';
 
@@ -292,8 +290,8 @@ function sessionServePoolFromIndex(
 }
 
 /**
- * Choose the next card to present. A single-deck session preserves the exact
- * per-deck objective ordering; a multi-deck session blends decks by urgency.
+ * Choose the next card by upcoming deadline, then objective priority.
+ * Cram retains its weakest-exam-day-recall ordering.
  */
 export function selectNext(
   cards: Card[],
@@ -306,7 +304,7 @@ export function selectNext(
       ? (ctx.decks.values().next().value as SessionDeckContext)
       : null;
   const index = singleUnit ? null : indexSessionCards(cards, ctx);
-  const pool = singleUnit
+  let pool = singleUnit
     ? unitServePool(cardsForUnit(cards, singleUnit), singleUnit.deck, ctx, now)
     : sessionServePoolFromIndex(index!, ctx, now);
   if (pool.length === 0) return null;
@@ -336,6 +334,38 @@ export function selectNext(
       (cooldowns.get(c.id) ?? 0) < (cooldowns.get(best.id) ?? 0) ? c : best,
     );
   }
+
+  // Upcoming assessments precede maintenance and later papers. Recall scores
+  // order work within the same deadline; cooldowns still space repeated answers.
+  const deadlines = new Map<string, number>();
+  for (const card of pool) {
+    const units = singleUnit ? [singleUnit] : indexedUnitsForCard(card, index!);
+    const deadline = (unit: SessionDeckContext) => {
+      const date = unit.oc.examDateContext
+        ? resolveCardExamDate(card, unit.oc.examDateContext, now)
+        : unit.deck.examDate;
+      return isUpcomingExamDate(date, now) ? date : Infinity;
+    };
+    const unit =
+      units.length === 1
+        ? units[0]
+        : resolveScoringUnit(card, units, (candidate) => -deadline(candidate));
+    deadlines.set(card.id, deadline(unit));
+  }
+  const ready = pool.filter((card) => (cooldowns.get(card.id) ?? 0) <= 0);
+  const soonestCooldown = pool.reduce(
+    (soonest, card) => Math.min(soonest, cooldowns.get(card.id) ?? 0),
+    Infinity,
+  );
+  const candidates =
+    ready.length > 0
+      ? ready
+      : pool.filter((card) => (cooldowns.get(card.id) ?? 0) === soonestCooldown);
+  const earliest = candidates.reduce(
+    (date, card) => Math.min(date, deadlines.get(card.id)!),
+    Infinity,
+  );
+  pool = candidates.filter((card) => deadlines.get(card.id) === earliest);
 
   if (ctx.decks.size === 1) {
     const only = singleUnit ?? (ctx.decks.values().next().value as SessionDeckContext);

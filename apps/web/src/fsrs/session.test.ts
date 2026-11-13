@@ -5,6 +5,25 @@ import { makeSessionContext, selectNext } from './session';
 import { NOW, deck, card } from './session.testFixtures';
 
 describe('multi-deck session normalisation', () => {
+  it('serves an earlier exam before a weaker later-exam card', () => {
+    const near = deck('near', 2);
+    const far = deck('far', 30);
+    const cards = [
+      card('near-strong', near.id, {
+        stability: 100,
+        difficulty: 5,
+        state: 2,
+        reps: 3,
+        lastReviewed: NOW - MS_PER_DAY,
+        due: NOW - 1,
+      }),
+      card('near-weak', near.id),
+      card('far-weak', far.id),
+    ];
+    const ctx = makeSessionContext([near, far]);
+    // Its weaker sibling is cooling down after being served.
+    expect(selectNext(cards, ctx, new Map([['near-weak', 1]]), NOW)?.id).toBe('near-strong');
+  });
   it('serves a single-card deck without producing a degenerate zero priority', () => {
     const near = deck('near', 1);
     const far = deck('far', 30);
