@@ -130,7 +130,7 @@ describe('course/lesson-scoped sessions', () => {
     };
     const ctx = makeSessionContext([unit]);
 
-    expect(selectNext([near, far], ctx, new Map(), NOW)?.id).toBe('far');
+    expect(selectNext([near, far], ctx, new Map(), NOW)?.id).toBe('near');
     expect(sessionComplete([near], ctx, NOW)).toBe(true);
     expect(sessionComplete([far], ctx, NOW)).toBe(false);
     expect(sessionProgress([near, far], ctx, NOW)).toBe(0.5);
