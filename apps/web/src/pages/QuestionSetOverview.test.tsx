@@ -6,7 +6,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../db/schema';
 import { createCourse } from '../db/courseRepository';
-import { createQuestionSet } from '../questions/questionSetRepository';
+import { createQuestionSet, updateQuestionSet } from '../questions/questionSetRepository';
 import { startQuestionSetAttempt } from '../questions/questionSetAttemptRepository';
 import { QuestionSetOverview } from './QuestionSetOverview';
 
@@ -178,6 +178,65 @@ describe('QuestionSetOverview', () => {
       );
       expect(await db.questionSetAttempts.count()).toBe(3);
       expect(router.state.location.pathname).not.toContain(older.id);
+    },
+  );
+
+  it.each(['start latest', 'resume previous'] as const)(
+    'can %s after a parent diagram is added without changing the original attempt',
+    async (action) => {
+      const { course, set } = await fixture();
+      const previous = await startQuestionSetAttempt(set.id, 'paper');
+      await db.questionSetAttempts.update(previous.id, {
+        responses: previous.responses.map((response) => ({
+          ...response,
+          draft: { kind: 'written', text: 'My saved answer' },
+        })),
+      });
+      const original = await db.questionSetAttempts.get(previous.id);
+      const updated = await updateQuestionSet(
+        set.id,
+        {
+          ...set,
+          questions: set.questions.map((question) => ({
+            ...question,
+            prompt: `${question.prompt}\n\n![Cell diagram](https://example.com/cell.png)`,
+          })),
+        },
+        { expectedContentRevisionId: set.contentRevisionId },
+      );
+      const { router } = open(course.id);
+      const start = await screen.findByRole(
+        'button',
+        { name: 'Start latest version' },
+        { timeout: 1000 },
+      );
+      const resume = screen.getByRole('button', { name: 'Resume previous version' });
+      if (action === 'start latest') {
+        fireEvent.click(
+          within(screen.getByRole('group', { name: 'Attempt mode' })).getByRole('button', {
+            name: 'Paper',
+          }),
+        );
+      }
+      fireEvent.click(action === 'start latest' ? start : resume);
+      await screen.findByText('Attempt opened');
+      expect(await db.questionSetAttempts.get(previous.id)).toEqual(original);
+      const attempts = await db.questionSetAttempts.toArray();
+      expect(attempts).toHaveLength(action === 'start latest' ? 2 : 1);
+      const opened = attempts.find((attempt) =>
+        router.state.location.pathname.endsWith(`/attempts/${attempt.id}`),
+      )!;
+      expect(opened.mode).toBe('paper');
+      expect(opened.receipt).toEqual(action === 'start latest' ? updated : previous.receipt);
+      if (action === 'start latest') {
+        // Revisiting the older attempt must not hide the current version's unfinished work.
+        await db.questionSetAttempts.update(previous.id, { updatedAt: opened.updatedAt + 1 });
+        await router.navigate(`/course/${course.id}/question-sets/cells`);
+        fireEvent.click(await screen.findByRole('button', { name: 'Resume' }));
+        await screen.findByText('Attempt opened');
+        expect(router.state.location.pathname).toContain(`/attempts/${opened.id}`);
+        expect(await db.questionSetAttempts.count()).toBe(2);
+      }
     },
   );
 
