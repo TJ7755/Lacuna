@@ -106,6 +106,14 @@ function expectDeclaredAtLeast(
 }
 
 describe('release configuration', () => {
+  it('publishes completed drafts even when a nightly skips its macOS ancestor', () => {
+    const publish = parse(releaseWorkflow).jobs.publish;
+    expect(publish.needs).toBe('publish-draft');
+    // A status function overrides Actions' implicit success() across skipped ancestors.
+    // The direct dependency must still succeed before verification and publication run.
+    expect(publish.if).toBe("${{ !cancelled() && needs.publish-draft.result == 'success' }}");
+  });
+
   it('identifies the public app repository and release version', () => {
     expect(packageJson.version).toMatch(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
     expect(packageJson.author).toBe('TJ7755');
