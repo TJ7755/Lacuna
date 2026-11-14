@@ -66,6 +66,9 @@
   background: hsl(var(--accent-soft) / 0.4);
   pointer-events: none;
 }
+.qs-composer .qs-image-form {
+  background: transparent;
+}
 .qs-composer-label {
   font-family: var(--font-display);
   font-size: 14px;
