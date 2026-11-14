@@ -5,7 +5,7 @@ import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 
 for (const width of [1440]) {
-  test(`joins a locked course midway and catches up after the current lesson at ${width}px`, async ({
+  test(`joins a locked course midway, continues exam lessons and can review earlier material at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -141,6 +141,8 @@ for (const width of [1440]) {
       page.locator('[data-study-face="front"]').getByText('Year one recall', { exact: true }),
     ).toBeVisible();
     await expect(page.getByText('Year two recall', { exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
+    await page.getByRole('button', { name: 'Yes', exact: true }).click();
     await page.goto(courseUrl);
     await page.getByRole('button', { name: 'Study', exact: true }).click();
     await expect(recommendation).toHaveText('Year twoLearn 1 new card');
@@ -163,11 +165,10 @@ for (const width of [1440]) {
       .getByRole('main', { name: 'Study progress' })
       .getByRole('button', { name: 'Continue', exact: true })
       .click();
+    // Equal exam deadlines keep forward lessons ahead of automatic catch-up.
     await expect(
-      page.locator('[data-study-face="front"]').getByText('Year one recall', { exact: true }),
+      page.locator('[data-study-face="front"]').getByText('Year three recall', { exact: true }),
     ).toBeVisible();
-    await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
-    await page.getByRole('button', { name: 'Yes', exact: true }).click();
     await expect
       .poll(() => readAll<ReviewHistoryEntry>(page, 'reviewHistory'))
       .toEqual(

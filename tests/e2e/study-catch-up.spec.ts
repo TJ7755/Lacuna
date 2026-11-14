@@ -101,7 +101,7 @@ async function capture(page: Page, info: TestInfo, name: string) {
   await info.attach(name, { path, contentType: 'image/png' });
 }
 
-test('desktop Study starts at the current lesson and introduces earlier cards before independent Questions', async ({
+test('desktop Study starts at the current lesson and catch-up does not bypass independent Question prerequisites', async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -161,7 +161,9 @@ test('desktop Study starts at the current lesson and introduces earlier cards be
   });
   await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
-  await expect(handoff.getByRole('heading', { name: /^Practise:/ })).toBeVisible();
+  await expect(
+    handoff.getByRole('heading', { name: 'Nothing else is ready right now', exact: true }),
+  ).toBeVisible();
   expect(
     await page.evaluate(() => JSON.parse(document.documentElement.dataset.sessionReports ?? '[]')),
   ).toEqual([]);
@@ -183,10 +185,10 @@ test('desktop Study starts at the current lesson and introduces earlier cards be
     expect.objectContaining({ lessonId: earlier.primaryLessonId }),
   );
 
-  // The authored Question is genuinely selectable: it was competing with catch-up.
+  // FSRS catch-up is real review evidence, but does not complete lesson introduction.
   await page.goto(courseUrl);
   await study.click();
-  await expect(preview.getByText(/^Practise:/)).toBeVisible();
-  await preview.getByRole('button', { name: 'Start session', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: 'Your answer', exact: true })).toBeVisible();
+  await expect(preview).toBeVisible();
+  await expect(preview.getByText(/^Practise:/)).toHaveCount(0);
+  expect(await readAll(page, 'questionSetAttempts')).toHaveLength(0);
 });
