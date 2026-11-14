@@ -88,6 +88,14 @@ export function withinQuestionStudyScope(
   );
 }
 
+/** Authored lesson membership is a prerequisite even when a Concept is shared. */
+export function withinQuestionLessonScope(
+  set: Pick<QuestionSetRecord, 'lessonIds'>,
+  lessonIds: readonly string[] | undefined,
+): boolean {
+  return lessonIds === undefined || set.lessonIds.every((id) => lessonIds.includes(id));
+}
+
 function familyKey(set: QuestionSetRecord, questionId: string): string {
   const family = set.bank?.family;
   return family

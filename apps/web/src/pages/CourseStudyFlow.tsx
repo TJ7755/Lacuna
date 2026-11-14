@@ -414,6 +414,7 @@ function CourseStudyFlowInner() {
         conceptId={displayStep.conceptId}
         techniqueId={displayStep.techniqueId}
         scopeLessonIds={displayStep.scopeLessonIds}
+        examDate={displayStep.examDate}
         scopeConceptIds={displayStep.scopeConceptIds}
         allowFamiliar={displayStep.allowFamiliar}
         sittingStartedAt={flowIdentity?.startedAt}

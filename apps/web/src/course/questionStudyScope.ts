@@ -10,10 +10,10 @@ import type {
 import type { Concept } from '@lacuna/core/questions/types';
 import { pointsForSelection } from '@lacuna/core/specifications/selection';
 import { currentAssessmentPracticeContext } from './assessmentPractice';
-import { earlierCourseLessonIds } from './courseEntry';
-import { lessonCardMembershipForLessons } from './lessonMembership';
+import { lessonCardMembershipForLessons, lessonCardMembership } from './lessonMembership';
+import { lessonStatus } from './path';
 
-/** Question candidates use accessible knowledge scope, independently of publisher editing permissions. */
+/** Automatic questions use fully learned lessons, independently of editing permissions. */
 export function questionStudyScope(input: {
   course: Course;
   lessons: Lesson[];
@@ -23,16 +23,13 @@ export function questionStudyScope(input: {
   assessments: CourseAssessment[];
   practiceNodes: PracticeNode[];
   concepts: Concept[];
+  completions?: readonly { lessonId: string }[];
 }): string[] {
   const { course, lessons, cards, concepts } = input;
   if (course.archived) return [];
-  const practice = currentAssessmentPracticeContext(input);
-  const prior = earlierCourseLessonIds(course, lessons, input.assessments, input.practiceNodes);
-  const priorReached = new Set([...prior].filter((id) => practice.reachedLessonIds.has(id)));
+  const learned = new Set(questionStudyLessonScope(input));
   const known = new Set(
-    [...practice.scope, ...lessonCardMembershipForLessons(priorReached, cards, input.links)].map(
-      (card) => card.conceptId,
-    ),
+    lessonCardMembershipForLessons(learned, cards, input.links).map((card) => card.conceptId),
   );
   if (course.unlockMode === 'open') {
     const cardConcepts = new Set(cards.map((card) => card.conceptId));
@@ -66,29 +63,35 @@ export function questionStudyScope(input: {
     .map((concept) => concept.id);
 }
 
-/** Lesson-only skill questions still require an accessible, introduced lesson. */
+/**
+ * Every member card must be learned, including linked cards. A partial exposure,
+ * a school-coverage declaration or an empty completion receipt cannot stand in
+ * for learning a lesson's cards. Direct FSRS courses use their existing non-new
+ * card criterion; cardless lessons require explicit completion.
+ */
 export function questionStudyLessonScope(
-  input: Parameters<typeof questionStudyScope>[0] & {
-    completions: readonly { lessonId: string }[];
-  },
+  input: Parameters<typeof questionStudyScope>[0],
 ): string[] {
   if (input.course.archived) return [];
   const reached = currentAssessmentPracticeContext(input).reachedLessonIds;
-  const prior = earlierCourseLessonIds(
-    input.course,
-    input.lessons,
-    input.assessments,
-    input.practiceNodes,
-  );
-  const introduced = new Set([
-    ...input.exposures.map((row) => row.lessonId),
-    ...input.completions.map((row) => row.lessonId),
-    ...prior,
-  ]);
   return input.lessons
-    .filter(
-      (lesson) =>
-        reached.has(lesson.id) && (input.course.learnFirst === false || introduced.has(lesson.id)),
-    )
+    .filter((lesson) => {
+      const members = lessonCardMembership(lesson.id, input.cards, input.links);
+      if (members.length === 0)
+        return (
+          reached.has(lesson.id) &&
+          Boolean(input.completions?.some((row) => row.lessonId === lesson.id))
+        );
+      return (
+        lessonStatus(
+          reached.has(lesson.id),
+          lesson.id,
+          members,
+          input.exposures,
+          [],
+          input.course.learnFirst !== false,
+        ) === 'completed'
+      );
+    })
     .map((lesson) => lesson.id);
 }

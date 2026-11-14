@@ -176,6 +176,7 @@ async function readCourseStudyFlowRecords(
     assessments,
     practiceNodes,
     concepts,
+    completions,
   };
   const questionScopeConceptIds = planQuestions ? questionStudyScope(questionContext) : [];
   const questionScopeLessonIds = study
@@ -184,7 +185,10 @@ async function readCourseStudyFlowRecords(
   const questionPractice =
     questionScopeConceptIds.length && questionSetCount > 0
       ? await import('../questions/conceptPractice').then(({ listConceptPractice }) =>
-          listConceptPractice(courseId, Date.now(), questionScopeConceptIds, { sittingStartedAt }),
+          listConceptPractice(courseId, Date.now(), questionScopeConceptIds, {
+            sittingStartedAt,
+            scopeLessonIds: questionScopeLessonIds,
+          }),
         )
       : [];
   const examSkillPractice =

@@ -6,7 +6,7 @@ import { startQuestionSetAttempt } from './questionSetAttemptRepository';
 import {
   practiceContext,
   withinQuestionStudyScope,
-  answers,
+  withinQuestionLessonScope,
   selectPracticeQuestion,
   unseenCapacity,
 } from './questionPracticeSelection';
@@ -59,22 +59,38 @@ export async function listExamSkillPractice(
   const exposure = latestQuestionPracticeExposure(data.attempts);
   const params = course?.fsrsParameters ?? defaultFsrsParameters();
   const sim = { fsrs: makeEngine(params), decay: decayOf(params), expectedGrade: 3 as const };
+  const unfinishedQuestions = new Set(
+    data.attempts
+      .filter(
+        (attempt) =>
+          attempt.mode === 'practice' &&
+          attempt.status !== 'complete' &&
+          attempt.undoneAt === undefined &&
+          !attempt.conceptPractice &&
+          attempt.practiceScope === 'question',
+      )
+      .flatMap((attempt) =>
+        attempt.receipt.questions.map((question) => `${attempt.questionSetId}\0${question.id}`),
+      ),
+  );
   return activeTechniques(courseTechniqueCatalogue(course, data.sets)).flatMap(({ id, name }) => {
     const scope = options.scopeConceptIds ? new Set(options.scopeConceptIds) : undefined;
     const available = data.candidates.filter(
       (row) =>
         techniques(row.question).includes(id) &&
         withinQuestionStudyScope(row.question, scope) &&
-        (options.scopeLessonIds === undefined ||
-          answers(row.question).some(({ answer }) =>
-            answer.allocations.some((allocation) => allocation.targetConceptIds.length > 0),
-          ) ||
-          row.set.lessonIds.every((lessonId) => options.scopeLessonIds?.includes(lessonId))),
+        withinQuestionLessonScope(row.set, options.scopeLessonIds),
     );
     if (!available.length) return [];
     const schedule = schedules.get(id) ?? emptyQuestionSchedule();
     const examDate = techniqueExamDate(
-      available.map((row) => ({ ...row.set, questions: [row.question] })),
+      available
+        .filter(
+          (row) =>
+            unseenCapacity(row, data) > 0 ||
+            unfinishedQuestions.has(`${row.set.id}\0${row.question.id}`),
+        )
+        .map((row) => ({ ...row.set, questions: [row.question] })),
       assessments,
       lessons,
       now,
@@ -141,6 +157,7 @@ export async function startExamSkillPractice(
     allowFamiliar?: boolean;
     resume?: boolean;
     study?: {
+      examDate?: number;
       sittingStartedAt?: number;
       scopeConceptIds?: readonly string[];
       scopeLessonIds?: readonly string[];
@@ -163,6 +180,12 @@ export async function startExamSkillPractice(
       const course = await db.courses.get(courseId);
       if (!course || course.archived) throw new Error('This course is unavailable for practice.');
       const data = await practiceContext(courseId);
+      const [assessments, lessons] = options.study
+        ? await Promise.all([
+            db.courseAssessments.where('courseId').equals(courseId).toArray(),
+            db.lessons.where('courseId').equals(courseId).toArray(),
+          ])
+        : [[], []];
       let available = data.candidates.filter((candidate) => {
         const ids = techniques(candidate.question);
         return (
@@ -172,17 +195,29 @@ export async function startExamSkillPractice(
               candidate.question,
               options.study.scopeConceptIds ? new Set(options.study.scopeConceptIds) : undefined,
             )) &&
-          (!options.study?.scopeLessonIds ||
-            answers(candidate.question).some(({ answer }) =>
-              answer.allocations.some((allocation) => allocation.targetConceptIds.length > 0),
-            ) ||
-            candidate.set.lessonIds.every((id) => options.study?.scopeLessonIds?.includes(id))) &&
+          withinQuestionLessonScope(candidate.set, options.study?.scopeLessonIds) &&
           Object.entries(options.blueprint ?? {}).every(
             ([key, value]) =>
               candidate.set.bank?.blueprint[key as 'type' | 'difficulty' | 'context'] === value,
           )
         );
       });
+      const deadline = (candidate: (typeof available)[number]) =>
+        options.study
+          ? (techniqueExamDate(
+              [{ ...candidate.set, questions: [candidate.question] }],
+              assessments,
+              lessons,
+              options.now ?? Date.now(),
+              course.localLessonOrder,
+              data.concepts,
+              course,
+            ) ?? Infinity)
+          : Infinity;
+      if (options.study?.examDate !== undefined)
+        available = available.filter(
+          (candidate) => deadline(candidate) === options.study?.examDate,
+        );
       if (options.resume) {
         const unfinished = data.attempts
           .filter(
@@ -220,7 +255,7 @@ export async function startExamSkillPractice(
         data,
         available,
         options,
-        (a, b) => Number(due(b.question)) - Number(due(a.question)),
+        (a, b) => deadline(a) - deadline(b) || Number(due(b.question)) - Number(due(a.question)),
         (a, b) =>
           Math.min(...techniques(a.question).map((id) => skills.get(id)?.dueAt ?? 0)) -
           Math.min(...techniques(b.question).map((id) => skills.get(id)?.dueAt ?? 0)),

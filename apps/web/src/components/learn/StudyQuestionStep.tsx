@@ -18,6 +18,7 @@ export function StudyQuestionStep({
   conceptId,
   techniqueId,
   scopeLessonIds,
+  examDate,
   scopeConceptIds,
   allowFamiliar,
   sittingStartedAt,
@@ -28,6 +29,7 @@ export function StudyQuestionStep({
   conceptId?: string;
   techniqueId?: TechniqueId;
   scopeLessonIds?: string[];
+  examDate?: number;
   scopeConceptIds: string[];
   allowFamiliar?: boolean;
   sittingStartedAt?: number;
@@ -42,14 +44,14 @@ export function StudyQuestionStep({
       ? startExamSkillPractice(courseId, techniqueId, {
           allowFamiliar,
           resume: true,
-          study: { sittingStartedAt, scopeConceptIds, scopeLessonIds },
+          study: { sittingStartedAt, scopeConceptIds, scopeLessonIds, examDate },
         })
       : startConceptPractice(courseId, conceptId, {
           mode: 'mixed',
           resume: true,
           scopeConceptIds,
           allowFamiliar,
-          study: { sittingStartedAt },
+          study: { sittingStartedAt, scopeLessonIds, examDate },
         });
     void promise
       .then((result) => {
@@ -68,6 +70,7 @@ export function StudyQuestionStep({
     techniqueId,
     scopeConceptIds,
     scopeLessonIds,
+    examDate,
     allowFamiliar,
     sittingStartedAt,
   ]);

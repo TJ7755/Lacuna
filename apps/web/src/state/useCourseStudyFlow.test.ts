@@ -1,7 +1,13 @@
 import 'fake-indexeddb/auto';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it } from 'vitest';
-import { createCourse, createLesson, createLessonCard } from '../db/repository';
+import {
+  createCourse,
+  createLesson,
+  createLessonCard,
+  upsertLessonCardExposure,
+} from '../db/repository';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { recordReview } from '../db/reviewRepository';
 import { db } from '../db/schema';
 import { useCourseStudyFlow } from './useCourseStudyFlow';
@@ -17,6 +23,120 @@ import {
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
+});
+
+it('learns all nearest-exam lesson cards before its questions, ahead of later due cards and drafts', async () => {
+  const now = Date.now();
+  const course = await createCourse('Exam order', {
+    examDate: now + 20 * MS_PER_DAY,
+    autoPractice: false,
+  });
+  const later = await createLesson(course.id, 'Later exam');
+  const near = await createLesson(course.id, 'Nearest exam');
+  await db.lessons.update(near.id, { examDate: now + 2 * MS_PER_DAY });
+  const laterCard = await createLessonCard(
+    course.id,
+    later.id,
+    'front_back',
+    'Later',
+    'Later answer',
+  );
+  const first = await createLessonCard(course.id, near.id, 'front_back', 'Near', 'Near answer');
+  const second = await createLessonCard(
+    course.id,
+    near.id,
+    'front_back',
+    'Near again',
+    'Another answer',
+  );
+  await upsertLessonCardExposure(later.id, laterCard.id, now - MS_PER_DAY);
+  await recordReview({
+    card: laterCard,
+    deck: course,
+    kind: 'course',
+    eventId: 'later-review',
+    sessionId: 'previous',
+    sessionKind: 'practice',
+    grade: 1,
+    correct: false,
+    responseTimeSec: 3,
+    distracted: false,
+    now: now - MS_PER_DAY,
+  });
+  for (const [lesson, card] of [
+    [later, laterCard],
+    [near, first],
+  ] as const) {
+    await createQuestionSet({
+      id: `set-${lesson.id}`,
+      courseId: course.id,
+      title: lesson.name,
+      lessonIds: [lesson.id],
+      assessmentIds: [],
+      questions: [
+        {
+          id: `q-${lesson.id}`,
+          prompt: `Apply ${lesson.name}`,
+          parts: [],
+          answer: {
+            maxMarks: 1,
+            response: { kind: 'written' },
+            prerequisiteConceptIds: [],
+            allocations: [
+              {
+                id: 'mark',
+                criterion: 'Applies the idea',
+                maxMarks: 1,
+                dimension: 'application',
+                targetConceptIds: [card.conceptId],
+              },
+            ],
+          },
+        },
+      ],
+    });
+  }
+  await startConceptPractice(course.id, laterCard.conceptId);
+  const { result, rerender, unmount } = renderHook(
+    ({ refreshKey }) => useCourseStudyFlow(course.id, refreshKey),
+    { initialProps: { refreshKey: 0 } },
+  );
+  try {
+    await waitFor(() => expect(result.current?.generation).toBe(0));
+    expect(result.current?.snapshot.recurringPracticeEligibleCount).toBeGreaterThan(0);
+    expect(result.current?.decision).toMatchObject({ kind: 'step', step: { lessonId: near.id } });
+    await act(async () => {
+      await upsertLessonCardExposure(near.id, first.id);
+    });
+    rerender({ refreshKey: 1 });
+    await waitFor(() => expect(result.current?.generation).toBe(1));
+    expect(result.current?.snapshot.questionScopeLessonIds).not.toContain(near.id);
+    expect(result.current?.snapshot.questionScopeConceptIds).not.toContain(first.conceptId);
+    expect(result.current?.decision).toMatchObject({ kind: 'step', step: { lessonId: near.id } });
+    await act(async () => {
+      await upsertLessonCardExposure(near.id, second.id);
+    });
+    rerender({ refreshKey: 2 });
+    await waitFor(() => expect(result.current?.generation).toBe(2));
+    expect(
+      result.current?.snapshot.questionOptions?.map((item) => ({
+        name: item.name,
+        examDate: item.examDate,
+        unfinished: item.unfinished,
+      })),
+    ).toEqual([expect.objectContaining({ examDate: now + 2 * MS_PER_DAY }), expect.anything()]);
+    expect(result.current?.decision).toMatchObject({
+      kind: 'step',
+      step: { kind: 'exam-questions', conceptId: first.conceptId },
+    });
+    const started = await startConceptPractice(course.id, first.conceptId, {
+      study: { scopeLessonIds: result.current?.snapshot.questionScopeLessonIds },
+      scopeConceptIds: result.current?.snapshot.questionScopeConceptIds,
+    });
+    expect(started.attempt.receipt.lessonIds).toEqual([near.id]);
+  } finally {
+    unmount();
+  }
 });
 
 it.each(['dailyReviewGoal', 'maxReviewsPerDay'] as const)(
@@ -130,7 +250,7 @@ it.each([
       step: { kind: 'lesson', lessonId: current.id },
     });
 
-    // A partial introduction is history, not a requirement to finish or master the lesson.
+    // A partial introduction does not unlock independent application.
     await act(async () => {
       await db.lessonCardExposures.put({
         lessonId: current.id,
@@ -143,7 +263,7 @@ it.each([
     await waitFor(() => expect(result.current?.generation).toBe(1));
     expect(result.current?.decision).toMatchObject({
       kind: 'step',
-      step: { kind: 'practice', mode: 'assessment' },
+      step: { kind: 'lesson', lessonId: current.id },
     });
 
     await act(async () => {
@@ -154,7 +274,7 @@ it.each([
     await waitFor(() => expect(result.current?.generation).toBe(2));
     expect(result.current?.decision).toMatchObject({
       kind: 'step',
-      step: { kind: 'practice', mode: 'catch-up' },
+      step: { kind: 'lesson', lessonId: current.id },
     });
 
     await act(async () => {
@@ -165,7 +285,7 @@ it.each([
     await waitFor(() => expect(result.current?.generation).toBe(3));
     expect(result.current?.decision).toMatchObject({
       kind: 'step',
-      step: { kind: 'exam-questions', conceptId: later.id },
+      step: { kind: 'lesson', lessonId: current.id },
     });
 
     await act(async () => {

@@ -21,6 +21,7 @@ export type StudyFlowStep =
       scopeLessonIds?: string[];
       scopeConceptIds: string[];
       allowFamiliar?: boolean;
+      examDate?: number;
       reason?: string;
     });
 
@@ -33,7 +34,7 @@ export type StudyFlowDecision =
   | { kind: 'empty' };
 
 /**
- * Scheduled reviews lead the default session and can also be opened explicitly.
+ * Scheduled reviews lead maintenance and can also be opened explicitly.
  */
 export const DUE_REVIEW_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = {
   kind: 'practice',
@@ -122,6 +123,7 @@ export function planNextStudyStep(
           : { conceptId: question.conceptId }),
         scopeLessonIds: snapshot.questionScopeLessonIds,
         scopeConceptIds: snapshot.questionScopeConceptIds ?? [],
+        examDate: question.examDate,
         label: question.unfinished ? `Resume: ${question.name}` : `Practise: ${question.name}`,
         reason: question.needs?.techniques.length
           ? `Practise: ${question.needs.techniques.map((id) => SCIENCE_TECHNIQUES.find((skill) => skill.id === id)?.name ?? id).join(', ')}.`
@@ -133,7 +135,24 @@ export function planNextStudyStep(
       }
     : undefined;
   const repair = question?.repairLessonId;
-  if (questionStep && question?.unfinished) return { kind: 'step', step: questionStep };
+  // Teach the nearest exam's lessons before application from those lessons.
+  // Successful lesson introduction, not predicted FSRS recall, unlocks questions.
+  const priority = snapshot.examPriority;
+  if (priority && priority.examDate <= (question?.examDate ?? Infinity)) {
+    if (snapshot.reviewLimitReached && snapshot.learnFirst === false) return { kind: 'waiting' };
+    const lesson = snapshot.nodes.find(
+      (node) =>
+        node.nodeType === 'lesson' && node.id === priority.lessonId && node.status === 'available',
+    );
+    if (lesson?.nodeType === 'lesson')
+      return {
+        kind: 'step',
+        step: { kind: 'lesson', lessonId: lesson.id, label: lesson.lesson.name },
+      };
+  }
+  // Once the required cards are learned, nearest-paper application takes
+  // precedence over unrelated maintenance, even when its cards are overdue.
+  if (questionStep && question?.examDate !== undefined) return { kind: 'step', step: questionStep };
   // Entry selects where to begin, never what the learner already knows. Once
   // that lesson is introduced, earlier knowledge gets its daily allocation
   // before independent questions or more forward curriculum can starve it.
