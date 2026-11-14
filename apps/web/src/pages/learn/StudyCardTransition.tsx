@@ -54,6 +54,7 @@ export const StudyCardTransition = forwardRef<
 >(function StudyCardTransition({ cardId, phase, multiplier: m, onDepartureChange, children }, ref) {
   const element = useRef<HTMLDivElement>(null);
   const busy = useRef(false);
+  const unsettledDeparture = useRef(false);
   const commitTimer = useRef<number | null>(null);
   const pendingCommit = useRef<(() => void) | null>(null);
   const [presentation, setPresentation] = useState({ cardId, phase, serial: 0 });
@@ -94,13 +95,18 @@ export const StudyCardTransition = forwardRef<
 
   useImperativeHandle(ref, () => ({
     cancel() {
+      const needsReset = busy.current || unsettledDeparture.current;
       if (commitTimer.current !== null) window.clearTimeout(commitTimer.current);
       commitTimer.current = null;
       pendingCommit.current = null;
       busy.current = false;
       setDeparture(null);
-      // Undo also removes any retained outgoing presentation.
-      setReset((value) => value + 1);
+      // Remove retained outgoing cards for undo, but keep an idle card mounted
+      // when opening study controls so its image and entrance do not restart.
+      if (needsReset) {
+        unsettledDeparture.current = false;
+        setReset((value) => value + 1);
+      }
     },
     flush,
     dismiss(correct, commit, source = 'keyboard', velocity = 0) {
@@ -111,6 +117,7 @@ export const StudyCardTransition = forwardRef<
         return true;
       }
       const bounds = element.current.parentElement!.getBoundingClientRect();
+      unsettledDeparture.current = true;
       const clearance = 32 + element.current.offsetHeight * 0.08;
       setDeparture({
         correct,
@@ -138,7 +145,14 @@ export const StudyCardTransition = forwardRef<
 
   return (
     <div className="relative grid w-full">
-      <AnimatePresence key={reset} initial={false} mode="popLayout">
+      <AnimatePresence
+        key={reset}
+        initial={false}
+        mode="popLayout"
+        onExitComplete={() => {
+          unsettledDeparture.current = false;
+        }}
+      >
         <StudyCardPresentation
           key={`${cardId}:${presentation.serial}`}
           ref={(node) => {

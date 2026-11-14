@@ -17,6 +17,22 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('StudyCardTransition', () => {
+  it('preserves the stationary card when cancellation opens a study control', () => {
+    const ref = createRef<StudyCardTransitionHandle>();
+    const view = render(
+      <LazyMotion features={domAnimation}>
+        <StudyCardTransition ref={ref} cardId="one" phase="question" multiplier={1}>
+          Stationary card
+        </StudyCardTransition>
+      </LazyMotion>,
+    );
+    const card = view.getByText('Stationary card');
+    act(() => ref.current!.cancel());
+    act(() => ref.current!.cancel());
+    expect(view.getByText('Stationary card')).toBe(card);
+    view.unmount();
+  });
+
   it('makes the card readable after StrictMode replays its entrance effects', async () => {
     const view = render(
       <StrictMode>

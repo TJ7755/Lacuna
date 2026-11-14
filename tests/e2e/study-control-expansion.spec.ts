@@ -13,11 +13,14 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       const observed = await trigger.evaluate(async (button, name) => {
         if (!(button instanceof HTMLElement)) throw new Error('Expected a study button');
         const origin = button.getBoundingClientRect();
+        const card = document.querySelector('[data-study-card-id]');
         const samples: { x: number; y: number; width: number; height: number }[] = [];
         button.focus();
         button.click();
         for (let frame = 0; frame < 45; frame++) {
           await new Promise(requestAnimationFrame);
+          if (card && document.querySelector('[data-study-card-id]') !== card)
+            throw new Error('Opening a study control replaced the stationary card');
           const panel =
             document.querySelector(
               `[role="dialog"][aria-label="${name === 'Exit' ? 'Leave this session?' : name}"]`,
