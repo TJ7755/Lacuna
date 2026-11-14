@@ -64,7 +64,7 @@ it.each([false, true])(
   },
 );
 
-it('keeps declared prior knowledge through lesson reordering without inventing exposure', () => {
+it('does not treat declared prior knowledge as learned cards after lesson reordering', () => {
   const input = fixture({
     unlockMode: 'semi-linear',
     studyStartLessonId: 'second',
@@ -74,7 +74,7 @@ it('keeps declared prior knowledge through lesson reordering without inventing e
   });
   input.exposures = [];
   const before = structuredClone(input);
-  expect(questionStudyScope(input)).toEqual(['concept-first-card']);
+  expect(questionStudyScope(input)).toEqual([]);
   expect(input).toEqual(before);
 });
 
@@ -94,7 +94,11 @@ it('respects dated access and lesson introductions, including linked membership'
         { id: 'linked', lessonId: 'first', cardId: 'second-card', createdAt: 0, updatedAt: 0 },
       ],
     }),
-  ).toEqual(['concept-second-card']);
+  ).toEqual([]);
+  expect(questionStudyScope({ ...input, course: { ...input.course, learnFirst: false } })).toEqual(
+    [],
+  );
+  input.cards[0].state = 2;
   expect(questionStudyScope({ ...input, course: { ...input.course, learnFirst: false } })).toEqual([
     'concept-first-card',
   ]);
@@ -159,12 +163,22 @@ it('keeps a Concept accessible when an open course gains a Card without lesson m
   ).not.toContain('no-card');
 });
 
-it('keeps lesson-only skill questions behind lesson access and introduction without requiring a fabricated Concept', () => {
+it('requires every lesson card before questions, including links and direct FSRS introductions', () => {
   const input = fixture({ learnFirst: true, unlockMode: 'open' });
   input.exposures = [];
   expect(questionStudyLessonScope({ ...input, completions: [] })).toEqual([]);
-  expect(questionStudyLessonScope({ ...input, completions: [{ lessonId: 'first' }] })).toEqual([
-    'first',
+  expect(questionStudyLessonScope({ ...input, completions: [{ lessonId: 'first' }] })).toEqual([]);
+  input.exposures = [{ lessonId: 'first', cardId: 'first-card', taughtAt: 100, updatedAt: 100 }];
+  const links = [
+    { id: 'link', lessonId: 'first', cardId: 'second-card', createdAt: 0, updatedAt: 0 },
+  ];
+  expect(questionStudyLessonScope({ ...input, links })).toEqual([]);
+  input.exposures.push({ lessonId: 'first', cardId: 'second-card', taughtAt: 100, updatedAt: 100 });
+  expect(questionStudyLessonScope({ ...input, links })).toEqual(['first']);
+  expect(questionStudyScope({ ...input, links })).toEqual([
+    'concept-first-card',
+    'concept-second-card',
+    'no-card',
   ]);
   expect(
     questionStudyLessonScope({
@@ -172,6 +186,12 @@ it('keeps lesson-only skill questions behind lesson access and introduction with
       course: { ...input.course, learnFirst: false },
       completions: [],
     }),
+  ).toEqual([]);
+  input.cards.forEach((card) => {
+    card.state = 2;
+  });
+  expect(
+    questionStudyLessonScope({ ...input, course: { ...input.course, learnFirst: false } }),
   ).toEqual(['first', 'second']);
   expect(
     questionStudyLessonScope({

@@ -16,6 +16,16 @@ export function techniqueExamDate(
   course?: CourseRecord,
 ): number | undefined {
   const ordered = resolveLessonOrder([...lessons], preferredLessonIds);
+  const lessonDates = (set: QuestionSetRecord) =>
+    set.assessmentIds.length
+      ? []
+      : lessons
+          .filter(
+            (lesson) =>
+              set.lessonIds.includes(lesson.id) && isUpcomingExamDate(lesson.examDate, now),
+          )
+          .map((lesson) => lesson.examDate!);
+  const overrides = sets.flatMap(lessonDates);
   const dates = assessments
     .filter((assessment) => {
       if (!isUpcomingExamDate(assessment.examDate, now) || assessment.needsAuthorConfirmation)
@@ -23,6 +33,7 @@ export function techniqueExamDate(
       return sets.some((set) => {
         if (set.courseId !== assessment.courseId) return false;
         if (set.assessmentIds.length) return set.assessmentIds.includes(assessment.id);
+        if (lessonDates(set).length) return false;
         if (assessment.coverageMode === 'specification') {
           try {
             const points = new Set(specificationAssessmentPointIds(assessment, course));
@@ -65,5 +76,6 @@ export function techniqueExamDate(
       });
     })
     .map((assessment) => assessment.examDate as number);
-  return dates.length ? Math.min(...dates) : undefined;
+  const applicable = [...overrides, ...dates];
+  return applicable.length ? Math.min(...applicable) : undefined;
 }

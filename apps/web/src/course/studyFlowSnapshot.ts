@@ -11,7 +11,7 @@ import type {
   PracticeMilestone,
   PracticeNode,
 } from '@lacuna/core/db/types';
-import type { ExamDateContext } from '../fsrs/examDate';
+import { isUpcomingExamDate, resolveCardExamDates, type ExamDateContext } from '../fsrs/examDate';
 import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
 import type { ConceptPracticeNeeds } from '../questions/techniqueEvidence';
 import type { PathNode, PracticePathNode } from './path';
@@ -63,6 +63,8 @@ export interface CourseStudyFlowSnapshot {
   completedManualNodeKeys: ReadonlySet<string>;
   recurringPracticeEligibleCount: number;
   examPracticeEligibleCount: number;
+  /** Earliest exam lesson whose cards have not all been learned. */
+  examPriority?: { examDate: number; lessonId: string };
   cardCount: number;
   /** Cards behind recurringPracticeEligibleCount, for lesson-level due counts. */
   dueReviewCardIds: ReadonlySet<string>;
@@ -328,6 +330,28 @@ export function buildCourseStudyFlowSnapshot(
   } = input;
   const { assessmentContext, practiceByKey } = buildCoursePracticeStates({ ...input, now });
   const { lessons, priorKnowledgeLessonIds: earlier, reachedLessonIds } = assessmentContext;
+  let examPriority: CourseStudyFlowSnapshot['examPriority'];
+  for (const node of nodes) {
+    if (node.nodeType !== 'lesson' || node.status !== 'available') continue;
+    const members = lessonCardMembership(node.id, cards, links);
+    if (earlier.has(node.id) && (members.length === 0 || node.lesson.isExtension)) continue;
+    const dates = members.length
+      ? resolveCardExamDates(members, examDateContext, now)
+      : [node.lesson.examDate ?? course.examDate];
+    const examDate = dates
+      .filter((date) => isUpcomingExamDate(date, now))
+      .reduce<number>((nearest, date) => Math.min(nearest, date!), Infinity);
+    if (
+      Number.isFinite(examDate) &&
+      (examDate < (examPriority?.examDate ?? Infinity) ||
+        (examDate === examPriority?.examDate &&
+          (node.id === course.studyStartLessonId ||
+            (examPriority.lessonId !== course.studyStartLessonId &&
+              earlier.has(examPriority.lessonId) &&
+              !earlier.has(node.id)))))
+    )
+      examPriority = { examDate, lessonId: node.id };
+  }
 
   // Scheduled reviews cannot be gated by lesson membership or exposure.
   const dueReviewCardIds = new Set(dueReviewPool(cards, course, now).map((card) => card.id));
@@ -396,6 +420,7 @@ export function buildCourseStudyFlowSnapshot(
     completedManualNodeKeys,
     recurringPracticeEligibleCount: dueReviewCardIds.size,
     examPracticeEligibleCount: examPracticePool(cards, course, examDateContext, now).length,
+    examPriority,
     cardCount: cards.length,
     dueReviewCardIds,
     assessmentOptions: assessmentPracticeOptions(assessmentContext, cards, false),

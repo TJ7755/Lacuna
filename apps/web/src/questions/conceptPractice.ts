@@ -2,6 +2,7 @@ import { gradeQuestionAttempt } from './grading';
 import {
   answers,
   withinQuestionStudyScope as withinConceptScope,
+  withinQuestionLessonScope,
   practiceContext,
   unseenCapacity,
   selectPracticeQuestion,
@@ -160,6 +161,7 @@ function unfinishedPractice(
   data: Awaited<ReturnType<typeof context>>,
   conceptId: string | undefined,
   scope: ReadonlySet<string> | undefined,
+  scopeLessonIds?: readonly string[],
 ) {
   return data.attempts
     .filter(
@@ -169,8 +171,13 @@ function unfinishedPractice(
         attempt.undoneAt === undefined &&
         (!conceptId || attempt.conceptPractice.conceptId === conceptId) &&
         (!scope || scope.has(attempt.conceptPractice.conceptId)) &&
+        withinQuestionLessonScope(attempt.receipt, scopeLessonIds) &&
         attempt.receipt.questions.every((question) => withinConceptScope(question, scope)) &&
-        data.candidates.some((candidate) => candidate.set.id === attempt.questionSetId),
+        data.candidates.some(
+          (candidate) =>
+            candidate.set.id === attempt.questionSetId &&
+            candidate.question.id === attempt.conceptPractice?.questionId,
+        ),
     )
     .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))[0];
 }
@@ -243,7 +250,7 @@ export async function listConceptPractice(
   courseId: string,
   now = Date.now(),
   scopeConceptIds?: readonly string[],
-  options: { sittingStartedAt?: number } = {},
+  options: { sittingStartedAt?: number; scopeLessonIds?: readonly string[] } = {},
 ): Promise<ConceptPracticeItem[]> {
   const data = await context(courseId, now);
   const diagnosticEvidence = deriveConceptDiagnosticEvidence(data.attempts, data.sets);
@@ -253,7 +260,10 @@ export async function listConceptPractice(
     .map((concept) => {
       const schedule = data.schedules.get(concept.id) ?? emptyQuestionSchedule();
       const available = data.candidates.filter(
-        (row) => row.conceptIds.includes(concept.id) && withinConceptScope(row.question, scope),
+        (row) =>
+          row.conceptIds.includes(concept.id) &&
+          withinConceptScope(row.question, scope) &&
+          withinQuestionLessonScope(row.set, options.scopeLessonIds),
       );
       const study = available.map((candidate) => ({
         candidate,
@@ -263,8 +273,14 @@ export async function listConceptPractice(
         (total, row) => total + (row.eligible ? unseenCapacity(row.candidate, data) : 0),
         0,
       );
+      const unfinished = unfinishedPractice(data, concept.id, scope, options.scopeLessonIds);
       const studyDates = study.flatMap((row) =>
-        row.eligible && row.examDate !== undefined ? [row.examDate] : [],
+        row.examDate !== undefined &&
+        ((row.eligible && unseenCapacity(row.candidate, data) > 0) ||
+          (unfinished?.questionSetId === row.candidate.set.id &&
+            unfinished.conceptPractice?.questionId === row.candidate.question.id))
+          ? [row.examDate]
+          : [],
       );
       const unseenCount = available.reduce((total, row) => total + unseenCapacity(row, data), 0);
       const availableCount = available.reduce((total, row) => total + row.capacity, 0);
@@ -306,7 +322,7 @@ export async function listConceptPractice(
             ),
           ),
         ],
-        unfinished: Boolean(unfinishedPractice(data, concept.id, scope)),
+        unfinished: Boolean(unfinished),
       };
     })
     .sort(
@@ -337,7 +353,7 @@ export async function startConceptPractice(
     allowFamiliar?: boolean;
     now?: number;
     mode?: 'due' | 'mixed';
-    study?: { sittingStartedAt?: number };
+    study?: { sittingStartedAt?: number; scopeLessonIds?: readonly string[]; examDate?: number };
     scopeConceptIds?: readonly string[];
     resume?: boolean;
     blueprint?: Partial<{ type: string; difficulty: string; context: string }>;
@@ -356,11 +372,30 @@ export async function startConceptPractice(
     ],
     async () => {
       const data = await context(courseId, now);
+      if (options.study?.examDate !== undefined) {
+        data.candidates = data.candidates.filter(
+          (candidate) =>
+            techniqueExamDate(
+              [{ ...candidate.set, questions: [candidate.question] }],
+              data.assessments,
+              data.lessons,
+              now,
+              data.course?.localLessonOrder,
+              data.concepts,
+              data.course,
+            ) === options.study?.examDate,
+        );
+      }
       const course = await db.courses.get(courseId);
       if (!course || course.archived) throw new Error('This course is unavailable for practice.');
       const scope = options.scopeConceptIds ? new Set(options.scopeConceptIds) : undefined;
       if (options.resume) {
-        const unfinished = unfinishedPractice(data, conceptId, scope);
+        const unfinished = unfinishedPractice(
+          data,
+          conceptId,
+          scope,
+          options.study?.scopeLessonIds,
+        );
         if (unfinished) return { attempt: unfinished, selection: unfinished.conceptPractice! };
       }
       const due = data.concepts.filter((concept) => {
@@ -386,6 +421,7 @@ export async function startConceptPractice(
         (candidate) =>
           candidate.conceptIds.some((id) => ids.has(id)) &&
           withinConceptScope(candidate.question, scope) &&
+          withinQuestionLessonScope(candidate.set, options.study?.scopeLessonIds) &&
           (!options.study ||
             candidate.conceptIds.some(
               (id) =>
@@ -399,6 +435,18 @@ export async function startConceptPractice(
           ),
       );
       if (!available.length) throw new ConceptPracticeExhaustedError('no-questions');
+      const deadline = (candidate: (typeof available)[number]) =>
+        options.study
+          ? (techniqueExamDate(
+              [{ ...candidate.set, questions: [candidate.question] }],
+              data.assessments,
+              data.lessons,
+              now,
+              data.course?.localLessonOrder,
+              data.concepts,
+              data.course,
+            ) ?? Infinity)
+          : Infinity;
       let selected;
       try {
         selected = selectPracticeQuestion(
@@ -406,8 +454,9 @@ export async function startConceptPractice(
           available,
           { ...options, mode: options.mode ?? 'due' },
           (a, b) =>
+            deadline(a) - deadline(b) ||
             questionGapPriority(b.question, data.needs) -
-            questionGapPriority(a.question, data.needs),
+              questionGapPriority(a.question, data.needs),
           (a, b) =>
             Math.min(
               ...a.conceptIds

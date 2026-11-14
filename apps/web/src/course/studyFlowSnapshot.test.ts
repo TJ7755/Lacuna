@@ -20,6 +20,37 @@ import { practiceScopeVersion } from './studyPools';
 
 const NOW = 1_000_000;
 
+it('prepares the nearest exam cards before later due reviews or unfinished questions', () => {
+  const c = course();
+  const near = { ...lesson('near', 1), examDate: NOW + 2 * MS_PER_DAY };
+  const later = { ...lesson('later', 0), examDate: NOW + 20 * MS_PER_DAY };
+  const nearCard = card('near-card', near.id);
+  const laterCard = { ...card('later-card', later.id), due: NOW - 1 };
+  const input = {
+    course: c,
+    nodes: [later, near].map((lesson): PathNode => ({
+      id: lesson.id,
+      nodeType: 'lesson',
+      lesson,
+      status: 'available',
+    })),
+    cards: [laterCard, nearCard],
+    links: [],
+    exposures: [],
+    examDateContext: makeExamDateContext(c, [later, near], []),
+    meanReviewSeconds: 30,
+    now: NOW,
+  };
+  const snapshot = buildCourseStudyFlowSnapshot(input);
+  snapshot.questionOptions = [
+    { conceptId: 'later-question', name: 'Later', examDate: later.examDate, unfinished: true },
+  ];
+  expect(planNextStudyStep(snapshot)).toMatchObject({
+    kind: 'step',
+    step: { kind: 'lesson', lessonId: near.id },
+  });
+});
+
 function course(overrides: Partial<Course> = {}): Course {
   return {
     id: 'course',
