@@ -88,9 +88,16 @@ export function QuestionSetOverview() {
         It may have been removed or belong to another course. Return to Questions to choose a set.
       </QuestionSetUnavailable>
     );
-  const unfinished = retainedAttempts
+  const unfinishedAttempts = retainedAttempts
     .filter((attempt) => attempt.status !== 'complete')
-    .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  const unfinished =
+    unfinishedAttempts.find(
+      (attempt) => attempt.receipt.contentRevisionId === content.contentRevisionId,
+    ) ?? unfinishedAttempts[0];
+  // Attempts retain their original questions and marking. A later edit needs a fresh attempt.
+  const previousVersion =
+    unfinished && unfinished.receipt.contentRevisionId !== content.contentRevisionId;
   const marks = questionSetMarks(content);
   const openAttempt = (id: string) =>
     navigate(`/course/${courseId}/question-sets/${setId}/attempts/${id}`, { state: origin });
@@ -117,7 +124,7 @@ export function QuestionSetOverview() {
       </header>
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          {unfinished ? (
+          {unfinished && !previousVersion ? (
             <p className="text-sm text-ink-soft">
               {unfinished.mode === 'paper' ? 'Paper attempt' : 'Practice attempt'}
             </p>
@@ -131,29 +138,48 @@ export function QuestionSetOverview() {
             />
           )}
         </div>
-        <Button
-          variant="primary"
-          size="lg"
-          hoverScale={false}
-          disabled={starting || course.archived}
-          onClick={() => {
-            if (unfinished) {
-              void openAttempt(unfinished.id);
-              return;
-            }
-            setStarting(true);
-            setError('');
-            void startQuestionSetAttempt(setId!, mode)
-              .then((attempt) => openAttempt(attempt.id))
-              .catch((cause) => {
-                setError(cause instanceof Error ? cause.message : 'Could not start this attempt.');
-                setStarting(false);
-              });
-          }}
-        >
-          {unfinished ? 'Resume' : starting ? 'Starting…' : 'Start'}
-          <ArrowRightIcon aria-hidden="true" />
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {previousVersion && (
+            <Button
+              variant="ghost"
+              disabled={starting || course.archived}
+              onClick={() => void openAttempt(unfinished.id)}
+            >
+              Resume previous version
+            </Button>
+          )}
+          <Button
+            variant="primary"
+            size="lg"
+            hoverScale={false}
+            disabled={starting || course.archived}
+            onClick={() => {
+              if (unfinished && !previousVersion) {
+                void openAttempt(unfinished.id);
+                return;
+              }
+              setStarting(true);
+              setError('');
+              void startQuestionSetAttempt(setId!, mode)
+                .then((attempt) => openAttempt(attempt.id))
+                .catch((cause) => {
+                  setError(
+                    cause instanceof Error ? cause.message : 'Could not start this attempt.',
+                  );
+                  setStarting(false);
+                });
+            }}
+          >
+            {starting
+              ? 'Starting…'
+              : previousVersion
+                ? 'Start latest version'
+                : unfinished
+                  ? 'Resume'
+                  : 'Start'}
+            <ArrowRightIcon aria-hidden="true" />
+          </Button>
+        </div>
       </div>
       {error && (
         <p className="qs-error" role="alert">
