@@ -377,6 +377,8 @@ jobs:
 
   publish:
     needs: publish-draft
+    # Nightlies skip build-mac; override the implicit success() on that ancestor.
+    if: ${{ !cancelled() && needs.publish-draft.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       actions: read
