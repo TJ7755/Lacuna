@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useState, type ComponentProps } from 'react';
 import { AnimatePresence } from 'motion/react';
 import type { Card, Course, Occlusion, Sequence } from '@lacuna/core/db/types';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -12,6 +12,8 @@ import { CardContent } from './CardContent';
 import { cardScheduleLabel } from './lessonCardRow';
 import { ScheduleChip } from './ScheduleChip';
 import { renderLineAsEnglish } from '../../items/markSchemeCompiler';
+import type { CardList } from './CardList';
+import { plainFront } from './lessonCardRow';
 
 const LessonCardEditor = lazy(() =>
   import('../../pages/cardEditor/LessonCardEditor').then((module) => ({
@@ -28,6 +30,7 @@ export function LessonCardDocument({
   editable,
   sequences,
   occlusions,
+  selection,
 }: {
   card: Card;
   course: Course;
@@ -37,6 +40,7 @@ export function LessonCardDocument({
   editable: boolean;
   sequences: Sequence[];
   occlusions: Occlusion[];
+  selection?: Parameters<NonNullable<ComponentProps<typeof CardList>['renderCards']>>[0];
 }) {
   const [editing, setEditing] = useState(false);
   const [enlarged, setEnlarged] = useState<{ side: 'front' | 'back'; anchor: HTMLElement } | null>(
@@ -53,6 +57,7 @@ export function LessonCardDocument({
       )
     : undefined;
   const generated = Boolean(card.occlusionRegionId || card.sequenceItemId);
+  const linked = selection?.linkedCardIds?.has(card.id);
   const ownerPath = occlusion
     ? `occlusion/${occlusion.id}`
     : sequence
@@ -69,15 +74,28 @@ export function LessonCardDocument({
     >
       <header className="mb-3 flex min-h-11 items-center justify-between gap-3">
         <div className="flex items-center gap-3 text-sm text-ink-soft">
+          {selection?.selectMode && !generated && !linked && (
+            <label className="grid min-h-11 min-w-11 place-items-center">
+              <input
+                type="checkbox"
+                aria-label={`Select card: ${plainFront(card)}`}
+                checked={selection.selected.has(card.id)}
+                onChange={() => selection.onToggle(card.id)}
+                className="size-5 accent-accent"
+              />
+            </label>
+          )}
           <span>
             {position} of {count}
           </span>
           <ScheduleChip schedule={cardScheduleLabel(card, Date.now())} />
         </div>
         {editable &&
+          !selection?.selectMode &&
           (generated ? (
             ownerPath && (
               <Button
+                data-card-edit
                 variant="ghost"
                 size="sm"
                 onClick={() =>
@@ -112,6 +130,11 @@ export function LessonCardDocument({
               )}
             </ExpandingCreateControl>
           ))}
+        {editable && linked && selection?.onUnlinkCard && (
+          <Button variant="ghost" size="sm" onClick={() => selection.onUnlinkCard?.(card)}>
+            Remove from lesson
+          </Button>
+        )}
       </header>
       <div className="grid gap-5 min-[900px]:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
         {(['front', 'back'] as const).map((side) => (

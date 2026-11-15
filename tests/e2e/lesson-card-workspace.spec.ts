@@ -35,6 +35,33 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     const lessonPath = `/#/course/${seeded.courseId}/lesson/${seeded.lessonId}`;
     await page.goto(lessonPath);
     const all = page.getByRole('link', { name: 'All 9 cards', exact: true });
+    await expect(page.getByRole('heading', { name: /^Manage/ })).toHaveCount(0);
+    const spelling = page.getByRole('switch', { name: 'Require correct spelling' });
+    const spacing = await spelling.evaluate((button) => {
+      const row = button.closest('label')!.parentElement!.getBoundingClientRect();
+      const control = button.getBoundingClientRect();
+      return { above: control.top - row.top, below: row.bottom - control.bottom };
+    });
+    expect(spacing.above).toBeGreaterThanOrEqual(12);
+    expect(spacing.below).toBeGreaterThanOrEqual(12);
+    const practice = page.getByRole('button', { name: 'Practise until all correct', exact: true });
+    await page.screenshot({ path: testInfo.outputPath('lesson-preview.png') });
+    await testInfo.attach('Lesson preview and spelling spacing', {
+      path: testInfo.outputPath('lesson-preview.png'),
+      contentType: 'image/png',
+    });
+    await practice.click();
+    await expect(page.getByRole('combobox', { name: 'What to practise' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Start practising', exact: true })).toBeVisible();
+    await settle(practice.locator('..'));
+    await page.screenshot({ path: testInfo.outputPath('lesson-practice.png') });
+    await testInfo.attach('Flow practice options', {
+      path: testInfo.outputPath('lesson-practice.png'),
+      contentType: 'image/png',
+    });
+    await page.keyboard.press('Escape');
+    await expect(practice).toHaveAttribute('aria-expanded', 'false');
+    await expect(practice).toBeFocused();
     await all.click();
     await expect(page).toHaveURL(new RegExp(`/lesson/${seeded.lessonId}/cards$`));
     await expect(page.getByRole('article')).toHaveCount(9);
@@ -60,6 +87,15 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       path: testInfo.outputPath('lesson-cards.png'),
       contentType: 'image/png',
     });
+
+    await page.getByRole('button', { name: 'Select', exact: true }).click();
+    await first.getByRole('checkbox').check();
+    await page
+      .getByRole('toolbar', { name: 'Selected cards' })
+      .getByRole('button', { name: 'Suspend', exact: true })
+      .click();
+    await expect(first.getByText('Suspended', { exact: true })).toBeVisible();
+    await expect(page.getByRole('article')).toHaveCount(9);
 
     await first.getByRole('button', { name: 'Enlarge image: Eye cross-section' }).click();
     const viewer = page.getByRole('dialog', { name: 'Image', exact: true });

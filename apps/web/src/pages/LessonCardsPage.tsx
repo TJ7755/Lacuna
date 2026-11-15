@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ComponentProps } from 'react';
 import {
   useLocation,
   useNavigate,
@@ -8,11 +8,12 @@ import {
 } from 'react-router-dom';
 import { canEditLessons } from '../course/lessonViewMode';
 import { useLessonViewData } from '../state/useLessonViewData';
-import { useOcclusions, useSequences } from '../state/useCourseData';
+import { useLessonCardLinks, useOcclusions, useSequences } from '../state/useCourseData';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { originFrom, useReturn } from '../utils/editorOrigin';
 import { orderOcclusionSiblings } from '../components/cards/lessonCardRow';
 import { LessonCardDocument } from '../components/cards/LessonCardDocument';
+import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { COURSE_PAGE_FRAME, COURSE_PAGE_TITLE } from '../components/course/coursePageLayout';
 import { MissingRecord } from '../components/course/MissingRecord';
 import { AppLink } from '../components/ui/AppLink';
@@ -23,7 +24,8 @@ import './lessonCards.css';
 
 export function LessonCardsPage() {
   const { courseId, lessonId } = useParams<{ courseId: string; lessonId: string }>();
-  const { lesson, course, lessonCards } = useLessonViewData(courseId, lessonId);
+  const { lesson, course, lessonCards, lessonDeck } = useLessonViewData(courseId, lessonId);
+  const links = useLessonCardLinks(lessonId);
   const occlusions = useOcclusions(courseId);
   const sequences = useSequences(courseId);
   const [params] = useSearchParams();
@@ -59,27 +61,41 @@ export function LessonCardsPage() {
     e: editable
       ? () => {
           const row = document.activeElement?.closest('[data-lesson-card]');
-          row?.querySelector<HTMLButtonElement>('header button')?.click();
+          row
+            ?.querySelector<HTMLButtonElement>(
+              'header button[aria-expanded], header button[data-card-edit]',
+            )
+            ?.click();
         }
       : undefined,
   });
 
   useEffect(() => {
-    if (focusedOnArrival.current || !lessonCards || !occlusions || !sequences) return;
+    if (
+      focusedOnArrival.current ||
+      !lessonCards ||
+      !occlusions ||
+      !sequences ||
+      !links ||
+      (editable && lessonCards.length > 0 && !lessonDeck)
+    )
+      return;
     focusedOnArrival.current = true;
     // Browser Back restores the document's existing position through scrollMemory.
     if (!selected || navigation === 'POP') return;
     const target = document.getElementById(`lesson-card-${selected}`);
     target?.focus({ preventScroll: true });
     target?.scrollIntoView({ block: 'start' });
-  }, [lessonCards, occlusions, sequences, selected, navigation]);
+  }, [lessonCards, occlusions, sequences, selected, navigation, links, lessonDeck, editable]);
 
   if (
     lesson === undefined ||
     course === undefined ||
     lessonCards === undefined ||
     occlusions === undefined ||
-    sequences === undefined
+    sequences === undefined ||
+    links === undefined ||
+    (editable && lessonCards.length > 0 && !lessonDeck)
   )
     return <PageLoading />;
   if (!lesson || !course || lesson.courseId !== course.id)
@@ -88,6 +104,26 @@ export function LessonCardsPage() {
         Back to course
       </MissingRecord>
     );
+
+  const renderDocument = (selection?: ComponentProps<typeof LessonCardDocument>['selection']) => (
+    <div ref={documentRef} className="flex flex-col gap-4" data-page-part="">
+      {ordered.map((card, index) => (
+        <LessonCardDocument
+          key={card.id}
+          card={card}
+          course={course}
+          lessonId={lessonId!}
+          position={index + 1}
+          count={ordered.length}
+          editable={editable}
+          sequences={sequences}
+          occlusions={occlusions}
+          selection={selection}
+        />
+      ))}
+      {ordered.length === 0 && <p className="text-ink-soft">No cards yet.</p>}
+    </div>
+  );
 
   return (
     <div className={`${COURSE_PAGE_FRAME} py-6`}>
@@ -98,7 +134,7 @@ export function LessonCardsPage() {
         <ChevronLeftIcon width={14} height={14} />
         {returnTo.label}
       </AppLink>
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4" data-page-part="">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-4" data-page-part="">
         <div>
           <h1 className={COURSE_PAGE_TITLE}>{lesson.name}</h1>
           <p className="mt-2 text-sm text-ink-soft">
@@ -118,22 +154,19 @@ export function LessonCardsPage() {
           </Button>
         )}
       </header>
-      <div ref={documentRef} className="flex flex-col gap-4" data-page-part="">
-        {ordered.map((card, index) => (
-          <LessonCardDocument
-            key={card.id}
-            card={card}
-            course={course}
-            lessonId={lessonId!}
-            position={index + 1}
-            count={ordered.length}
-            editable={editable}
-            sequences={sequences}
-            occlusions={occlusions}
-          />
-        ))}
-        {ordered.length === 0 && <p className="text-ink-soft">No cards yet.</p>}
-      </div>
+      {editable && lessonCards.length > 0 && lessonDeck ? (
+        <LessonCardsSection
+          courseId={course.id}
+          lessonId={lessonId!}
+          lessonName={lesson.name}
+          lessonCards={ordered}
+          lessonSchedulingConfig={lessonDeck}
+          linkedCardIds={new Set(links.map((link) => link.cardId))}
+          renderCards={renderDocument}
+        />
+      ) : (
+        renderDocument()
+      )}
     </div>
   );
 }

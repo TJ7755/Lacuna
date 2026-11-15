@@ -158,6 +158,12 @@ export function ExpandingCreateControl({
   return (
     <div
       ref={root}
+      onKeyDown={(event) => {
+        if (open && event.key === 'Escape' && !event.defaultPrevented) {
+          event.preventDefault();
+          close();
+        }
+      }}
       className={`relative ${open ? 'z-[7]' : 'z-[5]'} shrink-0 ${className}`}
       style={{ width: closedWidth, height: triggerHeight }}
     >
@@ -231,12 +237,6 @@ export function ExpandingCreateControl({
           className="pointer-events-none absolute inset-0 overflow-clip"
           inert={!open}
           aria-hidden={!open || undefined}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape' && !event.defaultPrevented) {
-              event.preventDefault();
-              close();
-            }
-          }}
         >
           {(open || retainForm) && (
             <motion.div

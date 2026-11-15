@@ -21,6 +21,13 @@ import { useCardListActions, type AssignableLesson } from './useCardListActions'
 
 interface CardListBaseProps {
   cards: Card[];
+  renderCards?: (selection: {
+    selectMode: boolean;
+    selected: ReadonlySet<string>;
+    onToggle: (id: string) => void;
+    linkedCardIds?: ReadonlySet<string>;
+    onUnlinkCard?: (card: Card) => void;
+  }) => React.ReactNode;
   onEditCard: (card: Card) => void;
   /** When true, suppresses the internal "Cards (N)" heading row. */
   hideHeader?: boolean;
@@ -48,6 +55,7 @@ const NO_EXAM_DATES: readonly number[] = [];
 
 export function CardList({
   cards,
+  renderCards,
   context,
   onEditCard,
   hideHeader = false,
@@ -369,28 +377,32 @@ export function CardList({
         </BulkBarButton>
       </CardBulkBar>
 
-      <GroupedCardList
-        cards={cards}
-        schedulingConfig={schedulingConfig}
-        scheduleNow={scheduleNow}
-        selectMode={selectMode}
-        selected={selected}
-        expandedCardId={expandedCardId}
-        onToggle={toggle}
-        onToggleExpand={setExpandedCardId}
-        onEditCard={onEditCard}
-        onResume={handleResume}
-        onDelete={handleDeleteOne}
-        onToggleFlag={handleToggleFlag}
-        linkedCardIds={linkedCardIds}
-        onUnlinkCard={onUnlinkCard}
-        motionMultiplier={m}
-        compactMetadata={compactMetadata}
-        sequences={sequences}
-        onEditSequence={onEditSequence}
-        occlusions={occlusions}
-        onEditOcclusion={onEditOcclusion}
-      />
+      {renderCards ? (
+        renderCards({ selectMode, selected, onToggle: toggle, linkedCardIds, onUnlinkCard })
+      ) : (
+        <GroupedCardList
+          cards={cards}
+          schedulingConfig={schedulingConfig}
+          scheduleNow={scheduleNow}
+          selectMode={selectMode}
+          selected={selected}
+          expandedCardId={expandedCardId}
+          onToggle={toggle}
+          onToggleExpand={setExpandedCardId}
+          onEditCard={onEditCard}
+          onResume={handleResume}
+          onDelete={handleDeleteOne}
+          onToggleFlag={handleToggleFlag}
+          linkedCardIds={linkedCardIds}
+          onUnlinkCard={onUnlinkCard}
+          motionMultiplier={m}
+          compactMetadata={compactMetadata}
+          sequences={sequences}
+          onEditSequence={onEditSequence}
+          occlusions={occlusions}
+          onEditOcclusion={onEditOcclusion}
+        />
+      )}
     </div>
   );
 }
