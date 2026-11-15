@@ -165,6 +165,11 @@ describe('QuestionEditor drafts', () => {
 
     expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
     expect(screen.getByText('Saving…')).toHaveStyle({ opacity: '0' });
+    expect(screen.getByLabelText('Prompt')).toBeDisabled();
+    expect(screen.getByLabelText('Expected answer')).toBeDisabled();
+    expect(screen.getByLabelText('Worked explanation')).toBeDisabled();
+    expect(screen.getByPlaceholderText('Completing the square')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Generated family' })).toBeDisabled();
 
     finishSave();
     expect(await screen.findByText('Questions list')).toBeInTheDocument();
@@ -186,6 +191,7 @@ describe('QuestionEditor drafts', () => {
     await waitFor(() =>
       expect(mocks.notify).toHaveBeenCalledWith('Database write failed', 'negative'),
     );
+    expect(screen.getByLabelText('Prompt')).toBeEnabled();
 
     await act(() => router.navigate('/away'));
     expect(await screen.findByRole('dialog', { name: 'Leave this Question?' })).toBeInTheDocument();
