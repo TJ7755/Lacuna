@@ -436,6 +436,25 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
     assert.ok(result.report.plan.some(({ args }) => args[1] === 'docs:check'));
   });
 
+  test('broad quick fallback retains changed Node tests and script companion tests', (t) => {
+    const { change, run, root } = fixture(t);
+    change('scripts/changed.test.mjs');
+    change('scripts/companion.mjs');
+    change('scripts/companion.test.mjs');
+    const manifest = join(root, 'package.json');
+    writeFileSync(manifest, `${readFileSync(manifest, 'utf8')}\n`);
+    const result = run('verify.mjs', ['--quick', '--plan']);
+    assert.equal(result.status, 2, result.stderr);
+    assert.equal(result.report.broadFallback, true);
+    const tests = result.report.plan.find(({ command }) => command === 'node');
+    for (const path of [
+      'scripts/local-checks.test.mjs',
+      'scripts/changed.test.mjs',
+      'scripts/companion.test.mjs',
+    ])
+      assert.ok(tests.args.includes(path), path);
+  });
+
   test('quick mode preserves failures rather than reporting incomplete success', (t) => {
     const { change, run } = fixture(t);
     change('apps/web/src/course/new.ts');

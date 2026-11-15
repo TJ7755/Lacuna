@@ -23,7 +23,6 @@ export function quickChecks(paths) {
     bun('lint');
     bun('typecheck');
     bun('test:ci:unit', '.', ['--', '--maxWorkers=1']);
-    add('node', ['--test', '--test-concurrency=1', 'scripts/local-checks.test.mjs']);
   } else {
     const lintPaths = surviving.filter(
       (path) =>
@@ -51,15 +50,15 @@ export function quickChecks(paths) {
           ...related,
         ]);
     }
-    if (owners.some(({ nodeTests }) => nodeTests)) {
-      const tests = new Set(['scripts/local-checks.test.mjs']);
-      for (const path of surviving.filter((path) => path.endsWith('.mjs'))) {
-        const companion = path.replace(/\.mjs$/, '.test.mjs');
-        if (path.endsWith('.test.mjs')) tests.add(path);
-        else if (existsSync(resolve(root, companion))) tests.add(companion);
-      }
-      add('node', ['--test', '--test-concurrency=1', ...tests]);
+  }
+  if (broad || owners.some(({ nodeTests }) => nodeTests)) {
+    const tests = new Set(['scripts/local-checks.test.mjs']);
+    for (const path of surviving.filter((path) => path.endsWith('.mjs'))) {
+      const companion = path.replace(/\.mjs$/, '.test.mjs');
+      if (path.endsWith('.test.mjs')) tests.add(path);
+      else if (existsSync(resolve(root, companion))) tests.add(companion);
     }
+    add('node', ['--test', '--test-concurrency=1', ...tests]);
   }
   const workspaces = broad
     ? Object.keys(workspaceChecks)
