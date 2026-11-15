@@ -12,9 +12,19 @@ interface StoredSlot {
   revision: number;
 }
 
+export interface RelayExchange {
+  order: number;
+  method: string;
+  slot: RelaySlot | null;
+  ifMatch: string | null;
+  status?: number;
+  generation?: string;
+}
+
 export interface StatefulSyncRelay {
   relayBase: string;
   requests: string[];
+  exchanges: RelayExchange[];
   attach(page: Page): Promise<void>;
   holdStatePulls(): void;
   statePullArrivals(): number;
@@ -28,6 +38,7 @@ export async function installStatefulSyncRelay(page: Page): Promise<StatefulSync
   const relayBase = `${new URL(page.url()).origin}/sync-relay`;
   const relayPath = new URL(relayBase).pathname;
   const requests: string[] = [];
+  const exchanges: RelayExchange[] = [];
   const slots = new Map<RelaySlot, StoredSlot>();
   let writeBarrier: { arrived: number; ready: Promise<void>; release(): void } | undefined;
   let pullBarrier:
@@ -42,6 +53,16 @@ export async function installStatefulSyncRelay(page: Page): Promise<StatefulSync
 
   const attach = async (target: Page): Promise<void> => {
     await target.route(`${relayBase}/**`, async (route) => {
+      const request = route.request();
+      const slot = /\/(keybag|state)$/.exec(new URL(request.url()).pathname)?.[1] as
+        RelaySlot | undefined;
+      const exchange: RelayExchange = {
+        order: exchanges.length,
+        method: request.method(),
+        slot: slot ?? null,
+        ifMatch: request.headers()['if-match'] ?? null,
+      };
+      exchanges.push(exchange);
       const pull = pullBarrier;
       if (pull && route.request().method() === 'GET' && route.request().url().endsWith('/state')) {
         pull.arrived += 1;
@@ -61,7 +82,7 @@ export async function installStatefulSyncRelay(page: Page): Promise<StatefulSync
         }
         await barrier.ready;
       }
-      await handleRoute(route, relayBase, relayPath, requests, slots);
+      await handleRoute(route, relayBase, relayPath, requests, slots, exchange);
     });
   };
   await attach(page);
@@ -78,6 +99,7 @@ export async function installStatefulSyncRelay(page: Page): Promise<StatefulSync
   return {
     relayBase,
     requests,
+    exchanges,
     attach,
     holdStatePulls() {
       let release!: () => void;
@@ -125,6 +147,7 @@ async function handleRoute(
   relayPath: string,
   requests: string[],
   slots: Map<RelaySlot, StoredSlot>,
+  exchange: RelayExchange,
 ): Promise<void> {
   const request = route.request();
   const method = request.method();
@@ -148,9 +171,12 @@ async function handleRoute(
     if (method === 'GET') {
       const stored = slots.get(slot);
       if (!stored) {
+        exchange.status = 404;
         await route.fulfill({ status: 404, body: '' });
         return;
       }
+      exchange.status = 200;
+      exchange.generation = stored.generation;
       await route.fulfill({
         status: 200,
         contentType: 'application/octet-stream',
@@ -164,6 +190,7 @@ async function handleRoute(
       const current = slots.get(slot);
       const expected = current?.generation ?? '"0"';
       if (request.headers()['if-match'] !== expected) {
+        exchange.status = 412;
         await route.fulfill({ status: 412, body: '' });
         return;
       }
@@ -174,6 +201,8 @@ async function handleRoute(
         generation,
         revision,
       });
+      exchange.status = 204;
+      exchange.generation = generation;
       await route.fulfill({ status: 204, headers: { ETag: generation }, body: '' });
       return;
     }

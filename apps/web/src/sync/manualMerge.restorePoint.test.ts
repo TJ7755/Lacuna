@@ -3,13 +3,24 @@
 
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { restoreBackup, takeAutoBackup, __resetBackupThrottleForTests } from '../db/backups';
+import { restoreBackup, createAutoBackups } from '../db/backups';
+import type * as Backups from '../db/backups';
 import { exportDatabase, importBackup } from '../db/portability';
 import { createCard, createCourse } from '../db/repository';
 import { db } from '../db/schema';
 import type { BackupFile } from '@lacuna/core/db/types';
 import { ManualMergeError, manualMerge } from './manualMerge';
 import { mergeSnapshots } from './mergeSnapshots';
+
+let backups: ReturnType<typeof createAutoBackups>;
+vi.mock('../db/backups', async (importOriginal) => {
+  const actual = await importOriginal<typeof Backups>();
+  return {
+    ...actual,
+    takeAutoBackup: (...args: Parameters<typeof actual.takeAutoBackup>) =>
+      backups.takeAutoBackup(...args),
+  };
+});
 
 async function seedNamedCard(courseName: string, front: string, back: string) {
   const course = await createCourse(courseName);
@@ -31,7 +42,7 @@ describe('manualMerge restore-point guarantee', () => {
     // Wipe everything between tests so prior runs do not pollute state.
     await db.delete();
     await db.open();
-    __resetBackupThrottleForTests();
+    backups = createAutoBackups();
   });
 
   afterEach(() => {
@@ -59,7 +70,7 @@ describe('manualMerge restore-point guarantee', () => {
     expect(beforeApply).toHaveBeenCalledTimes(1);
     expect(summary.cards).toEqual({ kept: 1, added: 0, removed: 0 });
     // Skipping a sync save must not consume the ordinary backup throttle.
-    expect(await takeAutoBackup()).toBeDefined();
+    expect(await backups.takeAutoBackup()).toBeDefined();
     expect(await db.backups.count()).toBe(1);
   });
 
@@ -181,7 +192,7 @@ describe('manualMerge restore-point guarantee', () => {
 
     await db.delete();
     await db.open();
-    __resetBackupThrottleForTests();
+    backups = createAutoBackups();
 
     const local = await seedNamedCard('Local', 'local front', 'local back');
     const preMergeCardIds = [local.card.id];
@@ -227,7 +238,7 @@ describe('manualMerge restore-point guarantee', () => {
 
     await db.delete();
     await db.open();
-    __resetBackupThrottleForTests();
+    backups = createAutoBackups();
 
     const local = await seedNamedCard('Local', 'local front', 'local back');
     const failImport = vi

@@ -1,6 +1,5 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { __resetBackupThrottleForTests } from '../db/backups';
 import { createCourseCard } from '../db/cardRepository';
 import { createCourse } from '../db/courseRepository';
 import { exportDatabase, importBackup } from '../db/portability';
@@ -56,7 +55,6 @@ describe('manualMerge review convergence', () => {
     db.close();
     await db.delete();
     await db.open();
-    __resetBackupThrottleForTests();
   });
 
   it('replays two independent reviews and persists their converged schedule after reopen', async () => {
@@ -80,7 +78,6 @@ describe('manualMerge review convergence', () => {
     const expectedCard = expected.cards.find((candidate) => candidate.id === card.id)!;
 
     await importBackup(local, 'replace');
-    __resetBackupThrottleForTests();
     await manualMerge(remote);
 
     db.close();

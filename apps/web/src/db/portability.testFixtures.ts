@@ -1,32 +1,9 @@
+import { resetTestDatabase } from './database.testFixtures';
 import { db } from './schema';
 import type { BackupFile } from '@lacuna/core/db/types';
 
 export async function reset() {
-  await Promise.all([
-    db.schedulingUnits.clear(),
-    db.coursePerformance.clear(),
-    db.schedulingPerformance.clear(),
-    db.cards.clear(),
-    db.sessionHistory.clear(),
-    db.userPerformance.clear(),
-    db.assets.clear(),
-    db.courses.clear(),
-    db.lessons.clear(),
-    db.notes.clear(),
-    db.noteAnnotations.clear(),
-    db.lessonCards.clear(),
-    db.lessonCardExposures.clear(),
-    db.lessonCompletions.clear(),
-    db.practiceNodes.clear(),
-    db.practiceMilestones.clear(),
-    db.courseAssessments.clear(),
-    db.sequences.clear(),
-    db.occlusions.clear(),
-    db.revisionPlans.clear(),
-    db.reviewHistory.clear(),
-    db.agentMemories.clear(),
-    db.tombstones.clear(),
-  ]);
+  await resetTestDatabase();
 }
 
 export async function waitForSessionHistory(eventId: string): Promise<void> {

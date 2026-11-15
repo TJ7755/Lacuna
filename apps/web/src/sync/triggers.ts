@@ -9,117 +9,133 @@ import { allowRelayConnect } from './csp';
 import { loadSyncPairing } from './loaders';
 import { readRememberedCredentials, type SyncCredentials } from './credentials';
 
-let currentCredentials: SyncCredentials | null = null;
-let installed = false;
-let debounceTimer: number | null = null;
-let lastTriggerAt = 0;
-let credentialGeneration = 0;
-
-const DEBOUNCE_MS = 1500;
-const MIN_INTERVAL_MS = 5000;
-
-export function publishUnlockedCredentials(credentials: SyncCredentials | null): void {
-  credentialGeneration += 1;
-  currentCredentials = credentials;
+interface SyncTriggerOptions {
+  now?: () => number;
+  readState?: typeof readSyncState;
+  loadPairing?: typeof loadSyncPairing;
 }
 
-export function getUnlockedCredentials(): SyncCredentials | null {
-  return currentCredentials;
-}
+export function createSyncTriggers({
+  now: clock = () => Date.now(),
+  readState = readSyncState,
+  loadPairing = loadSyncPairing,
+}: SyncTriggerOptions = {}) {
+  let currentCredentials: SyncCredentials | null = null;
+  let installed = false;
+  let debounceTimer: number | null = null;
+  let lastTriggerAt = 0;
+  let credentialGeneration = 0;
 
-export function clearUnlockedCredentials(): void {
-  publishUnlockedCredentials(null);
-}
+  const DEBOUNCE_MS = 1500;
+  const MIN_INTERVAL_MS = 5000;
 
-/** Publish this device's remembered credentials, if any. Called once per install. */
-async function restoreRememberedCredentials(): Promise<void> {
-  const generation = credentialGeneration;
-  const state = await readSyncState().catch(() => null);
-  if (!state?.remembered) return;
-  try {
-    const credentials = readRememberedCredentials(state);
-    if (!credentials || credentialGeneration !== generation) return;
-    allowRelayConnect(credentials.relayUrl);
-    publishUnlockedCredentials(credentials);
-  } catch {
-    return;
+  function publishUnlockedCredentials(credentials: SyncCredentials | null): void {
+    credentialGeneration += 1;
+    currentCredentials = credentials;
   }
-}
 
-async function triggerSync(reason: string): Promise<void> {
-  const now = Date.now();
-  const remaining = MIN_INTERVAL_MS - (now - lastTriggerAt);
-  if (remaining > 0) {
-    scheduleTrigger(reason, remaining);
-    return;
+  function getUnlockedCredentials(): SyncCredentials | null {
+    return currentCredentials;
   }
-  const generation = credentialGeneration;
-  const state = await readSyncState().catch(() => null);
-  if (!state?.channelId || !state?.wrappedKeyMaterial) return;
-  const credentials = currentCredentials;
-  if (
-    credentialGeneration !== generation ||
-    !credentials ||
-    credentials.channelId !== state.channelId
-  ) {
-    return;
+
+  function clearUnlockedCredentials(): void {
+    publishUnlockedCredentials(null);
   }
-  lastTriggerAt = now;
-  try {
-    const { syncWithCredentials } = await loadSyncPairing();
-    if (credentialGeneration !== generation) return;
-    await syncWithCredentials(credentials);
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.warn(`[sync] auto ${reason} failed`, error);
+
+  /** Publish this device's remembered credentials, if any. Called once per install. */
+  async function restoreRememberedCredentials(): Promise<void> {
+    const generation = credentialGeneration;
+    const state = await readState().catch(() => null);
+    if (!state?.remembered) return;
+    try {
+      const credentials = readRememberedCredentials(state);
+      if (!credentials || credentialGeneration !== generation) return;
+      allowRelayConnect(credentials.relayUrl);
+      publishUnlockedCredentials(credentials);
+    } catch {
+      return;
     }
   }
-}
 
-function scheduleTrigger(reason: string, delay = DEBOUNCE_MS): void {
-  if (debounceTimer !== null) window.clearTimeout(debounceTimer);
-  debounceTimer = window.setTimeout(() => {
-    debounceTimer = null;
-    void triggerSync(reason);
-  }, delay);
-}
-
-export function installSyncTriggers(): () => void {
-  if (installed) return () => {};
-  installed = true;
-  void restoreRememberedCredentials();
-
-  const handleFocus = () => scheduleTrigger('focus');
-  const handleVisibility = () => {
-    if (document.visibilityState === 'visible') scheduleTrigger('visible');
-  };
-  const handleStudyEnd = () => scheduleTrigger('study-end');
-
-  window.addEventListener('focus', handleFocus);
-  document.addEventListener('visibilitychange', handleVisibility);
-  window.addEventListener('lacuna:study-session-end', handleStudyEnd as EventListener);
-
-  let disposed = false;
-  return () => {
-    if (disposed) return;
-    disposed = true;
-    credentialGeneration += 1;
-    window.removeEventListener('focus', handleFocus);
-    document.removeEventListener('visibilitychange', handleVisibility);
-    window.removeEventListener('lacuna:study-session-end', handleStudyEnd as EventListener);
-    if (debounceTimer !== null) window.clearTimeout(debounceTimer);
-    installed = false;
-  };
-}
-
-export function __resetTriggersForTests(): void {
-  currentCredentials = null;
-  credentialGeneration += 1;
-  installed = false;
-  lastTriggerAt = 0;
-  if (debounceTimer !== null) {
-    window.clearTimeout(debounceTimer);
-    debounceTimer = null;
+  async function triggerSync(reason: string): Promise<void> {
+    const now = clock();
+    const remaining = MIN_INTERVAL_MS - (now - lastTriggerAt);
+    if (remaining > 0) {
+      scheduleTrigger(reason, remaining);
+      return;
+    }
+    const generation = credentialGeneration;
+    const state = await readState().catch(() => null);
+    if (!state?.channelId || !state?.wrappedKeyMaterial) return;
+    const credentials = currentCredentials;
+    if (
+      credentialGeneration !== generation ||
+      !credentials ||
+      credentials.channelId !== state.channelId
+    ) {
+      return;
+    }
+    lastTriggerAt = now;
+    try {
+      const { syncWithCredentials } = await loadPairing();
+      if (credentialGeneration !== generation) return;
+      await syncWithCredentials(credentials);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn(`[sync] auto ${reason} failed`, error);
+      }
+    }
   }
+
+  function scheduleTrigger(reason: string, delay = DEBOUNCE_MS): void {
+    if (debounceTimer !== null) window.clearTimeout(debounceTimer);
+    debounceTimer = window.setTimeout(() => {
+      debounceTimer = null;
+      void triggerSync(reason);
+    }, delay);
+  }
+
+  function installSyncTriggers(): () => void {
+    if (installed) return () => {};
+    installed = true;
+    void restoreRememberedCredentials();
+
+    const handleFocus = () => scheduleTrigger('focus');
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') scheduleTrigger('visible');
+    };
+    const handleStudyEnd = () => scheduleTrigger('study-end');
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('lacuna:study-session-end', handleStudyEnd as EventListener);
+
+    let disposed = false;
+    return () => {
+      if (disposed) return;
+      disposed = true;
+      credentialGeneration += 1;
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('lacuna:study-session-end', handleStudyEnd as EventListener);
+      if (debounceTimer !== null) window.clearTimeout(debounceTimer);
+      debounceTimer = null;
+      installed = false;
+    };
+  }
+
+  return {
+    publishUnlockedCredentials,
+    getUnlockedCredentials,
+    clearUnlockedCredentials,
+    installSyncTriggers,
+  };
 }
+
+export const {
+  publishUnlockedCredentials,
+  getUnlockedCredentials,
+  clearUnlockedCredentials,
+  installSyncTriggers,
+} = createSyncTriggers();

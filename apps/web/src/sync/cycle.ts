@@ -59,65 +59,65 @@ export interface SyncResult {
   size: SnapshotSizeReport;
 }
 
-let inFlight: Promise<SyncResult> | null = null;
-let inFlightOptions: SyncCycleOptions | null = null;
+export function createSyncCycle() {
+  let inFlight: Promise<SyncResult> | null = null;
+  let inFlightOptions: SyncCycleOptions | null = null;
 
-/**
- * Run one device sync; overlapping callers share the same promise. A caller
- * that asks for a different channel while one is in flight is rejected rather
- * than handed another channel's result.
- */
-export function syncCycle(options: SyncCycleOptions): Promise<SyncResult> {
-  if (inFlight) {
-    if (!inFlightOptions || !sameChannel(inFlightOptions, options)) {
-      return Promise.reject(
-        new Error('Another sync is already in progress on a different channel.'),
-      );
+  /**
+   * Run one device sync; overlapping callers share the same promise. A caller
+   * that asks for a different channel while one is in flight is rejected rather
+   * than handed another channel's result.
+   */
+  function syncCycle(options: SyncCycleOptions): Promise<SyncResult> {
+    if (inFlight) {
+      if (!inFlightOptions || !sameChannel(inFlightOptions, options)) {
+        return Promise.reject(
+          new Error('Another sync is already in progress on a different channel.'),
+        );
+      }
+      return inFlight;
     }
-    return inFlight;
+
+    let owner: PairingOwner | undefined;
+    const promise = readSyncState()
+      .then((state) => {
+        const startingOwner = capturePairingOwner(state);
+        if (
+          startingOwner.channelId !== options.channelId ||
+          (options.relayUrl !== undefined && startingOwner.relayUrl !== options.relayUrl) ||
+          (startingOwner.channelKeyHex !== undefined &&
+            startingOwner.channelKeyHex !==
+              Array.from(options.channelKey, (byte) => byte.toString(16).padStart(2, '0')).join(
+                '',
+              )) ||
+          (options.writeToken !== undefined &&
+            startingOwner.writeToken !== undefined &&
+            startingOwner.writeToken !== options.writeToken)
+        ) {
+          throw pairingChanged();
+        }
+        owner = startingOwner;
+        return executeSync(options, owner);
+      })
+      .catch(async (error: unknown) => {
+        if (owner) await recordFailure(options, error, owner);
+        throw error;
+      })
+      .finally(() => {
+        if (inFlight === promise) {
+          inFlight = null;
+          inFlightOptions = null;
+        }
+      });
+    inFlight = promise;
+    inFlightOptions = options;
+    return promise;
   }
 
-  let owner: PairingOwner | undefined;
-  const promise = readSyncState()
-    .then((state) => {
-      const startingOwner = capturePairingOwner(state);
-      if (
-        startingOwner.channelId !== options.channelId ||
-        (options.relayUrl !== undefined && startingOwner.relayUrl !== options.relayUrl) ||
-        (startingOwner.channelKeyHex !== undefined &&
-          startingOwner.channelKeyHex !==
-            Array.from(options.channelKey, (byte) => byte.toString(16).padStart(2, '0')).join(
-              '',
-            )) ||
-        (options.writeToken !== undefined &&
-          startingOwner.writeToken !== undefined &&
-          startingOwner.writeToken !== options.writeToken)
-      ) {
-        throw pairingChanged();
-      }
-      owner = startingOwner;
-      return executeSync(options, owner);
-    })
-    .catch(async (error: unknown) => {
-      if (owner) await recordFailure(options, error, owner);
-      throw error;
-    })
-    .finally(() => {
-      if (inFlight === promise) {
-        inFlight = null;
-        inFlightOptions = null;
-      }
-    });
-  inFlight = promise;
-  inFlightOptions = options;
-  return promise;
+  return syncCycle;
 }
 
-/** Reset the module-level single-flight guard between isolated tests. */
-export function __resetSyncFlightForTests(): void {
-  inFlight = null;
-  inFlightOptions = null;
-}
+export const syncCycle = createSyncCycle();
 
 function sameChannel(left: SyncCycleOptions, right: SyncCycleOptions): boolean {
   if (

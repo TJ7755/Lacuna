@@ -1,7 +1,7 @@
+import { resetTestDatabase } from '../../db/database.testFixtures';
 import { vi } from 'vitest';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
 import type { CardFilter } from '@lacuna/core/db/search';
-import { db } from '../../db/schema';
 import type { UseLearnSessionParams } from './useLearnSession';
 
 export const distraction: DistractionTracker = {
@@ -43,19 +43,5 @@ export function sessionParams(
 
 export async function resetSessionTestDatabase() {
   localStorage.removeItem('lacuna.answerInput');
-  await Promise.all([
-    db.cards.clear(),
-    db.schedulingUnits.clear(),
-    db.sessionHistory.clear(),
-    db.userPerformance.clear(),
-    db.coursePerformance.clear(),
-    db.schedulingUnits.clear(),
-    db.schedulingPerformance.clear(),
-    db.reviewHistory.clear(),
-    db.courses.clear(),
-    db.lessons.clear(),
-    db.lessonCards.clear(),
-    db.lessonCardExposures.clear(),
-    db.courseAssessments.clear(),
-  ]);
+  await resetTestDatabase();
 }

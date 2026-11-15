@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { __resetBackupThrottleForTests, restoreBackup, takeAutoBackup } from '../db/backups';
+import { restoreBackup, takeAutoBackup } from '../db/backups';
 import { exportDatabase, importBackup } from '../db/portability';
 import {
   recoverySequenceContent,
@@ -13,7 +13,6 @@ import { manualMerge } from './manualMerge';
 beforeEach(async () => {
   await db.delete();
   await db.open();
-  __resetBackupThrottleForTests();
 });
 
 describe('manual combine failure recovery sequences', () => {
