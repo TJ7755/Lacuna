@@ -242,6 +242,8 @@ export async function launchPackagedApp(
       `--remote-debugging-port=${port}`,
       `--user-data-dir=${profileDirectory}`,
       '--lang=en-GB',
+      // Live release downloads can raise an update modal during measurements.
+      '--host-resolver-rules=MAP github.com ~NOTFOUND,MAP api.github.com ~NOTFOUND',
       ...(startupTraceFile
         ? [
             '--trace-startup=devtools.timeline,v8,blink.user_timing,disabled-by-default-devtools.timeline',
