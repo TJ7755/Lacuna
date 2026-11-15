@@ -63,7 +63,7 @@ async function bundleMetafile(entryPoint: string): Promise<Metafile> {
 
 describe('Electron MCP contract boundary', () => {
   it('preserves the reviewed versioned wire surface', async () => {
-    // Regenerate deliberately with: bun scripts/update-mcp-contract-surface.ts
+    // Regenerate deliberately with: bun run mcp:contracts:update
     const reviewedSurface = JSON.parse(
       await readFile(
         path.join(PROJECT_ROOT, 'apps/web/src/mcp/fixtures/tool-surface.json'),
