@@ -185,9 +185,9 @@ describe('card import destinations', () => {
   });
 });
 
-it('rolls back all destination records on a storage write failure', async () => {
-  const fail = () => {
-    throw new Error('Disk full');
+it('rolls back originals and all destination records when a reverse write fails', async () => {
+  const fail = (_key: unknown, card: { front: string }) => {
+    if (card.front === 'hello') throw new Error('Disk full');
   };
   db.cards.hook('creating', fail);
   try {
@@ -200,6 +200,8 @@ it('rolls back all destination records on a storage write failure', async () => 
     expect(await db.courses.count()).toBe(0);
     expect(await db.lessons.count()).toBe(0);
     expect(await db.concepts.count()).toBe(0);
+    expect(await db.cards.count()).toBe(0);
+    expect(await db.schedulingUnits.count()).toBe(0);
   } finally {
     db.cards.hook('creating').unsubscribe(fail);
   }
@@ -253,8 +255,8 @@ it('imports Anki scheduling into a newly named lesson', async () => {
 
 describe('premature commit avoidance', () => {
   // Dexie throws PrematureCommitError when non-database work runs inside a
-  // transaction. The import keeps validation before the transaction and skips
-  // re-validation within it, so a larger plain-text batch to a new exam course
+  // transaction. The import keeps validation before the transaction and commits
+  // the prepared inputs within it, so a larger plain-text batch to a new exam course
   // (the reported 24-card failure) commits atomically.
   it('imports 24 plain cards to a new exam course without an early commit', async () => {
     const cards = Array.from({ length: 24 }, (_, index) => ({
@@ -281,40 +283,18 @@ describe('premature commit avoidance', () => {
     expect((await db.courses.get(result.courseId))?.name).toBe('French vocabulary');
   });
 
-  // These two checks fail on the merge base, where the skip flag is ignored
-  // and validation still runs inside the transaction scope.
-  it('skips bulk validation when the caller has already validated', async () => {
-    const course = await createCourse('Skip validation', { schedulingMode: 'steady' });
-    const invalid = { kind: 'invalid' } as never;
-    await expect(
-      createCards(course.id, [
-        { type: 'front_back', front: 'bonjour', back: 'hello', payload: invalid },
-      ]),
-    ).rejects.toThrow();
-    const created = await createCards(
-      course.id,
-      [{ type: 'front_back', front: 'bonjour', back: 'hello', payload: invalid }],
-      { skipValidation: true },
-    );
-    expect(created).toHaveLength(1);
-  });
-
-  it('skips import validation within the card transaction when requested', async () => {
-    const course = await createCourse('Skip import validation', { schedulingMode: 'steady' });
-    const invalid = { kind: 'invalid' } as never;
-    await expect(
-      createImportedCards(
-        course.id,
-        [{ type: 'front_back', front: 'bonjour', back: 'hello', payload: invalid }],
-        false,
-      ),
-    ).rejects.toThrow();
-    const created = await createImportedCards(
-      course.id,
-      [{ type: 'front_back', front: 'bonjour', back: 'hello', payload: invalid }],
-      false,
-      true,
-    );
-    expect(created).toHaveLength(1);
-  });
+  it.each(['bulk', 'import'] as const)(
+    'rejects an invalid later draft even when a legacy %s caller requests a bypass',
+    async (entry) => {
+      const course = await createCourse('Validation', { schedulingMode: 'steady' });
+      const cards = [drafts[0], { ...drafts[0], payload: { kind: 'invalid' } as never }];
+      await expect(
+        entry === 'bulk'
+          ? Reflect.apply(createCards, undefined, [course.id, cards, { skipValidation: true }])
+          : Reflect.apply(createImportedCards, undefined, [course.id, cards, true, true]),
+      ).rejects.toThrow('Invalid structured item payload.');
+      expect(await db.cards.count()).toBe(0);
+      expect(await db.concepts.count()).toBe(0);
+    },
+  );
 });

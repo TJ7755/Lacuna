@@ -162,10 +162,51 @@ describe('importApkgResult', () => {
 
   it('rejects when the target scheduling unit does not exist', async () => {
     await expect(importApkgResult(makeResult(), 'missing-deck')).rejects.toThrow(
-      'Target scheduling unit not found.',
+      'Import destination no longer exists.',
     );
     expect(await db.cards.count()).toBe(0);
   });
+
+  it.each(['deleted unit', 'deleted course', 'locked course', 'foreign lesson'] as const)(
+    'rechecks a %s after media preparation and leaves no imported records',
+    async (change) => {
+      const course = await createCourse('Destination');
+      const lesson = await createLesson(course.id, 'Lesson');
+      const other = await createCourse('Other');
+      const digest = crypto.subtle.digest.bind(crypto.subtle);
+      const hashing = vi.spyOn(crypto.subtle, 'digest').mockImplementationOnce(async (...args) => {
+        if (change === 'deleted unit') await db.schedulingUnits.delete(lesson.id);
+        if (change === 'deleted course') await db.courses.delete(course.id);
+        if (change === 'locked course')
+          await db.courses.update(course.id, {
+            distributedCopy: {
+              lineageId: 'publisher',
+              revision: 1,
+              locked: true,
+              autoAcceptUpdates: false,
+            },
+          });
+        if (change === 'foreign lesson') await db.lessons.update(lesson.id, { courseId: other.id });
+        return digest(...args);
+      });
+      try {
+        await expect(
+          importApkgResult(
+            makeResult({
+              media: new Map([['voice.mp3', new TextEncoder().encode('audio')]]),
+            }),
+            lesson.id,
+          ),
+        ).rejects.toThrow(/no longer|locked/);
+        expect(await db.cards.count()).toBe(0);
+        expect(await db.concepts.count()).toBe(0);
+        expect(await db.assets.count()).toBe(0);
+        expect(await db.reviewHistory.count()).toBe(0);
+      } finally {
+        hashing.mockRestore();
+      }
+    },
+  );
 
   it('rolls back a newly created Course when card persistence fails', async () => {
     const bulkPut = vi
