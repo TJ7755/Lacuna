@@ -1,5 +1,37 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+
+async function holdCardWrites(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('lacuna');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction('cards', 'readwrite');
+          let held = true;
+          (window as Window & { releaseCorrectionWrite?: () => void }).releaseCorrectionWrite =
+            () => {
+              held = false;
+            };
+          const keepAlive = () => {
+            const read = transaction.objectStore('cards').get('__correction_lock__');
+            read.onsuccess = () => {
+              if (held) keepAlive();
+            };
+          };
+          transaction.oncomplete = () => database.close();
+          keepAlive();
+          resolve();
+        };
+      }),
+  );
+  return () =>
+    page.evaluate(() => {
+      (window as Window & { releaseCorrectionWrite?: () => void }).releaseCorrectionWrite?.();
+    });
+}
 
 for (const kind of ['Numeric', 'Working']) {
   test(`corrects a ${kind.toLowerCase()} card without leaving study`, async ({ page }, info) => {
@@ -44,8 +76,26 @@ for (const kind of ['Numeric', 'Working']) {
     await editor
       .getByRole('textbox', { name: fieldName, exact: true })
       .fill(kind === 'Numeric' ? '5' : '[1] answer :: equals :: 5');
-    await page.screenshot({ path: info.outputPath(`${kind.toLowerCase()}-correction.png`) });
-    await editor.getByRole('button', { name: 'Save changes', exact: true }).click();
+    // Close inside the draft debounce, then reopen the same session editor.
+    await editor.getByRole('textbox', { name: fieldName, exact: true }).press('Escape');
+    await expect(editor).toBeHidden();
+    await page.getByRole('button', { name: 'Card actions', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit card', exact: true }).click();
+    await expect(editor.getByRole('textbox', { name: fieldName, exact: true })).toHaveValue(
+      kind === 'Numeric' ? '5' : '[1] answer :: equals :: 5',
+    );
+    const release = await holdCardWrites(page);
+    try {
+      await editor.getByRole('button', { name: 'Save changes', exact: true }).click();
+      await expect(editor.getByRole('textbox', { name: fieldName, exact: true })).toBeDisabled();
+      await editor.getByRole('button', { name: 'Close editor', exact: true }).click();
+      await expect(editor).toBeVisible();
+      await page.screenshot({
+        path: info.outputPath(`${kind.toLowerCase()}-correction-saving.png`),
+      });
+    } finally {
+      await release();
+    }
     await expect(editor).toBeHidden();
     await expect(page).toHaveURL(sessionUrl);
     await expect(card).toHaveAttribute('data-study-card-id', id!);

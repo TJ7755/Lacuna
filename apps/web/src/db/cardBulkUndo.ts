@@ -1,5 +1,4 @@
 import { restoreCards, snapshotCards, type CardSnapshot } from './cardDeletion';
-import { stampUpdatedAt } from './mutationStamp';
 import { db } from './schema';
 
 function fingerprint(snapshot: CardSnapshot): string {
@@ -43,8 +42,6 @@ export async function applyUndoableCardChange(
         throw new Error('The selected cards have changed since this action.');
       }
       await restoreCards(before);
-      // Undo is a new mutation for synchronisation, not a return to an old write stamp.
-      await db.cards.where('id').anyOf(ids).modify(stampUpdatedAt({}));
     });
   };
 }

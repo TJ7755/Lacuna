@@ -1,3 +1,4 @@
+import { assertRestoreOwner, stampRestoredRecords } from './snapshotRestore';
 // CRUD and regeneration wiring for image-occlusion cards (Arc 6 slice 2, §6.3-6.4).
 //
 // Mirrors repository.ts's "Sequences" section exactly: an Occlusion is a source document
@@ -458,9 +459,22 @@ export async function restoreOcclusion(snapshot: OcclusionSnapshot): Promise<voi
         db.lessonCardExposures,
         db.reviewHistory,
         db.tombstones,
+        db.courses,
+        db.lessons,
       ],
       async (tx) => {
-        await db.occlusions.put(snapshot.occlusion);
+        await assertRestoreOwner(
+          tx,
+          snapshot.occlusion.courseId,
+          snapshot.occlusion.primaryLessonId,
+        );
+        const [restored] = await stampRestoredRecords(
+          tx,
+          'occlusions',
+          [snapshot.occlusion],
+          (row) => row.id,
+        );
+        await db.occlusions.put(restored);
         const concepts =
           snapshot.concepts ??
           conceptsForOcclusionPayloads(
@@ -477,9 +491,20 @@ export async function restoreOcclusion(snapshot: OcclusionSnapshot): Promise<voi
             snapshot.occlusion.createdAt,
           );
         if (concepts.length > 0) await db.concepts.bulkPut(concepts);
-        await db.cards.bulkPut(cardsToRestore);
-        await db.lessonCards.bulkPut(snapshot.lessonCards);
-        await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
+        await db.cards.bulkPut(
+          await stampRestoredRecords(tx, 'cards', cardsToRestore, (row) => row.id),
+        );
+        await db.lessonCards.bulkPut(
+          await stampRestoredRecords(tx, 'lessonCards', snapshot.lessonCards, (row) => row.id),
+        );
+        await db.lessonCardExposures.bulkPut(
+          await stampRestoredRecords(
+            tx,
+            'lessonCardExposures',
+            snapshot.lessonCardExposures,
+            (row) => lessonCardExposureId(row.lessonId, row.cardId),
+          ),
+        );
         await replaceReviewHistoryForCards(
           cardsToRestore.map((card) => card.id),
           reviewHistoryToRestore,

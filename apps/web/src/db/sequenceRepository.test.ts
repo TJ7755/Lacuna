@@ -49,7 +49,10 @@ describe('createSequence', () => {
       items('Li', 'Na', 'K'),
     );
 
-    expect(await db.sequences.get(sequence.id)).toEqual(sequence);
+    expect(await db.sequences.get(sequence.id)).toEqual({
+      ...sequence,
+      updatedAt: expect.any(Number),
+    });
     const cards = await cardsForSequence(sequence);
     expect(cards).toHaveLength(3);
     expect(cards.map((c) => c.sequenceItemId).sort()).toEqual(['item-0', 'item-1', 'item-2']);
@@ -370,7 +373,10 @@ describe('snapshotSequence / restoreSequence', () => {
 
     await restoreSequence(snapshot!);
 
-    expect(await db.sequences.get(sequence.id)).toEqual(sequence);
+    expect(await db.sequences.get(sequence.id)).toEqual({
+      ...sequence,
+      updatedAt: expect.any(Number),
+    });
     const restoredCard = await db.cards.get(first.id);
     expect(restoredCard).toBeDefined();
     expect(restoredCard!.state).toBe(2);

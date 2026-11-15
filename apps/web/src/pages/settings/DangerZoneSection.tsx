@@ -54,7 +54,12 @@ export function DangerZoneSection({
           : {
               actionLabel: 'Undo',
               onAction: () => {
-                void onRestore(snap);
+                void onRestore(snap).catch((error: unknown) => {
+                  notify(
+                    error instanceof Error ? error.message : 'Could not undo that deletion.',
+                    'negative',
+                  );
+                });
               },
             },
       );

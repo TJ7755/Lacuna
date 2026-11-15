@@ -1,3 +1,4 @@
+import { assertRestoreOwner, stampRestoredRecords } from './snapshotRestore';
 // CRUD and regeneration wiring for sequence cards.
 //
 // A Sequence is a source document that derives ordinary front_back Card rows
@@ -404,9 +405,18 @@ export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void>
         db.lessonCards,
         db.lessonCardExposures,
         db.tombstones,
+        db.courses,
+        db.lessons,
       ],
       async (tx) => {
-        await db.sequences.put(snapshot.sequence);
+        await assertRestoreOwner(tx, snapshot.sequence.courseId, snapshot.sequence.primaryLessonId);
+        const [restored] = await stampRestoredRecords(
+          tx,
+          'sequences',
+          [snapshot.sequence],
+          (row) => row.id,
+        );
+        await db.sequences.put(restored);
         const concepts =
           snapshot.concepts ??
           conceptsForSequencePayloads(
@@ -423,9 +433,20 @@ export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void>
             snapshot.sequence.createdAt,
           );
         if (concepts.length > 0) await db.concepts.bulkPut(concepts);
-        await db.cards.bulkPut(cardsToRestore);
-        await db.lessonCards.bulkPut(snapshot.lessonCards);
-        await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
+        await db.cards.bulkPut(
+          await stampRestoredRecords(tx, 'cards', cardsToRestore, (row) => row.id),
+        );
+        await db.lessonCards.bulkPut(
+          await stampRestoredRecords(tx, 'lessonCards', snapshot.lessonCards, (row) => row.id),
+        );
+        await db.lessonCardExposures.bulkPut(
+          await stampRestoredRecords(
+            tx,
+            'lessonCardExposures',
+            snapshot.lessonCardExposures,
+            (row) => lessonCardExposureId(row.lessonId, row.cardId),
+          ),
+        );
         await replaceReviewHistoryForCards(
           cardsToRestore.map((card) => card.id),
           reviewHistoryToRestore,

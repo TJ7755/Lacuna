@@ -1,3 +1,4 @@
+import { stampRestoredRecords } from './snapshotRestore';
 import { scheduleAssetGc } from './assets';
 import { canEditLessons } from '../course/lessonViewMode';
 import { friendlyDbError } from './dbErrors';
@@ -111,9 +112,17 @@ export async function restoreCards(cards: CardSnapshot): Promise<void> {
           cardsToRestore.map((card) => card.id),
           reviewHistoryToRestore,
         );
-        await db.cards.bulkPut(cardsToRestore);
-        await db.lessonCards.bulkPut(cards.lessonCards);
-        await db.lessonCardExposures.bulkPut(cards.lessonCardExposures);
+        await db.cards.bulkPut(
+          await stampRestoredRecords(tx, 'cards', cardsToRestore, (row) => row.id),
+        );
+        await db.lessonCards.bulkPut(
+          await stampRestoredRecords(tx, 'lessonCards', cards.lessonCards, (row) => row.id),
+        );
+        await db.lessonCardExposures.bulkPut(
+          await stampRestoredRecords(tx, 'lessonCardExposures', cards.lessonCardExposures, (row) =>
+            lessonCardExposureId(row.lessonId, row.cardId),
+          ),
+        );
         await clearTombstones(
           tx,
           'cards',

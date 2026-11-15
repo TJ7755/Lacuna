@@ -16,7 +16,7 @@ const props = () => ({
   description: 'Remove this course.',
   snapshot: vi.fn().mockResolvedValue({ id: 'snapshot' }),
   onDelete: vi.fn().mockResolvedValue(undefined),
-  onRestore: vi.fn(),
+  onRestore: vi.fn().mockResolvedValue(undefined),
   onDeleted: vi.fn(),
 });
 const open = () => fireEvent.click(screen.getByRole('button', { name: 'Delete course' }));
@@ -75,5 +75,18 @@ describe('DangerZoneSection', () => {
     expect(callbacks.onDelete).toHaveBeenCalledOnce();
     expect(callbacks.onDeleted).toHaveBeenCalledOnce();
     expect(notify).toHaveBeenCalledWith("'Disposable course' deleted.", 'neutral', undefined);
+  });
+  it('reports an Undo rejected because its owner was deleted', async () => {
+    const callbacks = props();
+    callbacks.onRestore.mockRejectedValue(new Error('Cannot undo: the course no longer exists.'));
+    render(<DangerZoneSection {...callbacks} />);
+    open();
+    await act(async () => open());
+    const undo = notify.mock.calls.at(-1)?.[2].onAction;
+    await act(async () => undo());
+    expect(notify).toHaveBeenLastCalledWith(
+      'Cannot undo: the course no longer exists.',
+      'negative',
+    );
   });
 });
