@@ -491,7 +491,7 @@ describe('SearchPage', () => {
     expect(router.state.location.pathname).toBe('/course/course-1/questions/question-1/edit');
   });
 
-  it('does not treat a Card filter as a Question filter', () => {
+  it('keeps Questions out of a Card-filtered search until the filter is cleared', () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [],
       courses: [mockCourse],
@@ -508,6 +508,10 @@ describe('SearchPage', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Search content' }), {
       target: { value: 'final velocity' },
     });
+    expect(
+      screen.queryByRole('option', { name: /Calculate the final velocity/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
     expect(screen.getByRole('option', { name: /Calculate the final velocity/ })).toHaveTextContent(
       'Calculate the final velocity.',
     );

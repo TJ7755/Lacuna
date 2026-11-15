@@ -84,7 +84,7 @@ describe('RelatedQuestionSets', () => {
 
     expect(await screen.findByRole('heading', { name: 'Practice questions' })).toBeInTheDocument();
     const link = screen.getByRole('link', { name: set.title });
-    expect(link).not.toHaveAttribute('href');
+    expect(link).toHaveAttribute('href', `/course/${course.id}/question-sets/${set.id}`);
     fireEvent.click(link);
     await waitFor(() => expect(onNavigate).toHaveBeenCalledTimes(1));
     expect(router.state.location.pathname).toBe(`/course/${course.id}/question-sets/${set.id}`);

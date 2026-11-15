@@ -58,7 +58,7 @@ describe('Dashboard forecasts', () => {
     expect(reviews).toHaveTextContent('2');
   });
 
-  it('leads with the forecast, above what to study', async () => {
+  it('leads with what to study, above the forecast', async () => {
     setCourseData([mockCourse], {
       summaries: { 'course-1': summary(3) },
       reviewActivity: new Map([['card-1', [Date.now()]]]),
@@ -68,7 +68,7 @@ describe('Dashboard forecasts', () => {
 
     const queue = await screen.findByRole('region', { name: 'Today, most urgent first' });
     const forecastPanel = screen.getByRole('region', { name: 'Forecast and this week' });
-    expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(queue.compareDocumentPosition(forecastPanel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.getByLabelText('Today: 3 reviews due, about 1 minute')).toHaveTextContent(
       '3reviews due',
     );
@@ -88,6 +88,6 @@ describe('Dashboard forecasts', () => {
     expect(
       await within(panel).findByRole('heading', { name: 'Exam-day forecast' }),
     ).toBeInTheDocument();
-    expect(panel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(queue.compareDocumentPosition(panel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });

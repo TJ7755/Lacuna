@@ -64,12 +64,15 @@ test('shares relevance and media labels across Quick search and Search', async (
   await expect(page).toHaveURL(/\/cards\/[^/]+\/edit$/);
   await expect(page.getByRole('textbox', { name: 'Front', exact: true })).toHaveValue('Membrane');
 
-  await page.goto('/#/search?q=membrane');
+  await page.getByRole('link', { name: 'Search content', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#\/search$/);
+  await page.getByRole('combobox', { name: 'Search content' }).fill('membrane');
   const rows = page.getByRole('option');
   await expect(rows).toHaveCount(7);
   expect(await rows.allTextContents()).toEqual(quickContents);
   await page.getByRole('button', { name: 'New', exact: true }).click();
-  await expect(rows).toHaveCount(7);
+  await expect(rows).toHaveCount(6);
   for (const label of labels) {
     const row = rows
       .filter({ has: page.getByText(label, { exact: true }) })
@@ -83,7 +86,7 @@ test('shares relevance and media labels across Quick search and Search', async (
   });
   const input = page.getByRole('combobox', { name: 'Search content' });
   await input.fill('Cell diagram');
-  await expect(rows).toHaveCount(7);
+  await expect(rows).toHaveCount(6);
   await expect(rows.first()).toHaveText('Cell diagramLesson 1');
   await input.press('Enter');
   await expect(page).toHaveURL(/\/cards\/[^/]+\/edit$/);

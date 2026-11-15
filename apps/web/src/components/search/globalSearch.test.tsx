@@ -61,10 +61,7 @@ describe('global search relevance', () => {
       `course-${course.id}`,
       `card-${incidental.id}`,
     ]);
-    expect(globalSearch('membrane', data, ['flagged']).map(hitKey)).toEqual([
-      `question-set-${set.id}`,
-      `course-${course.id}`,
-    ]);
+    expect(globalSearch('membrane', data, ['flagged']).map(hitKey)).toEqual([]);
     expect(globalSearch('', data, ['new']).map(hitKey)).toEqual([
       `card-${exact.id}`,
       'card-exact-tie',
