@@ -65,6 +65,25 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await all.click();
     await expect(page).toHaveURL(new RegExp(`/lesson/${seeded.lessonId}/cards$`));
     await expect(page.getByRole('article')).toHaveCount(9);
+    const settings = page.getByRole('button', { name: 'Lesson settings', exact: true });
+    await settings.click();
+    await expect(page.getByRole('button', { name: 'Type answers', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'View mode', exact: true }).click();
+    await expect(settings).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Select', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'New card', exact: true })).toHaveCount(0);
+    await expect(
+      page.getByRole('article').getByRole('button', { name: 'Edit', exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByRole('article')).toHaveCount(9);
+    await page.getByRole('article').first().focus();
+    await page.keyboard.press('e');
+    await expect(page.getByRole('textbox', { name: 'Front', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
+    await expect(settings).toBeVisible();
+    await expect(
+      page.getByRole('article').first().getByRole('button', { name: 'Edit', exact: true }),
+    ).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Course sections' })).toBeVisible();
     await expect(page.locator('[data-route-content]').last()).toHaveCSS('opacity', '1');
     const cards = page.getByRole('article');

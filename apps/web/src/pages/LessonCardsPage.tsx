@@ -6,7 +6,7 @@ import {
   useParams,
   useSearchParams,
 } from 'react-router-dom';
-import { canEditLessons } from '../course/lessonViewMode';
+import { isLessonAuthoringMode } from '../course/lessonViewMode';
 import { useLessonViewData } from '../state/useLessonViewData';
 import { useLessonCardLinks, useOcclusions, useSequences } from '../state/useCourseData';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
@@ -40,7 +40,7 @@ export function LessonCardsPage() {
     label: 'Back to lesson',
   });
   const ordered = orderOcclusionSiblings(lessonCards ?? [], occlusions ?? []);
-  const editable = Boolean(course && !course.archived && canEditLessons(course));
+  const editable = Boolean(course && !course.archived && isLessonAuthoringMode(course));
 
   function moveCard(direction: number) {
     if (documentRef.current?.querySelector('[aria-expanded="true"]')) return;
