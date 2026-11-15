@@ -69,7 +69,10 @@ describe('createOcclusion', () => {
 
     const occlusion = await createOcclusion(course.id, lesson.id, 'Plant cell', 'hash-1', regions);
 
-    expect(await db.occlusions.get(occlusion.id)).toEqual(occlusion);
+    expect(await db.occlusions.get(occlusion.id)).toEqual({
+      ...occlusion,
+      updatedAt: expect.any(Number),
+    });
     const cards = await cardsForOcclusion(occlusion);
     expect(cards).toHaveLength(3);
     expect(cards.map((c) => c.occlusionRegionId).sort()).toEqual(['r1', 'r2', 'r3']);
@@ -300,7 +303,10 @@ describe('snapshotOcclusion / restoreOcclusion', () => {
 
     await restoreOcclusion(snapshot!);
 
-    expect(await db.occlusions.get(occlusion.id)).toEqual(occlusion);
+    expect(await db.occlusions.get(occlusion.id)).toEqual({
+      ...occlusion,
+      updatedAt: expect.any(Number),
+    });
     const restoredCard = await db.cards.get(first.id);
     expect(restoredCard).toBeDefined();
     expect(restoredCard!.state).toBe(2);

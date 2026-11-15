@@ -56,7 +56,7 @@ describe('repository snapshot resurrection', () => {
     expect(await db.tombstones.get(['lessonCompletions', lesson.id])).toBeUndefined();
   });
 
-  it('restoreSequence keeps original updatedAt values and clears matching tombstones', async () => {
+  it('restoreSequence advances write stamps beyond deletion and clears matching tombstones', async () => {
     const course = await createCourse('Chemistry');
     const sequence = await createSequence(course.id, null, 'Halogens', [
       { id: 'restore-seq', value: 'F' },
@@ -71,14 +71,21 @@ describe('repository snapshot resurrection', () => {
     expect(await db.tombstones.get(['sequences', sequence.id])).toBeDefined();
     expect(await db.tombstones.get(['cards', card.id])).toBeDefined();
 
+    const deletion = (await db.tombstones.get(['sequences', sequence.id]))!;
+    const cardDeletion = (await db.tombstones.get(['cards', card.id]))!;
     await restoreSequence(snapshot!);
-    expect(await db.sequences.get(sequence.id)).toMatchObject({ name: 'Halogens', updatedAt: 52 });
-    expect(await db.cards.get(card.id)).toMatchObject({ updatedAt: 53 });
+    expect((await db.sequences.get(sequence.id))!.updatedAt).toBeGreaterThan(deletion.deletedAt);
+    expect((await db.cards.get(card.id))!.updatedAt).toBeGreaterThan(cardDeletion.deletedAt);
+    expect(await db.sequences.get(sequence.id)).toMatchObject({
+      name: 'Halogens',
+      updatedAt: expect.any(Number),
+    });
+    expect(await db.cards.get(card.id)).toMatchObject({ front: snapshot!.cards[0].front });
     expect(await db.tombstones.get(['sequences', sequence.id])).toBeUndefined();
     expect(await db.tombstones.get(['cards', card.id])).toBeUndefined();
   });
 
-  it('restoreOcclusion keeps original updatedAt values and clears matching tombstones', async () => {
+  it('restoreOcclusion advances write stamps beyond deletion and clears matching tombstones', async () => {
     const course = await createCourse('Biology');
     const occlusion = await createOcclusion(course.id, null, 'Cell', 'hash-restore', [
       labelRegion('restore-occ'),
@@ -93,14 +100,21 @@ describe('repository snapshot resurrection', () => {
     expect(await db.tombstones.get(['occlusions', occlusion.id])).toBeDefined();
     expect(await db.tombstones.get(['cards', card.id])).toBeDefined();
 
+    const deletion = (await db.tombstones.get(['occlusions', occlusion.id]))!;
+    const cardDeletion = (await db.tombstones.get(['cards', card.id]))!;
     await restoreOcclusion(snapshot!);
-    expect(await db.occlusions.get(occlusion.id)).toMatchObject({ name: 'Cell', updatedAt: 62 });
-    expect(await db.cards.get(card.id)).toMatchObject({ updatedAt: 63 });
+    expect((await db.occlusions.get(occlusion.id))!.updatedAt).toBeGreaterThan(deletion.deletedAt);
+    expect((await db.cards.get(card.id))!.updatedAt).toBeGreaterThan(cardDeletion.deletedAt);
+    expect(await db.occlusions.get(occlusion.id)).toMatchObject({
+      name: 'Cell',
+      updatedAt: expect.any(Number),
+    });
+    expect(await db.cards.get(card.id)).toMatchObject({ front: snapshot!.cards[0].front });
     expect(await db.tombstones.get(['occlusions', occlusion.id])).toBeUndefined();
     expect(await db.tombstones.get(['cards', card.id])).toBeUndefined();
   });
 
-  it('restoreCards keeps original updatedAt values and clears matching tombstones', async () => {
+  it('restoreCards advances card and relationship stamps beyond deletion and clears matching tombstones', async () => {
     const course = await createCourse('Biology');
     const lesson = await createLesson(course.id, 'Intro');
     const linked = await createLesson(course.id, 'Review');
@@ -119,9 +133,19 @@ describe('repository snapshot resurrection', () => {
       await db.tombstones.get(['lessonCardExposures', `${linked.id}:${card.id}`]),
     ).toBeDefined();
 
+    const deletion = (await db.tombstones.get(['cards', card.id]))!;
+    const linkDeletion = (await db.tombstones.get(['lessonCards', link.id]))!;
+    const exposureDeletion = (await db.tombstones.get([
+      'lessonCardExposures',
+      `${linked.id}:${card.id}`,
+    ]))!;
     await restoreCards(snapshot);
-    expect(await db.cards.get(card.id)).toMatchObject({ updatedAt: 72 });
-    expect(await db.lessonCards.get(link.id)).toMatchObject({ updatedAt: 73 });
+    expect(await db.cards.get(card.id)).toMatchObject({ front: 'Q', back: 'A' });
+    expect((await db.cards.get(card.id))!.updatedAt).toBeGreaterThan(deletion.deletedAt);
+    expect((await db.lessonCards.get(link.id))!.updatedAt).toBeGreaterThan(linkDeletion.deletedAt);
+    expect((await db.lessonCardExposures.get([linked.id, card.id]))!.updatedAt).toBeGreaterThan(
+      exposureDeletion.deletedAt,
+    );
     expect(await db.tombstones.get(['cards', card.id])).toBeUndefined();
     expect(await db.tombstones.get(['lessonCards', link.id])).toBeUndefined();
     expect(

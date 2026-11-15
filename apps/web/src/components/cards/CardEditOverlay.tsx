@@ -75,6 +75,7 @@ export function CardEditOverlay({
   );
   const workingCompilation = useMemo(() => compileMarkScheme(workingSource), [workingSource]);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [draftDirty, setDraftDirty] = useState(false);
 
   const frontRef = useRef<HTMLTextAreaElement>(null);
@@ -130,37 +131,60 @@ export function CardEditOverlay({
   }, [card.type, card.updatedAt, isStructured]);
 
   function editDraft<T>(setter: (value: T) => void, value: T) {
+    if (savingRef.current) return;
     setter(value);
     setDraftDirty(true);
   }
 
+  const pendingDraft = useRef<(() => boolean) | undefined>(undefined);
+  pendingDraft.current = draftDirty
+    ? () =>
+        storeDraft(draftKeyRef.current, {
+          type,
+          front,
+          back,
+          tags,
+          payload: structuredPayload,
+          workingSource: isWorking ? workingSource : undefined,
+          timestamp: Date.now(),
+        })
+    : undefined;
+
+  function flushDraft() {
+    window.clearTimeout(draftTimer.current);
+    return pendingDraft.current?.() ?? true;
+  }
+
+  useEffect(() => {
+    const flush = () => {
+      window.clearTimeout(draftTimer.current);
+      return pendingDraft.current?.() ?? true;
+    };
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (!flush()) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      window.removeEventListener('beforeunload', beforeUnload);
+      flush();
+    };
+  }, []);
+
   // Only author edits create drafts; opening a card must not snapshot stale content.
   useEffect(() => {
     if (!draftDirty) return;
-    window.clearTimeout(draftTimer.current);
-    draftTimer.current = window.setTimeout(() => {
-      storeDraft(draftKeyRef.current, {
-        type,
-        front,
-        back,
-        tags,
-        payload: structuredPayload,
-        workingSource: isWorking ? workingSource : undefined,
-        timestamp: Date.now(),
-      });
-    }, 800);
+    draftTimer.current = window.setTimeout(() => pendingDraft.current?.(), 800);
     return () => window.clearTimeout(draftTimer.current);
-  }, [
-    draftDirty,
-    type,
-    front,
-    back,
-    tags,
-    structuredPayload,
-    workingSource,
-    isWorking,
-    storeDraft,
-  ]);
+  }, [draftDirty, type, front, back, tags, structuredPayload, workingSource]);
+
+  function cancel() {
+    if (!savingRef.current && flushDraft()) onCancel();
+  }
 
   /** Moves the type form the way the full editor does: forward or back along the picker order. */
   function changeType(next: CardType) {
@@ -180,7 +204,8 @@ export function CardEditOverlay({
   const canSave = frontValid && backValid && clozeValid && structuredValid && !saving;
 
   async function handleSave() {
-    if (!canSave) return;
+    if (!canSave || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     const changes = {
       type,
@@ -192,10 +217,12 @@ export function CardEditOverlay({
     try {
       const updated = await saveCardEdit(card.id, changes);
       window.clearTimeout(draftTimer.current);
+      pendingDraft.current = undefined;
       setDraftDirty(false);
       clearDraft(draftKeyRef.current);
       await onSaved(updated);
     } catch (err) {
+      savingRef.current = false;
       setSaving(false);
       notify(err instanceof Error ? err.message : 'Could not save the card.', 'negative');
     }
@@ -205,14 +232,18 @@ export function CardEditOverlay({
     <DialogPanel
       label="Edit card"
       trapRef={trapRef}
-      onBackdropClick={onCancel}
+      onBackdropClick={cancel}
       className="max-h-[90vh] max-w-3xl"
       overlayClassName="pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] will-change-transform-opacity"
-      onKeyDown={dialogKeyDown({ onCancel, onSubmit: () => void handleSave() })}
+      onKeyDown={dialogKeyDown({ onCancel: cancel, onSubmit: () => void handleSave() })}
     >
-      <DialogHeader title="Edit card" onClose={onCancel} closeLabel="Close editor" />
+      <DialogHeader title="Edit card" onClose={cancel} closeLabel="Close editor" />
 
-      <div className="flex flex-col gap-5 overflow-y-auto px-6 py-6">
+      <fieldset
+        disabled={saving}
+        inert={saving}
+        className="flex min-w-0 flex-col gap-5 overflow-y-auto px-6 py-6"
+      >
         {!isStructured && (
           <PillToggleGroup<CardType>
             label="Card type"
@@ -319,10 +350,10 @@ export function CardEditOverlay({
             placeholder="Add tags"
           />
         </div>
-      </div>
+      </fieldset>
 
       <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
-        <Button variant="ghost" onClick={onCancel}>
+        <Button variant="ghost" onClick={cancel}>
           Cancel
         </Button>
         <Button
