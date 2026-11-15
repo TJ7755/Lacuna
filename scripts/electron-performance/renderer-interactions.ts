@@ -41,8 +41,75 @@ export async function waitForSeededDashboard(page: Page): Promise<void> {
 async function resetToSeededDashboard(page: Page): Promise<void> {
   const quickSearch = page.getByRole('dialog', { name: 'Quick search', exact: true });
   if (await quickSearch.isVisible().catch(() => false)) {
-    await page.keyboard.press('Escape');
-    await quickSearch.waitFor({ state: 'hidden' });
+    // Preserve focus and input delivery while collecting evidence for native failures.
+    const probe = await page.evaluateHandle(() => {
+      const describe = (element: EventTarget | null) =>
+        element instanceof Element
+          ? {
+              tag: element.tagName,
+              role: element.getAttribute('role'),
+              label: element.getAttribute('aria-label'),
+              inQuickSearch: !!element.closest('[role="dialog"][aria-label="Quick search"]'),
+            }
+          : null;
+      const snapshot = () => ({
+        activeElement: describe(document.activeElement),
+        documentFocused: document.hasFocus(),
+        visibility: document.visibilityState,
+        comboboxFocused:
+          document.querySelector('[aria-label="Quick search"] input[role="combobox"]') ===
+          document.activeElement,
+      });
+      const events: unknown[] = [];
+      const onKey = (event: KeyboardEvent) => {
+        if (event.key !== 'Escape') return;
+        const receipt = {
+          type: event.type,
+          key: event.key,
+          code: event.code,
+          keyCode: event.keyCode,
+          composing: event.isComposing,
+          ctrl: event.ctrlKey,
+          meta: event.metaKey,
+          alt: event.altKey,
+          shift: event.shiftKey,
+          trusted: event.isTrusted,
+          target: describe(event.target),
+          defaultPreventedAtCapture: event.defaultPrevented,
+          get defaultPreventedAfterDispatch() {
+            return event.defaultPrevented;
+          },
+        };
+        events.push(receipt);
+      };
+      window.addEventListener('keydown', onKey, true);
+      window.addEventListener('keyup', onKey, true);
+      return {
+        before: snapshot(),
+        events,
+        snapshot,
+        stop: () => {
+          window.removeEventListener('keydown', onKey, true);
+          window.removeEventListener('keyup', onKey, true);
+        },
+      };
+    });
+    try {
+      await page.keyboard.press('Escape');
+      await quickSearch.waitFor({ state: 'hidden' });
+    } catch (cause) {
+      const evidence = await probe.evaluate((state) => ({
+        before: state.before,
+        events: state.events,
+        after: state.snapshot(),
+      }));
+      throw new Error(`Quick search Escape dismissal failed: ${JSON.stringify(evidence)}`, {
+        cause,
+      });
+    } finally {
+      await probe.evaluate((state) => state.stop());
+      await probe.dispose();
+    }
   }
   if (await page.evaluate(() => window.location.hash !== '#/' && window.location.hash !== '')) {
     await page.evaluate(() => {
