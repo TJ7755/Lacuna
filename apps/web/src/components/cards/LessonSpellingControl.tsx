@@ -23,7 +23,7 @@ export function LessonSpellingControl({ lesson }: { lesson: Lesson }) {
   }
 
   return (
-    <div className="mt-3 border-t border-line pt-4">
+    <div className="border-t border-line py-4">
       <Toggle
         label="Require correct spelling"
         checked={lesson.requireCorrectSpelling === true}

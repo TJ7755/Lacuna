@@ -24,11 +24,21 @@ const composerShortcuts: ShortcutGroup = {
     { keys: ['Esc'], description: 'Leave the composer and flush its draft' },
   ],
 };
+const lessonCardShortcuts: ShortcutGroup = {
+  title: 'Lesson cards',
+  shortcuts: [
+    { keys: ['Down', 'J'], description: 'Move to the next card' },
+    { keys: ['Up', 'K'], description: 'Move to the previous card' },
+    { keys: ['E'], description: 'Edit the focused card' },
+    { keys: ['Ctrl/Cmd', 'Enter'], description: 'Save changes in the card editor' },
+    { keys: ['Esc'], description: 'Close the editor, keeping unfinished changes as a draft' },
+  ],
+};
 import { formatBinding, type ShortcutBindings } from './shortcutBindings';
 
 /** Resolve the shared cheatsheet against the current study bindings without writing settings. */
 export function shortcutGroups(bindings: ShortcutBindings) {
-  return [...SHORTCUT_GROUPS, composerShortcuts].map((group) => ({
+  return [...SHORTCUT_GROUPS, composerShortcuts, lessonCardShortcuts].map((group) => ({
     ...group,
     shortcuts: group.shortcuts.map((s) => {
       // Replace hardcoded keys with custom bindings for the Learn actions.

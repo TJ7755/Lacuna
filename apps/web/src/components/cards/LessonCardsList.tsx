@@ -9,6 +9,8 @@ import { CreateButton } from '../ui/CreateButton';
 
 import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react';
 import { AppLink as Link } from '../ui/AppLink';
+import { useLocation } from 'react-router-dom';
+import { originFrom } from '../../utils/editorOrigin';
 import { m as motion } from 'motion/react';
 import { PlusIcon, EditIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
@@ -27,7 +29,7 @@ const CardContent = lazy(() =>
   import('./CardContent').then((module) => ({ default: module.CardContent })),
 );
 
-/** Rows shown before the list hands over to the full Cards page. */
+/** Rows shown before the list hands over to the lesson's complete cards. */
 const VISIBLE_ROWS = 8;
 
 interface LessonCardsListProps {
@@ -35,7 +37,7 @@ interface LessonCardsListProps {
   lessonId: string;
   cards: Card[];
   editable: boolean;
-  onNavigate: (path: string) => void;
+  onNavigate: (path: string, options?: { state?: unknown }) => void;
   /** Optional content under the rows, e.g. the Simple Learn disclosure. */
   footer?: ReactNode;
   /** The lesson's Find control, last in the heading row. */
@@ -62,6 +64,9 @@ export function LessonCardsList({
   focusNewCard = false,
   prominentNewCard = false,
 }: LessonCardsListProps) {
+  const location = useLocation();
+  const cardsPath = `/course/${courseId}/lesson/${lessonId}/cards`;
+  const origin = originFrom(location, 'Back to lesson');
   const newCardRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (focusNewCard && editable) newCardRef.current?.focus();
@@ -141,7 +146,16 @@ export function LessonCardsList({
             return (
               <li
                 key={card.id}
-                className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-ink/[0.03]"
+                className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-ink/[0.03]"
+                onClick={(event) => {
+                  if (
+                    (event.target as HTMLElement).closest(
+                      'a, button, input, textarea, select, audio, video',
+                    )
+                  )
+                    return;
+                  onNavigate(`${cardsPath}?card=${encodeURIComponent(card.id)}`, { state: origin });
+                }}
               >
                 {occlusion && <OcclusionThumbnail card={card} occlusion={occlusion} />}
                 <div className="flex min-w-0 flex-1 flex-col leading-snug">
@@ -152,7 +166,14 @@ export function LessonCardsList({
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
-                  <CardKindIcon card={card} />
+                  <Link
+                    to={`${cardsPath}?card=${encodeURIComponent(card.id)}`}
+                    state={origin}
+                    aria-label={`View card: ${plainFront(card)}`}
+                    className="flex min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-accent-ink"
+                  >
+                    <CardKindIcon card={card} />
+                  </Link>
                   <ScheduleChip schedule={cardScheduleLabel(card, now)} />
                 </div>
                 <motion.span
@@ -175,12 +196,13 @@ export function LessonCardsList({
         </ul>
       )}
 
-      {cards.length > VISIBLE_ROWS && (
+      {cards.length > 0 && (
         <Link
-          to={`/course/${courseId}/cards`}
+          to={cardsPath}
+          state={origin}
           className="mt-2 inline-flex min-h-11 items-center px-2 text-[15px] font-bold text-accent-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
         >
-          All {cards.length} cards
+          All {cards.length} {cards.length === 1 ? 'card' : 'cards'}
         </Link>
       )}
       {footer && <div className="mt-2">{footer}</div>}

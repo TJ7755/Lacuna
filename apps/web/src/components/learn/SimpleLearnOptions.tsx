@@ -4,6 +4,7 @@ import { useLessonOrderData } from '../../state/useLessonOrderData';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
 import { ChevronDownIcon } from '../ui/icons';
+import { ExpandingCreateControl } from '../ui/ExpandingCreateControl';
 import { cn } from '../ui/cn';
 
 /** Keep optional passes tucked beneath the scheduled study choices. */
@@ -19,6 +20,26 @@ export function SimpleLearnOptions({
   const [lessonId, setLessonId] = useState(initialLessonId);
   const [expanded, setExpanded] = useState(false);
 
+  if (initialLessonId)
+    return (
+      <div className={cn('border-t border-line pt-4', className)}>
+        <ExpandingCreateControl
+          label="Practise until all correct"
+          closedWidth={240}
+          showIcon={false}
+          align="start"
+          open={expanded}
+          onOpenChange={setExpanded}
+        >
+          <SimpleLearnFields
+            courseId={courseId}
+            lessonId={lessonId}
+            fixedLesson={Boolean(initialLessonId)}
+            onLessonChange={setLessonId}
+          />
+        </ExpandingCreateControl>
+      </div>
+    );
   return (
     <details
       className={cn('border-t border-line pt-2', className)}
@@ -34,7 +55,12 @@ export function SimpleLearnOptions({
         />
       </summary>
       {expanded && (
-        <SimpleLearnFields courseId={courseId} lessonId={lessonId} onLessonChange={setLessonId} />
+        <SimpleLearnFields
+          courseId={courseId}
+          lessonId={lessonId}
+          onLessonChange={setLessonId}
+          fixedLesson={false}
+        />
       )}
     </details>
   );
@@ -44,36 +70,40 @@ function SimpleLearnFields({
   courseId,
   lessonId,
   onLessonChange,
+  fixedLesson,
 }: {
   courseId: string;
   lessonId: string;
   onLessonChange: (id: string) => void;
+  fixedLesson: boolean;
 }) {
   const lessons = useLessonOrderData(courseId)?.lessons;
   const navigate = useNavigate();
   return (
-    <div className="flex flex-col gap-3 pb-2 pt-1">
+    <div className={cn('flex flex-col gap-3', fixedLesson ? 'p-5' : 'pb-2 pt-1')}>
       <p className="text-sm text-ink-faint">Answers update your review schedule.</p>
-      <Select
-        className="simple-learn-select w-full"
-        aria-label="What to practise"
-        value={lessonId}
-        onChange={(event) => onLessonChange(event.target.value)}
-        onKeyDown={(event) => {
-          // Escape dismisses the picker before the surrounding options.
-          if (event.key === 'Escape' && event.currentTarget.matches(':open')) {
-            event.stopPropagation();
-          }
-        }}
-        disabled={lessons === undefined}
-      >
-        <option value="">Whole course</option>
-        {lessons?.map((lesson) => (
-          <option key={lesson.id} value={lesson.id}>
-            {lesson.name}
-          </option>
-        ))}
-      </Select>
+      {!fixedLesson && (
+        <Select
+          className="simple-learn-select w-full"
+          aria-label="What to practise"
+          value={lessonId}
+          onChange={(event) => onLessonChange(event.target.value)}
+          onKeyDown={(event) => {
+            // Escape dismisses the picker before the surrounding options.
+            if (event.key === 'Escape' && event.currentTarget.matches(':open')) {
+              event.stopPropagation();
+            }
+          }}
+          disabled={lessons === undefined}
+        >
+          <option value="">Whole course</option>
+          {lessons?.map((lesson) => (
+            <option key={lesson.id} value={lesson.id}>
+              {lesson.name}
+            </option>
+          ))}
+        </Select>
+      )}
       <Button
         variant="secondary"
         size="lg"

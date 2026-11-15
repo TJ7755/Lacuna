@@ -64,7 +64,7 @@ export function CourseSectionNavigation({
   useIdleRoutePrefetch(COURSE_SECTIONS.map(({ suffix }) => `/course/${courseId}${suffix}`));
   const titleInView = useCourseTitleInView(pathname);
   const archived = course?.archived === true;
-  const lesson = /^\/course\/[^/]+\/lesson\/[^/]+$/.test(pathname);
+  const lesson = /^\/course\/[^/]+\/lesson\/[^/]+(?:\/cards)?$/.test(pathname);
 
   return (
     // The bar's own `sticky` would end with this short wrapper, so the wrapper sticks

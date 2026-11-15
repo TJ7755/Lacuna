@@ -200,7 +200,7 @@ describe('LessonView View mode', () => {
   it('preselects this lesson for an optional Simple Learn pass', async () => {
     renderPage();
     fireEvent.click(screen.getByText('Practise until all correct'));
-    expect(await screen.findByLabelText('What to practise')).toHaveValue(lesson.id);
+    expect(screen.queryByLabelText('What to practise')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Start practising' }));
     expect(mockNavigate).toHaveBeenCalledWith(`/lesson/${lesson.id}/learn?mode=simple`);
   });
@@ -384,7 +384,7 @@ describe('LessonView Edit mode', () => {
     expect(container.querySelector('[data-lesson-workspace-mode="edit"]')).not.toBeNull();
   });
 
-  it('shows edit controls on each card row and the management section', () => {
+  it('keeps card editing in the preview and opens full management in lesson cards', () => {
     renderPage();
     expect(screen.getByRole('heading', { name: 'Cards in this lesson' })).toBeInTheDocument();
     expectAppDestination(
@@ -392,7 +392,11 @@ describe('LessonView Edit mode', () => {
       '/course/course-1/lesson/lesson-1/cards/card-1/edit',
     );
     expect(screen.getByRole('button', { name: 'New card' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Manage/ })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Manage/ })).not.toBeInTheDocument();
+    expectAppDestination(
+      screen.getByRole('link', { name: 'All 1 card' }),
+      '/course/course-1/lesson/lesson-1/cards',
+    );
   });
 
   it('draws no empty management panel for a lesson with no cards', () => {

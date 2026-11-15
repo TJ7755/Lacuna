@@ -24,6 +24,7 @@ import {
   loadDownload,
   loadHelpPage,
   loadLessonView,
+  loadLessonCardsPage,
   loadLearnMode,
   loadMergeReviewPanel,
   loadMethod,
@@ -65,6 +66,7 @@ const CourseSettings = lazy(loadCourseSettings);
 const CourseAnalytics = lazy(loadCourseAnalytics);
 const CoursePath = lazy(loadCoursePath);
 const LessonView = lazy(loadLessonView);
+const LessonCardsPage = lazy(loadLessonCardsPage);
 const CardsPage = lazy(loadCardsPage);
 const QuestionsPage = lazy(loadQuestionsPage);
 const QuestionSetEditor = lazy(loadQuestionSetEditor);
@@ -160,6 +162,10 @@ export const router = createHashRouter([
           {
             path: 'course/:courseId/lesson/:lessonId',
             element: workspaceRoute(LessonView),
+          },
+          {
+            path: 'course/:courseId/lesson/:lessonId/cards',
+            element: workspaceRoute(LessonCardsPage),
           },
           {
             path: 'course/:courseId/bank',

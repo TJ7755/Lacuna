@@ -24,6 +24,7 @@ export const CardContent = memo(function CardContent({
   sequenceCue = false,
   sequenceMode = 'list',
   audioAutoplay = false,
+  enlargeImages = false,
   occlusion,
   typedAnswerFeedback,
 }: {
@@ -45,13 +46,13 @@ export const CardContent = memo(function CardContent({
   /** The owning sequence's mode, used to choose item- or line-specific recall wording. */
   sequenceMode?: 'list' | 'lines';
   audioAutoplay?: boolean;
+  enlargeImages?: boolean;
   /**
    * The Occlusion an occlusion-generated card (`card.occlusionRegionId`) belongs to,
    * resolved by the caller (see src/db/occlusionStudy.ts). When present, the card
    * renders its masked diagram instead of its plain-text front/back fallback. Left
-   * unset — including by every non-Learn-mode surface (card list, search, the read-only
-   * card editor view) — so those keep showing the fallback text occlusion cards carry
-   * for exactly this purpose (§6.4).
+   * unset in compact lists and search to show the fallback text; complete lesson
+   * cards and study surfaces supply the owner so the whole masked diagram is readable.
    */
   occlusion?: Occlusion;
 }) {
@@ -70,6 +71,7 @@ export const CardContent = memo(function CardContent({
     return (
       <MarkdownView
         source={card.front}
+        enlargeImages={enlargeImages}
         clozeMode={side === 'front' ? 'front' : 'back'}
         typedAnswerFeedback={typedAnswerFeedback}
         className={className}
@@ -113,6 +115,7 @@ export const CardContent = memo(function CardContent({
   return (
     <MarkdownView
       source={side === 'front' ? card.front : card.back}
+      enlargeImages={enlargeImages}
       literalNumericAnswer={side === 'back'}
       className={className}
       typedAnswerFeedback={typedAnswerFeedback}

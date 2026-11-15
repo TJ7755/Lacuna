@@ -48,6 +48,9 @@ export const loadCoursePath = () =>
 
 export { loadLessonView } from './lessonRoute';
 
+export const loadLessonCardsPage = () =>
+  import('../pages/LessonCardsPage').then((module) => ({ default: module.LessonCardsPage }));
+
 export const loadCardsPage = () =>
   import('../pages/CardsPage').then((module) => ({ default: module.CardsPage }));
 

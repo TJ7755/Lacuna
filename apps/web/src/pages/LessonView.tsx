@@ -6,7 +6,7 @@ import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestion
 // reading card for the notes beside a compact "Cards in this lesson" list. The
 // workspace renders in one of two modes, resolved by src/course/lessonViewMode.ts:
 // View (read-only) or Edit (the same layout with edit controls faded in, and
-// the full card management section revealed beneath), driven by the course's own
+// full card management available in the lesson cards document), driven by the course's own
 // Course.lessonViewMode.
 // Route: /course/:courseId/lesson/:lessonId
 // British English throughout.
@@ -17,13 +17,11 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { useLessonViewData } from '../state/useLessonViewData';
 import { LessonNotesCard } from '../components/notes/LessonNotesCard';
-import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { LessonCardsList } from '../components/cards/LessonCardsList';
 import { LessonSpellingControl } from '../components/cards/LessonSpellingControl';
 import { ArrowRightIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { updateCourse } from '../db/courseRepository';
-import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
 import { LessonHeader } from '../components/course/LessonHeader';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import {
@@ -52,10 +50,7 @@ export function LessonView() {
     (useLocation().state as { focusNewCard?: boolean } | null)?.focusNewCard === true;
   const { notify } = useToast();
   const lessonMenu = useRef<MenuHandle>(null);
-  const { lesson, course, lessons, notes, lessonCards, lessonDeck } = useLessonViewData(
-    courseId,
-    lessonId,
-  );
+  const { lesson, course, lessons, notes, lessonCards } = useLessonViewData(courseId, lessonId);
 
   const shortcutArchived = course?.archived === true;
   usePageShortcuts({
@@ -231,22 +226,6 @@ export function LessonView() {
             )}
           </div>
 
-          <AnimatedDisclosure
-            open={viewMode === 'edit' && Boolean(courseId && lessonId) && lessonCards.length > 0}
-          >
-            {courseId && lessonId && (
-              <div className="rounded-3xl bg-surface p-6 card-surface md:p-8">
-                <LessonCardsSection
-                  courseId={courseId}
-                  lessonId={lessonId}
-                  lessonName={lesson.name}
-                  lessonCards={lessonCards}
-                  lessonSchedulingConfig={lessonDeck}
-                  onNavigate={navigate}
-                />
-              </div>
-            )}
-          </AnimatedDisclosure>
           {courseId && lessonId && <RelatedQuestionSets courseId={courseId} lessonId={lessonId} />}
         </div>
       </div>

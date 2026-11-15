@@ -122,15 +122,17 @@ describe('ArchivedCourseAccessGuard', () => {
     },
   );
 
-  it.each(['/course/course-1', '/course/course-1/lesson/lesson-1', '/course/course-1/analytics'])(
-    'allows archived inspection at %s',
-    (path) => {
-      renderGuardedRoute(path);
+  it.each([
+    '/course/course-1',
+    '/course/course-1/lesson/lesson-1',
+    '/course/course-1/lesson/lesson-1/cards',
+    '/course/course-1/analytics',
+  ])('allows archived inspection at %s', (path) => {
+    renderGuardedRoute(path);
 
-      expect(screen.getByTestId('location')).toHaveTextContent(path);
-      expect(screen.getByText('Guarded content')).toBeInTheDocument();
-    },
-  );
+    expect(screen.getByTestId('location')).toHaveTextContent(path);
+    expect(screen.getByText('Guarded content')).toBeInTheDocument();
+  });
 
   it.each([
     '/course/course-1/bank',

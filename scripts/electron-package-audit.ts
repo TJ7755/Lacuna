@@ -31,7 +31,9 @@ const WINDOWS_PACKAGE_BUDGET = {
   // exam-technique catalogue, form and authoring chunks shared by the question-set editor
   // and course settings, plus the leave guard shared by the sequence and occlusion
   // editors and shared Flow expansion controls. Archive and payload byte limits still apply.
-  payloadFileCount: 723,
+  // The complete lesson-card document and its shared bulk controls add seven
+  // renderer/CSS files over the 723-file baseline. Byte limits remain unchanged.
+  payloadFileCount: 730,
   sourceMapBytes: 0,
   buildOnlyAssetBytes: 10_000,
   localeBytes: 1_300_000,

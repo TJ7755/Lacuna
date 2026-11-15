@@ -37,21 +37,24 @@ describe('RouteTransitions', () => {
     });
   });
 
-  it.each(['/course/c1', '/course/c1/cards', '/course/c1/analytics', '/course/c1/lesson/l1'])(
-    'keeps the course bar on %s',
-    (pathname) => {
-      render(
-        <MemoryRouter>
-          <LazyMotion features={domAnimation}>
-            <RouteTransitions pathname={pathname} direction={0} multiplier={0}>
-              <p>page</p>
-            </RouteTransitions>
-          </LazyMotion>
-        </MemoryRouter>,
-      );
-      expect(screen.getByRole('navigation', { name: 'Course bar' })).toHaveTextContent('c1');
-    },
-  );
+  it.each([
+    '/course/c1',
+    '/course/c1/cards',
+    '/course/c1/analytics',
+    '/course/c1/lesson/l1',
+    '/course/c1/lesson/l1/cards',
+  ])('keeps the course bar on %s', (pathname) => {
+    render(
+      <MemoryRouter>
+        <LazyMotion features={domAnimation}>
+          <RouteTransitions pathname={pathname} direction={0} multiplier={0}>
+            <p>page</p>
+          </RouteTransitions>
+        </LazyMotion>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('navigation', { name: 'Course bar' })).toHaveTextContent('c1');
+  });
 
   it('leaves card editors to draw their own bar', () => {
     render(

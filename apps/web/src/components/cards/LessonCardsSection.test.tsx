@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { LazyMotion, domAnimation } from 'motion/react';
+import { MemoryRouter } from 'react-router-dom';
 import { LessonCardsSection } from './LessonCardsSection';
-import type { Card, LegacyDeckRecord, LessonCardLink } from '@lacuna/core/db/types';
+import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
 
-let mockLinks: LessonCardLink[] | undefined = [];
+let linkedCardIds = new Set<string>();
 const mockUnlink = vi.fn();
 const mockGetExposure = vi.fn();
 const mockNotify = vi.fn();
@@ -14,12 +16,6 @@ const observedContexts: {
   hasApkg: boolean;
   hasRestore: boolean;
 }[] = [];
-
-vi.mock('../../state/useCourseData', () => ({
-  useLessonCardLinks: () => mockLinks,
-  useSequences: () => [],
-  useOcclusions: () => [],
-}));
 
 vi.mock('../../db/schema', () => ({
   db: {
@@ -129,7 +125,7 @@ const card: Card = {
 };
 
 beforeEach(() => {
-  mockLinks = [];
+  linkedCardIds = new Set();
   mockUnlink.mockReset();
   mockNotify.mockReset();
   observedContexts.length = 0;
@@ -139,48 +135,22 @@ beforeEach(() => {
 });
 
 describe('LessonCardsSection', () => {
-  it('leaves an empty lesson to its New card, with nothing to manage', () => {
-    const { container, rerender } = render(
-      <LessonCardsSection
-        courseId="course-1"
-        lessonId="lesson-1"
-        lessonName="Cells"
-        lessonCards={[]}
-        lessonSchedulingConfig={undefined}
-        onNavigate={vi.fn()}
-      />,
-    );
-    expect(container).toBeEmptyDOMElement();
-
-    rerender(
-      <LessonCardsSection
-        courseId="course-1"
-        lessonId="lesson-1"
-        lessonName="Cells"
-        lessonCards={[card]}
-        lessonSchedulingConfig={deck}
-        onNavigate={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole('heading', { name: 'Manage (1)' })).toBeInTheDocument();
-    expect(screen.getByText('Answer by')).toBeInTheDocument();
-    // Every way to add cards starts from the card panel's New card; Manage only manages.
-    expect(screen.queryByRole('button', { name: /New/ })).not.toBeInTheDocument();
-  });
-
   it('identifies linked membership in a populated lesson', () => {
-    mockLinks = [
-      { id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1, updatedAt: 1 },
-    ];
+    linkedCardIds = new Set([card.id]);
     render(
-      <LessonCardsSection
-        courseId="course-1"
-        lessonId="lesson-1"
-        lessonName="Cells"
-        lessonCards={[card]}
-        lessonSchedulingConfig={deck}
-        onNavigate={vi.fn()}
-      />,
+      <LazyMotion features={domAnimation}>
+        <MemoryRouter>
+          <LessonCardsSection
+            courseId="course-1"
+            lessonId="lesson-1"
+            lessonName="Cells"
+            lessonCards={[card]}
+            lessonSchedulingConfig={deck}
+            linkedCardIds={linkedCardIds}
+            renderCards={() => null}
+          />
+        </MemoryRouter>
+      </LazyMotion>,
     );
     expect(screen.getByTestId('linked-ids')).toHaveTextContent(card.id);
     expect(observedContexts).toEqual([
@@ -189,9 +159,7 @@ describe('LessonCardsSection', () => {
   });
 
   it('warns before unlinking a card with lesson-specific teaching progress', async () => {
-    mockLinks = [
-      { id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1, updatedAt: 1 },
-    ];
+    linkedCardIds = new Set([card.id]);
     mockGetExposure.mockResolvedValue({
       lessonId: 'lesson-1',
       cardId: card.id,
@@ -199,14 +167,19 @@ describe('LessonCardsSection', () => {
       updatedAt: 1,
     });
     render(
-      <LessonCardsSection
-        courseId="course-1"
-        lessonId="lesson-1"
-        lessonName="Cells"
-        lessonCards={[card]}
-        lessonSchedulingConfig={deck}
-        onNavigate={vi.fn()}
-      />,
+      <LazyMotion features={domAnimation}>
+        <MemoryRouter>
+          <LessonCardsSection
+            courseId="course-1"
+            lessonId="lesson-1"
+            lessonName="Cells"
+            lessonCards={[card]}
+            lessonSchedulingConfig={deck}
+            linkedCardIds={linkedCardIds}
+            renderCards={() => null}
+          />
+        </MemoryRouter>
+      </LazyMotion>,
     );
 
     fireEvent.click(screen.getByText('Remove linked card'));
@@ -217,22 +190,5 @@ describe('LessonCardsSection', () => {
 
     fireEvent.click(screen.getByText('Remove'));
     await waitFor(() => expect(mockUnlink).toHaveBeenCalledOnce());
-  });
-
-  it('withholds card controls until linked membership has loaded', () => {
-    mockLinks = undefined;
-    render(
-      <LessonCardsSection
-        courseId="course-1"
-        lessonId="lesson-1"
-        lessonName="Cells"
-        lessonCards={[card]}
-        lessonSchedulingConfig={deck}
-        onNavigate={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByLabelText('Loading lesson cards')).toBeInTheDocument();
-    expect(screen.queryByText('Remove linked card')).not.toBeInTheDocument();
   });
 });

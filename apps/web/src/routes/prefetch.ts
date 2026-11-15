@@ -24,6 +24,7 @@ import {
   loadHelpPage,
   loadImportPanel,
   loadLessonView,
+  loadLessonCardsPage,
   loadQuestionsPage,
   loadSearchPage,
   loadSettings,
@@ -82,6 +83,7 @@ const COURSE_PREFETCH_LOADERS: Array<{
     loader: loadLessonView,
   },
   { pattern: /^\/course\/[^/]+\/cards\/?$/, loader: loadCardsPage },
+  { pattern: /^\/course\/[^/]+\/lesson\/[^/]+\/cards\/?$/, loader: loadLessonCardsPage },
   {
     pattern: /^\/course\/[^/]+\/questions\/?$/,
     loader: loadQuestionsPage,

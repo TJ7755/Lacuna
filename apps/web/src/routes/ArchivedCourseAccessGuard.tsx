@@ -7,6 +7,7 @@ import { useCourse, useLesson } from '../state/useCourseData';
 const ARCHIVED_INSPECTION_PATHS = [
   '/course/:courseId',
   '/course/:courseId/lesson/:lessonId',
+  '/course/:courseId/lesson/:lessonId/cards',
   '/course/:courseId/analytics',
 ] as const;
 
