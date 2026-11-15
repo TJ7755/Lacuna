@@ -4,7 +4,7 @@ import { CourseTitleTransition } from '../course/CourseTitleTransition';
 import { CourseSectionNavigation } from '../course/CourseSectionNavigation';
 import { matchCourseSection } from '../course/courseSections';
 
-const COURSE_CHROME_ROUTE = /^\/course\/([^/]+)\/(?:analytics|lesson\/[^/]+)$/;
+const COURSE_CHROME_ROUTE = /^\/course\/([^/]+)\/(?:analytics|lesson\/[^/]+(?:\/cards)?)$/;
 
 /** How far a course tab drifts as it fades in: a nudge that says which way, not a full slide. */
 export const TAB_DRIFT_PX = 24;

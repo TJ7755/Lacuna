@@ -22,6 +22,7 @@ export function ExpandingCreateControl({
   onOpenChange,
   label,
   closedWidth = 152,
+  expandedWidth = 448,
   children,
   align = 'end',
   className = '',
@@ -38,6 +39,7 @@ export function ExpandingCreateControl({
   prominent?: boolean;
   label: string;
   closedWidth?: number;
+  expandedWidth?: number;
   children: ReactNode | ((close: () => void) => ReactNode);
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -95,7 +97,7 @@ export function ExpandingCreateControl({
     const measure = () => {
       const bounds = root.current?.getBoundingClientRect();
       if (!bounds) return;
-      const width = Math.min(448, window.innerWidth - 36);
+      const width = Math.min(expandedWidth, window.innerWidth - 36);
       const shell = surface.current;
       const borderWidth = shell ? shell.offsetWidth - shell.clientWidth : 0;
       setFormWidth(width - borderWidth);
@@ -131,7 +133,7 @@ export function ExpandingCreateControl({
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
-  }, [open, align, triggerHeight, formHeight]);
+  }, [open, align, triggerHeight, formHeight, expandedWidth]);
 
   const previouslyOpen = useRef(open);
   useEffect(() => {
@@ -165,7 +167,7 @@ export function ExpandingCreateControl({
         animate={{
           x: open ? offset : 0,
           '--create-offset-y': `${open ? verticalOffset : 0}px`,
-          width: open ? 'min(448px, calc(100vw - 36px))' : closedWidth,
+          width: open ? `min(${expandedWidth}px, calc(100vw - 36px))` : closedWidth,
           height: open
             ? formHeight === undefined
               ? 'auto'

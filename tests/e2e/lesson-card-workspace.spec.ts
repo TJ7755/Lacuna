@@ -1,0 +1,183 @@
+import { expect, test } from '@playwright/test';
+import { seedStudyCards } from './fixtures/studyCards';
+import { settle } from './fixtures/flowEvidence';
+import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+
+const DIAGRAM = '/__lesson-card-eye.svg';
+const SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="720" height="410" viewBox="0 0 720 410"><rect width="720" height="410" fill="#f6f7f1"/><ellipse cx="320" cy="205" rx="210" ry="155" fill="#e7eef0" stroke="#586776" stroke-width="4"/><ellipse cx="160" cy="205" rx="32" ry="75" fill="white" stroke="#586776" stroke-width="3"/><path d="M530 190L620 190L620 225L530 225" fill="#f3cbc4" stroke="#586776" stroke-width="3"/><text x="640" y="210" font-size="24">G</text></svg>';
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  test(`lesson cards retain full diagrams, edit in place and return to the lesson (${reducedMotion})`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1600, height: 1165 });
+    await page.emulateMedia({ reducedMotion });
+    await page.addInitScript(
+      (theme) => localStorage.setItem('lacuna-theme', theme),
+      reducedMotion === 'reduce' ? 'dark' : 'light',
+    );
+    await page.route('**/__lesson-card-eye.svg', (route) =>
+      route.fulfill({ contentType: 'image/svg+xml', body: SVG }),
+    );
+    const seeded = await seedStudyCards(
+      page,
+      'Biology',
+      Array.from(
+        { length: 9 },
+        (_, index) =>
+          [
+            `Identify structure G (${index + 1}).\n\n![Eye cross-section](${DIAGRAM})`,
+            'Optic nerve.',
+          ] as const,
+      ),
+    );
+    const lessonPath = `/#/course/${seeded.courseId}/lesson/${seeded.lessonId}`;
+    await page.goto(lessonPath);
+    const all = page.getByRole('link', { name: 'All 9 cards', exact: true });
+    await all.click();
+    await expect(page).toHaveURL(new RegExp(`/lesson/${seeded.lessonId}/cards$`));
+    await expect(page.getByRole('article')).toHaveCount(9);
+    await expect(page.getByRole('navigation', { name: 'Course sections' })).toBeVisible();
+    await expect(page.locator('[data-route-content]').last()).toHaveCSS('opacity', '1');
+    const cards = page.getByRole('article');
+    const first = cards.first();
+    const second = cards.nth(1);
+    const image = first.getByRole('img', { name: 'Eye cross-section' });
+    await expect(image).toBeVisible();
+    await expect
+      .poll(() => image.evaluate((img) => (img as HTMLImageElement).naturalWidth))
+      .toBe(720);
+    const dimensions = await image.boundingBox();
+    expect(dimensions!.width / dimensions!.height).toBeCloseTo(720 / 410, 1);
+    expect(dimensions!.height).toBeGreaterThan(100);
+    expect(dimensions!.height).toBeLessThanOrEqual(225);
+    expect(
+      (await second.boundingBox())!.y + (await second.boundingBox())!.height,
+    ).toBeLessThanOrEqual(1165);
+    await page.screenshot({ path: testInfo.outputPath('lesson-cards.png') });
+    await testInfo.attach('Complete lesson cards', {
+      path: testInfo.outputPath('lesson-cards.png'),
+      contentType: 'image/png',
+    });
+
+    await first.getByRole('button', { name: 'Enlarge image: Eye cross-section' }).click();
+    const viewer = page.getByRole('dialog', { name: 'Image', exact: true });
+    await expect(viewer).toBeVisible();
+    await viewer.getByRole('button', { name: 'Actual size' }).click();
+    await expect(viewer.getByRole('img')).toHaveCSS('max-width', 'none');
+    await page.keyboard.press('Escape');
+    await expect(viewer).toBeHidden();
+
+    const edit = first.getByRole('button', { name: 'Edit', exact: true });
+    await edit.click();
+    if (reducedMotion === 'no-preference') {
+      const frames = await edit.evaluate(
+        (button) =>
+          new Promise<{ width: number; textScale: number }[]>((resolve) => {
+            const samples: { width: number; textScale: number }[] = [];
+            const sample = () => {
+              const surface = button.parentElement!;
+              const field = surface.querySelector('textarea');
+              samples.push({
+                width: surface.getBoundingClientRect().width,
+                textScale: field ? field.getBoundingClientRect().width / field.offsetWidth : 1,
+              });
+              if (samples.length === 24) resolve(samples);
+              else requestAnimationFrame(sample);
+            };
+            requestAnimationFrame(sample);
+          }),
+      );
+      expect(frames.some((frame) => frame.width > 100 && frame.width < 780)).toBe(true);
+      expect(frames.every((frame) => Math.abs(frame.textScale - 1) < 0.02)).toBe(true);
+    }
+    const front = first.getByRole('textbox', { name: 'Front', exact: true });
+    const back = first.getByRole('textbox', { name: 'Back', exact: true });
+    await expect(front).toBeFocused();
+    const surface = edit.locator('..');
+    await settle(surface);
+    expect((await surface.boundingBox())!.width).toBeGreaterThan(700);
+    await expect(front).toHaveCSS('transform', 'none');
+    await page.screenshot({ path: testInfo.outputPath('lesson-card-edit.png') });
+    await testInfo.attach('Flow card editor', {
+      path: testInfo.outputPath('lesson-card-edit.png'),
+      contentType: 'image/png',
+    });
+    await back.fill('Carries impulses from the retina to the brain.');
+    await back.press('Control+Enter');
+    await expect(edit).toHaveAttribute('aria-expanded', 'false');
+    await expect(edit).toBeFocused();
+    await expect(first.getByRole('region', { name: 'Back', exact: true })).toContainText(
+      'Carries impulses',
+    );
+
+    // Closing the expanding editor reverses it immediately; the unfinished draft survives.
+    await edit.click();
+    await back.fill('Unfinished explanation');
+    await page.keyboard.press('Escape');
+    await expect(edit).toHaveAttribute('aria-expanded', 'false');
+    await settle(surface);
+    await edit.click();
+    await first.getByRole('button', { name: 'Restore draft', exact: true }).click();
+    await expect(back).toHaveValue('Unfinished explanation');
+    await page.keyboard.press('Escape');
+
+    await first.focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(second).toBeFocused();
+    await page.keyboard.press('ArrowUp');
+    await expect(first).toBeFocused();
+    await page.getByRole('link', { name: 'Back to lesson', exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/lesson/${seeded.lessonId}$`));
+    // A specific preview opens the same document at that card.
+    const cardLink = page.getByRole('link', { name: /^View card: Identify structure G/ }).first();
+    await cardLink.click();
+    await expect(page).toHaveURL(new RegExp('card='));
+    const id = new URLSearchParams(new URL(page.url()).hash.split('?')[1]).get('card');
+    await expect(page.locator(`[data-lesson-card="${id}"]`)).toBeFocused();
+  });
+}
+
+test('occlusion cards preserve masks, enlargement focus and their owning editor', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  await createCourse(page, 'Image cards');
+  const lessonUrl = page.url();
+  await page.goto(`${lessonUrl}/occlusion/new`);
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Eye cross-section');
+  await page
+    .getByLabel('Upload diagram', { exact: true })
+    .setInputFiles({ name: 'eye.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(SVG) });
+  const canvas = page.getByRole('group', { name: 'Draw a region' });
+  await expect(canvas).toBeVisible();
+  await canvas.focus();
+  await canvas.press('Space');
+  await canvas.press('Enter');
+  await page.getByRole('button', { name: 'Add occlusion', exact: true }).click();
+  await expect(page).toHaveURL(lessonUrl);
+  await page.getByRole('link', { name: 'All 1 card', exact: true }).click();
+  const card = page.getByRole('article');
+  await expect(card.getByRole('img', { name: 'Eye cross-section' })).toHaveCount(2);
+  const enlarge = card.getByRole('button', { name: 'Enlarge diagram' }).first();
+  await enlarge.click();
+  const dialog = page.getByRole('dialog', { name: 'Eye cross-section', exact: true });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Close diagram' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(enlarge).toBeFocused();
+  await testInfo.attach('Complete occlusion card', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
+  await card.getByRole('button', { name: 'Edit diagram', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(
+    'Eye cross-section',
+  );
+  await page.getByRole('link', { name: 'Back to Lesson cards', exact: true }).click();
+  await expect(page).toHaveURL(`${lessonUrl}/cards`);
+});

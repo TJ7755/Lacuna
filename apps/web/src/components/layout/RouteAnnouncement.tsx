@@ -32,7 +32,10 @@ function routeLabel(pathname: string): string {
   if (!section) return 'Course path';
   if (section === 'study') return 'Study course';
   if (section === 'learn') return 'Practise course';
-  if (section === 'lesson') return segments.includes('cards') ? 'Edit card' : 'Lesson';
+  if (section === 'lesson') {
+    if (segments.at(-1) === 'cards') return 'Lesson cards';
+    return segments.includes('cards') ? 'Edit card' : 'Lesson';
+  }
   if (section === 'cards') return segments.length > 3 ? 'Edit card' : 'Cards';
   if (section === 'question-sets')
     return segments[4] === 'edit'

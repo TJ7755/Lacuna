@@ -31,6 +31,7 @@ const loaders = vi.hoisted(() => ({
   loadCourseSettings: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
   loadImportPanel: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
   loadHelpPage: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
+  loadLessonCardsPage: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
   loadLessonView: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
   loadQuestionsPage: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
   loadSearchPage: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
@@ -65,6 +66,7 @@ describe('prefetchRoute', () => {
 
   it.each([
     ['/course/one/cards/new', 'loadCardEditor'],
+    ['/course/one/lesson/two/cards', 'loadLessonCardsPage'],
     ['/course/one/lesson/two/cards/three/edit', 'loadCardEditor'],
     ['/course/one/questions/new', 'loadQuestionEditor'],
     ['/course/one/questions/two/edit', 'loadQuestionEditor'],

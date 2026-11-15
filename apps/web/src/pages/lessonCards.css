@@ -1,0 +1,20 @@
+.lesson-card-document {
+  scroll-margin-top: 5rem;
+}
+
+/* Reading size contains the whole image; enlargement retains the original resolution. */
+.lesson-card-document .prose-lacuna img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 14rem;
+  object-fit: contain;
+}
+
+.lesson-card-document .study-occlusion-diagram {
+  max-width: 22rem;
+}
+
+.lesson-card-document .prose-lacuna {
+  overflow-wrap: anywhere;
+}

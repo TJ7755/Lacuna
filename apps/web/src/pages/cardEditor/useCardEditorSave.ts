@@ -32,7 +32,7 @@ export function useCardEditorSave({
   card: Card | null | undefined;
   courseId: string | undefined;
   lessonId: string | undefined;
-  returnTo: ReturnTarget;
+  returnTo: Pick<ReturnTarget, 'goBack'>;
 }) {
   const {
     type,
