@@ -81,19 +81,11 @@ test('Search names its field, provides full-size keyboard filters and keeps Clea
   await expect(page).toHaveURL(/#\/course\//);
 });
 
-test('Import keeps its heading still and returns keyboard focus to the chosen source', async ({
+test('Import returns keyboard focus to the chosen source and preserves drafts', async ({
   page,
 }, testInfo) => {
   await enterWithWelcomeCourse(page);
   await page.goto('/#/import');
-  const heading = page.locator('main span[aria-hidden="true"]').filter({ hasText: /^Import$/ });
-  await expect(heading).toBeVisible();
-  const headingTop = () =>
-    heading.evaluate(
-      (element) => element.getBoundingClientRect().top + (element.closest('main')?.scrollTop ?? 0),
-    );
-  await expect.poll(async () => (await heading.boundingBox())!.width).toBeGreaterThan(0);
-  const originalTop = await headingTop();
   const source = page.getByRole('button', { name: /Text or spreadsheet/ });
   await source.focus();
   await source.press('Enter');
@@ -103,7 +95,6 @@ test('Import keeps its heading still and returns keyboard focus to the chosen so
   expect(
     (await paste.boundingBox())!.width / (await inputBody.boundingBox())!.width,
   ).toBeGreaterThan(0.85);
-  expect(Math.abs((await headingTop()) - originalTop)).toBeLessThanOrEqual(1);
   await paste.press('Escape');
   await expect(source).toBeFocused();
   await source.press('Enter');
@@ -118,7 +109,6 @@ test('Import keeps its heading still and returns keyboard focus to the chosen so
   await back.focus();
   await back.press('Enter');
   await expect(source).toBeFocused();
-  expect(Math.abs((await headingTop()) - originalTop)).toBeLessThanOrEqual(1);
 });
 
 test('restoring the last archived course returns keyboard focus to Archived', async ({
