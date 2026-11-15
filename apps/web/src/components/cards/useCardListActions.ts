@@ -14,6 +14,7 @@ import {
   unsuspendCard,
 } from '../../db/cardRepository';
 import type { Card } from '@lacuna/core/db/types';
+import { applyUndoableCardChange } from '../../db/cardBulkUndo';
 import { countOf } from '../../utils/plural';
 
 /** A lesson a card can be bulk-assigned to, offered in the "Assign to lesson…" panel. */
@@ -112,10 +113,12 @@ export function useCardListActions({
     const ids = [...selected];
     if (ids.length === 0) return;
     try {
-      const snapshot = await snapshotCards(ids);
-      await apply(ids);
+      const undo = await applyUndoableCardChange(ids, apply);
       finishBulk();
-      notify(message, 'neutral', { actionLabel: 'Undo', onAction: () => undoRestore(snapshot) });
+      notify(message, 'neutral', {
+        actionLabel: 'Undo',
+        onAction: () => undo().catch(() => notify('Could not undo that change.', 'negative')),
+      });
     } catch {
       // Selection stays intact so the learner can retry.
       notify(failure, 'negative');
@@ -197,9 +200,10 @@ export function useCardListActions({
     if (!courseId) return;
     const ids = [...selected];
     if (ids.length === 0) return;
-    const snapshot = await snapshotCards(ids);
     const lessonId = assignTarget || null;
-    await assignCardsToLesson(ids, courseId, lessonId);
+    const undo = await applyUndoableCardChange(ids, (selectedIds) =>
+      assignCardsToLesson(selectedIds, courseId, lessonId),
+    );
     finishBulk();
     const lessonName = lessonId
       ? (assignableLessons?.find((l) => l.id === lessonId)?.name ?? 'lesson')
@@ -210,7 +214,7 @@ export function useCardListActions({
       {
         actionLabel: 'Undo',
         onAction: () => {
-          void restoreCards(snapshot);
+          void undo().catch(() => notify('Could not undo that change.', 'negative'));
         },
       },
     );
@@ -247,12 +251,11 @@ export function useCardListActions({
 
   const handleResume = useCallback(
     async (card: Card) => {
-      const snapshot = await snapshotCards([card.id]);
-      await unsuspendCard(card.id);
+      const undo = await applyUndoableCardChange([card.id], () => unsuspendCard(card.id));
       notify('Card resumed.', 'neutral', {
         actionLabel: 'Undo',
         onAction: () => {
-          void restoreCards(snapshot);
+          void undo().catch(() => notify('Could not undo that change.', 'negative'));
         },
       });
     },
@@ -261,12 +264,13 @@ export function useCardListActions({
 
   const handleToggleFlag = useCallback(
     async (card: Card) => {
-      const snapshot = await snapshotCards([card.id]);
-      await setCardFlag(card.id, !card.flagged);
+      const undo = await applyUndoableCardChange([card.id], () =>
+        setCardFlag(card.id, !card.flagged),
+      );
       notify(card.flagged ? 'Flag removed.' : 'Card flagged.', 'neutral', {
         actionLabel: 'Undo',
         onAction: () => {
-          void restoreCards(snapshot);
+          void undo().catch(() => notify('Could not undo that change.', 'negative'));
         },
       });
     },

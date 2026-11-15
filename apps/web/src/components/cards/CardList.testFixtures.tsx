@@ -38,6 +38,13 @@ vi.mock('../../db/cardRepository', async (original) => ({
   unsuspendCard: vi.fn(),
 }));
 
+vi.mock('../../db/cardBulkUndo', () => ({
+  applyUndoableCardChange: async (ids: string[], apply: (ids: string[]) => Promise<void>) => {
+    await apply(ids);
+    return vi.fn();
+  },
+}));
+
 // Occlusion thumbnails resolve their diagram from the asset store.
 vi.mock('../../db/assetCache', () => ({
   peekCachedAssetUrl: () => undefined,
