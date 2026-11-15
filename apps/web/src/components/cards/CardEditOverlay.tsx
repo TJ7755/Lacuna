@@ -73,6 +73,7 @@ export function CardEditOverlay({
   );
   const workingCompilation = useMemo(() => compileMarkScheme(workingSource), [workingSource]);
   const [saving, setSaving] = useState(false);
+  const [draftDirty, setDraftDirty] = useState(false);
 
   const frontRef = useRef<HTMLTextAreaElement>(null);
   const backRef = useRef<HTMLTextAreaElement>(null);
@@ -109,7 +110,7 @@ export function CardEditOverlay({
     const draft = loadDraft(draftKeyRef.current);
     if (
       draft &&
-      draft.timestamp > 0 &&
+      draft.timestamp > card.updatedAt &&
       (isStructured
         ? draft.type === card.type
         : CARD_TYPE_OPTIONS.some((option) => option.value === draft.type))
@@ -124,10 +125,16 @@ export function CardEditOverlay({
         setWorkingFixtures(draft.payload.fixtures ?? []);
       }
     }
-  }, [card.type, isStructured]);
+  }, [card.type, card.updatedAt, isStructured]);
 
-  // Auto-save a draft whenever the form changes.
+  function editDraft<T>(setter: (value: T) => void, value: T) {
+    setter(value);
+    setDraftDirty(true);
+  }
+
+  // Only author edits create drafts; opening a card must not snapshot stale content.
   useEffect(() => {
+    if (!draftDirty) return;
     window.clearTimeout(draftTimer.current);
     draftTimer.current = window.setTimeout(() => {
       saveDraft(draftKeyRef.current, {
@@ -141,12 +148,12 @@ export function CardEditOverlay({
       });
     }, 800);
     return () => window.clearTimeout(draftTimer.current);
-  }, [type, front, back, tags, structuredPayload, workingSource, isWorking]);
+  }, [draftDirty, type, front, back, tags, structuredPayload, workingSource, isWorking]);
 
   /** Moves the type form the way the full editor does: forward or back along the picker order. */
   function changeType(next: CardType) {
     setFormDirection(Math.sign(EDITOR_TYPE_ORDER.indexOf(next) - EDITOR_TYPE_ORDER.indexOf(type)));
-    setType(next);
+    editDraft(setType, next);
   }
 
   const isCloze = type === 'cloze';
@@ -172,6 +179,8 @@ export function CardEditOverlay({
     };
     try {
       const updated = await saveCardEdit(card.id, changes);
+      window.clearTimeout(draftTimer.current);
+      setDraftDirty(false);
       clearDraft(draftKeyRef.current);
       await onSaved(updated);
     } catch (err) {
@@ -216,18 +225,21 @@ export function CardEditOverlay({
                   autoFocus
                   label="Question"
                   value={front}
-                  onChange={setFront}
+                  onChange={(value) => editDraft(setFront, value)}
                   minRows={6}
                   onError={(message) => notify(message, 'negative')}
                 />
                 {isNumeric ? (
-                  <NumericAnswerEditor value={numericAnswer} onChange={setNumericAnswer} />
+                  <NumericAnswerEditor
+                    value={numericAnswer}
+                    onChange={(value) => editDraft(setNumericAnswer, value)}
+                  />
                 ) : (
                   <MarkSchemeEditor
                     value={workingSource}
-                    onChange={setWorkingSource}
+                    onChange={(value) => editDraft(setWorkingSource, value)}
                     fixtures={workingFixtures}
-                    onFixturesChange={setWorkingFixtures}
+                    onFixturesChange={(value) => editDraft(setWorkingFixtures, value)}
                   />
                 )}
               </>
@@ -238,7 +250,7 @@ export function CardEditOverlay({
                   autoFocus
                   label="Text (use the Cloze button to hide answers)"
                   value={front}
-                  onChange={setFront}
+                  onChange={(value) => editDraft(setFront, value)}
                   minRows={6}
                   allowCloze
                   clozePreview={showBackCloze ? 'back' : 'front'}
@@ -264,7 +276,7 @@ export function CardEditOverlay({
                   autoFocus
                   label="Front"
                   value={front}
-                  onChange={setFront}
+                  onChange={(value) => editDraft(setFront, value)}
                   minRows={6}
                   placeholder="Question or prompt"
                   onError={(message) => notify(message, 'negative')}
@@ -274,7 +286,7 @@ export function CardEditOverlay({
                   inputRef={backRef}
                   label="Back"
                   value={back}
-                  onChange={setBack}
+                  onChange={(value) => editDraft(setBack, value)}
                   minRows={6}
                   placeholder="Answer"
                   onError={(message) => notify(message, 'negative')}
@@ -290,7 +302,7 @@ export function CardEditOverlay({
           <div className="mb-2 text-sm text-ink-soft">Tags</div>
           <TagInput
             tags={tags}
-            onChange={setTags}
+            onChange={(value) => editDraft(setTags, value)}
             suggestions={tagSuggestions}
             placeholder="Add tags"
           />

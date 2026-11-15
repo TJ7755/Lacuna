@@ -32,6 +32,7 @@ import type {
   LessonCompletion,
   Note,
   NoteAnnotation,
+  Occlusion,
   QuestionSetPracticeNode,
   SchedulingPerformance,
   SchedulingUnitRecord,
@@ -50,6 +51,7 @@ export interface LessonSnapshot {
   lessonCompletion?: LessonCompletion;
   cards: Card[];
   sequences: Sequence[];
+  occlusions?: Occlusion[];
   sessionHistory: SessionHistoryEntry[];
   courseAssessments: CourseAssessment[];
   reviewHistory: ReviewHistoryEntry[];
@@ -71,6 +73,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     lessonCompletion,
     cards,
     sequences,
+    occlusions,
     courseAssessments,
     schedulingUnit,
     schedulingPerformance,
@@ -83,6 +86,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     db.lessonCompletions.get(id),
     db.cards.where('primaryLessonId').equals(id).toArray(),
     db.sequences.where('primaryLessonId').equals(id).toArray(),
+    db.occlusions.where('primaryLessonId').equals(id).toArray(),
     db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
     db.schedulingUnits.get(id),
     db.schedulingPerformance.get(id),
@@ -118,6 +122,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     ...(lessonCompletion ? { lessonCompletion } : {}),
     cards,
     sequences,
+    occlusions,
     sessionHistory,
     courseAssessments,
     reviewHistory,
@@ -150,6 +155,7 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
         db.lessonCompletions,
         db.cards,
         db.sequences,
+        db.occlusions,
         db.sessionHistory,
         db.courseAssessments,
         db.reviewHistory,
@@ -180,6 +186,7 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
             : Promise.resolve(),
           db.cards.bulkPut(cardsToRestore),
           db.sequences.bulkPut(snapshot.sequences),
+          db.occlusions.bulkPut(snapshot.occlusions ?? []),
           db.sessionHistory.bulkPut(snapshot.sessionHistory),
           db.courseAssessments.bulkPut(snapshot.courseAssessments),
           db.practiceNodes.bulkPut(snapshot.questionSetPracticeNodes ?? []),
@@ -251,6 +258,11 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
         );
         await clearTombstones(
           tx,
+          'occlusions',
+          (snapshot.occlusions ?? []).map((occlusion) => occlusion.id),
+        );
+        await clearTombstones(
+          tx,
           'courseAssessments',
           snapshot.courseAssessments.map((assessment) => assessment.id),
         );
@@ -305,6 +317,7 @@ export async function deleteLesson(id: string): Promise<void> {
       db.questionSets,
       db.practiceNodes,
       db.sequences,
+      db.occlusions,
       db.sessionHistory,
       db.courseAssessments,
       db.reviewHistory,
@@ -359,6 +372,10 @@ export async function deleteLesson(id: string): Promise<void> {
           .equals(id)
           .modify(stampUpdatedAt({ primaryLessonId: null }, now));
       }
+      await db.occlusions
+        .where('primaryLessonId')
+        .equals(id)
+        .modify(stampUpdatedAt({ primaryLessonId: null }, now));
       await removeLessonSchedulingUnit(id);
       await removeQuestionSetLessonReference(lesson.courseId, id, now);
       const questionSetPracticeNodes = (

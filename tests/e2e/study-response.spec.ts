@@ -12,7 +12,11 @@ test('makes the revealed answer readable during the deliberate card flip', async
   await page.getByRole('textbox', { name: 'Back' }).fill(backText);
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).not.toHaveURL(/\/cards\/new$/);
-  await expect(page.locator('[data-card-id]').getByText(frontText, { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole('complementary', { name: 'Cards in this lesson' })
+      .getByText(frontText, { exact: true }),
+  ).toBeVisible();
   await page
     .getByRole('navigation', { name: 'Course sections' })
     .getByRole('link', { name: 'Path', exact: true })
