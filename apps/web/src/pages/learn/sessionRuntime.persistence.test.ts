@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import Dexie from 'dexie';
 import * as answerSteps from './answerSteps';
 import { waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -10,6 +11,7 @@ import {
   createSequence,
 } from '../../db/repository';
 import { db } from '../../db/schema';
+import { createCourseBasicReversedPair, saveCardEdit } from '../../db/cardRepository';
 import { SessionRuntime } from './sessionRuntime';
 import { loadSimpleSession } from './simpleSessionPersistence';
 import { resetSessionTestDatabase, sessionParams } from './useLearnSession.testFixtures';
@@ -356,6 +358,92 @@ it('publishes each introduction card together with its presentation serial', asy
     expect([...cardsBySerial.values()].map((cards) => cards.size)).toEqual([1, 1]);
   } finally {
     unsubscribe();
+    session.dispose();
+  }
+});
+
+it('ignores a queued partner refresh that finishes after disposal', async () => {
+  const course = await createCourse('Disposed correction');
+  await createCourseBasicReversedPair(course.id, 'Question', 'Answer');
+  const session = new SessionRuntime({
+    ...sessionParams({
+      courseId: course.id,
+      isSimpleMode: true,
+      standaloneSimple: true,
+      mode: 'simple',
+    }),
+    answerInputPreference: 'course',
+    leaveFlow: vi.fn(),
+  });
+  const changed = vi.fn();
+  const unsubscribe = session.subscribe(changed);
+  session.start();
+  try {
+    await waitFor(() => expect(session.getSnapshot().canEditCurrent).toBe(true));
+    const current = session.getSnapshot().current!;
+    const updated = await saveCardEdit(current.id, {
+      type: current.type,
+      front: 'Corrected question',
+      back: 'Corrected answer',
+    });
+    const partner = await db.cards.get(current.reverseCardId!);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(db.cards, 'get').mockReturnValueOnce(Dexie.Promise.resolve(gate).then(() => partner));
+    const correction = session.getSnapshot().handleEdited(updated);
+    session.dispose();
+    changed.mockClear();
+    release();
+    await correction;
+    expect(session.getSnapshot().current).toEqual(current);
+    expect(changed).not.toHaveBeenCalled();
+  } finally {
+    unsubscribe();
+    session.dispose();
+  }
+});
+
+it('publishes a corrected introduction together with its unchecked presentation', async () => {
+  const course = await createCourse('Atomic correction');
+  const lesson = await createLesson(course.id, 'Facts');
+  const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+  const session = new SessionRuntime({
+    ...sessionParams({
+      lessonId: lesson.id,
+      isSimpleMode: true,
+      introduceNewCards: true,
+      mode: 'simple',
+    }),
+    answerInputPreference: 'course',
+    leaveFlow: vi.fn(),
+  });
+  session.start();
+  try {
+    await waitFor(() => expect(session.getSnapshot().canEditCurrent).toBe(true));
+    const { serial } = session.getSnapshot().introductionPresentation;
+    session.getSnapshot().checkIntroduction(serial, true);
+    session.getSnapshot().openEdit();
+    const published: ReturnType<typeof session.getSnapshot>[] = [];
+    const unsubscribe = session.subscribe(() => published.push(session.getSnapshot()));
+    try {
+      const updated = await saveCardEdit(card.id, {
+        type: card.type,
+        front: 'Corrected question',
+        back: 'Corrected answer',
+      });
+      await session.getSnapshot().handleEdited(updated);
+      expect(published).toHaveLength(1);
+      expect(published[0].current?.front).toBe('Corrected question');
+      expect(published[0].editing).toBe(false);
+      expect(published[0].introductionPresentation.serial).toBeGreaterThan(serial);
+      expect(published[0].cardCompletion).toEqual({ completed: 0, total: 1 });
+      expect(published[0].canUndo).toBe(false);
+    } finally {
+      unsubscribe();
+    }
+  } finally {
     session.dispose();
   }
 });

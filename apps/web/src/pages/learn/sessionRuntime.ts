@@ -456,7 +456,8 @@ export class SessionRuntime {
       previous?.courseId !== this.current?.courseId ||
       previous?.sequenceItemId !== this.current?.sequenceItemId ||
       previous?.occlusionRegionId !== this.current?.occlusionRegionId
-    ) this.watchEditPermission();
+    )
+      this.watchEditPermission();
     this.publish();
   };
 
