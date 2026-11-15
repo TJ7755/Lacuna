@@ -5,13 +5,60 @@ import { createCourse, createLesson, createLessonCard, createNote } from '../../
 import { db } from '../../db/schema';
 import { useLearnSession } from './useLearnSession';
 import { sessionParams } from './useLearnSession.testFixtures';
-import { createCourseBasicReversedPair, saveCardEdit } from '../../db/cardRepository';
+import {
+  createCourseBasicReversedPair,
+  createLessonBasicReversedPair,
+  saveCardEdit,
+} from '../../db/cardRepository';
 
 beforeEach(async () => {
   localStorage.clear();
   await Promise.all(db.tables.map((table) => table.clear()));
 });
 afterEach(() => vi.restoreAllMocks());
+
+it('does not restore a deleted partner after correcting a checked introduction', async () => {
+  const course = await createCourse('Introduction correction');
+  const lesson = await createLesson(course.id, 'First');
+  await createLessonBasicReversedPair(course.id, lesson.id, 'Question', 'Answer');
+  const params = sessionParams({
+    lessonId: lesson.id,
+    reviewSessionKind: 'lesson',
+    isSimpleMode: true,
+    introduceNewCards: true,
+    mode: 'simple',
+  });
+  const hook = renderHook(() => useLearnSession(params));
+  try {
+    await waitFor(() =>
+      expect(hook.result.current.introductionPresentation.stage).toBe('familiarise'),
+    );
+    const current = hook.result.current.current!;
+    act(() => {
+      hook.result.current.checkIntroduction(
+        hook.result.current.introductionPresentation.serial,
+        true,
+      );
+    });
+    await act(async () => {
+      const updated = await saveCardEdit(current.id, {
+        type: current.type === 'basic_reversed' ? 'front_back' : 'cloze',
+        front: '{{c1::Updated question}}',
+        back: current.type === 'basic_reversed' ? 'Updated answer' : '',
+      });
+      await hook.result.current.handleEdited(updated);
+    });
+    expect(await db.cards.get(current.reverseCardId!)).toBeUndefined();
+    act(() => {
+      const { serial } = hook.result.current.introductionPresentation;
+      hook.result.current.checkIntroduction(serial, true);
+      hook.result.current.continueIntroduction(serial);
+    });
+    expect(hook.result.current.current?.id).not.toBe(current.reverseCardId);
+  } finally {
+    hook.unmount();
+  }
+});
 
 it.each([false, true])(
   'refreshes the queued reverse after a study correction (converted: %s)',

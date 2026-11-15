@@ -24,6 +24,17 @@ for (const kind of ['Numeric', 'Working']) {
     const card = page.locator('[data-study-card-id]');
     const id = await card.getAttribute('data-study-card-id');
     const sessionUrl = page.url();
+    const studentField = page.getByRole('textbox', {
+      name: kind === 'Numeric' ? 'Your answer' : 'Your working',
+      exact: true,
+    });
+    const check = page.getByRole('button', {
+      name: kind === 'Numeric' ? 'Check answer' : 'Check working',
+      exact: true,
+    });
+    await studentField.fill('5');
+    await check.click();
+    await expect(page.getByText('0 / 1 marks', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Card actions', exact: true }).click();
     await page.getByRole('button', { name: 'Edit card', exact: true }).click();
     const editor = page.getByRole('dialog', { name: 'Edit card', exact: true });
@@ -38,6 +49,14 @@ for (const kind of ['Numeric', 'Working']) {
     await expect(editor).toBeHidden();
     await expect(page).toHaveURL(sessionUrl);
     await expect(card).toHaveAttribute('data-study-card-id', id!);
+    await expect(studentField).toBeVisible();
+    await studentField.fill('5');
+    await check.click();
+    await expect(
+      page.getByText(kind === 'Numeric' ? '1 / 1 mark' : '1 / 1 marks', {
+        exact: true,
+      }),
+    ).toBeVisible();
     await page.getByRole('button', { name: 'Card actions', exact: true }).click();
     await page.getByRole('button', { name: 'Edit card', exact: true }).click();
     await expect(editor.getByRole('textbox', { name: fieldName, exact: true })).toHaveValue(

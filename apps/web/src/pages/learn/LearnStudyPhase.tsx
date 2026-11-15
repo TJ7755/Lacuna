@@ -331,6 +331,7 @@ export function LearnStudyPhase({
               >
                 {isMachineMarkedCard && current.payload?.kind === 'numeric' ? (
                   <NumericStudyFace
+                    key={`${current.id}:${current.updatedAt}`}
                     card={
                       current as Card & {
                         payload: Extract<ItemPayload, { kind: 'numeric' }>;
@@ -341,6 +342,7 @@ export function LearnStudyPhase({
                   />
                 ) : isMachineMarkedCard && current.payload?.kind === 'working' ? (
                   <WorkingStudyFace
+                    key={`${current.id}:${current.updatedAt}`}
                     card={
                       current as Card & {
                         payload: Extract<ItemPayload, { kind: 'working' }>;

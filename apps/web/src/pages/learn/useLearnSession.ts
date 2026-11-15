@@ -1356,6 +1356,21 @@ export function useLearnSession({
       const previous = cardsRef.current.find((card) => card.id === updated.id);
       const partnerId = previous?.reverseCardId ?? updated.reverseCardId;
       const queuedPartner = cardsRef.current.find((card) => card.id === partnerId);
+      const recognition = lastIntroduction.current;
+      const restoreIntroduction =
+        introduceNewCards &&
+        introductionPresentationRef.current.stage === 'familiarise' &&
+        recognition?.card.id === updated.id &&
+        introductionPresentationRef.current.checked;
+      if (restoreIntroduction) {
+        applySessionEventRef.current({
+          type: 'restore',
+          snapshot: recognition.machine,
+          card: updated,
+        });
+        lastIntroduction.current = null;
+        setCanUndo(false);
+      }
       if (queuedPartner) {
         const stored = await db.cards.get(queuedPartner.id);
         if (stored) {
@@ -1375,17 +1390,7 @@ export function useLearnSession({
       if (introduceNewCards) {
         updateLessonChoiceCard(updated);
         if (introductionPresentationRef.current.stage === 'familiarise') {
-          const recognition = lastIntroduction.current;
-          if (recognition?.card.id === updated.id && introductionPresentationRef.current.checked) {
-            applySessionEventRef.current({
-              type: 'restore',
-              snapshot: recognition.machine,
-              card: updated,
-            });
-            lastIntroduction.current = null;
-            setCanUndo(false);
-            persistSimpleResume();
-          }
+          if (restoreIntroduction) persistSimpleResume();
           presentIntroduction(updated);
           setPhase('question');
         }
