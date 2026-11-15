@@ -81,6 +81,7 @@ async function preparePeers(browser: Browser, page: Page, initialFront?: string)
 }
 
 async function collideAndConverge(page: Page, peer: Page, relay: StatefulSyncRelay) {
+  const exchangeStart = relay.exchanges.length;
   let collisions = 0;
   for (const device of [page, peer]) {
     device.on('response', (response) => {
@@ -94,6 +95,24 @@ async function collideAndConverge(page: Page, peer: Page, relay: StatefulSyncRel
   // before the deliberate collision.
   await Promise.all([syncNow(page), syncNow(peer), relay.releaseStatePullsAfter(2)]);
   await expect.poll(() => collisions, { timeout: 30_000 }).toBeGreaterThan(0);
+  const writes = relay.exchanges
+    .slice(exchangeStart)
+    .filter((exchange) => exchange.slot === 'state' && exchange.method === 'PUT');
+  const rejected = writes.find((exchange) => exchange.status === 412)!;
+  const winner = writes.find(
+    (exchange) => exchange.status === 204 && exchange.ifMatch === rejected.ifMatch,
+  )!;
+  expect(winner.generation).toBeDefined();
+  // A retry can be a no-op when the winning snapshot already has the resolved state.
+  for (const retry of writes.filter((exchange) => exchange.order > rejected.order)) {
+    expect(retry.ifMatch).toBe(winner.generation);
+    expect(retry.status).toBe(204);
+  }
+  expect(relay.exchanges.slice(rejected.order + 1)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ method: 'GET', slot: 'state', generation: winner.generation }),
+    ]),
+  );
   // The winning writer pulls again to receive the loser's merged successor.
   await syncNow(page);
   await syncNow(peer);
@@ -327,3 +346,108 @@ function schedulingProjection(card: Card) {
     learningSteps: card.learningSteps,
   };
 }
+
+test('a pairing switch during a pull preserves local data and the new owner', async ({
+  browser,
+  page,
+}) => {
+  const { courseId, peer, peerContext, relay } = await preparePeers(
+    browser,
+    page,
+    'Retained locally',
+  );
+  try {
+    const before = await readAll<Card>(page, 'cards');
+    relay.holdStatePulls();
+    const exchangeStart = relay.exchanges.length;
+    const syncing = syncNow(page);
+    await relay.waitForStatePulls(1);
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('lacuna');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction('appState', 'readwrite');
+          const table = transaction.objectStore('appState');
+          const row = table.get('syncState');
+          row.onsuccess = () =>
+            table.put({
+              ...row.result,
+              value: {
+                ...row.result.value,
+                wrappedKeyMaterial: 'replacement-owner',
+                lastError: null,
+              },
+            });
+          transaction.oncomplete = () => {
+            database.close();
+            resolve();
+          };
+          transaction.onabort = () => {
+            database.close();
+            reject(transaction.error);
+          };
+        };
+      });
+    });
+    await relay.releaseStatePullsAfter(1);
+    await syncing;
+    expect(relay.exchanges.slice(exchangeStart).some((exchange) => exchange.method === 'PUT')).toBe(
+      false,
+    );
+    expect(await readAll<Card>(page, 'cards')).toEqual(before);
+    const state = (
+      await readAll<{
+        key: string;
+        value: { wrappedKeyMaterial: string; lastError: string | null };
+      }>(page, 'appState')
+    ).find((row) => row.key === 'syncState')!.value;
+    expect(state.wrappedKeyMaterial === 'replacement-owner' && state.lastError === null).toBe(true);
+    await page.goto(`/#/course/${courseId}/cards`);
+    await expect(page.getByText('Retained locally', { exact: true })).toBeVisible();
+  } finally {
+    relay.releaseBarriers();
+    await peer.unrouteAll({ behavior: 'ignoreErrors' });
+    await peerContext.close();
+  }
+});
+
+test('failed peer application retains local cards and its safety backup without a relay write', async ({
+  browser,
+  page,
+}) => {
+  const { courseId, peer, peerContext, relay } = await preparePeers(
+    browser,
+    page,
+    'Before failed application',
+  );
+  try {
+    await editOnlyCard(peer, courseId, 'Remote successor');
+    await syncNow(peer);
+    const before = await readAll<Card>(page, 'cards');
+    const backupCount = (await readAll(page, 'backups')).length;
+    await page.evaluate(() => {
+      const add = IDBObjectStore.prototype.add;
+      IDBObjectStore.prototype.add = function (...args: Parameters<typeof add>) {
+        if (this.name === 'cards')
+          throw new DOMException('Application write refused', 'QuotaExceededError');
+        return add.apply(this, args);
+      };
+    });
+    const exchangeStart = relay.exchanges.length;
+    await syncNow(page);
+    expect(relay.exchanges.slice(exchangeStart).some((exchange) => exchange.method === 'PUT')).toBe(
+      false,
+    );
+    expect(await readAll<Card>(page, 'cards')).toEqual(before);
+    expect((await readAll(page, 'backups')).length).toBeGreaterThan(backupCount);
+    await page.reload();
+    await page.goto(`/#/course/${courseId}/cards`);
+    await expect(page.getByText('Before failed application', { exact: true })).toBeVisible();
+  } finally {
+    relay.releaseBarriers();
+    await peer.unrouteAll({ behavior: 'ignoreErrors' });
+    await peerContext.close();
+  }
+});

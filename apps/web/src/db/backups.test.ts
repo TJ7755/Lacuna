@@ -3,14 +3,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
-import {
-  deleteBackup,
-  mirrorToFolder,
-  restoreBackup,
-  takeAutoBackup,
-  autoBackupIfStale,
-  __resetBackupThrottleForTests,
-} from './backups';
+import { deleteBackup, mirrorToFolder, restoreBackup, createAutoBackups } from './backups';
 import { createCard, createCourse, createLesson } from './repository';
 import { assetUrl, storeImageBlob } from './assets';
 import type { BackupFile, ItemPayload } from '@lacuna/core/db/types';
@@ -23,12 +16,15 @@ vi.mock('./replacementLifecycle', () => ({
   replacementLifecycle: { replace },
 }));
 
+let takeAutoBackup: ReturnType<typeof createAutoBackups>['takeAutoBackup'];
+let autoBackupIfStale: ReturnType<typeof createAutoBackups>['autoBackupIfStale'];
+
 describe('backups', () => {
   beforeEach(async () => {
     // Wipe everything between tests so prior runs do not pollute state.
     await db.delete();
     await db.open();
-    __resetBackupThrottleForTests();
+    ({ takeAutoBackup, autoBackupIfStale } = createAutoBackups());
     replace.mockClear();
   });
 
@@ -296,7 +292,7 @@ describe('backups', () => {
 
   it('throttles ordinary backups for five minutes', async () => {
     let now = 1_000_000;
-    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    ({ takeAutoBackup } = createAutoBackups(() => now));
 
     await takeAutoBackup();
     now += 5 * 60 * 1000 - 1;

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BackupFile, SyncState } from '@lacuna/core/db/types';
 import type * as DbPortability from '../db/portability';
 import type * as SyncManualMerge from './manualMerge';
-import { __resetSyncFlightForTests, syncCycle, type SyncCycleOptions } from './cycle';
+import { createSyncCycle, type SyncCycleOptions } from './cycle';
 import { sealState } from './crypto';
 import { encodeSnapshot } from './snapshot';
 import type { RelayProvider } from './relay';
@@ -81,8 +81,10 @@ async function remoteBlob(snapshot: BackupFile) {
     generation: '"generation-1"',
   };
 }
+let syncCycle: ReturnType<typeof createSyncCycle>;
+
 beforeEach(() => {
-  __resetSyncFlightForTests();
+  syncCycle = createSyncCycle();
   exportDatabaseMock.mockReset().mockResolvedValue(backup());
   readSyncStateMock.mockReset();
   writeSyncStateMock.mockReset();

@@ -2,12 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BackupFile, CourseRecord } from '@lacuna/core/db/types';
 import type * as DbPortability from '../db/portability';
 import { openState, sealState } from './crypto';
-import {
-  __resetSyncFlightForTests,
-  SYNC_FRESHNESS_POLICY,
-  syncCycle,
-  type SyncCycleOptions,
-} from './cycle';
+import { createSyncCycle, SYNC_FRESHNESS_POLICY, type SyncCycleOptions } from './cycle';
 import { EMPTY_GENERATION, StaleGenerationError, type RelayProvider } from './relay';
 import {
   decodeSnapshot,
@@ -136,8 +131,10 @@ function provider(overrides: Partial<RelayProvider> = {}): RelayProvider & {
   };
 }
 
+let syncCycle: ReturnType<typeof createSyncCycle>;
+
 beforeEach(() => {
-  __resetSyncFlightForTests();
+  syncCycle = createSyncCycle();
   exportDatabaseMock.mockReset();
   readSyncStateMock.mockReset().mockResolvedValue({ channelId: CHANNEL_ID });
   updateSyncStateMock.mockReset().mockImplementation(async (update) => {

@@ -1,20 +1,13 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { SyncCredentials } from './pairing';
-import {
-  __resetTriggersForTests,
-  clearUnlockedCredentials,
-  installSyncTriggers,
-  publishUnlockedCredentials,
-} from './triggers';
+import { createSyncTriggers } from './triggers';
+let triggers: ReturnType<typeof createSyncTriggers>;
 
 const { loadPairingMock, readSyncStateMock, syncWithCredentialsMock } = vi.hoisted(() => ({
   loadPairingMock: vi.fn(),
   readSyncStateMock: vi.fn(),
   syncWithCredentialsMock: vi.fn(),
 }));
-
-vi.mock('../db/mutationStamp', () => ({ readSyncState: readSyncStateMock }));
-vi.mock('./loaders', () => ({ loadSyncPairing: loadPairingMock }));
 
 const credentials: SyncCredentials = {
   relayUrl: 'https://custom-relay.example',
@@ -25,7 +18,7 @@ const credentials: SyncCredentials = {
 
 beforeEach(() => {
   vi.useFakeTimers();
-  __resetTriggersForTests();
+  triggers = createSyncTriggers({ readState: readSyncStateMock, loadPairing: loadPairingMock });
   readSyncStateMock.mockReset().mockResolvedValue({
     relayUrl: credentials.relayUrl,
     channelId: credentials.channelId,
@@ -38,11 +31,11 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 it.each([
-  ['cleared', () => clearUnlockedCredentials()],
+  ['cleared', () => triggers.clearUnlockedCredentials()],
   [
     'replaced',
     () =>
-      publishUnlockedCredentials({
+      triggers.publishUnlockedCredentials({
         ...credentials,
         writeToken: 'dd'.repeat(32),
       }),
@@ -54,8 +47,8 @@ it.each([
       releaseModule = resolve;
     }),
   );
-  publishUnlockedCredentials(credentials);
-  const dispose = installSyncTriggers();
+  triggers.publishUnlockedCredentials(credentials);
+  const dispose = triggers.installSyncTriggers();
 
   window.dispatchEvent(new Event('focus'));
   await vi.advanceTimersByTimeAsync(1500);
@@ -76,8 +69,8 @@ it('does not dispatch a pending automatic sync after its triggers are disposed',
       releaseModule = resolve;
     }),
   );
-  publishUnlockedCredentials(credentials);
-  const dispose = installSyncTriggers();
+  triggers.publishUnlockedCredentials(credentials);
+  const dispose = triggers.installSyncTriggers();
 
   window.dispatchEvent(new Event('focus'));
   await vi.advanceTimersByTimeAsync(1500);
@@ -97,10 +90,10 @@ it('keeps a newer installation active when an older disposer is called twice', a
       releaseModule = resolve;
     }),
   );
-  publishUnlockedCredentials(credentials);
-  const disposeFirst = installSyncTriggers();
+  triggers.publishUnlockedCredentials(credentials);
+  const disposeFirst = triggers.installSyncTriggers();
   disposeFirst();
-  const disposeSecond = installSyncTriggers();
+  const disposeSecond = triggers.installSyncTriggers();
 
   try {
     window.dispatchEvent(new Event('focus'));

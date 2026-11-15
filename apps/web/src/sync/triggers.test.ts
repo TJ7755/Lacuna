@@ -1,13 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SyncState } from '@lacuna/core/db/types';
 import type { SyncCredentials } from './credentials';
-import {
-  __resetTriggersForTests,
-  clearUnlockedCredentials,
-  getUnlockedCredentials,
-  installSyncTriggers,
-  publishUnlockedCredentials,
-} from './triggers';
+import { createSyncTriggers } from './triggers';
+let triggers: ReturnType<typeof createSyncTriggers>;
 
 const {
   allowRelayConnectMock,
@@ -50,7 +45,7 @@ const credentials: SyncCredentials = {
 };
 
 beforeEach(() => {
-  __resetTriggersForTests();
+  triggers = createSyncTriggers();
   allowRelayConnectMock.mockReset();
   readSyncStateMock.mockReset().mockResolvedValue(state);
   readRememberedCredentialsMock.mockReset().mockReturnValue(credentials);
@@ -63,7 +58,7 @@ describe('remembered sync trigger credentials', () => {
   it('does not execute the pairing module when this device has no remembered credentials', async () => {
     readSyncStateMock.mockResolvedValue({ ...state, remembered: undefined });
 
-    const dispose = installSyncTriggers();
+    const dispose = triggers.installSyncTriggers();
     await vi.waitFor(() => expect(readSyncStateMock).toHaveBeenCalled());
 
     expect(pairingModuleExecutions.count).toBe(0);
@@ -72,9 +67,9 @@ describe('remembered sync trigger credentials', () => {
   });
 
   it('allows a remembered custom relay through the web CSP before publishing it', async () => {
-    const dispose = installSyncTriggers();
+    const dispose = triggers.installSyncTriggers();
 
-    await vi.waitFor(() => expect(getUnlockedCredentials()).toBe(credentials));
+    await vi.waitFor(() => expect(triggers.getUnlockedCredentials()).toBe(credentials));
 
     expect(allowRelayConnectMock).toHaveBeenCalledWith(credentials.relayUrl);
     dispose();
@@ -87,13 +82,13 @@ describe('remembered sync trigger credentials', () => {
         resolveRead = resolve;
       }),
     );
-    const dispose = installSyncTriggers();
+    const dispose = triggers.installSyncTriggers();
 
-    clearUnlockedCredentials();
+    triggers.clearUnlockedCredentials();
     resolveRead?.(state);
     await vi.waitFor(() => expect(readRememberedCredentialsMock).toHaveBeenCalled());
 
-    expect(getUnlockedCredentials()).toBeNull();
+    expect(triggers.getUnlockedCredentials()).toBeNull();
     dispose();
   });
 
@@ -104,13 +99,13 @@ describe('remembered sync trigger credentials', () => {
         resolveRead = resolve;
       }),
     );
-    const dispose = installSyncTriggers();
+    const dispose = triggers.installSyncTriggers();
 
     dispose();
     resolveRead(state);
     await vi.waitFor(() => expect(readRememberedCredentialsMock).toHaveBeenCalled());
 
-    expect(getUnlockedCredentials()).toBeNull();
+    expect(triggers.getUnlockedCredentials()).toBeNull();
     expect(allowRelayConnectMock).not.toHaveBeenCalled();
   });
 
@@ -121,8 +116,8 @@ describe('remembered sync trigger credentials', () => {
     vi.useFakeTimers();
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const warn = vi.spyOn(console, 'warn');
-    publishUnlockedCredentials(credentials);
-    const dispose = installSyncTriggers();
+    triggers.publishUnlockedCredentials(credentials);
+    const dispose = triggers.installSyncTriggers();
 
     try {
       trigger();
@@ -140,8 +135,8 @@ describe('remembered sync trigger credentials', () => {
 
   it('syncs study changes after the throttle expires instead of dropping the final trigger', async () => {
     vi.useFakeTimers();
-    publishUnlockedCredentials(credentials);
-    const dispose = installSyncTriggers();
+    triggers.publishUnlockedCredentials(credentials);
+    const dispose = triggers.installSyncTriggers();
 
     try {
       window.dispatchEvent(new Event('focus'));
@@ -169,8 +164,8 @@ describe('remembered sync trigger credentials', () => {
     'cancels a throttled sync when triggers are %s',
     async (action) => {
       vi.useFakeTimers();
-      publishUnlockedCredentials(credentials);
-      const dispose = installSyncTriggers();
+      triggers.publishUnlockedCredentials(credentials);
+      const dispose = triggers.installSyncTriggers();
 
       try {
         window.dispatchEvent(new Event('focus'));
@@ -180,7 +175,7 @@ describe('remembered sync trigger credentials', () => {
         window.dispatchEvent(new Event('lacuna:study-session-end'));
         await vi.advanceTimersByTimeAsync(1500);
         if (action === 'disposed') dispose();
-        else clearUnlockedCredentials();
+        else triggers.clearUnlockedCredentials();
         await vi.advanceTimersByTimeAsync(5000);
 
         expect(syncWithCredentialsMock).toHaveBeenCalledTimes(1);
@@ -202,8 +197,8 @@ describe('remembered sync trigger credentials', () => {
       }
     });
     syncWithCredentialsMock.mockRejectedValue(error);
-    publishUnlockedCredentials(credentials);
-    const dispose = installSyncTriggers();
+    triggers.publishUnlockedCredentials(credentials);
+    const dispose = triggers.installSyncTriggers();
 
     try {
       window.dispatchEvent(new Event('focus'));

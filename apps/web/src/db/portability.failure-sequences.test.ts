@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { __resetBackupThrottleForTests, restoreBackup, takeAutoBackup } from './backups';
+import { restoreBackup, takeAutoBackup } from './backups';
 import { exportDatabase, importBackup } from './portability';
 import {
   recoverySequenceContent,
@@ -12,7 +12,6 @@ import { db } from './schema';
 beforeEach(async () => {
   await db.delete();
   await db.open();
-  __resetBackupThrottleForTests();
 });
 
 describe('interrupted backup import recovery sequences', () => {
