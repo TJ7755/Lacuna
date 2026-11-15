@@ -345,3 +345,33 @@ describe('structured item payload validation', () => {
     ).rejects.toThrow('Structured item payloads require a front_back card.');
   });
 });
+
+describe('updateCard course lock', () => {
+  beforeEach(reset);
+
+  it('rejects direct content writes and scope changes out of a locked course, then allows detached corrections', async () => {
+    const course = await createCourse('Published');
+    const card = await createCourseCard(course.id, 'front_back', 'Question', 'Answer');
+    await db.courses.update(course.id, {
+      distributedCopy: {
+        lineageId: 'published',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    });
+    for (const changes of [
+      { front: 'Changed' },
+      { back: 'Changed' },
+      { courseId: undefined, tags: ['changed'] },
+    ]) {
+      await expect(updateCard(card.id, changes)).rejects.toThrow(
+        'This published course is locked.',
+      );
+      expect(await db.cards.get(card.id)).toEqual(card);
+    }
+    await db.courses.update(course.id, { distributedCopy: undefined });
+    await updateCard(card.id, { back: 'Corrected' });
+    expect((await db.cards.get(card.id))?.back).toBe('Corrected');
+  });
+});

@@ -1,9 +1,12 @@
+import Dexie from 'dexie';
 import {
   buildCardConcept,
   conceptMatchesCardScope,
   conceptNameForCard,
 } from '../questions/concepts';
+import { canEditLessons } from '../course/lessonViewMode';
 import { scheduleAssetGc } from './assets';
+import { deleteCards } from './cardDeletion';
 import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
 import { lessonCardExposureId, recordTombstones, stampUpdatedAt } from './mutationStamp';
@@ -12,7 +15,11 @@ import type { AnswerMode, Card, CardType, ItemPayload } from '@lacuna/core/db/ty
 
 async function assertValidCardPayload(type: CardType, payload: unknown): Promise<void> {
   if (payload === undefined || payload === null) return;
-  const { assertValidCardPayload: validate } = await import('../items/payloadValidation');
+  // Linked saves validate again inside their transaction; even a cached import
+  // can yield beyond IndexedDB's lifetime in the browser.
+  const { assertValidCardPayload: validate } = await Dexie.waitFor(
+    import('../items/payloadValidation'),
+  );
   validate(type, payload);
 }
 
@@ -498,20 +505,122 @@ export async function assignCardsToLesson(
 }
 
 export async function updateCard(id: string, changes: Partial<Card>): Promise<void> {
+  return writeCardUpdate(id, changes, true);
+}
+
+/** Teacher revisions are authoritative even while the student's copy is locked. */
+export async function updateCardFromLineage(id: string, changes: Partial<Card>): Promise<void> {
+  return writeCardUpdate(id, changes, false);
+}
+
+async function writeCardUpdate(
+  id: string,
+  changes: Partial<Card>,
+  requireEditable: boolean,
+): Promise<void> {
   try {
-    if ('payload' in changes) {
-      const card = await db.cards.get(id);
-      if (card && changes.payload !== undefined) {
-        await assertValidCardPayload(changes.type ?? card.type, changes.payload);
-      }
+    const card = await db.cards.get(id);
+    if (card && changes.payload !== undefined) {
+      await assertValidCardPayload(changes.type ?? card.type, changes.payload);
     }
-    await db.cards.update(id, stampUpdatedAt(changes));
+    await db.transaction('rw', [db.cards, db.courses], async () => {
+      const current = await db.cards.get(id);
+      if (!current) return;
+      const courseIds = [current.courseId, changes.courseId].filter(
+        (value): value is string => !!value,
+      );
+      const courses = await db.courses.bulkGet(courseIds);
+      if (requireEditable && courses.some((course) => course && !canEditLessons(course))) {
+        throw new Error('This published course is locked.');
+      }
+      await db.cards.update(id, stampUpdatedAt(changes));
+    });
     if ('front' in changes || 'back' in changes) {
       scheduleAssetGc();
     }
   } catch (err) {
     throw friendlyDbError(err);
   }
+}
+
+export type CardEdit = Pick<Card, 'type' | 'front' | 'back'> &
+  Partial<Pick<Card, 'tags' | 'payload' | 'answerMode' | 'requireCorrectSpelling'>>;
+
+/**
+ * Save authored content and its linked reverse in one transaction. Independent
+ * also-reverse cards share a Concept, but only reciprocal links define a pair.
+ * Conversions retain the edited identity and schedule and delete the obsolete side
+ * through the normal deletion path, including progress cleanup and tombstones.
+ */
+export async function saveCardEdit(id: string, changes: CardEdit): Promise<Card> {
+  await assertValidCardPayload(changes.type, changes.payload);
+  return db.transaction(
+    'rw',
+    [
+      db.cards,
+      db.schedulingUnits,
+      db.concepts,
+      db.courses,
+      db.lessonCards,
+      db.lessonCardExposures,
+      db.reviewHistory,
+      db.tombstones,
+    ],
+    async () => {
+      const card = await db.cards.get(id);
+      if (!card) throw new Error('Card no longer exists.');
+      const candidate = card.reverseCardId ? await db.cards.get(card.reverseCardId) : undefined;
+      const partner =
+        candidate &&
+        candidate.id !== id &&
+        candidate.reverseCardId === id &&
+        (card.type === 'basic_reversed' || candidate.type === 'basic_reversed')
+          ? candidate
+          : undefined;
+      // The reverse is stored as front_back, so retaining that type is an edit,
+      // whereas selecting front_back on the primary explicitly removes the pair.
+      const keepPair =
+        changes.type === 'basic_reversed' ||
+        (partner?.type === 'basic_reversed' &&
+          changes.type === 'front_back' &&
+          !changes.payload &&
+          changes.back.trim().length > 0);
+      if (!keepPair) {
+        await updateCard(id, { ...changes, reverseCardId: null });
+        if (partner) await deleteCards([partner.id]);
+      } else {
+        const shared = {
+          tags: changes.tags ?? card.tags ?? [],
+          answerMode: 'answerMode' in changes ? changes.answerMode : card.answerMode,
+          requireCorrectSpelling:
+            'requireCorrectSpelling' in changes
+              ? changes.requireCorrectSpelling
+              : card.requireCorrectSpelling,
+        };
+        const deckId = card.deckId ?? card.schedulingUnitId;
+        if (!deckId) throw new Error('Card has no scheduling unit.');
+        const reverse =
+          partner ??
+          (await createCard(deckId, 'front_back', changes.back, changes.front, shared.tags, {
+            ...shared,
+            courseId: card.courseId,
+            primaryLessonId: card.primaryLessonId,
+            conceptId: card.conceptId,
+          }));
+        await updateCard(id, { ...changes, payload: undefined, reverseCardId: reverse.id });
+        await updateCard(reverse.id, {
+          ...shared,
+          front: changes.back,
+          back: changes.front,
+          payload: undefined,
+          type: changes.type === 'basic_reversed' ? 'front_back' : 'basic_reversed',
+          reverseCardId: id,
+          ...(!partner ? { schedulingUnitId: card.schedulingUnitId } : {}),
+        });
+      }
+      return (await db.cards.get(id))!;
+    },
+  );
 }
 
 export { deleteCards, snapshotCards, restoreCards } from './cardDeletion';

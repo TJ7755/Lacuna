@@ -1,11 +1,11 @@
 import { assertLessonPrerequisites } from './lessonPrerequisites';
 import { db } from './schema';
+import { updateCardFromLineage } from './cardRepository';
 import {
   assignCardsToLesson,
   deleteCards,
   deleteLesson,
   deleteNote,
-  updateCard,
   updateNote,
 } from './repository';
 import type {
@@ -194,7 +194,7 @@ async function takeIncomingConflict(
     const inc = incoming as ShareCardInput;
     // Conflicts queued before lesson membership was diffed carry no lessonId.
     if (lessonId !== undefined) await assignCardsToLesson([entityId], mapping.courseId, lessonId);
-    await updateCard(entityId, {
+    await updateCardFromLineage(entityId, {
       type: shareCardKindToType(inc.k),
       front: inc.f,
       back: inc.k === 1 ? '' : (inc.b ?? ''),

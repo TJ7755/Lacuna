@@ -5,12 +5,102 @@ import { createCourse, createLesson, createLessonCard, createNote } from '../../
 import { db } from '../../db/schema';
 import { useLearnSession } from './useLearnSession';
 import { sessionParams } from './useLearnSession.testFixtures';
+import {
+  createCourseBasicReversedPair,
+  createLessonBasicReversedPair,
+  saveCardEdit,
+} from '../../db/cardRepository';
 
 beforeEach(async () => {
   localStorage.clear();
   await Promise.all(db.tables.map((table) => table.clear()));
 });
 afterEach(() => vi.restoreAllMocks());
+
+it('does not restore a deleted partner after correcting a checked introduction', async () => {
+  const course = await createCourse('Introduction correction');
+  const lesson = await createLesson(course.id, 'First');
+  await createLessonBasicReversedPair(course.id, lesson.id, 'Question', 'Answer');
+  const params = sessionParams({
+    lessonId: lesson.id,
+    reviewSessionKind: 'lesson',
+    isSimpleMode: true,
+    introduceNewCards: true,
+    mode: 'simple',
+  });
+  const hook = renderHook(() => useLearnSession(params));
+  try {
+    await waitFor(() =>
+      expect(hook.result.current.introductionPresentation.stage).toBe('familiarise'),
+    );
+    const current = hook.result.current.current!;
+    act(() => {
+      hook.result.current.checkIntroduction(
+        hook.result.current.introductionPresentation.serial,
+        true,
+      );
+    });
+    await act(async () => {
+      const updated = await saveCardEdit(current.id, {
+        type: current.type === 'basic_reversed' ? 'front_back' : 'cloze',
+        front: '{{c1::Updated question}}',
+        back: current.type === 'basic_reversed' ? 'Updated answer' : '',
+      });
+      await hook.result.current.handleEdited(updated);
+    });
+    expect(await db.cards.get(current.reverseCardId!)).toBeUndefined();
+    act(() => {
+      const { serial } = hook.result.current.introductionPresentation;
+      hook.result.current.checkIntroduction(serial, true);
+      hook.result.current.continueIntroduction(serial);
+    });
+    expect(hook.result.current.current?.id).not.toBe(current.reverseCardId);
+  } finally {
+    hook.unmount();
+  }
+});
+
+it.each([false, true])(
+  'refreshes the queued reverse after a study correction (converted: %s)',
+  async (converted) => {
+    const course = await createCourse('Paired correction');
+    await createCourseBasicReversedPair(course.id, 'Question', 'Answer');
+    const params = sessionParams({
+      courseId: course.id,
+      isSimpleMode: true,
+      standaloneSimple: true,
+      mode: 'simple',
+    });
+    const hook = renderHook(() => useLearnSession(params));
+    try {
+      await waitFor(() => expect(hook.result.current.phase).toBe('question'));
+      const current = hook.result.current.current!;
+      await act(async () => {
+        const updated = await saveCardEdit(current.id, {
+          type: converted ? 'cloze' : current.type,
+          front: converted ? '{{c1::Updated question}}' : 'Updated question',
+          back: converted ? '' : 'Updated answer',
+        });
+        await hook.result.current.handleEdited(updated);
+      });
+      act(() => hook.result.current.reveal());
+      await act(async () => {
+        await hook.result.current.answer(true);
+      });
+      if (converted) {
+        expect(hook.result.current.current?.id).not.toBe(current.reverseCardId);
+      } else {
+        expect(hook.result.current.current).toMatchObject({
+          id: current.reverseCardId,
+          front: 'Updated answer',
+          back: 'Updated question',
+        });
+      }
+    } finally {
+      hook.unmount();
+    }
+  },
+);
 
 it.each([false, true])(
   'continues from notes with an empty pool without mistaking existing cards for a cardless lesson (%s)',
@@ -74,6 +164,7 @@ it('offers sorted, distinct tags from the edited card’s scheduling unit', asyn
       const lessonId = hook.result.current.current!.primaryLessonId!;
       inspected.add(lessonId);
       expect(hook.result.current.editTagSuggestions).toEqual([]);
+      await waitFor(() => expect(hook.result.current.canEditCurrent).toBe(true));
       act(() => hook.result.current.openEdit());
       expect(hook.result.current.editTagSuggestions).toEqual(expected.get(lessonId));
       act(() => hook.result.current.cancelEdit());
@@ -84,6 +175,39 @@ it('offers sorted, distinct tags from the edited card’s scheduling unit', asyn
       });
     }
     expect(inspected).toEqual(new Set([first.id, second.id]));
+  } finally {
+    hook.unmount();
+  }
+});
+
+it('blocks editing a locked course in an all-course session and reacts when it is detached', async () => {
+  const course = await createCourse('Published');
+  const lesson = await createLesson(course.id, 'First');
+  await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+  await db.courses.update(course.id, {
+    distributedCopy: {
+      lineageId: 'published',
+      revision: 1,
+      locked: true,
+      autoAcceptUpdates: false,
+    },
+  });
+  const params = sessionParams();
+  const hook = renderHook(() => useLearnSession(params));
+  try {
+    await waitFor(() => expect(hook.result.current.phase).toBe('question'));
+    act(() => hook.result.current.openEdit());
+    expect(hook.result.current.editing).toBe(false);
+    await act(async () => {
+      await db.courses.update(course.id, { distributedCopy: undefined });
+    });
+    await waitFor(() => expect(hook.result.current.canEditCurrent).toBe(true));
+    const currentId = hook.result.current.current!.id;
+    act(() => hook.result.current.openEdit());
+    expect(hook.result.current.editing).toBe(true);
+    act(() => hook.result.current.cancelEdit());
+    expect(hook.result.current.current!.id).toBe(currentId);
+    expect(hook.result.current.phase).toBe('question');
   } finally {
     hook.unmount();
   }

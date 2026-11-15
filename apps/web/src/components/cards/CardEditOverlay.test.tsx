@@ -6,7 +6,7 @@ import type { Card } from '@lacuna/core/db/types';
 const mockUpdateCard = vi.fn();
 
 vi.mock('../../db/cardRepository', () => ({
-  updateCard: (...args: unknown[]) => mockUpdateCard(...args),
+  saveCardEdit: (...args: unknown[]) => mockUpdateCard(...args),
 }));
 
 vi.mock('../markdown/MarkdownEditor', () => ({

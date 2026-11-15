@@ -50,3 +50,22 @@ export function clearDraft(key: string): void {
     // Draft cleanup must not turn a successful repository write into a failed save.
   }
 }
+
+/** Read all saved authoring drafts, including nested Question state. */
+export function loadAllDrafts(): unknown[] {
+  const drafts: unknown[] = [];
+  // Let storage access failures reach the collector: an unreadable draft is not
+  // evidence that its media are orphaned. Only malformed JSON can be skipped.
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key?.startsWith(`${DRAFT_PREFIX}:`)) continue;
+    const raw = storedString(key).read();
+    if (!raw) continue;
+    try {
+      drafts.push(JSON.parse(raw));
+    } catch {
+      // Match loadDraft: malformed JSON cannot be restored.
+    }
+  }
+  return drafts;
+}

@@ -113,6 +113,7 @@ export function LearnStudyPhase({
     reviewBlockSize,
     reviewEvents,
     currentCardIds,
+    canEditCurrent,
     openEdit,
     toggleFlagCurrent,
     buryCurrent,
@@ -263,6 +264,7 @@ export function LearnStudyPhase({
             setMenuOpen={setMenuOpen}
             current={phase === 'finished' ? null : current}
             isTouchMode={isTouchMode}
+            canEditCurrent={canEditCurrent}
             onEdit={closingMenu(openEdit)}
             onToggleFlag={closingMenu(toggleFlagCurrent)}
             onBury={closingMenu(buryCurrent)}
@@ -329,6 +331,7 @@ export function LearnStudyPhase({
               >
                 {isMachineMarkedCard && current.payload?.kind === 'numeric' ? (
                   <NumericStudyFace
+                    key={`${current.id}:${current.updatedAt}`}
                     card={
                       current as Card & {
                         payload: Extract<ItemPayload, { kind: 'numeric' }>;
@@ -339,6 +342,7 @@ export function LearnStudyPhase({
                   />
                 ) : isMachineMarkedCard && current.payload?.kind === 'working' ? (
                   <WorkingStudyFace
+                    key={`${current.id}:${current.updatedAt}`}
                     card={
                       current as Card & {
                         payload: Extract<ItemPayload, { kind: 'working' }>;

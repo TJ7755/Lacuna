@@ -10,7 +10,7 @@ import {
   createCourseCard,
   createCourseCardWithReverse,
   createCourseBasicReversedPair,
-  updateCard,
+  saveCardEdit,
 } from '../../db/cardRepository';
 import type { Card, CardType, Course, ItemPayload } from '@lacuna/core/db/types';
 import { hasCloze } from '../../utils/cloze';
@@ -146,7 +146,7 @@ export function useCardEditorSave({
             }
           : undefined;
       if (editing && card) {
-        await updateCard(card.id, {
+        await saveCardEdit(card.id, {
           type: storedType,
           front,
           back: backValue,
@@ -157,10 +157,6 @@ export function useCardEditorSave({
             ? { requireCorrectSpelling: storedSpelling }
             : {}),
         });
-        // If this is a basic_reversed card, update its reverse partner too.
-        if (card.type === 'basic_reversed' && card.reverseCardId) {
-          await updateCard(card.reverseCardId, { front: backValue, back: front });
-        }
         recordUsageAction('edit-saved');
         draft.clearSavedDraft();
         flashSaved();

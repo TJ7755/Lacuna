@@ -79,7 +79,7 @@ vi.mock('../db/cardRepository', () => ({
   createCourseCard: (...args: unknown[]) => createCourseCard(...args),
   createCourseCardWithReverse: vi.fn(),
   createCourseBasicReversedPair: vi.fn(),
-  updateCard: (...args: unknown[]) => updateCard(...args),
+  saveCardEdit: (...args: unknown[]) => updateCard(...args),
 }));
 
 // Stub the Markdown editor and viewer: fast, focuses the test on CardEditor's own

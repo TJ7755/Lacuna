@@ -24,7 +24,8 @@ import {
 } from './lineageImportModel';
 import type { LineagePayload } from './lineageImportModel';
 import { clearTombstones, recordTombstones, stampUpdatedAt } from './mutationStamp';
-import { assignCardsToLesson, updateCard } from './repository';
+import { assignCardsToLesson } from './repository';
+import { updateCardFromLineage } from './cardRepository';
 import type { Card, Lesson, LessonCardLink, LineageIdMapping, Note } from '@lacuna/core/db/types';
 
 /** Build the full local Lesson/Note/Card rows a diff `creates` payload describes, and
@@ -170,7 +171,7 @@ export async function applyCardUpdate(courseId: string, update: CardUpdate): Pro
   const { id, primaryLessonId, requireCorrectSpelling, ...changes } = update;
   if (primaryLessonId !== undefined) await assignCardsToLesson([id], courseId, primaryLessonId);
   if (Object.keys(changes).length > 0 || requireCorrectSpelling !== undefined) {
-    await updateCard(id, {
+    await updateCardFromLineage(id, {
       ...changes,
       ...(requireCorrectSpelling !== undefined
         ? { requireCorrectSpelling: requireCorrectSpelling ?? undefined }

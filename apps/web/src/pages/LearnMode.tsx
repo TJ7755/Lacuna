@@ -196,6 +196,7 @@ function LearnSession({
     hide,
     answer,
     undoLast,
+    canEditCurrent,
     openEdit,
     persistSimpleResume,
   } = session;
@@ -325,6 +326,7 @@ function LearnSession({
     isTypingCard,
     suppressClassicGrading,
     allowRevealWhenGradingSuppressed: verifyTypedRecall || (familiarising && !choiceQuestion),
+    canEditCurrent,
     openEdit,
     hintsOpen,
     setHintsOpen,
