@@ -35,7 +35,7 @@ interface CardEditOverlayProps {
   /** Existing tags across the deck, offered as suggestions in the tag input. */
   tagSuggestions?: string[];
   /** Called with the in-memory updated card once the change is persisted. */
-  onSaved: (updated: Card) => void;
+  onSaved: (updated: Card) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -173,7 +173,7 @@ export function CardEditOverlay({
     try {
       const updated = await saveCardEdit(card.id, changes);
       clearDraft(draftKeyRef.current);
-      onSaved(updated);
+      await onSaved(updated);
     } catch (err) {
       setSaving(false);
       notify(err instanceof Error ? err.message : 'Could not save the card.', 'negative');

@@ -1,3 +1,4 @@
+import Dexie from 'dexie';
 import {
   buildCardConcept,
   conceptMatchesCardScope,
@@ -14,7 +15,11 @@ import type { AnswerMode, Card, CardType, ItemPayload } from '@lacuna/core/db/ty
 
 async function assertValidCardPayload(type: CardType, payload: unknown): Promise<void> {
   if (payload === undefined || payload === null) return;
-  const { assertValidCardPayload: validate } = await import('../items/payloadValidation');
+  // Linked saves validate again inside their transaction; even a cached import
+  // can yield beyond IndexedDB's lifetime in the browser.
+  const { assertValidCardPayload: validate } = await Dexie.waitFor(
+    import('../items/payloadValidation'),
+  );
   validate(type, payload);
 }
 

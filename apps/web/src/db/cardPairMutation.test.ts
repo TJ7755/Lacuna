@@ -196,4 +196,25 @@ describe('linked card edits', () => {
     expect(await db.cards.get(card.id)).toEqual(card);
     expect(await db.cards.get(reverse.id)).toMatchObject({ front: 'Independent', back: 'Edit' });
   });
+
+  it('rolls back reverse creation when the edited course is locked', async () => {
+    const course = await createCourse('Published');
+    const card = await createCard(course.id, 'front_back', 'Question', 'Answer');
+    await db.courses.update(course.id, {
+      distributedCopy: {
+        lineageId: 'published',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    });
+    await expect(
+      saveCardEdit(card.id, {
+        type: 'basic_reversed',
+        front: 'Changed question',
+        back: 'Changed answer',
+      }),
+    ).rejects.toThrow('This published course is locked.');
+    expect(await db.cards.toArray()).toEqual([card]);
+  });
 });

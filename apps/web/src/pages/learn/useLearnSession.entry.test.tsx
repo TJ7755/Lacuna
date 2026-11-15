@@ -5,12 +5,55 @@ import { createCourse, createLesson, createLessonCard, createNote } from '../../
 import { db } from '../../db/schema';
 import { useLearnSession } from './useLearnSession';
 import { sessionParams } from './useLearnSession.testFixtures';
+import { createCourseBasicReversedPair, saveCardEdit } from '../../db/cardRepository';
 
 beforeEach(async () => {
   localStorage.clear();
   await Promise.all(db.tables.map((table) => table.clear()));
 });
 afterEach(() => vi.restoreAllMocks());
+
+it.each([false, true])(
+  'refreshes the queued reverse after a study correction (converted: %s)',
+  async (converted) => {
+    const course = await createCourse('Paired correction');
+    await createCourseBasicReversedPair(course.id, 'Question', 'Answer');
+    const params = sessionParams({
+      courseId: course.id,
+      isSimpleMode: true,
+      standaloneSimple: true,
+      mode: 'simple',
+    });
+    const hook = renderHook(() => useLearnSession(params));
+    try {
+      await waitFor(() => expect(hook.result.current.phase).toBe('question'));
+      const current = hook.result.current.current!;
+      await act(async () => {
+        const updated = await saveCardEdit(current.id, {
+          type: converted ? 'cloze' : current.type,
+          front: converted ? '{{c1::Updated question}}' : 'Updated question',
+          back: converted ? '' : 'Updated answer',
+        });
+        await hook.result.current.handleEdited(updated);
+      });
+      act(() => hook.result.current.reveal());
+      await act(async () => {
+        await hook.result.current.answer(true);
+      });
+      if (converted) {
+        expect(hook.result.current.current?.id).not.toBe(current.reverseCardId);
+      } else {
+        expect(hook.result.current.current).toMatchObject({
+          id: current.reverseCardId,
+          front: 'Updated answer',
+          back: 'Updated question',
+        });
+      }
+    } finally {
+      hook.unmount();
+    }
+  },
+);
 
 it.each([false, true])(
   'continues from notes with an empty pool without mistaking existing cards for a cardless lesson (%s)',

@@ -1352,7 +1352,24 @@ export function useLearnSession({
   }, [resumeAfterEdit]);
 
   const handleEdited = useCallback(
-    (updated: Card) => {
+    async (updated: Card) => {
+      const previous = cardsRef.current.find((card) => card.id === updated.id);
+      const partnerId = previous?.reverseCardId ?? updated.reverseCardId;
+      const queuedPartner = cardsRef.current.find((card) => card.id === partnerId);
+      if (queuedPartner) {
+        const stored = await db.cards.get(queuedPartner.id);
+        if (stored) {
+          const partner = { ...stored, history: queuedPartner.history };
+          applySessionEventRef.current({ type: 'replace-card', card: partner });
+          updateLessonChoiceCard(partner);
+        } else {
+          applySessionEventRef.current({
+            type: 'remove-card',
+            card: { ...queuedPartner, suspended: true },
+            simple: isSimpleMode,
+          });
+        }
+      }
       applySessionEventRef.current({ type: 'replace-card', card: updated });
       setCurrent(updated);
       if (introduceNewCards) {
@@ -1377,6 +1394,8 @@ export function useLearnSession({
       resumeAfterEdit();
     },
     [
+      cardsRef,
+      isSimpleMode,
       introduceNewCards,
       persistSimpleResume,
       presentIntroduction,
