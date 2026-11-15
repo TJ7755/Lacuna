@@ -26,19 +26,6 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
   return {
     ...actual,
-    Link: ({
-      to,
-      children,
-      className,
-    }: {
-      to: string;
-      children: React.ReactNode;
-      className?: string;
-    }) => (
-      <a href={`#${to}`} className={className}>
-        {children}
-      </a>
-    ),
     useSearchParams: () => [sharePageState.mockSearchParams, vi.fn()],
   };
 });
