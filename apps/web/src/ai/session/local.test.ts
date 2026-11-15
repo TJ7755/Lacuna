@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { LACUNA_AI_PROTOCOL_VERSION } from '../protocol';
+import { LACUNA_AI_PROTOCOL_VERSION } from '@lacuna/protocol/ai/protocol';
 import { createLocalAiSession } from './local';
 import { requestSource } from './local.testHarness';
 

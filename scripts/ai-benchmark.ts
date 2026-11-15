@@ -7,8 +7,11 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateText, tool, type ModelMessage } from 'ai';
 import { z } from 'zod';
 import { buildAiInstructionBundle } from '../apps/web/src/ai/instructions';
-import { findCourseContract, searchCardsContract } from '../apps/web/src/mcp/contracts/read';
-import { listToolsContract } from '../apps/web/src/mcp/contracts/registry';
+import {
+  findCourseContract,
+  searchCardsContract,
+} from '../packages/protocol/src/mcp/contracts/read';
+import { listToolsContract } from '../packages/protocol/src/mcp/contracts/registry';
 import { AUDIT_FIXTURES, auditPrompt, type AuditFixture } from './ai-benchmark-fixtures';
 
 const MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'] as const;

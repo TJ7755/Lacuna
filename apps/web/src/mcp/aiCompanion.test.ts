@@ -8,8 +8,8 @@ import {
   CompanionLineDecoder,
   LEGACY_AI_COMPANION_PROTOCOL_VERSION,
   encodeCompanionMessage,
-} from './companionProtocol';
-import { LACUNA_AI_PROTOCOL_VERSION, type AiBridgeRequest } from '../ai/protocol';
+} from '@lacuna/protocol/mcp/companion';
+import { LACUNA_AI_PROTOCOL_VERSION, type AiBridgeRequest } from '@lacuna/protocol/ai/protocol';
 import { writeCompanionConnectionFile } from '../../../desktop/mcp/connectionFile';
 
 let userDataPath = '';
@@ -29,7 +29,7 @@ vi.mock('electron-log', () => ({
 }));
 
 import { callAiCompanionTool, LocalAiAppClient } from '../../../desktop/mcp/aiCompanion';
-import { AiCompanionOperationError } from '../ai/companionErrors';
+import { AiCompanionOperationError } from '@lacuna/protocol/ai/companionErrors';
 
 const temporaryDirectories: string[] = [];
 const servers: Server[] = [];

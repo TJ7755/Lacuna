@@ -1,4 +1,4 @@
-import type { AiBridgeError } from './protocol';
+import type { AiBridgeError } from '@lacuna/protocol/ai/protocol';
 
 type AiCompanionErrorKind =
   | 'app_unavailable'

@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { MAX_AI_IDENTIFIER_LENGTH, MAX_AI_MESSAGE_LENGTH, type JsonValue } from '../protocol';
+import {
+  MAX_AI_IDENTIFIER_LENGTH,
+  MAX_AI_MESSAGE_LENGTH,
+  type JsonValue,
+} from '@lacuna/protocol/ai/protocol';
 import {
   MAX_AI_RELAY_MAILBOX_ENTRIES,
   type RelayBrowserMessage,
   type RelayTerminalMailbox,
-} from '../relayProtocol';
+} from '@lacuna/protocol/ai/relay';
 import { applyTerminalEvent, expireClaimLease } from './relayEvents';
 import { relaySessionHarness } from './relay.testHarness';
 import type { AiSessionSnapshot } from './types';

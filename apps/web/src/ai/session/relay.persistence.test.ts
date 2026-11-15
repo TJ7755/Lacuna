@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { MAX_AI_IDENTIFIER_LENGTH, type JsonValue } from '../protocol';
-import { MAX_AI_RELAY_MAILBOX_ENTRIES, type RelayTerminalMailbox } from '../relayProtocol';
+import { MAX_AI_IDENTIFIER_LENGTH, type JsonValue } from '@lacuna/protocol/ai/protocol';
+import { MAX_AI_RELAY_MAILBOX_ENTRIES, type RelayTerminalMailbox } from '@lacuna/protocol/ai/relay';
 import { createRelayAiSession, type RelaySessionStorage } from './relay';
 import {
   BROWSER_PRIVATE_KEY,

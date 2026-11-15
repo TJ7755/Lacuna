@@ -4,7 +4,7 @@
 import { scopeSatisfies } from './grants';
 import { replacementLifecycle } from '../db/replacementLifecycle';
 import { getTool, validateAndRun } from './registry';
-import type { McpScopeTarget, McpToolError } from './bridge/protocol';
+import type { McpScopeTarget, McpToolError } from '@lacuna/protocol/mcp/bridge';
 import type { RecordedUndo } from './bridge/undoRegistry';
 import { resolveToolScopes } from './bridge/scopeResolver';
 import { recordUndo } from './bridge/undoRegistry';

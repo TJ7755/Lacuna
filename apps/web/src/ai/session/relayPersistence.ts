@@ -9,7 +9,7 @@ import {
   aiBridgeErrorSchema,
   aiClientIdentitySchema,
   aiEntityReferenceSchema,
-} from '../protocol';
+} from '@lacuna/protocol/ai/protocol';
 import {
   MAX_AI_RELAY_MAILBOX_ENTRIES,
   relayBrowserMailboxSchema,
@@ -17,7 +17,7 @@ import {
   relaySessionIdSchema,
   relayTokenSchema,
   type RelayBrowserMailbox,
-} from '../relayProtocol';
+} from '@lacuna/protocol/ai/relay';
 import { restoreState as restoreToolSessionState } from '../toolSession/state';
 import type { AiToolSessionState } from '../toolSession';
 import type { AiSessionSnapshot } from './types';

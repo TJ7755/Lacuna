@@ -11,7 +11,7 @@ import {
   deleteConceptContract,
   listConceptsContract,
   updateConceptContract,
-} from '../../contracts/questions';
+} from '@lacuna/protocol/mcp/contracts/questions';
 import { McpToolException, type ToolDefinition } from '../../types';
 import { notFound, ok, requireCourse } from './shared';
 

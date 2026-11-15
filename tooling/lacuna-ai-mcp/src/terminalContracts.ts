@@ -1,9 +1,9 @@
-import type { AiClientIdentity, AiInstructionBundle } from '../../../apps/web/src/ai/protocol.js';
+import type { AiClientIdentity, AiInstructionBundle } from '@lacuna/protocol/ai/protocol';
 import type {
   RelayBrowserMailbox,
   RelayTerminalMailbox,
   RelayToolResponse,
-} from '../../../apps/web/src/ai/relayProtocol.js';
+} from '@lacuna/protocol/ai/relay';
 
 export type TerminalRelayReconnectReason = 'write_outcome_unknown' | 'terminal_writer_changed';
 

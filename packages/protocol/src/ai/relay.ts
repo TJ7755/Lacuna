@@ -10,7 +10,7 @@ import {
   aiToolNameSchema,
   boundedJsonValueSchema,
   jsonValueSchema,
-} from './protocol';
+} from '@lacuna/protocol/ai/protocol';
 
 /** Stable encrypted envelope format. Mailbox records may evolve independently. */
 export const AI_RELAY_ENVELOPE_VERSION = 1 as const;

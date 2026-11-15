@@ -9,10 +9,10 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import net, { type Server as NetServer, type Socket } from 'node:net';
 import log from 'electron-log';
-import { LACUNA_AI_PROTOCOL_VERSION } from '../../web/src/ai/protocol.js';
+import { LACUNA_AI_PROTOCOL_VERSION } from '@lacuna/protocol/ai/protocol';
 import type { GrantStore } from '../../web/src/mcp/bridgeEntry.js';
-import type { ToolContract } from '../../web/src/mcp/contractEntry.js';
-import type { McpClientConnection, McpClientIdentity } from '../../web/src/mcp/companionEntry.js';
+import type { ToolContract } from '@lacuna/protocol/mcp/contracts';
+import type { McpClientConnection, McpClientIdentity } from '@lacuna/protocol/mcp/companion';
 import { McpConnectionStore } from '../../web/src/mcp/bridgeEntry.js';
 import {
   AI_COMPANION_PROTOCOL_VERSION,
@@ -24,8 +24,8 @@ import {
   type AiCompanionResponse,
   type AiCompanionProtocolVersion,
   type CompanionResponse,
-} from '../../web/src/mcp/companionEntry.js';
-import { getToolContract, unknownToolMessage } from '../../web/src/mcp/contractEntry.js';
+} from '@lacuna/protocol/mcp/companion';
+import { getToolContract, unknownToolMessage } from '@lacuna/protocol/mcp/contracts';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import {
   removeCompanionConnectionFile,

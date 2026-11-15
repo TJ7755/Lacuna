@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { JsonValue } from './protocol';
+import type { JsonValue } from '@lacuna/protocol/ai/protocol';
 import {
   RelayCryptoDecryptError,
   RelayCryptoFormatError,

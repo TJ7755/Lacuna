@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/client';
 import { InMemoryTransport } from '@modelcontextprotocol/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AiClientIdentity, JsonValue } from '../../../apps/web/src/ai/protocol';
+import type { AiClientIdentity, JsonValue } from '@lacuna/protocol/ai/protocol';
 import { buildAiInstructionBundle } from '../../../apps/web/src/ai/instructions';
 import type { WaitForMessageResult } from './client';
 import { createLacunaAiMcpServer, type TerminalAiToolClient } from './server';

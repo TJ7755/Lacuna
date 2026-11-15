@@ -1,7 +1,7 @@
 import type { PersistedRelayConnection } from './relayPersistence';
 import { RelayPushOutcomeUnknownError, RelayStaleGenerationError } from '../relayClient';
 import type { AiToolInvokeResult } from '../toolSession';
-import type { RelayTerminalEvent } from '../relayProtocol';
+import type { RelayTerminalEvent } from '@lacuna/protocol/ai/relay';
 import type { AiSessionSnapshot } from './types';
 import { appendConversationItems } from './relayEvents';
 

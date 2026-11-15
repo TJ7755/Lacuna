@@ -4,7 +4,7 @@ import type {
   AiBridgeError,
   AiRunStatus,
   JsonValue,
-} from '../protocol';
+} from '@lacuna/protocol/ai/protocol';
 import type { ToolExecutionOutcome, ToolExecutionRequest } from '../../mcp/executor';
 import type { McpGrant } from '../../mcp/types';
 

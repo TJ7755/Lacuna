@@ -9,7 +9,7 @@ import {
   deleteMemoryContract,
   searchMemoriesContract,
   updateMemoryContract,
-} from '../contracts/memories';
+} from '@lacuna/protocol/mcp/contracts/memories';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 
 function ok<T>(data: T, undo?: ToolResult<T>['undo']): ToolResult<T> {

@@ -11,7 +11,7 @@ import {
   relayTokenSchema,
   type RelayCreatedSession,
   type RelayPeer,
-} from './relayProtocol';
+} from '@lacuna/protocol/ai/relay';
 
 const GENERATION_HEADER = 'X-Lacuna-Generation';
 const RECOVERY_READ_OFFSETS_MS = [0, 650, 1_400] as const;

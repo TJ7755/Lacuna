@@ -1,14 +1,7 @@
-// IPC envelope shared by the Electron main process (electron/mcp/server.ts, which owns
-// the MCP SDK's stdio transport) and the renderer (src/mcp/bridge/renderer.ts, which is
-// the only process with IndexedDB and therefore the only process that can execute a tool
-// handler). Preserve the transport and authority boundaries.
-//
-// This module is types only — no runtime transport code lives here. The MCP SDK itself
-// must never be imported from anywhere under src/, since src/ is bundled into both the
-// Electron renderer and the Cloudflare web build, and neither hosts a server.
+// Transport-neutral IPC envelopes. Execution and consent remain with their runtime owners.
 
-import type { McpGrant } from '../types';
-import type { McpClientIdentity } from '../connections';
+import type { McpGrant } from './types.js';
+import type { McpClientIdentity } from './types.js';
 
 /** A tool invocation request sent from the main process to the renderer. */
 export interface McpInvokeRequest {

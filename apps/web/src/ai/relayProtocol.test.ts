@@ -11,7 +11,7 @@ import {
   relayPublicKeySchema,
   relayTerminalMailboxSchema,
   relayToolResponseSchema,
-} from './relayProtocol';
+} from '@lacuna/protocol/ai/relay';
 
 const PUBLIC_KEY = base64Url(new Uint8Array(65).fill(7));
 

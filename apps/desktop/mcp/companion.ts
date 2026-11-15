@@ -7,17 +7,14 @@ import log from 'electron-log';
 import { z } from 'zod';
 import { McpServer, type CallToolResult, type ServerContext } from '@modelcontextprotocol/server';
 import { serveStdio, type StdioServerHandle } from '@modelcontextprotocol/server/stdio';
-import {
-  TOOL_CONTRACT_REGISTRY,
-  MCP_TOOL_SURFACE_VERSION,
-} from '../../web/src/mcp/contractEntry.js';
-import type { McpClientIdentity } from '../../web/src/mcp/companionEntry.js';
+import { TOOL_CONTRACT_REGISTRY, MCP_TOOL_SURFACE_VERSION } from '@lacuna/protocol/mcp/contracts';
+import type { McpClientIdentity } from '@lacuna/protocol/mcp/companion';
 import {
   CompanionLineDecoder,
   MCP_COMPANION_PROTOCOL_VERSION,
   encodeCompanionMessage,
   type CompanionResponse,
-} from '../../web/src/mcp/companionEntry.js';
+} from '@lacuna/protocol/mcp/companion';
 import { companionHostUserDataPath, readCompanionConnectionFile } from './connectionFile.js';
 
 const CONNECT_TIMEOUT_MS = 3_000;

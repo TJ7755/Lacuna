@@ -5,7 +5,7 @@ import type {
   AiToolLedgerEntry,
   AiToolWireResponse,
 } from './types';
-import type { AiActionReceipt } from '../protocol';
+import type { AiActionReceipt } from '@lacuna/protocol/ai/protocol';
 
 export function ledgerKey(connectionId: string, callId: string): string {
   return `${connectionId}\u0000${callId}`;

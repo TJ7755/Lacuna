@@ -26,7 +26,7 @@ import {
   listOcclusionsContract,
   listSequencesContract,
   searchCardsContract,
-} from '../contracts/read';
+} from '@lacuna/protocol/mcp/contracts/read';
 import { courseChoiceMessage, findCourseMatches } from '../courseLookup';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 

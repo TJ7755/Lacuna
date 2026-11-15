@@ -9,7 +9,7 @@ import {
   type AiClaimedMessage,
   type AiInstructionBundle,
   type AiRunState,
-} from '../protocol';
+} from '@lacuna/protocol/ai/protocol';
 import { buildAiInstructionBundle } from '../instructions';
 import { createAiToolSession, type AiToolInvokeResult, type AiToolSession } from '../toolSession';
 import type { ReplacementParticipant } from '../../db/replacementLifecycle';

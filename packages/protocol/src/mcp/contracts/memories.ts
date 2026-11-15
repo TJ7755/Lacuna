@@ -11,8 +11,8 @@ import {
   AGENT_MEMORY_STATUSES,
   AGENT_MEMORY_TAGS,
   AGENT_MEMORY_BASES,
-} from '../../agentMemoryContract.js';
-import type { ToolContract } from '../types';
+} from '@lacuna/protocol/agentMemory';
+import type { ToolContract } from '../types.js';
 
 const identifierSchema = z.string().trim().min(1).max(AGENT_MEMORY_IDENTIFIER_LIMIT);
 const provenanceIdSchema = identifierSchema.max(AGENT_MEMORY_PROVENANCE_ID_LIMIT);

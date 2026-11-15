@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type { AiBridgeRequest, AiBridgeResult } from '../../web/src/ai/protocol.js';
-import { encodeCompanionMessage } from '../../web/src/mcp/companionEntry.js';
+import type { AiBridgeRequest, AiBridgeResult } from '@lacuna/protocol/ai/protocol';
+import { encodeCompanionMessage } from '@lacuna/protocol/mcp/companion';
 import type { AiAppClientState } from './aiAppClientState.js';
 import { cancelledOperation, timedOutOperation } from './aiAppOperationErrors.js';
 

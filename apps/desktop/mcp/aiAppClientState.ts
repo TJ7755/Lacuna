@@ -1,6 +1,6 @@
 import type { Socket } from 'node:net';
-import type { AiBridgeRequest, AiBridgeResult } from '../../web/src/ai/protocol.js';
-import type { AiCompanionOperationError } from '../../web/src/ai/companionErrors.js';
+import type { AiBridgeRequest, AiBridgeResult } from '@lacuna/protocol/ai/protocol';
+import type { AiCompanionOperationError } from '@lacuna/protocol/ai/companionErrors';
 
 interface ActiveRun {
   runId: string;

@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "zod": "4.6.7",
-    "ts-fsrs": "^6.0.0"
+    "ts-fsrs": "^6.0.0",
+    "@lacuna/protocol": "workspace:*"
   }
 }

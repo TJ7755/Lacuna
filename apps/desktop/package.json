@@ -7,7 +7,8 @@
     "zod": "4.6.7",
     "@modelcontextprotocol/server": "2.4.0",
     "electron-log": "^5.4.4",
-    "electron-updater": "^6.8.11"
+    "electron-updater": "^6.8.11",
+    "@lacuna/protocol": "workspace:*"
   },
   "devDependencies": {
     "@electron/asar": "4.3.1",

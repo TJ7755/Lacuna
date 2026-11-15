@@ -3,9 +3,9 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import type { BrowserWindow } from 'electron';
 import { GrantStore } from './grants';
 import { McpConnectionStore } from './connections';
-import { TOOL_CONTRACT_REGISTRY } from './contracts/registry';
-import { listCoursesContract } from './contracts/read';
-import { createCourseContract } from './contracts/content';
+import { TOOL_CONTRACT_REGISTRY } from '@lacuna/protocol/mcp/contracts/registry';
+import { listCoursesContract } from '@lacuna/protocol/mcp/contracts/read';
+import { createCourseContract } from '@lacuna/protocol/mcp/contracts/content';
 
 const electron = vi.hoisted(() => {
   type Listener = (event: unknown, value: unknown) => void;

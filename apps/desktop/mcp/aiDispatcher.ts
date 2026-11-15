@@ -1,5 +1,5 @@
-import type { AiBridgeRequest, AiBridgeResult } from '../../web/src/ai/protocol.js';
-import type { AiRendererReply, AiRendererRequest } from '../../web/src/mcp/companionEntry.js';
+import type { AiBridgeRequest, AiBridgeResult } from '@lacuna/protocol/ai/protocol';
+import type { AiRendererReply, AiRendererRequest } from '@lacuna/protocol/mcp/companion';
 
 export const AI_RENDERER_TIMEOUT_MS = 30_000;
 

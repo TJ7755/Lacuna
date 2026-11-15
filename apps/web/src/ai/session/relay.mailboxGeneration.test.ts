@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RelayPushOutcomeUnknownError, RelayStaleGenerationError } from '../relayClient';
-import { AI_RELAY_EMPTY_GENERATION } from '../relayProtocol';
+import { AI_RELAY_EMPTY_GENERATION } from '@lacuna/protocol/ai/relay';
 import { createRelayAiSession } from './relay';
 import { TERMINAL_PUBLIC_KEY, relaySessionHarness } from './relay.testHarness';
 

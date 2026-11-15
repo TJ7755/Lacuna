@@ -8,8 +8,11 @@ import { AjvJsonSchemaValidator } from '@modelcontextprotocol/server/validators/
 import {
   createCourseAssessmentContract,
   updateCourseAssessmentContract,
-} from './contracts/content';
-import { MCP_TOOL_SURFACE_VERSION, TOOL_CONTRACT_REGISTRY } from './contracts/registry';
+} from '@lacuna/protocol/mcp/contracts/content';
+import {
+  MCP_TOOL_SURFACE_VERSION,
+  TOOL_CONTRACT_REGISTRY,
+} from '@lacuna/protocol/mcp/contracts/registry';
 import { TOOL_REGISTRY } from './registry';
 
 const PROJECT_ROOT = process.cwd();
@@ -50,7 +53,7 @@ async function bundleMetafile(entryPoint: string): Promise<Metafile> {
     platform: 'node',
     format: 'esm',
     target: 'es2022',
-    packages: 'external',
+    external: ['zod', '@modelcontextprotocol/*', 'electron', 'electron-log', 'electron-updater'],
     write: false,
     metafile: true,
     logLevel: 'silent',
@@ -227,7 +230,13 @@ describe('Electron MCP contract boundary', () => {
         platform: 'node',
         format: 'esm',
         target: 'es2022',
-        packages: 'external',
+        external: [
+          'zod',
+          '@modelcontextprotocol/*',
+          'electron',
+          'electron-log',
+          'electron-updater',
+        ],
         write: false,
         metafile: true,
         logLevel: 'silent',
@@ -265,7 +274,9 @@ describe('Electron MCP contract boundary', () => {
         }
       }
       visit(entry[0]);
-      expect(inputs.has('apps/web/src/ai/companionErrors.ts'), name).toBe(name.startsWith('ai'));
+      expect(inputs.has('packages/protocol/src/ai/companionErrors.ts'), name).toBe(
+        name.startsWith('ai'),
+      );
       expect(
         [...inputs].filter((input) =>
           FORBIDDEN_SOURCE_ROOTS.some((root) => input.startsWith(root)),

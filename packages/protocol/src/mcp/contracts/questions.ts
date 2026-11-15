@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ToolContract } from '../types';
+import type { ToolContract } from '../types.js';
 
 const courseIdSchema = z.string().trim().min(1).describe('The id of the Course.');
 const conceptIdSchema = z.string().trim().min(1).describe('The id of a Concept.');

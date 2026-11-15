@@ -5,11 +5,8 @@
 
 import { app, type BrowserWindow } from 'electron';
 import log from 'electron-log';
-import {
-  TOOL_CONTRACT_REGISTRY,
-  MCP_TOOL_SURFACE_VERSION,
-} from '../../web/src/mcp/contractEntry.js';
-import type { McpClientConnection } from '../../web/src/mcp/companionEntry.js';
+import { TOOL_CONTRACT_REGISTRY, MCP_TOOL_SURFACE_VERSION } from '@lacuna/protocol/mcp/contracts';
+import type { McpClientConnection } from '@lacuna/protocol/mcp/companion';
 import { companionLaunchCommand, companionProcessUserDataPath } from './connectionFile.js';
 import { DataBridge } from './dataBridge.js';
 import { CompanionBroker } from './companionBroker.js';

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db/schema';
 import { McpBridgeController } from './McpBridgeController';
 import type { McpBridgeOptions } from '../../mcp/bridge/renderer';
-import type { McpConsentRequest, McpGrantNotice } from '../../mcp/bridge/protocol';
+import type { McpConsentRequest, McpGrantNotice } from '@lacuna/protocol/mcp/bridge';
 import type { RecordedUndo } from '../../mcp/bridge/undoRegistry';
 
 const mocks = vi.hoisted(() => ({

@@ -1,4 +1,4 @@
-import type { RelayBrowserMailbox } from '../../../apps/web/src/ai/relayProtocol.js';
+import type { RelayBrowserMailbox } from '@lacuna/protocol/ai/relay';
 import type { ConnectedTerminalRelay, TerminalRelayTransport } from './terminalContracts.js';
 
 class TerminalInvocationBoundaryError extends Error {

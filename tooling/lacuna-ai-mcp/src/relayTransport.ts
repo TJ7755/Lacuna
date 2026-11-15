@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { AiClientIdentity, JsonValue } from '../../../apps/web/src/ai/protocol.js';
+import type { AiClientIdentity, JsonValue } from '@lacuna/protocol/ai/protocol';
 import {
   createRelayKeyPair,
   deriveRelayEncryptionKey,
@@ -15,7 +15,7 @@ import {
   relayTerminalMailboxSchema,
   type RelayEnvelope,
   type RelayTerminalMailbox,
-} from '../../../apps/web/src/ai/relayProtocol.js';
+} from '@lacuna/protocol/ai/relay';
 import { normaliseRelayUrl } from '../../../apps/web/src/sync/relay.js';
 import {
   TerminalRelayReconnectRequiredError,

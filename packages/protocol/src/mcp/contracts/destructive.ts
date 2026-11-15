@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ToolContract } from '../types';
+import type { ToolContract } from '../types.js';
 
 const cardIdsSchema = z.array(z.string()).min(1).describe('Card ids to act on.');
 

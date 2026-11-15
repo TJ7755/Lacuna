@@ -4,7 +4,7 @@
 // execute them. This module has no IPC/SDK/Electron dependency of its own.
 
 import { z } from 'zod';
-import type { McpToolError } from './bridge/protocol';
+import type { McpToolError } from '@lacuna/protocol/mcp/bridge';
 import {
   McpToolException,
   type ToolContext,
@@ -16,7 +16,7 @@ import {
   listToolsContract,
   MCP_TOOL_SURFACE_VERSION,
   TOOL_CONTRACT_REGISTRY,
-} from './contracts/registry';
+} from '@lacuna/protocol/mcp/contracts/registry';
 import { READ_TOOLS } from './tools/read';
 import { CONTENT_TOOLS } from './tools/content';
 import { DESTRUCTIVE_TOOLS } from './tools/destructive';
@@ -25,7 +25,10 @@ import { LINEAGE_TOOLS } from './tools/lineage';
 import { QUESTION_TOOLS } from './tools/questions';
 import { MEMORY_TOOLS } from './tools/memories';
 
-export { MCP_TOOL_SURFACE_VERSION, unknownToolMessage } from './contracts/registry';
+export {
+  MCP_TOOL_SURFACE_VERSION,
+  unknownToolMessage,
+} from '@lacuna/protocol/mcp/contracts/registry';
 
 /**
  * Versions the *tool contract* (names, input/output shapes), independent of Dexie's

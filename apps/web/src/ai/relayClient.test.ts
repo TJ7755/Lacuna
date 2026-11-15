@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_RELAY_URL } from '../sync/pairing';
-import { AI_RELAY_EMPTY_GENERATION } from './relayProtocol';
+import { AI_RELAY_EMPTY_GENERATION } from '@lacuna/protocol/ai/relay';
 import {
   RelayClientHttpError,
   RelayClientProtocolError,

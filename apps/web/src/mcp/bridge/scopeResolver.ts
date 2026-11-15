@@ -1,7 +1,7 @@
 import { db } from '../../db/schema';
 import { GLOBAL_SCOPE_KEY } from '../grants';
 import { agentMemoryRepository } from '../../db/agentMemoryRepository';
-import type { McpScopeTarget, McpToolError } from './protocol';
+import type { McpScopeTarget, McpToolError } from '@lacuna/protocol/mcp/bridge';
 import { courseChoiceMessage, findCourseMatches } from '../courseLookup';
 
 type Resolution = { ok: true; targets: McpScopeTarget[] } | { ok: false; error: McpToolError };

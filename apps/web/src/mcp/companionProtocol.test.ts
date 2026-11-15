@@ -9,7 +9,7 @@ import {
   isAiCompanionResponse,
   isAiRendererReply,
   isCompanionRequest,
-} from './companionProtocol';
+} from '@lacuna/protocol/mcp/companion';
 
 const client = { connectionId: 'connection-1', name: 'Codex', version: '1.0' };
 

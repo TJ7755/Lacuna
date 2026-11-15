@@ -3,7 +3,7 @@ import { QuestionGeneratorError, questionGeneratorRegistry } from '../../../ques
 import {
   auditQuestionGeneratorContract,
   listQuestionGeneratorsContract,
-} from '../../contracts/questions';
+} from '@lacuna/protocol/mcp/contracts/questions';
 import type { ToolDefinition } from '../../types';
 import { ok, validation } from './shared';
 

@@ -1,4 +1,8 @@
-import type { McpConsentResponse, McpInvokeResponse, McpScopeResolutionResponse } from './protocol';
+import type {
+  McpConsentResponse,
+  McpInvokeResponse,
+  McpScopeResolutionResponse,
+} from '@lacuna/protocol/mcp/bridge';
 
 const ERROR_KINDS = new Set(['not_found', 'validation', 'forbidden', 'conflict', 'internal']);
 

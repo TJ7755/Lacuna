@@ -4,7 +4,7 @@ import {
   isCompanionRequest,
   type AiCompanionRequest,
   type CompanionRequest,
-} from '../../web/src/mcp/companionEntry.js';
+} from '@lacuna/protocol/mcp/companion';
 
 export type CompanionPurpose = 'data' | 'ai';
 export type CompanionHello =

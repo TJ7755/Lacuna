@@ -1,9 +1,9 @@
-import { MAX_AI_IDENTIFIER_LENGTH } from '../protocol';
+import { MAX_AI_IDENTIFIER_LENGTH } from '@lacuna/protocol/ai/protocol';
 import {
   MAX_AI_RELAY_MAILBOX_ENTRIES,
   type RelayBrowserMessage,
   type RelayTerminalEvent,
-} from '../relayProtocol';
+} from '@lacuna/protocol/ai/relay';
 import type { AiConversationItem, AiSessionSnapshot } from './types';
 
 const ASSISTANT_ITEM_PREFIX = 'assistant-';

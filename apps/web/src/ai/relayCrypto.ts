@@ -1,10 +1,10 @@
-import { jsonValueSchema, type JsonValue } from './protocol';
+import { jsonValueSchema, type JsonValue } from '@lacuna/protocol/ai/protocol';
 import {
   AI_RELAY_ENVELOPE_VERSION,
   relayEnvelopeSchema,
   relayPublicKeySchema,
   type RelayEnvelope,
-} from './relayProtocol';
+} from '@lacuna/protocol/ai/relay';
 
 const AI_RELAY_AAD = 'lacuna-ai-relay-v1';
 const AI_RELAY_NONCE_BYTES = 12;

@@ -5,7 +5,6 @@
     "moduleResolution": "bundler",
     "lib": ["ES2022"],
     "outDir": "./dist-electron",
-    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

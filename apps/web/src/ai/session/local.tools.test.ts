@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { LACUNA_AI_PROTOCOL_VERSION, type AiBridgeRequest } from '../protocol';
+import { LACUNA_AI_PROTOCOL_VERSION, type AiBridgeRequest } from '@lacuna/protocol/ai/protocol';
 import type { AiToolSession } from '../toolSession';
 import { buildAiInstructionBundle } from '../instructions';
 import { createLocalAiSession } from './local';

@@ -4,7 +4,30 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    "./*": "./src/*.ts"
+    "./agentMemory": "./src/agentMemory.ts",
+    "./ai/companionErrors": "./src/ai/companionErrors.ts",
+    "./ai/protocol": "./src/ai/protocol.ts",
+    "./insights/index": "./src/insights/index.ts",
+    "./insights/insightsDay": "./src/insights/insightsDay.ts",
+    "./insights/insightsProtocol": "./src/insights/insightsProtocol.ts",
+    "./mcp/bridge": "./src/mcp/bridge.ts",
+    "./mcp/companion": "./src/mcp/companion.ts",
+    "./mcp/contracts/content": "./src/mcp/contracts/content.ts",
+    "./mcp/contracts/destructive": "./src/mcp/contracts/destructive.ts",
+    "./mcp/contracts/import": "./src/mcp/contracts/import.ts",
+    "./mcp/contracts/lineage": "./src/mcp/contracts/lineage.ts",
+    "./mcp/contracts/memories": "./src/mcp/contracts/memories.ts",
+    "./mcp/contracts/questions": "./src/mcp/contracts/questions.ts",
+    "./mcp/contracts/read": "./src/mcp/contracts/read.ts",
+    "./mcp/contracts/registry": "./src/mcp/contracts/registry.ts",
+    "./mcp/ipcValidation": "./src/mcp/ipcValidation.ts",
+    "./mcp/limits": "./src/mcp/limits.ts",
+    "./mcp/types": "./src/mcp/types.ts",
+    "./relay/index": "./src/relay/index.ts",
+    "./specifications/links": "./src/specifications/links.ts",
+    "./usage": "./src/usage.ts",
+    "./mcp/contracts": "./src/mcp/contracts/index.ts",
+    "./ai/relay": "./src/ai/relay.ts"
   },
   "dependencies": {
     "zod": "4.6.7"

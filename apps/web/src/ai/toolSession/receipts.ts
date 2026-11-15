@@ -1,5 +1,5 @@
-import { aiActionReceiptSchema } from '../protocol';
-import type { AiActionReceipt, AiEntityReference, JsonValue } from '../protocol';
+import { aiActionReceiptSchema } from '@lacuna/protocol/ai/protocol';
+import type { AiActionReceipt, AiEntityReference, JsonValue } from '@lacuna/protocol/ai/protocol';
 
 const GLOBAL_SCOPE_KEY = '__global__';
 

@@ -1,12 +1,12 @@
 import { vi } from 'vitest';
 import { buildAiInstructionBundle } from '../../../apps/web/src/ai/instructions';
-import type { AiClientIdentity } from '../../../apps/web/src/ai/protocol';
+import type { AiClientIdentity } from '@lacuna/protocol/ai/protocol';
 import {
   AI_RELAY_EMPTY_GENERATION,
   AI_RELAY_PROTOCOL_VERSION,
   type RelayBrowserMailbox,
   type RelayTerminalMailbox,
-} from '../../../apps/web/src/ai/relayProtocol';
+} from '@lacuna/protocol/ai/relay';
 import {
   DEFAULT_AI_RELAY_URL,
   TerminalRelayReconnectRequiredError,

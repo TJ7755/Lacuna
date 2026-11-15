@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aiInstructionBundleSchema } from './protocol';
+import { aiInstructionBundleSchema } from '@lacuna/protocol/ai/protocol';
 import { AI_TEACHING_INSTRUCTION_VERSION, buildAiInstructionBundle } from './instructions';
 
 describe('buildAiInstructionBundle', () => {

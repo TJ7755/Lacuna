@@ -1,17 +1,7 @@
 import { GrantStore, type McpScope } from './grants';
 import type { McpGrant } from './types';
-
-export interface McpClientIdentity {
-  connectionId: string;
-  name: string;
-  version?: string;
-}
-
-export interface McpClientConnection extends McpClientIdentity {
-  connectedAt: number;
-  lastActivityAt: number;
-  grants: McpGrant[];
-}
+import type { McpClientIdentity, McpClientConnection } from '@lacuna/protocol/mcp/types';
+export type { McpClientIdentity, McpClientConnection } from '@lacuna/protocol/mcp/types';
 
 interface ConnectionEntry {
   identity: McpClientIdentity;

@@ -8,7 +8,11 @@
 // server lifetime, wiring `send` to `webContents.send('mcp:invoke', req)` and feeding
 // `resolvePending` from the `mcp:invoke:reply` ipcMain listener.
 
-import type { McpInvokeRequest, McpInvokeResponse, McpToolError } from './protocol';
+import type {
+  McpInvokeRequest,
+  McpInvokeResponse,
+  McpToolError,
+} from '@lacuna/protocol/mcp/bridge';
 
 export const RENDERER_NOT_READY_MESSAGE = 'Lacuna window is not open or still loading.';
 
