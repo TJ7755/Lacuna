@@ -130,6 +130,24 @@ beforeEach(() => {
 });
 
 describe('SequenceEditor', () => {
+  it('rejects a sequence owned by another course', () => {
+    mockCourse = course;
+    mockSequence = {
+      id: 'seq-1',
+      courseId: 'other-course',
+      primaryLessonId: null,
+      name: 'Other course sequence',
+      items: [{ id: 'item-1', value: 'Private content' }],
+      cueWindow: 2,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    renderEdit();
+    expect(screen.getByText('This sequence could not be found.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Private content')).not.toBeInTheDocument();
+  });
+
   it.each(['Cancel', 'Back to Cards'])(
     'keeps unsaved work until %s is confirmed',
     async (action) => {

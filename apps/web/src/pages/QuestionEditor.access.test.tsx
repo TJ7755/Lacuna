@@ -4,6 +4,31 @@ import type { QuestionConceptSet, QuestionDefinition } from '@lacuna/core/questi
 import { mocks, renderEditor } from './QuestionEditor.testSupport';
 
 describe('QuestionEditor access', () => {
+  it('rejects a Question owned by another course', async () => {
+    mocks.record = {
+      question: {
+        id: 'question-1',
+        courseId: 'other-course',
+        kind: 'fixed',
+        name: 'Other course Question',
+        prompt: 'Private prompt',
+        explanation: 'Private explanation',
+        tags: [],
+        payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+      } as unknown as QuestionDefinition,
+      conceptSet: {
+        targetConceptIds: [],
+        prerequisiteConceptIds: [],
+      } as unknown as QuestionConceptSet,
+    };
+    renderEditor('/course/course-1/questions/question-1');
+    expect(
+      await screen.findByRole('heading', { name: 'This Question could not be found.' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save Question' })).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Private prompt')).not.toBeInTheDocument();
+  });
+
   it('offers a working route back when the requested Question no longer exists', async () => {
     const router = renderEditor('/course/course-1/questions/missing');
     expect(

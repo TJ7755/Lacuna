@@ -63,7 +63,8 @@ export function SequenceEditor() {
   const course = useCourse(courseId);
   const lesson = useLesson(lessonId);
   const editing = Boolean(sequenceId);
-  const sequence = useSequence(sequenceId);
+  const storedSequence = useSequence(sequenceId);
+  const sequence = storedSequence && storedSequence.courseId !== courseId ? null : storedSequence;
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');

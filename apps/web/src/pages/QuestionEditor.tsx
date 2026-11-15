@@ -52,7 +52,8 @@ export function QuestionEditor() {
   const editable = Boolean(course && canEditLessons(course));
   const lessons = useLessons(courseId);
   const data = useCourseQuestionData(courseId);
-  const record = useQuestionRecord(questionId);
+  const storedRecord = useQuestionRecord(questionId);
+  const record = storedRecord && storedRecord.question.courseId !== courseId ? null : storedRecord;
   const editing = Boolean(questionId);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 

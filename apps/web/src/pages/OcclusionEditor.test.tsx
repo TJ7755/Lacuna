@@ -150,6 +150,24 @@ beforeEach(() => {
 });
 
 describe('OcclusionEditor', () => {
+  it('rejects a diagram owned by another course', () => {
+    mockCourse = course;
+    mockOcclusion = {
+      id: 'occ-1',
+      courseId: 'other-course',
+      primaryLessonId: null,
+      name: 'Other course diagram',
+      assetHash: 'hash-1',
+      regions: [],
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    renderEdit();
+    expect(screen.getByText('This occlusion could not be found.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Other course diagram')).not.toBeInTheDocument();
+  });
+
   it.each(['Cancel', 'Back to Cards'])(
     'keeps unsaved work until %s is confirmed',
     async (action) => {
