@@ -8,7 +8,7 @@ const SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="720" height="410" viewBox="0 0 720 410"><rect width="720" height="410" fill="#f6f7f1"/><ellipse cx="320" cy="205" rx="210" ry="155" fill="#e7eef0" stroke="#586776" stroke-width="4"/><ellipse cx="160" cy="205" rx="32" ry="75" fill="white" stroke="#586776" stroke-width="3"/><path d="M530 190L620 190L620 225L530 225" fill="#f3cbc4" stroke="#586776" stroke-width="3"/><text x="640" y="210" font-size="24">G</text></svg>';
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
-  test(`lesson cards retain full diagrams, edit in place and return to the lesson (${reducedMotion})`, async ({
+  test(`lesson cards retain full diagrams, edit on a full page and return to the lesson (${reducedMotion})`, async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width: 1600, height: 1165 });
@@ -67,7 +67,33 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await expect(page.getByRole('article')).toHaveCount(9);
     const settings = page.getByRole('button', { name: 'Lesson settings', exact: true });
     await settings.click();
-    await expect(page.getByRole('button', { name: 'Type answers', exact: true })).toBeVisible();
+    const reveal = page.getByRole('radio', { name: 'Reveal answers', exact: true });
+    const type = page.getByRole('radio', { name: 'Type answers', exact: true });
+    await expect(type).toBeVisible();
+    await settle(settings.locator('..'));
+    const revealRect = (await reveal.boundingBox())!;
+    const typeRect = (await type.boundingBox())!;
+    expect(Math.abs(revealRect.y - typeRect.y)).toBeLessThan(1);
+    expect(typeRect.x).toBeGreaterThan(revealRect.x);
+    await reveal.focus();
+    await reveal.press('ArrowDown');
+    await expect(type).toHaveAttribute('aria-checked', 'true');
+    await expect(type).toBeFocused();
+    const answerMode = page.getByRole('group', { name: 'Suggested answer mode', exact: true });
+    await expect(answerMode).toHaveAttribute('aria-busy', 'false');
+    await type.press('ArrowUp');
+    await expect(reveal).toHaveAttribute('aria-checked', 'true');
+    await expect(reveal).toBeFocused();
+    await expect(answerMode).toHaveAttribute('aria-busy', 'false');
+    await reveal.press('ArrowRight');
+    await expect(type).toHaveAttribute('aria-checked', 'true');
+    await expect(type).toBeFocused();
+    await settle(settings.locator('..'));
+    await page.screenshot({ path: testInfo.outputPath('answer-mode.png') });
+    await testInfo.attach('Compact answer-mode selector', {
+      path: testInfo.outputPath('answer-mode.png'),
+      contentType: 'image/png',
+    });
     await page.getByRole('button', { name: 'View mode', exact: true }).click();
     await expect(settings).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Select', exact: true })).toHaveCount(0);
@@ -126,57 +152,42 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 
     const edit = first.getByRole('button', { name: 'Edit', exact: true });
     await edit.click();
-    if (reducedMotion === 'no-preference') {
-      const frames = await edit.evaluate(
-        (button) =>
-          new Promise<{ width: number; textScale: number }[]>((resolve) => {
-            const samples: { width: number; textScale: number }[] = [];
-            const sample = () => {
-              const surface = button.parentElement!;
-              const field = surface.querySelector('textarea');
-              samples.push({
-                width: surface.getBoundingClientRect().width,
-                textScale: field ? field.getBoundingClientRect().width / field.offsetWidth : 1,
-              });
-              if (samples.length === 24) resolve(samples);
-              else requestAnimationFrame(sample);
-            };
-            requestAnimationFrame(sample);
-          }),
-      );
-      expect(frames.some((frame) => frame.width > 100 && frame.width < 780)).toBe(true);
-      expect(frames.every((frame) => Math.abs(frame.textScale - 1) < 0.02)).toBe(true);
-    }
-    const front = first.getByRole('textbox', { name: 'Front', exact: true });
-    const back = first.getByRole('textbox', { name: 'Back', exact: true });
-    await expect(front).toBeFocused();
-    const surface = edit.locator('..');
-    await settle(surface);
-    expect((await surface.boundingBox())!.width).toBeGreaterThan(700);
-    await expect(front).toHaveCSS('transform', 'none');
-    await page.screenshot({ path: testInfo.outputPath('lesson-card-edit.png') });
-    await testInfo.attach('Flow card editor', {
-      path: testInfo.outputPath('lesson-card-edit.png'),
+    await expect(page).toHaveURL(/\/cards\/[^/]+\/edit$/);
+    await expect(page.getByRole('heading', { name: 'Edit card', exact: true })).toBeVisible();
+    const front = page.getByRole('textbox', { name: 'Front', exact: true });
+    const back = page.getByRole('textbox', { name: 'Back', exact: true });
+    await expect(front).toHaveValue(/Identify structure G/);
+    await settle(page.locator('[data-route-content]').last());
+    await page.screenshot({ path: testInfo.outputPath('full-card-editor.png') });
+    await testInfo.attach('Full card editor', {
+      path: testInfo.outputPath('full-card-editor.png'),
       contentType: 'image/png',
     });
     await back.fill('Carries impulses from the retina to the brain.');
     await back.press('Control+Enter');
-    await expect(edit).toHaveAttribute('aria-expanded', 'false');
-    await expect(edit).toBeFocused();
+    await expect(page).toHaveURL(new RegExp(`/lesson/${seeded.lessonId}/cards$`));
     await expect(first.getByRole('region', { name: 'Back', exact: true })).toContainText(
       'Carries impulses',
     );
 
-    // Closing the expanding editor reverses it immediately; the unfinished draft survives.
     await edit.click();
     await back.fill('Unfinished explanation');
-    await page.keyboard.press('Escape');
-    await expect(edit).toHaveAttribute('aria-expanded', 'false');
-    await settle(surface);
+    await page.getByRole('link', { name: 'Back to lesson cards', exact: true }).click();
+    await expect(page.getByRole('article')).toHaveCount(9);
     await edit.click();
-    await first.getByRole('button', { name: 'Restore draft', exact: true }).click();
+    await page.getByRole('button', { name: 'Restore draft', exact: true }).click();
     await expect(back).toHaveValue('Unfinished explanation');
-    await page.keyboard.press('Escape');
+    await page.getByRole('link', { name: 'Back to lesson cards', exact: true }).click();
+    await expect(page.getByRole('article')).toHaveCount(9);
+
+    const lastEdit = cards.last().getByRole('button', { name: 'Edit', exact: true });
+    await lastEdit.scrollIntoViewIfNeeded();
+    const scrollPosition = await page.locator('#main-content').evaluate((main) => main.scrollTop);
+    await lastEdit.click();
+    await page.getByRole('link', { name: 'Back to lesson cards', exact: true }).click();
+    await expect
+      .poll(() => page.locator('#main-content').evaluate((main) => main.scrollTop))
+      .toBeCloseTo(scrollPosition, 0);
 
     await first.focus();
     await page.keyboard.press('ArrowDown');

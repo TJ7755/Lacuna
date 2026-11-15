@@ -1,11 +1,10 @@
-import { lazy, Suspense, useState, type ComponentProps } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { AnimatePresence } from 'motion/react';
 import type { Card, Course, Occlusion, Sequence } from '@lacuna/core/db/types';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { baseItemId } from '../../db/sequenceGeneration';
 import { occlusionForRegionId } from '../../db/occlusionGeneration';
 import { originFrom } from '../../utils/editorOrigin';
-import { ExpandingCreateControl } from '../ui/ExpandingCreateControl';
 import { ExpandingSheet } from '../ui/ExpandingSheet';
 import { Button } from '../ui/Button';
 import { CardContent } from './CardContent';
@@ -14,12 +13,6 @@ import { ScheduleChip } from './ScheduleChip';
 import { renderLineAsEnglish } from '../../items/markSchemeCompiler';
 import type { CardList } from './CardList';
 import { plainFront } from './lessonCardRow';
-
-const LessonCardEditor = lazy(() =>
-  import('../../pages/cardEditor/LessonCardEditor').then((module) => ({
-    default: module.LessonCardEditor,
-  })),
-);
 
 export function LessonCardDocument({
   card,
@@ -42,7 +35,6 @@ export function LessonCardDocument({
   occlusions: Occlusion[];
   selection?: Parameters<NonNullable<ComponentProps<typeof CardList>['renderCards']>>[0];
 }) {
-  const [editing, setEditing] = useState(false);
   const [enlarged, setEnlarged] = useState<{ side: 'front' | 'back'; anchor: HTMLElement } | null>(
     null,
   );
@@ -90,46 +82,25 @@ export function LessonCardDocument({
           </span>
           <ScheduleChip schedule={cardScheduleLabel(card, Date.now())} />
         </div>
-        {editable &&
-          !selection?.selectMode &&
-          (generated ? (
-            ownerPath && (
-              <Button
-                data-card-edit
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  void navigate(`/course/${course.id}/${ownerPath}/edit`, {
-                    state: originFrom(location, 'Lesson cards'),
-                  })
-                }
-              >
-                {occlusion ? 'Edit diagram' : 'Edit sequence'}
-              </Button>
-            )
-          ) : (
-            <ExpandingCreateControl
-              label="Edit"
-              showIcon={false}
-              closedWidth={72}
-              expandedWidth={800}
-              open={editing}
-              onOpenChange={setEditing}
-            >
-              {(close) => (
-                <Suspense
-                  fallback={<div className="p-5 text-sm text-ink-soft">Loading editor…</div>}
-                >
-                  <LessonCardEditor
-                    card={card}
-                    course={course}
-                    lessonId={lessonId}
-                    onClose={close}
-                  />
-                </Suspense>
-              )}
-            </ExpandingCreateControl>
-          ))}
+        {editable && !selection?.selectMode && (!generated || ownerPath) && (
+          <Button
+            data-card-edit
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              void navigate(
+                generated
+                  ? `/course/${course.id}/${ownerPath}/edit`
+                  : `/course/${course.id}/lesson/${lessonId}/cards/${card.id}/edit`,
+                {
+                  state: originFrom(location, generated ? 'Lesson cards' : 'Back to lesson cards'),
+                },
+              )
+            }
+          >
+            {occlusion ? 'Edit diagram' : sequence ? 'Edit sequence' : 'Edit'}
+          </Button>
+        )}
         {editable && linked && selection?.onUnlinkCard && (
           <Button variant="ghost" size="sm" onClick={() => selection.onUnlinkCard?.(card)}>
             Remove from lesson

@@ -4,35 +4,9 @@ import { setAuthoredAnswerMode } from '../../db/answerModeRepository';
 import type { AnswerMode, Card } from '@lacuna/core/db/types';
 import { isTypingEligible } from '../../utils/answerMode';
 import { useCourse, useLesson } from '../../state/useCourseData';
-import { PillToggleGroup } from './PillToggleGroup';
+import { SegmentedPills } from '../ui/SegmentedPills';
 import { Select } from '../ui/Select';
 import { useToast } from '../ui/Toast';
-
-function AnswerModeChoices({
-  value,
-  onChange,
-  disabled = false,
-}: {
-  value: AnswerMode;
-  onChange: (value: AnswerMode) => void;
-  disabled?: boolean;
-}) {
-  return (
-    // A disabled fieldset disables every option while a change saves.
-    <fieldset disabled={disabled} className="contents">
-      <PillToggleGroup
-        label="Suggested answer mode"
-        size="sm"
-        value={value}
-        onChange={onChange}
-        options={[
-          { value: 'reveal', label: 'Reveal answers' },
-          { value: 'type', label: 'Type answers' },
-        ]}
-      />
-    </fieldset>
-  );
-}
 
 /** A draft field: the editor saves this with the rest of the card. */
 export function CardAnswerModeField({
@@ -90,14 +64,21 @@ export function LessonAnswerModeControl({
     }
   }
   return (
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <p className="text-sm text-ink">Suggested answer mode</p>
-      <AnswerModeChoices
+    <fieldset aria-busy={saving} aria-disabled={saving || undefined} className="min-w-0">
+      <legend className="mb-3 text-sm text-ink">Suggested answer mode</legend>
+      <SegmentedPills
+        label="Suggested answer mode"
+        size="sm"
         value={lesson.answerMode ?? 'reveal'}
-        disabled={saving}
-        onChange={(mode) => void change(mode)}
+        onChange={(mode) => {
+          if (!saving) void change(mode);
+        }}
+        options={[
+          { value: 'reveal', label: 'Reveal', ariaLabel: 'Reveal answers' },
+          { value: 'type', label: 'Type', ariaLabel: 'Type answers' },
+        ]}
       />
-    </div>
+    </fieldset>
   );
 }
 

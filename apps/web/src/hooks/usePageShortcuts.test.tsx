@@ -11,7 +11,7 @@ describe('usePageShortcuts', () => {
   it('fires on a plain key', () => {
     const onStudy = vi.fn();
     render(<Host onStudy={onStudy} />);
-    fireEvent.keyDown(document.body, { key: 'S' });
+    fireEvent.keyDown(window, { key: 'S' });
     expect(onStudy).toHaveBeenCalledTimes(1);
   });
 
@@ -22,6 +22,25 @@ describe('usePageShortcuts', () => {
     fireEvent.keyDown(document.body, { key: 's', ctrlKey: true });
     fireEvent.keyDown(document.body, { key: 'x' });
     expect(onStudy).not.toHaveBeenCalled();
+  });
+
+  it('leaves radio-group keys with their owning control', () => {
+    const navigate = vi.fn();
+    const choose = vi.fn();
+    function Choices() {
+      usePageShortcuts({ arrowdown: navigate });
+      return (
+        <div role="radiogroup" aria-label="Choice">
+          <button type="button" role="radio" aria-checked="true" onKeyDown={choose}>
+            Reveal
+          </button>
+        </div>
+      );
+    }
+    const { getByRole } = render(<Choices />);
+    fireEvent.keyDown(getByRole('radio'), { key: 'ArrowDown' });
+    expect(navigate).not.toHaveBeenCalled();
+    expect(choose).toHaveBeenCalledOnce();
   });
 
   it('ignores keys while a modal dialog is open', () => {

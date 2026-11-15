@@ -41,11 +41,11 @@ describe('answer-mode author controls', () => {
   it('changes the lesson default with one click', async () => {
     render(<LessonAnswerModeControl courseId="course" lessonId="lesson" />);
     expect(screen.getByText('Suggested answer mode')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Type answers' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('radio', { name: 'Type answers' })).toHaveAttribute(
+      'aria-checked',
       'true',
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Reveal answers' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Reveal answers' }));
     await waitFor(() =>
       expect(save).toHaveBeenCalledWith('course', { lessonId: 'lesson' }, 'reveal'),
     );

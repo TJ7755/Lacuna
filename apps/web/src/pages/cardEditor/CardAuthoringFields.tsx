@@ -28,7 +28,6 @@ export function CardAuthoringFields({
   previewSide,
   tagSuggestions,
   m,
-  embedded = false,
 }: {
   draft: CardEditorDraft;
   focus: CardEditorFocus;
@@ -38,7 +37,6 @@ export function CardAuthoringFields({
   previewSide: PreviewSide;
   tagSuggestions: string[];
   m: number;
-  embedded?: boolean;
 }) {
   const {
     front,
@@ -101,10 +99,7 @@ export function CardAuthoringFields({
   return (
     <section
       aria-label="Card content"
-      className={cn(
-        'flex min-w-0 flex-col gap-5',
-        !embedded && `rounded-3xl bg-surface p-5 md:p-7 lg:col-span-3 ${CARD_SURFACE}`,
-      )}
+      className={`flex min-w-0 flex-col gap-5 rounded-3xl bg-surface p-5 md:p-7 lg:col-span-3 ${CARD_SURFACE}`}
     >
       <AnimatePresence initial={false}>
         <motion.div
@@ -112,12 +107,7 @@ export function CardAuthoringFields({
           initial={m > 0 ? { opacity: 0, x: 16 * formDirection } : false}
           animate={{ opacity: 1, x: 0 }}
           transition={scaledSpring(m, 380, 38)}
-          className={cn(
-            'gap-5',
-            embedded && !isCloze && !isAudio && !isStructured
-              ? 'grid sm:grid-cols-2'
-              : 'flex flex-col',
-          )}
+          className="flex flex-col gap-5"
         >
           {isCloze ? (
             <>

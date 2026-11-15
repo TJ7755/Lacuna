@@ -4,11 +4,12 @@ import { recordUsageAction } from '../usage/actions';
 /** Single-key page shortcuts, keyed by lower-case key. Missing or undefined entries are inert. */
 export type PageShortcuts = Record<string, (() => void) | undefined>;
 
-function isTypingTarget(target: EventTarget | null) {
-  const el = target as HTMLElement | null;
+function ownsKeyboardInput(target: EventTarget | null) {
+  const el = target instanceof HTMLElement ? target : null;
   return Boolean(
     el &&
-    (el.tagName === 'INPUT' ||
+    (el.closest('[role="radiogroup"]') ||
+      el.tagName === 'INPUT' ||
       el.tagName === 'TEXTAREA' ||
       el.tagName === 'SELECT' ||
       el.isContentEditable),
@@ -17,7 +18,7 @@ function isTypingTarget(target: EventTarget | null) {
 
 /**
  * Plain-key shortcuts for the current page (S studies, N adds, / searches). Ignored while
- * typing, with modifiers held, or while any modal dialog is open. Listens in the capture
+ * typing or choosing a radio option, with modifiers held, or while any modal dialog is open. Listens in the capture
  * phase and stops the key so a page can claim one the shell also binds (such as "/").
  */
 export function usePageShortcuts(shortcuts: PageShortcuts) {
@@ -27,7 +28,7 @@ export function usePageShortcuts(shortcuts: PageShortcuts) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || e.defaultPrevented) return;
-      if (isTypingTarget(e.target)) return;
+      if (ownsKeyboardInput(e.target)) return;
       const action = ref.current[e.key.toLowerCase()];
       if (!action) return;
       if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
