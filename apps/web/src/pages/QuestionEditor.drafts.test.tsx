@@ -106,7 +106,14 @@ describe('QuestionEditor drafts', () => {
     const router = renderEditor();
 
     expect(await screen.findByRole('button', { name: 'Discard draft' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Prompt')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Generated family' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Create Question' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save & add another' })).toBeDisabled();
+    expect(loadDraft<QuestionDraftData>(key)?.state.name).toBe('Recovered definition');
     fireEvent.click(await screen.findByRole('button', { name: 'Restore draft' }));
+    expect(screen.getByLabelText('Prompt')).toBeEnabled();
+    expect(screen.getByLabelText('Prompt')).toHaveFocus();
     expect(screen.getByPlaceholderText('Completing the square')).toHaveValue(
       'Recovered definition',
     );

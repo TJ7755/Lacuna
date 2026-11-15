@@ -11,7 +11,7 @@ declare global {
 
 let fixture: Promise<string> | undefined;
 
-async function openEditor(page: Page) {
+async function openEditor(page: Page, withDraft = false) {
   fixture ??= build({
     entryPoints: ['tests/e2e/fixtures/questionAuthoring.ts'],
     bundle: true,
@@ -23,7 +23,10 @@ async function openEditor(page: Page) {
   }).then((bundle) => bundle.outputFiles[0].text);
   await openEmptyDashboard(page);
   await page.addScriptTag({ content: await fixture });
-  const ids = await page.evaluate(() => window.QuestionAuthoringFixture.seed());
+  const ids = await page.evaluate(
+    (withDraft) => window.QuestionAuthoringFixture.seed(withDraft),
+    withDraft,
+  );
   await page.evaluate((courseId) => {
     location.hash = `#/course/${courseId}/questions/new`;
   }, ids.courseId);
@@ -56,4 +59,25 @@ test('a pending Question save prevents edits and repeat-save restores keyboard e
   await expect(prompt).toBeFocused();
   await page.keyboard.type('The next question');
   await expect(prompt).toHaveValue('The next question');
+});
+
+test('an existing draft requires a decision before authoring or saving', async ({
+  page,
+}, testInfo) => {
+  await openEditor(page, true);
+  const restore = page.getByRole('button', { name: 'Restore draft' });
+  await expect(restore).toBeVisible();
+  const prompt = page.getByRole('textbox', { name: 'Prompt', exact: true });
+  await expect(prompt).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Create Question' })).toBeDisabled();
+  await restore.focus();
+  await page.keyboard.press('Control+Enter');
+  await expect(restore).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('restore-decision.png'), fullPage: true });
+  await restore.click();
+  await expect(prompt).toBeEnabled();
+  await expect(prompt).toHaveValue('Recovered question');
+  await expect(prompt).toBeFocused();
+  await page.getByRole('button', { name: 'Create Question' }).click();
+  await expect(page).toHaveURL(/questions\?view=individual$/);
 });

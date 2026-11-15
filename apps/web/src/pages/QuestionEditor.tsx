@@ -139,16 +139,16 @@ export function QuestionEditor() {
     (kind === 'fixed' ? promptRef.current : nameRef.current)?.focus({ preventScroll: true });
   const entryFocused = useRef(false);
   useEffect(() => {
-    if (!draft.loaded || saving || entryFocused.current) return;
+    if (!draft.loaded || saving || draft.draftPrompt || entryFocused.current) return;
     entryFocused.current = true;
     focusEntry();
     // First load and repeat-save only, after authoring becomes interactive again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.loaded, saving]);
+  }, [draft.loaded, draft.draftPrompt, saving]);
 
   /** `another` starts a fresh Question in the same lesson, Concept and form. */
   const save = async (another = false) => {
-    if (!editable || saving || !courseId) return;
+    if (!editable || saving || draft.draftPrompt || !courseId) return;
     setAttempted(true);
     const first = (
       [
@@ -240,7 +240,7 @@ export function QuestionEditor() {
   });
 
   const addConcept = async () => {
-    if (!editable || saving || !courseId || !newConceptName.trim()) return;
+    if (!editable || saving || draft.draftPrompt || !courseId || !newConceptName.trim()) return;
     try {
       const concept = await createConcept(courseId, newConceptName);
       draft.update({ targetConceptId: concept.id, newConceptName: '' });
@@ -251,7 +251,7 @@ export function QuestionEditor() {
   };
 
   const remove = async () => {
-    if (!editable || saving || !questionId || !courseId) return;
+    if (!editable || saving || draft.draftPrompt || !questionId || !courseId) return;
     await deleteQuestion(questionId);
     draft.finish();
     notify('Question deleted.', 'positive');
@@ -320,7 +320,11 @@ export function QuestionEditor() {
         </section>
       )}
 
-      <fieldset disabled={saving} inert={saving} className="min-w-0 space-y-8">
+      <fieldset
+        disabled={saving || draft.draftPrompt}
+        inert={saving || draft.draftPrompt}
+        className="min-w-0 space-y-8"
+      >
         {!editing && (
           <fieldset>
             <legend className={labelClass}>Question form</legend>
@@ -401,14 +405,14 @@ export function QuestionEditor() {
               active={confirmingDelete}
               message="Delete this Question definition? Its attempt evidence will be retained."
               confirmLabel="Delete"
-              disabled={saving}
+              disabled={saving || draft.draftPrompt}
               onConfirm={() => void remove()}
               onCancel={() => setConfirmingDelete(false)}
             >
               <Button
                 type="button"
                 variant="danger"
-                disabled={saving}
+                disabled={saving || draft.draftPrompt}
                 onClick={() => setConfirmingDelete(true)}
               >
                 <TrashIcon width={16} height={16} />
@@ -423,7 +427,7 @@ export function QuestionEditor() {
               <Button
                 type="button"
                 onClick={() => void save(true)}
-                disabled={!editable || saving}
+                disabled={!editable || saving || draft.draftPrompt}
                 title="Save and add another (Ctrl/Cmd+Enter)"
               >
                 Save &amp; add another
@@ -433,7 +437,7 @@ export function QuestionEditor() {
               type="button"
               variant="primary"
               onClick={() => void save()}
-              disabled={!editable || saving}
+              disabled={!editable || saving || draft.draftPrompt}
               aria-label={saveLabel}
             >
               <AnimatePresence initial={false} mode="popLayout">
