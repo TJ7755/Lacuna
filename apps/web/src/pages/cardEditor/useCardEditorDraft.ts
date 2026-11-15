@@ -24,6 +24,7 @@ export function useCardEditorDraft({
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [numericAnswer, setNumericAnswer] = useState<NumericAnswerSpec>(EMPTY_NUMERIC_ANSWER);
+  const [numericFixtures, setNumericFixtures] = useState<ItemFixture[]>([]);
   const [workingSource, setWorkingSource] = useState('');
   const [workingFixtures, setWorkingFixtures] = useState<ItemFixture[]>([]);
   const workingCompilation = useMemo(() => compileMarkScheme(workingSource), [workingSource]);
@@ -53,7 +54,12 @@ export function useCardEditorDraft({
       spellingOverride: requireCorrectSpelling ?? null,
       payload:
         type === 'numeric'
-          ? { v: 1, kind: 'numeric', answer: numericAnswer }
+          ? {
+              v: 1,
+              kind: 'numeric',
+              answer: numericAnswer,
+              ...(numericFixtures.length ? { fixtures: numericFixtures } : {}),
+            }
           : type === 'working'
             ? {
                 v: 1,
@@ -145,7 +151,10 @@ export function useCardEditorDraft({
         setRequireCorrectSpelling(card.requireCorrectSpelling);
         setFront(card.front);
         setBack(card.back);
-        if (card.payload?.kind === 'numeric') setNumericAnswer(card.payload.answer);
+        if (card.payload?.kind === 'numeric') {
+          setNumericAnswer(card.payload.answer);
+          setNumericFixtures(card.payload.fixtures ?? []);
+        }
         if (card.payload?.kind === 'working') {
           setWorkingSource(serialiseMarkScheme(card.payload.scheme));
           setWorkingFixtures(card.payload.fixtures ?? []);
@@ -176,7 +185,10 @@ export function useCardEditorDraft({
     setFront(draft.front);
     setBack(draft.back);
     setTags(draft.tags);
-    if (draft.payload?.kind === 'numeric') setNumericAnswer(draft.payload.answer);
+    if (draft.payload?.kind === 'numeric') {
+      setNumericAnswer(draft.payload.answer);
+      setNumericFixtures(draft.payload.fixtures ?? []);
+    }
     if (draft.itemKind === 'working') {
       setWorkingSource(
         draft.workingSource ??
@@ -207,7 +219,10 @@ export function useCardEditorDraft({
       setFront(card.front);
       setBack(card.back);
       setTags(card.tags ?? []);
-      if (card.payload?.kind === 'numeric') setNumericAnswer(card.payload.answer);
+      if (card.payload?.kind === 'numeric') {
+        setNumericAnswer(card.payload.answer);
+        setNumericFixtures(card.payload.fixtures ?? []);
+      }
       if (card.payload?.kind === 'working') {
         setWorkingSource(serialiseMarkScheme(card.payload.scheme));
         setWorkingFixtures(card.payload.fixtures ?? []);
@@ -234,6 +249,7 @@ export function useCardEditorDraft({
     answerMode,
     requireCorrectSpelling,
     numericAnswer,
+    numericFixtures,
     workingCompilation,
     workingFixtures,
     workingSource,
@@ -269,6 +285,7 @@ export function useCardEditorDraft({
       front,
       back,
       numericAnswer,
+      numericFixtures,
       workingSource,
       workingFixtures,
       workingCompilation,
@@ -281,6 +298,7 @@ export function useCardEditorDraft({
       setFront,
       setBack,
       setNumericAnswer,
+      setNumericFixtures,
       setWorkingSource,
       setWorkingFixtures,
       setTags,

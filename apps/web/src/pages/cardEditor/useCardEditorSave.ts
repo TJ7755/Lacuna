@@ -41,13 +41,20 @@ export function useCardEditorSave({
     front,
     back,
     numericAnswer,
+    numericFixtures,
     workingCompilation,
     workingFixtures,
     tags,
     alsoReverse,
   } = draft.values;
-  const { setFront, setBack, setNumericAnswer, setWorkingSource, setWorkingFixtures } =
-    draft.setters;
+  const {
+    setFront,
+    setBack,
+    setNumericAnswer,
+    setNumericFixtures,
+    setWorkingSource,
+    setWorkingFixtures,
+  } = draft.setters;
   const editing = draft.editing;
   const lessonMode = Boolean(lessonId);
   const { notify } = useToast();
@@ -134,7 +141,12 @@ export function useCardEditorSave({
       const storedType: CardType = isStructured || isAudio ? 'front_back' : type;
       const backValue = isCloze || isStructured ? '' : back;
       const payload: ItemPayload | undefined = isNumeric
-        ? { v: 1, kind: 'numeric', answer: numericAnswer }
+        ? {
+            v: 1,
+            kind: 'numeric',
+            answer: numericAnswer,
+            ...(numericFixtures.length ? { fixtures: numericFixtures } : {}),
+          }
         : isWorking
           ? {
               v: 1,
@@ -240,7 +252,10 @@ export function useCardEditorSave({
         // (usually shared across a batch), refocus the first field, and tally the count.
         setFront('');
         setBack('');
-        if (isNumeric) setNumericAnswer(EMPTY_NUMERIC_ANSWER);
+        if (isNumeric) {
+          setNumericAnswer(EMPTY_NUMERIC_ANSWER);
+          setNumericFixtures([]);
+        }
         if (isWorking) setWorkingSource('');
         if (isWorking) setWorkingFixtures([]);
         setAddedCount((n) => n + (reversed ? 2 : 1));

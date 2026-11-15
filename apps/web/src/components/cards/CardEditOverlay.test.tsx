@@ -1,6 +1,7 @@
 import { act, fireEvent, render, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CardEditOverlay } from './CardEditOverlay';
+import { draftKey, loadDraft, saveDraft } from '../../utils/drafts';
 import type { Card } from '@lacuna/core/db/types';
 
 const mockUpdateCard = vi.fn();
@@ -160,10 +161,11 @@ describe('CardEditOverlay draft scope', () => {
   });
 
   it('uses the explicit Course/Lesson scope instead of the card Deck', async () => {
-    render(
+    const { getByLabelText } = render(
       <CardEditOverlay card={card} draftScope="lesson-1" onSaved={vi.fn()} onCancel={vi.fn()} />,
     );
 
+    fireEvent.change(getByLabelText('Front'), { target: { value: 'Edited front' } });
     await act(() => vi.advanceTimersByTime(800));
 
     expect(localStorage.getItem('lacuna:draft:lesson-1:session:card-1')).not.toBeNull();
@@ -179,5 +181,47 @@ describe('CardEditOverlay draft scope', () => {
     await act(() => vi.advanceTimersByTime(800));
 
     expect(localStorage.getItem('lacuna:draft:unit-1:session:card-1')).not.toBeNull();
+  });
+});
+
+describe('CardEditOverlay draft freshness', () => {
+  const key = draftKey('unit-1', 'session:card-1');
+
+  it('does not create a draft just by opening the editor', async () => {
+    const view = render(<CardEditOverlay card={card} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    await act(() => vi.advanceTimersByTime(1000));
+    view.unmount();
+    expect(loadDraft(key)).toBeNull();
+  });
+
+  it.each([10, 20])('ignores a draft at %s when the saved card is newer or equal', (timestamp) => {
+    saveDraft(key, { ...card, front: 'Stale front', timestamp });
+    const { getByLabelText } = render(
+      <CardEditOverlay
+        card={{ ...card, front: 'Corrected front', updatedAt: 20 }}
+        onSaved={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(getByLabelText('Front')).toHaveValue('Corrected front');
+  });
+
+  it('restores genuine edits newer than the saved card', () => {
+    saveDraft(key, { ...card, front: 'Interrupted edit', timestamp: 30 });
+    const { getByLabelText } = render(
+      <CardEditOverlay card={{ ...card, updatedAt: 20 }} onSaved={vi.fn()} onCancel={vi.fn()} />,
+    );
+    expect(getByLabelText('Front')).toHaveValue('Interrupted edit');
+  });
+
+  it('does not recreate a draft when saving beats the debounce', async () => {
+    mockUpdateCard.mockResolvedValue({ ...card, front: 'Saved edit' });
+    const { getByLabelText, getByRole } = render(
+      <CardEditOverlay card={card} onSaved={vi.fn()} onCancel={vi.fn()} />,
+    );
+    fireEvent.change(getByLabelText('Front'), { target: { value: 'Saved edit' } });
+    await act(async () => fireEvent.click(getByRole('button', { name: 'Save changes' })));
+    await act(() => vi.advanceTimersByTime(1000));
+    expect(loadDraft(key)).toBeNull();
   });
 });

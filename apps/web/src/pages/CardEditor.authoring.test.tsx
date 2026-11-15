@@ -13,6 +13,25 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { act, screen, fireEvent, waitFor } from '@testing-library/react';
 
 describe('CardEditor — numeric items', () => {
+  it('retains pinned numeric fixtures when saving an existing card', async () => {
+    const fixtures = [{ id: 'numeric-example', studentAnswer: '4', expectedMarks: 1 }];
+    editorState.card = {
+      ...generatedCard,
+      sequenceItemId: undefined,
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' }, fixtures },
+    };
+    renderEditing();
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(updateCard).toHaveBeenCalledWith(
+        'card-1',
+        expect.objectContaining({
+          payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' }, fixtures },
+        }),
+      ),
+    );
+  });
+
   it('creates a numeric item with its answer in the structured payload', async () => {
     renderNew();
     chooseType('Numeric answer');

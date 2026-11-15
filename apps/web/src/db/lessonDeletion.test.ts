@@ -21,6 +21,7 @@ import { listLessons } from './read';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import { createOcclusion, updateOcclusion, cardsForOcclusion } from './occlusionRepository';
 import { reset } from './courseRepository.testFixtures';
 
 describe('deleteLesson', () => {
@@ -163,10 +164,35 @@ describe('deleteLesson', () => {
     expect(await db.schedulingUnits.get(lessonDeckId)).toBeUndefined();
   });
 
+  it('keeps an occlusion editable after its lesson is deleted', async () => {
+    const course = await createCourse('Diagram deletion');
+    const lesson = await createLesson(course.id, 'Cell structure');
+    const region = {
+      id: 'label-1',
+      role: 'label' as const,
+      shape: 'rectangle' as const,
+      x: 0.1,
+      y: 0.1,
+      w: 0.2,
+      h: 0.2,
+    };
+    const diagram = await createOcclusion(course.id, lesson.id, 'Cell', 'diagram-hash', [region]);
+    await deleteLesson(lesson.id);
+    const moved = (await db.occlusions.get(diagram.id))!;
+    await updateOcclusion({ ...moved, regions: [...moved.regions, { ...region, id: 'label-2' }] });
+    expect((await db.occlusions.get(diagram.id))?.primaryLessonId).toBeNull();
+    const cards = await cardsForOcclusion((await db.occlusions.get(diagram.id))!);
+    expect(cards).toHaveLength(2);
+    expect(
+      cards.every((card) => card.primaryLessonId === null && card.schedulingUnitId === course.id),
+    ).toBe(true);
+  });
+
   it('restores every row deleted or rewritten by a lesson deletion', async () => {
     const course = await createCourse('Lesson undo test');
     const lesson = await createLesson(course.id, 'L1');
     const note = await createNote(lesson.id, 'Note', 'Body');
+    const diagram = await createOcclusion(course.id, lesson.id, 'Cell', 'diagram-hash', []);
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
     const sequence = await createSequence(course.id, lesson.id, 'Sequence', [
       { id: 'item', value: 'Item' },
@@ -198,6 +224,7 @@ describe('deleteLesson', () => {
     });
     expect((await db.cards.get(card.id))?.primaryLessonId).toBe(lesson.id);
     expect((await db.sequences.get(sequence.id))?.primaryLessonId).toBe(lesson.id);
+    expect(await db.occlusions.get(diagram.id)).toEqual(diagram);
     expect(await db.schedulingUnits.get(deckId)).toBeDefined();
     expect(await db.schedulingPerformance.get(deckId)).toBeDefined();
   });
