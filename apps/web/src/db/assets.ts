@@ -9,6 +9,7 @@ export {
   assetUrl,
 } from './assetCodec';
 import Dexie from 'dexie';
+import { loadAllDrafts } from '../utils/drafts';
 import { db } from './database';
 import type { BackupAsset, MediaAsset } from '@lacuna/core/db/types';
 
@@ -296,6 +297,9 @@ export async function collectOrphanedAssets(now: number = Date.now()): Promise<n
         referencedAssetHashesInValues(draftEntries.map((entry) => entry.value)).forEach((hash) =>
           referenced.add(hash),
         );
+
+        // Card pages, session overlays and individual Questions save localStorage drafts.
+        referencedAssetHashesInValues(loadAllDrafts()).forEach((hash) => referenced.add(hash));
 
         // Rows without createdAt fall outside the index and so remain collectable.
         const recent = new Set(

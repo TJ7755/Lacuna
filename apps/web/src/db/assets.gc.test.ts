@@ -1,8 +1,15 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
-import { assetUrl, ASSET_GC_GRACE_MS, collectOrphanedAssets, storeImageBlob } from './assets';
+import {
+  assetUrl,
+  ASSET_GC_GRACE_MS,
+  collectOrphanedAssets,
+  storeAudioBlob,
+  storeImageBlob,
+} from './assets';
 import { createCard, createCourse, deleteCards, updateCard } from './repository';
+import { clearDraft, draftKey, saveDraft } from '../utils/drafts';
 import { createOcclusion, deleteOcclusion } from './occlusionRepository';
 import type { OcclusionRegion } from '@lacuna/core/db/types';
 import {
@@ -16,6 +23,7 @@ import {
 const afterGrace = () => Date.now() + ASSET_GC_GRACE_MS;
 
 async function reset() {
+  localStorage.clear();
   await Promise.all([
     db.schedulingUnits.clear(),
     db.cards.clear(),
@@ -111,6 +119,56 @@ describe('asset garbage collection', () => {
 
     expect(await collectOrphanedAssets(afterGrace())).toBe(0);
     expect(await db.assets.get(asset.hash)).toBeDefined();
+  });
+
+  it.each([
+    ['lesson card', draftKey('lesson', 'new')],
+    ['bank card', draftKey('bank:course', 'card')],
+    ['session card', draftKey('lesson', 'session:card')],
+    ['Question', draftKey('question:course', 'new')],
+  ])('keeps draft-only image and audio for a saved %s until discarded', async (owner, key) => {
+    const image = await storeImageBlob(new Blob(['draft image']), 'image/png', 4, 3);
+    const audio = await storeAudioBlob(new Blob(['draft audio'], { type: 'audio/mpeg' }));
+    const front = `![diagram](${assetUrl(image.hash)})`;
+    const back = `![audio](${assetUrl(audio.hash)})`;
+    saveDraft(
+      key,
+      owner === 'Question'
+        ? { state: { prompt: front, explanation: back }, timestamp: 1 }
+        : { type: 'front_back', front, back, tags: [], timestamp: 1 },
+    );
+    // Neither unrelated storage nor malformed drafts should protect orphaned media.
+    const orphan = await storeImageBlob(new Blob(['orphan']), 'image/png', 4, 3);
+    localStorage.setItem('unrelated', JSON.stringify({ front: assetUrl(orphan.hash) }));
+    localStorage.setItem(draftKey('broken', 'new'), `{ "front": "${assetUrl(orphan.hash)}"`);
+
+    const now = afterGrace();
+    expect(await collectOrphanedAssets(now)).toBe(1);
+    expect(await db.assets.get(image.hash)).toBeDefined();
+    expect(await db.assets.get(audio.hash)).toBeDefined();
+    expect(await db.assets.get(orphan.hash)).toBeUndefined();
+
+    clearDraft(key);
+
+    expect(await collectOrphanedAssets(now)).toBe(2);
+    expect(await db.assets.count()).toBe(0);
+  });
+
+  it('does not delete assets when saved drafts cannot be read', async () => {
+    const asset = await storeImageBlob(new Blob(['unreadable draft']), 'image/png', 4, 3);
+    saveDraft(draftKey('lesson', 'new'), { front: assetUrl(asset.hash) });
+    const read = vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    try {
+      await expect(collectOrphanedAssets(afterGrace())).rejects.toThrow('Storage unavailable');
+      expect(await db.assets.get(asset.hash)).toBeDefined();
+    } finally {
+      read.mockRestore();
+    }
+    // A failed sweep must also release the collector for subsequent sweeps.
+    clearDraft(draftKey('lesson', 'new'));
+    expect(await collectOrphanedAssets(afterGrace())).toBe(1);
   });
 
   it('deletes an asset that is no longer referenced by any card', async () => {
