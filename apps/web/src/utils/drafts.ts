@@ -25,11 +25,12 @@ export function draftKey(scope: string, recordId: string): string {
   return `${DRAFT_PREFIX}:${scope}:${recordId}`;
 }
 
-export function saveDraft<T>(key: string, data: T): void {
+export function saveDraft<T>(key: string, data: T): boolean {
   try {
     storedString(key).write(JSON.stringify(data));
+    return true;
   } catch {
-    // Silently fail if quota is exceeded.
+    return false;
   }
 }
 

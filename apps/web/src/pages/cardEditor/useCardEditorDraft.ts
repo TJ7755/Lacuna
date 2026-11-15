@@ -3,7 +3,8 @@ import { EDITOR_TYPE_ORDER, type EditorCardType } from '../../components/cards/C
 import type { AnswerMode, Card, ItemFixture, NumericAnswerSpec } from '@lacuna/core/db/types';
 import { compileMarkScheme, serialiseMarkScheme } from '../../items/markSchemeCompiler';
 import { isAudioCardFront } from '../../media/audio';
-import { saveDraft, loadDraft, clearDraft } from '../../utils/drafts';
+import { useDraftStorage } from '../../utils/useDraftStorage';
+import { loadDraft, clearDraft } from '../../utils/drafts';
 
 export const EMPTY_NUMERIC_ANSWER: NumericAnswerSpec = { kind: 'exact', value: '' };
 
@@ -16,6 +17,7 @@ export function useCardEditorDraft({
   editing: boolean;
   card: Card | null | undefined;
 }) {
+  const storeDraft = useDraftStorage();
   const [type, setType] = useState<EditorCardType>('front_back');
   // Which way the form moves when the type changes: towards the pill that was chosen.
   const [formDirection, setFormDirection] = useState(0);
@@ -43,7 +45,7 @@ export function useCardEditorDraft({
   // Persist the current form state under the key in draftKeyRef. Shared by the
   // debounced autosave and the route-change flush below.
   function persistDraft() {
-    saveDraft(draftKeyRef.current, {
+    return storeDraft(draftKeyRef.current, {
       type: type === 'numeric' || type === 'working' || type === 'audio' ? 'front_back' : type,
       itemKind: type === 'numeric' || type === 'working' || type === 'audio' ? type : undefined,
       front,
@@ -78,7 +80,7 @@ export function useCardEditorDraft({
   // through this stable handle rather than a dependency.
   const persistDraftRef = useRef(persistDraft);
   persistDraftRef.current = persistDraft;
-  const pendingDraftRef = useRef<(() => void) | undefined>(undefined);
+  const pendingDraftRef = useRef<(() => boolean) | undefined>(undefined);
   pendingDraftRef.current = loaded && draftDirty && !draftPrompt ? persistDraft : undefined;
 
   // Route exits and document unloads can beat the debounce. Keep only author edits;
@@ -89,10 +91,8 @@ export function useCardEditorDraft({
       pendingDraftRef.current?.();
     };
     window.addEventListener('pagehide', flush);
-    window.addEventListener('beforeunload', flush);
     return () => {
       window.removeEventListener('pagehide', flush);
-      window.removeEventListener('beforeunload', flush);
       flush();
     };
   }, []);
@@ -258,8 +258,12 @@ export function useCardEditorDraft({
   // Another kind of authoring takes over from this page; anything typed stays as a draft.
   function leaveForm(go: () => void) {
     window.clearTimeout(draftTimer.current);
-    if (loaded && draftDirty && !draftPrompt) persistDraft();
-    go();
+    if (flushDraft()) go();
+  }
+
+  function flushDraft() {
+    window.clearTimeout(draftTimer.current);
+    return pendingDraftRef.current?.() ?? true;
   }
 
   function changeType(next: EditorCardType) {
@@ -316,6 +320,7 @@ export function useCardEditorDraft({
     discardDraft,
     leaveForm,
     clearSavedDraft,
+    flushDraft,
   };
 }
 

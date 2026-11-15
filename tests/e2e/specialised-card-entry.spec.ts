@@ -256,3 +256,58 @@ test('numeric Tab targets survive completed answer-type animations without editi
     await expect(answer).toHaveValue('4');
   }
 });
+
+test('draft recovery gates authoring and failed draft writes protect navigation', async ({
+  page,
+}, testInfo) => {
+  await openEmptyDashboard(page);
+  await createCourse(page, 'Draft protection');
+  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
+  await expect(page.getByRole('textbox', { name: 'Front', exact: true })).toBeVisible();
+  await page.evaluate(() => {
+    const lessonId = location.hash.match(/lesson\/([^/]+)/)?.[1];
+    const courseId = location.hash.match(/course\/([^/]+)/)![1];
+    localStorage.setItem(
+      `lacuna:draft:${lessonId ?? `bank:${courseId}`}:new`,
+      JSON.stringify({
+        type: 'front_back',
+        front: 'Recovered question',
+        back: 'Recovered answer',
+        tags: [],
+        timestamp: Date.now(),
+      }),
+    );
+  });
+  await page.reload();
+  const front = page.getByLabel('Front', { exact: true });
+  await expect(front).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Restore draft' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(front).toBeEnabled();
+  await expect(front).toHaveValue('Recovered question');
+  await page.evaluate(() => {
+    const write = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key.startsWith('lacuna:draft:')) throw new DOMException('Full', 'QuotaExceededError');
+      return write.call(this, key, value);
+    };
+  });
+  await front.fill('Work that cannot be stored');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  const guard = page.getByRole('dialog', { name: 'Discard changes?' });
+  await expect(guard).toBeVisible();
+  await expect(page.getByText('Could not save your draft.', { exact: false })).toBeVisible();
+  await expect(guard).toHaveCSS('opacity', '1');
+  await testInfo.attach('draft-storage-failure', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
+  await guard.getByRole('button', { name: 'Keep editing' }).click();
+  await expect(front).toHaveValue('Work that cannot be stored');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Discard changes?' })
+    .getByRole('button', { name: 'Discard changes', exact: true })
+    .click();
+  await expect(front).toBeHidden();
+});

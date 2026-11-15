@@ -1,3 +1,4 @@
+import { NavigationGuard, type NavigationGuardHandle } from '../components/ui/NavigationGuard';
 import { MissingRecord } from '../components/course/MissingRecord';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
@@ -94,6 +95,8 @@ export function CardEditor() {
   const { type, front, back } = draft.values;
   const { loaded, draftPrompt, applyDraft, discardDraft, leaveForm } = draft;
   const { handleSave, showSaved } = save;
+  const leaveGuard = useRef<NavigationGuardHandle>(null);
+  const requestLeave = () => leaveGuard.current?.requestLeave();
   const [previewSide, setPreviewSide] = useState<PreviewSide>('front');
   const [duplicateWarning, setDuplicateWarning] = useState<Card | null>(null);
   const duplicateTimer = useRef<number | undefined>(undefined);
@@ -214,14 +217,35 @@ export function CardEditor() {
           void handleSave(!editing);
         } else if (e.key === 'Escape' && !e.defaultPrevented) {
           // Nested popovers consume Escape first; otherwise it cancels, like the dialogs do.
-          returnTo.goBack();
+          requestLeave();
         }
       }}
     >
+      <NavigationGuard
+        ref={leaveGuard}
+        active={() => !draft.flushDraft()}
+        title="Discard changes?"
+        message="Your draft could not be saved. Leaving will lose your changes."
+        leaveLabel="Discard changes"
+        onConfirm={draft.clearSavedDraft}
+        onExplicitLeave={returnTo.goBack}
+      />
       <div className="flex flex-col gap-6">
         <motion.header {...riseIn(0, m)} className="flex flex-col gap-2">
           <Link
             {...returnTo.linkProps}
+            onClick={(event) => {
+              if (
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              )
+                return;
+              event.preventDefault();
+              requestLeave();
+            }}
             className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
           >
             <ChevronLeftIcon width={14} height={14} />
@@ -252,7 +276,7 @@ export function CardEditor() {
                 <Button variant="ghost" size="sm" onClick={discardDraft}>
                   Discard
                 </Button>
-                <Button variant="primary" size="sm" onClick={applyDraft}>
+                <Button variant="primary" size="sm" onClick={applyDraft} autoFocus>
                   Restore draft
                 </Button>
               </div>
@@ -284,64 +308,71 @@ export function CardEditor() {
           )}
         </AnimatePresence>
 
-        <motion.div {...riseIn(1, m)}>
-          <CardTypePicker
-            value={type}
-            onChange={draft.changeType}
-            onNewSequence={editing ? undefined : () => openOtherEditor('sequence')}
-            onNewOcclusion={editing ? undefined : () => openOtherEditor('occlusion')}
-            sources={
-              editing
-                ? undefined
-                : (revealed) =>
-                    lessonMode
-                      ? lesson &&
-                        lessonCards && (
-                          <CardSources
-                            courseId={courseId!}
-                            lessonId={lesson.id}
-                            targetName={lesson.name}
-                            lessonCards={lessonCards}
-                            schedulingUnitId={lessonDeck?.id}
-                            showLink={revealed}
-                            onAdded={() => leaveForm(returnTo.goBack)}
-                          />
-                        )
-                      : course && (
-                          <CardSources
-                            courseId={course.id}
-                            targetName={course.name}
-                            schedulingUnitId={bankDeck?.id}
-                            onAdded={() => leaveForm(returnTo.goBack)}
-                          />
-                        )
-            }
-          />
-        </motion.div>
+        <fieldset
+          disabled={save.saving || draftPrompt}
+          inert={save.saving || draftPrompt}
+          className="contents"
+          aria-label="Card authoring"
+        >
+          <motion.div {...riseIn(1, m)}>
+            <CardTypePicker
+              value={type}
+              onChange={draft.changeType}
+              onNewSequence={editing ? undefined : () => openOtherEditor('sequence')}
+              onNewOcclusion={editing ? undefined : () => openOtherEditor('occlusion')}
+              sources={
+                editing
+                  ? undefined
+                  : (revealed) =>
+                      lessonMode
+                        ? lesson &&
+                          lessonCards && (
+                            <CardSources
+                              courseId={courseId!}
+                              lessonId={lesson.id}
+                              targetName={lesson.name}
+                              lessonCards={lessonCards}
+                              schedulingUnitId={lessonDeck?.id}
+                              showLink={revealed}
+                              onAdded={() => leaveForm(returnTo.goBack)}
+                            />
+                          )
+                        : course && (
+                            <CardSources
+                              courseId={course.id}
+                              targetName={course.name}
+                              schedulingUnitId={bankDeck?.id}
+                              onAdded={() => leaveForm(returnTo.goBack)}
+                            />
+                          )
+              }
+            />
+          </motion.div>
 
-        <motion.div {...riseIn(2, m)} className="grid items-start gap-6 lg:grid-cols-5">
-          <CardAuthoringFields
-            draft={draft}
-            focus={focus}
-            save={save}
-            editing={editing}
-            courseId={courseId}
-            previewSide={previewSide}
-            tagSuggestions={tagSuggestions}
-            m={m}
-          />
+          <motion.div {...riseIn(2, m)} className="grid items-start gap-6 lg:grid-cols-5">
+            <CardAuthoringFields
+              draft={draft}
+              focus={focus}
+              save={save}
+              editing={editing}
+              courseId={courseId}
+              previewSide={previewSide}
+              tagSuggestions={tagSuggestions}
+              m={m}
+            />
 
-          <CardAuthoringPreview
-            draft={draft}
-            focus={focus}
-            save={save}
-            editing={editing}
-            previewSide={previewSide}
-            setPreviewSide={setPreviewSide}
-            isTouchMode={isTouchMode}
-            onCancel={returnTo.goBack}
-          />
-        </motion.div>
+            <CardAuthoringPreview
+              draft={draft}
+              focus={focus}
+              save={save}
+              editing={editing}
+              previewSide={previewSide}
+              setPreviewSide={setPreviewSide}
+              isTouchMode={isTouchMode}
+              onCancel={requestLeave}
+            />
+          </motion.div>
+        </fieldset>
       </div>
     </div>
   );

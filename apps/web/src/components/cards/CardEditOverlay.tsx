@@ -16,9 +16,10 @@ import { PillToggleGroup, type PillToggleOption } from './PillToggleGroup';
 import { EDITOR_TYPE_ORDER } from './CardTypePicker';
 import { saveCardEdit } from '../../db/cardRepository';
 import { hasCloze } from '../../utils/cloze';
-import { saveDraft, loadDraft, clearDraft, draftKey } from '../../utils/drafts';
+import { loadDraft, clearDraft, draftKey } from '../../utils/drafts';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import type { Card, CardType } from '@lacuna/core/db/types';
+import { useDraftStorage } from '../../utils/useDraftStorage';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 
 /** The stored types this overlay can save, labelled as the full editor's picker labels them. */
@@ -53,6 +54,7 @@ export function CardEditOverlay({
   onCancel,
 }: CardEditOverlayProps) {
   const { notify } = useToast();
+  const storeDraft = useDraftStorage();
   const trapRef = useFocusTrap(true);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -137,7 +139,7 @@ export function CardEditOverlay({
     if (!draftDirty) return;
     window.clearTimeout(draftTimer.current);
     draftTimer.current = window.setTimeout(() => {
-      saveDraft(draftKeyRef.current, {
+      storeDraft(draftKeyRef.current, {
         type,
         front,
         back,
@@ -148,7 +150,17 @@ export function CardEditOverlay({
       });
     }, 800);
     return () => window.clearTimeout(draftTimer.current);
-  }, [draftDirty, type, front, back, tags, structuredPayload, workingSource, isWorking]);
+  }, [
+    draftDirty,
+    type,
+    front,
+    back,
+    tags,
+    structuredPayload,
+    workingSource,
+    isWorking,
+    storeDraft,
+  ]);
 
   /** Moves the type form the way the full editor does: forward or back along the picker order. */
   function changeType(next: CardType) {
