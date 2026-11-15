@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest';
 import type * as Router from 'react-router-dom';
 import type * as CardImport from '../../db/cardImport';
+import type * as CardRepository from '../../db/cardRepository';
 import { MemoryRouter } from 'react-router-dom';
 import { ImportPanel } from './ImportPanel';
 import { domAnimation, LazyMotion } from 'motion/react';
@@ -34,7 +35,8 @@ vi.mock('../../db/cardImport', async (original) => ({
   ...(await original<typeof CardImport>()),
   importCardsToDestination: mocks.importCards,
 }));
-vi.mock('../../db/cardRepository', () => ({
+vi.mock('../../db/cardRepository', async (original) => ({
+  ...(await original<typeof CardRepository>()),
   checkDuplicatesBatch: () => Promise.resolve(new Set()),
 }));
 vi.mock('../../db/apkgImport', () => ({ parseApkg: mocks.parseApkg }));

@@ -3,11 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CardImportDialog } from './CardImportDialog';
 import { ImportDestination, useImportDestination } from './ImportDestination';
 import type { ApkgImportResult } from '../../db/apkgImport';
+import type * as CardRepository from '../../db/cardRepository';
 
 const mocks = vi.hoisted(() => ({ parseApkg: vi.fn(), duplicates: vi.fn() }));
 vi.mock('../../state/useCourseData', () => ({ useCourses: () => [], useLessons: () => [] }));
 vi.mock('../../db/apkgImport', () => ({ parseApkg: mocks.parseApkg }));
-vi.mock('../../db/cardRepository', () => ({ checkDuplicatesBatch: mocks.duplicates }));
+vi.mock('../../db/cardRepository', async (original) => ({
+  ...(await original<typeof CardRepository>()),
+  checkDuplicatesBatch: mocks.duplicates,
+}));
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal'],
   speedMultiplier: () => 0,
