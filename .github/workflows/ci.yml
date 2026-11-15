@@ -2,6 +2,7 @@ name: CI
 run-name: CI validation ${{ github.sha }}
 
 on:
+  workflow_dispatch:
   push:
     branches: [master, main]
   pull_request:
