@@ -1,4 +1,6 @@
 import 'fake-indexeddb/auto';
+import { StrictMode, type PropsWithChildren } from 'react';
+import * as sessionSource from './loadSessionSource';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -557,5 +559,53 @@ it('breaks equal scheduler scores randomly when reviewing earlier material', asy
   } finally {
     unmount();
     random.mockRestore();
+  }
+});
+
+it('discards delayed loads across StrictMode restart and route replacement', async () => {
+  const course = await createCourse('Load lifecycle');
+  const firstLesson = await createLesson(course.id, 'First');
+  const secondLesson = await createLesson(course.id, 'Second');
+  await createLessonCard(course.id, firstLesson.id, 'front_back', 'Old question', 'Old answer');
+  const nextCard = await createLessonCard(
+    course.id,
+    secondLesson.id,
+    'front_back',
+    'New question',
+    'New answer',
+  );
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const load = sessionSource.loadSessionSource;
+  const delayed: Promise<Awaited<ReturnType<typeof load>>>[] = [];
+  const spy = vi.spyOn(sessionSource, 'loadSessionSource').mockImplementation((request) => {
+    const result = load(request).then(async (source) => {
+      if (request.lessonId === firstLesson.id) await gate;
+      return source;
+    });
+    if (request.lessonId === firstLesson.id) delayed.push(result);
+    return result;
+  });
+  const params = sessionParams({ isSimpleMode: true, mode: 'simple' });
+  const session = renderHook(({ lessonId }) => useLearnSession({ ...params, lessonId }), {
+    initialProps: { lessonId: firstLesson.id },
+    wrapper: ({ children }: PropsWithChildren) => <StrictMode>{children}</StrictMode>,
+  });
+  try {
+    session.rerender({ lessonId: secondLesson.id });
+    await waitFor(() => expect(session.result.current.current?.id).toBe(nextCard.id));
+    await act(async () => {
+      release();
+      await Promise.all(delayed);
+    });
+    expect(session.result.current.current?.id).toBe(nextCard.id);
+    expect(session.result.current.sessionCardIds).toEqual([nextCard.id]);
+    expect(session.result.current.reviewEvents).toEqual([]);
+  } finally {
+    release();
+    session.unmount();
+    spy.mockRestore();
   }
 });

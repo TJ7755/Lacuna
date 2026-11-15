@@ -49,6 +49,7 @@ export default defineConfig({
       'apps/web/src/db/practiceNodeRepository.questionSets.test.ts',
       'apps/web/src/pages/LearnMode*.test.tsx',
       'apps/web/src/pages/learn/useLearnSession*.test.tsx',
+      'apps/web/src/pages/learn/sessionRuntime.persistence.test.ts',
       'apps/web/src/pages/learn/courseReviews.test.tsx',
       'apps/web/src/pages/learn/practiceQueue.test.tsx',
       'apps/web/src/pages/learn/practiceMilestoneScope.test.tsx',
@@ -85,6 +86,7 @@ export default defineConfig({
         'apps/web/src/db/lessonDeletion.ts',
         'apps/web/src/db/noteRepository.ts',
         'apps/web/src/pages/learn/useLearnSession.ts',
+        'apps/web/src/pages/learn/sessionRuntime.ts',
         'apps/web/src/pages/learn/sessionPool.ts',
         'apps/web/src/pages/learn/sessionAnswerPersistence.ts',
         'apps/web/src/pages/learn/sessionCompletionPersistence.ts',
@@ -199,6 +201,12 @@ export default defineConfig({
           lines: 90,
         },
         'apps/web/src/pages/learn/useLearnSession.ts': {
+          statements: 83,
+          branches: 68,
+          functions: 81,
+          lines: 88,
+        },
+        'apps/web/src/pages/learn/sessionRuntime.ts': {
           statements: 83,
           branches: 68,
           functions: 81,
