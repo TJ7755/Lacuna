@@ -22,13 +22,17 @@ test('inline Import autofocus preserves the expanding surface scroll position', 
   await surface.evaluate((element) => {
     element.scrollTop = 0;
   });
-  const top = await heading.evaluate((element) => element.getBoundingClientRect().top);
+  const labelOffset = () =>
+    heading.evaluate(
+      (element) =>
+        element.getBoundingClientRect().top - element.parentElement!.getBoundingClientRect().top,
+    );
+  const top = await labelOffset();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('textbox', { name: 'Paste your cards', exact: true })).toBeFocused();
   expect(await surface.evaluate((element) => element.scrollTop)).toBe(0);
-  expect(
-    Math.abs((await heading.evaluate((element) => element.getBoundingClientRect().top)) - top),
-  ).toBeLessThanOrEqual(1);
+  // A taller step can raise the whole surface; autofocus must not move its label within it.
+  expect(Math.abs((await labelOffset()) - top)).toBeLessThanOrEqual(1);
 });
 
 test('open Import stays within the viewport when Today content reflows', async ({ page }) => {
