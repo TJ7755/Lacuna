@@ -56,8 +56,8 @@ it('expands on Today and returns focus to its trigger on close', async () => {
 it('opens linked imports and prevents closing during a write', async () => {
   renderControl('/?import=1');
   fireEvent.click(await screen.findByRole('button', { name: 'Start import' }));
-  expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled();
-  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  expect(screen.getByRole('button', { name: 'Import' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Import' }));
   expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible();
 });
 

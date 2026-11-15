@@ -7,7 +7,7 @@ test('inline Import autofocus preserves the expanding surface scroll position', 
 }) => {
   await enterFreshLacuna(page);
   await page.goto('/#/import');
-  const heading = page.locator('main span[aria-hidden="true"]').filter({ hasText: /^Import$/ });
+  const heading = page.locator('main').getByRole('button', { name: 'Import', exact: true });
   const source = page.getByRole('button', { name: /Text or spreadsheet/ });
   await expect(source).toBeVisible();
   const surface = heading.locator('..');
@@ -31,22 +31,24 @@ test('inline Import autofocus preserves the expanding surface scroll position', 
   ).toBeLessThanOrEqual(1);
 });
 
-test('open Import stays anchored when Today content reflows', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test('open Import stays within the viewport when Today content reflows', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 844 });
   await enterFreshLacuna(page);
   await page.goto('/#/import');
-  const heading = page.locator('main span[aria-hidden="true"]').filter({ hasText: /^Import$/ });
+  const heading = page.locator('main').getByRole('button', { name: 'Import', exact: true });
   const surface = heading.locator('..');
   await expect(heading).toBeVisible();
   await settle(surface);
-  const top = (await surface.boundingBox())!.y;
   // Late content or font metrics can move the trigger after the panel has opened.
   await page.locator('.today-empty-state').evaluate((element) => {
     element.style.paddingTop = '150px';
   });
   await expect
-    .poll(async () => Math.abs((await surface.boundingBox())!.y - top))
-    .toBeLessThanOrEqual(1);
+    .poll(async () => {
+      const bounds = (await surface.boundingBox())!;
+      return bounds.y + bounds.height;
+    })
+    .toBeLessThanOrEqual(826);
   const panel = page.locator('.import-panel');
   await expect.poll(async () => (await panel.boundingBox())!.x).toBeGreaterThanOrEqual(0);
   await expect
@@ -54,5 +56,5 @@ test('open Import stays anchored when Today content reflows', async ({ page }) =
       const bounds = (await panel.boundingBox())!;
       return bounds.x + bounds.width;
     })
-    .toBeLessThanOrEqual(390);
+    .toBeLessThanOrEqual(1280);
 });

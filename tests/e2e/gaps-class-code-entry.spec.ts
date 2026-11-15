@@ -38,7 +38,7 @@ test('finds class entry and corrects invalid or unavailable codes at 1280px', as
   await expect(code).toBeFocused();
   await expect(code).toHaveValue('');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
   await openImport(page);
   await page.getByRole('button', { name: /Join a class Enter your teacher/ }).click();
   await expect(code).toBeFocused();
