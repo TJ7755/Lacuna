@@ -306,3 +306,12 @@ describe('CardEditor — published-course lock', () => {
     expect(updateCard).toHaveBeenCalledWith('card-1', expect.any(Object));
   });
 });
+
+describe('CardEditor ownership', () => {
+  it('rejects a card owned by another course', () => {
+    editorState.card = { ...generatedCard, courseId: 'other-course', sequenceItemId: undefined };
+    renderEditing();
+    expect(screen.getByText('This card could not be found.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
+  });
+});

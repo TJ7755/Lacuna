@@ -54,7 +54,9 @@ export function OcclusionEditor() {
   const course = useCourse(courseId);
   const lesson = useLesson(lessonId);
   const editing = Boolean(occlusionId);
-  const occlusion = useOcclusion(occlusionId);
+  const storedOcclusion = useOcclusion(occlusionId);
+  const occlusion =
+    storedOcclusion && storedOcclusion.courseId !== courseId ? null : storedOcclusion;
 
   const [name, setName] = useState('');
   const [assetHash, setAssetHash] = useState<string | null>(null);

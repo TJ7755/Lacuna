@@ -69,7 +69,8 @@ export function CardEditor() {
   );
   const bankDeck = useCourseBankBackingDeck(bankMode ? courseId : undefined);
   const editing = Boolean(cardId);
-  const card = useCard(cardId);
+  const storedCard = useCard(cardId);
+  const card = storedCard && storedCard.courseId !== courseId ? null : storedCard;
   // Only fetched for the read-only branch below (a generated card resolves its owning
   // sequence/occlusion here to link back to the owning editor). Harmless to call
   // unconditionally.
