@@ -10,7 +10,7 @@ import { scaledSpring } from '../ui/motion';
 import { useToast } from '../ui/Toast';
 import { PillToggleGroup, type PillToggleOption } from './PillToggleGroup';
 import { EDITOR_TYPE_ORDER } from './CardTypePicker';
-import { updateCard } from '../../db/cardRepository';
+import { saveCardEdit } from '../../db/cardRepository';
 import { hasCloze } from '../../utils/cloze';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../../utils/drafts';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
@@ -108,13 +108,9 @@ export function CardEditOverlay({
     setSaving(true);
     const changes = { type, front, back: isCloze ? '' : back, tags };
     try {
-      await updateCard(card.id, changes);
-      // If this is a basic_reversed card, update its reverse partner too.
-      if (card.type === 'basic_reversed' && card.reverseCardId) {
-        await updateCard(card.reverseCardId, { front: back, back: front });
-      }
+      const updated = await saveCardEdit(card.id, changes);
       clearDraft(draftKeyRef.current);
-      onSaved({ ...card, ...changes });
+      onSaved(updated);
     } catch (err) {
       setSaving(false);
       notify(err instanceof Error ? err.message : 'Could not save the card.', 'negative');
