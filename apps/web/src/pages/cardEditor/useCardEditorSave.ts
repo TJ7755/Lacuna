@@ -87,13 +87,20 @@ export function useCardEditorSave({
   const editable = Boolean(course && canEditLessons(course));
   const canConfigureSpelling = editable && !course?.archived && !isStructured;
   const canSave =
-    editable && !mediaBusy && frontValid && backValid && clozeValid && numericValid && workingValid;
+    editable &&
+    !draft.draftPrompt &&
+    !mediaBusy &&
+    frontValid &&
+    backValid &&
+    clozeValid &&
+    numericValid &&
+    workingValid;
   const canReverse = !editing && !isCloze && !isBasicReversed && !isStructured && !isAudio;
   // Front / back and Basic (reversed) share a form; every other type has its own.
   const formKind = isBasicReversed ? 'front_back' : type;
 
   async function handleSave(andAnother = false) {
-    if (!editable || savingRef.current || mediaBusy) return;
+    if (!editable || savingRef.current || mediaBusy || draft.draftPrompt) return;
     const missingOwner = lessonMode ? !courseId || !lessonId : !courseId;
     if (!canSave || missingOwner) {
       // Shake the first invalid field to give the user tactile feedback on why save is blocked.

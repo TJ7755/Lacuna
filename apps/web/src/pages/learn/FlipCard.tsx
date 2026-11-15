@@ -138,7 +138,17 @@ export function FlipCard({
 
   useEffect(() => {
     const onReplayKey = (event: KeyboardEvent) => {
-      if (event.repeat || event.key.toLowerCase() !== 'r' || !audioCard || phase !== 'answer')
+      if (
+        event.repeat ||
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        event.key.toLowerCase() !== 'r' ||
+        !audioCard ||
+        phase !== 'answer'
+      )
         return;
       const target = event.target as HTMLElement | null;
       if (

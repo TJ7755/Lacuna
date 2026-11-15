@@ -6,6 +6,7 @@ import {
   chooseType,
   editorState,
   createCourseCard,
+  notify,
 } from './CardEditor.testSupport';
 import { describe, expect, it, vi } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/react';
@@ -221,5 +222,51 @@ describe('CardEditor — draft autosave', () => {
 
     expect(loadDraft(draftKey('bank:course-1', 'card-1'))?.front).toBe('Unsaved source edit');
     expect(loadDraft(draftKey('bank:course-1', 'card-2'))).toBeNull();
+  });
+});
+
+describe('CardEditor — draft protection', () => {
+  it('requires a draft decision before authoring', () => {
+    saveDraft(draftKey('bank:course-1', 'new'), {
+      type: 'front_back',
+      front: 'Saved draft',
+      back: 'Saved answer',
+      tags: [],
+      timestamp: 1,
+    });
+    renderNew();
+    expect(screen.getByPlaceholderText('Question or prompt')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Front / back' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Restore draft' }));
+    expect(screen.getByPlaceholderText('Question or prompt')).toBeEnabled();
+    expect(screen.getByPlaceholderText('Question or prompt')).toHaveValue('Saved draft');
+  });
+
+  it('warns and requires explicit discard when the draft cannot be stored', () => {
+    renderNew();
+    fireEvent.change(screen.getByPlaceholderText('Question or prompt'), {
+      target: { value: 'Only copy' },
+    });
+    const write = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new DOMException('Full', 'QuotaExceededError');
+    });
+    try {
+      const unload = new Event('beforeunload', { cancelable: true });
+      fireEvent(window, unload);
+      expect(unload.defaultPrevented).toBe(true);
+      expect(notify).toHaveBeenCalledWith(
+        expect.stringContaining('Could not save your draft'),
+        'negative',
+        expect.any(Object),
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(mockNavigate).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+      expect(screen.getByPlaceholderText('Question or prompt')).toHaveValue('Only copy');
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    } finally {
+      write.mockRestore();
+    }
   });
 });

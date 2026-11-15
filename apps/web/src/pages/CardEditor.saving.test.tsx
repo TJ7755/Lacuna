@@ -394,3 +394,20 @@ describe('CardEditor — saved-card return', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
+
+describe('CardEditor — pending writes', () => {
+  it('disables authoring until Save & add another finishes', async () => {
+    const pending = Promise.withResolvers<void>();
+    createCourseCard.mockReturnValueOnce(pending.promise);
+    renderNew();
+    const front = screen.getByPlaceholderText('Question or prompt');
+    fireEvent.change(front, { target: { value: 'Question' } });
+    fireEvent.change(screen.getByPlaceholderText('Answer'), { target: { value: 'Answer' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save & add another' }));
+    expect(front).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Front / back' })).toBeDisabled();
+    await act(async () => pending.resolve());
+    expect(screen.getByPlaceholderText('Question or prompt')).toBeEnabled();
+    expect(screen.getByPlaceholderText('Question or prompt')).toHaveValue('');
+  });
+});

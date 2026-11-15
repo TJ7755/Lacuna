@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ItemFixture, NumericAnswerSpec } from '@lacuna/core/db/types';
 import { serialiseMarkScheme } from '../items/markSchemeCompiler';
 import type { QuestionConceptSet, QuestionDefinition } from '@lacuna/core/questions/types';
-import { clearDraft, draftKey, loadDraft, saveDraft } from '../utils/drafts';
+import { clearDraft, draftKey, loadDraft } from '../utils/drafts';
+import { useDraftStorage } from '../utils/useDraftStorage';
 
 type QuestionEditorKind = 'fixed' | 'generated';
 export type QuestionAnswerKind = 'numeric' | 'working';
@@ -112,6 +113,7 @@ export function newQuestionState(targetConceptId: string): QuestionAuthoringStat
 }
 
 export function useQuestionDraft(key: string) {
+  const storeDraft = useDraftStorage();
   const [state, setState] = useState<QuestionAuthoringState>(freshEmptyState);
   const [loaded, setLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -126,8 +128,8 @@ export function useQuestionDraft(key: string) {
 
   const persist = useCallback(() => {
     if (!dirtyRef.current || promptRef.current) return;
-    saveDraft(keyRef.current, createQuestionDraft(stateRef.current));
-  }, []);
+    storeDraft(keyRef.current, createQuestionDraft(stateRef.current));
+  }, [storeDraft]);
 
   useEffect(() => {
     if (keyRef.current === key) return;

@@ -153,6 +153,22 @@ describe('FlipCard abandoned-swipe return', () => {
 });
 
 describe('FlipCard audio replay', () => {
+  it.each([{ ctrlKey: true }, { metaKey: true }, { altKey: true }, { isComposing: true }])(
+    'leaves modified or composing R alone: %j',
+    (options) => {
+      renderRevealed();
+      const event = new KeyboardEvent('keydown', {
+        key: 'r',
+        bubbles: true,
+        cancelable: true,
+        ...options,
+      });
+      fireEvent(window, event);
+      expect(event.defaultPrevented).toBe(false);
+      expect(screen.getByRole('button', { name: 'Hide answer' })).toBeInTheDocument();
+    },
+  );
+
   it('returns to the audio face without leaving the answer phase', () => {
     const onHide = renderRevealed();
     const card = screen.getByRole('button', { name: 'Hide answer' });
