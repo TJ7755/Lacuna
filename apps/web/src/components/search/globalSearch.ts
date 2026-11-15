@@ -53,18 +53,21 @@ export function globalSearch(
   const courses = data?.courses ?? [];
   const lessons = data?.lessons ?? [];
   const scope = { courses, lessons, cards: data?.cards ?? [] };
-  // Structured filters narrow only Cards; discovery still owns visibility and ownership.
-  const results: SearchHit[] = [
-    ...(query.trim()
-      ? searchHelp(query)
-          .slice(0, 3)
-          .map((topic): SearchHit => ({ kind: 'help', topic }))
-      : []),
-    ...searchCourseContent(query, courses, lessons, data?.notes ?? []),
-    ...searchQuestionSetHits(query, data),
-    ...searchQuestionsInScope(query, { ...scope, questions: data?.questions ?? [] }),
-    ...searchCardsInScope(query, scope, { filters }),
-  ];
+  // A Card filter scopes the whole result list to matching Cards.
+  const results: SearchHit[] =
+    filters.length > 0
+      ? searchCardsInScope(query, scope, { filters })
+      : [
+          ...(query.trim()
+            ? searchHelp(query)
+                .slice(0, 3)
+                .map((topic): SearchHit => ({ kind: 'help', topic }))
+            : []),
+          ...searchCourseContent(query, courses, lessons, data?.notes ?? []),
+          ...searchQuestionSetHits(query, data),
+          ...searchQuestionsInScope(query, { ...scope, questions: data?.questions ?? [] }),
+          ...searchCardsInScope(query, scope, { filters }),
+        ];
   const phrase = normalise(query);
   if (!phrase) return results;
   const relevance = (hit: SearchHit) =>

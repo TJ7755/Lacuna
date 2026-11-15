@@ -1,14 +1,6 @@
-import { fireEvent } from '@testing-library/react';
-import { expect, vi } from 'vitest';
+import { expect } from 'vitest';
 
-/** Check the resolved destination without relying on a browser-visible href. */
+/** Check the link destination exposed to the browser. */
 export function expectAppDestination(link: HTMLElement, destination: string) {
-  const open = vi.spyOn(window, 'open').mockImplementation(() => null);
-  try {
-    expect(link).not.toHaveAttribute('href');
-    fireEvent.click(link, { ctrlKey: true });
-    expect(open).toHaveBeenCalledWith(destination, '_blank', 'noopener,noreferrer');
-  } finally {
-    open.mockRestore();
-  }
+  expect(link).toHaveAttribute('href', destination);
 }

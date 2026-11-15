@@ -247,6 +247,19 @@ export function Dashboard() {
           />
         ) : (
           <div className="flex flex-col gap-6">
+            <TodayQueue
+              rows={rows}
+              delay={0}
+              openMenuId={courseMenu?.course.id}
+              multiplier={m}
+              onStudy={(id) => openStudySheet(id)}
+              onMenu={(id, position, trigger) => {
+                const course = activeCourses?.find((entry) => entry.id === id);
+                if (!course) return;
+                setArchiveTarget(null);
+                setCourseMenu({ course, position, trigger });
+              }}
+            />
             {showForecast && (
               <section
                 aria-label="Forecast and this week"
@@ -281,19 +294,6 @@ export function Dashboard() {
                 {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
               </section>
             )}
-            <TodayQueue
-              rows={rows}
-              delay={0}
-              openMenuId={courseMenu?.course.id}
-              multiplier={m}
-              onStudy={(id) => openStudySheet(id)}
-              onMenu={(id, position, trigger) => {
-                const course = activeCourses?.find((entry) => entry.id === id);
-                if (!course) return;
-                setArchiveTarget(null);
-                setCourseMenu({ course, position, trigger });
-              }}
-            />
           </div>
         )}
       </PageLoadingBoundary>

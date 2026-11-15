@@ -31,6 +31,18 @@ function coursePathSubject() {
 }
 
 describe('CoursePath overview', () => {
+  it.each([undefined, 1])(
+    'labels the four-week forecast when there is no future exam (%s)',
+    (examDate) => {
+      pathState.mockCourse = { ...course, examDate, schedulingMode: 'steady' };
+      renderPage();
+      expect(screen.getByRole('region', { name: 'Course summary' })).toHaveTextContent(
+        'Recall in four weeks',
+      );
+      expect(screen.queryByText('Exam-day recall')).not.toBeInTheDocument();
+    },
+  );
+
   beforeEach(resetCoursePathFixtures);
   it.each([1, 2])('keeps a %i-lesson course on its ladder until a lesson is selected', (count) => {
     pathState.mockLessons = [lesson1, lesson2].slice(0, count);

@@ -22,11 +22,21 @@ test('course actions work on first use after going offline', async ({ page, cont
   }
 });
 
-test('Today course actions preserve keyboard focus', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
+test('Today course actions preserve keyboard focus', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterWithWelcomeCourse(page);
   const queue = page.getByRole('region', { name: 'Today, most urgent first' });
+  const forecast = page.getByRole('region', { name: 'Forecast and this week' });
+  await expect(forecast).toBeVisible();
+  const queueBounds = await queue.boundingBox();
+  const forecastBounds = await forecast.boundingBox();
+  expect(queueBounds!.y + queueBounds!.height).toBeLessThanOrEqual(forecastBounds!.y);
+  await testInfo.attach('Today study queue before forecast', {
+    body: await page.screenshot({ animations: 'disabled' }),
+    contentType: 'image/png',
+  });
+
   const course = queue.getByRole('button', { name: 'Welcome to Lacuna', exact: true });
   const more = queue.getByRole('button', { name: 'More for Welcome to Lacuna' });
   await expect(more).toHaveAttribute('aria-expanded', 'false');

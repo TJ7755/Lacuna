@@ -302,7 +302,10 @@ export function CoursePath() {
                   ? course.examObjective === 'securedTopics'
                     ? 'Secured cards'
                     : 'Predicted recall'
-                  : undefined
+                  : (forecast?.hasExam ??
+                      (course.examDate !== undefined && course.examDate > Date.now()))
+                    ? 'Exam-day recall'
+                    : 'Recall in four weeks'
               }
               status={status ?? 'steady'}
               cards={cardTotal}
