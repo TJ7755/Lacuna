@@ -1,7 +1,7 @@
 import { createAiAppRequests } from './aiAppRequests.js';
 import type { AiAppClientState } from './aiAppClientState.js';
 import net from 'node:net';
-import { AiCompanionOperationError } from '../../web/src/ai/companionErrors.js';
+import { AiCompanionOperationError } from '@lacuna/protocol/ai/companionErrors';
 import {
   AI_COMPANION_PROTOCOL_VERSION,
   CompanionLineDecoder,
@@ -9,7 +9,7 @@ import {
   isAiCompanionResponse,
   type AiCompanionProtocolVersion,
   type AiCompanionResponse,
-} from '../../web/src/mcp/companionEntry.js';
+} from '@lacuna/protocol/mcp/companion';
 import { readCompanionConnectionFile, type CompanionConnectionFile } from './connectionFile.js';
 import { appConnectionError } from './aiAppOperationErrors.js';
 

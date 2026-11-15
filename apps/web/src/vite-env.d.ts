@@ -9,10 +9,10 @@ import type {
   McpScope,
   McpScopeResolutionRequest,
   McpScopeResolutionResponse,
-} from './mcp/bridge/protocol';
+} from '@lacuna/protocol/mcp/bridge';
 import type { McpGrant } from './mcp/types';
 import type { McpClientConnection } from './mcp/connections';
-import type { AiBridgeRequest, AiBridgeResult } from './ai/protocol';
+import type { AiBridgeRequest, AiBridgeResult } from '@lacuna/protocol/ai/protocol';
 import type { DesktopUpdateState } from './electron/updateTypes';
 
 export {};

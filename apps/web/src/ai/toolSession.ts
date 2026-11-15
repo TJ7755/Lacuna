@@ -1,5 +1,5 @@
-import { aiApprovalStateSchema } from './protocol';
-import type { AiApprovalState, AiBridgeError } from './protocol';
+import { aiApprovalStateSchema } from '@lacuna/protocol/ai/protocol';
+import type { AiApprovalState, AiBridgeError } from '@lacuna/protocol/ai/protocol';
 import { executeToolCall as defaultExecuteToolCall } from '../mcp/executor';
 import { getTool, unknownToolMessage } from '../mcp/registry';
 import { CREATE_COURSE_SCOPE_KEY, resolveToolScopes } from '../mcp/bridge/scopeResolver';

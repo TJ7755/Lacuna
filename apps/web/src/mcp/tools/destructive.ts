@@ -40,7 +40,7 @@ import {
   rescheduleCardsContract,
   setCardsFlagContract,
   suspendCardsContract,
-} from '../contracts/destructive';
+} from '@lacuna/protocol/mcp/contracts/destructive';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 
 function ok<T>(data: T, undo?: ToolResult<T>['undo']): ToolResult<T> {

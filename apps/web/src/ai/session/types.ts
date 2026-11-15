@@ -5,7 +5,7 @@ import type {
   AiClientIdentity,
   AiEntityReference,
   AiRunState,
-} from '../protocol';
+} from '@lacuna/protocol/ai/protocol';
 
 type AiSessionConnection =
   | { status: 'disconnected'; reason?: string }

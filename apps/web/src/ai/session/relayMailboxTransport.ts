@@ -1,6 +1,6 @@
 import type { RelaySessionState } from './relaySessionState';
-import type { JsonValue } from '../protocol';
-import type { RelayBrowserMailbox } from '../relayProtocol';
+import type { JsonValue } from '@lacuna/protocol/ai/protocol';
+import type { RelayBrowserMailbox } from '@lacuna/protocol/ai/relay';
 import type { RelayAiSessionOptions, RelaySessionCrypto } from './relay';
 
 export function createRelayMailboxTransport(

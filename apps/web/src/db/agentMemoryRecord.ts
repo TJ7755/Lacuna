@@ -17,7 +17,7 @@ import {
   AGENT_MEMORY_RESULT_LIMIT,
   AGENT_MEMORY_STATUSES,
   AGENT_MEMORY_TAGS,
-} from '../agentMemoryContract';
+} from '@lacuna/protocol/agentMemory';
 
 export { AGENT_MEMORY_QUERY_LIMIT, AGENT_MEMORY_RESULT_LIMIT };
 

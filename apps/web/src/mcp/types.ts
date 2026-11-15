@@ -2,22 +2,10 @@
 // run inside the renderer (the only process with IndexedDB) and are ignorant of IPC or
 // the MCP SDK — see the bridge protocol for the transport boundary.
 
-import type { z } from 'zod';
-import type { McpToolError } from './bridge/protocol';
+import type { McpGrant, ToolContract } from '@lacuna/protocol/mcp/types';
+import type { McpToolError } from '@lacuna/protocol/mcp/bridge';
 
-/**
- * A per-course, per-process consent grant (Arc 2 §2.4). 'destructive' implies 'write'
- * implies 'read' — an ordinal tier, not a set of independent booleans. Grants live in an
- * in-memory main-process Map (electron/mcp/grants.ts, a later task) and never survive a
- * relaunch; this type is defined here rather than there because tool handlers need to
- * reference the shape without importing anything Electron-only.
- */
-export interface McpGrant {
-  courseId: string;
-  scope: 'read' | 'write' | 'destructive';
-  grantedAt: number;
-  label?: string;
-}
+export type { McpGrant, ToolContract } from '@lacuna/protocol/mcp/types';
 
 /**
  * Per-invocation context passed to every tool handler. `grant` is resolved by the caller
@@ -62,19 +50,6 @@ export interface ToolUndoPayload {
     | 'restoreAgentMemory';
   /** The opaque snapshot blob accepted by that restore function. Never exposed to the agent. */
   snapshot: unknown;
-}
-
-/**
- * A single MCP tool's definition: name, agent-facing description, zod input schema, the
- * minimum grant scope required to invoke it, and the handler itself. src/mcp/registry.ts
- * assembles these into the ordered tool list; electron/mcp/server.ts (a later task)
- * registers each with the MCP SDK's `server.registerTool`.
- */
-export interface ToolContract<Input = unknown> {
-  name: string;
-  description: string;
-  inputSchema: z.ZodType<Input>;
-  requiredScope: 'read' | 'write' | 'destructive';
 }
 
 export interface ToolDefinition<Input = unknown, Output = unknown> extends ToolContract<Input> {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AI_RELAY_PROTOCOL_VERSION } from '../relayProtocol';
+import { AI_RELAY_PROTOCOL_VERSION } from '@lacuna/protocol/ai/relay';
 import { createRelayAiSession } from './relay';
 import { TERMINAL_PUBLIC_KEY, relaySessionHarness } from './relay.testHarness';
 

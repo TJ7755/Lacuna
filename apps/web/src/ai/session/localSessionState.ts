@@ -1,4 +1,9 @@
-import type { AiBridgeResult, AiInstructionBundle, AiRunState, AiUserMessage } from '../protocol';
+import type {
+  AiBridgeResult,
+  AiInstructionBundle,
+  AiRunState,
+  AiUserMessage,
+} from '@lacuna/protocol/ai/protocol';
 import type { AiSessionSnapshot } from './types';
 
 export const DEFAULT_CLAIM_LEASE_MS = 5 * 60_000;

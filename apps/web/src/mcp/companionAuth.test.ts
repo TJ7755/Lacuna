@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { authoriseCompanionHello } from '../../../desktop/mcp/companionAuth';
-import { AI_COMPANION_PROTOCOL_VERSION, MCP_COMPANION_PROTOCOL_VERSION } from './companionProtocol';
+import {
+  AI_COMPANION_PROTOCOL_VERSION,
+  MCP_COMPANION_PROTOCOL_VERSION,
+} from '@lacuna/protocol/mcp/companion';
 
 const dataToken = 'a'.repeat(64);
 const aiToken = 'b'.repeat(64);

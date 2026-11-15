@@ -1,49 +1,19 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { ManualUpdateReason, UpdatePhase, UpdateState } from './updaterContract';
 
-// The mcp.onInvoke/reply payloads are plain JSON envelopes (src/mcp/bridge/protocol.ts);
-// typed loosely here since the preload script's own tsconfig (tsconfig.preload.json) does
-// not include src/, to keep its CommonJS build independent of the app's module graph.
-type McpGrant = {
-  courseId: string;
-  scope: 'read' | 'write' | 'destructive';
-  grantedAt: number;
-  label?: string;
-};
-type McpInvokeRequest = {
-  id: string;
-  tool: string;
-  input: unknown;
-  agentId: string;
-  grant: McpGrant;
-};
-type McpInvokeResponse =
-  | { id: string; ok: true; result: unknown }
-  | { id: string; ok: false; error: { kind: string; message: string } };
-type McpScope = 'read' | 'write' | 'destructive';
-type McpClientIdentity = { connectionId: string; name: string; version?: string };
-type McpConsentRequest = {
-  id: string;
-  tool: string;
-  courseId: string;
-  scope: 'write' | 'destructive';
-  client?: McpClientIdentity;
-};
-type McpConsentResponse = { id: string; approved: boolean };
-type McpGrantNotice = { courseId: string; tool: string; client?: McpClientIdentity };
-type McpClientConnection = McpClientIdentity & {
-  connectedAt: number;
-  lastActivityAt: number;
-  grants: McpGrant[];
-};
-type McpScopeResolutionRequest = { id: string; tool: string; input: unknown };
-type McpScopeResolutionResponse =
-  | { id: string; ok: true; targets: { courseId: string; label?: string }[] }
-  | { id: string; ok: false; error: { kind: string; message: string } };
-type AiBridgeRequest = Record<string, unknown> & { type: string };
-type AiBridgeResult =
-  | { ok: true; data: unknown }
-  | { ok: false; error: Record<string, unknown> & { kind: string; message: string } };
+import type {
+  McpInvokeRequest,
+  McpInvokeResponse,
+  McpScope,
+  McpConsentRequest,
+  McpConsentResponse,
+  McpGrantNotice,
+  McpScopeResolutionRequest,
+  McpScopeResolutionResponse,
+} from '@lacuna/protocol/mcp/bridge';
+import type { McpClientConnection } from '@lacuna/protocol/mcp/types';
+import type { AiBridgeRequest, AiBridgeResult } from '@lacuna/protocol/ai/protocol';
+
 const UPDATE_PHASES = new Set<UpdatePhase>([
   'idle',
   'checking',

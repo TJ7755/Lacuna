@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AI_RELAY_EMPTY_GENERATION } from '../relayProtocol';
+import { AI_RELAY_EMPTY_GENERATION } from '@lacuna/protocol/ai/relay';
 import { CREATED, relaySessionHarness } from './relay.testHarness';
 import { buildAiInstructionBundle } from '../instructions';
 

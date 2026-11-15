@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import type { RelayClient } from '../relayClient';
-import type { AiInstructionBundle, JsonValue } from '../protocol';
-import type { RelayEnvelope } from '../relayProtocol';
+import type { AiInstructionBundle, JsonValue } from '@lacuna/protocol/ai/protocol';
+import type { RelayEnvelope } from '@lacuna/protocol/ai/relay';
 import type { AiToolSession } from '../toolSession';
 import {
   createRelayAiSession,

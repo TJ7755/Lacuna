@@ -1,4 +1,4 @@
-import type { AiBridgeError } from '../protocol';
+import type { AiBridgeError } from '@lacuna/protocol/ai/protocol';
 
 export function toolError(error: { kind: string; message: string }): AiBridgeError {
   const kinds = ['not_found', 'validation', 'forbidden', 'conflict', 'internal'] as const;

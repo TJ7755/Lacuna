@@ -14,7 +14,7 @@ import {
   updateGeneratedQuestion as repoUpdateGeneratedQuestion,
 } from '../../../questions/repository';
 import type { QuestionPayload } from '@lacuna/core/questions/types';
-import type { questionPayloadInputSchema } from '../../contracts/questions';
+import type { questionPayloadInputSchema } from '@lacuna/protocol/mcp/contracts/questions';
 import {
   createFixedQuestionContract,
   createGeneratedQuestionContract,
@@ -23,7 +23,7 @@ import {
   listQuestionsContract,
   updateFixedQuestionContract,
   updateGeneratedQuestionContract,
-} from '../../contracts/questions';
+} from '@lacuna/protocol/mcp/contracts/questions';
 import type { ToolDefinition } from '../../types';
 import { auditGenerator } from './generators';
 import {

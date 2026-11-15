@@ -9,7 +9,7 @@ import {
   type RelayBrowserMailbox,
   type RelayTerminalEvent,
   type RelayToolResponse,
-} from '../relayProtocol';
+} from '@lacuna/protocol/ai/relay';
 import { applyTerminalEvent, expireClaimLease } from './relayEvents';
 import {
   applyToolEffects,

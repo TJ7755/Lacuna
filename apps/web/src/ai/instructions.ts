@@ -2,7 +2,7 @@ import {
   LACUNA_AI_PROTOCOL_VERSION,
   aiInstructionBundleSchema,
   type AiInstructionBundle,
-} from './protocol.js';
+} from '@lacuna/protocol/ai/protocol';
 
 export const AI_TEACHING_INSTRUCTION_VERSION = 'teaching-v1' as const;
 

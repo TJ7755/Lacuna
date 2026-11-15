@@ -10,11 +10,11 @@ import {
   aiToolNameSchema,
   boundedJsonValueSchema,
   type AiClientIdentity,
-} from '../../web/src/ai/protocol.js';
+} from '@lacuna/protocol/ai/protocol';
 import {
   AiCompanionOperationError,
   companionErrorDetails,
-} from '../../web/src/ai/companionErrors.js';
+} from '@lacuna/protocol/ai/companionErrors';
 import { companionAppVersion, companionHostUserDataPath } from './connectionFile.js';
 import { createLocalAiAppClient } from './aiAppClient.js';
 

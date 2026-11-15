@@ -1,12 +1,12 @@
-import type { McpToolError } from './bridge/protocol';
-import type { McpClientIdentity } from './connections';
-import { MCP_TOOL_NAME_MAX_LENGTH } from './limits';
+import type { McpToolError } from '@lacuna/protocol/mcp/bridge';
+import type { McpClientIdentity } from './types.js';
+import { MCP_TOOL_NAME_MAX_LENGTH } from '@lacuna/protocol/mcp/limits';
 import {
   isAiBridgeError,
   isAiBridgeRequest,
   type AiBridgeRequest,
   type AiBridgeResult,
-} from '../ai/protocol';
+} from '@lacuna/protocol/ai/protocol';
 
 export const MCP_COMPANION_PROTOCOL_VERSION = 1;
 export const LEGACY_AI_COMPANION_PROTOCOL_VERSION = 1;
@@ -246,3 +246,5 @@ export function encodeCompanionMessage(
 ): string {
   return `${JSON.stringify(value)}\n`;
 }
+
+export type { McpClientIdentity, McpClientConnection } from './types.js';

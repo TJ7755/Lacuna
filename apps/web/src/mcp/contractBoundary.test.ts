@@ -8,8 +8,11 @@ import { AjvJsonSchemaValidator } from '@modelcontextprotocol/server/validators/
 import {
   createCourseAssessmentContract,
   updateCourseAssessmentContract,
-} from './contracts/content';
-import { MCP_TOOL_SURFACE_VERSION, TOOL_CONTRACT_REGISTRY } from './contracts/registry';
+} from '@lacuna/protocol/mcp/contracts/content';
+import {
+  MCP_TOOL_SURFACE_VERSION,
+  TOOL_CONTRACT_REGISTRY,
+} from '@lacuna/protocol/mcp/contracts/registry';
 import { TOOL_REGISTRY } from './registry';
 
 const PROJECT_ROOT = process.cwd();
@@ -50,7 +53,7 @@ async function bundleMetafile(entryPoint: string): Promise<Metafile> {
     platform: 'node',
     format: 'esm',
     target: 'es2022',
-    packages: 'external',
+    external: ['zod', '@modelcontextprotocol/*', 'electron', 'electron-log', 'electron-updater'],
     write: false,
     metafile: true,
     logLevel: 'silent',
@@ -59,7 +62,14 @@ async function bundleMetafile(entryPoint: string): Promise<Metafile> {
 }
 
 describe('Electron MCP contract boundary', () => {
-  it('preserves the reviewed versioned wire surface', () => {
+  it('preserves the reviewed versioned wire surface', async () => {
+    // Regenerate deliberately with: bun run mcp:contracts:update
+    const reviewedSurface = JSON.parse(
+      await readFile(
+        path.join(PROJECT_ROOT, 'apps/web/src/mcp/fixtures/tool-surface.json'),
+        'utf8',
+      ),
+    );
     const serialisedSurface = JSON.stringify(
       TOOL_CONTRACT_REGISTRY.map(({ name, description, requiredScope, inputSchema }) => ({
         name,
@@ -68,6 +78,8 @@ describe('Electron MCP contract boundary', () => {
         inputSchema: z.toJSONSchema(inputSchema),
       })),
     );
+
+    expect(JSON.parse(serialisedSurface)).toEqual(reviewedSurface);
 
     expect({
       version: MCP_TOOL_SURFACE_VERSION,
@@ -227,7 +239,13 @@ describe('Electron MCP contract boundary', () => {
         platform: 'node',
         format: 'esm',
         target: 'es2022',
-        packages: 'external',
+        external: [
+          'zod',
+          '@modelcontextprotocol/*',
+          'electron',
+          'electron-log',
+          'electron-updater',
+        ],
         write: false,
         metafile: true,
         logLevel: 'silent',
@@ -265,7 +283,9 @@ describe('Electron MCP contract boundary', () => {
         }
       }
       visit(entry[0]);
-      expect(inputs.has('apps/web/src/ai/companionErrors.ts'), name).toBe(name.startsWith('ai'));
+      expect(inputs.has('packages/protocol/src/ai/companionErrors.ts'), name).toBe(
+        name.startsWith('ai'),
+      );
       expect(
         [...inputs].filter((input) =>
           FORBIDDEN_SOURCE_ROOTS.some((root) => input.startsWith(root)),
@@ -273,6 +293,37 @@ describe('Electron MCP contract boundary', () => {
         name,
       ).toEqual([]);
     }
+  });
+
+  it.each([
+    'ai/protocol.ts',
+    'ai/relay.ts',
+    'mcp/contracts/index.ts',
+    'mcp/companion.ts',
+    'mcp/ipcValidation.ts',
+  ])('keeps protocol/%s independent of application and core implementations', async (entry) => {
+    const metafile = await bundleMetafile(`packages/protocol/src/${entry}`);
+    expect(
+      Object.keys(metafile.inputs)
+        .map(normalise)
+        .filter((input) => input.startsWith('apps/') || input.startsWith('packages/core/')),
+    ).toEqual([]);
+  });
+
+  it('keeps the sandboxed preload dependent only on Electron at runtime', async () => {
+    const result = await build({
+      entryPoints: [path.join(PROJECT_ROOT, 'apps/desktop/preload.ts')],
+      platform: 'node',
+      format: 'cjs',
+      target: 'node22',
+      write: false,
+      metafile: true,
+      logLevel: 'silent',
+    });
+    expect(Object.keys(result.metafile.inputs).map(normalise)).toEqual(['apps/desktop/preload.ts']);
+    expect(Object.values(result.metafile.outputs).flatMap((output) => output.imports)).toEqual([
+      { path: 'electron', kind: 'require-call', external: true },
+    ]);
   });
 
   it('keeps renderer-only packages out of Electron runtime dependencies', async () => {

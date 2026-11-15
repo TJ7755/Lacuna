@@ -11,7 +11,10 @@
 import type { z } from 'zod';
 import * as read from '../../db/read';
 import { createCourseCard, createLessonCard } from '../../db/cardRepository';
-import { diffImportPreviewContract, importCardsContract } from '../contracts/import';
+import {
+  diffImportPreviewContract,
+  importCardsContract,
+} from '@lacuna/protocol/mcp/contracts/import';
 import { diffImport, type ExistingCardForDiff, type ProposedImportItem } from '../diffImport';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 

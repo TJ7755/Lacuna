@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { JsonValue } from '../protocol';
-import { type RelayTerminalMailbox } from '../relayProtocol';
+import type { JsonValue } from '@lacuna/protocol/ai/protocol';
+import { type RelayTerminalMailbox } from '@lacuna/protocol/ai/relay';
 import { relaySessionHarness } from './relay.testHarness';
 
 describe('relay AI session messages', () => {

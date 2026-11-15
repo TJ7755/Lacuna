@@ -2,7 +2,7 @@ import { useIsPresent } from 'motion/react';
 import { DialogPanel } from '../ui/DialogPanel';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { ConfirmInline } from '../ui/ConfirmInline';
-import type { McpConsentRequest } from '../../mcp/bridge/protocol';
+import type { McpConsentRequest } from '@lacuna/protocol/mcp/bridge';
 
 interface McpConsentPromptProps {
   request: McpConsentRequest;

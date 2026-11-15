@@ -1,5 +1,5 @@
-import type { AiBridgeRequest } from '../../web/src/ai/protocol.js';
-import { AiCompanionOperationError } from '../../web/src/ai/companionErrors.js';
+import type { AiBridgeRequest } from '@lacuna/protocol/ai/protocol';
+import { AiCompanionOperationError } from '@lacuna/protocol/ai/companionErrors';
 
 export function cancelledOperation(
   commitState: 'not_started' | 'unknown',

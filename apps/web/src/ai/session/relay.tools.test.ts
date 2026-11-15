@@ -1,12 +1,12 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it, vi } from 'vitest';
-import type { JsonValue } from '../protocol';
+import type { JsonValue } from '@lacuna/protocol/ai/protocol';
 import {
   AI_RELAY_PROTOCOL_VERSION,
   type RelayBrowserMailbox,
   type RelayTerminalEvent,
   type RelayTerminalMailbox,
-} from '../relayProtocol';
+} from '@lacuna/protocol/ai/relay';
 import { AiToolSession } from '../toolSession';
 import type { ToolExecutionOutcome, ToolExecutionRequest } from '../../mcp/executor';
 import { createCourse } from '../../db/courseRepository';

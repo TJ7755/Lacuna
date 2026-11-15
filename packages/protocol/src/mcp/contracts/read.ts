@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ToolContract } from '../types';
+import type { ToolContract } from '../types.js';
 
 const courseIdSchema = z.string().describe('The id of the course to query.');
 const limitSchema = z

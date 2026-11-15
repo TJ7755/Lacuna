@@ -14,14 +14,18 @@ import {
   sealRelayJson,
   type RelayKeyPair,
 } from '../relayCrypto';
-import { MAX_AI_MESSAGE_LENGTH, type AiInstructionBundle, type JsonValue } from '../protocol';
+import {
+  MAX_AI_MESSAGE_LENGTH,
+  type AiInstructionBundle,
+  type JsonValue,
+} from '@lacuna/protocol/ai/protocol';
 import {
   AI_RELAY_EMPTY_GENERATION,
   AI_RELAY_PROTOCOL_VERSION,
   MAX_AI_RELAY_MAILBOX_ENTRIES,
   type RelayBrowserMailbox,
   type RelayEnvelope,
-} from '../relayProtocol';
+} from '@lacuna/protocol/ai/relay';
 import { createAiToolSession, type AiToolSession } from '../toolSession';
 import { buildAiInstructionBundle } from '../instructions';
 import type { ReplacementParticipant } from '../../db/replacementLifecycle';

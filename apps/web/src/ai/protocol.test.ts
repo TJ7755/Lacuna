@@ -12,7 +12,7 @@ import {
   aiActionReceiptSchema,
   aiInstructionBundleSchema,
   parseAiBridgeRequest,
-} from './protocol';
+} from '@lacuna/protocol/ai/protocol';
 
 const connectRequest = {
   type: 'connect',

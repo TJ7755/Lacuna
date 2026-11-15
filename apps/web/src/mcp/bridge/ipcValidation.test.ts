@@ -3,7 +3,7 @@ import {
   isMcpConsentResponse,
   isMcpInvokeResponse,
   isMcpScopeResolutionResponse,
-} from './ipcValidation';
+} from '@lacuna/protocol/mcp/ipcValidation';
 
 describe('MCP IPC response validation', () => {
   it('rejects malformed consent replies', () => {

@@ -15,7 +15,7 @@ import {
 } from '../../questions/repository';
 import { agentMemoryRepository, type DeletedAgentMemory } from '../../db/agentMemoryRepository';
 import { GLOBAL_SCOPE_KEY } from '../../mcp/grants';
-import type { McpConsentRequest } from '../../mcp/bridge/protocol';
+import type { McpConsentRequest } from '@lacuna/protocol/mcp/bridge';
 import { attachMcpBridge } from '../../mcp/bridge/renderer';
 import type { RecordedUndo } from '../../mcp/bridge/undoRegistry';
 import { McpConsentPrompt } from './McpConsentPrompt';

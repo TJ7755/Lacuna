@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ToolContract } from '../types';
+import type { ToolContract } from '../types.js';
 
 export const diffLineageUpdateContract = {
   name: 'lacuna.diff_lineage_update',

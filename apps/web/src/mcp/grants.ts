@@ -22,7 +22,7 @@
 // calling into the store.
 
 import type { McpGrant } from './types';
-import type { McpToolError } from './bridge/protocol';
+import type { McpToolError } from '@lacuna/protocol/mcp/bridge';
 
 export type McpScope = McpGrant['scope'];
 

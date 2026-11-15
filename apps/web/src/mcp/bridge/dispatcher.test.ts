@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InvokeDispatcher, RENDERER_NOT_READY_MESSAGE } from './dispatcher';
-import type { McpInvokeRequest } from './protocol';
+import type { McpInvokeRequest } from '@lacuna/protocol/mcp/bridge';
 
 function makeRequest(id = 'req-1'): McpInvokeRequest {
   return {

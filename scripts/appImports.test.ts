@@ -37,7 +37,7 @@ describe('cross-runtime app entry points', () => {
       for (const source of [
         "import { GrantStore } from '../../src/mcp/grants';",
         "import type { McpGrant } from '../../src/mcp/types.js';",
-        "export * from '../../src/mcp/contracts/registry';",
+        "export * from '../../src/mcp/registry';",
         "export type { McpGrant } from '../../src/mcp/types';",
         "export type T = import('../../src/mcp/types').McpGrant;",
         "export const load = () => import('../../src/mcp/grants');",
@@ -63,13 +63,9 @@ describe('cross-runtime app entry points', () => {
       }
     }
     for (const [filePath, target, forbidden] of [
-      ['apps/desktop/mcp/probe.ts', 'mcp/contractEntry.js', false],
       ['apps/desktop/mcp/probe.ts', 'mcp/bridgeEntry', false],
-      ['apps/desktop/mcp/probe.ts', 'mcp/companionEntry.js?raw', false],
-      ['apps/desktop/mcp/probe.ts', 'ai/protocol', false],
-      ['apps/desktop/mcp/probe.ts', 'ai/companionErrors.js', false],
-      ['apps/ai/api/ai/probe.ts', 'ai/companionErrors.js', true],
-      ['apps/ai/api/ai/probe.ts', 'ai/protocol.js', true],
+      ['apps/ai/api/ai/probe.ts', 'ai/toolSession.js', true],
+      ['apps/ai/api/ai/probe.ts', 'ai/relayClient.js', true],
       ['apps/ai/api/ai/probe.ts', 'jev/apiEntry.js', false],
       ['apps/ai/api/ai/probe.ts', 'mcp/bridgeEntry', true],
       ['apps/desktop/mcp/probe.ts', 'jev/apiEntry', true],

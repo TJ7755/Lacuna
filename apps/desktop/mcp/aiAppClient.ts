@@ -15,12 +15,12 @@ import {
   type AiInstructionBundle,
   type AiRunState,
   type JsonValue,
-} from '../../web/src/ai/protocol.js';
+} from '@lacuna/protocol/ai/protocol';
 import {
   AiCompanionOperationError,
   bridgeOperationError,
   companionErrorDetails,
-} from '../../web/src/ai/companionErrors.js';
+} from '@lacuna/protocol/ai/companionErrors';
 
 const CONNECT_TIMEOUT_MS = 3_000;
 const REQUEST_GRACE_MS = 5_000;

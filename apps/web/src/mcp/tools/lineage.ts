@@ -46,7 +46,10 @@ import {
   type ShareNoteInput,
 } from '@lacuna/core/db/lineageDiff';
 import type { Card, ItemPayload, Lesson, LineageIdMapping, Note } from '@lacuna/core/db/types';
-import { applyLineageUpdateContract, diffLineageUpdateContract } from '../contracts/lineage';
+import {
+  applyLineageUpdateContract,
+  diffLineageUpdateContract,
+} from '@lacuna/protocol/mcp/contracts/lineage';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 
 function ok<T>(data: T): ToolResult<T> {

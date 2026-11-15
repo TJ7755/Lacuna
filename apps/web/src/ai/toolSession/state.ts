@@ -3,8 +3,8 @@ import {
   aiApprovalStateSchema,
   aiBridgeErrorSchema,
   jsonValueSchema,
-} from '../protocol';
-import type { JsonValue } from '../protocol';
+} from '@lacuna/protocol/ai/protocol';
+import type { JsonValue } from '@lacuna/protocol/ai/protocol';
 import type {
   AiToolApprovalRecord,
   AiToolLedgerEntry,

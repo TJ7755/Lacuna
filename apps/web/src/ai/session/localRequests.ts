@@ -4,7 +4,7 @@ import {
   type AiBridgeResult,
   type AiInstructionBundle,
   type AiRunState,
-} from '../protocol';
+} from '@lacuna/protocol/ai/protocol';
 import type { AiToolSession, AiToolInvokeResult } from '../toolSession';
 import type { LocalAiSessionTimers } from './local';
 import type { LocalSessionState } from './localSessionState';

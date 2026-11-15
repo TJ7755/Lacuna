@@ -5,7 +5,7 @@ import { createCourse, createLesson } from '../../db/repository';
 import { getTool } from '../registry';
 import type { ToolContext } from '../types';
 import { handleInvoke } from './renderer';
-import type { McpInvokeResponse } from './protocol';
+import type { McpInvokeResponse } from '@lacuna/protocol/mcp/bridge';
 
 beforeEach(async () => {
   await db.delete();

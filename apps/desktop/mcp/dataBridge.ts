@@ -8,10 +8,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { McpServer, CallToolResult } from '@modelcontextprotocol/server';
-import {
-  TOOL_CONTRACT_REGISTRY,
-  MCP_TOOL_SURFACE_VERSION,
-} from '../../web/src/mcp/contractEntry.js';
+import { TOOL_CONTRACT_REGISTRY, MCP_TOOL_SURFACE_VERSION } from '@lacuna/protocol/mcp/contracts';
 import type {
   McpConsentRequest,
   McpInvokeRequest,
@@ -19,17 +16,17 @@ import type {
   McpScopeResolutionResponse,
   McpScopeTarget,
   McpToolError,
-} from '../../web/src/mcp/bridgeEntry.js';
+} from '@lacuna/protocol/mcp/bridge';
 import { InvokeDispatcher } from '../../web/src/mcp/bridgeEntry.js';
 import { ConsentCoordinator } from '../../web/src/mcp/bridgeEntry.js';
 import {
   isMcpConsentResponse,
   isMcpInvokeResponse,
   isMcpScopeResolutionResponse,
-} from '../../web/src/mcp/bridgeEntry.js';
+} from '@lacuna/protocol/mcp/ipcValidation';
 import { GrantStore, courseIdOrGlobal, resolveGrant } from '../../web/src/mcp/bridgeEntry.js';
-import type { McpGrant, ToolContract } from '../../web/src/mcp/contractEntry.js';
-import type { McpClientIdentity } from '../../web/src/mcp/companionEntry.js';
+import type { McpGrant, ToolContract } from '@lacuna/protocol/mcp/contracts';
+import type { McpClientIdentity } from '@lacuna/protocol/mcp/companion';
 
 const RENDERER_TIMEOUT_MS = 10_000;
 const SERVER_STOPPED_ERROR = { kind: 'internal', message: 'MCP server stopped.' } as const;

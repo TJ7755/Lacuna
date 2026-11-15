@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ReplacementLifecycle } from '../../db/replacementLifecycle';
 import { RelayPushOutcomeUnknownError } from '../relayClient';
-import { AI_RELAY_PROTOCOL_VERSION } from '../relayProtocol';
+import { AI_RELAY_PROTOCOL_VERSION } from '@lacuna/protocol/ai/relay';
 import { createRelayAiSession } from './relay';
 import { CREATED, TERMINAL_PUBLIC_KEY, relaySessionHarness } from './relay.testHarness';
 

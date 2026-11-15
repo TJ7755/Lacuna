@@ -1,4 +1,8 @@
-import { MAX_AI_WAIT_MS, type AiBridgeRequest, type AiBridgeResult } from '../protocol';
+import {
+  MAX_AI_WAIT_MS,
+  type AiBridgeRequest,
+  type AiBridgeResult,
+} from '@lacuna/protocol/ai/protocol';
 import type { LocalAiSessionTimers } from './local';
 import { DEFAULT_CLAIM_LEASE_MS, type LocalSessionState } from './localSessionState';
 

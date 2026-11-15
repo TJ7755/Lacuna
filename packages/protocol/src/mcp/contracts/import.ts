@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ToolContract } from '../types';
+import type { ToolContract } from '../types.js';
 
 const importItemSchema = z.object({
   front: z.string().describe('Markdown source for the question/prompt side.'),

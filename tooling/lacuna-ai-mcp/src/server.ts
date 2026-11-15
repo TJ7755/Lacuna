@@ -9,8 +9,8 @@ import {
   boundedJsonValueSchema,
   type JsonValue,
   type AiClientIdentity,
-} from '../../../apps/web/src/ai/protocol.js';
-import { relayPairingCodeSchema } from '../../../apps/web/src/ai/relayProtocol.js';
+} from '@lacuna/protocol/ai/protocol';
+import { relayPairingCodeSchema } from '@lacuna/protocol/ai/relay';
 import type {
   ConnectedTerminalRelay,
   TerminalToolResponse,

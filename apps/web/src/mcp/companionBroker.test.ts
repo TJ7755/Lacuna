@@ -9,7 +9,7 @@ import {
   LEGACY_AI_COMPANION_PROTOCOL_VERSION,
   CompanionLineDecoder,
   encodeCompanionMessage,
-} from './companionProtocol';
+} from '@lacuna/protocol/mcp/companion';
 import {
   companionConnectionFilePath,
   readCompanionConnectionFile,

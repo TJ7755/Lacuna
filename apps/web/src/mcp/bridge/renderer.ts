@@ -11,7 +11,7 @@
 // thrown error — is therefore wrapped so a reply is always sent.
 
 import { executeToolCall } from '../executor';
-import type { McpInvokeRequest, McpInvokeResponse } from './protocol';
+import type { McpInvokeRequest, McpInvokeResponse } from '@lacuna/protocol/mcp/bridge';
 import type { RecordedUndo } from './undoRegistry';
 
 export interface McpBridgeOptions {

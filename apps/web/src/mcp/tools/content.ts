@@ -36,7 +36,7 @@ import {
   createOcclusion as repoCreateOcclusion,
   updateOcclusion as repoUpdateOcclusion,
 } from '../../db/occlusionRepository';
-import type { occlusionRegionSchema } from '../contracts/content';
+import type { occlusionRegionSchema } from '@lacuna/protocol/mcp/contracts/content';
 import {
   createCardContract,
   createCourseAssessmentContract,
@@ -53,7 +53,7 @@ import {
   updateNoteContract,
   updateOcclusionContract,
   updateSequenceContract,
-} from '../contracts/content';
+} from '@lacuna/protocol/mcp/contracts/content';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 
 function ok<T>(data: T): ToolResult<T> {

@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { type AiBridgeRequest } from '../protocol';
+import { type AiBridgeRequest } from '@lacuna/protocol/ai/protocol';
 import { type LocalAiRequestSource } from './local';
 
 export function requestSource() {

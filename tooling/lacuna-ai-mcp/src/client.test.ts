@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildAiInstructionBundle } from '../../../apps/web/src/ai/instructions';
-import {
-  AI_RELAY_PROTOCOL_VERSION,
-  type RelayBrowserMailbox,
-} from '../../../apps/web/src/ai/relayProtocol';
+import { AI_RELAY_PROTOCOL_VERSION, type RelayBrowserMailbox } from '@lacuna/protocol/ai/relay';
 import {
   AI_TERMINAL_HEARTBEAT_INTERVAL_MS,
   DEFAULT_AI_RELAY_URL,

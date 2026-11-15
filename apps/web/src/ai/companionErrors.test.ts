@@ -3,7 +3,7 @@ import {
   AiCompanionOperationError,
   bridgeOperationError,
   companionErrorDetails,
-} from './companionErrors';
+} from '@lacuna/protocol/ai/companionErrors';
 
 describe('AI companion errors', () => {
   it('gives renderer failures explicit recovery guidance', () => {

@@ -55,6 +55,7 @@
     "lint:fix": "eslint \"apps/web/src/**/*.{ts,tsx}\" \"apps/desktop/**/*.{ts,tsx}\" --fix",
     "format": "bun fmt \"apps/web/src/**/*.{ts,tsx,json,css}\" \".prettierrc\"",
     "build:mcp": "node apps/desktop/mcp/build.mjs",
+    "mcp:contracts:update": "bun scripts/update-mcp-contract-surface.ts",
     "smoke:ai-mcp": "node scripts/ai-mcp-smoke.mjs",
     "build:ai-mcp": "bun run --cwd tooling/lacuna-ai-mcp build",
     "ai:mcp": "node tooling/lacuna-ai-mcp/dist/index.js",
