@@ -139,12 +139,12 @@ export function QuestionEditor() {
     (kind === 'fixed' ? promptRef.current : nameRef.current)?.focus({ preventScroll: true });
   const entryFocused = useRef(false);
   useEffect(() => {
-    if (!draft.loaded || entryFocused.current) return;
+    if (!draft.loaded || saving || entryFocused.current) return;
     entryFocused.current = true;
     focusEntry();
-    // Only on first load; later changes of form keep the user's focus.
+    // First load and repeat-save only, after authoring becomes interactive again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.loaded]);
+  }, [draft.loaded, saving]);
 
   /** `another` starts a fresh Question in the same lesson, Concept and form. */
   const save = async (another = false) => {
@@ -223,7 +223,7 @@ export function QuestionEditor() {
           answerKind,
           tags,
         });
-        requestAnimationFrame(focusEntry);
+        entryFocused.current = false;
         return;
       }
       draft.finish();
@@ -240,7 +240,7 @@ export function QuestionEditor() {
   });
 
   const addConcept = async () => {
-    if (!editable || !courseId || !newConceptName.trim()) return;
+    if (!editable || saving || !courseId || !newConceptName.trim()) return;
     try {
       const concept = await createConcept(courseId, newConceptName);
       draft.update({ targetConceptId: concept.id, newConceptName: '' });
@@ -251,7 +251,7 @@ export function QuestionEditor() {
   };
 
   const remove = async () => {
-    if (!editable || !questionId || !courseId) return;
+    if (!editable || saving || !questionId || !courseId) return;
     await deleteQuestion(questionId);
     draft.finish();
     notify('Question deleted.', 'positive');
@@ -320,7 +320,7 @@ export function QuestionEditor() {
         </section>
       )}
 
-      <div className="space-y-8">
+      <fieldset disabled={saving} inert={saving} className="min-w-0 space-y-8">
         {!editing && (
           <fieldset>
             <legend className={labelClass}>Question form</legend>
@@ -392,7 +392,7 @@ export function QuestionEditor() {
             label="Suspend this Question"
           />
         )}
-      </div>
+      </fieldset>
 
       <div className="pointer-events-none sticky bottom-0 z-20 -mx-[18px] mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-[18px] pb-5 pt-12 min-[481px]:-mx-6 min-[481px]:px-6 md:-mx-10 md:px-10">
         <div className="pointer-events-auto flex flex-wrap items-center justify-between gap-3">
@@ -401,10 +401,16 @@ export function QuestionEditor() {
               active={confirmingDelete}
               message="Delete this Question definition? Its attempt evidence will be retained."
               confirmLabel="Delete"
+              disabled={saving}
               onConfirm={() => void remove()}
               onCancel={() => setConfirmingDelete(false)}
             >
-              <Button type="button" variant="danger" onClick={() => setConfirmingDelete(true)}>
+              <Button
+                type="button"
+                variant="danger"
+                disabled={saving}
+                onClick={() => setConfirmingDelete(true)}
+              >
                 <TrashIcon width={16} height={16} />
                 Delete
               </Button>
