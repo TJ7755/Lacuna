@@ -1,5 +1,6 @@
 // Unknown paths select the full matrix. Keep cross-runtime contracts ahead of area rules.
 import { pathToFileURL } from 'node:url';
+import { ownerFor } from './check-catalogue.mjs';
 
 const DOCS_PREFIXES = ['docs/', '.github/ISSUE_TEMPLATE/'];
 const DOCS_FILES = new Set(['.github/PULL_REQUEST_TEMPLATE.md']);
@@ -74,6 +75,7 @@ const BROWSER_CI_FILES = new Set([
   'scripts/ci-browser-shards.mjs',
   'scripts/ci-browser-timings.json',
   'scripts/ci-change-scope.mjs',
+  'scripts/check-catalogue.mjs',
   'scripts/ci-node-runtime.mjs',
   'scripts/ci-wait-for-renderer.mjs',
   'tests/config/playwright.web.ci.config.ts',
@@ -152,55 +154,15 @@ export function classifyPaths(paths) {
       Object.assign(scope, { app: true, docs: true, lint: true });
       continue;
     }
-    // Shared runtime, bootstrap, protocols and consumed training fixtures must stay full.
-    if (
-      /(^|\/)(package\.json|bun\.lock|uv\.lock|vercel\.json|vite\.config\.ts)$/.test(path) ||
-      path.startsWith('apps/relay/shared/') ||
-      path.startsWith('apps/relay/scripts/') ||
-      path.startsWith('tooling/short-term-memory/coefficients/') ||
-      path.startsWith('tooling/short-term-memory/tests/fixtures/')
-    )
-      return fullScope(browser_ci, standalone_suites);
-    if (/^apps\/web\/src\/.+\.css$/.test(path)) {
-      // Stylesheets alone cannot alter native authority. Retain the existing broad
-      // non-Windows checks, without clearing native risk from another changed path.
+    const owner = ownerFor(path);
+    if (owner.full) return fullScope(browser_ci, standalone_suites);
+    if (owner.id === 'styles') {
+      // Styles alone retain broad checks without introducing Windows native risk.
       Object.assign(scope, {
         ...fullScope(browser_ci, standalone_suites),
         windows_native: scope.windows_native,
       });
-    } else if (path.startsWith('apps/relay/')) {
-      // App unit/browser fixtures and the standalone MCP tests import apps/relay/src directly.
-      Object.assign(scope, { relay: true, app: true, sites: true, ai_mcp: true });
-    } else if (path.startsWith('tooling/handwriting-maths/')) {
-      Object.assign(scope, { tooling: true, handwriting: true, lint: true });
-    } else if (
-      path.startsWith('tooling/short-term-memory/') ||
-      path.startsWith('tooling/semantic-answer-match/')
-    ) {
-      Object.assign(scope, { tooling: true, python: true, lint: true });
-    } else if (path.startsWith('tooling/lacuna-ai-mcp/')) {
-      // Browser and native integration fixtures use the terminal client.
-      Object.assign(scope, {
-        tooling: true,
-        ai_mcp: true,
-        app: true,
-        electron: true,
-        windows_native: true,
-        sites: true,
-        lint: true,
-      });
-    } else if (/^tests\/e2e\/[^/]+\.spec\.ts$/.test(path)) {
-      // Fixtures can be shared with Electron; only web spec entry points are isolated.
-      Object.assign(scope, { web_tests: true, sites: true, lint: true });
-    } else if (
-      path.startsWith('apps/gaps/') ||
-      path.startsWith('apps/library/') ||
-      path === 'apps/web/src/pages/quizlet/index.html'
-    ) {
-      Object.assign(scope, { sites: true, lint: true });
-    } else {
-      return fullScope(browser_ci, standalone_suites);
-    }
+    } else Object.assign(scope, Object.fromEntries(owner.areas.map((area) => [area, true])));
   }
   scope.docs_only = isDocsOnly(paths);
   return scope;

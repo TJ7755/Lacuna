@@ -14,3 +14,13 @@ Operational procedures:
 - [Gaps trial operations](gaps-trial-operations.md)
 - [Feedback setup](feedback.md) and [landing media](landing-media.md)
 - [Performance measurement](PERFORMANCE.md) and [upgrade procedure](storage-v22-compatibility.md)
+
+For short local feedback, install dependencies first, stage new files, then run
+`bun run verify -- --quick --base origin/master`. Use `--plan` to inspect selection.
+Evidence and command timings are written under `artifacts/local-checks/`.
+Exit 2 means validation remains outstanding, including after successful quick checks.
+Run `bun run verify -- --base origin/master` and the checks required by CONTRIBUTING
+before submitting; quick feedback does not replace required CI or platform evidence.
+
+For full checks on isolated CI runners, push the candidate branch and run
+`gh workflow run ci.yml --ref <branch>`. This runs the full matrix for that committed source.

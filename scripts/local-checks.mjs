@@ -159,6 +159,7 @@ export async function evidence(name, work) {
     clearTimeout(killTimer);
     process.removeListener('SIGINT', onInterrupt);
     process.removeListener('SIGTERM', onTerminate);
+    if (report.mode) report.validationComplete = status === 0 && report.mode === 'verification';
     report.exitCode = status;
     report.durationMs = Math.round(performance.now() - started);
     report.completedAt = new Date().toISOString();

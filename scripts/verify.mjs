@@ -1,40 +1,62 @@
 import { classifyPaths, parseNameStatus } from './ci-change-scope.mjs';
+import { quickChecks } from './quick-checks.mjs';
+import { workspaceChecks } from './check-catalogue.mjs';
 import { evidence, git, installations } from './local-checks.mjs';
 
 const usage =
-  'Usage: bun run verify -- [--base <commit>] [--full] [--plan]\nDefault: changes since HEAD plus staged/unstaged changes. --base includes committed changes since its merge base.\nStage new files first. --plan records selection without executing checks; it is not a validation pass.\nExit 2 means local checks passed but required platform evidence remains outstanding.';
+  'Usage: bun run verify -- [--base <commit>] [--full | --quick] [--plan]\nDefault: changes since HEAD plus staged/unstaged changes. --base includes committed changes since its merge base.\nStage new files first. --plan records selection without executing checks; it is not a validation pass.\nQuick mode is incomplete feedback, never full validation. Exit 2 means checks passed but validation remains outstanding.';
 
 async function verify({ run, report }) {
   const args = process.argv.slice(2).filter((arg) => arg !== '--');
   let base = 'HEAD';
   let full = false;
+  let quick = false;
   let plan = false;
   while (args.length) {
     const arg = args.shift();
     if (arg === '--full') full = true;
+    else if (arg === '--quick') quick = true;
     else if (arg === '--plan') plan = true;
     else if (arg === '--base' && args.length && !args[0].startsWith('-')) base = args.shift();
     else throw new Error(usage);
   }
+  if (full && quick) throw new Error(usage);
   const baseCommit = git('rev-parse', '--verify', `${base}^{commit}`).trim();
   const mergeBase = git('merge-base', baseCommit, 'HEAD').trim();
   const paths = [];
   for (const records of [
-    git('diff', '--name-status', '-z', mergeBase, 'HEAD'),
-    git('diff', '--name-status', '-z', 'HEAD'),
+    git('diff', '--name-status', '-z', '--find-renames', mergeBase, 'HEAD'),
+    git('diff', '--name-status', '-z', '--find-renames', 'HEAD'),
   ]) {
     if (records) paths.push(...parseNameStatus(records));
   }
+  const changedPaths = [...new Set(paths)];
   let scope = classifyPaths(full ? [] : paths);
   // CONTRIBUTING requires the complete matrix for relay, AI and Electron changes.
   if (scope.app || scope.relay || scope.ai_mcp || scope.electron) scope = classifyPaths([]);
   Object.assign(report, {
-    mode: plan ? 'plan' : 'verification',
+    mode: quick ? 'quick' : plan ? 'plan' : 'verification',
+    planOnly: plan,
+    validationComplete: false,
     baseCommit,
     mergeBase,
     paths,
     scope,
   });
+  if (quick) {
+    const selection = quickChecks(changedPaths);
+    report.plan = selection.commands;
+    report.broadFallback = selection.broad;
+    report.outstanding.push(
+      'Quick verification is incomplete: full validation remains outstanding. Run verify without --quick and satisfy CONTRIBUTING.md and required CI gates.',
+    );
+    report.testSelectionNote =
+      'Related tests follow the current import graph; no related tests is allowed. Coverage, browser, native and full lint evidence remain outstanding.';
+    console.log(JSON.stringify({ mode: 'quick', scope, ...selection }, null, 2));
+    if (plan) report.outstanding.push('Plan only: selected checks were not executed');
+    else for (const { command, args, cwd } of selection.commands) await run(command, args, cwd);
+    return;
+  }
   const commands = [];
   const add = (command, args, cwd = '.') => commands.push({ command, args, cwd });
   const bun = (script, cwd = '.', extra = []) => add('bun', ['run', script, ...extra], cwd);
@@ -56,19 +78,17 @@ async function verify({ run, report }) {
     bun('lint');
     bun('knip');
   }
-  if (scope.relay) {
-    bun('typecheck', 'apps/relay');
-    bun('lint', 'apps/relay');
-    test('test', 'apps/relay');
-  }
-  if (scope.handwriting) {
-    bun('build', 'tooling/handwriting-maths');
-    test('test', 'tooling/handwriting-maths');
-  }
-  if (scope.ai_mcp) {
-    for (const script of ['typecheck', 'lint', 'test', 'build']) {
-      if (script === 'test') test(script, 'tooling/lacuna-ai-mcp');
-      else bun(script, 'tooling/lacuna-ai-mcp');
+  for (const [area, cwd] of [
+    ['relay', 'apps/relay'],
+    ['handwriting', 'tooling/handwriting-maths'],
+    ['ai_mcp', 'tooling/lacuna-ai-mcp'],
+  ]) {
+    if (!scope[area]) continue;
+    const scripts = [...workspaceChecks[cwd]];
+    if (area === 'ai_mcp') scripts.push('build');
+    for (const script of scripts) {
+      if (script === 'test') test(script, cwd);
+      else bun(script, cwd);
     }
   }
   if (scope.python) {

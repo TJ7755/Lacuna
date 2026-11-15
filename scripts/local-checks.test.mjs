@@ -34,6 +34,8 @@ function fixture(t) {
     'scripts/verify.mjs',
     'scripts/local-checks.mjs',
     'scripts/ci-change-scope.mjs',
+    'scripts/check-catalogue.mjs',
+    'scripts/quick-checks.mjs',
     'apps/relay/scripts/security-bun.mjs',
     'apps/relay/scripts/security-bun.json',
     '.bun-version',
@@ -393,9 +395,153 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
     assert.match(changed.stderr, /Source changed/);
   });
 
+  for (const [path, expected, absent] of [
+    ['apps/web/src/course/new.ts', 'typecheck:web', 'typecheck:electron'],
+    ['apps/ai/server/new.ts', 'typecheck:server', 'typecheck:web'],
+    ['apps/desktop/new.ts', 'typecheck:electron', 'typecheck:server'],
+  ]) {
+    test(`quick feedback selects the owner of ${path} and remains incomplete`, (t) => {
+      const { change, run } = fixture(t);
+      change(path);
+      const result = run('verify.mjs', ['--quick']);
+      assert.equal(result.status, 2, result.stderr);
+      assert.equal(result.report.mode, 'quick');
+      assert.equal(result.report.validationComplete, false);
+      assert.equal(result.report.broadFallback, false);
+      assert.ok(result.report.commands.some(({ args }) => args[1] === expected));
+      assert.ok(!result.report.commands.some(({ args }) => args[1] === absent));
+      assert.ok(
+        result.report.commands.some(({ args }) => args.includes('related') && args.includes(path)),
+      );
+      assert.ok(
+        result.report.outstanding.some((item) => /full validation remains outstanding/.test(item)),
+      );
+      assert.ok(result.report.commands.every(({ exitCode }) => exitCode === 0));
+      assert.deepEqual(result.report.source, result.report.sourceAfter);
+    });
+  }
+
+  test('mixed docs and scripts never send documentation to the Node test runner', (t) => {
+    const { change, run } = fixture(t);
+    change('docs/new.md');
+    change('scripts/other.mjs');
+    const result = run('verify.mjs', ['--quick', '--plan']);
+    assert.equal(result.status, 2, result.stderr);
+    const tests = result.report.plan.find(({ command }) => command === 'node');
+    assert.deepEqual(tests.args, [
+      '--test',
+      '--test-concurrency=1',
+      'scripts/local-checks.test.mjs',
+    ]);
+    assert.ok(result.report.plan.some(({ args }) => args[1] === 'docs:check'));
+  });
+
+  test('broad quick fallback retains changed Node tests and script companion tests', (t) => {
+    const { change, run, root } = fixture(t);
+    change('scripts/changed.test.mjs');
+    change('scripts/companion.mjs');
+    change('scripts/companion.test.mjs');
+    const manifest = join(root, 'package.json');
+    writeFileSync(manifest, `${readFileSync(manifest, 'utf8')}\n`);
+    const result = run('verify.mjs', ['--quick', '--plan']);
+    assert.equal(result.status, 2, result.stderr);
+    assert.equal(result.report.broadFallback, true);
+    const tests = result.report.plan.find(({ command }) => command === 'node');
+    for (const path of [
+      'scripts/local-checks.test.mjs',
+      'scripts/changed.test.mjs',
+      'scripts/companion.test.mjs',
+    ])
+      assert.ok(tests.args.includes(path), path);
+  });
+
+  test('quick mode preserves failures rather than reporting incomplete success', (t) => {
+    const { change, run } = fixture(t);
+    change('apps/web/src/course/new.ts');
+    const result = run('verify.mjs', ['--quick'], {
+      FAKE_FAIL_SCRIPT: 'typecheck:web',
+      FAKE_STATUS: '37',
+    });
+    assert.equal(result.status, 37);
+    assert.equal(result.report.validationComplete, false);
+    assert.equal(result.report.commands.at(-1).exitCode, 37);
+  });
+
+  test('quick selection combines committed renames with dirty deletions and changes', (t) => {
+    const { change, run, git, root } = fixture(t);
+    change('apps/web/src/course/old.ts');
+    change('apps/ai/server/deleted.ts');
+    const commit = () =>
+      git(
+        '-c',
+        'user.name=CLI tests',
+        '-c',
+        'user.email=cli@example.invalid',
+        '-c',
+        'core.hooksPath=/dev/null',
+        'commit',
+        '-qam',
+        'Candidate',
+      );
+    commit();
+    const base = git('rev-parse', 'HEAD');
+    git('mv', 'apps/web/src/course/old.ts', 'apps/web/src/course/new.ts');
+    commit();
+    rmSync(join(root, 'apps/ai/server/deleted.ts'));
+    change('apps/desktop/dirty.ts');
+    const result = run('verify.mjs', ['--quick', '--base', base, '--plan']);
+    assert.equal(result.status, 2, result.stderr);
+    for (const path of [
+      'apps/web/src/course/old.ts',
+      'apps/web/src/course/new.ts',
+      'apps/ai/server/deleted.ts',
+      'apps/desktop/dirty.ts',
+    ])
+      assert.ok(result.report.paths.includes(path));
+    for (const script of [
+      'typecheck:web',
+      'typecheck:server',
+      'typecheck:electron',
+      'test:ci:unit',
+    ]) {
+      assert.ok(
+        result.report.plan.some(({ args }) => args[1] === script),
+        script,
+      );
+    }
+    const lint = result.report.plan.find(({ args }) => args.includes('eslint'));
+    assert.ok(lint.args.includes('apps/web/src/course/new.ts'));
+    assert.ok(!lint.args.includes('apps/ai/server/deleted.ts'));
+    assert.equal(result.report.commands.length, 1);
+  });
+
+  test('unknown quick paths fall back broadly; docs feedback still cannot certify a full pass', (t) => {
+    const { change, run } = fixture(t);
+    change('docs/new.md');
+    const docs = run('verify.mjs', ['--quick']);
+    assert.equal(docs.status, 2);
+    assert.deepEqual(
+      docs.report.plan.map(({ args }) => args),
+      [['run', 'docs:check']],
+    );
+    change('unknown/new.txt');
+    const unknown = run('verify.mjs', ['--quick', '--plan']);
+    assert.equal(unknown.status, 2);
+    assert.equal(unknown.report.broadFallback, true);
+    for (const script of ['lint', 'typecheck', 'test:ci:unit']) {
+      assert.ok(unknown.report.plan.some(({ args }) => args[1] === script));
+    }
+    assert.ok(!unknown.report.plan.some(({ args }) => args[1] === 'test:e2e:web'));
+  });
+
   test('invalid options and invalid base revisions fail rather than silently selecting checks', (t) => {
     const { run } = fixture(t);
-    for (const args of [['--unknown'], ['--base'], ['--base', 'missing-commit']]) {
+    for (const args of [
+      ['--unknown'],
+      ['--base'],
+      ['--base', 'missing-commit'],
+      ['--quick', '--full'],
+    ]) {
       const result = run('verify.mjs', args);
       assert.equal(result.status, 1);
       assert.equal(result.report.commands.length, 1);
