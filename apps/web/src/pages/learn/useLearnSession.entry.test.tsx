@@ -74,6 +74,7 @@ it('offers sorted, distinct tags from the edited card’s scheduling unit', asyn
       const lessonId = hook.result.current.current!.primaryLessonId!;
       inspected.add(lessonId);
       expect(hook.result.current.editTagSuggestions).toEqual([]);
+      await waitFor(() => expect(hook.result.current.canEditCurrent).toBe(true));
       act(() => hook.result.current.openEdit());
       expect(hook.result.current.editTagSuggestions).toEqual(expected.get(lessonId));
       act(() => hook.result.current.cancelEdit());
@@ -84,6 +85,39 @@ it('offers sorted, distinct tags from the edited card’s scheduling unit', asyn
       });
     }
     expect(inspected).toEqual(new Set([first.id, second.id]));
+  } finally {
+    hook.unmount();
+  }
+});
+
+it('blocks editing a locked course in an all-course session and reacts when it is detached', async () => {
+  const course = await createCourse('Published');
+  const lesson = await createLesson(course.id, 'First');
+  await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+  await db.courses.update(course.id, {
+    distributedCopy: {
+      lineageId: 'published',
+      revision: 1,
+      locked: true,
+      autoAcceptUpdates: false,
+    },
+  });
+  const params = sessionParams();
+  const hook = renderHook(() => useLearnSession(params));
+  try {
+    await waitFor(() => expect(hook.result.current.phase).toBe('question'));
+    act(() => hook.result.current.openEdit());
+    expect(hook.result.current.editing).toBe(false);
+    await act(async () => {
+      await db.courses.update(course.id, { distributedCopy: undefined });
+    });
+    await waitFor(() => expect(hook.result.current.canEditCurrent).toBe(true));
+    const currentId = hook.result.current.current!.id;
+    act(() => hook.result.current.openEdit());
+    expect(hook.result.current.editing).toBe(true);
+    act(() => hook.result.current.cancelEdit());
+    expect(hook.result.current.current!.id).toBe(currentId);
+    expect(hook.result.current.phase).toBe('question');
   } finally {
     hook.unmount();
   }

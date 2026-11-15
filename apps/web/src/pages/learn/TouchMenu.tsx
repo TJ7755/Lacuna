@@ -20,6 +20,7 @@ import {
 export function TouchMenuSheet({
   current,
   forecast,
+  canEditCurrent = true,
   onEdit,
   onToggleFlag,
   onBury,
@@ -32,6 +33,7 @@ export function TouchMenuSheet({
 }: {
   current: Card;
   forecast?: string;
+  canEditCurrent?: boolean;
   onEdit: () => void;
   onToggleFlag: () => void;
   onBury: () => void;
@@ -171,16 +173,18 @@ export function TouchMenuSheet({
         </div>
         <div className="grid min-h-0 gap-1 overflow-y-auto overscroll-contain p-1 sm:grid-cols-2">
           {forecast && <p className="px-3 pb-2 text-sm text-ink-soft sm:col-span-2">{forecast}</p>}
-          {current.sequenceItemId === undefined && current.occlusionRegionId === undefined && (
-            <TouchMenuButton
-              icon={<EditIcon width={20} height={20} />}
-              label="Edit card"
-              onClick={() => {
-                hapticLight();
-                onEdit();
-              }}
-            />
-          )}
+          {canEditCurrent &&
+            current.sequenceItemId === undefined &&
+            current.occlusionRegionId === undefined && (
+              <TouchMenuButton
+                icon={<EditIcon width={20} height={20} />}
+                label="Edit card"
+                onClick={() => {
+                  hapticLight();
+                  onEdit();
+                }}
+              />
+            )}
           <TouchMenuButton
             icon={<FlagIcon width={20} height={20} />}
             label={current.flagged ? 'Remove flag' : 'Flag card'}

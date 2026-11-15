@@ -3,6 +3,7 @@ import {
   conceptMatchesCardScope,
   conceptNameForCard,
 } from '../questions/concepts';
+import { canEditLessons } from '../course/lessonViewMode';
 import { scheduleAssetGc } from './assets';
 import { deleteCards } from './cardDeletion';
 import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
@@ -499,14 +500,36 @@ export async function assignCardsToLesson(
 }
 
 export async function updateCard(id: string, changes: Partial<Card>): Promise<void> {
+  return writeCardUpdate(id, changes, true);
+}
+
+/** Teacher revisions are authoritative even while the student's copy is locked. */
+export async function updateCardFromLineage(id: string, changes: Partial<Card>): Promise<void> {
+  return writeCardUpdate(id, changes, false);
+}
+
+async function writeCardUpdate(
+  id: string,
+  changes: Partial<Card>,
+  requireEditable: boolean,
+): Promise<void> {
   try {
-    if ('payload' in changes) {
-      const card = await db.cards.get(id);
-      if (card && changes.payload !== undefined) {
-        await assertValidCardPayload(changes.type ?? card.type, changes.payload);
-      }
+    const card = await db.cards.get(id);
+    if (card && changes.payload !== undefined) {
+      await assertValidCardPayload(changes.type ?? card.type, changes.payload);
     }
-    await db.cards.update(id, stampUpdatedAt(changes));
+    await db.transaction('rw', [db.cards, db.courses], async () => {
+      const current = await db.cards.get(id);
+      if (!current) return;
+      const courseIds = [current.courseId, changes.courseId].filter(
+        (value): value is string => !!value,
+      );
+      const courses = await db.courses.bulkGet(courseIds);
+      if (requireEditable && courses.some((course) => course && !canEditLessons(course))) {
+        throw new Error('This published course is locked.');
+      }
+      await db.cards.update(id, stampUpdatedAt(changes));
+    });
     if ('front' in changes || 'back' in changes) {
       scheduleAssetGc();
     }

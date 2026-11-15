@@ -125,6 +125,7 @@ export function LearnHeader({
   setMenuOpen,
   current,
   isTouchMode,
+  canEditCurrent = true,
   onEdit,
   onToggleFlag,
   onBury,
@@ -163,6 +164,7 @@ export function LearnHeader({
   setMenuOpen: (v: boolean) => void;
   current: Card | null;
   isTouchMode: boolean;
+  canEditCurrent?: boolean;
   onEdit: () => void;
   onToggleFlag: () => void;
   onBury: () => void;
@@ -343,6 +345,7 @@ export function LearnHeader({
                   <TouchMenuSheet
                     current={current}
                     forecast={forecast}
+                    canEditCurrent={canEditCurrent}
                     onEdit={onEdit}
                     onToggleFlag={onToggleFlag}
                     onBury={onBury}
@@ -375,7 +378,8 @@ export function LearnHeader({
                       className="p-1.5"
                     >
                       {forecast && <p className="px-3 py-2.5 text-sm text-ink-soft">{forecast}</p>}
-                      {current.sequenceItemId === undefined &&
+                      {canEditCurrent &&
+                        current.sequenceItemId === undefined &&
                         current.occlusionRegionId === undefined && (
                           <MenuItem
                             icon={<EditIcon width={16} height={16} />}

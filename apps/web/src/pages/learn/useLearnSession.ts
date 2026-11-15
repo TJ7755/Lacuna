@@ -1,3 +1,6 @@
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db/schema';
+import { canEditLessons } from '../../course/lessonViewMode';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
@@ -1310,9 +1313,21 @@ export function useLearnSession({
     }
   }, [current, afterRemoval, notify]);
 
+  const editPermission = useLiveQuery(async () => {
+    if (!current || current.sequenceItemId !== undefined || current.occlusionRegionId !== undefined)
+      return undefined;
+    const course = current.courseId ? await db.courses.get(current.courseId) : undefined;
+    return {
+      cardId: current.id,
+      editable: current.courseId ? Boolean(course && canEditLessons(course)) : true,
+    };
+  }, [current?.id, current?.courseId]);
+  const canEditCurrent =
+    editPermission?.cardId === current?.id && editPermission?.editable === true;
+
   /** Open the in-session editor, pausing the response timer while it is open. */
   const openEdit = useCallback(() => {
-    if (!current) return;
+    if (!current || !canEditCurrent) return;
     // Guard against the card having been removed from the session pool
     // (deleted / suspended by another tab) since the last render.
     if (!cardsRef.current.some((c) => c.id === current.id)) return;
@@ -1322,7 +1337,7 @@ export function useLearnSession({
       advanceTimer({ type: 'pause', now: performance.now() });
     }
     setEditing(true);
-  }, [cardsRef, current, phase]);
+  }, [cardsRef, current, phase, canEditCurrent]);
 
   /** Rebase the timer so editing time is excluded, then leave the overlay. */
   const resumeAfterEdit = useCallback(() => {
@@ -1461,6 +1476,7 @@ export function useLearnSession({
     undoLast,
     confirmCompletion,
     settleCompletion,
+    canEditCurrent,
     openEdit,
     cancelEdit,
     handleEdited,

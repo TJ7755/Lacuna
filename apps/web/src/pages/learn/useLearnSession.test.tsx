@@ -519,7 +519,7 @@ describe('useLearnSession answer boundary', () => {
     expect((await db.cards.get(card.id))?.suspended).toBe(true);
     expect(result.current.sessionCardIds).not.toContain(card.id);
     expect(result.current.sessionCardOutcomes.has(card.id)).toBe(false);
-    expect(result.current.phase).toBe('finished');
+    await waitFor(() => expect(result.current.phase).toBe('finished'));
   });
 
   it('grades a card with a null payload like an ordinary card', async () => {

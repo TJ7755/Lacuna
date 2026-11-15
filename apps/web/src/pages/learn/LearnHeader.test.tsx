@@ -139,3 +139,18 @@ it.each([false, true])(
     }
   },
 );
+
+it.each([false, true])(
+  'omits editing but retains study actions when content is locked (touch: %s)',
+  async (isTouchMode) => {
+    const { createCard, createCourse } = await import('../../db/repository');
+    const course = await createCourse('Locked actions');
+    const current = await createCard(course.id, 'front_back', 'Question', 'Answer');
+    const props = { ...headerProps(), current, isTouchMode, canEditCurrent: false };
+    const { rerender } = render(<LearnHeader {...props} />);
+    rerender(<LearnHeader {...props} menuOpen />);
+    expect(screen.queryByRole('button', { name: 'Edit card' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Flag card' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Suspend card' })).toBeInTheDocument();
+  },
+);

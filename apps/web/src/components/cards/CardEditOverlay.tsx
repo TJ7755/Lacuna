@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
+import { NumericAnswerEditor, numericAnswerSpecIsValid } from '../items/NumericAnswerEditor';
+import { MarkSchemeEditor } from '../items/MarkSchemeEditor';
+import { compileMarkScheme, serialiseMarkScheme } from '../../items/markSchemeCompiler';
+import type { NumericAnswerSpec, ItemFixture, ItemPayload } from '@lacuna/core/db/types';
 import { TagInput } from '../ui/TagInput';
 import { Button } from '../ui/Button';
 import { Toggle } from '../ui/Toggle';
@@ -58,6 +62,16 @@ export function CardEditOverlay({
   const [back, setBack] = useState(card.back);
   const [tags, setTags] = useState<string[]>(card.tags ?? []);
   const [showBackCloze, setShowBackCloze] = useState(false);
+  const [numericAnswer, setNumericAnswer] = useState<NumericAnswerSpec>(
+    card.payload?.kind === 'numeric' ? card.payload.answer : { kind: 'exact', value: '' },
+  );
+  const [workingSource, setWorkingSource] = useState(
+    card.payload?.kind === 'working' ? serialiseMarkScheme(card.payload.scheme) : '',
+  );
+  const [workingFixtures, setWorkingFixtures] = useState<ItemFixture[]>(
+    card.payload?.kind === 'working' ? (card.payload.fixtures ?? []) : [],
+  );
+  const workingCompilation = useMemo(() => compileMarkScheme(workingSource), [workingSource]);
   const [saving, setSaving] = useState(false);
 
   const frontRef = useRef<HTMLTextAreaElement>(null);
@@ -65,16 +79,52 @@ export function CardEditOverlay({
   const draftTimer = useRef<number | undefined>(undefined);
   const draftKeyRef = useRef(draftKey(draftScope ?? card.schedulingUnitId!, `session:${card.id}`));
 
+  const isNumeric = card.payload?.kind === 'numeric';
+  const isWorking = card.payload?.kind === 'working';
+  const isStructured = isNumeric || isWorking;
+  const structuredPayload = useMemo<ItemPayload | undefined>(() => {
+    if (isNumeric)
+      return {
+        v: 1,
+        kind: 'numeric',
+        answer: numericAnswer,
+        ...(card.payload?.kind === 'numeric' && card.payload.fixtures
+          ? { fixtures: card.payload.fixtures }
+          : {}),
+      };
+    if (isWorking)
+      return {
+        v: 1,
+        kind: 'working',
+        scheme: workingCompilation.lines.flatMap((line) =>
+          line.kind === 'compiled' ? [line.value] : [],
+        ),
+        ...(workingFixtures.length ? { fixtures: workingFixtures } : {}),
+      };
+    return undefined;
+  }, [isNumeric, isWorking, card.payload, numericAnswer, workingCompilation, workingFixtures]);
+
   // Auto-restore a draft from a previous interrupted session.
   useEffect(() => {
     const draft = loadDraft(draftKeyRef.current);
-    if (draft && draft.timestamp > 0) {
+    if (
+      draft &&
+      draft.timestamp > 0 &&
+      (isStructured
+        ? draft.type === card.type
+        : CARD_TYPE_OPTIONS.some((option) => option.value === draft.type))
+    ) {
       setType(draft.type);
       setFront(draft.front);
       setBack(draft.back);
       setTags(draft.tags);
+      if (draft.payload?.kind === 'numeric') setNumericAnswer(draft.payload.answer);
+      if (draft.payload?.kind === 'working') {
+        setWorkingSource(draft.workingSource ?? serialiseMarkScheme(draft.payload.scheme));
+        setWorkingFixtures(draft.payload.fixtures ?? []);
+      }
     }
-  }, []);
+  }, [card.type, isStructured]);
 
   // Auto-save a draft whenever the form changes.
   useEffect(() => {
@@ -85,11 +135,13 @@ export function CardEditOverlay({
         front,
         back,
         tags,
+        payload: structuredPayload,
+        workingSource: isWorking ? workingSource : undefined,
         timestamp: Date.now(),
       });
     }, 800);
     return () => window.clearTimeout(draftTimer.current);
-  }, [type, front, back, tags]);
+  }, [type, front, back, tags, structuredPayload, workingSource, isWorking]);
 
   /** Moves the type form the way the full editor does: forward or back along the picker order. */
   function changeType(next: CardType) {
@@ -100,13 +152,24 @@ export function CardEditOverlay({
   const isCloze = type === 'cloze';
   const clozeValid = !isCloze || hasCloze(front);
   const frontValid = front.trim().length > 0;
-  const backValid = isCloze || back.trim().length > 0;
-  const canSave = frontValid && backValid && clozeValid && !saving;
+  const backValid = isCloze || isStructured || back.trim().length > 0;
+  const structuredValid = isNumeric
+    ? numericAnswerSpecIsValid(numericAnswer)
+    : !isWorking ||
+      (workingCompilation.lines.length > 0 &&
+        workingCompilation.lines.every((line) => line.kind === 'compiled'));
+  const canSave = frontValid && backValid && clozeValid && structuredValid && !saving;
 
   async function handleSave() {
     if (!canSave) return;
     setSaving(true);
-    const changes = { type, front, back: isCloze ? '' : back, tags };
+    const changes = {
+      type,
+      front,
+      back: isCloze || isStructured ? '' : back,
+      tags,
+      ...(isStructured ? { payload: structuredPayload } : {}),
+    };
     try {
       const updated = await saveCardEdit(card.id, changes);
       clearDraft(draftKeyRef.current);
@@ -129,12 +192,14 @@ export function CardEditOverlay({
       <DialogHeader title="Edit card" onClose={onCancel} closeLabel="Close editor" />
 
       <div className="flex flex-col gap-5 overflow-y-auto px-6 py-6">
-        <PillToggleGroup<CardType>
-          label="Card type"
-          options={CARD_TYPE_OPTIONS}
-          value={type}
-          onChange={changeType}
-        />
+        {!isStructured && (
+          <PillToggleGroup<CardType>
+            label="Card type"
+            options={CARD_TYPE_OPTIONS}
+            value={type}
+            onChange={changeType}
+          />
+        )}
 
         <AnimatePresence initial={false}>
           <motion.div
@@ -144,7 +209,29 @@ export function CardEditOverlay({
             transition={scaledSpring(m, 380, 38)}
             className="flex flex-col gap-5"
           >
-            {isCloze ? (
+            {isStructured ? (
+              <>
+                <MarkdownEditor
+                  inputRef={frontRef}
+                  autoFocus
+                  label="Question"
+                  value={front}
+                  onChange={setFront}
+                  minRows={6}
+                  onError={(message) => notify(message, 'negative')}
+                />
+                {isNumeric ? (
+                  <NumericAnswerEditor value={numericAnswer} onChange={setNumericAnswer} />
+                ) : (
+                  <MarkSchemeEditor
+                    value={workingSource}
+                    onChange={setWorkingSource}
+                    fixtures={workingFixtures}
+                    onFixturesChange={setWorkingFixtures}
+                  />
+                )}
+              </>
+            ) : isCloze ? (
               <>
                 <MarkdownEditor
                   inputRef={frontRef}

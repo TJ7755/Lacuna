@@ -25,6 +25,7 @@ export interface UseLearnKeyboardShortcutsParams {
   suppressClassicGrading: boolean;
   /** An introductory answer can still be revealed or hidden without self-grading. */
   allowRevealWhenGradingSuppressed?: boolean;
+  canEditCurrent?: boolean;
   openEdit: () => void;
   hintsOpen: boolean;
   setHintsOpen: (open: boolean) => void;
@@ -62,6 +63,7 @@ export function useLearnKeyboardShortcuts({
   isTypingCard,
   suppressClassicGrading,
   allowRevealWhenGradingSuppressed = false,
+  canEditCurrent = true,
   openEdit,
   hintsOpen,
   setHintsOpen,
@@ -143,6 +145,7 @@ export function useLearnKeyboardShortcuts({
         return;
       }
       if (
+        canEditCurrent &&
         keyMatches(e, bindings.edit) &&
         current &&
         current.sequenceItemId === undefined &&
@@ -211,6 +214,7 @@ export function useLearnKeyboardShortcuts({
     isTypingCard,
     suppressClassicGrading,
     allowRevealWhenGradingSuppressed,
+    canEditCurrent,
     openEdit,
     hintsOpen,
     setHintsOpen,

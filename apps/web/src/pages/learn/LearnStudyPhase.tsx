@@ -113,6 +113,7 @@ export function LearnStudyPhase({
     reviewBlockSize,
     reviewEvents,
     currentCardIds,
+    canEditCurrent,
     openEdit,
     toggleFlagCurrent,
     buryCurrent,
@@ -263,6 +264,7 @@ export function LearnStudyPhase({
             setMenuOpen={setMenuOpen}
             current={phase === 'finished' ? null : current}
             isTouchMode={isTouchMode}
+            canEditCurrent={canEditCurrent}
             onEdit={closingMenu(openEdit)}
             onToggleFlag={closingMenu(toggleFlagCurrent)}
             onBury={closingMenu(buryCurrent)}
