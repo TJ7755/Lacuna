@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
 import {
   loadBindings,
   saveBindings,
@@ -6,12 +7,33 @@ import {
   keyMatches,
   formatBinding,
   DEFAULT_BINDINGS,
+  useShortcutBindings,
 } from './shortcutBindings';
 
 const STORAGE_KEY = 'lacuna-shortcut-bindings';
 
 beforeEach(() => {
   localStorage.clear();
+});
+
+describe('useShortcutBindings', () => {
+  it.each(['change', 'reset'] as const)('persists a %s before immediate unmount', (operation) => {
+    saveBindings({ ...DEFAULT_BINDINGS, reveal: 'Enter' });
+    const { result, unmount } = renderHook(() => useShortcutBindings());
+
+    act(() => {
+      if (operation === 'change') result.current.setBinding('reveal', 'q');
+      else result.current.reset();
+      unmount();
+    });
+
+    const reopened = renderHook(() => useShortcutBindings());
+    expect(reopened.result.current.bindings).toEqual({
+      ...DEFAULT_BINDINGS,
+      reveal: operation === 'change' ? 'q' : DEFAULT_BINDINGS.reveal,
+    });
+    reopened.unmount();
+  });
 });
 
 describe('loadBindings', () => {
