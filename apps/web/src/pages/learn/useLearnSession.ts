@@ -11,7 +11,6 @@ import { useAnswerInput } from '../../state/answerInput';
 import { useLeaveFlowWith } from '../../utils/editorOrigin';
 import type { LearnModeType } from './types';
 import { SessionRuntime, type SessionRuntimeOptions } from './sessionRuntime';
-export type { AnswerResult } from './answerSteps';
 export interface UseLearnSessionParams {
   enabled?: boolean;
   quietCardPractice?: boolean;
