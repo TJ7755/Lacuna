@@ -450,10 +450,9 @@ test('pull requests pass only plain changed web spec names to the browser smoke 
     git('add', '.');
     git('-c', 'user.name=CI', '-c', 'user.email=ci@example.invalid', 'commit', '-q', '-m', 'head');
     mkdirSync(join(directory, 'scripts'));
-    copyFileSync(
-      new URL('./ci-change-scope.mjs', import.meta.url),
-      join(directory, 'scripts/ci-change-scope.mjs'),
-    );
+    for (const file of ['ci-change-scope.mjs', 'check-catalogue.mjs']) {
+      copyFileSync(new URL(`./${file}`, import.meta.url), join(directory, 'scripts', file));
+    }
     const step = workflow.jobs.changes.steps.find((step) => step.id === 'scope');
     const output = join(directory, 'output');
     const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', step.run], {
