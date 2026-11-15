@@ -133,9 +133,5 @@ export function createSyncTriggers({
   };
 }
 
-export const {
-  publishUnlockedCredentials,
-  getUnlockedCredentials,
-  clearUnlockedCredentials,
-  installSyncTriggers,
-} = createSyncTriggers();
+export const { publishUnlockedCredentials, clearUnlockedCredentials, installSyncTriggers } =
+  createSyncTriggers();

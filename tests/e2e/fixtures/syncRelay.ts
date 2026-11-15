@@ -12,7 +12,7 @@ interface StoredSlot {
   revision: number;
 }
 
-export interface RelayExchange {
+interface RelayExchange {
   order: number;
   method: string;
   slot: RelaySlot | null;
