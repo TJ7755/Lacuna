@@ -314,3 +314,48 @@ it('does not advance or notify subscribers when an acknowledged answer arrives a
     session.dispose();
   }
 });
+
+it('publishes each introduction card together with its presentation serial', async () => {
+  const course = await createCourse('Presentation identity');
+  const lesson = await createLesson(course.id, 'Facts');
+  await createLessonCard(course.id, lesson.id, 'front_back', 'First', 'One');
+  await createLessonCard(course.id, lesson.id, 'front_back', 'Second', 'Two');
+  const session = new SessionRuntime({
+    ...sessionParams({
+      lessonId: lesson.id,
+      isSimpleMode: true,
+      mode: 'simple',
+      introduceNewCards: true,
+    }),
+    answerInputPreference: 'course',
+    leaveFlow: vi.fn(),
+  });
+  const presentations: { serial: number; cardId: string }[] = [];
+  const unsubscribe = session.subscribe(() => {
+    const snapshot = session.getSnapshot();
+    if (snapshot.current && snapshot.introductionPresentation.stage === 'familiarise') {
+      presentations.push({
+        serial: snapshot.introductionPresentation.serial,
+        cardId: snapshot.current.id,
+      });
+    }
+  });
+  session.start();
+  try {
+    await waitFor(() => expect(session.getSnapshot().current).not.toBeNull());
+    const { serial } = session.getSnapshot().introductionPresentation;
+    expect(session.getSnapshot().checkIntroduction(serial, true)).toBe(true);
+    session.getSnapshot().continueIntroduction(serial);
+    expect(new Set(presentations.map(({ cardId }) => cardId)).size).toBe(2);
+    const cardsBySerial = new Map<number, Set<string>>();
+    for (const { serial, cardId } of presentations) {
+      const cards = cardsBySerial.get(serial) ?? new Set<string>();
+      cards.add(cardId);
+      cardsBySerial.set(serial, cards);
+    }
+    expect([...cardsBySerial.values()].map((cards) => cards.size)).toEqual([1, 1]);
+  } finally {
+    unsubscribe();
+    session.dispose();
+  }
+});

@@ -106,7 +106,8 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
     const [anchor, setAnchor] = useState<HTMLElement>();
     const blocked = blocker?.state === 'blocked' || explicitAttempt;
     const anchored = explicitAttempt && Boolean(anchor?.isConnected);
-    useEffect(() => {
+    // Callers must restore focusable content before the closed prompt exposes it.
+    useLayoutEffect(() => {
       onOpenChange?.(blocked, anchored);
     }, [anchored, blocked, onOpenChange]);
     const trapRef = useFocusTrap(blocked, {

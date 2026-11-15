@@ -127,6 +127,7 @@ export class SessionRuntime {
     };
   };
   getSnapshot = () => (this.snapshot ??= this.readSnapshot());
+  // A card and its introduction serial must reach subscribers together.
   private serving = false;
   private publish = () => {
     this.snapshot = undefined;
