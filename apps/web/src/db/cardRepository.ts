@@ -160,34 +160,75 @@ export async function createCard(
   }
 }
 
-/**
- * Bulk-create cards from import drafts (front/back/type only). Returns the created
- * cards. createdAt is offset per row so the deck keeps the imported order.
- */
+type CardDraft = {
+  type: CardType;
+  front: string;
+  back: string;
+  tags?: string[];
+  payload?: ItemPayload;
+  answerMode?: AnswerMode;
+  requireCorrectSpelling?: boolean;
+  conceptId?: string;
+};
+type CardCreationScope = { courseId?: string | null; primaryLessonId?: string | null };
+
+export function canReverseCardDraft(
+  card: Pick<CardDraft, 'type' | 'front' | 'back' | 'payload'>,
+): boolean {
+  return card.type === 'front_back' && !!card.front.trim() && !!card.back.trim() && !card.payload;
+}
+
+/** Prepare an owned snapshot before opening a transaction. Only the returned writer can commit it. */
+export async function prepareCards(drafts: CardDraft[], reverse = false) {
+  const prepared = structuredClone(drafts);
+  if (prepared.some((draft) => draft.payload !== undefined && draft.payload !== null)) {
+    const { assertValidCardPayload: validate } = await import('../items/payloadValidation');
+    for (const draft of prepared) validate(draft.type, draft.payload);
+  }
+  return async (deckId: string, opts?: CardCreationScope): Promise<Card[]> => {
+    return db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
+      const originals = await commitCards(deckId, structuredClone(prepared), opts);
+      if (!reverse) return originals;
+      const reverses = await commitCards(
+        deckId,
+        originals.filter(canReverseCardDraft).map((card) => ({
+          type: 'front_back',
+          front: card.back,
+          back: card.front,
+          tags: card.tags,
+          answerMode: card.answerMode,
+          requireCorrectSpelling: card.requireCorrectSpelling,
+          conceptId: card.conceptId,
+        })),
+        opts,
+      );
+      return [...originals, ...reverses];
+    });
+  };
+}
+
+/** Bulk-create cards, offsetting createdAt per row to preserve imported order. */
 export async function createCards(
   deckId: string,
-  drafts: {
-    type: CardType;
-    front: string;
-    back: string;
-    tags?: string[];
-    payload?: ItemPayload;
-    answerMode?: AnswerMode;
-    requireCorrectSpelling?: boolean;
-    conceptId?: string;
-  }[],
-  opts?: { courseId?: string | null; primaryLessonId?: string | null; skipValidation?: boolean },
+  drafts: CardDraft[],
+  opts?: CardCreationScope,
+): Promise<Card[]> {
+  // Keep plain-card callers composable inside an existing transaction without an
+  // unnecessary asynchronous preparation step.
+  const snapshot = structuredClone(drafts);
+  if (!snapshot.some((draft) => draft.payload !== undefined && draft.payload !== null)) {
+    return commitCards(deckId, snapshot, opts);
+  }
+  const commit = await prepareCards(snapshot);
+  return commit(deckId, opts);
+}
+
+async function commitCards(
+  deckId: string,
+  drafts: CardDraft[],
+  opts?: CardCreationScope,
 ): Promise<Card[]> {
   try {
-    // Skip validation entirely when the caller has already validated before
-    // opening a transaction. Awaiting per-card validation inside a transaction
-    // can let IndexedDB commit prematurely (Dexie PrematureCommitError).
-    if (
-      !opts?.skipValidation &&
-      drafts.some((draft) => draft.payload !== undefined && draft.payload !== null)
-    ) {
-      for (const draft of drafts) await assertValidCardPayload(draft.type, draft.payload);
-    }
     return await db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
       const unit = await db.schedulingUnits.get(deckId);
       const courseId = opts?.courseId === undefined ? unit?.courseId : opts.courseId;

@@ -1,7 +1,7 @@
 import { db, makeId } from './schema';
 import { assertShareLessonPrerequisites } from './lessonPrerequisites';
 import { parseQuestionSetPracticeNode } from './questionSetPracticeNode';
-import { createCards } from './cardRepository';
+import { prepareCards } from './cardRepository';
 import { createCourse } from './courseRepository';
 import {
   ensureCourseBankBackingDeck,
@@ -24,7 +24,6 @@ import { updateCourseAssessment } from './assessmentRepository';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
 import { conceptIdForSequenceItem, conceptIdForRegion } from '../questions/generatedConceptIds';
 import { planSharedSequences, planSharedOcclusions } from './shareCourseGeneratedPlanning';
-import { assertValidCardPayload } from '../items/payloadValidation';
 import { emptyQuestionSchedule } from '../questions/scheduler';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { importSharedQuestionSets } from '../questions/questionSetShare';
@@ -37,9 +36,6 @@ function unpackCard(sc: ShareCard): ParsedCard[] {
     ...(sc.am ? { answerMode: sc.am } : {}),
     ...(sc.rs !== undefined ? { requireCorrectSpelling: sc.rs } : {}),
   };
-  if (sc.p !== undefined) {
-    assertValidCardPayload(sc.k === 1 ? 'cloze' : 'front_back', sc.p);
-  }
   const payload = sc.p !== undefined ? { payload: sc.p as ItemPayload } : {};
   if (sc.k === 1) return [{ type: 'cloze', front: sc.f, back: '', ...attributes, ...payload }];
   if (sc.k === 2) {
@@ -95,6 +91,76 @@ async function importCourseSharePayload(
   let cardCount = 0;
   let importedCourseId: string | null = null;
 
+  // Pre-compute fresh ids for every incoming sequence and sequence item before any
+  // lesson card is created, so a shared card's `si` reference (which is set while
+  // walking `shareLesson.cards` below) can be remapped to the new item id straight
+  // away. The sequence rows themselves are only inserted once every lesson (hence
+  // lessonIds, needed for `primaryLessonId`) exists — see the loop after exams.
+  const sequenceIdMap = new Map<string, string>();
+  const itemIdMap = new Map<string, string>();
+  const generatedConceptIdMap = new Map<string, string>();
+  for (const shareSeq of payload.sequences ?? []) {
+    const sequenceId = makeId();
+    sequenceIdMap.set(shareSeq.id, sequenceId);
+    for (const item of shareSeq.items) {
+      const itemId = makeId();
+      itemIdMap.set(item.id, itemId);
+      generatedConceptIdMap.set(
+        conceptIdForSequenceItem(shareSeq.id, item.id),
+        conceptIdForSequenceItem(sequenceId, itemId),
+      );
+    }
+  }
+  const remapSequenceItemId = (si: string): string | undefined => {
+    const { baseId, isLabel } = splitSequenceItemId(si);
+    const mapped = itemIdMap.get(baseId);
+    if (!mapped) return undefined;
+    return isLabel ? `${mapped}${LABEL_CARD_SUFFIX}` : mapped;
+  };
+
+  // Same pre-computation for occlusion regions: a shared card's `oc` reference is
+  // resolved while walking the lessons below, and `pairedRegionId` points at another
+  // region in the same occlusion, so every region id must be mapped up front.
+  const occlusionIdMap = new Map<string, string>();
+  const regionIdMap = new Map<string, string>();
+  for (const shareOcc of payload.occlusions ?? []) {
+    const occlusionId = makeId();
+    occlusionIdMap.set(shareOcc.id, occlusionId);
+    for (const region of shareOcc.regions) {
+      const regionId = makeId();
+      regionIdMap.set(region.id, regionId);
+      generatedConceptIdMap.set(
+        conceptIdForRegion(shareOcc.id, region.id),
+        conceptIdForRegion(occlusionId, regionId),
+      );
+    }
+  }
+
+  const conceptIdMap = new Map(
+    payload.concepts.map((concept) => [
+      concept.id,
+      generatedConceptIdMap.get(concept.id) ?? makeId(),
+    ]),
+  );
+  const prepareSharedCards = async (cards: ShareCard[]) => {
+    const drafts = cards.flatMap((shareCard) =>
+      unpackCard(shareCard).map((draft) => ({
+        draft: { ...draft, conceptId: conceptIdMap.get(shareCard.co ?? '') },
+        sequenceItemId: shareCard.si,
+        occlusionRegionId: shareCard.oc,
+        sourceCardId: shareCard.id,
+      })),
+    );
+    if (drafts.some(({ draft }) => !draft.conceptId)) {
+      throw new Error('A shared Card references a missing Concept.');
+    }
+    return { drafts, commit: await prepareCards(drafts.map(({ draft }) => draft)) };
+  };
+  const preparedLessons = await Promise.all(
+    payload.lessons.map((lesson) => prepareSharedCards(lesson.cards)),
+  );
+  const preparedBank = await prepareSharedCards(payload.bankCards ?? []);
+
   await db.transaction(
     'rw',
     [
@@ -118,51 +184,6 @@ async function importCourseSharePayload(
       db.tombstones,
     ],
     async () => {
-      // Pre-compute fresh ids for every incoming sequence and sequence item before any
-      // lesson card is created, so a shared card's `si` reference (which is set while
-      // walking `shareLesson.cards` below) can be remapped to the new item id straight
-      // away. The sequence rows themselves are only inserted once every lesson (hence
-      // lessonIds, needed for `primaryLessonId`) exists — see the loop after exams.
-      const sequenceIdMap = new Map<string, string>();
-      const itemIdMap = new Map<string, string>();
-      const generatedConceptIdMap = new Map<string, string>();
-      for (const shareSeq of payload.sequences ?? []) {
-        const sequenceId = makeId();
-        sequenceIdMap.set(shareSeq.id, sequenceId);
-        for (const item of shareSeq.items) {
-          const itemId = makeId();
-          itemIdMap.set(item.id, itemId);
-          generatedConceptIdMap.set(
-            conceptIdForSequenceItem(shareSeq.id, item.id),
-            conceptIdForSequenceItem(sequenceId, itemId),
-          );
-        }
-      }
-      const remapSequenceItemId = (si: string): string | undefined => {
-        const { baseId, isLabel } = splitSequenceItemId(si);
-        const mapped = itemIdMap.get(baseId);
-        if (!mapped) return undefined;
-        return isLabel ? `${mapped}${LABEL_CARD_SUFFIX}` : mapped;
-      };
-
-      // Same pre-computation for occlusion regions: a shared card's `oc` reference is
-      // resolved while walking the lessons below, and `pairedRegionId` points at another
-      // region in the same occlusion, so every region id must be mapped up front.
-      const occlusionIdMap = new Map<string, string>();
-      const regionIdMap = new Map<string, string>();
-      for (const shareOcc of payload.occlusions ?? []) {
-        const occlusionId = makeId();
-        occlusionIdMap.set(shareOcc.id, occlusionId);
-        for (const region of shareOcc.regions) {
-          const regionId = makeId();
-          regionIdMap.set(region.id, regionId);
-          generatedConceptIdMap.set(
-            conceptIdForRegion(shareOcc.id, region.id),
-            conceptIdForRegion(occlusionId, regionId),
-          );
-        }
-      }
-
       const course = await createCourse(payload.course.n || 'Shared course', {
         description: payload.course.d ?? '',
         ...(typeof payload.by === 'string' ? { creator: payload.by } : {}),
@@ -200,14 +221,12 @@ async function importCourseSharePayload(
       importedCourseId = course.id;
 
       const importedAt = Date.now();
-      const conceptIdMap = new Map<string, string>();
       {
         const importedConcepts: Concept[] = payload.concepts.map((concept, index) => {
           // Keep native generator identities reproducible after remapping, including
           // when every Card for an item/region is removed and later regenerated.
           // All presentations and Question relationships use this same per-Concept map.
-          const id = generatedConceptIdMap.get(concept.id) ?? makeId();
-          conceptIdMap.set(concept.id, id);
+          const id = conceptIdMap.get(concept.id)!;
           return {
             id,
             scope: 'course',
@@ -264,29 +283,11 @@ async function importCourseSharePayload(
       if (importedNotes.length > 0) await db.notes.bulkAdd(importedNotes);
 
       for (let lessonIndex = 0; lessonIndex < payload.lessons.length; lessonIndex++) {
-        const shareLesson = payload.lessons[lessonIndex];
         const lessonId = lessonIds[lessonIndex];
-        const drafts = shareLesson.cards.flatMap((shareCard) =>
-          unpackCard(shareCard).map((draft) => ({
-            draft: {
-              ...draft,
-              conceptId: conceptIdMap.get(shareCard.co ?? ''),
-            },
-            sequenceItemId: shareCard.si,
-            occlusionRegionId: shareCard.oc,
-            sourceCardId: shareCard.id,
-          })),
-        );
-        if (drafts.some(({ draft }) => !draft.conceptId)) {
-          throw new Error('A shared Card references a missing Concept.');
-        }
+        const { drafts, commit } = preparedLessons[lessonIndex];
         if (drafts.length === 0) continue;
         const deckId = await ensureLessonBackingDeck(course.id, lessonId);
-        const created = await createCards(
-          deckId,
-          drafts.map(({ draft }) => draft),
-          { courseId: course.id, primaryLessonId: lessonId },
-        );
+        const created = await commit(deckId, { courseId: course.id, primaryLessonId: lessonId });
         const generatedCards = created.flatMap<Card>((card, index) => {
           const sourceCardId = drafts[index].sourceCardId;
           if (sourceCardId && !cardIdMap.has(sourceCardId)) cardIdMap.set(sourceCardId, card.id);
@@ -305,25 +306,13 @@ async function importCourseSharePayload(
         cardCount += created.length;
       }
 
-      const bankDrafts = (payload.bankCards ?? []).flatMap((shareCard) =>
-        unpackCard(shareCard).map((draft) => ({
-          draft: {
-            ...draft,
-            conceptId: conceptIdMap.get(shareCard.co ?? ''),
-          },
-          sourceCardId: shareCard.id,
-        })),
-      );
-      if (bankDrafts.some(({ draft }) => !draft.conceptId)) {
-        throw new Error('A shared Card references a missing Concept.');
-      }
+      const { drafts: bankDrafts, commit: commitBank } = preparedBank;
       if (bankDrafts.length > 0) {
         const bankDeckId = await ensureCourseBankBackingDeck(course.id);
-        const created = await createCards(
-          bankDeckId,
-          bankDrafts.map(({ draft }) => draft),
-          { courseId: course.id, primaryLessonId: null },
-        );
+        const created = await commitBank(bankDeckId, {
+          courseId: course.id,
+          primaryLessonId: null,
+        });
         created.forEach((card, index) => {
           const sourceCardId = bankDrafts[index].sourceCardId;
           if (sourceCardId && !cardIdMap.has(sourceCardId)) cardIdMap.set(sourceCardId, card.id);

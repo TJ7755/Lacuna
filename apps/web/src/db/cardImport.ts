@@ -1,11 +1,11 @@
 import { db } from './schema';
-import { createCards } from './cardRepository';
+import { prepareCards, canReverseCardDraft } from './cardRepository';
 import { createCourse } from './courseRepository';
 import { createLesson } from './lessonRepository';
 import { importApkgResult, type ApkgImportResult } from './apkgImport';
 import type { ParsedCard } from './import';
 import type { Lesson } from '@lacuna/core/db/types';
-import { canEditLessons } from '../course/lessonViewMode';
+import { requireEditableImportCourse, requireEditableImportUnit } from './cardImportDestination';
 
 export const MAX_IMPORT_CARDS = 5000;
 export const MAX_IMPORT_CHARS = 500_000;
@@ -17,9 +17,7 @@ export type CardImportDestination =
   | { kind: 'lesson'; title: string; courseId: string }
   | { kind: 'existing'; schedulingUnitId: string };
 
-export function canReverseImportCard(card: ParsedCard): boolean {
-  return card.type === 'front_back' && !!card.front.trim() && !!card.back.trim() && !card.payload;
-}
+export const canReverseImportCard = canReverseCardDraft;
 
 export function importCardCount(content: CardImportContent): number {
   return content.kind === 'apkg'
@@ -28,51 +26,10 @@ export function importCardCount(content: CardImportContent): number {
         (content.reverse ? content.cards.filter(canReverseImportCard).length : 0);
 }
 
-async function validateDrafts(cards: ParsedCard[]) {
-  if (!cards.some((card) => card.payload !== undefined && card.payload !== null)) return;
-  const { assertValidCardPayload } = await import('../items/payloadValidation');
-  for (const card of cards) {
-    if (card.payload !== undefined && card.payload !== null)
-      assertValidCardPayload(card.type, card.payload);
-  }
-}
-
-async function requireEditableCourse(courseId: string) {
-  const course = await db.courses.get(courseId);
-  if (!course) throw new Error('Import course no longer exists.');
-  if (!canEditLessons(course)) throw new Error('This published course is locked.');
-  return course;
-}
-
 /** Extend bulk creation with reverse presentations, preserving each pair's Concept. */
-export async function createImportedCards(
-  unitId: string,
-  cards: ParsedCard[],
-  reverse = false,
-  skipValidation = false,
-) {
-  if (!skipValidation) await validateDrafts(cards);
-  return db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
-    // Validation already ran before the transaction, so skip it here to keep
-    // the transaction free of non-database awaits.
-    const originals = await createCards(unitId, cards, { skipValidation: true });
-    const reverses = reverse
-      ? await createCards(
-          unitId,
-          originals.filter(canReverseImportCard).map((card) => ({
-            type: 'front_back' as const,
-            front: card.back,
-            back: card.front,
-            tags: card.tags,
-            answerMode: card.answerMode,
-            requireCorrectSpelling: card.requireCorrectSpelling,
-            conceptId: card.conceptId,
-          })),
-          { skipValidation: true },
-        )
-      : [];
-    return [...originals, ...reverses];
-  });
+export async function createImportedCards(unitId: string, cards: ParsedCard[], reverse = false) {
+  const commit = await prepareCards(cards, reverse);
+  return commit(unitId);
 }
 
 /** New destinations and card records commit together. Media is ingested by the APKG importer first. */
@@ -86,14 +43,14 @@ export async function importCardsToDestination(
   if (destination.kind !== 'existing' && !destination.title.trim())
     throw new Error('Enter a title.');
   // A first dynamic validator load can outlive a Dexie transaction.
-  if (content.kind === 'text') await validateDrafts(content.cards);
+  const commit =
+    content.kind === 'text' ? await prepareCards(content.cards, content.reverse) : undefined;
   let lesson: Lesson | undefined;
   let courseId = '';
   async function resolveTarget() {
     if (destination.kind === 'existing') {
-      const unit = await db.schedulingUnits.get(destination.schedulingUnitId);
-      if (!unit?.courseId) throw new Error('Import destination no longer exists.');
-      courseId = (await requireEditableCourse(unit.courseId)).id;
+      const unit = await requireEditableImportUnit(destination.schedulingUnitId);
+      courseId = unit.courseId!;
       return unit.id;
     }
     if (destination.kind === 'course') {
@@ -101,7 +58,7 @@ export async function importCardsToDestination(
       courseId = course.id;
       lesson = await createLesson(course.id, 'Lesson 1');
     } else {
-      const course = await requireEditableCourse(destination.courseId);
+      const course = await requireEditableImportCourse(destination.courseId);
       courseId = course.id;
       lesson = await createLesson(course.id, destination.title.trim());
     }
@@ -124,9 +81,7 @@ export async function importCardsToDestination(
       ],
       async () => {
         const target = await resolveTarget();
-        // Drafts were validated before the transaction; skipping re-validation
-        // keeps non-database work out of the transaction scope.
-        await createImportedCards(target, content.cards, content.reverse, true);
+        await commit!(target);
       },
     );
   }

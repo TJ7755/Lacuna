@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import type * as MotionReact from 'motion/react';
 import type * as MarkdownEditorModule from '../components/markdown/MarkdownEditor';
+import type * as CardRepository from '../db/cardRepository';
 import { CardEditor } from './CardEditor';
 import type {
   Card,
@@ -71,7 +72,8 @@ vi.mock('../components/ui/Toast', () => ({
   useToast: () => ({ notify }),
 }));
 
-vi.mock('../db/cardRepository', () => ({
+vi.mock('../db/cardRepository', async (original) => ({
+  ...(await original<typeof CardRepository>()),
   checkDuplicate: (...args: unknown[]) => checkDuplicate(...args),
   createLessonCard: vi.fn(),
   createLessonCardWithReverse: vi.fn(),

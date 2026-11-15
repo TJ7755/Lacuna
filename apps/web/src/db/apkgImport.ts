@@ -2,6 +2,8 @@
 import type { Card, MediaAsset } from '@lacuna/core/db/types';
 import { guessMimeType, replaceMediaRefs, type ImportedMediaRef } from './apkgMedia';
 import { db } from './schema';
+import { prepareCards } from './cardRepository';
+import { requireEditableImportUnit } from './cardImportDestination';
 import { projectCardsForStorage, reviewHistoryEntriesForCard } from '@lacuna/core/db/reviewHistory';
 import { assertApkgSize, type ApkgImportResult, type ApkgParseOptions } from './apkgTypes';
 import sqlWasmUrl from '../assets/sql-wasm.wasm?url';
@@ -91,15 +93,7 @@ export async function importApkgResult(
   result: ApkgImportResult,
   targetSchedulingUnitId?: string | (() => Promise<string>),
 ): Promise<{ courseId: string; cards: Card[] }> {
-  const { createCourse, createCards } = await import('./repository');
-
-  let targetUnit =
-    typeof targetSchedulingUnitId === 'string'
-      ? await db.schedulingUnits.get(targetSchedulingUnitId)
-      : undefined;
-  if (typeof targetSchedulingUnitId === 'string' && (!targetUnit || !targetUnit.courseId)) {
-    throw new Error('Target scheduling unit not found.');
-  }
+  const { createCourse } = await import('./repository');
 
   // Images are decoded and audio is hashed outside the write transaction: Dexie
   // commits the surrounding transaction when it sees an out-of-transaction
@@ -133,7 +127,7 @@ export async function importApkgResult(
   // atomically. All media bytes are already prepared above, so the transaction
   // body performs only synchronous puts: a later card-write failure rolls the
   // course, assets, and cards back together.
-  let courseId = targetUnit?.courseId;
+  let courseId: string | null | undefined;
   const mediaHashMap = new Map<string, ImportedMediaRef>();
   for (const [filename, staged] of mediaRefs) {
     mediaHashMap.set(filename, {
@@ -141,6 +135,14 @@ export async function importApkgResult(
       kind: staged.kind,
     });
   }
+  const commitCards = await prepareCards(
+    result.cards.map((card) => ({
+      type: card.type,
+      front: replaceMediaRefs(card.front, mediaHashMap),
+      back: replaceMediaRefs(card.back, mediaHashMap),
+      tags: card.tags,
+    })),
+  );
   await db.transaction(
     'rw',
     [
@@ -159,30 +161,24 @@ export async function importApkgResult(
       if (mediaRefs.size > 0) {
         await db.assets.bulkPut([...mediaRefs.values()].map((staged) => staged.asset));
       }
-      if (typeof targetSchedulingUnitId === 'function') {
-        targetUnit = await db.schedulingUnits.get(await targetSchedulingUnitId());
-        if (!targetUnit?.courseId) throw new Error('Target scheduling unit not found.');
-        courseId = targetUnit.courseId;
-      }
-
-      if (!targetUnit) {
+      const targetId =
+        typeof targetSchedulingUnitId === 'function'
+          ? await targetSchedulingUnitId()
+          : targetSchedulingUnitId;
+      let targetUnit;
+      if (targetId !== undefined) {
+        targetUnit = await requireEditableImportUnit(targetId);
+      } else {
         const course = await createCourse(result.deckName);
-        courseId = course.id;
         targetUnit = await db.schedulingUnits.get(course.id);
       }
+      courseId = targetUnit?.courseId;
       if (!courseId || !targetUnit) throw new Error('The import Course could not be created.');
-
-      const cards = result.cards.map((card) => ({ ...card, deckId: targetUnit!.id }));
-      const created = await createCards(
-        targetUnit.id,
-        cards.map((c) => ({
-          type: c.type,
-          front: replaceMediaRefs(c.front, mediaHashMap),
-          back: replaceMediaRefs(c.back, mediaHashMap),
-          tags: c.tags,
-        })),
-        { courseId, primaryLessonId: targetUnit.lessonId },
-      );
+      const cards = result.cards;
+      const created = await commitCards(targetUnit.id, {
+        courseId,
+        primaryLessonId: targetUnit.lessonId,
+      });
 
       scheduledCards = created.map((card, i) => {
         const draft = cards[i];

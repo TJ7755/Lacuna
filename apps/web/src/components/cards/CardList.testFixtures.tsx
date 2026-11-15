@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { forwardRef } from 'react';
 import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
+import type * as CardRepository from '../../db/cardRepository';
 import { courseCardListContext } from './cardListContext';
 export const mockNotify = vi.fn();
 const dataHooks = vi.hoisted(() => ({ useCard: vi.fn() }));
@@ -23,7 +24,8 @@ vi.mock('../../state/inputMode', () => ({
   useIsTouchMode: () => false,
 }));
 
-vi.mock('../../db/cardRepository', () => ({
+vi.mock('../../db/cardRepository', async (original) => ({
+  ...(await original<typeof CardRepository>()),
   addTagToCards: vi.fn(),
   assignCardsToLesson: vi.fn(),
   createCards: vi.fn(),

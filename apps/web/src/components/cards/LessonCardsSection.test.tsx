@@ -5,6 +5,7 @@ import { LazyMotion, domAnimation } from 'motion/react';
 import { MemoryRouter } from 'react-router-dom';
 import { LessonCardsSection } from './LessonCardsSection';
 import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
+import type * as CardRepository from '../../db/cardRepository';
 
 let linkedCardIds = new Set<string>();
 const mockUnlink = vi.fn();
@@ -24,7 +25,8 @@ vi.mock('../../db/schema', () => ({
   },
 }));
 
-vi.mock('../../db/cardRepository', () => ({
+vi.mock('../../db/cardRepository', async (original) => ({
+  ...(await original<typeof CardRepository>()),
   restoreCards: vi.fn(),
 }));
 vi.mock('../../db/lessonRepository', () => ({
