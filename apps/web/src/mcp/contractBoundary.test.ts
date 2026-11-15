@@ -62,7 +62,14 @@ async function bundleMetafile(entryPoint: string): Promise<Metafile> {
 }
 
 describe('Electron MCP contract boundary', () => {
-  it('preserves the reviewed versioned wire surface', () => {
+  it('preserves the reviewed versioned wire surface', async () => {
+    // Regenerate deliberately with: bun scripts/update-mcp-contract-surface.ts
+    const reviewedSurface = JSON.parse(
+      await readFile(
+        path.join(PROJECT_ROOT, 'apps/web/src/mcp/fixtures/tool-surface.json'),
+        'utf8',
+      ),
+    );
     const serialisedSurface = JSON.stringify(
       TOOL_CONTRACT_REGISTRY.map(({ name, description, requiredScope, inputSchema }) => ({
         name,
@@ -71,6 +78,8 @@ describe('Electron MCP contract boundary', () => {
         inputSchema: z.toJSONSchema(inputSchema),
       })),
     );
+
+    expect(JSON.parse(serialisedSurface)).toEqual(reviewedSurface);
 
     expect({
       version: MCP_TOOL_SURFACE_VERSION,
@@ -284,6 +293,37 @@ describe('Electron MCP contract boundary', () => {
         name,
       ).toEqual([]);
     }
+  });
+
+  it.each([
+    'ai/protocol.ts',
+    'ai/relay.ts',
+    'mcp/contracts/index.ts',
+    'mcp/companion.ts',
+    'mcp/ipcValidation.ts',
+  ])('keeps protocol/%s independent of application and core implementations', async (entry) => {
+    const metafile = await bundleMetafile(`packages/protocol/src/${entry}`);
+    expect(
+      Object.keys(metafile.inputs)
+        .map(normalise)
+        .filter((input) => input.startsWith('apps/') || input.startsWith('packages/core/')),
+    ).toEqual([]);
+  });
+
+  it('keeps the sandboxed preload dependent only on Electron at runtime', async () => {
+    const result = await build({
+      entryPoints: [path.join(PROJECT_ROOT, 'apps/desktop/preload.ts')],
+      platform: 'node',
+      format: 'cjs',
+      target: 'node22',
+      write: false,
+      metafile: true,
+      logLevel: 'silent',
+    });
+    expect(Object.keys(result.metafile.inputs).map(normalise)).toEqual(['apps/desktop/preload.ts']);
+    expect(Object.values(result.metafile.outputs).flatMap((output) => output.imports)).toEqual([
+      { path: 'electron', kind: 'require-call', external: true },
+    ]);
   });
 
   it('keeps renderer-only packages out of Electron runtime dependencies', async () => {

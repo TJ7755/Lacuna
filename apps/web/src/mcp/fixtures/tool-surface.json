@@ -1,0 +1,2777 @@
+[
+  {
+    "name": "lacuna.list_tools",
+    "description": "Search the Lacuna domain-tool catalogue, including descriptions, input schemas and permission levels. Use this before guessing a tool name.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "cursor": {
+          "type": "string",
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.list_courses",
+    "description": "List every course in the local Lacuna database, ordered by creation time.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.find_course",
+    "description": "Resolve a Course (sometimes called a deck) by id, exact name or partial name. Returns compact choices rather than full scheduling records.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Course id, exact name or partial name."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      },
+      "required": ["query"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.get_course",
+    "description": "Fetch a single course by id.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course to query."
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.list_course_assessments",
+    "description": "List a course's assessments with full persisted semantics and resolved scope.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course to query."
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.get_course_assessment",
+    "description": "Fetch one assessment with its exact resolved lessons, cards and validation state.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "assessmentId": {
+          "type": "string",
+          "description": "The id of the assessment to fetch."
+        }
+      },
+      "required": ["assessmentId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.list_lessons",
+    "description": "List a course's lessons, ordered by their position on the course path.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course to query."
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.list_cards",
+    "description": "List cards belonging to a course, or scoped to a single lesson within it.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course to query."
+        },
+        "lessonId": {
+          "description": "If given, list only the cards taught in this lesson (primary plus linked cards). Otherwise list every card belonging to the course.",
+          "type": "string"
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.search_cards",
+    "description": "Resolve one Course by name or id, then return compact, cursor-paginated Card content without FSRS state or review history.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "course": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Course id, exact name or unambiguous partial name."
+        },
+        "query": {
+          "description": "Optional text matched against Card content, tags and Lesson name.",
+          "type": "string",
+          "maxLength": 1000
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "cursor": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "includePayload": {
+          "description": "Include structured numeric or working payloads. Off by default.",
+          "type": "boolean"
+        }
+      },
+      "required": ["course"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.get_card",
+    "description": "Fetch a single card by id.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "cardId": {
+          "type": "string",
+          "description": "The id of the card to fetch."
+        }
+      },
+      "required": ["cardId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.list_due_cards",
+    "description": "List available scheduled reviews due now for a course, ranked by its objective. Excludes new and future cards.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course to query."
+        },
+        "limit": {
+          "description": "Maximum number of results to return. Omit for no limit.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.get_weak_cards",
+    "description": "A course's weakest available cards: leeches first, then every other card ascending by objective score, so the lowest-scoring, least-secured cards surface first.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course to query."
+        },
+        "limit": {
+          "description": "Maximum number of results to return. Omit for no limit.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.get_course_stats",
+    "description": "Bundled stats for a course: nearest-exam/mastery/due-count header stats plus the study time forecast, both scoped to the course.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course to query."
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.list_sequences",
+    "description": "List a course's sequences, ordered by creation time.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course to query."
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.get_sequence",
+    "description": "Fetch a single sequence by id.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "sequenceId": {
+          "type": "string",
+          "description": "The id of the sequence to fetch."
+        }
+      },
+      "required": ["sequenceId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.list_occlusions",
+    "description": "List a course's image occlusions, ordered by creation time.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course whose occlusions to list."
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.get_occlusion",
+    "description": "Fetch a single image occlusion by id, including every region and its fractional coordinates.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "occlusionId": {
+          "type": "string",
+          "description": "The id of the occlusion to fetch."
+        }
+      },
+      "required": ["occlusionId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.list_notes",
+    "description": "List a lesson's notes, ordered by their position within the lesson.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "lessonId": {
+          "type": "string",
+          "description": "The id of the lesson whose notes to list."
+        }
+      },
+      "required": ["lessonId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.diagnostics_summary",
+    "description": "Record counts for a diagnostic summary: whole-database counts, or counts scoped to a single course when courseId is given.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "description": "If given, scope the record counts to this course. Otherwise return whole-database counts.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.create_course",
+    "description": "Create a new course with sensible scheduling defaults (exam date, FSRS parameters, unlock mode).",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The course name."
+        },
+        "description": {
+          "description": "Optional free-text description.",
+          "type": "string"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.update_course",
+    "description": "Update a course's name, description, and/or primary exam date.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course."
+        },
+        "name": {
+          "description": "New course name.",
+          "type": "string"
+        },
+        "description": {
+          "description": "New free-text description.",
+          "type": "string"
+        },
+        "examDate": {
+          "description": "New primary exam date/time, as an epoch millisecond value in UTC.",
+          "type": "number"
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.create_lesson",
+    "description": "Create a new lesson at the end of a course's path.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course."
+        },
+        "name": {
+          "type": "string",
+          "description": "The lesson name."
+        },
+        "description": {
+          "description": "Optional free-text description.",
+          "type": "string"
+        }
+      },
+      "required": ["courseId", "name"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.update_lesson",
+    "description": "Update a lesson's name and/or description.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "lessonId": {
+          "type": "string",
+          "description": "The id of the lesson."
+        },
+        "name": {
+          "description": "New lesson name.",
+          "type": "string"
+        },
+        "description": {
+          "description": "New free-text description.",
+          "type": "string"
+        }
+      },
+      "required": ["lessonId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.create_note",
+    "description": "Create a new Markdown note at the end of a lesson's notes.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "lessonId": {
+          "type": "string",
+          "description": "The id of the lesson."
+        },
+        "name": {
+          "type": "string",
+          "description": "The note name."
+        },
+        "content": {
+          "description": "Rich Markdown source. Defaults to empty.",
+          "type": "string"
+        }
+      },
+      "required": ["lessonId", "name"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.update_note",
+    "description": "Update a note's name and/or Markdown content.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "noteId": {
+          "type": "string",
+          "description": "The id of the note to update."
+        },
+        "name": {
+          "description": "New note name.",
+          "type": "string"
+        },
+        "content": {
+          "description": "New Markdown source.",
+          "type": "string"
+        }
+      },
+      "required": ["noteId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.create_card",
+    "description": "Create a new card, either unassigned in a course's question bank or assigned to a lesson when lessonId is given.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course."
+        },
+        "lessonId": {
+          "description": "If given, create the card in this lesson. Otherwise create it unassigned, in the course question bank.",
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["front_back", "cloze", "basic_reversed"],
+          "description": "The card type."
+        },
+        "front": {
+          "type": "string",
+          "description": "Markdown source for the question/prompt side."
+        },
+        "back": {
+          "type": "string",
+          "description": "Markdown source for the answer side. Unused (empty) for cloze cards."
+        },
+        "tags": {
+          "description": "Free-text tags. Defaults to none.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["courseId", "type", "front", "back"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.update_card",
+    "description": "Update a card's content: front, back, tags, and/or flagged state. Never touches FSRS scheduling fields (state, stability, difficulty, due) — those are the study engine's exclusive write path. Refuses cards generated by a sequence or an occlusion; edit those via their owning sequence (lacuna.update_sequence) or occlusion.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "cardId": {
+          "type": "string",
+          "description": "The id of the card to update."
+        },
+        "front": {
+          "description": "New Markdown source for the question/prompt side.",
+          "type": "string"
+        },
+        "back": {
+          "description": "New Markdown source for the answer side.",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Replacement set of free-text tags.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "flagged": {
+          "description": "New flagged state, for quick filtering/follow-up.",
+          "type": "boolean"
+        }
+      },
+      "required": ["cardId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.link_card_to_lesson",
+    "description": "Display-link an existing card into an additional lesson, alongside its primary lesson. Idempotent: linking an already-linked card is a no-op that returns the existing link.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "lessonId": {
+          "type": "string",
+          "description": "The id of the lesson."
+        },
+        "cardId": {
+          "type": "string",
+          "description": "The id of the card to link."
+        }
+      },
+      "required": ["lessonId", "cardId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.create_sequence",
+    "description": "Create a new overlapping-cloze sequence and, in the same transaction, every card it generates.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course."
+        },
+        "lessonId": {
+          "description": "If given, scope the sequence (and its generated cards) to this lesson. Otherwise the course question bank.",
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The sequence name."
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Stable id for this item — anchors the card(s) generated from it across edits."
+              },
+              "value": {
+                "type": "string",
+                "description": "Markdown source for the recallable unit."
+              },
+              "label": {
+                "description": "Optional display key (e.g. \"11\" for Sodium).",
+                "type": "string"
+              },
+              "chunkIndex": {
+                "description": "Membership of a named chunk (see chunkLabels).",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "speaker": {
+                "description": "`lines` mode only: who speaks this line.",
+                "type": "string"
+              }
+            },
+            "required": ["id", "value"],
+            "additionalProperties": false
+          },
+          "description": "Ordered recallable units the sequence generates cards from."
+        },
+        "cueWindow": {
+          "description": "How many preceding items are shown as cue. Defaults to 2.",
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "mode": {
+          "description": "`list` (default): every item generates a positional recall card. `lines`: script mode, see mySpeaker.",
+          "type": "string",
+          "enum": ["list", "lines"]
+        },
+        "mySpeaker": {
+          "description": "`lines` mode only: the speaker whose lines are the recall target.",
+          "type": "string"
+        },
+        "recitationChunkSize": {
+          "description": "Lines mode only: lines per chunk in cumulative recitation. Omit to chunk by stanza, or by 4 lines.",
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 8
+        }
+      },
+      "required": ["courseId", "name", "items"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.update_sequence",
+    "description": "Update a sequence's name, items, and/or cue window, regenerating its cards to match. Card content is diffed and updated in place where possible, so existing FSRS memory state survives content-only regeneration.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "sequenceId": {
+          "type": "string",
+          "description": "The id of the sequence to update."
+        },
+        "name": {
+          "description": "New sequence name.",
+          "type": "string"
+        },
+        "items": {
+          "description": "Replacement ordered list of recallable units.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Stable id for this item — anchors the card(s) generated from it across edits."
+              },
+              "value": {
+                "type": "string",
+                "description": "Markdown source for the recallable unit."
+              },
+              "label": {
+                "description": "Optional display key (e.g. \"11\" for Sodium).",
+                "type": "string"
+              },
+              "chunkIndex": {
+                "description": "Membership of a named chunk (see chunkLabels).",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "speaker": {
+                "description": "`lines` mode only: who speaks this line.",
+                "type": "string"
+              }
+            },
+            "required": ["id", "value"],
+            "additionalProperties": false
+          }
+        },
+        "cueWindow": {
+          "description": "New cue window.",
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "recitationChunkSize": {
+          "description": "Lines mode only: lines per chunk in cumulative recitation. Omit to chunk by stanza, or by 4 lines.",
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 8
+        }
+      },
+      "required": ["sequenceId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.create_occlusion",
+    "description": "Create an image occlusion over an existing diagram and, in the same transaction, one card per region.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course."
+        },
+        "lessonId": {
+          "description": "If given, scope the occlusion (and its generated cards) to this lesson. Otherwise the course question bank.",
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The occlusion name, used in each generated card's text fallback."
+        },
+        "assetHash": {
+          "type": "string",
+          "description": "Hash of a diagram already stored in this install (see lacuna.get_occlusion)."
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Stable id for this region — anchors the card generated from it across edits."
+              },
+              "role": {
+                "type": "string",
+                "enum": ["label", "feature"],
+                "description": "`label`: masks text printed on the diagram, revealed by uncovering it. `feature`: points at part of the drawing and is answered by its paired label region."
+              },
+              "shape": {
+                "type": "string",
+                "const": "rectangle",
+                "description": "Rectangles only in this version."
+              },
+              "x": {
+                "type": "number",
+                "description": "Left edge as a fraction of image width, 0..1."
+              },
+              "y": {
+                "type": "number",
+                "description": "Top edge as a fraction of image height, 0..1."
+              },
+              "w": {
+                "type": "number",
+                "description": "Width as a fraction of image width, 0..1."
+              },
+              "h": {
+                "type": "number",
+                "description": "Height as a fraction of image height, 0..1."
+              },
+              "answerText": {
+                "description": "Required for typed mode and for an unpaired feature region.",
+                "type": "string"
+              },
+              "pairedRegionId": {
+                "description": "`feature` regions only: the label region that answers this one.",
+                "type": "string"
+              },
+              "backNote": {
+                "description": "Optional extra shown below the image on the back.",
+                "type": "string"
+              }
+            },
+            "required": ["id", "role", "shape", "x", "y", "w", "h"],
+            "additionalProperties": false
+          },
+          "description": "The regions to generate one card each from. Every label region is masked on every front."
+        }
+      },
+      "required": ["courseId", "name", "assetHash", "regions"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.update_occlusion",
+    "description": "Update an occlusion's name, diagram and/or regions, regenerating its cards to match. Card content is diffed and updated in place where possible, so existing FSRS memory state survives content-only regeneration (moving or resizing a region, re-pairing, role changes).",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "occlusionId": {
+          "type": "string",
+          "description": "The id of the occlusion to update."
+        },
+        "name": {
+          "description": "New occlusion name.",
+          "type": "string"
+        },
+        "assetHash": {
+          "description": "Replacement diagram. Regenerates every card in the occlusion.",
+          "type": "string"
+        },
+        "regions": {
+          "description": "Replacement region list.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Stable id for this region — anchors the card generated from it across edits."
+              },
+              "role": {
+                "type": "string",
+                "enum": ["label", "feature"],
+                "description": "`label`: masks text printed on the diagram, revealed by uncovering it. `feature`: points at part of the drawing and is answered by its paired label region."
+              },
+              "shape": {
+                "type": "string",
+                "const": "rectangle",
+                "description": "Rectangles only in this version."
+              },
+              "x": {
+                "type": "number",
+                "description": "Left edge as a fraction of image width, 0..1."
+              },
+              "y": {
+                "type": "number",
+                "description": "Top edge as a fraction of image height, 0..1."
+              },
+              "w": {
+                "type": "number",
+                "description": "Width as a fraction of image width, 0..1."
+              },
+              "h": {
+                "type": "number",
+                "description": "Height as a fraction of image height, 0..1."
+              },
+              "answerText": {
+                "description": "Required for typed mode and for an unpaired feature region.",
+                "type": "string"
+              },
+              "pairedRegionId": {
+                "description": "`feature` regions only: the label region that answers this one.",
+                "type": "string"
+              },
+              "backNote": {
+                "description": "Optional extra shown below the image on the back.",
+                "type": "string"
+              }
+            },
+            "required": ["id", "role", "shape", "x", "y", "w", "h"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["occlusionId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.create_course_assessment",
+    "description": "Create a checkpoint assessment with explicit path placement, coverage and card exclusions.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "courseId": {
+              "type": "string",
+              "description": "The id of the course."
+            },
+            "name": {
+              "type": "string",
+              "description": "The checkpoint name."
+            },
+            "examDate": {
+              "type": "number",
+              "description": "The date/time as an epoch millisecond value, in UTC."
+            },
+            "timeZone": {
+              "description": "IANA time zone used to display the date.",
+              "type": "string"
+            },
+            "afterLessonId": {
+              "description": "Path anchor; null places it before lesson one.",
+              "type": ["string", "null"]
+            },
+            "excludedCardIds": {
+              "description": "Covered cards to exclude.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "coverageMode": {
+              "type": "string",
+              "const": "prefix"
+            },
+            "lessonIds": {
+              "not": {}
+            },
+            "specificationPaperId": {
+              "not": {}
+            },
+            "specificationPointIds": {
+              "not": {}
+            }
+          },
+          "required": ["courseId", "name", "examDate", "afterLessonId", "coverageMode"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "courseId": {
+              "type": "string",
+              "description": "The id of the course."
+            },
+            "name": {
+              "type": "string",
+              "description": "The checkpoint name."
+            },
+            "examDate": {
+              "type": "number",
+              "description": "The date/time as an epoch millisecond value, in UTC."
+            },
+            "timeZone": {
+              "description": "IANA time zone used to display the date.",
+              "type": "string"
+            },
+            "afterLessonId": {
+              "description": "Path anchor; null places it before lesson one.",
+              "type": ["string", "null"]
+            },
+            "excludedCardIds": {
+              "description": "Covered cards to exclude.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "coverageMode": {
+              "type": "string",
+              "const": "custom"
+            },
+            "lessonIds": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "specificationPaperId": {
+              "not": {}
+            },
+            "specificationPointIds": {
+              "not": {}
+            }
+          },
+          "required": [
+            "courseId",
+            "name",
+            "examDate",
+            "afterLessonId",
+            "coverageMode",
+            "lessonIds"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "courseId": {
+              "type": "string",
+              "description": "The id of the course."
+            },
+            "name": {
+              "type": "string",
+              "description": "The checkpoint name."
+            },
+            "examDate": {
+              "type": "number",
+              "description": "The date/time as an epoch millisecond value, in UTC."
+            },
+            "timeZone": {
+              "description": "IANA time zone used to display the date.",
+              "type": "string"
+            },
+            "afterLessonId": {
+              "description": "Path anchor; null places it before lesson one.",
+              "type": ["string", "null"]
+            },
+            "excludedCardIds": {
+              "description": "Covered cards to exclude.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "coverageMode": {
+              "type": "string",
+              "const": "specification"
+            },
+            "lessonIds": {
+              "not": {}
+            },
+            "specificationPaperId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "specificationPointIds": {
+              "not": {}
+            }
+          },
+          "required": [
+            "courseId",
+            "name",
+            "examDate",
+            "afterLessonId",
+            "coverageMode",
+            "specificationPaperId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "courseId": {
+              "type": "string",
+              "description": "The id of the course."
+            },
+            "name": {
+              "type": "string",
+              "description": "The checkpoint name."
+            },
+            "examDate": {
+              "type": "number",
+              "description": "The date/time as an epoch millisecond value, in UTC."
+            },
+            "timeZone": {
+              "description": "IANA time zone used to display the date.",
+              "type": "string"
+            },
+            "afterLessonId": {
+              "description": "Path anchor; null places it before lesson one.",
+              "type": ["string", "null"]
+            },
+            "excludedCardIds": {
+              "description": "Covered cards to exclude.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "coverageMode": {
+              "type": "string",
+              "const": "specification"
+            },
+            "lessonIds": {
+              "not": {}
+            },
+            "specificationPaperId": {
+              "not": {}
+            },
+            "specificationPointIds": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*:[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+              },
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "courseId",
+            "name",
+            "examDate",
+            "afterLessonId",
+            "coverageMode",
+            "specificationPointIds"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "lacuna.update_course_assessment",
+    "description": "Update an assessment without changing its stable identity or course.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "assessmentId": {
+              "type": "string",
+              "description": "The id of the assessment to update."
+            },
+            "name": {
+              "description": "New name.",
+              "type": "string"
+            },
+            "examDate": {
+              "description": "New date/time as an epoch millisecond value, in UTC.",
+              "type": "number"
+            },
+            "timeZone": {
+              "description": "New IANA display time zone.",
+              "type": "string"
+            },
+            "afterLessonId": {
+              "description": "New path anchor.",
+              "type": ["string", "null"]
+            },
+            "excludedCardIds": {
+              "description": "Replacement excluded card ids.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "needsAuthorConfirmation": {
+              "description": "Whether an author must review references.",
+              "type": "boolean"
+            },
+            "coverageMode": {
+              "not": {}
+            },
+            "lessonIds": {
+              "not": {}
+            },
+            "specificationPaperId": {
+              "not": {}
+            },
+            "specificationPointIds": {
+              "not": {}
+            }
+          },
+          "required": ["assessmentId"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "assessmentId": {
+              "type": "string",
+              "description": "The id of the assessment to update."
+            },
+            "name": {
+              "description": "New name.",
+              "type": "string"
+            },
+            "examDate": {
+              "description": "New date/time as an epoch millisecond value, in UTC.",
+              "type": "number"
+            },
+            "timeZone": {
+              "description": "New IANA display time zone.",
+              "type": "string"
+            },
+            "afterLessonId": {
+              "description": "New path anchor.",
+              "type": ["string", "null"]
+            },
+            "excludedCardIds": {
+              "description": "Replacement excluded card ids.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "needsAuthorConfirmation": {
+              "description": "Whether an author must review references.",
+              "type": "boolean"
+            },
+            "coverageMode": {
+              "type": "string",
+              "const": "prefix"
+            },
+            "lessonIds": {
+              "not": {}
+            },
+            "specificationPaperId": {
+              "not": {}
+            },
+            "specificationPointIds": {
+              "not": {}
+            }
+          },
+          "required": ["assessmentId", "coverageMode"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "assessmentId": {
+              "type": "string",
+              "description": "The id of the assessment to update."
+            },
+            "name": {
+              "description": "New name.",
+              "type": "string"
+            },
+            "examDate": {
+              "description": "New date/time as an epoch millisecond value, in UTC.",
+              "type": "number"
+            },
+            "timeZone": {
+              "description": "New IANA display time zone.",
+              "type": "string"
+            },
+            "afterLessonId": {
+              "description": "New path anchor.",
+              "type": ["string", "null"]
+            },
+            "excludedCardIds": {
+              "description": "Replacement excluded card ids.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "needsAuthorConfirmation": {
+              "description": "Whether an author must review references.",
+              "type": "boolean"
+            },
+            "coverageMode": {
+              "type": "string",
+              "const": "custom"
+            },
+            "lessonIds": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "specificationPaperId": {
+              "not": {}
+            },
+            "specificationPointIds": {
+              "not": {}
+            }
+          },
+          "required": ["assessmentId", "coverageMode", "lessonIds"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "assessmentId": {
+              "type": "string",
+              "description": "The id of the assessment to update."
+            },
+            "name": {
+              "description": "New name.",
+              "type": "string"
+            },
+            "examDate": {
+              "description": "New date/time as an epoch millisecond value, in UTC.",
+              "type": "number"
+            },
+            "timeZone": {
+              "description": "New IANA display time zone.",
+              "type": "string"
+            },
+            "afterLessonId": {
+              "description": "New path anchor.",
+              "type": ["string", "null"]
+            },
+            "excludedCardIds": {
+              "description": "Replacement excluded card ids.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "needsAuthorConfirmation": {
+              "description": "Whether an author must review references.",
+              "type": "boolean"
+            },
+            "coverageMode": {
+              "type": "string",
+              "const": "specification"
+            },
+            "lessonIds": {
+              "not": {}
+            },
+            "specificationPaperId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "specificationPointIds": {
+              "not": {}
+            }
+          },
+          "required": ["assessmentId", "coverageMode", "specificationPaperId"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "assessmentId": {
+              "type": "string",
+              "description": "The id of the assessment to update."
+            },
+            "name": {
+              "description": "New name.",
+              "type": "string"
+            },
+            "examDate": {
+              "description": "New date/time as an epoch millisecond value, in UTC.",
+              "type": "number"
+            },
+            "timeZone": {
+              "description": "New IANA display time zone.",
+              "type": "string"
+            },
+            "afterLessonId": {
+              "description": "New path anchor.",
+              "type": ["string", "null"]
+            },
+            "excludedCardIds": {
+              "description": "Replacement excluded card ids.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "needsAuthorConfirmation": {
+              "description": "Whether an author must review references.",
+              "type": "boolean"
+            },
+            "coverageMode": {
+              "type": "string",
+              "const": "specification"
+            },
+            "lessonIds": {
+              "not": {}
+            },
+            "specificationPaperId": {
+              "not": {}
+            },
+            "specificationPointIds": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*:[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+              },
+              "uniqueItems": true
+            }
+          },
+          "required": ["assessmentId", "coverageMode", "specificationPointIds"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "lacuna.list_concepts",
+    "description": "List a Course's Concepts, ordered by name.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of the Course."
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.create_concept",
+    "description": "Create a Concept that Cards and Questions may reference.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of the Course."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The stable Concept name."
+        }
+      },
+      "required": ["courseId", "name"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.update_concept",
+    "description": "Update a Concept's display name. Migration provenance requires independent review.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "conceptId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of a Concept."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["conceptId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.delete_concept",
+    "description": "Delete an unreferenced Concept. Refuses Concepts still used by a Card or Question.",
+    "requiredScope": "destructive",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "conceptId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of a Concept."
+        }
+      },
+      "required": ["conceptId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.list_questions",
+    "description": "List fixed Questions and generated families separately from Cards.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of the Course."
+        },
+        "lessonId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["fixed", "generated"]
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.get_question",
+    "description": "Fetch one Question definition and its target/prerequisite Concept set.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "questionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of a Question definition."
+        }
+      },
+      "required": ["questionId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.create_fixed_question",
+    "description": "Create a fixed application Question with one primary target, optional prerequisites and mandatory worked feedback.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of the Course."
+        },
+        "primaryLessonId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "additionalLessonIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "suspended": {
+          "type": "boolean"
+        },
+        "targetConceptId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of a Concept."
+        },
+        "prerequisiteConceptIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of a Concept."
+          }
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "numeric"
+                },
+                "answer": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "exact"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["kind", "value"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "within"
+                        },
+                        "value": {
+                          "type": "string"
+                        },
+                        "tolerance": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["kind", "value", "tolerance"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "matches-one-of"
+                        },
+                        "values": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": ["kind", "values"],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": ["kind", "answer"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "working"
+                },
+                "scheme": {
+                  "type": "string"
+                },
+                "fixtures": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "studentAnswer": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        ]
+                      },
+                      "expectedMarks": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "note": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["studentAnswer", "expectedMarks"],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": ["kind", "scheme"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Worked feedback shown after submission."
+        }
+      },
+      "required": ["courseId", "name", "targetConceptId", "prompt", "payload", "explanation"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.update_fixed_question",
+    "description": "Update fixed Question authoring. Semantic changes start a new Question scheduling epoch.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "questionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of a Question definition."
+        },
+        "primaryLessonId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "additionalLessonIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "targetConceptId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of a Concept."
+        },
+        "prerequisiteConceptIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of a Concept."
+          }
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "numeric"
+                },
+                "answer": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "exact"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["kind", "value"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "within"
+                        },
+                        "value": {
+                          "type": "string"
+                        },
+                        "tolerance": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["kind", "value", "tolerance"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "matches-one-of"
+                        },
+                        "values": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": ["kind", "values"],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": ["kind", "answer"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "working"
+                },
+                "scheme": {
+                  "type": "string"
+                },
+                "fixtures": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "studentAnswer": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        ]
+                      },
+                      "expectedMarks": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "note": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["studentAnswer", "expectedMarks"],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": ["kind", "scheme"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["questionId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.create_generated_question",
+    "description": "Create one scheduled generated Question family from an audited built-in generator configuration.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of the Course."
+        },
+        "primaryLessonId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "additionalLessonIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "suspended": {
+          "type": "boolean"
+        },
+        "targetConceptId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of a Concept."
+        },
+        "prerequisiteConceptIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of a Concept."
+          }
+        },
+        "generatorKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generatorVersion": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "generatorConfig": {}
+      },
+      "required": [
+        "courseId",
+        "name",
+        "targetConceptId",
+        "generatorKey",
+        "generatorVersion",
+        "generatorConfig"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.update_generated_question",
+    "description": "Update a generated family. Generator, configuration or Concept changes start a new scheduling epoch.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "questionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of a Question definition."
+        },
+        "primaryLessonId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "additionalLessonIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "targetConceptId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of a Concept."
+        },
+        "prerequisiteConceptIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of a Concept."
+          }
+        },
+        "generatorKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generatorVersion": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "generatorConfig": {}
+      },
+      "required": ["questionId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.delete_question",
+    "description": "Delete a Question definition and its Concept links while retaining immutable attempt evidence.",
+    "requiredScope": "destructive",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "questionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of a Question definition."
+        }
+      },
+      "required": ["questionId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.list_question_generators",
+    "description": "List versioned built-in Question generators and their typed configuration fields.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.audit_question_generator",
+    "description": "Validate a built-in generator configuration and return its deterministic audited corpus before authoring.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "generatorKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generatorVersion": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "generatorConfig": {}
+      },
+      "required": ["generatorKey", "generatorVersion", "generatorConfig"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.delete_card",
+    "description": "Permanently delete one or more cards. Refuses cards generated by a sequence — delete or edit those via lacuna.update_sequence/lacuna.delete_sequence instead.",
+    "requiredScope": "destructive",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Card ids to act on."
+        }
+      },
+      "required": ["ids"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.delete_lesson",
+    "description": "Delete a lesson: its notes and lesson-card links are removed, but cards whose primary lesson was this one become unassigned (kept in the course question bank) rather than deleted.",
+    "requiredScope": "destructive",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "lessonId": {
+          "type": "string",
+          "description": "The id of the lesson to delete."
+        }
+      },
+      "required": ["lessonId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.delete_course",
+    "description": "Permanently delete a course and everything in it: lessons, notes, cards, sequences and exam dates.",
+    "requiredScope": "destructive",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course to delete."
+        }
+      },
+      "required": ["courseId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.delete_sequence",
+    "description": "Permanently delete a sequence and every card it generated.",
+    "requiredScope": "destructive",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "sequenceId": {
+          "type": "string",
+          "description": "The id of the sequence to delete."
+        }
+      },
+      "required": ["sequenceId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.delete_occlusion",
+    "description": "Permanently delete an image occlusion and every card it generated.",
+    "requiredScope": "destructive",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "occlusionId": {
+          "type": "string",
+          "description": "The id of the occlusion to delete."
+        }
+      },
+      "required": ["occlusionId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.delete_course_assessment",
+    "description": "Delete a checkpoint assessment. The sole final assessment cannot be deleted.",
+    "requiredScope": "destructive",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "assessmentId": {
+          "type": "string",
+          "description": "The id of the checkpoint assessment to delete."
+        }
+      },
+      "required": ["assessmentId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.suspend_cards",
+    "description": "Suspend or un-suspend one or more cards, withholding/restoring them from study and progress.",
+    "requiredScope": "destructive",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Card ids to act on."
+        },
+        "suspended": {
+          "type": "boolean",
+          "description": "true to suspend (withhold from study), false to un-suspend."
+        }
+      },
+      "required": ["ids", "suspended"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.set_cards_flag",
+    "description": "Set or clear one or more cards' flag, a marker for quick filtering and follow-up.",
+    "requiredScope": "destructive",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Card ids to act on."
+        },
+        "flagged": {
+          "type": "boolean",
+          "description": "true to flag, false to clear the flag."
+        }
+      },
+      "required": ["ids", "flagged"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.reschedule_cards",
+    "description": "Bulk-reschedule cards: either reset them to New (clearing stability, difficulty, due, etc.) or set a custom due date. Never writes raw FSRS fields directly — bounded to these two options.",
+    "requiredScope": "destructive",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Card ids to act on."
+        },
+        "reset": {
+          "description": "Reset selected cards to the New state, clearing all scheduling data.",
+          "type": "boolean"
+        },
+        "due": {
+          "description": "Set a specific due date, as an epoch millisecond value. Takes precedence over reset.",
+          "type": "number"
+        }
+      },
+      "required": ["ids"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.diff_import_preview",
+    "description": "Preview how a batch of proposed cards compares to a course's existing cards, without writing anything: which are new (toCreate), which already exist verbatim (toSkip), and which share a question but have different content (toUpdate, apply manually via lacuna.update_card).",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course to diff against."
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "front": {
+                "type": "string",
+                "description": "Markdown source for the question/prompt side."
+              },
+              "back": {
+                "type": "string",
+                "description": "Markdown source for the answer side."
+              },
+              "lessonId": {
+                "description": "If given, the card belongs to this lesson; otherwise the course question bank.",
+                "type": "string"
+              },
+              "tags": {
+                "description": "Free-text tags.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["front", "back"],
+            "additionalProperties": false
+          },
+          "description": "Proposed cards to compare against existing content."
+        }
+      },
+      "required": ["courseId", "items"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.import_cards",
+    "description": "Import a batch of proposed cards into a course: creates cards that are new, skips ones that already exist verbatim, and reports (without applying) any that share a question but have different content. Safe to re-run with the same payload — the second call creates nothing new.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the course to diff against."
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "front": {
+                "type": "string",
+                "description": "Markdown source for the question/prompt side."
+              },
+              "back": {
+                "type": "string",
+                "description": "Markdown source for the answer side."
+              },
+              "lessonId": {
+                "description": "If given, the card belongs to this lesson; otherwise the course question bank.",
+                "type": "string"
+              },
+              "tags": {
+                "description": "Free-text tags.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["front", "back"],
+            "additionalProperties": false
+          },
+          "description": "Proposed cards to compare against existing content."
+        }
+      },
+      "required": ["courseId", "items"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.diff_lineage_update",
+    "description": "Preview how a teacher's re-published share code compares to a course already tracking that lineage, without writing anything: creates/updates/removals and student-edit conflicts, exactly the classification the in-app review panel would show.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the locally-tracked course to diff against."
+        },
+        "shareCode": {
+          "type": "string",
+          "description": "The teacher's re-published share code to preview against this course."
+        }
+      },
+      "required": ["courseId", "shareCode"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.apply_lineage_update",
+    "description": "Apply a teacher's re-published share code to a course already tracking that lineage, exactly as the in-app review flow would: creates apply immediately, updates/removals apply or queue per the course's auto-accept setting, and student-edit conflicts always queue. Optionally pass `decisions` to pre-resolve specific queued items in the same call.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The id of the locally-tracked course to update."
+        },
+        "shareCode": {
+          "type": "string",
+          "description": "The teacher's re-published share code to merge in."
+        },
+        "decisions": {
+          "description": "Pre-resolve specific queued items, mirroring the review panel. Anything left unresolved stays queued.",
+          "type": "object",
+          "properties": {
+            "accept": {
+              "description": "Queued updates/removals/conflicts to accept (\"take theirs\").",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": ["lesson", "note", "card"]
+                  },
+                  "entityId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["kind", "entityId"],
+                "additionalProperties": false
+              }
+            },
+            "reject": {
+              "description": "Queued updates/removals/conflicts to reject (\"keep mine\").",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": ["lesson", "note", "card"]
+                  },
+                  "entityId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["kind", "entityId"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["courseId", "shareCode"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.search_memories",
+    "description": "Search relevant learner-correctable memories in one explicit global or Course scope. Results exclude expired session memories and are ordered by most recent evidence.",
+    "requiredScope": "read",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "global"
+                }
+              },
+              "required": ["kind"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "course"
+                },
+                "courseId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                }
+              },
+              "required": ["kind", "courseId"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "query": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "tags": {
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["misconception", "plateau", "preference", "session", "strength", "context"]
+          }
+        },
+        "statuses": {
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["active", "uncertain", "resolved"]
+          }
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.create_memory",
+    "description": "Create bounded, learner-correctable teaching context from stated, inferred or observed evidence. Global memories cannot reference Course content.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "global"
+                }
+              },
+              "required": ["kind"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "course"
+                },
+                "courseId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                }
+              },
+              "required": ["kind", "courseId"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "tags": {
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["misconception", "plateau", "preference", "session", "strength", "context"]
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "uncertain", "resolved"]
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000
+        },
+        "references": {
+          "maxItems": 25,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["card", "concept", "lesson", "question", "course"]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            "required": ["kind", "id", "label"],
+            "additionalProperties": false
+          }
+        },
+        "basis": {
+          "type": "string",
+          "enum": ["learner-stated", "agent-inferred", "observed-performance"]
+        },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "conversationId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "messageId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          },
+          "additionalProperties": false
+        },
+        "expiresAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": ["scope", "tags", "content", "basis"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.update_memory",
+    "description": "Correct evidence, status or wording for one learner memory without moving its immutable scope.",
+    "requiredScope": "write",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "memoryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "tags": {
+          "minItems": 1,
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["misconception", "plateau", "preference", "session", "strength", "context"]
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "uncertain", "resolved"]
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000
+        },
+        "references": {
+          "maxItems": 25,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["card", "concept", "lesson", "question", "course"]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            "required": ["kind", "id", "label"],
+            "additionalProperties": false
+          }
+        },
+        "basis": {
+          "type": "string",
+          "enum": ["learner-stated", "agent-inferred", "observed-performance"]
+        },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "conversationId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "messageId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          },
+          "additionalProperties": false
+        },
+        "expiresAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": ["memoryId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "lacuna.delete_memory",
+    "description": "Delete one learner memory. Lacuna retains an exhaustive local Undo snapshot.",
+    "requiredScope": "destructive",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "memoryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": ["memoryId"],
+      "additionalProperties": false
+    }
+  }
+]
