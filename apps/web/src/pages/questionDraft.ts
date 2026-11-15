@@ -118,6 +118,7 @@ export function useQuestionDraft(key: string) {
   const [loaded, setLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [draftPrompt, setDraftPrompt] = useState(false);
+  const [storageFailed, setStorageFailed] = useState(false);
   const keyRef = useRef(key);
   const stateRef = useRef(state);
   const baselineRef = useRef(state);
@@ -128,7 +129,7 @@ export function useQuestionDraft(key: string) {
 
   const persist = useCallback(() => {
     if (!dirtyRef.current || promptRef.current) return;
-    storeDraft(keyRef.current, createQuestionDraft(stateRef.current));
+    setStorageFailed(!storeDraft(keyRef.current, createQuestionDraft(stateRef.current)));
   }, [storeDraft]);
 
   useEffect(() => {
@@ -145,6 +146,7 @@ export function useQuestionDraft(key: string) {
     setLoaded(false);
     setDirty(false);
     setDraftPrompt(false);
+    setStorageFailed(false);
   }, [key, persist]);
 
   const initialise = useCallback(
@@ -203,6 +205,7 @@ export function useQuestionDraft(key: string) {
     setState(baselineRef.current);
     setDirty(false);
     setDraftPrompt(false);
+    setStorageFailed(false);
   }, []);
 
   const finish = useCallback(() => {
@@ -212,6 +215,7 @@ export function useQuestionDraft(key: string) {
     promptRef.current = false;
     setDirty(false);
     setDraftPrompt(false);
+    setStorageFailed(false);
   }, []);
 
   /** After a save, begin the next Question from `next` as a clean, unguarded baseline. */
@@ -241,6 +245,7 @@ export function useQuestionDraft(key: string) {
     loaded,
     dirty,
     draftPrompt,
+    storageFailed,
     initialise,
     update,
     restoreDraft,

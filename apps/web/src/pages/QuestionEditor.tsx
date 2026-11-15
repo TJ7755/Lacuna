@@ -286,8 +286,14 @@ export function QuestionEditor() {
       <NavigationGuard
         active={draft.shouldBlock}
         onAttempt={draft.flushDraft}
-        title="Leave this Question?"
-        message="Your unsaved changes are kept as a draft and can be restored when you return."
+        title={draft.storageFailed ? 'Discard changes?' : 'Leave this Question?'}
+        message={
+          draft.storageFailed
+            ? 'Your draft could not be saved. Leaving will lose your changes.'
+            : 'Your unsaved changes are kept as a draft and can be restored when you return.'
+        }
+        leaveLabel={draft.storageFailed ? 'Discard changes' : 'Leave'}
+        onConfirm={draft.storageFailed ? draft.finish : undefined}
       />
       <Link
         to={`/course/${courseId}/questions`}

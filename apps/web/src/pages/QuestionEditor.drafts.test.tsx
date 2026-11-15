@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { loadDraft, saveDraft } from '../utils/drafts';
 import { chooseConcept, mocks, renderEditor } from './QuestionEditor.testSupport';
 import {
@@ -9,6 +9,37 @@ import {
 } from './questionDraft';
 
 describe('QuestionEditor drafts', () => {
+  it('requires explicit discard when a draft cannot be stored and permits retry', async () => {
+    const router = renderEditor();
+    const name = await screen.findByPlaceholderText('Completing the square');
+    fireEvent.change(name, { target: { value: 'Only copy' } });
+    const write = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new DOMException('Full', 'QuotaExceededError');
+    });
+    try {
+      await act(() => router.navigate('/away'));
+      const dialog = await screen.findByRole('dialog', { name: 'Discard changes?' });
+      expect(dialog).toHaveTextContent(
+        'Your draft could not be saved. Leaving will lose your changes.',
+      );
+      expect(loadDraft(questionDraftKey('course-1'))).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+      expect(name).toHaveValue('Only copy');
+      write.mockRestore();
+      await act(() => router.navigate('/away'));
+      expect(
+        await screen.findByRole('dialog', { name: 'Leave this Question?' }),
+      ).toBeInTheDocument();
+      expect(loadDraft<QuestionDraftData>(questionDraftKey('course-1'))?.state.name).toBe(
+        'Only copy',
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
+      expect(await screen.findByText('Other page')).toBeInTheDocument();
+    } finally {
+      write.mockRestore();
+    }
+  });
+
   it('saves on Ctrl+Enter and readies another Question in the same Concept', async () => {
     const router = renderEditor();
     const prompt = await screen.findByLabelText('Prompt');

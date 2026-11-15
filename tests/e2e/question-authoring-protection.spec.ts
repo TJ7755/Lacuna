@@ -81,3 +81,34 @@ test('an existing draft requires a decision before authoring or saving', async (
   await page.getByRole('button', { name: 'Create Question' }).click();
   await expect(page).toHaveURL(/questions\?view=individual$/);
 });
+
+test('a failed draft write requires explicit discard before leaving', async ({
+  page,
+}, testInfo) => {
+  await openEditor(page);
+  await page.evaluate(() => {
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key.startsWith('lacuna:draft:question:')) {
+        throw new DOMException('Full', 'QuotaExceededError');
+      }
+      setItem.call(this, key, value);
+    };
+  });
+  const prompt = page.getByRole('textbox', { name: 'Prompt', exact: true });
+  await prompt.fill('Only copy of this question');
+  const today = page.getByRole('link', { name: 'Today', exact: true });
+  await today.click();
+  const dialog = page.getByRole('dialog', { name: 'Discard changes?' });
+  await expect(dialog).toContainText(
+    'Your draft could not be saved. Leaving will lose your changes.',
+  );
+  await expect(dialog).toHaveCSS('opacity', '1');
+  await expect(dialog.locator('..')).toHaveCSS('opacity', '1');
+  await page.screenshot({ path: testInfo.outputPath('failed-draft-write.png'), fullPage: true });
+  await dialog.getByRole('button', { name: 'Keep editing' }).click();
+  await expect(prompt).toHaveValue('Only copy of this question');
+  await today.click();
+  await dialog.getByRole('button', { name: 'Discard changes' }).click();
+  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+});
