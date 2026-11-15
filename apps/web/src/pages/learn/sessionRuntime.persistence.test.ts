@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
-import { act, renderHook, waitFor } from '@testing-library/react';
+import * as answerSteps from './answerSteps';
+import { waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
   cardsForSequence,
@@ -9,7 +10,7 @@ import {
   createSequence,
 } from '../../db/repository';
 import { db } from '../../db/schema';
-import { useLearnSession } from './useLearnSession';
+import { SessionRuntime } from './sessionRuntime';
 import { loadSimpleSession } from './simpleSessionPersistence';
 import { resetSessionTestDatabase, sessionParams } from './useLearnSession.testFixtures';
 
@@ -23,48 +24,53 @@ it('rolls back the review when its introduction exposure fails, then retries and
   const before = await db.cards.get(card.id);
   const performanceBefore = await db.coursePerformance.toArray();
   const params = sessionParams({ lessonId: lesson.id, isSimpleMode: true, mode: 'simple' });
-  const session = renderHook(() => useLearnSession(params));
+  const session = new SessionRuntime({
+    ...params,
+    answerInputPreference: 'course',
+    leaveFlow: vi.fn(),
+  });
+  session.start();
   try {
-    await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
-    act(() => session.result.current.reveal());
+    await waitFor(() => expect(session.getSnapshot().current?.id).toBe(card.id));
+    (() => session.getSnapshot().reveal())();
     const addExposure = vi
       .spyOn(db.lessonCardExposures, 'add')
       .mockRejectedValueOnce(new Error('Exposure failed'));
-    await act(async () => {
-      await expect(session.result.current.answer(true, { retainUndo: true })).rejects.toThrow(
+    await (async () => {
+      await expect(session.getSnapshot().answer(true, { retainUndo: true })).rejects.toThrow(
         'Exposure failed',
       );
-    });
+    })();
     expect(await db.cards.get(card.id)).toEqual(before);
     expect(await db.reviewHistory.count()).toBe(0);
     expect(await db.coursePerformance.toArray()).toEqual(performanceBefore);
-    session.result.current.persistSimpleResume();
+    session.getSnapshot().persistSimpleResume();
     expect(loadSimpleSession({ kind: 'lesson', lessonId: lesson.id }, [card.id])?.events).toEqual(
       [],
     );
-    expect(session.result.current.phase).toBe('answer');
+    expect(session.getSnapshot().phase).toBe('answer');
     addExposure.mockRestore();
 
-    await act(async () => {
-      await session.result.current.answer(true, { retainUndo: true });
-    });
+    await (async () => {
+      await session.getSnapshot().answer(true, { retainUndo: true });
+    })();
     expect(await db.reviewHistory.count()).toBe(1);
     expect(await db.lessonCardExposures.count()).toBe(1);
-    expect(session.result.current.summary?.events).toEqual([
+    expect(session.getSnapshot().summary?.events).toEqual([
       expect.objectContaining({ cardId: card.id, correct: true }),
     ]);
-    await act(async () => {
-      await session.result.current.undoLast();
-    });
+    await (async () => {
+      await session.getSnapshot().undoLast();
+    })();
     expect(await db.reviewHistory.count()).toBe(0);
     expect(await db.lessonCardExposures.count()).toBe(0);
     expect(await db.cards.get(card.id)).toEqual(before);
-    session.result.current.persistSimpleResume();
+    session.getSnapshot().persistSimpleResume();
     expect(loadSimpleSession({ kind: 'lesson', lessonId: lesson.id }, [card.id])?.events).toEqual(
       [],
     );
   } finally {
-    session.unmount();
+    session.dispose();
   }
 });
 
@@ -73,22 +79,27 @@ it('refuses undo without removing evidence when another writer changes its expos
   const lesson = await createLesson(course.id, 'Facts');
   const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
   const params = sessionParams({ lessonId: lesson.id, isSimpleMode: true, mode: 'simple' });
-  const session = renderHook(() => useLearnSession(params));
+  const session = new SessionRuntime({
+    ...params,
+    answerInputPreference: 'course',
+    leaveFlow: vi.fn(),
+  });
+  session.start();
   try {
-    await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
-    act(() => session.result.current.reveal());
-    await act(async () => {
-      await session.result.current.answer(true, { retainUndo: true });
-    });
+    await waitFor(() => expect(session.getSnapshot().current?.id).toBe(card.id));
+    (() => session.getSnapshot().reveal())();
+    await (async () => {
+      await session.getSnapshot().answer(true, { retainUndo: true });
+    })();
     const key: [string, string] = [lesson.id, card.id];
     const exposure = (await db.lessonCardExposures.get(key))!;
     const changed = { ...exposure, updatedAt: exposure.updatedAt + 1 };
     await db.lessonCardExposures.put(changed);
     const reviewed = await db.cards.get(card.id);
 
-    await act(async () => {
-      await session.result.current.undoLast();
-    });
+    await (async () => {
+      await session.getSnapshot().undoLast();
+    })();
     expect(params.notify).toHaveBeenCalledWith(
       'The lesson exposure changed after this answer, so undo is no longer available.',
       'negative',
@@ -96,12 +107,12 @@ it('refuses undo without removing evidence when another writer changes its expos
     expect(await db.lessonCardExposures.get(key)).toEqual(changed);
     expect(await db.cards.get(card.id)).toEqual(reviewed);
     expect(await db.reviewHistory.count()).toBe(1);
-    expect(session.result.current.canUndo).toBe(true);
-    expect(session.result.current.summary?.events).toEqual([
+    expect(session.getSnapshot().canUndo).toBe(true);
+    expect(session.getSnapshot().summary?.events).toEqual([
       expect.objectContaining({ cardId: card.id, correct: true }),
     ]);
   } finally {
-    session.unmount();
+    session.dispose();
   }
 });
 
@@ -120,16 +131,21 @@ it('records each recited line once and exposes only mastered lines', async () =>
   );
   const cards = await cardsForSequence(sequence);
   const params = sessionParams({ lessonId: lesson.id, isSimpleMode: true, mode: 'simple' });
-  const session = renderHook(() => useLearnSession(params));
+  const session = new SessionRuntime({
+    ...params,
+    answerInputPreference: 'course',
+    leaveFlow: vi.fn(),
+  });
+  session.start();
   try {
-    await waitFor(() => expect(session.result.current.recitationSequence?.id).toBe(sequence.id));
-    await act(async () => {
-      await session.result.current.answerRecitation([{ itemId: 'first', correct: false }], 12, []);
-    });
+    await waitFor(() => expect(session.getSnapshot().recitationSequence?.id).toBe(sequence.id));
+    await (async () => {
+      await session.getSnapshot().answerRecitation([{ itemId: 'first', correct: false }], 12, []);
+    })();
     expect(await db.reviewHistory.count()).toBe(1);
     expect(await db.lessonCardExposures.count()).toBe(0);
-    await act(async () => {
-      await session.result.current.answerRecitation(
+    await (async () => {
+      await session.getSnapshot().answerRecitation(
         [
           { itemId: 'first', correct: true },
           { itemId: 'second', correct: true },
@@ -137,7 +153,7 @@ it('records each recited line once and exposes only mastered lines', async () =>
         4,
         ['first'],
       );
-    });
+    })();
     expect(await db.reviewHistory.count()).toBe(2);
     expect(await db.coursePerformance.get(course.id)).toMatchObject({
       totalCorrectReviews: 1,
@@ -174,7 +190,7 @@ it('records each recited line once and exposes only mastered lines', async () =>
       expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(1);
     }
   } finally {
-    session.unmount();
+    session.dispose();
     await db.sequences.delete(sequence.id);
   }
 });
@@ -191,30 +207,110 @@ it('retries recitation mastery exposure before advancing after a failed write', 
   );
   const [card] = await cardsForSequence(sequence);
   const params = sessionParams({ lessonId: lesson.id, isSimpleMode: true, mode: 'simple' });
-  const session = renderHook(() => useLearnSession(params));
+  const session = new SessionRuntime({
+    ...params,
+    answerInputPreference: 'course',
+    leaveFlow: vi.fn(),
+  });
+  session.start();
   try {
-    await waitFor(() => expect(session.result.current.recitationSequence?.id).toBe(sequence.id));
+    await waitFor(() => expect(session.getSnapshot().recitationSequence?.id).toBe(sequence.id));
     const exposure = vi
       .spyOn(db.lessonCardExposures, 'add')
       .mockRejectedValueOnce(new Error('Exposure failed'));
-    await act(async () => {
+    await (async () => {
       await expect(
-        session.result.current.answerRecitation([{ itemId: 'line', correct: true }], 4, 'all'),
+        session.getSnapshot().answerRecitation([{ itemId: 'line', correct: true }], 4, 'all'),
       ).rejects.toThrow('Exposure failed');
-    });
+    })();
     expect(await db.reviewHistory.count()).toBe(1);
     expect(await db.lessonCardExposures.count()).toBe(0);
 
-    await act(async () => {
-      await session.result.current.answerRecitation([{ itemId: 'line', correct: true }], 4, 'all');
-    });
+    await (async () => {
+      await session.getSnapshot().answerRecitation([{ itemId: 'line', correct: true }], 4, 'all');
+    })();
 
-    await waitFor(() => expect(session.result.current.summary?.events).toHaveLength(1));
+    await waitFor(() => expect(session.getSnapshot().summary?.events).toHaveLength(1));
     expect(exposure).toHaveBeenCalledTimes(2);
     expect(await db.lessonCardExposures.get([lesson.id, card.id])).toBeDefined();
     expect(await db.reviewHistory.count()).toBe(1);
   } finally {
-    session.unmount();
+    session.dispose();
     await db.sequences.delete(sequence.id);
+  }
+});
+
+it('keeps the retry identity after a committed review loses its acknowledgement', async () => {
+  const course = await createCourse('Acknowledgement');
+  const lesson = await createLesson(course.id, 'Facts');
+  const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+  const session = new SessionRuntime({
+    ...sessionParams({ lessonId: lesson.id }),
+    answerInputPreference: 'course',
+    leaveFlow: vi.fn(),
+  });
+  session.start();
+  try {
+    await waitFor(() => expect(session.getSnapshot().current?.id).toBe(card.id));
+    session.getSnapshot().reveal();
+    const persist = answerSteps.persistAnswer;
+    vi.spyOn(answerSteps, 'persistAnswer').mockImplementationOnce(async (...args) => {
+      await persist(...args);
+      throw new Error('Acknowledgement lost');
+    });
+    await expect(session.getSnapshot().answer(true)).rejects.toThrow('Acknowledgement lost');
+    expect(session.getSnapshot().reviewEvents).toEqual([]);
+    expect(session.getSnapshot().current?.id).toBe(card.id);
+    const [written] = await db.reviewHistory.toArray();
+    expect(written).toBeDefined();
+
+    await session.getSnapshot().answer(true);
+    expect(await db.reviewHistory.toArray()).toEqual([written]);
+    expect(session.getSnapshot().reviewEvents).toHaveLength(1);
+  } finally {
+    session.dispose();
+  }
+});
+
+it('does not advance or notify subscribers when an acknowledged answer arrives after disposal', async () => {
+  const course = await createCourse('Disposed answer');
+  const lesson = await createLesson(course.id, 'Facts');
+  const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+  const session = new SessionRuntime({
+    ...sessionParams({ lessonId: lesson.id }),
+    answerInputPreference: 'course',
+    leaveFlow: vi.fn(),
+  });
+  const changed = vi.fn();
+  const unsubscribe = session.subscribe(changed);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  session.start();
+  try {
+    await waitFor(() => expect(session.getSnapshot().current?.id).toBe(card.id));
+    session.getSnapshot().reveal();
+    const persist = answerSteps.persistAnswer;
+    const write = vi.spyOn(answerSteps, 'persistAnswer').mockImplementationOnce(async (...args) => {
+      const receipt = await persist(...args);
+      await gate;
+      return receipt;
+    });
+    const answer = session.getSnapshot().answer(true);
+    await waitFor(async () => expect(await db.reviewHistory.count()).toBe(1));
+    expect(write).toHaveBeenCalledOnce();
+    expect(session.getSnapshot().reviewEvents).toEqual([]);
+    session.dispose();
+    changed.mockClear();
+    release();
+    await answer;
+    expect(session.getSnapshot().current?.id).toBe(card.id);
+    expect(session.getSnapshot().reviewEvents).toEqual([]);
+    expect(changed).not.toHaveBeenCalled();
+  } finally {
+    release();
+    unsubscribe();
+    session.dispose();
   }
 });
