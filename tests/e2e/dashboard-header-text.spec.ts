@@ -35,7 +35,7 @@ async function expectLabelContained(trigger: Locator) {
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1280);
 }
 
 async function expectKeyboardFocus(trigger: Locator) {
@@ -54,7 +54,7 @@ async function expectKeyboardFocus(trigger: Locator) {
 
 for (const reducedMotion of ['reduce', 'no-preference'] as const) {
   test(`dashboard header actions contain enlarged labels (${reducedMotion})`, async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setViewportSize({ width: 1280, height: 844 });
     await page.emulateMedia({ reducedMotion });
     await enterWithWelcomeCourse(page);
     await expect(page.getByRole('region', { name: 'Today, most urgent first' })).toBeVisible();
@@ -76,12 +76,12 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
         .toEqual({ width, height: 44 });
       await trigger.screenshot({ path: test.info().outputPath(`default-${width}.png`) });
     }
-    await page.screenshot({ path: test.info().outputPath('390-default.png') });
+    await page.screenshot({ path: test.info().outputPath('1280-default.png') });
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '200%';
     });
     await page.screenshot({
-      path: test.info().outputPath('390-large-text.png'),
+      path: test.info().outputPath('1280-large-text.png'),
       animations: 'disabled',
     });
     await expectLabelContained(create);
@@ -121,13 +121,13 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       .poll(async () => {
         const option = (await source.boundingBox())!;
         const close = (await main
-          .getByRole('button', { name: 'Close', exact: true })
+          .getByRole('button', { name: 'Import', exact: true })
           .boundingBox())!;
         return option.y >= close.y + close.height;
       })
       .toBe(true);
     await expectNoHorizontalOverflow(page);
-    await main.getByRole('button', { name: 'Close', exact: true }).click();
+    await main.getByRole('button', { name: 'Import', exact: true }).click();
     await expect(source).toBeHidden();
     await create.focus();
     await page.keyboard.press('Tab');

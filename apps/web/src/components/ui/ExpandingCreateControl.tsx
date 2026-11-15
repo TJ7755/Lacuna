@@ -1,4 +1,12 @@
-﻿import { useEffect, useLayoutEffect, useState, useId, useRef, type ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useId,
+  useRef,
+  type ComponentProps,
+  type ReactNode,
+} from 'react';
 import { m as motion } from 'motion/react';
 import { FlowExpansionSurface } from './FlowExpansionSurface';
 import { PlusIcon } from './icons';
@@ -7,7 +15,10 @@ import { expandingActionSpring } from './motion';
 
 /** Creation expands from its trigger, retaining the surrounding page. */
 export function ExpandingCreateControl({
-  open,
+  open: requestedOpen,
+  ready = true,
+  showIcon = true,
+  triggerProps,
   onOpenChange,
   label,
   closedWidth = 152,
@@ -16,6 +27,12 @@ export function ExpandingCreateControl({
   className = '',
   prominent = false,
 }: {
+  ready?: boolean;
+  showIcon?: boolean;
+  triggerProps?: Pick<
+    ComponentProps<'button'>,
+    'disabled' | 'aria-busy' | 'onFocus' | 'onPointerEnter'
+  > & { 'data-usage-action'?: string };
   align?: 'start' | 'centre' | 'end';
   className?: string;
   prominent?: boolean;
@@ -25,6 +42,7 @@ export function ExpandingCreateControl({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const open = requestedOpen && ready;
   const trigger = useRef<HTMLButtonElement>(null);
   const [triggerHeight, setTriggerHeight] = useState(44);
   useLayoutEffect(() => {
@@ -85,17 +103,31 @@ export function ExpandingCreateControl({
       const left = align === 'centre' ? bounds.left + (bounds.width - width) / 2 : originLeft;
       setOffset(Math.min(Math.max(18, left), window.innerWidth - 18 - width) - originLeft);
       const height = Math.min(formHeight ?? triggerHeight + 240, window.innerHeight - 36);
-      const top = Math.max(18, Math.min(bounds.top, window.innerHeight - 18 - height));
+      const minimumTop = Math.max(
+        18,
+        (root.current?.closest('main')?.getBoundingClientRect().top ?? 0) + 8,
+      );
+      const top = Math.max(minimumTop, Math.min(bounds.top, window.innerHeight - 18 - height));
       setVerticalOffset(top - bounds.top);
       setSpaceBelowAnchor(window.innerHeight - 18 - bounds.top);
       // The shell rises to fit the form. Give its scroller the final viewport budget
       // immediately so a growing form does not change width as the shell moves.
-      setAvailableHeight(Math.max(triggerHeight, window.innerHeight - 36));
+      setAvailableHeight(Math.max(triggerHeight, window.innerHeight - minimumTop - 18));
     };
     measure();
+    const observer = new ResizeObserver(() => measure());
+    for (
+      let container: HTMLElement | null = root.current;
+      container;
+      container = container.parentElement
+    ) {
+      observer.observe(container);
+      if (container.tagName === 'MAIN') break;
+    }
     window.addEventListener('resize', measure);
     window.addEventListener('scroll', measure, true);
     return () => {
+      observer.disconnect();
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
@@ -104,12 +136,19 @@ export function ExpandingCreateControl({
   const previouslyOpen = useRef(open);
   useEffect(() => {
     if (!open && previouslyOpen.current) trigger.current?.focus();
-    if (open && !previouslyOpen.current)
-      trigger.current?.parentElement?.querySelector<HTMLElement>('input, textarea')?.focus();
+    if (open && !previouslyOpen.current) {
+      const field = form.current?.querySelector<HTMLElement>(
+        'input:not([type="file"]):not([type="hidden"]):not(:disabled), textarea:not(:disabled)',
+      );
+      const target =
+        field ?? form.current?.querySelector<HTMLButtonElement>('button:not(:disabled)');
+      target?.focus({ preventScroll: true });
+    }
     previouslyOpen.current = open;
   }, [open]);
 
   function close() {
+    if (triggerProps?.disabled) return;
     onOpenChange(false);
     trigger.current?.focus();
   }
@@ -157,13 +196,14 @@ export function ExpandingCreateControl({
           prominent={prominent}
         />
         <motion.button
+          {...triggerProps}
           ref={trigger}
           type="button"
-          aria-expanded={open}
+          aria-expanded={requestedOpen}
           aria-controls={formId}
           onClick={(event) => {
             if (event.detail > 1) return;
-            if (open) close();
+            if (requestedOpen) close();
             else onOpenChange(true);
           }}
           animate={{ x: open ? -offset : 0 }}
@@ -171,15 +211,17 @@ export function ExpandingCreateControl({
           data-flow-feedback
           transition={transition}
           style={{ width: closedWidth, color: prominent ? 'var(--flow-expansion-ink)' : undefined }}
-          className={`absolute ${anchor} top-0 z-10 flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold ${prominent && !open ? 'text-accent-fg' : 'text-ink'} focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink`}
+          className={`absolute ${anchor} top-0 z-10 flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold ${prominent && !open ? 'text-accent-fg' : 'text-ink'} focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink disabled:opacity-40`}
         >
-          <motion.span
-            aria-hidden="true"
-            animate={{ rotate: open && multiplier > 0 ? 45 : 0 }}
-            transition={transition}
-          >
-            <PlusIcon width={16} height={16} />
-          </motion.span>
+          {showIcon && (
+            <motion.span
+              aria-hidden="true"
+              animate={{ rotate: open && multiplier > 0 ? 45 : 0 }}
+              transition={transition}
+            >
+              <PlusIcon width={16} height={16} />
+            </motion.span>
+          )}
           <span>{label}</span>
         </motion.button>
         <div

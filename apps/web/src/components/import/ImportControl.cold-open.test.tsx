@@ -15,7 +15,7 @@ vi.mock('motion/react', async () => {
   return {
     AnimatePresence: ({ children }: { children: ReactNode }) => children,
     m: Object.fromEntries(
-      ['div', 'button'].map((tag) => [
+      ['div', 'button', 'span'].map((tag) => [
         tag,
         ({
           animate,
@@ -24,6 +24,7 @@ vi.mock('motion/react', async () => {
           exit: _exit,
           transition: _transition,
           whileTap: _whileTap,
+          onAnimationComplete: _onAnimationComplete,
           ...props
         }: Record<string, unknown>) =>
           createElement(tag, {
@@ -85,12 +86,14 @@ it('holds the cold surface at trigger size until content is available, then reop
   expect(screen.getByRole('button', { name: /Loading/ })).toHaveAttribute('aria-busy', 'true');
   await act(async () => request.resolve({ default: Panel }));
   expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible();
-  expect(surface()).toHaveAttribute('data-animation', expect.stringContaining('"height":"auto"'));
   const panel = document.getElementById(
-    screen.getByRole('button', { name: 'Close' }).getAttribute('aria-controls')!,
+    screen.getByRole('button', { name: 'Import' }).getAttribute('aria-controls')!,
   );
   expect(panel).toContainElement(screen.getByRole('region', { name: 'Import sources' }));
-  expect(panel).toHaveAttribute('data-content-width', 'min(448px, calc(100vw - 48px))');
+  expect(surface()).toHaveAttribute(
+    'data-animation',
+    expect.stringContaining('min(448px, calc(100vw - 36px))'),
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Cancel import' }));
   expect(screen.getByRole('button', { name: 'Import' })).toHaveFocus();
   fireEvent.click(screen.getByRole('button', { name: 'Import' }));

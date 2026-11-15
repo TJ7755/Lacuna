@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { settle } from './fixtures/flowEvidence';
 import { createCourse, openEmptyDashboard, openImport } from './fixtures/lacunaApp';
 
 test('opens imports inside Today and keeps the panel usable', async ({ page }) => {
@@ -29,16 +30,14 @@ test('opens imports inside Today and keeps the panel usable', async ({ page }) =
   };
   await checkBounds();
 
+  await settle(surface);
   const sourceRow = panel.getByRole('button', { name: /Course library/ });
   const sourceBounds = (await sourceRow.boundingBox())!;
-  const title = surface.locator('.import-control-title');
-  const close = surface.getByRole('button', { name: 'Close', exact: true });
-  const titleBounds = (await title.boundingBox())!;
-  const closeBounds = (await close.boundingBox())!;
-  expect(Math.abs(titleBounds.x - sourceBounds.x)).toBeLessThanOrEqual(1);
+  const trigger = surface.getByRole('button', { name: 'Import', exact: true });
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
   expect(
-    Math.abs(titleBounds.y + titleBounds.height / 2 - closeBounds.y - closeBounds.height / 2),
-  ).toBeLessThanOrEqual(1);
+    (await trigger.boundingBox())!.y + (await trigger.boundingBox())!.height,
+  ).toBeLessThanOrEqual(sourceBounds.y);
   const sources = [
     'Course library',
     'Lacuna course',
@@ -112,7 +111,7 @@ test('opens imports inside Today and keeps the panel usable', async ({ page }) =
     await expect(panel.getByText('Drop a file here')).toBeVisible();
     await expect(panel.getByRole('button', { name: new RegExp(source) })).toBeFocused();
   }
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
   await expect(panel).toBeHidden();
   await expect(page).toHaveURL(/#\/$/);
   // Bookmarks and links from the landing page still reach the same panel.
@@ -167,3 +166,60 @@ test('keeps import dropdown chevrons inset and controls within bounds', async ({
     }
   }
 });
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  test(`Import keeps its trigger and animates back to its origin with ${reducedMotion}`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1470, height: 956 });
+    await page.emulateMedia({ reducedMotion });
+    await openEmptyDashboard(page);
+    const trigger = page.locator('main').getByRole('button', { name: 'Import', exact: true });
+    const origin = (await trigger.boundingBox())!;
+    await trigger.click();
+    const panel = page.locator('.import-panel');
+    const surface = page.locator('.flow-expansion').filter({ has: panel });
+    await expect(panel.getByRole('button', { name: /Course library/ })).toBeFocused();
+    await settle(surface);
+    await expect(trigger).toHaveText('Import');
+    expect(Math.abs((await trigger.boundingBox())!.x - origin.x)).toBeLessThanOrEqual(1);
+    await testInfo.attach('import-expanded', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
+    // Sample closure directly; locator clicks wait for animation stability.
+    const heights = await trigger.evaluate(
+      (button) =>
+        new Promise<number[]>((resolve) => {
+          const shell = button.parentElement!;
+          const samples: number[] = [];
+          const start = performance.now();
+          (button as HTMLButtonElement).click();
+          const sample = () => {
+            samples.push(shell.getBoundingClientRect().height);
+            if (performance.now() - start < 600) requestAnimationFrame(sample);
+            else resolve(samples);
+          };
+          requestAnimationFrame(sample);
+        }),
+    );
+    if (reducedMotion === 'no-preference') {
+      expect(
+        heights.filter((height) => height > origin.height + 5 && height < heights[0] - 5).length,
+      ).toBeGreaterThan(1);
+    }
+    await expect(panel).toBeHidden();
+    await expect(trigger).toBeFocused();
+    await settle(trigger.locator('..'));
+    expect(await trigger.boundingBox()).toEqual(origin);
+    await trigger.press('Enter');
+    await expect(panel).toBeVisible();
+    await trigger.click();
+    await page.waitForTimeout(60);
+    await trigger.click({ force: true });
+    await expect(panel).toBeVisible();
+    await expect(panel.getByRole('button', { name: /Course library/ })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
+  });
+}
