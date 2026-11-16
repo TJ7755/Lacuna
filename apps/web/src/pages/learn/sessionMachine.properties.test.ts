@@ -282,6 +282,7 @@ describe('session machine operation sequences', () => {
     const before = structuredClone(state);
     const request = transitionSession(state, {
       type: 'answer',
+      retainUndo: true,
       simple: false,
       review: {
         card: state.cards[0],

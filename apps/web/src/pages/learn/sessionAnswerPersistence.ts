@@ -1,4 +1,4 @@
-import type { SessionState } from './sessionMachine';
+import type { ReviewEffect, SessionState } from './sessionMachine';
 import { db, makeId } from '../../db/schema';
 import type { SessionEvent } from '../../course/sessionSummary';
 import { performanceForReviewUnit } from '../../db/backingDecks';
@@ -20,7 +20,7 @@ export interface AnswerSnapshot {
 }
 
 /** Persist a Simple review and its introduction exposure as one reversible write. */
-export async function persistSimpleSessionAnswer(
+async function persistSimpleSessionAnswer(
   unitId: string,
   performance: UserPerformance | undefined,
   readReview: () => RecordReviewArgs,
@@ -55,6 +55,58 @@ export async function persistSimpleSessionAnswer(
       return { result, nextPerf, perfBefore, exposureAdded };
     },
   );
+}
+
+/** Execute a requested review and carry its exact write receipt into the acknowledgement. */
+export async function persistSessionAnswer(
+  effect: ReviewEffect,
+  performance: UserPerformance | undefined,
+  getExposureLessonId: () => string | null,
+) {
+  const { review } = effect;
+  const written = effect.simple
+    ? await persistSimpleSessionAnswer(
+        review.deck.id,
+        performance,
+        () => review,
+        getExposureLessonId,
+      )
+    : await persistAnswer(review, review.deck.id, performance).then(
+        ({ result, performance: nextPerf }) => ({
+          result,
+          nextPerf,
+          perfBefore: performance ?? null,
+          exposureAdded: null,
+        }),
+      );
+  const { result, nextPerf, perfBefore, exposureAdded } = written;
+  const snapshot: Omit<AnswerSnapshot, 'deckReviews'> = {
+    machine: effect.snapshot,
+    responseTimeSec: review.responseTimeSec,
+    input: review.input,
+    retainOnCompletion: effect.retainUndo,
+    undo: {
+      eventId: review.eventId,
+      cardBefore: result.cardBefore,
+      perfBefore,
+      sessionHistoryId: result.sessionHistoryId,
+      deckId: review.deck.id,
+      kind: result.kind,
+      lastInteractedAtBefore: result.lastInteractedAtBefore,
+      updatedAtBefore: result.updatedAtBefore,
+      undoStateAfter: result.undoStateAfter,
+    },
+    deckId: review.deck.id,
+    ...(effect.simple ? { simple: { exposureAdded } } : {}),
+  };
+  const event: SessionEvent = {
+    cardId: review.card.id,
+    grade: review.grade,
+    correct: review.correct,
+    responseTimeSec: review.responseTimeSec,
+    distracted: review.distracted,
+  };
+  return { result, nextPerf, snapshot, event };
 }
 
 /** Refuse undo if another writer has replaced the exposure created by this answer. */

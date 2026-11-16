@@ -4,6 +4,7 @@ import {
   selectIntroductionCard,
   type LessonIntroduction,
 } from './lessonIntroduction';
+import type { AnswerSnapshot } from './sessionAnswerPersistence';
 import type { RecordReviewArgs } from '../../db/reviewRepository';
 import type { Card } from '@lacuna/core/db/types';
 import type { SessionCardOutcome, SessionEvent, SessionSummary } from '../../course/sessionSummary';
@@ -31,14 +32,18 @@ export interface SessionState {
   revision: RevisionSessionState;
 }
 
-interface ReviewEffect {
+export interface ReviewEffect {
   type: 'persist-review';
   review: RecordReviewArgs;
   simple: boolean;
+  snapshot: SessionState;
+  retainUndo: boolean;
 }
 
 export type SessionEffect =
   | ReviewEffect
+  | { type: 'retain-undo'; snapshot: AnswerSnapshot | null }
+  | { type: 'restore-answer'; snapshot: AnswerSnapshot; deckReviews: number }
   | { type: 'persist-resume' }
   | { type: 'serve-next' }
   | { type: 'finish'; stop: SessionStop; blockComplete?: boolean }
@@ -64,10 +69,20 @@ interface Selection {
 export type SessionEventInput =
   | {
       type: 'answer';
+      retainUndo: boolean;
       review: Omit<RecordReviewArgs, 'grade'>;
       grading: Parameters<typeof answerGrade>[0];
       simple: boolean;
     }
+  | {
+      type: 'answer-ready';
+      snapshot: AnswerSnapshot;
+      recorded: boolean;
+      card: Card;
+      event: SessionEvent;
+      scheduled: Parameters<typeof afterScheduledAnswer>[1] | null;
+    }
+  | { type: 'undo-recorded'; snapshot: AnswerSnapshot }
   | { type: 'next'; selection: Selection }
   | { type: 'simple-recorded'; card: Card; event: SessionEvent }
   | { type: 'introduction-checked'; card: Card; correct: boolean }
@@ -126,9 +141,52 @@ export function transitionSession(
             type: 'persist-review',
             review: { ...event.review, grade: answerGrade(event.grading) },
             simple: event.simple,
+            snapshot: snapshotSession(state),
+            retainUndo: event.retainUndo,
           },
         ],
       };
+    case 'answer-ready': {
+      const { snapshot } = event;
+      const next = event.scheduled
+        ? { state, effects: afterScheduledAnswer(state, event.scheduled) }
+        : transitionSession(state, {
+            type: 'simple-recorded',
+            card: event.card,
+            event: event.event,
+          });
+      return {
+        state: next.state,
+        effects: [
+          {
+            type: 'retain-undo',
+            snapshot:
+              event.recorded && (!snapshot.simple || snapshot.retainOnCompletion) ? snapshot : null,
+          },
+          ...next.effects,
+        ],
+      };
+    }
+    case 'undo-recorded': {
+      const { snapshot } = event;
+      const restored = transitionSession(state, {
+        type: 'restore',
+        snapshot: snapshot.machine,
+        card: snapshot.undo.cardBefore,
+      });
+      return {
+        state: restored.state,
+        effects: [
+          ...(snapshot.simple ? [{ type: 'persist-resume' } as const] : []),
+          // Simple passes never increment the scheduled daily review counter.
+          {
+            type: 'restore-answer',
+            snapshot,
+            deckReviews: snapshot.deckReviews - (snapshot.simple ? 0 : 1),
+          },
+        ],
+      };
+    }
     case 'restore': {
       const restored = snapshotSession(event.snapshot);
       const cards = replace(state.cards, event.card);
@@ -403,7 +461,7 @@ function selectSessionCard(state: SessionState, input: Selection): SessionTransi
     : finish(true);
 }
 
-export function afterScheduledAnswer(
+function afterScheduledAnswer(
   state: SessionState,
   input: Parameters<typeof sessionStopAfterAnswer>[0] & {
     revision: boolean;
