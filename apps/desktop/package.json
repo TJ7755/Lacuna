@@ -11,7 +11,7 @@
     "@lacuna/protocol": "workspace:*"
   },
   "devDependencies": {
-    "@electron/asar": "4.3.1",
+    "@electron/asar": "4.3.2",
     "@lacuna/core": "workspace:*",
     "@playwright/test": "^1.65.0",
     "@typescript/native": "npm:typescript@^7.0.2",
