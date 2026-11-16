@@ -2,52 +2,16 @@ import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
 import type { useToast } from '../../components/ui/Toast';
-import type { SessionSummary } from '../../course/sessionSummary';
 import { pauseAssetGc } from '../../db/assets';
-import type { CardFilter } from '@lacuna/core/db/search';
-import type { ReviewSessionKind } from '@lacuna/core/db/types';
-import type { AnswerStrictness } from '../../state/answerStrictness';
 import { useAnswerInput } from '../../state/answerInput';
 import { useLeaveFlowWith } from '../../utils/editorOrigin';
-import type { LearnModeType } from './types';
-import { SessionRuntime, type SessionRuntimeOptions } from './sessionRuntime';
-export interface UseLearnSessionParams {
-  enabled?: boolean;
-  quietCardPractice?: boolean;
-  courseId: string | undefined;
-  lessonId: string | undefined;
-  sessionId: string | undefined;
-  tagFilter: string | null;
-  filterParams: CardFilter[];
-  requestScopeLessonIds: string[] | undefined;
-  requestSpecificationPointId?: string;
-  /** Fixed lesson prefix of a curricular node's milestone; undefined records no milestone. */
-  requestMilestoneLessonIds?: string[];
-  requestReviewLimit?: number;
-  practiceNodeKeyParam: string | null;
-  requestAssessmentId: string | undefined;
-  requestPlanId: string | undefined;
-  requestWindowId: string | undefined;
-  plannedRevision: boolean;
-  reviewSessionKind: ReviewSessionKind;
-  isSimpleMode: boolean;
-  introduceNewCards?: boolean;
-  answerStrictness?: AnswerStrictness;
-  /** An explicitly requested pass, independent of curricular introductions and practice. */
-  standaloneSimple?: boolean;
-  /** Optional revision below a future exam target, without a curricular scope. */
-  examPractice?: boolean;
-  catchUpPractice?: boolean;
-  mode: LearnModeType;
+import { SessionRuntime } from './sessionRuntime';
+import type { SessionRuntimeOptions, SessionRuntimeParams } from './sessionRuntimeOptions';
+
+export interface UseLearnSessionParams extends SessionRuntimeParams {
   navigate: NavigateFunction;
-  onFlowExit?: () => void;
-  onStepFinished?: (summary: SessionSummary) => void;
   notify: ReturnType<typeof useToast>['notify'];
   distraction: DistractionTracker;
-  /** Called whenever a card is served, so per-card view state can reset. */
-  onCardServed?: () => void;
-  /** Called when the session (re)loads, so session view state can reset. */
-  onSessionReset?: () => void;
 }
 
 /** React owns subscription and browser adapters; the runtime owns the session. */

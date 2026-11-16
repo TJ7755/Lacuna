@@ -37,7 +37,8 @@ const WINDOWS_PACKAGE_BUDGET = {
   // renderer/CSS files over the 723-file baseline. Byte limits remain unchanged.
   // Shared generated authoring adds NumericAnswerEditor, questionValidation and
   // repository.authoring renderer chunks. Byte limits remain unchanged.
-  payloadFileCount: 733,
+  // Shared card construction adds one concept/snapshot renderer chunk (1,546 bytes).
+  payloadFileCount: 734,
   sourceMapBytes: 0,
   buildOnlyAssetBytes: 10_000,
   localeBytes: 1_300_000,

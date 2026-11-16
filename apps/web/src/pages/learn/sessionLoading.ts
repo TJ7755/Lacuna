@@ -1,7 +1,7 @@
 import { loadSessionData } from './loadSessionData';
 import { loadSessionSource, type LoadedSessionSource } from './loadSessionSource';
 import type { SimpleSessionScope } from './simpleSessionPersistence';
-import type { UseLearnSessionParams } from './useLearnSession';
+import type { SessionRuntimeParams } from './sessionRuntimeOptions';
 
 interface SessionLoadTarget {
   source(source: LoadedSessionSource): void;
@@ -15,7 +15,7 @@ interface SessionLoadTarget {
 
 /** Owns the cancellable source/metadata pipeline and its startup measurements. */
 export function startSessionLoad(
-  options: UseLearnSessionParams,
+  options: SessionRuntimeParams,
   scope: { isGlobal: boolean; simpleSessionScope: SimpleSessionScope },
   target: SessionLoadTarget,
 ): () => void {

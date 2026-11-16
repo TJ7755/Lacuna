@@ -9,6 +9,7 @@ import { assertRestoreOwner, stampRestoredRecords } from './snapshotRestore';
 
 import type { Transaction } from 'dexie';
 import { db, makeId } from './schema';
+import { newCard } from './newCard';
 import { friendlyDbError } from './dbErrors';
 import type {
   Card,
@@ -22,7 +23,7 @@ import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
 import { conceptIdForRegion } from '../questions/generatedConceptIds';
 import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { scheduleAssetGc } from './assets';
-import { replaceReviewHistoryForCards } from './cardRepository';
+import { replaceReviewHistoryForCards } from './cardReviewHistory';
 import {
   stampUpdatedAt,
   recordTombstone,
@@ -92,47 +93,25 @@ function nextOcclusionTimestamp(): number {
   return lastOcclusionTimestamp;
 }
 
-/**
- * Turn a generation payload into a full Card row with fresh FSRS defaults. Mirrors
- * repository.ts's `generatedCardFromPayload` field-for-field; kept as a separate copy
- * because the payload shapes differ in their anchor field (`occlusionRegionId` here vs
- * `sequenceItemId` there), so the sequence version's type cannot take this payload.
- */
 function generatedCardFromPayload(
   deckId: string,
   payload: GeneratedCardPayload,
   createdAt: number,
   conceptId: string,
 ): Card {
-  return stampUpdatedAt(
-    {
-      id: makeId(),
-      conceptId,
-      deckId,
-      schedulingUnitId: deckId,
-      courseId: payload.courseId,
-      primaryLessonId: payload.primaryLessonId,
-      type: payload.type,
-      front: payload.front,
-      back: payload.back,
-      stability: null,
-      difficulty: null,
-      lastReviewed: null,
-      reps: 0,
-      lapses: 0,
-      state: 0,
-      due: null,
-      scheduledDays: 0,
-      learningSteps: 0,
-      history: [],
-      createdAt,
-      tags: [],
-      suspended: false,
-      buriedUntil: null,
-      occlusionRegionId: payload.occlusionRegionId,
-    },
+  return newCard({
+    id: makeId(),
+    conceptId,
+    deckId,
+    schedulingUnitId: deckId,
+    courseId: payload.courseId,
+    primaryLessonId: payload.primaryLessonId,
+    type: payload.type,
+    front: payload.front,
+    back: payload.back,
     createdAt,
-  );
+    occlusionRegionId: payload.occlusionRegionId,
+  });
 }
 
 function conceptsForOcclusionPayloads(
