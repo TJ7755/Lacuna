@@ -83,6 +83,7 @@ export type SessionEventInput =
       scheduled: Parameters<typeof afterScheduledAnswer>[1] | null;
     }
   | { type: 'undo-recorded'; snapshot: AnswerSnapshot }
+  | { type: 'begin-pass'; queue?: Card[] }
   | { type: 'next'; selection: Selection }
   | { type: 'simple-recorded'; card: Card; event: SessionEvent }
   | { type: 'introduction-checked'; card: Card; correct: boolean }
@@ -133,6 +134,21 @@ export function transitionSession(
   event: SessionEventInput,
 ): SessionTransition {
   switch (event.type) {
+    case 'begin-pass': {
+      if (!event.queue) return { state: { ...state, events: [] }, effects: [] };
+      const outcomes = new Map<string, SessionCardOutcome>();
+      return {
+        state: {
+          ...state,
+          introduction: undefined,
+          cardIds: event.queue.map((card) => card.id),
+          events: [],
+          outcomes,
+          simple: { queue: event.queue, mastered: new Set(), wrong: new Set(), outcomes },
+        },
+        effects: [],
+      };
+    }
     case 'answer':
       return {
         state,

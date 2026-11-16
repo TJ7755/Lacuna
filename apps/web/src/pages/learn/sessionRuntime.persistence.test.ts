@@ -518,3 +518,84 @@ it('publishes a corrected introduction together with its unchecked presentation'
     session.dispose();
   }
 });
+
+it('publishes coherent completion, undo and repeat-pass snapshots', async () => {
+  const course = await createCourse('Published transitions');
+  const lesson = await createLesson(course.id, 'Facts');
+  const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+  const session = new SessionRuntime({
+    ...sessionParams({ lessonId: lesson.id, isSimpleMode: true, mode: 'simple' }),
+    answerInputPreference: 'course',
+    leaveFlow: vi.fn(),
+  });
+  session.start();
+  try {
+    await waitFor(() => expect(session.getSnapshot().current?.id).toBe(card.id));
+    session.getSnapshot().reveal();
+    const published: ReturnType<typeof session.getSnapshot>[] = [];
+    const unsubscribe = session.subscribe(() => published.push(session.getSnapshot()));
+    try {
+      await session.getSnapshot().answer(true, { retainUndo: true });
+      expect(published.length).toBeGreaterThan(0);
+      for (const snapshot of published) {
+        if (snapshot.reviewEvents.length === 0) {
+          expect(snapshot.phase).toBe('answer');
+          expect(snapshot.summary).toBeNull();
+          expect(snapshot.canUndo).toBe(false);
+          continue;
+        }
+        expect(snapshot.phase).toBe('finished');
+        expect(snapshot.summary?.events).toHaveLength(1);
+        expect(snapshot.reviewEvents).toHaveLength(1);
+        expect(snapshot.canUndo).toBe(true);
+        expect(snapshot.simpleProgress).toBe(1);
+      }
+
+      published.length = 0;
+      await session.getSnapshot().undoLast();
+      expect(published.length).toBeGreaterThan(0);
+      expect(published.at(-1)?.phase).toBe('question');
+      for (const snapshot of published) {
+        if (snapshot.phase === 'finished') {
+          expect(snapshot.summary?.events).toHaveLength(1);
+          expect(snapshot.reviewEvents).toHaveLength(1);
+          expect(snapshot.canUndo).toBe(true);
+          continue;
+        }
+        expect(snapshot.phase).toBe('question');
+        expect(snapshot.summary).toBeNull();
+        expect(snapshot.reviewEvents).toHaveLength(0);
+        expect(snapshot.canUndo).toBe(false);
+        expect(snapshot.simpleProgress).toBe(0);
+      }
+      expect(await db.reviewHistory.count()).toBe(0);
+
+      session.getSnapshot().reveal();
+      await session.getSnapshot().answer(true, { retainUndo: true });
+      published.length = 0;
+      expect(await session.getSnapshot().confirmCompletion()).toBe(true);
+      expect(published.at(-1)?.canUndo).toBe(false);
+      expect(published.length).toBeGreaterThan(0);
+      for (const snapshot of published) {
+        expect(snapshot.phase).toBe('finished');
+        expect(snapshot.summary?.events).toHaveLength(1);
+      }
+
+      published.length = 0;
+      session.getSnapshot().continueStudying();
+      expect(published.length).toBeGreaterThan(0);
+      for (const snapshot of published) {
+        expect(snapshot.phase).toBe('question');
+        expect(snapshot.current?.id).toBe(card.id);
+        expect(snapshot.summary).toBeNull();
+        expect(snapshot.reviewEvents).toHaveLength(0);
+        expect(snapshot.sessionCardOutcomes.size).toBe(0);
+        expect(snapshot.simpleProgress).toBe(0);
+      }
+    } finally {
+      unsubscribe();
+    }
+  } finally {
+    session.dispose();
+  }
+});
