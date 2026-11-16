@@ -87,6 +87,8 @@ export default defineConfig({
         'apps/web/src/db/noteRepository.ts',
         'apps/web/src/pages/learn/useLearnSession.ts',
         'apps/web/src/pages/learn/sessionRuntime.ts',
+        'apps/web/src/pages/learn/sessionRecitation.ts',
+        'apps/web/src/pages/learn/sessionLoading.ts',
         'apps/web/src/pages/learn/sessionPool.ts',
         'apps/web/src/pages/learn/sessionAnswerPersistence.ts',
         'apps/web/src/pages/learn/sessionCompletionPersistence.ts',
@@ -207,6 +209,18 @@ export default defineConfig({
           lines: 88,
         },
         'apps/web/src/pages/learn/sessionRuntime.ts': {
+          statements: 83,
+          branches: 68,
+          functions: 81,
+          lines: 88,
+        },
+        'apps/web/src/pages/learn/sessionRecitation.ts': {
+          statements: 83,
+          branches: 68,
+          functions: 81,
+          lines: 88,
+        },
+        'apps/web/src/pages/learn/sessionLoading.ts': {
           statements: 83,
           branches: 68,
           functions: 81,

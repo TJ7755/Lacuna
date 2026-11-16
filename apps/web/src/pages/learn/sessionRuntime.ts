@@ -5,11 +5,10 @@ import { createRevisionSessionState } from '../../course/revisionSession';
 import { type SessionCardOutcome, type SessionSummary } from '../../course/sessionSummary';
 
 import { buryCard, setCardFlag, suspendCard } from '../../db/cardRepository';
-import { markLessonComplete, upsertLessonCardExposure } from '../../db/lessonRepository';
+import { markLessonComplete } from '../../db/lessonRepository';
 import { type OcclusionCardData } from '../../db/occlusionStudy';
 import { db, makeId } from '../../db/schema';
 
-import { isLabelCardId } from '../../db/sequenceGeneration';
 import {
   type Card,
   type Lesson,
@@ -32,12 +31,10 @@ import { startOfDay } from '../../utils/datetime';
 import { resolveAnswerMode, reviewAnswerInput } from '../../utils/resolveAnswerMode';
 import { answerCorrect, type AnswerInput, type AnswerResult, answerFeedback } from './answerSteps';
 import { canIntroduceCard, introductionProgress, introductionStage } from './lessonIntroduction';
-import { loadSessionData } from './loadSessionData';
-import { loadSessionSource } from './loadSessionSource';
+import { startSessionLoad } from './sessionLoading';
 import { shuffledSimpleQueue } from './recitation/recitationFlow';
 import {
   type AnswerSnapshot,
-  persistRecitationReview,
   persistSessionAnswer,
   undoSessionAnswer,
 } from './sessionAnswerPersistence';
@@ -55,7 +52,8 @@ import {
   type SessionState,
   type SessionEffect,
 } from './sessionMachine';
-import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
+import { scheduleSessionPreload } from './sessionPreload';
+import { SessionRecitation } from './sessionRecitation';
 import { resolveLearnSessionScope } from './sessionScope';
 import { clearSimpleSession, saveSimpleSession } from './simpleSessionPersistence';
 import {
@@ -165,31 +163,17 @@ export class SessionRuntime {
   };
   preload = () => {
     if (!this.preloadEnabled || !this.current) return;
-    let stopPreloading: (() => void) | undefined;
-    let timeout: number | undefined;
-    // Let the current face paint before speculative reads and decoding begin.
-    const frame = window.requestAnimationFrame(() => {
-      timeout = window.setTimeout(() => {
-        const pool = this.options.isSimpleMode
-          ? this.simpleQueue.filter((card) => !this.simpleMastered.has(card.id))
-          : this.cards;
-        const upcoming = sessionPreloadCards(
-          pool,
-          this.current!.id,
-          this.options.isSimpleMode ? null : this.ctx,
-          this.cooldowns,
-        );
-        stopPreloading = preloadSessionImages(upcoming, this.occlusionMap);
-      }, 0);
-    });
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(timeout);
-      stopPreloading?.();
-    };
+    return scheduleSessionPreload(() => ({
+      cards: this.options.isSimpleMode
+        ? this.simpleQueue.filter((card) => !this.simpleMastered.has(card.id))
+        : this.cards,
+      currentId: this.current!.id,
+      context: this.options.isSimpleMode ? null : this.ctx,
+      cooldowns: this.cooldowns,
+      occlusions: this.occlusionMap,
+    }));
   };
   private load = () => {
-    let cancelled = false;
     this.machineState = emptySessionState();
     // Restarting after disposal must not reuse the previous session.
     this.cooldowns = new Map();
@@ -241,116 +225,81 @@ export class SessionRuntime {
     this.setResolvedCourseId(null);
     this.setLessonNotesScreen(null);
     if (!(this.options.enabled ?? true)) return;
-    void (async () => {
-      const measureStartup =
-        performance.getEntriesByName('lacuna:measure-study-startup').length > 0;
-      const markLoad = (stage: string) => {
-        if (measureStartup) performance.mark(`lacuna:study-load:${stage}`);
-      };
-      markLoad('load-start');
-      const source = await loadSessionSource({
-        lessonId: this.options.lessonId,
-        courseId: this.options.courseId,
-        standaloneSimple: this.options.standaloneSimple ?? false,
-        requestScopeLessonIds: this.options.requestScopeLessonIds,
-        requestSpecificationPointId: this.options.requestSpecificationPointId,
-        practiceNodeKeyParam: this.options.practiceNodeKeyParam,
-        requestAssessmentId: this.options.requestAssessmentId,
-        filterParams: this.options.filterParams,
-        examPractice: this.options.examPractice ?? false,
-        catchUpPractice: this.options.catchUpPractice ?? false,
-        plannedRevision: this.options.plannedRevision,
-        requestPlanId: this.options.requestPlanId,
-        requestWindowId: this.options.requestWindowId,
-        requestMilestoneLessonIds: this.options.requestMilestoneLessonIds,
-      });
-      if (cancelled) return;
-      if ('redirect' in source) {
-        if (this.options.onFlowExit) this.options.onFlowExit();
-        else void this.options.navigate(source.redirect);
-        return;
-      }
-      this.setResolvedCourseId(source.resolvedCourseId);
-      this.lessonHasMembers = source.lessonHasMembers;
-      this.reviewKind = source.reviewKind;
-      this.ratchetCourseId = source.ratchetCourseId;
-      this.ratchetLessonId = source.ratchetLessonId;
-      this.lessonExposureId = source.lessonExposureId;
-      this.setUnitDisplayName(source.unitDisplayName);
-      this.revisionPlan = source.revisionPlan;
-      this.revisionInitialRevision = source.revisionInitialRevision;
-      this.revisionWindowStartedAt = source.revisionWindowStartedAt;
-      this.setRevisionWindowBudgetSeconds(source.revisionWindowBudgetSeconds);
-      this.setRevisionSecondsRemaining(source.revisionSecondsRemaining);
-      this.setRevisionNextWindowDay(source.revisionNextWindowDay);
-      this.practiceSession = source.practiceSession;
-      if (cancelled) return;
-      markLoad('pool-ready');
-      const data = await loadSessionData({
-        source,
-        tagFilter: this.options.tagFilter,
-        filterParams: this.options.filterParams,
-        lessonId: this.options.lessonId,
-        plannedRevision: this.options.plannedRevision,
-        isSimpleMode: this.options.isSimpleMode,
-        introduceNewCards: this.options.introduceNewCards ?? false,
-        isGlobal: this.isGlobal,
-        mode: this.options.mode,
-        simpleSessionScope: this.simpleSessionScope,
-        markLoad,
-      });
-      if (cancelled) return;
-      this.cards = data.cards;
-      this.machineState = { ...this.machineState, introduction: data.introduction };
-      if ((this.options.introduceNewCards ?? false) && this.options.lessonId)
-        this.setLessonChoiceSource({
-          lessonId: this.options.lessonId,
-          cards: data.lessonChoiceCards,
-        });
-      this.perf = data.performance;
-      this.schedulingUnits = data.schedulingUnits;
-      this.schedulingConfig = data.schedulingConfig;
-      this.ctx = data.context;
-      this.answerModeLessons = data.answerModeLessons;
-      this.linesModeMap = data.linesMode;
-      this.occlusionMap = data.occlusions;
-      this.progressBefore = data.progressBefore;
-      this.setSchedulerProgress(data.schedulerProgress);
-      this.setServeableCardCount(data.serveableCardCount);
-      this.reviewsDayStart = data.reviewsDayStart;
-      this.reviewsByDeck = data.reviewsByDeck;
-      this.setLimitOverride(false);
-      this.setSingleDeck((previous) => {
-        const next = !this.isGlobal ? source.units[0] : null;
-        return previous?.id === next?.id ? previous : next;
-      });
-      if (data.simple) {
-        this.simpleQueue = data.simple.queue;
-        this.simpleMastered = data.simple.mastered;
-        this.simpleWrong = data.simple.wrong;
-        this.events = data.simple.events;
-        this.simpleRecitations = data.simple.recitations;
-      }
-      this.sessionCardOutcomes = data.simple?.outcomes ?? new Map();
-      this.setSessionCardOutcomes(this.sessionCardOutcomes);
-      this.setSessionCardIds((data.simple?.queue ?? data.cards).map((card) => card.id));
-      if (data.entry.type === 'notes') {
-        this.setLessonNotesScreen(data.entry.screen);
-        this.setPhase('notes');
-      } else if (data.entry.type === 'summary') {
-        this.finaliseSummary(data.entry.summary);
-      } else {
-        if (!source.firstStudyLessonId || !source.firstStudyLessonName) {
-          markLoad('serve-start');
-          this.sessionStartMs = this.revisionWindowStartedAt || Date.now();
-        }
-        this.serveNext();
-        if (!source.firstStudyLessonId || !source.firstStudyLessonName) markLoad('serve-end');
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    return startSessionLoad(
+      this.options,
+      { isGlobal: this.isGlobal, simpleSessionScope: this.simpleSessionScope },
+      {
+        redirect: (path) => {
+          if (this.options.onFlowExit) this.options.onFlowExit();
+          else void this.options.navigate(path);
+        },
+        source: (source) => {
+          this.setResolvedCourseId(source.resolvedCourseId);
+          this.lessonHasMembers = source.lessonHasMembers;
+          this.reviewKind = source.reviewKind;
+          this.ratchetCourseId = source.ratchetCourseId;
+          this.ratchetLessonId = source.ratchetLessonId;
+          this.lessonExposureId = source.lessonExposureId;
+          this.setUnitDisplayName(source.unitDisplayName);
+          this.revisionPlan = source.revisionPlan;
+          this.revisionInitialRevision = source.revisionInitialRevision;
+          this.revisionWindowStartedAt = source.revisionWindowStartedAt;
+          this.setRevisionWindowBudgetSeconds(source.revisionWindowBudgetSeconds);
+          this.setRevisionSecondsRemaining(source.revisionSecondsRemaining);
+          this.setRevisionNextWindowDay(source.revisionNextWindowDay);
+          this.practiceSession = source.practiceSession;
+        },
+        ready: (source, data, markLoad) => {
+          this.cards = data.cards;
+          this.machineState = { ...this.machineState, introduction: data.introduction };
+          if ((this.options.introduceNewCards ?? false) && this.options.lessonId)
+            this.setLessonChoiceSource({
+              lessonId: this.options.lessonId,
+              cards: data.lessonChoiceCards,
+            });
+          this.perf = data.performance;
+          this.schedulingUnits = data.schedulingUnits;
+          this.schedulingConfig = data.schedulingConfig;
+          this.ctx = data.context;
+          this.answerModeLessons = data.answerModeLessons;
+          this.linesModeMap = data.linesMode;
+          this.occlusionMap = data.occlusions;
+          this.progressBefore = data.progressBefore;
+          this.setSchedulerProgress(data.schedulerProgress);
+          this.setServeableCardCount(data.serveableCardCount);
+          this.reviewsDayStart = data.reviewsDayStart;
+          this.reviewsByDeck = data.reviewsByDeck;
+          this.setLimitOverride(false);
+          this.setSingleDeck((previous) => {
+            const next = !this.isGlobal ? source.units[0] : null;
+            return previous?.id === next?.id ? previous : next;
+          });
+          if (data.simple) {
+            this.simpleQueue = data.simple.queue;
+            this.simpleMastered = data.simple.mastered;
+            this.simpleWrong = data.simple.wrong;
+            this.events = data.simple.events;
+            this.recitation.steps = data.simple.recitations;
+          }
+          this.sessionCardOutcomes = data.simple?.outcomes ?? new Map();
+          this.setSessionCardOutcomes(this.sessionCardOutcomes);
+          this.setSessionCardIds((data.simple?.queue ?? data.cards).map((card) => card.id));
+          if (data.entry.type === 'notes') {
+            this.setLessonNotesScreen(data.entry.screen);
+            this.setPhase('notes');
+          } else if (data.entry.type === 'summary') {
+            this.finaliseSummary(data.entry.summary);
+          } else {
+            if (!source.firstStudyLessonId || !source.firstStudyLessonName) {
+              markLoad('serve-start');
+              this.sessionStartMs = this.revisionWindowStartedAt || Date.now();
+            }
+            this.serveNext();
+            if (!source.firstStudyLessonId || !source.firstStudyLessonName) markLoad('serve-end');
+          }
+        },
+      },
+    );
   };
 
   private reviewSessionId: string;
@@ -615,12 +564,6 @@ export class SessionRuntime {
     return this.current !== null && this.linesModeMap.has(this.current!.id);
   }
 
-  private get recitationSequence() {
-    return this.current?.sequenceItemId && !isLabelCardId(this.current.sequenceItemId)
-      ? (this.linesModeMap.get(this.current!.id) ?? null)
-      : null;
-  }
-
   private progressCache: { dirty: boolean; value: number } = { dirty: true, value: 0 };
 
   private summary: SessionSummary | null = null;
@@ -672,8 +615,6 @@ export class SessionRuntime {
       simple: { ...this.machineState.simple, wrong: value },
     };
   }
-
-  private simpleRecitations: Map<string, unknown> = new Map();
 
   private get sessionCardIds() {
     return this.machineState.cardIds;
@@ -777,27 +718,6 @@ export class SessionRuntime {
 
   private createSimpleQueue = (cards: Card[]) => shuffledSimpleQueue(cards, this.linesModeMap);
 
-  private recitationFocus: string[] = [];
-  private setRecitationFocus = (value: string[] | ((previous: string[]) => string[])) => {
-    this.recitationFocus = typeof value === 'function' ? value(this.recitationFocus) : value;
-    this.publish();
-  };
-
-  private get currentCardIds() {
-    return (() => {
-      if (!this.current) return [];
-      if (!this.recitationSequence || !this.options.isSimpleMode) return [this.current!.id];
-      const ids = this.cards.flatMap((card) =>
-        card.sequenceItemId &&
-        this.recitationFocus.includes(card.sequenceItemId) &&
-        this.linesModeMap.get(card.id)?.id === this.recitationSequence!.id
-          ? [card.id]
-          : [],
-      );
-      return ids.length > 0 ? ids : [this.current!.id];
-    })();
-  }
-
   private lessonExposureId: string | null = null;
 
   private lessonHasMembers = false;
@@ -872,8 +792,6 @@ export class SessionRuntime {
 
   private mounted = true;
 
-  private readSessionState = () => this.machineState;
-
   private applySessionEvent = (event: SessionEventInput) => {
     const transition = transitionSession(this.machineState, event);
     this.machineState = transition.state;
@@ -920,7 +838,7 @@ export class SessionRuntime {
       masteredCardIds: [...this.simpleMastered],
       outcomes,
       events: this.events,
-      recitations: this.simpleRecitations,
+      recitations: this.recitation.steps,
       introduction: this.machineState.introduction,
     });
   };
@@ -1198,7 +1116,7 @@ export class SessionRuntime {
       if (card) {
         this.presentedAnswerInput = reviewAnswerInput(
           card,
-          this.recitationSequence !== null,
+          this.recitation.sequence !== null,
           this.isTypingCard,
         );
       }
@@ -1290,7 +1208,7 @@ export class SessionRuntime {
         retainUndo: options?.retainUndo ?? verifiedRecall,
         input: reviewAnswerInput(
           cardNow,
-          this.recitationSequence !== null,
+          this.recitation.sequence !== null,
           this.presentedAnswerInput === 'typed',
         ),
         markedBy,
@@ -1654,95 +1572,30 @@ export class SessionRuntime {
     }
   };
 
-  private recitationMasteredItemIds = (sequenceId: string) =>
-    new Set(
-      this.simpleQueue.flatMap((card) =>
-        card.sequenceItemId &&
-        this.simpleMastered.has(card.id) &&
-        this.linesModeMap.get(card.id)?.id === sequenceId
-          ? [card.sequenceItemId]
-          : [],
-      ),
-    );
-
-  private saveRecitationStep = (sequenceId: string, state: unknown) => {
-    if (!this.options.isSimpleMode) return;
-    if (state === null) {
-      this.simpleRecitations.delete(sequenceId);
-      return;
-    }
-    this.simpleRecitations.set(sequenceId, state);
-    this.persistSimpleResume();
-  };
-
-  private answerRecitation = async (
-    results: readonly {
-      itemId: string;
-      correct: boolean;
-    }[],
-    responseTimeSec: number,
-    masteredItemIds: readonly string[] | 'all',
-  ) => {
-    const generation = this.generation;
-    if (!this.recitationSequence || !this.options.isSimpleMode) return;
-    const cards = new Map<string, Card>();
-    for (const card of this.simpleQueue) {
-      if (
-        card.sequenceItemId &&
-        !isLabelCardId(card.sequenceItemId) &&
-        this.linesModeMap.get(card.id)?.id === this.recitationSequence!.id
-      ) {
-        cards.set(card.sequenceItemId, card);
-      }
-    }
-    let outcomes = new Map(this.sessionCardOutcomes);
-    const updateProgress = (event: SessionEventInput) => {
-      const next = transitionSession({ ...this.readSessionState(), outcomes }, event).state;
-      outcomes = next.outcomes;
-      this.simpleMastered = next.simple.mastered;
-      this.simpleWrong = next.simple.wrong;
-    };
-    for (const { itemId, correct } of results) {
-      const card = cards.get(itemId);
-      const deck = card && this.answerUnit(card);
-      if (!card || !deck) continue;
-      // The bar follows each manual check, including retries; scheduling still
-      // records only the first recall and mastery waits for a completed chunk.
-      updateProgress({ type: 'recitation-check', cardId: card.id, correct });
-      if (this.events.some((event) => event.cardId === card.id)) continue;
-      const recorded = await persistRecitationReview({
-        card,
+  private recitation = new SessionRecitation({
+    read: () => ({
+      state: this.machineState,
+      current: this.current,
+      enabled: this.options.isSimpleMode,
+      sequences: this.linesModeMap,
+      exposureLessonId: this.lessonExposureId,
+      generation: this.generation,
+      mounted: this.mounted,
+      review: {
         sessionId: this.reviewSessionId,
         sessionKind: this.options.reviewSessionKind,
-        deck,
         kind: this.reviewKind,
-        responseTimeSec,
-        correct,
-      });
-      if (!this.mounted || generation !== this.generation) return;
-      this.applySessionEvent({
-        type: 'recitation-recorded',
-        card: recorded.card,
-        event: recorded.event,
-      });
-      cards.set(recorded.card.sequenceItemId!, recorded.card);
-    }
-    if (masteredItemIds === 'all') this.simpleRecitations.delete(this.recitationSequence!.id);
-    for (const itemId of masteredItemIds === 'all' ? [...cards.keys()] : masteredItemIds) {
-      const card = cards.get(itemId);
-      if (!card || this.simpleMastered.has(card.id)) continue;
-      if (this.lessonExposureId) {
-        await upsertLessonCardExposure(this.lessonExposureId, card.id);
-        if (!this.mounted || generation !== this.generation) return;
-      }
-      // Mastery acknowledges the exposure write: a failed write must remain retryable.
-      updateProgress({ type: 'recitation-mastered', cardIds: [card.id] });
-    }
-    this.sessionCardOutcomes = outcomes;
-    this.setSessionCardOutcomes(outcomes);
-    this.persistSimpleResume(outcomes);
-    if ([...cards.values()].every((card) => this.simpleMastered.has(card.id))) this.serveNext();
-  };
+      },
+    }),
+    unitForCard: this.answerUnit,
+    update: (state, publish) => {
+      this.machineState = state;
+      if (publish) this.publish();
+    },
+    persistResume: this.persistSimpleResume,
+    publish: this.publish,
+    serveNext: this.serveNext,
+  });
 
   private undoRecordedAnswer = async (options?: { reveal?: boolean }) => {
     const generation = this.generation;
@@ -1815,13 +1668,13 @@ export class SessionRuntime {
     isMachineMarkedCard: this.isMachineMarkedCard,
     hasUnrenderableItemPayload: this.hasUnrenderableItemPayload,
     isLinesModeCard: this.isLinesModeCard,
-    recitationSequence: this.recitationSequence,
-    recitationMasteredItemIds: this.recitationMasteredItemIds,
-    savedRecitationStep: (sequenceId: string) => this.simpleRecitations.get(sequenceId),
-    saveRecitationStep: this.saveRecitationStep,
-    currentCardIds: this.currentCardIds,
-    setRecitationFocus: this.setRecitationFocus,
-    answerRecitation: this.answerRecitation,
+    recitationSequence: this.recitation.sequence,
+    recitationMasteredItemIds: this.recitation.masteredItemIds,
+    savedRecitationStep: this.recitation.savedStep,
+    saveRecitationStep: this.recitation.saveStep,
+    currentCardIds: this.recitation.currentCardIds,
+    setRecitationFocus: this.recitation.setFocus,
+    answerRecitation: this.recitation.answer,
     revealRecitation: this.revealRecitation,
     occlusion: this.currentOcclusionData?.occlusion,
     occlusionAnswerText: this.currentOcclusionData?.answerText,
