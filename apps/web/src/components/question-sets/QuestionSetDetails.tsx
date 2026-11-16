@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { Field, Input } from '../ui/Field';
 import { SettingsIcon } from '../ui/icons';
 import { QuestionSetSettings } from './QuestionSetSettings';
+import { QuestionSourceSuspension } from './QuestionSourceSuspension';
 
 export function QuestionSetDetails({
   content,
@@ -77,6 +78,13 @@ export function QuestionSetDetails({
                 />
               </Field>
               <QuestionSetSettings content={content} onChange={onChange} />
+              {content.legacyQuestionId && (
+                <QuestionSourceSuspension
+                  sourceId={content.legacyQuestionId}
+                  courseId={content.courseId}
+                  disabled={disabled}
+                />
+              )}
               <div className="mt-6 flex justify-end">
                 <Button onClick={() => setOpen(false)}>Done</Button>
               </div>

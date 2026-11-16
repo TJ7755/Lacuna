@@ -17,6 +17,8 @@ import { QuestionSetPreview } from '../components/question-sets/QuestionSetPrevi
 import { QuestionSetDraftFeedback } from '../components/question-sets/QuestionSetDraftFeedback';
 import { Button } from '../components/ui/Button';
 import { ConfirmInline } from '../components/ui/ConfirmInline';
+import { loadDraft } from '../utils/drafts';
+import { questionDraftKey } from './questionDraft';
 import {
   QuestionSetLoading,
   QuestionSetUnavailable,
@@ -27,12 +29,25 @@ import '../components/question-sets/question-composer.css';
 export function QuestionSetEditor() {
   const { courseId, setId } = useParams<{ courseId: string; setId: string }>();
   const course = useCourse(courseId);
-  const source = useLiveQuery(
-    async () => (setId ? ((await db.questionSets.get(setId))?.legacyQuestionId ?? null) : null),
-    [setId],
-  );
+  const location = useLocation();
+  const source = useLiveQuery(async () => {
+    const set = setId ? await db.questionSets.get(setId) : undefined;
+    if (!courseId || !set || set.courseId !== courseId || !set.legacyQuestionId) return null;
+    const question = await db.questions.get(set.legacyQuestionId);
+    if (!question || question.courseId !== courseId) return null;
+    return question.kind === 'generated' || loadDraft(questionDraftKey(courseId, question.id))
+      ? question.id
+      : null;
+  }, [courseId, setId]);
   if (source === undefined) return <QuestionSetLoading />;
-  if (source) return <Navigate replace to={`/course/${courseId}/questions/${source}/edit`} />;
+  if (source)
+    return (
+      <Navigate
+        replace
+        to={`/course/${courseId}/questions/${source}/edit`}
+        state={location.state}
+      />
+    );
   if (course === undefined) return <QuestionSetLoading />;
   if (course === null)
     return (

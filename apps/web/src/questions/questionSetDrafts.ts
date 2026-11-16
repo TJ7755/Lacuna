@@ -37,6 +37,7 @@ export async function publishQuestionSetDraft(
       db.courseAssessments,
       db.concepts,
       db.questionSets,
+      db.questions,
       db.tombstones,
     ],
     async () => {

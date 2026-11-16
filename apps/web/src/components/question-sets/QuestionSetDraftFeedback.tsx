@@ -44,8 +44,9 @@ export function QuestionSetDraftFeedback({
           onClick={async () => {
             try {
               const draft = createEmptyQuestionSetDraft(courseId, makeId());
+              const { legacyQuestionId: _source, ...copy } = content;
               draft.content = {
-                ...content,
+                ...copy,
                 id: draft.content.id,
                 title: `${content.title} (copy)`,
               };

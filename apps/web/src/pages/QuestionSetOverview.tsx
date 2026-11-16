@@ -116,11 +116,7 @@ export function QuestionSetOverview() {
           <Link
             className={buttonClassName('ghost', 'md')}
             state={origin}
-            to={
-              content.legacyQuestionId
-                ? `/course/${courseId}/questions/${content.legacyQuestionId}/edit`
-                : `/course/${courseId}/question-sets/${setId}/edit`
-            }
+            to={`/course/${courseId}/question-sets/${setId}/edit`}
           >
             Edit
           </Link>

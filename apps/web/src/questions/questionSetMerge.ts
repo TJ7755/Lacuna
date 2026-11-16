@@ -70,6 +70,17 @@ export function mergeQuestionSetRecords(
         `Question Set revision ${incoming.contentRevisionId} has conflicting content.`,
       );
     }
+    // A legacy writer still owns only its generated view. A newer timestamp
+    // cannot transfer a fixed aggregate back from composer authoring.
+    const sharedSource =
+      existing.legacyQuestionId !== undefined &&
+      existing.legacyQuestionId === incoming.legacyQuestionId;
+    const existingComposer = !existing.contentRevisionId.startsWith('individual:');
+    const incomingComposer = !incoming.contentRevisionId.startsWith('individual:');
+    if (sharedSource && existingComposer !== incomingComposer) {
+      if (incomingComposer) merged.set(incoming.id, incoming);
+      continue;
+    }
     if (
       incoming.updatedAt > existing.updatedAt ||
       (incoming.updatedAt === existing.updatedAt &&

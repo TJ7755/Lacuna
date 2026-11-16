@@ -79,6 +79,18 @@ export async function restoreQuestion(snapshot: QuestionSnapshot): Promise<void>
       db.tombstones,
     ],
     async (tx) => {
+      const currentSet = question.migratedToSetId
+        ? await db.questionSets.get(question.migratedToSetId)
+        : undefined;
+      if (
+        currentSet &&
+        !currentSet.contentRevisionId.startsWith('individual:') &&
+        snapshot.questionSet?.contentRevisionId !== currentSet.contentRevisionId
+      ) {
+        throw new Error(
+          'The Question Set has composer edits, so this source undo is no longer available.',
+        );
+      }
       if (
         concepts.questionId !== question.id ||
         concepts.courseId !== question.courseId ||
