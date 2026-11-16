@@ -8,6 +8,8 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       await page.emulateMedia({ reducedMotion, colorScheme: 'dark' });
       const { lessonId } = await seedStudyCards(page, 'Study expansion', [['Question', 'Answer']]);
       await page.goto(`/#/lesson/${lessonId}/learn?mode=simple`);
+      // The loading header also has an Exit button, which leaves without a confirmation.
+      await expect(page.locator('[data-study-card-id]')).toBeVisible();
       const trigger = page.getByRole('button', { name, exact: true });
       await expect(trigger).toBeVisible();
       const observed = await trigger.evaluate(async (button, name) => {
