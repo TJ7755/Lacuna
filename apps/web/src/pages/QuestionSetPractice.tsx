@@ -14,21 +14,7 @@ import {
 import { StepSwap } from '../components/ui/StepSwap';
 import { MeasuredHeight } from '../components/ui/MeasuredHeight';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { flattenQuestionSet } from '../questions/questionSetAuthoring';
-import {
-  feedbackAvailable,
-  type QuestionSetAttemptRecord,
-} from '@lacuna/core/questions/questionSetAttempts';
-import {
-  recordQuestionSetAssistance,
-  completeQuestionSetAttempt,
-  saveQuestionSetAttemptPosition,
-  saveQuestionSetMarking,
-  submitPracticeQuestion,
-  submitQuestionSetPaper,
-  type SaveQuestionSetMarkingInput,
-  QuestionSetAttemptRevisionConflictError,
-} from '../questions/questionSetAttemptRepository';
+import { QuestionSetAttemptRevisionConflictError } from '../questions/questionSetAttemptRepository';
 import { QuestionSetMarkingActions } from '../components/question-sets/QuestionSetMarkingActions';
 import { QuestionSetAnswer } from '../components/question-sets/QuestionSetAnswer';
 import { QuestionSetRelatedKnowledge } from '../components/question-sets/QuestionSetRelatedKnowledge';
@@ -48,7 +34,6 @@ import {
 import { dimensionNames } from '../components/question-sets/presentation';
 import { CloseIcon, FileTextIcon } from '../components/ui/icons';
 import type { QuestionStudySummary } from '../course/sessionSummary';
-import { summariseSelfMarking } from '@lacuna/core/questions/questionSets';
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import '../components/question-sets/question-sets.css';
@@ -131,9 +116,26 @@ function PracticeWorkspace({
   initialFocusOwner?: Element | null;
   study?: { onComplete: (summary: QuestionStudySummary) => void; onExit: () => void };
 }) {
-  const [formDirty, setFormDirty] = useState(false);
-  const [reflectionDirty, setReflectionDirty] = useState(false);
-  const progress = useAttemptProgress(session, formDirty || reflectionDirty);
+  const progress = useAttemptProgress(session);
+  const { formDirty, reflectionDirty, acting, actionError } = progress;
+  const { setFormDirty, setReflectionDirty, perform } = session;
+  const {
+    allNodes,
+    nodes,
+    index,
+    active,
+    marking,
+    criteria,
+    criterion,
+    criterionIndex,
+    advancePart,
+    blocked,
+    actionBlocked,
+    summary,
+    markingAction,
+    studySummary,
+  } = session.practice;
+  const answer = active.node.answer!;
   const attempt = progress.record;
   const started = useRef(false);
   useEffect(() => {
@@ -145,34 +147,13 @@ function PracticeWorkspace({
   useEffect(() => {
     if (study && attempt.status === 'complete' && completed.current !== attempt.id) {
       completed.current = attempt.id;
-      const jevCount = attempt.decisions.filter(
-        (decision) => decision.markedBy?.by === 'jev',
-      ).length;
-      study.onComplete({
-        kind: 'question',
-        score: summariseSelfMarking(attempt.receipt, attempt.decisions),
-        marking:
-          jevCount === 0
-            ? 'Self-marked'
-            : jevCount === attempt.decisions.length
-              ? 'Jev-marked'
-              : 'Mixed marking',
-      });
+      study.onComplete(studySummary);
     }
-  }, [attempt, study]);
+  }, [attempt, study, studySummary]);
   const origin = questionSetReturn(useLocation().state, attempt.courseId);
   const navigate = useNavigate();
   const rootRef = useQuestionSetScroll(`question-set-scroll:${attempt.id}`);
   const blankConfirmation = useQuestionSetBlankConfirmation(rootRef);
-  const [actionError, setActionError] = useState('');
-  const [acting, setActing] = useState(false);
-  const allNodes = flattenQuestionSet(attempt.receipt);
-  const nodes = allNodes.filter((node) => node.node.answer);
-  const index = nodes.findIndex((node) => node.id === attempt.activeNodeId);
-  const active = nodes[index];
-  const answer = active.node.answer!;
-  const questionId = active.parentIds[0] ?? active.id;
-  const marking = feedbackAvailable(attempt, questionId);
   const [transition, setTransition] = useState({ index, marking, direction: 0 });
   // Derive direction from the saved position, including stepper and primary-button moves.
   // Keep it stable through answer/autosave renders while the incoming card is animating.
@@ -183,38 +164,9 @@ function PracticeWorkspace({
       direction: transition.marking === marking ? Math.sign(index - transition.index) : 0,
     });
   }
-  const criteria = nodes.flatMap((node) =>
-    feedbackAvailable(attempt, node.parentIds[0] ?? node.id)
-      ? node.node.answer!.allocations.map((allocation) => ({ nodeId: node.id, allocation }))
-      : [],
-  );
-  const criterion =
-    criteria.find((row) => row.allocation.id === attempt.activeAllocationId) ??
-    criteria.find((row) => row.nodeId === active.id);
-  const criterionIndex = criteria.findIndex(
-    (row) => row.allocation.id === criterion?.allocation.id,
-  );
   const busy = progress.pending > 0;
   const base = `/course/${attempt.courseId}/question-sets/${attempt.questionSetId}`;
   const value = progress.value(active.id);
-  const blocked = formDirty || reflectionDirty || busy || acting || Boolean(progress.error);
-  const nextPart = nodes[index + 1];
-  const advancePart =
-    !marking &&
-    nextPart &&
-    (attempt.mode === 'paper' || (nextPart.parentIds[0] ?? nextPart.id) === questionId);
-  const currentMarked = attempt.decisions.some(
-    (row) => row.allocationId === criterion?.allocation.id && row.status === 'awarded',
-  );
-  const nextCriterion =
-    criteria[criterionIndex + 1] ??
-    criteria.find(
-      (row) =>
-        !attempt.decisions.some(
-          (decision) =>
-            decision.allocationId === row.allocation.id && decision.status === 'awarded',
-        ),
-    );
   const position = `${active.id}:${criterion?.allocation.id ?? ''}:${marking}:${attempt.status}`;
   useQuestionSetPracticeFocus(
     rootRef,
@@ -224,70 +176,14 @@ function PracticeWorkspace({
     busy || acting,
     initialFocusOwner,
   );
-  async function perform(work: () => Promise<unknown>) {
-    setActionError('');
-    setActing(true);
-    try {
-      await work();
-    } catch (cause) {
-      setActionError(cause instanceof Error ? cause.message : 'Could not save this change.');
-    } finally {
-      setActing(false);
-    }
-  }
   function move(nodeId: string, allocationId: string | null = null) {
-    if (formDirty || reflectionDirty) {
-      setActionError('Save or cancel your note or correction first.');
-      return;
-    }
-    void perform(() =>
-      progress.run((current) =>
-        saveQuestionSetAttemptPosition(current.id, current.revisionId, nodeId, allocationId),
-      ),
-    );
-    blankConfirmation.close();
-  }
-  function updateMarking(
-    change: (current: QuestionSetAttemptRecord) => Partial<SaveQuestionSetMarkingInput>,
-  ) {
-    void perform(() =>
-      progress.run((current) =>
-        saveQuestionSetMarking(current.id, current.revisionId, {
-          decisions: current.decisions,
-          annotations: current.annotations,
-          corrections: current.corrections,
-          reflection: current.reflection,
-          activeNodeId: current.activeNodeId,
-          activeAllocationId: current.activeAllocationId,
-          ...change(current),
-        }),
-      ),
-    );
+    void session.move(nodeId, allocationId);
+    if (!session.unfinished) blankConfirmation.close();
   }
   async function submit(confirmed = false) {
     if (!confirmed) blankConfirmation.prepare();
-    await progress.flush();
-    const current = session.snapshot.record;
-    const group =
-      current.mode === 'paper'
-        ? nodes
-        : nodes.filter((node) => (node.parentIds[0] ?? node.id) === questionId);
-    const hasBlank = group.some((node) => {
-      const response = current.responses.find((row) => row.nodeId === node.id)!.draft;
-      return response.kind === 'multiple-choice'
-        ? !response.selectedOptionIds.length
-        : !response.text.trim();
-    });
-    if (hasBlank && !confirmed) {
-      blankConfirmation.show();
-      return;
-    }
-    await progress.run((row) =>
-      row.mode === 'paper'
-        ? submitQuestionSetPaper(row.id, row.revisionId)
-        : submitPracticeQuestion(row.id, row.revisionId, questionId),
-    );
-    blankConfirmation.close();
+    if (await session.submit(confirmed)) blankConfirmation.close();
+    else blankConfirmation.show();
   }
   const relatedKnowledge = (
     <QuestionSetRelatedKnowledge
@@ -298,15 +194,7 @@ function PracticeWorkspace({
         ...answer.allocations.flatMap((row) => row.targetConceptIds),
       ]}
       submitted={marking}
-      beforeReveal={() =>
-        progress.run((current) =>
-          recordQuestionSetAssistance(current.id, current.revisionId, {
-            nodeId: active.id,
-            kind: 'related-knowledge',
-            occurredAt: Date.now(),
-          }),
-        )
-      }
+      beforeReveal={() => session.revealKnowledge(active.id)}
     />
   );
   return (
@@ -319,13 +207,7 @@ function PracticeWorkspace({
           disabled={formDirty || reflectionDirty}
           onClick={() =>
             void perform(async () => {
-              if (!progress.error) {
-                const saved = await progress.flush().then(
-                  () => true,
-                  () => false,
-                );
-                if (saved && attempt.status !== 'complete') recordUsageAction('study-exited');
-              }
+              await session.exit();
               if (study) study.onExit();
               else await navigate(origin?.questionSetReturnTo ?? base);
             })
@@ -372,7 +254,7 @@ function PracticeWorkspace({
                 value={attempt.reflection}
                 busy={busy || Boolean(progress.error)}
                 onDirty={setReflectionDirty}
-                onChange={(reflection) => updateMarking(() => ({ reflection }))}
+                onChange={session.setReflection}
               />
             </div>
           )}
@@ -456,33 +338,11 @@ function PracticeWorkspace({
                     busy={busy || acting || Boolean(progress.error)}
                     onDraftChange={setFormDirty}
                     onDecision={(decision) =>
-                      updateMarking((current) => ({
-                        decisions: [
-                          ...current.decisions.filter(
-                            (row) => row.allocationId !== criterion.allocation.id,
-                          ),
-                          ...(decision ? [decision] : []),
-                        ],
-                      }))
+                      session.setDecision(criterion.allocation.id, decision)
                     }
-                    onAnnotation={(annotation) =>
-                      updateMarking((current) => ({
-                        annotations: [...current.annotations, annotation],
-                      }))
-                    }
-                    onRemoveAnnotation={(id) =>
-                      updateMarking((current) => ({
-                        annotations: current.annotations.filter((row) => row.id !== id),
-                      }))
-                    }
-                    onCorrection={(content) =>
-                      updateMarking((current) => ({
-                        corrections: [
-                          ...current.corrections.filter((row) => row.nodeId !== active.id),
-                          { nodeId: active.id, content, updatedAt: Date.now() },
-                        ],
-                      }))
-                    }
+                    onAnnotation={session.addAnnotation}
+                    onRemoveAnnotation={session.removeAnnotation}
+                    onCorrection={(content) => session.setCorrection(active.id, content)}
                   />
                 )}
               </>
@@ -536,7 +396,7 @@ function PracticeWorkspace({
                     variant={advancePart ? 'ghost' : 'primary'}
                     data-attempt-primary={!advancePart || undefined}
                     data-attempt-submit
-                    disabled={formDirty || reflectionDirty || acting || Boolean(progress.error)}
+                    disabled={actionBlocked}
                     onClick={() => void perform(() => submit())}
                   >
                     {attempt.mode === 'paper' ? 'Submit paper' : 'Submit question'}
@@ -550,20 +410,8 @@ function PracticeWorkspace({
                     <Button
                       variant="primary"
                       data-attempt-primary
-                      disabled={formDirty || reflectionDirty || acting || Boolean(progress.error)}
-                      onClick={() =>
-                        void perform(async () => {
-                          await progress.flush();
-                          await progress.run((current) =>
-                            saveQuestionSetAttemptPosition(
-                              current.id,
-                              current.revisionId,
-                              nextPart.id,
-                              null,
-                            ),
-                          );
-                        })
-                      }
+                      disabled={actionBlocked}
+                      onClick={() => void session.nextPart()}
                     >
                       Next part
                       <kbd className="qs-shortcut" aria-hidden="true">
@@ -576,28 +424,11 @@ function PracticeWorkspace({
             </>
           ) : (
             <QuestionSetMarkingActions
-              attempt={attempt}
-              blocked={blocked}
-              currentMarked={currentMarked}
-              nextCriterion={nextCriterion}
-              criterionIndex={criterionIndex}
-              criterionCount={criteria.length}
-              onMove={move}
-              onNextQuestion={() => {
-                const next = nodes.find(
-                  (node) => !feedbackAvailable(attempt, node.parentIds[0] ?? node.id),
-                );
-                if (next) move(next.id);
-              }}
-              onComplete={() =>
-                void perform(() =>
-                  progress.run(async (current) => {
-                    const result = await completeQuestionSetAttempt(current.id, current.revisionId);
-                    recordUsageAction('study-completed');
-                    return result;
-                  }),
-                )
-              }
+              summary={summary}
+              awardedAny={attempt.decisions.some((row) => row.status === 'awarded')}
+              action={markingAction}
+              onAdvance={() => void session.advanceMarking()}
+              onComplete={() => void session.complete()}
               returnTo={origin?.questionSetReturnTo ?? base}
               returnLabel={origin?.questionSetReturnLabel ?? 'Back to set'}
             />

@@ -1,14 +1,7 @@
-import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useReducer, useState, useSyncExternalStore } from 'react';
 import { liveQuery } from 'dexie';
 import { useBlocker } from 'react-router-dom';
-import {
-  getQuestionSetAttempt,
-  saveQuestionSetResponseDraft,
-} from '../../questions/questionSetAttemptRepository';
-import type {
-  QuestionSetAttemptRecord,
-  QuestionSetResponseValue,
-} from '@lacuna/core/questions/questionSetAttempts';
+import { getQuestionSetAttempt } from '../../questions/questionSetAttemptRepository';
 import { QuestionSetAttemptSession } from './questionSetAttemptSession';
 
 export function useQuestionSetAttempt(courseId: string, setId: string, attemptId: string) {
@@ -51,57 +44,28 @@ export function useQuestionSetAttempt(courseId: string, setId: string, attemptId
 
 export function useAttemptProgress(session: QuestionSetAttemptSession, formDirty = false) {
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot);
-  const drafts = useRef(new Map<string, QuestionSetResponseValue>());
-  const [draftVersion, setDraftVersion] = useState(0);
-  const flushing = useRef<Promise<void> | null>(null);
-  const [saving, setSaving] = useState(false);
-  const flush = useCallback((): Promise<void> => {
-    if (flushing.current) return flushing.current;
-    setSaving(true);
-    const work = (async () => {
-      do {
-        while (drafts.current.size) {
-          const [nodeId, value] = drafts.current.entries().next().value!;
-          await session.run((record) =>
-            saveQuestionSetResponseDraft(
-              record.id,
-              record.revisionId,
-              nodeId,
-              value,
-              record.activeNodeId,
-            ),
-          );
-          if (drafts.current.get(nodeId) === value) drafts.current.delete(nodeId);
-        }
-        await session.flush();
-      } while (drafts.current.size);
-    })().finally(() => {
-      flushing.current = null;
-      setSaving(false);
-    });
-    flushing.current = work;
-    return work;
-  }, [session]);
+  const flush = session.flushDrafts;
   useEffect(() => {
-    if (!drafts.current.size || snapshot.error) return;
+    if (!session.dirty || snapshot.error) return;
     const timer = setTimeout(() => {
       void flush().catch(() => undefined);
     }, 450);
     return () => clearTimeout(timer);
-  }, [draftVersion, flush, snapshot.error]);
+  }, [session, snapshot.draftVersion, flush, snapshot.error]);
   // Keep unsaved text protected until the learner explicitly leaves after a save error.
-  const dirty = drafts.current.size > 0 || snapshot.pending > 0 || formDirty;
+  const dirty = session.dirty || formDirty;
+  const unfinished = session.unfinished || formDirty;
   const blocker = useBlocker(dirty);
   useEffect(() => {
-    if (blocker.state === 'blocked' && !snapshot.error && !formDirty) {
+    if (blocker.state === 'blocked' && !snapshot.error && !unfinished) {
       void flush()
         .then(() => blocker.proceed())
         .catch(() => undefined);
     }
-  }, [blocker, flush, snapshot.error, formDirty]);
+  }, [blocker, flush, snapshot.error, unfinished]);
   useEffect(() => {
     const leave = (event: BeforeUnloadEvent) => {
-      if (drafts.current.size || session.snapshot.pending || formDirty) {
+      if (session.dirty || formDirty) {
         event.preventDefault();
         event.returnValue = '';
       }
@@ -109,32 +73,13 @@ export function useAttemptProgress(session: QuestionSetAttemptSession, formDirty
     window.addEventListener('beforeunload', leave);
     return () => window.removeEventListener('beforeunload', leave);
   }, [session, formDirty]);
-  const run = async (
-    command: (record: QuestionSetAttemptRecord) => Promise<QuestionSetAttemptRecord>,
-  ) => {
-    await flush();
-    return session.run(command);
-  };
   return {
     ...snapshot,
     dirty,
-    saving,
     blocker,
     flush,
-    run,
-    value(nodeId: string) {
-      return (
-        drafts.current.get(nodeId) ??
-        snapshot.record.responses.find((row) => row.nodeId === nodeId)!.draft
-      );
-    },
-    edit(nodeId: string, value: QuestionSetResponseValue) {
-      drafts.current.set(nodeId, value);
-      setDraftVersion((version) => version + 1);
-    },
-    async retry() {
-      await session.retry();
-      await flush();
-    },
+    value: session.value,
+    edit: session.edit,
+    retry: session.retry,
   };
 }

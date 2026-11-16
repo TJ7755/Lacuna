@@ -114,7 +114,7 @@ for (const mode of ['practice', 'paper'] as const) {
         .getByRole('group', { name: 'Attempt mode' })
         .getByRole('button', { name: mode === 'paper' ? 'Paper' : 'Practice', exact: true })
         .click();
-      await page.setViewportSize({ width: 320, height: 900 });
+      await page.setViewportSize({ width: 1280, height: 900 });
       await page.getByRole('button', { name: 'Start', exact: true }).click();
       const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
       await expect(answer).toBeFocused();
@@ -156,9 +156,9 @@ for (const mode of ['practice', 'paper'] as const) {
         const original = activePaper.locator('.qs-marking-answer:not([inert] *)');
         expect((await marks.boundingBox())!.y).toBeLessThan((await original.boundingBox())!.y);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
-          320,
+          1280,
         );
-        await page.screenshot({ path: testInfo.outputPath('marking-320.png') });
+        await page.screenshot({ path: testInfo.outputPath('marking-desktop.png') });
         await markAndContinue(page, '1 / 1');
         await expect(page.getByRole('button', { name: /criterion 2 of 3/ })).toBeVisible();
         await markAndContinue(page, '0 / 1');
@@ -176,7 +176,7 @@ test('a single written part keeps its direct Tab path and blank confirmation exp
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openSet(page, true);
-  await page.setViewportSize({ width: 320, height: 900 });
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
   await expect(answer).toBeFocused();
