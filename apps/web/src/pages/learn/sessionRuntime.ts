@@ -119,11 +119,8 @@ export class SessionRuntime {
     };
   };
   getSnapshot = () => (this.snapshot ??= this.readSnapshot());
-  // A card and its introduction serial must reach subscribers together.
-  private serving = false;
   private publish = () => {
     this.snapshot = undefined;
-    if (this.serving) return;
     if (this.mounted) this.listeners.forEach((listener) => listener());
   };
   updateAdapters(options: SessionRuntimeOptions) {
@@ -138,11 +135,9 @@ export class SessionRuntime {
     this.cancelLoad = this.load();
     if (this.options.plannedRevision)
       this.interval = setInterval(() => {
-        this.setRevisionSecondsRemaining(
-          Math.max(
-            0,
-            this.revisionWindowBudgetSeconds - (Date.now() - this.revisionWindowStartedAt) / 1000,
-          ),
+        this.revisionSecondsRemaining = Math.max(
+          0,
+          this.revisionWindowBudgetSeconds - (Date.now() - this.revisionWindowStartedAt) / 1000,
         );
         if (
           this.revisionWindowBudgetSeconds > 0 &&
@@ -151,6 +146,7 @@ export class SessionRuntime {
           this.phase !== 'finished'
         )
           this.finish(false, false, true);
+        this.publish();
       }, 1000);
   };
   dispose = () => {
@@ -176,12 +172,9 @@ export class SessionRuntime {
   private load = () => {
     this.machineState = emptySessionState();
     // Restarting after disposal must not reuse the previous session.
-    this.cooldowns = new Map();
-    this.events = [];
     this.lastAnswer = null;
     this.lastIntroduction = null;
-    this.machineState = { ...this.machineState, introduction: undefined };
-    this.setLessonChoiceSource(null);
+    this.lessonChoiceSource = null;
     this.submitting = false;
     this.resetCompletion();
     this.progressBefore = 0;
@@ -190,7 +183,6 @@ export class SessionRuntime {
     this.schedulingUnits = new Map();
     this.schedulingConfig = null;
     this.ctx = null;
-    this.cards = [];
     this.linesModeMap = new Map();
     this.occlusionMap = new Map();
     this.lessonExposureId = null;
@@ -199,31 +191,29 @@ export class SessionRuntime {
     this.revisionPlan = null;
     this.revisionInitialRevision = 0;
     this.revisionWindowStartedAt = 0;
-    this.revisionSession = createRevisionSessionState();
     this.reviewsByDeck = new Map();
     this.reviewsDayStart = 0;
-    this.setCanUndo(false);
-    this.setSummary(null);
-    this.setEditing(false);
+    this.canUndo = false;
+    this.summary = null;
+    this.editing = false;
     this.options.onSessionReset?.();
-    this.setSessionCardIds([]);
-    this.sessionCardOutcomes = new Map();
-    this.setSessionCardOutcomes(this.sessionCardOutcomes);
-    this.setSchedulerProgress(0);
-    this.setServeableCardCount(0);
-    this.setRevisionSecondsRemaining(0);
-    this.setRevisionWindowBudgetSeconds(0);
-    this.setRevisionNextWindowDay(undefined);
-    this.setLimitOverride(false);
-    this.setTimeLimitOverride(false);
+    this.schedulerProgress = 0;
+    this.serveableCardCount = 0;
+    this.revisionSecondsRemaining = 0;
+    this.revisionWindowBudgetSeconds = 0;
+    this.revisionNextWindowDay = undefined;
+    this.limitOverride = false;
+    this.timeLimitOverride = false;
     this.sessionStartMs = 0;
-    this.setPhase('loading');
+    this.phase = 'loading';
     this.reviewKind = 'scheduling-unit';
     this.ratchetCourseId = null;
     this.ratchetLessonId = null;
-    this.setUnitDisplayName(null);
-    this.setResolvedCourseId(null);
-    this.setLessonNotesScreen(null);
+    this.unitDisplayName = null;
+    this.resolvedCourseId = null;
+    this.lessonNotesScreen = null;
+    this.selectCurrent(null);
+    this.publish();
     if (!(this.options.enabled ?? true)) return;
     return startSessionLoad(
       this.options,
@@ -234,29 +224,43 @@ export class SessionRuntime {
           else void this.options.navigate(path);
         },
         source: (source) => {
-          this.setResolvedCourseId(source.resolvedCourseId);
+          this.resolvedCourseId = source.resolvedCourseId;
           this.lessonHasMembers = source.lessonHasMembers;
           this.reviewKind = source.reviewKind;
           this.ratchetCourseId = source.ratchetCourseId;
           this.ratchetLessonId = source.ratchetLessonId;
           this.lessonExposureId = source.lessonExposureId;
-          this.setUnitDisplayName(source.unitDisplayName);
+          this.unitDisplayName = source.unitDisplayName;
           this.revisionPlan = source.revisionPlan;
           this.revisionInitialRevision = source.revisionInitialRevision;
           this.revisionWindowStartedAt = source.revisionWindowStartedAt;
-          this.setRevisionWindowBudgetSeconds(source.revisionWindowBudgetSeconds);
-          this.setRevisionSecondsRemaining(source.revisionSecondsRemaining);
-          this.setRevisionNextWindowDay(source.revisionNextWindowDay);
+          this.revisionWindowBudgetSeconds = source.revisionWindowBudgetSeconds;
+          this.revisionSecondsRemaining = source.revisionSecondsRemaining;
+          this.revisionNextWindowDay = source.revisionNextWindowDay;
           this.practiceSession = source.practiceSession;
+          this.publish();
         },
         ready: (source, data, markLoad) => {
-          this.cards = data.cards;
-          this.machineState = { ...this.machineState, introduction: data.introduction };
+          const outcomes = data.simple?.outcomes ?? new Map<string, SessionCardOutcome>();
+          this.machineState = {
+            ...this.machineState,
+            cards: data.cards,
+            introduction: data.introduction,
+            cardIds: (data.simple?.queue ?? data.cards).map((card) => card.id),
+            events: data.simple?.events ?? [],
+            outcomes,
+            simple: {
+              queue: data.simple?.queue ?? [],
+              mastered: data.simple?.mastered ?? new Set(),
+              wrong: data.simple?.wrong ?? new Set(),
+              outcomes,
+            },
+          };
           if ((this.options.introduceNewCards ?? false) && this.options.lessonId)
-            this.setLessonChoiceSource({
+            this.lessonChoiceSource = {
               lessonId: this.options.lessonId,
               cards: data.lessonChoiceCards,
-            });
+            };
           this.perf = data.performance;
           this.schedulingUnits = data.schedulingUnits;
           this.schedulingConfig = data.schedulingConfig;
@@ -265,28 +269,18 @@ export class SessionRuntime {
           this.linesModeMap = data.linesMode;
           this.occlusionMap = data.occlusions;
           this.progressBefore = data.progressBefore;
-          this.setSchedulerProgress(data.schedulerProgress);
-          this.setServeableCardCount(data.serveableCardCount);
+          this.schedulerProgress = data.schedulerProgress;
+          this.serveableCardCount = data.serveableCardCount;
           this.reviewsDayStart = data.reviewsDayStart;
           this.reviewsByDeck = data.reviewsByDeck;
-          this.setLimitOverride(false);
-          this.setSingleDeck((previous) => {
-            const next = !this.isGlobal ? source.units[0] : null;
-            return previous?.id === next?.id ? previous : next;
-          });
-          if (data.simple) {
-            this.simpleQueue = data.simple.queue;
-            this.simpleMastered = data.simple.mastered;
-            this.simpleWrong = data.simple.wrong;
-            this.events = data.simple.events;
-            this.recitation.steps = data.simple.recitations;
-          }
-          this.sessionCardOutcomes = data.simple?.outcomes ?? new Map();
-          this.setSessionCardOutcomes(this.sessionCardOutcomes);
-          this.setSessionCardIds((data.simple?.queue ?? data.cards).map((card) => card.id));
+          this.limitOverride = false;
+          const nextDeck = !this.isGlobal ? source.units[0] : null;
+          if (this.singleDeck?.id !== nextDeck?.id) this.singleDeck = nextDeck;
+          if (data.simple) this.recitation.steps = data.simple.recitations;
           if (data.entry.type === 'notes') {
-            this.setLessonNotesScreen(data.entry.screen);
-            this.setPhase('notes');
+            this.lessonNotesScreen = data.entry.screen;
+            this.phase = 'notes';
+            this.publish();
           } else if (data.entry.type === 'summary') {
             this.finaliseSummary(data.entry.summary);
           } else {
@@ -350,50 +344,21 @@ export class SessionRuntime {
   private machineState: SessionState = emptySessionState();
 
   private phase: Phase = 'loading';
-  private setPhase = (value: Phase | ((previous: Phase) => Phase)) => {
-    this.phase = typeof value === 'function' ? value(this.phase) : value;
-    this.publish();
-  };
 
   private singleDeck: StudyUnit | null = null;
-  private setSingleDeck = (
-    value: StudyUnit | null | ((previous: StudyUnit | null) => StudyUnit | null),
-  ) => {
-    this.singleDeck = typeof value === 'function' ? value(this.singleDeck) : value;
-    this.publish();
-  };
 
   private unitDisplayName: string | null = null;
-  private setUnitDisplayName = (
-    value: string | null | ((previous: string | null) => string | null),
-  ) => {
-    this.unitDisplayName = typeof value === 'function' ? value(this.unitDisplayName) : value;
-    this.publish();
-  };
 
   private resolvedCourseId: string | null = null;
-  private setResolvedCourseId = (
-    value: string | null | ((previous: string | null) => string | null),
-  ) => {
-    this.resolvedCourseId = typeof value === 'function' ? value(this.resolvedCourseId) : value;
-    this.publish();
-  };
 
   private lessonNotesScreen: LessonNotesScreen | null = null;
-  private setLessonNotesScreen = (
-    value:
-      LessonNotesScreen | null | ((previous: LessonNotesScreen | null) => LessonNotesScreen | null),
-  ) => {
-    this.lessonNotesScreen = typeof value === 'function' ? value(this.lessonNotesScreen) : value;
-    this.publish();
-  };
 
   private answerModeLessons: Map<string, Lesson> = new Map();
 
   private current: Card | null = null;
-  private setCurrent = (value: Card | null | ((previous: Card | null) => Card | null)) => {
+  private selectCurrent = (value: Card | null) => {
     const previous = this.current;
-    this.current = typeof value === 'function' ? value(this.current) : value;
+    this.current = value;
     if (
       previous?.id !== this.current?.id ||
       previous?.courseId !== this.current?.courseId ||
@@ -401,7 +366,6 @@ export class SessionRuntime {
       previous?.occlusionRegionId !== this.current?.occlusionRegionId
     )
       this.watchEditPermission();
-    this.publish();
   };
 
   private canEditCurrent = false;
@@ -427,56 +391,20 @@ export class SessionRuntime {
     lessonId: string;
     cards: Card[];
   } | null = null;
-  private setLessonChoiceSource = (
-    value:
-      | {
-          lessonId: string;
-          cards: Card[];
-        }
-      | null
-      | ((
-          previous: {
-            lessonId: string;
-            cards: Card[];
-          } | null,
-        ) => {
-          lessonId: string;
-          cards: Card[];
-        } | null),
-  ) => {
-    this.lessonChoiceSource = typeof value === 'function' ? value(this.lessonChoiceSource) : value;
-    this.publish();
-  };
 
   private updateLessonChoiceCard = (updated: Card) => {
-    this.setLessonChoiceSource(
-      (source) =>
-        source && {
-          ...source,
-          cards: source.cards.map((card) => (card.id === updated.id ? updated : card)),
-        },
-    );
+    const source = this.lessonChoiceSource;
+    if (source)
+      this.lessonChoiceSource = {
+        ...source,
+        cards: source.cards.map((card) => (card.id === updated.id ? updated : card)),
+      };
   };
 
   private introductionPresentation: {
     serial: number;
     stage: ReturnType<typeof introductionStage>;
   } = { serial: 0, stage: undefined };
-  private setIntroductionPresentation = (
-    value:
-      | {
-          serial: number;
-          stage: ReturnType<typeof introductionStage>;
-        }
-      | ((previous: { serial: number; stage: ReturnType<typeof introductionStage> }) => {
-          serial: number;
-          stage: ReturnType<typeof introductionStage>;
-        }),
-  ) => {
-    this.introductionPresentation =
-      typeof value === 'function' ? value(this.introductionPresentation) : value;
-    this.publish();
-  };
 
   private introductionCursor = { ...this.introductionPresentation, checked: false };
 
@@ -489,7 +417,7 @@ export class SessionRuntime {
       stage: stage && canIntroduceCard(card) ? stage : undefined,
     };
     this.introductionCursor = { ...next, checked: false };
-    this.setIntroductionPresentation(next);
+    this.introductionPresentation = next;
   };
 
   private linesModeMap: Map<string, Sequence> = new Map();
@@ -567,115 +495,36 @@ export class SessionRuntime {
   private progressCache: { dirty: boolean; value: number } = { dirty: true, value: 0 };
 
   private summary: SessionSummary | null = null;
-  private setSummary = (
-    value: SessionSummary | null | ((previous: SessionSummary | null) => SessionSummary | null),
-  ) => {
-    this.summary = typeof value === 'function' ? value(this.summary) : value;
-    this.publish();
-  };
 
   private canUndo: boolean = false;
-  private setCanUndo = (value: boolean | ((previous: boolean) => boolean)) => {
-    this.canUndo = typeof value === 'function' ? value(this.canUndo) : value;
-    this.publish();
-  };
 
   private editing: boolean = false;
-  private setEditing = (value: boolean | ((previous: boolean) => boolean)) => {
-    this.editing = typeof value === 'function' ? value(this.editing) : value;
-    this.publish();
-  };
 
   private get simpleQueue() {
     return this.machineState.simple.queue;
-  }
-  private set simpleQueue(value: SessionState['simple']['queue']) {
-    this.machineState = {
-      ...this.machineState,
-      simple: { ...this.machineState.simple, queue: value },
-    };
   }
 
   private get simpleMastered() {
     return this.machineState.simple.mastered;
   }
-  private set simpleMastered(value: SessionState['simple']['mastered']) {
-    this.machineState = {
-      ...this.machineState,
-      simple: { ...this.machineState.simple, mastered: value },
-    };
-  }
-
-  private get simpleWrong() {
-    return this.machineState.simple.wrong;
-  }
-  private set simpleWrong(value: SessionState['simple']['wrong']) {
-    this.machineState = {
-      ...this.machineState,
-      simple: { ...this.machineState.simple, wrong: value },
-    };
-  }
 
   private get sessionCardIds() {
     return this.machineState.cardIds;
   }
-  private set sessionCardIds(value: SessionState['cardIds']) {
-    this.machineState = { ...this.machineState, cardIds: value };
-  }
-
-  private setSessionCardIds = (value: string[] | ((previous: string[]) => string[])) => {
-    const next = typeof value === 'function' ? value(this.sessionCardIds) : value;
-    this.sessionCardIds = next;
-    this.publish();
-  };
-
-  private setSessionCardOutcomes = (value: Map<string, SessionCardOutcome>) => {
-    this.sessionCardOutcomes = value;
-    this.publish();
-  };
 
   private get sessionCardOutcomes() {
     return this.machineState.outcomes;
   }
-  private set sessionCardOutcomes(value: SessionState['outcomes']) {
-    this.machineState = { ...this.machineState, outcomes: value };
-    this.machineState.simple = { ...this.machineState.simple, outcomes: value };
-  }
 
   private schedulerProgress: number = 0;
-  private setSchedulerProgress = (value: number | ((previous: number) => number)) => {
-    this.schedulerProgress = typeof value === 'function' ? value(this.schedulerProgress) : value;
-    this.publish();
-  };
 
   private serveableCardCount: number = 0;
-  private setServeableCardCount = (value: number | ((previous: number) => number)) => {
-    this.serveableCardCount = typeof value === 'function' ? value(this.serveableCardCount) : value;
-    this.publish();
-  };
 
   private revisionSecondsRemaining: number = 0;
-  private setRevisionSecondsRemaining = (value: number | ((previous: number) => number)) => {
-    this.revisionSecondsRemaining =
-      typeof value === 'function' ? value(this.revisionSecondsRemaining) : value;
-    this.publish();
-  };
 
   private revisionWindowBudgetSeconds: number = 0;
-  private setRevisionWindowBudgetSeconds = (value: number | ((previous: number) => number)) => {
-    this.revisionWindowBudgetSeconds =
-      typeof value === 'function' ? value(this.revisionWindowBudgetSeconds) : value;
-    this.publish();
-  };
 
   private revisionNextWindowDay: string | undefined = undefined;
-  private setRevisionNextWindowDay = (
-    value: string | undefined | ((previous: string | undefined) => string | undefined),
-  ) => {
-    this.revisionNextWindowDay =
-      typeof value === 'function' ? value(this.revisionNextWindowDay) : value;
-    this.publish();
-  };
 
   private get simpleProgress() {
     return (() => {
@@ -690,9 +539,6 @@ export class SessionRuntime {
 
   private get cooldowns() {
     return this.machineState.cooldowns;
-  }
-  private set cooldowns(value: SessionState['cooldowns']) {
-    this.machineState = { ...this.machineState, cooldowns: value };
   }
 
   private perf: Map<string, UserPerformance> = new Map();
@@ -712,9 +558,6 @@ export class SessionRuntime {
   private get cards() {
     return this.machineState.cards;
   }
-  private set cards(value: SessionState['cards']) {
-    this.machineState = { ...this.machineState, cards: value };
-  }
 
   private createSimpleQueue = (cards: Card[]) => shuffledSimpleQueue(cards, this.linesModeMap);
 
@@ -732,9 +575,6 @@ export class SessionRuntime {
 
   private get revisionSession() {
     return this.machineState.revision;
-  }
-  private set revisionSession(value: SessionState['revision']) {
-    this.machineState = { ...this.machineState, revision: value };
   }
 
   private get introduction() {
@@ -760,9 +600,6 @@ export class SessionRuntime {
   private get events() {
     return this.machineState.events;
   }
-  private set events(value: SessionState['events']) {
-    this.machineState = { ...this.machineState, events: value };
-  }
 
   private progressBefore = 0;
 
@@ -777,16 +614,8 @@ export class SessionRuntime {
   private reviewsDayStart = 0;
 
   private limitOverride: boolean = false;
-  private setLimitOverride = (value: boolean | ((previous: boolean) => boolean)) => {
-    this.limitOverride = typeof value === 'function' ? value(this.limitOverride) : value;
-    this.publish();
-  };
 
   private timeLimitOverride: boolean = false;
-  private setTimeLimitOverride = (value: boolean | ((previous: boolean) => boolean)) => {
-    this.timeLimitOverride = typeof value === 'function' ? value(this.timeLimitOverride) : value;
-    this.publish();
-  };
 
   private sessionStartMs = 0;
 
@@ -795,8 +624,6 @@ export class SessionRuntime {
   private applySessionEvent = (event: SessionEventInput) => {
     const transition = transitionSession(this.machineState, event);
     this.machineState = transition.state;
-    this.setSessionCardOutcomes(transition.state.outcomes);
-    this.setSessionCardIds(transition.state.cardIds);
     return transition.effects;
   };
 
@@ -843,12 +670,6 @@ export class SessionRuntime {
     });
   };
 
-  private resetSimpleSessionOutcomes = () => {
-    const outcomes = new Map<string, SessionCardOutcome>();
-    this.sessionCardOutcomes = outcomes;
-    this.setSessionCardOutcomes(outcomes);
-  };
-
   private objectiveLabel = () => {
     if (this.options.isSimpleMode) return 'Cards correct in this pass';
     if (this.singleDeck) return progressHeading(this.singleDeck);
@@ -876,12 +697,13 @@ export class SessionRuntime {
 
   private clearCompletionUndo = () => {
     this.lastAnswer = null;
-    if (this.mounted) this.setCanUndo(false);
+    if (this.mounted) this.canUndo = false;
   };
 
   private presentCompletion = (nextSummary: SessionSummary, confirmed: boolean) => {
-    this.setSummary(nextSummary);
-    this.setPhase('finished');
+    this.summary = nextSummary;
+    this.phase = 'finished';
+    this.publish();
     if (confirmed) this.options.onStepFinished?.(nextSummary);
   };
 
@@ -931,7 +753,9 @@ export class SessionRuntime {
     present: this.presentCompletion,
     clearUndo: this.clearCompletionUndo,
     reportError: this.reportCompletionError,
-    setProgress: this.setSchedulerProgress,
+    setProgress: (value) => {
+      this.schedulerProgress = value;
+    },
   });
 
   private confirmCompletion = this.completion.confirm;
@@ -984,57 +808,52 @@ export class SessionRuntime {
 
   private serveNext = () => {
     if (!this.mounted) return;
-    this.serving = true;
-    try {
-      // Keep studying starts a new pass after the previous report was committed.
-      this.beginCompletionPass();
-      this.presentedAnswerInput = undefined;
-      const effects = this.applySessionEvent({
-        type: 'next',
-        selection: {
-          simple: this.options.isSimpleMode,
-          context: this.ctx,
-          now: Date.now(),
-          reviewLimit: this.options.requestReviewLimit,
-          revisionPlan: this.revisionPlan,
-          windowId: this.options.requestWindowId,
-          windowStartedAt: this.revisionWindowStartedAt,
-          performance: this.perf,
-        },
-      });
-      for (const effect of effects) {
-        switch (effect.type) {
-          case 'persist-resume':
-            this.persistSimpleResume();
-            break;
-          case 'finish':
-            this.finish(
-              effect.stop[0],
-              effect.stop[1],
-              effect.stop[2],
-              effect.stop[3],
-              effect.blockComplete,
-            );
-            break;
-          case 'present-card':
-            this.setCurrent(effect.card);
-            if ((this.options.introduceNewCards ?? false) || this.introductionPresentation.stage)
-              this.presentIntroduction(effect.card);
-            this.setPhase('question');
-            this.options.onCardServed?.();
-            this.setHintStep(0);
-            this.pendingReviewEventId = null;
-            this.advanceTimer({ type: 'start', now: performance.now() });
-            this.options.distraction.beginCard();
-            this.options.distraction.setAnswerVisible(false);
-            if (effect.invalidateProgress) this.progressCache.dirty = true;
-            break;
-        }
+    // Keep studying starts a new pass after the previous report was committed.
+    this.beginCompletionPass();
+    this.presentedAnswerInput = undefined;
+    const effects = this.applySessionEvent({
+      type: 'next',
+      selection: {
+        simple: this.options.isSimpleMode,
+        context: this.ctx,
+        now: Date.now(),
+        reviewLimit: this.options.requestReviewLimit,
+        revisionPlan: this.revisionPlan,
+        windowId: this.options.requestWindowId,
+        windowStartedAt: this.revisionWindowStartedAt,
+        performance: this.perf,
+      },
+    });
+    for (const effect of effects) {
+      switch (effect.type) {
+        case 'persist-resume':
+          this.persistSimpleResume();
+          break;
+        case 'finish':
+          this.finish(
+            effect.stop[0],
+            effect.stop[1],
+            effect.stop[2],
+            effect.stop[3],
+            effect.blockComplete,
+          );
+          break;
+        case 'present-card':
+          this.selectCurrent(effect.card);
+          if ((this.options.introduceNewCards ?? false) || this.introductionPresentation.stage)
+            this.presentIntroduction(effect.card);
+          this.phase = 'question';
+          this.options.onCardServed?.();
+          this.hintStep = 0;
+          this.pendingReviewEventId = null;
+          this.advanceTimer({ type: 'start', now: performance.now() });
+          this.options.distraction.beginCard();
+          this.options.distraction.setAnswerVisible(false);
+          if (effect.invalidateProgress) this.progressCache.dirty = true;
+          break;
       }
-    } finally {
-      this.serving = false;
-      this.publish();
     }
+    this.publish();
   };
 
   private checkIntroduction = (serial: number, correct: boolean) => {
@@ -1052,8 +871,9 @@ export class SessionRuntime {
     this.lastIntroduction = { machine: snapshotSession(this.machineState), card };
     this.lastAnswer = null;
     this.applySessionEvent({ type: 'introduction-checked', card, correct });
-    this.setCanUndo(true);
+    this.canUndo = true;
     this.persistSimpleResume();
+    this.publish();
     return true;
   };
 
@@ -1066,28 +886,25 @@ export class SessionRuntime {
   private continueStudying = () => {
     if (this.summary?.simpleMode) {
       // A repeat pass practises the learned material in its ordinary answer format.
-      this.machineState = { ...this.machineState, introduction: undefined };
       this.lastIntroduction = null;
-      this.simpleMastered = new Set();
-      this.simpleWrong = new Set();
-      this.simpleQueue = this.createSimpleQueue(
-        this.cards.filter((c) => !c.suspended && !(c.buriedUntil && c.buriedUntil > Date.now())),
-      );
-      this.events = [];
+      this.applySessionEvent({
+        type: 'begin-pass',
+        queue: this.createSimpleQueue(
+          this.cards.filter((c) => !c.suspended && !(c.buriedUntil && c.buriedUntil > Date.now())),
+        ),
+      });
       this.progressBefore = 0;
       this.sessionStartMs = Date.now();
-      this.setSummary(null);
-      this.setSessionCardIds(this.simpleQueue.map((card) => card.id));
-      this.resetSimpleSessionOutcomes();
+      this.summary = null;
       this.serveNext();
     } else {
       const ctx = this.ctx;
       if (!ctx) return;
-      this.events = [];
+      this.applySessionEvent({ type: 'begin-pass' });
       this.progressBefore = this.cachedSessionProgress(this.cards, ctx);
-      this.setSummary(null);
-      this.setLimitOverride(true);
-      this.setTimeLimitOverride(true);
+      this.summary = null;
+      this.limitOverride = true;
+      this.timeLimitOverride = true;
       this.serveNext();
     }
   };
@@ -1101,52 +918,49 @@ export class SessionRuntime {
     if (this.options.lessonId && this.cards.length === 0 && !this.lessonHasMembers) {
       await markLessonComplete(this.options.lessonId);
       if (!this.mounted || generation !== this.generation) return;
-      this.setLessonNotesScreen(null);
+      this.lessonNotesScreen = null;
       this.finish(true);
       return;
     }
-    this.setLessonNotesScreen(null);
+    this.lessonNotesScreen = null;
     this.serveNext();
   };
 
   private reveal = () => {
-    this.setPhase((p) => {
-      if (p !== 'question') return p;
+    if (this.phase === 'question') {
       const card = this.current;
-      if (card) {
+      if (card)
         this.presentedAnswerInput = reviewAnswerInput(
           card,
           this.recitation.sequence !== null,
           this.isTypingCard,
         );
-      }
       this.advanceTimer({ type: 'reveal', now: performance.now() });
-      return 'answer';
-    });
+      this.phase = 'answer';
+    }
     this.options.distraction.setAnswerVisible(true);
+    this.publish();
   };
 
   private revealRecitation = (lines: number) => {
     if (this.phase !== 'question') return;
     this.presentedAnswerInput = undefined;
     this.advanceTimer({ type: 'reveal', now: performance.now(), lines });
-    this.setPhase('answer');
+    this.phase = 'answer';
     this.options.distraction.setAnswerVisible(true);
+    this.publish();
   };
 
   private hide = () => {
-    this.setPhase((p) => {
-      if (p !== 'answer') return p;
-      return 'question';
-    });
+    if (this.phase === 'answer') this.phase = 'question';
     this.options.distraction.setAnswerVisible(false);
+    this.publish();
   };
 
   private undoLast = async (options?: { reveal?: boolean }) => {
     const recognition = this.lastIntroduction;
     if (!recognition) {
       const restored = await this.undoRecordedAnswer(options);
-      if (restored && (this.options.introduceNewCards ?? false)) this.presentIntroduction(restored);
       return restored;
     }
     if (this.submitting) return;
@@ -1156,10 +970,10 @@ export class SessionRuntime {
       card: recognition.card,
     });
     this.lastIntroduction = null;
-    this.setCanUndo(false);
-    this.setCurrent(recognition.card);
+    this.canUndo = false;
+    this.selectCurrent(recognition.card);
     this.presentIntroduction(recognition.card);
-    this.setPhase('question');
+    this.phase = 'question';
     this.options.onCardServed?.();
     this.presentedAnswerInput = undefined;
     this.options.distraction.beginCard();
@@ -1233,7 +1047,7 @@ export class SessionRuntime {
     const ctx = this.ctx;
     if (!ctx) return;
     if (!this.mounted) return;
-    this.setCanUndo(false);
+    this.canUndo = false;
     this.lastAnswer = null;
     this.lastIntroduction = null;
     this.updateLessonChoiceCard(updated);
@@ -1243,7 +1057,7 @@ export class SessionRuntime {
       simple: this.options.isSimpleMode,
     });
     this.progressCache.dirty = true;
-    this.setSchedulerProgress(sessionCompletionProgress(this.cards, ctx, this.sessionCardOutcomes));
+    this.schedulerProgress = sessionCompletionProgress(this.cards, ctx, this.sessionCardOutcomes);
     const hasRemainingCards = this.options.isSimpleMode
       ? this.simpleQueue.some((card) => !this.simpleMastered.has(card.id))
       : sessionServePool(this.cards, ctx).length > 0;
@@ -1299,7 +1113,8 @@ export class SessionRuntime {
     if (this.phase === 'question') {
       this.advanceTimer({ type: 'pause', now: performance.now() });
     }
-    this.setEditing(true);
+    this.editing = true;
+    this.publish();
   };
 
   private resumeAfterEdit = () => {
@@ -1309,8 +1124,9 @@ export class SessionRuntime {
   };
 
   private cancelEdit = () => {
-    this.setEditing(false);
+    this.editing = false;
     this.resumeAfterEdit();
+    this.publish();
   };
 
   private handleEdited = async (updated: Card) => {
@@ -1322,48 +1138,43 @@ export class SessionRuntime {
     const storedPartner = queuedPartner ? await db.cards.get(queuedPartner.id) : undefined;
     if (!this.mounted || generation !== this.generation || this.current?.id !== updated.id) return;
     // Restore before removing a converted partner, so the recognition snapshot cannot resurrect it.
-    this.serving = true;
-    try {
-      const recognition = this.lastIntroduction;
-      const restoreIntroduction =
-        this.options.introduceNewCards &&
-        this.introductionPresentation.stage === 'familiarise' &&
-        recognition?.card.id === updated.id &&
-        this.introductionCursor.checked;
-      if (restoreIntroduction) {
-        this.applySessionEvent({ type: 'restore', snapshot: recognition.machine, card: updated });
-        this.lastIntroduction = null;
-        this.setCanUndo(false);
-      }
-      if (queuedPartner) {
-        if (storedPartner) {
-          const partner = { ...storedPartner, history: queuedPartner.history };
-          this.applySessionEvent({ type: 'replace-card', card: partner });
-          this.updateLessonChoiceCard(partner);
-        } else {
-          this.applySessionEvent({
-            type: 'remove-card',
-            card: { ...queuedPartner, suspended: true },
-            simple: this.options.isSimpleMode,
-          });
-        }
-      }
-      this.applySessionEvent({ type: 'replace-card', card: updated });
-      this.setCurrent(updated);
-      if (this.options.introduceNewCards) {
-        this.updateLessonChoiceCard(updated);
-        if (this.introductionPresentation.stage === 'familiarise') {
-          if (restoreIntroduction) this.persistSimpleResume();
-          this.presentIntroduction(updated);
-          this.setPhase('question');
-        }
-      }
-      this.setEditing(false);
-      this.resumeAfterEdit();
-    } finally {
-      this.serving = false;
-      this.publish();
+    const recognition = this.lastIntroduction;
+    const restoreIntroduction =
+      this.options.introduceNewCards &&
+      this.introductionPresentation.stage === 'familiarise' &&
+      recognition?.card.id === updated.id &&
+      this.introductionCursor.checked;
+    if (restoreIntroduction) {
+      this.applySessionEvent({ type: 'restore', snapshot: recognition.machine, card: updated });
+      this.lastIntroduction = null;
+      this.canUndo = false;
     }
+    if (queuedPartner) {
+      if (storedPartner) {
+        const partner = { ...storedPartner, history: queuedPartner.history };
+        this.applySessionEvent({ type: 'replace-card', card: partner });
+        this.updateLessonChoiceCard(partner);
+      } else {
+        this.applySessionEvent({
+          type: 'remove-card',
+          card: { ...queuedPartner, suspended: true },
+          simple: this.options.isSimpleMode,
+        });
+      }
+    }
+    this.applySessionEvent({ type: 'replace-card', card: updated });
+    this.selectCurrent(updated);
+    if (this.options.introduceNewCards) {
+      this.updateLessonChoiceCard(updated);
+      if (this.introductionPresentation.stage === 'familiarise') {
+        if (restoreIntroduction) this.persistSimpleResume();
+        this.presentIntroduction(updated);
+        this.phase = 'question';
+      }
+    }
+    this.editing = false;
+    this.resumeAfterEdit();
+    this.publish();
   };
 
   private toggleFlagCurrent = async () => {
@@ -1376,7 +1187,8 @@ export class SessionRuntime {
       if (!this.mounted || generation !== this.generation) return;
       const updated = { ...card, flagged: next };
       this.applySessionEvent({ type: 'replace-card', card: updated });
-      if (this.current?.id === card.id) this.setCurrent(updated);
+      if (this.current?.id === card.id) this.selectCurrent(updated);
+      this.publish();
     } catch (err) {
       if (!this.mounted || generation !== this.generation) return;
       this.options.notify(
@@ -1472,6 +1284,15 @@ export class SessionRuntime {
       (candidate) => candidate.id === this.options.requestWindowId,
     );
     if (!simple) {
+      const reviewNow = Date.now();
+      const reviewDayStart = startOfDay(reviewNow);
+      if (reviewDayStart !== this.reviewsDayStart) {
+        this.reviewsByDeck = await dailyReviewCounts(result.kind, reviewNow);
+        if (!this.mounted || generation !== this.generation) return { undoAvailable: false };
+        this.reviewsDayStart = reviewDayStart;
+      } else if (result.recorded) {
+        this.reviewsByDeck.set(deck.id, (this.reviewsByDeck.get(deck.id) ?? 0) + 1);
+      }
       this.applySessionEvent({
         type: 'scheduled-recorded',
         card: result.card,
@@ -1489,18 +1310,11 @@ export class SessionRuntime {
               : Date.now()
             : undefined,
       });
-      this.setSchedulerProgress(
-        sessionCompletionProgress(this.cards, ctx!, this.sessionCardOutcomes),
+      this.schedulerProgress = sessionCompletionProgress(
+        this.cards,
+        ctx!,
+        this.sessionCardOutcomes,
       );
-      const reviewNow = Date.now();
-      const reviewDayStart = startOfDay(reviewNow);
-      if (reviewDayStart !== this.reviewsDayStart) {
-        this.reviewsByDeck = await dailyReviewCounts(result.kind, reviewNow);
-        if (!this.mounted || generation !== this.generation) return { undoAvailable: false };
-        this.reviewsDayStart = reviewDayStart;
-      } else if (result.recorded) {
-        this.reviewsByDeck.set(deck.id, (this.reviewsByDeck.get(deck.id) ?? 0) + 1);
-      }
       this.progressCache.dirty = true;
     }
     const deckReviews = this.reviewsByDeck.get(deck.id) ?? 0;
@@ -1553,7 +1367,7 @@ export class SessionRuntime {
       switch (effect.type) {
         case 'retain-undo':
           this.lastAnswer = effect.snapshot;
-          this.setCanUndo(effect.snapshot !== null);
+          this.canUndo = effect.snapshot !== null;
           break;
         case 'persist-resume':
           this.persistSimpleResume();
@@ -1607,9 +1421,7 @@ export class SessionRuntime {
       await undoSessionAnswer(snap.undo, snap.simple?.exposureAdded);
       if (!this.mounted || generation !== this.generation) return;
       const effects = this.applySessionEvent({ type: 'undo-recorded', snapshot: snap });
-      this.setSchedulerProgress(
-        sessionCompletionProgress(this.cards, ctx, this.sessionCardOutcomes),
-      );
+      this.schedulerProgress = sessionCompletionProgress(this.cards, ctx, this.sessionCardOutcomes);
       this.perf.set(snap.deckId, snap.undo.perfBefore ?? emptyPerformance(snap.deckId));
       for (const effect of effects) {
         if (effect.type === 'persist-resume') this.persistSimpleResume();
@@ -1618,14 +1430,15 @@ export class SessionRuntime {
         if (deckReviews > 0) this.reviewsByDeck.set(restored.deckId, deckReviews);
         else this.reviewsByDeck.delete(restored.deckId);
         this.completion.reset();
-        this.setSummary(null);
+        this.summary = null;
         this.lastAnswer = null;
-        this.setCanUndo(false);
+        this.canUndo = false;
         this.progressCache.dirty = true;
-        this.setCurrent(restored.undo.cardBefore);
-        this.setPhase(options?.reveal ? 'answer' : 'question');
+        this.selectCurrent(restored.undo.cardBefore);
+        if (this.options.introduceNewCards) this.presentIntroduction(restored.undo.cardBefore);
+        this.phase = options?.reveal ? 'answer' : 'question';
         this.options.onCardServed?.();
-        this.setHintStep(0);
+        this.hintStep = 0;
         this.pendingReviewEventId = null;
         this.timerStart = performance.now();
         this.options.distraction.beginCard();
