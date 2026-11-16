@@ -1,6 +1,5 @@
 import { AppLink as Link } from '../ui/AppLink';
-import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
-import { summariseSelfMarking } from '@lacuna/core/questions/questionSets';
+import type { summariseSelfMarking } from '@lacuna/core/questions/questionSets';
 import { m as motion } from 'motion/react';
 import { Button, buttonClassName } from '../ui/Button';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
@@ -8,45 +7,32 @@ import { scaledSpring } from '../ui/motion';
 
 /** Progression never supplies a mark: the learner must award the active criterion. */
 export function QuestionSetMarkingActions({
-  attempt,
-  blocked,
-  currentMarked,
-  nextCriterion,
-  criterionIndex,
-  criterionCount,
-  onMove,
-  onNextQuestion,
+  summary,
+  awardedAny,
+  action,
+  onAdvance,
   onComplete,
   returnTo,
   returnLabel,
 }: {
-  attempt: QuestionSetAttemptRecord;
-  blocked: boolean;
-  currentMarked: boolean;
-  nextCriterion?: { nodeId: string; allocation: { id: string } };
-  criterionIndex: number;
-  criterionCount: number;
-  onMove: (nodeId: string, allocationId: string) => void;
-  onNextQuestion: () => void;
+  summary: ReturnType<typeof summariseSelfMarking>;
+  awardedAny: boolean;
+  action: {
+    complete: boolean;
+    label: string;
+    disabled: boolean;
+    showFinish: boolean;
+    finishDisabled: boolean;
+  };
+  onAdvance: () => void;
   onComplete: () => void;
   returnTo: string;
   returnLabel: string;
 }) {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
-  const summary = summariseSelfMarking(attempt.receipt, attempt.decisions);
   const remaining = summary.unmarkedCount + summary.unsureCount;
-  const continuing = Boolean(nextCriterion && criterionCount > 1);
-  const label = continuing
-    ? criterionIndex < criterionCount - 1
-      ? 'Next'
-      : 'Next unmarked'
-    : attempt.status === 'answering'
-      ? 'Next question'
-      : 'Finish attempt';
-  const awarded = attempt.decisions.some((row) => row.status === 'awarded')
-    ? String(summary.total.awarded)
-    : '—';
+  const awarded = awardedAny ? String(summary.total.awarded) : '—';
   return (
     <div className="qs-marking-actions">
       <div>
@@ -69,7 +55,7 @@ export function QuestionSetMarkingActions({
           </span>
         </p>
       </div>
-      {attempt.status === 'complete' ? (
+      {action.complete ? (
         <Link className={buttonClassName('primary')} data-attempt-complete to={returnTo}>
           {returnLabel}
           <span aria-hidden="true">→</span>
@@ -79,27 +65,13 @@ export function QuestionSetMarkingActions({
           <Button
             variant="primary"
             data-attempt-primary
-            disabled={
-              blocked ||
-              !currentMarked ||
-              (!continuing && attempt.status !== 'answering' && summary.status !== 'complete')
-            }
-            onClick={() =>
-              continuing && nextCriterion
-                ? onMove(nextCriterion.nodeId, nextCriterion.allocation.id)
-                : attempt.status === 'answering'
-                  ? onNextQuestion()
-                  : onComplete()
-            }
+            disabled={action.disabled}
+            onClick={onAdvance}
           >
-            {label}
+            {action.label}
           </Button>
-          {continuing && attempt.status === 'marking' && (
-            <Button
-              variant="secondary"
-              disabled={blocked || summary.status !== 'complete'}
-              onClick={onComplete}
-            >
+          {action.showFinish && (
+            <Button variant="secondary" disabled={action.finishDisabled} onClick={onComplete}>
               Finish attempt
             </Button>
           )}
