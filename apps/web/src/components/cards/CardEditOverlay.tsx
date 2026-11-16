@@ -3,10 +3,10 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
-import { NumericAnswerEditor, numericAnswerSpecIsValid } from '../items/NumericAnswerEditor';
+import { NumericAnswerEditor } from '../items/NumericAnswerEditor';
 import { MarkSchemeEditor } from '../items/MarkSchemeEditor';
 import { compileMarkScheme, serialiseMarkScheme } from '../../items/markSchemeCompiler';
-import type { NumericAnswerSpec, ItemFixture, ItemPayload } from '@lacuna/core/db/types';
+import type { NumericAnswerSpec, ItemFixture } from '@lacuna/core/db/types';
 import { TagInput } from '../ui/TagInput';
 import { Button } from '../ui/Button';
 import { Toggle } from '../ui/Toggle';
@@ -15,7 +15,7 @@ import { useToast } from '../ui/Toast';
 import { PillToggleGroup, type PillToggleOption } from './PillToggleGroup';
 import { EDITOR_TYPE_ORDER } from './CardTypePicker';
 import { saveCardEdit } from '../../db/cardRepository';
-import { hasCloze } from '../../utils/cloze';
+import { buildStructuredCardPayload, validateCardContent } from '../../items/cardAuthoring';
 import { loadDraft, clearDraft, draftKey } from '../../utils/drafts';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import type { Card, CardType } from '@lacuna/core/db/types';
@@ -86,27 +86,25 @@ export function CardEditOverlay({
   const isNumeric = card.payload?.kind === 'numeric';
   const isWorking = card.payload?.kind === 'working';
   const isStructured = isNumeric || isWorking;
-  const structuredPayload = useMemo<ItemPayload | undefined>(() => {
-    if (isNumeric)
-      return {
-        v: 1,
-        kind: 'numeric',
-        answer: numericAnswer,
-        ...(card.payload?.kind === 'numeric' && card.payload.fixtures
-          ? { fixtures: card.payload.fixtures }
-          : {}),
-      };
-    if (isWorking)
-      return {
-        v: 1,
-        kind: 'working',
-        scheme: workingCompilation.lines.flatMap((line) =>
-          line.kind === 'compiled' ? [line.value] : [],
-        ),
-        ...(workingFixtures.length ? { fixtures: workingFixtures } : {}),
-      };
-    return undefined;
-  }, [isNumeric, isWorking, card.payload, numericAnswer, workingCompilation, workingFixtures]);
+  const structuredPayload = useMemo(
+    () =>
+      buildStructuredCardPayload(
+        isNumeric
+          ? {
+              kind: 'numeric',
+              answer: numericAnswer,
+              fixtures: card.payload?.kind === 'numeric' ? card.payload.fixtures : undefined,
+            }
+          : isWorking
+            ? {
+                kind: 'working',
+                compilation: workingCompilation,
+                fixtures: workingFixtures.length ? workingFixtures : undefined,
+              }
+            : undefined,
+      ),
+    [isNumeric, isWorking, card.payload, numericAnswer, workingCompilation, workingFixtures],
+  );
 
   // Auto-restore a draft from a previous interrupted session.
   useEffect(() => {
@@ -193,15 +191,15 @@ export function CardEditOverlay({
   }
 
   const isCloze = type === 'cloze';
-  const clozeValid = !isCloze || hasCloze(front);
-  const frontValid = front.trim().length > 0;
-  const backValid = isCloze || isStructured || back.trim().length > 0;
-  const structuredValid = isNumeric
-    ? numericAnswerSpecIsValid(numericAnswer)
-    : !isWorking ||
-      (workingCompilation.lines.length > 0 &&
-        workingCompilation.lines.every((line) => line.kind === 'compiled'));
-  const canSave = frontValid && backValid && clozeValid && structuredValid && !saving;
+  const { frontValid, backValid, clozeValid, numericValid, workingValid, backValue } =
+    validateCardContent({
+      type: isNumeric ? 'numeric' : isWorking ? 'working' : type,
+      front,
+      back,
+      numericAnswer,
+      workingCompilation,
+    });
+  const canSave = frontValid && backValid && clozeValid && numericValid && workingValid && !saving;
 
   async function handleSave() {
     if (!canSave || savingRef.current) return;
@@ -210,7 +208,7 @@ export function CardEditOverlay({
     const changes = {
       type,
       front,
-      back: isCloze || isStructured ? '' : back,
+      back: backValue,
       tags,
       ...(isStructured ? { payload: structuredPayload } : {}),
     };

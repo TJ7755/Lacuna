@@ -3,6 +3,7 @@ import { EDITOR_TYPE_ORDER, type EditorCardType } from '../../components/cards/C
 import type { AnswerMode, Card, ItemFixture, NumericAnswerSpec } from '@lacuna/core/db/types';
 import { compileMarkScheme, serialiseMarkScheme } from '../../items/markSchemeCompiler';
 import { isAudioCardFront } from '../../media/audio';
+import { buildStructuredCardPayload } from '../../items/cardAuthoring';
 import { useDraftStorage } from '../../utils/useDraftStorage';
 import { loadDraft, clearDraft } from '../../utils/drafts';
 
@@ -54,24 +55,21 @@ export function useCardEditorDraft({
       alsoReverse,
       answerMode,
       spellingOverride: requireCorrectSpelling ?? null,
-      payload:
+      payload: buildStructuredCardPayload(
         type === 'numeric'
           ? {
-              v: 1,
               kind: 'numeric',
               answer: numericAnswer,
-              ...(numericFixtures.length ? { fixtures: numericFixtures } : {}),
+              fixtures: numericFixtures.length ? numericFixtures : undefined,
             }
           : type === 'working'
             ? {
-                v: 1,
                 kind: 'working',
-                scheme: workingCompilation.lines.flatMap((line) =>
-                  line.kind === 'compiled' ? [line.value] : [],
-                ),
-                ...(workingFixtures.length > 0 ? { fixtures: workingFixtures } : {}),
+                compilation: workingCompilation,
+                fixtures: workingFixtures.length ? workingFixtures : undefined,
               }
             : undefined,
+      ),
       workingSource: type === 'working' ? workingSource : undefined,
       timestamp: Date.now(),
     });

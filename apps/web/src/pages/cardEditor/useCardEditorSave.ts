@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import { recordUsageAction } from '../../usage/actions';
 import { canEditLessons, isLessonAuthoringMode } from '../../course/lessonViewMode';
 import { useToast } from '../../components/ui/Toast';
-import { numericAnswerSpecIsValid } from '../../components/items/NumericAnswerEditor';
 import {
   createLessonCard,
   createLessonCardWithReverse,
@@ -12,8 +11,8 @@ import {
   createCourseBasicReversedPair,
   saveCardEdit,
 } from '../../db/cardRepository';
-import type { Card, CardType, Course, ItemPayload } from '@lacuna/core/db/types';
-import { hasCloze } from '../../utils/cloze';
+import type { Card, CardType, Course } from '@lacuna/core/db/types';
+import { buildStructuredCardPayload, validateCardContent } from '../../items/cardAuthoring';
 import { isAudioCardFront } from '../../media/audio';
 import type { ReturnTarget } from '../../utils/editorOrigin';
 import { useCardSaveConfirmation } from '../useCardSaveConfirmation';
@@ -76,14 +75,9 @@ export function useCardEditorSave({
   const isWorking = type === 'working';
   const isAudio = type === 'audio';
   const isStructured = isNumeric || isWorking;
-  const workingValid =
-    !isWorking ||
-    (workingCompilation.lines.length > 0 &&
-      workingCompilation.lines.every((line) => line.kind === 'compiled'));
-  const clozeValid = !isCloze || hasCloze(front);
-  const frontValid = front.trim().length > 0 && (!isAudio || isAudioCardFront(front));
-  const backValid = isCloze || isStructured || back.trim().length > 0;
-  const numericValid = !isNumeric || numericAnswerSpecIsValid(numericAnswer);
+  const content = validateCardContent({ type, front, back, numericAnswer, workingCompilation });
+  const { backValid, clozeValid, numericValid, workingValid, backValue } = content;
+  const frontValid = content.frontValid && (!isAudio || isAudioCardFront(front));
   const editable = Boolean(course && canEditLessons(course));
   const canConfigureSpelling = editable && !course?.archived && !isStructured;
   const canSave =
@@ -146,24 +140,21 @@ export function useCardEditorSave({
             : undefined;
       const storedSpelling = canConfigureSpelling ? requireCorrectSpelling : undefined;
       const storedType: CardType = isStructured || isAudio ? 'front_back' : type;
-      const backValue = isCloze || isStructured ? '' : back;
-      const payload: ItemPayload | undefined = isNumeric
-        ? {
-            v: 1,
-            kind: 'numeric',
-            answer: numericAnswer,
-            ...(numericFixtures.length ? { fixtures: numericFixtures } : {}),
-          }
-        : isWorking
+      const payload = buildStructuredCardPayload(
+        isNumeric
           ? {
-              v: 1,
-              kind: 'working',
-              scheme: workingCompilation.lines.flatMap((line) =>
-                line.kind === 'compiled' ? [line.value] : [],
-              ),
-              ...(workingFixtures.length > 0 ? { fixtures: workingFixtures } : {}),
+              kind: 'numeric',
+              answer: numericAnswer,
+              fixtures: numericFixtures.length ? numericFixtures : undefined,
             }
-          : undefined;
+          : isWorking
+            ? {
+                kind: 'working',
+                compilation: workingCompilation,
+                fixtures: workingFixtures.length ? workingFixtures : undefined,
+              }
+            : undefined,
+      );
       if (editing && card) {
         await saveCardEdit(card.id, {
           type: storedType,
