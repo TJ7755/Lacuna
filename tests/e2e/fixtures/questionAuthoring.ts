@@ -44,3 +44,51 @@ export async function blockWrites() {
 export function releaseWrites() {
   releaseWrite?.();
 }
+
+export async function seedTransition() {
+  const {
+    createFixedQuestion,
+    createGeneratedQuestion,
+    startQuestionAttempt,
+    answerQuestionAttempt,
+  } = await import('../../../apps/web/src/questions/repository');
+  const course = await createCourse('Migrated question practice');
+  await db.courses.update(course.id, { lessonViewMode: 'study' });
+  const concept = await createConcept(course.id, 'Addition');
+  const now = Date.now() - 86_400_000;
+  const question = await createFixedQuestion({
+    courseId: course.id,
+    targetConceptId: concept.id,
+    name: 'Addition application',
+    prompt: 'Calculate **3 + 3**.',
+    payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '6' } },
+    explanation: 'Adding three and three gives six.',
+    now,
+  });
+  const old = await startQuestionAttempt({
+    questionId: question.id,
+    sessionId: 'before-transition',
+    now: now + 100,
+  });
+  await answerQuestionAttempt({
+    attemptId: old.id,
+    submittedAnswer: '6',
+    marksEarned: 1,
+    marksAvailable: 1,
+    now: now + 200,
+  });
+  await createGeneratedQuestion({
+    courseId: course.id,
+    targetConceptId: concept.id,
+    name: 'Quadratic practice',
+    generatorKey: 'integer-root-quadratic',
+    generatorVersion: 1,
+    generatorConfig: {
+      minimumRootMagnitude: 1,
+      maximumRootMagnitude: 1,
+      maximumLeadingCoefficient: 1,
+      allowRepeatedRoots: true,
+    },
+  });
+  return { courseId: course.id, questionId: question.id };
+}

@@ -171,6 +171,10 @@ export async function startExamSkillPractice(
     [
       db.courses,
       db.concepts,
+      db.questions,
+      db.questionConcepts,
+      db.questionAttempts,
+      db.tombstones,
       db.questionSets,
       db.questionSetAttempts,
       db.courseAssessments,

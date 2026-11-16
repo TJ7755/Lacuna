@@ -150,7 +150,7 @@ export interface SyncState {
 /** Shape of an exported/imported backup file. */
 export interface BackupFile {
   /** New markers make older readers reject collections they cannot preserve. */
-  app: 'lacuna' | 'lacuna-v12' | 'lacuna-v13' | 'lacuna-v14' | 'lacuna-v15';
+  app: 'lacuna' | 'lacuna-v12' | 'lacuna-v13' | 'lacuna-v14' | 'lacuna-v15' | 'lacuna-v16';
   version: number;
   exportedAt: number;
   /** Pre-v22 Deck rows. Current exports omit this; a non-empty array is refused. */

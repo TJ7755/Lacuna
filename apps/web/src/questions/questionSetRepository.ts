@@ -214,6 +214,10 @@ export async function updateQuestionSet(
       const existingRaw = await db.questionSets.get(id);
       if (!existingRaw) throw new Error('Question Set not found.');
       const existing = parseQuestionSetRecord(existingRaw);
+      if (existing.legacyQuestionId)
+        throw new Error(
+          `Edit the original Question ${existing.legacyQuestionId} to update this set.`,
+        );
       if (content.id !== id || content.courseId !== existing.courseId) {
         throw new Error('A Question Set cannot change identity or Course.');
       }

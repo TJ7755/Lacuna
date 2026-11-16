@@ -4,6 +4,8 @@ import { techniqueTagsSchema, type TechniqueTags } from '@lacuna/core/questions/
 
 /** Ordered, shareable question content. Markdown source includes images and maths. */
 export interface QuestionSet {
+  /** Private compatibility source. Shared content excludes this local identity. */
+  legacyQuestionId?: string;
   id: string;
   courseId: string;
   title: string;

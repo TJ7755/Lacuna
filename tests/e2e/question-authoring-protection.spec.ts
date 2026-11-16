@@ -79,7 +79,7 @@ test('an existing draft requires a decision before authoring or saving', async (
   await expect(prompt).toHaveValue('Recovered question');
   await expect(prompt).toBeFocused();
   await page.getByRole('button', { name: 'Create Question' }).click();
-  await expect(page).toHaveURL(/questions\?view=individual$/);
+  await expect(page).toHaveURL(/questions$/);
 });
 
 test('a failed draft write requires explicit discard before leaving', async ({

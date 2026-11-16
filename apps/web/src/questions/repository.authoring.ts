@@ -1,3 +1,5 @@
+import { ensureQuestionTransition } from './questionTransitionRepository';
+import { deleteQuestionSet } from './questionSetRepository';
 import { clearTombstone, recordTombstone } from '../db/mutationStamp';
 import { db, makeId } from '../db/schema';
 import { questionGeneratorRegistry } from './generators';
@@ -76,7 +78,15 @@ export async function createFixedQuestion(
   };
   return db.transaction(
     'rw',
-    [db.courses, db.lessons, db.concepts, db.questions, db.questionConcepts, db.tombstones],
+    [
+      db.courses,
+      db.lessons,
+      db.concepts,
+      db.questions,
+      db.questionConcepts,
+      db.questionSets,
+      db.tombstones,
+    ],
     async (tx) => {
       if (!(await db.courses.get(input.courseId))) throw new Error('Course not found.');
       await validateLessonMembership(
@@ -96,7 +106,11 @@ export async function createFixedQuestion(
       await db.questionConcepts.add(set);
       await clearTombstone(tx, 'questions', id);
       await clearTombstone(tx, 'questionConcepts', id);
-      return question;
+      await ensureQuestionTransition(question.courseId, new Set([question.id]));
+      return {
+        ...question,
+        migratedToSetId: (await db.questions.get(question.id))?.migratedToSetId,
+      };
     },
   );
 }
@@ -147,7 +161,15 @@ export async function createGeneratedQuestion(
   };
   return db.transaction(
     'rw',
-    [db.courses, db.lessons, db.concepts, db.questions, db.questionConcepts, db.tombstones],
+    [
+      db.courses,
+      db.lessons,
+      db.concepts,
+      db.questions,
+      db.questionConcepts,
+      db.questionSets,
+      db.tombstones,
+    ],
     async (tx) => {
       if (!(await db.courses.get(input.courseId))) throw new Error('Course not found.');
       await validateLessonMembership(
@@ -167,7 +189,11 @@ export async function createGeneratedQuestion(
       await db.questionConcepts.add(set);
       await clearTombstone(tx, 'questions', id);
       await clearTombstone(tx, 'questionConcepts', id);
-      return question;
+      await ensureQuestionTransition(question.courseId, new Set([question.id]));
+      return {
+        ...question,
+        migratedToSetId: (await db.questions.get(question.id))?.migratedToSetId,
+      };
     },
   );
 }
@@ -210,7 +236,7 @@ export async function updateFixedQuestion(
 ): Promise<FixedQuestionDefinition> {
   return db.transaction(
     'rw',
-    [db.lessons, db.concepts, db.questions, db.questionConcepts],
+    [db.lessons, db.concepts, db.questions, db.questionConcepts, db.questionSets, db.tombstones],
     async () => {
       const existing = await db.questions.get(questionId);
       if (!existing || existing.kind !== 'fixed') throw new Error('Fixed Question not found.');
@@ -281,6 +307,7 @@ export async function updateFixedQuestion(
       };
       await db.questions.put(next);
       await db.questionConcepts.put(set);
+      await ensureQuestionTransition(next.courseId, new Set([next.id]));
       return next;
     },
   );
@@ -306,7 +333,7 @@ export async function updateGeneratedQuestion(
 ): Promise<GeneratedQuestionDefinition> {
   return db.transaction(
     'rw',
-    [db.lessons, db.concepts, db.questions, db.questionConcepts],
+    [db.lessons, db.concepts, db.questions, db.questionConcepts, db.questionSets, db.tombstones],
     async () => {
       const existing = await db.questions.get(questionId);
       if (!existing || existing.kind !== 'generated') {
@@ -384,6 +411,7 @@ export async function updateGeneratedQuestion(
       };
       await db.questions.put(next);
       await db.questionConcepts.put(set);
+      await ensureQuestionTransition(next.courseId, new Set([next.id]));
       return next;
     },
   );
@@ -392,10 +420,19 @@ export async function updateGeneratedQuestion(
 export async function deleteQuestion(questionId: string, now = Date.now()): Promise<void> {
   await db.transaction(
     'rw',
-    [db.questions, db.questionConcepts, db.questionAttempts, db.tombstones],
+    [
+      db.questions,
+      db.questionConcepts,
+      db.questionAttempts,
+      db.questionSets,
+      db.practiceNodes,
+      db.practiceMilestones,
+      db.tombstones,
+    ],
     async (tx) => {
       const question = await db.questions.get(questionId);
       if (!question) return;
+      if (question.migratedToSetId) await deleteQuestionSet(question.migratedToSetId, now);
       await db.questions.delete(questionId);
       await db.questionConcepts.delete(questionId);
       await recordTombstone(tx, 'questions', questionId, now);

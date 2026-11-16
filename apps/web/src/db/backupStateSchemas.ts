@@ -78,6 +78,7 @@ const baseline = z.discriminatedUnion('kind', [
   }),
 ]);
 const questionBase = object({
+  migratedToSetId: id.optional(),
   ...schedule,
   ...timestamps,
   id,

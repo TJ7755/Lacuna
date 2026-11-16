@@ -1,3 +1,4 @@
+import { IndividualQuestionHistory } from '../components/question-sets/IndividualQuestionHistory';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { SearchIcon } from '../components/ui/icons';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
@@ -29,7 +30,6 @@ import {
 } from '../questions/questionSetDrafts';
 import { listQuestionSets } from '../questions/questionSetRepository';
 import { Button } from '../components/ui/Button';
-import { LegacyQuestionsPage } from './LegacyQuestionsPage';
 import { questionSetMarks } from '../components/question-sets/presentation';
 import { QuestionSetScore } from '../components/question-sets/QuestionSetScore';
 import { questionSetProgress, type QuestionSetProgress } from '../questions/questionSetProgress';
@@ -71,7 +71,7 @@ export function QuestionsPage() {
       const [sets, drafts, legacy, attemptRows, skills, lessons, concepts] = await Promise.all([
         listQuestionSets(courseId),
         listQuestionSetDrafts(courseId),
-        db.questions.where('courseId').equals(courseId).count(),
+        db.questions.where('courseId').equals(courseId).toArray(),
         db.questionSetAttempts.where('courseId').equals(courseId).toArray(),
         listExamSkillPractice(courseId),
         db.lessons.where('courseId').equals(courseId).toArray(),
@@ -96,7 +96,7 @@ export function QuestionsPage() {
       return {
         sets: [],
         drafts: [],
-        legacy: 0,
+        legacy: [],
         skills: [],
         attemptsBySet: new Map<string, QuestionSetAttemptRecord[]>(),
         error: String(cause),
@@ -165,7 +165,6 @@ export function QuestionsPage() {
       setStartingSetId(null);
     }
   };
-  if (params.get('view') === 'individual') return <LegacyQuestionsPage />;
   return (
     <div ref={root} className={`${COURSE_PAGE_FRAME} qs-library pb-8`}>
       <header className={`${COURSE_PAGE_HEADER} [&>*]:self-center`}>
@@ -279,7 +278,11 @@ export function QuestionsPage() {
               <Link
                 className="qs-scored-title"
                 state={origin}
-                to={`/course/${course.id}/question-sets/${content.id}${author ? '/edit' : ''}`}
+                to={
+                  author && content.legacyQuestionId
+                    ? `/course/${course.id}/questions/${content.legacyQuestionId}/edit`
+                    : `/course/${course.id}/question-sets/${content.id}${author ? '/edit' : ''}`
+                }
               >
                 <h2 className="font-display font-semibold tracking-tight">
                   {content.title || 'Untitled set'}
@@ -317,7 +320,13 @@ export function QuestionsPage() {
               ) : (
                 <Button
                   variant="secondary"
-                  disabled={course.archived || startingSetId !== null}
+                  disabled={
+                    course.archived ||
+                    startingSetId !== null ||
+                    data.legacy.some(
+                      (source) => source.id === content.legacyQuestionId && source.suspended,
+                    )
+                  }
                   onClick={() => void attempt(content.id)}
                 >
                   {startingSetId === content.id ? 'Starting…' : 'Attempt'}
@@ -371,14 +380,18 @@ export function QuestionsPage() {
         )}
       </section>
       <RemovedQuestionSetAttempts courseId={course.id} />
-      {data.legacy > 0 && (
-        <Link
-          className="qs-legacy-link"
-          to={`?view=individual${search ? `&q=${encodeURIComponent(search)}` : ''}`}
-        >
-          Individual questions <span>{data.legacy} →</span>
-        </Link>
-      )}
+      <IndividualQuestionHistory courseId={course.id} />
+      {data.legacy
+        .filter((source) => !source.migratedToSetId)
+        .map((source) => (
+          <Link
+            key={source.id}
+            className="qs-legacy-link"
+            to={`/course/${course.id}/questions/${source.id}/edit`}
+          >
+            {source.name} — content needs repair
+          </Link>
+        ))}
     </div>
   );
 }

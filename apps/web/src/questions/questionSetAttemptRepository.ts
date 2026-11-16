@@ -1,3 +1,6 @@
+import { transitionedQuestion, resolveTransitionSource } from './questionTransition';
+import { questionPresentationFingerprint } from './generators/declarative';
+import { questionGeneratorRegistry } from './generators';
 import { db, makeId } from '../db/schema';
 import type { JevDiagnosis } from '@lacuna/core/jev/diagnosis';
 import { resolveFamilyVariant } from './bank';
@@ -42,63 +45,102 @@ export async function startQuestionSetAttempt(
   selection?: Omit<ConceptPracticeSelection, 'conceptId'> & { conceptId?: string },
   familyVariantIndex?: number,
 ): Promise<QuestionSetAttemptRecord> {
-  return db.transaction('rw', [db.courses, db.questionSets, db.questionSetAttempts], async () => {
-    const receiptRaw = await db.questionSets.get(questionSetId);
-    if (!receiptRaw) throw new Error('Question Set not found.');
-    let receipt = parseQuestionSetRecord(receiptRaw);
-    if (familyVariantIndex !== undefined) {
-      if (!selection || !receipt.bank?.family) throw new Error('Invalid family variant selection.');
-      receipt = resolveFamilyVariant(receipt, familyVariantIndex);
-    }
-    if (selection) {
-      if (mode !== 'practice' || selection.questionSetId !== questionSetId)
-        throw new Error('Invalid question practice selection.');
-      const question = receipt.questions.find((row) => row.id === selection.questionId);
-      if (!question) throw new Error('Selected question not found.');
-      receipt = parseQuestionSetRecord({ ...receipt, questions: [question] });
-    }
-    if (!(await db.courses.get(receipt.courseId))) throw new Error('Course not found.');
-    const nodes = answerableNodes(receipt);
-    const responseKind = new Map<string, 'written' | 'calculation' | 'multiple-choice'>();
-    for (const question of receipt.questions) {
-      if (question.answer) responseKind.set(question.id, question.answer.response.kind);
-      for (const part of question.parts) {
-        if (part.answer) responseKind.set(part.id, part.answer.response.kind);
-        for (const subpart of part.subparts) {
-          if (subpart.answer) responseKind.set(subpart.id, subpart.answer.response.kind);
+  return db.transaction(
+    'rw',
+    [db.courses, db.questions, db.questionSets, db.questionSetAttempts],
+    async () => {
+      const receiptRaw = await db.questionSets.get(questionSetId);
+      if (!receiptRaw) throw new Error('Question Set not found.');
+      let receipt = parseQuestionSetRecord(receiptRaw);
+      if (receipt.legacyQuestionId) {
+        const source = await db.questions.get(receipt.legacyQuestionId);
+        if (!source || source.courseId !== receipt.courseId)
+          throw new Error('The original Question definition is unavailable.');
+        if (source.suspended) throw new Error('A suspended Question cannot be started.');
+        if (source.kind === 'generated') {
+          const question = receipt.questions[0];
+          const answer = question.answer!;
+          const links = {
+            targetConceptIds: answer.allocations[0].targetConceptIds,
+            prerequisiteConceptIds: answer.prerequisiteConceptIds,
+          };
+          let resolved = transitionedQuestion(
+            question.id,
+            resolveTransitionSource(source, makeId()),
+            links,
+          );
+          if (selection) {
+            const variant = questionGeneratorRegistry
+              .audit({
+                generatorKey: source.generatorKey,
+                generatorVersion: source.generatorVersion,
+                configuration: source.generatorConfig,
+              })
+              .instances.map(({ resolved }) => transitionedQuestion(question.id, resolved, links))
+              .find((row) => questionPresentationFingerprint(row) === selection.fingerprint);
+            if (!variant)
+              throw new Error('The generated Question selection no longer matches its definition.');
+            resolved = variant;
+          }
+          receipt = parseQuestionSetRecord({ ...receipt, questions: [resolved] });
         }
       }
-    }
-    const record = parseQuestionSetAttemptRecord({
-      id: makeId(),
-      courseId: receipt.courseId,
-      questionSetId,
-      receipt: clone(receipt),
-      mode,
-      status: 'answering',
-      responses: nodes.map((node) => ({
-        nodeId: node.nodeId,
-        draft: emptyResponse(responseKind.get(node.nodeId)!),
-      })),
-      decisions: [],
-      firstMarking: [],
-      shownQuestionIds: [nodes[0].questionId],
-      ...(selection?.conceptId ? { conceptPractice: clone(selection) } : {}),
-      ...(selection ? { practiceScope: 'question' } : {}),
-      annotations: [],
-      corrections: [],
-      reflection: { reasons: [], note: '' },
-      assistance: [],
-      revealedQuestionIds: [],
-      activeNodeId: nodes[0].nodeId,
-      activeAllocationId: null,
-      revisionId: makeId(),
-      createdAt: now,
-      updatedAt: now,
-    });
-    await db.questionSetAttempts.add(record);
-    return record;
-  });
+
+      if (familyVariantIndex !== undefined) {
+        if (!selection || !receipt.bank?.family)
+          throw new Error('Invalid family variant selection.');
+        receipt = resolveFamilyVariant(receipt, familyVariantIndex);
+      }
+      if (selection) {
+        if (mode !== 'practice' || selection.questionSetId !== questionSetId)
+          throw new Error('Invalid question practice selection.');
+        const question = receipt.questions.find((row) => row.id === selection.questionId);
+        if (!question) throw new Error('Selected question not found.');
+        receipt = parseQuestionSetRecord({ ...receipt, questions: [question] });
+      }
+      if (!(await db.courses.get(receipt.courseId))) throw new Error('Course not found.');
+      const nodes = answerableNodes(receipt);
+      const responseKind = new Map<string, 'written' | 'calculation' | 'multiple-choice'>();
+      for (const question of receipt.questions) {
+        if (question.answer) responseKind.set(question.id, question.answer.response.kind);
+        for (const part of question.parts) {
+          if (part.answer) responseKind.set(part.id, part.answer.response.kind);
+          for (const subpart of part.subparts) {
+            if (subpart.answer) responseKind.set(subpart.id, subpart.answer.response.kind);
+          }
+        }
+      }
+      const record = parseQuestionSetAttemptRecord({
+        id: makeId(),
+        courseId: receipt.courseId,
+        questionSetId,
+        receipt: clone(receipt),
+        mode,
+        status: 'answering',
+        responses: nodes.map((node) => ({
+          nodeId: node.nodeId,
+          draft: emptyResponse(responseKind.get(node.nodeId)!),
+        })),
+        decisions: [],
+        firstMarking: [],
+        shownQuestionIds: [nodes[0].questionId],
+        ...(selection?.conceptId ? { conceptPractice: clone(selection) } : {}),
+        ...(selection ? { practiceScope: 'question' } : {}),
+        annotations: [],
+        corrections: [],
+        reflection: { reasons: [], note: '' },
+        assistance: [],
+        revealedQuestionIds: [],
+        activeNodeId: nodes[0].nodeId,
+        activeAllocationId: null,
+        revisionId: makeId(),
+        createdAt: now,
+        updatedAt: now,
+      });
+      await db.questionSetAttempts.add(record);
+      return record;
+    },
+  );
 }
 
 export async function getQuestionSetAttempt(id: string): Promise<QuestionSetAttemptRecord | null> {

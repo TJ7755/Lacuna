@@ -57,7 +57,7 @@ describe('Question Set path activity portability', () => {
     });
     const node = await createQuestionSetPracticeNode(course.id, set.id, lesson.id);
     const backup = await exportDatabase();
-    expect(backup).toMatchObject({ app: 'lacuna-v15', version: 15 });
+    expect(backup).toMatchObject({ app: 'lacuna-v16', version: 16 });
     expect(validateBackup(backup)).toBe(true);
     expect(validateBackup({ ...backup, practiceNodes: [null] })).toBe(false);
     expect(mergeSnapshots(backup, backup).practiceNodes).toEqual([node]);

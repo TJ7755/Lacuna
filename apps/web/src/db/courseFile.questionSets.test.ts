@@ -95,7 +95,7 @@ describe('course files with authored Question Sets', () => {
 
     const file = await decodeCourseFile(await buildCourseFile(course.id));
     if (file.payload.v !== 6) throw new Error('Expected a v6 course payload.');
-    expect(file.payload.questionSets).toHaveLength(3);
+    expect(file.payload.questionSets).toHaveLength(4);
     expect(file.assets.map((asset) => asset.hash)).toEqual([image.hash]);
 
     await clearDatabase();

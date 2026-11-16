@@ -1,3 +1,4 @@
+import { transitionScheduleSeeds, type QuestionScheduleSeed } from './questionTransitionSchedules';
 import { gradeQuestionAttempt } from './grading';
 import {
   answers,
@@ -42,8 +43,9 @@ export { questionPresentationFingerprint as conceptPracticeFingerprint } from '.
  */
 export function deriveConceptApplicationSchedules(
   attempts: readonly QuestionSetAttemptRecord[],
+  seeds: ReadonlyMap<string, QuestionScheduleSeed> = new Map(),
 ): Map<string, QuestionScheduleState> {
-  const schedules = new Map<string, QuestionScheduleState>();
+  const schedules = new Map([...seeds].map(([id, seed]) => [id, seed.state]));
   const events = attempts
     .filter((attempt) => attempt.undoneAt === undefined)
     .flatMap((attempt) => (attempt.firstMarking ?? []).map((snapshot) => ({ attempt, snapshot })))
@@ -83,7 +85,12 @@ export function deriveConceptApplicationSchedules(
         }
       }
     for (const [conceptId, total] of totals) {
-      if (total.unresolved || !total.available) continue;
+      if (
+        total.unresolved ||
+        !total.available ||
+        snapshot.recordedAt <= (seeds.get(conceptId)?.recordedAt ?? -Infinity)
+      )
+        continue;
       const grade =
         snapshot.gradeMappingVersion === 'fractional-hard-v2'
           ? gradeQuestionAttempt({
@@ -153,7 +160,10 @@ async function context(courseId: string, now = Date.now()) {
       : undefined,
     ...data,
     needs: deriveConceptPracticeNeeds(data.attempts, data.sets, now, techniqueSchedules),
-    schedules: deriveConceptApplicationSchedules(data.attempts),
+    schedules: deriveConceptApplicationSchedules(
+      data.attempts,
+      transitionScheduleSeeds(data.sources, data.sets),
+    ),
   };
 }
 
@@ -365,6 +375,10 @@ export async function startConceptPractice(
     [
       db.courses,
       db.concepts,
+      db.questions,
+      db.questionConcepts,
+      db.questionAttempts,
+      db.tombstones,
       db.questionSets,
       db.questionSetAttempts,
       db.courseAssessments,

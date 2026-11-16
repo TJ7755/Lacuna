@@ -14,6 +14,7 @@ import type {
 } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { migrateQuestionModeContent } from './domain';
+import { transitionIndividualQuestions } from './questionTransition';
 import type {
   Concept,
   QuestionAttempt,
@@ -195,6 +196,19 @@ function migrationTombstones(
  * Current backups are copied unchanged; attempt evidence is never reconstructed twice.
  */
 export function normaliseQuestionBackup(input: BackupFile): QuestionNormalisedBackup {
+  const normalised = normaliseLegacyQuestionBackup(input);
+  return {
+    ...normalised,
+    ...transitionIndividualQuestions(
+      normalised.questions,
+      normalised.questionConcepts,
+      normalised.questionSets,
+      normalised.tombstones,
+    ),
+  };
+}
+
+function normaliseLegacyQuestionBackup(input: BackupFile): QuestionNormalisedBackup {
   input = {
     ...input,
     practiceNodes: input.practiceNodes?.map((node) =>

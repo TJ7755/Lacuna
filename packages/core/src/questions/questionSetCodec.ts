@@ -178,9 +178,13 @@ export function parseQuestionSetRecord(value: unknown): QuestionSetRecord {
     'createdAt',
     'updatedAt',
     'bank',
+    'legacyQuestionId',
   ]);
   if (!Array.isArray(row.questions)) throw new Error('questionSet.questions must be an array.');
   const record: QuestionSetRecord = {
+    ...(row.legacyQuestionId === undefined
+      ? {}
+      : { legacyQuestionId: string(row.legacyQuestionId, 'questionSet.legacyQuestionId') }),
     id: string(row.id, 'questionSet.id'),
     courseId: string(row.courseId, 'questionSet.courseId'),
     title: string(row.title, 'questionSet.title'),

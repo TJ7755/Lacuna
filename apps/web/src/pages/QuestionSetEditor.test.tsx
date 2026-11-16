@@ -293,7 +293,7 @@ describe('Paper question set authoring', () => {
     await screen.findByRole('heading', { name: 'Questions' });
     expect(screen.queryByText('Biology')).not.toBeInTheDocument();
   });
-  it('opens individual questions in their own view and returns to the set library', async () => {
+  it('shows migrated individual content in the shared set library', async () => {
     const course = await setup();
     const concept = await createConcept(course.id, 'Cell size');
     await createFixedQuestion({
@@ -303,16 +303,11 @@ describe('Paper question set authoring', () => {
       payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '3' } },
       explanation: 'Divide by magnification.',
       targetConceptId: concept.id,
-      prerequisiteConceptIds: [],
     });
-    open(course.id, 'questions');
-    fireEvent.click(await screen.findByRole('link', { name: /Individual questions/ }));
-    expect(await screen.findByRole('heading', { name: 'Individual questions' })).toBeVisible();
-    expect(screen.queryByRole('heading', { name: 'Questions' })).not.toBeInTheDocument();
-    expect(screen.getByText('Cell calculation')).toBeVisible();
-    fireEvent.click(screen.getByRole('link', { name: 'Question sets' }));
+    open(course.id, 'questions?view=individual');
     expect(await screen.findByRole('heading', { name: 'Questions' })).toBeVisible();
-    expect(screen.queryByText('Cell calculation')).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Cell calculation' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: /Individual questions/ })).not.toBeInTheDocument();
   });
   it('shows local drafts only in Edit mode and creates a real empty set', async () => {
     const course = await setup();

@@ -99,6 +99,9 @@ describe('mergeImport: v3 Question lineage', () => {
     );
     const presentationEdit = (await db.questions.get('question-quadratic'))!;
     expect(presentationEdit.name).toBe('Apply factorisation');
+    expect((await db.questionSets.get(presentationEdit.migratedToSetId!))?.title).toBe(
+      'Apply factorisation',
+    );
     expect(presentationEdit.contentVersion).toBe(scheduled.contentVersion);
     expect(presentationEdit.scheduleEpoch.id).toBe(scheduled.scheduleEpoch.id);
     expect(presentationEdit.reps).toBe(1);
@@ -126,6 +129,9 @@ describe('mergeImport: v3 Question lineage', () => {
     expect(semanticEdit.scheduleEpoch.id).not.toBe(scheduled.scheduleEpoch.id);
     expect(semanticEdit.reps).toBe(0);
     expect(semanticEdit.due).toBeNull();
+    expect((await db.questionSets.get(semanticEdit.migratedToSetId!))?.questions[0].prompt).toBe(
+      'What is the positive root of x² - 9 = 0?',
+    );
 
     const immutableAttempt = await db.questionAttempts.get('attempt-quadratic');
     expect(immutableAttempt).toMatchObject({
@@ -138,6 +144,87 @@ describe('mergeImport: v3 Question lineage', () => {
     expect(await db.questions.get('question-quadratic')).toBeUndefined();
     expect(await db.questionConcepts.get('question-quadratic')).toBeUndefined();
     expect(await db.questionAttempts.get('attempt-quadratic')).toEqual(immutableAttempt);
+  });
+
+  it('accepts publisher removal of a tracked migrated source and set while retaining native attempts', async () => {
+    const first = questionPayloadV3({
+      questionSets: [
+        {
+          id: 'published-migrated-set',
+          legacyQuestionId: 'question-quadratic',
+          courseId: 'publisher',
+          title: 'Published question',
+          lessonIds: [],
+          assessmentIds: [],
+          questions: [
+            {
+              id: 'q',
+              prompt: 'Solve the equation.',
+              parts: [],
+              answer: {
+                maxMarks: 1,
+                response: { kind: 'calculation' },
+                prerequisiteConceptIds: [],
+                allocations: [
+                  {
+                    id: 'mark',
+                    criterion: 'The positive root.',
+                    maxMarks: 1,
+                    dimension: 'application',
+                    targetConceptIds: ['concept-quadratic'],
+                  },
+                ],
+              },
+            },
+          ],
+          contentVersion: 1,
+          contentRevisionId: 'published-1',
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ],
+    });
+    const { course } = await importLineageFirstTime(first);
+    const { startQuestionSetAttempt } = await import('../questions/questionSetAttemptRepository');
+    const attempt = await startQuestionSetAttempt('published-migrated-set', 'practice', 1500);
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV3({ at: 2000, rv: 2, questions: [], questionSets: [] }),
+    );
+    expect(await db.questions.get('question-quadratic')).toBeUndefined();
+    expect(await db.questionSets.get('published-migrated-set')).toBeUndefined();
+    expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+  });
+
+  it('keeps adopted publisher content and revisions when another question is authored', async () => {
+    const first = questionPayloadV3();
+    const { course } = await importLineageFirstTime(first);
+    const source = (await db.questions.get('question-quadratic'))!;
+    const adopted = (await db.questionSets.get(source.migratedToSetId!))!;
+    const published = {
+      ...adopted,
+      contentRevisionId: 'publisher-revised',
+      questions: [{ ...adopted.questions[0], prompt: 'Published revised prompt' }],
+    };
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV3({ at: 2000, rv: 2, questionSets: [published] }),
+    );
+    const before = (await db.questionSets.get(adopted.id))!;
+    const { createFixedQuestion } = await import('../questions/repository');
+    await createFixedQuestion({
+      courseId: course.id,
+      targetConceptId: 'concept-quadratic',
+      name: 'Unrelated question',
+      prompt: 'Calculate 1 + 1.',
+      explanation: 'Two.',
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '2' } },
+    });
+    expect(await db.questionSets.get(adopted.id)).toEqual(before);
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV3({ at: 3000, rv: 3, questionSets: [published] }),
+    );
   });
 
   it('starts a new Question schedule when only the teacher prompt changes', async () => {

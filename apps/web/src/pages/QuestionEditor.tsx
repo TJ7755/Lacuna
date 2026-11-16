@@ -228,7 +228,7 @@ export function QuestionEditor() {
         return;
       }
       draft.finish();
-      void navigate(`/course/${courseId}/questions?view=individual`);
+      void navigate(`/course/${courseId}/questions`);
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not save the Question.', 'negative');
     } finally {
@@ -236,7 +236,7 @@ export function QuestionEditor() {
     }
   };
   const editorKeys = useEditorKeys({
-    onCancel: () => void navigate(`/course/${courseId}/questions?view=individual`),
+    onCancel: () => void navigate(`/course/${courseId}/questions`),
     onSubmit: () => void save(!editing),
   });
 
@@ -256,7 +256,7 @@ export function QuestionEditor() {
     await deleteQuestion(questionId);
     draft.finish();
     notify('Question deleted.', 'positive');
-    void navigate(`/course/${courseId}/questions?view=individual`);
+    void navigate(`/course/${courseId}/questions`);
   };
 
   if (

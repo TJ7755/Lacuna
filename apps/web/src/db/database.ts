@@ -40,7 +40,7 @@ import {
   reviewActivityProjectionMiddleware,
   type ReviewActivityRow,
 } from './reviewActivityProjection';
-import { upgradeQuestionSetActivities } from './questionSchemaUpgrades';
+import { upgradeIndividualQuestions, upgradeQuestionSetActivities } from './questionSchemaUpgrades';
 import { assertSupportedDatabase, guardedIndexedDB } from './schemaFloor';
 
 /**
@@ -155,6 +155,7 @@ class LacunaDatabase extends Dexie {
 
     // Version 31: ordered activity membership and matching last-imported snapshots.
     this.version(31).stores({}).upgrade(upgradeQuestionSetActivities);
+    this.version(32).stores({}).upgrade(upgradeIndividualQuestions);
   }
 }
 

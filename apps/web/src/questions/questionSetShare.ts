@@ -55,6 +55,7 @@ export function importSharedQuestionSets(input: {
   lessonIds: readonly string[];
   courseId: string;
   conceptIdMap: ReadonlyMap<string, string>;
+  questionIdMap?: ReadonlyMap<string, string>;
   assessmentIdMap: ReadonlyMap<string, string>;
   importedAt: number;
   makeId: () => string;
@@ -76,6 +77,15 @@ export function importSharedQuestionSets(input: {
   return input.records.map((record, index) =>
     parseQuestionSetRecord({
       ...record,
+      ...(record.legacyQuestionId
+        ? {
+            legacyQuestionId:
+              input.questionIdMap?.get(record.legacyQuestionId) ??
+              (() => {
+                throw new Error('A shared set references a missing original Question.');
+              })(),
+          }
+        : {}),
       ...(record.bank
         ? { bank: remapQuestionBankMetadata(record.bank, (id) => mapConceptIds([id])[0], freshId) }
         : {}),

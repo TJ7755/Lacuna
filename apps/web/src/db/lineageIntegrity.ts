@@ -200,8 +200,26 @@ export async function prepareLineageMapping(
     (row) => row.courseId,
     'questionSetIds',
   );
-  for (const id of sets.keys()) {
-    if (mapping.questionSetRevisions?.[id] === undefined) {
+  for (const [id, set] of sets) {
+    if (mapping.questionSetRevisions?.[id] !== undefined) continue;
+    const source = set.legacyQuestionId ? await db.questions.get(set.legacyQuestionId) : undefined;
+    // A pre-transition publisher never supplied this generated view. Its retained
+    // source revision is the provenance needed to adopt the first published set.
+    if (
+      !mapping.questionSetIds?.includes(id) &&
+      source &&
+      mapping.questionIds?.includes(source.id) &&
+      source.migratedToSetId === id &&
+      set.contentRevisionId === `individual:${source.authoringRevisionId}` &&
+      payload.questionSets.some(
+        (incoming) => incoming.id === id && incoming.legacyQuestionId === source.id,
+      )
+    ) {
+      mapping.questionSetRevisions = {
+        ...mapping.questionSetRevisions,
+        [id]: set.contentRevisionId,
+      };
+    } else {
       integrityError(`The last imported Question Set revision is missing for ${id}.`);
     }
   }

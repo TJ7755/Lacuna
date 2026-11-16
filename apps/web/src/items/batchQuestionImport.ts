@@ -28,7 +28,15 @@ export interface BatchFixedQuestionInput {
 export async function createBatchFixedQuestion(input: BatchFixedQuestionInput) {
   return db.transaction(
     'rw',
-    [db.courses, db.lessons, db.concepts, db.questions, db.questionConcepts, db.tombstones],
+    [
+      db.courses,
+      db.lessons,
+      db.concepts,
+      db.questions,
+      db.questionConcepts,
+      db.questionSets,
+      db.tombstones,
+    ],
     async () => {
       const existing = await listConcepts(input.courseId);
       const byName = new Map<string, typeof existing>();

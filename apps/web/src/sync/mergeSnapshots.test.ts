@@ -55,7 +55,7 @@ describe('peer record and deletion reconciliation', () => {
     const b = backup({ exportedAt: 20 });
     const merged = expectPeerProperties(a, b);
     expect(merged.exportedAt).toBe(20);
-    expect(merged.version).toBe(15);
+    expect(merged.version).toBe(16);
     expect(merged.userPerformance).toEqual([]);
   });
 

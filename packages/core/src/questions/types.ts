@@ -95,6 +95,8 @@ export interface QuestionScheduleEpoch {
 }
 
 interface QuestionDefinitionBase extends QuestionScheduleState {
+  /** Permanent transition receipt; retained even if the destination set is removed. */
+  migratedToSetId?: string;
   id: string;
   courseId: string;
   primaryLessonId: string | null;
