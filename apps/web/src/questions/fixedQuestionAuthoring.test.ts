@@ -11,6 +11,7 @@ import {
   createFixedQuestion,
   updateFixedQuestion,
   createGeneratedQuestion,
+  deleteQuestion,
 } from './repository.authoring';
 import {
   createQuestionSetDraft,
@@ -19,6 +20,7 @@ import {
 } from './questionSetDrafts';
 import { ensureQuestionTransition } from './questionTransitionRepository';
 import { startQuestionSetAttempt } from './questionSetAttemptRepository';
+import { snapshotQuestion, restoreQuestion } from './repository.snapshots';
 
 beforeEach(async () => {
   db.close();
@@ -50,6 +52,7 @@ it('publishes migrated fixed content without rewriting its source, attempts or r
   const originalLinks = await db.questionConcepts.get(source.id);
   const set = (await db.questionSets.get(source.migratedToSetId!))!;
   const attempt = await startQuestionSetAttempt(set.id, 'practice');
+  const sourceSnapshot = await snapshotQuestion(source.id);
   const draft = createQuestionSetDraft(set, set.contentRevisionId);
   draft.content.questions[0].prompt = 'Solve x + 2 = 5.';
   const saved = await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
@@ -61,6 +64,10 @@ it('publishes migrated fixed content without rewriting its source, attempts or r
   expect(await db.questions.get(source.id)).toEqual(originalSource);
   expect(await db.questionConcepts.get(source.id)).toEqual(originalLinks);
   expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+  await expect(deleteQuestion(source.id)).rejects.toThrow('composer');
+  await expect(restoreQuestion(sourceSnapshot!)).rejects.toThrow('composer');
+  expect(await db.questionSets.get(set.id)).toEqual(published);
+  expect(await db.questions.get(source.id)).toEqual(originalSource);
   await expect(updateFixedQuestion(source.id, { prompt: 'Stale source edit' })).rejects.toThrow(
     'composer',
   );
@@ -73,6 +80,32 @@ it('publishes migrated fixed content without rewriting its source, attempts or r
   expect(await db.questionSets.get(set.id)).toEqual(published);
   expect(await db.questions.get(source.id)).toEqual(originalSource);
   expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+  await updateFixedQuestion(source.id, { suspended: true });
+  await expect(startQuestionSetAttempt(set.id, 'practice')).rejects.toThrow('suspended');
+  await updateFixedQuestion(source.id, { suspended: false });
+  expect(await db.questionSets.get(set.id)).toEqual(published);
+  await expect(startQuestionSetAttempt(set.id, 'practice')).resolves.toMatchObject({
+    receipt: { questions: [{ prompt: 'Solve x + 2 = 5.' }] },
+  });
+});
+
+it('keeps composer ownership when another device supplies a later legacy edit', async () => {
+  const { course } = await importLineageFirstTime(questionPayloadV3());
+  const source = (await db.questions.get('question-quadratic'))!;
+  const set = (await db.questionSets.get(source.migratedToSetId!))!;
+  const baseline = await exportDatabase();
+  const draft = createQuestionSetDraft(set, set.contentRevisionId);
+  draft.content.questions[0].prompt = 'Composer-owned content';
+  const saved = await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
+  const published = await publishQuestionSetDraft(course.id, set.id, saved.draftRevisionId);
+  const composer = await exportDatabase();
+
+  await importBackup(baseline, 'replace');
+  await updateFixedQuestion(source.id, { prompt: 'Later legacy content' }, published.updatedAt + 1);
+  const legacy = await exportDatabase();
+  for (const merged of [mergeSnapshots(composer, legacy), mergeSnapshots(legacy, composer)]) {
+    expect(merged.questionSets.find((row) => row.id === set.id)).toEqual(published);
+  }
 });
 
 it('does not refresh or delete composer edits when an old publisher changes or withdraws its source', async () => {

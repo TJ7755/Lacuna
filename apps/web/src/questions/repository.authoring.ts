@@ -243,7 +243,8 @@ export async function updateFixedQuestion(
       const migrated = existing.migratedToSetId
         ? await db.questionSets.get(existing.migratedToSetId)
         : undefined;
-      if (migrated && !migrated.contentRevisionId.startsWith('individual:')) {
+      const suspensionOnly = Object.keys(changes).every((key) => key === 'suspended');
+      if (migrated && !migrated.contentRevisionId.startsWith('individual:') && !suspensionOnly) {
         throw new Error(`Edit Question Set ${migrated.id} in the composer.`);
       }
       const existingSet = await db.questionConcepts.get(questionId);
@@ -313,7 +314,9 @@ export async function updateFixedQuestion(
       };
       await db.questions.put(next);
       await db.questionConcepts.put(set);
-      await ensureQuestionTransition(next.courseId, new Set([next.id]));
+      // Suspension has no authored presentation to refresh. Rewriting the set
+      // here would invalidate a composer draft opened before its first publish.
+      if (!suspensionOnly) await ensureQuestionTransition(next.courseId, new Set([next.id]));
       return next;
     },
   );
@@ -438,6 +441,12 @@ export async function deleteQuestion(questionId: string, now = Date.now()): Prom
     async (tx) => {
       const question = await db.questions.get(questionId);
       if (!question) return;
+      const migrated = question.migratedToSetId
+        ? await db.questionSets.get(question.migratedToSetId)
+        : undefined;
+      if (migrated && !migrated.contentRevisionId.startsWith('individual:')) {
+        throw new Error(`Delete Question Set ${migrated.id} in the composer.`);
+      }
       if (question.migratedToSetId) await deleteQuestionSet(question.migratedToSetId, now);
       await db.questions.delete(questionId);
       await db.questionConcepts.delete(questionId);

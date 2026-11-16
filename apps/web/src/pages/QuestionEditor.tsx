@@ -1,6 +1,9 @@
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/schema';
+import { loadDraft } from '../utils/drafts';
 import { MissingRecord } from '../components/course/MissingRecord';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { GeneratedQuestionConfiguration } from '../components/questions/GeneratedQuestionConfiguration';
@@ -47,20 +50,45 @@ import { fixedPayload, generatedConfigurationErrors } from './questionValidation
 // Old fixed-question links resolve to the same aggregate and persisted composer draft.
 // Keep the original form for generated configuration and legacy creation/import callers.
 export function QuestionEditor() {
-  const { questionId } = useParams<{ questionId?: string }>();
-  return questionId ? <ExistingQuestionEditor /> : <LegacyQuestionEditor />;
+  const { courseId, questionId } = useParams<{ courseId: string; questionId?: string }>();
+  return questionId ? (
+    <ExistingQuestionEditor key={`${courseId}:${questionId}`} />
+  ) : (
+    <LegacyQuestionEditor />
+  );
 }
 
 function ExistingQuestionEditor() {
   const { courseId, questionId } = useParams<{ courseId: string; questionId: string }>();
   const location = useLocation();
   const record = useQuestionRecord(questionId);
-  if (record === undefined) return <PageLoading />;
   const source = record?.question;
+  const [savedDraft] = useState(() =>
+    loadDraft(questionDraftKey(courseId ?? 'missing', questionId)),
+  );
+  const aggregate = useLiveQuery(
+    async () =>
+      savedDraft && source?.migratedToSetId
+        ? ((await db.questionSets.get(source.migratedToSetId)) ?? null)
+        : null,
+    [source?.migratedToSetId, Boolean(savedDraft)],
+  );
+  if (record === undefined) return <PageLoading />;
   const destination =
     source && source.id === questionId && source.courseId === courseId && source.kind === 'fixed'
       ? source.migratedToSetId
       : null;
+  // An unfinished old-form draft may contain uncompiled working text. Keep its
+  // recovery flow intact instead of silently replacing it with a composer draft.
+  if (destination && savedDraft) {
+    if (aggregate === undefined) return <PageLoading />;
+    return (
+      <LegacyQuestionEditor
+        recoverAsCopy={!!aggregate && !aggregate.contentRevisionId.startsWith('individual:')}
+        composerDestination={`/course/${courseId}/question-sets/${destination}/edit`}
+      />
+    );
+  }
   if (destination)
     return (
       <Navigate
@@ -72,7 +100,13 @@ function ExistingQuestionEditor() {
   return <LegacyQuestionEditor />;
 }
 
-function LegacyQuestionEditor() {
+function LegacyQuestionEditor({
+  recoverAsCopy = false,
+  composerDestination,
+}: {
+  recoverAsCopy?: boolean;
+  composerDestination?: string;
+}) {
   const { courseId, questionId } = useParams<{ courseId: string; questionId?: string }>();
   const navigate = useNavigate();
   const { notify } = useToast();
@@ -218,7 +252,7 @@ function LegacyQuestionEditor() {
         prerequisiteConceptIds,
       };
       if (kind === 'fixed' && payload) {
-        if (questionId) {
+        if (questionId && !recoverAsCopy) {
           await updateFixedQuestion(questionId, { ...shared, prompt, payload, explanation });
         } else {
           await createFixedQuestion({ courseId, ...shared, prompt, payload, explanation });
@@ -242,7 +276,7 @@ function LegacyQuestionEditor() {
           });
         }
       }
-      notify(questionId ? 'Question updated.' : 'Question created.', 'positive');
+      notify(questionId && !recoverAsCopy ? 'Question updated.' : 'Question created.', 'positive');
       if (another && !questionId) {
         setAttempted(false);
         draft.startAnother({
@@ -308,7 +342,13 @@ function LegacyQuestionEditor() {
   }
 
   const tagSuggestions = [...new Set(data.questions.flatMap((question) => question.tags))].sort();
-  const saveLabel = saving ? 'Saving…' : editing ? 'Save Question' : 'Create Question';
+  const saveLabel = saving
+    ? 'Saving…'
+    : recoverAsCopy
+      ? 'Save as new question'
+      : editing
+        ? 'Save Question'
+        : 'Create Question';
 
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-10 pt-6 md:pt-8`} {...editorKeys}>
@@ -348,7 +388,13 @@ function LegacyQuestionEditor() {
             <Button type="button" variant="primary" onClick={draft.restoreDraft}>
               Restore draft
             </Button>
-            <Button type="button" onClick={draft.discardDraft}>
+            <Button
+              type="button"
+              onClick={() => {
+                draft.discardDraft();
+                if (composerDestination) void navigate(composerDestination, { replace: true });
+              }}
+            >
               Discard draft
             </Button>
           </div>
@@ -435,7 +481,7 @@ function LegacyQuestionEditor() {
 
       <div className="pointer-events-none sticky bottom-0 z-20 -mx-[18px] mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-[18px] pb-5 pt-12 min-[481px]:-mx-6 min-[481px]:px-6 md:-mx-10 md:px-10">
         <div className="pointer-events-auto flex flex-wrap items-center justify-between gap-3">
-          {editable && editing ? (
+          {editable && editing && !recoverAsCopy ? (
             <ConfirmInlineSwap
               active={confirmingDelete}
               message="Delete this Question definition? Its attempt evidence will be retained."

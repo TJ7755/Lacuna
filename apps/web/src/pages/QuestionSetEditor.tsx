@@ -17,6 +17,8 @@ import { QuestionSetPreview } from '../components/question-sets/QuestionSetPrevi
 import { QuestionSetDraftFeedback } from '../components/question-sets/QuestionSetDraftFeedback';
 import { Button } from '../components/ui/Button';
 import { ConfirmInline } from '../components/ui/ConfirmInline';
+import { loadDraft } from '../utils/drafts';
+import { questionDraftKey } from './questionDraft';
 import {
   QuestionSetLoading,
   QuestionSetUnavailable,
@@ -30,9 +32,12 @@ export function QuestionSetEditor() {
   const location = useLocation();
   const source = useLiveQuery(async () => {
     const set = setId ? await db.questionSets.get(setId) : undefined;
-    if (!set || set.courseId !== courseId || !set.legacyQuestionId) return null;
+    if (!courseId || !set || set.courseId !== courseId || !set.legacyQuestionId) return null;
     const question = await db.questions.get(set.legacyQuestionId);
-    return question?.kind === 'generated' && question.courseId === courseId ? question.id : null;
+    if (!question || question.courseId !== courseId) return null;
+    return question.kind === 'generated' || loadDraft(questionDraftKey(courseId, question.id))
+      ? question.id
+      : null;
   }, [courseId, setId]);
   if (source === undefined) return <QuestionSetLoading />;
   if (source)
