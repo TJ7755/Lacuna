@@ -82,6 +82,8 @@ export function resolveTransitionSource(
 /**
  * Additive and deterministic: never rewrite attempts or source schedules. Existing
  * sets refresh only when their owning authoring operation explicitly requests it.
+ * Fixed sets published by the composer have a fresh revision, so the retained
+ * historical source can never replace their authored content during import or refresh.
  * The source receipt prevents a deleted set being recreated after tombstone expiry.
  * Unknown generators remain recoverable source records rather than blocking database opening.
  */
@@ -111,6 +113,7 @@ export function transitionIndividualQuestions(
       !existing ||
       ((refresh === true || (refresh !== false && refresh.has(source.id))) &&
         existing.legacyQuestionId === source.id &&
+        (source.kind === 'generated' || existing.contentRevisionId.startsWith('individual:')) &&
         existing.contentRevisionId !== `individual:${source.authoringRevisionId}`)
     ) {
       try {

@@ -27,12 +27,22 @@ import '../components/question-sets/question-composer.css';
 export function QuestionSetEditor() {
   const { courseId, setId } = useParams<{ courseId: string; setId: string }>();
   const course = useCourse(courseId);
-  const source = useLiveQuery(
-    async () => (setId ? ((await db.questionSets.get(setId))?.legacyQuestionId ?? null) : null),
-    [setId],
-  );
+  const location = useLocation();
+  const source = useLiveQuery(async () => {
+    const set = setId ? await db.questionSets.get(setId) : undefined;
+    if (!set || set.courseId !== courseId || !set.legacyQuestionId) return null;
+    const question = await db.questions.get(set.legacyQuestionId);
+    return question?.kind === 'generated' && question.courseId === courseId ? question.id : null;
+  }, [courseId, setId]);
   if (source === undefined) return <QuestionSetLoading />;
-  if (source) return <Navigate replace to={`/course/${courseId}/questions/${source}/edit`} />;
+  if (source)
+    return (
+      <Navigate
+        replace
+        to={`/course/${courseId}/questions/${source}/edit`}
+        state={location.state}
+      />
+    );
   if (course === undefined) return <QuestionSetLoading />;
   if (course === null)
     return (

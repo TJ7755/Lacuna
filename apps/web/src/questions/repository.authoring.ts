@@ -240,6 +240,12 @@ export async function updateFixedQuestion(
     async () => {
       const existing = await db.questions.get(questionId);
       if (!existing || existing.kind !== 'fixed') throw new Error('Fixed Question not found.');
+      const migrated = existing.migratedToSetId
+        ? await db.questionSets.get(existing.migratedToSetId)
+        : undefined;
+      if (migrated && !migrated.contentRevisionId.startsWith('individual:')) {
+        throw new Error(`Edit Question Set ${migrated.id} in the composer.`);
+      }
       const existingSet = await db.questionConcepts.get(questionId);
       if (!existingSet) throw new Error('Question Concept relationship set not found.');
       const prompt = changes.prompt ?? existing.prompt;

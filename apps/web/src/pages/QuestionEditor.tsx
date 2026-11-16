@@ -1,6 +1,6 @@
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MissingRecord } from '../components/course/MissingRecord';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { GeneratedQuestionConfiguration } from '../components/questions/GeneratedQuestionConfiguration';
@@ -44,7 +44,35 @@ import {
 } from './questionDraft';
 import { fixedPayload, generatedConfigurationErrors } from './questionValidation';
 
+// Old fixed-question links resolve to the same aggregate and persisted composer draft.
+// Keep the original form for generated configuration and legacy creation/import callers.
 export function QuestionEditor() {
+  const { questionId } = useParams<{ questionId?: string }>();
+  return questionId ? <ExistingQuestionEditor /> : <LegacyQuestionEditor />;
+}
+
+function ExistingQuestionEditor() {
+  const { courseId, questionId } = useParams<{ courseId: string; questionId: string }>();
+  const location = useLocation();
+  const record = useQuestionRecord(questionId);
+  if (record === undefined) return <PageLoading />;
+  const source = record?.question;
+  const destination =
+    source && source.id === questionId && source.courseId === courseId && source.kind === 'fixed'
+      ? source.migratedToSetId
+      : null;
+  if (destination)
+    return (
+      <Navigate
+        replace
+        to={`/course/${courseId}/question-sets/${destination}/edit`}
+        state={location.state}
+      />
+    );
+  return <LegacyQuestionEditor />;
+}
+
+function LegacyQuestionEditor() {
   const { courseId, questionId } = useParams<{ courseId: string; questionId?: string }>();
   const navigate = useNavigate();
   const { notify } = useToast();

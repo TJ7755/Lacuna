@@ -209,15 +209,19 @@ export async function updateQuestionSet(
   requireValidContent(content);
   const result = await db.transaction(
     'rw',
-    [db.courses, db.lessons, db.courseAssessments, db.concepts, db.questionSets],
+    [db.courses, db.lessons, db.courseAssessments, db.concepts, db.questionSets, db.questions],
     async () => {
       const existingRaw = await db.questionSets.get(id);
       if (!existingRaw) throw new Error('Question Set not found.');
       const existing = parseQuestionSetRecord(existingRaw);
-      if (existing.legacyQuestionId)
-        throw new Error(
-          `Edit the original Question ${existing.legacyQuestionId} to update this set.`,
-        );
+      if (existing.legacyQuestionId) {
+        const source = await db.questions.get(existing.legacyQuestionId);
+        if (source?.kind === 'generated')
+          throw new Error(`Edit the original Question ${source.id} to configure this generator.`);
+      }
+      if (content.legacyQuestionId !== existing.legacyQuestionId) {
+        throw new Error('A Question Set cannot change its historical source.');
+      }
       if (content.id !== id || content.courseId !== existing.courseId) {
         throw new Error('A Question Set cannot change identity or Course.');
       }
@@ -227,6 +231,9 @@ export async function updateQuestionSet(
       if (sameContent(content, authoredContent(existing)))
         return { record: existing, changed: false };
       await validateReferences(content);
+      // Keep legacyQuestionId as provenance for schedules, fixtures and old attempts.
+      // A fresh revision transfers fixed authoring to this aggregate; source refreshes
+      // recognise only the deterministic individual: revisions they own.
       const next = parseQuestionSetRecord({
         ...structuredClone(content),
         contentVersion: existing.contentVersion + 1,

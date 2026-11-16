@@ -124,6 +124,14 @@ export async function applyLineageQuestions(
         : [],
     );
     if (removedSetIds.length) {
+      const removedSets = await db.questionSets.bulkGet(removedSetIds);
+      // An older publisher cannot delete locally authored aggregate content by
+      // withdrawing its historical source. Leave the import transaction untouched.
+      if (removedSets.some((set) => set && !set.contentRevisionId.startsWith('individual:'))) {
+        throw new Error(
+          'A removed Question has composer edits. Resolve its Question Set before importing this update.',
+        );
+      }
       await db.questionSets.bulkDelete(removedSetIds);
       await db.tombstones.bulkPut(
         removedSetIds.map((recordId) => ({
@@ -161,6 +169,12 @@ export async function applyLineageQuestions(
       throw new Error(
         `A shared Question Concept set is already used by another Course: ${incoming.id}.`,
       );
+    }
+    if (existing?.kind === 'fixed' && existing.migratedToSetId) {
+      const authored = await db.questionSets.get(existing.migratedToSetId);
+      // Once the aggregate owns authoring, the old publisher's source is historical
+      // evidence too. Do not reset its schedule, fixtures or Concept relationships.
+      if (authored && !authored.contentRevisionId.startsWith('individual:')) continue;
     }
     const referencedConceptIds = [incoming.t, ...incoming.pr];
     const referencedConcepts = await db.concepts.bulkGet(referencedConceptIds);
