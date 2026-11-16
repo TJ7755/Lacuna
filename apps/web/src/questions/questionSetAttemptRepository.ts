@@ -43,7 +43,7 @@ export async function startQuestionSetAttempt(
   mode: QuestionSetAttemptMode,
   now = Date.now(),
   selection?: Omit<ConceptPracticeSelection, 'conceptId'> & { conceptId?: string },
-  familyVariantIndex?: number,
+  variantIndex?: number,
 ): Promise<QuestionSetAttemptRecord> {
   return db.transaction(
     'rw',
@@ -52,6 +52,7 @@ export async function startQuestionSetAttempt(
       const receiptRaw = await db.questionSets.get(questionSetId);
       if (!receiptRaw) throw new Error('Question Set not found.');
       let receipt = parseQuestionSetRecord(receiptRaw);
+      let generatedSelection = false;
       if (receipt.legacyQuestionId) {
         const source = await db.questions.get(receipt.legacyQuestionId);
         if (!source || source.courseId !== receipt.courseId)
@@ -64,32 +65,38 @@ export async function startQuestionSetAttempt(
             targetConceptIds: answer.allocations[0].targetConceptIds,
             prerequisiteConceptIds: answer.prerequisiteConceptIds,
           };
-          let resolved = transitionedQuestion(
-            question.id,
-            resolveTransitionSource(source, makeId()),
-            links,
-          );
+          let resolved;
           if (selection) {
-            const variant = questionGeneratorRegistry
-              .audit({
-                generatorKey: source.generatorKey,
-                generatorVersion: source.generatorVersion,
-                configuration: source.generatorConfig,
-              })
-              .instances.map(({ resolved }) => transitionedQuestion(question.id, resolved, links))
-              .find((row) => questionPresentationFingerprint(row) === selection.fingerprint);
-            if (!variant)
+            const space = questionGeneratorRegistry.space({
+              generatorKey: source.generatorKey,
+              generatorVersion: source.generatorVersion,
+              configuration: source.generatorConfig,
+            });
+            const presentation = JSON.parse(selection.fingerprint) as { prompt: string };
+            const index = variantIndex ?? space.indexOfPrompt(presentation.prompt);
+            const variant =
+              index === undefined
+                ? undefined
+                : transitionedQuestion(question.id, space.resolve(index), links);
+            if (!variant || questionPresentationFingerprint(variant) !== selection.fingerprint)
               throw new Error('The generated Question selection no longer matches its definition.');
             resolved = variant;
+            generatedSelection = true;
+          } else {
+            resolved = transitionedQuestion(
+              question.id,
+              resolveTransitionSource(source, makeId()),
+              links,
+            );
           }
           receipt = parseQuestionSetRecord({ ...receipt, questions: [resolved] });
         }
       }
 
-      if (familyVariantIndex !== undefined) {
+      if (variantIndex !== undefined && !generatedSelection) {
         if (!selection || !receipt.bank?.family)
           throw new Error('Invalid family variant selection.');
-        receipt = resolveFamilyVariant(receipt, familyVariantIndex);
+        receipt = resolveFamilyVariant(receipt, variantIndex);
       }
       if (selection) {
         if (mode !== 'practice' || selection.questionSetId !== questionSetId)

@@ -3,6 +3,7 @@ import type {
   GenerateQuestionRequest,
   GeneratorAuditResult,
   GeneratorDescription,
+  GeneratorQuestionSpace,
   QuestionGeneratorRegistry,
   ResolvedGeneratedQuestion,
 } from './contracts';
@@ -10,6 +11,7 @@ import { QuestionGeneratorError } from './errors';
 import { deepFreeze } from './immutable';
 import {
   auditIntegerRootQuadratic,
+  integerRootQuadraticSpace,
   INTEGER_ROOT_QUADRATIC_DESCRIPTION,
   parseIntegerRootQuadraticConfig,
   resolveIntegerRootQuadratic,
@@ -20,6 +22,7 @@ interface BuiltInQuestionGenerator<C> {
   readonly description: GeneratorDescription;
   parseConfiguration(value: unknown): C;
   resolve(configuration: C, seed: string): ResolvedGeneratedQuestion;
+  space(configuration: C): GeneratorQuestionSpace;
   audit(configuration: C): readonly ResolvedGeneratedQuestion[];
 }
 
@@ -29,6 +32,8 @@ const BUILT_INS: readonly BuiltInQuestionGenerator<unknown>[] = [
     parseConfiguration: parseIntegerRootQuadraticConfig,
     resolve: (configuration, seed) =>
       resolveIntegerRootQuadratic(configuration as IntegerRootQuadraticConfig, seed),
+    space: (configuration) =>
+      integerRootQuadraticSpace(configuration as IntegerRootQuadraticConfig),
     audit: (configuration) =>
       auditIntegerRootQuadratic(configuration as IntegerRootQuadraticConfig),
   },
@@ -62,6 +67,11 @@ class AuditedQuestionGeneratorRegistry implements QuestionGeneratorRegistry {
     }
     const configuration = definition.parseConfiguration(request.configuration);
     return definition.resolve(configuration, request.seed);
+  }
+
+  space(request: AuditGeneratorRequest): GeneratorQuestionSpace {
+    const definition = this.requireDefinition(request.generatorKey, request.generatorVersion);
+    return definition.space(definition.parseConfiguration(request.configuration));
   }
 
   audit(request: AuditGeneratorRequest): GeneratorAuditResult {

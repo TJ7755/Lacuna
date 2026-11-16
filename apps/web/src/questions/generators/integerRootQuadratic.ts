@@ -6,7 +6,11 @@ import {
   type MarkSchemeLine,
   type QuestionPayload,
 } from '@lacuna/core/items/types';
-import type { GeneratorDescription, ResolvedGeneratedQuestion } from './contracts';
+import type {
+  GeneratorDescription,
+  GeneratorQuestionSpace,
+  ResolvedGeneratedQuestion,
+} from './contracts';
 import { QuestionGeneratorError } from './errors';
 import { deepFreeze } from './immutable';
 import { SeededRandom } from '@lacuna/core/questions/generators/seededRandom';
@@ -107,62 +111,94 @@ export function resolveIntegerRootQuadratic(
   configuration: IntegerRootQuadraticConfig,
   seed: string,
 ): ResolvedGeneratedQuestion {
-  const candidates = enumerateIntegerRootQuadratics(configuration);
-  if (candidates.length === 0) throw exhaustedConstraintSpace();
-  const index = corpusIndex(seed, candidates.length);
-  return renderIntegerRootQuadratic(candidates[index], seed);
+  const space = integerRootQuadraticSpace(configuration);
+  const index = corpusIndex(seed, space.capacity);
+  return deepFreeze({ ...space.resolve(index), seed });
 }
 
 export function auditIntegerRootQuadratic(
   configuration: IntegerRootQuadraticConfig,
 ): readonly ResolvedGeneratedQuestion[] {
-  const candidates = enumerateIntegerRootQuadratics(configuration);
-  if (candidates.length === 0) throw exhaustedConstraintSpace();
+  const space = integerRootQuadraticSpace(configuration);
   return deepFreeze(
-    candidates.map((parameters, index) => {
-      const resolved = renderIntegerRootQuadratic(parameters, auditSeed(index));
+    Array.from({ length: space.capacity }, (_, index) => {
+      const resolved = space.resolve(index);
       assertAuditable(resolved);
       return resolved;
     }),
   );
 }
 
-function enumerateIntegerRootQuadratics(
+export function integerRootQuadraticSpace(
   configuration: IntegerRootQuadraticConfig,
-): QuadraticParameters[] {
-  const rootValues: number[] = [];
+): GeneratorQuestionSpace {
+  const roots: number[] = [];
   for (
     let magnitude = configuration.minimumRootMagnitude;
     magnitude <= configuration.maximumRootMagnitude;
-    magnitude += 1
+    magnitude++
   ) {
-    rootValues.push(-magnitude, magnitude);
+    roots.push(-magnitude, magnitude);
   }
-  rootValues.sort((left, right) => left - right);
+  roots.sort((a, b) => a - b);
+  const width = configuration.maximumLeadingCoefficient;
+  const capacity =
+    ((roots.length * (roots.length + (configuration.allowRepeatedRoots ? 1 : -1))) / 2) * width;
+  if (!capacity) throw exhaustedConstraintSpace();
+  const rowLength = (first: number) =>
+    roots.length - first - (configuration.allowRepeatedRoots ? 0 : 1);
+  const parametersAt = (index: number): QuadraticParameters => {
+    if (!Number.isSafeInteger(index) || index < 0 || index >= capacity)
+      throw new RangeError('Question generator index is outside its capacity.');
+    const leadingCoefficient = (index % width) + 1;
+    let pair = Math.floor(index / width);
+    let first = 0;
+    while (pair >= rowLength(first)) pair -= rowLength(first++);
+    const root1 = roots[first];
+    const root2 = roots[first + pair + (configuration.allowRepeatedRoots ? 0 : 1)];
+    return {
+      leadingCoefficient,
+      linearCoefficient: normaliseZero(-leadingCoefficient * (root1 + root2)),
+      constantCoefficient: leadingCoefficient * root1 * root2,
+      root1,
+      root2,
+      distinctRootCount: root1 === root2 ? 1 : 2,
+    };
+  };
+  return {
+    capacity,
+    resolve: (index) => renderIntegerRootQuadratic(parametersAt(index), auditSeed(index)),
+    indexOfPrompt(prompt) {
+      const match =
+        /^Solve \$(\d*)x\^2(?: ([+-]) (\d*)x)? ([+-]) (\d+) = 0\$\. Enter each distinct real root on a separate line\.$/.exec(
+          prompt,
+        );
+      if (!match) return undefined;
+      const a = Number(match[1] || 1);
+      const b = match[2] ? (match[2] === '-' ? -1 : 1) * Number(match[3] || 1) : 0;
+      const c = (match[4] === '-' ? -1 : 1) * Number(match[5]);
+      const discriminant = Math.sqrt(b * b - 4 * a * c);
+      const first = roots.indexOf((-b - discriminant) / (2 * a));
+      const second = roots.indexOf((-b + discriminant) / (2 * a));
+      if (
+        a < 1 ||
+        a > width ||
+        first < 0 ||
+        second < 0 ||
+        (!configuration.allowRepeatedRoots && first === second)
+      )
+        return undefined;
+      let pair = second - first - (configuration.allowRepeatedRoots ? 0 : 1);
+      for (let row = 0; row < first; row++) pair += rowLength(row);
+      const index = pair * width + a - 1;
+      // Reject non-canonical spellings, including leading zeroes and explicit unit coefficients.
+      return renderPrompt(parametersAt(index)) === prompt ? index : undefined;
+    },
+  };
+}
 
-  const candidates: QuadraticParameters[] = [];
-  for (let firstIndex = 0; firstIndex < rootValues.length; firstIndex += 1) {
-    const secondStart = configuration.allowRepeatedRoots ? firstIndex : firstIndex + 1;
-    for (let secondIndex = secondStart; secondIndex < rootValues.length; secondIndex += 1) {
-      const root1 = rootValues[firstIndex];
-      const root2 = rootValues[secondIndex];
-      for (
-        let leadingCoefficient = 1;
-        leadingCoefficient <= configuration.maximumLeadingCoefficient;
-        leadingCoefficient += 1
-      ) {
-        candidates.push({
-          leadingCoefficient,
-          linearCoefficient: normaliseZero(-leadingCoefficient * (root1 + root2)),
-          constantCoefficient: leadingCoefficient * root1 * root2,
-          root1,
-          root2,
-          distinctRootCount: root1 === root2 ? 1 : 2,
-        });
-      }
-    }
-  }
-  return candidates;
+function renderPrompt(parameters: QuadraticParameters): string {
+  return `Solve $${renderPolynomial(parameters)} = 0$. Enter each distinct real root on a separate line.`;
 }
 
 function renderIntegerRootQuadratic(
@@ -175,7 +211,7 @@ function renderIntegerRootQuadratic(
       ? [parameters.root1]
       : [parameters.root1, parameters.root2];
   const factorisation = renderFactorisation(parameters);
-  const renderedPrompt = `Solve $${polynomial} = 0$. Enter each distinct real root on a separate line.`;
+  const renderedPrompt = renderPrompt(parameters);
   const renderedExplanation =
     uniqueRoots.length === 1
       ? [

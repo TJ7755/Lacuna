@@ -61,9 +61,17 @@ export interface GeneratorAuditResult {
   readonly fingerprintCount: number;
 }
 
+/** Stable corpus order; resolving one index never audits or renders its neighbours. */
+export interface GeneratorQuestionSpace {
+  readonly capacity: number;
+  resolve(index: number): ResolvedGeneratedQuestion;
+  indexOfPrompt(prompt: string): number | undefined;
+}
+
 export interface QuestionGeneratorRegistry {
   list(): readonly GeneratorDescription[];
   describe(key: string, version: number): GeneratorDescription | undefined;
   resolve(request: GenerateQuestionRequest): ResolvedGeneratedQuestion;
+  space(request: AuditGeneratorRequest): GeneratorQuestionSpace;
   audit(request: AuditGeneratorRequest): GeneratorAuditResult;
 }

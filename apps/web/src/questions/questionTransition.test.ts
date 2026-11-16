@@ -33,7 +33,7 @@ import {
 } from './questionSetAttemptRepository';
 import { transitionScheduleSeeds } from './questionTransitionSchedules';
 import { ensureQuestionTransition } from './questionTransitionRepository';
-import { practiceContext } from './questionPracticeSelection';
+import { practiceContext, unseenCapacity } from './questionPracticeSelection';
 import { questionGeneratorRegistry } from './generators';
 import { questionPresentationFingerprint } from './generators/declarative';
 import { mergeSnapshots } from '../sync/mergeSnapshots';
@@ -154,8 +154,8 @@ it('does not resurrect deleted migrated sets after deletion receipts expire', as
   expect(await listQuestionSets(course.id)).toEqual([]);
 });
 
-it('uses the complete pinned generator corpus in shared practice and preserves old exposure', async () => {
-  const { course, concept } = await fixed();
+it('selects the pinned generator corpus lazily and preserves old exposure', async () => {
+  const { course, concept, question: fixedQuestion } = await fixed();
   const generated = await createGeneratedQuestion({
     courseId: course.id,
     targetConceptId: concept.id,
@@ -181,20 +181,41 @@ it('uses the complete pinned generator corpus in shared practice and preserves o
   });
   const data = await practiceContext(course.id);
   const variants = data.candidates.filter((row) => row.set.legacyQuestionId === generated.id);
-  expect(new Set(variants.map((row) => row.fingerprint)).size).toBe(3);
+  expect(variants).toHaveLength(1);
+  expect(variants[0].capacity).toBe(3);
+  expect(unseenCapacity(variants[0], data)).toBe(2);
+  expect((await listConceptPractice(course.id))[0]).toMatchObject({
+    availableCount: 4,
+    unseenCount: 3,
+  });
+  await db.questions.update(fixedQuestion.id, { suspended: true });
   const { attempt } = await startConceptPractice(course.id, concept.id);
-  expect(attempt.receipt.legacyQuestionId).toBeDefined();
+  expect(attempt.receipt.legacyQuestionId).toBe(generated.id);
   const source = (await db.questions.get(generated.id))!;
   expect(source.kind === 'generated' && source.generatorConfig).toEqual(generated.generatorConfig);
-  expect(data.seen.has(variants[0].fingerprint)).toBe(true);
-  const original = variants[1];
+  expect(attempt.receipt.questions[0].prompt).toBe(
+    'Solve $x^2 - 1 = 0$. Enter each distinct real root on a separate line.',
+  );
+  const original = variants[0];
   const direct = await startQuestionSetAttempt(original.set.id, 'practice', Date.now(), {
     questionSetId: original.set.id,
     questionId: original.question.id,
     novelty: 'unseen',
-    fingerprint: original.fingerprint,
+    fingerprint: questionPresentationFingerprint(attempt.receipt.questions[0]),
   });
-  expect(questionPresentationFingerprint(direct.receipt.questions[0])).toBe(original.fingerprint);
+  expect(direct.receipt.questions[0]).toEqual(attempt.receipt.questions[0]);
+  expect((await listConceptPractice(course.id))[0]).toMatchObject({
+    availableCount: 3,
+    unseenCount: 1,
+  });
+  const last = await startConceptPractice(course.id, concept.id);
+  expect(last.attempt.receipt.questions[0].prompt).toBe(
+    'Solve $x^2 - 2x + 1 = 0$. Enter each distinct real root on a separate line.',
+  );
+  await expect(startConceptPractice(course.id, concept.id)).rejects.toThrow(/unseen/);
+  const familiar = await startConceptPractice(course.id, concept.id, { allowFamiliar: true });
+  expect(familiar.selection.novelty).toBe('familiar');
+  await db.questions.update(fixedQuestion.id, { suspended: false });
   await db.questions.update(generated.id, { suspended: true });
   expect(
     (await practiceContext(course.id)).candidates.some(

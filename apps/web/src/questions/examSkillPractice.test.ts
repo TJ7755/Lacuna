@@ -6,6 +6,8 @@ import { createConcept } from './repository';
 import { createQuestionSet } from './questionSetRepository';
 import { listExamSkillPractice, startExamSkillPractice } from './examSkillPractice';
 import type { MarkAllocation, QuestionSetQuestion } from '@lacuna/core/questions/questionSets';
+import { listConceptPractice } from './conceptPractice';
+import { loadQuestionPracticeSnapshot } from './questionPracticeSnapshot';
 import { importQuestionBank } from './bank';
 import familyExample from '../../../../docs/question-bank/examples/numeric-family.json';
 
@@ -85,7 +87,21 @@ it('selects explicitly authored applicable techniques independently of knowledge
   expect(
     await listExamSkillPractice(course.id, Date.now(), { scopeConceptIds: [], scopeLessonIds: [] }),
   ).toMatchObject([{ techniqueId: 'graph-interpretation', availableCount: 1 }]);
+  const snapshot = await loadQuestionPracticeSnapshot(course.id);
+  const conceptsBefore = await listConceptPractice(course.id, 100, undefined, {}, snapshot);
+  const skillsBefore = await listExamSkillPractice(course.id, 100, {}, snapshot);
+  expect(conceptsBefore).toEqual(await listConceptPractice(course.id, 100));
+  expect(skillsBefore).toEqual(await listExamSkillPractice(course.id, 100));
   const first = (await startExamSkillPractice(course.id, 'graph-interpretation')).attempt;
+  expect(await listConceptPractice(course.id, 100, undefined, {}, snapshot)).toEqual(
+    conceptsBefore,
+  );
+  expect(await listExamSkillPractice(course.id, 100, {}, snapshot)).toEqual(skillsBefore);
+  const refreshed = await loadQuestionPracticeSnapshot(course.id);
+  expect((await listExamSkillPractice(course.id, 100, {}, refreshed))[0].unseenCount).toBe(1);
+  expect(await listConceptPractice(course.id, 100, undefined, {}, refreshed)).toEqual(
+    await listConceptPractice(course.id, 100),
+  );
   const second = (await startExamSkillPractice(course.id, 'graph-interpretation')).attempt;
   expect(new Set([first.receipt.questions[0].id, second.receipt.questions[0].id])).toEqual(
     new Set(['zero', 'multi']),
