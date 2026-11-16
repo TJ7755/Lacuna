@@ -312,6 +312,9 @@ export function createRelayClient<Routes extends Partial<typeof relayRoutes>>(
   fetchImpl: typeof fetch = globalThis.fetch,
 ) {
   const fetcher = fetchImpl.bind(globalThis);
+  let baseEnd = baseUrl.length;
+  while (baseEnd > 0 && baseUrl[baseEnd - 1] === '/') baseEnd -= 1;
+  const base = baseUrl.slice(0, baseEnd);
   return {
     async request<K extends keyof Routes & RelayEndpoint>(
       endpoint: K,
@@ -335,7 +338,7 @@ export function createRelayClient<Routes extends Partial<typeof relayRoutes>>(
       if (typeof init.body === 'string' && definition.maxBytes > 0 && definition.request !== bytes)
         definition.request.parse(JSON.parse(init.body));
       const response = await fetcher(
-        `${baseUrl.replace(/\/+$/, '')}${path}${Object.keys(query).length ? `?${new URLSearchParams(query)}` : ''}`,
+        `${base}${path}${Object.keys(query).length ? `?${new URLSearchParams(query)}` : ''}`,
         { ...init, method: definition.method },
       );
       return response;

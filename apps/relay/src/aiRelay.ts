@@ -1,5 +1,5 @@
 import { relayLimits, relayRoutes } from '@lacuna/protocol/relay/index';
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { decodeAiSessionMetadata, type AiSessionMetadata } from './aiSessionMetadata.js';
 import { canonicalEtag, type BlobStore } from './store.js';
 import { relayCorsHeaders } from './cors.js';
@@ -404,9 +404,9 @@ async function readBoundedBody(request: Request, maximum: number): Promise<Bound
 }
 
 function randomSessionId(): string {
-  const bytes = randomBytes(20);
   let value = '';
-  for (const byte of bytes) value += CODE_ALPHABET[byte % CODE_ALPHABET.length];
+  for (let index = 0; index < 20; index += 1)
+    value += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
   return value;
 }
 

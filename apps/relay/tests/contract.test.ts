@@ -1,11 +1,25 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { relayRoutes, matchRelayRoute } from '@lacuna/protocol/relay/index';
+import { createRelayClient, relayRoutes, matchRelayRoute } from '@lacuna/protocol/relay/index';
 import { createHandler } from '../src/relay.js';
 import { MemoryStore } from '../src/store.js';
 
 afterEach(() => vi.unstubAllEnvs());
 
 describe('shared relay contract', () => {
+  it('trims trailing slashes without rescanning long internal slash runs', async () => {
+    const baseUrl = `https://relay.example/${'/'.repeat(100_000)}x///`;
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
+    const started = performance.now();
+    const client = createRelayClient(relayRoutes, baseUrl, fetcher);
+
+    await client.request('aiCreate', { json: { browserPublicKey: 'A'.repeat(87) } });
+
+    expect(performance.now() - started).toBeLessThan(1_000);
+    expect(fetcher.mock.calls[0]?.[0]).toBe(
+      `https://relay.example/${'/'.repeat(100_000)}x/ai/sessions`,
+    );
+  });
+
   for (const [endpoint, definition] of Object.entries(relayRoutes)) {
     const path = definition.path
       .replace(':id', 'a'.repeat(32))
