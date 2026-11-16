@@ -1,3 +1,4 @@
+import { transitionedSetId } from '../../questions/questionTransition';
 import { makeId } from '../../db/schema';
 import {
   createEmptyQuestionSetDraft,
@@ -43,12 +44,20 @@ export function QuestionSetDraftFeedback({
           variant="secondary"
           onClick={async () => {
             try {
-              const draft = createEmptyQuestionSetDraft(courseId, makeId());
+              const sourceId = makeId();
+              const generated = snapshot.draft?.generated;
+              const draft = createEmptyQuestionSetDraft(
+                courseId,
+                generated ? transitionedSetId(sourceId) : sourceId,
+              );
+              if (generated)
+                draft.generated = { ...structuredClone(generated), sourceRevisionId: null };
               const { legacyQuestionId: _source, ...copy } = content;
               draft.content = {
                 ...copy,
                 id: draft.content.id,
                 title: `${content.title} (copy)`,
+                ...(generated ? { legacyQuestionId: sourceId } : {}),
               };
               await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
               onCopied(draft.content.id);

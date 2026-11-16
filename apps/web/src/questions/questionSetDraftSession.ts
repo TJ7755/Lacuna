@@ -150,12 +150,14 @@ export class QuestionSetDraftSession {
       );
       if (this.disposed) throw new Error('The Question Set draft session is disposed.');
       const draft = structuredClone(stored ?? this.initialDraft);
+      const enriched = !draft.generated && !!this.initialDraft.generated;
+      if (enriched) draft.generated = structuredClone(this.initialDraft.generated);
       this.expectedDraftRevisionId = stored?.draftRevisionId ?? null;
-      this.generation = stored ? 0 : 1;
+      this.generation = stored && !enriched ? 0 : 1;
       this.savedGeneration = 0;
       this.emit({
         draft,
-        dirty: !stored,
+        dirty: !stored || enriched,
         phase: 'idle',
         error: null,
         requiresReload: false,
@@ -170,11 +172,21 @@ export class QuestionSetDraftSession {
   }
 
   update(update: (content: QuestionSet) => QuestionSet): void {
-    const draft = this.assertEditable();
-    const content = update(structuredClone(draft.content));
+    this.updateDraft((draft) => ({ ...draft, content: update(draft.content) }));
+  }
+
+  updateGenerated(changes: Partial<NonNullable<QuestionSetDraft['generated']>>): void {
+    this.updateDraft((draft) => {
+      if (!draft.generated) throw new Error('This set has no generated source.');
+      return { ...draft, generated: { ...draft.generated, ...changes } };
+    });
+  }
+
+  private updateDraft(update: (draft: QuestionSetDraft) => QuestionSetDraft): void {
+    const draft = update(structuredClone(this.assertEditable()));
     this.generation += 1;
     this.emit({
-      draft: { ...draft, content },
+      draft,
       dirty: true,
       phase: 'idle',
       error: null,
@@ -240,10 +252,9 @@ export class QuestionSetDraftSession {
         this.pendingAssets = this.pendingAssets.slice(attemptAssets.length);
         this.expectedDraftRevisionId = saved.draftRevisionId;
         this.savedGeneration = attemptGeneration;
-        const latestContent =
-          this.generation === attemptGeneration ? saved.content : this.snapshot.draft!.content;
+        const latest = this.generation === attemptGeneration ? saved : this.snapshot.draft!;
         this.emit({
-          draft: { ...saved, content: latestContent },
+          draft: { ...latest, draftRevisionId: saved.draftRevisionId, updatedAt: saved.updatedAt },
           dirty: this.savedGeneration < this.generation,
           phase: 'saving',
         });
