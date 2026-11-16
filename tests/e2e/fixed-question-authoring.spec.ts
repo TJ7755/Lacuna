@@ -63,12 +63,12 @@ test('old fixed-question routes use the composer and recover its saved draft', a
   await expect(prompt).toHaveValue('Solve x + 2 = 5.');
   const composerRoute = page.url();
   await page.getByRole('button', { name: 'Set details', exact: true }).click();
+  await suspension.click();
+  await expect(suspension).toBeChecked();
   await page.screenshot({
     path: testInfo.outputPath('fixed-question-suspension.png'),
     fullPage: true,
   });
-  await suspension.click();
-  await expect(suspension).toBeChecked();
   await page.reload();
   await page.getByRole('button', { name: 'Set details', exact: true }).click();
   await expect(suspension).toBeChecked();
