@@ -224,6 +224,44 @@ describe('questionGeneratorRegistry', () => {
     ).toBe(true);
   });
 
+  it('indexes the full capacity in corpus order without accepting neighbouring configurations', () => {
+    const space = questionGeneratorRegistry.space({
+      ...request('unused'),
+      configuration: { ...configuration, maximumRootMagnitude: 20, maximumLeadingCoefficient: 9 },
+    });
+    expect(space.capacity).toBe(7380);
+    expect(space.resolve(0).renderedPrompt).toBe(
+      'Solve $x^2 + 40x + 400 = 0$. Enter each distinct real root on a separate line.',
+    );
+    expect(space.resolve(7379).renderedPrompt).toBe(
+      'Solve $9x^2 - 360x + 3600 = 0$. Enter each distinct real root on a separate line.',
+    );
+    for (const index of [0, 1, 8, 9, 3510, 7379])
+      expect(space.indexOfPrompt(space.resolve(index).renderedPrompt)).toBe(index);
+    expect(
+      space.indexOfPrompt(
+        'Solve $x^2 - 441 = 0$. Enter each distinct real root on a separate line.',
+      ),
+    ).toBeUndefined();
+    expect(() => space.resolve(-1)).toThrow(RangeError);
+    expect(() => space.resolve(7380)).toThrow(RangeError);
+    const distinct = questionGeneratorRegistry.space({
+      ...request('unused'),
+      configuration: { ...configuration, allowRepeatedRoots: false },
+    });
+    expect(distinct.capacity).toBe(12);
+    expect(
+      distinct.indexOfPrompt(
+        'Solve $x^2 - 2x + 1 = 0$. Enter each distinct real root on a separate line.',
+      ),
+    ).toBeUndefined();
+    expect(distinct.resolve(11).parameters).toMatchObject({
+      leadingCoefficient: 2,
+      root1: 1,
+      root2: 2,
+    });
+  });
+
   it('accepts the documented bounds and rejects values immediately beyond them', () => {
     expect(() =>
       questionGeneratorRegistry.resolve({

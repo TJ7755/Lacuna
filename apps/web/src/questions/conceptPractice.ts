@@ -4,7 +4,6 @@ import {
   answers,
   withinQuestionStudyScope as withinConceptScope,
   withinQuestionLessonScope,
-  practiceContext,
   unseenCapacity,
   selectPracticeQuestion,
   QuestionPracticeExhaustedError,
@@ -24,12 +23,14 @@ import {
   type ConceptPracticeNeeds,
   type DiagnosticCategoryEvidence,
 } from './techniqueEvidence';
-import { deriveTechniqueSchedules, questionTechniqueIds } from './techniqueSchedule';
+import { questionTechniqueIds } from './techniqueSchedule';
 import { archivedTechniqueIds } from './courseTechniques';
-import { latestQuestionPracticeExposure } from './questionPracticeExposure';
 import { questionStudyEligible } from './questionStudyEligibility';
 import { techniqueExamDate } from './techniqueExam';
-import { makeEngine, decayOf } from '../fsrs/fsrs';
+import {
+  loadQuestionPracticeSnapshot,
+  type QuestionPracticeSnapshot,
+} from './questionPracticeSnapshot';
 import { activeTechniqueIds, type TechniqueId } from '@lacuna/core/questions/techniqueTags';
 
 export { undoConceptPracticeAttempt } from './questionSetAttemptRepository';
@@ -136,30 +137,12 @@ export interface ConceptPracticeItem {
   examDate?: number;
 }
 
-async function context(courseId: string, now = Date.now()) {
-  const data = await practiceContext(courseId);
-  const [course, assessments, lessons] = await Promise.all([
-    db.courses.get(courseId),
-    db.courseAssessments.where('courseId').equals(courseId).toArray(),
-    db.lessons.where('courseId').equals(courseId).toArray(),
-  ]);
-  const techniqueSchedules = deriveTechniqueSchedules(data.attempts);
+async function context(courseId: string, now = Date.now(), snapshot?: QuestionPracticeSnapshot) {
+  const data = snapshot ?? (await loadQuestionPracticeSnapshot(courseId));
   return {
-    course,
-    archivedTechniques: archivedTechniqueIds(course),
-    assessments,
-    lessons,
-    techniqueSchedules,
-    exposure: latestQuestionPracticeExposure(data.attempts),
-    sim: course
-      ? {
-          fsrs: makeEngine(course.fsrsParameters),
-          decay: decayOf(course.fsrsParameters),
-          expectedGrade: 3 as const,
-        }
-      : undefined,
     ...data,
-    needs: deriveConceptPracticeNeeds(data.attempts, data.sets, now, techniqueSchedules),
+    archivedTechniques: archivedTechniqueIds(data.course),
+    needs: deriveConceptPracticeNeeds(data.attempts, data.sets, now, data.techniqueSchedules),
     schedules: deriveConceptApplicationSchedules(
       data.attempts,
       transitionScheduleSeeds(data.sources, data.sets),
@@ -194,7 +177,7 @@ function unfinishedPractice(
 
 function studyCandidate(
   data: Awaited<ReturnType<typeof context>>,
-  candidate: Awaited<ReturnType<typeof practiceContext>>['candidates'][number],
+  candidate: QuestionPracticeSnapshot['candidates'][number],
   conceptId: string,
   now: number,
   sittingStartedAt?: number,
@@ -261,8 +244,9 @@ export async function listConceptPractice(
   now = Date.now(),
   scopeConceptIds?: readonly string[],
   options: { sittingStartedAt?: number; scopeLessonIds?: readonly string[] } = {},
+  snapshot?: QuestionPracticeSnapshot,
 ): Promise<ConceptPracticeItem[]> {
-  const data = await context(courseId, now);
+  const data = await context(courseId, now, snapshot);
   const diagnosticEvidence = deriveConceptDiagnosticEvidence(data.attempts, data.sets);
   const scope = scopeConceptIds ? new Set(scopeConceptIds) : undefined;
   return data.concepts

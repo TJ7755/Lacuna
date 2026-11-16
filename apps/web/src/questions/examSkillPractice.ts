@@ -1,10 +1,11 @@
-import { latestQuestionPracticeExposure } from './questionPracticeExposure';
+import {
+  loadQuestionPracticeSnapshot,
+  type QuestionPracticeSnapshot,
+} from './questionPracticeSnapshot';
 import { questionStudyEligible } from './questionStudyEligibility';
-import { makeEngine, decayOf } from '../fsrs/fsrs';
 import { db } from '../db/schema';
 import { startQuestionSetAttempt } from './questionSetAttemptRepository';
 import {
-  practiceContext,
   withinQuestionStudyScope,
   withinQuestionLessonScope,
   selectPracticeQuestion,
@@ -13,11 +14,7 @@ import {
 import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
 import { activeTechniques, courseTechniqueCatalogue } from './courseTechniques';
 import type { QuestionScheduleState } from '@lacuna/core/questions/types';
-import {
-  deriveTechniqueSchedules,
-  techniquePracticeStatus,
-  questionTechniqueIds as techniques,
-} from './techniqueSchedule';
+import { techniquePracticeStatus, questionTechniqueIds as techniques } from './techniqueSchedule';
 import { emptyQuestionSchedule } from './scheduler';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { techniqueExamDate } from './techniqueExam';
@@ -48,17 +45,10 @@ export async function listExamSkillPractice(
     scopeConceptIds?: readonly string[];
     scopeLessonIds?: readonly string[];
   } = {},
+  snapshot?: QuestionPracticeSnapshot,
 ): Promise<ExamSkillPracticeItem[]> {
-  const data = await practiceContext(courseId);
-  const schedules = deriveTechniqueSchedules(data.attempts);
-  const [assessments, lessons, course] = await Promise.all([
-    db.courseAssessments.where('courseId').equals(courseId).toArray(),
-    db.lessons.where('courseId').equals(courseId).toArray(),
-    db.courses.get(courseId),
-  ]);
-  const exposure = latestQuestionPracticeExposure(data.attempts);
-  const params = course?.fsrsParameters ?? defaultFsrsParameters();
-  const sim = { fsrs: makeEngine(params), decay: decayOf(params), expectedGrade: 3 as const };
+  const data = snapshot ?? (await loadQuestionPracticeSnapshot(courseId));
+  const { course, assessments, lessons, exposure, sim, techniqueSchedules: schedules } = data;
   const unfinishedQuestions = new Set(
     data.attempts
       .filter(
@@ -183,13 +173,8 @@ export async function startExamSkillPractice(
     async () => {
       const course = await db.courses.get(courseId);
       if (!course || course.archived) throw new Error('This course is unavailable for practice.');
-      const data = await practiceContext(courseId);
-      const [assessments, lessons] = options.study
-        ? await Promise.all([
-            db.courseAssessments.where('courseId').equals(courseId).toArray(),
-            db.lessons.where('courseId').equals(courseId).toArray(),
-          ])
-        : [[], []];
+      const data = await loadQuestionPracticeSnapshot(courseId);
+      const { assessments, lessons } = data;
       let available = data.candidates.filter((candidate) => {
         const ids = techniques(candidate.question);
         return (
@@ -244,7 +229,7 @@ export async function startExamSkillPractice(
         if (unfinished) return { attempt: unfinished };
       }
       const skills = new Map(
-        (await listExamSkillPractice(courseId, options.now, options.study)).map((skill) => [
+        (await listExamSkillPractice(courseId, options.now, options.study, data)).map((skill) => [
           skill.techniqueId,
           skill,
         ]),

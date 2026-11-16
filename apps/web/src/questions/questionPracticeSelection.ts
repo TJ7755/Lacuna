@@ -1,3 +1,5 @@
+import type { Concept } from '@lacuna/core/questions/types';
+import type { GeneratorQuestionSpace } from './generators/contracts';
 import { transitionedQuestion } from './questionTransition';
 import { questionGeneratorRegistry } from './generators';
 import { exposedQuestions } from './questionExposure';
@@ -49,6 +51,7 @@ interface Candidate {
   sibling: string;
   conceptIds: string[];
   capacity: number;
+  generated?: { space: GeneratorQuestionSpace; seenIndices: Set<number> };
 }
 function candidates(sets: QuestionSetRecord[]): Candidate[] {
   return sets.flatMap((set) =>
@@ -105,9 +108,9 @@ function familyKey(set: QuestionSetRecord, questionId: string): string {
     : `${set.id}:${questionId}`;
 }
 
-export async function practiceContext(courseId: string) {
+export async function practiceContext(courseId: string, loadedConcepts?: Concept[]) {
   const [concepts, sets, attempts, sources, sourceAttempts] = await Promise.all([
-    db.concepts.where('courseId').equals(courseId).toArray(),
+    loadedConcepts ?? db.concepts.where('courseId').equals(courseId).toArray(),
     db.questionSets.where('courseId').equals(courseId).toArray(),
     db.questionSetAttempts.where('courseId').equals(courseId).toArray(),
     db.questions.where('courseId').equals(courseId).toArray(),
@@ -118,26 +121,6 @@ export async function practiceContext(courseId: string) {
   const currentSets = sets
     .map(parseQuestionSetRecord)
     .filter((set) => !set.legacyQuestionId || !sourceById.get(set.legacyQuestionId)?.suspended);
-  const variants = currentSets.flatMap((set) => {
-    const source = sourceById.get(set.legacyQuestionId ?? '');
-    if (source?.kind !== 'generated') return [set];
-    const answer = set.questions[0].answer!;
-    return questionGeneratorRegistry
-      .audit({
-        generatorKey: source.generatorKey,
-        generatorVersion: source.generatorVersion,
-        configuration: source.generatorConfig,
-      })
-      .instances.map(({ resolved }) => ({
-        ...set,
-        questions: [
-          transitionedQuestion(set.questions[0].id, resolved, {
-            targetConceptIds: answer.allocations[0].targetConceptIds,
-            prerequisiteConceptIds: answer.prerequisiteConceptIds,
-          }),
-        ],
-      }));
-  });
   const seen = new Set(
     records.flatMap((attempt) => exposedQuestions(attempt).map(conceptPracticeFingerprint)),
   );
@@ -179,17 +162,49 @@ export async function practiceContext(courseId: string) {
     seenVariants,
     concepts: concepts.filter((concept) => concept.scope === 'course'),
     sources,
-    candidates: candidates(variants),
+    candidates: candidates(currentSets).map((candidate) => {
+      const source = sourceById.get(candidate.set.legacyQuestionId ?? '');
+      if (source?.kind !== 'generated') return candidate;
+      const space = questionGeneratorRegistry.space({
+        generatorKey: source.generatorKey,
+        generatorVersion: source.generatorVersion,
+        configuration: source.generatorConfig,
+      });
+      const representative = resolveGeneratedQuestion(candidate, space, 0);
+      const generatedCandidate = candidates([{ ...candidate.set, questions: [representative] }])[0];
+      const seenIndices = new Set<number>();
+      for (const fingerprint of seen) {
+        const presentation = JSON.parse(fingerprint) as { prompt: string };
+        const index = space.indexOfPrompt(presentation.prompt);
+        if (index === undefined) continue;
+        const question = resolveGeneratedQuestion(candidate, space, index);
+        if (conceptPracticeFingerprint(question) === fingerprint) seenIndices.add(index);
+      }
+      return { ...generatedCandidate, capacity: space.capacity, generated: { space, seenIndices } };
+    }),
     sets: currentSets,
     attempts: records,
     seen,
   };
 }
 
+function resolveGeneratedQuestion(
+  candidate: Candidate,
+  space: GeneratorQuestionSpace,
+  index: number,
+) {
+  const answer = candidate.question.answer!;
+  return transitionedQuestion(candidate.question.id, space.resolve(index), {
+    targetConceptIds: answer.allocations[0].targetConceptIds,
+    prerequisiteConceptIds: answer.prerequisiteConceptIds,
+  });
+}
+
 export function unseenCapacity(
   candidate: Candidate,
   data: Awaited<ReturnType<typeof practiceContext>>,
 ): number {
+  if (candidate.generated) return candidate.capacity - candidate.generated.seenIndices.size;
   if (!candidate.set.bank?.family) return data.seen.has(candidate.fingerprint) ? 0 : 1;
   return Math.max(
     0,
@@ -220,7 +235,7 @@ export function selectPracticeQuestion(
     cellExposures.set(key, (cellExposures.get(key) ?? 0) + 1);
   }
   const recent = new Set(
-    data.attempts
+    [...data.attempts]
       .sort((a, b) => b.createdAt - a.createdAt || a.id.localeCompare(b.id))
       .slice(0, 3)
       .map((attempt) =>
@@ -245,8 +260,8 @@ export function selectPracticeQuestion(
       a.set.id.localeCompare(b.set.id) ||
       a.question.id.localeCompare(b.question.id),
   );
-  // Families receive one place in the pool, irrespective of Cartesian capacity.
-  // Only the selected family's variants are resolved, and known indices are skipped.
+  // Generated sources and families each receive one place in the pool.
+  // Resolve only selected variants and skip known indices.
   let selected:
     | {
         candidate: Candidate;
@@ -258,21 +273,26 @@ export function selectPracticeQuestion(
     | undefined;
   for (const familiar of options.allowFamiliar ? [false, true] : [false]) {
     for (const candidate of pool) {
-      const used = data.seenVariants.get(familyKey(candidate.set, candidate.question.id));
+      const used =
+        candidate.generated?.seenIndices ??
+        data.seenVariants.get(familyKey(candidate.set, candidate.question.id));
       for (let index = 0; index < candidate.capacity; index++) {
-        if (candidate.set.bank?.family && !familiar && used?.has(index)) continue;
+        if ((candidate.generated || candidate.set.bank?.family) && !familiar && used?.has(index))
+          continue;
         const set = candidate.set.bank?.family
           ? resolveFamilyVariant(candidate.set, index)
           : candidate.set;
-        const question = set.questions.find((row) => row.id === candidate.question.id)!;
+        const question = candidate.generated
+          ? resolveGeneratedQuestion(candidate, candidate.generated.space, index)
+          : set.questions.find((row) => row.id === candidate.question.id)!;
         const fingerprint = conceptPracticeFingerprint(question);
         if (data.seen.has(fingerprint) !== familiar) continue;
         selected = {
           candidate,
-          set,
+          set: candidate.generated ? { ...set, questions: [question] } : set,
           question,
           fingerprint,
-          index: set.bank?.family ? index : undefined,
+          index: candidate.generated || set.bank?.family ? index : undefined,
         };
         break;
       }

@@ -182,23 +182,42 @@ async function readCourseStudyFlowRecords(
   const questionScopeLessonIds = study
     ? questionStudyLessonScope({ ...questionContext, completions })
     : [];
+  const practiceNow = Date.now();
+  const practiceSnapshot =
+    questionSetCount > 0 && (study || questionScopeConceptIds.length > 0)
+      ? await import('../questions/questionPracticeSnapshot').then(
+          ({ loadQuestionPracticeSnapshot }) =>
+            loadQuestionPracticeSnapshot(courseId, { course, assessments, lessons, concepts }),
+        )
+      : undefined;
   const questionPractice =
     questionScopeConceptIds.length && questionSetCount > 0
       ? await import('../questions/conceptPractice').then(({ listConceptPractice }) =>
-          listConceptPractice(courseId, Date.now(), questionScopeConceptIds, {
-            sittingStartedAt,
-            scopeLessonIds: questionScopeLessonIds,
-          }),
+          listConceptPractice(
+            courseId,
+            practiceNow,
+            questionScopeConceptIds,
+            {
+              sittingStartedAt,
+              scopeLessonIds: questionScopeLessonIds,
+            },
+            practiceSnapshot,
+          ),
         )
       : [];
   const examSkillPractice =
     study && questionSetCount > 0
       ? await import('../questions/examSkillPractice').then(({ listExamSkillPractice }) =>
-          listExamSkillPractice(courseId, Date.now(), {
-            sittingStartedAt,
-            scopeConceptIds: questionScopeConceptIds,
-            scopeLessonIds: questionScopeLessonIds,
-          }),
+          listExamSkillPractice(
+            courseId,
+            practiceNow,
+            {
+              sittingStartedAt,
+              scopeConceptIds: questionScopeConceptIds,
+              scopeLessonIds: questionScopeLessonIds,
+            },
+            practiceSnapshot,
+          ),
         )
       : [];
   return {
