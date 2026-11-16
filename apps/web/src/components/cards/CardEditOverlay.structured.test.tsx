@@ -16,12 +16,14 @@ it.each(['numeric', 'working'] as const)(
   'corrects a %s answer with an empty back and persists its payload',
   async (type) => {
     const course = await createCourse('Corrections');
+    const fixtures = [{ id: 'example', studentAnswer: '4', expectedMarks: 1 }];
     const payload: ItemPayload =
       type === 'numeric'
-        ? { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } }
+        ? { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' }, fixtures }
         : {
             v: 1,
             kind: 'working',
+            fixtures,
             scheme: [
               { marks: 1, label: 'answer', kind: 'predicate', predicate: 'equals', args: ['4'] },
             ],
@@ -40,16 +42,21 @@ it.each(['numeric', 'working'] as const)(
     fireEvent.change(answer, { target: { value: '' } });
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
     fireEvent.change(answer, {
+      target: { value: type === 'numeric' ? 'x' : '[1] answer :: equals :: 4\ninvalid' },
+    });
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+    fireEvent.change(answer, {
       target: { value: type === 'numeric' ? '5' : '[1] answer :: equals :: 5' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(saved).toHaveBeenCalledOnce());
     const expected: ItemPayload =
       type === 'numeric'
-        ? { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '5' } }
+        ? { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '5' }, fixtures }
         : {
             v: 1,
             kind: 'working',
+            fixtures,
             scheme: [
               { marks: 1, label: 'answer', kind: 'predicate', predicate: 'equals', args: ['5'] },
             ],
