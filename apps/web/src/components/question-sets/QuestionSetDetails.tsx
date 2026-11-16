@@ -1,3 +1,4 @@
+import { Toggle } from '../ui/Toggle';
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import type { QuestionSet } from '@lacuna/core/questions/questionSets';
@@ -14,11 +15,13 @@ export function QuestionSetDetails({
   onChange,
   disabled,
   invalid = false,
+  suspension,
 }: {
   content: QuestionSet;
   onChange: (content: QuestionSet) => void;
   disabled: boolean;
   invalid?: boolean;
+  suspension?: { value: boolean; onChange: (value: boolean) => void };
 }) {
   const [open, setOpen] = useState(false);
   const trap = useFocusTrap(open, { autoFocusSelector: 'input' });
@@ -78,12 +81,20 @@ export function QuestionSetDetails({
                 />
               </Field>
               <QuestionSetSettings content={content} onChange={onChange} />
-              {content.legacyQuestionId && (
-                <QuestionSourceSuspension
-                  sourceId={content.legacyQuestionId}
-                  courseId={content.courseId}
-                  disabled={disabled}
+              {suspension ? (
+                <Toggle
+                  label="Suspend this Question"
+                  checked={suspension.value}
+                  onChange={suspension.onChange}
                 />
+              ) : (
+                content.legacyQuestionId && (
+                  <QuestionSourceSuspension
+                    sourceId={content.legacyQuestionId}
+                    courseId={content.courseId}
+                    disabled={disabled}
+                  />
+                )
               )}
               <div className="mt-6 flex justify-end">
                 <Button onClick={() => setOpen(false)}>Done</Button>

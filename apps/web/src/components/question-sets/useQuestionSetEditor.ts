@@ -1,3 +1,4 @@
+import { db } from '../../db/schema';
 import { useEffect, useReducer, useState } from 'react';
 import { useBlocker } from 'react-router-dom';
 import {
@@ -34,6 +35,21 @@ export function useQuestionSetEditor(courseId: string, setId: string) {
           return;
         }
         const initialDraft = draft ?? createQuestionSetDraft(saved!, saved!.contentRevisionId);
+        if (!initialDraft.generated && saved?.legacyQuestionId) {
+          const source = await db.questions.get(saved.legacyQuestionId);
+          if (source?.kind === 'generated' && source.courseId === courseId) {
+            const links = await db.questionConcepts.get(source.id);
+            initialDraft.generated = {
+              sourceRevisionId: source.authoringRevisionId,
+              suspended: source.suspended,
+              targetConceptId: links?.targetConceptIds[0] ?? '',
+              prerequisiteConceptIds: links?.prerequisiteConceptIds ?? [],
+              generatorKey: source.generatorKey,
+              generatorVersion: source.generatorVersion,
+              configuration: source.generatorConfig as Record<string, string | number | boolean>,
+            };
+          }
+        }
         owned = createQuestionSetDraftSession({ initialDraft, debounceMs: 500 });
         unsubscribe = owned.subscribe(() => {
           if (!cancelled) setSnapshot(owned!.getSnapshot());

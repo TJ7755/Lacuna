@@ -1,3 +1,6 @@
+import { transitionedSetId } from '../questions/questionTransition';
+import { questionGeneratorRegistry } from '../questions/generators';
+import { newQuestionState } from './questionDraft';
 import { IndividualQuestionHistory } from '../components/question-sets/IndividualQuestionHistory';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { SearchIcon } from '../components/ui/icons';
@@ -15,7 +18,7 @@ import { QuestionSetLibraryActions } from '../components/question-sets/QuestionS
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { useState } from 'react';
 import { ExpandingCreateControl } from '../components/ui/ExpandingCreateControl';
-import { Field, Input } from '../components/ui/Field';
+import { Field, Input, inputClassName } from '../components/ui/Field';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -63,6 +66,7 @@ export function QuestionsPage() {
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [generated, setGenerated] = useState(false);
   const [name, setName] = useState('');
   const [startingSetId, setStartingSetId] = useState<string | null>(null);
   const data = useLiveQuery(async () => {
@@ -139,7 +143,25 @@ export function QuestionsPage() {
     setCreating(true);
     setError('');
     try {
-      const draft = createEmptyQuestionSetDraft(course.id, makeId());
+      const sourceId = makeId();
+      const draft = createEmptyQuestionSetDraft(
+        course.id,
+        generated ? transitionedSetId(sourceId) : sourceId,
+      );
+      if (generated) {
+        const generator = questionGeneratorRegistry.list()[0];
+        if (!generator) throw new Error('No built-in generator is available.');
+        draft.content.legacyQuestionId = sourceId;
+        draft.generated = {
+          sourceRevisionId: null,
+          suspended: false,
+          targetConceptId: '',
+          prerequisiteConceptIds: [],
+          generatorKey: generator.key,
+          generatorVersion: generator.version,
+          configuration: newQuestionState('').generatorConfig,
+        };
+      }
       draft.content.title = name.trim();
       await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
       await navigate(`/course/${course.id}/question-sets/${draft.content.id}/edit`, {
@@ -204,6 +226,17 @@ export function QuestionsPage() {
                   placeholder="e.g. Cell biology practice"
                   disabled={creating}
                 />
+              </Field>
+              <Field label="Question form">
+                <select
+                  className={inputClassName}
+                  value={generated ? 'generated' : 'fixed'}
+                  disabled={creating}
+                  onChange={(event) => setGenerated(event.target.value === 'generated')}
+                >
+                  <option value="fixed">Fixed questions</option>
+                  <option value="generated">Generated family</option>
+                </select>
               </Field>
               <Button
                 type="submit"

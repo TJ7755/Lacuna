@@ -10,6 +10,10 @@ import { canEditLessons } from '../course/lessonViewMode';
 import { questionSetReturn } from '../questions/questionSetNavigation';
 import { validateQuestionSet } from '@lacuna/core/questions/questionSets';
 import { useQuestionSetEditor } from '../components/question-sets/useQuestionSetEditor';
+import {
+  GeneratedSetConfiguration,
+  generatedSetPreview,
+} from '../components/question-sets/GeneratedSetConfiguration';
 import { QuestionComposer } from '../components/question-sets/QuestionComposer';
 import { QuestionSetDetails } from '../components/question-sets/QuestionSetDetails';
 import { QuestionSetSaveStatus } from '../components/question-sets/QuestionSetSaveStatus';
@@ -35,9 +39,7 @@ export function QuestionSetEditor() {
     if (!courseId || !set || set.courseId !== courseId || !set.legacyQuestionId) return null;
     const question = await db.questions.get(set.legacyQuestionId);
     if (!question || question.courseId !== courseId) return null;
-    return question.kind === 'generated' || loadDraft(questionDraftKey(courseId, question.id))
-      ? question.id
-      : null;
+    return loadDraft(questionDraftKey(courseId, question.id)) ? question.id : null;
   }, [courseId, setId]);
   if (source === undefined) return <QuestionSetLoading />;
   if (source)
@@ -108,12 +110,19 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
     );
   if (!session || !snapshot?.draft) return <QuestionSetLoading />;
   const content = snapshot.draft.content;
-  const issues = validateQuestionSet(content);
+  const generated = snapshot.draft.generated;
+  const previewContent = generated ? generatedSetPreview(content, generated) : content;
+  const issues = validateQuestionSet(previewContent ?? content);
   const busy = snapshot.phase === 'publishing' || snapshot.phase === 'loading';
   const publish = async () => {
     setValidationAttempt((value) => value + 1);
     setPreview(false);
-    if (issues.length) {
+    if (issues.length || (generated && (!previewContent || !generated.targetConceptId))) {
+      if (generated) {
+        requestAnimationFrame(() =>
+          editor.current?.querySelector<HTMLElement>('[aria-invalid="true"], select')?.focus(),
+        );
+      }
       if (!content.title.trim())
         document.querySelector<HTMLButtonElement>('[aria-label="Set details"]')?.click();
       return;
@@ -178,6 +187,14 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
           />
           <QuestionSetDetails
             content={content}
+            suspension={
+              generated
+                ? {
+                    value: generated.suspended,
+                    onChange: (suspended) => session.updateGenerated({ suspended }),
+                  }
+                : undefined
+            }
             disabled={busy || snapshot.requiresReload}
             invalid={validationAttempt > 0 && !content.title.trim()}
             onChange={(next) => session.update(() => next)}
@@ -241,19 +258,28 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
         </div>
       )}
       <fieldset disabled={busy || snapshot.requiresReload} hidden={preview} className="min-w-0">
-        <QuestionComposer
-          content={content}
-          session={session}
-          issues={validationAttempt ? issues : []}
-          focusIssue={validationAttempt}
-        />
+        {generated ? (
+          <GeneratedSetConfiguration
+            generated={generated}
+            courseId={courseId}
+            session={session}
+            attempted={validationAttempt > 0}
+          />
+        ) : (
+          <QuestionComposer
+            content={content}
+            session={session}
+            issues={validationAttempt ? issues : []}
+            focusIssue={validationAttempt}
+          />
+        )}
       </fieldset>
       {preview && (
         <section aria-label="Student preview">
           <p className="mb-5 text-sm text-ink-soft">
             Preview only. Your answers here are not recorded.
           </p>
-          <QuestionSetPreview content={content} authorPreview />
+          {previewContent && <QuestionSetPreview content={previewContent} authorPreview />}
         </section>
       )}
     </div>

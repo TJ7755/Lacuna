@@ -9,7 +9,18 @@ import type { QuestionSet } from '@lacuna/core/questions/questionSets';
  */
 export const QUESTION_SET_DRAFT_PREFIX = 'questionSetDraft:';
 
+export interface GeneratedQuestionSetDraft {
+  sourceRevisionId: string | null;
+  suspended: boolean;
+  targetConceptId: string;
+  prerequisiteConceptIds: string[];
+  generatorKey: string;
+  generatorVersion: number;
+  configuration: Record<string, string | number | boolean>;
+}
+
 export interface QuestionSetDraft {
+  generated?: GeneratedQuestionSetDraft;
   schemaVersion: 1;
   content: QuestionSet;
   baseContentRevisionId: string | null;
@@ -111,6 +122,21 @@ export function parseDraft(
   const content = draft.content as Partial<QuestionSet> | undefined;
   if (
     draft.schemaVersion !== 1 ||
+    (draft.generated !== undefined &&
+      (!draft.generated ||
+        (draft.generated.sourceRevisionId !== null &&
+          typeof draft.generated.sourceRevisionId !== 'string') ||
+        typeof draft.generated.suspended !== 'boolean' ||
+        typeof draft.generated.targetConceptId !== 'string' ||
+        !isStringArray(draft.generated.prerequisiteConceptIds) ||
+        typeof draft.generated.generatorKey !== 'string' ||
+        !Number.isSafeInteger(draft.generated.generatorVersion) ||
+        !draft.generated.configuration ||
+        typeof draft.generated.configuration !== 'object' ||
+        Array.isArray(draft.generated.configuration) ||
+        !Object.values(draft.generated.configuration).every((value) =>
+          ['string', 'number', 'boolean'].includes(typeof value),
+        ))) ||
     !content ||
     typeof content !== 'object' ||
     typeof content.id !== 'string' ||
