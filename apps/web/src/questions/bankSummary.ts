@@ -1,6 +1,6 @@
 import type { QuestionAttempt, QuestionDefinition } from '@lacuna/core/questions/types';
 
-export type AttemptMark = 'right' | 'wrong' | 'none';
+type AttemptMark = 'right' | 'wrong' | 'none';
 
 export interface QuestionBankSummary {
   /** Oldest to newest, always `RECENT_MARKS` long; unfilled slots are 'none'. */

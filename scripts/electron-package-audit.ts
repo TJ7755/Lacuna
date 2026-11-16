@@ -24,7 +24,9 @@ type FileRecord = {
 const LOCALE = /(?:^|[\\/])locales[\\/][^\\/]+\.pak$/i;
 const WINDOWS_PACKAGE_BUDGET = {
   // Binding 0.6's vendored trainer adds 820,431 bytes over 0.5's WASM.
-  archiveBytes: 18_000_000,
+  // The additive individual-question migration brings the measured Windows archive
+  // to 18,056,145 bytes. Keep payload and file-count limits unchanged.
+  archiveBytes: 18_100_000,
   payloadBytes: 18_000_000,
   // Includes the optional maths and highlighting renderer chunks, and the forecast maths
   // chunk that keeps the chart's recovery entry independent of the first attempt, and the
