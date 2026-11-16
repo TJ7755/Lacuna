@@ -113,8 +113,8 @@ it('retains the pending save through Stay and another grade before a confirmed e
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const save = persistence.persistSimpleSessionAnswer;
-  vi.spyOn(persistence, 'persistSimpleSessionAnswer').mockImplementationOnce(async (...args) => {
+  const save = persistence.persistSessionAnswer;
+  vi.spyOn(persistence, 'persistSessionAnswer').mockImplementationOnce(async (...args) => {
     await gate;
     return save(...args);
   });
@@ -149,8 +149,8 @@ it.each(['success', 'failure'] as const)(
     const answerGate = new Promise<void>((resolve) => {
       releaseAnswer = resolve;
     });
-    const saveAnswer = persistence.persistSimpleSessionAnswer;
-    vi.spyOn(persistence, 'persistSimpleSessionAnswer').mockImplementationOnce(async (...args) => {
+    const saveAnswer = persistence.persistSessionAnswer;
+    vi.spyOn(persistence, 'persistSessionAnswer').mockImplementationOnce(async (...args) => {
       await answerGate;
       return saveAnswer(...args);
     });
@@ -241,7 +241,7 @@ it.each(['Stay', 'Leave', 'cancelled browser unload'] as const)(
 
 it('makes an unsuccessful save explicit and lets Stay retry the same answer', async () => {
   await startSession();
-  vi.spyOn(persistence, 'persistSimpleSessionAnswer').mockRejectedValueOnce(
+  vi.spyOn(persistence, 'persistSessionAnswer').mockRejectedValueOnce(
     new Error('Storage unavailable'),
   );
   rateAndExit();

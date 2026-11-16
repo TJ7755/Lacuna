@@ -30,13 +30,7 @@ import {
 
 import { startOfDay } from '../../utils/datetime';
 import { resolveAnswerMode, reviewAnswerInput } from '../../utils/resolveAnswerMode';
-import {
-  answerCorrect,
-  type AnswerInput,
-  type AnswerResult,
-  answerFeedback,
-  persistAnswer,
-} from './answerSteps';
+import { answerCorrect, type AnswerInput, type AnswerResult, answerFeedback } from './answerSteps';
 import { canIntroduceCard, introductionProgress, introductionStage } from './lessonIntroduction';
 import { loadSessionData } from './loadSessionData';
 import { loadSessionSource } from './loadSessionSource';
@@ -44,7 +38,7 @@ import { shuffledSimpleQueue } from './recitation/recitationFlow';
 import {
   type AnswerSnapshot,
   persistRecitationReview,
-  persistSimpleSessionAnswer,
+  persistSessionAnswer,
   undoSessionAnswer,
 } from './sessionAnswerPersistence';
 import { hasMachineMarkedPayload, isUnrenderableItemPayload } from './sessionCardCapabilities';
@@ -59,7 +53,7 @@ import {
   transitionSession,
   type SessionEventInput,
   type SessionState,
-  afterScheduledAnswer,
+  type SessionEffect,
 } from './sessionMachine';
 import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
 import { resolveLearnSessionScope } from './sessionScope';
@@ -1306,9 +1300,7 @@ export class SessionRuntime {
         t: machineMarked ? (performance.now() - this.timerStart) / 1000 : this.responseTime,
         distracted: this.options.distraction.wasDistracted(),
       };
-      const result = this.options.isSimpleMode
-        ? await this.answerSimple(cardNow, response)
-        : await this.answerScheduled(cardNow, response);
+      const result = await this.recordAnswer(cardNow, response);
       if (!this.mounted || generation !== this.generation) return { undoAvailable: false };
       if (this.options.isSimpleMode) this.lastIntroduction = null;
       return this.completion.pending && result.undoAvailable
@@ -1495,7 +1487,7 @@ export class SessionRuntime {
         : undefined
       : this.schedulingUnits.values().next().value;
 
-  private answerSimple = async (
+  private recordAnswer = async (
     cardNow: Card,
     {
       correct,
@@ -1509,24 +1501,26 @@ export class SessionRuntime {
     }: AnswerResponse,
   ): Promise<AnswerResult> => {
     const generation = this.generation;
+    const simple = this.options.isSimpleMode;
+    const ctx = this.ctx;
     const deck = this.answerUnit(cardNow);
-    if (!deck) return { undoAvailable: false };
+    const schedulingConfig = this.isGlobal ? deck : this.schedulingConfig;
+    if (!deck || (!simple && (!ctx || !schedulingConfig))) return { undoAvailable: false };
     const perf = this.perf.get(deck.id);
     const hintUsed = this.hintStep > 0;
-    // The controls stay binary, while the invisible grade uses the same
-    // timing, calibration and hint rules as Practice. Machine-marked cards
-    // retain their mark-aware grade.
-    const machineSnapshot = snapshotSession(this.readSessionState());
     const eventId = this.pendingReviewEventId ?? makeId();
     this.pendingReviewEventId = eventId;
     const effect = this.applySessionEvent({
       type: 'answer',
-      simple: true,
+      simple,
+      retainUndo,
       review: {
         card: cardNow,
         eventId,
         sessionId: this.reviewSessionId,
         sessionKind: this.options.reviewSessionKind,
+        revisionPlanId: simple ? undefined : this.revisionPlan?.id,
+        revisionWindowId: !simple && this.revisionPlan ? this.options.requestWindowId : undefined,
         deck,
         kind: this.reviewKind,
         responseTimeSec: t,
@@ -1549,47 +1543,100 @@ export class SessionRuntime {
         performance: perf,
       },
     }).find((effect) => effect.type === 'persist-review')!;
-    const { grade } = effect.review;
-    const { result, nextPerf, perfBefore, exposureAdded } = await persistSimpleSessionAnswer(
-      deck.id,
+    const { result, nextPerf, snapshot, event } = await persistSessionAnswer(
+      effect,
       perf,
-      () => effect.review,
       () => this.lessonExposureId,
     );
     if (!this.mounted || generation !== this.generation) return { undoAvailable: false };
     if (nextPerf) this.perf.set(deck.id, nextPerf);
-    this.lastAnswer =
-      result.recorded && retainUndo
-        ? {
-            machine: machineSnapshot,
-            responseTimeSec: t,
-            input,
-            retainOnCompletion: true,
-            undo: {
-              eventId,
-              cardBefore: result.cardBefore,
-              perfBefore,
-              sessionHistoryId: result.sessionHistoryId,
-              deckId: deck.id,
-              kind: result.kind,
-              lastInteractedAtBefore: result.lastInteractedAtBefore,
-              updatedAtBefore: result.updatedAtBefore,
-              undoStateAfter: result.undoStateAfter,
-            },
-            deckId: deck.id,
-            deckReviews: this.reviewsByDeck.get(deck.id) ?? 0,
-            simple: { exposureAdded },
-          }
-        : null;
-    this.setCanUndo(result.recorded && retainUndo);
+    const revisionWindow = this.revisionPlan?.windows.find(
+      (candidate) => candidate.id === this.options.requestWindowId,
+    );
+    if (!simple) {
+      this.applySessionEvent({
+        type: 'scheduled-recorded',
+        card: result.card,
+        event,
+        eventId,
+        recorded: result.recorded,
+        deckId: deck.id,
+        global: this.isGlobal,
+        now: Date.now(),
+        hasRevisionPlan: this.revisionPlan !== null,
+        revisionWindowEndsAt:
+          this.revisionPlan && this.options.requestWindowId
+            ? revisionWindow
+              ? this.revisionWindowStartedAt + revisionWindow.budgetMinutes * 60000
+              : Date.now()
+            : undefined,
+      });
+      this.setSchedulerProgress(
+        sessionCompletionProgress(this.cards, ctx!, this.sessionCardOutcomes),
+      );
+      const reviewNow = Date.now();
+      const reviewDayStart = startOfDay(reviewNow);
+      if (reviewDayStart !== this.reviewsDayStart) {
+        this.reviewsByDeck = await dailyReviewCounts(result.kind, reviewNow);
+        if (!this.mounted || generation !== this.generation) return { undoAvailable: false };
+        this.reviewsDayStart = reviewDayStart;
+      } else if (result.recorded) {
+        this.reviewsByDeck.set(deck.id, (this.reviewsByDeck.get(deck.id) ?? 0) + 1);
+      }
+      this.progressCache.dirty = true;
+    }
+    const deckReviews = this.reviewsByDeck.get(deck.id) ?? 0;
     const effects = this.applySessionEvent({
-      type: 'simple-recorded',
+      type: 'answer-ready',
+      snapshot: { ...snapshot, deckReviews },
+      recorded: result.recorded,
       card: result.card,
-      event: { cardId: cardNow.id, grade, correct, responseTimeSec: t, distracted },
+      event,
+      scheduled: simple
+        ? null
+        : {
+            revision: this.revisionPlan !== null,
+            context: ctx!,
+            practice: this.practiceSession !== null,
+            deckReviews,
+            maxReviewsPerDay: schedulingConfig!.maxReviewsPerDay,
+            dailyReviewGoal: schedulingConfig!.dailyReviewGoal,
+            sessionTimeLimitMinutes: schedulingConfig!.sessionTimeLimitMinutes,
+            limitOverride: this.limitOverride,
+            timeLimitOverride: this.timeLimitOverride,
+            revisionWindowEndsAt: revisionWindow
+              ? this.revisionWindowStartedAt + revisionWindow.budgetMinutes * 60000
+              : undefined,
+            sessionStartMs: this.sessionStartMs,
+            now: Date.now(),
+          },
     });
-    this.pendingReviewEventId = null;
+    if (simple) this.pendingReviewEventId = null;
+    // Course/lesson contexts hold one unit; global contexts key by scheduling-unit id.
+    const sessionDeck = this.isGlobal ? ctx?.decks.get(deck.id) : ctx?.decks.values().next().value;
+    const feedback = simple
+      ? { undoAvailable: true }
+      : answerFeedback({
+          recorded: result.recorded,
+          grade: event.grade,
+          card: result.card,
+          deck: sessionDeck?.deck ?? deck,
+          examDateContext: sessionDeck?.oc.examDateContext,
+        });
+    await this.executeAnswerEffects(effects);
+    if (!this.mounted || generation !== this.generation) return { undoAvailable: false };
+    return this.lastAnswer ? feedback : { undoAvailable: false };
+  };
+
+  private executeAnswerEffects = async (effects: SessionEffect[]) => {
+    const generation = this.generation;
+    const cards = this.cards;
     for (const effect of effects) {
       switch (effect.type) {
+        case 'retain-undo':
+          this.lastAnswer = effect.snapshot;
+          this.setCanUndo(effect.snapshot !== null);
+          break;
         case 'persist-resume':
           this.persistSimpleResume();
           break;
@@ -1599,9 +1646,12 @@ export class SessionRuntime {
         case 'serve-next':
           this.serveNext();
           break;
+        case 'persist-practice':
+          if (!this.completion.pending) await this.persistPracticeMilestone(cards, false);
+          break;
       }
+      if (!this.mounted || generation !== this.generation) return;
     }
-    return { undoAvailable: this.lastAnswer !== null };
   };
 
   private recitationMasteredItemIds = (sequenceId: string) =>
@@ -1694,173 +1744,6 @@ export class SessionRuntime {
     if ([...cards.values()].every((card) => this.simpleMastered.has(card.id))) this.serveNext();
   };
 
-  private answerScheduled = async (
-    cardNow: Card,
-    {
-      correct,
-      manualGrade,
-      machineMarked,
-      t,
-      distracted,
-      markedBy,
-      retainUndo,
-      input,
-    }: AnswerResponse,
-  ): Promise<AnswerResult> => {
-    const generation = this.generation;
-    const ctx = this.ctx;
-    const deck = this.answerUnit(cardNow);
-    const schedulingConfig = this.isGlobal ? deck : this.schedulingConfig;
-    if (!ctx || !deck || !schedulingConfig) {
-      this.submitting = false;
-      return { undoAvailable: false };
-    }
-    const perf = this.perf.get(deck.id);
-    const hintUsed = this.hintStep > 0;
-    const machineSnapshot = snapshotSession(this.readSessionState());
-    const perfBefore = perf ?? null;
-    const eventId = this.pendingReviewEventId ?? makeId();
-    this.pendingReviewEventId = eventId;
-    const effect = this.applySessionEvent({
-      type: 'answer',
-      simple: false,
-      review: {
-        card: cardNow,
-        eventId,
-        sessionId: this.reviewSessionId,
-        sessionKind: this.options.reviewSessionKind,
-        revisionPlanId: this.revisionPlan?.id,
-        revisionWindowId: this.revisionPlan ? this.options.requestWindowId : undefined,
-        deck,
-        kind: this.reviewKind,
-        responseTimeSec: t,
-        distracted,
-        hintUsed,
-        correct,
-        marksEarned: machineMarked?.marksEarned,
-        marksAvailable: machineMarked?.marksAvailable,
-        lineVerdicts: machineMarked?.lineVerdicts,
-        checkerDisputes: machineMarked?.checkerDisputes,
-        markedBy,
-        input,
-      },
-      grading: {
-        machineMarked,
-        manualGrade,
-        correct,
-        responseTimeSec: t,
-        hintUsed,
-        performance: perf,
-      },
-    }).find((effect) => effect.type === 'persist-review')!;
-    const { grade } = effect.review;
-    const { result, performance: nextPerf } = await persistAnswer(effect.review, deck.id, perf);
-    if (!this.mounted || generation !== this.generation) return { undoAvailable: false };
-    if (nextPerf) this.perf.set(deck.id, nextPerf);
-    const {
-      card: updated,
-      cardBefore,
-      recorded,
-      sessionHistoryId,
-      kind,
-      lastInteractedAtBefore,
-      updatedAtBefore,
-      undoStateAfter,
-    } = result;
-    const revisionWindowForAnswer = this.revisionPlan?.windows.find(
-      (candidate) => candidate.id === this.options.requestWindowId,
-    );
-    this.applySessionEvent({
-      type: 'scheduled-recorded',
-      card: updated,
-      event: { cardId: cardNow.id, grade, correct, responseTimeSec: t, distracted },
-      eventId,
-      recorded,
-      deckId: deck.id,
-      global: this.isGlobal,
-      now: Date.now(),
-      hasRevisionPlan: this.revisionPlan !== null,
-      revisionWindowEndsAt:
-        this.revisionPlan && this.options.requestWindowId
-          ? revisionWindowForAnswer
-            ? this.revisionWindowStartedAt + revisionWindowForAnswer.budgetMinutes * 60000
-            : Date.now()
-          : undefined,
-    });
-    const nextCards = this.cards;
-    this.setSchedulerProgress(sessionCompletionProgress(nextCards, ctx, this.sessionCardOutcomes));
-    const reviewNow = Date.now();
-    const reviewDayStart = startOfDay(reviewNow);
-    if (reviewDayStart !== this.reviewsDayStart) {
-      this.reviewsByDeck = await dailyReviewCounts(kind, reviewNow);
-      if (!this.mounted || generation !== this.generation) return { undoAvailable: false };
-      this.reviewsDayStart = reviewDayStart;
-    } else if (recorded) {
-      this.reviewsByDeck.set(deck.id, (this.reviewsByDeck.get(deck.id) ?? 0) + 1);
-    }
-    const deckReviews = this.reviewsByDeck.get(deck.id) ?? 0;
-    this.lastAnswer = recorded
-      ? {
-          machine: machineSnapshot,
-          responseTimeSec: t,
-          input,
-          retainOnCompletion: retainUndo,
-          undo: {
-            eventId,
-            cardBefore,
-            perfBefore,
-            sessionHistoryId,
-            deckId: deck.id,
-            kind,
-            lastInteractedAtBefore,
-            updatedAtBefore,
-            undoStateAfter,
-          },
-          deckId: deck.id,
-          deckReviews,
-        }
-      : null;
-    this.setCanUndo(recorded);
-    // Course and lesson sessions hold a single unit; global sessions key
-    // the context by scheduling-unit id (see makeSessionContext).
-    const sessionDeck = this.isGlobal ? ctx.decks.get(deck.id) : ctx.decks.values().next().value;
-    const answerResult = answerFeedback({
-      recorded,
-      grade,
-      card: updated,
-      deck: sessionDeck?.deck ?? deck,
-      examDateContext: sessionDeck?.oc.examDateContext,
-    });
-    this.progressCache.dirty = true;
-    const revisionWindow = this.revisionPlan?.windows.find(
-      (candidate) => candidate.id === this.options.requestWindowId,
-    );
-    const effects = afterScheduledAnswer(this.readSessionState(), {
-      revision: this.revisionPlan !== null,
-      context: ctx,
-      practice: this.practiceSession !== null,
-      deckReviews,
-      maxReviewsPerDay: schedulingConfig.maxReviewsPerDay,
-      dailyReviewGoal: schedulingConfig.dailyReviewGoal,
-      sessionTimeLimitMinutes: schedulingConfig.sessionTimeLimitMinutes,
-      limitOverride: this.limitOverride,
-      timeLimitOverride: this.timeLimitOverride,
-      revisionWindowEndsAt: revisionWindow
-        ? this.revisionWindowStartedAt + revisionWindow.budgetMinutes * 60000
-        : undefined,
-      sessionStartMs: this.sessionStartMs,
-      now: Date.now(),
-    });
-    for (const effect of effects) {
-      if (effect.type === 'finish') this.finish(...effect.stop);
-      else if (effect.type === 'serve-next') this.serveNext();
-      else if (effect.type === 'persist-practice' && !this.completion.pending)
-        await this.persistPracticeMilestone(nextCards, false);
-      if (!this.mounted || generation !== this.generation) return { undoAvailable: false };
-    }
-    return this.lastAnswer ? answerResult : { undoAvailable: false };
-  };
-
   private undoRecordedAnswer = async (options?: { reveal?: boolean }) => {
     const generation = this.generation;
     const snap = this.lastAnswer;
@@ -1870,38 +1753,35 @@ export class SessionRuntime {
     try {
       await undoSessionAnswer(snap.undo, snap.simple?.exposureAdded);
       if (!this.mounted || generation !== this.generation) return;
-      if (!this.mounted) return;
-      this.applySessionEvent({
-        type: 'restore',
-        snapshot: snap.machine,
-        card: snap.undo.cardBefore,
-      });
+      const effects = this.applySessionEvent({ type: 'undo-recorded', snapshot: snap });
       this.setSchedulerProgress(
         sessionCompletionProgress(this.cards, ctx, this.sessionCardOutcomes),
       );
       this.perf.set(snap.deckId, snap.undo.perfBefore ?? emptyPerformance(snap.deckId));
-      if (snap.simple) this.persistSimpleResume();
-      // Simple passes do not increment the scheduled daily review counter.
-      const prevReviews = snap.deckReviews - (snap.simple ? 0 : 1);
-      if (prevReviews > 0) this.reviewsByDeck.set(snap.deckId, prevReviews);
-      else this.reviewsByDeck.delete(snap.deckId);
-      this.completion.reset();
-      this.setSummary(null);
-      this.lastAnswer = null;
-      this.setCanUndo(false);
-      this.progressCache.dirty = true;
-      this.setCurrent(snap.undo.cardBefore);
-      this.setPhase(options?.reveal ? 'answer' : 'question');
-      this.options.onCardServed?.();
-      this.setHintStep(0);
-      this.pendingReviewEventId = null;
-      this.timerStart = performance.now();
-      this.options.distraction.beginCard();
-      this.responseTime = snap.responseTimeSec;
-      this.presentedAnswerInput = snap.input;
-      this.options.distraction.setAnswerVisible(options?.reveal === true);
-      this.publish();
-      return snap.undo.cardBefore;
+      for (const effect of effects) {
+        if (effect.type === 'persist-resume') this.persistSimpleResume();
+        if (effect.type !== 'restore-answer') continue;
+        const { snapshot: restored, deckReviews } = effect;
+        if (deckReviews > 0) this.reviewsByDeck.set(restored.deckId, deckReviews);
+        else this.reviewsByDeck.delete(restored.deckId);
+        this.completion.reset();
+        this.setSummary(null);
+        this.lastAnswer = null;
+        this.setCanUndo(false);
+        this.progressCache.dirty = true;
+        this.setCurrent(restored.undo.cardBefore);
+        this.setPhase(options?.reveal ? 'answer' : 'question');
+        this.options.onCardServed?.();
+        this.setHintStep(0);
+        this.pendingReviewEventId = null;
+        this.timerStart = performance.now();
+        this.options.distraction.beginCard();
+        this.responseTime = restored.responseTimeSec;
+        this.presentedAnswerInput = restored.input;
+        this.options.distraction.setAnswerVisible(options?.reveal === true);
+        this.publish();
+        return restored.undo.cardBefore;
+      }
     } catch (err) {
       this.options.notify(
         err instanceof Error ? err.message : 'Could not undo the last answer.',
