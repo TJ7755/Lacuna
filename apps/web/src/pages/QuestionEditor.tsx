@@ -47,8 +47,8 @@ import {
 } from './questionDraft';
 import { fixedPayload, generatedConfigurationErrors } from './questionValidation';
 
-// Old fixed-question links resolve to the same aggregate and persisted composer draft.
-// Keep the original form for generated configuration and legacy creation/import callers.
+// Old links share aggregate authoring; the original form recovers unfinished drafts
+// and supports legacy creation/import callers.
 export function QuestionEditor() {
   const { courseId, questionId } = useParams<{ courseId: string; questionId?: string }>();
   return questionId ? (
@@ -75,7 +75,7 @@ function ExistingQuestionEditor() {
   );
   if (record === undefined) return <PageLoading />;
   const destination =
-    source && source.id === questionId && source.courseId === courseId && source.kind === 'fixed'
+    source && source.id === questionId && source.courseId === courseId
       ? source.migratedToSetId
       : null;
   // An unfinished old-form draft may contain uncompiled working text. Keep its
@@ -141,7 +141,13 @@ function LegacyQuestionEditor({
   const [motionSpeed] = useMotionSpeed();
   const motionMultiplier = speedMultiplier(motionSpeed);
   const workingCompilation = useMemo(() => compileMarkScheme(workingSource), [workingSource]);
-  const generator = questionGeneratorRegistry.list()[0];
+  const generator =
+    record?.question.kind === 'generated'
+      ? questionGeneratorRegistry.describe(
+          record.question.generatorKey,
+          record.question.generatorVersion,
+        )
+      : questionGeneratorRegistry.list()[0];
 
   useEffect(() => {
     if (draft.loaded || data === undefined || (editing && record === undefined)) return;

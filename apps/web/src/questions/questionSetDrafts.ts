@@ -1,3 +1,4 @@
+import { publishGeneratedQuestionSet } from './generatedQuestionSetAuthoring';
 import { db } from '../db/schema';
 import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { createQuestionSet, updateQuestionSet } from './questionSetRepository';
@@ -38,6 +39,7 @@ export async function publishQuestionSetDraft(
       db.concepts,
       db.questionSets,
       db.questions,
+      db.questionConcepts,
       db.tombstones,
     ],
     async () => {
@@ -47,11 +49,13 @@ export async function publishQuestionSetDraft(
       if (draft.draftRevisionId !== expectedDraftRevisionId) {
         throw new QuestionSetDraftConflictError();
       }
-      const record = draft.baseContentRevisionId
-        ? await updateQuestionSet(setId, draft.content, {
-            expectedContentRevisionId: draft.baseContentRevisionId,
-          })
-        : await createQuestionSet(draft.content);
+      const record = draft.generated
+        ? await publishGeneratedQuestionSet(draft)
+        : draft.baseContentRevisionId
+          ? await updateQuestionSet(setId, draft.content, {
+              expectedContentRevisionId: draft.baseContentRevisionId,
+            })
+          : await createQuestionSet(draft.content);
       await db.appState.delete(key);
       return record;
     },

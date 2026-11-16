@@ -150,6 +150,8 @@ test('keeps automatic practice and checkpoint coverage when a locked course is r
   await expect(page.getByRole('button', { name: 'Move Topic B down', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Move Topic C up', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Move Topic C up', exact: true })).toBeDisabled();
+  // Saving disables both directions; wait for completion before reloading.
+  await expect(page.getByRole('button', { name: 'Move Topic C down', exact: true })).toBeEnabled();
   await page.reload();
   await page.getByRole('button', { name: /^Lessons/ }).click();
   await expect(page.getByRole('button', { name: 'Move Topic C up', exact: true })).toBeDisabled();
