@@ -1,7 +1,47 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import type { QuestionConceptSet, QuestionDefinition } from '@lacuna/core/questions/types';
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 
-test('the Question editor footer clears the phone course bar', async ({ page }) => {
+async function retainedQuestion(page: Page, name: string) {
+  return page.evaluate(
+    (name) =>
+      new Promise<{
+        question: QuestionDefinition;
+        concepts: QuestionConceptSet;
+        set: QuestionSetRecord;
+      }>((resolve, reject) => {
+        const request = indexedDB.open('lacuna');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction([
+            'questions',
+            'questionConcepts',
+            'questionSets',
+          ]);
+          transaction.onerror = () => reject(transaction.error);
+          transaction.oncomplete = () => database.close();
+          const rows = transaction.objectStore('questions').getAll();
+          rows.onsuccess = () => {
+            const question = rows.result.find((row) => row.name === name) as QuestionDefinition;
+            if (!question?.migratedToSetId) {
+              reject(new Error(`No migrated Question named ${name}`));
+              return;
+            }
+            const concepts = transaction.objectStore('questionConcepts').get(question.id);
+            const set = transaction.objectStore('questionSets').get(question.migratedToSetId);
+            set.onsuccess = () => resolve({ question, concepts: concepts.result, set: set.result });
+          };
+        };
+      }),
+    name,
+  );
+}
+
+test('the recovered Question editor footer keeps save and deletion controls reachable', async ({
+  page,
+}) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await createCourse(page, 'Footer course');
@@ -12,22 +52,33 @@ test('the Question editor footer clears the phone course bar', async ({ page }) 
   await page.getByPlaceholder('A single piece of knowledge').fill('Footer concept');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: 'Generated family' }).click();
+  const draftKey = `lacuna:draft:question:${courseId}:new`;
+  await expect
+    .poll(() =>
+      page.evaluate((key) => {
+        const draft = localStorage.getItem(key);
+        return draft ? JSON.parse(draft).state.kind : null;
+      }, draftKey),
+    )
+    .toBe('generated');
+  const unfinishedDraft = await page.evaluate((key) => localStorage.getItem(key)!, draftKey);
   await page.getByRole('button', { name: 'Create Question' }).click();
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/questions$`));
 
-  // Seeded at desktop width, where the section bar is absent; the editor is then
-  // opened at phone width.
-  await page.setViewportSize({ width: 390, height: 844 });
+  const retained = await retainedQuestion(page, 'Footer question');
+  await page.evaluate(({ key, draft }) => localStorage.setItem(key, draft), {
+    key: `lacuna:draft:question:${courseId}:${retained.question.id}`,
+    draft: unfinishedDraft,
+  });
   await page.getByRole('link', { name: /Footer question/ }).click();
+  await page.getByRole('button', { name: 'Restore draft', exact: true }).click();
   const save = page.getByRole('button', { name: 'Save Question' });
   await expect(save).toBeVisible();
 
-  const sectionBar = page.locator('nav[aria-label="Course sections"]:visible');
   const footer = save.locator('xpath=ancestor::div[contains(@class,"sticky")][1]');
   await expect(footer).toHaveCSS('position', 'sticky');
-  const barTop = (await sectionBar.boundingBox())!.y;
   const footerBottom = await footer.evaluate((el) => el.getBoundingClientRect().bottom);
-  expect(footerBottom).toBeLessThanOrEqual(barTop + 0.5);
+  expect(footerBottom).toBeLessThanOrEqual(page.viewportSize()!.height + 0.5);
 
   const remove = page.getByRole('button', { name: 'Delete', exact: true });
   await remove.click({ trial: true });
@@ -71,6 +122,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     await expect(page.getByPlaceholder('A single piece of knowledge')).toHaveValue('');
     const chosenId = await concept.inputValue();
     await expect(concept.locator('option').nth(1)).toHaveText('Another skill');
+    const prerequisiteId = await concept.locator('option').nth(1).getAttribute('value');
     await page.getByRole('button', { name: 'Generated family' }).click();
     await name.fill('Existing generated family');
     await page.getByRole('button', { name: 'Create Question' }).click();
@@ -91,6 +143,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     await page
       .getByRole('combobox', { name: 'Lesson', exact: true })
       .selectOption({ label: 'Lesson 1' });
+    const lessonId = await page.getByRole('combobox', { name: 'Lesson', exact: true }).inputValue();
     await page.getByRole('button', { name: 'Another skill', exact: true }).click();
     await page.getByRole('button', { name: 'Save & add another' }).click();
     await expect(prompt).toHaveValue('');
@@ -117,15 +170,33 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
 
     for (const questionName of ['First explicit Question', 'Second explicit Question']) {
       await page.getByRole('link', { name: new RegExp(questionName) }).click();
-      await expect(concept).toHaveValue(chosenId);
-      await expect(name).toHaveValue(questionName);
-      await expect(answer).toHaveValue(questionName.startsWith('First') ? '4' : '6');
-      await expect(
-        page.getByRole('button', { name: 'Another skill', exact: true }),
-      ).toHaveAttribute('aria-pressed', questionName.startsWith('First') ? 'true' : 'false');
-      await name.fill(`${questionName} edited`);
-      await page.getByRole('button', { name: 'Save Question' }).click();
-      await expect(page.getByRole('heading', { name: 'Questions' })).toBeVisible();
+      await expect(page).toHaveURL(/question-sets\/[^/]+\/edit$/);
+      const composerPrompt = page.getByRole('textbox', { name: 'Q1 question', exact: true });
+      await expect(composerPrompt).toHaveValue(
+        questionName.startsWith('First') ? 'What is 2 + 2?' : 'What is 3 + 3?',
+      );
+      await expect(page.getByRole('textbox', { name: 'Q1 mark scheme', exact: true })).toHaveValue(
+        questionName.startsWith('First') ? 'Answer: 4.' : 'Answer: 6.',
+      );
+      const prerequisites = questionName.startsWith('First') ? [prerequisiteId] : [];
+      const before = await retainedQuestion(page, questionName);
+      expect(before.concepts.targetConceptIds).toEqual([chosenId]);
+      expect(before.concepts.prerequisiteConceptIds).toEqual(prerequisites);
+      await page.getByRole('button', { name: 'Set details', exact: true }).click();
+      await page.getByRole('textbox', { name: 'Name', exact: true }).fill(`${questionName} edited`);
+      await page.getByRole('button', { name: 'Close set details', exact: true }).click();
+      await composerPrompt.press('Control+Enter');
+      await expect(page).toHaveURL(/question-sets\/[^/]+$/);
+      const after = await retainedQuestion(page, questionName);
+      expect(after.set.title).toBe(`${questionName} edited`);
+      expect(after.set.lessonIds).toEqual([lessonId]);
+      expect(after.set.questions[0].answer).toMatchObject({
+        allocations: [{ targetConceptIds: [chosenId] }],
+        prerequisiteConceptIds: prerequisites,
+      });
+      expect(after.concepts).toEqual(before.concepts);
+      await page.goto(`/#/course/${courseId}/questions`);
+      await expect(page.getByRole('heading', { name: 'Questions', exact: true })).toBeVisible();
     }
   });
 }
@@ -189,7 +260,6 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       await enterFreshLacuna(page);
       await createCourse(page, 'Numeric focus');
       const courseId = new URL(page.url()).hash.split('/')[2];
-      await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(`/#/course/${courseId}/questions/new`);
       const prompt = page.getByRole('textbox', { name: 'Prompt', exact: true });
       const expected = page.getByRole('textbox', { name: 'Expected answer', exact: true });
@@ -230,12 +300,60 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
           ? page.getByRole('textbox', { name: 'Accepted answer 1', exact: true })
           : expected;
       await expect(primary).toHaveValue('4');
+      const draftKey = `lacuna:draft:question:${courseId}:new`;
+      await expect
+        .poll(() =>
+          page.evaluate((key) => {
+            const draft = localStorage.getItem(key);
+            return draft ? JSON.parse(draft).state.numericAnswer : null;
+          }, draftKey),
+        )
+        .toEqual(
+          kind === 'alternative'
+            ? { kind: 'matches-one-of', values: ['4', ''] }
+            : { kind: 'within', value: '4', tolerance: -1 },
+        );
+      const unfinishedDraft = await page.evaluate((key) => localStorage.getItem(key)!, draftKey);
       await invalid.fill(kind === 'alternative' ? '5' : '0.1');
       await page.getByRole('button', { name: 'Create Question' }).click();
       await expect(page.getByRole('heading', { name: 'Questions' })).toBeVisible();
       await page.getByRole('link', { name: /Precise numeric focus/ }).click();
-      await expect(invalid).toHaveValue(kind === 'alternative' ? '5' : '0.1');
+      await expect(page).toHaveURL(/question-sets\/[^/]+\/edit$/);
+      await expect(page.getByRole('textbox', { name: 'Q1 question', exact: true })).toHaveValue(
+        'Give an accepted value.',
+      );
+      await expect(page.getByRole('textbox', { name: 'Q1 mark scheme', exact: true })).toHaveValue(
+        kind === 'alternative' ? 'Answer: 4 or 5.' : 'Answer: 4 within 0.1.',
+      );
+      const retained = await retainedQuestion(page, 'Precise numeric focus');
+      expect(retained.question).toMatchObject({
+        payload: {
+          kind: 'numeric',
+          answer:
+            kind === 'alternative'
+              ? { kind: 'matches-one-of', values: ['4', '5'] }
+              : { kind: 'within', value: '4', tolerance: 0.1 },
+        },
+      });
+
+      // Replay an unfinished old-form draft from a tab open before migration.
+      await page.evaluate(({ key, draft }) => localStorage.setItem(key, draft), {
+        key: `lacuna:draft:question:${courseId}:${retained.question.id}`,
+        draft: unfinishedDraft,
+      });
+      await page.reload();
+      await page.getByRole('button', { name: 'Restore draft', exact: true }).click();
+      await expect(invalid).toHaveValue(kind === 'alternative' ? '' : '-1');
       await expect(primary).toHaveValue('4');
+      await expect(prompt).toHaveValue('Give an accepted value.');
+      await invalid.fill(kind === 'alternative' ? '5' : '0.1');
+      await page.getByRole('button', { name: 'Save Question', exact: true }).click();
+      await expect(page.getByRole('heading', { name: 'Questions', exact: true })).toBeVisible();
+      await page.getByRole('link', { name: /Precise numeric focus/ }).click();
+      await expect(page).toHaveURL(/question-sets\/[^/]+\/edit$/);
+      expect((await retainedQuestion(page, 'Precise numeric focus')).question).toMatchObject({
+        payload: retained.question.kind === 'fixed' ? retained.question.payload : undefined,
+      });
     });
   }
 }
