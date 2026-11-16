@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import * as answerSteps from './answerSteps';
+import * as lessonRepository from '../../db/lessonRepository';
 import { waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
@@ -241,6 +242,76 @@ it('retries recitation mastery exposure before advancing after a failed write', 
     await db.sequences.delete(sequence.id);
   }
 });
+
+it.each(['review', 'exposure'] as const)(
+  'does not publish recitation progress when its %s acknowledgement arrives after disposal',
+  async (write) => {
+    const course = await createCourse('Disposed recitation');
+    const lesson = await createLesson(course.id, 'Poem');
+    const sequence = await createSequence(
+      course.id,
+      lesson.id,
+      'One line',
+      [{ id: 'line', value: 'Remember this line' }],
+      { mode: 'lines' },
+    );
+    const session = new SessionRuntime({
+      ...sessionParams({ lessonId: lesson.id, isSimpleMode: true, mode: 'simple' }),
+      answerInputPreference: 'course',
+      leaveFlow: vi.fn(),
+    });
+    const changed = vi.fn();
+    const unsubscribe = session.subscribe(changed);
+    let release!: () => void;
+    let written = false;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    session.start();
+    try {
+      await waitFor(() => expect(session.getSnapshot().recitationSequence?.id).toBe(sequence.id));
+      if (write === 'review') {
+        const persist = answerSteps.persistAnswer;
+        vi.spyOn(answerSteps, 'persistAnswer').mockImplementationOnce(async (...args) => {
+          const receipt = await persist(...args);
+          written = true;
+          await gate;
+          return receipt;
+        });
+      } else {
+        const persist = lessonRepository.upsertLessonCardExposure;
+        vi.spyOn(lessonRepository, 'upsertLessonCardExposure').mockImplementationOnce(
+          async (...args) => {
+            const receipt = await persist(...args);
+            written = true;
+            await gate;
+            return receipt;
+          },
+        );
+      }
+      const answer = session
+        .getSnapshot()
+        .answerRecitation([{ itemId: 'line', correct: true }], 4, 'all');
+      await waitFor(() => expect(written).toBe(true));
+      const before = session.getSnapshot();
+      expect(before.recitationMasteredItemIds(sequence.id)).toEqual(new Set());
+      session.dispose();
+      changed.mockClear();
+      release();
+      await answer;
+      expect(session.getSnapshot()).toBe(before);
+      expect(changed).not.toHaveBeenCalled();
+      expect(session.getSnapshot().recitationMasteredItemIds(sequence.id)).toEqual(new Set());
+      expect(await db.reviewHistory.count()).toBe(1);
+      expect(await db.lessonCardExposures.count()).toBe(write === 'exposure' ? 1 : 0);
+    } finally {
+      release();
+      unsubscribe();
+      session.dispose();
+      await db.sequences.delete(sequence.id);
+    }
+  },
+);
 
 it('keeps the retry identity after a committed review loses its acknowledgement', async () => {
   const course = await createCourse('Acknowledgement');

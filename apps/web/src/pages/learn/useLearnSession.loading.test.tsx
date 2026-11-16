@@ -26,6 +26,27 @@ import {
 
 beforeEach(resetSessionTestDatabase);
 
+it.each([false, true])(
+  'leaves a missing lesson through the flow exit when provided (%s)',
+  async (inFlow) => {
+    const params = sessionParams({ lessonId: 'missing-lesson' });
+    const onFlowExit = inFlow ? vi.fn() : undefined;
+    const session = renderHook(() => useLearnSession({ ...params, onFlowExit }));
+    try {
+      if (onFlowExit) {
+        await waitFor(() => expect(onFlowExit).toHaveBeenCalledOnce());
+        expect(params.navigate).not.toHaveBeenCalled();
+      } else {
+        await waitFor(() => expect(params.navigate).toHaveBeenCalledWith('/'));
+      }
+      expect(session.result.current.current).toBeNull();
+      expect(await db.reviewHistory.count()).toBe(0);
+    } finally {
+      session.unmount();
+    }
+  },
+);
+
 async function seedCurricularPractice() {
   const course = await createCourse('Chemistry');
   const lesson = await createLesson(course.id, 'Atomic structure');

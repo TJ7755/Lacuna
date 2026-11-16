@@ -9,6 +9,32 @@ import type { CooldownMap } from '../../fsrs/cooldown';
 const LOOKAHEAD = 2;
 const MAX_IMAGES = 6;
 
+interface SessionPreloadInput {
+  cards: Card[];
+  currentId: string;
+  context: SessionContext | null;
+  cooldowns: CooldownMap;
+  occlusions: ReadonlyMap<string, OcclusionCardData>;
+}
+
+/** Defer speculation until the current face paints; cleanup cancels every stage. */
+export function scheduleSessionPreload(read: () => SessionPreloadInput): () => void {
+  let stopPreloading: (() => void) | undefined;
+  let timeout: number | undefined;
+  const frame = window.requestAnimationFrame(() => {
+    timeout = window.setTimeout(() => {
+      const { cards, currentId, context, cooldowns, occlusions } = read();
+      const upcoming = sessionPreloadCards(cards, currentId, context, cooldowns);
+      stopPreloading = preloadSessionImages(upcoming, occlusions);
+    }, 0);
+  });
+  return () => {
+    window.cancelAnimationFrame(frame);
+    window.clearTimeout(timeout);
+    stopPreloading?.();
+  };
+}
+
 /** Predict only a small window; never advance or mutate the real scheduler/queue. */
 export function sessionPreloadCards(
   cards: Card[],

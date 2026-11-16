@@ -5,7 +5,11 @@ import type { Card } from '@lacuna/core/db/types';
 import type { OcclusionCardData } from '../../db/occlusionStudy';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { makeSessionContext, selectNext } from '../../fsrs/session';
-import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
+import {
+  preloadSessionImages,
+  scheduleSessionPreload,
+  sessionPreloadCards,
+} from './sessionPreload';
 
 vi.mock('../../db/assetCache', () => ({
   resolveAssetUrl: vi.fn(),
@@ -137,6 +141,30 @@ it.each([false, true])(
       'b',
       'c',
     ]);
+  },
+);
+
+it.each(['frame', 'timer'] as const)(
+  'cancels deferred warm-up before the %s runs without reading the session',
+  (stage) => {
+    vi.useFakeTimers();
+    try {
+      const read = vi.fn(() => ({
+        cards: [card('a'), card('b')],
+        currentId: 'a',
+        context: null,
+        cooldowns: new Map<string, number>(),
+        occlusions: new Map<string, OcclusionCardData>(),
+      }));
+      const stop = scheduleSessionPreload(read);
+      if (stage === 'timer') vi.advanceTimersToNextFrame();
+      stop();
+      vi.runAllTimers();
+      expect(read).not.toHaveBeenCalled();
+      expect(resolveAssetUrl).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   },
 );
 
