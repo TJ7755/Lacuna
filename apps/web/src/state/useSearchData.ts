@@ -60,7 +60,7 @@ export function useSearchData(): SearchData | undefined {
       courses: hydrateCourses(records, assessments),
       lessons,
       notes,
-      questions,
+      questions: questions.filter((question) => !question.migratedToSetId),
       questionSets,
     };
   }, []);

@@ -60,7 +60,7 @@ describe('schema v30 specification links', () => {
 
     await db.open();
 
-    expect(db.verno).toBe(31);
+    expect(db.verno).toBe(32);
     expect(await db.courses.get(course.id)).toEqual(course);
     expect(await db.concepts.bulkGet(concepts.map((concept) => concept.id))).toEqual(concepts);
     expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
@@ -91,7 +91,7 @@ describe('schema v30 specification links', () => {
     try {
       await ensurePreMigrationSnapshot(name, undefined, saveSnapshot);
       expect(saveSnapshot).toHaveBeenCalledExactlyOnceWith(
-        31,
+        32,
         expect.objectContaining({ courses: [course] }),
       );
     } finally {

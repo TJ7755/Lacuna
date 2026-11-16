@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { MissingRecord } from '../components/course/MissingRecord';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { referencedAssetHashesInValues } from '../db/assets';
 import { useCourse } from '../state/useCourseData';
@@ -26,6 +27,12 @@ import '../components/question-sets/question-composer.css';
 export function QuestionSetEditor() {
   const { courseId, setId } = useParams<{ courseId: string; setId: string }>();
   const course = useCourse(courseId);
+  const source = useLiveQuery(
+    async () => (setId ? ((await db.questionSets.get(setId))?.legacyQuestionId ?? null) : null),
+    [setId],
+  );
+  if (source === undefined) return <QuestionSetLoading />;
+  if (source) return <Navigate replace to={`/course/${courseId}/questions/${source}/edit`} />;
   if (course === undefined) return <QuestionSetLoading />;
   if (course === null)
     return (

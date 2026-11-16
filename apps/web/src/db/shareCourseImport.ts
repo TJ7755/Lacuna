@@ -1,3 +1,4 @@
+import { ensureQuestionTransition } from '../questions/questionTransitionRepository';
 import { db, makeId } from './schema';
 import { assertShareLessonPrerequisites } from './lessonPrerequisites';
 import { parseQuestionSetPracticeNode } from './questionSetPracticeNode';
@@ -428,8 +429,8 @@ async function importCourseSharePayload(
       });
       if (importedOcclusions.length > 0) await db.occlusions.bulkAdd(importedOcclusions);
 
+      const importedQuestions: QuestionDefinition[] = [];
       {
-        const importedQuestions: QuestionDefinition[] = [];
         const importedQuestionConcepts: QuestionConceptSet[] = [];
         for (let index = 0; index < payload.questions.length; index += 1) {
           const shared = payload.questions[index];
@@ -506,6 +507,9 @@ async function importCourseSharePayload(
       {
         const importedSets = importSharedQuestionSets({
           records: payload.questionSets,
+          questionIdMap: new Map(
+            payload.questions.map((question, index) => [question.id, importedQuestions[index].id]),
+          ),
           sharedLessons: payload.lessons,
           lessonIds,
           courseId: course.id,
@@ -515,6 +519,7 @@ async function importCourseSharePayload(
           makeId,
         });
         if (importedSets.length > 0) await db.questionSets.bulkAdd(importedSets);
+        await ensureQuestionTransition(course.id);
         {
           const importedSetIds = new Map(
             payload.questionSets.map((set, index) => [set.id, importedSets[index].id]),

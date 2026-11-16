@@ -205,14 +205,20 @@ describe('Question backup portability', () => {
 
     const backup = await exportDatabase();
 
-    expect(backup.version).toBe(15);
-    expect(backup.app).toBe('lacuna-v15');
+    expect(backup.version).toBe(16);
+    expect(backup.app).toBe('lacuna-v16');
     expect(backup.concepts).toEqual([CONCEPT]);
     expect(backup.questions).toHaveLength(1);
     expect(backup.questionConcepts).toEqual([LINKS]);
     expect(backup.questionAttempts).toHaveLength(1);
     expect(backup.questionSets).toEqual([QUESTION_SET]);
-    expect(mergeSnapshots(backup, backup).questionSets).toEqual([QUESTION_SET]);
+    const migrated = mergeSnapshots(backup, backup);
+    expect(migrated.questionSets).toEqual(
+      expect.arrayContaining([
+        QUESTION_SET,
+        expect.objectContaining({ legacyQuestionId: backup.questions![0].id }),
+      ]),
+    );
     expect(backup.assets.map((asset) => asset.hash).sort()).toEqual(
       [definitionAsset.hash, receiptAsset.hash].sort(),
     );
@@ -220,10 +226,17 @@ describe('Question backup portability', () => {
     await importBackup(backup, 'replace');
 
     expect(await db.concepts.toArray()).toEqual([CONCEPT]);
-    expect(await db.questions.toArray()).toEqual(backup.questions);
+    expect(await db.questions.toArray()).toEqual(
+      backup.questions!.map((question) => ({ ...question, migratedToSetId: expect.any(String) })),
+    );
     expect(await db.questionConcepts.toArray()).toEqual([LINKS]);
     expect(await db.questionAttempts.toArray()).toEqual(backup.questionAttempts);
-    expect(await db.questionSets.toArray()).toEqual([QUESTION_SET]);
+    expect(await db.questionSets.toArray()).toEqual(
+      expect.arrayContaining([
+        QUESTION_SET,
+        expect.objectContaining({ legacyQuestionId: backup.questions![0].id }),
+      ]),
+    );
     expect(await db.assets.count()).toBe(2);
   });
 

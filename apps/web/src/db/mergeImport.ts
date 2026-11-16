@@ -92,6 +92,7 @@ import type { LineagePayload, ShareCard } from './lineageImportModel';
 import { MERGE_TABLES } from './lineageImportTables';
 import {
   applyLineageQuestions,
+  transitionLineageQuestions,
   pruneRemovedLineageConcepts,
   upsertLineageConcepts,
 } from './lineageQuestionImport';
@@ -348,6 +349,7 @@ export async function importLineageFirstTime(
     await applyLineageAssessments(payload, course.id, mapping, true);
     await applyLineageQuestionSets(payload, course.id, mapping);
     await applyLineageQuestionSetPracticeNodes(payload, course.id, mapping);
+    await transitionLineageQuestions(payload, course.id);
     await assertStoredQuestionSetActivities(course.id);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
     await syncCourseSchedulingUnits(course.id);
@@ -535,6 +537,7 @@ export async function mergeLineageUpdate(
     await applyLineageAssessments(payload, courseId, mapping);
     await applyLineageQuestionSets(payload, courseId, mapping);
     await applyLineageQuestionSetPracticeNodes(payload, courseId, mapping);
+    await transitionLineageQuestions(payload, courseId);
     await assertStoredQuestionSetActivities(courseId);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
 

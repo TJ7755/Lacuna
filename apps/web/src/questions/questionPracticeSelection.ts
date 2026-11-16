@@ -1,3 +1,5 @@
+import { transitionedQuestion } from './questionTransition';
+import { questionGeneratorRegistry } from './generators';
 import { exposedQuestions } from './questionExposure';
 import { db } from '../db/schema';
 import { declarativeFamilyCapacity, resolveFamilyVariant } from './bank';
@@ -104,16 +106,64 @@ function familyKey(set: QuestionSetRecord, questionId: string): string {
 }
 
 export async function practiceContext(courseId: string) {
-  const [concepts, sets, attempts] = await Promise.all([
+  const [concepts, sets, attempts, sources, sourceAttempts] = await Promise.all([
     db.concepts.where('courseId').equals(courseId).toArray(),
     db.questionSets.where('courseId').equals(courseId).toArray(),
     db.questionSetAttempts.where('courseId').equals(courseId).toArray(),
+    db.questions.where('courseId').equals(courseId).toArray(),
+    db.questionAttempts.where('courseId').equals(courseId).toArray(),
   ]);
   const records = attempts.map(parseQuestionSetAttemptRecord);
-  const currentSets = sets.map(parseQuestionSetRecord);
+  const sourceById = new Map(sources.map((row) => [row.id, row]));
+  const currentSets = sets
+    .map(parseQuestionSetRecord)
+    .filter((set) => !set.legacyQuestionId || !sourceById.get(set.legacyQuestionId)?.suspended);
+  const variants = currentSets.flatMap((set) => {
+    const source = sourceById.get(set.legacyQuestionId ?? '');
+    if (source?.kind !== 'generated') return [set];
+    const answer = set.questions[0].answer!;
+    return questionGeneratorRegistry
+      .audit({
+        generatorKey: source.generatorKey,
+        generatorVersion: source.generatorVersion,
+        configuration: source.generatorConfig,
+      })
+      .instances.map(({ resolved }) => ({
+        ...set,
+        questions: [
+          transitionedQuestion(set.questions[0].id, resolved, {
+            targetConceptIds: answer.allocations[0].targetConceptIds,
+            prerequisiteConceptIds: answer.prerequisiteConceptIds,
+          }),
+        ],
+      }));
+  });
   const seen = new Set(
     records.flatMap((attempt) => exposedQuestions(attempt).map(conceptPracticeFingerprint)),
   );
+  for (const attempt of sourceAttempts) {
+    const source = sourceById.get(attempt.questionId);
+    if (!source?.migratedToSetId) continue;
+    const set = currentSets.find((row) => row.id === source.migratedToSetId);
+    if (!set) continue;
+    const answer = set.questions[0].answer!;
+    seen.add(
+      conceptPracticeFingerprint(
+        transitionedQuestion(
+          source.id,
+          {
+            renderedPrompt: attempt.renderedPrompt,
+            resolvedPayload: attempt.resolvedPayload,
+            renderedExplanation: attempt.renderedExplanation,
+          },
+          {
+            targetConceptIds: answer.allocations[0].targetConceptIds,
+            prerequisiteConceptIds: answer.prerequisiteConceptIds,
+          },
+        ),
+      ),
+    );
+  }
   const seenVariants = new Map<string, Set<number>>();
   for (const attempt of records) {
     const bank = attempt.receipt.bank;
@@ -128,7 +178,8 @@ export async function practiceContext(courseId: string) {
   return {
     seenVariants,
     concepts: concepts.filter((concept) => concept.scope === 'course'),
-    candidates: candidates(currentSets),
+    sources,
+    candidates: candidates(variants),
     sets: currentSets,
     attempts: records,
     seen,

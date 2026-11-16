@@ -1,3 +1,5 @@
+import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import { restoreDeletedQuestionSets } from './questionSetRepository';
 import { clearTombstone } from '../db/mutationStamp';
 import { db } from '../db/schema';
 import { validateQuestionConceptSet } from './domain';
@@ -44,6 +46,7 @@ export async function restoreConcept(snapshot: ConceptSnapshot): Promise<void> {
 }
 
 export interface QuestionSnapshot {
+  questionSet?: QuestionSetRecord;
   question: QuestionDefinition;
   concepts: QuestionConceptSet;
 }
@@ -55,7 +58,10 @@ export async function snapshotQuestion(questionId: string): Promise<QuestionSnap
   ]);
   if (!question) return null;
   if (!concepts) throw new Error(`Question ${questionId} has no Concept relationship set.`);
-  return { question, concepts };
+  const questionSet = question.migratedToSetId
+    ? await db.questionSets.get(question.migratedToSetId)
+    : undefined;
+  return { question, concepts, ...(questionSet ? { questionSet } : {}) };
 }
 
 /** Restore authored Question state; immutable attempts deliberately remain in place. */
@@ -63,7 +69,15 @@ export async function restoreQuestion(snapshot: QuestionSnapshot): Promise<void>
   const { question, concepts } = snapshot;
   await db.transaction(
     'rw',
-    [db.courses, db.lessons, db.concepts, db.questions, db.questionConcepts, db.tombstones],
+    [
+      db.courses,
+      db.lessons,
+      db.concepts,
+      db.questions,
+      db.questionConcepts,
+      db.questionSets,
+      db.tombstones,
+    ],
     async (tx) => {
       if (
         concepts.questionId !== question.id ||
@@ -105,6 +119,8 @@ export async function restoreQuestion(snapshot: QuestionSnapshot): Promise<void>
       ) {
         throw new Error('A generated Question snapshot has an invalid generator identity.');
       }
+      if (snapshot.questionSet)
+        await restoreDeletedQuestionSets([snapshot.questionSet], Date.now());
       await db.questions.put(question);
       await db.questionConcepts.put(concepts);
       await clearTombstone(tx, 'questions', question.id);

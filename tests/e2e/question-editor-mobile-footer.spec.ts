@@ -13,12 +13,12 @@ test('the Question editor footer clears the phone course bar', async ({ page }) 
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: 'Generated family' }).click();
   await page.getByRole('button', { name: 'Create Question' }).click();
-  await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/questions\\?view=individual$`));
+  await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/questions$`));
 
   // Seeded at desktop width, where the section bar is absent; the editor is then
   // opened at phone width.
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('link', { name: 'Edit Footer question', exact: true }).click();
+  await page.getByRole('link', { name: /Footer question/ }).click();
   const save = page.getByRole('button', { name: 'Save Question' });
   await expect(save).toBeVisible();
 
@@ -74,9 +74,9 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     await page.getByRole('button', { name: 'Generated family' }).click();
     await name.fill('Existing generated family');
     await page.getByRole('button', { name: 'Create Question' }).click();
-    await expect(page.getByRole('heading', { name: 'Individual questions' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Questions' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'New question', exact: true }).click();
+    await page.goto(editorUrl);
     await expect(prompt).toBeFocused();
     await expect(concept).toHaveValue('');
     await prompt.fill('What is 2 + 2?');
@@ -113,10 +113,10 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     await expect(concept).toHaveValue('');
     await expect(page.getByRole('button', { name: 'Restore draft' })).toHaveCount(0);
     await prompt.press('Escape');
-    await expect(page.getByRole('heading', { name: 'Individual questions' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Questions' })).toBeVisible();
 
     for (const questionName of ['First explicit Question', 'Second explicit Question']) {
-      await page.getByRole('link', { name: `Edit ${questionName}`, exact: true }).click();
+      await page.getByRole('link', { name: new RegExp(questionName) }).click();
       await expect(concept).toHaveValue(chosenId);
       await expect(name).toHaveValue(questionName);
       await expect(answer).toHaveValue(questionName.startsWith('First') ? '4' : '6');
@@ -125,7 +125,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       ).toHaveAttribute('aria-pressed', questionName.startsWith('First') ? 'true' : 'false');
       await name.fill(`${questionName} edited`);
       await page.getByRole('button', { name: 'Save Question' }).click();
-      await expect(page.getByRole('heading', { name: 'Individual questions' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Questions' })).toBeVisible();
     }
   });
 }
@@ -171,8 +171,8 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     await expect(minimum).toBeFocused();
     await expect(minimum).not.toHaveAttribute('aria-invalid', 'true');
     await page.getByRole('button', { name: 'Create Question' }).click();
-    await expect(page.getByRole('heading', { name: 'Individual questions' })).toBeVisible();
-    await page.getByRole('link', { name: 'Edit Validated quadratic family', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Questions' })).toBeVisible();
+    await page.getByRole('link', { name: /Validated quadratic family/ }).click();
     await expect(minimum).toHaveValue('3');
     await expect(
       page.getByRole('combobox', { name: 'Primary skill practised', exact: true }),
@@ -232,8 +232,8 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       await expect(primary).toHaveValue('4');
       await invalid.fill(kind === 'alternative' ? '5' : '0.1');
       await page.getByRole('button', { name: 'Create Question' }).click();
-      await expect(page.getByRole('heading', { name: 'Individual questions' })).toBeVisible();
-      await page.getByRole('link', { name: 'Edit Precise numeric focus', exact: true }).click();
+      await expect(page.getByRole('heading', { name: 'Questions' })).toBeVisible();
+      await page.getByRole('link', { name: /Precise numeric focus/ }).click();
       await expect(invalid).toHaveValue(kind === 'alternative' ? '5' : '0.1');
       await expect(primary).toHaveValue('4');
     });

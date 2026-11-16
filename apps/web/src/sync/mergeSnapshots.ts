@@ -1,3 +1,4 @@
+import { transitionIndividualQuestions } from '../questions/questionTransition';
 import { assertSpecificationAssessmentReferences } from '../specifications/assessment';
 import { referencedQuestionSetConceptIds } from '@lacuna/core/questions/questionSets';
 // Pure peer-merge of two BackupFile snapshots. No Dexie, no I/O, no knowledge
@@ -76,7 +77,7 @@ import { mergeAssets } from './snapshotAssets';
 
 /** A current snapshot with every table merge always emits present. */
 export type MergedBackupFile = BackupFile & {
-  version: 15;
+  version: 16;
   reviewHistory: ReviewHistoryEntry[];
   schedulingUnits: SchedulingUnitRecord[];
   coursePerformance: CoursePerformance[];
@@ -277,7 +278,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
   ).filter(
     (memory) => memory.courseId === null || courses.some((course) => course.id === memory.courseId),
   );
-  const questionSets = mergeQuestionSetRecords(left.questionSets, right.questionSets, [
+  let questionSets = mergeQuestionSetRecords(left.questionSets, right.questionSets, [
     ...tombstones.values(),
   ]).filter((set) => courses.some((course) => course.id === set.courseId));
   const requiredConceptCourses = new Map<string, Set<string>>();
@@ -305,6 +306,14 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
       (row) => row.table !== 'concepts' || !retainedConceptIds.has(row.recordId),
     ),
   );
+  const transitioned = transitionIndividualQuestions(
+    questionState.questions,
+    questionState.questionConcepts,
+    questionSets,
+    [...tombstones.values()],
+  );
+  questionState.questions = transitioned.questions;
+  questionSets = transitioned.questionSets;
   const questionSetAttempts = mergeQuestionSetAttempts(
     applyTombstones(
       'questionSetAttempts',
@@ -409,8 +418,8 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     .sort(compareTombstones);
 
   return {
-    app: 'lacuna-v15',
-    version: 15,
+    app: 'lacuna-v16',
+    version: 16,
     exportedAt: Math.max(left.exportedAt, right.exportedAt),
     cards: sortById(projectCardsForStorage(replayedCards)),
     reviewHistory: sortById(reviewHistory),

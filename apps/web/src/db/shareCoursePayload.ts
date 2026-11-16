@@ -376,55 +376,58 @@ export async function buildCourseSharePayload(
     }
   }
   const conceptSetByQuestion = new Map(questionConcepts.map((set) => [set.questionId, set]));
-  const shareQuestions: ShareQuestion[] = questions.map((question) => {
-    const set = conceptSetByQuestion.get(question.id);
-    if (!set || set.targetConceptIds.length !== 1) {
-      throw new Error(`Question ${question.id} does not have exactly one primary Concept.`);
-    }
-    const [targetConceptId] = set.targetConceptIds;
-    if (
-      !conceptIds.has(targetConceptId) ||
-      set.prerequisiteConceptIds.some((conceptId) => !conceptIds.has(conceptId))
-    ) {
-      throw new Error(`Question ${question.id} references a missing Concept.`);
-    }
-    const primaryLessonIndex = question.primaryLessonId
-      ? lessonIndexById.get(question.primaryLessonId)
-      : undefined;
-    const additionalLessonIndices = question.additionalLessonIds
-      .map((lessonId) => lessonIndexById.get(lessonId))
-      .filter((index): index is number => index !== undefined);
-    const common = {
-      id: question.id,
-      n: question.name,
-      ...(primaryLessonIndex === undefined ? {} : { pl: primaryLessonIndex }),
-      ...(additionalLessonIndices.length === 0 ? {} : { al: additionalLessonIndices }),
-      ...(question.tags.length === 0 ? {} : { g: question.tags }),
-      ...(question.suspended ? { s: 1 as const } : {}),
-      t: targetConceptId,
-      pr: set.prerequisiteConceptIds,
-    };
-    if (question.kind === 'generated') {
+  const liveSetIds = new Set(questionSets.map((set) => set.id));
+  const shareQuestions: ShareQuestion[] = questions
+    .filter((question) => !question.migratedToSetId || liveSetIds.has(question.migratedToSetId))
+    .map((question) => {
+      const set = conceptSetByQuestion.get(question.id);
+      if (!set || set.targetConceptIds.length !== 1) {
+        throw new Error(`Question ${question.id} does not have exactly one primary Concept.`);
+      }
+      const [targetConceptId] = set.targetConceptIds;
+      if (
+        !conceptIds.has(targetConceptId) ||
+        set.prerequisiteConceptIds.some((conceptId) => !conceptIds.has(conceptId))
+      ) {
+        throw new Error(`Question ${question.id} references a missing Concept.`);
+      }
+      const primaryLessonIndex = question.primaryLessonId
+        ? lessonIndexById.get(question.primaryLessonId)
+        : undefined;
+      const additionalLessonIndices = question.additionalLessonIds
+        .map((lessonId) => lessonIndexById.get(lessonId))
+        .filter((index): index is number => index !== undefined);
+      const common = {
+        id: question.id,
+        n: question.name,
+        ...(primaryLessonIndex === undefined ? {} : { pl: primaryLessonIndex }),
+        ...(additionalLessonIndices.length === 0 ? {} : { al: additionalLessonIndices }),
+        ...(question.tags.length === 0 ? {} : { g: question.tags }),
+        ...(question.suspended ? { s: 1 as const } : {}),
+        t: targetConceptId,
+        pr: set.prerequisiteConceptIds,
+      };
+      if (question.kind === 'generated') {
+        return {
+          ...common,
+          k: 1 as const,
+          gk: question.generatorKey,
+          gv: question.generatorVersion,
+          gc: question.generatorConfig,
+        };
+      }
+      const prompt = packMedia(question.prompt, includeMedia);
+      const explanation = packMedia(question.explanation, includeMedia);
       return {
         ...common,
-        k: 1 as const,
-        gk: question.generatorKey,
-        gv: question.generatorVersion,
-        gc: question.generatorConfig,
+        k: 0 as const,
+        f: prompt.markdown,
+        p: question.payload,
+        e: explanation.markdown,
+        ...(question.explanationStatus === 'legacy-derived' ? { ld: 1 as const } : {}),
+        ...(prompt.stripped || explanation.stripped ? { i: 1 as const } : {}),
       };
-    }
-    const prompt = packMedia(question.prompt, includeMedia);
-    const explanation = packMedia(question.explanation, includeMedia);
-    return {
-      ...common,
-      k: 0 as const,
-      f: prompt.markdown,
-      p: question.payload,
-      e: explanation.markdown,
-      ...(question.explanationStatus === 'legacy-derived' ? { ld: 1 as const } : {}),
-      ...(prompt.stripped || explanation.stripped ? { i: 1 as const } : {}),
-    };
-  });
+    });
 
   const questionSetPracticeNodes = practiceNodes.filter((node) => node.type === 'question-set');
   assertQuestionSetPracticeNodeReferences(

@@ -145,7 +145,11 @@ it.each(['ba3e2c84ad5caa8a41f94b5f4129c5e1df392273', 'v0.2.17'])(
       'coursePerformance',
       'schedulingPerformance',
     ] as const) {
-      expect(restored[key]).toEqual(fixture[key]);
+      const actual =
+        key === 'questions'
+          ? restored.questions?.map(({ migratedToSetId: _migration, ...question }) => question)
+          : restored[key];
+      expect(actual).toEqual(fixture[key]);
       expect(fixture[key]!.length).toBeGreaterThan(0);
     }
     for (const mode of ['replace', 'merge'] as const) {

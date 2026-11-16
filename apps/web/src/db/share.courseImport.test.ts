@@ -315,7 +315,7 @@ describe('ordinary course share imports', () => {
     expect(payload.v).toBe(6);
     if (payload.v !== 6) throw new Error('expected a v6 course payload');
     expect(payload.questions).toHaveLength(2);
-    expect(payload.questionSets).toHaveLength(1);
+    expect(payload.questionSets).toHaveLength(3);
     expect(payload.concepts.map((concept) => concept.id)).toEqual(
       expect.arrayContaining([target.id, prerequisite.id]),
     );
@@ -329,6 +329,13 @@ describe('ordinary course share imports', () => {
     expect(await db.questionAttempts.count()).toBe(0);
     const importedQuestions = await db.questions.toArray();
     expect(importedQuestions).toHaveLength(2);
+    const importedSets = await db.questionSets.toArray();
+    expect(importedSets).toHaveLength(3);
+    for (const source of importedQuestions) {
+      expect(importedSets.find((set) => set.id === source.migratedToSetId)?.legacyQuestionId).toBe(
+        source.id,
+      );
+    }
     expect(importedQuestions.every((question) => question.reps === 0)).toBe(true);
     const importedSet = await db.questionConcepts.get(
       importedQuestions.find((question) => question.kind === 'fixed')!.id,
@@ -337,7 +344,9 @@ describe('ordinary course share imports', () => {
     expect(importedSet?.prerequisiteConceptIds).toHaveLength(1);
     const importedCards = await db.cards.toArray();
     expect(new Set(importedCards.map((card) => card.conceptId)).size).toBe(1);
-    const [importedQuestionSet] = await db.questionSets.toArray();
+    const importedQuestionSet = (await db.questionSets.toArray()).find(
+      (set) => !set.legacyQuestionId,
+    )!;
     expect(importedQuestionSet.id).not.toBe('set-origin');
     expect(importedQuestionSet.lessonIds).toEqual([expect.any(String)]);
     expect(importedQuestionSet.lessonIds[0]).not.toBe(lesson.id);

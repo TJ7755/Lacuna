@@ -20,6 +20,7 @@ interface AuthoredBundle {
 }
 
 const SCHEDULE_KEYS = new Set([
+  'migratedToSetId',
   'stability',
   'difficulty',
   'lastReviewed',
@@ -84,6 +85,11 @@ function bundlesFor(collections: QuestionMergeCollections): Map<string, Authored
 }
 
 function newerBundle(left: AuthoredBundle, right: AuthoredBundle): AuthoredBundle {
+  const migratedToSetId = left.question.migratedToSetId ?? right.question.migratedToSetId;
+  if (migratedToSetId) {
+    left = { ...left, question: { ...left.question, migratedToSetId } };
+    right = { ...right, question: { ...right.question, migratedToSetId } };
+  }
   if (left.question.authoringRevisionId === right.question.authoringRevisionId) {
     if (bundleIdentity(left) !== bundleIdentity(right)) {
       throw new Error(

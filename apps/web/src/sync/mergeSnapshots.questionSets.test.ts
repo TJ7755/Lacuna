@@ -271,7 +271,7 @@ describe('Question Set activity, receipts and deletion peer merge', () => {
         tombstones: [{ table: 'questionSets', recordId: receipt.id, deletedAt: 50 }],
       }),
     );
-    expect(merged.questionSets).toEqual([]);
+    expect(merged.questionSets.some((set) => set.id === receipt.id)).toBe(false);
     expect(merged.questionSetAttempts).toEqual([retained]);
     expect(merged.assets.map((row) => row.hash)).toEqual([hash]);
   });

@@ -33,7 +33,7 @@ describe('backup export, replacement and file boundary', () => {
 
     const backup = await exportDatabase();
 
-    expect(backup.app).toBe('lacuna-v15');
+    expect(backup.app).toBe('lacuna-v16');
     expect(backup.version).toBe(BACKUP_VERSION);
     expect(validateBackup(backup)).toBe(true);
     expect(backup.decks).toBeUndefined();

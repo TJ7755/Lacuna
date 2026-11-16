@@ -1,3 +1,4 @@
+import { ensureQuestionTransition } from '../questions/questionTransitionRepository';
 import { referencedQuestionSetConceptIds } from '@lacuna/core/questions/questionSets';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { emptyQuestionSchedule } from '../questions/scheduler';
@@ -116,6 +117,22 @@ export async function applyLineageQuestions(
   const incomingIds = new Set(payload.questions.map((question) => question.id));
   const removedIds = [...previousIds].filter((id) => !incomingIds.has(id));
   if (removedIds.length > 0) {
+    const removedSources = await db.questions.bulkGet(removedIds);
+    const removedSetIds = removedSources.flatMap((source) =>
+      source?.migratedToSetId && !mapping.questionSetIds?.includes(source.migratedToSetId)
+        ? [source.migratedToSetId]
+        : [],
+    );
+    if (removedSetIds.length) {
+      await db.questionSets.bulkDelete(removedSetIds);
+      await db.tombstones.bulkPut(
+        removedSetIds.map((recordId) => ({
+          table: 'questionSets' as const,
+          recordId,
+          deletedAt: payload.at,
+        })),
+      );
+    }
     await db.questions.bulkDelete(removedIds);
     await db.questionConcepts.bulkDelete(removedIds);
     await db.tombstones.bulkPut([
@@ -172,6 +189,7 @@ export async function applyLineageQuestions(
     const schedule = existing && !semantic ? questionSchedule(existing) : emptyQuestionSchedule();
     const common = {
       id: incoming.id,
+      ...(existing?.migratedToSetId ? { migratedToSetId: existing.migratedToSetId } : {}),
       courseId,
       primaryLessonId: lessonIdFromShareIndex(payload, incoming.pl),
       additionalLessonIds: (incoming.al ?? []).map((index) => {
@@ -226,6 +244,24 @@ export async function applyLineageQuestions(
     await db.questionConcepts.put(set);
   }
   mapping.questionIds = [...incomingIds];
+}
+
+/** Pre-transition publishers have no set revisions to adopt; refresh only their derived views. */
+export async function transitionLineageQuestions(
+  payload: LineagePayload,
+  courseId: string,
+): Promise<void> {
+  const publishedSources = new Set(
+    payload.questionSets.flatMap((set) => (set.legacyQuestionId ? [set.legacyQuestionId] : [])),
+  );
+  await ensureQuestionTransition(
+    courseId,
+    new Set(
+      payload.questions
+        .filter((question) => !publishedSources.has(question.id))
+        .map((question) => question.id),
+    ),
+  );
 }
 
 export async function pruneRemovedLineageConcepts(

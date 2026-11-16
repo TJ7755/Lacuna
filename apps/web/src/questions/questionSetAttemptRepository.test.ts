@@ -273,7 +273,7 @@ describe('Question Set attempt repository', () => {
             },
       );
       const backup = await exportDatabase();
-      expect(backup.app).toBe('lacuna-v15');
+      expect(backup.app).toBe('lacuna-v16');
       expect(backup.questionSetAttempts).toEqual([attempt]);
       if (scope === 'selected-question') {
         expect(attempt.practiceScope).toBe('question');

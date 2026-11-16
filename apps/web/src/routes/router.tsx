@@ -284,9 +284,7 @@ export const router = createHashRouter([
         element: isolatedRoute('the technical account', lazyRoute(Method)),
       },
       {
-        // Question practice remains a separate post-instruction session while its
-        // scheduling evidence is being validated. It deliberately does not enter
-        // the Card-based course conductor or Path yet.
+        // Retain old bookmarks without starting the retired individual session.
         path: '/course/:courseId/questions/learn',
         element: courseAccessRoute(
           isolatedRoute('the Question session', <QuestionLearnMode />),

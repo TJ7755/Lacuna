@@ -17,7 +17,7 @@ const optionalCollections = Object.fromEntries(
 const backupSchema = z
   .looseObject({
     ...optionalCollections,
-    app: z.enum(['lacuna', 'lacuna-v12', 'lacuna-v13', 'lacuna-v14', 'lacuna-v15']),
+    app: z.enum(['lacuna', 'lacuna-v12', 'lacuna-v13', 'lacuna-v14', 'lacuna-v15', 'lacuna-v16']),
     version: z.number().int().positive(),
     exportedAt: z.number().finite(),
     decks: z.array(z.looseObject({})).optional(),
@@ -54,7 +54,10 @@ const backupSchema = z
           message: `Required in backup version ${version} or later`,
         });
     };
-    if (backup.app !== 'lacuna-v15' || backup.version !== 15)
+    if (!(
+      (backup.app === 'lacuna-v15' && backup.version === 15) ||
+      (backup.app === 'lacuna-v16' && backup.version === 16)
+    ))
       context.addIssue({
         code: 'custom',
         path: ['version'],

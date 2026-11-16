@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
           questions: QuestionSetQuestion[];
         }>;
         drafts: never[];
-        legacy: number;
+        legacy: never[];
         attemptsBySet: Map<string, unknown[]>;
         error: string;
       }
@@ -35,6 +35,9 @@ vi.mock('../state/useCourseData', () => ({
 vi.mock('../course/lessonViewMode', () => ({
   resolveLessonViewMode: () => 'read',
   canEditLessons: () => false,
+}));
+vi.mock('../components/question-sets/IndividualQuestionHistory', () => ({
+  IndividualQuestionHistory: () => null,
 }));
 vi.mock('../components/question-sets/RemovedQuestionSetAttempts', () => ({
   RemovedQuestionSetAttempts: () => null,
@@ -114,7 +117,7 @@ describe('QuestionsPage navigation', () => {
         },
       ],
       drafts: [],
-      legacy: 0,
+      legacy: [],
       attemptsBySet: new Map(),
       error: '',
     };
@@ -176,7 +179,7 @@ describe('QuestionsPage navigation', () => {
         },
       ],
       drafts: [],
-      legacy: 0,
+      legacy: [],
       attemptsBySet: new Map(),
       error: '',
     };
@@ -200,7 +203,7 @@ describe('QuestionsPage navigation', () => {
         },
       ],
       drafts: [],
-      legacy: 0,
+      legacy: [],
       attemptsBySet: new Map(),
       error: '',
     };
@@ -247,7 +250,7 @@ describe('QuestionsPage navigation', () => {
         },
       ],
       drafts: [],
-      legacy: 0,
+      legacy: [],
       attemptsBySet: new Map([['set-cells', [{ score: 48 }, { score: 72 }]]]),
       error: '',
     };

@@ -224,7 +224,7 @@ it('refuses a below-floor database on a direct auto-open query', async () => {
 
 it('creates the complete current schema directly on a fresh install', async () => {
   await db.open();
-  expect(db.verno).toBe(31);
+  expect(db.verno).toBe(32);
   expect(db.tables.map((table) => table.name).sort()).toEqual(
     [...Object.keys(schemaV27), 'questionSets', 'questionSetAttempts'].sort(),
   );
@@ -271,7 +271,7 @@ it.each(['database', 'backup'])(
     }
     db.close();
     await db.open();
-    expect(db.verno).toBe(31);
+    expect(db.verno).toBe(32);
     expect(await db.cards.get('old-card')).toMatchObject({
       front: backup.cards[0].front,
       reps: 1,
