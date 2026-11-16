@@ -8,6 +8,12 @@ Windows and Linux.
 
 ## Routine release
 
+Choose the next numbered patch after the last published numbered beta. For example, after
+`0.2.26`, finish the pending `0.2.27` release even if `0.2.27-beta.nightly.*` builds have already
+shipped; do not skip to `0.2.28` because of those nightlies. Check published releases and tags
+before preparing a version, and never reuse or move a published tag. Private workspace package
+versions are not desktop release numbers; use the root package through the helper below.
+
 1. On a preparation branch, run `bun run release:prepare <version>`.
    Edit only the root package version through this helper.
 2. Write `docs/releases/<version>.md` with the learner-facing notes and known limitations.
