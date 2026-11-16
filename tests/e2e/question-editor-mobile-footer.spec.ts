@@ -39,7 +39,9 @@ async function retainedQuestion(page: Page, name: string) {
   );
 }
 
-test('the Question editor footer keeps save and deletion controls reachable', async ({ page }) => {
+test('the recovered Question editor footer keeps save and deletion controls reachable', async ({
+  page,
+}) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await createCourse(page, 'Footer course');
@@ -50,10 +52,26 @@ test('the Question editor footer keeps save and deletion controls reachable', as
   await page.getByPlaceholder('A single piece of knowledge').fill('Footer concept');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: 'Generated family' }).click();
+  const draftKey = `lacuna:draft:question:${courseId}:new`;
+  await expect
+    .poll(() =>
+      page.evaluate((key) => {
+        const draft = localStorage.getItem(key);
+        return draft ? JSON.parse(draft).state.kind : null;
+      }, draftKey),
+    )
+    .toBe('generated');
+  const unfinishedDraft = await page.evaluate((key) => localStorage.getItem(key)!, draftKey);
   await page.getByRole('button', { name: 'Create Question' }).click();
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/questions$`));
 
+  const retained = await retainedQuestion(page, 'Footer question');
+  await page.evaluate(({ key, draft }) => localStorage.setItem(key, draft), {
+    key: `lacuna:draft:question:${courseId}:${retained.question.id}`,
+    draft: unfinishedDraft,
+  });
   await page.getByRole('link', { name: /Footer question/ }).click();
+  await page.getByRole('button', { name: 'Restore draft', exact: true }).click();
   const save = page.getByRole('button', { name: 'Save Question' });
   await expect(save).toBeVisible();
 
