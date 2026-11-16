@@ -7,6 +7,7 @@ import {
 import { canEditLessons } from '../course/lessonViewMode';
 import { scheduleAssetGc } from './assets';
 import { deleteCards } from './cardDeletion';
+import { newCard } from './newCard';
 import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
 import { lessonCardExposureId, recordTombstones, stampUpdatedAt } from './mutationStamp';
@@ -120,38 +121,22 @@ export async function createCard(
           }),
         );
       }
-      const card: Card = stampUpdatedAt(
-        {
-          id: makeId(),
-          conceptId,
-          deckId,
-          type,
-          front,
-          back,
-          stability: null,
-          difficulty: null,
-          lastReviewed: null,
-          reps: 0,
-          lapses: 0,
-          state: 0,
-          due: null,
-          scheduledDays: 0,
-          learningSteps: 0,
-          history: [],
-          createdAt: now,
-          tags,
-          suspended: false,
-          buriedUntil: null,
-          schedulingUnitId: deckId,
-          updatedAt: now,
-          courseId,
-          primaryLessonId,
-          payload: opts?.payload,
-          answerMode: opts?.answerMode,
-          requireCorrectSpelling: opts?.requireCorrectSpelling,
-        },
-        now,
-      );
+      const card = newCard({
+        id: makeId(),
+        conceptId,
+        deckId,
+        type,
+        front,
+        back,
+        createdAt: now,
+        tags,
+        schedulingUnitId: deckId,
+        courseId,
+        primaryLessonId,
+        payload: opts?.payload,
+        answerMode: opts?.answerMode,
+        requireCorrectSpelling: opts?.requireCorrectSpelling,
+      });
       await db.cards.add(card);
       return card;
     });
@@ -258,38 +243,22 @@ async function commitCards(
           );
         }
         cards.push(
-          stampUpdatedAt(
-            {
-              id: makeId(),
-              conceptId,
-              deckId,
-              type: draft.type,
-              front: draft.front,
-              back: draft.back,
-              payload: draft.payload,
-              answerMode: draft.answerMode,
-              requireCorrectSpelling: draft.requireCorrectSpelling,
-              stability: null,
-              difficulty: null,
-              lastReviewed: null,
-              reps: 0,
-              lapses: 0,
-              state: 0,
-              due: null,
-              scheduledDays: 0,
-              learningSteps: 0,
-              history: [],
-              createdAt,
-              tags: draft.tags ?? [],
-              suspended: false,
-              buriedUntil: null,
-              schedulingUnitId: deckId,
-              updatedAt: createdAt,
-              courseId,
-              primaryLessonId,
-            },
+          newCard({
+            id: makeId(),
+            conceptId,
+            deckId,
+            type: draft.type,
+            front: draft.front,
+            back: draft.back,
+            payload: draft.payload,
+            answerMode: draft.answerMode,
+            requireCorrectSpelling: draft.requireCorrectSpelling,
             createdAt,
-          ),
+            tags: draft.tags ?? [],
+            schedulingUnitId: deckId,
+            courseId,
+            primaryLessonId,
+          }),
         );
       }
       if (concepts.length > 0) await db.concepts.bulkAdd(concepts);
@@ -666,7 +635,6 @@ export async function saveCardEdit(id: string, changes: CardEdit): Promise<Card>
 
 export { deleteCards, snapshotCards, restoreCards } from './cardDeletion';
 export type { CardSnapshot } from './cardDeletion';
-export { replaceReviewHistoryForCards } from './cardReviewHistory';
 export {
   suspendCard,
   unsuspendCard,

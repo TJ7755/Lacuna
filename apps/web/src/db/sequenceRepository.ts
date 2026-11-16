@@ -7,6 +7,7 @@ import { assertRestoreOwner, stampRestoredRecords } from './snapshotRestore';
 // snapshot/restore) that sequenceGeneration.ts deliberately stays free of.
 
 import { db, makeId } from './schema';
+import { newCard } from './newCard';
 import type {
   Card,
   LessonCardExposure,
@@ -35,7 +36,7 @@ import {
   type GeneratedCardPayload,
 } from './sequenceGeneration';
 import { friendlyDbError } from './dbErrors';
-import { replaceReviewHistoryForCards } from './cardRepository';
+import { replaceReviewHistoryForCards } from './cardReviewHistory';
 import {
   stampUpdatedAt,
   recordTombstone,
@@ -59,42 +60,25 @@ function sequenceItemKeys(sequence: Sequence): string[] {
   return sequence.items.flatMap((item) => [item.id, `${item.id}${LABEL_CARD_SUFFIX}`]);
 }
 
-/** Turn a generation payload into a full Card row with fresh FSRS defaults (mirrors {@link createCards}). */
 function generatedCardFromPayload(
   deckId: string,
   payload: GeneratedCardPayload,
   createdAt: number,
   conceptId: string,
 ): Card {
-  return stampUpdatedAt(
-    {
-      id: makeId(),
-      conceptId,
-      deckId,
-      schedulingUnitId: deckId,
-      courseId: payload.courseId,
-      primaryLessonId: payload.primaryLessonId,
-      type: payload.type,
-      front: payload.front,
-      back: payload.back,
-      stability: null,
-      difficulty: null,
-      lastReviewed: null,
-      reps: 0,
-      lapses: 0,
-      state: 0,
-      due: null,
-      scheduledDays: 0,
-      learningSteps: 0,
-      history: [],
-      createdAt,
-      tags: [],
-      suspended: false,
-      buriedUntil: null,
-      sequenceItemId: payload.sequenceItemId,
-    },
+  return newCard({
+    id: makeId(),
+    conceptId,
+    deckId,
+    schedulingUnitId: deckId,
+    courseId: payload.courseId,
+    primaryLessonId: payload.primaryLessonId,
+    type: payload.type,
+    front: payload.front,
+    back: payload.back,
     createdAt,
-  );
+    sequenceItemId: payload.sequenceItemId,
+  });
 }
 
 function conceptsForSequencePayloads(

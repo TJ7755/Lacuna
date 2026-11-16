@@ -64,7 +64,7 @@ import {
 } from './types';
 import { dailyReviewCounts } from '../../db/reviewHistoryRead';
 import { emptyPerformance } from '../../fsrs/grading';
-import type { UseLearnSessionParams } from './useLearnSession';
+import type { SessionRuntimeOptions } from './sessionRuntimeOptions';
 import { createSessionCompletion } from './sessionCompletion';
 type SessionSchedulingConfig = SchedulerConfig & {
   dailyReviewGoal?: number;
@@ -94,11 +94,6 @@ export function emptySessionState(): SessionState {
     revision: createRevisionSessionState(),
     simple: { queue: [], mastered: new Set(), wrong: new Set(), outcomes },
   };
-}
-
-export interface SessionRuntimeOptions extends UseLearnSessionParams {
-  answerInputPreference: Parameters<typeof resolveAnswerMode>[2];
-  leaveFlow(fallback: string): void;
 }
 
 /** Owns a single session, including acknowledged writes and completion. */
