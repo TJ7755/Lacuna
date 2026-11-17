@@ -65,7 +65,7 @@ import type {
 } from '@lacuna/core/db/types';
 import type { Concept } from '@lacuna/core/questions/types';
 import { prepareLineageMapping } from './lineageIntegrity';
-import { clampRequestRetention, defaultFsrsParameters } from '@lacuna/core/fsrs/params';
+import { decodeSharedCourseSettings } from './sharedCourseSettings';
 import {
   applyLineageQuestionSets,
   applyLineageQuestionSetPracticeNodes,
@@ -160,36 +160,11 @@ export async function importLineageFirstTime(
   }
 
   return db.transaction('rw', MERGE_TABLES, async (tx) => {
-    const course = await createCourse(payload.course.n || 'Shared course', {
-      description: payload.course.d ?? '',
+    const sharedCourse = decodeSharedCourseSettings(payload.course);
+    const course = await createCourse(sharedCourse.name, {
+      ...sharedCourse.options,
       creator: payload.by ?? undefined,
-      ...(payload.course.specificationRef === undefined
-        ? {}
-        : { specificationRef: payload.course.specificationRef }),
-      ...(payload.course.specificationData === undefined
-        ? {}
-        : { specificationData: payload.course.specificationData }),
-      ...(payload.course.techniques === undefined ? {} : { techniques: payload.course.techniques }),
-      ...(payload.course.examBoard === undefined ? {} : { examBoard: payload.course.examBoard }),
-      ...(payload.course.specification === undefined
-        ? {}
-        : { specification: payload.course.specification }),
-      examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
-      createdAt: payload.course.c,
-      schedulingMode: payload.course.sm === 1 ? 'steady' : 'exam',
-      ...(payload.course.e === undefined ? {} : { examDate: payload.course.e }),
-      // Seeded from the teacher like a plain share import; the learner owns them after.
-      fsrsParameters: {
-        ...defaultFsrsParameters(),
-        ...(typeof payload.course.r === 'number'
-          ? { requestRetention: clampRequestRetention(payload.course.r) }
-          : {}),
-      },
-      ...(payload.course.p && payload.course.p > 0 ? { newCardsPerDay: payload.course.p } : {}),
-      unlockMode: payload.course.um,
-      ...(payload.course.lf === 0 ? { learnFirst: false } : {}),
       lessonViewMode: 'study',
-      ...(payload.course.l ? { colour: payload.course.l } : {}),
       distributedCopy: {
         lineageId: payload.li,
         revision: payload.rv,
