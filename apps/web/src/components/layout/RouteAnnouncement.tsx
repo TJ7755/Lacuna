@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 
-function routeLabel(pathname: string): string {
+function routeLabel(pathname: string, search: string): string {
+  if (pathname === '/landing-studies') {
+    const edition = new URLSearchParams(search).get('edition');
+    return edition &&
+      ['almanac', 'specimen', 'soundings', 'marginalia', 'interval'].includes(edition)
+      ? edition.charAt(0).toUpperCase() + edition.slice(1)
+      : 'Landing studies';
+  }
   const pages: Record<string, string> = {
     '/': 'Today',
     '/settings': 'Settings',
@@ -57,16 +64,22 @@ function routeLabel(pathname: string): string {
   return coursePages[section] ?? 'Page not found';
 }
 
-export default function RouteAnnouncement({ pathname }: { pathname: string }) {
+export default function RouteAnnouncement({
+  pathname,
+  search = '',
+}: {
+  pathname: string;
+  search?: string;
+}) {
   const [announcement, setAnnouncement] = useState('');
 
   useEffect(() => {
-    const label = routeLabel(pathname);
+    const label = routeLabel(pathname, search);
     document.title = `${label} – Lacuna`;
     setAnnouncement('');
     const timeout = window.setTimeout(() => setAnnouncement(label), 0);
     return () => window.clearTimeout(timeout);
-  }, [pathname]);
+  }, [pathname, search]);
 
   return (
     <div className="sr-only" role="status" aria-atomic="true">

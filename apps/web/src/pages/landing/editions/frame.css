@@ -74,6 +74,9 @@
   outline: 3px solid currentColor;
   outline-offset: 4px;
 }
+.edition .landing-cta:focus-visible {
+  outline-color: var(--ink);
+}
 .edition-skip {
   position: absolute;
   top: -200px;

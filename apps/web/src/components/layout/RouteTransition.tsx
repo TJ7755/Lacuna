@@ -67,7 +67,10 @@ export function RouteTransition() {
   return (
     <BackgroundCalculationsEnabled.Provider value={navigation.state === 'idle'}>
       <Suspense fallback={null}>
-        <RouteAnnouncement pathname={location.pathname} />
+        <RouteAnnouncement
+          pathname={location.pathname}
+          search={location.pathname === '/landing-studies' ? location.search : undefined}
+        />
       </Suspense>
       <AnimatePresence key={presenceKey.current} mode="wait" custom={covered}>
         <motion.div

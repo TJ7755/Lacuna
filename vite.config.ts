@@ -257,6 +257,12 @@ export default defineConfig({
               },
             },
             {
+              // Every landing edition uses both controls on its first render.
+              name: 'landing-controls',
+              test: /[\\/]components[\\/](?:welcome[\\/]LandingCta|landing[\\/]LandingFaq)\.tsx$/,
+              includeDependenciesRecursively: false,
+            },
+            {
               name: 'landing-motion',
               test: /[\\/](?:src[\\/](?:state[\\/]motionSpeed\.ts|components[\\/]layout[\\/]LandingTransition\.tsx)$|node_modules[\\/]framer-motion[\\/]dist[\\/]es[\\/]components[\\/]LazyMotion[\\/])/,
             },

@@ -7,7 +7,6 @@ import { AppShell } from '../components/layout/AppShell';
 import { ErrorBoundary } from '../components/layout/ErrorBoundary';
 import { RouteTransition } from '../components/layout/RouteTransition';
 import { Dashboard } from '../pages/Dashboard';
-import { NotFound } from '../pages/NotFound';
 import { LazyRoute } from './LazyRoute';
 import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { LegacyBankRedirect } from './LegacyBankRedirect';
@@ -75,6 +74,9 @@ const QuestionSetPractice = lazy(loadQuestionSetPractice);
 const QuestionEditor = lazy(loadQuestionEditor);
 const QuestionLearnMode = lazy(loadQuestionLearnMode);
 const MergeReviewPanel = lazy(loadMergeReviewPanel);
+const NotFound = lazy(() =>
+  import('../pages/NotFound').then(({ NotFound }) => ({ default: NotFound })),
+);
 const LandingPreview = lazy(() => import('../pages/landing/Preview'));
 const Landing = lazy(loadLanding);
 // Not in loaders: onboarding reaches the route prefetcher, which imports the loaders.
@@ -249,7 +251,7 @@ export const router = createHashRouter([
             path: 'course/:courseId/lesson/:lessonId/occlusion/new',
             element: courseAccessRoute(<OcclusionEditor />),
           },
-          { path: '*', element: <NotFound /> },
+          { path: '*', element: lazyRoute(NotFound) },
         ],
       },
       {
