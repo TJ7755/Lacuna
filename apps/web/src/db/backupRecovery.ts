@@ -4,7 +4,6 @@ import { db } from './schema';
 import { addReviewHistoryInBatches } from './addReviewHistoryInBatches';
 import type {
   Card,
-  CourseAssessment,
   CourseRecord,
   Lesson,
   LessonCardExposure,
@@ -17,10 +16,6 @@ import type {
   Sequence,
   SessionHistoryEntry,
   UserPerformance,
-  RevisionPlan,
-  SchedulingUnitRecord,
-  CoursePerformance,
-  SchedulingPerformance,
   Tombstone,
   AgentMemory,
   LineageIdMapping,
@@ -31,14 +26,18 @@ import {
   resolveReviewHistoryCollisions,
   type ReviewHistoryCollisionState,
 } from '@lacuna/core/db/reviewHistory';
-import { mergeRevisionPlans } from '../course/revisionPlan';
 import { mergeQuestionCollections } from '../questions/merge';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 import { mergeQuestionSetAttemptPair } from '../questions/questionSetAttemptMerge';
-import { mergeQuestionSetRecords } from '../questions/questionSetMerge';
 import { assertQuestionSetPracticeNodeReferences } from '@lacuna/core/db/questionSetPracticeNode';
 import type { PreparedBackup } from './backupPreparation';
 import { mergeLineageMappings, newestWins } from '../sync/snapshotRecords';
+import {
+  planRecoveryAssessments,
+  planRecoveryQuestionSets,
+  planRecoveryRevisionPlans,
+  planRecoveryScheduling,
+} from './backupRecoveryPlanning';
 
 /** Apply prepared rows within the caller-owned atomic write transaction. */
 export async function mergeBackupForRecovery(prepared: PreparedBackup): Promise<void> {
@@ -57,7 +56,6 @@ export async function mergeBackupForRecovery(prepared: PreparedBackup): Promise<
     sessionHistory,
     dedupedAssets,
   } = prepared;
-  const restoredQuestionSetIds = new Set<string>();
   const existingCourses = new Map((await db.courses.toArray()).map((c) => [c.id, c]));
   const incomingCourses = new Map(courses.map((c) => [c.id, c]));
   if (dedupedAssets.length) await db.assets.bulkPut(dedupedAssets);
@@ -79,32 +77,11 @@ export async function mergeBackupForRecovery(prepared: PreparedBackup): Promise<
 
   const assessmentIdRemap = new Map<string, string>();
   if (courseAssessments.length > 0) {
-    const localAssessments = await db.courseAssessments.toArray();
-    const existingCourseAssessments = new Map(
-      localAssessments.map((assessment) => [assessment.id, assessment]),
-    );
-    const existingFinalsByCourse = new Map(
-      localAssessments
-        .filter((assessment) => assessment.kind === 'final')
-        .map((assessment) => [assessment.courseId, assessment]),
-    );
-    const mergedCourseAssessments: CourseAssessment[] = [];
-    for (const incoming of courseAssessments) {
-      const existing =
-        incoming.kind === 'final'
-          ? existingFinalsByCourse.get(incoming.courseId)
-          : existingCourseAssessments.get(incoming.id);
-      if (!existing) {
-        mergedCourseAssessments.push(incoming);
-      } else {
-        const newer = incoming.createdAt > existing.createdAt ? incoming : existing;
-        if (incoming.kind === 'final') assessmentIdRemap.set(incoming.id, existing.id);
-        mergedCourseAssessments.push(
-          incoming.kind === 'final' ? { ...newer, id: existing.id } : newer,
-        );
-      }
+    const plan = planRecoveryAssessments(await db.courseAssessments.toArray(), courseAssessments);
+    for (const [incomingId, localId] of plan.assessmentIdRemap) {
+      assessmentIdRemap.set(incomingId, localId);
     }
-    await db.courseAssessments.bulkPut(mergedCourseAssessments);
+    await db.courseAssessments.bulkPut(plan.assessments);
   }
 
   assertSpecificationAssessmentReferences(
@@ -136,36 +113,18 @@ export async function mergeBackupForRecovery(prepared: PreparedBackup): Promise<
   if (mergedQuestionState.questionAttempts.length > 0) {
     await db.questionAttempts.bulkPut(mergedQuestionState.questionAttempts);
   }
-  const deletedAtBySet = new Map<string, number>();
-  for (const row of [...(await db.tombstones.toArray()), ...(backup.tombstones ?? [])]) {
-    if (row.table !== 'questionSets') continue;
-    deletedAtBySet.set(
-      row.recordId,
-      Math.max(deletedAtBySet.get(row.recordId) ?? -Infinity, row.deletedAt),
-    );
-  }
-  const mergedQuestionSets = mergeQuestionSetRecords(
+  const recoveryTombstones = [...(await db.tombstones.toArray()), ...(backup.tombstones ?? [])];
+  const { questionSets, restoredQuestionSetIds } = planRecoveryQuestionSets(
     await db.questionSets.toArray(),
-    // Final Assessments merge by Course identity while retaining the local id.
-    // Keep authored set assignments pointing at that retained Assessment too.
-    incomingQuestionSets.map((record) => ({
-      ...record,
-      assessmentIds: [
-        ...new Set(record.assessmentIds.map((id) => assessmentIdRemap.get(id) ?? id)),
-      ],
-    })),
-    // Recovery merge deliberately restores rows and does not apply deletion receipts.
-    // Peer merge applies them in mergeSnapshots instead.
-    [],
-  ).map((record) => {
-    const deletedAt = deletedAtBySet.get(record.id);
-    if (deletedAt === undefined) return record;
-    if (deletedAt >= Number.MAX_SAFE_INTEGER) {
-      throw new Error('A Question Set deletion timestamp cannot be restored safely.');
-    }
-    restoredQuestionSetIds.add(record.id);
-    return { ...record, updatedAt: Math.max(record.updatedAt, deletedAt + 1, Date.now()) };
-  });
+    incomingQuestionSets,
+    recoveryTombstones,
+    assessmentIdRemap,
+  );
+  const mergedQuestionSets = questionSets.map((record) =>
+    restoredQuestionSetIds.has(record.id)
+      ? { ...record, updatedAt: Math.max(record.updatedAt, Date.now()) }
+      : record,
+  );
   if (mergedQuestionSets.length > 0) await db.questionSets.bulkPut(mergedQuestionSets);
   if (incomingQuestionSetAttempts.length > 0) {
     const local = new Map(
@@ -330,76 +289,30 @@ export async function mergeBackupForRecovery(prepared: PreparedBackup): Promise<
   }
 
   if (backup.revisionPlans && backup.revisionPlans.length > 0) {
-    const existingPlans = new Map(
-      (await db.revisionPlans.toArray()).map((plan) => [plan.assessmentId, plan]),
+    const mergedPlans = planRecoveryRevisionPlans(
+      await db.revisionPlans.toArray(),
+      backup.revisionPlans,
+      assessmentIdRemap,
     );
-    const incomingPlans = new Map<string, RevisionPlan>();
-    for (const raw of backup.revisionPlans) {
-      const assessmentId = assessmentIdRemap.get(raw.assessmentId) ?? raw.assessmentId;
-      const incoming = { ...raw, assessmentId };
-      const duplicate = incomingPlans.get(assessmentId);
-      if (!duplicate || incoming.updatedAt > duplicate.updatedAt) {
-        incomingPlans.set(assessmentId, incoming);
-      }
-    }
-    const mergedPlans: RevisionPlan[] = [...incomingPlans.values()].map((incoming) => {
-      const existing = existingPlans.get(incoming.assessmentId);
-      return existing ? mergeRevisionPlans(existing, incoming) : incoming;
-    });
     await db.revisionPlans.bulkPut(mergedPlans);
   }
 
-  // Merge target projections by the source unit's interaction timestamp. A stale
-  // backup must never regress scheduling controls or pacing statistics that were
-  // changed locally after the backup was created.
-  const existingSchedulingUnits = new Map(
-    (await db.schedulingUnits.toArray()).map((unit) => [unit.id, unit]),
-  );
-  const mergedSchedulingUnits: SchedulingUnitRecord[] = storageProjection.schedulingUnits.map(
-    (incoming) => {
-      const existing = existingSchedulingUnits.get(incoming.id);
-      if (!existing) return incoming;
-      const incomingAt = incoming.lastInteractedAt ?? incoming.createdAt ?? 0;
-      const existingAt = existing.lastInteractedAt ?? existing.createdAt ?? 0;
-      return incomingAt > existingAt ? incoming : existing;
+  const scheduling = planRecoveryScheduling(
+    {
+      schedulingUnits: await db.schedulingUnits.toArray(),
+      coursePerformance: await db.coursePerformance.toArray(),
+      schedulingPerformance: await db.schedulingPerformance.toArray(),
     },
+    storageProjection,
   );
-  const mergedUnitsById = new Map(mergedSchedulingUnits.map((unit) => [unit.id, unit]));
-  const existingCoursePerformance = new Map(
-    (await db.coursePerformance.toArray()).map((row) => [row.courseId, row]),
-  );
-  const mergedCoursePerformance: CoursePerformance[] = storageProjection.coursePerformance.map(
-    (incoming) => {
-      const existing = existingCoursePerformance.get(incoming.courseId);
-      if (!existing) return incoming;
-      const incomingUnit = mergedUnitsById.get(incoming.courseId);
-      const existingUnit = existingSchedulingUnits.get(incoming.courseId);
-      const incomingAt = incomingUnit?.lastInteractedAt ?? incomingUnit?.createdAt ?? 0;
-      const existingAt = existingUnit?.lastInteractedAt ?? existingUnit?.createdAt ?? 0;
-      return incomingAt > existingAt ? incoming : existing;
-    },
-  );
-  const existingSchedulingPerformance = new Map(
-    (await db.schedulingPerformance.toArray()).map((row) => [row.schedulingUnitId, row]),
-  );
-  const mergedSchedulingPerformance: SchedulingPerformance[] =
-    storageProjection.schedulingPerformance.map((incoming) => {
-      const existing = existingSchedulingPerformance.get(incoming.schedulingUnitId);
-      if (!existing) return incoming;
-      const incomingUnit = mergedUnitsById.get(incoming.schedulingUnitId);
-      const existingUnit = existingSchedulingUnits.get(incoming.schedulingUnitId);
-      const incomingAt = incomingUnit?.lastInteractedAt ?? incomingUnit?.createdAt ?? 0;
-      const existingAt = existingUnit?.lastInteractedAt ?? existingUnit?.createdAt ?? 0;
-      return incomingAt > existingAt ? incoming : existing;
-    });
-  if (mergedSchedulingUnits.length > 0) {
-    await db.schedulingUnits.bulkPut(mergedSchedulingUnits);
+  if (scheduling.schedulingUnits.length > 0) {
+    await db.schedulingUnits.bulkPut(scheduling.schedulingUnits);
   }
-  if (mergedCoursePerformance.length > 0) {
-    await db.coursePerformance.bulkPut(mergedCoursePerformance);
+  if (scheduling.coursePerformance.length > 0) {
+    await db.coursePerformance.bulkPut(scheduling.coursePerformance);
   }
-  if (mergedSchedulingPerformance.length > 0) {
-    await db.schedulingPerformance.bulkPut(mergedSchedulingPerformance);
+  if (scheduling.schedulingPerformance.length > 0) {
+    await db.schedulingPerformance.bulkPut(scheduling.schedulingPerformance);
   }
 
   // Merge cards (most recent lastReviewed wins, falling back to createdAt).
