@@ -98,48 +98,24 @@ export async function createCard(
     // nothing to validate; IndexedDB may otherwise commit prematurely.
     if (opts?.payload !== undefined && opts?.payload !== null)
       await assertValidCardPayload(type, opts.payload);
-    return await db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
-      const unit = await db.schedulingUnits.get(deckId);
-      const courseId = opts?.courseId === undefined ? unit?.courseId : opts.courseId;
-      const primaryLessonId =
-        opts?.primaryLessonId === undefined ? unit?.lessonId : opts.primaryLessonId;
-      const now = Date.now();
-      const conceptId = opts?.conceptId ?? makeId();
-      if (opts?.conceptId) {
-        const concept = await db.concepts.get(opts.conceptId);
-        if (!concept || !conceptMatchesCardScope(concept, courseId, deckId)) {
-          throw new Error('The selected Concept does not belong to this Card scope.');
-        }
-      } else {
-        await db.concepts.add(
-          buildCardConcept({
-            id: conceptId,
-            courseId,
-            schedulingUnitId: deckId,
-            name: conceptNameForCard(type, front, back),
-            now,
-          }),
-        );
-      }
-      const card = newCard({
-        id: makeId(),
-        conceptId,
-        deckId,
-        type,
-        front,
-        back,
-        createdAt: now,
-        tags,
-        schedulingUnitId: deckId,
-        courseId,
-        primaryLessonId,
-        payload: opts?.payload,
-        answerMode: opts?.answerMode,
-        requireCorrectSpelling: opts?.requireCorrectSpelling,
-      });
-      await db.cards.add(card);
-      return card;
-    });
+    const [card] = await writeCards(
+      deckId,
+      [
+        {
+          type,
+          front,
+          back,
+          tags,
+          payload: opts?.payload,
+          answerMode: opts?.answerMode,
+          requireCorrectSpelling: opts?.requireCorrectSpelling,
+          conceptId: opts?.conceptId,
+        },
+      ],
+      opts,
+      'single',
+    );
+    return card;
   } catch (err) {
     throw friendlyDbError(err);
   }
@@ -214,60 +190,70 @@ async function commitCards(
   opts?: CardCreationScope,
 ): Promise<Card[]> {
   try {
-    return await db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
-      const unit = await db.schedulingUnits.get(deckId);
-      const courseId = opts?.courseId === undefined ? unit?.courseId : opts.courseId;
-      const primaryLessonId =
-        opts?.primaryLessonId === undefined ? unit?.lessonId : opts.primaryLessonId;
-      const now = Date.now();
-      const concepts = [];
-      const cards: Card[] = [];
-      for (let i = 0; i < drafts.length; i += 1) {
-        const draft = drafts[i];
-        const createdAt = now + i;
-        const conceptId = draft.conceptId ?? makeId();
-        if (draft.conceptId) {
-          const concept = await db.concepts.get(draft.conceptId);
-          if (!concept || !conceptMatchesCardScope(concept, courseId, deckId)) {
-            throw new Error('The selected Concept does not belong to this Card scope.');
-          }
-        } else {
-          concepts.push(
-            buildCardConcept({
-              id: conceptId,
-              courseId,
-              schedulingUnitId: deckId,
-              name: conceptNameForCard(draft.type, draft.front, draft.back),
-              now: createdAt,
-            }),
-          );
-        }
-        cards.push(
-          newCard({
-            id: makeId(),
-            conceptId,
-            deckId,
-            type: draft.type,
-            front: draft.front,
-            back: draft.back,
-            payload: draft.payload,
-            answerMode: draft.answerMode,
-            requireCorrectSpelling: draft.requireCorrectSpelling,
-            createdAt,
-            tags: draft.tags ?? [],
-            schedulingUnitId: deckId,
-            courseId,
-            primaryLessonId,
-          }),
-        );
-      }
-      if (concepts.length > 0) await db.concepts.bulkAdd(concepts);
-      if (cards.length > 0) await db.cards.bulkAdd(cards);
-      return cards;
-    });
+    return await writeCards(deckId, drafts, opts, 'batch');
   } catch (err) {
     throw friendlyDbError(err);
   }
+}
+
+// Keep individual adds for single creation and buffered bulk writes for imports.
+async function writeCards(
+  deckId: string,
+  drafts: CardDraft[],
+  opts: CardCreationScope | undefined,
+  writeMode: 'single' | 'batch',
+): Promise<Card[]> {
+  return db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
+    const unit = await db.schedulingUnits.get(deckId);
+    const courseId = opts?.courseId === undefined ? unit?.courseId : opts.courseId;
+    const primaryLessonId =
+      opts?.primaryLessonId === undefined ? unit?.lessonId : opts.primaryLessonId;
+    const now = Date.now();
+    const concepts = [];
+    const cards: Card[] = [];
+    for (let i = 0; i < drafts.length; i += 1) {
+      const draft = drafts[i];
+      const createdAt = now + i;
+      const conceptId = draft.conceptId ?? makeId();
+      if (draft.conceptId) {
+        const concept = await db.concepts.get(draft.conceptId);
+        if (!concept || !conceptMatchesCardScope(concept, courseId, deckId)) {
+          throw new Error('The selected Concept does not belong to this Card scope.');
+        }
+      } else {
+        const concept = buildCardConcept({
+          id: conceptId,
+          courseId,
+          schedulingUnitId: deckId,
+          name: conceptNameForCard(draft.type, draft.front, draft.back),
+          now: createdAt,
+        });
+        if (writeMode === 'single') await db.concepts.add(concept);
+        else concepts.push(concept);
+      }
+      const card = newCard({
+        id: makeId(),
+        conceptId,
+        deckId,
+        type: draft.type,
+        front: draft.front,
+        back: draft.back,
+        payload: draft.payload,
+        answerMode: draft.answerMode,
+        requireCorrectSpelling: draft.requireCorrectSpelling,
+        createdAt,
+        tags: draft.tags ?? [],
+        schedulingUnitId: deckId,
+        courseId,
+        primaryLessonId,
+      });
+      if (writeMode === 'single') await db.cards.add(card);
+      cards.push(card);
+    }
+    if (concepts.length > 0) await db.concepts.bulkAdd(concepts);
+    if (writeMode === 'batch' && cards.length > 0) await db.cards.bulkAdd(cards);
+    return cards;
+  });
 }
 
 /**
