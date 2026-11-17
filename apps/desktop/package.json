@@ -12,9 +12,9 @@
     "@lacuna/mcp-runtime": "workspace:*"
   },
   "devDependencies": {
-    "@electron/asar": "4.3.1",
+    "@electron/asar": "4.3.2",
     "@lacuna/core": "workspace:*",
-    "@playwright/test": "^1.65.0",
+    "@playwright/test": "^1.65.1",
     "@typescript/native": "npm:typescript@^7.0.2",
     "electron": "^45.2.3",
     "electron-builder": "^26.18.0",
