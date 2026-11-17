@@ -9,7 +9,7 @@ import {
   ensureLessonBackingDeck,
   syncCourseSchedulingUnits,
 } from './backingDecks';
-import { clampRequestRetention, defaultFsrsParameters } from '@lacuna/core/fsrs/params';
+import { decodeSharedCourseSettings } from './sharedCourseSettings';
 import type { ParsedCard } from './import';
 import type {
   Card,
@@ -185,36 +185,10 @@ async function importCourseSharePayload(
       db.tombstones,
     ],
     async () => {
-      const course = await createCourse(payload.course.n || 'Shared course', {
-        description: payload.course.d ?? '',
+      const sharedCourse = decodeSharedCourseSettings(payload.course);
+      const course = await createCourse(sharedCourse.name, {
+        ...sharedCourse.options,
         ...(typeof payload.by === 'string' ? { creator: payload.by } : {}),
-        ...(payload.course.specificationRef === undefined
-          ? {}
-          : { specificationRef: payload.course.specificationRef }),
-        ...(payload.course.specificationData === undefined
-          ? {}
-          : { specificationData: payload.course.specificationData }),
-        ...(payload.course.techniques === undefined
-          ? {}
-          : { techniques: payload.course.techniques }),
-        ...(payload.course.examBoard === undefined ? {} : { examBoard: payload.course.examBoard }),
-        ...(payload.course.specification === undefined
-          ? {}
-          : { specification: payload.course.specification }),
-        examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
-        createdAt: payload.course.c,
-        schedulingMode: payload.course.sm === 1 ? 'steady' : 'exam',
-        ...(payload.course.e === undefined ? {} : { examDate: payload.course.e }),
-        fsrsParameters: {
-          ...defaultFsrsParameters(),
-          ...(typeof payload.course.r === 'number'
-            ? { requestRetention: clampRequestRetention(payload.course.r) }
-            : {}),
-        },
-        ...(payload.course.p && payload.course.p > 0 ? { newCardsPerDay: payload.course.p } : {}),
-        ...(payload.course.lf === 0 ? { learnFirst: false } : {}),
-        ...(payload.course.l ? { colour: payload.course.l } : {}),
-        unlockMode: payload.course.um,
         // Imported courses default to study (read-only) mode regardless of the
         // sharer's own setting — the share payload never packs lessonViewMode.
         lessonViewMode: 'study',
