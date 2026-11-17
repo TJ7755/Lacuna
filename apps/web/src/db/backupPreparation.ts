@@ -12,8 +12,8 @@ import { normaliseQuestionBackup } from '../questions/backup';
 import { mergeQuestionCollections } from '../questions/merge';
 import { parseQuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
-import { assertQuestionSetReferences } from '../questions/questionSetMerge';
-import { assertQuestionSetPracticeNodeReferences } from './questionSetPracticeNode';
+import { assertQuestionSetReferences } from '@lacuna/core/questions/questionSetReferences';
+import { assertQuestionSetPracticeNodeReferences } from '@lacuna/core/db/questionSetPracticeNode';
 
 export type ImportMode = 'replace' | 'merge';
 
