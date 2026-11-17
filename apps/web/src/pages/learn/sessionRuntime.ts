@@ -1,13 +1,10 @@
-import { liveQuery, type Subscription } from 'dexie';
-import { canEditLessons } from '../../course/lessonViewMode';
 import type { JevMarkProvenance } from '@lacuna/core/jev/types';
 import { createRevisionSessionState } from '../../course/revisionSession';
 import { type SessionCardOutcome, type SessionSummary } from '../../course/sessionSummary';
 
-import { buryCard, setCardFlag, suspendCard } from '../../db/cardRepository';
 import { markLessonComplete } from '../../db/lessonRepository';
 import { type OcclusionCardData } from '../../db/occlusionStudy';
-import { db, makeId } from '../../db/schema';
+import { makeId } from '../../db/schema';
 
 import {
   type Card,
@@ -19,7 +16,6 @@ import {
   type Grade,
 } from '@lacuna/core/db/types';
 import { progressHeading } from '../../fsrs/objective';
-import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import {
   type SessionContext,
   sessionCompletionProgress,
@@ -66,6 +62,7 @@ import { dailyReviewCounts } from '../../db/reviewHistoryRead';
 import { emptyPerformance } from '../../fsrs/grading';
 import type { SessionRuntimeOptions } from './sessionRuntimeOptions';
 import { createSessionCompletion } from './sessionCompletion';
+import { SessionCardActions } from './sessionCardActions';
 type SessionSchedulingConfig = SchedulerConfig & {
   dailyReviewGoal?: number;
   sessionTimeLimitMinutes?: number;
@@ -126,7 +123,7 @@ export class SessionRuntime {
   start = () => {
     this.generation += 1;
     this.mounted = true;
-    this.watchEditPermission();
+    this.cardActions.watchPermission();
     this.cancelLoad = this.load();
     if (this.options.plannedRevision)
       this.interval = setInterval(() => {
@@ -148,8 +145,7 @@ export class SessionRuntime {
     this.generation += 1;
     this.mounted = false;
     this.cancelLoad?.();
-    this.editPermissionSubscription?.unsubscribe();
-    this.editPermissionSubscription = undefined;
+    this.cardActions.dispose();
     clearInterval(this.interval);
   };
   preload = () => {
@@ -190,7 +186,7 @@ export class SessionRuntime {
     this.reviewsDayStart = 0;
     this.canUndo = false;
     this.summary = null;
-    this.editing = false;
+    this.cardActions.reset();
     this.options.onSessionReset?.();
     this.schedulerProgress = 0;
     this.serveableCardCount = 0;
@@ -360,26 +356,7 @@ export class SessionRuntime {
       previous?.sequenceItemId !== this.current?.sequenceItemId ||
       previous?.occlusionRegionId !== this.current?.occlusionRegionId
     )
-      this.watchEditPermission();
-  };
-
-  private canEditCurrent = false;
-  private editPermissionSubscription: Subscription | undefined;
-  private watchEditPermission = () => {
-    this.editPermissionSubscription?.unsubscribe();
-    this.editPermissionSubscription = undefined;
-    this.canEditCurrent = false;
-    const card = this.current;
-    if (!card || card.sequenceItemId !== undefined || card.occlusionRegionId !== undefined) return;
-    const generation = this.generation;
-    this.editPermissionSubscription = liveQuery(async () => {
-      const course = card.courseId ? await db.courses.get(card.courseId) : undefined;
-      return card.courseId ? Boolean(course && canEditLessons(course)) : true;
-    }).subscribe((editable) => {
-      if (!this.mounted || generation !== this.generation || this.current?.id !== card.id) return;
-      this.canEditCurrent = editable;
-      this.publish();
-    });
+      this.cardActions.watchPermission();
   };
 
   private lessonChoiceSource: {
@@ -492,8 +469,6 @@ export class SessionRuntime {
   private summary: SessionSummary | null = null;
 
   private canUndo: boolean = false;
-
-  private editing: boolean = false;
 
   private get simpleQueue() {
     return this.machineState.simple.queue;
@@ -1063,75 +1038,9 @@ export class SessionRuntime {
     this.serveNext();
   };
 
-  private suspendCurrent = async () => {
-    const card = this.current;
-    const generation = this.generation;
-    if (!this.mounted || !card) return;
-    try {
-      await suspendCard(card.id);
-      if (!this.mounted || generation !== this.generation) return;
-      this.afterRemoval({ ...card, suspended: true });
-    } catch (err) {
-      if (!this.mounted || generation !== this.generation) return;
-      this.options.notify(
-        err instanceof Error ? err.message : 'Could not suspend the card.',
-        'negative',
-      );
-    }
-  };
-
-  private buryCurrent = async () => {
-    const card = this.current;
-    const generation = this.generation;
-    if (!this.mounted || !card) return;
-    try {
-      const until = startOfDay(Date.now()) + MS_PER_DAY;
-      await buryCard(card.id, until);
-      if (!this.mounted || generation !== this.generation) return;
-      this.afterRemoval({ ...card, buriedUntil: until });
-    } catch (err) {
-      if (!this.mounted || generation !== this.generation) return;
-      this.options.notify(
-        err instanceof Error ? err.message : 'Could not bury the card.',
-        'negative',
-      );
-    }
-  };
-
-  private openEdit = () => {
-    if (!this.current || !this.canEditCurrent) return;
-    // Guard against the card having been removed from the session pool
-    // (deleted / suspended by another tab) since the last render.
-    if (!this.cards.some((c) => c.id === this.current!.id)) return;
-    // Only the question phase has a running timer; the answer phase already
-    // captured responseTime at reveal, so there is nothing to pause there.
-    if (this.phase === 'question') {
-      this.advanceTimer({ type: 'pause', now: performance.now() });
-    }
-    this.editing = true;
-    this.publish();
-  };
-
-  private resumeAfterEdit = () => {
-    if (this.phase === 'question') {
-      this.advanceTimer({ type: 'resume', now: performance.now() });
-    }
-  };
-
-  private cancelEdit = () => {
-    this.editing = false;
-    this.resumeAfterEdit();
-    this.publish();
-  };
-
-  private handleEdited = async (updated: Card) => {
-    const generation = this.generation;
-    if (!this.mounted || this.current?.id !== updated.id) return;
-    const previous = this.cards.find((card) => card.id === updated.id);
-    const partnerId = previous?.reverseCardId ?? updated.reverseCardId;
-    const queuedPartner = this.cards.find((card) => card.id === partnerId);
-    const storedPartner = queuedPartner ? await db.cards.get(queuedPartner.id) : undefined;
-    if (!this.mounted || generation !== this.generation || this.current?.id !== updated.id) return;
+  // Session policy stays here: edits reconcile introduction Undo and queued partners
+  // against the same machine that answers, removal and completion use.
+  private applyCardEdit = (updated: Card, queuedPartner?: Card, storedPartner?: Card) => {
     // Restore before removing a converted partner, so the recognition snapshot cannot resurrect it.
     const recognition = this.lastIntroduction;
     const restoreIntroduction =
@@ -1167,43 +1076,26 @@ export class SessionRuntime {
         this.phase = 'question';
       }
     }
-    this.editing = false;
-    this.resumeAfterEdit();
-    this.publish();
   };
 
-  private toggleFlagCurrent = async () => {
-    const card = this.current;
-    const generation = this.generation;
-    if (!this.mounted || !card) return;
-    try {
-      const next = !card.flagged;
-      await setCardFlag(card.id, next);
-      if (!this.mounted || generation !== this.generation) return;
-      const updated = { ...card, flagged: next };
+  private cardActions = new SessionCardActions({
+    read: () => ({
+      current: this.current,
+      cards: this.cards,
+      phase: this.phase,
+      mounted: this.mounted,
+      generation: this.generation,
+    }),
+    advanceTimer: (event) => this.advanceTimer(event),
+    removed: this.afterRemoval,
+    edited: this.applyCardEdit,
+    flagged: (updated) => {
       this.applySessionEvent({ type: 'replace-card', card: updated });
-      if (this.current?.id === card.id) this.selectCurrent(updated);
-      this.publish();
-    } catch (err) {
-      if (!this.mounted || generation !== this.generation) return;
-      this.options.notify(
-        err instanceof Error ? err.message : 'Could not update the card flag.',
-        'negative',
-      );
-    }
-  };
-
-  private get editTagSuggestions() {
-    return this.editing && this.current
-      ? [
-          ...new Set(
-            this.cards
-              .filter((c) => c.schedulingUnitId === this.current!.schedulingUnitId)
-              .flatMap((c) => c.tags ?? []),
-          ),
-        ].sort()
-      : [];
-  }
+      if (this.current?.id === updated.id) this.selectCurrent(updated);
+    },
+    notify: (message) => this.options.notify(message, 'negative'),
+    publish: this.publish,
+  });
 
   private answerUnit = (card: Card): StudyUnit | undefined =>
     this.isGlobal
@@ -1489,8 +1381,8 @@ export class SessionRuntime {
     lessonRequiresCorrectSpelling: this.lessonRequiresCorrectSpelling,
     summary: this.summary,
     canUndo: this.canUndo,
-    editing: this.editing,
-    editTagSuggestions: this.editTagSuggestions,
+    editing: this.cardActions.editing,
+    editTagSuggestions: this.cardActions.editTagSuggestions,
     sessionCardIds: this.sessionCardIds,
     sessionCardOutcomes: this.sessionCardOutcomes,
     reviewEvents: this.events,
@@ -1520,13 +1412,13 @@ export class SessionRuntime {
     undoLast: this.undoLast,
     confirmCompletion: this.confirmCompletion,
     settleCompletion: this.settleCompletion,
-    canEditCurrent: this.canEditCurrent,
-    openEdit: this.openEdit,
-    cancelEdit: this.cancelEdit,
-    handleEdited: this.handleEdited,
-    toggleFlagCurrent: this.toggleFlagCurrent,
-    suspendCurrent: this.suspendCurrent,
-    buryCurrent: this.buryCurrent,
+    canEditCurrent: this.cardActions.canEditCurrent,
+    openEdit: this.cardActions.openEdit,
+    cancelEdit: this.cardActions.cancelEdit,
+    handleEdited: this.cardActions.handleEdited,
+    toggleFlagCurrent: this.cardActions.toggleFlagCurrent,
+    suspendCurrent: this.cardActions.suspendCurrent,
+    buryCurrent: this.cardActions.buryCurrent,
     persistSimpleResume: this.persistSimpleResume,
   });
 }
