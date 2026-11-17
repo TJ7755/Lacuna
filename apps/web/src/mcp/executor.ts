@@ -1,7 +1,7 @@
 // The transport-neutral MCP tool execution seam. Consent is deliberately not handled here:
 // the owning adapter issues a grant first, then supplies it with the call.
 
-import { scopeSatisfies } from './grants';
+import { scopeSatisfies } from '@lacuna/mcp-runtime/grants';
 import { replacementLifecycle } from '../db/replacementLifecycle';
 import { getTool, validateAndRun } from './registry';
 import type { McpScopeTarget, McpToolError } from '@lacuna/protocol/mcp/bridge';

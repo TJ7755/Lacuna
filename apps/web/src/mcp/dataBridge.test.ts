@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { BrowserWindow } from 'electron';
-import { GrantStore } from './grants';
-import { McpConnectionStore } from './connections';
+import { GrantStore } from '@lacuna/mcp-runtime/grants';
+import { McpConnectionStore } from '@lacuna/mcp-runtime/connections';
 import { TOOL_CONTRACT_REGISTRY } from '@lacuna/protocol/mcp/contracts/registry';
 import { listCoursesContract } from '@lacuna/protocol/mcp/contracts/read';
 import { createCourseContract } from '@lacuna/protocol/mcp/contracts/content';

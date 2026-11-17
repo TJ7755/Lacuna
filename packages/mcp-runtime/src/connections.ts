@@ -1,5 +1,5 @@
 import { GrantStore, type McpScope } from './grants';
-import type { McpGrant } from './types';
+import type { McpGrant } from '@lacuna/protocol/mcp/types';
 import type { McpClientIdentity, McpClientConnection } from '@lacuna/protocol/mcp/types';
 export type { McpClientIdentity, McpClientConnection } from '@lacuna/protocol/mcp/types';
 

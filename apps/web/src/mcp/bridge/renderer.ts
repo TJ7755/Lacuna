@@ -6,7 +6,7 @@
 // `mcp:invoke:reply`.
 //
 // Bridge-deadlock risk: if a failure here never replies, the
-// main process's request hangs until its own timeout fires (src/mcp/bridge/dispatcher.ts).
+// main process's request hangs until its own timeout fires (@lacuna/mcp-runtime/dispatcher).
 // Every path below — unknown tool, validation/handler failure, or a genuinely unexpected
 // thrown error — is therefore wrapped so a reply is always sent.
 

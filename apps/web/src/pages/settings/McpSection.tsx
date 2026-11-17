@@ -10,9 +10,9 @@ import {
   TrashIcon,
 } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
-import { GLOBAL_SCOPE_KEY } from '../../mcp/grants';
+import { GLOBAL_SCOPE_KEY } from '@lacuna/mcp-runtime/grants';
 import type { McpGrant } from '../../mcp/types';
-import type { McpClientConnection } from '../../mcp/connections';
+import type { McpClientConnection } from '@lacuna/protocol/mcp/types';
 import { useCourses } from '../../state/useCourseData';
 import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 import { SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';

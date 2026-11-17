@@ -35,21 +35,21 @@ describe('cross-runtime app entry points', () => {
       'apps/ai/api/ai/probe.mjs',
     ]) {
       for (const source of [
-        "import { GrantStore } from '../../src/mcp/grants';",
+        "import { executeTool } from '../../src/mcp/executor';",
         "import type { McpGrant } from '../../src/mcp/types.js';",
         "export * from '../../src/mcp/registry';",
         "export type { McpGrant } from '../../src/mcp/types';",
         "export type T = import('../../src/mcp/types').McpGrant;",
-        "export const load = () => import('../../src/mcp/grants');",
-        'export const load = () => import(`../../src/mcp/grants`);',
-        "export const load = () => require('../../src/mcp/grants');",
-        "import grants = require('../../src/mcp/grants');",
-        "export * from '../../src/mcp/../mcp/grants.js?raw#test';",
+        "export const load = () => import('../../src/mcp/executor');",
+        'export const load = () => import(`../../src/mcp/executor`);',
+        "export const load = () => require('../../src/mcp/executor');",
+        "import executor = require('../../src/mcp/executor');",
+        "export * from '../../src/mcp/../mcp/executor.js?raw#test';",
         "export * from '../../src/pages/LearnMode';",
       ].filter(
         (source) =>
           !filePath.endsWith('.mjs') ||
-          (!source.includes('type ') && !source.includes('import grants =')),
+          (!source.includes('type ') && !source.includes('import executor =')),
       )) {
         const [result] = await eslint.lintText(probeSource(source, filePath), { filePath });
         expect(
@@ -63,16 +63,19 @@ describe('cross-runtime app entry points', () => {
       }
     }
     for (const [filePath, target, forbidden] of [
-      ['apps/desktop/mcp/probe.ts', 'mcp/bridgeEntry', false],
+      ['apps/desktop/mcp/probe.ts', '@lacuna/mcp-runtime/grants', false],
       ['apps/ai/api/ai/probe.ts', 'ai/toolSession.js', true],
       ['apps/ai/api/ai/probe.ts', 'ai/relayClient.js', true],
       ['apps/ai/api/ai/probe.ts', 'jev/apiEntry.js', false],
-      ['apps/ai/api/ai/probe.ts', 'mcp/bridgeEntry', true],
+      ['apps/ai/api/ai/probe.ts', 'mcp/executor', true],
       ['apps/desktop/mcp/probe.ts', 'jev/apiEntry', true],
-      ['apps/web/src/mcp/probe.ts', 'mcp/grants', false],
+      ['apps/web/src/mcp/probe.ts', 'mcp/executor', false],
     ] as const) {
       const [result] = await eslint.lintText(
-        probeSource(`export * from '../../src/${target}';`, filePath),
+        probeSource(
+          `export * from '${target.startsWith('@') ? target : `../../src/${target}`}';`,
+          filePath,
+        ),
         { filePath },
       );
       expect(result.messages.filter((message) => message.fatal)).toEqual([]);
