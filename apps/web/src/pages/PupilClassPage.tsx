@@ -3,18 +3,13 @@ import { useIsPresent } from 'motion/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppLink } from '../components/ui/AppLink';
 import { buttonClassName } from '../components/ui/buttonStyles';
-import {
-  PAGE_FRAME,
-  PAGE_HEADER,
-  PAGE_TITLE,
-  focusCourseHeading,
-} from '../components/course/coursePageLayout';
+import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
 import { MissingRecord } from '../components/course/MissingRecord';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useToast } from '../components/ui/Toast';
 import { useCourse } from '../state/useCourseData';
 import { createEnrolmentSetting } from '../insights/enrolment';
-import { CourseInsightsSection } from './settings/CourseInsightsSection';
+import { CourseInsightsSection, focusCourseHeading } from './settings/CourseInsightsSection';
 
 export function PupilClassPage() {
   const { courseId } = useParams();

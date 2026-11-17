@@ -1,9 +1,4 @@
-import {
-  PAGE_FRAME,
-  PAGE_HEADER,
-  PAGE_TITLE,
-  focusCourseHeading,
-} from '../components/course/coursePageLayout';
+import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { useLayoutEffect, useRef } from 'react';
 import { useIsPresent } from 'motion/react';
@@ -11,6 +6,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { ShareLinkImport } from '../components/import/ShareLinkImport';
 import { onboardingDestination } from '../onboarding/onboardingState';
+import { focusCourseHeading } from './settings/CourseInsightsSection';
 
 /**
  * Student entry point for teacher share links (`/#/s/<code>`). `ShareLinkImport` fetches the

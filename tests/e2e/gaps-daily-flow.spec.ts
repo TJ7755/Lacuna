@@ -217,6 +217,10 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     const consent = pupil.getByRole('switch', { name: 'Share insights with your teacher' });
     await expect(consent).toHaveAttribute('aria-checked', 'false');
     await expect(pupil.getByRole('heading', { name: 'Class biology', level: 2 })).toBeVisible();
+    await pupil.screenshot({
+      path: testInfo.outputPath('pupil-class-joined.png'),
+      fullPage: true,
+    });
     await expect(pupil.getByRole('link', { name: 'School data notice' })).toHaveAttribute(
       'href',
       'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
