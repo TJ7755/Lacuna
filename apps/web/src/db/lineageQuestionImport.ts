@@ -1,7 +1,7 @@
 import { ensureQuestionTransition } from '../questions/questionTransitionRepository';
 import { referencedQuestionSetConceptIds } from '@lacuna/core/questions/questionSets';
 import { questionGeneratorRegistry } from '../questions/generators';
-import { emptyQuestionSchedule } from '../questions/scheduler';
+import { emptyQuestionSchedule } from '@lacuna/core/questions/scheduler';
 import type {
   Concept,
   QuestionConceptSet,

@@ -1,5 +1,5 @@
 import type { CourseRecord, Tombstone } from '@lacuna/core/db/types';
-import { replayQuestionSchedule } from './scheduler';
+import { replayQuestionSchedule } from '@lacuna/core/questions/scheduler';
 import type {
   Concept,
   QuestionAttempt,

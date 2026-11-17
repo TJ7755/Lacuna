@@ -5,7 +5,7 @@ import {
   diagnosticRequestForTags,
   type JevDiagnosticRequest,
 } from '@lacuna/core/jev/diagnosis';
-import { questionSchedulerConfigFingerprint } from './scheduler';
+import { questionSchedulerConfigFingerprint } from '@lacuna/core/questions/scheduler';
 import {
   parseQuestionSetRecord,
   type QuestionSetRecord,

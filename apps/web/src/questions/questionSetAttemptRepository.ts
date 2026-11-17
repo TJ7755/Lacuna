@@ -4,7 +4,10 @@ import { questionGeneratorRegistry } from './generators';
 import { db, makeId } from '../db/schema';
 import type { JevDiagnosis } from '@lacuna/core/jev/diagnosis';
 import { resolveFamilyVariant } from './bank';
-import { normaliseQuestionSchedulerConfig, questionSchedulerConfigFingerprint } from './scheduler';
+import {
+  normaliseQuestionSchedulerConfig,
+  questionSchedulerConfigFingerprint,
+} from '@lacuna/core/questions/scheduler';
 import { QUESTION_SCHEDULER_VERSION } from '@lacuna/core/questions/types';
 import { parseQuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { parseQuestionSetAttemptRecord } from './questionSetAttemptCodec';

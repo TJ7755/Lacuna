@@ -1,5 +1,5 @@
 import { transitionScheduleSeeds, type QuestionScheduleSeed } from './questionTransitionSchedules';
-import { gradeQuestionAttempt } from './grading';
+import { gradeQuestionAttempt } from '@lacuna/core/questions/grading';
 import {
   answers,
   withinQuestionStudyScope as withinConceptScope,
@@ -14,7 +14,7 @@ import {
   type ConceptPracticeSelection,
   type QuestionSetAttemptRecord,
 } from '@lacuna/core/questions/questionSetAttempts';
-import { emptyQuestionSchedule, scheduleQuestionReview } from './scheduler';
+import { emptyQuestionSchedule, scheduleQuestionReview } from '@lacuna/core/questions/scheduler';
 import type { QuestionScheduleState } from '@lacuna/core/questions/types';
 import {
   deriveConceptDiagnosticEvidence,
@@ -25,7 +25,7 @@ import {
 } from './techniqueEvidence';
 import { questionTechniqueIds } from './techniqueSchedule';
 import { archivedTechniqueIds } from './courseTechniques';
-import { questionStudyEligible } from './questionStudyEligibility';
+import { questionStudyEligible } from '@lacuna/core/questions/questionStudyEligibility';
 import { techniqueExamDate } from './techniqueExam';
 import {
   loadQuestionPracticeSnapshot,

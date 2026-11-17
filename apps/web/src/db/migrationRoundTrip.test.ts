@@ -7,7 +7,7 @@ import { db } from './schema';
 import { assertValidBackup } from './backupValidation';
 import { exportDatabase, importBackup } from './portability';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
-import { emptyQuestionSchedule, scheduleQuestionReview } from '../questions/scheduler';
+import { emptyQuestionSchedule, scheduleQuestionReview } from '@lacuna/core/questions/scheduler';
 import { deriveTechniqueSchedules } from '../questions/techniqueSchedule';
 import { listConceptPractice } from '../questions/conceptPractice';
 import { deriveConceptApplicationSchedules } from '../questions/conceptPractice';

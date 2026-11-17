@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { makeCard, makeCourse, makeLesson } from '../course/path.testFixtures';
 import type { ConceptPracticeItem } from '../questions/conceptPractice';
-import { emptyQuestionSchedule } from '../questions/scheduler';
+import { emptyQuestionSchedule } from '@lacuna/core/questions/scheduler';
 import {
   paperSpecification,
   paperSpecificationReference,

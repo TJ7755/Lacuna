@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gradeQuestionAttempt } from './grading';
+import { gradeQuestionAttempt } from '@lacuna/core/questions/grading';
 
 describe('gradeQuestionAttempt', () => {
   it.each([

@@ -19,7 +19,7 @@ import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCo
 import type { JevDiagnosis } from '@lacuna/core/jev/diagnosis';
 import type { TechniqueTags } from '@lacuna/core/questions/techniqueTags';
 import { summariseSelfMarking } from '@lacuna/core/questions/questionSets';
-import { gradeQuestionAttempt } from '../questions/grading';
+import { gradeQuestionAttempt } from '@lacuna/core/questions/grading';
 import { deriveConceptApplicationSchedules } from '../questions/conceptPractice';
 import { markJevAttempt } from './attempts';
 import { createJevEngine } from './engine';

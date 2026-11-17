@@ -10,7 +10,7 @@ import {
   questionSchedulerConfigFingerprint,
   replayQuestionSchedule,
   scheduleQuestionReview,
-} from './scheduler';
+} from '@lacuna/core/questions/scheduler';
 
 const NOW = Date.UTC(2026, 7, 24, 12);
 

@@ -1,10 +1,10 @@
 import { db, makeId } from '../db/schema';
 import type { CheckerDisputeReport, Grade, LineVerdict } from '@lacuna/core/db/types';
 import { validateQuestionAttempt } from './domain';
-import { gradeQuestionAttempt } from './grading';
+import { gradeQuestionAttempt } from '@lacuna/core/questions/grading';
 import { questionGeneratorRegistry } from './generators';
 import { jsonEqual, requireQuestionPayload } from './repository.shared';
-import { replayQuestionSchedule, scheduleQuestionReview } from './scheduler';
+import { replayQuestionSchedule, scheduleQuestionReview } from '@lacuna/core/questions/scheduler';
 import {
   QUESTION_GRADE_MAPPING_VERSION,
   type QuestionAttempt,
