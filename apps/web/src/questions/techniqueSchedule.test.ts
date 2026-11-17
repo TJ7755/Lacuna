@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
-import { emptyQuestionSchedule } from './scheduler';
+import { emptyQuestionSchedule } from '@lacuna/core/questions/scheduler';
 import { deriveTechniqueSchedules, techniquePracticeStatus } from './techniqueSchedule';
 
 function attempt(id: string, marks = 1): QuestionSetAttemptRecord {

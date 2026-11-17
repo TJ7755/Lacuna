@@ -11,7 +11,7 @@ import {
   validateLessonMembership,
   validatedConceptSet,
 } from './repository.shared';
-import { emptyQuestionSchedule } from './scheduler';
+import { emptyQuestionSchedule } from '@lacuna/core/questions/scheduler';
 import type {
   FixedQuestionDefinition,
   GeneratedQuestionDefinition,

@@ -25,7 +25,7 @@ import { updateCourseAssessment } from './assessmentRepository';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
 import { conceptIdForSequenceItem, conceptIdForRegion } from '../questions/generatedConceptIds';
 import { planSharedSequences, planSharedOcclusions } from './shareCourseGeneratedPlanning';
-import { emptyQuestionSchedule } from '../questions/scheduler';
+import { emptyQuestionSchedule } from '@lacuna/core/questions/scheduler';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { importSharedQuestionSets } from '../questions/questionSetShare';
 import { parseSharePayload, assertShareSpecificationAssessments } from './sharePayload';

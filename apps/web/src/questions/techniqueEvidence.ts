@@ -1,6 +1,6 @@
 import type { QuestionScheduleState } from '@lacuna/core/questions/types';
 import { MS_PER_DAY, defaultFsrsParameters } from '@lacuna/core/fsrs/params';
-import { emptyQuestionSchedule, scheduleQuestionReview } from './scheduler';
+import { emptyQuestionSchedule, scheduleQuestionReview } from '@lacuna/core/questions/scheduler';
 import { JEV_DIAGNOSTIC_CONFIDENCE_THRESHOLD, type JevDiagnosis } from '@lacuna/core/jev/diagnosis';
 import type { JevAssessmentReceipt } from '@lacuna/core/jev/provenance';
 import {

@@ -23,7 +23,7 @@ import {
   undoConceptPracticeAttempt,
 } from './conceptPractice';
 import { mergeQuestionSetAttemptPair } from './questionSetAttemptMerge';
-import { emptyQuestionSchedule, scheduleQuestionReview } from './scheduler';
+import { emptyQuestionSchedule, scheduleQuestionReview } from '@lacuna/core/questions/scheduler';
 
 beforeEach(async () => {
   db.close();

@@ -2,7 +2,7 @@ import {
   loadQuestionPracticeSnapshot,
   type QuestionPracticeSnapshot,
 } from './questionPracticeSnapshot';
-import { questionStudyEligible } from './questionStudyEligibility';
+import { questionStudyEligible } from '@lacuna/core/questions/questionStudyEligibility';
 import { db } from '../db/schema';
 import { startQuestionSetAttempt } from './questionSetAttemptRepository';
 import {
@@ -15,7 +15,7 @@ import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
 import { activeTechniques, courseTechniqueCatalogue } from './courseTechniques';
 import type { QuestionScheduleState } from '@lacuna/core/questions/types';
 import { techniquePracticeStatus, questionTechniqueIds as techniques } from './techniqueSchedule';
-import { emptyQuestionSchedule } from './scheduler';
+import { emptyQuestionSchedule } from '@lacuna/core/questions/scheduler';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { techniqueExamDate } from './techniqueExam';
 

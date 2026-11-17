@@ -1,4 +1,4 @@
-import { gradeQuestionAttempt } from './grading';
+import { gradeQuestionAttempt } from '@lacuna/core/questions/grading';
 import { isUpcomingExamDate } from '@lacuna/core/fsrs/examDate';
 import { exposedQuestions } from './questionExposure';
 import type { FsrsParameters } from '@lacuna/core/db/types';
@@ -10,7 +10,7 @@ import type { QuestionSetQuestion } from '@lacuna/core/questions/questionSets';
 import { activeTechniqueIds, type TechniqueId } from '@lacuna/core/questions/techniqueTags';
 import type { QuestionScheduleState } from '@lacuna/core/questions/types';
 import { questionPresentationFingerprint } from './generators/declarative';
-import { emptyQuestionSchedule, scheduleQuestionReview } from './scheduler';
+import { emptyQuestionSchedule, scheduleQuestionReview } from '@lacuna/core/questions/scheduler';
 
 function nodes(question: QuestionSetQuestion) {
   return [

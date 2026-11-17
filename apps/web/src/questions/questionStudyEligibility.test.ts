@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
 import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { makeEngine, decayOf } from '@lacuna/core/fsrs/fsrs';
-import { emptyQuestionSchedule } from './scheduler';
-import { questionStudyEligible } from './questionStudyEligibility';
+import { emptyQuestionSchedule } from '@lacuna/core/questions/scheduler';
+import { questionStudyEligible } from '@lacuna/core/questions/questionStudyEligibility';
 
 const params = defaultFsrsParameters();
 const now = 1_800_000_000_000;
