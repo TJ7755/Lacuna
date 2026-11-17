@@ -100,6 +100,7 @@
       "name": "@lacuna/desktop",
       "version": "0.0.0",
       "dependencies": {
+        "@lacuna/mcp-runtime": "workspace:*",
         "@lacuna/protocol": "workspace:*",
         "@modelcontextprotocol/server": "2.4.0",
         "electron-log": "^5.4.4",
@@ -149,6 +150,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@lacuna/core": "workspace:*",
+        "@lacuna/mcp-runtime": "workspace:*",
         "@lacuna/protocol": "workspace:*",
         "@napi-rs/wasm-runtime": "1.2.7",
         "@open-spaced-repetition/binding": "^0.6.0",
@@ -192,6 +194,13 @@
         "@lacuna/protocol": "workspace:*",
         "ts-fsrs": "^6.0.0",
         "zod": "4.6.7",
+      },
+    },
+    "packages/mcp-runtime": {
+      "name": "@lacuna/mcp-runtime",
+      "version": "0.0.0",
+      "dependencies": {
+        "@lacuna/protocol": "workspace:*",
       },
     },
     "packages/protocol": {
@@ -669,6 +678,8 @@
     "@lacuna/gaps": ["@lacuna/gaps@workspace:apps/gaps"],
 
     "@lacuna/library": ["@lacuna/library@workspace:apps/library"],
+
+    "@lacuna/mcp-runtime": ["@lacuna/mcp-runtime@workspace:packages/mcp-runtime"],
 
     "@lacuna/protocol": ["@lacuna/protocol@workspace:packages/protocol"],
 

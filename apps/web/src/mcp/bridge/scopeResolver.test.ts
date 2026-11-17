@@ -10,7 +10,7 @@ import {
   createSequence,
 } from '../../db/repository';
 import { createOcclusion } from '../../db/occlusionRepository';
-import { GLOBAL_SCOPE_KEY } from '../grants';
+import { GLOBAL_SCOPE_KEY } from '@lacuna/mcp-runtime/grants';
 import { agentMemoryRepository } from '../../db/agentMemoryRepository';
 import { resolveToolScopes } from './scopeResolver';
 

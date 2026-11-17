@@ -1,12 +1,4 @@
-// Pure correlation-id / timeout request-response matching for the main <-> renderer MCP
-// bridge (Arc 2 Section 2.1, Task 9). Deliberately free of any Electron or MCP SDK
-// dependency so it can run inside the normal Vitest suite (a fake `send` stands in for
-// `webContents.send`) rather than only being exercised by a manual smoke test. Renderer
-// preserve readiness and timeout behaviour.
-//
-// electron/mcp/server.ts is the sole real caller: it constructs one InvokeDispatcher per
-// server lifetime, wiring `send` to `webContents.send('mcp:invoke', req)` and feeding
-// `resolvePending` from the `mcp:invoke:reply` ipcMain listener.
+// Transport-neutral request matching; the host supplies delivery and feeds replies back.
 
 import type {
   McpInvokeRequest,

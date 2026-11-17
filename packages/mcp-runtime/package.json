@@ -1,0 +1,15 @@
+{
+  "name": "@lacuna/mcp-runtime",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./grants": "./src/grants.ts",
+    "./connections": "./src/connections.ts",
+    "./dispatcher": "./src/dispatcher.ts",
+    "./consentCoordinator": "./src/consentCoordinator.ts"
+  },
+  "dependencies": {
+    "@lacuna/protocol": "workspace:*"
+  }
+}

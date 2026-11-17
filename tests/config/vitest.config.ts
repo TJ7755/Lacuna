@@ -4,6 +4,7 @@ import recoveryConfig from './vitest.recovery.config.ts';
 import riskConfig from './vitest.risk.config.ts';
 
 const nodeTests = [
+  'packages/mcp-runtime/src/**/*.test.ts',
   'apps/web/src/fsrs/**/*.test.ts',
   'apps/web/src/course/**/*.test.ts',
   'apps/web/src/questions/generators/**/*.test.ts',

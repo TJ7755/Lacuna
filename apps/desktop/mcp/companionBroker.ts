@@ -10,10 +10,10 @@ import { promises as fs } from 'node:fs';
 import net, { type Server as NetServer, type Socket } from 'node:net';
 import log from 'electron-log';
 import { LACUNA_AI_PROTOCOL_VERSION } from '@lacuna/protocol/ai/protocol';
-import type { GrantStore } from '../../web/src/mcp/bridgeEntry.js';
+import type { GrantStore } from '@lacuna/mcp-runtime/grants';
 import type { ToolContract } from '@lacuna/protocol/mcp/contracts';
 import type { McpClientConnection, McpClientIdentity } from '@lacuna/protocol/mcp/companion';
-import { McpConnectionStore } from '../../web/src/mcp/bridgeEntry.js';
+import { McpConnectionStore } from '@lacuna/mcp-runtime/connections';
 import {
   AI_COMPANION_PROTOCOL_VERSION,
   CompanionLineDecoder,

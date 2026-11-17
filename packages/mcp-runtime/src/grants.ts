@@ -1,27 +1,4 @@
-// Process-scoped consent grant store and gating logic (Arc 2 §2.4, Task 7).
-//
-// Placement note: the plan (§2.4) names this file `electron/mcp/grants.ts`, since grants
-// conceptually live in the main process. It is implemented under `src/mcp/` instead,
-// because `electron/tsconfig.json` only `include`s `main.ts`/`updater.ts` (not a whole
-// `electron/mcp/` directory — that lands in Task 9 alongside `electron/tsconfig.mcp.json`),
-// and the Vitest config only covers `src/**/*.test.ts`. Nothing here touches Electron or
-// Node-specific APIs — it is pure in-memory logic — so `src/mcp/` (already the established
-// home for transport-agnostic pieces, e.g. `registry.ts`, `types.ts`) keeps it inside the
-// normal unit-test suite without new tsconfig/Vitest config. `electron/mcp/server.ts`
-// (Task 9) imports `GrantStore` from here; nothing about the module's behaviour changes
-// by living one directory up from where the plan sketched it.
-//
-// No-courseId tool gating model: `lacuna.list_courses`, `lacuna.create_course`, the future
-// `lacuna.get_server_info`, and `lacuna.diagnostics_summary` called without a `courseId`
-// (see src/mcp/tools/read.ts) have no course to scope a grant to. Rather than inventing a
-// parallel ungated code path, they are gated against a reserved pseudo-course id,
-// `GLOBAL_SCOPE_KEY`, using the exact same `GrantStore` — a "grant to see the course list /
-// create courses" is conceptually the same consent decision as a per-course grant, and
-// reusing the Map means the Settings UI (Task 11) can list it alongside real courses with
-// no special-casing. Callers resolve the key with `courseIdOrGlobal(courseId)` before
-// calling into the store.
-
-import type { McpGrant } from './types';
+import type { McpGrant } from '@lacuna/protocol/mcp/types';
 import type { McpToolError } from '@lacuna/protocol/mcp/bridge';
 
 export type McpScope = McpGrant['scope'];
@@ -39,8 +16,7 @@ export function scopeSatisfies(granted: McpScope, required: McpScope): boolean {
 }
 
 /**
- * Reserved pseudo-course id for tools that take no `courseId` (§2.4's no-courseId model,
- * documented above). Not a real course and never returned by `src/db/read.ts`.
+ * Reserved pseudo-course id for tools that take no `courseId`. Never a real course id.
  */
 export const GLOBAL_SCOPE_KEY = '__global__';
 
@@ -50,10 +26,8 @@ export function courseIdOrGlobal(courseId: string | undefined | null): string {
 }
 
 /**
- * In-memory, process-scoped grant store (§2.4: "Grants are per Lacuna-launched MCP server
- * process ... and expire when the server process exits"). One instance is created by
- * `electron/mcp/server.ts` (Task 9) and lives for the lifetime of the main process; nothing
- * here persists to Dexie or disk.
+ * In-memory grant state owned by a server process or companion connection. Nothing
+ * here persists to a database or disk; closing the owner revokes its grants.
  */
 export class GrantStore {
   private readonly grants = new Map<string, McpGrant>();

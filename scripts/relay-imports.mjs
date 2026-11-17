@@ -78,7 +78,6 @@ export const appImportsRule = importsRule(
     if (!importer.startsWith('apps/desktop/mcp/')) return false;
     return ![
       'apps/web/src/mcp/contractEntry.ts',
-      'apps/web/src/mcp/bridgeEntry.ts',
       'apps/web/src/mcp/companionEntry.ts',
       'apps/web/src/ai/protocol.ts',
       'apps/web/src/ai/companionErrors.ts',

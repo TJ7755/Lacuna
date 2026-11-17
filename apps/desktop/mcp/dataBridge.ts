@@ -17,14 +17,14 @@ import type {
   McpScopeTarget,
   McpToolError,
 } from '@lacuna/protocol/mcp/bridge';
-import { InvokeDispatcher } from '../../web/src/mcp/bridgeEntry.js';
-import { ConsentCoordinator } from '../../web/src/mcp/bridgeEntry.js';
+import { InvokeDispatcher } from '@lacuna/mcp-runtime/dispatcher';
+import { ConsentCoordinator } from '@lacuna/mcp-runtime/consentCoordinator';
 import {
   isMcpConsentResponse,
   isMcpInvokeResponse,
   isMcpScopeResolutionResponse,
 } from '@lacuna/protocol/mcp/ipcValidation';
-import { GrantStore, courseIdOrGlobal, resolveGrant } from '../../web/src/mcp/bridgeEntry.js';
+import { GrantStore, courseIdOrGlobal, resolveGrant } from '@lacuna/mcp-runtime/grants';
 import type { McpGrant, ToolContract } from '@lacuna/protocol/mcp/contracts';
 import type { McpClientIdentity } from '@lacuna/protocol/mcp/companion';
 
