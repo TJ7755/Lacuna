@@ -12,10 +12,10 @@ import {
   YAxis,
 } from 'recharts';
 import { useChartColours } from '../analytics/useChartColours';
-import { forgettingCurve } from '../../fsrs/forwardSim';
-import { decayOf } from '../../fsrs/fsrs';
+import { forgettingCurve } from '@lacuna/core/fsrs/forwardSim';
+import { decayOf } from '@lacuna/core/fsrs/fsrs';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { schedulingHorizon } from '../../fsrs/horizon';
+import { schedulingHorizon } from '@lacuna/core/fsrs/horizon';
 import { useAdvancedDetails } from '../../state/advancedDetails';
 import type { Card, Grade, SchedulerConfig } from '@lacuna/core/db/types';
 

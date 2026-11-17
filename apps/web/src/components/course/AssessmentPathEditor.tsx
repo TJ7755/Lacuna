@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
-import { resolveLessonOrder } from '../../course/lessonOrder';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
+import { resolveLessonOrder } from '@lacuna/core/course/lessonOrder';
 import {
   createCourseAssessment,
   deleteCourseAssessment,

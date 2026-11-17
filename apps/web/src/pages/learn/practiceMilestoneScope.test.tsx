@@ -15,7 +15,7 @@ import type { DistractionTracker } from '../../components/learn/useDistraction';
 import type { PathNode } from '../../course/path';
 import { planNextStudyStep } from '../../course/studyFlowPlanner';
 import { buildCourseStudyFlowSnapshot } from '../../course/studyFlowSnapshot';
-import { makeExamDateContext } from '../../fsrs/examDate';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { useLearnSession, type UseLearnSessionParams } from './useLearnSession';
 
 const distraction: DistractionTracker = {

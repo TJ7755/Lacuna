@@ -14,7 +14,11 @@
 // same objective) survives the exam passing.
 
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { isUpcomingExamDate, resolveCardExamDate, type ExamDateContext } from './examDate';
+import {
+  isUpcomingExamDate,
+  resolveCardExamDate,
+  type ExamDateContext,
+} from '@lacuna/core/fsrs/examDate';
 import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 
 /**

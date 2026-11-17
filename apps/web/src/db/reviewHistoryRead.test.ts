@@ -2,8 +2,8 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import { createCard, createCourseCard, createCourse } from './repository';
-import { addDays } from '../fsrs/heatmap';
-import { startOfDay } from '../utils/datetime';
+import { addDays } from '@lacuna/core/fsrs/heatmap';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import {
   dailyReviewCounts,
   hydrateCardsWithHistory,
@@ -15,7 +15,7 @@ import {
   reviewHistoryEntryIdForEvent,
   resolveReviewHistoryCollisions,
 } from '@lacuna/core/db/reviewHistory';
-import { makeSessionContext, selectNext } from '../fsrs/session';
+import { makeSessionContext, selectNext } from '@lacuna/core/fsrs/session';
 import type { Card, ReviewLog } from '@lacuna/core/db/types';
 
 function review(timestamp: number, eventId?: string): ReviewLog {

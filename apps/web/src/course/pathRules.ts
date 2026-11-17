@@ -1,6 +1,6 @@
 import type { Course, Lesson } from '@lacuna/core/db/types';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { courseLessonOrderPreference, resolveLessonOrder } from './lessonOrder';
+import { courseLessonOrderPreference, resolveLessonOrder } from '@lacuna/core/course/lessonOrder';
 import { earlierLessonIds } from './courseEntry';
 
 /**

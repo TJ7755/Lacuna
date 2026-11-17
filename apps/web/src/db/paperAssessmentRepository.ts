@@ -1,6 +1,6 @@
-import { courseLessonOrderPreference } from '../course/lessonOrder';
-import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
-import { validatePaperAssessmentDates } from '../specifications/assessment';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
+import { validatePaperAssessmentDates } from '@lacuna/core/specifications/assessment';
 import { papersForSelection } from '@lacuna/core/specifications/selection';
 import { finalAssessmentForCourse } from './assessmentMigration';
 import { validateAssessmentStructure } from './assessmentValidation';

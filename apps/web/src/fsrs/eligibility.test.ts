@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isAvailable, studyPool } from './eligibility';
+import { isAvailable, studyPool } from '@lacuna/core/fsrs/eligibility';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, LegacyDeckRecord, ReviewLog } from '@lacuna/core/db/types';
 

@@ -8,9 +8,9 @@ import type {
 import type { JevMarkProvenance } from '@lacuna/core/jev/types';
 import { dailyReviewCounts } from '../../db/reviewHistoryRead';
 import { makeId } from '../../db/schema';
-import { emptyPerformance } from '../../fsrs/grading';
-import type { SessionContext } from '../../fsrs/session';
-import { startOfDay } from '../../utils/datetime';
+import { emptyPerformance } from '@lacuna/core/fsrs/grading';
+import type { SessionContext } from '@lacuna/core/fsrs/session';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import { answerFeedback, type AnswerResult } from './answerSteps';
 import {
   persistSessionAnswer,

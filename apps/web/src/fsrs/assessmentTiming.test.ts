@@ -5,9 +5,9 @@ import {
   ASSESSMENT_TARGET_RECALL,
   assessmentReviewGain,
   worthwhileAssessmentPractice,
-} from './assessmentTiming';
-import { makeEngine, toTsCard } from './fsrs';
-import { forgettingCurve, simContext } from './forwardSim';
+} from '@lacuna/core/fsrs/assessmentTiming';
+import { makeEngine, toTsCard } from '@lacuna/core/fsrs/fsrs';
+import { forgettingCurve, simContext } from '@lacuna/core/fsrs/forwardSim';
 import { card, course, NOW } from './session.testFixtures';
 
 function context() {

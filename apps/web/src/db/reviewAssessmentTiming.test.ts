@@ -8,8 +8,8 @@ import {
   recordReview,
   undoReview,
 } from './repository';
-import { dueCards } from '../fsrs/eligibility';
-import { applyReview, makeEngine } from '../fsrs/fsrs';
+import { dueCards } from '@lacuna/core/fsrs/eligibility';
+import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
 
 describe('assessment due persistence', () => {
   it('preserves ordinary due after the lesson assessment without admitting the card early; replay and undo remain intact', async () => {

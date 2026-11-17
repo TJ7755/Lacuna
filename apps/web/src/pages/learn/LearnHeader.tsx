@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
-import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
+import { MAINTENANCE_HORIZON_DAYS } from '@lacuna/core/fsrs/horizon';
 import { CARD_PRACTICE_LABEL } from '../../course/studySessionPlan';
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card } from '@lacuna/core/db/types';

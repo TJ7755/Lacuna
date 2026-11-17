@@ -8,7 +8,7 @@ import {
 } from '../../course/specificationProgress';
 import type { ConceptPracticeItem } from '../../questions/conceptPractice';
 import { papersForSelection } from '@lacuna/core/specifications/selection';
-import { progressHeading } from '../../fsrs/objective';
+import { progressHeading } from '../../fsrs/progressHeading';
 import { originFrom } from '../../utils/editorOrigin';
 import { cn } from '../ui/cn';
 import {

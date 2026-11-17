@@ -10,7 +10,10 @@ import type {
 import type { Concept } from '@lacuna/core/questions/types';
 import { pointsForSelection } from '@lacuna/core/specifications/selection';
 import { currentAssessmentPracticeContext } from './assessmentPractice';
-import { lessonCardMembershipForLessons, lessonCardMembership } from './lessonMembership';
+import {
+  lessonCardMembershipForLessons,
+  lessonCardMembership,
+} from '@lacuna/core/course/lessonMembership';
 import { lessonStatus } from './path';
 
 /** Automatic questions use fully learned lessons, independently of editing permissions. */

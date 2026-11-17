@@ -4,7 +4,7 @@ import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { canEditLessons } from '../../course/lessonViewMode';
 import { buryCard, setCardFlag, suspendCard } from '../../db/cardRepository';
 import { db } from '../../db/schema';
-import { startOfDay } from '../../utils/datetime';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import type { Phase } from './types';
 
 interface CardActionEnvironment {

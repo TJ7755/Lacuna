@@ -1,5 +1,5 @@
 import type { CourseRecord, CourseAssessment, Lesson, PracticeNode } from '@lacuna/core/db/types';
-import { lessonOrder } from './assessmentCoverage';
+import { lessonOrder } from '@lacuna/core/course/assessmentCoverage';
 import { resolveCourseLessonOrder } from './lessonOrder';
 
 /** Prior knowledge is an entry preference, never evidence of completion or mastery. */

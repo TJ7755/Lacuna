@@ -1,5 +1,5 @@
 import type { Card, Course, Lesson } from '@lacuna/core/db/types';
-import type { CourseForecast, ForecastPoint } from '../fsrs/courseForecast';
+import type { CourseForecast, ForecastPoint } from '@lacuna/core/fsrs/courseForecast';
 import { listAllReviewHistory } from '../db/reviewHistoryRead';
 import { dashboardForecastHistories } from './dashboardForecasts';
 

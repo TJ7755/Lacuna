@@ -1,6 +1,6 @@
 import type { Card, ReviewLog } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
-import { startOfDay } from '../utils/datetime';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 
 export interface PredictionAccuracyPoint {
   day: number;

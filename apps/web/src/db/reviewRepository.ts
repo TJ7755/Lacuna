@@ -1,9 +1,9 @@
 // High-level data operations that combine the FSRS engine with persistence.
 // Components call these rather than touching Dexie tables directly.
 
-import { applyReview, makeEngine } from '../fsrs/fsrs';
+import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
 import { isLeech } from '@lacuna/core/fsrs/leech';
-import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
+import { fsrsWeightsFingerprint } from '@lacuna/core/fsrs/weightProvenance';
 import { restoreReviewUnitPerformance, updateReviewUnitPerformance } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
 import { stampUpdatedAt } from './mutationStamp';
@@ -13,7 +13,7 @@ import {
   reviewHistoryEntryIdForEvent,
 } from '@lacuna/core/db/reviewHistory';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
-import { isPrimedReview } from '../fsrs/primedReview';
+import { isPrimedReview } from '@lacuna/core/fsrs/primedReview';
 import { db } from './schema';
 import { scheduleReviewTrajectorySample, type ReviewUnitKind } from './reviewTrajectory';
 import type {

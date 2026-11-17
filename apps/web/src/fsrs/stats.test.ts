@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { computeStudyStats, DEFAULT_REVIEW_SECONDS, FORECAST_DAYS } from './stats';
+import { computeStudyStats, DEFAULT_REVIEW_SECONDS, FORECAST_DAYS } from '@lacuna/core/fsrs/stats';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { startOfDay } from '../utils/datetime';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import type { Card, ReviewLog, SchedulerConfig } from '@lacuna/core/db/types';
 
 // A fixed local-noon reference so day bucketing is unambiguous.

@@ -1,5 +1,5 @@
 import { transitionIndividualQuestions } from '../questions/questionTransition';
-import { assertSpecificationAssessmentReferences } from '../specifications/assessment';
+import { assertSpecificationAssessmentReferences } from '@lacuna/core/specifications/assessment';
 import { referencedQuestionSetConceptIds } from '@lacuna/core/questions/questionSets';
 // Pure peer-merge of two BackupFile snapshots. No Dexie, no I/O, no knowledge
 // of which device produced either side. After this, the two-device dance is

@@ -4,7 +4,7 @@ import {
   reviewHistoryEntryId,
   type ReviewHistoryEntry,
 } from '@lacuna/core/db/reviewHistory';
-import { applyReview, makeEngine } from '../fsrs/fsrs';
+import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
 
 import {
   PARAMS,

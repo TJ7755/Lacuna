@@ -11,7 +11,8 @@ import { cn } from './cn';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useAnchoredPopoverPosition } from '../../hooks/useAnchoredPopoverPosition';
-import { fromDateTimeLocalValue, getComponentsInZone } from '../../utils/datetime';
+import { getComponentsInZone } from '../../utils/datetime';
+import { fromDateTimeLocalValue } from '@lacuna/core/utils/datetime';
 import {
   MONTHS,
   buildMonth,

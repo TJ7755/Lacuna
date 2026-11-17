@@ -2,9 +2,9 @@ import { rememberAssetImageSize, resolveAssetUrl } from '../../db/assetCache';
 import { referencedAssetHashesInValues } from '../../db/assets';
 import type { OcclusionCardData } from '../../db/occlusionStudy';
 import type { Card } from '@lacuna/core/db/types';
-import { selectNext, type SessionContext } from '../../fsrs/session';
-import { makeObjectiveContext } from '../../fsrs/objective';
-import type { CooldownMap } from '../../fsrs/cooldown';
+import { selectNext, type SessionContext } from '@lacuna/core/fsrs/session';
+import { makeObjectiveContext } from '@lacuna/core/fsrs/objective';
+import type { CooldownMap } from '@lacuna/core/fsrs/cooldown';
 
 const LOOKAHEAD = 2;
 const MAX_IMAGES = 6;

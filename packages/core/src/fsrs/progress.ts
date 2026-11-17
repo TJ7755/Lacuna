@@ -2,11 +2,11 @@
 // These read exam-day retrievability from the forward-simulation layer so they
 // always agree with the scheduler (see src/fsrs/objective.ts).
 
-import { rAtExam } from './forwardSim';
-import { decayOf } from './fsrs';
-import { cardSchedulingHorizon } from './horizon';
+import { rAtExam } from '@lacuna/core/fsrs/forwardSim';
+import { decayOf } from '@lacuna/core/fsrs/fsrs';
+import { cardSchedulingHorizon } from '@lacuna/core/fsrs/horizon';
 import { MASTERY_R } from '@lacuna/core/fsrs/params';
-import type { ExamDateContext } from './examDate';
+import type { ExamDateContext } from '@lacuna/core/fsrs/examDate';
 import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 
 /** The deck's forgetting-curve decay exponent (= -w20).

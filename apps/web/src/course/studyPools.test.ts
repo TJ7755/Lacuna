@@ -8,8 +8,8 @@ import type {
   LessonCardLink,
   PracticeNode,
 } from '@lacuna/core/db/types';
-import { makeExamDateContext } from '../fsrs/examDate';
-import { lessonCardMembershipByLesson } from './lessonMembership';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
+import { lessonCardMembershipByLesson } from '@lacuna/core/course/lessonMembership';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import {
   eligiblePracticePool,

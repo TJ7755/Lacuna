@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import type { Card, CourseAssessment, Lesson } from '@lacuna/core/db/types';
-import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 import { AssessmentCoverageDetails } from './AssessmentCoverageDetails';
 
 const lesson: Lesson = {

@@ -1,6 +1,6 @@
 import type { CourseAssessment, CourseRecord } from '@lacuna/core/db/types';
 import type { Concept } from '@lacuna/core/questions/types';
-import { specificationAssessmentPointIds } from './assessment';
+import { specificationAssessmentPointIds } from '@lacuna/core/specifications/assessment';
 import { assertCourseSpecificationSelection } from './data';
 import type { SpecificationReference } from '@lacuna/core/specifications/links';
 import { unavailableSpecificationPointLinks } from './tagResolver';

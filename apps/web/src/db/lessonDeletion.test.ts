@@ -20,7 +20,7 @@ import {
 import { listLessons } from './read';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
-import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 import { createOcclusion, updateOcclusion, cardsForOcclusion } from './occlusionRepository';
 import { reset } from './courseRepository.testFixtures';
 

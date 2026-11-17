@@ -1,7 +1,7 @@
 import type { Card, Grade, RevisionProjection, UserPerformance } from '@lacuna/core/db/types';
-import { isAvailable } from './eligibility';
-import { applyReview } from './fsrs';
-import { sortByObjective, type ObjectiveContext } from './objective';
+import { isAvailable } from '@lacuna/core/fsrs/eligibility';
+import { applyReview } from '@lacuna/core/fsrs/fsrs';
+import { sortByObjective, type ObjectiveContext } from '@lacuna/core/fsrs/objective';
 import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import {
   DEFAULT_RESPONSE_TIME_COEFFICIENTS,
@@ -9,7 +9,7 @@ import {
   validResponseTimeCoefficients,
   type ResponseTimeCoefficients,
   type ResponseTimeEstimate,
-} from './responseTimeCost';
+} from '@lacuna/core/fsrs/responseTimeCost';
 
 export type MemoryModelFallbackReason = 'missing' | 'corrupt' | 'unsupported';
 type ReviewOutcome = 'success' | 'failure';

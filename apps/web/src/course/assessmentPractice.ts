@@ -1,6 +1,6 @@
-import { isUpcomingExamDate } from '../fsrs/examDate';
-import { courseLessonOrderPreference } from './lessonOrder';
-import { lessonCardMembershipForLessons } from './lessonMembership';
+import { isUpcomingExamDate } from '@lacuna/core/fsrs/examDate';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
+import { lessonCardMembershipForLessons } from '@lacuna/core/course/lessonMembership';
 import type {
   Card,
   Course,
@@ -10,12 +10,12 @@ import type {
   LessonCardLink,
   PracticeNode,
 } from '@lacuna/core/db/types';
-import { isAvailable } from '../fsrs/eligibility';
-import { simContext } from '../fsrs/forwardSim';
-import { makeEngine } from '../fsrs/fsrs';
-import { worthwhileAssessmentPractice } from '../fsrs/assessmentTiming';
-import { daysUntil } from '../utils/datetime';
-import { resolveAssessmentCoverage } from './assessmentCoverage';
+import { isAvailable } from '@lacuna/core/fsrs/eligibility';
+import { simContext } from '@lacuna/core/fsrs/forwardSim';
+import { makeEngine } from '@lacuna/core/fsrs/fsrs';
+import { worthwhileAssessmentPractice } from '@lacuna/core/fsrs/assessmentTiming';
+import { daysUntil } from '@lacuna/core/utils/datetime';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 import { isLessonUnlocked, lessonEffectiveReleaseDates } from './path';
 import { practiceCardScope } from './studyPools';
 import { earlierCourseLessonIds } from './courseEntry';

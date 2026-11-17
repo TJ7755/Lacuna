@@ -7,9 +7,10 @@ import {
   reviewTimestamps,
   addDays,
   type ReviewActivity,
-} from '../../fsrs/heatmap';
+} from '@lacuna/core/fsrs/heatmap';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import { formatDate, startOfDay } from '../../utils/datetime';
+import { formatDate } from '../../utils/datetime';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import { MOTION_EASING } from '../ui/motion';
 import type { Card } from '@lacuna/core/db/types';
 

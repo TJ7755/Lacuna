@@ -1,16 +1,17 @@
 import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
-import { isAvailable } from '../fsrs/eligibility';
-import { rAtExam } from '../fsrs/forwardSim';
-import { decayOf } from '../fsrs/fsrs';
-import { progressHeading, progressValue } from '../fsrs/objective';
+import { isAvailable } from '@lacuna/core/fsrs/eligibility';
+import { rAtExam } from '@lacuna/core/fsrs/forwardSim';
+import { decayOf } from '@lacuna/core/fsrs/fsrs';
+import { progressValue } from '@lacuna/core/fsrs/objective';
+import { progressHeading } from '../fsrs/progressHeading';
 import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import { calendarDaysUntil } from '../utils/datetime';
 import type { ConceptPracticeItem } from '../questions/conceptPractice';
 import { SCIENCE_TECHNIQUES, type TechniqueId } from '@lacuna/core/questions/techniqueTags';
 import type { Concept } from '@lacuna/core/questions/types';
-import { resolveAssessmentCoverage } from './assessmentCoverage';
-import { courseLessonOrderPreference } from './lessonOrder';
-import { lessonCardMembershipForLessons } from './lessonMembership';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
+import { lessonCardMembershipForLessons } from '@lacuna/core/course/lessonMembership';
 
 export interface StudyProgress {
   exam?: {

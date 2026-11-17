@@ -21,18 +21,22 @@ import {
   progressValue,
   scoreCard,
   type ObjectiveContext,
-} from './objective';
-import { selectNextCard, type CooldownMap } from './cooldown';
-import { studyPool, availableCards, dueCards, isAvailable } from './eligibility';
-import { cardSchedulingHorizon } from './horizon';
+} from '@lacuna/core/fsrs/objective';
+import { selectNextCard, type CooldownMap } from '@lacuna/core/fsrs/cooldown';
+import { studyPool, availableCards, dueCards, isAvailable } from '@lacuna/core/fsrs/eligibility';
+import { cardSchedulingHorizon } from '@lacuna/core/fsrs/horizon';
 import {
   courseBudgetedStudyPool,
   courseNewCardBudget,
   type CourseNewCardBudget,
-} from './courseNewCardBudget';
-import { cramScore } from './cram';
-import { isUpcomingExamDate, resolveCardExamDate, type ExamDateContext } from './examDate';
-import { daysUntil } from '../utils/datetime';
+} from '@lacuna/core/fsrs/courseNewCardBudget';
+import { cramScore } from '@lacuna/core/fsrs/cram';
+import {
+  isUpcomingExamDate,
+  resolveCardExamDate,
+  type ExamDateContext,
+} from '@lacuna/core/fsrs/examDate';
+import { daysUntil } from '@lacuna/core/utils/datetime';
 import type { Card, SchedulerConfig, SchedulingUnitRecord } from '@lacuna/core/db/types';
 
 /** Due review uses objective ordering but finishes when no scheduled reviews are due. */

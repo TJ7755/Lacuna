@@ -1,9 +1,9 @@
-import { isUpcomingExamDate } from '../fsrs/examDate';
+import { isUpcomingExamDate } from '@lacuna/core/fsrs/examDate';
 import type { CourseAssessment, CourseRecord, Lesson } from '@lacuna/core/db/types';
 import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import type { Concept } from '@lacuna/core/questions/types';
-import { specificationAssessmentPointIds } from '../specifications/assessment';
-import { resolveLessonOrder } from '../course/lessonOrder';
+import { specificationAssessmentPointIds } from '@lacuna/core/specifications/assessment';
+import { resolveLessonOrder } from '@lacuna/core/course/lessonOrder';
 
 /** Explicit assessment membership wins; otherwise use authored lesson coverage. */
 export function techniqueExamDate(

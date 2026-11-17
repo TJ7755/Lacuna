@@ -16,13 +16,13 @@ import type {
   RevisionProjection,
   RevisionReplanReason,
 } from '@lacuna/core/db/types';
-import { isAvailable } from '../fsrs/eligibility';
+import { isAvailable } from '@lacuna/core/fsrs/eligibility';
 import { getComponentsInZone } from '../utils/datetime';
 import {
   resolveAssessmentCoverage,
   type AssessmentSpecificationContext,
-} from './assessmentCoverage';
-import { lessonCardMembership } from './lessonMembership';
+} from '@lacuna/core/course/assessmentCoverage';
+import { lessonCardMembership } from '@lacuna/core/course/lessonMembership';
 import { lessonTaught } from './unlock';
 
 export interface RevisionPlanContext {

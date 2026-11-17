@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { examEveAvailable, EXAM_EVE_WINDOW_HOURS } from './cram';
+import { examEveAvailable, EXAM_EVE_WINDOW_HOURS } from '@lacuna/core/fsrs/cram';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { LegacyDeckRecord, ExamObjective } from '@lacuna/core/db/types';
 

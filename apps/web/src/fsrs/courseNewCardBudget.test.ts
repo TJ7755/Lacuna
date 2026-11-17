@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { courseBudgetedStudyPool, courseNewCardBudget } from './courseNewCardBudget';
+import {
+  courseBudgetedStudyPool,
+  courseNewCardBudget,
+} from '@lacuna/core/fsrs/courseNewCardBudget';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 

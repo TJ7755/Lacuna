@@ -1,4 +1,4 @@
-import { assertSpecificationAssessmentReferences } from '../specifications/assessment';
+import { assertSpecificationAssessmentReferences } from '@lacuna/core/specifications/assessment';
 import { assertLessonPrerequisites } from '@lacuna/core/db/lessonPrerequisites';
 import { db } from './schema';
 import { addReviewHistoryInBatches } from './addReviewHistoryInBatches';

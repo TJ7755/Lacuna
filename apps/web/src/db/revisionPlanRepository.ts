@@ -1,5 +1,5 @@
-import { decayOf } from '../fsrs/fsrs';
-import { courseLessonOrderPreference } from '../course/lessonOrder';
+import { decayOf } from '@lacuna/core/fsrs/fsrs';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
 import { earlierCourseLessonIds } from '../course/courseEntry';
 import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
 import {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { makeObjectiveContext, scoreCard } from './objective';
-import { makeSessionContext, selectNext } from './session';
+import { makeObjectiveContext, scoreCard } from '@lacuna/core/fsrs/objective';
+import { makeSessionContext, selectNext } from '@lacuna/core/fsrs/session';
 import { NOW, deck, card } from './session.testFixtures';
 
 describe('multi-deck session normalisation', () => {

@@ -1,6 +1,6 @@
-import { courseLessonOrderPreference } from '../../course/lessonOrder';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
 import { loadSimpleSession, type SimpleSessionScope } from './simpleSessionPersistence';
-import { lessonCardMembership } from '../../course/lessonMembership';
+import { lessonCardMembership } from '@lacuna/core/course/lessonMembership';
 import { db } from '../../db/schema';
 import { listCourseAssessments } from '../../db/read';
 import { hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
@@ -11,16 +11,16 @@ import { isLessonUnlocked, lessonEffectiveReleaseDates } from '../../course/path
 import { catchUpPracticePool } from '../../course/catchUpPractice';
 import { earlierCourseLessonIds } from '../../course/courseEntry';
 import { assessmentPracticePool } from '../../course/assessmentPractice';
-import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 import {
   dueReviewPool,
   eligiblePracticePool,
   examPracticePool,
   practiceCardScope,
 } from '../../course/studyPools';
-import { makeExamDateContext } from '../../fsrs/examDate';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { finalAssessmentForCourse, hydrateCourse } from '../../db/assessmentMigration';
-import type { SessionUnit } from '../../fsrs/session';
+import type { SessionUnit } from '@lacuna/core/fsrs/session';
 
 /** Global study keeps scheduling-unit ownership while honouring each Course's papers. */
 export async function loadGlobalSessionSource() {

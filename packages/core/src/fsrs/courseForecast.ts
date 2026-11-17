@@ -10,7 +10,7 @@
 
 import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
-import { forgettingCurve, rAtExam } from './forwardSim';
+import { forgettingCurve, rAtExam } from '@lacuna/core/fsrs/forwardSim';
 import { MS_PER_DAY, clampRequestRetention } from '@lacuna/core/fsrs/params';
 
 export interface ForecastPoint {

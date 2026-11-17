@@ -6,7 +6,7 @@ import {
   urgencyOrder,
 } from './dashboardForecasts';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
-import { examDayHistory } from '../fsrs/courseForecast';
+import { examDayHistory } from '@lacuna/core/fsrs/courseForecast';
 import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 

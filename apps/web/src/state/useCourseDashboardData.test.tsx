@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createCourse, createCourseCard, createLesson } from '../db/repository';
 import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { db } from '../db/schema';
-import { computeStudyStats } from '../fsrs/stats';
+import { computeStudyStats } from '@lacuna/core/fsrs/stats';
 import { useCourseDashboardData, useSidebarData } from './useCourseData';
 
 beforeEach(async () => {

@@ -15,10 +15,10 @@ import {
   practiceCardScope,
   practiceScopeVersion,
 } from '../../course/studyPools';
-import { revisionProjection } from '../../course/revisionProjection';
-import { makeExamDateContext } from '../../fsrs/examDate';
-import { studyPool } from '../../fsrs/eligibility';
-import type { SessionUnit } from '../../fsrs/session';
+import { revisionProjection } from '@lacuna/core/fsrs/halfLifeLogisticModel';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
+import { studyPool } from '@lacuna/core/fsrs/eligibility';
+import type { SessionUnit } from '@lacuna/core/fsrs/session';
 import type { StudyUnit } from './types';
 import type { PracticeSession } from './sessionCompletionPersistence';
 import {

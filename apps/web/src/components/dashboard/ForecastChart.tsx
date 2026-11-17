@@ -5,7 +5,7 @@ import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../ui/motion';
 import { formatDate, formatShortDate } from '../../utils/datetime';
-import type { CourseForecast, ForecastPoint } from '../../fsrs/courseForecast';
+import type { CourseForecast, ForecastPoint } from '@lacuna/core/fsrs/courseForecast';
 import { STATUS_LABEL, type ForecastStatus } from './forecastStatus';
 import { useCourseColours } from '../../state/ShellCourseData';
 

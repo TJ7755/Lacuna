@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import type { Card, Grade } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
-import { applyReview, makeEngine } from '../../apps/web/src/fsrs/fsrs';
+import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { createCourse, openEmptyDashboard } from './fixtures/lacunaApp';
 import {

@@ -1,6 +1,6 @@
 import { createEmptyCard, type Card as TsCard, type Grade as TsGrade, type State } from 'ts-fsrs';
 import type { FsrsParameters, Grade } from '@lacuna/core/db/types';
-import { makeEngine } from '../fsrs/fsrs';
+import { makeEngine } from '@lacuna/core/fsrs/fsrs';
 import {
   QUESTION_SCHEDULER_VERSION,
   type QuestionAttempt,

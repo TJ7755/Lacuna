@@ -7,9 +7,9 @@ import { ChartCard } from './ChartCard';
 import { Select } from '../ui/Select';
 import type { Course, Card } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
-import { averagePredictedRetrievability, masteryFraction } from '../../fsrs/progress';
+import { averagePredictedRetrievability, masteryFraction } from '@lacuna/core/fsrs/progress';
 import { isLeech } from '@lacuna/core/fsrs/leech';
-import { startOfDay } from '../../utils/datetime';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import { scaledSpring } from '../ui/motion';
 import { useAdvancedDetails } from '../../state/advancedDetails';
 

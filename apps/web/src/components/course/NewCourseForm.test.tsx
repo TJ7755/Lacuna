@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NewCourseForm } from './NewCourseForm';
-import { defaultExamDate, fromDateTimeLocalValue, getLocalTimeZone } from '../../utils/datetime';
+import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
+import { fromDateTimeLocalValue } from '@lacuna/core/utils/datetime';
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),

@@ -13,7 +13,7 @@
 // one, so a course whose due-count never crosses the threshold still gets
 // periodic practice.
 
-import { daysUntil } from '../utils/datetime';
+import { daysUntil } from '@lacuna/core/utils/datetime';
 import type { Course } from '@lacuna/core/db/types';
 
 /**

@@ -1,7 +1,7 @@
 import { MASTERY_R, MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import type { SchedulingMemory } from './fsrs';
-import { isUpcomingExamDate } from './examDate';
-import { rAtExam, rAtExamIfReviewedNow, type SimContext } from './forwardSim';
+import type { SchedulingMemory } from '@lacuna/core/fsrs/fsrs';
+import { isUpcomingExamDate } from '@lacuna/core/fsrs/examDate';
+import { rAtExam, rAtExamIfReviewedNow, type SimContext } from '@lacuna/core/fsrs/forwardSim';
 
 /** FSRS's reference retention; a model target, not a guarantee of human recall. */
 export const ASSESSMENT_TARGET_RECALL = MASTERY_R;

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { makeExamDateContext } from '../fsrs/examDate';
-import type { ReviewActivity } from '../fsrs/heatmap';
-import { startOfDay } from '../utils/datetime';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
+import type { ReviewActivity } from '@lacuna/core/fsrs/heatmap';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import { card, NOW } from '../fsrs/session.testFixtures';
 import { catchUpPracticePacing, catchUpPracticePool } from './catchUpPractice';
 

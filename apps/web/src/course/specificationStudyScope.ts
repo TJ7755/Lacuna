@@ -1,9 +1,9 @@
 import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import type { Concept } from '@lacuna/core/questions/types';
 import { pointsForSelection } from '@lacuna/core/specifications/selection';
-import { specificationAssessmentPointIds } from '../specifications/assessment';
-import { resolveAssessmentCoverage } from './assessmentCoverage';
-import { courseLessonOrderPreference } from './lessonOrder';
+import { specificationAssessmentPointIds } from '@lacuna/core/specifications/assessment';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
 
 /** Qualified ids for an applicable point and its applicable descendants, in document order. */
 function specificationPointBranch(course: Course, pointId: string): string[] {

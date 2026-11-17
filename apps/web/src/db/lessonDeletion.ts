@@ -1,5 +1,5 @@
 import { assertLessonPrerequisites } from '@lacuna/core/db/lessonPrerequisites';
-import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import { scheduleAssetGc } from './assets';
 import {

@@ -10,7 +10,7 @@ import type {
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { courseDueReviewCards, courseHeaderStats } from './headerStats';
 import { computeCourseSummaries } from '../state/courseSummaries';
-import { makeExamDateContext } from '../fsrs/examDate';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { eligiblePracticePool } from './studyPools';
 
 const NOW = Date.UTC(2026, 5, 4, 10);

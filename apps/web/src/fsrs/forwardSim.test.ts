@@ -6,8 +6,8 @@ import {
   rAtExamIfReviewedNow,
   deltaR,
   simContext,
-} from './forwardSim';
-import { makeEngine } from './fsrs';
+} from '@lacuna/core/fsrs/forwardSim';
+import { makeEngine } from '@lacuna/core/fsrs/fsrs';
 import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
 

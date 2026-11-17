@@ -3,7 +3,7 @@
 // separately would let a session over N lessons introduce N times the course cap.
 
 import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
-import { availableCards, studyPool } from './eligibility';
+import { availableCards, studyPool } from '@lacuna/core/fsrs/eligibility';
 
 /** Session cards grouped by course, with each course's admitted new cards memoised by cap. */
 export interface CourseNewCardBudget {

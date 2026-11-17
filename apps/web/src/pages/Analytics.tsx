@@ -29,8 +29,8 @@ import { CourseComparison } from '../components/analytics/CourseComparison';
 import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
 import { PillToggleGroup } from '../components/cards/PillToggleGroup';
 import { FadeInView } from '../components/ui/FadeInView';
-import { addDays } from '../fsrs/heatmap';
-import { startOfDay } from '../utils/datetime';
+import { addDays } from '@lacuna/core/fsrs/heatmap';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 
 /** Lets a chart card fill its grid row so neighbours line up. */
 const CELL = 'min-w-0 [&>section]:h-full';

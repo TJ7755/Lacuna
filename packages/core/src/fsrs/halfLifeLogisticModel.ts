@@ -5,10 +5,10 @@ import type {
   MemoryModelFallbackReason,
   RecallPrediction,
   SuccessGradeCoefficient,
-} from './cramAllocator';
-import { forgettingCurve } from './forwardSim';
+} from '@lacuna/core/fsrs/cramAllocator';
+import { forgettingCurve } from '@lacuna/core/fsrs/forwardSim';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { lacksUnprimedRetest } from './primedReview';
+import { lacksUnprimedRetest } from '@lacuna/core/fsrs/primedReview';
 
 const MODEL_NAME = 'half-life-logistic-v3-routed';
 const FEATURE_NAMES = [

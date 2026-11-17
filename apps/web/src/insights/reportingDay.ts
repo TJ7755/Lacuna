@@ -5,7 +5,8 @@ import {
   localReportingDayLabel,
   type ReportingWindow,
 } from '@lacuna/protocol/insights/index';
-import { getLocalTimeZone, startOfDay } from '../utils/datetime';
+import { getLocalTimeZone } from '../utils/datetime';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 
 export function completedReportingDay(at: number): string {
   return localReportingDayLabel(localMidnight(localReportingDayLabel(at)) - 1);

@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { performanceForCards } from '../db/backingDecks';
 import { readReviewActivity } from '../db/reviewActivityRead';
-import type { ReviewActivity } from '../fsrs/heatmap';
+import type { ReviewActivity } from '@lacuna/core/fsrs/heatmap';
 import { db } from '../db/schema';
 import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 import {
@@ -12,12 +12,12 @@ import {
   studyReviewStats,
   studyWorkloadForecast,
   type StudyStats,
-} from '../fsrs/stats';
+} from '@lacuna/core/fsrs/stats';
 import { computeCourseSummaries, type CourseSummary } from './courseSummaries';
 import { dashboardForecasts } from './dashboardForecasts';
-import type { CourseForecast } from '../fsrs/courseForecast';
+import type { CourseForecast } from '@lacuna/core/fsrs/courseForecast';
 import { courseColours } from '../course/colour';
-import { lessonOrder } from '../course/assessmentCoverage';
+import { lessonOrder } from '@lacuna/core/course/assessmentCoverage';
 
 interface SidebarData {
   courses: Course[];

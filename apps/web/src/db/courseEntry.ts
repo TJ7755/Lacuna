@@ -1,6 +1,6 @@
 import { stampUpdatedAt } from './mutationStamp';
 import { db } from './schema';
-import { courseLessonOrderPreference, resolveLessonOrder } from '../course/lessonOrder';
+import { courseLessonOrderPreference, resolveLessonOrder } from '@lacuna/core/course/lessonOrder';
 import { earlierLessonIds } from '../course/courseEntry';
 
 /** Entry preferences never rewrite content, scheduling evidence or publisher locks. */

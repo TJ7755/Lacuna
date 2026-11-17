@@ -19,7 +19,7 @@ import type {
   LessonCardExposure,
   LessonCardLink,
 } from '@lacuna/core/db/types';
-import { dueReviewPool } from '../fsrs/eligibility';
+import { dueReviewPool } from '@lacuna/core/fsrs/eligibility';
 import { nearestExamDate, examIsUrgent } from './path';
 
 export interface CourseHeaderStats {

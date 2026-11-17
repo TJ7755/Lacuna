@@ -93,7 +93,7 @@ export default defineConfig({
         'apps/web/src/course/pathRules.ts',
         'apps/web/src/course/pathTypes.ts',
         'apps/web/src/course/unlock.ts',
-        'apps/web/src/fsrs/session.ts',
+        'packages/core/src/fsrs/session.ts',
         'apps/web/src/db/lineageDiff.ts',
       ],
       thresholds: {
@@ -136,7 +136,12 @@ export default defineConfig({
           lines: 95,
         },
         'apps/web/src/course/unlock.ts': { statements: 98, branches: 98, functions: 99, lines: 98 },
-        'apps/web/src/fsrs/session.ts': { statements: 94, branches: 81, functions: 99, lines: 95 },
+        'packages/core/src/fsrs/session.ts': {
+          statements: 94,
+          branches: 81,
+          functions: 99,
+          lines: 95,
+        },
         'apps/web/src/db/lineageDiff.ts': {
           statements: 80,
           branches: 82,

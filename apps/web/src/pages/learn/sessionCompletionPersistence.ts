@@ -2,12 +2,12 @@ import { db } from '../../db/schema';
 import { completeRevisionWindow, refreshRevisionPlan } from '../../db/revisionPlanRepository';
 import { savePracticeMilestoneProgress } from '../../db/practiceNodeRepository';
 import type { Card, Course, RevisionPlan } from '@lacuna/core/db/types';
-import type { ExamDateContext } from '../../fsrs/examDate';
-import type { SessionContext } from '../../fsrs/session';
+import type { ExamDateContext } from '@lacuna/core/fsrs/examDate';
+import type { SessionContext } from '@lacuna/core/fsrs/session';
 import {
   createHalfLifeLogisticModel,
   readinessFromPredictions,
-} from '../../fsrs/halfLifeLogisticModel';
+} from '@lacuna/core/fsrs/halfLifeLogisticModel';
 import { practiceReadiness } from '../../course/studyPools';
 import type { SessionSummary } from '../../components/learn/types';
 import { ratchetSessionUnlocks } from './sessionUnlocks';

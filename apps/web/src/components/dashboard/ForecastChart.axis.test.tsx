@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ForecastChart } from './ForecastChart';
-import type { CourseForecast } from '../../fsrs/courseForecast';
+import type { CourseForecast } from '@lacuna/core/fsrs/courseForecast';
 
 import { courseColours } from '../../course/colour';
 

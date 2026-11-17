@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  defaultExamDate,
-  fromDateTimeLocalValue,
-  relativeExam,
-  startOfDay,
-  toDateTimeLocalValue,
-} from './datetime';
+import { defaultExamDate, relativeExam, toDateTimeLocalValue } from './datetime';
+import { fromDateTimeLocalValue, startOfDay } from '@lacuna/core/utils/datetime';
 
 describe('datetime-local conversion', () => {
   it.each([

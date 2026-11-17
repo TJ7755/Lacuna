@@ -47,7 +47,7 @@ import {
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import type { Card } from '@lacuna/core/db/types';
-import { courseLessonOrderPreference, resolveLessonOrder } from '../course/lessonOrder';
+import { courseLessonOrderPreference, resolveLessonOrder } from '@lacuna/core/course/lessonOrder';
 
 /**
  * Navigate from Cards so the destination's Back returns here with the same search,

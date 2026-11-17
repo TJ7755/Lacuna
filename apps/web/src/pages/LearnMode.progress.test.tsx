@@ -13,7 +13,7 @@ import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { db } from '../db/schema';
 import { createCard, createCourse, createLesson, createLessonCard } from '../db/repository';
-import { makeSessionContext, sessionProgress } from '../fsrs/session';
+import { makeSessionContext, sessionProgress } from '@lacuna/core/fsrs/session';
 import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
 import { AccentProvider } from '../state/AccentContext';

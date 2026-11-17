@@ -17,7 +17,7 @@ import { buildCourseSharePayload, importSharePayload, type SharePayloadV6 } from
 import { buildCourseFile, decodeCourseFile } from './courseFile';
 import { mergeSnapshots } from '../sync/mergeSnapshots';
 import { resolveCourseLessonOrder } from '../course/lessonOrder';
-import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 import { buildPath } from '../course/path';
 import { answerQuestionAttempt, startQuestionAttempt } from '../questions/repository';
 import {

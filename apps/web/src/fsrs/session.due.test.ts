@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { applyReview, makeEngine } from './fsrs';
+import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
 import {
   makeSessionContext,
   selectNext,
   sessionComplete,
   sessionProgress,
   sessionServePool,
-} from './session';
+} from '@lacuna/core/fsrs/session';
 import { NOW, deck, card } from './session.testFixtures';
 
 describe('due review sessions', () => {

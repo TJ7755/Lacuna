@@ -1,4 +1,4 @@
-import { courseLessonOrderPreference } from '../../course/lessonOrder';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -17,7 +17,7 @@ import { motionTransition } from '../../components/ui/motion';
 import { MeasuredHeight } from '../../components/ui/MeasuredHeight';
 import { StepSwap } from '../../components/ui/StepSwap';
 import { useToast } from '../../components/ui/Toast';
-import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 import {
   createCourseAssessment,
   deleteCourseAssessment,

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { makeSessionContext, selectNext, sessionComplete, sessionServePool } from './session';
+import {
+  makeSessionContext,
+  selectNext,
+  sessionComplete,
+  sessionServePool,
+} from '@lacuna/core/fsrs/session';
 import { NOW, deck, card } from './session.testFixtures';
 
 describe('cram sessions', () => {

@@ -14,13 +14,13 @@ import {
   type SchedulerConfig,
   type Sequence,
 } from '@lacuna/core/db/types';
-import { progressHeading } from '../../fsrs/objective';
+import { progressHeading } from '../../fsrs/progressHeading';
 import {
   type SessionContext,
   sessionCompletionProgress,
   sessionProgress,
   sessionServePool,
-} from '../../fsrs/session';
+} from '@lacuna/core/fsrs/session';
 
 import { resolveAnswerMode, reviewAnswerInput } from '../../utils/resolveAnswerMode';
 import { answerCorrect, type AnswerInput, type AnswerResult } from './answerSteps';

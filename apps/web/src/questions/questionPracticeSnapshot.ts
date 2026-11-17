@@ -2,7 +2,7 @@ import type { Course, CourseAssessment, Lesson } from '@lacuna/core/db/types';
 import type { Concept } from '@lacuna/core/questions/types';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { db } from '../db/schema';
-import { makeEngine, decayOf } from '../fsrs/fsrs';
+import { makeEngine, decayOf } from '@lacuna/core/fsrs/fsrs';
 import { practiceContext } from './questionPracticeSelection';
 import { deriveTechniqueSchedules } from './techniqueSchedule';
 import { latestQuestionPracticeExposure } from './questionPracticeExposure';

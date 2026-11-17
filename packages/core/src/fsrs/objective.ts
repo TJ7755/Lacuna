@@ -13,13 +13,19 @@
 //    cheapest (closest to the line) first; the bar shows the fraction of cards
 //    already at or above 0.90.
 
-import { makeEngine } from './fsrs';
-import { deltaR, rAtExam, rAtExamIfReviewedNow, simContext, type SimContext } from './forwardSim';
-import { averagePredictedRetrievability, masteryFraction } from './progress';
-import { cardSchedulingHorizon } from './horizon';
-import { availableCards } from './eligibility';
+import { makeEngine } from '@lacuna/core/fsrs/fsrs';
+import {
+  deltaR,
+  rAtExam,
+  rAtExamIfReviewedNow,
+  simContext,
+  type SimContext,
+} from '@lacuna/core/fsrs/forwardSim';
+import { averagePredictedRetrievability, masteryFraction } from '@lacuna/core/fsrs/progress';
+import { cardSchedulingHorizon } from '@lacuna/core/fsrs/horizon';
+import { availableCards } from '@lacuna/core/fsrs/eligibility';
 import { MASTERY_R } from '@lacuna/core/fsrs/params';
-import type { ExamDateContext } from './examDate';
+import type { ExamDateContext } from '@lacuna/core/fsrs/examDate';
 import type { Card, SchedulerConfig, ExamObjective } from '@lacuna/core/db/types';
 
 /**
@@ -66,16 +72,6 @@ export function progressValue(
   return deck.examObjective === 'securedTopics'
     ? masteryFraction(available, deck, now, examDateContext)
     : averagePredictedRetrievability(available, deck, now, examDateContext);
-}
-
-/**
- * A heading for the deck/summary panels. Names what `progressValue` computes for
- * the deck's objective: mean predicted recall, or the share of Cards at 90%.
- */
-export function progressHeading(deck: SchedulerConfig): string {
-  return deck.examObjective === 'securedTopics'
-    ? 'Cards at 90% predicted recall'
-    : 'Predicted recall';
 }
 
 /**

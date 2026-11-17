@@ -27,7 +27,7 @@ import {
   scopeQuestions,
   selectableAssessments,
 } from '../course/courseProgress';
-import { progressHeading } from '../fsrs/objective';
+import { progressHeading } from '../fsrs/progressHeading';
 import { SpecificationProgress } from '../components/analytics/SpecificationProgress';
 import { useCourseConceptPractice } from '../state/useCourseConceptPractice';
 
