@@ -2,10 +2,10 @@ import { db } from '../db/schema';
 import type { SharePayloadV6 } from '../db/share';
 import type { LineageIdMapping } from '@lacuna/core/db/types';
 import { parseQuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
+import { assertQuestionSetPracticeNodeReferences } from '@lacuna/core/db/questionSetPracticeNode';
 import {
   parseQuestionSetPracticeNode,
   normalisePracticeNodeLineage,
-  assertQuestionSetPracticeNodeReferences,
 } from '../db/questionSetPracticeNode';
 
 type QuestionSetLineagePayload = SharePayloadV6 & {

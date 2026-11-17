@@ -6,7 +6,7 @@ import { referencedQuestionSetConceptIds } from '@lacuna/core/questions/question
 // mergeSnapshots(local, remote) then importBackup(merged, 'replace') — that
 // caller is P5, not this module.
 
-import { assertLessonPrerequisites } from '../db/lessonPrerequisites';
+import { assertLessonPrerequisites } from '@lacuna/core/db/lessonPrerequisites';
 import type {
   BackupFile,
   CourseAssessment,
@@ -39,11 +39,9 @@ import type {
 } from '@lacuna/core/questions/types';
 import type { QuestionSetRecord } from '@lacuna/core/questions/questionSetCodec';
 import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
-import {
-  assertQuestionSetReferences,
-  mergeQuestionSetRecords,
-} from '../questions/questionSetMerge';
-import { assertQuestionSetPracticeNodeReferences } from '../db/questionSetPracticeNode';
+import { assertQuestionSetReferences } from '@lacuna/core/questions/questionSetReferences';
+import { mergeQuestionSetRecords } from '../questions/questionSetMerge';
+import { assertQuestionSetPracticeNodeReferences } from '@lacuna/core/db/questionSetPracticeNode';
 
 import {
   normaliseSnapshot,

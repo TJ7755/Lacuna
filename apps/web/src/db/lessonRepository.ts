@@ -1,4 +1,4 @@
-import { assertLessonPrerequisites } from './lessonPrerequisites';
+import { assertLessonPrerequisites } from '@lacuna/core/db/lessonPrerequisites';
 import { syncCourseSchedulingUnits } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
 import { earlierLessonIds } from '../course/courseEntry';

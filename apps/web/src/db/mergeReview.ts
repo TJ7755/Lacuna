@@ -1,4 +1,4 @@
-import { assertLessonPrerequisites } from './lessonPrerequisites';
+import { assertLessonPrerequisites } from '@lacuna/core/db/lessonPrerequisites';
 import { db } from './schema';
 import { updateCardFromLineage } from './cardRepository';
 import {

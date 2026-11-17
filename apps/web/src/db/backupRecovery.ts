@@ -1,5 +1,5 @@
 import { assertSpecificationAssessmentReferences } from '../specifications/assessment';
-import { assertLessonPrerequisites } from './lessonPrerequisites';
+import { assertLessonPrerequisites } from '@lacuna/core/db/lessonPrerequisites';
 import { db } from './schema';
 import { addReviewHistoryInBatches } from './addReviewHistoryInBatches';
 import type {
@@ -36,7 +36,7 @@ import { mergeQuestionCollections } from '../questions/merge';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 import { mergeQuestionSetAttemptPair } from '../questions/questionSetAttemptMerge';
 import { mergeQuestionSetRecords } from '../questions/questionSetMerge';
-import { assertQuestionSetPracticeNodeReferences } from './questionSetPracticeNode';
+import { assertQuestionSetPracticeNodeReferences } from '@lacuna/core/db/questionSetPracticeNode';
 import type { PreparedBackup } from './backupPreparation';
 import { mergeLineageMappings, newestWins } from '../sync/snapshotRecords';
 

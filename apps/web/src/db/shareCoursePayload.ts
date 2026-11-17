@@ -1,9 +1,7 @@
 import { db } from './schema';
-import { assertLessonPrerequisites } from './lessonPrerequisites';
-import {
-  assertQuestionSetPracticeNodeReferences,
-  parseQuestionSetPracticeNode,
-} from './questionSetPracticeNode';
+import { assertLessonPrerequisites } from '@lacuna/core/db/lessonPrerequisites';
+import { assertQuestionSetPracticeNodeReferences } from '@lacuna/core/db/questionSetPracticeNode';
+import { parseQuestionSetPracticeNode } from './questionSetPracticeNode';
 import { finalAssessmentForCourse } from './assessmentMigration';
 import { stripAssetMedia } from './assets';
 import { presetForSequence } from './sequencePresets';
