@@ -47,7 +47,17 @@ describe('createDesktopUpdater', () => {
 
     expect(updater.autoDownload).toBe(true);
     expect(updater.autoInstallOnAppQuit).toBe(false);
-    expect(updater.allowPrerelease).toBe(true);
+  });
+
+  it.each([
+    ['0.2.3', false],
+    ['0.2.4-beta.1', true],
+  ])('offers prereleases only to prerelease installs (%s -> %s)', (currentVersion, expected) => {
+    const updater = fakeUpdater();
+
+    createDesktopUpdater(options(updater, { currentVersion }));
+
+    expect(updater.allowPrerelease).toBe(expected);
   });
 
   it.each([
