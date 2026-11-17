@@ -1,0 +1,111 @@
+.edition-soundings {
+  --paper: #332849;
+  --ink: #f2e7ff;
+  --action: #e4ceff;
+  --on-action: #312740;
+  --field: #ded0f0;
+  --field-ink: #342646;
+}
+.edition-soundings .edition-opening {
+  display: block;
+  padding-block: 55px 36px;
+}
+.edition-soundings .edition-intro {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  align-items: end;
+  column-gap: 8vw;
+}
+.edition-soundings h1 {
+  font-size: clamp(66px, 8vw, 130px);
+  max-width: 10ch;
+}
+.edition-soundings .edition-intro p {
+  margin: 0;
+}
+.edition-soundings .landing-cta {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: 18px;
+}
+.soundings-trace {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  align-items: end;
+  margin-top: 20px !important;
+  color: #d5b2f6;
+}
+.soundings-trace figcaption {
+  grid-column: 1/-1;
+  color: var(--ink);
+}
+.soundings-trace output {
+  font:
+    400 clamp(85px, 13vw, 190px)/1 'Space Grotesk',
+    sans-serif;
+  letter-spacing: -0.09em;
+}
+.soundings-trace small {
+  font-size: 0.38em;
+}
+.soundings-trace svg {
+  width: 100%;
+  height: clamp(140px, 19vw, 250px);
+}
+.soundings-trace div {
+  grid-column: 2;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.soundings-trace button {
+  background: none;
+  color: var(--ink);
+  padding: 6px 10px;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+.soundings-trace button[aria-pressed='true'] {
+  border-color: currentColor;
+}
+@media (max-width: 800px) {
+  .edition-soundings .edition-intro {
+    display: block;
+  }
+  .edition-soundings .edition-intro p {
+    margin-top: 20px;
+  }
+  .soundings-trace div {
+    grid-column: 1/-1;
+  }
+}
+.edition-soundings .edition-proof {
+  display: block;
+}
+.edition-soundings .edition-proof > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 12px 8vw;
+}
+.edition-soundings .edition-proof p {
+  margin: 0;
+}
+.edition-soundings .edition-proof a {
+  grid-column: 2;
+  margin: 0;
+}
+.edition-soundings .edition-proof img {
+  display: block;
+  width: min(100%, 940px);
+  margin: 5vw auto 0;
+}
+@media (max-width: 800px) {
+  .edition-soundings .edition-proof > div {
+    display: block;
+  }
+  .edition-soundings .edition-proof p {
+    margin: 18px 0;
+  }
+}

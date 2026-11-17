@@ -1,0 +1,82 @@
+.edition-marginalia {
+  --paper: #f6c9d4;
+  --ink: #48142c;
+  --action: #651636;
+  --on-action: #fff3f6;
+  --field: #86274b;
+  --field-ink: #fff1f4;
+}
+.edition-marginalia .edition-opening {
+  align-items: start;
+  padding-block: 7vw;
+}
+.edition-marginalia h1 {
+  font:
+    italic 500 clamp(68px, 8.9vw, 145px)/0.91 Georgia,
+    serif;
+  letter-spacing: -0.085em;
+}
+.mark-paper {
+  position: relative;
+  margin: 12px 8px 24px 0;
+  background: #fff9f4;
+  padding: clamp(26px, 3vw, 52px);
+  color: #2b2433;
+  box-shadow:
+    8px 10px 0 #eedbe2,
+    9px 11px 0 #bb8899;
+  transform: rotate(-1.25deg);
+}
+.mark-paper header {
+  padding: 0 0 13px;
+  border-bottom: 2px solid currentColor;
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+.mark-paper h2 {
+  font:
+    600 clamp(24px, 2.25vw, 40px)/1.14 'Instrument Sans',
+    sans-serif;
+  letter-spacing: -0.04em;
+  margin: 24px 0;
+}
+.mark-paper blockquote {
+  font:
+    italic clamp(23px, 2.45vw, 38px)/1.48 Georgia,
+    serif;
+  letter-spacing: -0.035em;
+  margin: 18px 0 30px;
+  background: repeating-linear-gradient(
+    transparent 0 calc(1.48em - 1px),
+    #c4bac4 calc(1.48em - 1px) 1.48em
+  );
+}
+.mark-paper [data-marked='true'] {
+  text-decoration: underline wavy #a62752;
+  text-underline-offset: 6px;
+}
+.mark-paper aside {
+  margin-top: 18px;
+  color: #802044;
+}
+.mark-paper aside strong {
+  font:
+    italic 32px Georgia,
+    serif;
+}
+.mark-paper ul {
+  padding: 0;
+  list-style: none;
+  margin-top: 10px;
+}
+.edition-marginalia .edition-proof h2 {
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+}
+.edition-marginalia .edition-proof img {
+  outline: 8px solid #fff4eb;
+  border-radius: 0;
+  transform: rotate(1deg);
+}

@@ -1,0 +1,96 @@
+.edition-almanac {
+  --paper: #ffda6c;
+  --ink: #342816;
+  --action: #342816;
+  --on-action: #fff4cd;
+  --field: #4c3822;
+  --field-ink: #fff1bf;
+}
+.edition-almanac .edition-opening {
+  grid-template-columns: 1fr 0.84fr;
+}
+.edition-almanac h1 {
+  font-weight: 700;
+  max-width: 7.2ch;
+}
+.almanac-sheet {
+  position: relative;
+  background: #fff8e4;
+  color: #382b19;
+  padding: clamp(22px, 3vw, 50px);
+  transform: rotate(2deg);
+  box-shadow:
+    6px 8px 0 #c69d48,
+    12px 16px 0 #ad8433;
+}
+.almanac-sheet::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 5%;
+  width: 90%;
+  height: 8px;
+  background: radial-gradient(circle, #8c713a 3px, transparent 4px) left center/6.67% 100% repeat-x;
+}
+.almanac-sheet figcaption,
+.almanac-sheet label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.almanac-sheet figcaption {
+  padding-bottom: 10px;
+  border-bottom: 3px solid;
+}
+.almanac-dateline {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  margin-block: 14px;
+}
+.almanac-dateline strong {
+  font:
+    650 clamp(105px, 12vw, 200px)/0.88 'Space Grotesk',
+    sans-serif;
+  letter-spacing: -0.1em;
+}
+.almanac-dateline div {
+  padding-bottom: 6px;
+}
+.almanac-month {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-block: 18px;
+}
+.almanac-month span {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  border-top: 1px solid #a18e67;
+  padding: 4px;
+}
+.almanac-month [data-before='true'] {
+  background: #ffdea0;
+}
+.almanac-month [data-exam='true'] {
+  background: #463215;
+  color: white;
+  border-radius: 50%;
+}
+.almanac-sheet select {
+  background: #fff1c5;
+  color: #382b19;
+  border: 1px solid currentColor;
+  padding: 7px 12px;
+  border-radius: 3px;
+}
+@media (max-width: 800px) {
+  .edition-almanac .edition-opening {
+    grid-template-columns: 1fr;
+  }
+  .almanac-sheet {
+    transform: none;
+  }
+}

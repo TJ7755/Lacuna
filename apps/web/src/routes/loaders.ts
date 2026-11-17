@@ -82,7 +82,7 @@ export const loadMcpBridgeController = () =>
   }));
 
 export const loadLanding = () =>
-  import('../pages/Landing').then((module) => ({ default: module.Landing }));
+  import('../pages/landing/activeLanding').then((module) => ({ default: module.Landing }));
 
 export const loadImportPanel = () =>
   import('../components/import/ImportPanel').then((module) => ({ default: module.ImportPanel }));

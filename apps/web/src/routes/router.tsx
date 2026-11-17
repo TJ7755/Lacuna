@@ -75,6 +75,7 @@ const QuestionSetPractice = lazy(loadQuestionSetPractice);
 const QuestionEditor = lazy(loadQuestionEditor);
 const QuestionLearnMode = lazy(loadQuestionLearnMode);
 const MergeReviewPanel = lazy(loadMergeReviewPanel);
+const LandingPreview = lazy(() => import('../pages/landing/Preview'));
 const Landing = lazy(loadLanding);
 // Not in loaders: onboarding reaches the route prefetcher, which imports the loaders.
 const loadOnboarding = () => import('../pages/onboarding/Onboarding');
@@ -255,6 +256,10 @@ export const router = createHashRouter([
         // The landing page is a full-screen editorial experience outside the shell.
         path: '/welcome',
         element: isolatedRoute('the landing page', lazyRoute(Landing)),
+      },
+      {
+        path: '/landing-studies',
+        element: isolatedRoute('the landing studies', lazyRoute(LandingPreview)),
       },
       {
         path: '/landing',

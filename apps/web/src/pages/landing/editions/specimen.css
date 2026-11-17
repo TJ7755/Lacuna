@@ -1,0 +1,101 @@
+.edition-specimen {
+  --paper: #e7f0ec;
+  --ink: #143f44;
+  --action: #16474d;
+  --on-action: #f2fff9;
+  --field: #b6d0c7;
+  --field-ink: #173c37;
+}
+.edition-specimen h1,
+.edition-specimen h2 {
+  font-family: Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.067em;
+}
+.edition-specimen .edition-opening {
+  grid-template-columns: 0.92fr 1fr;
+  gap: 8vw;
+}
+.specimen-plate {
+  position: relative;
+  align-self: stretch;
+  min-height: 430px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 22px 26px;
+  background: radial-gradient(ellipse at 48% 50%, #39788b, #184855 70%, #123943);
+  color: #d5f2e0;
+  outline: 1px solid #d4eeeb70;
+  outline-offset: -13px;
+}
+.specimen-frond {
+  position: absolute;
+  inset: 2% 4% 13%;
+  width: 92%;
+  height: 85%;
+  filter: drop-shadow(2px 2px 3px #c7eae463);
+}
+.specimen-plate figcaption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+.specimen-plate i {
+  font:
+    italic 23px Georgia,
+    serif;
+}
+.specimen-question {
+  margin-top: 34px;
+  border-top: 1px solid #93afab;
+  padding-top: 20px;
+}
+.specimen-question p {
+  font:
+    22px/1.4 Georgia,
+    serif;
+}
+.specimen-question button {
+  background: none;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  padding: 9px 0;
+}
+.specimen-question .specimen-answer {
+  max-width: 36ch;
+  font-size: 18px;
+}
+@media (max-width: 800px) {
+  .edition-specimen .edition-opening {
+    grid-template-columns: 1fr;
+  }
+  .specimen-plate {
+    min-height: 320px;
+  }
+}
+.edition-specimen .edition-proof {
+  grid-template-columns: 1.2fr 0.8fr;
+}
+.edition-specimen .edition-proof img {
+  grid-column: 1;
+  grid-row: 1;
+  outline: 10px solid #e7f0ec;
+  border-radius: 0;
+}
+.edition-specimen .edition-proof > div {
+  grid-column: 2;
+}
+@media (max-width: 800px) {
+  .edition-specimen .edition-proof {
+    grid-template-columns: 1fr;
+  }
+  .edition-specimen .edition-proof > div,
+  .edition-specimen .edition-proof img {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}

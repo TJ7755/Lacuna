@@ -1,3 +1,4 @@
+import { landingEditionAlias } from './scripts/landing-edition.ts';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import tailwindcss from '@tailwindcss/vite';
@@ -131,6 +132,7 @@ export default defineConfig({
     // will 404 on local previews, Electron or other static hosts.
   },
   resolve: {
+    alias: landingEditionAlias(),
     dedupe: ['react', 'react-dom', 'motion'],
   },
   // Pre-bundle the heavy dependencies up front so the dev server never pauses to

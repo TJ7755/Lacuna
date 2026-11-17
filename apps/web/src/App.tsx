@@ -83,7 +83,7 @@ function StartingApp() {
 function isPublicEntry(hash: string): boolean {
   // Public links and comparison CTAs must preserve a new visitor’s destination
   // through first-run setup, including course sharing and material import.
-  return /^#\/(?:welcome|landing|start|download|privacy|terms|share|import|teach|s\/[^/?#]+)\/?(?:[?#]|$)/.test(
+  return /^#\/(?:welcome|landing|landing-studies|start|download|privacy|terms|share|import|teach|s\/[^/?#]+)\/?(?:[?#]|$)/.test(
     hash,
   );
 }

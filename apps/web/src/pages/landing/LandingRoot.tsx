@@ -1,6 +1,6 @@
 import { LazyMotion, domAnimation } from 'motion/react';
 import { HashRouter, Route, Routes } from 'react-router-dom';
-import { Landing } from '../Landing';
+import { Landing } from './activeLanding';
 import { LandingTransition } from '../../components/layout/LandingTransition';
 
 /**

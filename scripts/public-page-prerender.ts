@@ -1,3 +1,4 @@
+import { landingEditionAlias } from './landing-edition.ts';
 import { coursePaths } from '../apps/web/src/pages/courses/content.ts';
 import { createServer, type Plugin, type ViteDevServer } from 'vite';
 
@@ -77,6 +78,7 @@ export function publicPagePrerenderPlugin(): Plugin {
         if (!page) return html;
         renderer = await createServer({
           configFile: false,
+          resolve: { alias: landingEditionAlias() },
           oxc: { jsx: { runtime: 'automatic', development: false } },
           server: { middlewareMode: true, watch: null },
           appType: 'custom',
