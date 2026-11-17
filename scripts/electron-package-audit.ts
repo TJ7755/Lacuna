@@ -38,7 +38,9 @@ const WINDOWS_PACKAGE_BUDGET = {
   // Shared generated authoring adds NumericAnswerEditor, questionValidation and
   // repository.authoring renderer chunks. Byte limits remain unchanged.
   // Shared card construction adds one concept/snapshot renderer chunk (1,546 bytes).
-  payloadFileCount: 734,
+  // Separating core calendar calculations and web progress headings adds two renderer chunks.
+  // The measured Windows payload has 736 files; byte limits remain unchanged.
+  payloadFileCount: 736,
   sourceMapBytes: 0,
   buildOnlyAssetBytes: 10_000,
   localeBytes: 1_300_000,
