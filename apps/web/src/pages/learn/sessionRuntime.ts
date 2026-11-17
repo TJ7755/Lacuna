@@ -33,12 +33,7 @@ import {
   persistSessionPracticeMilestone,
   type PracticeSession,
 } from './sessionCompletionPersistence';
-import {
-  transitionResponseTimer,
-  transitionSession,
-  type SessionEventInput,
-  type SessionState,
-} from './sessionMachine';
+import { transitionSession, type SessionEventInput, type SessionState } from './sessionMachine';
 import { scheduleSessionPreload } from './sessionPreload';
 import { SessionRecitation } from './sessionRecitation';
 import { resolveLearnSessionScope } from './sessionScope';
@@ -48,6 +43,7 @@ import type { SessionRuntimeOptions } from './sessionRuntimeOptions';
 import { createSessionCompletion } from './sessionCompletion';
 import { SessionCardActions } from './sessionCardActions';
 import { SessionIntroduction } from './sessionIntroduction';
+import { SessionResponsePresentation } from './sessionResponsePresentation';
 type SessionSchedulingConfig = SchedulerConfig & {
   dailyReviewGoal?: number;
   sessionTimeLimitMinutes?: number;
@@ -346,17 +342,15 @@ export class SessionRuntime {
 
   private occlusionMap: Map<string, OcclusionCardData> = new Map();
 
-  private hintStep: 0 | 1 | 2 = 0;
+  private responsePresentation = new SessionResponsePresentation();
   private setHintStep = (value: 0 | 1 | 2 | ((previous: 0 | 1 | 2) => 0 | 1 | 2)) => {
-    this.hintStep = typeof value === 'function' ? value(this.hintStep) : value;
+    this.responsePresentation.setHintStep(value);
     this.publish();
   };
 
   private get currentOcclusionData() {
     return this.current !== null ? (this.occlusionMap.get(this.current!.id) ?? null) : null;
   }
-
-  private presentedAnswerInput: AnswerResponse['input'] = undefined;
 
   private get answerLesson() {
     return this.answerModeLessons.get(this.options.lessonId ?? this.current?.primaryLessonId ?? '');
@@ -509,12 +503,6 @@ export class SessionRuntime {
       introductionProgress(this.introduction, this.sessionCardIds, this.masteredInPass))();
   }
 
-  private timerStart = 0;
-
-  private responseTime = 0;
-
-  private pausedElapsed = 0;
-
   private get events() {
     return this.machineState.events;
   }
@@ -533,20 +521,6 @@ export class SessionRuntime {
     const transition = transitionSession(this.machineState, event);
     this.machineState = transition.state;
     return transition.effects;
-  };
-
-  private advanceTimer = (event: Parameters<typeof transitionResponseTimer>[1]) => {
-    const next = transitionResponseTimer(
-      {
-        startedAt: this.timerStart,
-        responseSeconds: this.responseTime,
-        pausedElapsed: this.pausedElapsed,
-      },
-      event,
-    );
-    this.timerStart = next.startedAt;
-    this.responseTime = next.responseSeconds;
-    this.pausedElapsed = next.pausedElapsed;
   };
 
   private get exitTo() {
@@ -718,7 +692,7 @@ export class SessionRuntime {
     if (!this.mounted) return;
     // Keep studying starts a new pass after the previous report was committed.
     this.beginCompletionPass();
-    this.presentedAnswerInput = undefined;
+    this.responsePresentation.clearInput();
     const effects = this.applySessionEvent({
       type: 'next',
       selection: {
@@ -752,9 +726,9 @@ export class SessionRuntime {
             this.introductions.present(this.machineState.introduction, effect.card);
           this.phase = 'question';
           this.options.onCardServed?.();
-          this.hintStep = 0;
+          this.responsePresentation.resetHints();
           this.answers.beginCard();
-          this.advanceTimer({ type: 'start', now: performance.now() });
+          this.responsePresentation.start(performance.now());
           this.options.distraction.beginCard();
           this.options.distraction.setAnswerVisible(false);
           if (effect.invalidateProgress) this.progressCache.dirty = true;
@@ -831,13 +805,12 @@ export class SessionRuntime {
   private reveal = () => {
     if (this.phase === 'question') {
       const card = this.current;
-      if (card)
-        this.presentedAnswerInput = reviewAnswerInput(
-          card,
-          this.recitation.sequence !== null,
-          this.isTypingCard,
-        );
-      this.advanceTimer({ type: 'reveal', now: performance.now() });
+      this.responsePresentation.reveal(
+        card
+          ? reviewAnswerInput(card, this.recitation.sequence !== null, this.isTypingCard)
+          : this.responsePresentation.input,
+        performance.now(),
+      );
       this.phase = 'answer';
     }
     this.options.distraction.setAnswerVisible(true);
@@ -846,8 +819,7 @@ export class SessionRuntime {
 
   private revealRecitation = (lines: number) => {
     if (this.phase !== 'question') return;
-    this.presentedAnswerInput = undefined;
-    this.advanceTimer({ type: 'reveal', now: performance.now(), lines });
+    this.responsePresentation.reveal(undefined, performance.now(), lines);
     this.phase = 'answer';
     this.options.distraction.setAnswerVisible(true);
     this.publish();
@@ -876,7 +848,7 @@ export class SessionRuntime {
     this.introductions.present(this.machineState.introduction, recognition.card);
     this.phase = 'question';
     this.options.onCardServed?.();
-    this.presentedAnswerInput = undefined;
+    this.responsePresentation.clearInput();
     this.options.distraction.beginCard();
     this.options.distraction.setAnswerVisible(false);
     this.persistSimpleResume();
@@ -921,15 +893,17 @@ export class SessionRuntime {
       input: reviewAnswerInput(
         cardNow,
         this.recitation.sequence !== null,
-        this.presentedAnswerInput === 'typed',
+        this.responsePresentation.input === 'typed',
       ),
       markedBy,
       correct,
       manualGrade: typeof input === 'number' ? input : null,
       machineMarked,
-      t: machineMarked ? (performance.now() - this.timerStart) / 1000 : this.responseTime,
+      t: machineMarked
+        ? this.responsePresentation.elapsedSeconds(performance.now())
+        : this.responsePresentation.responseSeconds,
       distracted: this.options.distraction.wasDistracted(),
-      hintUsed: this.hintStep > 0,
+      hintUsed: this.responsePresentation.hintStep > 0,
     };
     const result = await this.answers.record(cardNow, response);
     if (!this.mounted || generation !== this.generation) return { undoAvailable: false };
@@ -1007,7 +981,7 @@ export class SessionRuntime {
       mounted: this.mounted,
       generation: this.generation,
     }),
-    advanceTimer: (event) => this.advanceTimer(event),
+    advanceTimer: (event) => this.responsePresentation.advanceTimer(event),
     removed: this.afterRemoval,
     edited: this.applyCardEdit,
     flagged: (updated) => {
@@ -1091,12 +1065,11 @@ export class SessionRuntime {
         this.introductions.present(this.machineState.introduction, restored.undo.cardBefore);
       this.phase = reveal ? 'answer' : 'question';
       this.options.onCardServed?.();
-      this.hintStep = 0;
+      this.responsePresentation.resetHints();
       this.answers.beginCard();
-      this.timerStart = performance.now();
+      this.responsePresentation.start(performance.now());
       this.options.distraction.beginCard();
-      this.responseTime = restored.responseTimeSec;
-      this.presentedAnswerInput = restored.input;
+      this.responsePresentation.restoreAnswer(restored.responseTimeSec, restored.input);
       this.options.distraction.setAnswerVisible(reveal);
       this.publish();
     },
@@ -1149,10 +1122,10 @@ export class SessionRuntime {
     cardCompletion: this.cardCompletion,
     checkIntroduction: this.checkIntroduction,
     continueIntroduction: this.continueIntroduction,
-    hintStep: this.hintStep,
+    hintStep: this.responsePresentation.hintStep,
     setHintStep: this.setHintStep,
     isTypingCard: this.isTypingCard,
-    presentedAnswerInput: this.presentedAnswerInput,
+    presentedAnswerInput: this.responsePresentation.input,
     isMachineMarkedCard: this.isMachineMarkedCard,
     hasUnrenderableItemPayload: this.hasUnrenderableItemPayload,
     isLinesModeCard: this.isLinesModeCard,
