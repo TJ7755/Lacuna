@@ -45,6 +45,7 @@ export default defineConfig({
         'apps/web/src/db/backupSnapshot.ts',
         'apps/web/src/db/portability.ts',
         'apps/web/src/db/backupRecovery.ts',
+        'apps/web/src/db/backupRecoveryPlanning.ts',
         'apps/web/src/db/backupReplacement.ts',
         'apps/web/src/db/backupPreparation.ts',
         'apps/web/src/db/assets.ts',
@@ -103,6 +104,12 @@ export default defineConfig({
           lines: 85,
         },
         'apps/web/src/db/backupRecovery.ts': {
+          statements: 85,
+          branches: 76,
+          functions: 88,
+          lines: 85,
+        },
+        'apps/web/src/db/backupRecoveryPlanning.ts': {
           statements: 85,
           branches: 76,
           functions: 88,
