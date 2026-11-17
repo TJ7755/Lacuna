@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db/schema';
 import { StepSwap } from '../ui/StepSwap';
 import { Button } from '../ui/Button';
 import { SharedCourseImport } from './SharedCourseImport';
@@ -64,6 +66,10 @@ export function ShareLinkImport({
   const [attempt, setAttempt] = useState(0);
   const [joinedCourse, setJoinedCourse] = useState<string | null>(null);
   const [joinError, setJoinError] = useState('');
+  const joinedCourseName = useLiveQuery(
+    async () => (joinedCourse ? (await db.courses.get(joinedCourse))?.name : undefined),
+    [joinedCourse],
+  );
 
   async function join(
     shareId: string,
@@ -230,7 +236,13 @@ export function ShareLinkImport({
                 );
             }}
           />
-          {joinedCourse && <CourseInsightsSection key={joinedCourse} courseId={joinedCourse} />}
+          {joinedCourse && (
+            <CourseInsightsSection
+              key={joinedCourse}
+              courseId={joinedCourse}
+              heading={joinedCourseName}
+            />
+          )}
           {joinError && (
             <p role="alert" className="text-negative">
               {joinError}

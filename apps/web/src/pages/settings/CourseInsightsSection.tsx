@@ -1,8 +1,7 @@
-import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db/schema';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { AppLink } from '../../components/ui/AppLink';
 import { Toggle } from '../../components/ui/Toggle';
-import { Field, Input } from '../../components/ui/Field';
+import { Field, Input, fieldLabelClassName } from '../../components/ui/Field';
 import { Button } from '../../components/ui/Button';
 import { ConfirmInlineSwap } from '../../components/ui/ConfirmInline';
 import { buttonClassName } from '../../components/ui/buttonStyles';
@@ -20,213 +19,301 @@ import {
 import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
 import { SettingsCard } from './SettingsUi';
 
+const OFFLINE_MESSAGE = 'You are offline. Connect to the internet and send again.';
+
 export function CourseInsightsSection({
   courseId,
+  heading = 'Gaps',
   onDisconnected,
 }: {
   courseId: string;
+  heading?: string | false;
   onDisconnected?: () => void;
 }) {
-  const [enrolment] = createEnrolmentSetting(courseId).use();
-  const [optedIn] = createInsightsOptInSetting(courseId).use();
+  const enrolmentSetting = createEnrolmentSetting(courseId);
+  const optInSetting = createInsightsOptInSetting(courseId);
+  const [enrolment] = enrolmentSetting.use();
+  const [optedIn] = optInSetting.use();
   const [lastSent] = createInsightsLastSentDaySetting(courseId).use();
   const [lastPublished] = createInsightsLastPublishedAtSetting(courseId).use();
-  const course = useLiveQuery(() => db.courses.get(courseId), [courseId]);
-  const [label, setLabel] = useState(enrolment?.pupilLabel ?? '');
-  const [message, setMessage] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState<string>();
+  const [identifierError, setIdentifierError] = useState('');
+  const [consentError, setConsentError] = useState('');
+  const [sendFeedback, setSendFeedback] = useState<{ consent: string; message: string }>();
+  const [sending, setSending] = useState(false);
   const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [disconnectError, setDisconnectError] = useState('');
+  const [disconnected, setDisconnected] = useState(false);
+  const inFlight = useRef(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const identifierRef = useRef<HTMLInputElement>(null);
+  const headingId = useId();
+  const switchId = useId();
   const enabled = reportingEnabled();
-  const consenting = optedIn && enrolment?.consentedAt !== null && enrolment !== null;
+  const consenting = optedIn && enrolment !== null && enrolment.consentedAt !== null;
+  const consent = consenting ? JSON.stringify(enrolment) : null;
+  const label = draft ?? enrolment?.pupilLabel ?? '';
+  const disconnectedHere = disconnected && !enrolment && !onDisconnected;
+  const lastReport =
+    lastPublished !== null
+      ? `Last sent: ${new Date(lastPublished).toLocaleString('en-GB')}.`
+      : lastSent !== null
+        ? `Last automatic report: ${lastSent}.`
+        : 'Nothing has been sent yet.';
+
+  useLayoutEffect(() => {
+    if (disconnectedHere) headingRef.current?.focus();
+  }, [disconnectedHere]);
+
+  function changeConsent(checked: boolean) {
+    setConsentError('');
+    setSendFeedback(undefined);
+    if (checked && (!label.trim() || label.trim().length > 80)) {
+      setIdentifierError('Enter a name or class identifier (up to 80 characters).');
+      identifierRef.current?.focus();
+      return;
+    }
+    try {
+      setReportingConsent(courseId, checked, label);
+      setDraft(undefined);
+    } catch (error) {
+      setConsentError(error instanceof Error ? error.message : 'Could not save your choice.');
+    }
+  }
 
   async function disconnect() {
     setDisconnecting(true);
+    setDisconnectError('');
+    setSendFeedback(undefined);
     try {
       await disconnectFromClass(courseId);
-      setLabel('');
+      setDraft(undefined);
+      setIdentifierError('');
+      setConsentError('');
       setConfirmingDisconnect(false);
-      setMessage('Disconnected from Gaps. Your course and study history are kept.');
+      setDisconnected(true);
       onDisconnected?.();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not disconnect from Gaps.');
+      setDisconnectError(
+        error instanceof Error ? error.message : 'Could not disconnect from Gaps.',
+      );
     } finally {
       setDisconnecting(false);
     }
   }
 
   async function publish() {
-    setBusy(true);
-    setMessage('');
+    if (!consent || inFlight.current || disconnecting) return;
+    inFlight.current = true;
+    setSending(true);
+    setSendFeedback({ consent, message: 'Sending…' });
+
+    // Once consent changes, this attempt's feedback is stale even if sharing is turned back on.
+    let current = true;
+    const checkConsent = () => {
+      current &&= optInSetting.read() && JSON.stringify(enrolmentSetting.read()) === consent;
+    };
+    const unsubscribeEnrolment = enrolmentSetting.subscribe(checkConsent);
+    const unsubscribeOptIn = optInSetting.subscribe(checkConsent);
+    const report = (message: string) => {
+      checkConsent();
+      if (current) setSendFeedback({ consent, message });
+    };
     try {
       if (!navigator.onLine) {
-        setMessage('You are offline. Connect to the internet and send again.');
+        report(OFFLINE_MESSAGE);
         return;
       }
       const { publishCourseInsights } = await import('../../insights/delivery');
+      checkConsent();
+      if (!current) return;
       const result = await publishCourseInsights(courseId);
-      setMessage(
+      report(
         result === 'sent'
-          ? 'Your latest progress was accepted. Your teacher can refresh the class view to read it.'
+          ? 'Progress sent. Your teacher can refresh Gaps to read it.'
           : result === 'unchanged'
-            ? 'Nothing new to send. Your latest progress is already published.'
-            : 'Nothing was sent. Check sharing is enabled and this course is still connected.',
+            ? 'Your latest progress has already been sent.'
+            : 'Nothing was sent. Check that sharing is on and the class is still connected.',
       );
     } catch {
-      setMessage(
-        navigator.onLine
-          ? 'Could not send your latest progress. Try again.'
-          : 'You are offline. Connect to the internet and send again.',
-      );
+      report(navigator.onLine ? 'Could not send progress. Try again.' : OFFLINE_MESSAGE);
     } finally {
-      setBusy(false);
+      unsubscribeEnrolment();
+      unsubscribeOptIn();
+      inFlight.current = false;
+      setSending(false);
     }
   }
 
   return (
     <SettingsCard>
-      <h2 className="font-semibold text-ink">Class insights</h2>
-      <p className="mt-1 text-sm text-ink-soft">
-        {enrolment
-          ? 'Send your teacher an encrypted summary of your latest progress.'
-          : 'Join with your teacher’s Gaps class code to connect this course. Ordinary share links do not enable reporting.'}
-      </p>
-      {!enabled && (
-        <p className="mt-2 text-sm text-ink-soft">
-          Insights delivery is not enabled in this build. No results will be sent.
-        </p>
-      )}
-      {enrolment && (
-        <p className="mt-2 text-sm text-ink-soft">
-          Connected course: {course?.name ?? 'Loading course…'}.
-        </p>
-      )}
-      {enrolment && (
-        <div className="mt-5 sm:max-w-sm">
-          <Field
-            label="Name or class identifier"
-            hint="Use the identifier your teacher asked for. It is included in your encrypted report."
-          >
-            <Input
-              value={label}
-              maxLength={80}
-              disabled={consenting}
-              onChange={(event) => setLabel(event.target.value)}
-            />
-          </Field>
-        </div>
-      )}
-      <div className="mt-5 flex items-start justify-between gap-4 border-t border-line pt-5">
-        <div className="min-w-0">
-          <label htmlFor={`insights-opt-in-${courseId}`} className="text-sm font-medium text-ink">
-            Share insights with your teacher
-          </label>
-          <p className="mt-1 text-sm text-ink-soft">
-            {enrolment
-              ? 'Encrypted so only your teacher can read it.'
-              : 'Connect with a class code to enable sharing.'}
-          </p>
-          {enrolment && (
-            <p className="mt-1 text-sm text-ink-faint">
-              {lastPublished !== null
-                ? `Last successful publication: ${new Date(lastPublished).toLocaleString('en-GB')}.`
-                : lastSent === null
-                  ? 'Nothing has been sent yet.'
-                  : `Last daily report: ${lastSent}.`}
-            </p>
-          )}
-        </div>
-        <Toggle
-          id={`insights-opt-in-${courseId}`}
-          checked={consenting}
-          disabled={!enrolment || disconnecting}
-          onChange={(checked) => {
-            try {
-              setReportingConsent(courseId, checked, label);
-              setMessage('');
-            } catch (error) {
-              setMessage(error instanceof Error ? error.message : 'Could not save your choice.');
-            }
-          }}
-        />
-      </div>
-      {enabled && consenting && (
-        <button
-          type="button"
-          disabled={busy || disconnecting}
-          className={`${buttonClassName('secondary', 'sm')} mt-3`}
-          onClick={() => void publish()}
+      <div role="region" aria-labelledby={headingId} className="max-w-2xl">
+        <h2
+          id={headingId}
+          ref={headingRef}
+          tabIndex={-1}
+          className={heading ? 'mb-4 font-semibold text-ink' : 'sr-only'}
         >
-          {busy ? 'Sending…' : 'Send latest progress'}
-        </button>
-      )}
-      {message && (
-        <p role="status" className="mt-3 text-sm text-ink-soft">
-          {message}
+          {heading || 'Progress sharing'}
+        </h2>
+        <p
+          role="status"
+          aria-label="Class connection"
+          className={disconnectedHere ? 'mb-3 text-sm text-ink-soft' : undefined}
+        >
+          {disconnectedHere && 'Disconnected from Gaps. Your course and study history are kept.'}
         </p>
-      )}
-      <InlineSettingsDisclosure
-        className="mt-5 border-t border-line pt-4"
-        headerClassName="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-        header={<span className="text-sm font-medium text-ink">How sharing works</span>}
-      >
-        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ink-soft">
-          <li>
-            Your prompts, answers, marks, criterion results and card recall are encrypted so only
-            your teacher can read them. They may be able to recognise you from this detail. Reports
-            include activity already recorded today and yesterday.
-          </li>
-          <li>
-            Send latest progress publishes today’s completed work immediately. Send again after more
-            work to update the same daily report, without counting it twice. While this app is open
-            and online, yesterday’s report is also sent automatically. Days use this device’s time
-            zone. Missed days are skipped, and long answers or busy days may be shortened.
-          </li>
-          <li>
-            The service sees the course, reporting day, submission time and packet size, but not
-            your results.
-          </li>
-          <li>
-            Your chosen identifier and a random identifier for this course on this device are inside
-            the encrypted report, so another device can appear separately. This is not verified
-            pupil identity.
-          </li>
-          <li>
-            Turning it off stops future sends. Encrypted submissions expire from the relay after 12
-            weeks, though physical cleanup can take longer. Your teacher may keep results they have
-            already received.
-          </li>
-        </ul>
-      </InlineSettingsDisclosure>
-      <a
-        href="https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md"
-        target="_blank"
-        rel="noreferrer"
-        className="mt-3 inline-block text-sm text-ink-soft underline"
-      >
-        School data notice
-      </a>
-      {enrolment && (
-        <div className="mt-5 border-t border-line pt-5">
-          <h3 className="text-sm font-medium text-ink">Disconnect from Gaps</h3>
-          <p className="mt-1 mb-3 text-sm text-ink-soft">
-            Stop sharing with this teacher and remove this course from Gaps on this device. Your
-            course, lessons and study history stay in Lacuna.
-          </p>
-          <ConfirmInlineSwap
-            active={confirmingDisconnect}
-            message="Disconnect from Gaps on this device? Your course and study history stay in Lacuna. Results your teacher has already received are kept."
-            confirmLabel="Disconnect"
-            variant="default"
-            onConfirm={disconnect}
-            onCancel={() => setConfirmingDisconnect(false)}
-          >
-            <Button variant="secondary" size="sm" onClick={() => setConfirmingDisconnect(true)}>
-              Disconnect from Gaps
-            </Button>
-          </ConfirmInlineSwap>
-        </div>
-      )}
+        {enrolment ? (
+          <>
+            {consenting ? (
+              <dl className="mb-5">
+                <dt className={fieldLabelClassName}>Name or class identifier</dt>
+                <dd className="mt-1 break-words text-sm text-ink-soft">{enrolment.pupilLabel}</dd>
+              </dl>
+            ) : (
+              <Field
+                label="Name or class identifier"
+                hint="Use the identifier your teacher asked for. It is included in your report."
+                error={identifierError}
+                className="mb-5 max-w-sm"
+              >
+                <Input
+                  ref={identifierRef}
+                  value={label}
+                  maxLength={80}
+                  disabled={disconnecting}
+                  onChange={(event) => {
+                    setDraft(event.target.value);
+                    setIdentifierError('');
+                  }}
+                />
+              </Field>
+            )}
+            {!enabled && (
+              <p className="mb-2 text-sm text-ink-soft">This build cannot send reports.</p>
+            )}
+            <div className="flex w-fit items-center gap-4">
+              <label htmlFor={switchId} className="text-sm font-semibold text-ink">
+                Share insights with your teacher
+              </label>
+              <Toggle
+                id={switchId}
+                checked={consenting}
+                disabled={disconnecting}
+                onChange={changeConsent}
+              />
+            </div>
+            {!consenting && (
+              <p className="mt-2 max-w-prose text-sm text-ink-soft">
+                Your teacher can read encrypted reports of your answers, marks and progress.
+                Yesterday’s report sends while Lacuna is open and online. Your teacher may keep
+                reports.
+              </p>
+            )}
+            {consentError && (
+              <p role="alert" className="mt-2 text-sm text-negative">
+                {consentError}
+              </p>
+            )}
+
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+              {enabled && consenting && (
+                <Button
+                  type="button"
+                  size="sm"
+                  aria-disabled={sending || disconnecting}
+                  className="aria-disabled:opacity-60"
+                  onClick={() => void publish()}
+                >
+                  Send latest progress
+                </Button>
+              )}
+              <div className="text-sm text-ink-soft">
+                <p>{lastReport}</p>
+                <p role="status" aria-atomic="true">
+                  {consent && sendFeedback?.consent === consent && sendFeedback.message}
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <p className="max-w-prose text-sm text-ink-soft">
+              Use your teacher’s Gaps class code to connect this course. Ordinary share links are
+              for course content.
+            </p>
+            <AppLink to="/?import=1&join=1" className={buttonClassName('secondary', 'sm')}>
+              Join a class
+            </AppLink>
+          </div>
+        )}
+
+        <InlineSettingsDisclosure
+          className="mt-5 border-t border-line pt-4"
+          headerClassName="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+          header={<span className="text-sm font-medium text-ink">How sharing works</span>}
+        >
+          <ul className="mt-3 max-w-prose list-disc space-y-2 pl-5 text-sm text-ink-soft">
+            <li>
+              Only your teacher can read the encrypted prompts, answers, marks, criterion results
+              and card recall. Your teacher may recognise you from this detail. Reports include
+              activity already recorded today and yesterday.
+            </li>
+            <li>
+              Send latest progress shares today’s completed work. Send again after more work to
+              update the same report. Yesterday’s report is sent automatically while Lacuna is open
+              and online. Days follow this device’s time zone. Lacuna skips missed days and may
+              shorten long answers or reports from busy days.
+            </li>
+            <li>The service can see the course, reporting day, submission time and packet size.</li>
+            <li>
+              Reports include your chosen identifier and a random identifier for this course on this
+              device. Your teacher may see separate entries for different devices. Lacuna does not
+              verify pupil identity.
+            </li>
+            <li>
+              Turning sharing off stops future reports from this device. Encrypted submissions
+              expire from the relay after 12 weeks. Physical cleanup can take longer. Your teacher
+              may keep results they have already received.
+            </li>
+          </ul>
+        </InlineSettingsDisclosure>
+        <a
+          href="https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-h-11 items-center text-sm text-ink-soft underline"
+        >
+          School data notice
+        </a>
+        {enrolment && (
+          <div className="mt-4 border-t border-line pt-5">
+            <ConfirmInlineSwap
+              active={confirmingDisconnect}
+              message="Stop sharing and remove this Gaps connection from this device? Your course, lessons and study history stay in Lacuna. Results your teacher has already received are kept."
+              confirmLabel={disconnecting ? 'Disconnecting…' : 'Disconnect'}
+              variant="default"
+              focusOnMount="cancel"
+              disabled={disconnecting}
+              onConfirm={disconnect}
+              onCancel={() => {
+                setConfirmingDisconnect(false);
+                setDisconnectError('');
+              }}
+            >
+              <Button type="button" size="sm" onClick={() => setConfirmingDisconnect(true)}>
+                Disconnect from Gaps
+              </Button>
+            </ConfirmInlineSwap>
+            {disconnectError && (
+              <p role="alert" className="mt-2 text-sm text-negative">
+                {disconnectError}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </SettingsCard>
   );
 }

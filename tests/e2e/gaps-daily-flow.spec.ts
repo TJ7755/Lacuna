@@ -40,6 +40,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     handle = createHandler(relay, { now: () => clock });
   const uploads: string[] = [];
   let failPublication = false;
+  let holdPublication: Promise<void> | undefined;
   async function wire(page: Page) {
     await page.route('https://relay.getlacuna.app/**', async (route) => {
       const source = route.request(),
@@ -49,6 +50,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       if (body) headers.set('Content-Length', String(body.length));
       if (source.url().includes('/insights/') && method === 'PUT') {
         uploads.push(body!.toString());
+        if (holdPublication) await holdPublication;
         if (failPublication) return route.fulfill({ status: 503, body: '' });
       }
       const response = await handle(
@@ -214,6 +216,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await pupil.getByRole('button', { name: 'Add to my courses' }).click();
     const consent = pupil.getByRole('switch', { name: 'Share insights with your teacher' });
     await expect(consent).toHaveAttribute('aria-checked', 'false');
+    await expect(pupil.getByRole('heading', { name: 'Class biology', level: 2 })).toBeVisible();
     await expect(pupil.getByRole('link', { name: 'School data notice' })).toHaveAttribute(
       'href',
       'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
@@ -225,6 +228,13 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await expect(consent).toHaveAttribute('aria-checked', 'false');
     await expect(pupil.locator('[data-route-content^="/gaps/"]')).toHaveCSS('opacity', '1');
     await pupil.screenshot({ path: testInfo.outputPath('pupil-gaps-desktop.png'), fullPage: true });
+    await pupil.getByRole('link', { name: 'Open course', exact: true }).focus();
+    await pupil.keyboard.press('Tab');
+    await expect(pupil.getByRole('textbox', { name: /^Name or class identifier/ })).toBeFocused();
+    await pupil.keyboard.press('Tab');
+    await expect(consent).toBeFocused();
+    await pupil.keyboard.press('Tab');
+    await expect(pupil.getByRole('button', { name: 'How sharing works' })).toBeFocused();
     await pupil.setViewportSize({ width: 390, height: 844 });
     await pupil.goto('/#/');
     await pupil.getByRole('button', { name: 'Open navigation' }).click();
@@ -295,7 +305,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await pupil.goto('/#/');
     await pupil.reload();
     await pupilClasses.getByRole('link', { name: 'Class biology', exact: true }).click();
-    await expect(pupil.getByText(`Last daily report: ${day}.`, { exact: true })).toBeVisible({
+    await expect(pupil.getByText(`Last automatic report: ${day}.`, { exact: true })).toBeVisible({
       timeout: 15_000,
     });
     expect(uploads).toHaveLength(1);
@@ -382,14 +392,25 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     };
     const publish = pupil.getByRole('button', { name: 'Send latest progress', exact: true });
     await practise();
-    const firstPublication = pupil.waitForResponse(
-      (response) =>
-        response.url().includes('/insights/') &&
-        response.request().method() === 'PUT' &&
-        response.status() === 204,
-    );
-    await publish.click();
-    await firstPublication;
+    let resumePublication!: () => void;
+    holdPublication = new Promise<void>((resolve) => {
+      resumePublication = resolve;
+    });
+    const uploadsBeforeSend = uploads.length;
+    const sendStatus = pupil.getByRole('status').filter({ hasText: 'Sending…' });
+    try {
+      await publish.press('Enter');
+      await expect.poll(() => uploads.length).toBe(uploadsBeforeSend + 1);
+      await expect(sendStatus).toBeVisible();
+      await expect(publish).toBeFocused();
+      await expect(publish).toBeDisabled();
+      await expect(consent).toBeEnabled();
+    } finally {
+      resumePublication();
+      holdPublication = undefined;
+    }
+    await expect(pupil.getByRole('status').filter({ hasText: 'Progress sent.' })).toBeVisible();
+    await expect(pupil.getByText(/^Last sent:/)).toBeVisible();
     await expect(publish).toBeEnabled();
     await teacher.getByRole('button', { name: 'Refresh results', exact: true }).click();
     await expect(
@@ -413,9 +434,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
 
     const sentBeforeUnchanged = uploads.length;
     await publish.click();
-    await expect(
-      pupil.getByRole('status').filter({ hasText: /nothing new|up to date|unchanged/i }),
-    ).toBeVisible();
+    await expect(pupil.getByRole('status').filter({ hasText: /already been sent/i })).toBeVisible();
     expect(uploads).toHaveLength(sentBeforeUnchanged);
 
     await pupil.clock.setFixedTime(clock + 1000);
@@ -486,6 +505,41 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     const disconnect = pupil.getByRole('button', { name: 'Disconnect from Gaps', exact: true });
     await expect(disconnect).toBeVisible();
     await pupil.screenshot({ path: testInfo.outputPath('gaps-disconnect.png'), fullPage: true });
+
+    await pupil.setViewportSize({ width: 1280, height: 540 });
+    await pupil.emulateMedia({ reducedMotion: 'no-preference' });
+    const setTextScale = (scale: number) =>
+      pupil.evaluate(
+        (detail) => window.dispatchEvent(new CustomEvent('lacuna:font-scale', { detail })),
+        scale,
+      );
+    await setTextScale(1.3);
+    await expect(pupil.locator('html')).toHaveCSS('font-size', '20.8px');
+    const details = pupil.getByRole('button', { name: 'How sharing works' });
+    const notice = pupil.getByRole('link', { name: 'School data notice' });
+    await details.press('Space');
+    await expect(details).toHaveAttribute('aria-expanded', 'true');
+    await pupil.keyboard.press('Tab');
+    await expect(notice).toBeFocused();
+    await expect(notice).toBeInViewport();
+    await pupil.keyboard.press('Tab');
+    await expect(disconnect).toBeFocused();
+    await expect(disconnect).toBeInViewport();
+    await pupil.screenshot({
+      path: testInfo.outputPath('pupil-gaps-short-desktop.png'),
+      animations: 'disabled',
+    });
+    await disconnect.press('Enter');
+    const cancel = pupil.getByRole('button', { name: 'Cancel', exact: true });
+    await expect(cancel).toBeFocused();
+    await cancel.press('Escape');
+    await expect(disconnect).toBeFocused();
+    await details.press('Space');
+    await expect(details).toHaveAttribute('aria-expanded', 'false');
+    await setTextScale(1);
+    await pupil.setViewportSize({ width: 1280, height: 900 });
+    await pupil.emulateMedia({ reducedMotion: 'reduce' });
+
     await disconnect.click();
     await expect(
       pupil.getByText(/Results your teacher has already received are kept/),
@@ -497,12 +551,15 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       path: testInfo.outputPath('gaps-disconnect-confirm.png'),
       fullPage: true,
     });
-    await pupil.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(cancel).toBeFocused();
+    await cancel.click();
     await expect(disconnect).toBeFocused();
     await expect(consent).toHaveAttribute('aria-checked', 'true');
     await disconnect.click();
     await pupil.getByRole('button', { name: 'Disconnect', exact: true }).click();
     await expect(pupil).toHaveURL(new RegExp(`#/course/${importedId}$`));
+    await expect(pupil.getByRole('heading', { name: 'Class biology', level: 1 })).toBeFocused();
+    await expect(pupil.getByText('Disconnected from Gaps.', { exact: true })).toBeVisible();
     await expect(pupilClasses).toHaveCount(0);
     await pupil.reload();
     await expect(pupil.getByRole('list', { name: 'Course path' })).toBeVisible();
@@ -529,7 +586,9 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     ).toBeVisible();
     await expect(pupil).toHaveURL(new RegExp(`#/course/${importedId}/settings$`));
     await expect(pupilClasses).toHaveCount(0);
-    await expect(consent).toBeDisabled();
+    await expect(pupil.getByRole('heading', { name: 'Gaps', level: 2 })).toBeFocused();
+    await expect(consent).toHaveCount(0);
+    await expect(pupil.getByRole('link', { name: 'Join a class' })).toBeVisible();
   } finally {
     await Promise.allSettled([
       teacherContext.close(),
