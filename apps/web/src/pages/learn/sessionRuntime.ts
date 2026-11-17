@@ -24,7 +24,7 @@ import {
 
 import { resolveAnswerMode, reviewAnswerInput } from '../../utils/resolveAnswerMode';
 import { answerCorrect, type AnswerInput, type AnswerResult } from './answerSteps';
-import { canIntroduceCard, introductionProgress, introductionStage } from './lessonIntroduction';
+import { introductionProgress } from './lessonIntroduction';
 import { startSessionLoad } from './sessionLoading';
 import { shuffledSimpleQueue } from './recitation/recitationFlow';
 import { hasMachineMarkedPayload, isUnrenderableItemPayload } from './sessionCardCapabilities';
@@ -34,7 +34,6 @@ import {
   type PracticeSession,
 } from './sessionCompletionPersistence';
 import {
-  snapshotSession,
   transitionResponseTimer,
   transitionSession,
   type SessionEventInput,
@@ -48,6 +47,7 @@ import { type LessonNotesScreen, type Phase, type StudyUnit } from './types';
 import type { SessionRuntimeOptions } from './sessionRuntimeOptions';
 import { createSessionCompletion } from './sessionCompletion';
 import { SessionCardActions } from './sessionCardActions';
+import { SessionIntroduction } from './sessionIntroduction';
 type SessionSchedulingConfig = SchedulerConfig & {
   dailyReviewGoal?: number;
   sessionTimeLimitMinutes?: number;
@@ -137,7 +137,7 @@ export class SessionRuntime {
     this.machineState = emptySessionState();
     // Restarting after disposal must not reuse the previous session.
     this.answers.reset();
-    this.lastIntroduction = null;
+    this.introductions.clearUndo();
     this.lessonChoiceSource = null;
     this.resetCompletion();
     this.progressBefore = 0;
@@ -340,24 +340,7 @@ export class SessionRuntime {
       };
   };
 
-  private introductionPresentation: {
-    serial: number;
-    stage: ReturnType<typeof introductionStage>;
-  } = { serial: 0, stage: undefined };
-
-  private introductionCursor = { ...this.introductionPresentation, checked: false };
-
-  private lastIntroduction: { machine: SessionState; card: Card } | null = null;
-
-  private presentIntroduction = (card: Card) => {
-    const stage = introductionStage(this.machineState.introduction, card.id);
-    const next = {
-      serial: this.introductionPresentation.serial + 1,
-      stage: stage && canIntroduceCard(card) ? stage : undefined,
-    };
-    this.introductionCursor = { ...next, checked: false };
-    this.introductionPresentation = next;
-  };
+  private introductions = new SessionIntroduction();
 
   private linesModeMap: Map<string, Sequence> = new Map();
 
@@ -395,7 +378,7 @@ export class SessionRuntime {
   private get isTypingCard() {
     const inputs = [
       this.current,
-      this.introductionPresentation.stage,
+      this.introductions.presentation.stage,
       this.lessonAnswerMode,
       this.options.answerInputPreference,
       this.occlusionAnswerText,
@@ -407,8 +390,8 @@ export class SessionRuntime {
       return this.typingCache.value;
     const value =
       !!this.current &&
-      (this.introductionPresentation.stage
-        ? this.introductionPresentation.stage === 'recall'
+      (this.introductions.presentation.stage
+        ? this.introductions.presentation.stage === 'recall'
         : resolveAnswerMode(
             this.current,
             this.lessonAnswerMode,
@@ -765,8 +748,8 @@ export class SessionRuntime {
           break;
         case 'present-card':
           this.selectCurrent(effect.card);
-          if ((this.options.introduceNewCards ?? false) || this.introductionPresentation.stage)
-            this.presentIntroduction(effect.card);
+          if ((this.options.introduceNewCards ?? false) || this.introductions.presentation.stage)
+            this.introductions.present(this.machineState.introduction, effect.card);
           this.phase = 'question';
           this.options.onCardServed?.();
           this.hintStep = 0;
@@ -782,18 +765,13 @@ export class SessionRuntime {
   };
 
   private checkIntroduction = (serial: number, correct: boolean) => {
-    const presentation = this.introductionCursor;
     const card = this.current;
     if (
       !card ||
-      presentation.stage !== 'familiarise' ||
-      presentation.checked ||
-      presentation.serial !== serial ||
-      this.answers.submitting
+      this.answers.submitting ||
+      !this.introductions.check(serial, card, this.machineState)
     )
       return false;
-    presentation.checked = true;
-    this.lastIntroduction = { machine: snapshotSession(this.machineState), card };
     this.answers.clearUndo();
     this.applySessionEvent({ type: 'introduction-checked', card, correct });
     this.canUndo = true;
@@ -803,15 +781,14 @@ export class SessionRuntime {
   };
 
   private continueIntroduction = (serial: number) => {
-    const presentation = this.introductionCursor;
-    if (presentation.serial !== serial || !presentation.checked) return;
+    if (!this.introductions.canContinue(serial)) return;
     this.serveNext();
   };
 
   private continueStudying = () => {
     if (this.summary?.simpleMode) {
       // A repeat pass practises the learned material in its ordinary answer format.
-      this.lastIntroduction = null;
+      this.introductions.clearUndo();
       this.applySessionEvent({
         type: 'begin-pass',
         queue: this.createSimpleQueue(
@@ -883,21 +860,20 @@ export class SessionRuntime {
   };
 
   private undoLast = async (options?: { reveal?: boolean }) => {
-    const recognition = this.lastIntroduction;
-    if (!recognition) {
+    if (!this.introductions.hasUndo) {
       const restored = await this.answers.undo(options);
       return restored;
     }
     if (this.answers.submitting) return;
+    const recognition = this.introductions.takeUndo()!;
     this.applySessionEvent({
       type: 'restore',
       snapshot: recognition.machine,
       card: recognition.card,
     });
-    this.lastIntroduction = null;
     this.canUndo = false;
     this.selectCurrent(recognition.card);
-    this.presentIntroduction(recognition.card);
+    this.introductions.present(this.machineState.introduction, recognition.card);
     this.phase = 'question';
     this.options.onCardServed?.();
     this.presentedAnswerInput = undefined;
@@ -930,12 +906,12 @@ export class SessionRuntime {
       (!machineMarked && phaseNow !== 'answer') ||
       (machineMarked && phaseNow !== 'question') ||
       !cardNow ||
-      this.introductionPresentation.stage === 'familiarise' ||
+      this.introductions.presentation.stage === 'familiarise' ||
       isUnrenderableItemPayload(cardNow)
     ) {
       return { undoAvailable: false };
     }
-    const verifiedRecall = this.introductionPresentation.stage === 'recall';
+    const verifiedRecall = this.introductions.presentation.stage === 'recall';
     const typedAnswer = options?.typedAnswer ?? '';
     const markedBy = !verifiedRecall || typedAnswer.trim() ? options?.markedBy : undefined;
     // A fallback self-mark is the learner's decision, just as in ordinary review.
@@ -957,7 +933,7 @@ export class SessionRuntime {
     };
     const result = await this.answers.record(cardNow, response);
     if (!this.mounted || generation !== this.generation) return { undoAvailable: false };
-    if (this.options.isSimpleMode) this.lastIntroduction = null;
+    if (this.options.isSimpleMode) this.introductions.clearUndo();
     return this.completion.pending && result.undoAvailable
       ? { ...result, completionPending: true }
       : result;
@@ -969,7 +945,7 @@ export class SessionRuntime {
     if (!this.mounted) return;
     this.canUndo = false;
     this.answers.clearUndo();
-    this.lastIntroduction = null;
+    this.introductions.clearUndo();
     this.updateLessonChoiceCard(updated);
     this.applySessionEvent({
       type: 'remove-card',
@@ -991,16 +967,11 @@ export class SessionRuntime {
   // Session policy stays here: edits reconcile introduction Undo and queued partners
   // against the same machine that answers, removal and completion use.
   private applyCardEdit = (updated: Card, queuedPartner?: Card, storedPartner?: Card) => {
-    // Restore before removing a converted partner, so the recognition snapshot cannot resurrect it.
-    const recognition = this.lastIntroduction;
-    const restoreIntroduction =
-      this.options.introduceNewCards &&
-      this.introductionPresentation.stage === 'familiarise' &&
-      recognition?.card.id === updated.id &&
-      this.introductionCursor.checked;
-    if (restoreIntroduction) {
-      this.applySessionEvent({ type: 'restore', snapshot: recognition.machine, card: updated });
-      this.lastIntroduction = null;
+    const introductionSnapshot = this.options.introduceNewCards
+      ? this.introductions.restoreBeforeEdit(updated)
+      : undefined;
+    if (introductionSnapshot) {
+      this.applySessionEvent({ type: 'restore', snapshot: introductionSnapshot, card: updated });
       this.canUndo = false;
     }
     if (queuedPartner) {
@@ -1020,9 +991,9 @@ export class SessionRuntime {
     this.selectCurrent(updated);
     if (this.options.introduceNewCards) {
       this.updateLessonChoiceCard(updated);
-      if (this.introductionPresentation.stage === 'familiarise') {
-        if (restoreIntroduction) this.persistSimpleResume();
-        this.presentIntroduction(updated);
+      if (this.introductions.presentation.stage === 'familiarise') {
+        if (introductionSnapshot) this.persistSimpleResume();
+        this.introductions.present(this.machineState.introduction, updated);
         this.phase = 'question';
       }
     }
@@ -1116,7 +1087,8 @@ export class SessionRuntime {
       this.canUndo = false;
       this.progressCache.dirty = true;
       this.selectCurrent(restored.undo.cardBefore);
-      if (this.options.introduceNewCards) this.presentIntroduction(restored.undo.cardBefore);
+      if (this.options.introduceNewCards)
+        this.introductions.present(this.machineState.introduction, restored.undo.cardBefore);
       this.phase = reveal ? 'answer' : 'question';
       this.options.onCardServed?.();
       this.hintStep = 0;
@@ -1173,7 +1145,7 @@ export class SessionRuntime {
       this.lessonChoiceSource?.lessonId === this.options.lessonId
         ? this.lessonChoiceSource?.cards
         : undefined,
-    introductionPresentation: this.introductionPresentation,
+    introductionPresentation: this.introductions.presentation,
     cardCompletion: this.cardCompletion,
     checkIntroduction: this.checkIntroduction,
     continueIntroduction: this.continueIntroduction,
