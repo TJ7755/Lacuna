@@ -23,6 +23,9 @@ export function WorkingStudyFace({
     (WorkingVerificationResult & { studentLines: string[] }) | null
   >(null);
   const [disputedLines, setDisputedLines] = useState<Set<number>>(new Set());
+  // A checked but imperfect answer the learner then edits is a repair: the
+  // submitted marks grade Hard rather than Again (see gradeFromMarks).
+  const [repairedPartial, setRepairedPartial] = useState(false);
   const studentLines = useMemo(() => answerLines(answer), [answer]);
 
   const submit = () => {
@@ -31,15 +34,24 @@ export function WorkingStudyFace({
     setResult({ ...verification, studentLines });
   };
 
+  const editAnswer = () => {
+    // Leaving a checked but imperfect answer to try again is a repair.
+    if (result && result.marksEarned < result.marksAvailable) setRepairedPartial(true);
+    setResult(null);
+    setDisputedLines(new Set());
+  };
+
   const continueStudy = () => {
     if (!result) return;
     setAnswer('');
     setResult(null);
     setDisputedLines(new Set());
+    setRepairedPartial(false);
     onAnswer({
       correct: result.marksEarned === result.marksAvailable,
       marksEarned: result.marksEarned,
       marksAvailable: result.marksAvailable,
+      ...(repairedPartial ? { selfCorrected: true as const } : {}),
       lineVerdicts: result.lineVerdicts,
       checkerDisputes:
         disputedLines.size > 0
@@ -145,10 +157,7 @@ export function WorkingStudyFace({
                   variant="secondary"
                   size="lg"
                   className="w-full"
-                  onClick={() => {
-                    setResult(null);
-                    setDisputedLines(new Set());
-                  }}
+                  onClick={editAnswer}
                 >
                   Edit answer
                 </Button>

@@ -208,10 +208,29 @@ describe('mark-scheme authoring helpers', () => {
 it.each(['1 / 0', 'sqrt(-1)', '10^1000', '4 = 4'])(
   'rejects unusable numeric predicate argument %s during compilation',
   (value) => {
-    for (const body of [`within 0.1 :: ${value}`, `matches-one-of :: ${value}`]) {
+    for (const body of [
+      `within 0.1 :: ${value}`,
+      `matches-one-of :: ${value}`,
+      `equals :: ${value}`,
+    ]) {
       const result = compileMarkScheme(`[1] answer :: ${body}`);
       expect(result.totalMarks).toBe(0);
       expect(result.lines[0].kind).toBe('error');
     }
   },
 );
+
+it('rejects a variable equals argument and underlines the failing matches-one-of value', () => {
+  const variable = compileMarkScheme('[1] answer :: equals :: x');
+  expect(variable.totalMarks).toBe(0);
+  expect(variable.lines[0].kind).toBe('error');
+
+  const source = '[1] x :: matches-one-of :: 4 :: x';
+  const mismatch = compileMarkScheme(source);
+  expect(mismatch.totalMarks).toBe(0);
+  const error = mismatch.lines[0] as MarkSchemeCompileError;
+  expect(error.kind).toBe('error');
+  // The underline must sit on the failing argument, not on the label's first x.
+  expect(source.slice(error.column - 1, error.column - 1 + error.length)).toBe('x');
+  expect(error.column).toBeGreaterThan(source.indexOf(':: x') + 1);
+});

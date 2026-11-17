@@ -1,4 +1,5 @@
 import type { McpToolError } from '@lacuna/protocol/mcp/bridge';
+import { MCP_GRANT_LABEL_MAX_LENGTH } from '@lacuna/protocol/mcp/limits';
 import type { McpClientIdentity } from './types.js';
 import { MCP_TOOL_NAME_MAX_LENGTH } from '@lacuna/protocol/mcp/limits';
 import {
@@ -76,10 +77,10 @@ function isMcpClientIdentity(value: unknown): value is McpClientIdentity {
   const item = record(value);
   return (
     !!item &&
-    typeof item.connectionId === 'string' &&
-    item.connectionId.length > 0 &&
+    isIdentifier(item.connectionId) &&
     typeof item.name === 'string' &&
     item.name.length > 0 &&
+    item.name.length <= MCP_GRANT_LABEL_MAX_LENGTH &&
     (item.version === undefined || typeof item.version === 'string')
   );
 }

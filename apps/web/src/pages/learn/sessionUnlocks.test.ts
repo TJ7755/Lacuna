@@ -98,6 +98,30 @@ describe('session completion unlocks', () => {
     },
   );
 
+  it('ignores linked cards primary to a locked lesson when introductions are disabled', async () => {
+    const course = await createCourse('Science', {
+      unlockMode: 'semi-linear',
+      autoPractice: false,
+      learnFirst: false,
+    });
+    const first = await taughtLesson(course.id, 'First');
+    const second = await createLesson(course.id, 'Second');
+    // A card owned by the locked second lesson but linked into the first can
+    // never be introduced yet; it must not block the unlock.
+    const future = await createLessonCard(course.id, second.id, 'front_back', 'Later', 'Answer');
+    await db.cards.update(first.card.id, { state: 2 });
+    await db.lessonCards.add({
+      id: `link-${future.id}`,
+      lessonId: first.lesson.id,
+      cardId: future.id,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    await ratchetSessionUnlocks(true, course.id, () => first.lesson.id);
+    expect((await db.lessons.get(second.id))?.unlockedAt).toEqual(expect.any(Number));
+  });
+
   it('uses explicit completion for cardless lessons and skips extension lessons', async () => {
     const course = await createCourse('Science', {
       unlockMode: 'semi-linear',

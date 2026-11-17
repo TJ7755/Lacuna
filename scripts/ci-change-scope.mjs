@@ -181,8 +181,11 @@ function parseChanges(input) {
   return changes;
 }
 
-// Scope includes deletions and both endpoints of renames and copies.
+// Scope includes deletions and both endpoints of renames and copies. Empty input
+// means no change records (for example a direct stdin run), which selects no
+// paths rather than throwing; callers fail open to full scope from there.
 export function parseNameStatus(input) {
+  if (!input) return [];
   return parseChanges(input).flatMap(({ paths }) => paths);
 }
 

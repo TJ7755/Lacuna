@@ -132,7 +132,9 @@ export function SearchPage() {
       setActive(next);
     } else if (event.key === 'Enter' && hasResults && query === searchQuery) {
       event.preventDefault();
-      const hit = visible[active];
+      // The selection index addresses the full result list; the visible window
+      // only catches up after the limit round-trips through the URL.
+      const hit = results[active] ?? visible[active];
       if (hit) {
         recordUsageAction('search-result-opened', 'shortcut');
         void navigate(hitPath(hit));

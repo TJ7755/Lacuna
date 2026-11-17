@@ -55,6 +55,21 @@ beforeEach(() => {
   recoverFromChunkFailure.mockResolvedValue(false);
 });
 
+describe('routePathFromRequestUrl', () => {
+  it('reads the route from the hash under hash routing', async () => {
+    const { routePathFromRequestUrl } = await import('./prefetch');
+    expect(routePathFromRequestUrl('https://app/#/settings')).toBe('/settings');
+    expect(routePathFromRequestUrl('https://app/#/course/one?q=1')).toBe('/course/one?q=1');
+    expect(routePathFromRequestUrl('https://app/#/start')).toBe('/start');
+  });
+
+  it('falls back to the pathname without a route fragment', async () => {
+    const { routePathFromRequestUrl } = await import('./prefetch');
+    expect(routePathFromRequestUrl('https://app/settings')).toBe('/settings');
+    expect(routePathFromRequestUrl('https://app/')).toBe('/');
+  });
+});
+
 describe('prefetchRoute', () => {
   it.each(['__proto__', 'constructor', 'toString'])(
     'ignores inherited route names: %s',

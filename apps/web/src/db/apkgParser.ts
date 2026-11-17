@@ -168,12 +168,17 @@ function extractFromDatabase(
     }
   }
 
-  // Extract media blobs.
+  // Extract media blobs. Files listed in the media map but absent from the
+  // archive cannot be linked; count them so the import review can say so
+  // instead of reporting full success with dead references.
   const media = new Map<string, Uint8Array>();
+  let skippedMedia = 0;
   for (const [key, filename] of mediaMap.entries()) {
     const bytes = zip[key];
     if (bytes) {
       media.set(filename, bytes);
+    } else {
+      skippedMedia++;
     }
   }
 
@@ -183,6 +188,7 @@ function extractFromDatabase(
     media,
     skippedNotes,
     skippedCards,
+    skippedMedia,
   };
 }
 

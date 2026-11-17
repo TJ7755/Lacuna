@@ -24,6 +24,10 @@ import {
   isMcpInvokeResponse,
   isMcpScopeResolutionResponse,
 } from '@lacuna/protocol/mcp/ipcValidation';
+import {
+  MCP_GRANT_IDENTIFIER_MAX_LENGTH,
+  MCP_GRANT_LABEL_MAX_LENGTH,
+} from '@lacuna/protocol/mcp/limits';
 import { GrantStore, courseIdOrGlobal, resolveGrant } from '@lacuna/mcp-runtime/grants';
 import type { McpGrant, ToolContract } from '@lacuna/protocol/mcp/contracts';
 import type { McpClientIdentity } from '@lacuna/protocol/mcp/companion';
@@ -169,8 +173,10 @@ export class DataBridge {
     if (
       typeof courseId !== 'string' ||
       courseId.length === 0 ||
+      courseId.length > MCP_GRANT_IDENTIFIER_MAX_LENGTH ||
       (scope !== 'read' && scope !== 'write' && scope !== 'destructive') ||
-      (label !== undefined && typeof label !== 'string')
+      (label !== undefined &&
+        (typeof label !== 'string' || label.length > MCP_GRANT_LABEL_MAX_LENGTH))
     ) {
       throw new Error('Invalid MCP grant request.');
     }
@@ -179,7 +185,11 @@ export class DataBridge {
 
   private readonly revokeGrant = (event: IpcMainInvokeEvent, courseId: unknown): void => {
     if (!this.isActiveRendererEvent(event)) throw new Error('Untrusted MCP revoke request.');
-    if (typeof courseId !== 'string' || courseId.length === 0) {
+    if (
+      typeof courseId !== 'string' ||
+      courseId.length === 0 ||
+      courseId.length > MCP_GRANT_IDENTIFIER_MAX_LENGTH
+    ) {
       throw new Error('Invalid MCP revoke request.');
     }
     this.grantStore?.revoke(courseId);

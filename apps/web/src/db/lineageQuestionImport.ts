@@ -43,12 +43,17 @@ export async function upsertLineageConcepts(
   ) {
     throw new Error('A shared Question references a missing Concept.');
   }
-  const existing = await db.concepts.bulkGet(payload.concepts.map((concept) => concept.id));
+  const existing = await db.concepts.bulkGet(
+    payload.concepts.map((concept) => concept.id).filter((id): id is string => Boolean(id)),
+  );
   for (const concept of existing) {
     if (concept && (concept.scope !== 'course' || concept.courseId !== courseId)) {
       throw new Error(`A shared Concept id is already used by another Course: ${concept.id}.`);
     }
   }
+  const existingById = new Map(
+    existing.flatMap((concept) => (concept ? [[concept.id, concept] as const] : [])),
+  );
   const concepts: Concept[] = payload.concepts.map((concept) => ({
     id: concept.id,
     scope: 'course',
@@ -59,7 +64,7 @@ export async function upsertLineageConcepts(
     ...(concept.specificationPointIds === undefined
       ? {}
       : { specificationPointIds: concept.specificationPointIds }),
-    createdAt: payload.at,
+    createdAt: existingById.get(concept.id)?.createdAt ?? payload.at,
     updatedAt: payload.at,
   }));
   if (concepts.length > 0) await db.concepts.bulkPut(concepts);

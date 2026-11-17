@@ -71,7 +71,7 @@ describe('compressImageBlob', () => {
   });
 
   it.each(['image/png', 'image/webp', 'image/gif', 'image/svg+xml'])(
-    'uses a transparency-preserving encoding for %s uploads',
+    'uses a transparency-preserving encoding for static %s uploads',
     async (mimeType) => {
       setSourceDimensions(800, 600);
       const result = await compressImageBlob(new Blob(['x'], { type: mimeType }));
@@ -83,6 +83,58 @@ describe('compressImageBlob', () => {
       expect(result.blob.type).toBe('image/png');
     },
   );
+
+  it('keeps an animated GIF in its original bytes instead of flattening it', async () => {
+    // Minimal two-frame GIF: header, screen descriptor, two image blocks, trailer.
+    const bytes = new Uint8Array([
+      0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x21, 0xf9,
+      0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00,
+      0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x21, 0xf9, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2c,
+      0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3b,
+    ]);
+    setSourceDimensions(1, 1);
+    const input = new Blob([bytes.buffer as ArrayBuffer], { type: 'image/gif' });
+    const result = await compressImageBlob(input);
+    expect(result.blob).toBe(input);
+    expect(result).toMatchObject({ width: 1, height: 1 });
+  });
+
+  it('still flattens a single-frame GIF to PNG', async () => {
+    const bytes = new Uint8Array([
+      0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2c, 0x00,
+      0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3b,
+    ]);
+    setSourceDimensions(1, 1);
+    const result = await compressImageBlob(
+      new Blob([bytes.buffer as ArrayBuffer], { type: 'image/gif' }),
+    );
+    expect(result.blob.type).toBe('image/png');
+  });
+
+  it('keeps an animated WebP in its original bytes instead of flattening it', async () => {
+    // RIFF WEBP with a VP8X chunk advertising animation.
+    const bytes = new Uint8Array([
+      0x52, 0x49, 0x46, 0x46, 0x16, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38,
+      0x58, 0x0a, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00,
+    ]);
+    setSourceDimensions(1, 1);
+    const input = new Blob([bytes.buffer as ArrayBuffer], { type: 'image/webp' });
+    const result = await compressImageBlob(input);
+    expect(result.blob).toBe(input);
+  });
+
+  it('still flattens a still WebP to PNG', async () => {
+    // RIFF WEBP with a plain lossy VP8 chunk: no animation signal.
+    const bytes = new Uint8Array([
+      0x52, 0x49, 0x46, 0x46, 0x0c, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38,
+      0x20, 0x04, 0x00, 0x00, 0x00, 0x9d, 0x01, 0x2a, 0x01,
+    ]);
+    setSourceDimensions(800, 600);
+    const result = await compressImageBlob(
+      new Blob([bytes.buffer as ArrayBuffer], { type: 'image/webp' }),
+    );
+    expect(result.blob.type).toBe('image/png');
+  });
 
   it('retains JPEG compression for opaque JPEG uploads', async () => {
     setSourceDimensions(800, 600);

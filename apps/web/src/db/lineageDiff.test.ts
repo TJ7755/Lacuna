@@ -192,7 +192,9 @@ describe('diffLineage', () => {
 
   it('treats a reversible share card as matching its imported front_back pair', () => {
     const input: LineageDiffInput = {
-      incoming: { lessons: [baseLesson({ cards: [{ i: 'card-1', k: 2, f: 'front', b: 'back' }] })] },
+      incoming: {
+        lessons: [baseLesson({ cards: [{ i: 'card-1', k: 2, f: 'front', b: 'back' }] })],
+      },
       existing: {
         lessons: [existingLesson()],
         notes: [],
@@ -206,6 +208,77 @@ describe('diffLineage', () => {
     const result = diffLineage(input);
     expect(result.updates.cards).toEqual([]);
     expect(result.conflicts).toEqual([]);
+  });
+
+  it('never flags the mirror row of a reversible share card as a removal', () => {
+    // First import writes two rows for k: 2 (primary plus ::rev); the re-import
+    // must not treat the mirror as a teacher deletion.
+    const input: LineageDiffInput = {
+      incoming: {
+        lessons: [baseLesson({ cards: [{ i: 'card-1', k: 2, f: 'front', b: 'back' }] })],
+      },
+      existing: {
+        lessons: [existingLesson()],
+        notes: [],
+        cards: [
+          { id: 'card-1', lessonId: 'lesson-1', type: 'front_back', front: 'front', back: 'back' },
+          {
+            id: 'card-1::rev',
+            lessonId: 'lesson-1',
+            type: 'front_back',
+            front: 'back',
+            back: 'front',
+          },
+        ],
+      },
+      mapping: mapping({ lessonIds: ['lesson-1'], cardIds: ['card-1', 'card-1::rev'] }),
+      studentEdits: new Set(),
+    };
+    const result = diffLineage(input);
+    expect(result.removals.cardIds).toEqual([]);
+    expect(result.creates.cards).toEqual([]);
+  });
+
+  it('treats card tag reorder as unchanged while prerequisite reorder still compares as sets', () => {
+    const input: LineageDiffInput = {
+      incoming: {
+        lessons: [
+          baseLesson({
+            pr: ['lesson-2', 'lesson-0'],
+            cards: [{ i: 'card-1', k: 0, f: 'front', b: 'back', g: ['b', 'a'] }],
+          }),
+          { ...baseLesson({ i: 'lesson-0', n: 'Lesson Zero' }) },
+          { ...baseLesson({ i: 'lesson-2', n: 'Lesson Two' }) },
+        ],
+      },
+      existing: {
+        lessons: [
+          existingLesson({ prerequisiteLessonIds: ['lesson-0', 'lesson-2'] }),
+          existingLesson({ id: 'lesson-0', name: 'Lesson Zero', orderIndex: 1 }),
+          existingLesson({ id: 'lesson-2', name: 'Lesson Two', orderIndex: 2 }),
+        ],
+        notes: [],
+        cards: [
+          {
+            id: 'card-1',
+            lessonId: 'lesson-1',
+            type: 'front_back',
+            front: 'front',
+            back: 'back',
+            tags: ['a', 'b'],
+          },
+        ],
+      },
+      mapping: mapping({
+        lessonIds: ['lesson-1', 'lesson-0', 'lesson-2'],
+        cardIds: ['card-1'],
+      }),
+      studentEdits: new Set(),
+    };
+    const result = diffLineage(input);
+    // Neither a tag reorder nor a prerequisite reorder is a content change.
+    expect(result.updates.cards).toEqual([]);
+    expect(result.updates.lessons).toEqual([]);
   });
 
   it('never removes local lessons, notes or cards that the mapping does not track', () => {

@@ -124,9 +124,10 @@ describe('Electron MCP server lifecycle façade', () => {
       clients: [],
       aiRenderer: { status: 'unavailable' },
       companion: { args: ['--mcp-companion', '/tmp/companion-1'] },
-      aiCompanion: { args: ['--ai-companion', '/tmp/companion-2'] },
     });
-    expect(mocks.companionProcessUserDataPath).toHaveBeenCalledTimes(2);
+    // The AI companion launch command never crosses into the renderer.
+    expect(first).not.toHaveProperty('aiCompanion');
+    expect(mocks.companionProcessUserDataPath).toHaveBeenCalledTimes(1);
   });
 
   it('starts and stops idempotently while composing broker status', async () => {

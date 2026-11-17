@@ -160,13 +160,13 @@ describe('verifyWorkingLines', () => {
           studentLine: '7.995',
           matchedLineIndex: 2,
           marksEarned: 1,
-          checkerSeeds: ['working-attempt:2:0'],
+          checkerSeeds: ['working-attempt:2:0', 'working-attempt:2:1'],
         },
         {
           studentLine: '2 * (x + 3)',
           matchedLineIndex: 0,
           marksEarned: 1,
-          checkerSeeds: ['working-attempt:3:0'],
+          checkerSeeds: ['working-attempt:3:0', 'working-attempt:3:1'],
         },
       ],
     });
@@ -186,13 +186,13 @@ describe('verifyWorkingLines', () => {
         studentLine: '4.0',
         matchedLineIndex: null,
         marksEarned: 0,
-        checkerSeeds: ['working-attempt:1:0'],
+        checkerSeeds: ['working-attempt:1:0', 'working-attempt:1:1'],
       },
       {
         studentLine: '2 +',
         matchedLineIndex: null,
         marksEarned: 0,
-        checkerSeeds: ['working-attempt:2:0'],
+        checkerSeeds: ['working-attempt:2:0', 'working-attempt:2:1'],
       },
     ]);
   });
@@ -224,6 +224,21 @@ describe('verifyWorkingLines', () => {
 
     expect(result.undeterminedLines).toBe(0);
     expect(result.lineVerdicts[0].undetermined).toBeUndefined();
+  });
+
+  it('awards overlapping criteria regardless of student line order', () => {
+    const overlapping: MarkSchemeLine[] = [
+      { marks: 1, label: 'near', kind: 'predicate', predicate: 'within', args: ['0.1', '4'] },
+      { marks: 1, label: 'exact', kind: 'predicate', predicate: 'equals', args: ['4'] },
+    ];
+    for (const lines of [
+      ['4', '4.05'],
+      ['4.05', '4'],
+    ]) {
+      const result = verifyWorkingLines(lines, overlapping, 'overlap');
+      expect(result.marksEarned).toBe(2);
+      expect(result.lineVerdicts.every((verdict) => verdict.matchedLineIndex !== null)).toBe(true);
+    }
   });
 });
 

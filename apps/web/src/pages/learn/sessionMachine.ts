@@ -32,6 +32,9 @@ export interface SessionState {
   events: SessionEvent[];
   outcomes: Map<string, SessionCardOutcome>;
   cooldowns: CooldownMap;
+  /** Review event ids already counted: a retried submission after a lost
+   * acknowledgement must count once, never zero times and never twice. */
+  recordedEventIds: Set<string>;
   revision: RevisionSessionState;
 }
 
@@ -121,6 +124,7 @@ export function snapshotSession(state: SessionState): SessionState {
     events: [...state.events],
     outcomes: new Map(state.outcomes),
     cooldowns: new Map(state.cooldowns),
+    recordedEventIds: new Set(state.recordedEventIds),
     revision: snapshotRevisionSessionState(state.revision),
     simple: {
       queue: [...state.simple.queue],
@@ -307,6 +311,12 @@ export function transitionSession(
       };
     }
     case 'scheduled-recorded': {
+      // Each review event counts exactly once. The database dedupes the write
+      // (recorded: false on a retry), but the session counts the acknowledgement:
+      // a retry after a lost acknowledgement still needs its first recording,
+      // while a true redelivery of an already-recorded event is a no-op.
+      if (state.recordedEventIds.has(event.eventId)) return { state, effects: [] };
+      const recordedEventIds = new Set(state.recordedEventIds).add(event.eventId);
       const cards = replace(state.cards, event.card);
       const outcomes = new Map(state.outcomes).set(
         event.card.id,
@@ -318,9 +328,7 @@ export function transitionSession(
         revision = transitionRevisionAnswer(
           {
             ...revision,
-            reviewEventIds: event.recorded
-              ? [...revision.reviewEventIds, event.eventId]
-              : revision.reviewEventIds,
+            reviewEventIds: [...revision.reviewEventIds, event.eventId],
           },
           {
             cardId: event.card.id,
@@ -330,6 +338,17 @@ export function transitionSession(
             windowEndsAt: event.revisionWindowEndsAt,
           },
         );
+        // Failed revision cards cool down like any other failure; without this a
+        // failed card is served again immediately (see the eligible filter below).
+        if (event.event.grade === 1) {
+          applyCooldown(
+            cooldowns,
+            event.card.id,
+            event.global
+              ? cards.filter((card) => card.schedulingUnitId === event.deckId).length
+              : cards.length,
+          );
+        }
       } else if (event.event.grade === 1) {
         applyCooldown(
           cooldowns,
@@ -339,13 +358,14 @@ export function transitionSession(
             : cards.length,
         );
       }
-      if (!event.hasRevisionPlan) decrementCooldowns(cooldowns, event.card.id);
+      decrementCooldowns(cooldowns, event.card.id);
       return {
         state: {
           ...state,
           cards,
           outcomes,
           cooldowns,
+          recordedEventIds,
           revision,
           events: [...state.events, event.event],
         },
@@ -440,14 +460,28 @@ function selectSessionCard(state: SessionState, input: Selection): SessionTransi
     });
     if (!window || remainingWindowSeconds <= 0 || now >= revisionPlan.input.deadlineAt)
       return { ...finish(false, true), state: park() };
-    const eligibleCardIds = new Set(
+    const uncooledCardIds = new Set(
       revisionPlan.scope.eligibleCardIds.filter(
         (id) =>
           !state.revision.completed.has(id) &&
           !state.revision.parked.has(id) &&
-          (state.revision.retryAt.get(id) ?? 0) <= now,
+          (state.revision.retryAt.get(id) ?? 0) <= now &&
+          (state.cooldowns.get(id) ?? 0) <= 0,
       ),
     );
+    // A failed card is not served back-to-back, but the session never stalls:
+    // when every remaining card is cooling down, fall back to the full set.
+    const eligibleCardIds =
+      uncooledCardIds.size > 0
+        ? uncooledCardIds
+        : new Set(
+            revisionPlan.scope.eligibleCardIds.filter(
+              (id) =>
+                !state.revision.completed.has(id) &&
+                !state.revision.parked.has(id) &&
+                (state.revision.retryAt.get(id) ?? 0) <= now,
+            ),
+          );
     const objectiveContext = context.decks.values().next().value?.oc;
     if (!objectiveContext) return { state, effects: [] };
     const allocation = allocateCramReview({

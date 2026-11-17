@@ -39,4 +39,43 @@ describe('MCP IPC response validation', () => {
       false,
     );
   });
+
+  it('bounds scope targets so a compromised renderer cannot flood main', () => {
+    // Genuine course ids and labels stay well under these ceilings.
+    expect(
+      isMcpScopeResolutionResponse({
+        id: 'one',
+        ok: true,
+        targets: [{ courseId: 'c'.repeat(160) }],
+      }),
+    ).toBe(true);
+    expect(
+      isMcpScopeResolutionResponse({
+        id: 'one',
+        ok: true,
+        targets: [{ courseId: 'c'.repeat(161) }],
+      }),
+    ).toBe(false);
+    expect(
+      isMcpScopeResolutionResponse({
+        id: 'one',
+        ok: true,
+        targets: [{ courseId: 'course-1', label: 'l'.repeat(500) }],
+      }),
+    ).toBe(true);
+    expect(
+      isMcpScopeResolutionResponse({
+        id: 'one',
+        ok: true,
+        targets: [{ courseId: 'course-1', label: 'l'.repeat(501) }],
+      }),
+    ).toBe(false);
+    expect(
+      isMcpScopeResolutionResponse({
+        id: 'one',
+        ok: true,
+        targets: Array.from({ length: 17 }, (_, index) => ({ courseId: `course-${index}` })),
+      }),
+    ).toBe(false);
+  });
 });

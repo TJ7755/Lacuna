@@ -35,7 +35,9 @@ export function addElectronSecurityHeaders(
     setResponseHeader(headers, 'Cross-Origin-Embedder-Policy', ['credentialless']);
 
     if (environment === 'production') {
-      setResponseHeader(headers, 'Access-Control-Allow-Origin', ['*']);
+      // Same-origin reads never consult CORS; advertising only the app's own
+      // origin keeps embedded remote frames from reading the local bundle.
+      setResponseHeader(headers, 'Access-Control-Allow-Origin', [APP_RENDERER_ORIGIN]);
       setResponseHeader(headers, 'Content-Security-Policy', [PRODUCTION_RENDERER_CSP]);
     }
   }

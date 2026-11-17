@@ -317,7 +317,8 @@ describe('area scope', () => {
     expect(
       classifyPaths(parseNameStatus('D\0tooling/handwriting-maths/src/main.ts\0')).handwriting,
     ).toBe(true);
-    for (const input of ['', 'M\0file', 'R100\0old\0', 'unexpected\0file\0']) {
+    expect(parseNameStatus('')).toEqual([]);
+    for (const input of ['M\0file', 'R100\0old\0', 'unexpected\0file\0']) {
       expect(() => parseNameStatus(input)).toThrow();
     }
   });

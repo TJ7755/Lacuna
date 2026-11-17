@@ -96,10 +96,17 @@ export async function disconnectFromClass(courseId: string): Promise<void> {
   const enrolment = setting.read();
   // Revoke consent first so an interrupted disconnect still leaves reporting off.
   setReportingConsent(courseId, false);
+  let discardError: unknown;
   if (enrolment) {
     const outbox = createInsightsOutbox();
     try {
       await outbox.discard(enrolment.shareId);
+    } catch (error) {
+      // A failed delete must not keep the enrolment: the user asked to leave,
+      // and retaining retryable ciphertext after an explicit disconnect would
+      // resend pre-disconnect evidence on re-consent. Finish the local cleanup
+      // first, then surface the failure.
+      discardError = error;
     } finally {
       outbox.close();
     }
@@ -108,4 +115,5 @@ export async function disconnectFromClass(courseId: string): Promise<void> {
   createInsightsLastPublishedAtSetting(courseId).write(null);
   storedString(`lacuna.insights.attempt.${courseId}`).remove();
   setting.write(null);
+  if (discardError !== undefined) throw discardError;
 }

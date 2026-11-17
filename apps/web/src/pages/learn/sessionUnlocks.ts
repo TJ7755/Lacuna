@@ -111,6 +111,9 @@ export async function ratchetSessionUnlocks(
     const lessonN1 = coreLessons[i + 1];
     if (lessonN1.unlockedAt !== undefined) continue;
     if (lId && lessonN.id !== lId) continue;
+    const unlockedLessonIds = new Set(
+      lessons.filter((lesson) => lesson.unlockedAt !== undefined).map((lesson) => lesson.id),
+    );
     const lessonNCards = lessonCardMembership(lessonN.id, courseCards, links);
     const currentPracticeGoalReached = manualPracticeGateOutcomeAfterLesson(
       coreLessons,
@@ -140,7 +143,17 @@ export async function ratchetSessionUnlocks(
               completions,
               practiceGoalReached,
             )
-          : lessonNCards.every((card) => card.state !== 0) && practiceGoalReached !== false
+          : lessonNCards
+              .filter(
+                (card) =>
+                  // Cards primary to a locked later lesson can never be introduced
+                  // yet, so they must not hold the current lesson's unlock hostage.
+                  card.primaryLessonId === null ||
+                  card.primaryLessonId === undefined ||
+                  card.primaryLessonId === lessonN.id ||
+                  unlockedLessonIds.has(card.primaryLessonId),
+              )
+              .every((card) => card.state !== 0) && practiceGoalReached !== false
         : nextLessonUnlockCondition(
             lessonN.id,
             lessonNCards,

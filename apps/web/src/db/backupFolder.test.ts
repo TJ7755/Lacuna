@@ -58,7 +58,7 @@ describe('backup folder mirror', () => {
 
   it('writes a timestamped file once permission is granted on request', async () => {
     const { handle, write, close } = folder({ request: 'granted' });
-    const payload = { exportedAt: Date.UTC(2026, 7, 12, 9, 5, 7) } as BackupFile;
+    const payload = { exportedAt: Date.UTC(2026, 7, 12, 9, 5, 7, 123) } as BackupFile;
 
     await expect(mirrorToFolder(payload)).resolves.toEqual({
       state: 'saved',
@@ -67,11 +67,33 @@ describe('backup folder mirror', () => {
     });
 
     expect(handle.requestPermission).toHaveBeenCalledWith({ mode: 'readwrite' });
-    expect(handle.getFileHandle).toHaveBeenCalledWith('lacuna-backup-2026-08-12T09-05-07.json', {
-      create: true,
-    });
+    expect(handle.getFileHandle).toHaveBeenCalledWith(
+      'lacuna-backup-2026-08-12T09-05-07-123Z.json',
+      {
+        create: true,
+      },
+    );
     expect(write).toHaveBeenCalledWith(JSON.stringify(payload, null, 2));
     expect(close).toHaveBeenCalled();
+  });
+
+  it('writes distinct files for backups sharing the same second', async () => {
+    const { handle } = folder({ request: 'granted' });
+    const exportedAt = Date.UTC(2026, 7, 12, 9, 5, 7, 42);
+
+    await mirrorToFolder({ exportedAt } as BackupFile);
+    await mirrorToFolder({ exportedAt: exportedAt + 1 } as BackupFile);
+
+    expect(handle.getFileHandle).toHaveBeenNthCalledWith(
+      1,
+      'lacuna-backup-2026-08-12T09-05-07-042Z.json',
+      { create: true },
+    );
+    expect(handle.getFileHandle).toHaveBeenNthCalledWith(
+      2,
+      'lacuna-backup-2026-08-12T09-05-07-043Z.json',
+      { create: true },
+    );
   });
 
   it('writes nothing when folder permission is refused', async () => {

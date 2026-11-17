@@ -57,6 +57,7 @@ export function emptySessionState(): SessionState {
     events: [],
     outcomes,
     cooldowns: new Map(),
+    recordedEventIds: new Set(),
     revision: createRevisionSessionState(),
     simple: { queue: [], mastered: new Set(), wrong: new Set(), outcomes },
   };

@@ -24,19 +24,23 @@ export type JevDiagnosticRequest = z.infer<typeof jevDiagnosticRequestSchema>;
 /**
  * Jev can diagnose only built-in techniques, whose definitions the service holds. Course
  * catalogue tags contribute their active built-in identities; custom techniques are omitted.
+ * Legacy tags go through the same active-identities rule, so Jev-suggested (unreviewed)
+ * techniques never drive diagnosis on either path.
  */
 export function diagnosticRequestForTags(
   tags: TechniqueTags | undefined,
 ): JevDiagnosticRequest | undefined {
   if (!tags) return undefined;
-  if (tags.taxonomyId !== 'course')
-    return tags.techniqueIds.length
+  if (tags.taxonomyId !== 'course') {
+    const techniqueIds = activeTechniqueIds(tags).filter(isBuiltInTechniqueId);
+    return techniqueIds.length
       ? {
           taxonomyId: tags.taxonomyId,
           taxonomyVersion: tags.taxonomyVersion,
-          techniqueIds: tags.techniqueIds,
+          techniqueIds,
         }
       : undefined;
+  }
   const techniqueIds = activeTechniqueIds(tags).filter(isBuiltInTechniqueId);
   return techniqueIds.length
     ? { taxonomyId: 'science-techniques', taxonomyVersion: 1, techniqueIds }

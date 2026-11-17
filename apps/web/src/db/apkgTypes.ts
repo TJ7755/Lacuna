@@ -12,6 +12,8 @@ export interface ApkgImportResult {
   skippedNotes: number;
   /** How many Anki cards were skipped because their note was unsupported. */
   skippedCards: number;
+  /** How many media files listed in the package were missing from the archive. */
+  skippedMedia?: number;
 }
 
 export interface ApkgParseOptions {

@@ -31,6 +31,7 @@ function initial(size: number): SessionState {
     outcomes,
     events: [],
     cooldowns: new Map(),
+    recordedEventIds: new Set(),
     revision: createRevisionSessionState(),
     simple: { queue: cards, mastered: new Set(), wrong: new Set(), outcomes },
   };
@@ -403,5 +404,84 @@ describe('session machine operation sequences', () => {
         selection: { ...selection, simple: false, context },
       }).effects,
     ).toContainEqual({ type: 'finish', stop: [true, false, false], blockComplete: false });
+  });
+
+  it('ignores a retried submission the database already committed', () => {
+    const state = initial(1);
+    const recorded = {
+      type: 'scheduled-recorded' as const,
+      card: state.cards[0],
+      event: {
+        cardId: state.cards[0].id,
+        correct: true,
+        grade: 3 as const,
+        responseTimeSec: 1,
+        distracted: false,
+      },
+      eventId: 'review',
+      recorded: true,
+      deckId: 'unit',
+      global: false,
+      now: NOW,
+      hasRevisionPlan: false,
+    };
+    const once = transitionSession(state, recorded).state;
+    expect(once.events).toHaveLength(1);
+    expect(once.outcomes.size).toBe(1);
+    // A true redelivery of the same event (not a lost acknowledgement: the first
+    // acknowledgement already counted it) changes nothing.
+    const twice = transitionSession(once, { ...recorded, recorded: false }).state;
+    expect(twice.events).toHaveLength(1);
+    expect(twice.outcomes.size).toBe(1);
+    expect(twice).toEqual(once);
+  });
+
+  it('records a lost acknowledgement once when its retry finally lands', () => {
+    const state = initial(1);
+    const retry = {
+      type: 'scheduled-recorded' as const,
+      card: state.cards[0],
+      event: {
+        cardId: state.cards[0].id,
+        correct: true,
+        grade: 3 as const,
+        responseTimeSec: 1,
+        distracted: false,
+      },
+      // The database already holds this review (recorded: false) but the session
+      // never counted it: the first acknowledgement was lost in flight.
+      eventId: 'review',
+      recorded: false,
+      deckId: 'unit',
+      global: false,
+      now: NOW,
+      hasRevisionPlan: false,
+    };
+    const once = transitionSession(state, retry).state;
+    expect(once.events).toHaveLength(1);
+    expect(once.outcomes.size).toBe(1);
+  });
+
+  it('cools down a failed card inside a revision window instead of re-serving it', () => {
+    const state = initial(2);
+    const failed = transitionSession(state, {
+      type: 'scheduled-recorded',
+      card: state.cards[0],
+      event: {
+        cardId: state.cards[0].id,
+        correct: false,
+        grade: 1 as const,
+        responseTimeSec: 1,
+        distracted: false,
+      },
+      eventId: 'review',
+      recorded: true,
+      deckId: 'unit',
+      global: false,
+      now: NOW,
+      hasRevisionPlan: true,
+      revisionWindowEndsAt: NOW + 120_000,
+    }).state;
+    expect(failed.cooldowns.get(state.cards[0].id)).toBeGreaterThan(0);
   });
 });

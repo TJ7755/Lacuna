@@ -332,6 +332,13 @@ export function CardImportDialog({
                         {source.apkg ? 'unsupported cards' : 'rows'} skipped.
                       </p>
                     )}
+                    {(source.apkg?.skippedMedia ?? 0) > 0 && (
+                      <p className="card-import-notice">
+                        {source.apkg?.skippedMedia} media{' '}
+                        {(source.apkg?.skippedMedia ?? 0) === 1 ? 'file' : 'files'} missing: some
+                        cards link to media that was not in the package.
+                      </p>
+                    )}
                   </div>
                 </>
               )}

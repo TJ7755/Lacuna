@@ -24,7 +24,6 @@ export async function createRestorePoint(
     payload,
   };
   await db.backups.add(snapshot);
-  onStored();
   // Keep only the most recent restore points. Pre-migration snapshots are exempt:
   // they are the safety net for a botched upgrade and must not be pruned away.
   const all = await db.backups.orderBy('createdAt').toArray();
@@ -33,6 +32,7 @@ export async function createRestorePoint(
     const excess = prunable.slice(0, prunable.length - MAX_RESTORE_POINTS);
     await db.backups.bulkDelete(excess.map((s) => s.id!));
   }
+  onStored();
 
   // Best-effort folder mirror; never let it break the backup itself.
   const mirror = await mirrorToFolder(payload).catch((e: unknown): FolderMirrorResult => {

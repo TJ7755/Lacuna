@@ -54,6 +54,19 @@ describe('desktop download selection', () => {
     expect(
       detectDesktopPlatform('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile'),
     ).toBeNull();
+    // Desktop-mode iPad reports a Mac user agent; touch points distinguish it.
+    expect(
+      detectDesktopPlatform(
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+        true,
+      ),
+    ).toBeNull();
+    expect(
+      detectDesktopPlatform(
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+        false,
+      ),
+    ).toBe('macos');
   });
 
   it('does not silently recommend a Windows executable to mobile visitors', () => {

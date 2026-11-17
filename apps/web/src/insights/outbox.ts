@@ -58,10 +58,13 @@ export function createInsightsOutbox(
   database.version(2).stores({ snapshots: '[shareId+isoDay], isoDay' });
   const snapshots = database.table<SnapshotPacket, [string, string]>('snapshots');
   const packets = database.table<SavedPacket, [string, string]>('packets');
+  // Retention applies to every table and regardless of opt-in: local ciphertext
+  // must not outlive the relay's retention window after opting out.
   const pruneExpired = () =>
-    database.transaction('rw', snapshots, async () => {
+    database.transaction('rw', [packets, snapshots], async () => {
       const cutoff = isoDayLabel(now() - (INSIGHT_RETENTION_DAYS + 1) * DAY_MS);
       await snapshots.where('isoDay').belowOrEqual(cutoff).delete();
+      await packets.where('isoDay').belowOrEqual(cutoff).delete();
     });
 
   return {
@@ -78,9 +81,9 @@ export function createInsightsOutbox(
     },
 
     async send(options: DailyDelivery): Promise<InsightsPublicationResult> {
+      await pruneExpired();
       if (!options.isOptedIn() || options.signal?.aborted) return 'idle';
       if (!INSIGHT_ID_RE.test(options.shareId)) throw new Error('Invalid insights course.');
-      await pruneExpired();
       const isoDay = completedReportingDay(now());
       const window = newReportingWindow(isoDay);
       const context = {
@@ -114,7 +117,12 @@ export function createInsightsOutbox(
         packet = await database.transaction('rw', [packets, snapshots], async () => {
           if (!stillAllowed()) return undefined;
           if (await snapshots.get(key)) return undefined;
-          await packets.where('isoDay').below(isoDay).delete();
+          // Only this share's stale days: another class's retryable ciphertext
+          // is still within retention and must survive this send.
+          await packets
+            .where('[shareId+isoDay]')
+            .between([options.shareId, Dexie.minKey], [options.shareId, isoDay], true, false)
+            .delete();
           const existing = await packets.get(key);
           if (existing) return checkSavedPacket(existing, context);
           await packets.add(candidate);
@@ -159,9 +167,9 @@ export function createInsightsOutbox(
         localReportingDayLabel(now()) === startedDay;
       const allowed = async () =>
         stillAllowed() && (!options.isCurrent || (await options.isCurrent())) && stillAllowed();
+      await pruneExpired();
       if (!(await allowed())) return 'idle';
       if (!INSIGHT_ID_RE.test(options.shareId)) throw new Error('Invalid insights course.');
-      await pruneExpired();
       const context = {
         shareId: options.shareId,
         isoDay,

@@ -45,7 +45,7 @@ export function answerGrade({
       machineMarked.marksEarned,
       machineMarked.marksAvailable,
       responseTimeSec,
-      false,
+      machineMarked.selfCorrected ?? false,
     );
   }
   return (

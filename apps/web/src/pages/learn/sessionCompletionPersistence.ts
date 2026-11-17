@@ -145,7 +145,9 @@ export async function persistSessionCompletion(
             : null;
         deliveredSummary = {
           ...nextSummary,
-          reachedGoal: true,
+          // Preserve the caller's verdict: an expired window budget or early exit
+          // ends the window with partial coverage, not with the goal reached.
+          reachedGoal: nextSummary.reachedGoal,
           revision: {
             cardsCovered: completed.covered.size,
             cardsImproved: completed.improved.size,
