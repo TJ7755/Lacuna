@@ -3,8 +3,12 @@ import { useIsPresent } from 'motion/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppLink } from '../components/ui/AppLink';
 import { buttonClassName } from '../components/ui/buttonStyles';
-import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
-import { focusCourseHeading } from '../components/course/focusCourseHeading';
+import {
+  PAGE_FRAME,
+  PAGE_HEADER,
+  PAGE_TITLE,
+  focusCourseHeading,
+} from '../components/course/coursePageLayout';
 import { MissingRecord } from '../components/course/MissingRecord';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useToast } from '../components/ui/Toast';

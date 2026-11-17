@@ -1,5 +1,9 @@
-import { focusCourseHeading } from '../components/course/focusCourseHeading';
-import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
+import {
+  PAGE_FRAME,
+  PAGE_HEADER,
+  PAGE_TITLE,
+  focusCourseHeading,
+} from '../components/course/coursePageLayout';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { useLayoutEffect, useRef } from 'react';
 import { useIsPresent } from 'motion/react';

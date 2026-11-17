@@ -8,12 +8,21 @@ interface ToggleProps {
   onChange: (checked: boolean) => void;
   label?: string;
   ariaLabel?: string;
+  descriptionId?: string;
   id?: string;
   disabled?: boolean;
 }
 
 /** Pill-shaped switch whose knob springs between the two ends. Also exported as PillSwitch. */
-export function Toggle({ checked, onChange, label, ariaLabel, id, disabled }: ToggleProps) {
+export function Toggle({
+  checked,
+  onChange,
+  label,
+  ariaLabel,
+  descriptionId,
+  id,
+  disabled,
+}: ToggleProps) {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
 
@@ -32,6 +41,7 @@ export function Toggle({ checked, onChange, label, ariaLabel, id, disabled }: To
         role="switch"
         aria-checked={checked}
         aria-label={ariaLabel ?? label}
+        aria-describedby={descriptionId}
         disabled={disabled}
         onClick={() => !disabled && onChange(!checked)}
         style={{ transitionDuration: `${200 * multiplier}ms` }}

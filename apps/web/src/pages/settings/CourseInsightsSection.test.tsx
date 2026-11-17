@@ -99,7 +99,7 @@ describe('CourseInsightsSection', () => {
       screen.getByText(/activity already recorded today and yesterday/i),
     );
     expect(disclosure).toContainElement(screen.getByText(/submission time and packet size/i));
-    expect(disclosure).toContainElement(screen.getByText(/sends today’s completed work/i));
+    expect(disclosure).toContainElement(screen.getByText(/shares today’s completed work/i));
     expect(disclosure).toContainElement(screen.getByText(/expire from the relay after 12 weeks/i));
     expect(disclosure).toContainElement(
       screen.getByText(/teacher may keep results they have already received/i),
@@ -118,7 +118,9 @@ describe('CourseInsightsSection', () => {
     expect(
       screen.getByText(/encrypted reports of your answers, marks and study progress/),
     ).toBeVisible();
-    expect(screen.getByText(/turning sharing off stops future reports/i)).toBeVisible();
+    expect(screen.getByRole('switch')).toHaveAccessibleDescription(
+      /turning sharing off stops future sends/i,
+    );
     expect(screen.getByText('Nothing has been sent yet.')).toBeVisible();
     expect(screen.getByText('This build cannot send reports.')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Send latest progress' })).not.toBeInTheDocument();
@@ -157,7 +159,7 @@ describe('CourseInsightsSection', () => {
     );
     renderSection();
     expect(screen.queryByText(/Last automatic report/)).not.toBeInTheDocument();
-    expect(screen.getByText('Last sent: 19/10/2026, 20:34:00.')).toBeVisible();
+    expect(screen.getByText('Last manual send: 19/10/2026, 20:34:00.')).toBeVisible();
   });
 
   it.each([
@@ -258,7 +260,7 @@ describe('CourseInsightsSection', () => {
     );
   });
 
-  it('shows a pending disconnect, keeps a failure beside the confirmation and focuses Gaps after retry', async () => {
+  it('shows a pending disconnect, keeps focus on a failed disconnect and respects the next focused control', async () => {
     joinClass();
     setReportingConsent(COURSE_ID, true, 'Pupil A');
     let rejectDiscard!: (error: Error) => void;
@@ -277,15 +279,22 @@ describe('CourseInsightsSection', () => {
     });
     renderSection();
     fireEvent.click(screen.getByRole('button', { name: 'Disconnect from Gaps' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
-    expect(screen.getByRole('button', { name: 'Disconnecting…' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    const confirm = screen.getByRole('button', { name: 'Disconnect' });
+    confirm.focus();
+    fireEvent.click(confirm);
+    expect(confirm).toHaveAccessibleName('Disconnecting…');
+    expect(confirm).toHaveAttribute('aria-disabled', 'true');
+    expect(confirm).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveAttribute('aria-disabled', 'true');
     rejectDiscard(new Error('Could not remove queued reports.'));
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not remove queued reports.');
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
-    fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+    expect(confirm).toHaveFocus();
+    fireEvent.click(confirm);
+    const notice = screen.getByRole('link', { name: 'School data notice' });
+    notice.focus();
     expect(await screen.findByRole('link', { name: 'Join a class' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Gaps' })).toHaveFocus();
+    expect(notice).toHaveFocus();
     expect(screen.getByRole('status', { name: 'Class connection' })).toHaveTextContent(
       'Disconnected from Gaps.',
     );

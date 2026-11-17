@@ -410,7 +410,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       holdPublication = undefined;
     }
     await expect(pupil.getByRole('status').filter({ hasText: 'Progress sent.' })).toBeVisible();
-    await expect(pupil.getByText(/^Last sent:/)).toBeVisible();
+    await expect(pupil.getByText(/^Last manual send:/)).toBeVisible();
     await expect(publish).toBeEnabled();
     await teacher.getByRole('button', { name: 'Refresh results', exact: true }).click();
     await expect(

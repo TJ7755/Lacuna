@@ -24,10 +24,12 @@ const OFFLINE_MESSAGE = 'You are offline. Connect to the internet and send again
 export function CourseInsightsSection({
   courseId,
   heading = 'Gaps',
+  focusOnJoin = false,
   onDisconnected,
 }: {
   courseId: string;
   heading?: string | false;
+  focusOnJoin?: boolean;
   onDisconnected?: () => void;
 }) {
   const enrolmentSetting = createEnrolmentSetting(courseId);
@@ -50,6 +52,7 @@ export function CourseInsightsSection({
   const identifierRef = useRef<HTMLInputElement>(null);
   const headingId = useId();
   const switchId = useId();
+  const consentDescriptionId = useId();
   const enabled = reportingEnabled();
   const consenting = optedIn && enrolment !== null && enrolment.consentedAt !== null;
   const consent = consenting ? JSON.stringify(enrolment) : null;
@@ -57,14 +60,16 @@ export function CourseInsightsSection({
   const disconnectedHere = disconnected && !enrolment && !onDisconnected;
   const lastReport =
     lastPublished !== null
-      ? `Last sent: ${new Date(lastPublished).toLocaleString('en-GB')}.`
+      ? `Last manual send: ${new Date(lastPublished).toLocaleString('en-GB')}.`
       : lastSent !== null
         ? `Last automatic report: ${lastSent}.`
         : 'Nothing has been sent yet.';
 
   useLayoutEffect(() => {
-    if (disconnectedHere) headingRef.current?.focus();
-  }, [disconnectedHere]);
+    if ((disconnectedHere || focusOnJoin) && document.activeElement === document.body) {
+      headingRef.current?.focus();
+    }
+  }, [disconnectedHere, focusOnJoin]);
 
   function changeConsent(checked: boolean) {
     setConsentError('');
@@ -199,16 +204,17 @@ export function CourseInsightsSection({
               </label>
               <Toggle
                 id={switchId}
+                descriptionId={consenting ? undefined : consentDescriptionId}
                 checked={consenting}
                 disabled={disconnecting}
                 onChange={changeConsent}
               />
             </div>
             {!consenting && (
-              <p className="mt-2 max-w-prose text-sm text-ink-soft">
-                Your teacher can read encrypted reports of your answers, marks and progress.
+              <p id={consentDescriptionId} className="mt-2 max-w-prose text-sm text-ink-soft">
+                Your teacher can read encrypted reports of your answers, marks and study progress.
                 Yesterday’s report sends while Lacuna is open and online. Your teacher may keep
-                reports.
+                reports. Turning sharing off stops future sends from this device.
               </p>
             )}
             {consentError && (
@@ -295,7 +301,7 @@ export function CourseInsightsSection({
               confirmLabel={disconnecting ? 'Disconnecting…' : 'Disconnect'}
               variant="default"
               focusOnMount="cancel"
-              disabled={disconnecting}
+              keepFocusWhilePending
               onConfirm={disconnect}
               onCancel={() => {
                 setConfirmingDisconnect(false);

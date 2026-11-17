@@ -64,11 +64,15 @@ export function ShareLinkImport({
 }) {
   const [state, setState] = useState<ShareLinkState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [joinedCourse, setJoinedCourse] = useState<string | null>(null);
+  const [joinedCourse, setJoinedCourse] = useState<{
+    id: string;
+    justImported: boolean;
+  } | null>(null);
   const [joinError, setJoinError] = useState('');
-  const joinedCourseName = useLiveQuery(
-    async () => (joinedCourse ? (await db.courses.get(joinedCourse))?.name : undefined),
-    [joinedCourse],
+  const importedCourseId = joinedCourse?.justImported ? joinedCourse.id : undefined;
+  const importedCourseName = useLiveQuery(
+    async () => (importedCourseId ? (await db.courses.get(importedCourseId))?.name : undefined),
+    [importedCourseId],
   );
 
   async function join(
@@ -76,12 +80,13 @@ export function ShareLinkImport({
     lineageId: string,
     courseId: string,
     recipient?: InsightsRecipient,
+    justImported = false,
   ) {
     if (!(await confirmShareImport(shareId, lineageId, courseId)))
       throw new Error('This imported course does not match the class invitation.');
     if (recipient) {
       enrolInClass(courseId, { shareId, lineageId, recipient });
-      setJoinedCourse(courseId);
+      setJoinedCourse({ id: courseId, justImported });
     }
   }
 
@@ -224,7 +229,7 @@ export function ShareLinkImport({
             onBusyChange={onBusyChange}
             onImported={(courseId) => {
               if (!isCurrent()) return;
-              void join(state.shareId, state.expectedLineageId, courseId, state.recipient)
+              void join(state.shareId, state.expectedLineageId, courseId, state.recipient, true)
                 .then(() => {
                   if (!isCurrent() || state.recipient) return;
                   onOpenCourse(courseId);
@@ -238,9 +243,10 @@ export function ShareLinkImport({
           />
           {joinedCourse && (
             <CourseInsightsSection
-              key={joinedCourse}
-              courseId={joinedCourse}
-              heading={joinedCourseName}
+              key={joinedCourse.id}
+              courseId={joinedCourse.id}
+              focusOnJoin={joinedCourse.justImported}
+              heading={importedCourseName}
             />
           )}
           {joinError && (

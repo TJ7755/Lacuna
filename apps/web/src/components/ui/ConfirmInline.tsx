@@ -27,6 +27,7 @@ export interface ConfirmInlineProps {
   onConfirm: () => void | Promise<void>;
   /** Preserve caller-owned busy states, including work that does not return a promise. */
   disabled?: boolean;
+  keepFocusWhilePending?: boolean;
   onCancel: () => void;
   /** 'destructive' styles the confirm button in the negative colour; 'default' uses accent. */
   variant?: 'destructive' | 'default';
@@ -75,6 +76,7 @@ export function ConfirmInline({
   onCancel,
   variant = 'destructive',
   disabled = false,
+  keepFocusWhilePending = false,
   announce = false,
   focusOnMount,
   className,
@@ -162,11 +164,12 @@ export function ConfirmInline({
             ref={confirmRef}
             type="button"
             onClick={confirm}
-            disabled={pending || disabled}
+            disabled={disabled || (pending && !keepFocusWhilePending)}
+            aria-disabled={(pending && keepFocusWhilePending) || undefined}
             style={{ transitionDuration: `${150 * multiplier}ms` }}
             className={cn(
               buttonClassName(variant === 'destructive' ? 'danger' : 'primary', 'sm'),
-              'max-w-full break-words',
+              'max-w-full break-words aria-disabled:opacity-40',
             )}
           >
             {confirmLabel}
@@ -175,9 +178,10 @@ export function ConfirmInline({
             ref={cancelRef}
             type="button"
             onClick={cancel}
-            disabled={pending || disabled}
+            disabled={disabled || (pending && !keepFocusWhilePending)}
+            aria-disabled={(pending && keepFocusWhilePending) || undefined}
             style={{ transitionDuration: `${150 * multiplier}ms` }}
-            className={buttonClassName('secondary', 'sm')}
+            className={cn(buttonClassName('secondary', 'sm'), 'aria-disabled:opacity-40')}
           >
             {cancelLabel}
           </button>
