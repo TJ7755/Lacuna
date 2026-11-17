@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { card, course, NOW } from '../../fsrs/session.testFixtures';
-import { makeSessionContext } from '../../fsrs/session';
+import { makeSessionContext } from '@lacuna/core/fsrs/session';
 import { createRevisionSessionState } from '../../course/revisionSession';
 import type { SessionSummary } from '../../course/sessionSummary';
 import {

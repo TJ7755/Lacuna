@@ -2,7 +2,7 @@ import type { PathNode } from '../../course/path';
 import {
   resolveAssessmentCoverage,
   type AssessmentSpecificationContext,
-} from '../../course/assessmentCoverage';
+} from '@lacuna/core/course/assessmentCoverage';
 import type { Card, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import { updateCourseAssessment } from '../../db/assessmentRepository';
 import { updatePracticeNode, updateQuestionSetPracticeNode } from '../../db/practiceNodeRepository';

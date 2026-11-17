@@ -13,11 +13,14 @@ import {
   type MemoryModelFallbackReason,
   type RecallPrediction,
   type SuccessGradeCoefficient,
-} from './cramAllocator';
+} from '@lacuna/core/fsrs/cramAllocator';
 import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { makeObjectiveContext, sortByObjective } from './objective';
-import { estimateResponseTime, type ResponseTimeCoefficients } from './responseTimeCost';
-import { CRAM_SUCCESS_GRADES } from './halfLifeLogisticModel';
+import { makeObjectiveContext, sortByObjective } from '@lacuna/core/fsrs/objective';
+import {
+  estimateResponseTime,
+  type ResponseTimeCoefficients,
+} from '@lacuna/core/fsrs/responseTimeCost';
+import { CRAM_SUCCESS_GRADES } from '@lacuna/core/fsrs/halfLifeLogisticModel';
 
 const NOW = 30 * MS_PER_DAY;
 const ASSESSMENT = NOW + 2 * MS_PER_DAY;

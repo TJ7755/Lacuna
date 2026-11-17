@@ -1,7 +1,7 @@
 import type { Grade } from '@lacuna/core/db/types';
 import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
-import { resolveCardExamDate, type ExamDateContext } from './examDate';
-import { predictedRetrievabilityAtHorizon } from './progress';
+import { resolveCardExamDate, type ExamDateContext } from '@lacuna/core/fsrs/examDate';
+import { predictedRetrievabilityAtHorizon } from '@lacuna/core/fsrs/progress';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;

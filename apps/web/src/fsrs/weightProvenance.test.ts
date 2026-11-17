@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
-import { fsrsWeightsFingerprint } from './weightProvenance';
+import { fsrsWeightsFingerprint } from '@lacuna/core/fsrs/weightProvenance';
 
 describe('fsrsWeightsFingerprint', () => {
   it('returns the same fingerprint for identical weight arrays', () => {

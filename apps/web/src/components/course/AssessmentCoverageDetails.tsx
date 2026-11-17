@@ -1,4 +1,4 @@
-import type { ResolvedAssessmentCoverage } from '../../course/assessmentCoverage';
+import type { ResolvedAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 import type { Card, CourseAssessment } from '@lacuna/core/db/types';
 
 /** The authored scope remains visible when only the assessment date is editable. */

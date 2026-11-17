@@ -1,5 +1,5 @@
-import { addDays } from '../fsrs/heatmap';
-import { startOfDay } from '../utils/datetime';
+import { addDays } from '@lacuna/core/fsrs/heatmap';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 
 export interface WeekSummary {
   /** Review attempts in the last seven local days, including today. */

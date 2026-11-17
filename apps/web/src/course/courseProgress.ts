@@ -6,15 +6,19 @@ import type {
   LessonCardExposure,
   LessonCardLink,
 } from '@lacuna/core/db/types';
-import { dueReviewPool, isAvailable } from '../fsrs/eligibility';
-import { isUpcomingExamDate, makeExamDateContext, resolveCardExamDate } from '../fsrs/examDate';
-import { progressValue } from '../fsrs/objective';
+import { dueReviewPool, isAvailable } from '@lacuna/core/fsrs/eligibility';
+import {
+  isUpcomingExamDate,
+  makeExamDateContext,
+  resolveCardExamDate,
+} from '@lacuna/core/fsrs/examDate';
+import { progressValue } from '@lacuna/core/fsrs/objective';
 import { MASTERY_R } from '@lacuna/core/fsrs/params';
-import { predictedRetrievabilityAtHorizon } from '../fsrs/progress';
+import { predictedRetrievabilityAtHorizon } from '@lacuna/core/fsrs/progress';
 import type { Concept } from '@lacuna/core/questions/types';
 import { calendarDaysUntil } from '../utils/datetime';
-import { resolveAssessmentCoverage } from './assessmentCoverage';
-import { courseLessonOrderPreference } from './lessonOrder';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
 
 // The Progress page's measures. Each scope defines one card pool and one forecast
 // date, and every figure on the page (headline, lessons, next action) reads them

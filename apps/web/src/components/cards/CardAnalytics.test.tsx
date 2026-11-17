@@ -4,8 +4,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { forgettingCurve } from '../../fsrs/forwardSim';
-import { decayOf } from '../../fsrs/fsrs';
+import { forgettingCurve } from '@lacuna/core/fsrs/forwardSim';
+import { decayOf } from '@lacuna/core/fsrs/fsrs';
 import { CardAnalytics } from './CardAnalytics';
 
 vi.mock('../analytics/useChartColours', () => ({

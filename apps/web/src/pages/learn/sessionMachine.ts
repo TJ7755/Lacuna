@@ -14,10 +14,13 @@ import {
   transitionRevisionAnswer,
   type RevisionSessionState,
 } from '../../course/revisionSession';
-import { applyCooldown, decrementCooldowns, type CooldownMap } from '../../fsrs/cooldown';
-import { selectNext, sessionComplete, type SessionContext } from '../../fsrs/session';
-import { allocateCramReview } from '../../fsrs/cramAllocator';
-import { CRAM_SUCCESS_GRADES, createHalfLifeLogisticModel } from '../../fsrs/halfLifeLogisticModel';
+import { applyCooldown, decrementCooldowns, type CooldownMap } from '@lacuna/core/fsrs/cooldown';
+import { selectNext, sessionComplete, type SessionContext } from '@lacuna/core/fsrs/session';
+import { allocateCramReview } from '@lacuna/core/fsrs/cramAllocator';
+import {
+  CRAM_SUCCESS_GRADES,
+  createHalfLifeLogisticModel,
+} from '@lacuna/core/fsrs/halfLifeLogisticModel';
 import type { RevisionPlan, UserPerformance } from '@lacuna/core/db/types';
 import { answerGrade, sessionStopAfterAnswer, type SessionStop } from './answerPolicy';
 

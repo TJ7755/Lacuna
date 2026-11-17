@@ -7,7 +7,7 @@ import {
   gradeFromResponse,
   HINT_TIME_PENALTY_SEC,
   updatePerformance,
-} from './grading';
+} from '@lacuna/core/fsrs/grading';
 
 function performance(
   totalCorrectReviews: number,

@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { cardSchedulingHorizon, schedulingHorizon, MAINTENANCE_HORIZON_DAYS } from './horizon';
-import { studyPool } from './eligibility';
-import { progressValue } from './objective';
+import {
+  cardSchedulingHorizon,
+  schedulingHorizon,
+  MAINTENANCE_HORIZON_DAYS,
+} from '@lacuna/core/fsrs/horizon';
+import { studyPool } from '@lacuna/core/fsrs/eligibility';
+import { progressValue } from '@lacuna/core/fsrs/objective';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
 

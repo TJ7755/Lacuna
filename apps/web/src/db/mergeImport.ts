@@ -1,7 +1,7 @@
 import {
   specificationAssessmentPointIds,
   validatePaperAssessmentDates,
-} from '../specifications/assessment';
+} from '@lacuna/core/specifications/assessment';
 import { parseSharePayload, assertShareSpecificationAssessments } from './sharePayload';
 import { earlierCourseLessonIds } from '../course/courseEntry';
 /**

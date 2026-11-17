@@ -1,10 +1,10 @@
 import type { Card, Course } from '@lacuna/core/db/types';
 import { MASTERY_R } from '@lacuna/core/fsrs/params';
-import { isUpcomingExamDate, type ExamDateContext } from '../fsrs/examDate';
-import { rAtExam } from '../fsrs/forwardSim';
-import { decayOf } from '../fsrs/fsrs';
-import { cardSchedulingHorizon } from '../fsrs/horizon';
-import { resolveAssessmentCoverage } from './assessmentCoverage';
+import { isUpcomingExamDate, type ExamDateContext } from '@lacuna/core/fsrs/examDate';
+import { rAtExam } from '@lacuna/core/fsrs/forwardSim';
+import { decayOf } from '@lacuna/core/fsrs/fsrs';
+import { cardSchedulingHorizon } from '@lacuna/core/fsrs/horizon';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 
 export interface StudyReadiness {
   totalCount: number;

@@ -1,5 +1,5 @@
 import type { UserPerformance } from '@lacuna/core/db/types';
-import { DEFAULT_REVIEW_SECONDS } from './stats';
+import { DEFAULT_REVIEW_SECONDS } from '@lacuna/core/fsrs/stats';
 
 export interface ResponseTimeCoefficients {
   fallbackSeconds: number;

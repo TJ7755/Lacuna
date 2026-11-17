@@ -1,8 +1,8 @@
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { QuestionScheduleState } from '@lacuna/core/questions/types';
-import type { SimContext } from '../fsrs/forwardSim';
-import { isUpcomingExamDate } from '../fsrs/examDate';
-import { worthwhileAssessmentPractice } from '../fsrs/assessmentTiming';
+import type { SimContext } from '@lacuna/core/fsrs/forwardSim';
+import { isUpcomingExamDate } from '@lacuna/core/fsrs/examDate';
+import { worthwhileAssessmentPractice } from '@lacuna/core/fsrs/assessmentTiming';
 
 export interface QuestionStudyTiming {
   now: number;

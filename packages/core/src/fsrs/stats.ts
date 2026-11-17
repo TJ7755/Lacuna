@@ -6,9 +6,9 @@
 
 import type { Card, SchedulerConfig, UserPerformance } from '@lacuna/core/db/types';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { startOfDay } from '../utils/datetime';
-import { cardReviewTimestamps, type ReviewActivity } from './heatmap';
-import { studyPool } from './eligibility';
+import { startOfDay } from '@lacuna/core/utils/datetime';
+import { cardReviewTimestamps, type ReviewActivity } from '@lacuna/core/fsrs/heatmap';
+import { studyPool } from '@lacuna/core/fsrs/eligibility';
 
 /** Fallback per-review time (seconds) for a deck with no calibration yet. */
 export const DEFAULT_REVIEW_SECONDS = 8;

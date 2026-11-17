@@ -1,7 +1,7 @@
 import { mergeReviewHistoryEntries } from '@lacuna/core/db/reviewHistory';
 import Dexie from 'dexie';
 import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
-import { specificationAssessmentPointIds } from '../specifications/assessment';
+import { specificationAssessmentPointIds } from '@lacuna/core/specifications/assessment';
 import { canEditLessons } from '../course/lessonViewMode';
 import {
   parseSpecificationReference,

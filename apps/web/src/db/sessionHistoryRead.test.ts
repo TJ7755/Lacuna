@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { startOfDay } from '../utils/datetime';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import { globalTrajectorySeries } from '../components/analytics/prepare';
 import { db } from './schema';
 import { listGlobalDailySessionHistory } from './sessionHistoryRead';

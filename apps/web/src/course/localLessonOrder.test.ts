@@ -3,7 +3,7 @@ import { beforeEach, expect, it } from 'vitest';
 import { createCourse, updateCourse } from '../db/courseRepository';
 import { createLessonCard } from '../db/cardRepository';
 import { createOrResumeRevisionPlan } from '../db/revisionPlanRepository';
-import { makeExamDateContext } from '../fsrs/examDate';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { assessmentPracticePool, currentAssessmentPracticeContext } from './assessmentPractice';
 import { buildCourseStudyFlowSnapshot } from './studyFlowSnapshot';
 import { planNextStudyStep } from './studyFlowPlanner';
@@ -115,7 +115,7 @@ it('rejects stored-content reordering on a locked distributed copy', async () =>
 });
 
 it('resolves tolerant stored preferences using canonical ties and original objects', async () => {
-  const { resolveLessonOrder } = await import('./lessonOrder');
+  const { resolveLessonOrder } = await import('@lacuna/core/course/lessonOrder');
   const course = await createCourse('Science');
   const a = await createLesson(course.id, 'A', { id: 'A', orderIndex: 1, createdAt: 2 });
   const b = await createLesson(course.id, 'B', { id: 'B', orderIndex: 1, createdAt: 2 });
@@ -132,9 +132,9 @@ it('resolves tolerant stored preferences using canonical ties and original objec
 });
 
 it('keeps full-course coverage, exam targeting and lesson-anchored Question Sets intact', async () => {
-  const { resolveAssessmentCoverage } = await import('./assessmentCoverage');
+  const { resolveAssessmentCoverage } = await import('@lacuna/core/course/assessmentCoverage');
   const { createLessonCard } = await import('../db/cardRepository');
-  const { makeExamDateContext, resolveCardExamDate } = await import('../fsrs/examDate');
+  const { makeExamDateContext, resolveCardExamDate } = await import('@lacuna/core/fsrs/examDate');
   const course = await createCourse('Science', {
     autoPractice: false,
     distributedCopy: { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false },

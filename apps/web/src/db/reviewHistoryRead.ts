@@ -1,6 +1,6 @@
 import { db } from './schema';
-import { addDays } from '../fsrs/heatmap';
-import { startOfDay } from '../utils/datetime';
+import { addDays } from '@lacuna/core/fsrs/heatmap';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import {
   cardsWithReviewHistory,
   resolveReviewHistoryCollisions,

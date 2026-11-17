@@ -1,10 +1,10 @@
-import { availableCards } from '../fsrs/eligibility';
+import { availableCards } from '@lacuna/core/fsrs/eligibility';
 import {
   courseForecast,
   examDayHistory,
   type CourseForecast,
   type ForecastPoint,
-} from '../fsrs/courseForecast';
+} from '@lacuna/core/fsrs/courseForecast';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import type { Card, Course, Lesson } from '@lacuna/core/db/types';
 

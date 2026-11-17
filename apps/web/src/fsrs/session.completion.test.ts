@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { type Card } from '@lacuna/core/db/types';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { applyReview, makeEngine } from './fsrs';
+import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
 import {
   makeSessionContext,
   sessionComplete,
   sessionCompletionProgress,
   sessionProgress,
-} from './session';
+} from '@lacuna/core/fsrs/session';
 import { NOW, deck, card } from './session.testFixtures';
 
 describe('single and multi-unit completion paths', () => {

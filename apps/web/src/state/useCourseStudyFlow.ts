@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { useCourseStudyFlowRecords } from './useCourseStudyFlowRecords';
-import { availableCards, dueCards } from '../fsrs/eligibility';
-import { buildDeckSecondsMap } from '../fsrs/stats';
-import { makeExamDateContext } from '../fsrs/examDate';
+import { availableCards, dueCards } from '@lacuna/core/fsrs/eligibility';
+import { buildDeckSecondsMap } from '@lacuna/core/fsrs/stats';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { buildPath } from '../course/path';
-import { lessonCardMembershipByLesson } from '../course/lessonMembership';
+import { lessonCardMembershipByLesson } from '@lacuna/core/course/lessonMembership';
 import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
 import {
   buildCourseStudyFlowSnapshot,

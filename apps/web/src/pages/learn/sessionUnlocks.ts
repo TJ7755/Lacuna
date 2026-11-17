@@ -1,4 +1,4 @@
-import { courseLessonOrderPreference, resolveLessonOrder } from '../../course/lessonOrder';
+import { courseLessonOrderPreference, resolveLessonOrder } from '@lacuna/core/course/lessonOrder';
 import { db } from '../../db/schema';
 import { getCourse, listCourseAssessments } from '../../db/read';
 import { hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
@@ -16,9 +16,9 @@ import {
 } from '../../course/studyFlowSnapshot';
 import { lessonCardMembership } from '../../course/studyPools';
 import { currentAssessmentPracticeContext } from '../../course/assessmentPractice';
-import { makeExamDateContext } from '../../fsrs/examDate';
-import { availableCards, dueCards } from '../../fsrs/eligibility';
-import { buildDeckSecondsMap } from '../../fsrs/stats';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
+import { availableCards, dueCards } from '@lacuna/core/fsrs/eligibility';
+import { buildDeckSecondsMap } from '@lacuna/core/fsrs/stats';
 
 /**
  * Re-evaluate semi-linear lesson unlocks from current course evidence.

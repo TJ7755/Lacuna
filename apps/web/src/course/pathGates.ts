@@ -1,5 +1,5 @@
 import type { Lesson, PracticeNode } from '@lacuna/core/db/types';
-import { lessonOrder } from './assessmentCoverage';
+import { lessonOrder } from '@lacuna/core/course/assessmentCoverage';
 import { lessonIndexAtOrBeforePosition } from './pathPlacement';
 
 /**

@@ -11,7 +11,7 @@ import {
   mergeReviewHistoryEntries,
   type ReviewHistoryEntry,
 } from '@lacuna/core/db/reviewHistory';
-import { applyReview, makeEngine } from '../fsrs/fsrs';
+import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { applyScheduleEdit, mergeScheduleEdits } from '../db/scheduleEdits';
 import { canonicalJson, sortById, type NormalisedSnapshot } from './snapshotRecords';

@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { progressValue, scoreCard, makeObjectiveContext, isObjectiveComplete } from './objective';
-import { forgettingCurve } from './forwardSim';
+import {
+  progressValue,
+  scoreCard,
+  makeObjectiveContext,
+  isObjectiveComplete,
+} from '@lacuna/core/fsrs/objective';
+import { forgettingCurve } from '@lacuna/core/fsrs/forwardSim';
 import { defaultFsrsParameters, MASTERY_R, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, LegacyDeckRecord, ExamObjective } from '@lacuna/core/db/types';
 

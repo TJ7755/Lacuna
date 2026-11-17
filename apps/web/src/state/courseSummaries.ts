@@ -1,5 +1,8 @@
 import type { Concept } from '@lacuna/core/questions/types';
-import { coreCourseCards, lessonCardMembershipByLesson } from '../course/lessonMembership';
+import {
+  coreCourseCards,
+  lessonCardMembershipByLesson,
+} from '@lacuna/core/course/lessonMembership';
 import type {
   Card,
   Course,
@@ -9,12 +12,12 @@ import type {
   LessonCardExposure,
   LessonCompletion,
 } from '@lacuna/core/db/types';
-import { progressValue } from '../fsrs/objective';
-import { makeExamDateContext } from '../fsrs/examDate';
-import { availableCards, dueReviewPool, examPracticePool } from '../fsrs/eligibility';
+import { progressValue } from '@lacuna/core/fsrs/objective';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
+import { availableCards, dueReviewPool, examPracticePool } from '@lacuna/core/fsrs/eligibility';
 import { lessonTaught } from '../course/unlock';
-import { startOfDay } from '../utils/datetime';
-import { cardReviewTimestamps, type ReviewActivity } from '../fsrs/heatmap';
+import { startOfDay } from '@lacuna/core/utils/datetime';
+import { cardReviewTimestamps, type ReviewActivity } from '@lacuna/core/fsrs/heatmap';
 
 export interface CourseSummary {
   /** Count of non-extension lessons in the course. */

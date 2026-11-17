@@ -1,9 +1,9 @@
 import type { CourseProgressInput, CourseProgressReport } from './courseProgress';
 import { buildCourseProgress } from './courseProgress';
-import { resolveAssessmentCoverage } from './assessmentCoverage';
-import { courseLessonOrderPreference } from './lessonOrder';
-import { makeExamDateContext } from '../fsrs/examDate';
-import { progressValue } from '../fsrs/objective';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
+import { progressValue } from '@lacuna/core/fsrs/objective';
 import type { Concept } from '@lacuna/core/questions/types';
 import type { ConceptPracticeItem } from '../questions/conceptPractice';
 import { buildQuestionEvidence, type QuestionEvidenceReport } from './questionEvidence';
@@ -13,7 +13,7 @@ import {
   papersForSelection,
   pointsForSelection,
 } from '@lacuna/core/specifications/selection';
-import { specificationAssessmentPointIds } from '../specifications/assessment';
+import { specificationAssessmentPointIds } from '@lacuna/core/specifications/assessment';
 import { unavailableSpecificationPointLinks } from '../specifications/tagResolver';
 
 export interface SpecificationProgressFilter extends SpecificationSelection {

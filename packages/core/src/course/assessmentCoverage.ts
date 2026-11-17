@@ -1,11 +1,11 @@
 import type { Card, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
-import { lessonCardMembershipForLessons } from './lessonMembership';
-import { resolveLessonOrder } from './lessonOrder';
+import { lessonCardMembershipForLessons } from '@lacuna/core/course/lessonMembership';
+import { resolveLessonOrder } from '@lacuna/core/course/lessonOrder';
 import type { Concept } from '@lacuna/core/questions/types';
 import {
   specificationAssessmentPointIds,
   type AssessmentSpecificationCourse,
-} from '../specifications/assessment';
+} from '@lacuna/core/specifications/assessment';
 export { lessonOrder } from './lessonOrder';
 
 export interface AssessmentSpecificationContext {

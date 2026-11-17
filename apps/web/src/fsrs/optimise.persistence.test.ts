@@ -8,7 +8,7 @@ import {
 } from '@open-spaced-repetition/binding';
 import { db } from '../db/schema';
 import { createCourse, updateCourse } from '../db/repository';
-import { makeEngine, applyReview } from './fsrs';
+import { makeEngine, applyReview } from '@lacuna/core/fsrs/fsrs';
 import { optimiseParameters } from './optimise';
 import type { Card, Grade, ReviewLog } from '@lacuna/core/db/types';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';

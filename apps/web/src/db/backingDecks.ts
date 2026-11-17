@@ -1,5 +1,5 @@
 import type { Transaction } from 'dexie';
-import { emptyPerformance, updatePerformance } from '../fsrs/grading';
+import { emptyPerformance, updatePerformance } from '@lacuna/core/fsrs/grading';
 import type {
   Card,
   SchedulingPerformance,

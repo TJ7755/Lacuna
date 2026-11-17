@@ -1,11 +1,11 @@
-import { lessonCardMembershipForLessons } from './lessonMembership';
+import { lessonCardMembershipForLessons } from '@lacuna/core/course/lessonMembership';
 import type { Card, Course, Lesson, LessonCardLink } from '@lacuna/core/db/types';
-import type { ExamDateContext } from '../fsrs/examDate';
-import { resolveCardExamDate } from '../fsrs/examDate';
-import { isAvailable } from '../fsrs/eligibility';
-import { cardReviewTimestamps, type ReviewActivity } from '../fsrs/heatmap';
+import type { ExamDateContext } from '@lacuna/core/fsrs/examDate';
+import { resolveCardExamDate } from '@lacuna/core/fsrs/examDate';
+import { isAvailable } from '@lacuna/core/fsrs/eligibility';
+import { cardReviewTimestamps, type ReviewActivity } from '@lacuna/core/fsrs/heatmap';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { startOfDay } from '../utils/datetime';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import { earlierLessonIds } from './courseEntry';
 import { eligiblePracticePool } from './studyPools';
 

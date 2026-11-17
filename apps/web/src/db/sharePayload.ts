@@ -1,7 +1,7 @@
 import {
   specificationAssessmentPointIds,
   validatePaperAssessmentDates,
-} from '../specifications/assessment';
+} from '@lacuna/core/specifications/assessment';
 import { assertShareLessonPrerequisites } from './lessonPrerequisites';
 import { parseQuestionSetPracticeNode } from './questionSetPracticeNode';
 import type { ItemPayload, QuestionSetPracticeNode, UnlockMode } from '@lacuna/core/db/types';

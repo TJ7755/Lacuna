@@ -16,7 +16,7 @@ import { db } from '../../db/schema';
 import { ASSET_GC_GRACE_MS, scheduleAssetGc, storeImageBlob } from '../../db/assets';
 import { useLearnSession, type UseLearnSessionParams } from './useLearnSession';
 import { simpleSessionStorageKey } from './simpleSessionPersistence';
-import { makeSessionContext, selectNext, sessionServePool } from '../../fsrs/session';
+import { makeSessionContext, selectNext, sessionServePool } from '@lacuna/core/fsrs/session';
 
 import {
   distraction,

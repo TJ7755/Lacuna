@@ -6,16 +6,16 @@ import { linesModeSequencesByCard } from '../../db/linesModeCards';
 import { occlusionDataByCard, type OcclusionCardData } from '../../db/occlusionStudy';
 import { filterSessionCardPool, type CardFilter } from '@lacuna/core/db/search';
 import type { Sequence, UserPerformance, SchedulerConfig } from '@lacuna/core/db/types';
-import { emptyPerformance } from '../../fsrs/grading';
+import { emptyPerformance } from '@lacuna/core/fsrs/grading';
 import {
   makeSessionContext,
   sessionProgress,
   sessionCompletionProgress,
   sessionServePool,
   sessionComplete,
-} from '../../fsrs/session';
-import { progressHeading } from '../../fsrs/objective';
-import { startOfDay } from '../../utils/datetime';
+} from '@lacuna/core/fsrs/session';
+import { progressHeading } from '../../fsrs/progressHeading';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import type { SessionSummary } from '../../course/sessionSummary';
 import { FILTER_LABELS, type LearnModeType, type LessonNotesScreen } from './types';
 import type { LoadedSessionSource } from './loadSessionSource';

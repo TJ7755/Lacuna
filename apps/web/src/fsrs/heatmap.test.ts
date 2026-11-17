@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { bucketReviewsByDay, reviewTimestamps } from './heatmap';
-import { startOfDay } from '../utils/datetime';
+import { bucketReviewsByDay, reviewTimestamps } from '@lacuna/core/fsrs/heatmap';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import type { Card } from '@lacuna/core/db/types';
 
 function cardWith(timestamps: number[]): Card {

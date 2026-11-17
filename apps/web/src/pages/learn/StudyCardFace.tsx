@@ -3,7 +3,7 @@ import type { Card, Occlusion } from '@lacuna/core/db/types';
 import { MarkdownView } from '../../components/markdown/MarkdownView';
 import { CardContent } from '../../components/cards/CardContent';
 import { LineHintButton, LineHintDisplay } from '../../components/learn/LineHint';
-import { HINT_TIME_PENALTY_SEC } from '../../fsrs/grading';
+import { HINT_TIME_PENALTY_SEC } from '@lacuna/core/fsrs/grading';
 import type { AnswerStrictness } from '../../state/answerStrictness';
 import { typedComparisonOptions } from './typedRecall';
 import { typingExpectedAnswer } from './sessionCardCapabilities';

@@ -1,5 +1,6 @@
 import { useCallback, useState, type RefObject } from 'react';
-import { fromDateTimeLocalValue, type getComponentsInZone } from '../../utils/datetime';
+import { type getComponentsInZone } from '../../utils/datetime';
+import { fromDateTimeLocalValue } from '@lacuna/core/utils/datetime';
 import { pad } from './dateTimeCalendar';
 
 export function useDateTimeDraft(

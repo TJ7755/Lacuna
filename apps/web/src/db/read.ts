@@ -1,4 +1,4 @@
-import { courseLessonOrderPreference } from '../course/lessonOrder';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
 // Plain, React-free read-side query module over Dexie.
 //
 // This is the non-React counterpart to src/state/useData.ts / useCourseData.ts: the
@@ -33,11 +33,16 @@ import { gatherCounts, type DiagnosticBundle } from './diagnostics';
 import { listNotes as repositoryListNotes } from './noteRepository';
 import { listSequences as repositoryListSequences } from './sequenceRepository';
 import { listOcclusions as repositoryListOcclusions } from './occlusionRepository';
-import { availableCards, dueReviewPool } from '../fsrs/eligibility';
-import { makeObjectiveContext, progressValue, scoreCard, sortByObjective } from '../fsrs/objective';
+import { availableCards, dueReviewPool } from '@lacuna/core/fsrs/eligibility';
+import {
+  makeObjectiveContext,
+  progressValue,
+  scoreCard,
+  sortByObjective,
+} from '@lacuna/core/fsrs/objective';
 import { isLeech } from '@lacuna/core/fsrs/leech';
-import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
-import { makeExamDateContext } from '../fsrs/examDate';
+import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '@lacuna/core/fsrs/stats';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import {
   courseDueReviewCards,
   courseHeaderStats,
@@ -48,7 +53,7 @@ import {
   resolveAssessmentCoverage,
   type AssessmentValidationIssue,
   type AssessmentSpecificationContext,
-} from '../course/assessmentCoverage';
+} from '@lacuna/core/course/assessmentCoverage';
 
 // ---------------------------------------------------------------------------
 // Courses / lessons

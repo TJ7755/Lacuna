@@ -1,9 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { makeExamDateContext, resolveCardExamDate, resolveCardExamDates } from './examDate';
+import {
+  makeExamDateContext,
+  resolveCardExamDate,
+  resolveCardExamDates,
+} from '@lacuna/core/fsrs/examDate';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, Course, CourseAssessment, Lesson } from '@lacuna/core/db/types';
 import type { Concept } from '@lacuna/core/questions/types';
-import { cardSchedulingHorizon } from './horizon';
+import { cardSchedulingHorizon } from '@lacuna/core/fsrs/horizon';
 import {
   paperSpecification,
   paperSpecificationReference,

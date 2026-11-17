@@ -11,18 +11,25 @@ import type {
   PracticeNode,
   SchedulerConfig,
 } from '@lacuna/core/db/types';
-import type { ExamDateContext } from '../fsrs/examDate';
-import { rAtExam } from '../fsrs/forwardSim';
-import { decayOf } from '../fsrs/fsrs';
-import { cardSchedulingHorizon } from '../fsrs/horizon';
-import { studyPool } from '../fsrs/eligibility';
-import type { ReviewActivity } from '../fsrs/heatmap';
+import type { ExamDateContext } from '@lacuna/core/fsrs/examDate';
+import { rAtExam } from '@lacuna/core/fsrs/forwardSim';
+import { decayOf } from '@lacuna/core/fsrs/fsrs';
+import { cardSchedulingHorizon } from '@lacuna/core/fsrs/horizon';
+import { studyPool } from '@lacuna/core/fsrs/eligibility';
+import type { ReviewActivity } from '@lacuna/core/fsrs/heatmap';
 import { isLeech } from '@lacuna/core/fsrs/leech';
 import { MASTERY_R } from '@lacuna/core/fsrs/params';
-import { lessonCardMembership } from './lessonMembership';
+import { lessonCardMembership } from '@lacuna/core/course/lessonMembership';
 
-export { lessonCardMembership, lessonCardMembershipForLessons } from './lessonMembership';
-export { eligiblePracticePool, dueReviewPool, examPracticePool } from '../fsrs/eligibility';
+export {
+  lessonCardMembership,
+  lessonCardMembershipForLessons,
+} from '@lacuna/core/course/lessonMembership';
+export {
+  eligiblePracticePool,
+  dueReviewPool,
+  examPracticePool,
+} from '@lacuna/core/fsrs/eligibility';
 
 /** Cards still needing a successful introduction in this particular lesson. */
 export function lessonStudyPool(

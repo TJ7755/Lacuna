@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 import type {
   Card,
   CourseAssessment,
@@ -20,7 +20,7 @@ import {
 import { choiceChipClass } from '../ui/choiceChip';
 import { plainFront } from '../cards/lessonCardRow';
 import { useAssessmentSpecification } from '../../state/useAssessmentSpecification';
-import type { AssessmentSpecificationContext } from '../../course/assessmentCoverage';
+import type { AssessmentSpecificationContext } from '@lacuna/core/course/assessmentCoverage';
 import { papersForSelection, pointsForSelection } from '@lacuna/core/specifications/selection';
 import { AssessmentLessonPicker } from './AssessmentLessonPicker';
 

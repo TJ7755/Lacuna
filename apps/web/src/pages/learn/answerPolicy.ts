@@ -1,6 +1,10 @@
 import type { Card, Grade, SchedulerConfig, UserPerformance } from '@lacuna/core/db/types';
-import type { ExamDateContext } from '../../fsrs/examDate';
-import { gradeFromMarks, gradeFromResponse, HINT_TIME_PENALTY_SEC } from '../../fsrs/grading';
+import type { ExamDateContext } from '@lacuna/core/fsrs/examDate';
+import {
+  gradeFromMarks,
+  gradeFromResponse,
+  HINT_TIME_PENALTY_SEC,
+} from '@lacuna/core/fsrs/grading';
 import { reviewFeedbackMessage, reviewRetentionMessage } from '../../fsrs/gradingFeedback';
 import type { MachineMarkedAnswer } from './types';
 export type AnswerInput = boolean | Grade | MachineMarkedAnswer;

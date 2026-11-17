@@ -13,8 +13,8 @@ import {
 import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
 import type { Card, Course, Grade, ReviewLog, SessionHistoryEntry } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
-import { startOfDay } from '../../utils/datetime';
-import { computeStudyStats, FORECAST_DAYS } from '../../fsrs/stats';
+import { startOfDay } from '@lacuna/core/utils/datetime';
+import { computeStudyStats, FORECAST_DAYS } from '@lacuna/core/fsrs/stats';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers (mirrors src/state/useCourseData.test.ts)

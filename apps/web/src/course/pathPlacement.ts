@@ -1,5 +1,5 @@
 import type { Lesson } from '@lacuna/core/db/types';
-import { lessonOrder } from './assessmentCoverage';
+import { lessonOrder } from '@lacuna/core/course/assessmentCoverage';
 
 /** Resolve the publisher-position anchor, returning its index in the supplied lesson order. */
 export function lessonIndexAtOrBeforePosition(

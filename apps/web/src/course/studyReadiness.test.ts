@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { makeExamDateContext } from '../fsrs/examDate';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { buildStudyReadiness } from './studyReadiness';
 
 const NOW = 100 * MS_PER_DAY;

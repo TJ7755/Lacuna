@@ -6,7 +6,7 @@ import {
   deletePracticeNode,
 } from '../../db/practiceNodeRepository';
 import type { Card, Lesson, LessonCardLink, PracticeNode } from '@lacuna/core/db/types';
-import { lessonCardMembershipForLessons } from '../../course/lessonMembership';
+import { lessonCardMembershipForLessons } from '@lacuna/core/course/lessonMembership';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { choiceChipClass } from '../ui/choiceChip';
 import { inputFrameClassName } from '../ui/Field';

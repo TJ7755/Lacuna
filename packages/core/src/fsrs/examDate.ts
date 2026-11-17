@@ -1,4 +1,4 @@
-import { courseLessonOrderPreference } from '../course/lessonOrder';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
 // Lesson overrides win. Otherwise target the nearest applicable upcoming paper
 // or checkpoint. A specification-scoped final covers only its linked Concepts;
 // legacy finals retain the course-wide fallback used by existing courses.
@@ -6,7 +6,7 @@ import { courseLessonOrderPreference } from '../course/lessonOrder';
 import {
   resolveAssessmentCoverage,
   type AssessmentSpecificationContext,
-} from '../course/assessmentCoverage';
+} from '@lacuna/core/course/assessmentCoverage';
 import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import type { Concept } from '@lacuna/core/questions/types';
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { isUpcomingExamDate } from '../fsrs/examDate';
+import { isUpcomingExamDate } from '@lacuna/core/fsrs/examDate';
 
 /** Refresh derived figures only when a time-dependent boundary changes. */
 export function useExamClock(

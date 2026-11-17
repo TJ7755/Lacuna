@@ -7,7 +7,7 @@ import type {
   LessonCardExposure,
   PracticeNode,
 } from '@lacuna/core/db/types';
-import { makeExamDateContext } from '../fsrs/examDate';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { buildPath, type PathNode } from './path';
 import { planNextStudyStep } from './studyFlowPlanner';

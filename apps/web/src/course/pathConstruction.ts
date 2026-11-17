@@ -6,10 +6,10 @@ import type {
   PracticeNode,
   QuestionSetPracticeNode,
 } from '@lacuna/core/db/types';
-import { shouldInsertPractice } from '../fsrs/practice';
-import { resolveAssessmentCoverage } from './assessmentCoverage';
+import { shouldInsertPractice } from '@lacuna/core/fsrs/practice';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 import { resolveCourseLessonOrder } from './lessonOrder';
-import { courseLessonOrderPreference } from './lessonOrder';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
 import { lessonIndexAtOrBeforePosition } from './pathPlacement';
 import {
   initiallyUnlockedLessonIds,

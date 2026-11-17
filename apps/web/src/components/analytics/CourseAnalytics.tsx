@@ -5,7 +5,7 @@ import { LessonBreakdownCard } from './SeriesCards';
 import { useChartColours } from './useChartColours';
 import { FadeInView } from '../ui/FadeInView';
 import { reviewVolume, stabilityProfile } from './prepare';
-import { progressHeading } from '../../fsrs/objective';
+import { progressHeading } from '../../fsrs/progressHeading';
 import type { Card, Course } from '@lacuna/core/db/types';
 import type { LessonProgress } from '../../course/courseProgress';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';

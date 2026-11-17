@@ -10,13 +10,13 @@
 //    will introduce). It deliberately does not change the dashboard denominator, so
 //    the deck's exam-day trajectory stays honest while a session paces new material.
 
-import { startOfDay } from '../utils/datetime';
-import { resolveCardExamDates, type ExamDateContext } from './examDate';
-import { simContext } from './forwardSim';
-import { worthwhileAssessmentPractice } from './assessmentTiming';
-import { makeEngine } from './fsrs';
+import { startOfDay } from '@lacuna/core/utils/datetime';
+import { resolveCardExamDates, type ExamDateContext } from '@lacuna/core/fsrs/examDate';
+import { simContext } from '@lacuna/core/fsrs/forwardSim';
+import { worthwhileAssessmentPractice } from '@lacuna/core/fsrs/assessmentTiming';
+import { makeEngine } from '@lacuna/core/fsrs/fsrs';
 import type { Card, Course, SchedulerConfig } from '@lacuna/core/db/types';
-import { cardReviewTimestamps, type ReviewActivity } from './heatmap';
+import { cardReviewTimestamps, type ReviewActivity } from '@lacuna/core/fsrs/heatmap';
 
 /** Whether a card may be studied or counted at `now` (not suspended, not buried). */
 export function isAvailable(card: Card, now: number = Date.now()): boolean {

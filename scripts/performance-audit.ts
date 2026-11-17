@@ -3,7 +3,7 @@ import { gzipSync } from 'node:zlib';
 import { readFile, readdir } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
-import { makeSessionContext, selectNext, sessionComplete } from '../apps/web/src/fsrs/session';
+import { makeSessionContext, selectNext, sessionComplete } from '@lacuna/core/fsrs/session';
 import type { Card, SchedulingUnitRecord } from '@lacuna/core/db/types';
 
 class AuditStorage implements Storage {

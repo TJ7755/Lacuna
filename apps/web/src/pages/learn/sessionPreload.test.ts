@@ -4,7 +4,7 @@ import { assetUrl } from '../../db/assets';
 import type { Card } from '@lacuna/core/db/types';
 import type { OcclusionCardData } from '../../db/occlusionStudy';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
-import { makeSessionContext, selectNext } from '../../fsrs/session';
+import { makeSessionContext, selectNext } from '@lacuna/core/fsrs/session';
 import {
   preloadSessionImages,
   scheduleSessionPreload,

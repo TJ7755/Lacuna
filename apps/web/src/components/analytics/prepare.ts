@@ -1,6 +1,6 @@
 // Pure data-shaping helpers for the analytics charts.
 
-import { startOfDay } from '../../utils/datetime';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import { isLeech } from '@lacuna/core/fsrs/leech';
 import type { Card, Course, ReviewLog, SessionHistoryEntry } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';

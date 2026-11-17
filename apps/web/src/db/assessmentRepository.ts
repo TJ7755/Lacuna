@@ -1,6 +1,6 @@
 import { isLearnerOwnedCheckpoint } from '../course/assessmentOwnership';
-import { courseLessonOrderPreference, resolveLessonOrder } from '../course/lessonOrder';
-import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import { courseLessonOrderPreference, resolveLessonOrder } from '@lacuna/core/course/lessonOrder';
+import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 import { finalAssessmentForCourse } from './assessmentMigration';
 import { syncCourseSchedulingUnits } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
@@ -8,7 +8,7 @@ import { recordTombstone, recordTombstones, stampUpdatedAt } from './mutationSta
 import { db, makeId } from './schema';
 import type { CourseAssessment } from '@lacuna/core/db/types';
 import { validateAssessmentStructure } from './assessmentValidation';
-import { validatePaperAssessmentDates } from '../specifications/assessment';
+import { validatePaperAssessmentDates } from '@lacuna/core/specifications/assessment';
 
 async function validateAssessmentReferences(assessment: CourseAssessment): Promise<void> {
   const [lessons, cards, links, course, concepts] = await Promise.all([

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { courseForecast, examDayHistory } from './courseForecast';
-import { rAtExam } from './forwardSim';
+import { courseForecast, examDayHistory } from '@lacuna/core/fsrs/courseForecast';
+import { rAtExam } from '@lacuna/core/fsrs/forwardSim';
 import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';

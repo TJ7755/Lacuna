@@ -7,7 +7,7 @@ import {
   sessionProgress,
   sessionServePool,
   type SessionUnit,
-} from './session';
+} from '@lacuna/core/fsrs/session';
 import { NOW, course, card } from './session.testFixtures';
 
 describe('course new-card budget', () => {

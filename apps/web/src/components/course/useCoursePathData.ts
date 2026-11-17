@@ -1,11 +1,14 @@
 import { useMemo } from 'react';
 import type { useCoursePathRecords } from '../../state/useCourseStudyFlowRecords';
-import { dueReviewPool } from '../../fsrs/eligibility';
-import { progressValue } from '../../fsrs/objective';
-import { buildDeckSecondsMap } from '../../fsrs/stats';
-import { makeExamDateContext } from '../../fsrs/examDate';
+import { dueReviewPool } from '@lacuna/core/fsrs/eligibility';
+import { progressValue } from '@lacuna/core/fsrs/objective';
+import { buildDeckSecondsMap } from '@lacuna/core/fsrs/stats';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { buildPath } from '../../course/path';
-import { coreCourseCards, lessonCardMembershipByLesson } from '../../course/lessonMembership';
+import {
+  coreCourseCards,
+  lessonCardMembershipByLesson,
+} from '@lacuna/core/course/lessonMembership';
 import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
 import { buildCoursePracticeStates, courseMeanReviewSeconds } from '../../course/studyFlowSnapshot';
 import { isLessonAuthoringMode } from '../../course/lessonViewMode';

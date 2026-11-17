@@ -1,4 +1,4 @@
-import { startOfDay } from '../utils/datetime';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 import { db } from './schema';
 import type { SessionHistoryEntry } from '@lacuna/core/db/types';
 

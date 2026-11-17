@@ -6,7 +6,7 @@
 // touches neither IndexedDB nor React, so every function here is unit-testable.
 
 import { Rating, type FSRS, type Grade as TsGrade } from 'ts-fsrs';
-import { toTsCard, decayOf, type SchedulingMemory } from './fsrs';
+import { toTsCard, decayOf, type SchedulingMemory } from '@lacuna/core/fsrs/fsrs';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { SchedulerConfig, Grade } from '@lacuna/core/db/types';
 

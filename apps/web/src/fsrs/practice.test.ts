@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { shouldInsertPractice } from './practice';
+import { shouldInsertPractice } from '@lacuna/core/fsrs/practice';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Course } from '@lacuna/core/db/types';
 

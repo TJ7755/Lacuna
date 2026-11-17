@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { AssessmentSpecificationContext } from '../course/assessmentCoverage';
+import type { AssessmentSpecificationContext } from '@lacuna/core/course/assessmentCoverage';
 import { db } from '../db/schema';
 
 export function useAssessmentSpecification(courseId: string): AssessmentSpecificationContext {

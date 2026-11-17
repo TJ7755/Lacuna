@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import frozenCoefficients from './coefficients/half-life-logistic-v3.json';
+import frozenCoefficients from '../../../../packages/core/src/fsrs/coefficients/half-life-logistic-v3.json';
 import v1Coefficients from '../../../../tooling/short-term-memory/coefficients/half-life-logistic-v1.json';
 import modelPortCases from '../../../../tooling/short-term-memory/tests/fixtures/model-port-v3.json';
 import { revisionReplanReasons } from '../course/revisionPlan';
@@ -9,8 +9,8 @@ import {
   loadHalfLifeLogisticCoefficients,
   projectionForHalfLifeLogistic,
   readinessFromPredictions,
-} from './halfLifeLogisticModel';
-import { forgettingCurve } from './forwardSim';
+} from '@lacuna/core/fsrs/halfLifeLogisticModel';
+import { forgettingCurve } from '@lacuna/core/fsrs/forwardSim';
 
 const REVIEWED_AT = Date.UTC(2026, 6, 1, 12);
 

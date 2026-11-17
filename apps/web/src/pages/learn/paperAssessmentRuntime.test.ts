@@ -13,7 +13,7 @@ import {
 import { getCourse, getCourseAssessmentDetails, listCardsForCourse } from '../../db/read';
 import { createOrResumeRevisionPlan, refreshRevisionPlan } from '../../db/revisionPlanRepository';
 import { assessmentPracticePool } from '../../course/assessmentPractice';
-import { makeExamDateContext, resolveCardExamDate } from '../../fsrs/examDate';
+import { makeExamDateContext, resolveCardExamDate } from '@lacuna/core/fsrs/examDate';
 import { finalExamNeedsDecision } from '../../state/finalExamLifecycle';
 import {
   loadCourseSessionSource,
@@ -21,7 +21,7 @@ import {
   prepareCourseSessionPool,
   resolveCourseSessionSelection,
 } from './sessionPool';
-import { makeSessionContext } from '../../fsrs/session';
+import { makeSessionContext } from '@lacuna/core/fsrs/session';
 import {
   paperSpecification,
   paperSpecificationReference,

@@ -1,4 +1,5 @@
-import { courseLessonOrderPreference, resolveCourseLessonOrder } from '../course/lessonOrder';
+import { resolveCourseLessonOrder } from '../course/lessonOrder';
+import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
 import { isLearnerOwnedCheckpoint } from '../course/assessmentOwnership';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -17,7 +18,7 @@ import { AnimatePresence } from 'motion/react';
 import { usePendingMergeReview } from '../state/useCourseData';
 import { useCourseForecast } from '../state/ShellCourseData';
 import { useCoursePathRecords } from '../state/useCourseStudyFlowRecords';
-import { progressValue } from '../fsrs/objective';
+import { progressValue } from '@lacuna/core/fsrs/objective';
 import { lessonEffectiveReleaseDates } from '../course/path';
 import { courseHeaderStats } from '../course/headerStats';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
@@ -32,7 +33,7 @@ import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourse
 import { CourseStudyActions } from '../components/course/CourseStudyActions';
 import { CourseSummaryCard } from '../components/course/CourseSummaryCard';
 import { forecastStatus } from '../components/dashboard/forecastStatus';
-import { startOfDay } from '../utils/datetime';
+import { startOfDay } from '@lacuna/core/utils/datetime';
 
 import { updateCourse } from '../db/courseRepository';
 import { useCoursePathReorder } from '../components/course/useCoursePathReorder';

@@ -2,7 +2,7 @@
 // is not immediately re-shown, preventing repetitive spamming of failed cards.
 // Cooldowns live in memory for the duration of a Learn session only.
 
-import { sortByObjective, type ObjectiveContext } from './objective';
+import { sortByObjective, type ObjectiveContext } from '@lacuna/core/fsrs/objective';
 import type { Card } from '@lacuna/core/db/types';
 
 /** Default maximum cooldown, scaled down for very small decks (size - 1, floored at 0). */

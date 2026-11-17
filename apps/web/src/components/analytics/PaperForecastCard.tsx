@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import type { PaperForecast } from '../../course/courseProgress';
 import { formatDate } from '../../utils/datetime';
-import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
+import { MAINTENANCE_HORIZON_DAYS } from '@lacuna/core/fsrs/horizon';
 import { Button } from '../ui/Button';
 import { SectionCard } from '../ui/SectionCard';
 

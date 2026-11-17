@@ -1,4 +1,4 @@
-import type { CourseForecast } from '../../fsrs/courseForecast';
+import type { CourseForecast } from '@lacuna/core/fsrs/courseForecast';
 
 // Kept apart from the chart so the shell and Today's queue can read a course's status
 // without loading the chart, which Today loads on demand.

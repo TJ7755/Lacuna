@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { getCourse, getCourseAssessmentDetails } from './read';
-import { makeExamDateContext, resolveCardExamDate } from '../fsrs/examDate';
+import { makeExamDateContext, resolveCardExamDate } from '@lacuna/core/fsrs/examDate';
 import { assessmentPracticePool } from '../course/assessmentPractice';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RevisionPlanInputSnapshot, RevisionProjection } from '@lacuna/core/db/types';

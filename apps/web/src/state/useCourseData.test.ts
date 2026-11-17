@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { computeCourseSummaries } from './useCourseData';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { progressValue } from '../fsrs/objective';
-import { makeExamDateContext } from '../fsrs/examDate';
+import { progressValue } from '@lacuna/core/fsrs/objective';
+import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import type { Card, Course, CourseAssessment, Lesson, ReviewLog } from '@lacuna/core/db/types';
 
 // ---------------------------------------------------------------------------

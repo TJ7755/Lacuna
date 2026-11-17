@@ -2,7 +2,7 @@ import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
 import { earlierLessonIds } from './courseEntry';
 import { catchUpPracticePool } from './catchUpPractice';
 import { buildStudyReadiness, type StudyReadiness } from './studyReadiness';
-import { lessonCardMembership } from './lessonMembership';
+import { lessonCardMembership } from '@lacuna/core/course/lessonMembership';
 import type {
   Card,
   Course,
@@ -11,8 +11,12 @@ import type {
   PracticeMilestone,
   PracticeNode,
 } from '@lacuna/core/db/types';
-import { isUpcomingExamDate, resolveCardExamDates, type ExamDateContext } from '../fsrs/examDate';
-import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
+import {
+  isUpcomingExamDate,
+  resolveCardExamDates,
+  type ExamDateContext,
+} from '@lacuna/core/fsrs/examDate';
+import { DEFAULT_REVIEW_SECONDS } from '@lacuna/core/fsrs/stats';
 import type { ConceptPracticeNeeds } from '../questions/techniqueEvidence';
 import type { PathNode, PracticePathNode } from './path';
 import { assessmentPracticeOptions, type AssessmentPracticeOption } from './assessmentPractice';
