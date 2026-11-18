@@ -230,6 +230,7 @@ it('replays a concurrent reset absent from the first-answer origin', () => {
     state: 2,
     due: 9000,
   });
+  opaque.scheduleEdits = [{ at: 500, kind: 'due', due: 9000 }];
   const engine = makeEngine(defaultFsrsParameters());
   const answer = applyReview(engine, opaque, 3, 2000).memory;
   const event = reviewHistoryEntryForCard(opaque, {
@@ -251,6 +252,12 @@ it('replays a concurrent reset absent from the first-answer origin', () => {
     [],
     [course('course-1')],
   )[0];
-  expect(merged).toMatchObject({ state: 1, learningSteps: 1, due: 602000, reps: 13 });
+  expect(merged).toMatchObject({
+    state: 1,
+    learningSteps: 1,
+    due: 602000,
+    reps: 13,
+    scheduleEdits: [reset],
+  });
   expect(replayCards([merged], [event], [], [course('course-1')])[0]).toEqual(merged);
 });

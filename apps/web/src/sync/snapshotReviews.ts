@@ -113,7 +113,12 @@ export function replayCards(
     const originIndex = events.findIndex((event) => event.memoryOrigin);
     const origin = originIndex >= 0 ? events[originIndex].memoryOrigin : undefined;
     if (originIndex > 0) events.splice(0, originIndex);
-    let current: Card = { ...card, ...NEVER_REVIEWED, ...origin };
+    let current: Card = {
+      ...card,
+      ...NEVER_REVIEWED,
+      ...origin,
+      scheduleEdits: card.scheduleEdits,
+    };
     // Only edits explicitly captured by the origin are already represented. An
     // offline device can contribute an older reset that the answering device never saw.
     const representedEdits = new Set((origin?.scheduleEdits ?? []).map(canonicalJson));
