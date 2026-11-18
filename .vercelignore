@@ -19,7 +19,6 @@ electron/dist-electron/
 .codex/
 .agents/
 .t3/
-tooling/short-term-memory/data/
 MEMORIES.md
 **/MEMORIES.md
 .ai-invites/**
@@ -37,13 +36,7 @@ test-results/**
 .vite/**
 **/*.tsbuildinfo
 electron/dist-electron/**
-tooling/handwriting-maths/dist/**
 tooling/lacuna-ai-mcp/dist/**
-tooling/short-term-memory/data/**
-tooling/short-term-memory/reports/**
-tooling/semantic-answer-match/data/raw/**
-tooling/semantic-answer-match/models/**
-tooling/semantic-answer-match/reports/**
 **/.venv/**
 **/__pycache__/**
 **/.pytest_cache/**

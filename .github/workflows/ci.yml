@@ -52,8 +52,6 @@ jobs:
       tooling: ${{ steps.scope.outputs.tooling }}
       sites: ${{ steps.scope.outputs.sites }}
       docs: ${{ steps.scope.outputs.docs }}
-      handwriting: ${{ steps.scope.outputs.handwriting }}
-      python: ${{ steps.scope.outputs.python }}
       ai_mcp: ${{ steps.scope.outputs.ai_mcp }}
       lint: ${{ steps.scope.outputs.lint }}
       web_tests: ${{ steps.scope.outputs.web_tests }}
@@ -241,47 +239,9 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' && matrix.suite == 'critical' }}
         run: bun run test:ci:unit -- apps/web/src/release/browserCiConfig.test.ts
 
-  # Start the shorter independent checks after the first wave of runners.
-  python-tools:
-    needs: [changes, web-build]
-    if: needs.changes.result == 'success' && !cancelled() && needs.changes.outputs.python != 'false'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        workspace: [short-term-memory, semantic-answer-match]
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-node
-        with:
-          node-version: '24.22.1'
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          version: 0.13.4
-          python-version: '3.12'
-          working-directory: tooling/${{ matrix.workspace }}
-          enable-cache: true
-      - uses: ./.github/actions/setup-bun
-        with:
-          cache-packages: 'false'
-        if: matrix.workspace == 'semantic-answer-match'
-      - run: uv run --locked pytest
-        working-directory: tooling/${{ matrix.workspace }}
-
   test:
     name: test
-    needs:
-      [
-        changes,
-        documentation,
-        test-unit,
-        test-coverage,
-        handwriting,
-        python-tools,
-        electron-macos-smoke,
-      ]
+    needs: [changes, documentation, test-unit, test-coverage, electron-macos-smoke]
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-slim
     steps:
@@ -290,14 +250,10 @@ jobs:
           SCOPE_RESULT: ${{ needs.changes.result }}
           APP: ${{ needs.changes.outputs.app }}
           SITES: ${{ needs.changes.outputs.sites }}
-          HANDWRITING: ${{ needs.changes.outputs.handwriting }}
-          PYTHON: ${{ needs.changes.outputs.python }}
           ELECTRON: ${{ needs.changes.outputs.electron }}
           DOCUMENTATION_RESULT: ${{ needs.documentation.result }}
           UNIT_RESULT: ${{ needs.test-unit.result }}
           COVERAGE_RESULT: ${{ needs.test-coverage.result }}
-          HANDWRITING_RESULT: ${{ needs.handwriting.result }}
-          PYTHON_RESULT: ${{ needs.python-tools.result }}
           MACOS_ELECTRON_RESULT: ${{ needs.electron-macos-smoke.result }}
         run: |
           # A skipped dependency passes only with an explicit unaffected scope.
@@ -308,36 +264,12 @@ jobs:
             echo "- Documentation: $DOCUMENTATION_RESULT"
             echo "- Unit shards: $UNIT_RESULT"
             echo "- Coverage: $COVERAGE_RESULT"
-            echo "- Handwriting: $HANDWRITING_RESULT"
-            echo "- Python: $PYTHON_RESULT"
             echo "- macOS Electron: $MACOS_ELECTRON_RESULT"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SCOPE_RESULT" != success ] || [ "$DOCUMENTATION_RESULT" != success ] || ! ok "$UNIT_RESULT" "$APP" || ! ok "$COVERAGE_RESULT" "$APP" || ! ok "$HANDWRITING_RESULT" "$HANDWRITING" || ! ok "$PYTHON_RESULT" "$PYTHON" || ! ok "$MACOS_ELECTRON_RESULT" "$ELECTRON"; then
-            echo "Tests did not pass: documentation=$DOCUMENTATION_RESULT unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT python=$PYTHON_RESULT macos-electron=$MACOS_ELECTRON_RESULT app=$APP sites=$SITES"
+          if [ "$SCOPE_RESULT" != success ] || [ "$DOCUMENTATION_RESULT" != success ] || ! ok "$UNIT_RESULT" "$APP" || ! ok "$COVERAGE_RESULT" "$APP" || ! ok "$MACOS_ELECTRON_RESULT" "$ELECTRON"; then
+            echo "Tests did not pass: documentation=$DOCUMENTATION_RESULT unit=$UNIT_RESULT coverage=$COVERAGE_RESULT macos-electron=$MACOS_ELECTRON_RESULT app=$APP sites=$SITES"
             exit 1
           fi
-
-  handwriting:
-    needs: [changes, web-build]
-    if: needs.changes.result == 'success' && !cancelled() && needs.changes.outputs.handwriting != 'false'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: tooling/handwriting-maths
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-node
-        with:
-          node-version: '24.22.1'
-      - uses: ./.github/actions/setup-bun
-        with:
-          cache-dependency-path: bun.lock
-      - run: bun install --frozen-lockfile
-        working-directory: .
-      - run: bun run build
-      - run: bun run test
 
   relay:
     name: relay
@@ -737,8 +669,6 @@ jobs:
           SCOPE_RESULT: ${{ needs.changes.result }}
           APP: ${{ needs.changes.outputs.app }}
           SITES: ${{ needs.changes.outputs.sites }}
-          HANDWRITING: ${{ needs.changes.outputs.handwriting }}
-          PYTHON: ${{ needs.changes.outputs.python }}
           ELECTRON: ${{ needs.changes.outputs.electron }}
           EVENT_NAME: ${{ github.event_name }}
           BROWSER_CI: ${{ needs.changes.outputs.browser_ci }}

@@ -1,5 +1,5 @@
 import js from '@eslint/js';
-import { appImportsRule, relayImportsRule, trainingImportsRule } from './scripts/relay-imports.mjs';
+import { appImportsRule, relayImportsRule } from './scripts/relay-imports.mjs';
 import { domainDirectories, domainUiRule } from './scripts/import-architecture.mjs';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
@@ -51,7 +51,6 @@ export default [
           './apps/desktop/tsconfig.json',
           './apps/desktop/tsconfig.preload.json',
           './apps/desktop/tsconfig.mcp.json',
-          './tooling/handwriting-maths/tsconfig.json',
         ],
         tsconfigRootDir: import.meta.dirname,
       },
@@ -177,29 +176,6 @@ export default [
     files: ['{apps/desktop/mcp,apps/ai/api}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}'],
     plugins: { 'app-contract': { rules: { 'no-deep-imports': appImportsRule } } },
     rules: { 'app-contract/no-deep-imports': 'error' },
-  },
-  {
-    files: [
-      '{apps/web/src,apps/ai/server,apps/desktop,apps/ai/api}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}',
-    ],
-    plugins: { 'training-contract': { rules: { 'no-deep-imports': trainingImportsRule } } },
-    rules: {
-      'training-contract/no-deep-imports': [
-        'error',
-        {
-          integrationTests: [
-            {
-              from: 'apps/web/src/fsrs/halfLifeLogisticModel.test.ts',
-              to: 'tooling/short-term-memory/coefficients/half-life-logistic-v1.json',
-            },
-            {
-              from: 'apps/web/src/fsrs/halfLifeLogisticModel.test.ts',
-              to: 'tooling/short-term-memory/tests/fixtures/model-port-v3.json',
-            },
-          ],
-        },
-      ],
-    },
   },
   prettier,
 ];

@@ -21,9 +21,6 @@ const relayPackageJson = JSON.parse(
   devDependencies?: Record<string, string>;
   overrides?: Record<string, string>;
 };
-const handwritingPackageJson = JSON.parse(
-  readFileSync(resolve(root, 'tooling/handwriting-maths/package.json'), 'utf8'),
-) as { devDependencies?: Record<string, string> };
 const aiMcpPackageJson = JSON.parse(
   readFileSync(resolve(root, 'tooling/lacuna-ai-mcp/package.json'), 'utf8'),
 ) as { devDependencies?: Record<string, string> };
@@ -149,12 +146,7 @@ describe('release configuration', () => {
   });
 
   it('keeps every test workspace on safe Vitest and Vite versions', () => {
-    for (const manifest of [
-      packageJson,
-      relayPackageJson,
-      handwritingPackageJson,
-      aiMcpPackageJson,
-    ]) {
+    for (const manifest of [packageJson, relayPackageJson, aiMcpPackageJson]) {
       expectDeclaredAtLeast(manifest.devDependencies?.vitest, [5, 0, 1]);
     }
     expect(packageJson.devDependencies?.['@vitest/coverage-v8']).toBe(
@@ -166,9 +158,7 @@ describe('release configuration', () => {
 
     expectResolvedAtLeastFrom(bunLock, 'vitest', [5, 0, 1]);
     expectResolvedAtLeastFrom(bunLock, 'vite', [8, 3, 0]);
-    for (const workspace of ['apps/relay', 'tooling/handwriting-maths']) {
-      expect(existsSync(resolve(root, workspace, 'bun.lock'))).toBe(false);
-    }
+    expect(existsSync(resolve(root, 'apps/relay/bun.lock'))).toBe(false);
     expectResolvedAtLeast('@vitest/coverage-v8', [5, 0, 1]);
     expect(existsSync(resolve(root, 'tooling/lacuna-ai-mcp/bun.lock'))).toBe(false);
   });
@@ -437,16 +427,7 @@ describe('release configuration', () => {
     }
   });
 
-  it('runs both locked Python suites and makes them part of the required test gate', () => {
-    const python = workflowJob(ciWorkflow, 'python-tools');
-    expect(python).toContain('workspace: [short-term-memory, semantic-answer-match]');
-    expect(python).toContain('astral-sh/setup-uv@');
-    expect(python).toContain("python-version: '3.12'");
-    expect(python).toContain("if: matrix.workspace == 'semantic-answer-match'");
-    expect(python).toContain('uses: ./.github/actions/setup-bun');
-    expect(python).toContain('uv run --locked pytest');
-    expect(python).toContain('working-directory: tooling/${{ matrix.workspace }}');
-
+  it('requires the active test jobs in the aggregate gate', () => {
     const gate = workflowJob(ciWorkflow, 'test');
     const dependencies = (parse(ciWorkflow) as { jobs: { test: { needs: string[] } } }).jobs.test
       .needs;
@@ -455,18 +436,13 @@ describe('release configuration', () => {
       'documentation',
       'test-unit',
       'test-coverage',
-      'handwriting',
-      'python-tools',
       'electron-macos-smoke',
     ]);
-    expect(gate).toContain('PYTHON: ${{ needs.changes.outputs.python }}');
     expect(gate).toContain(
       'ok() { [ "$1" = success ] || { [ "$2" = false ] && [ "$1" = skipped ]; }; }',
     );
     expect(gate).toContain('MACOS_ELECTRON_RESULT: ${{ needs.electron-macos-smoke.result }}');
     expect(gate).toContain('! ok "$MACOS_ELECTRON_RESULT"');
-    expect(gate).toContain('PYTHON_RESULT: ${{ needs.python-tools.result }}');
-    expect(gate).toContain('! ok "$PYTHON_RESULT"');
   });
 
   it('requires documentation checks even when heavy jobs are skipped', () => {
@@ -484,13 +460,9 @@ describe('release configuration', () => {
       SCOPE_RESULT: 'success',
       APP: 'false',
       SITES: 'false',
-      HANDWRITING: 'false',
-      PYTHON: 'false',
       ELECTRON: 'false',
       UNIT_RESULT: 'skipped',
       COVERAGE_RESULT: 'skipped',
-      HANDWRITING_RESULT: 'skipped',
-      PYTHON_RESULT: 'skipped',
       MACOS_ELECTRON_RESULT: 'skipped',
     };
     const status = (result: string) =>
@@ -511,12 +483,11 @@ describe('release configuration', () => {
     expect(securityWorkflow).toContain("cron: '31 3 * * 1'");
     expect(securityWorkflow).toMatch(/^permissions:\n {2}contents: read/m);
 
-    expect(securityWorkflow.match(/bun install --frozen-lockfile/g)).toHaveLength(3);
+    expect(securityWorkflow.match(/bun install --frozen-lockfile/g)).toHaveLength(2);
     expect(
       securityWorkflow.match(/bun "\$GITHUB_WORKSPACE\/scripts\/security-audit\.mjs"/g),
-    ).toHaveLength(3);
+    ).toHaveLength(2);
     expect(securityWorkflow).toContain('working-directory: apps/relay');
-    expect(securityWorkflow).toContain('working-directory: tooling/handwriting-maths');
     expect(securityWorkflow).not.toContain('continue-on-error: true');
     expect(securityWorkflow).not.toContain('|| true');
     expect(securityWorkflow).not.toContain('bun audit --ignore');

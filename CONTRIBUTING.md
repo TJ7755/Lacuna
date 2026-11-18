@@ -73,10 +73,6 @@ bun run --cwd apps/relay typecheck
 bun run --cwd apps/relay lint
 bun run --cwd apps/relay test
 
-# Handwriting maths tool
-bun run --cwd tooling/handwriting-maths build
-bun run --cwd tooling/handwriting-maths test
-
 # Standalone AI MCP tool (uses root node_modules)
 bun run --cwd tooling/lacuna-ai-mcp typecheck
 bun run --cwd tooling/lacuna-ai-mcp lint
@@ -84,7 +80,7 @@ bun run --cwd tooling/lacuna-ai-mcp test
 bun run --cwd tooling/lacuna-ai-mcp build
 ```
 
-`bun run lint` covers `apps`, `packages`, `tests`, `scripts`, `tooling` and the root config files, and fails on warnings. `tooling/lacuna-ai-mcp` and `apps/relay` have their own flat configs and lint scripts.
+`bun run lint` covers `apps`, `packages`, `tests`, `scripts` and the root config files, and fails on warnings. `tooling/lacuna-ai-mcp` and `apps/relay` have their own flat configs and lint scripts.
 
 The configured Linux and macOS packages must also be built for release or packaging changes:
 
@@ -172,7 +168,7 @@ Inspect GitHub enforcement through [governance](docs/maintenance/governance.md).
 
 ## Dependency updates
 
-Dependabot groups root runtime, Electron/release, test, relay, handwriting and GitHub Actions updates.
+Dependabot groups root runtime, Electron/release, test, relay and GitHub Actions updates.
 Keep security fixes in their own small pull request where that makes the audit delta clearer. Review
 the lockfile, run `bun audit` from the root workspace installation, and record any remaining critical or high finding
 with an owner and review date. Never add a permanent blanket ignore.
