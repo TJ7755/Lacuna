@@ -214,7 +214,6 @@ export const helpTopics: readonly HelpTopic[] = [
     answer:
       'Lacuna adapts review intervals to your answers, bringing difficult cards back sooner and easy cards less often.',
     keywords: ['fsrs', 'algorithm', 'spaced', 'repetition', 'schedule'],
-    action: { label: 'Read about scheduling', to: '/method' },
   },
   {
     id: 'optimisation',
