@@ -125,7 +125,7 @@ it('replays concurrent first FSRS7 answers from the opaque baseline in either de
       difficultyBefore: baseline.difficulty,
       difficultyAfter: result.memory.difficulty,
       retrievabilityAtReview: null,
-      memoryOrigin: baseline,
+      memoryOrigin: { ...baseline, scheduleEdits: opaque.scheduleEdits },
     };
     return { card: { ...opaque, ...result.memory }, event: reviewHistoryEntryForCard(opaque, log) };
   });
@@ -218,4 +218,39 @@ it('applies a newly synced real answer and a later manual due date without repla
   });
   expect(result.history).toHaveLength(2);
   expect(replayCards([result], events, [], [course('course-1')])[0]).toEqual(result);
+});
+
+it('replays a concurrent reset absent from the first-answer origin', () => {
+  const opaque = card('concurrent-reset', {
+    stability: 20,
+    stabilityFast: null,
+    difficulty: 4,
+    lastReviewed: 1000,
+    reps: 12,
+    state: 2,
+    due: 9000,
+  });
+  const engine = makeEngine(defaultFsrsParameters());
+  const answer = applyReview(engine, opaque, 3, 2000).memory;
+  const event = reviewHistoryEntryForCard(opaque, {
+    timestamp: 2000,
+    grade: 3,
+    responseTimeSec: 1,
+    distracted: false,
+    stabilityBefore: 20,
+    stabilityAfter: answer.stability,
+    difficultyBefore: 4,
+    difficultyAfter: answer.difficulty,
+    retrievabilityAtReview: null,
+    memoryOrigin: opaque,
+  });
+  const reset = { at: 1500, kind: 'reset' as const };
+  const merged = replayCards(
+    [{ ...opaque, ...answer, scheduleEdits: [reset] }],
+    [event],
+    [],
+    [course('course-1')],
+  )[0];
+  expect(merged).toMatchObject({ state: 1, learningSteps: 1, due: 602000, reps: 13 });
+  expect(replayCards([merged], [event], [], [course('course-1')])[0]).toEqual(merged);
 });

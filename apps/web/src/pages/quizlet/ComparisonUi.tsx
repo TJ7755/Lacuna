@@ -107,7 +107,7 @@ export function ProofStrip() {
         </span>
       </div>
       <div>
-        <strong>FSRS-6</strong>
+        <strong>FSRS-7</strong>
         <span>
           Scheduled practice.
           <br />

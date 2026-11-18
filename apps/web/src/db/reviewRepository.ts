@@ -211,6 +211,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
                   due: cardBefore.due,
                   scheduledDays: cardBefore.scheduledDays,
                   learningSteps: cardBefore.learningSteps,
+                  scheduleEdits: cardBefore.scheduleEdits,
                 },
               }
             : {}),

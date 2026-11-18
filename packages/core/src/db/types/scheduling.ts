@@ -98,6 +98,7 @@ export interface ReviewLog {
     | 'due'
     | 'scheduledDays'
     | 'learningSteps'
+    | 'scheduleEdits'
   >;
   stabilityFastBefore?: number | null;
   stabilityFastAfter?: number;

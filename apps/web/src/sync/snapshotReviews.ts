@@ -114,10 +114,11 @@ export function replayCards(
     const origin = originIndex >= 0 ? events[originIndex].memoryOrigin : undefined;
     if (originIndex > 0) events.splice(0, originIndex);
     let current: Card = { ...card, ...NEVER_REVIEWED, ...origin };
-    // The baseline already includes older edits. Same-millisecond edits follow
-    // the review, matching the normal replay ordering below.
+    // Only edits explicitly captured by the origin are already represented. An
+    // offline device can contribute an older reset that the answering device never saw.
+    const representedEdits = new Set((origin?.scheduleEdits ?? []).map(canonicalJson));
     const edits = (card.scheduleEdits ?? []).filter(
-      (edit) => !origin || edit.at >= events[0].timestamp,
+      (edit) => !origin || !representedEdits.has(canonicalJson(edit)),
     );
     const complete = hasCompleteMemoryHistory(card, events);
     // A learnt import without its event prefix is opaque, never a new card.
@@ -153,7 +154,20 @@ export function replayCards(
       current = { ...current, ...memory };
     }
     while (nextEdit < edits.length) current = applyScheduleEdit(current, edits[nextEdit++]);
-    if (card.lastReviewed === current.lastReviewed && current.reps <= card.reps) {
+    const changedSchedule = origin
+      ? edits.length > 0
+      : edits.some(
+          (edit) =>
+            edit.at >= (card.lastReviewed ?? -Infinity) &&
+            (edit.kind === 'reset' || edit.due !== card.due),
+        );
+    if (
+      !changedSchedule &&
+      card.state === current.state &&
+      card.learningSteps === current.learningSteps &&
+      card.lastReviewed === current.lastReviewed &&
+      current.reps <= card.reps
+    ) {
       return {
         ...current,
         due: card.due,

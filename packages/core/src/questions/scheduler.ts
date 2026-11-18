@@ -92,6 +92,7 @@ export function scheduleQuestionReview(
 function baselineSchedule(
   question: Pick<QuestionDefinition, 'scheduleEpoch'>,
 ): QuestionScheduleState {
+  if (question.scheduleEpoch.memoryOrigin) return { ...question.scheduleEpoch.memoryOrigin };
   const baseline = question.scheduleEpoch.baseline;
   return baseline.kind === 'legacy-opaque'
     ? {
@@ -120,7 +121,10 @@ export function replayQuestionSchedule(
         attempt.status === 'answered' &&
         attempt.answeredAt !== undefined &&
         attempt.undoneAt === undefined &&
-        attempt.scheduleEffect.kind === 'replay',
+        attempt.scheduleEffect.kind === 'replay' &&
+        (question.scheduleEpoch.memoryOrigin === undefined ||
+          (attempt.answeredAt as number) >
+            (question.scheduleEpoch.memoryOrigin.lastReviewed ?? -Infinity)),
     )
     .sort(
       (left, right) =>

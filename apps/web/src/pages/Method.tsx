@@ -65,8 +65,8 @@ export function Method() {
           <p className="method-kicker">The method</p>
           <h1>The thinking behind remembering.</h1>
           <p>
-            A closer look at how Lacuna estimates what you’ll remember, how we tested it, and where
-            the model’s limits lie.
+            Research behind Lacuna’s former short-term model. Lacuna now uses FSRS 7 for short- and
+            long-term recall.
           </p>
         </div>
         <Button
@@ -87,13 +87,13 @@ export function Method() {
       <main ref={contentRef} tabIndex={-1} className="method-content">
         <Part n="01" title="First, a naming correction">
           <p className="max-w-2xl leading-relaxed text-ink-soft">
-            The model is called <span className="font-mono text-[0.92em]">half-life-logistic</span>,
-            and the name oversells the first half. It does not compute a half-life and feed it into
-            a decay curve — no half-life is calculated anywhere in the code. What actually runs is a
-            standard <span className="font-medium text-ink">logistic regression</span>: elapsed time
-            is simply one of ten input numbers. The name records the family of ideas it was
-            benchmarked against, not its mechanics — worth knowing before you describe it to anyone
-            technical.
+            The former model was called{' '}
+            <span className="font-mono text-[0.92em]">half-life-logistic</span>, and the name
+            oversells the first half. It does not compute a half-life and feed it into a decay curve
+            — no half-life is calculated anywhere in the code. What ran was a standard{' '}
+            <span className="font-medium text-ink">logistic regression</span>: elapsed time is
+            simply one of ten input numbers. The name records the family of ideas it was benchmarked
+            against, not its mechanics — worth knowing before you describe it to anyone technical.
           </p>
         </Part>
 

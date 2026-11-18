@@ -49,6 +49,8 @@ export function makeEngine(params: FsrsParameters): FsrsEngine {
       fractionalDays: true,
       desiredRetention: params.requestRetention,
       enableShortTerm: true,
+      // Retain configured learning steps during the model upgrade.
+      allowModelOverride: false,
       enableFuzz: params.enable_fuzz,
       maximumInterval: params.maximum_interval,
       learningSteps: params.learning_steps as StepUnit[],

@@ -98,6 +98,10 @@ const questionBase = object({
     startedAt: number,
     reason: z.enum(['created', 'semantic-edit', 'legacy-card-migration']),
     baseline,
+    memoryOrigin: object({
+      ...schedule,
+      stabilityFast: number.positive().nullable().default(null),
+    }).optional(),
   }),
   scheduleUpdatedAt: number,
 });

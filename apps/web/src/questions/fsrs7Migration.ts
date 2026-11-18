@@ -39,17 +39,56 @@ export function migrateFsrs7Questions(
         attempt.status === 'answered' &&
         attempt.answeredAt !== undefined &&
         attempt.undoneAt === undefined &&
-        attempt.scheduleEffect.kind === 'replay',
+        attempt.scheduleEffect.kind === 'replay' &&
+        (question.scheduleEpoch.memoryOrigin === undefined ||
+          attempt.answeredAt > (question.scheduleEpoch.memoryOrigin.lastReviewed ?? -Infinity)),
     );
     // An opaque baseline contributes counters, never an estimated fast trace. Its first
     // subsequent real answer initialises FSRS-7, provided the entire subsequent tail exists.
-    const baselineReps = baseline.kind === 'legacy-opaque' ? baseline.state.reps : 0;
+    const baselineReps =
+      question.scheduleEpoch.memoryOrigin?.reps ??
+      (baseline.kind === 'legacy-opaque' ? baseline.state.reps : 0);
     if (
       evidence.length === 0 ||
       evidence.length !== question.reps - baselineReps ||
       Math.max(...evidence.map((attempt) => attempt.answeredAt!)) !== question.lastReviewed
     ) {
-      return normalised;
+      if (
+        question.scheduleEpoch.memoryOrigin ||
+        (baseline.kind === 'legacy-opaque' &&
+          baseline.state.reps === question.reps &&
+          baseline.state.lastReviewed === question.lastReviewed)
+      )
+        return normalised;
+      const {
+        stability,
+        difficulty,
+        lastReviewed,
+        reps,
+        lapses,
+        state,
+        due,
+        scheduledDays,
+        learningSteps,
+      } = question;
+      return {
+        ...normalised,
+        scheduleEpoch: {
+          ...normalised.scheduleEpoch,
+          memoryOrigin: {
+            stability,
+            stabilityFast: null,
+            difficulty,
+            lastReviewed,
+            reps,
+            lapses,
+            state,
+            due,
+            scheduledDays,
+            learningSteps,
+          },
+        },
+      };
     }
     const replayed = replayQuestionSchedule(
       normalised,

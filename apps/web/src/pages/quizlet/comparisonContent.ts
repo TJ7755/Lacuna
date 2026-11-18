@@ -42,7 +42,7 @@ export const comparisonRows: {
   {
     feature: 'Spaced repetition',
     category: 'Learning',
-    lacuna: 'FSRS-6 scheduled reviews',
+    lacuna: 'FSRS-7 scheduled reviews',
     quizlet: 'Recall-based scheduling on the web',
     note: 'Both schedule repeat practice. Lacuna also supports an exam-focused scheduling mode.',
     source: 'repetition',
@@ -143,7 +143,7 @@ export const faqs = [
   ],
   [
     'Does Quizlet have spaced repetition?',
-    'Yes. Quizlet documents recall-based spaced repetition on its website. Lacuna uses FSRS-6 and offers exam-focused scheduling as well as steady retention.',
+    'Yes. Quizlet documents recall-based spaced repetition on its website. Lacuna uses FSRS-7 and offers exam-focused scheduling as well as steady retention.',
   ],
   [
     'Can I move my Quizlet sets?',

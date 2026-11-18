@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { card, course, NOW } from '../../fsrs/session.testFixtures';
 import { makeSessionContext } from '@lacuna/core/fsrs/session';
-import { createHalfLifeLogisticModel } from '@lacuna/core/fsrs/halfLifeLogisticModel';
+import { createFsrs7CramModel } from '@lacuna/core/fsrs/fsrs7CramModel';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, RevisionPlan } from '@lacuna/core/db/types';
 import { createRevisionSessionState } from '../../course/revisionSession';
@@ -495,6 +495,7 @@ describe('session machine operation sequences', () => {
       reps: 1,
       state: 2,
       stability: 3,
+      stabilityFast: 2.4,
       difficulty: 5,
       lastReviewed: reviewedAt,
       history: [
@@ -524,7 +525,7 @@ describe('session machine operation sequences', () => {
       'due',
       cards,
     );
-    const model = createHalfLifeLogisticModel(context.decks.get('fast')!.oc.ctx.decay);
+    const model = createFsrs7CramModel(context.decks.get('fast')!.oc.deck.fsrsParameters);
     const revisionPlan: RevisionPlan = {
       id: 'plan',
       courseId: 'course',

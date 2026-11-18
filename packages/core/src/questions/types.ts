@@ -93,6 +93,8 @@ export interface QuestionScheduleEpoch {
   startedAt: number;
   reason: 'created' | 'semantic-edit' | 'legacy-card-migration';
   baseline: QuestionScheduleBaseline;
+  /** Retained schedule when FSRS7 cannot reconstruct a missing answer prefix. */
+  memoryOrigin?: QuestionScheduleState;
 }
 
 interface QuestionDefinitionBase extends QuestionScheduleState {
