@@ -45,15 +45,8 @@ function fixture(t) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     copyFileSync(join(repository, path), join(root, path));
   }
-  for (const tool of [
-    'handwriting-maths',
-    'lacuna-ai-mcp',
-    'short-term-memory',
-    'semantic-answer-match',
-  ]) {
-    mkdirSync(join(root, 'tooling', tool), { recursive: true });
-    writeFileSync(join(root, 'tooling', tool, '.keep'), '');
-  }
+  mkdirSync(join(root, 'tooling/lacuna-ai-mcp'), { recursive: true });
+  writeFileSync(join(root, 'tooling/lacuna-ai-mcp/.keep'), '');
   writeFileSync(join(root, '.gitignore'), 'artifacts/\n');
   const executable = join(bin, 'bun');
   writeFileSync(
@@ -78,7 +71,7 @@ else {
 `,
   );
   chmodSync(executable, 0o755);
-  for (const name of ['node', 'uv']) copyFileSync(executable, join(bin, name));
+  copyFileSync(executable, join(bin, 'node'));
   // Keep the executable outside the repository and use the ordinary PATH seam.
   writeFileSync(join(bin, 'package.json'), '{"type":"module"}');
   const git = (...args) =>
@@ -124,7 +117,7 @@ else {
 }
 
 describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' }, () => {
-  test('setup verifies the full revision and performs only the three frozen installs', (t) => {
+  test('setup verifies the full revision and performs only the two frozen installs', (t) => {
     const { run, root, git } = fixture(t);
     const result = run('setup.mjs');
     assert.equal(result.status, 0, result.stderr);
@@ -132,7 +125,7 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
     const installs = result.report.commands.slice(1);
     assert.deepEqual(
       installs.map(({ cwd }) => cwd),
-      ['.', 'apps/relay', 'tooling/handwriting-maths'],
+      ['.', 'apps/relay'],
     );
     for (const command of installs) {
       assert.deepEqual(command.args, ['install', '--frozen-lockfile']);
@@ -246,7 +239,7 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
   });
 
   test('base selection includes committed changes and both rename endpoints', (t) => {
-    const { change, run, git } = fixture(t);
+    const { change, run, git, root } = fixture(t);
     change('docs/old.md');
     git(
       '-c',
@@ -260,7 +253,8 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
       'Docs',
     );
     const base = git('rev-parse', 'HEAD');
-    git('mv', 'docs/old.md', 'tooling/handwriting-maths/renamed.md');
+    mkdirSync(join(root, 'apps/gaps'), { recursive: true });
+    git('mv', 'docs/old.md', 'apps/gaps/renamed.md');
     git(
       '-c',
       'user.name=CLI tests',
@@ -275,15 +269,15 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
     const result = run('verify.mjs', ['--base', base, '--plan']);
     assert.equal(result.status, 2);
     assert.ok(result.report.paths.includes('docs/old.md'));
-    assert.ok(result.report.paths.includes('tooling/handwriting-maths/renamed.md'));
-    assert.equal(result.report.scope.handwriting, true);
+    assert.ok(result.report.paths.includes('apps/gaps/renamed.md'));
+    assert.equal(result.report.scope.sites, true);
     assert.equal(result.report.scope.app, false);
     assert.equal(result.report.commands.length, 1);
   });
 
   test('lint-scoped changes plan the same unused-code checks as CI, immediately after lint', (t) => {
     const { change, run } = fixture(t);
-    change('tooling/handwriting-maths/src/main.ts');
+    change('apps/gaps/src/main.ts');
     const result = run('verify.mjs', ['--plan']);
     assert.equal(result.status, 2, result.stderr);
     assert.equal(result.report.scope.lint, true);
@@ -359,7 +353,7 @@ describe('POSIX PATH executable fixtures', { skip: process.platform === 'win32' 
 
   test('lint and unused-code failures preserve their status and stop subsequent checks', (t) => {
     const { change, run } = fixture(t);
-    change('tooling/handwriting-maths/src/main.ts');
+    change('apps/gaps/src/main.ts');
     const scripts = ['lint', 'knip'];
     for (const [index, script] of scripts.entries()) {
       const result = run('verify.mjs', [], { FAKE_FAIL_SCRIPT: script, FAKE_STATUS: '23' });

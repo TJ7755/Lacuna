@@ -73,9 +73,6 @@ export const loadMergeReviewPanel = () =>
 export const loadDownload = () =>
   import('../pages/publicPages').then((module) => ({ default: module.Download }));
 
-export const loadMethod = () =>
-  import('../pages/Method').then((module) => ({ default: module.Method }));
-
 export const loadMcpBridgeController = () =>
   import('../components/mcp/McpBridgeController').then((module) => ({
     default: module.McpBridgeController,

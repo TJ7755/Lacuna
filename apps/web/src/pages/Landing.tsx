@@ -49,7 +49,6 @@ export function Landing() {
             GitHub
           </a>
           <a href="/courses/">Courses</a>
-          <Link to="/method">The method</Link>
           {!window.electronAPI?.isElectron && <Link to="/download">Download for desktop</Link>}
           <a
             href={

@@ -68,10 +68,5 @@ export function quickChecks(paths) {
       bun(script, cwd, script === 'test' ? ['--', '--maxWorkers=1'] : []);
     }
   }
-  if (broad || owners.some(({ python }) => python)) {
-    for (const tool of ['short-term-memory', 'semantic-answer-match']) {
-      add('uv', ['run', '--locked', 'pytest'], `tooling/${tool}`);
-    }
-  }
   return { commands, broad };
 }

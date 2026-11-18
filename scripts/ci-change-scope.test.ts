@@ -149,19 +149,14 @@ describe('area scope', () => {
       'package.json',
       'bun.lock',
       '.github/workflows/ci.yml',
-      'tooling/handwriting-maths/package.json',
-      'tooling/handwriting-maths/bun.lock',
       'apps/relay/package.json',
       'apps/gaps/vercel.json',
       'apps/library/vercel.json',
       'apps/gaps/vite.config.ts',
       'apps/library/vite.config.ts',
       'apps/relay/vercel.json',
-      'tooling/short-term-memory/uv.lock',
       'apps/relay/shared/insights/index.ts',
       'apps/relay/scripts/security-bun.mjs',
-      'tooling/short-term-memory/coefficients/half-life-logistic-v3.json',
-      'tooling/short-term-memory/tests/fixtures/model-port-v3.json',
       'new-area/file.ts',
     ]) {
       expect(
@@ -176,29 +171,17 @@ describe('area scope', () => {
     expect(classifyPaths(['docs/a.md', '../apps/relay/src/a.ts']).electron).toBe(true);
   });
 
-  it('selects relay consumers without unrelated native or training work', () => {
+  it('selects relay consumers without unrelated native work', () => {
     expect(classifyPaths(['apps/relay/src/relay.ts'])).toMatchObject({
       app: true,
       relay: true,
       ai_mcp: true,
       sites: true,
       electron: false,
-      python: false,
-      handwriting: false,
     });
   });
 
   it('selects tooling, sites and mixed changes independently', () => {
-    expect(classifyPaths(['tooling/handwriting-maths/src/main.ts'])).toMatchObject({
-      handwriting: true,
-      lint: true,
-      app: false,
-      electron: false,
-    });
-    expect(classifyPaths(['tooling/short-term-memory/stm_harness/contract.py'])).toMatchObject({
-      python: true,
-      app: false,
-    });
     expect(classifyPaths(['tooling/lacuna-ai-mcp/src/client.ts'])).toMatchObject({
       ai_mcp: true,
       app: true,
@@ -217,13 +200,12 @@ describe('area scope', () => {
         electron: false,
       });
     }
-    expect(
-      classifyPaths([
-        'docs/a.md',
-        'apps/library/index.html',
-        'tooling/handwriting-maths/src/main.ts',
-      ]),
-    ).toMatchObject({ docs: true, docs_only: false, sites: true, handwriting: true, app: false });
+    expect(classifyPaths(['docs/a.md', 'apps/library/index.html'])).toMatchObject({
+      docs: true,
+      docs_only: false,
+      sites: true,
+      app: false,
+    });
     expect(classifyPaths(['docs/a.md'])).toMatchObject({
       docs_only: true,
       app: false,
@@ -246,8 +228,6 @@ describe('area scope', () => {
         tooling: false,
         sites: true,
         docs: false,
-        handwriting: false,
-        python: false,
         ai_mcp: false,
         lint: true,
         web_tests: true,
@@ -314,9 +294,7 @@ describe('area scope', () => {
     expect(classifyPaths(parseNameStatus('R100\0docs/a.md\0apps/relay/src/a.ts\0')).relay).toBe(
       true,
     );
-    expect(
-      classifyPaths(parseNameStatus('D\0tooling/handwriting-maths/src/main.ts\0')).handwriting,
-    ).toBe(true);
+    expect(classifyPaths(parseNameStatus('D\0apps/gaps/src/main.ts\0')).sites).toBe(true);
     expect(parseNameStatus('')).toEqual([]);
     for (const input of ['M\0file', 'R100\0old\0', 'unexpected\0file\0']) {
       expect(() => parseNameStatus(input)).toThrow();

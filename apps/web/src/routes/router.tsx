@@ -27,7 +27,6 @@ import {
   loadLessonCardsPage,
   loadLearnMode,
   loadMergeReviewPanel,
-  loadMethod,
   loadOcclusionEditor,
   loadQuestionEditor,
   loadQuestionLearnMode,
@@ -80,7 +79,6 @@ const Landing = lazy(loadLanding);
 const loadOnboarding = () => import('../pages/onboarding/Onboarding');
 const Onboarding = lazy(loadOnboarding);
 const Download = lazy(loadDownload);
-const Method = lazy(loadMethod);
 const Privacy = lazy(() =>
   import('../pages/publicPages').then((module) => ({ default: module.Privacy })),
 );
@@ -277,11 +275,6 @@ export const router = createHashRouter([
       {
         path: '/terms',
         element: isolatedRoute('terms information', lazyRoute(Terms)),
-      },
-      {
-        // The technical account belongs to the landing page, outside the app shell.
-        path: '/method',
-        element: isolatedRoute('the technical account', lazyRoute(Method)),
       },
       {
         // Retain old bookmarks without starting the retired individual session.

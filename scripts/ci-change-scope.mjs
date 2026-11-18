@@ -97,8 +97,6 @@ const AREAS = [
   'tooling',
   'sites',
   'docs',
-  'handwriting',
-  'python',
   'ai_mcp',
   'lint',
   'web_tests',

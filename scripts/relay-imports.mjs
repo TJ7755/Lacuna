@@ -84,11 +84,3 @@ export const appImportsRule = importsRule(
     ].includes(target);
   },
 );
-
-export const trainingImportsRule = importsRule(
-  'Use the runtime-owned coefficient asset instead of training internals ({{target}}).',
-  (importer, target) =>
-    ['apps/web/src/', 'apps/ai/server/', 'apps/desktop/', 'apps/ai/api/'].some((area) =>
-      importer.startsWith(area),
-    ) && target.startsWith('tooling/short-term-memory/'),
-);

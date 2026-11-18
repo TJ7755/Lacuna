@@ -61,7 +61,6 @@
         "scripts/{ai-benchmark,jev-smoke,question-bank,library-publish}.ts",
         "scripts/performance-heavy/{fixture,run}.ts",
         "scripts/performance-heavy/{summarise,trace-summary}.mjs",
-        "tooling/semantic-answer-match/scripts/compare_answer_baseline.ts",
         "scripts/**/*.test.mjs",
         "tests/config/{playwright.*,vitest.recovery,vitest.risk}.config.ts",
         "tests/e2e/**/*.spec.ts",
@@ -70,7 +69,6 @@
       "project": [
         "*.{js,mjs,cjs,ts,mts,cts}",
         "{apps,packages,scripts,tests}/**/*.{js,mjs,cjs,ts,tsx,mts,cts,css}",
-        "tooling/semantic-answer-match/scripts/*.ts",
         "!apps/desktop/dist-electron/**",
       ],
       "vitest": { "config": ["tests/config/vitest.config.ts"] },
@@ -81,10 +79,6 @@
     "apps/relay": {
       "entry": ["api/index.ts", "scripts/stress.ts", "tests/**/*.test.ts"],
       "project": ["{src,api,shared,tests,scripts}/**/*.{ts,mjs}", "*.{ts,mjs}"],
-    },
-    "tooling/handwriting-maths": {
-      "entry": ["src/**/*.test.ts"],
-      "project": ["src/**/*.ts", "*.ts"],
     },
     "tooling/lacuna-ai-mcp": {
       "entry": ["src/**/*.test.ts"],

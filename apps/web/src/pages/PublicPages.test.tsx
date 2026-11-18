@@ -3,7 +3,6 @@ import { renderToString } from 'react-dom/server';
 import { LazyMotion, domAnimation } from 'motion/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { Method } from './Method';
 import { ProductScreen, ProductTour } from './quizlet/ProductTour';
 
 vi.mock('../state/motionSpeed', () => ({
@@ -52,35 +51,5 @@ describe('public page interactions', () => {
     } finally {
       vi.unstubAllGlobals();
     }
-  });
-
-  it('discloses the weights and keeps diagram and metric controls operable without motion', () => {
-    render(<Method />, { wrapper: Wrapper });
-    const disclosure = screen.getByRole('button', { name: 'The ten weights, exactly as shipped' });
-    expect(disclosure).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('button', { name: /log\(prior failures\)/ })).not.toBeInTheDocument();
-    fireEvent.click(disclosure);
-    expect(disclosure).toHaveAttribute('aria-expanded', 'true');
-    const weight = screen.getByRole('button', { name: /log\(prior successes\)/ });
-    fireEvent.click(weight);
-    expect(weight).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText(/A strong track record/)).toBeVisible();
-    fireEvent.click(disclosure);
-    expect(
-      screen.queryByRole('button', { name: /log\(prior successes\)/ }),
-    ).not.toBeInTheDocument();
-    const sigmoid = screen.getByRole('slider', { name: 'Weighted sum z' });
-    fireEvent.keyDown(sigmoid, { key: 'ArrowRight' });
-    expect(sigmoid).toHaveAttribute('aria-valuenow', '1.7');
-    const loss = screen.getByRole('slider', { name: 'Predicted probability of recall' });
-    fireEvent.keyDown(loss, { key: 'ArrowLeft' });
-    expect(loss).toHaveAttribute('aria-valuenow', '0.85');
-    const blend = screen.getByRole('slider', { name: 'Days since last review' });
-    fireEvent.keyDown(blend, { key: 'ArrowRight' });
-    expect(blend).toHaveAttribute('aria-valuenow', '0.7');
-    const metric = screen.getByRole('button', { name: 'Brier score' });
-    fireEvent.click(metric);
-    expect(metric).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('0.129')).toBeVisible();
   });
 });

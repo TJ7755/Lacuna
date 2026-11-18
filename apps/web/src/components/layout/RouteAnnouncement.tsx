@@ -17,7 +17,6 @@ function routeLabel(pathname: string): string {
     '/download': 'Download',
     '/privacy': 'Privacy',
     '/terms': 'Terms',
-    '/method': 'The method',
     '/learn': 'Practice',
   };
   if (pages[pathname]) return pages[pathname];

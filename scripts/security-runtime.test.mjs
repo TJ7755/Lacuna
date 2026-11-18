@@ -78,11 +78,7 @@ test('every Bun workflow uses the security guard and manifests share its pin', (
       }
     }
   }
-  for (const file of [
-    'package.json',
-    'apps/relay/package.json',
-    'tooling/handwriting-maths/package.json',
-  ]) {
+  for (const file of ['package.json', 'apps/relay/package.json']) {
     const manifest = JSON.parse(readFileSync(new URL(file, root), 'utf8'));
     assert.equal(manifest.packageManager, `bun@${version}`, file);
   }

@@ -80,7 +80,6 @@ async function verify({ run, report }) {
   }
   for (const [area, cwd] of [
     ['relay', 'apps/relay'],
-    ['handwriting', 'tooling/handwriting-maths'],
     ['ai_mcp', 'tooling/lacuna-ai-mcp'],
   ]) {
     if (!scope[area]) continue;
@@ -89,11 +88,6 @@ async function verify({ run, report }) {
     for (const script of scripts) {
       if (script === 'test') test(script, cwd);
       else bun(script, cwd);
-    }
-  }
-  if (scope.python) {
-    for (const tool of ['short-term-memory', 'semantic-answer-match']) {
-      add('uv', ['run', '--locked', 'pytest'], `tooling/${tool}`);
     }
   }
   if (scope.app || scope.sites || scope.web_tests) {

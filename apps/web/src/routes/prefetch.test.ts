@@ -20,7 +20,6 @@ const loaders = vi.hoisted(() => ({
   loadShareLinkPage: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
   loadLanding: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
   loadDownload: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
-  loadMethod: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
 
   loadAnalytics: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),
   loadArchivedCourses: vi.fn<RouteLoader>(() => Promise.resolve({ default: () => null })),

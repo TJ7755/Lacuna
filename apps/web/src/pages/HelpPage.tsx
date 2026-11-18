@@ -180,10 +180,6 @@ export function HelpPage() {
             <ChartIcon width={16} height={16} />
             Progress
           </Link>
-          <Link to="/method" className={HELP_LINK_CLASS}>
-            <SparklesIcon width={16} height={16} />
-            How the scheduler works
-          </Link>
         </div>
       </div>
     </div>

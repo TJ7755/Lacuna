@@ -4,13 +4,8 @@ const owners = [
   {
     id: 'shared',
     matches: (path) =>
-      /(^|\/)(package\.json|bun\.lock|uv\.lock|vercel\.json|vite\.config\.ts)$/.test(path) ||
-      [
-        'apps/relay/shared/',
-        'apps/relay/scripts/',
-        'tooling/short-term-memory/coefficients/',
-        'tooling/short-term-memory/tests/fixtures/',
-      ].some((prefix) => path.startsWith(prefix)),
+      /(^|\/)(package\.json|bun\.lock|vercel\.json|vite\.config\.ts)$/.test(path) ||
+      ['apps/relay/shared/', 'apps/relay/scripts/'].some((prefix) => path.startsWith(prefix)),
     full: true,
   },
   {
@@ -26,18 +21,6 @@ const owners = [
     typechecks: ['typecheck:web', 'typecheck:server'],
     workspaces: ['apps/relay', 'tooling/lacuna-ai-mcp'],
     related: true,
-  },
-  {
-    id: 'handwriting',
-    prefixes: ['tooling/handwriting-maths/'],
-    areas: ['tooling', 'handwriting', 'lint'],
-    workspaces: ['tooling/handwriting-maths'],
-  },
-  {
-    id: 'python',
-    prefixes: ['tooling/short-term-memory/', 'tooling/semantic-answer-match/'],
-    areas: ['tooling', 'python', 'lint'],
-    python: true,
   },
   {
     id: 'ai-mcp',
@@ -105,5 +88,4 @@ export function ownerFor(path) {
 export const workspaceChecks = {
   'apps/relay': ['typecheck', 'lint', 'test'],
   'tooling/lacuna-ai-mcp': ['typecheck', 'lint', 'test'],
-  'tooling/handwriting-maths': ['build', 'test'],
 };
