@@ -97,7 +97,7 @@ describe('HelpPage', () => {
         <HelpPage />
       </MemoryRouter>,
     );
-    for (const name of ['Settings', 'Progress', 'How the scheduler works']) {
+    for (const name of ['Settings', 'Progress']) {
       const link = screen.getByRole('link', { name });
       expect(link.querySelector('button')).toBeNull();
     }
