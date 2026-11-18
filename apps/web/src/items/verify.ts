@@ -123,7 +123,7 @@ export function expressionToTex(expression: Expression): string {
  * attempts fail, which is what lets a domain-restricted expression such as
  * `sqrt(x - 100)` reach the region where it is defined at all.
  */
-export function compareByRandomEvaluation(
+function compareByRandomEvaluation(
   a: Expression,
   b: Expression,
   seed: string,

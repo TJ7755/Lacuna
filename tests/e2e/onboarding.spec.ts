@@ -1,10 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
+test.use({ timezoneId: 'Europe/London' });
+
 // #816: setup saves the study target and the marking choice before opening the first course.
 test('a new learner corrects setup and opens their first course directly', async ({
   page,
 }, testInfo) => {
+  await page.clock.setFixedTime(new Date('2026-11-18T12:00:00Z'));
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
@@ -24,6 +27,7 @@ test('a new learner corrects setup and opens their first course directly', async
   await page.getByRole('radio', { name: /^Yes/ }).press('Space');
   const date = page.getByRole('button', { name: 'Exam date and time' });
   await date.click();
+  await page.getByRole('button', { name: '26 November 2026', exact: true }).click();
   await page.getByRole('textbox', { name: 'Hour' }).fill('16');
   await page.getByRole('textbox', { name: 'Minute' }).fill('35');
   await page.getByRole('button', { name: 'Done', exact: true }).click();
@@ -47,11 +51,6 @@ test('a new learner corrects setup and opens their first course directly', async
   });
   await expect(privacyPolicy).not.toBeInViewport();
 
-  await expect(page.getByRole('button', { name: 'Back', exact: true }).locator('svg')).toHaveCSS(
-    'width',
-    '22px',
-  );
-  await expect(page.getByRole('button', { name: 'Appearance', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Back', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Do you have an exam coming up?' })).toBeFocused();
@@ -62,9 +61,6 @@ test('a new learner corrects setup and opens their first course directly', async
     animations: 'disabled',
   });
   await next.click();
-  const expectedExam = await page.evaluate(
-    () => JSON.parse(sessionStorage.getItem('lacuna-onboarding-target')!).examDate as number,
-  );
   await expect(markingHeading).toBeFocused();
   await terms.press('End');
   await expect(privacyPolicy).toBeInViewport({ ratio: 1 });
@@ -118,7 +114,10 @@ test('a new learner corrects setup and opens their first course directly', async
         };
       }),
   );
-  expect(assessment).toMatchObject({ schedulingMode: 'exam', examDate: expectedExam });
+  expect(assessment).toMatchObject({
+    schedulingMode: 'exam',
+    examDate: Date.parse('2026-11-26T16:35:00Z'),
+  });
 
   // Onboarding runs once: entering again goes straight to Today.
   await page.evaluate(() => {

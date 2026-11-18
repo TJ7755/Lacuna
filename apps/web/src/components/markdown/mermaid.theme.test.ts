@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderMermaidDiagrams, resetMermaidInitialisation, updateMermaidTheme } from './mermaid';
+import type * as MermaidModule from './mermaid';
+
+let renderMermaidDiagrams: typeof MermaidModule.renderMermaidDiagrams;
+let updateMermaidTheme: typeof MermaidModule.updateMermaidTheme;
 
 const renderer = vi.hoisted(() => ({
   theme: 'light',
@@ -24,7 +27,9 @@ function renderedTheme(container: HTMLElement): string | null {
   return container.querySelector('svg')?.getAttribute('data-palette') ?? null;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  vi.resetModules();
+  ({ renderMermaidDiagrams, updateMermaidTheme } = await import('./mermaid'));
   document.documentElement.classList.remove('dark');
   vi.spyOn(window, 'getComputedStyle').mockImplementation(
     () =>
@@ -38,7 +43,6 @@ beforeEach(() => {
         },
       }) as CSSStyleDeclaration,
   );
-  resetMermaidInitialisation();
   renderer.initialize.mockImplementation(() => {
     renderer.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
   });

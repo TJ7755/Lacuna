@@ -18,13 +18,13 @@ export {
   mirrorToFolder,
 } from './backupFolder';
 
-export function createAutoBackups(clock: () => number = () => Date.now()) {
+export function createAutoBackups() {
   let lastSuccessfulBackupAt: number | null = null;
   const pendingBackups = new Set<{ at: number }>();
   const MIN_BACKUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
   function reserveBackup(force: boolean): { at: number } | undefined {
-    const now = clock();
+    const now = Date.now();
     if (!force) {
       if (lastSuccessfulBackupAt !== null && now - lastSuccessfulBackupAt < MIN_BACKUP_INTERVAL)
         return;

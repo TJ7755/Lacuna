@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  clearForecastCache,
-  dashboardForecasts,
-  dashboardForecastHistories,
-  urgencyOrder,
-} from './dashboardForecasts';
+import { dashboardForecasts, dashboardForecastHistories, urgencyOrder } from './dashboardForecasts';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { examDayHistory } from '@lacuna/core/fsrs/courseForecast';
 import type { Card, Course, Lesson } from '@lacuna/core/db/types';
@@ -59,13 +54,13 @@ describe('dashboardForecasts', () => {
       history: [],
     }) as unknown as Card;
 
-  it('reuses a course forecast until its cards change', () => {
-    clearForecastCache();
+  it('refreshes the forecast when review stability improves', () => {
     const cards = [card('a', 4), card('b', 9)];
     const first = dashboardForecasts([course], [], cards, NOW).bio;
-    expect(dashboardForecasts([course], [], cards, NOW + 60_000).bio).toBe(first);
     const reviewed = [card('a', 12), card('b', 9)];
-    expect(dashboardForecasts([course], [], reviewed, NOW + 60_000).bio).not.toBe(first);
+    expect(dashboardForecasts([course], [], reviewed, NOW + 60_000).bio.ifStopped).toBeGreaterThan(
+      first.ifStopped,
+    );
   });
 
   it('replays current card membership even when review ownership predates a move', () => {

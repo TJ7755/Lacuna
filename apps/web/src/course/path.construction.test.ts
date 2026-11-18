@@ -71,9 +71,7 @@ describe('buildPath', () => {
     const nodes = buildPath(course, [], [checkpoint], new Map());
     expect(nodes.map((n) => n.id)).toEqual(['cp1']);
     const cpNode = nodes[0];
-    if (cpNode.nodeType === 'checkpoint') {
-      expect(cpNode.afterLessonId).toBeNull();
-    }
+    expect(cpNode).toMatchObject({ nodeType: 'checkpoint', afterLessonId: null });
   });
 
   it('computes lesson status from supplied membership and exposure progress', () => {
@@ -92,8 +90,8 @@ describe('buildPath', () => {
     });
     const n1 = nodes.find((n) => n.id === 'l1');
     const n2 = nodes.find((n) => n.id === 'l2');
-    if (n1?.nodeType === 'lesson') expect(n1.status).toBe('completed');
-    if (n2?.nodeType === 'lesson') expect(n2.status).toBe('locked');
+    expect(n1).toMatchObject({ nodeType: 'lesson', status: 'completed' });
+    expect(n2).toMatchObject({ nodeType: 'lesson', status: 'locked' });
   });
 
   it('keeps a lesson available until every required card has been taught', () => {

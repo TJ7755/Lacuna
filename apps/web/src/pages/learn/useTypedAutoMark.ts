@@ -263,7 +263,7 @@ export function useTypedAutoMark({
 }
 
 /** Partial recall requires a known majority of expected parts, never a guess. */
-export function jevPartialGrade(feedback: JevTypedFeedback | undefined): Grade | undefined {
+function jevPartialGrade(feedback: JevTypedFeedback | undefined): Grade | undefined {
   if (!feedback) return undefined;
   if (feedback.kind === 'imprecise') return 2;
   if (feedback.kind !== 'partial') return undefined;

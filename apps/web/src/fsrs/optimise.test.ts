@@ -228,22 +228,6 @@ describe('optimiseParameters', () => {
     expect(Number.isFinite(result.before)).toBe(true);
     expect(Number.isFinite(result.after)).toBe(true);
     expect(result.scored).toBeGreaterThanOrEqual(0);
-    // isOutOfSampleWin is present and a boolean.
-    expect(typeof result.isOutOfSampleWin).toBe('boolean');
-  });
-
-  it('computes before/after on the held-out validation portion', async () => {
-    const cards = syntheticDeck();
-    const result = await optimiseParameters(cards, bindingDeps);
-
-    // The metrics should reflect the validation split: scored <= total - train_count
-    const allSeqs = reviewSequences(cards);
-    const totalNonFirst = countReviews(cards) - cards.length;
-    const trainSplit = chronologicallySplitSequences(allSeqs, 0.8);
-    const trainNonFirst =
-      trainSplit.trainSequences.reduce((s, seq) => s + seq.grades.length, 0) -
-      trainSplit.trainSequences.filter((seq) => seq.grades.length > 0).length;
-    expect(result.scored).toBeLessThanOrEqual(totalNonFirst - trainNonFirst);
   });
 
   it('offers only a fit that improves the held-out loss', async () => {

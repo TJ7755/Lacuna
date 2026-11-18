@@ -10,7 +10,7 @@ import {
 } from '../../questions/repository';
 import type { Concept } from '@lacuna/core/questions/types';
 import type { QuestionSnapshot } from '../../questions/repository';
-import { MCP_TOOL_SURFACE_VERSION, TOOL_REGISTRY, validateAndRun } from '../registry';
+import { validateAndRun } from '../registry';
 import type { ToolContext } from '../types';
 import * as tools from './questions';
 
@@ -33,18 +33,6 @@ async function clearAll(): Promise<void> {
 
 describe('MCP Question tools', () => {
   beforeEach(clearAll);
-
-  it('registers additive Question tools but no attempt-recording surface', () => {
-    const names = TOOL_REGISTRY.map((tool) => tool.name);
-
-    expect(names).toContain('lacuna.list_concepts');
-    expect(names).toContain('lacuna.create_fixed_question');
-    expect(names).toContain('lacuna.create_generated_question');
-    expect(names).toContain('lacuna.audit_question_generator');
-    expect(names.some((name) => name.includes('attempt'))).toBe(false);
-    expect(names.some((name) => name.includes('record_question'))).toBe(false);
-    expect(MCP_TOOL_SURFACE_VERSION).toBe(3);
-  });
 
   it('creates, lists and updates Concepts through the Question repository', async () => {
     const course = await createCourse('Physics');

@@ -174,7 +174,7 @@ function needsImportMigration(snapshot: BackupFile): boolean {
 }
 
 /** Compare a local snapshot with the merge result by record id. */
-export function summariseMerge(local: BackupFile, merged: BackupFile): ManualMergeSummary {
+function summariseMerge(local: BackupFile, merged: BackupFile): ManualMergeSummary {
   const before = normaliseQuestionBackup(local);
   const after = normaliseQuestionBackup(merged);
   return {

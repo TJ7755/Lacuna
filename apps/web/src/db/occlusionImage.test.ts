@@ -1,40 +1,51 @@
-import { describe, expect, it, vi } from 'vitest';
+import 'fake-indexeddb/auto';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { storeOcclusionDiagram } from './occlusionImage';
+import { db } from './schema';
 
-vi.mock('../utils/compressImage', () => ({
-  compressImageBlob: vi.fn(async (blob: Blob) => ({ blob, width: 100, height: 80 })),
-}));
-vi.mock('./assets', () => ({
-  storeImageBlob: vi.fn(async (blob: Blob, mimeType: string, width: number, height: number) => ({
-    hash: 'diagram-hash',
-    blob,
-    mimeType,
-    kind: 'image',
-    width,
-    height,
-    createdAt: 0,
-  })),
-}));
-
-import { compressImageBlob } from '../utils/compressImage';
-import { storeImageBlob } from './assets';
-import { OCCLUSION_MAX_DIMENSION, storeOcclusionDiagram } from './occlusionImage';
+// Only browser decoding and encoding are substituted; compression and persistence stay real.
+class DecodedImage {
+  width = 4000;
+  height = 2000;
+  onload: (() => void) | null = null;
+  set src(_value: string) {
+    queueMicrotask(() => this.onload?.());
+  }
+}
 
 describe('storeOcclusionDiagram', () => {
-  it('requests the 2560px occlusion ceiling rather than the ordinary card-image default', async () => {
-    expect(OCCLUSION_MAX_DIMENSION).toBe(2560);
-    const file = new Blob(['x'], { type: 'image/png' });
-
-    await storeOcclusionDiagram(file);
-
-    expect(compressImageBlob).toHaveBeenCalledWith(file, { maxDimension: 2560 });
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    vi.stubGlobal('Image', DecodedImage);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (
+      this: HTMLCanvasElement,
+      callback: BlobCallback,
+      mimeType?: string,
+    ) {
+      callback(new Blob([`${this.width}x${this.height}`], { type: mimeType }));
+    });
   });
 
-  it('stores the compressed blob with its resolved dimensions', async () => {
-    const file = new Blob(['x'], { type: 'image/png' });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('persists a diagram at the 2560px ceiling with its encoded bytes and dimensions', async () => {
+    const file = new Blob(['source'], { type: 'image/png' });
 
     const asset = await storeOcclusionDiagram(file);
 
-    expect(storeImageBlob).toHaveBeenCalledWith(expect.anything(), 'image/png', 100, 80);
-    expect(asset.hash).toBe('diagram-hash');
+    expect(await db.assets.get(asset.hash)).toMatchObject({
+      kind: 'image',
+      mimeType: 'image/png',
+      width: 2560,
+      height: 1280,
+      blob: new TextEncoder().encode('2560x1280'),
+    });
   });
 });

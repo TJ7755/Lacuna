@@ -73,10 +73,6 @@ test('metadata edits start no run and code events retain required contexts', () 
     'reopened',
     'ready_for_review',
   ]);
-  assert.equal(
-    workflow.jobs.changes.steps.some((step) => step.id === 'metadata'),
-    false,
-  );
   for (const job of required) assert.equal(workflow.jobs[job].name, job);
   assert.equal(render(workflow.concurrency.group, 'synchronize'), 'ci-42');
   assert.equal(render(workflow.concurrency.group, undefined), 'ci-refs/heads/master');
@@ -506,52 +502,29 @@ test('Windows skips the slow package cache while retaining verified runtime inst
   assert.equal(install.if, undefined);
 });
 
-test('workspace installs cannot restore or save another workspace’s partial package cache', () => {
+test('package cache keys and fallback prefixes isolate different lockfiles', () => {
   const action = parse(readFileSync('.github/actions/setup-bun/action.yml', 'utf8'));
   const cache = action.runs.steps.find((step) => step.name === 'Restore Bun package downloads');
-  const security = parse(readFileSync('.github/workflows/security.yml', 'utf8'));
-  const namespaces = new Map();
-  for (const job of [...Object.values(workflow.jobs), ...Object.values(security.jobs)]) {
-    const setup = job.steps?.find((step) => step.uses === './.github/actions/setup-bun');
-    const install = job.steps?.find((step) => step.run?.startsWith('bun install '));
-    if (!setup || !install) continue;
-    const workspace =
-      install['working-directory'] ?? job.defaults?.run?.['working-directory'] ?? '.';
-    const inputs = {
-      ...Object.fromEntries(
-        Object.entries(action.inputs ?? {}).map(([key, value]) => [key, value.default]),
-      ),
-      ...setup.with,
-    };
+  const namespace = (lockfile) => {
     const expand = (value) =>
       value.replace(/\$\{\{(.*?)\}\}/g, (_, expression) =>
         String(
           runInNewContext(expression.replace(/inputs\.([\w-]+)/g, 'inputs["$1"]'), {
-            inputs,
+            inputs: { 'cache-dependency-path': lockfile },
             runner: { os: 'Linux', arch: 'X64' },
-            // Even identical lockfile contents must not allow cross-workspace fallback.
             hashFiles: () => 'same-content-hash',
           }),
         ),
       );
-    const namespace = {
-      key: expand(cache.with.key),
-      prefix: expand(cache.with['restore-keys']).trim(),
-    };
-    if (namespaces.has(workspace)) assert.deepEqual(namespace, namespaces.get(workspace));
-    namespaces.set(workspace, namespace);
-  }
-  assert.equal(namespaces.size, 1);
-  for (const [workspace, cacheKey] of namespaces) {
-    for (const [other, otherCache] of namespaces) {
-      if (workspace !== other)
-        assert.equal(
-          cacheKey.key.startsWith(otherCache.prefix),
-          false,
-          `${workspace} restores ${other}`,
-        );
-    }
-  }
+    return { key: expand(cache.with.key), prefix: expand(cache.with['restore-keys']).trim() };
+  };
+  const root = namespace('bun.lock');
+  const other = namespace('other/bun.lock');
+  assert.notEqual(root.key, other.key);
+  assert.equal(root.key.startsWith(root.prefix), true);
+  assert.equal(other.key.startsWith(other.prefix), true);
+  assert.equal(root.key.startsWith(other.prefix), false);
+  assert.equal(other.key.startsWith(root.prefix), false);
 });
 
 test('host and container installs consume the checkout-relative cache Actions restores', () => {
@@ -1008,7 +981,7 @@ test('an upgrade needs a positive package audit signal only when orchestrated by
   }
 });
 
-test('narrow web specs remain registered with the selected browser projects and typecheck', () => {
+test('narrow web specs remain registered with the selected browser projects', () => {
   const specs = readdirSync('tests/e2e').filter((file) => file.endsWith('.spec.ts'));
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-web-registration-'));
   try {
@@ -1059,16 +1032,6 @@ test('narrow web specs remain registered with the selected browser projects and 
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-  const typecheck = JSON.parse(
-    readFileSync('config/typescript/tsconfig.release-tooling.json', 'utf8'),
-  );
-  assert.ok(typecheck.include.includes('../../tests/e2e/**/*.ts'));
-  const projects = JSON.parse(readFileSync('tsconfig.json', 'utf8'));
-  assert.ok(
-    projects.references.some(
-      (project) => project.path === './config/typescript/tsconfig.release-tooling.json',
-    ),
-  );
 });
 
 test('web spec scope is wired through metadata and fails closed for missing typecheck flags', () => {

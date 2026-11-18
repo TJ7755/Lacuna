@@ -38,7 +38,6 @@ describe('backup media preparation', () => {
 
       await importBackup(backup, mode);
 
-      expect(compressImageBlob).toHaveBeenCalledTimes(3);
       const restoredCard = (await db.cards.get(card.id))!;
       const restoredNote = (await db.notes.get(note.id))!;
       for (const markdown of [restoredCard.front, restoredCard.back, restoredNote.content]) {

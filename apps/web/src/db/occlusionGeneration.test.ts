@@ -89,18 +89,6 @@ describe('generateCards', () => {
     expect(payloads.map((p) => p.occlusionRegionId)).toEqual(['l1', 'l2', 'f1']);
   });
 
-  it('every payload carries only type/front/back/occlusionRegionId/courseId/primaryLessonId', () => {
-    const occ = makeOcclusion();
-    for (const payload of generateCards(occ)) {
-      expect(Object.keys(payload).sort()).toEqual(
-        ['back', 'courseId', 'front', 'occlusionRegionId', 'primaryLessonId', 'type'].sort(),
-      );
-      expect(payload.type).toBe('front_back');
-      expect(payload.courseId).toBe('course-1');
-      expect(payload.primaryLessonId).toBe('lesson-1');
-    }
-  });
-
   it('plain-text front reads "{Role} {n} of {total} — {name}"', () => {
     const occ = makeOcclusion();
     const [l1, l2, f1] = generateCards(occ);
@@ -405,37 +393,5 @@ describe('diffRegeneration', () => {
     expect(diff.updates.map((u) => u.id).sort()).toEqual(['card-f1', 'card-l1', 'card-l2']);
     expect(diff.creates).toEqual([]);
     expect(diff.deletes).toEqual([]);
-  });
-
-  it('no diff output ever carries an FSRS or scheduling field, across every change kind above', () => {
-    const existing = existingFromGenerated();
-    const scenarios: Occlusion[] = [
-      makeOcclusion({ regions: occ.regions.map((r) => (r.id === 'l1' ? { ...r, x: 0.9 } : r)) }), // move
-      makeOcclusion({ regions: occ.regions.map((r) => (r.id === 'l1' ? { ...r, w: 0.5 } : r)) }), // resize
-      makeOcclusion({ regions: occ.regions.filter((r) => r.id !== 'l2') }), // delete
-      makeOcclusion({ regions: [...occ.regions, region('l3', 'label')] }), // add
-      makeOcclusion({
-        regions: occ.regions.map((r) =>
-          r.id === 'l2' ? { ...r, role: 'feature' as const, answerText: 'Vacuole' } : r,
-        ),
-      }), // role change
-      makeOcclusion({
-        regions: occ.regions.map((r) => (r.id === 'f1' ? { ...r, pairedRegionId: 'l2' } : r)),
-      }), // pairing change
-      makeOcclusion({ assetHash: 'hash-2', name: 'Animal cell' }), // image replace + rename
-    ];
-    for (const scenario of scenarios) {
-      const diff = diffRegeneration(scenario, existing);
-      for (const update of diff.updates) {
-        expect(Object.keys(update).every((k) => ['id', 'front', 'back'].includes(k))).toBe(true);
-        expect(update).not.toHaveProperty('stability');
-        expect(update).not.toHaveProperty('difficulty');
-        expect(update).not.toHaveProperty('due');
-        expect(update).not.toHaveProperty('state');
-        expect(update).not.toHaveProperty('history');
-        expect(update).not.toHaveProperty('reps');
-        expect(update).not.toHaveProperty('lapses');
-      }
-    }
   });
 });

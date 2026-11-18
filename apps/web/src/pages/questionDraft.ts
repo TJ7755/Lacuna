@@ -38,7 +38,7 @@ const DEFAULT_GENERATOR_CONFIG: Record<string, string | number | boolean> = {
   allowRepeatedRoots: false,
 };
 
-export const EMPTY_QUESTION_AUTHORING_STATE: QuestionAuthoringState = {
+const EMPTY_QUESTION_AUTHORING_STATE: QuestionAuthoringState = {
   kind: 'fixed',
   name: '',
   newConceptName: '',
@@ -71,7 +71,7 @@ export function questionDraftKey(courseId: string, questionId = 'new'): string {
   return draftKey(`question:${courseId}`, questionId);
 }
 
-export function createQuestionDraft(
+function createQuestionDraft(
   state: QuestionAuthoringState,
   timestamp = Date.now(),
 ): QuestionDraftData {

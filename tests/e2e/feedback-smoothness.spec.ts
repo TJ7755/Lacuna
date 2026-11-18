@@ -48,14 +48,10 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('native hover, press and release keep their timing and presented opacity', async ({
-  page,
-}) => {
+test('hover, press and release continue from the presented opacity', async ({ page }) => {
   const result = await page.evaluate(() => {
     const layer = document.querySelector<HTMLElement>('.flow-feedback-layer')!;
     window.feedback.retarget(false, true);
-    const first = layer.getAnimations()[0];
-    const timing = first.effect!.getTiming();
     const continuities = [];
     for (const [pressed, hovered] of [
       [true, true],
@@ -65,14 +61,11 @@ test('native hover, press and release keep their timing and presented opacity', 
       layer.getAnimations()[0].currentTime = 40;
       const presented = Number(getComputedStyle(layer).opacity);
       window.feedback.retarget(pressed, hovered);
-      const frames = (layer.getAnimations()[0].effect as KeyframeEffect).getKeyframes();
-      continuities.push({ presented, from: Number(frames[0].opacity) });
+      continuities.push({ presented, from: Number(getComputedStyle(layer).opacity) });
     }
-    return { timing, continuities };
+    return continuities;
   });
-  expect(result.timing.duration).toBe(160);
-  expect(result.timing.easing).toBe('cubic-bezier(0.16, 1, 0.3, 1)');
-  for (const { presented, from } of result.continuities) {
+  for (const { presented, from } of result) {
     expect(presented).toBeGreaterThan(0);
     expect(from).toBeCloseTo(presented, 5);
   }

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { db } from '../db/schema';
 import { createCourse, createCourseCard } from '../db/repository';
 import { dashboardForecasts } from './dashboardForecasts';
-import { calculateForecastHistories, type ForecastHistoryInput } from './forecastHistoryData';
+import type { ForecastHistoryInput } from './forecastHistoryData';
 import { calculateForecastHistoriesOffThread } from './forecastHistoryWorker';
 
 class FakeWorker {
@@ -62,7 +62,6 @@ it('returns worker points and terminates without reading histories on the render
 it.each(['unavailable', 'construction', 'post', 'error', 'messageerror', 'reply'] as const)(
   'uses the real calculation when worker %s fails',
   async (failure) => {
-    const expected = await calculateForecastHistories(input);
     if (failure === 'unavailable') vi.stubGlobal('Worker', undefined);
     FakeWorker.failConstruction = failure === 'construction';
     FakeWorker.failPost = failure === 'post';
@@ -72,8 +71,13 @@ it.each(['unavailable', 'construction', 'post', 'error', 'messageerror', 'reply'
     if (failure === 'messageerror') worker.onmessageerror!();
     if (failure === 'reply')
       worker.onmessage!({ data: { error: 'Failed calculation' } } as MessageEvent);
-    await expect(pending).resolves.toEqual(expected);
-    expect(Object.values(expected)[0]).toHaveLength(40);
+    const result = await pending;
+    expect(Object.keys(result)).toEqual([input.courses[0].id]);
+    const points = result[input.courses[0].id];
+    expect(points).toHaveLength(40);
+    expect(points[0]).toEqual({ at: input.from, recall: 0 });
+    expect(points.at(-1)).toEqual({ at: input.now, recall: 0 });
+    expect(points.every(({ recall }) => recall === 0)).toBe(true);
     if (worker) expect(worker.terminate).toHaveBeenCalledOnce();
   },
 );

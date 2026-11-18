@@ -6,7 +6,7 @@ const routeAssetBudgets: Record<string, { javascriptBytes: number; cssBytes: num
 };
 
 /** Initial timing ceilings; compare retained reports before tightening them. */
-export const elapsedBudgetsMs: Record<string, number> = {
+const elapsedBudgetsMs: Record<string, number> = {
   'dashboard-load': 8_000,
   'global-search': 2_000,
   'course-open': 3_000,

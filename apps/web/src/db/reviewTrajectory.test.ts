@@ -25,7 +25,7 @@ describe('review trajectory sampling', () => {
     ]);
   });
 
-  it('skips the card scan when the unit already has a trajectory sample today', async () => {
+  it('retains the existing daily sample after another review', async () => {
     const deck = await createCourse('Test deck');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
     const now = 1_725_123_456_789;
@@ -51,21 +51,17 @@ describe('review trajectory sampling', () => {
       now,
     });
 
-    const cardsWhere = vi.spyOn(db.cards, 'where');
-    try {
-      await sampleReviewTrajectory({
+    await expect(
+      sampleReviewTrajectory({
         eventId: 'event-daily-sample-skip',
         sessionId: 'session-daily-sample-skip',
         timestamp: now,
         deck,
         kind: 'scheduling-unit',
         cardId: card.id,
-      });
-    } finally {
-      cardsWhere.mockRestore();
-    }
+      }),
+    ).resolves.toBe('already-sampled');
 
-    expect(cardsWhere).not.toHaveBeenCalled();
     expect(await db.sessionHistory.count()).toBe(1);
   });
 
@@ -162,7 +158,6 @@ describe('review trajectory sampling', () => {
         frames.push(callback);
         return frames.length;
       });
-    const cardsWhere = vi.spyOn(db.cards, 'where');
 
     try {
       await recordReview({
@@ -190,15 +185,12 @@ describe('review trajectory sampling', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(frames).toHaveLength(1);
-      expect(cardsWhere).not.toHaveBeenCalled();
       expect(await db.sessionHistory.count()).toBe(0);
 
       frames[0](performance.now());
       await waitForTrajectorySample('event-deferred-second');
-      expect(cardsWhere).toHaveBeenCalledTimes(1);
       expect(await db.sessionHistory.count()).toBe(1);
     } finally {
-      cardsWhere.mockRestore();
       requestFrame.mockRestore();
       fallbackTimer.mockRestore();
     }

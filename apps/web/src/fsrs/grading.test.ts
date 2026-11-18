@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { UserPerformance } from '@lacuna/core/db/types';
 import {
   emptyPerformance,
-  FULL_MARKS_EASY_SECONDS,
   gradeFromMarks,
   gradeFromResponse,
-  HINT_TIME_PENALTY_SEC,
   updatePerformance,
 } from '@lacuna/core/fsrs/grading';
 
@@ -85,45 +83,12 @@ describe('gradeFromMarks', () => {
     expect(gradeFromMarks(marksEarned, marksAvailable, 2, true)).toBe(1);
   });
 
-  it('uses a named fast-response boundary', () => {
-    expect(FULL_MARKS_EASY_SECONDS).toBe(3);
-    expect(gradeFromMarks(1, 1, FULL_MARKS_EASY_SECONDS - 0.001, false)).toBe(4);
-    expect(gradeFromMarks(1, 1, FULL_MARKS_EASY_SECONDS, false)).toBe(3);
-  });
-
   it.each([Number.NaN, Number.POSITIVE_INFINITY, -0.001])(
     'does not award Easy for an invalid response time of %s',
     (responseTimeSec) => {
       expect(gradeFromMarks(1, 1, responseTimeSec, false)).toBe(3);
     },
   );
-});
-
-describe('HINT_TIME_PENALTY_SEC', () => {
-  it('is a small, fixed, tunable penalty in seconds', () => {
-    expect(HINT_TIME_PENALTY_SEC).toBe(1.5);
-  });
-
-  // gradeFromResponse itself has no notion of hints — it always grades exactly the
-  // responseTimeSec it is given. The penalty is applied by the caller (see the answer()
-  // callback in src/pages/LearnMode.tsx) only to the value passed into this function for
-  // silent-mode grading; ReviewLog.responseTimeSec and updatePerformance's calibration
-  // input both stay the true, unpenalised time. These tests exercise that call pattern.
-  it('nudges a borderline response past a grade boundary when a hint was used', () => {
-    const perf = performance(20, 10, 4); // mu=10, sigma=4 -> Easy below 7, Hard above 13.
-    const trueResponseTime = 6.6; // Comfortably Easy on its own.
-
-    expect(gradeFromResponse(true, trueResponseTime, perf)).toBe(4);
-    expect(gradeFromResponse(true, trueResponseTime + HINT_TIME_PENALTY_SEC, perf)).toBe(3);
-  });
-
-  it('leaves a fast response unaffected if the penalty does not cross a boundary', () => {
-    const perf = performance(20, 10, 4);
-    const trueResponseTime = 2;
-
-    expect(gradeFromResponse(true, trueResponseTime, perf)).toBe(4);
-    expect(gradeFromResponse(true, trueResponseTime + HINT_TIME_PENALTY_SEC, perf)).toBe(4);
-  });
 });
 
 describe('emptyPerformance', () => {

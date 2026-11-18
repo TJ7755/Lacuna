@@ -111,10 +111,9 @@ describe('Electron MCP server lifecycle façade', () => {
     /* eslint-enable no-console */
   });
 
-  it('exports only the unchanged runtime interface and caches launch commands', async () => {
+  it('caches launch commands without exposing the AI command to the renderer', async () => {
     const server = await import('../../../desktop/mcp/server');
 
-    expect(Object.keys(server).sort()).toEqual(['getMcpStatus', 'startMcpServer', 'stopMcpServer']);
     const first = server.getMcpStatus();
     const second = server.getMcpStatus();
 
@@ -156,25 +155,16 @@ describe('Electron MCP server lifecycle façade', () => {
     expect(server.getMcpStatus().running).toBe(false);
   });
 
-  it.each(['broker'] as const)(
-    'cleans up a partial start when the %s transport fails',
-    async (failure) => {
-      const server = await import('../../../desktop/mcp/server');
-      if (failure === 'broker') {
-        mocks.brokerStart.mockRejectedValueOnce(new Error('broker failed'));
-      } else {
-        mocks.serveStdio.mockImplementationOnce(() => {
-          throw new Error('stdio failed');
-        });
-      }
+  it('cleans up a partial start when the broker transport fails', async () => {
+    const server = await import('../../../desktop/mcp/server');
+    mocks.brokerStart.mockRejectedValueOnce(new Error('broker failed'));
 
-      await expect(server.startMcpServer(() => null)).rejects.toThrow(`${failure} failed`);
+    await expect(server.startMcpServer(() => null)).rejects.toThrow('broker failed');
 
-      expect(mocks.bridgeStop).toHaveBeenCalledOnce();
-      expect(mocks.brokerStop).toHaveBeenCalledOnce();
-      expect(server.getMcpStatus().running).toBe(false);
-    },
-  );
+    expect(mocks.bridgeStop).toHaveBeenCalledOnce();
+    expect(mocks.brokerStop).toHaveBeenCalledOnce();
+    expect(server.getMcpStatus().running).toBe(false);
+  });
 
   it('shares one in-flight acquisition between concurrent starts', async () => {
     const server = await import('../../../desktop/mcp/server');

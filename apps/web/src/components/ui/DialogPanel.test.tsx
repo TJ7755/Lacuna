@@ -113,9 +113,6 @@ describe('DialogPanel', () => {
     const { trapRef } = renderDialog();
     const dialog = screen.getByRole('dialog', { name: 'Edit card' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    // The same flat hairline surface as page cards and Quick search.
-    expect(dialog).toHaveClass('rounded-3xl', 'bg-surface', 'card-surface', 'max-w-md');
-    expect(dialog.className).not.toMatch(/\bborder\b|\bbg-paper\b/);
     expect(trapRef.current).toContainElement(dialog);
     expect(screen.getByRole('heading', { name: 'Edit card' })).toBeInTheDocument();
     expect(screen.getByText('Changes apply everywhere.')).toBeInTheDocument();
@@ -137,7 +134,6 @@ describe('DialogPanel', () => {
     const dialog = screen.getByRole('dialog', { name: 'Pomodoro timer' });
     expect(trapRef.current).toBe(dialog);
     expect(dialog).not.toHaveAttribute('aria-modal');
-    expect(dialog).toHaveClass('absolute', 'rounded-3xl', 'card-surface');
     expect(document.querySelector('[data-modal-backdrop]')).toBeNull();
   });
 
@@ -146,7 +142,6 @@ describe('DialogPanel', () => {
     fireEvent.keyDown(screen.getByRole('textbox', { name: 'Front' }), { key: 'Escape' });
     expect(onKeyDown).toHaveBeenCalledOnce();
     const close = screen.getByRole('button', { name: 'Close editor' });
-    expect(close).toHaveClass('h-11', 'w-11');
     fireEvent.click(close);
     expect(onClose).toHaveBeenCalledOnce();
   });

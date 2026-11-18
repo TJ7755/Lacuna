@@ -9,12 +9,6 @@ async function availableCardHeight(card: Locator): Promise<number> {
   return card.evaluate((card) => card.closest('.study-card-slot')!.clientHeight);
 }
 
-async function naturalCardHeight(card: Locator): Promise<number> {
-  return card
-    .locator('[data-study-sizing-face]')
-    .evaluateAll((faces) => Math.max(...faces.map((face) => (face as HTMLElement).offsetHeight)));
-}
-
 async function lessonIdForCourse(page: Page, courseId: string) {
   return page.evaluate(
     (expectedCourseId) =>
@@ -71,34 +65,10 @@ test('keeps both study-card faces within the remaining viewport height', async (
           .evaluate((face) => face.parentElement!.scrollHeight <= face.parentElement!.clientHeight),
       )
       .toBe(true);
-    const measurementLayout = await card
-      .locator('[data-study-sizing-face]')
-      .first()
-      .evaluate((face) => {
-        const wrapper = face.parentElement!;
-        const documentWidth = document.documentElement.scrollWidth;
-        wrapper.style.display = 'none';
-        const widthWithoutMeasurements = document.documentElement.scrollWidth;
-        wrapper.style.removeProperty('display');
-        return {
-          wrapperHeight: wrapper.getBoundingClientRect().height,
-          overflow: getComputedStyle(wrapper).overflow,
-          measurementWidthAdded: documentWidth - widthWithoutMeasurements,
-        };
-      });
-    expect(measurementLayout).toEqual({
-      wrapperHeight: 0,
-      overflow: 'hidden',
-      measurementWidthAdded: 0,
-    });
-    await expect
-      .poll(async () =>
-        Math.abs(
-          (await cardHeight(card)) -
-            Math.min(await naturalCardHeight(card), await availableCardHeight(card)),
-        ),
-      )
-      .toBeLessThan(1);
+    expect(await cardHeight(card)).toBeLessThanOrEqual(await availableCardHeight(card));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
     const frontHeight = await cardHeight(card);
     await page

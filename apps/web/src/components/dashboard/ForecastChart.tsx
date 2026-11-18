@@ -1,5 +1,4 @@
 import { easeSeries, recallTicks, smoothPath, spreadLabels } from './forecastChartMaths';
-export { easeSeries, recallTicks, smoothPath, spreadLabels } from './forecastChartMaths';
 import { scaledSpring } from '../ui/motion';
 import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';

@@ -17,7 +17,6 @@ test('serves the comparison and sitemap as public documents', async ({ request, 
     'href',
     'https://getlacuna.app/compare/quizlet/',
   );
-  await expect(page.getByRole('navigation', { name: 'Prototype variants' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open Lacuna' }).first()).toHaveAttribute(
     'href',
     '/#/',

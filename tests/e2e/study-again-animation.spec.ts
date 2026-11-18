@@ -88,20 +88,30 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           let rim = false,
             fill = false;
           const start = performance.now();
-          const nativeOpacity = (selector: string) =>
-            [...document.querySelectorAll(selector)].some((node) =>
-              node
-                .getAnimations()
-                .some(
-                  (animation) =>
-                    animation.effect instanceof KeyframeEffect &&
-                    animation.effect.getKeyframes().some((frame) => frame.opacity !== undefined),
-                ),
-            );
+          const visibleFeedback = (selector: string) =>
+            [...document.querySelectorAll(selector)].some((node) => {
+              const bounds = node.getBoundingClientRect();
+              if (bounds.width <= 0 || bounds.height <= 0) return false;
+              for (let current: Element | null = node; current; current = current.parentElement) {
+                const style = getComputedStyle(current);
+                if (
+                  style.display === 'none' ||
+                  style.visibility === 'hidden' ||
+                  Number(style.opacity) === 0
+                )
+                  return false;
+              }
+              return (
+                bounds.right > 0 &&
+                bounds.left < innerWidth &&
+                bounds.bottom > 0 &&
+                bounds.top < innerHeight
+              );
+            });
           (button as HTMLButtonElement).click();
           const sample = () => {
-            rim ||= nativeOpacity('[data-study-rim]');
-            fill ||= nativeOpacity('[data-study-grade-fill]');
+            rim ||= visibleFeedback('[data-study-rim]');
+            fill ||= visibleFeedback('[data-study-grade-fill]');
             if (performance.now() - start < 600) requestAnimationFrame(sample);
             else resolve({ rim, fill });
           };

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { DesktopUpdateState } from './updateTypes';
 
@@ -44,5 +45,43 @@ it.each([42, {}, ['notes'], 'x'.repeat(64001)])(
   async (releaseNotes) => {
     bridge.invoke.mockResolvedValue({ ...state, releaseNotes });
     expect(await api.updater.getState()).toEqual(state);
+  },
+);
+
+const contract = readFileSync('apps/desktop/updaterContract.d.ts', 'utf8');
+const wireTypes = [...contract.matchAll(/export\s+type\s+(\w+)\s*=\s*([^;]+);/g)];
+for (const [field, type] of [
+  ['phase', 'UpdatePhase'],
+  ['manualReason', 'ManualUpdateReason'],
+]) {
+  const declaration = wireTypes.find(([, name]) => name === type);
+  if (!declaration) throw new Error(`Missing updater wire type: ${type}`);
+  const values = [...declaration[2].matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  it.each(values)(
+    `passes the declared updater ${field} %s through both status channels`,
+    async (value) => {
+      const update = { ...state, [field]: value };
+      bridge.invoke.mockResolvedValue(update);
+      expect(await api.updater.getState()).toEqual(update);
+      const changed = vi.fn();
+      const stop = api.updater.onStateChange(changed);
+      bridge.on.mock.calls[0][1]({}, update);
+      expect(changed).toHaveBeenCalledWith(update);
+      stop();
+    },
+  );
+}
+
+it.each([{ phase: 'unknown' }, { manualReason: 'unknown' }])(
+  'rejects unknown updater wire values: %j',
+  async (invalid) => {
+    const update = { ...state, ...invalid };
+    bridge.invoke.mockResolvedValue(update);
+    await expect(api.updater.getState()).rejects.toThrow('invalid status');
+    const changed = vi.fn();
+    const stop = api.updater.onStateChange(changed);
+    bridge.on.mock.calls[0][1]({}, update);
+    expect(changed).not.toHaveBeenCalled();
+    stop();
   },
 );

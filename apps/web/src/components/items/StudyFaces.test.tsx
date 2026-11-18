@@ -32,22 +32,28 @@ function card(payload: ItemPayload): Card {
 }
 
 describe('machine-marked study faces', () => {
-  it('animates a numeric answer into its checker result', () => {
+  it('checks a numeric answer before allowing the learner to continue', () => {
     const numericCard = card({
       v: 1,
       kind: 'numeric',
       answer: { kind: 'exact', value: '4' },
     }) as Card & { payload: Extract<ItemPayload, { kind: 'numeric' }> };
 
-    render(<NumericStudyFace card={numericCard} onAnswer={vi.fn()} />);
+    const onAnswer = vi.fn();
+    render(<NumericStudyFace card={numericCard} onAnswer={onAnswer} />);
     fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '4' } });
     fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
 
     const result = screen.getByLabelText('Checker result');
-    expect(result.parentElement).toHaveStyle({ opacity: '0' });
+    expect(result).toHaveTextContent('1 / 1 mark');
+    expect(onAnswer).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(onAnswer).toHaveBeenCalledWith(
+      expect.objectContaining({ correct: true, marksEarned: 1, marksAvailable: 1 }),
+    );
   });
 
-  it('animates checked working and lets the learner edit it before continuing', () => {
+  it('lets the learner edit checked working before continuing', () => {
     const workingCard = card({
       v: 1,
       kind: 'working',
@@ -60,7 +66,7 @@ describe('machine-marked study faces', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
 
     const result = screen.getByLabelText('Checker result');
-    expect(result.parentElement).toHaveStyle({ opacity: '0' });
+    expect(result).toHaveTextContent('0 / 1 marks');
     fireEvent.click(screen.getByRole('button', { name: 'Edit answer' }));
 
     expect(screen.getByLabelText('Your working')).toHaveValue('2 + 2 = 5');

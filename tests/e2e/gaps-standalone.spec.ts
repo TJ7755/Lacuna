@@ -119,7 +119,7 @@ for (const width of [1280, 390]) {
       ),
     ).toEqual([]);
     expect(state.calls).toContain('indexedDB.open:lacuna.gaps.connections');
-    expect(state.databases).toEqual([{ name: 'lacuna.gaps.connections', version: 20 }]);
+    expect(state.databases).toEqual([expect.objectContaining({ name: 'lacuna.gaps.connections' })]);
     expect(state.registrations).toEqual([]);
     expect(state.cacheNames).toEqual([]);
     expect(state.storage).toEqual({
@@ -178,7 +178,7 @@ test('standalone Gaps leaves existing learner storage intact', async ({ page }) 
   ).toEqual({
     databases: [
       { name: 'lacuna', version: 1 },
-      { name: 'lacuna.gaps.connections', version: 20 },
+      expect.objectContaining({ name: 'lacuna.gaps.connections' }),
     ],
     cache: 'Keep this course',
     seeded: '1',

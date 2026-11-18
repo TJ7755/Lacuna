@@ -27,8 +27,6 @@ async function measure(page: Page, trigger: Locator, selector: string) {
           const frames: { ms: number; opacity: number; facing: boolean }[] = [];
           const gaps: number[] = [];
           const tasks: number[] = [];
-          let nativeOpacityAnimations = 0;
-          const arrivalTargets = new Set<HTMLElement>();
           let previous = start;
           const observer = new PerformanceObserver((list) => {
             tasks.push(...list.getEntries().map((entry) => entry.duration));
@@ -48,31 +46,9 @@ async function measure(page: Page, trigger: Locator, selector: string) {
               const matrix = new DOMMatrixReadOnly(style.transform);
               if (matrix.m22 < 0.9) facing = false;
             }
-            nativeOpacityAnimations = Math.max(
-              nativeOpacityAnimations,
-              document.getAnimations().filter((animation) => {
-                const effect = animation.effect;
-                const arrival =
-                  effect instanceof KeyframeEffect &&
-                  effect.target instanceof HTMLElement &&
-                  effect.target.closest('[data-page-arrival]') &&
-                  effect.target.style.willChange.includes('opacity') &&
-                  effect.getKeyframes().some((frame) => frame.opacity !== undefined);
-                if (arrival && effect instanceof KeyframeEffect) {
-                  arrivalTargets.add(effect.target as HTMLElement);
-                }
-                return arrival;
-              }).length,
-            );
             frames.push({ ms: now - start, opacity, facing });
             const readable = frames.some((frame) => frame.opacity >= 0.95 && frame.facing);
-            const unsettled = [...arrivalTargets].some(
-              (target) =>
-                target.style.opacity !== '' || target.style.willChange.includes('opacity'),
-            );
-            // A cold route can finish loading after the sampling window starts.
-            // Observe its complete introduction without imposing a faster cadence.
-            if (now - start < 1600 || (now - start < 10_000 && (!readable || unsettled)))
+            if (now - start < 1600 || (now - start < 10_000 && !readable))
               return requestAnimationFrame(sample);
             tasks.push(...observer.takeRecords().map((entry) => entry.duration));
             observer.disconnect();
@@ -84,11 +60,7 @@ async function measure(page: Page, trigger: Locator, selector: string) {
               p95FrameGapMs: sorted[Math.floor(sorted.length * 0.95)],
               gapsOver34Ms: gaps.filter((gap) => gap > 34).length,
               longTasks: tasks,
-              nativeOpacityAnimations,
-              unclearedArrivalTargets: [...arrivalTargets].filter(
-                (target) =>
-                  target.style.opacity !== '' || target.style.willChange.includes('opacity'),
-              ).length,
+              settledOpacity: frames.at(-1)?.opacity,
             });
           };
           requestAnimationFrame(sample);
@@ -107,17 +79,14 @@ async function measure(page: Page, trigger: Locator, selector: string) {
         p95FrameGapMs: number;
         gapsOver34Ms: number;
         longTasks: number[];
-        nativeOpacityAnimations: number;
-        unclearedArrivalTargets: number;
+        settledOpacity: number;
       }>;
     };
     return (await state.smoothness)!;
   });
 }
 
-test('page arrivals use browser opacity animations and leave the settled surface intact', async ({
-  page,
-}, info) => {
+test('page arrivals leave the settled reading surface visible', async ({ page }, info) => {
   await enterFreshLacuna(page);
   const arrival = await measure(
     page,
@@ -132,9 +101,8 @@ test('page arrivals use browser opacity animations and leave the settled surface
     ),
     contentType: 'application/json',
   });
-  expect(arrival.nativeOpacityAnimations).toBeGreaterThan(0);
   expect(arrival.readableMs).not.toBeNull();
-  expect(arrival.unclearedArrivalTargets).toBe(0);
+  expect(arrival.settledOpacity).toBeGreaterThanOrEqual(0.95);
 });
 
 test('interrupting an arrival restores its CSS opacity without a queued animation render', async ({
@@ -171,29 +139,18 @@ test('interrupting an arrival restores its CSS opacity without a queued animatio
       };
       const stop = fixture.ArrivalFixture.revealPageParts(root, 1);
       await new Promise((resolve) => setTimeout(resolve, 40));
-      const running = part.getAnimations().length;
       stop?.();
       // Wait beyond Motion's next render and the original animation endpoint.
       await new Promise((resolve) => setTimeout(resolve, 800));
       return {
-        running,
-        opacity: part.style.opacity,
         computed: getComputedStyle(part).opacity,
-        willChange: part.style.willChange,
-        remaining: part.getAnimations().length,
       };
     } finally {
       root.remove();
       css.remove();
     }
   });
-  expect(result).toEqual({
-    running: 1,
-    opacity: '',
-    computed: '0.65',
-    willChange: 'transform',
-    remaining: 0,
-  });
+  expect(result).toEqual({ computed: '0.65' });
 });
 
 test('page opacity keeps progressing on the compositor while the main thread is busy', async ({

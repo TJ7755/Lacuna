@@ -33,7 +33,6 @@ describe('useInstallPrompt', () => {
     const { result } = renderHook(() => useInstallPrompt());
     expect(result.current.isInstallable).toBe(false);
     expect(result.current.isInstalled).toBe(false);
-    expect(typeof result.current.promptInstall).toBe('function');
     window.matchMedia = originalMatchMedia;
   });
 

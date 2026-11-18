@@ -3,7 +3,6 @@ import type { Card, Sequence, SequenceItem } from '@lacuna/core/db/types';
 import {
   advanceRecitation,
   initialRecitationState,
-  inRecitationOrder,
   shuffledSimpleQueue,
   isRecitationStateFor,
   presentedLines,
@@ -205,7 +204,7 @@ describe('recitation across speakers and chunks', () => {
   });
 });
 
-describe('inRecitationOrder', () => {
+describe('recitation queue ordering', () => {
   it('orders a large sequence without repeatedly scanning its full item list', () => {
     const size = 1_000;
     let itemIdReads = 0;
@@ -230,7 +229,7 @@ describe('inRecitationOrder', () => {
     const byCard = new Map(cards.map((card) => [card.id, poem]));
     const originalIds = cards.map((card) => card.id);
 
-    const ordered = inRecitationOrder(cards, byCard);
+    const ordered = shuffledSimpleQueue(cards, byCard);
 
     expect(ordered.map((card) => card.id)).toEqual(
       Array.from({ length: size }, (_, index) => `card-${index}`),
@@ -248,7 +247,13 @@ describe('inRecitationOrder', () => {
       ['b2', poem],
       ['c3', poem],
     ]);
-    expect(inRecitationOrder(cards, map).map((c) => c.id)).toEqual(['x', 'a1', 'b2', 'c3', 'y']);
+    expect(shuffledSimpleQueue(cards, map, () => 0.999).map((c) => c.id)).toEqual([
+      'x',
+      'a1',
+      'b2',
+      'c3',
+      'y',
+    ]);
   });
 });
 

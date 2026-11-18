@@ -210,7 +210,6 @@ describe('release configuration', () => {
 
   it('builds the Windows icon from the generated desktop artwork', () => {
     expect(builder.win.icon).toBe('apps/desktop/assets/icon.png');
-    expect(existsSync(resolve(root, 'apps/desktop/assets/icon.ico'))).toBe(false);
   });
 
   it('shows immediate branded feedback while the Windows portable build extracts', () => {

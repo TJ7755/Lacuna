@@ -30,7 +30,9 @@ async function importedCards(page: Page) {
   });
 }
 
-test('imports reversed cards with non-destructive Undo and stable bounds', async ({ page }) => {
+test('imports reversed cards with non-destructive backtracking and stable bounds', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openEmptyDashboard(page);
   const before = (await importedCards(page)).length;
@@ -71,7 +73,7 @@ test('imports reversed cards with non-destructive Undo and stable bounds', async
 
   const dialog = page.getByRole('dialog', { name: 'Import cards', exact: true });
 
-  // Import into this lesson as well: Undo must not remove the existing cards. Every way
+  // Import into this lesson as well: backtracking must not remove the existing cards. Every way
   // to add cards starts from New card, with importing behind its further types.
   await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('button', { name: 'More card types', exact: true }).click();

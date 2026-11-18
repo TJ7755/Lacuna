@@ -39,52 +39,38 @@ describe('buildPath — practice nodes', () => {
     expect(autoNodes[0].afterLessonId).toBe('l1');
   });
 
-  it('uses the tighter near-exam threshold once inside practiceUrgentWindowDays', () => {
-    const now = 0;
-    const dueCardCount = 50; // 50 x 8s = ~6.7 minutes: below far (12) but above near (3).
-    const farCourse = makeCourse({
-      id: 'c1',
-      unlockMode: 'open',
-      autoPractice: true,
-      practiceMaxGap: 10,
-      practiceThresholdMinutesNear: 3,
-      examDate: 100 * MS_PER_DAY, // far in the future -> far threshold applies
-    });
-    const nearCourse = makeCourse({
-      id: 'c1',
-      unlockMode: 'open',
-      autoPractice: true,
-      practiceMaxGap: 10,
-      practiceThresholdMinutesNear: 3,
-      examDate: 1 * MS_PER_DAY, // inside the default 7-day urgent window
-    });
-    const farNodes = buildPath(
-      farCourse,
-      lessons,
-      [],
-      new Map(),
-      [],
-      dueCardCount,
-      8,
-      now,
-      undefined,
-      farCourse.examDate,
-    );
-    const nearNodes = buildPath(
-      nearCourse,
-      lessons,
-      [],
-      new Map(),
-      [],
-      dueCardCount,
-      8,
-      now,
-      undefined,
-      nearCourse.examDate,
-    );
-    expect(farNodes.some((n) => n.nodeType === 'practice-auto')).toBe(false);
-    expect(nearNodes.some((n) => n.nodeType === 'practice-auto')).toBe(true);
-  });
+  it.each([
+    [30, false],
+    [1, true],
+    [7, true],
+    [7 + 1 / MS_PER_DAY, false],
+  ] as const)(
+    'uses the near-exam threshold through the inclusive urgency boundary (%s days)',
+    (daysAway, expected) => {
+      const course = makeCourse({
+        id: 'c1',
+        unlockMode: 'open',
+        autoPractice: true,
+        practiceMaxGap: 10,
+        practiceThresholdMinutesNear: 3,
+        examDate: daysAway * MS_PER_DAY,
+      });
+      // 50 cards at 8s is above the near threshold (3 minutes), below the far one (12).
+      const nodes = buildPath(
+        course,
+        lessons,
+        [],
+        new Map(),
+        [],
+        50,
+        8,
+        0,
+        undefined,
+        course.examDate,
+      );
+      expect(nodes.some((node) => node.nodeType === 'practice-auto')).toBe(expected);
+    },
+  );
 
   it('the practiceMaxGap backstop forces a practice node even with no due cards', () => {
     const now = 0;

@@ -181,6 +181,12 @@ describe('MarkdownView — diagrams and note links', () => {
     expect(container.querySelector('.lacuna-wikilink')).toBeNull();
   });
 
+  it('leaves empty note brackets as literal text', () => {
+    const { container } = render(<MarkdownView source="See [[]] today" />);
+    expect(container).toHaveTextContent('See [[]] today');
+    expect(container.querySelector('.lacuna-wikilink')).toBeNull();
+  });
+
   it('wraps tables for horizontal scrolling', () => {
     const { container } = render(
       <MarkdownView source={'| Date | Event |\n|---|---|\n| 1919 | Treaty |\n'} />,

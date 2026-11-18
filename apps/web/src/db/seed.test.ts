@@ -1,5 +1,4 @@
 import 'fake-indexeddb/auto';
-import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { revokeAllCachedUrls } from './assetCache';
 import { assetUrl, referencedAssetHashes, sha256Blob } from './assets';
@@ -7,11 +6,11 @@ import { db } from './schema';
 import { isFirstRun, settleFirstRun } from './seed';
 import type { Card, Course } from '@lacuna/core/db/types';
 
-/** A drawing exactly as seed.ts stores it, so the tests track any change to the bytes. */
-function seedSvg(name: string): string {
-  const source = readFileSync('apps/web/src/db/seed.ts', 'utf8').replace(/\r\n/g, '\n');
-  return new RegExp(`const ${name} = \`([\\s\\S]*?)\`;`).exec(source)![1];
-}
+import {
+  FORGETTING_CURVE_SVG,
+  LEGACY_FORGETTING_CURVE_SVG,
+  SAMPLE_IMAGE_SVG,
+} from './seed.testFixtures';
 
 async function svgAsset(svg: string, width: number, height: number) {
   const hash = await sha256Blob(new Blob([svg], { type: 'image/svg+xml' }));
@@ -77,7 +76,7 @@ describe('first run', () => {
   });
 
   it('keeps an existing Welcome course and its learner history', async () => {
-    const curve = await svgAsset(seedSvg('FORGETTING_CURVE_SVG'), 320, 160);
+    const curve = await svgAsset(FORGETTING_CURVE_SVG, 320, 160);
     await db.assets.put(curve.record);
     const card = await existingWelcomeCourse(`![Forgetting curve](${curve.url})`);
 
@@ -89,7 +88,7 @@ describe('first run', () => {
   });
 
   it('replaces legacy theme-dependent artwork in an existing Welcome course', async () => {
-    const legacy = await svgAsset(seedSvg('LEGACY_FORGETTING_CURVE_SVG'), 320, 160);
+    const legacy = await svgAsset(LEGACY_FORGETTING_CURVE_SVG, 320, 160);
     await db.assets.put(legacy.record);
     const card = await existingWelcomeCourse(`![Forgetting curve](${legacy.url})`);
 
@@ -104,8 +103,8 @@ describe('first run', () => {
   });
 
   it('repairs missing and Blob-backed artwork in an existing Welcome course', async () => {
-    const curve = await svgAsset(seedSvg('FORGETTING_CURVE_SVG'), 320, 160);
-    const sample = await svgAsset(seedSvg('SAMPLE_IMAGE_SVG'), 200, 120);
+    const curve = await svgAsset(FORGETTING_CURVE_SVG, 320, 160);
+    const sample = await svgAsset(SAMPLE_IMAGE_SVG, 200, 120);
     await existingWelcomeCourse(`![Forgetting curve](${curve.url})\n\n![Sample](${sample.url})`);
     await db.assets.put({ ...curve.record, blob: new Blob(['broken']) });
 

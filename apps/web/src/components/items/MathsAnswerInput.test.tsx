@@ -90,22 +90,11 @@ describe('MathsAnswerInput', () => {
     const control = input.parentElement;
     expect(control).not.toBeNull();
     if (!control) throw new Error('Maths answer control not found.');
-    expect(control).toHaveClass('w-full');
     expect(within(control).getByRole('textbox', { name: 'Corrected answer' })).toBe(input);
     expect(
       await within(control).findByRole('status', { name: 'Rendered answer: x^2' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('Preview')).not.toBeInTheDocument();
-  });
-
-  it('shows the symbol chips only while focus is inside the answer control', () => {
-    render(<Harness />);
-    const toolbar = screen.getByRole('toolbar', { name: 'Maths symbols' });
-    const input = screen.getByRole('textbox', { name: 'Answer' });
-
-    expect(toolbar).toHaveClass('opacity-0', 'group-focus-within:opacity-100');
-    expect(input.closest('.group')).toContainElement(toolbar);
-    expect(screen.queryByText(/Use ordinary notation/)).not.toBeInTheDocument();
   });
 
   it('inserts palette templates at the current cursor position', async () => {

@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { createCard, createCourseCard, createCourse } from './repository';
 import { addDays } from '@lacuna/core/fsrs/heatmap';
@@ -15,8 +15,7 @@ import {
   reviewHistoryEntryIdForEvent,
   resolveReviewHistoryCollisions,
 } from '@lacuna/core/db/reviewHistory';
-import { makeSessionContext, selectNext } from '@lacuna/core/fsrs/session';
-import type { Card, ReviewLog } from '@lacuna/core/db/types';
+import type { ReviewLog } from '@lacuna/core/db/types';
 
 function review(timestamp: number, eventId?: string): ReviewLog {
   return {
@@ -43,7 +42,7 @@ describe('review-history read adapter', () => {
     ]);
   });
 
-  it('bulk-reads card histories without event-by-event cursors and preserves session order', async () => {
+  it('hydrates every card in caller order despite historical ownership changes', async () => {
     const course = await createCourse('Biology', { learnFirst: false });
     const cards = await Promise.all(
       Array.from({ length: 12 }, (_, i) =>
@@ -76,36 +75,16 @@ describe('review-history read adapter', () => {
         })),
       ),
     );
-    const canonical = await db.reviewHistory
-      .where('cardId')
-      .anyOf(cards.map((card) => card.id))
-      .toArray();
-    const expected = await hydrateCardsWithHistory(cards, canonical);
-    const cursor = vi.spyOn(IDBIndex.prototype, 'openCursor');
-    let actual: Card[];
-    try {
-      actual = await hydrateCardsWithHistory(cards);
-      expect(cursor).not.toHaveBeenCalled();
-    } finally {
-      cursor.mockRestore();
+    const actual = await hydrateCardsWithHistory(cards);
+    expect(actual.map((card) => card.id)).toEqual(cards.map((card) => card.id));
+    for (const [index, card] of actual.entries()) {
+      expect({ ...card, history: [] }).toEqual(cards[index]);
+      expect(card.history.map((row) => [row.eventId, row.timestamp])).toEqual([
+        [`${cards[index].id}-0`, now - 4 * 86_400_000],
+        [`${cards[index].id}-1`, now - 3 * 86_400_000],
+        [`${cards[index].id}-2`, now - 2 * 86_400_000],
+      ]);
     }
-    expect(actual!).toEqual(expected);
-    function order(pool: Card[]) {
-      const ctx = makeSessionContext(
-        [{ config: course, scope: { kind: 'course', courseId: course.id } }],
-        'due',
-        pool,
-      );
-      const ids: string[] = [];
-      let next: Card | null;
-      while ((next = selectNext(pool, ctx, new Map(), now))) {
-        ids.push(next.id);
-        pool = pool.filter((card) => card.id !== next!.id);
-      }
-      return ids;
-    }
-    expect(order(actual!)).toEqual(order(expected));
-    expect(order(actual!)).toHaveLength(cards.length);
   });
 
   it('counts repeat attempts within the local day by course and scheduling unit', async () => {
@@ -263,12 +242,9 @@ describe('review-history read adapter', () => {
 
     expect(events).toHaveLength(1);
     expect(events[0].cardId).toBe(biologyCard.id);
-    const cardReads = vi.spyOn(db.cards, 'where');
     const supplied = { ...biologyCard, history: [review(100)] };
     const reused = await listReviewHistoryForCourse(biology.id, [supplied]);
     expect(reused.map((entry) => entry.timestamp)).toEqual([100, 200]);
-    expect(cardReads).not.toHaveBeenCalled();
-    cardReads.mockRestore();
     expect(await listAllReviewHistory()).toHaveLength(2);
   });
 

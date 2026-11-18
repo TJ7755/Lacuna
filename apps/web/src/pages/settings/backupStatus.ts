@@ -1,7 +1,7 @@
 import { formatRelativeTime } from '../../utils/datetime';
 
 /** A restore point older than this reads as stale. Lacuna normally saves one daily. */
-export const STALE_BACKUP_MS = 3 * 24 * 60 * 60 * 1000;
+const STALE_BACKUP_MS = 3 * 24 * 60 * 60 * 1000;
 
 export interface BackupStatus {
   label: string;

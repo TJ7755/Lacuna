@@ -47,11 +47,6 @@ describe('page arrivals', () => {
     ).toBe(true);
     expect(first.part.style.opacity).toBe('0');
     expect(second.part.style.opacity).toBe('0');
-    expect(animate).toHaveBeenCalledWith(
-      first.part,
-      { opacity: [0, expect.any(Number)] },
-      expect.objectContaining({ visualDuration: 0.18, delay: 0 }),
-    );
     stopFirst?.();
     stopSecond?.();
     expect(first.part.style.opacity).toBe('');

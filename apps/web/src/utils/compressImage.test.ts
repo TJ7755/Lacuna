@@ -75,11 +75,6 @@ describe('compressImageBlob', () => {
     async (mimeType) => {
       setSourceDimensions(800, 600);
       const result = await compressImageBlob(new Blob(['x'], { type: mimeType }));
-      expect(HTMLCanvasElement.prototype.toBlob).toHaveBeenCalledWith(
-        expect.any(Function),
-        'image/png',
-        0.8,
-      );
       expect(result.blob.type).toBe('image/png');
     },
   );

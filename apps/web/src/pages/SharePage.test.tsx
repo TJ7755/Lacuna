@@ -12,31 +12,35 @@ import {
 import { expectAppDestination } from '../../../../tests/helpers/expectAppDestination';
 import { describe, expect, it } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
-import { defaultShareCourse, SharePage } from './SharePage';
+import { SharePage } from './SharePage';
 
 describe('SharePage', () => {
-  describe('defaultShareCourse', () => {
-    const archived = { ...mockCourse, id: 'archived', archived: true };
-    const active = { ...mockCourse, id: 'active' };
-    const shared = linked('a'.repeat(32), 1);
+  describe('initial course selection', () => {
+    const archived = { ...mockCourse, id: 'archived', name: 'Archived course', archived: true };
+    const active = { ...mockCourse, id: 'active', name: 'Active course' };
+    const shared = { ...linked('a'.repeat(32), 1), name: 'Shared course' };
+    const archivedShared = {
+      ...shared,
+      id: 'archived-shared',
+      name: 'Archived shared',
+      archived: true,
+    };
 
-    it('prefers the requested course, then one already shared, then the first active one', () => {
-      expect(defaultShareCourse([archived, active, shared], 'active')?.id).toBe('active');
-      expect(defaultShareCourse([archived, active, shared], null)?.id).toBe(shared.id);
-      expect(defaultShareCourse([archived, active], 'missing')?.id).toBe('active');
-      expect(defaultShareCourse([archived], null)?.id).toBe('archived');
-      expect(defaultShareCourse([], null)).toBeUndefined();
-    });
-
-    it('prefers active courses over archived share links unless an archived course is requested', () => {
-      const archivedShared = { ...shared, id: 'archived-shared', archived: true };
-      expect(defaultShareCourse([archivedShared, active], null)?.id).toBe(active.id);
-      expect(defaultShareCourse([archivedShared, shared], null)?.id).toBe(shared.id);
-      expect(defaultShareCourse([archivedShared, active], archivedShared.id)?.id).toBe(
-        archivedShared.id,
+    it.each([
+      [[archived, active, shared], 'active', 'Active course'],
+      [[archived, active, shared], null, 'Shared course'],
+      [[archived, active], 'missing', 'Active course'],
+      [[archivedShared, active], null, 'Active course'],
+      [[archivedShared, shared], null, 'Shared course'],
+      [[archivedShared, active], archivedShared.id, 'Archived shared (Archived)'],
+      [[archived, archivedShared], null, 'Archived shared (Archived)'],
+    ] as const)('selects %s with request %s as %s', (courses, requested, expected) => {
+      given(...courses);
+      sharePageState.mockSearchParams = new URLSearchParams(
+        requested ? { courseId: requested } : {},
       );
-      expect(defaultShareCourse([archived, archivedShared], null)?.id).toBe(archivedShared.id);
+      render(<SharePage />);
+      expect(screen.getByRole('button', { name: 'Course to share' })).toHaveTextContent(expected);
     });
   });
 
@@ -73,19 +77,6 @@ describe('SharePage', () => {
       'Test Course (Archived)',
     );
     expect(screen.queryByRole('button', { name: 'Course to share' })).not.toBeInTheDocument();
-  });
-
-  it('uses the course frame and wrapping header without an inner hero column', () => {
-    given(mockCourse, { ...mockCourse, id: 'other', name: 'Other course' });
-    const { container } = render(<SharePage />);
-    const heading = screen.getByRole('heading', { name: 'Share', level: 1 });
-    expect(container.firstElementChild).toHaveClass(...PAGE_FRAME.split(' '));
-    expect(heading).toHaveClass(...PAGE_TITLE.split(' '));
-    expect(heading.parentElement).toHaveClass(...PAGE_HEADER.split(' '));
-    expect(heading.parentElement?.parentElement).toBe(container.firstElementChild);
-    expect(heading.parentElement).toContainElement(
-      screen.getByRole('button', { name: 'Course to share' }),
-    );
   });
 
   it('keeps sharing frames mounted through rapid linked, unlinked and empty course switches', async () => {

@@ -20,8 +20,8 @@ it('names and announces the teacher view', async () => {
   expect(await screen.findByRole('status')).toHaveTextContent('Gaps');
 });
 
-it('announces the removed share prototype as a missing page', async () => {
-  render(<RouteAnnouncement pathname="/share-prototype" />);
+it('announces an unknown route as a missing page', async () => {
+  render(<RouteAnnouncement pathname="/unknown-route" />);
   await waitFor(() => expect(document.title).toBe('Page not found – Lacuna'));
   expect(await screen.findByRole('status')).toHaveTextContent('Page not found');
 });

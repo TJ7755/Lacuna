@@ -8,15 +8,6 @@ import type {
   QuestionSetPracticeNode,
 } from '@lacuna/core/db/types';
 
-/** The set of node types this build knows how to render. */
-export const KNOWN_NODE_TYPES = [
-  'lesson',
-  'checkpoint',
-  'practice-auto',
-  'practice-manual',
-  'practice-question-set',
-] as const;
-
 /** Display state of a lesson node on the path. */
 export type LessonStatus = 'completed' | 'available' | 'locked';
 

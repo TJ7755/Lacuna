@@ -1,51 +1,44 @@
-import { describe, expect, it } from 'vitest';
-import {
-  createQuestionDraft,
-  EMPTY_QUESTION_AUTHORING_STATE,
-  questionDraftKey,
-} from './questionDraft';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { newQuestionState, questionDraftKey, useQuestionDraft } from './questionDraft';
 
-describe('Question draft state', () => {
-  it('preserves invalid raw working source and fixtures', () => {
-    const draft = createQuestionDraft(
-      {
-        ...EMPTY_QUESTION_AUTHORING_STATE,
-        kind: 'fixed',
-        answerKind: 'working',
-        name: 'Algebraic proof',
-        workingSource: '[this is not valid mark-scheme source',
-        workingFixtures: [{ id: 'fixture-1', studentAnswer: ['x = 2'], expectedMarks: 1 }],
+vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: vi.fn() }) }));
+
+afterEach(() => {
+  vi.useRealTimers();
+  localStorage.clear();
+});
+
+describe('Question draft persistence', () => {
+  it.each([
+    {
+      answerKind: 'working' as const,
+      workingSource: '[this is not valid mark-scheme source',
+      workingFixtures: [{ id: 'fixture-1', studentAnswer: ['x = 2'], expectedMarks: 1 }],
+    },
+    {
+      kind: 'generated' as const,
+      generatorConfig: {
+        minimumRootMagnitude: 2,
+        maximumRootMagnitude: 9,
+        allowRepeatedRoots: true,
       },
-      123,
-    );
+    },
+  ])('restores unfinished authoring after autosaving and remounting: %j', async (patch) => {
+    vi.useFakeTimers();
+    const key = questionDraftKey('course-1');
+    const first = renderHook(() => useQuestionDraft(key));
+    act(() => first.result.current.initialise(newQuestionState('')));
+    act(() => first.result.current.update(patch));
+    await act(async () => vi.advanceTimersByTime(800));
+    first.unmount();
 
-    expect(draft.state.workingSource).toBe('[this is not valid mark-scheme source');
-    expect(draft.state.workingFixtures).toEqual([
-      { id: 'fixture-1', studentAnswer: ['x = 2'], expectedMarks: 1 },
-    ]);
-    expect(draft.timestamp).toBe(123);
-  });
-
-  it('preserves generated configuration independently from fixed fields', () => {
-    const draft = createQuestionDraft(
-      {
-        ...EMPTY_QUESTION_AUTHORING_STATE,
-        kind: 'generated',
-        generatorConfig: {
-          minimumRootMagnitude: 2,
-          maximumRootMagnitude: 9,
-          allowRepeatedRoots: true,
-        },
-      },
-      456,
-    );
-
-    expect(draft.state.kind).toBe('generated');
-    expect(draft.state.generatorConfig).toEqual({
-      minimumRootMagnitude: 2,
-      maximumRootMagnitude: 9,
-      allowRepeatedRoots: true,
-    });
+    const restored = renderHook(() => useQuestionDraft(key));
+    act(() => restored.result.current.initialise(newQuestionState('')));
+    expect(restored.result.current.draftPrompt).toBe(true);
+    act(() => restored.result.current.restoreDraft());
+    expect(restored.result.current.state).toMatchObject(patch);
+    expect(restored.result.current.dirty).toBe(true);
   });
 
   it('keys new and existing Questions separately per Course', () => {

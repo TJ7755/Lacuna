@@ -8,8 +8,7 @@ it('offers both study targets as radios and marks only the chosen one', () => {
   const exam = screen.getByRole('radio', { name: /Exam date/ });
   const steady = screen.getByRole('radio', { name: /Steady retention/ });
   expect(steady).toBeChecked();
-  expect(steady.closest('label')).toHaveClass('bg-accent-soft');
-  expect(exam.closest('label')).not.toHaveClass('bg-accent-soft');
+  expect(exam).not.toBeChecked();
   fireEvent.click(exam);
   expect(onChange).toHaveBeenCalledWith('exam');
 });

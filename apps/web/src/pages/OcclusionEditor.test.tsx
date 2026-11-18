@@ -256,17 +256,15 @@ describe('OcclusionEditor', () => {
   });
 
   it.each(['course', 'lesson', 'occlusion'] as const)(
-    'keeps the missing-%s state aligned and its Back target full-size',
+    'offers recovery from a missing %s',
     (missing) => {
       mockCourse = missing === 'course' ? null : course;
       mockLesson = missing === 'lesson' ? null : undefined;
       mockOcclusion = missing === 'occlusion' ? null : undefined;
-      const { container } =
-        missing === 'occlusion' ? renderEdit() : renderNew(missing === 'lesson');
+      if (missing === 'occlusion') renderEdit();
+      else renderNew(missing === 'lesson');
       expect(screen.getByText(`This ${missing} could not be found.`)).toBeInTheDocument();
-      expect(container.firstElementChild).toHaveClass('max-w-[1190px]', 'w-full');
       const back = screen.getByRole('link');
-      expect(back).toHaveClass('min-h-11');
       expectAppDestination(
         back,
         missing === 'course'
@@ -277,13 +275,11 @@ describe('OcclusionEditor', () => {
       );
     },
   );
-  it('aligns with course pages and offers one full-size destination-aware Back link', () => {
+  it('offers one destination-aware Back link', () => {
     mockCourse = course;
-    const { container } = renderNew();
-    expect(container.firstElementChild).toHaveClass('max-w-[1190px]', 'w-full');
+    renderNew();
     const back = screen.getByRole('link', { name: 'Back to Cards' });
     expectAppDestination(back, '/course/course-1/cards');
-    expect(back).toHaveClass('min-h-11');
     expect(screen.getAllByRole('link')).toHaveLength(1);
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
@@ -503,17 +499,6 @@ describe('OcclusionEditor', () => {
     await vi.waitFor(() =>
       expect(restoreOcclusion).toHaveBeenCalledWith({ occlusion: 'snapshot' }),
     );
-  });
-
-  it('stacks the canvas and region pane in a single column below 760px, never overflowing', async () => {
-    mockCourse = course;
-    const { container } = renderNew();
-    await uploadDiagram();
-
-    const split = container.querySelector('.grid.grid-cols-1');
-    expect(split).not.toBeNull();
-    expect(split?.className).toContain('min-[760px]:grid-cols-[minmax(0,1fr)_260px]');
-    expect(container.querySelector('.overflow-x-auto')).toBeNull();
   });
 });
 

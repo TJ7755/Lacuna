@@ -4,9 +4,7 @@ import { ShellCourseDataProvider } from './ShellCourseData';
 import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createCourse, createCourseCard, createLesson } from '../db/repository';
-import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { db } from '../db/schema';
-import { computeStudyStats } from '@lacuna/core/fsrs/stats';
 import { useCourseDashboardData, useSidebarData } from './useCourseData';
 
 beforeEach(async () => {
@@ -28,7 +26,7 @@ beforeEach(async () => {
 });
 
 describe('useCourseDashboardData', () => {
-  it('computes the complete StudyStats object from Course calibration', async () => {
+  it('uses course calibration for the dashboard and scheduling-unit calibration for the sidebar', async () => {
     const course = await createCourse('Biology');
     const card = await createCourseCard(course.id, 'front_back', 'Cell', 'Unit of life');
     const lesson = await createLesson(course.id, 'Introduction');
@@ -54,8 +52,6 @@ describe('useCourseDashboardData', () => {
       totalCorrectReviews: 5,
     });
 
-    const persistedCards = await hydrateCardsWithHistory(await db.cards.toArray());
-    const expected = computeStudyStats(persistedCards, new Map([[course.id, 30]]));
     const { result } = renderHook(
       () => ({ dashboard: useCourseDashboardData(), sidebar: useSidebarData() }),
       {
@@ -65,10 +61,9 @@ describe('useCourseDashboardData', () => {
       },
     );
 
-    await waitFor(() => expect(result.current.dashboard?.stats).toEqual(expected));
-    expect(result.current.sidebar?.stats).toEqual(
-      computeStudyStats(persistedCards, new Map([[card.schedulingUnitId!, 5]])),
-    );
+    await waitFor(() => expect(result.current.dashboard?.stats.forecast[1].minutes).toBe(0.5));
+    expect(result.current.dashboard?.stats).toMatchObject({ streak: 0, reviewedToday: 0 });
+    expect(result.current.sidebar?.stats.forecast[1].minutes).toBeCloseTo(5 / 60);
     expect(result.current.dashboard?.summaries[course.id].completedLessonCount).toBe(1);
     expect(result.current.sidebar?.summaries[course.id].completedLessonCount).toBe(0);
   });

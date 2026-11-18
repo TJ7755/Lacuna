@@ -400,17 +400,6 @@ describe('relay', () => {
     expect(put.status).toBe(404);
   });
 
-  it('rejects the removed /api prefix', async () => {
-    const ctx = await minted();
-    const response = await ctx.handle(
-      new Request('http://relay.test/api/channel', {
-        method: 'POST',
-        headers: { Origin: ORIGIN },
-      }),
-    );
-    expect(response.status).toBe(404);
-  });
-
   it('mints and reads through a rewritten /api URL', async () => {
     const ctx = await minted();
     const mintedOnRewrite = await ctx.handle(

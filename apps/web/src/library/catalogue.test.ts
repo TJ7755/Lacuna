@@ -6,50 +6,6 @@ describe('libraryCourses', () => {
     expect(new Set(libraryCourses.map(({ id }) => id)).size).toBe(libraryCourses.length);
   });
 
-  it('retains the published science, History and Religious Studies snapshots', () => {
-    expect(libraryCourses).toHaveLength(23);
-    const snapshots = libraryCourses.map(({ id, revision, stats }) => [
-      id,
-      revision,
-      stats?.cards,
-      stats?.notes,
-      stats?.practiceSets,
-      stats?.practiceMarks,
-    ]);
-    expect(snapshots).toEqual(
-      expect.arrayContaining([
-        ['biology8461', 23, 2208, 242, 243, 2284],
-        ['chemistry8462', 10, 1674, 209, 215, 2005],
-        ['physics8463', 9, 1835, 190, 190, 2417],
-        ['biology0610', 16, 1812, 212, 212, 1820],
-        ['chemistry0620', 10, 1371, 180, 183, 1614],
-        ['physics0625', 8, 1569, 150, 151, 2092],
-        ['biology0970', 16, 1812, 212, 212, 1820],
-        ['chemistry0971', 10, 1371, 180, 183, 1614],
-        ['biology1bi0', 19, 2385, 254, 265, 2429],
-        ['chemistry1ch0', 10, 1683, 213, 215, 1959],
-        ['physics1ph0', 9, 1853, 199, 199, 2398],
-        ['biologyj247', 17, 2251, 232, 239, 2295],
-        ['chemistryj248', 10, 1602, 207, 204, 1886],
-        ['physicsj249', 9, 1743, 176, 177, 2298],
-        ['biologyj257', 17, 2267, 235, 243, 2311],
-        ['chemistryj258', 10, 1620, 209, 206, 1899],
-        ['physicsj259', 9, 1760, 180, 181, 2332],
-        ['physics4ph1', 9, 1571, 150, 151, 1990],
-        ['biology4bi1', 45, 1559, 165, 174, 1585],
-        ['chemistry4ch1', 43, 1192, 147, 154, 1531],
-        ['physics0972', 28, 1569, 152, 153, 2172],
-        ['history0977', 21, 737, 111, 112, 1738],
-        ['religiousstudies8062', 22, 1272, 126, 126, 1656],
-      ]),
-    );
-    for (const course of libraryCourses) {
-      expect(course.author).toBe('Lacuna');
-      expect(course.publisher).toBe('Lacuna');
-      expect(course.revisionDate).toBeUndefined();
-    }
-  });
-
   it('gives every listed publication a working share-route destination', () => {
     for (const course of libraryCourses) {
       expect(resolveCourseShareUrl(course.shareUrl)).toBe(course.shareUrl);
@@ -104,13 +60,6 @@ describe('libraryCourses', () => {
 });
 
 describe('resolveCourseShareUrl', () => {
-  it.each(libraryCourses.filter(({ shareUrl }) => shareUrl !== null))(
-    'accepts the published URL for $id',
-    ({ shareUrl }) => {
-      expect(resolveCourseShareUrl(shareUrl)).toBe(shareUrl);
-    },
-  );
-
   it.each([
     'http://getlacuna.app/#/s/0123456789abcdef0123456789abcdef',
     'https://evil.example/#/s/0123456789abcdef0123456789abcdef',

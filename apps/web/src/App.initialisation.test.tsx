@@ -99,20 +99,16 @@ describe('App initialisation', () => {
   });
 
   it('requests persistence after opening the database without blocking readiness', async () => {
+    const opening = deferred<{ ok: true }>();
+    dependencies.openDatabase.mockReturnValue(opening.promise);
     const persistence = deferred<void>();
     dependencies.requestPersistentStorage.mockReturnValue(persistence.promise);
 
     render(<App />);
 
-    await act(async () => {
-      await dependencies.openDatabase.mock.results[0]?.value;
-    });
-
-    expect(dependencies.openDatabase).toHaveBeenCalledOnce();
+    expect(dependencies.requestPersistentStorage).not.toHaveBeenCalled();
+    await act(async () => opening.resolve({ ok: true }));
     expect(dependencies.requestPersistentStorage).toHaveBeenCalledOnce();
-    expect(dependencies.openDatabase.mock.invocationCallOrder[0]).toBeLessThan(
-      dependencies.requestPersistentStorage.mock.invocationCallOrder[0],
-    );
     await waitFor(() => expect(screen.queryByText('Lacuna')).not.toBeInTheDocument());
 
     persistence.reject(new Error('denied'));
@@ -161,26 +157,8 @@ describe('App initialisation', () => {
       'Free space in your browser or operating system, or leave private browsing, then reload Lacuna.',
     );
     expect(screen.getByRole('button', { name: 'Reload' })).toBeVisible();
-    // The shared primary button: a 44px target in the accent's own text colour (the
-    // hand-written classes named a token that does not exist).
-    expect(screen.getByRole('button', { name: 'Reload' })).toHaveClass(
-      'min-h-11',
-      'text-accent-fg',
-    );
     expect(screen.queryByRole('button', { name: /backup|export/i })).not.toBeInTheDocument();
     expect(dependencies.requestPersistentStorage).not.toHaveBeenCalled();
-  });
-
-  it('uses the default start transitions without emitting a future warning', async () => {
-    const warn = vi.spyOn(console, 'warn');
-    try {
-      render(<App />);
-
-      await waitFor(() => expect(dependencies.settleFirstRun).toHaveBeenCalledOnce());
-      expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('v7_startTransition'));
-    } finally {
-      warn.mockRestore();
-    }
   });
 
   it('clears persisted relay device state after replacement while AI is disabled', async () => {

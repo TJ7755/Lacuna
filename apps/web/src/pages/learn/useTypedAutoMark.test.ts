@@ -193,33 +193,41 @@ describe('useTypedAutoMark', () => {
     expect(onMarked).toHaveBeenCalledWith(false, provenance);
   });
 
-  it.each(['partial', 'imprecise'] as const)(
-    'passes %s Hard with provenance under Exact',
-    async (kind) => {
+  it.each([
+    ['partial', [true, true, false], 2],
+    ['partial', [true, false], undefined],
+    ['partial', [false, false, true], undefined],
+    ['partial', [true, true, null], undefined],
+    ['partial', [], undefined],
+    ['imprecise', [], 2],
+    ['wrong', [true, true, true], undefined],
+    ['blank', [], undefined],
+    ['same', [], undefined],
+    ['spelling', [], undefined],
+    [null, [], undefined],
+  ] as const)(
+    'grades %s feedback with parts %j as %s under Exact',
+    async (kind, coverage, grade) => {
       jev.marker = vi.fn().mockResolvedValue({
         outcome: 'incorrect',
         provenance,
         feedback: {
           kind,
-          parts: [
-            { start: 0, end: 1, covered: true },
-            { start: 1, end: 2, covered: true },
-            { start: 2, end: 3, covered: false },
-          ],
+          parts: coverage.map((covered, start) => ({ start, end: start + 1, covered })),
         },
       });
-      const { result, onMarked } = setup('Lyon', { answerStrictness: 'exact' });
+      const { onMarked } = setup('Lyon', { answerStrictness: 'exact' });
       await act(async () => {
         vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
       });
       act(() => {
         vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
       });
-      expect(result.current).toMatchObject({ state: 'marked', correct: false });
       act(() => {
         vi.advanceTimersByTime(5000);
       });
-      expect(onMarked).toHaveBeenCalledWith(false, provenance, 2);
+      if (grade === undefined) expect(onMarked).toHaveBeenCalledExactlyOnceWith(false, provenance);
+      else expect(onMarked).toHaveBeenCalledExactlyOnceWith(false, provenance, grade);
     },
   );
 

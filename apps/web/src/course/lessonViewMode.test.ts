@@ -1,31 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { canEditLessons, isLessonAuthoringMode, resolveLessonViewMode } from './lessonViewMode';
-import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import type { Course } from '@lacuna/core/db/types';
-
-// ---------------------------------------------------------------------------
-// Fixture helper (mirroring src/course/path.test.ts)
-// ---------------------------------------------------------------------------
-
-function makeCourse(overrides: Partial<Course> & Pick<Course, 'id'>): Course {
-  return {
-    name: 'Test course',
-    description: '',
-    createdAt: 0,
-    updatedAt: 0,
-    examDate: 7 * MS_PER_DAY,
-    fsrsVersion: FSRS_VERSION,
-    fsrsParameters: defaultFsrsParameters(),
-    examObjective: 'expectedMarks',
-    unlockMode: 'open',
-    autoPractice: false,
-    practiceThresholdMinutesFar: 12,
-    practiceThresholdMinutesNear: 6,
-    practiceUrgentWindowDays: 7,
-    practiceMaxGap: 3,
-    ...overrides,
-  };
-}
+import { makeCourse } from './path.testFixtures';
 
 describe('canEditLessons', () => {
   it('returns true for an ordinary course with no distributedCopy', () => {

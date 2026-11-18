@@ -142,7 +142,6 @@ it('grows the surface itself from the anchor dimensions without a pre-sized back
   const surface = screen.getByRole('dialog', { name: 'Edit checkpoint' });
   expect(surface).toHaveStyle({ left: '80px', top: '150px', width: '500px', height: '64px' });
   expect(surface.style.clipPath).toBe('');
-  expect(surface).toHaveClass('overflow-hidden', 'path-editor-shadow');
   expect(surface.querySelector('.path-editor-content')).toHaveStyle({ width: '520px' });
   await waitFor(() => expect(surface).toHaveStyle({ width: '520px', height: '260px' }));
   expect(

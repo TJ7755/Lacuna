@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkPerformanceReport, elapsedBudgetsMs } from './budgets';
+import { checkPerformanceReport } from './budgets';
 
 function evidence() {
   return {
@@ -13,7 +13,19 @@ function evidence() {
         counts: { cards: 10_000 },
         errors: [] as string[],
         samples: [
-          ...Object.keys(elapsedBudgetsMs).map((name) => ({
+          ...[
+            'dashboard-load',
+            'global-search',
+            'course-open',
+            'cards-open',
+            'cards-search',
+            'study-open',
+            'answer-reveal',
+            'review-next-card',
+            'backup-export',
+            'backup-preview',
+            'backup-replace',
+          ].map((name) => ({
             name,
             elapsedMs: 100,
             inputToReadableMs: 100,
@@ -72,6 +84,11 @@ describe('performance evidence gate', () => {
     }
     const route = report.runs[0].samples.find((sample) => sample.name === 'route-assets-learn')!;
     if ('javascriptBytes' in route) route.javascriptBytes = 4_000_000;
-    expect(checkPerformanceReport(report)).toHaveLength(4);
+    expect(checkPerformanceReport(report)).toEqual([
+      'course-open: 10000 ms exceeds 3000 ms',
+      'course-open: longest task 1200 ms exceeds 1000 ms',
+      'course-open: input-to-readable exceeds 1500 ms',
+      'route-assets-learn: asset budget exceeded or missing',
+    ]);
   });
 });

@@ -12,13 +12,16 @@ describe('SEQUENCE_PRESETS', () => {
     expect(withSpeakers).toEqual(['script']);
   });
 
-  it('poetry and speech share the same mechanics, differing only in name/description', () => {
-    const poetry = getPreset('poetry');
-    const speech = getPreset('speech');
-    expect(poetry.mode).toBe(speech.mode);
-    expect(poetry.usesSpeakers).toBe(speech.usesSpeakers);
-    expect(poetry.defaultCueWindow).toBe(speech.defaultCueWindow);
-    expect(poetry.name).not.toBe(speech.name);
+  it('uses speakerless line defaults and the appropriate chunk terminology', () => {
+    for (const id of ['poetry', 'speech'] as const) {
+      expect(getPreset(id)).toMatchObject({
+        mode: 'lines',
+        usesSpeakers: false,
+        defaultCueWindow: 2,
+      });
+    }
+    expect(getPreset('poetry').terminology.chunkLabel).toBe('Verse');
+    expect(getPreset('speech').terminology.chunkLabel).toBe('Section');
   });
 });
 

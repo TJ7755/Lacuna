@@ -148,20 +148,26 @@ test('a saved analytics choice lets the learner start while analytics is still d
   await serveHostedApp(context, baseURL);
   await context.addInitScript(() => localStorage.setItem('lacuna.usageAnalytics', '0'));
   const analyticsPath = `${SITE}/assets/HostedUsageAnalytics-*.js`;
-  const requested = Promise.withResolvers<void>();
-  const release = Promise.withResolvers<void>();
+  let requested!: () => void;
+  let release!: () => void;
+  const requestStarted = new Promise<void>((resolve) => {
+    requested = resolve;
+  });
+  const responseReleased = new Promise<void>((resolve) => {
+    release = resolve;
+  });
   await context.route(analyticsPath, async (route) => {
-    requested.resolve();
-    await release.promise;
+    requested();
+    await responseReleased;
     await route.fallback();
   });
 
   try {
     await page.goto(`${SITE}/#/start`, { waitUntil: 'domcontentloaded' });
-    await requested.promise;
+    await requestStarted;
     await page.getByRole('button', { name: 'Exit' }).click({ timeout: 5_000 });
     await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
   } finally {
-    release.resolve();
+    release();
   }
 });

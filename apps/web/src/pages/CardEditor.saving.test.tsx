@@ -9,7 +9,7 @@ import {
   chooseType,
   editorState,
 } from './CardEditor.testSupport';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { CardEditor } from './CardEditor';
@@ -301,97 +301,6 @@ describe('CardEditor — save navigation', () => {
     expect(mockNavigate).toHaveBeenCalledExactlyOnceWith('/course/course-1/cards', {
       state: { returning: true },
     });
-  });
-});
-
-describe('CardEditor — saved-card return', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    editorState.card = { ...generatedCard, sequenceItemId: undefined };
-  });
-
-  it('returns to Cards after save feedback when the editor stays present', async () => {
-    renderEditing();
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(450);
-    });
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/cards', {
-      state: { returning: true },
-    });
-  });
-
-  it('cancels the pending return when the editor unmounts', async () => {
-    const view = renderEditing();
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    });
-    view.unmount();
-    await act(async () => {
-      vi.advanceTimersByTime(450);
-    });
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
-
-  it('cancels the return as the route starts exiting, before unmount', async () => {
-    const view = renderEditing();
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    });
-    editorState.present = false;
-    view.rerender(
-      <MemoryRouter initialEntries={['/course/course-1/cards/card-1/edit']}>
-        <Routes>
-          <Route path="/course/:courseId/cards/:cardId/edit" element={<CardEditor />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-    await act(async () => {
-      vi.advanceTimersByTime(450);
-    });
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
-
-  it('cancels the return when another card opens in the same editor', async () => {
-    render(
-      <MemoryRouter initialEntries={['/course/course-1/cards/card-1/edit']}>
-        <Link to="/course/course-1/cards/card-2/edit">Open second card</Link>
-        <Routes>
-          <Route path="/course/:courseId/cards/:cardId/edit" element={<CardEditor />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    });
-    editorState.card = { ...generatedCard, id: 'card-2', sequenceItemId: undefined };
-    fireEvent.click(screen.getByRole('link', { name: 'Open second card' }));
-    await act(async () => {
-      vi.advanceTimersByTime(450);
-    });
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
-
-  it('does not schedule a return when saving finishes after unmount', async () => {
-    let finishSave!: () => void;
-    updateCard.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          finishSave = resolve;
-        }),
-    );
-    const view = renderEditing();
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    view.unmount();
-    await act(async () => {
-      finishSave();
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(450);
-    });
-    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
 

@@ -142,12 +142,6 @@ describe('LearnMode recitation', () => {
     await waitFor(() => expect(pips()).toEqual(['correct', 'current']));
     fireEvent.click(screen.getByRole('button', { name: /^recite$/i }));
     await waitFor(() => expect(pips()).toEqual(['correct', 'current']));
-    expect(document.querySelector('[data-session-card-status=correct]')).toHaveClass(
-      'border-accent',
-    );
-    expect(
-      document.querySelector('[data-session-card-status=correct]')?.firstElementChild,
-    ).toHaveClass('bg-positive');
     expect(screen.getByRole('progressbar', { name: 'Session progress' })).toHaveAttribute(
       'aria-valuenow',
       '50',

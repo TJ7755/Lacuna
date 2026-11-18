@@ -28,9 +28,6 @@ import { replacementLifecycle } from '../db/replacementLifecycle';
  * ciphertext can therefore be replayed by a relay operator; merge protection
  * keeps newer local records, but this cycle does not claim rollback protection.
  */
-export const SYNC_FRESHNESS_POLICY =
-  'authenticated-local-merge-without-relay-rollback-protection' as const;
-
 const DEFAULT_MAX_ATTEMPTS = 2;
 
 export interface SyncCycleOptions {

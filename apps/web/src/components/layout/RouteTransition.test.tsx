@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { beginStudyTransition, releaseStudyCover } from './LandingTransition';
-import { RouteTransition, routeTransitionKey, routeTransitionTiming } from './RouteTransition';
+import { RouteTransition } from './RouteTransition';
 import { BackgroundCalculationsEnabled } from '../../state/useData';
 
 function Page({ name, destination }: { name: string; destination: string }) {
@@ -65,31 +65,6 @@ beforeEach(() => {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   }));
-});
-
-describe('routeTransitionKey', () => {
-  it('keeps dashboard, settings and nested course pages in the persistent shell', () => {
-    expect(routeTransitionKey('/')).toBe('shell');
-    expect(routeTransitionKey('/settings')).toBe('shell');
-    expect(routeTransitionKey('/course/one/lesson/two')).toBe('shell');
-  });
-
-  it('gives public and focused study routes their own transition boundaries', () => {
-    expect(routeTransitionKey('/welcome')).toBe('welcome');
-    expect(routeTransitionKey('/download')).toBe('download');
-    expect(routeTransitionKey('/learn')).toBe('focus:/learn');
-    expect(routeTransitionKey('/course/one/study')).toBe('focus:/course/one/study');
-    expect(routeTransitionKey('/course/one/learn')).toBe('focus:/course/one/learn');
-    expect(routeTransitionKey('/lesson/two/learn')).toBe('focus:/lesson/two/learn');
-  });
-});
-
-describe('routeTransitionTiming', () => {
-  it('respects speed multipliers and disables duration for reduced motion', () => {
-    expect(routeTransitionTiming(1.4).duration).toBeCloseTo(0.252);
-    expect(routeTransitionTiming(0.6).duration).toBeCloseTo(0.108);
-    expect(routeTransitionTiming(0).duration).toBe(0);
-  });
 });
 
 describe('RouteTransition', () => {

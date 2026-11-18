@@ -116,11 +116,6 @@ it.each([
   },
 );
 
-it('ignores the retired typing setting', () => {
-  localStorage.setItem('lacuna.typingSetting', 'type');
-  expect(renderHook(() => useAnswerInput()[0]).result.current).toBe('course');
-});
-
 it.each([
   ['lacuna.startInFocusMode', useStartInFocusMode],
   ['lacuna.autoOptimise', useAutoOptimiseDefault],

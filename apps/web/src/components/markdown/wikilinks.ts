@@ -27,13 +27,13 @@ interface HastParent {
 /** Match `[[target]]` or `[[target|label]]`. Targets cannot contain `]` or `|`. */
 const WIKILINK_RE = /\[\[([^\]|]+?)(?:\|([^\]]+?))?\]\]/g;
 
-export interface WikilinkPart {
+interface WikilinkPart {
   target: string;
   label: string;
 }
 
-/** Split plain text into literal and wikilink parts. Pure helper for tests. */
-export function parseWikilinkText(value: string): Array<string | WikilinkPart> {
+/** Split plain text into literal and wikilink parts. */
+function parseWikilinkText(value: string): Array<string | WikilinkPart> {
   const parts: Array<string | WikilinkPart> = [];
   let last = 0;
   WIKILINK_RE.lastIndex = 0;

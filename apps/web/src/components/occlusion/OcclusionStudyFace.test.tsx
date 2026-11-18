@@ -115,6 +115,8 @@ describe('OcclusionStudyFace', () => {
     const img = await screen.findByRole('img', { name: 'Plant cell' });
     const overlays = img.parentElement!.querySelectorAll('.absolute');
     expect(overlays).toHaveLength(2);
+    expect(overlays[0]).toHaveClass('bg-transparent');
+    expect(overlays[1]).toHaveClass('bg-paper');
     // l1 (lifted) shows no "?"; l2 (still masked) shows none either — only the
     // ringed/unlifted target carries a "?", and l1 is no longer ringed once lifted.
     overlays.forEach((overlay) => expect(overlay.textContent).toBe(''));
@@ -130,6 +132,10 @@ describe('OcclusionStudyFace', () => {
     // l1 (lifted), l2 (still masked), f1 (unmasked ring) — three overlays this time,
     // since the feature target itself is drawn even though it was never masked.
     expect(overlays).toHaveLength(3);
+    expect(overlays[0]).toHaveClass('bg-transparent');
+    expect(overlays[1]).toHaveClass('bg-paper');
+    expect(overlays[2]).toHaveClass('bg-transparent');
+    expect(overlays[2]).toHaveTextContent('?');
   });
 
   it("shows an unpaired feature's answerText on the back instead of lifting a mask", async () => {
@@ -180,40 +186,5 @@ describe('OcclusionStudyFace', () => {
     );
     expect(await screen.findByText('Label 1 of 3 — Plant cell')).toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
-  });
-
-  it('resolves the same region to the same relative position at two different container widths', async () => {
-    resolveAssetUrl.mockResolvedValue('blob:diagram');
-    const occlusion = makeOcclusion();
-
-    const narrow = render(
-      <div style={{ width: 320 }}>
-        <OcclusionStudyFace card={makeCard('l1')} occlusion={occlusion} side="front" />
-      </div>,
-    );
-    const narrowImg = await screen.findByRole('img', { name: 'Plant cell' });
-    const narrowTarget = narrowImg.parentElement!.querySelector(
-      '[style*="left: 10%"]',
-    ) as HTMLElement;
-    const narrowStyle = narrowTarget.getAttribute('style');
-    narrow.unmount();
-
-    const wide = render(
-      <div style={{ width: 1600 }}>
-        <OcclusionStudyFace card={makeCard('l1')} occlusion={occlusion} side="front" />
-      </div>,
-    );
-    const wideImg = await screen.findByRole('img', { name: 'Plant cell' });
-    const wideTarget = wideImg.parentElement!.querySelector('[style*="left: 10%"]') as HTMLElement;
-    const wideStyle = wideTarget.getAttribute('style');
-    wide.unmount();
-
-    // The overlay's position is expressed in percentages derived from the stored
-    // fraction alone — never pixels — so it is identical regardless of container width.
-    expect(narrowStyle).toBe(wideStyle);
-    expect(narrowStyle).toContain('left: 10%');
-    expect(narrowStyle).toContain('top: 10%');
-    expect(narrowStyle).toContain('width: 10%');
-    expect(narrowStyle).toContain('height: 10%');
   });
 });

@@ -36,6 +36,9 @@ describe('ConfirmInline', () => {
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
     await act(async () => finish());
     expect(confirm).toBeEnabled();
+    fireEvent.click(confirm);
+    expect(onConfirm).toHaveBeenCalledTimes(2);
+    await act(async () => finish());
     fireEvent.keyDown(confirm, { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledOnce();
   });
@@ -54,21 +57,6 @@ describe('ConfirmInline', () => {
     rerender(<ConfirmInline message="Delete?" onConfirm={onConfirm} onCancel={onCancel} />);
     fireEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledOnce();
-  });
-
-  it('retains caller error handling and allows retry afterwards', async () => {
-    const report = vi.fn();
-    const onConfirm = vi.fn(async () => {
-      try {
-        await Promise.reject(new Error('Deletion failed'));
-      } catch (error) {
-        report(error);
-      }
-    });
-    render(<ConfirmInline message="Delete?" onConfirm={onConfirm} onCancel={vi.fn()} />);
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Yes' })));
-    expect(report).toHaveBeenCalledWith(new Error('Deletion failed'));
-    expect(screen.getByRole('button', { name: 'Yes' })).toBeEnabled();
   });
 
   it('preserves focus deliberately restored by its cancellation callback', () => {

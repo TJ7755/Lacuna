@@ -5,7 +5,7 @@ import type * as DbPortability from '../db/portability';
 import { reviewHistoryEntryId, type ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { BACKUP_VERSION } from '../db/portability';
-import { ManualMergeError, manualMerge, summariseMerge } from './manualMerge';
+import { ManualMergeError, manualMerge } from './manualMerge';
 
 const { takeAutoBackup, importBackup, exportDatabase, replace } = vi.hoisted(() => ({
   takeAutoBackup: vi.fn(),
@@ -30,6 +30,8 @@ vi.mock('../db/portability', async (importOriginal) => {
     exportDatabase,
   };
 });
+
+import * as questionFixtures from './mergeSnapshots.questions.testFixtures';
 
 const PARAMS = defaultFsrsParameters();
 
@@ -446,67 +448,28 @@ describe('manualMerge', () => {
 
     expect(summary.cards).toEqual({ kept: 1, added: 0, removed: 1 });
   });
-});
 
-describe('summariseMerge', () => {
-  it('reports every Question store separately', () => {
+  it('reports retained attempts and removed Question links separately after a merge', async () => {
     const local = backup({
-      version: 11,
-      concepts: [{ id: 'concept-1' } as NonNullable<BackupFile['concepts']>[number]],
-      questions: [{ id: 'question-1' } as NonNullable<BackupFile['questions']>[number]],
-      questionConcepts: [
-        { questionId: 'question-1' } as NonNullable<BackupFile['questionConcepts']>[number],
-      ],
-      questionAttempts: [
-        { id: 'attempt-1' } as NonNullable<BackupFile['questionAttempts']>[number],
-      ],
+      courses: [course('course-1')],
+      concepts: [questionFixtures.concept()],
+      questions: [questionFixtures.question()],
+      questionConcepts: [questionFixtures.links()],
+      questionAttempts: [questionFixtures.attempt()],
     });
-    const merged = backup({
-      version: 11,
-      concepts: [
-        { id: 'concept-1' } as NonNullable<BackupFile['concepts']>[number],
-        { id: 'concept-2' } as NonNullable<BackupFile['concepts']>[number],
-      ],
-      questions: [],
-      questionConcepts: [],
-      questionAttempts: [
-        { id: 'attempt-1' } as NonNullable<BackupFile['questionAttempts']>[number],
-        { id: 'attempt-2' } as NonNullable<BackupFile['questionAttempts']>[number],
-      ],
+    const remote = backup({
+      courses: [course('course-1')],
+      concepts: [questionFixtures.concept(), { ...questionFixtures.concept(), id: 'concept-2' }],
+      questionAttempts: [questionFixtures.attempt({ id: 'attempt-2' })],
+      tombstones: [{ table: 'questions', recordId: 'question-1', deletedAt: 99 }],
     });
+    takeAutoBackup.mockResolvedValue(local);
 
-    expect(summariseMerge(local, merged)).toMatchObject({
+    expect(await manualMerge(remote)).toMatchObject({
       concepts: { kept: 1, added: 1, removed: 0 },
       questions: { kept: 0, added: 0, removed: 1 },
       questionConcepts: { kept: 0, added: 0, removed: 1 },
       questionAttempts: { kept: 1, added: 1, removed: 0 },
-    });
-  });
-
-  it('counts kept, added and removed ids', () => {
-    const local = backup({
-      cards: [card('keep'), card('gone')],
-      courses: [course('course-1')],
-      lessons: [lesson('l1')],
-      reviewHistory: [reviewEvent('keep', 'event-1', 100)],
-    });
-    const merged = backup({
-      cards: [card('keep'), card('new')],
-      courses: [course('course-1'), course('course-2')],
-      lessons: [lesson('l1')],
-      reviewHistory: [reviewEvent('keep', 'event-1', 100), reviewEvent('new', 'event-2', 200)],
-    });
-
-    expect(summariseMerge(local, merged)).toEqual({
-      cards: { kept: 1, added: 1, removed: 1 },
-      courses: { kept: 1, added: 1, removed: 0 },
-      lessons: { kept: 1, added: 0, removed: 0 },
-      reviewEvents: { kept: 1, added: 1, removed: 0 },
-      concepts: { kept: 0, added: 0, removed: 0 },
-      questions: { kept: 0, added: 0, removed: 0 },
-      questionConcepts: { kept: 0, added: 0, removed: 0 },
-      questionAttempts: { kept: 0, added: 0, removed: 0 },
-      questionSets: { kept: 0, added: 0, removed: 0 },
     });
   });
 });

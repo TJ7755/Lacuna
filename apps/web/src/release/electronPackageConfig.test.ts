@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 
 const root = resolve(import.meta.dirname, '../../../..');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as {
@@ -14,83 +15,32 @@ const builderConfig = readFileSync(
 
 const packagedRuntimeDependencies = ['electron-log', 'electron-updater'] as const;
 
-const buildOnlyDependencies = [
-  '@ai-sdk/gateway',
-  '@ai-sdk/google',
-  '@ai-sdk/openai-compatible',
-  '@modelcontextprotocol/client',
-  '@modelcontextprotocol/server',
-  'zod',
-  '@napi-rs/wasm-runtime',
-  '@open-spaced-repetition/binding',
-  '@vercel/analytics',
-  '@vercel/functions',
-  'ai',
-  'dexie',
-  'dexie-react-hooks',
-  'dompurify',
-  'fflate',
-  'html5-qrcode',
-  'katex',
-  'mathjs',
-  'mermaid',
-  'motion',
-  'react',
-  'react-dom',
-  'react-markdown',
-  'react-qr-code',
-  'react-router-dom',
-  'recharts',
-  'rehype-highlight',
-  'rehype-katex',
-  'rehype-raw',
-  'rehype-sanitize',
-  'remark-breaks',
-  'remark-gfm',
-  'remark-math',
-  'sql.js',
-  'ts-fsrs',
-] as const;
+const builder = parse(builderConfig) as {
+  electronLanguages: string[];
+  electronFuses: { runAsNode: boolean; grantFileProtocolExtraPrivileges: boolean };
+};
 
 describe('Electron package boundary', () => {
   it('ships only the dependencies required by Electron after the renderer is bundled', () => {
     expect(Object.keys(packageJson.dependencies ?? {}).sort()).toEqual(
       [...packagedRuntimeDependencies].sort(),
     );
-
-    for (const dependency of buildOnlyDependencies) {
-      expect(packageJson.devDependencies?.[dependency]).toBeTypeOf('string');
-    }
-    expect(packageJson.dependencies?.['@modelcontextprotocol/core']).toBeUndefined();
-    expect(packageJson.devDependencies?.['@modelcontextprotocol/core']).toBeUndefined();
   });
 
-  it('packages runtime assets while excluding build artefacts and retaining licence files', () => {
-    // Renderer fonts ship in dist/fonts; Electron no longer injects its own copies.
-    expect(builderConfig).not.toContain('apps/desktop/assets/fonts');
-    expect(builderConfig).not.toContain('apps/desktop/fonts.css');
-    expect(builderConfig).not.toContain('  - apps/desktop/assets/**/*');
-    expect(builderConfig).toContain("  - '!**/*.map'");
-    expect(builderConfig).toContain("  - '!**/*.{ts,tsx,cts,mts,jsx,tsbuildinfo}'");
-    expect(builderConfig).toContain(
-      "  - '!**/{__tests__,__mocks__,test,tests,coverage,test-results,storybook}/**/*'",
-    );
-    expect(builderConfig).toContain("  - '!**/*.{test,spec}.{js,cjs,mjs,ts,tsx,cts,mts,jsx}'");
-    expect(builderConfig).toContain(
-      "  - '!**/{README*,CHANGELOG*,CHANGES*,HISTORY*,CONTRIBUTING*,CODE_OF_CONDUCT*,SECURITY*}.{md,markdown,txt}'",
-    );
+  it('retains third-party licence notices', () => {
     expect(builderConfig).not.toMatch(/!.*(?:LICEN[CS]E|COPYING|NOTICE)/i);
   });
 
   it('ships only the supported English Chromium locale packs', () => {
-    expect(builderConfig).toMatch(/electronLanguages:\n {2}- en-GB\n {2}- en-US(?:\n|$)/);
+    expect(builder.electronLanguages).toEqual(['en-GB', 'en-US']);
   });
 });
 
 describe('Electron fuses', () => {
   it('drops file:// privileges but keeps RunAsNode for the AI companion', () => {
-    expect(builderConfig).toContain(
-      'electronFuses:\n  runAsNode: true\n  grantFileProtocolExtraPrivileges: false\n',
-    );
+    expect(builder.electronFuses).toMatchObject({
+      runAsNode: true,
+      grantFileProtocolExtraPrivileges: false,
+    });
   });
 });

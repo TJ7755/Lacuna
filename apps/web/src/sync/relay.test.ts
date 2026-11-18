@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   EMPTY_GENERATION,
   HttpRelayProvider,
-  ManualRelayProvider,
   RelayConfigurationError,
   RelayHttpError,
   RelayProtocolError,
@@ -21,31 +20,6 @@ function provider(fetchImpl: typeof fetch) {
     fetchImpl,
   });
 }
-
-describe('ManualRelayProvider', () => {
-  it('delegates file-handoff operations without changing their bytes', async () => {
-    const adapter = {
-      pull: vi.fn().mockResolvedValue({ bytes: new Uint8Array([1]), generation: 'manual-1' }),
-      push: vi.fn().mockResolvedValue({ generation: 'manual-2' }),
-      purge: vi.fn().mockResolvedValue(undefined),
-    };
-    const relay = new ManualRelayProvider(adapter);
-    const bytes = new Uint8Array([2, 3]);
-
-    await expect(relay.pull('state')).resolves.toEqual({
-      bytes: new Uint8Array([1]),
-      generation: 'manual-1',
-    });
-    await expect(relay.push('state', bytes, EMPTY_GENERATION)).resolves.toEqual({
-      generation: 'manual-2',
-    });
-    await relay.purge();
-
-    expect(adapter.pull).toHaveBeenCalledWith('state');
-    expect(adapter.push).toHaveBeenCalledWith('state', bytes, EMPTY_GENERATION);
-    expect(adapter.purge).toHaveBeenCalledTimes(1);
-  });
-});
 
 describe('HttpRelayProvider', () => {
   it('pulls opaque bytes and returns the relay ETag as the generation', async () => {

@@ -132,32 +132,22 @@ describe('updateOcclusion', () => {
     const cards = await cardsForOcclusion(occlusion);
     const featureCard = cards.find((c) => c.occlusionRegionId === 'r2')!;
 
-    // Simulate real study progress: give the card a full FSRS history, not just scalars.
-    const reviewedState = {
-      state: 2 as const,
-      stability: 12.5,
-      stabilityFast: null,
-      difficulty: 4.2,
-      reps: 3,
-      lapses: 1,
-      due: 123456,
-      lastReviewed: 100000,
-      history: [
-        {
-          timestamp: 100000,
-          grade: 3 as const,
-          responseTimeSec: 2,
-          distracted: false,
-          stabilityBefore: null,
-          stabilityAfter: 12.5,
-          difficultyBefore: null,
-          difficultyAfter: 4.2,
-          retrievabilityAtReview: null,
-        },
-      ],
-    };
-    await db.cards.update(featureCard.id, reviewedState);
-    const before = await db.cards.get(featureCard.id);
+    await recordReview({
+      card: featureCard,
+      deck: course,
+      kind: 'course',
+      eventId: 'occlusion-edit-progress',
+      sessionId: 'occlusion-edit-progress',
+      sessionKind: 'lesson',
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      correct: true,
+    });
+    const before = (await db.cards.get(featureCard.id))!;
+    const historyBefore = await db.reviewHistory.where('cardId').equals(featureCard.id).toArray();
+    expect(historyBefore).toHaveLength(1);
+    expect(before.reps).toBe(1);
 
     // Move, resize, and flip the label region's role to feature, then re-pair r2 to a
     // freshly added label region — a genuine edit of everything diffRegeneration is
@@ -176,12 +166,36 @@ describe('updateOcclusion', () => {
     expect(after).toBeDefined();
     expect(after!.state).toBe(before!.state);
     expect(after!.stability).toBe(before!.stability);
+    expect(after!.stabilityFast).toBe(before!.stabilityFast);
     expect(after!.difficulty).toBe(before!.difficulty);
     expect(after!.reps).toBe(before!.reps);
     expect(after!.lapses).toBe(before!.lapses);
     expect(after!.due).toBe(before!.due);
     expect(after!.lastReviewed).toBe(before!.lastReviewed);
     expect(after!.history).toEqual(before!.history);
+
+    await updateOcclusion({
+      ...updated,
+      name: 'Animal cell',
+      assetHash: 'hash-2',
+      regions: updated.regions.filter((region) => region.id !== 'r1'),
+    });
+    const final = (await db.cards.get(featureCard.id))!;
+    for (const key of [
+      'state',
+      'stability',
+      'stabilityFast',
+      'difficulty',
+      'reps',
+      'lapses',
+      'due',
+      'lastReviewed',
+    ] as const) {
+      expect(final[key]).toEqual(before[key]);
+    }
+    expect(await db.reviewHistory.where('cardId').equals(featureCard.id).toArray()).toEqual(
+      historyBefore,
+    );
   });
 
   it('clears a dangling pairedRegionId when the paired region is deleted, regenerating the feature card', async () => {

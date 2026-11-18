@@ -21,32 +21,6 @@ import { useStartInFocusMode } from '../state/focusModePreference';
 describe('LearnMode presentation', () => {
   beforeEach(resetLearnModeFixtures);
 
-  it('does not paint a focus ring on the programmatic study container', async () => {
-    const course = await createCourse('Focus ring');
-    const lesson = await createLesson(course.id, 'Focus lesson');
-    await createLessonCard(course.id, lesson.id, 'front_back', 'Focus question', 'Answer');
-    render(
-      <ThemeProvider>
-        <AccentProvider>
-          <ToastProvider>
-            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
-              <Routes>
-                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-              </Routes>
-            </MemoryRouter>
-          </ToastProvider>
-        </AccentProvider>
-      </ThemeProvider>,
-    );
-    expect(await findStudyFaceText('Focus question')).toBeInTheDocument();
-    // The study container is focused programmatically as a return point after
-    // overlays close, so it must suppress the global :focus-visible indicator.
-    // Otherwise an orange frame appears around the whole study column.
-    expect(screen.getByRole('main', { name: 'Study card' })).toHaveClass(
-      'focus-visible:shadow-none',
-    );
-  });
-
   it('starts in Focus Mode from the persisted preference and Esc leaves it for this session', async () => {
     localStorage.setItem('lacuna.startInFocusMode', 'on');
     const course = await createCourse('Physics');

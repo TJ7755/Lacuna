@@ -109,8 +109,6 @@ describe('optimised weights persistence', () => {
         new FSRSBindingItem(reviews.map((r) => new FSRSBindingReview(r.rating, r.deltaT))),
     });
 
-    expect(typeof result.isOutOfSampleWin).toBe('boolean');
-
     await updateCourse(deck.id, {
       fsrsParameters: { ...deck.fsrsParameters, w: result.w },
     });

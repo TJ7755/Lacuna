@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { InvokeDispatcher, RENDERER_NOT_READY_MESSAGE } from './dispatcher';
+import { InvokeDispatcher } from './dispatcher';
 import type { McpInvokeRequest } from '@lacuna/protocol/mcp/bridge';
 
 function makeRequest(id = 'req-1'): McpInvokeRequest {
@@ -13,36 +13,19 @@ function makeRequest(id = 'req-1'): McpInvokeRequest {
 }
 
 describe('InvokeDispatcher', () => {
-  it('resolves with the matching reply', async () => {
+  it('delivers requests and matches out-of-order replies without accepting unknown or duplicate ids', async () => {
     const sent: McpInvokeRequest[] = [];
-    const dispatcher = new InvokeDispatcher((req) => sent.push(req));
+    const dispatcher = new InvokeDispatcher((request) => sent.push(request));
+    const firstRequest = makeRequest('a');
+    const secondRequest = makeRequest('b');
+    const first = dispatcher.dispatch(firstRequest);
+    const second = dispatcher.dispatch(secondRequest);
+    expect(sent).toEqual([firstRequest, secondRequest]);
 
-    const pending = dispatcher.dispatch(makeRequest());
-    expect(sent).toHaveLength(1);
-    expect(dispatcher.pendingCount).toBe(1);
-
-    const resolved = dispatcher.resolvePending({ id: 'req-1', ok: true, result: { data: [] } });
-    expect(resolved).toBe(true);
-
-    await expect(pending).resolves.toEqual({ id: 'req-1', ok: true, result: { data: [] } });
-    expect(dispatcher.pendingCount).toBe(0);
-  });
-
-  it('ignores a reply with no matching pending request', () => {
-    const dispatcher = new InvokeDispatcher(() => {});
-    const resolved = dispatcher.resolvePending({ id: 'unknown', ok: true, result: {} });
-    expect(resolved).toBe(false);
-  });
-
-  it('keeps concurrent dispatches independent by correlation id', async () => {
-    const dispatcher = new InvokeDispatcher(() => {});
-
-    const first = dispatcher.dispatch(makeRequest('a'));
-    const second = dispatcher.dispatch(makeRequest('b'));
-    expect(dispatcher.pendingCount).toBe(2);
-
-    dispatcher.resolvePending({ id: 'b', ok: true, result: 'second' });
-    dispatcher.resolvePending({ id: 'a', ok: true, result: 'first' });
+    expect(dispatcher.resolvePending({ id: 'unknown', ok: true, result: {} })).toBe(false);
+    expect(dispatcher.resolvePending({ id: 'b', ok: true, result: 'second' })).toBe(true);
+    expect(dispatcher.resolvePending({ id: 'b', ok: true, result: 'duplicate' })).toBe(false);
+    expect(dispatcher.resolvePending({ id: 'a', ok: true, result: 'first' })).toBe(true);
 
     await expect(first).resolves.toEqual({ id: 'a', ok: true, result: 'first' });
     await expect(second).resolves.toEqual({ id: 'b', ok: true, result: 'second' });
@@ -67,7 +50,6 @@ describe('InvokeDispatcher', () => {
       error: { kind: 'internal', message: 'MCP server stopped.' },
     });
     expect(send).toHaveBeenCalledOnce();
-    expect(dispatcher.pendingCount).toBe(0);
   });
 
   describe('timeout', () => {
@@ -79,7 +61,7 @@ describe('InvokeDispatcher', () => {
       vi.useRealTimers();
     });
 
-    it('resolves with an internal error if nothing replies in time', async () => {
+    it('times out with a useful error and rejects a late reply', async () => {
       const dispatcher = new InvokeDispatcher(() => {}, 1_000);
       const pending = dispatcher.dispatch(makeRequest());
 
@@ -89,17 +71,8 @@ describe('InvokeDispatcher', () => {
       expect(response).toEqual({
         id: 'req-1',
         ok: false,
-        error: { kind: 'internal', message: RENDERER_NOT_READY_MESSAGE },
+        error: { kind: 'internal', message: 'Lacuna window is not open or still loading.' },
       });
-      expect(dispatcher.pendingCount).toBe(0);
-    });
-
-    it('a late reply after the timeout is a no-op', async () => {
-      const dispatcher = new InvokeDispatcher(() => {}, 1_000);
-      const pending = dispatcher.dispatch(makeRequest());
-
-      vi.advanceTimersByTime(1_000);
-      await pending;
 
       const resolved = dispatcher.resolvePending({ id: 'req-1', ok: true, result: 'late' });
       expect(resolved).toBe(false);

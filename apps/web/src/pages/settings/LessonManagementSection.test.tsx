@@ -125,16 +125,6 @@ describe('LessonManagementSection', () => {
     expect(reorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1']);
   });
 
-  it('gives every reorder action a 44px target and visible keyboard focus', () => {
-    render(<LessonManagementSection courseId="course-1" />);
-    for (const button of screen.getAllByRole('button', { name: /^Move Lesson/ })) {
-      expect(button).toHaveClass('min-h-11', 'min-w-11');
-      expect(button).toHaveClass('focus-visible:ring-2');
-    }
-    expect(screen.getByRole('button', { name: 'Move Lesson one up' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Move Lesson two down' })).toBeDisabled();
-  });
-
   it('names the inline editor and restores focus when Escape cancels it', () => {
     render(<LessonManagementSection courseId="course-1" />);
     const trigger = screen.getByRole('button', { name: 'Rename Lesson one' });

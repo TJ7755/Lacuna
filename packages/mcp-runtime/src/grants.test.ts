@@ -15,22 +15,17 @@ describe('scopeSatisfies', () => {
     expect(scopeSatisfies('destructive', 'write')).toBe(true);
     expect(scopeSatisfies('read', 'write')).toBe(false);
     expect(scopeSatisfies('write', 'destructive')).toBe(false);
-  });
-
-  it('is reflexive at every tier', () => {
     expect(scopeSatisfies('write', 'write')).toBe(true);
     expect(scopeSatisfies('destructive', 'destructive')).toBe(true);
+    expect(scopeSatisfies('read', 'destructive')).toBe(false);
   });
 });
 
 describe('courseIdOrGlobal', () => {
-  it('passes a real courseId through unchanged', () => {
+  it('preserves course ids and maps absent ids to the reserved global key', () => {
     expect(courseIdOrGlobal('course-1')).toBe('course-1');
-  });
-
-  it('maps undefined/null to the global pseudo-course key', () => {
-    expect(courseIdOrGlobal(undefined)).toBe(GLOBAL_SCOPE_KEY);
-    expect(courseIdOrGlobal(null)).toBe(GLOBAL_SCOPE_KEY);
+    expect(courseIdOrGlobal(undefined)).toBe('__global__');
+    expect(courseIdOrGlobal(null)).toBe('__global__');
   });
 });
 
@@ -44,15 +39,15 @@ describe('GrantStore', () => {
 
   it('records a grant and reports it via get/list/hasScope', () => {
     const store = new GrantStore();
-    const granted = store.grant('course-1', 'write', 'Course One');
-    expect(granted).toEqual({
+    const expected = {
       courseId: 'course-1',
       scope: 'write',
       grantedAt: expect.any(Number),
       label: 'Course One',
-    });
-    expect(store.get('course-1')).toEqual(granted);
-    expect(store.list()).toEqual([granted]);
+    };
+    expect(store.grant('course-1', 'write', 'Course One')).toEqual(expected);
+    expect(store.get('course-1')).toEqual(expected);
+    expect(store.list()).toEqual([expected]);
     expect(store.hasScope('course-1', 'read')).toBe(true);
     expect(store.hasScope('course-1', 'write')).toBe(true);
     expect(store.hasScope('course-1', 'destructive')).toBe(false);
@@ -60,10 +55,9 @@ describe('GrantStore', () => {
 
   it('keeps the max scope: granting a lower scope does not downgrade an existing higher grant', () => {
     const store = new GrantStore();
-    const higher = store.grant('course-1', 'destructive');
-    const result = store.grant('course-1', 'read');
-    expect(result).toBe(higher);
-    expect(store.get('course-1')?.scope).toBe('destructive');
+    store.grant('course-1', 'destructive', 'Original label');
+    store.grant('course-1', 'read', 'Replacement label');
+    expect(store.get('course-1')).toMatchObject({ scope: 'destructive', label: 'Original label' });
   });
 
   it('advances an existing grant when a higher scope is granted', () => {
@@ -72,7 +66,7 @@ describe('GrantStore', () => {
     const upgraded = store.grant('course-1', 'destructive', 'now destructive');
     expect(upgraded.scope).toBe('destructive');
     expect(upgraded.label).toBe('now destructive');
-    expect(store.get('course-1')).toBe(upgraded);
+    expect(store.get('course-1')).toMatchObject({ scope: 'destructive', label: 'now destructive' });
   });
 
   it('sets an exact lower scope when changed from Settings', () => {
@@ -85,7 +79,8 @@ describe('GrantStore', () => {
       grantedAt: expect.any(Number),
       label: 'Course One',
     });
-    expect(store.get('course-1')).toBe(downgraded);
+    expect(store.hasScope('course-1', 'write')).toBe(true);
+    expect(store.hasScope('course-1', 'destructive')).toBe(false);
   });
 
   it('revoke removes the grant; revoking an unknown course is a no-op', () => {
@@ -96,14 +91,14 @@ describe('GrantStore', () => {
     expect(() => store.revoke('course-2')).not.toThrow();
   });
 
-  it('ensureImplicitRead records a read grant distinct from an explicit grant call', () => {
+  it('grants implicit read access without downgrading existing write access', () => {
     const store = new GrantStore();
     const implicit = store.ensureImplicitRead('course-1');
     expect(implicit.scope).toBe('read');
     expect(store.hasScope('course-1', 'read')).toBe(true);
-    // A second implicit read call does not downgrade a subsequent explicit write grant.
-    const upgraded = store.grant('course-1', 'write');
-    expect(store.ensureImplicitRead('course-1')).toBe(upgraded);
+    store.grant('course-1', 'write');
+    store.ensureImplicitRead('course-1');
+    expect(store.hasScope('course-1', 'write')).toBe(true);
   });
 
   it('gates the reserved global pseudo-course like any other course', () => {
@@ -111,6 +106,7 @@ describe('GrantStore', () => {
     expect(store.hasScope(GLOBAL_SCOPE_KEY, 'write')).toBe(false);
     store.grant(GLOBAL_SCOPE_KEY, 'write', 'Global');
     expect(store.hasScope(GLOBAL_SCOPE_KEY, 'write')).toBe(true);
+    expect(store.hasScope('course-1', 'write')).toBe(false);
     expect(store.list()).toEqual([
       {
         courseId: GLOBAL_SCOPE_KEY,
@@ -125,18 +121,26 @@ describe('GrantStore', () => {
 describe('resolveGrant', () => {
   it('returns ok when the store already satisfies the required scope', () => {
     const store = new GrantStore();
-    const grant = store.grant('course-1', 'destructive');
-    expect(resolveGrant(store, 'write', 'course-1')).toEqual({ ok: true, grant });
+    store.grant('course-1', 'destructive');
+    for (const scope of ['read', 'write', 'destructive'] as const) {
+      expect(resolveGrant(store, scope, 'course-1')).toMatchObject({
+        ok: true,
+        grant: { courseId: 'course-1', scope: 'destructive' },
+      });
+    }
   });
 
   it('returns a forbidden McpToolError naming the missing scope and course', () => {
-    const store = new GrantStore();
-    const result = resolveGrant(store, 'write', 'course-1');
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected forbidden');
-    expect(result.error.kind).toBe('forbidden');
-    expect(result.error.message).toContain('write');
-    expect(result.error.message).toContain('course-1');
+    for (const grantedScope of [undefined, 'read'] as const) {
+      const store = new GrantStore();
+      if (grantedScope) store.grant('course-1', grantedScope);
+      const result = resolveGrant(store, 'write', 'course-1');
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected forbidden');
+      expect(result.error.kind).toBe('forbidden');
+      expect(result.error.message).toContain('write');
+      expect(result.error.message).toContain('course-1');
+    }
   });
 
   it('names the whole database, not the raw key, when gating the global pseudo-course', () => {
@@ -146,12 +150,5 @@ describe('resolveGrant', () => {
     if (result.ok) throw new Error('expected forbidden');
     expect(result.error.message).toContain('whole database');
     expect(result.error.message).not.toContain(GLOBAL_SCOPE_KEY);
-  });
-
-  it('is satisfied once a lower-tier requirement is granted at a higher tier', () => {
-    const store = new GrantStore();
-    const grant = store.grant('course-1', 'destructive');
-    expect(resolveGrant(store, 'read', 'course-1')).toEqual({ ok: true, grant });
-    expect(resolveGrant(store, 'destructive', 'course-1')).toEqual({ ok: true, grant });
   });
 });

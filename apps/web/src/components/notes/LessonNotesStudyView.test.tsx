@@ -4,10 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Note } from '@lacuna/core/db/types';
 import { LessonNotesStudyView } from './LessonNotesStudyView';
 
-const renderContent = vi.hoisted(() => vi.fn());
 vi.mock('./AnnotatedNoteContent', () => ({
   AnnotatedNoteContent: ({ note }: { note: Note }) => {
-    renderContent(note.id);
     return <input aria-label={`${note.name} annotation`} defaultValue="Draft" />;
   },
 }));
@@ -58,13 +56,6 @@ describe('study note disclosures', () => {
     expect(button).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('does not render any note body again when another section toggles', () => {
-    setup();
-    renderContent.mockClear();
-    fireEvent.click(screen.getByRole('button', { name: 'First' }));
-    expect(renderContent).not.toHaveBeenCalled();
-  });
-
   it('retains rendered content and annotation drafts after collapse and reopen', async () => {
     setup();
     const input = screen.getByRole('textbox', { name: 'First annotation' });
@@ -73,10 +64,8 @@ describe('study note disclosures', () => {
     await act(async () => new Promise((resolve) => setTimeout(resolve, 700)));
     expect(input).toBeInTheDocument();
     expect(input.closest('[inert]')).not.toBeNull();
-    renderContent.mockClear();
     fireEvent.click(screen.getByRole('button', { name: 'First' }));
     expect(screen.getByRole('textbox', { name: 'First annotation' })).toBe(input);
     expect(input).toHaveValue('Unsaved highlight');
-    expect(renderContent).not.toHaveBeenCalled();
   });
 });

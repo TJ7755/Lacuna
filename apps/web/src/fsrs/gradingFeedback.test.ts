@@ -1,7 +1,5 @@
-import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { describe, expect, it } from 'vitest';
 import { reviewFeedbackMessage, reviewRetentionMessage } from './gradingFeedback';
-import { predictedRetrievabilityAtHorizon } from '@lacuna/core/fsrs/progress';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { ExamDateContext } from '@lacuna/core/fsrs/examDate';
 import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
@@ -21,12 +19,6 @@ function makeDeck(overrides: Partial<LegacyDeckRecord> = {}): LegacyDeckRecord {
   };
 }
 
-const initialMemory = modelOf(defaultFsrsParameters()).step({
-  memoryState: null,
-  rating: 3,
-  elapsedDays: 0,
-});
-
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
     id: 'c1',
@@ -36,7 +28,10 @@ function makeCard(overrides: Partial<Card> = {}): Card {
     type: 'front_back',
     front: 'q',
     back: 'a',
-    ...initialMemory,
+    // Upstream FSRS-7 first-Good reference, with 96.113% recall after 0.05 days.
+    stability: 3.9221,
+    stabilityFast: 3.13768,
+    difficulty: 3.53072398,
     lastReviewed: NOW,
     reps: 1,
     lapses: 0,
@@ -69,19 +64,16 @@ describe('reviewFeedbackMessage', () => {
 describe('reviewRetentionMessage', () => {
   it('projects post-review retention at a future deck exam', () => {
     const card = makeCard();
-    const deck = makeDeck();
-    const expected = Math.round(predictedRetrievabilityAtHorizon(card, deck, NOW)! * 100);
-    expect(reviewRetentionMessage(3, card, deck, undefined, NOW)).toBe(
-      `Good, ${expected}% recall at exam`,
-    );
+    const deck = makeDeck({ examDate: NOW + 0.05 * MS_PER_DAY });
+    expect(reviewRetentionMessage(3, card, deck, undefined, NOW)).toBe('Good, 96% recall at exam');
   });
 
   it('resolves a genuine future course exam date from context', () => {
     const card = makeCard();
     const deck = makeDeck({ examDate: undefined });
-    const context = makeContext({ courseExamDate: NOW + 30 * MS_PER_DAY });
+    const context = makeContext({ courseExamDate: NOW + 0.05 * MS_PER_DAY });
     const message = reviewRetentionMessage(3, card, deck, context, NOW);
-    expect(message).toMatch(/^Good, \d+% recall at exam$/);
+    expect(message).toBe('Good, 96% recall at exam');
   });
 
   it('returns null without any exam date', () => {

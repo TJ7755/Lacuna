@@ -37,7 +37,6 @@ test('old Question bookmarks use the shared library and native attempts while re
   await expect(
     page.getByRole('heading', { name: 'Quadratic practice', exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole('link', { name: /Individual questions/ })).toHaveCount(0);
   await page.getByText('Earlier question history', { exact: true }).click();
   await page.locator('details').getByText('Addition application', { exact: true }).click();
   await expect(page.getByText('1 previous review.', { exact: false })).toBeVisible();

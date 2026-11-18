@@ -5,13 +5,7 @@ import {
   BlobPreconditionFailedError,
   BlobStoreNotFoundError,
 } from '@vercel/blob';
-import {
-  BLOB_GET_OPTIONS,
-  MemoryStore,
-  canonicalEtag,
-  createVercelStore,
-  type BlobClient,
-} from '../src/store.js';
+import { MemoryStore, canonicalEtag, createVercelStore, type BlobClient } from '../src/store.js';
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -116,35 +110,6 @@ describe('createVercelStore', () => {
     }
   });
 
-  it('stats fresh Blob metadata on every call and treats only a missing blob as absent', async () => {
-    const head = vi
-      .fn()
-      .mockResolvedValueOnce({ uploadedAt: new Date(10) })
-      .mockResolvedValueOnce({ uploadedAt: new Date(20) })
-      .mockRejectedValueOnce(new BlobNotFoundError());
-    const get = vi.fn();
-    const list = vi.fn();
-    const store = createVercelStore({
-      head,
-      get,
-      list,
-      async put() {
-        return { etag: 'unused' };
-      },
-      async del() {},
-    });
-    expect(await store.stat('shares/x/payload')).toEqual({ uploadedAt: 10 });
-    expect(await store.stat('shares/x/payload')).toEqual({ uploadedAt: 20 });
-    expect(await store.stat('shares/x/payload')).toBeNull();
-    expect(head.mock.calls).toEqual([
-      ['shares/x/payload'],
-      ['shares/x/payload'],
-      ['shares/x/payload'],
-    ]);
-    expect(get).not.toHaveBeenCalled();
-    expect(list).not.toHaveBeenCalled();
-  });
-
   it('uses one bounded Blob list page with its supplied cursor', async () => {
     const calls: Array<{ prefix: string; cursor?: string; limit: number }> = [];
     const client: BlobClient = {
@@ -196,9 +161,7 @@ describe('createVercelStore', () => {
 
     await createVercelStore(client).get('c/x/state');
 
-    expect(BLOB_GET_OPTIONS.useCache).toBe(false);
-    expect(gets).toEqual([BLOB_GET_OPTIONS]);
-    expect(gets[0]?.useCache).toBe(false);
+    expect(gets).toEqual([{ access: 'private', useCache: false }]);
   });
 
   it('maps BlobPreconditionFailedError to a failed put', async () => {

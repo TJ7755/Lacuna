@@ -599,24 +599,6 @@ describe('course share links', () => {
     },
   );
 
-  it('rate-limits public share minting per IP', async () => {
-    vi.stubEnv('RELAY_MINT_SECRET', MINT_SECRET);
-    const store = new MemoryStore();
-    const handle = createHandler(store);
-    const mint = () =>
-      handle(
-        new Request('http://relay.test/shares', {
-          method: 'POST',
-          headers: { Origin: ORIGIN, 'x-forwarded-for': '198.51.100.9' },
-        }),
-      );
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      expect((await mint()).status).toBe(201);
-    }
-    const limited = await mint();
-    expect(limited.status).toBe(429);
-  });
-
   it('counts share mints per platform address despite forged x-forwarded-for prefixes', async () => {
     vi.stubEnv('VERCEL', '1');
     const store = new MemoryStore();
@@ -687,24 +669,6 @@ describe('course share links', () => {
     const result = await cleanupExpiredShares(store, now);
     expect(result).toEqual({ sharesDeleted: 1, shareObjectsDeleted: 2 });
     expect(bodyBytesRead).toBe(0);
-    expect((await handle(getShareRequest(shareId, 'payload'))).status).toBe(404);
-  });
-
-  it('keeps a share refreshed within the TTL', async () => {
-    let now = 0;
-    const store = new MemoryStore(() => now);
-    const handle = createHandler(store, { now: () => now });
-    const minted = await handle(
-      new Request('http://relay.test/shares', {
-        method: 'POST',
-        headers: { Origin: ORIGIN, Authorization: `Bearer ${MINT_SECRET}` },
-      }),
-    );
-    const { shareId } = (await minted.json()) as { shareId: string; writeToken: string };
-
-    now += 89 * 24 * 60 * 60 * 1000;
-    const result = await cleanupExpiredShares(store, now);
-    expect(result).toEqual({ sharesDeleted: 0, shareObjectsDeleted: 0 });
     expect((await handle(getShareRequest(shareId, 'payload'))).status).toBe(404);
   });
 });

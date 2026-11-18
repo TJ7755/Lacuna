@@ -43,21 +43,6 @@ describe('Electron titlebar', () => {
     expect(api.onMaximizedChange).not.toHaveBeenCalled();
   });
 
-  it.each(['win32', 'linux'])(
-    'floats unbranded controls over the shell on %s',
-    async (platform) => {
-      installElectronApi(platform);
-
-      const { container } = render(<Titlebar />);
-
-      expect(screen.queryByText('Lacuna')).not.toBeInTheDocument();
-      expect(container.firstElementChild).toHaveClass('absolute', 'inset-x-0', 'top-0', 'h-8');
-      expect(container.firstElementChild).not.toHaveClass('border-b', 'bg-surface');
-      expect(await screen.findByRole('button', { name: 'Close' })).toHaveClass('h-8', 'w-12');
-      expect(container.querySelector('.titlebar-drag')).toBeInTheDocument();
-    },
-  );
-
   it('renders no desktop chrome in a web browser', () => {
     const { container } = render(<Titlebar />);
     expect(container).toBeEmptyDOMElement();

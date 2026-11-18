@@ -130,7 +130,7 @@ describe('useVirtualList', () => {
     expect(result.current.totalHeight).toBe(320);
   });
 
-  it('measures multiple rows with one observer and releases detached rows', () => {
+  it('updates row heights and ignores resize events from detached rows', () => {
     const { result } = renderHook(() => useVirtualList({ itemCount: 2, estimateSize: 100 }));
     const first = document.createElement('div');
     const second = document.createElement('div');
@@ -141,15 +141,16 @@ describe('useVirtualList', () => {
       attachSecond(second);
     });
 
-    expect(resizeObservers).toHaveLength(1);
-    expect(resizeObservers[0].targets).toEqual(new Set([first, second]));
     act(() => {
       notifyResize(first, { borderBoxSize: [{ blockSize: 170, inlineSize: 500 }] });
       notifyResize(second, { borderBoxSize: [{ blockSize: 130, inlineSize: 500 }] });
       attachFirst(null);
     });
     expect(result.current.totalHeight).toBe(300);
-    expect(resizeObservers[0].targets).toEqual(new Set([second]));
+    act(() => notifyResize(first, { borderBoxSize: [{ blockSize: 230, inlineSize: 500 }] }));
+    expect(result.current.totalHeight).toBe(300);
+    act(() => notifyResize(second, { borderBoxSize: [{ blockSize: 150, inlineSize: 500 }] }));
+    expect(result.current.totalHeight).toBe(320);
   });
 
   it('updates its range when the nearest scrolling ancestor scrolls', async () => {

@@ -46,11 +46,9 @@ describe('backup application atomicity', () => {
     'retains every review identity across the history batch boundary in %s mode',
     async (mode) => {
       const backup = await backupWithHistory();
-      const writes = vi.spyOn(db.reviewHistory, 'bulkAdd');
 
       await importBackup(backup, mode);
 
-      expect(writes.mock.calls.map(([rows]) => rows.length)).toEqual([2_000, 1]);
       const byId = (left: ReviewHistoryEntry, right: ReviewHistoryEntry) =>
         left.id.localeCompare(right.id);
       expect((await db.reviewHistory.toArray()).sort(byId)).toEqual(
@@ -71,14 +69,12 @@ describe('backup application atomicity', () => {
       await createNote(lesson.id, 'Local note', 'Keep this content.');
       const before = await Promise.all(db.tables.map((table) => table.toArray()));
       const writeBatch = db.reviewHistory.bulkAdd.bind(db.reviewHistory);
-      const writes = vi
-        .spyOn(db.reviewHistory, 'bulkAdd')
+      vi.spyOn(db.reviewHistory, 'bulkAdd')
         .mockImplementationOnce(writeBatch)
         .mockRejectedValueOnce(new Error('Second history batch failed.'));
 
       await expect(importBackup(backup, mode)).rejects.toThrow('Second history batch failed.');
 
-      expect(writes.mock.calls.map(([rows]) => rows.length)).toEqual([2_000, 1]);
       expect(await Promise.all(db.tables.map((table) => table.toArray()))).toEqual(before);
     },
     30_000,

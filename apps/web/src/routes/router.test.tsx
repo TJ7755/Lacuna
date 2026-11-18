@@ -3,11 +3,6 @@ import { createMemoryRouter, Outlet, RouterProvider, useSearchParams } from 'rea
 import { expect, it } from 'vitest';
 import { router } from './router';
 
-it('does not register the removed share prototype route', () => {
-  const appRoutes = router.routes[0]?.children?.[0]?.children ?? [];
-  expect(appRoutes.map((route) => route.path)).not.toContain('share-prototype');
-});
-
 it('preserves every typed character and focus while updating the current page query', async () => {
   function Search() {
     const [query, setQuery] = useSearchParams();

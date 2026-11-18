@@ -7,8 +7,6 @@ test('Today keeps class joining under Import at 1280px', async ({ page }) => {
   await openEmptyDashboard(page);
   await importWelcomeCourse(page, { restart: true });
   await expect(page.getByRole('region', { name: 'Today, most urgent first' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Join a class', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Join a class', exact: true })).toHaveCount(0);
   await expect(page.getByLabel(/^Today: \d+ reviews? due/)).toBeVisible();
   await openImport(page);
   const join = page.getByRole('button', { name: /Join a class Enter your teacher/ });

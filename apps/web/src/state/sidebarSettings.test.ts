@@ -34,7 +34,6 @@ it('keeps saved sidebar choices and restores access to Settings', () => {
     }),
   );
   const { result } = renderHook(useSidebarSettings);
-  expect(result.current[0]).not.toHaveProperty('showArchived');
   expect(result.current[0].navItems.map((item) => item.id)).toEqual([
     'settings',
     'dashboard',

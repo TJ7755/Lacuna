@@ -65,8 +65,10 @@ test('Working repeat-save clears the previous test answer and fixtures', async (
 
 test('Audio opens at attachment and repeats without starting the microphone', async ({ page }) => {
   await page.addInitScript(() => {
+    Reflect.set(window, 'microphoneRequests', 0);
     Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
       value: () => {
+        Reflect.set(window, 'microphoneRequests', Reflect.get(window, 'microphoneRequests') + 1);
         throw new Error('Recording must require explicit activation');
       },
     });
@@ -111,6 +113,7 @@ test('Audio opens at attachment and repeats without starting the microphone', as
     await expect(prompt).toHaveValue('');
     await expect(page.getByText(`${entry} added`, { exact: true })).toBeVisible();
   }
+  expect(await page.evaluate(() => Reflect.get(window, 'microphoneRequests'))).toBe(0);
 });
 
 test('invalid numeric entry leaves secondary controls and reverse traversal available', async ({

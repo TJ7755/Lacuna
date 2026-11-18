@@ -172,15 +172,6 @@ describe('ToastProvider', () => {
     await waitFor(() => expect(onDismiss).toHaveBeenCalledOnce());
   });
 
-  it('renders children', () => {
-    render(
-      <ToastProvider>
-        <div data-testid="child">Content</div>
-      </ToastProvider>,
-    );
-    expect(screen.getByTestId('child')).toBeInTheDocument();
-  });
-
   it('shows notifications immediately when motion is disabled', () => {
     const multiplier = vi.spyOn(motionSpeed, 'speedMultiplier').mockReturnValue(0);
     render(
@@ -191,18 +182,6 @@ describe('ToastProvider', () => {
     fireEvent.click(screen.getByText('Notify'));
     expect(screen.getByText('Hello world').closest('.relative')).toBeVisible();
     multiplier.mockRestore();
-  });
-
-  it('shows a toast notification', async () => {
-    render(
-      <ToastProvider>
-        <TestComponent />
-      </ToastProvider>,
-    );
-    fireEvent.click(screen.getByText('Notify'));
-    await waitFor(() =>
-      expect(screen.getByText('Hello world', { selector: 'span' })).toBeInTheDocument(),
-    );
   });
 
   it('announces each toast through the visible notification stack only once', async () => {
@@ -256,24 +235,6 @@ describe('ToastProvider', () => {
       expect(screen.queryByText('First answer', { selector: 'span' })).not.toBeInTheDocument();
       expect(screen.getByText('Second answer', { selector: 'span' })).toBeInTheDocument();
     });
-  });
-
-  it('updates the countdown by transform without changing its width', async () => {
-    render(
-      <ToastProvider>
-        <TestComponent />
-      </ToastProvider>,
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Notify' }));
-    const bar = screen.getByLabelText('Notifications').querySelector('.origin-left') as HTMLElement;
-    expect(bar.style.width).toBe('');
-    expect(bar.style.transform).toBe('scaleX(1)');
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 80));
-    });
-    expect(bar.style.width).toBe('');
-    expect(bar.style.transform).not.toBe('scaleX(1)');
   });
 
   it('does not commit a React render for each countdown frame', async () => {

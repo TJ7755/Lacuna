@@ -50,15 +50,11 @@ describe('buildTrialOrder', () => {
 
 describe('median', () => {
   it('takes the middle value of an odd-length list', () => {
-    expect(median([5, 1, 3])).toBe(3);
+    expect(median([100, 1, 3])).toBe(3);
   });
 
   it('averages the middle pair of an even-length list', () => {
     expect(median([1, 2, 3, 4])).toBe(2.5);
-  });
-
-  it('is unmoved by a single extreme value, unlike a mean', () => {
-    expect(median([1, 2, 3, 4, 100])).toBe(3);
   });
 
   it('returns NaN for an empty list', () => {

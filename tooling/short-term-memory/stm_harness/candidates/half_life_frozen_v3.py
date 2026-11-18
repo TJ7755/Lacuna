@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable
 
-from .half_life_v3 import FittedHalfLifeLogisticV3, HalfLifeLogisticV3Predictor
+from .half_life_v3 import FittedHalfLifeLogisticV3
 
 if TYPE_CHECKING:
     import pyarrow as pa
@@ -65,7 +65,3 @@ class HalfLifeLogisticFrozenV3Candidate:
 
 
 candidate = HalfLifeLogisticFrozenV3Candidate()
-
-# HalfLifeLogisticV3Predictor is reused directly (not subclassed) so prediction stays
-# byte-for-byte identical to half_life_v3; re-exported for readers/tests.
-FrozenPredictor = HalfLifeLogisticV3Predictor

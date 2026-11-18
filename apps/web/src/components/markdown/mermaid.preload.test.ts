@@ -4,7 +4,7 @@ const loadRenderer = vi.fn();
 const loadPurifier = vi.fn();
 const initialise = vi.fn();
 const render = vi.fn(async () => ({ svg: '<svg><text>Diagram</text></svg>' }));
-const sanitise = vi.fn((svg: string) => svg);
+const sanitise = vi.fn(() => '<svg><text>Sanitised diagram</text></svg>');
 
 beforeEach(() => {
   vi.resetModules();
@@ -49,7 +49,8 @@ describe('Mermaid dependency loading', () => {
     const container = diagram();
     await renderMermaidDiagrams(container);
     await renderMermaidDiagrams(container);
-    expect(container.querySelector('svg')).not.toBeNull();
+    expect(sanitise).toHaveBeenCalledWith('<svg><text>Diagram</text></svg>');
+    expect(container.querySelector('svg')).toHaveTextContent('Sanitised diagram');
     expect(container.querySelector('.lacuna-mermaid-source code')?.textContent).toBe(
       'flowchart TD\n A-->B',
     );

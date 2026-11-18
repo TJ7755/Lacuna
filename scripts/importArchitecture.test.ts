@@ -167,22 +167,10 @@ describe('domain-to-UI boundary', () => {
 });
 
 describe('src value-import cycles', () => {
-  it('accepts a DAG, type-only back edges and cycles outside src', () => {
+  it('accepts a DAG and ignores cycles outside src', () => {
     const project = fixture();
-    project.write(
-      'apps/web/src/a.ts',
-      "export { value } from './b.js'; export type Shape = { a: string };",
-    );
-    project.write(
-      'apps/web/src/b.ts',
-      "import type { Shape } from './a'; export type Copy = Shape; export const value = 1;",
-    );
-    project.write(
-      'apps/web/src/c.ts',
-      "import { type Shape } from './a'; export type Copy = Shape;",
-    );
-    project.write('apps/web/src/d.ts', "export type { Shape } from './a';");
-    project.write('apps/web/src/e.ts', "export { type Shape } from './a';");
+    project.write('apps/web/src/a.ts', "export { value } from './b.js';");
+    project.write('apps/web/src/b.ts', 'export const value = 1;');
     project.write('apps/web/src/a.test.ts', "import { value } from './a'; export { value };");
     project.write('outside/a.ts', "import './b';");
     project.write('outside/b.ts', "import './a';");

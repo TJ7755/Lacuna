@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable
 
-from .half_life_v2 import FittedHalfLifeLogisticV2, HalfLifeLogisticV2Predictor
+from .half_life_v2 import FittedHalfLifeLogisticV2
 
 if TYPE_CHECKING:
     import pyarrow as pa
@@ -68,7 +68,3 @@ class HalfLifeLogisticFrozenCandidate:
 
 
 candidate = HalfLifeLogisticFrozenCandidate()
-
-# HalfLifeLogisticV2Predictor is reused directly (not subclassed) so prediction stays
-# byte-for-byte identical to half_life_v2; re-exported for readers/tests.
-FrozenPredictor = HalfLifeLogisticV2Predictor

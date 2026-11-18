@@ -156,11 +156,6 @@ export async function renderMermaidDiagrams(container: HTMLElement): Promise<voi
   }
 }
 
-/** Resettable in tests to force re-initialisation across themes. */
-export function resetMermaidInitialisation(): void {
-  mermaidInitialisedFor = null;
-}
-
 type MermaidApi = {
   initialize: (config: Record<string, unknown>) => void;
   render: (id: string, text: string) => Promise<{ svg: string }>;
@@ -240,7 +235,7 @@ async function loadSanitizer(): Promise<SanitizerApi | null> {
  * may arrive in imported decks), so the SVG is treated as untrusted input and
  * passed through DOMPurify as defence in depth.
  */
-export async function sanitizeDiagramSvg(dirty: string): Promise<string> {
+async function sanitizeDiagramSvg(dirty: string): Promise<string> {
   const purifier = await loadSanitizer();
   if (!purifier) return '';
   try {

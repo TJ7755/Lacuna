@@ -10,58 +10,12 @@ vi.mock('../../db/cardRepository', () => ({
   saveCardEdit: (...args: unknown[]) => mockUpdateCard(...args),
 }));
 
-vi.mock('../markdown/MarkdownEditor', () => ({
-  MarkdownEditor: ({
-    inputRef,
-    label,
-    value,
-    onChange,
-    clozePreview,
-  }: {
-    inputRef?: React.RefObject<HTMLTextAreaElement>;
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
-    clozePreview?: 'front' | 'back';
-  }) => (
-    <label>
-      {label}
-      <textarea
-        ref={inputRef}
-        value={value}
-        data-cloze-preview={clozePreview}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
-  ),
-}));
-
 vi.mock('../ui/TagInput', () => ({
   TagInput: () => <div />,
 }));
 
-vi.mock('../ui/Button', () => ({
-  Button: ({
-    children,
-    onClick,
-    disabled,
-  }: {
-    children: React.ReactNode;
-    onClick?: () => void;
-    disabled?: boolean;
-  }) => (
-    <button type="button" onClick={onClick} disabled={disabled}>
-      {children}
-    </button>
-  ),
-}));
-
 vi.mock('../ui/Toast', () => ({
   useToast: () => ({ notify: vi.fn() }),
-}));
-
-vi.mock('../ui/icons', () => ({
-  CloseIcon: () => <span aria-hidden="true" />,
 }));
 
 const card: Card = {
@@ -128,7 +82,7 @@ describe('CardEditOverlay type picker', () => {
 
 describe('CardEditOverlay draft scope', () => {
   it('switches the cloze preview between the prompt and the revealed answer', () => {
-    const { getByRole, getByLabelText } = render(
+    const { getByRole, getByText, container } = render(
       <CardEditOverlay
         card={{ ...card, type: 'cloze', front: 'Water is {{c1::H2O}}.' }}
         onSaved={vi.fn()}
@@ -136,16 +90,12 @@ describe('CardEditOverlay draft scope', () => {
       />,
     );
     const control = getByRole('switch', { name: 'Preview revealed answer' });
-    expect(getByLabelText('Text (use the Cloze button to hide answers)')).toHaveAttribute(
-      'data-cloze-preview',
-      'front',
-    );
+    expect(container.querySelector('.cloze-blank')).toBeInTheDocument();
+    expect(container.querySelector('.cloze-reveal')).toBeNull();
     fireEvent.click(control);
     expect(control).toBeChecked();
-    expect(getByLabelText('Text (use the Cloze button to hide answers)')).toHaveAttribute(
-      'data-cloze-preview',
-      'back',
-    );
+    expect(getByText('H2O')).toBeInTheDocument();
+    expect(container.querySelector('.cloze-blank')).toBeNull();
   });
   it('wraps focus between the save and close controls', () => {
     const { getByRole } = render(

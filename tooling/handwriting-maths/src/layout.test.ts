@@ -4,7 +4,13 @@ import { boundingBox, type Point } from './strokes';
 
 /** Build a placed symbol from an explicit rectangle, in canvas coordinates where y
  *  grows downward — so a smaller `top` means higher on the page. */
-const at = (label: string, left: number, top: number, width: number, height: number): PlacedSymbol => {
+const at = (
+  label: string,
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+): PlacedSymbol => {
   const corners: Point[] = [
     { x: left, y: top, strokeId: 0 },
     { x: left + width, y: top + height, strokeId: 0 },
@@ -16,28 +22,14 @@ const at = (label: string, left: number, top: number, width: number, height: num
 const output = (label: string) => label;
 
 describe('toExpression', () => {
-  it('reads symbols left to right on a shared baseline', () => {
-    const expression = toExpression(
-      [at('4', 0, 0, 20, 40), at('2', 30, 0, 20, 40)],
-      output,
-    );
-    expect(expression).toBe('42');
-  });
-
   it('sorts by position, not by the order supplied', () => {
-    const expression = toExpression(
-      [at('2', 30, 0, 20, 40), at('4', 0, 0, 20, 40)],
-      output,
-    );
+    const expression = toExpression([at('2', 30, 0, 20, 40), at('4', 0, 0, 20, 40)], output);
     expect(expression).toBe('42');
   });
 
   it('emits `^` for a raised, smaller symbol', () => {
     // `x` occupies the baseline; `2` is small and sits clear above it.
-    const expression = toExpression(
-      [at('x', 0, 20, 30, 40), at('2', 35, 0, 15, 20)],
-      output,
-    );
+    const expression = toExpression([at('x', 0, 20, 30, 40), at('2', 35, 0, 15, 20)], output);
     expect(expression).toBe('x^2');
   });
 
@@ -74,19 +66,13 @@ describe('toExpression', () => {
 
   it('does not promote a full-height symbol that merely sits high', () => {
     // A tall bracket riding above the line is not an exponent.
-    const expression = toExpression(
-      [at('(', 0, 0, 10, 40), at('3', 20, 10, 20, 40)],
-      output,
-    );
+    const expression = toExpression([at('(', 0, 0, 10, 40), at('3', 20, 10, 20, 40)], output);
     expect(expression).toBe('(3');
   });
 
   it('never treats the first symbol as an exponent', () => {
     // Nothing can be raised above nothing, however small and high it is.
-    const expression = toExpression(
-      [at('2', 0, 0, 10, 12), at('x', 20, 20, 30, 40)],
-      output,
-    );
+    const expression = toExpression([at('2', 0, 0, 10, 12), at('x', 20, 20, 30, 40)], output);
     expect(expression).toBe('2x');
   });
 
@@ -107,9 +93,8 @@ describe('toExpression', () => {
   });
 
   it('maps labels through the supplied table', () => {
-    const expression = toExpression(
-      [at('plus', 0, 0, 20, 40)],
-      (label) => (label === 'plus' ? '+' : label),
+    const expression = toExpression([at('plus', 0, 0, 20, 40)], (label) =>
+      label === 'plus' ? '+' : label,
     );
     expect(expression).toBe('+');
   });

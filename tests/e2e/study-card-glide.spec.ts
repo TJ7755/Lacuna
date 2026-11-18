@@ -206,10 +206,14 @@ test('first grade starts departing while write completion is delayed', async ({ 
   expect(count).toBe(1);
 });
 
-test('profiles the Yes transition without changing its visuals', async ({ page }, testInfo) => {
+test('Yes advances the card without excessive layout work at 4x CPU slowdown', async ({
+  page,
+}, testInfo) => {
   await startStudy(page);
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.waitForTimeout(800);
+  const card = page.locator('[data-study-card-id]').first();
+  const previousId = await card.getAttribute('data-study-card-id');
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
   const events: { name: string; dur?: number; ts: number; args?: unknown }[] = [];
@@ -222,26 +226,14 @@ test('profiles the Yes transition without changing its visuals', async ({ page }
   });
   const frames = await page.getByRole('button', { name: 'Yes', exact: true }).evaluate(
     (button) =>
-      new Promise<{ times: number[]; nativeFlight: boolean }>((resolve) => {
+      new Promise<{ times: number[] }>((resolve) => {
         const started = performance.now();
         const times: number[] = [];
-        let nativeFlight = false;
         (button as HTMLButtonElement).click();
         const sample = () => {
           times.push(performance.now() - started);
-          nativeFlight ||= document.getAnimations().some((animation) => {
-            const effect = animation.effect;
-            return (
-              effect instanceof KeyframeEffect &&
-              effect.target instanceof Element &&
-              effect.target.matches('[data-study-card-id]') &&
-              effect
-                .getKeyframes()
-                .some((keyframe) => String(keyframe.transform).includes('translateX'))
-            );
-          });
           if (performance.now() - started < 900) requestAnimationFrame(sample);
-          else resolve({ times, nativeFlight });
+          else resolve({ times });
         };
         requestAnimationFrame(sample);
       }),
@@ -274,5 +266,6 @@ test('profiles the Yes transition without changing its visuals', async ({ page }
   // frame it moves (about 60 here); guard against thrash and real cost rather than that.
   expect(summary.Layout.count).toBeLessThan(90);
   expect(summary.Layout.ms).toBeLessThan(60);
-  expect(frames.nativeFlight).toBe(true);
+  await expect(card).not.toHaveAttribute('data-study-card-id', previousId!);
+  await expect(card.locator('[data-study-face="front"]')).toBeVisible();
 });

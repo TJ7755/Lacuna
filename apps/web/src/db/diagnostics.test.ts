@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it, afterEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import {
   createCard,
@@ -176,8 +176,6 @@ describe('gatherCounts', () => {
 describe('diagnosticsSummary', () => {
   beforeEach(clearAll);
 
-  afterEach(() => vi.restoreAllMocks());
-
   it('returns whole-database counts when no courseId is given', async () => {
     const course = await createCourse('Course A');
     const lesson = await createLesson(course.id, 'Lesson 1');
@@ -228,7 +226,7 @@ describe('diagnosticsSummary', () => {
     });
   });
 
-  it('counts notes across lessons with one indexed query and no history hydration', async () => {
+  it('counts scoped notes and links across several lessons', async () => {
     const course = await createCourse('Biology');
     const courseLessons = [];
     for (const name of ['Cells', 'Genetics', 'Ecology']) {
@@ -238,18 +236,14 @@ describe('diagnosticsSummary', () => {
       courseLessons.push({ lesson, card });
     }
     await linkCardToLesson(courseLessons[0].lesson.id, courseLessons[1].card.id);
-    const links = vi.spyOn(db.lessonCards, 'where');
-    const notes = vi.spyOn(db.notes, 'where');
-    const history = vi.spyOn(db.reviewHistory, 'where');
+    const other = await createCourse('Other');
+    const otherLesson = await createLesson(other.id, 'Unrelated');
+    await createNote(otherLesson.id, 'Excluded note');
     expect(await diagnosticsSummary(course.id)).toMatchObject({
       lessons: 3,
       cards: 3,
       notes: 3,
       lessonCards: 1,
     });
-    // One count and one scoped coverage read, independent of the number of lessons.
-    expect(links).toHaveBeenCalledTimes(2);
-    expect(notes).toHaveBeenCalledExactlyOnceWith('lessonId');
-    expect(history).not.toHaveBeenCalled();
   });
 });
