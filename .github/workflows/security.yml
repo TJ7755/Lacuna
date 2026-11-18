@@ -51,6 +51,13 @@ jobs:
       - run: bun "$GITHUB_WORKSPACE/scripts/security-audit.mjs"
         working-directory: apps/relay
 
+  # Branch protection still requires this check; the audited workspace is retired.
+  audit-handwriting:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'Handwriting tooling has been removed.'
+
   codeql:
     name: CodeQL (${{ matrix.language }})
     runs-on: ubuntu-latest
