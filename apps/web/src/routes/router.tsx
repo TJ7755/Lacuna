@@ -1,6 +1,6 @@
 import { type ComponentType, type ReactNode } from 'react';
 import { lazyRouteModule as lazy, loadRouteModuleForNavigation } from './routeModule';
-import { prefetchRoute, prepareRoute, routePathFromRequestUrl } from './prefetch';
+import { prefetchRoute, prepareRoute } from './prefetch';
 import { RoutePrefetchContext } from './RoutePrefetchContext';
 import { createHashRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '../components/layout/AppShell';
@@ -122,9 +122,7 @@ function courseAccessRoute(child: ReactNode, study = false) {
 export const router = createHashRouter([
   {
     loader: async ({ request }) => {
-      // The document URL never changes under hash routing; the route lives in
-      // the fragment, so derive it from the hash rather than the pathname.
-      const path = routePathFromRequestUrl(request.url).split('?')[0];
+      const path = new URL(request.url).pathname;
       if (path === '/start') {
         await loadRouteModuleForNavigation(loadOnboarding, request.signal).catch(() => undefined);
         return null;
@@ -132,8 +130,7 @@ export const router = createHashRouter([
       return prepareRoute(path, request.signal);
     },
     // Query changes belong to the mounted controls; awaiting the same module rolls back typing.
-    shouldRevalidate: ({ currentUrl, nextUrl }) =>
-      routePathFromRequestUrl(currentUrl.href) !== routePathFromRequestUrl(nextUrl.href),
+    shouldRevalidate: ({ currentUrl, nextUrl }) => currentUrl.pathname !== nextUrl.pathname,
     hydrateFallbackElement: null,
     element: (
       <RoutePrefetchContext value={prefetchRoute}>

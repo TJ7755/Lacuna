@@ -98,14 +98,6 @@ const COURSE_PREFETCH_LOADERS: Array<{
   },
 ];
 
-/** The navigated route path from a router request URL. Hash routing keeps the
- * document URL fixed, so the route lives in the fragment (`#/settings`); plain
- * pathnames (tests, non-hash deployments) are used as-is. */
-export function routePathFromRequestUrl(url: string): string {
-  const { pathname, hash } = new URL(url);
-  return hash.startsWith('#/') ? hash.slice(1) : pathname;
-}
-
 function prefetchTarget(path: string): { loader: RouteLoader; dataKey?: string } | undefined {
   const normalised = path.split('?')[0].split('#')[0].replace(/\/$/, '') || '/';
   if (/^\/gaps\/[^/]+$/.test(normalised)) return { loader: loadPupilClassPage };
