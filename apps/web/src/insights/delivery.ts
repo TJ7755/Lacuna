@@ -7,7 +7,7 @@ import {
   createInsightsLastPublishedAtSetting,
   createInsightsOptInSetting,
 } from '../state/insightsOptIn';
-import { localReportingDayLabel } from '@lacuna/protocol/insights/index';
+import { isoDayLabel, localReportingDayLabel } from '@lacuna/protocol/insights/index';
 import { completedReportingDay } from './reportingDay';
 import { collectDailyEvidence } from './collectEvidence';
 import { createEnrolmentSetting, reportingEnabled } from './enrolment';
@@ -150,9 +150,36 @@ async function deliver(
 
 export function installInsightsDelivery(): () => void {
   if (!reportingEnabled()) return () => {};
+  let maintenanceRunning = false;
+  let lastPrunedDay: string | undefined;
   const run = () => {
+    const imports = listShareImports();
+    const today = isoDayLabel(Date.now());
+    if (!maintenanceRunning && (lastPrunedDay !== today || imports.length > 0)) {
+      maintenanceRunning = true;
+      const outbox = createInsightsOutbox();
+      void (async () => {
+        if (lastPrunedDay !== today) {
+          await outbox.pruneExpired();
+          lastPrunedDay = today;
+        }
+        for (const { shareId, courseId } of imports) {
+          const pupilId = createEnrolmentSetting(courseId).read()?.pupilId;
+          await outbox.finishPendingDiscard(shareId, pupilId).catch(() => {
+            // A pending marker keeps this share blocked until the next attempt.
+          });
+        }
+      })()
+        .catch(() => {
+          // Retry local retention work on the next tick.
+        })
+        .finally(() => {
+          outbox.close();
+          maintenanceRunning = false;
+        });
+    }
     if (document.visibilityState === 'hidden' || !navigator.onLine) return;
-    for (const { courseId } of listShareImports())
+    for (const { courseId } of imports)
       void deliverCourseInsights(courseId).catch(() => {
         /* Settings offers an explicit retry. */
       });

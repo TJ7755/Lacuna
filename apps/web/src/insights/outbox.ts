@@ -70,6 +70,8 @@ export function createInsightsOutbox(
     });
 
   return {
+    pruneExpired,
+
     markDiscardPending(shareId: string, pupilId: string): void {
       discardSetting(shareId).write(`${pupilId}:${crypto.randomUUID()}`);
     },

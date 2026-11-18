@@ -16,7 +16,8 @@ import {
   enrolInClass,
   setReportingConsent,
 } from './enrolment';
-import { deliverCourseInsights, publishCourseInsights } from './delivery';
+import { deliverCourseInsights, installInsightsDelivery, publishCourseInsights } from './delivery';
+import { DAY_MS, INSIGHT_RETENTION_DAYS } from '@lacuna/protocol/insights/index';
 import { parseDailyEvidence } from './evidence';
 
 const shareId = 'a'.repeat(32),
@@ -229,6 +230,40 @@ it('does not send the old pupil’s report after a failed disconnect and same-da
   );
   expect(report.pupil).toEqual({ id: newPupilId, label: 'Fresh identifier' });
 });
+it.each(['opt out', 'failed disconnect'])(
+  'cleans up a queued report on the offline scheduler after %s',
+  async (action) => {
+    setReportingConsent(courseId, true, 'Old identifier');
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+    await expect(deliverCourseInsights(courseId, { now, fetchImpl })).rejects.toThrow();
+    if (action === 'opt out') {
+      setReportingConsent(courseId, false);
+      vi.spyOn(Date, 'now').mockReturnValue(now() + (INSIGHT_RETENTION_DAYS + 2) * DAY_MS);
+    } else {
+      vi.spyOn(Dexie.prototype, 'transaction').mockRejectedValueOnce(
+        new Error('Outbox unavailable'),
+      );
+      await expect(disconnectFromClass(courseId)).rejects.toThrow('Outbox unavailable');
+      vi.spyOn(Date, 'now').mockImplementation(now);
+    }
+
+    const database = new Dexie('lacuna.insights.outbox');
+    await database.open();
+    const packets = database.table('packets');
+    expect(await packets.count()).toBe(1);
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    const stop = installInsightsDelivery();
+    try {
+      await vi.waitFor(async () => expect(await packets.count()).toBe(0));
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    } finally {
+      stop();
+      database.close();
+    }
+  },
+);
+
 it('backs off failed automatic attempts for an hour but permits an explicit retry', async () => {
   setReportingConsent(courseId, true, 'Pupil A');
   const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
