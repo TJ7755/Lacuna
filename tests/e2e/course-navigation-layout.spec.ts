@@ -136,7 +136,7 @@ test.describe('touch course navigation', () => {
     await expect(page).toHaveURL(/\/questions$/);
   });
 });
-test('settings retain accessible speed stops and shared switches', async ({ page }) => {
+test('animation speed supports arrow keys and accessible hit targets', async ({ page }) => {
   await openSeededCourse(page);
   await page.goto('/#/settings');
   const speeds = page.getByRole('radiogroup', { name: 'Animation speed' });
@@ -145,11 +145,6 @@ test('settings retain accessible speed stops and shared switches', async ({ page
   await speeds.getByRole('radio', { name: 'Slow' }).press('ArrowRight');
   await expect(speeds.getByRole('radio', { name: 'Normal' })).toBeChecked();
   await speeds.screenshot({ path: '/tmp/lacuna-speed-control.png' });
-  const toggle = page.getByRole('switch').first();
-  const checked = await toggle.getAttribute('aria-checked');
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-checked', checked === 'true' ? 'false' : 'true');
-  await toggle.screenshot({ path: '/tmp/lacuna-switch.png' });
   for (const radio of await speeds.getByRole('radio').all()) {
     expect((await radio.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   }

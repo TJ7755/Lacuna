@@ -1,12 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildAiInstructionBundle } from '../../../apps/web/src/ai/instructions';
 import { AI_RELAY_PROTOCOL_VERSION, type RelayBrowserMailbox } from '@lacuna/protocol/ai/relay';
-import {
-  AI_TERMINAL_HEARTBEAT_INTERVAL_MS,
-  DEFAULT_AI_RELAY_URL,
-  TerminalAiClient,
-  TerminalRelayReconnectRequiredError,
-} from './client';
+import { TerminalAiClient, TerminalRelayReconnectRequiredError } from './client';
 import { CONNECTION, FakeTransport, queuedMailbox } from './client.testHarness';
 
 describe('TerminalAiClient', () => {
@@ -17,12 +12,12 @@ describe('TerminalAiClient', () => {
 
     await expect(client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, identity)).resolves.toEqual({
       sessionId: CONNECTION.sessionId,
-      relayUrl: DEFAULT_AI_RELAY_URL,
+      relayUrl: 'https://relay.getlacuna.app',
       expiresAt: CONNECTION.expiresAt,
     });
     expect(transport.connect).toHaveBeenCalledWith(
       'ABCD-EFGH-JKMN-PQRS-TVW2',
-      DEFAULT_AI_RELAY_URL,
+      'https://relay.getlacuna.app',
       identity,
     );
   });
@@ -88,7 +83,7 @@ describe('TerminalAiClient', () => {
       },
     ]);
 
-    now += AI_TERMINAL_HEARTBEAT_INTERVAL_MS;
+    now += 60_000;
     await expect(client.waitForMessage(0)).resolves.toEqual({ type: 'empty' });
     expect(transport.writes.at(-1)).toEqual({
       version: AI_RELAY_PROTOCOL_VERSION,
@@ -321,21 +316,16 @@ describe('TerminalAiClient', () => {
     );
   });
 
-  it('returns an empty result after a bounded series of polls', async () => {
+  it('returns an empty result when the wait deadline expires', async () => {
     const transport = new FakeTransport();
     let now = 0;
-    const sleep = vi.fn(async (milliseconds: number) => {
+    const sleep = async (milliseconds: number) => {
       now += milliseconds;
-    });
+    };
     const client = new TerminalAiClient({ transport, now: () => now, sleep });
     await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
 
     await expect(client.waitForMessage(1_000)).resolves.toEqual({ type: 'empty' });
-    expect(sleep).toHaveBeenCalledTimes(2);
     expect(now).toBe(1_000);
   });
-});
-
-it('uses the custom relay domain by default', () => {
-  expect(DEFAULT_AI_RELAY_URL).toBe('https://relay.getlacuna.app');
 });

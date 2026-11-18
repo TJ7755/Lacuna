@@ -8,19 +8,6 @@ describe('classroom distribution storage', () => {
     await db.delete();
   });
 
-  it('creates new courses with no distribution fields by default', async () => {
-    await db.open();
-    const course = await createCourse('Chemistry');
-    expect(course.distributedCopy).toBeUndefined();
-    expect(course.distribution).toBeUndefined();
-  });
-
-  it('creates empty lineage tables on a fresh install', async () => {
-    await db.open();
-    expect(await db.lineageIdMappings.count()).toBe(0);
-    expect(await db.pendingMergeReviews.count()).toBe(0);
-  });
-
   it('reads and writes lineageIdMappings and pendingMergeReviews rows', async () => {
     await db.open();
     const course = await createCourse('History');

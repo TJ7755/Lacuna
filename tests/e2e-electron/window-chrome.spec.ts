@@ -30,7 +30,6 @@ test('Windows integrates working window controls without a separate title bar', 
       window.setSize(1400, 900);
     });
 
-    await expect(page.getByTestId('titlebar-brand')).toHaveCount(0);
     await expect(page.getByTestId('sidebar-brand-mark')).toBeVisible();
     expect(
       await page.locator('aside:visible').evaluate((node) => node.getBoundingClientRect().top),

@@ -132,7 +132,6 @@ test('related cards stay with the current marking part', async ({ page }) => {
   await expect(
     page.locator('.qs-header-tools').getByRole('button', { name: 'Related cards' }),
   ).toBeVisible();
-  await expect(page.locator('.qs-practice-secondary')).toHaveCount(0);
   await expect(trigger).toHaveAttribute('title', 'Related cards');
   await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1280);
@@ -198,7 +197,6 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
     await answer.fill('My answer so far.');
     const trigger = page.getByRole('button', { name: 'Use related cards', exact: true });
-    await expect(page.getByText(/Opening these cards/)).toHaveCount(0);
     await expect(trigger).toBeInViewport({ ratio: 1 });
     await expect(page.getByText('Related prompt a1')).toHaveCount(0);
     const collapsed = testInfo.outputPath('help-collapsed.png');
@@ -212,8 +210,6 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await expect(dialog).toContainText('Card 1 of 20');
     await expect(dialog).toContainText('Related prompt a1');
     await expect(dialog).not.toContainText('Related answer a1');
-    await expect(dialog).not.toContainText('Your draft is kept');
-    await expect(dialog.getByRole('button', { name: /Return to/ })).toHaveCount(0);
     await expect.poll(async () => (await dialog.boundingBox())!.width).toBeCloseTo(640, 0);
     const navigation = dialog.getByRole('navigation', { name: 'Related cards' });
     const navBounds = (await navigation.boundingBox())!;

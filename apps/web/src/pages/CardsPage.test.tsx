@@ -38,13 +38,6 @@ let mockLessons: Lesson[] | undefined;
 let mockCards: Card[] | undefined;
 let mockSequences: Sequence[] | undefined = [];
 let mockOcclusions: Occlusion[] | undefined = [];
-let observedContexts: {
-  importTargetName?: string;
-  hasImport?: boolean;
-  hasApkg?: boolean;
-  hasRestore?: boolean;
-}[] = [];
-
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
   useLessons: () => mockLessons,
@@ -86,7 +79,6 @@ vi.mock('../components/cards/CardList', () => ({
     cards,
     courseId,
     assignableLessons,
-    context,
     heading,
     onEditCard,
     onEditSequence,
@@ -106,14 +98,6 @@ vi.mock('../components/cards/CardList', () => ({
       onRestore: unknown;
     };
   }) => {
-    if (context) {
-      observedContexts.push({
-        importTargetName: context.importTargetName,
-        hasImport: typeof context.onImport === 'function',
-        hasApkg: typeof context.onApkgImport === 'function',
-        hasRestore: typeof context.onRestore === 'function',
-      });
-    }
     return (
       <div data-testid="card-list">
         {heading}
@@ -248,7 +232,6 @@ function renderPage(entry = '/course/course-1/cards') {
 }
 beforeEach(() => {
   deferredSearchState.held = false;
-  observedContexts = [];
   mockCourse = undefined;
   mockLessons = undefined;
   mockCards = undefined;
@@ -257,15 +240,6 @@ beforeEach(() => {
 });
 
 describe('CardsPage', () => {
-  it('keeps Question batch authoring out of the Cards surface', () => {
-    mockCourse = course;
-    mockLessons = [];
-    mockCards = [];
-    renderPage();
-
-    expect(screen.queryByRole('button', { name: /batch prompt/i })).not.toBeInTheDocument();
-  });
-
   it('waits for the course before rendering its controls', () => {
     renderPage();
     expect(screen.queryByRole('heading', { name: 'Cards' })).not.toBeInTheDocument();
@@ -428,13 +402,12 @@ describe('CardsPage', () => {
     expect(screen.getByTestId('card-list-count').textContent).toBe('1');
   });
 
-  it('keeps card lists unchanged while the input is ahead of the deferred search result', () => {
+  it('keeps preview results inert while the input is ahead of the deferred search result', () => {
     mockCourse = course;
     mockLessons = [lesson1];
     mockCards = [makeCard({ id: 'c1', primaryLessonId: lesson1.id, front: 'Apple' })];
     renderPage();
     deferredSearchState.held = true;
-    observedContexts = [];
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search all cards' }), {
       target: { value: 'app' },
@@ -442,7 +415,7 @@ describe('CardsPage', () => {
 
     expect(screen.getByRole('searchbox', { name: 'Search all cards' })).toHaveValue('app');
     expect(screen.getByTestId('card-list-count')).toHaveTextContent('1');
-    expect(observedContexts).toHaveLength(0);
+    expect(screen.getByTestId('card-list').closest('[inert]')).not.toBeNull();
   });
 
   it('commits each typed character before the data router can defer the result work', () => {

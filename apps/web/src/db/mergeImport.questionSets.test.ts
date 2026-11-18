@@ -142,36 +142,6 @@ describe('mergeImport: v4 Question Set lineage', () => {
     expect(() => mergeSnapshots(after, before)).not.toThrow();
   });
 
-  it('adopts a set and applies a later teacher revision', async () => {
-    const first = questionPayloadV4();
-    const { course } = await importLineageFirstTime(first);
-    expect(await db.questionSets.get('set-quadratics')).toMatchObject({
-      courseId: course.id,
-      title: 'Quadratics paper',
-    });
-
-    await mergeLineageUpdate(
-      course.id,
-      questionPayloadV4({
-        at: 2_000,
-        rv: 2,
-        questionSets: [
-          {
-            ...first.questionSets[0],
-            title: 'Updated quadratics paper',
-            contentVersion: 2,
-            contentRevisionId: 'set-revision-2',
-            updatedAt: 2_000,
-          },
-        ],
-      }),
-    );
-    expect(await db.questionSets.get('set-quadratics')).toMatchObject({
-      title: 'Updated quadratics paper',
-      contentRevisionId: 'set-revision-2',
-    });
-  });
-
   it('fails closed on local edits and local deletion', async () => {
     const first = questionPayloadV4();
     const { course } = await importLineageFirstTime(first);
@@ -240,6 +210,10 @@ describe('mergeImport: v4 Question Set lineage', () => {
         rv: 2,
       }),
     );
+    expect(await db.questionSets.get('set-quadratics')).toMatchObject({
+      title: 'Revised paper',
+      contentRevisionId: 'set-revision-2',
+    });
     expect((await db.courseAssessments.get('assessment-origin'))?.examDate).toBe(2_000_000);
     expect((await db.questionSets.get('set-quadratics'))?.assessmentIds).toEqual([
       'assessment-origin',
@@ -272,6 +246,7 @@ describe('mergeImport: v4 Question Set lineage', () => {
       }),
     );
     expect(await db.questionSets.get('set-quadratics')).toBeUndefined();
+    expect(await db.tombstones.get(['questionSets', 'set-quadratics'])).toBeDefined();
     expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
   });
 
@@ -387,12 +362,5 @@ describe('mergeImport: v4 Question Set lineage', () => {
     expect((await db.questionSetAttempts.get(attempt.id))?.receipt.assessmentIds).toEqual([
       checkpoint.id,
     ]);
-  });
-
-  it('removes an untouched set when the teacher removes it', async () => {
-    const { course } = await importLineageFirstTime(questionPayloadV4());
-    await mergeLineageUpdate(course.id, questionPayloadV4({ at: 2_000, rv: 2, questionSets: [] }));
-    expect(await db.questionSets.get('set-quadratics')).toBeUndefined();
-    expect(await db.tombstones.get(['questionSets', 'set-quadratics'])).toBeDefined();
   });
 });

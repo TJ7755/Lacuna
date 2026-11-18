@@ -383,7 +383,7 @@ export function parseRoute(url: string): Route {
 }
 
 /** Operator-facing error text. Strips hex that could be a channel id or token. */
-export function describeInternalError(err: unknown): string {
+function describeInternalError(err: unknown): string {
   const parts: string[] = [];
   let current: unknown = err;
   for (let depth = 0; current !== undefined && current !== null && depth < 4; depth += 1) {

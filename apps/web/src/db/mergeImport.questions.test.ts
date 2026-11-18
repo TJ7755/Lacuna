@@ -12,7 +12,10 @@ describe('mergeImport: v3 Question lineage', () => {
   });
 
   it('adopts shared Concept and Question identities while keeping Card presentations separate', async () => {
-    const { course } = await importLineageFirstTime(questionPayloadV3());
+    const payload = questionPayloadV3();
+    payload.concepts.push({ id: 'unreferenced-concept', n: 'Cell envelope' });
+    const { course } = await importLineageFirstTime(payload);
+    expect((await db.concepts.get('unreferenced-concept'))?.courseId).toBe(course.id);
 
     const cards = await db.cards.where('courseId').equals(course.id).sortBy('createdAt');
     expect(cards).toHaveLength(2);
@@ -29,7 +32,7 @@ describe('mergeImport: v3 Question lineage', () => {
     });
     expect(await db.questionAttempts.count()).toBe(0);
     expect(await db.lineageIdMappings.get('lineage-questions')).toMatchObject({
-      conceptIds: ['concept-quadratic'],
+      conceptIds: ['concept-quadratic', 'unreferenced-concept'],
       questionIds: ['question-quadratic'],
     });
   });

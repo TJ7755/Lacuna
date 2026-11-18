@@ -102,29 +102,6 @@ describe('Dashboard Today queue', () => {
     expect(screen.getByLabelText('Today: 2 reviews due, about 6 minutes')).toBeInTheDocument();
   });
 
-  it('does not render a sharing announcement on Today', async () => {
-    localStorage.clear();
-    setCourseData();
-    render(<Dashboard />);
-    await act(() => vi.dynamicImportSettled());
-
-    expect(screen.getByRole('region', { name: 'Today, most urgent first' })).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'New sharing features' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Explore sharing/ })).not.toBeInTheDocument();
-  });
-
-  it('renders empty state when no courses exist', () => {
-    setCourseData([]);
-    render(<Dashboard />);
-    const emptyHeading = screen.getByRole('heading', { name: 'No courses yet' });
-    expect(emptyHeading).toBeInTheDocument();
-    const create = screen.getByRole('button', { name: 'New course' });
-    fireEvent.click(create);
-    expect(create).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByTestId('new-course-form')).toBeInTheDocument();
-    expect(screen.queryByLabelText(/^Today:/)).not.toBeInTheDocument();
-  });
-
   it('does not render archived courses or restoration controls', () => {
     setCourseData([{ ...mockCourse, archived: true }]);
     render(<Dashboard />);

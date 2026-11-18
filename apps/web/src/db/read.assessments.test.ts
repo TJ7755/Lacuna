@@ -1,12 +1,10 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from './schema';
 import {
   createCourse,
   createCourseAssessment,
   createLesson,
   createLessonCard,
-  createPracticeNode,
   linkCardToLesson,
 } from './repository';
 import { listCourseAssessments, listCourseAssessmentDetails } from './read';
@@ -15,28 +13,17 @@ import { clearAll } from './read.testFixtures';
 describe('assessment reads', () => {
   beforeEach(clearAll);
 
-  describe('practice nodes / assessments', () => {
-    it('scopes practice nodes and assessments to their course', async () => {
-      const course = await createCourse('Course A');
-      const otherCourse = await createCourse('Course B');
-      const node = await createPracticeNode(course.id, { type: 'manual', name: 'Practice 1' });
-      await createPracticeNode(otherCourse.id, { type: 'manual', name: 'Other practice' });
+  it('returns only the requested course assessments, including its mandatory final', async () => {
+    const course = await createCourse('Course A');
+    const otherCourse = await createCourse('Course B');
+    const now = Date.now();
+    const checkpoint = await createCourseAssessment(course.id, 'Mid-term', now + 1000);
+    await createCourseAssessment(otherCourse.id, 'Other exam', now + 2000);
 
-      const now = Date.now();
-      const examDate = await createCourseAssessment(course.id, 'Mid-term', now + 1000);
-      await createCourseAssessment(otherCourse.id, 'Other exam', now + 2000);
-
-      expect(
-        (await db.practiceNodes.where('courseId').equals(course.id).toArray()).map((n) => n.id),
-      ).toEqual([node.id]);
-      expect((await listCourseAssessments(course.id)).map((e) => e.id)).toContain(examDate.id);
-    });
-
-    it('returns empty lists for a course with none', async () => {
-      const course = await createCourse('Course A');
-      expect(await db.practiceNodes.where('courseId').equals(course.id).toArray()).toEqual([]);
-      expect(await listCourseAssessments(course.id)).toHaveLength(1);
-    });
+    expect(await listCourseAssessments(course.id)).toEqual([
+      expect.objectContaining({ id: checkpoint.id, courseId: course.id, kind: 'checkpoint' }),
+      expect.objectContaining({ courseId: course.id, kind: 'final' }),
+    ]);
   });
 
   it('resolves prefix, custom and final coverage including linked cards', async () => {

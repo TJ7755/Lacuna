@@ -187,13 +187,25 @@ it('preserves the original click failure when the page closes before cleanup', a
   await expect(measure()).rejects.toThrow('click failed');
 });
 
-it('disposes a previous measurement before installing its replacement', async () => {
-  const dispose = vi.fn();
-  vi.stubGlobal('__lacunaInteractionMeasurement', { dispose });
-  const { measure } = harness(async () => {
-    throw new Error('click failed');
+it('replacing an unfinished measurement leaves no resources behind', async () => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
   });
-  await expect(measure()).rejects.toThrow('click failed');
-  expect(dispose).toHaveBeenCalledOnce();
-  expectDisposed();
+  const first = harness(async () => {
+    await held;
+    throw new Error('first click failed');
+  }).measure();
+  const firstFailure = expect(first).rejects.toThrow('first click failed');
+  await vi.waitFor(() => expect(observers.size).toBe(1));
+  const replacement = harness(async () => {
+    throw new Error('replacement click failed');
+  });
+  try {
+    await expect(replacement.measure()).rejects.toThrow('replacement click failed');
+    expectDisposed();
+  } finally {
+    release();
+    await firstFailure;
+  }
 });

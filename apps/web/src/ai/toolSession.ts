@@ -67,15 +67,7 @@ export class AiToolSession {
     };
   }
 
-  getState(): AiToolSessionState {
-    return this.exportState();
-  }
-
-  restoreState(state: unknown): void {
-    this.restore(state);
-  }
-
-  restore(state: unknown): void {
+  private restore(state: unknown): void {
     const bounded = restoreState(state);
     this.grants.clear();
     this.approvals.clear();

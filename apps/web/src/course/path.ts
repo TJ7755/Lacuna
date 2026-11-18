@@ -6,11 +6,5 @@ export {
   manualPracticeGateOutcomeAfterLesson,
   practiceGateAfterLesson,
 } from './pathGates';
-export {
-  EXAM_URGENT_DAYS,
-  examIsUrgent,
-  lessonStatus,
-  nearestExamDate,
-  pathPosition,
-} from './pathProgress';
+export { examIsUrgent, lessonStatus, nearestExamDate, pathPosition } from './pathProgress';
 export type { PathNode, PracticePathNode, QuestionSetPathNode } from './pathTypes';

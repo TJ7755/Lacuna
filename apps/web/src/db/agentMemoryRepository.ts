@@ -38,15 +38,13 @@ export interface UpdateAgentMemoryInput {
   expiresAt?: number;
 }
 
-type AgentMemorySearchScope =
-  { kind: 'all' } | { kind: 'global' } | { kind: 'course'; courseId: string };
+type AgentMemorySearchScope = { kind: 'global' } | { kind: 'course'; courseId: string };
 
-export interface AgentMemorySearch {
+interface AgentMemorySearch {
   scope: AgentMemorySearchScope;
   query?: string;
   tags?: AgentMemoryTag[];
   statuses?: AgentMemoryStatus[];
-  includeExpired?: boolean;
   limit?: number;
 }
 
@@ -107,12 +105,13 @@ async function assertCourseAndReferences(
   await assertReferenceOwnership(tx, courseId, references);
 }
 
-export class AgentMemoryRepository {
+class AgentMemoryRepository {
   async get(id: string): Promise<AgentMemory | undefined> {
     return db.agentMemories.get(id);
   }
 
-  async create(input: CreateAgentMemoryInput, now = Date.now()): Promise<AgentMemory> {
+  async create(input: CreateAgentMemoryInput): Promise<AgentMemory> {
+    const now = Date.now();
     const memory: AgentMemory = {
       id: makeId(),
       courseId: input.courseId,
@@ -146,11 +145,8 @@ export class AgentMemoryRepository {
     return memory;
   }
 
-  async update(
-    id: string,
-    changes: UpdateAgentMemoryInput,
-    now = Date.now(),
-  ): Promise<AgentMemory> {
+  async update(id: string, changes: UpdateAgentMemoryInput): Promise<AgentMemory> {
+    const now = Date.now();
     return db.transaction(
       'rw',
       [
@@ -206,19 +202,13 @@ export class AgentMemoryRepository {
     if (options.scope.kind === 'course') {
       memories = await db.agentMemories.where('courseId').equals(options.scope.courseId).toArray();
     } else {
-      // IndexedDB has no null key. Global and inspector-wide searches are deliberately
-      // filtered over the small collection in memory.
-      memories = await db.agentMemories.toArray();
-      if (options.scope.kind === 'global')
-        memories = memories.filter((row) => row.courseId === null);
+      // IndexedDB has no null key, so global memories are filtered in memory.
+      memories = (await db.agentMemories.toArray()).filter((row) => row.courseId === null);
     }
     const terms = query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
     const now = Date.now();
     return memories
-      .filter(
-        (memory) =>
-          options.includeExpired || memory.expiresAt === undefined || memory.expiresAt > now,
-      )
+      .filter((memory) => memory.expiresAt === undefined || memory.expiresAt > now)
       .filter(
         (memory) => !options.tags?.length || options.tags.every((tag) => memory.tags.includes(tag)),
       )
@@ -233,7 +223,8 @@ export class AgentMemoryRepository {
       .slice(0, limit);
   }
 
-  async delete(id: string, now = Date.now()): Promise<DeletedAgentMemory> {
+  async delete(id: string): Promise<DeletedAgentMemory> {
+    const now = Date.now();
     return db.transaction('rw', [db.agentMemories, db.tombstones], async (tx) => {
       const memory = await db.agentMemories.get(id);
       if (!memory) throw new Error('The memory could not be found.');
@@ -244,7 +235,8 @@ export class AgentMemoryRepository {
     });
   }
 
-  async restore(snapshot: DeletedAgentMemory, now = Date.now()): Promise<AgentMemory> {
+  async restore(snapshot: DeletedAgentMemory): Promise<AgentMemory> {
+    const now = Date.now();
     return db.transaction('rw', [db.agentMemories, db.tombstones, db.courses], async (tx) => {
       if (snapshot.memory.courseId !== null && !(await db.courses.get(snapshot.memory.courseId))) {
         throw new Error('The memory Course is no longer available.');

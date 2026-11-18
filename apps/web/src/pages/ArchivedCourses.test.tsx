@@ -71,7 +71,6 @@ describe('ArchivedCourses', () => {
       screen.getByRole('link', { name: 'Open Finished biology' }),
       '/course/course-1',
     );
-    expect(screen.queryByText('Course library')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Unarchive Finished biology' }));
     await waitFor(() =>

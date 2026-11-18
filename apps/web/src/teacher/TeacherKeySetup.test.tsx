@@ -97,9 +97,6 @@ it('rejects a malformed recovery file before attempting a restore, then accepts 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Restore class access' })).toBeEnabled(),
     );
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Restore class access' })).toBeEnabled(),
-    );
     fireEvent.click(screen.getByRole('button', { name: 'Restore class access' }));
   };
   await choose('{"privateKey":"wrong file"}');

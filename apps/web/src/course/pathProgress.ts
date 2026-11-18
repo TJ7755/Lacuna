@@ -87,7 +87,7 @@ export function nearestExamDate(
 }
 
 /** An exam within this many days is flagged as urgent (pulsing header marker). */
-export const EXAM_URGENT_DAYS = 3;
+const EXAM_URGENT_DAYS = 3;
 
 /**
  * Whether `nearestExam` (as returned by `nearestExamDate`) is both still

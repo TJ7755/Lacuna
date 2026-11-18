@@ -625,18 +625,6 @@ describe('CourseStudyFlow', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('starts a course-wide due-review request from the due-review query', async () => {
-    mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
-    renderFlow('/course/course-1/study?review=due');
-
-    await screen.findByTestId('learn-request');
-    expect(request()).toMatchObject({
-      kind: 'practice',
-      courseId: 'course-1',
-      mode: 'recurring',
-    });
-  });
-
   it('starts optional course-wide exam practice from its query', async () => {
     mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
     renderFlow('/course/course-1/study?review=exam');

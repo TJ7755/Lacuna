@@ -65,23 +65,6 @@ describe('lineage identity: Concept and Question ids are stable across copies', 
     await db.open();
   });
 
-  it('artefacts adopt the originating ids on first import of a lineage', async () => {
-    const { course } = await importLineageFirstTime(insightPayload());
-    expect(course.distributedCopy).toMatchObject({ lineageId: 'lineage-bio', revision: 1 });
-    expect((await db.concepts.get('concept-cells'))?.courseId).toBe(course.id);
-    expect((await db.concepts.get('concept-envelope'))?.courseId).toBe(course.id);
-    expect((await db.questions.get('question-cells'))?.courseId).toBe(course.id);
-    expect((await db.questionConcepts.get('question-cells'))?.targetConceptIds).toEqual([
-      'concept-cells',
-    ]);
-    const mapping = await db.lineageIdMappings.get('lineage-bio');
-    expect(mapping).toMatchObject({
-      courseId: course.id,
-      conceptIds: ['concept-cells', 'concept-envelope'],
-      questionIds: ['question-cells'],
-    });
-  });
-
   it('a revision update keeps ids for existing entities and adopts new ones in place', async () => {
     const { course } = await importLineageFirstTime(insightPayload());
     await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': true });

@@ -87,7 +87,7 @@ beforeEach(async () => {
 });
 afterEach(cleanup);
 
-it('keeps paper coverage valid when an author changes lesson order', async () => {
+it('allows a lesson move when paper assessment coverage remains valid', async () => {
   const course = await createCourse('Science', {
     specificationData: paperSpecification,
     specificationRef: paperSpecificationReference,
@@ -109,7 +109,6 @@ it('keeps paper coverage valid when an author changes lesson order', async () =>
     { course, concepts: [] },
   );
   expect(order?.filter((id) => id === a.id || id === b.id)).toEqual([b.id, a.id]);
-  expect(await db.courseAssessments.toArray()).toEqual(assessments);
 });
 
 it.each(['semi-linear', 'linear'] as const)(

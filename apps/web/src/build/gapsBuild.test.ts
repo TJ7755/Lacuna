@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, relative, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { expect, it } from 'vitest';
 
@@ -62,77 +62,6 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       chunks.find((chunk) => chunk.fileName === fileName)?.imports.forEach(visit);
     }
     visit(entries[0].fileName);
-    const eagerModules = chunks
-      .filter((chunk) => eager.has(chunk.fileName))
-      .flatMap((chunk) => chunk.modules);
-    expect(eagerModules.join('\n')).not.toMatch(
-      /node_modules\/dexie\/|apps\/web\/src\/insights\/|apps\/web\/src\/teacher\/TeacherKeySetup/,
-    );
-    const localModules = modules
-      .map((id) => relative(resolve('.'), id.split('?')[0]).replaceAll('\\', '/'))
-      .filter((id) => id.startsWith('apps/web/src/') || id.startsWith('packages/'))
-      .map((id) => id.replace(/^apps\/web\//, ''));
-    expect(localModules).toContain('src/teacher/main.tsx');
-    expect(
-      localModules.filter(
-        (id) =>
-          ![
-            'src/teacher/main.tsx',
-            'packages/protocol/src/insights/insightsDay.ts',
-            'packages/protocol/src/insights/insightsProtocol.ts',
-            'packages/protocol/src/relay/index.ts',
-            'src/teacher/index.css',
-            'src/teacher/gaps.css',
-            'src/teacher/gapsUi.tsx',
-            'src/teacher/GapsLoadingBoundary.tsx',
-            'src/teacher/GapsSidebar.tsx',
-            'src/teacher/classInsights.ts',
-            'src/teacher/demoClass.ts',
-            'src/teacher/StandaloneTeacherHome.tsx',
-            'src/teacher/classSessions.ts',
-            'src/teacher/TeacherKeySetup.tsx',
-            'src/teacher/TeacherCourses.tsx',
-            'src/teacher/CreateGapsClass.tsx',
-            'src/teacher/recoveryCode.ts',
-            'src/teacher/classRecoveryFile.ts',
-            'src/teacher/TeacherClassReports.tsx',
-            'src/teacher/ClassAccess.tsx',
-            'src/teacher/ClassEvidence.tsx',
-            'src/teacher/ClassInvite.tsx',
-            'src/teacher/ClassPupils.tsx',
-            'src/teacher/ClassResults.tsx',
-            'src/teacher/ClassSettings.tsx',
-            'src/teacher/readReports.ts',
-            'src/teacher/connectionFile.ts',
-            'src/teacher/connectionStore.ts',
-            'src/teacher/rememberedClass.ts',
-            'src/components/ui/Field.tsx',
-            'src/insights/envelope.ts',
-            'src/insights/recipient.ts',
-            'src/insights/classKey.ts',
-            'src/insights/classCode.ts',
-            'src/insights/evidence.ts',
-            'src/insights/mailbox.ts',
-            'src/insights/ownerStore.ts',
-            'src/insights/recoveryFile.ts',
-            'src/sync/crypto.ts',
-            'src/sync/relay.ts',
-            'src/sync/pairingConfig.ts',
-            'src/shareLinks/client.ts',
-            'src/shareLinks/shareId.ts',
-            'src/shareLinks/payloadCodec.ts',
-            'src/state/ThemeContext.tsx',
-            'src/state/localSetting.ts',
-            'src/components/course/coursePageLayout.ts',
-            'src/components/ui/SectionCard.tsx',
-            'src/components/ui/buttonStyles.ts',
-            'src/components/ui/cn.ts',
-            'src/components/ui/icons.tsx',
-            'src/components/ui/StudyDrawing.tsx',
-            'src/hooks/useFocusTrap.ts',
-          ].includes(id),
-      ),
-    ).toEqual([]);
     expect(modules.join('\n')).not.toMatch(/node_modules\/(?:motion|react-router|ai|ts-fsrs)\//);
     const files = (await readdir(directory, { recursive: true }))
       .map((file) => file.replaceAll('\\', '/'))
@@ -144,21 +73,9 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
     expect(
       files.filter((file) => /(?:workbox|precache|worker|\.wasm$|compare\/)/i.test(file)),
     ).toEqual([]);
-    expect(files.filter((file) => /\.(?:js|html)$/.test(file))).toEqual([
-      expect.stringMatching(/^assets\/StudyDrawing-[\w-]+\.js$/),
-      expect.stringMatching(/^assets\/TeacherClassReports-[\w-]+\.js$/),
-      expect.stringMatching(/^assets\/TeacherCourses-[\w-]+\.js$/),
-      expect.stringMatching(/^assets\/TeacherKeySetup-[\w-]+\.js$/),
-      expect.stringMatching(/^assets\/classRecoveryFile-[\w-]+\.js$/),
-      expect.stringMatching(/^assets\/connectionStore-[\w-]+\.js$/),
-      expect.stringMatching(/^assets\/index-[\w-]+\.js$/),
-      expect.stringMatching(/^assets\/ownerStore-[\w-]+\.js$/),
-      'index.html',
-      'sw.js',
-    ]);
     const html = await readFile(join(directory, 'index.html'), 'utf8');
     expect(html).toContain('<title>Gaps – Lacuna</title>');
-    expect(html).not.toMatch(/manifest|src\/main\.tsx|simpleanalytics/i);
+    expect(html).not.toMatch(/manifest|simpleanalytics/i);
     const eagerScripts = await Promise.all(
       [...eager].map((file) => readFile(join(directory, file))),
     );

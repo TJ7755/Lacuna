@@ -5,6 +5,7 @@ for (const theme of ['light', 'dark']) {
   test(`Volt keeps text, actions and focus legible in ${theme} mode`, async ({ page }) => {
     await page.addInitScript((value) => localStorage.setItem('lacuna-theme', value), theme);
     await enterFreshLacuna(page);
+    await expect(page.locator('html')).toHaveCSS('color-scheme', theme);
     const palette = await page.evaluate(() => {
       const probe = document.createElement('span');
       document.body.append(probe);
@@ -28,12 +29,23 @@ for (const theme of ['light', 'dark']) {
         return (values[0] + 0.05) / (values[1] + 0.05);
       }
       const text = ['paper', 'surface', 'surface-raised', 'chrome'].flatMap((background) =>
-        ['ink', 'ink-soft', 'ink-faint', 'accent-ink', 'positive', 'negative', 'warning-fg'].map(
-          (foreground) => ({
-            pair: `${foreground}/${background}`,
-            ratio: contrast(foreground, background),
-          }),
-        ),
+        [
+          'ink',
+          'ink-soft',
+          'ink-faint',
+          'accent-ink',
+          'positive',
+          'negative',
+          'warning-fg',
+          'series-1',
+          'series-2',
+          'series-3',
+          'series-4',
+          'series-5',
+        ].map((foreground) => ({
+          pair: `${foreground}/${background}`,
+          ratio: contrast(foreground, background),
+        })),
       );
       const action = contrast('accent-fg', 'accent');
       const focus = contrast('accent-ink', 'paper');

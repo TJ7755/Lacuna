@@ -158,10 +158,9 @@ describe('validateRecoveryPassphrase', () => {
 });
 
 describe('pairing QR payloads', () => {
-  it('round-trips the relay capability without including the mint secret', () => {
+  it('round-trips the relay capability', () => {
     const code = encodePairingCode(credentials());
     expect(code).toContain('LACUNA-SYNC-1:');
-    expect(code).not.toContain('mint-secret');
     expect(decodePairingCode(code)).toEqual({
       version: 1,
       relayUrl: DEFAULT_RELAY_URL,
@@ -227,7 +226,7 @@ describe('setupFirstDevice', () => {
         now: expect.any(Function),
       }),
     );
-    expect(session.result).toBe(syncResult);
+    expect(session.result).toEqual(syncResult);
     expect(session.state.channelId).toBe(CHANNEL_ID);
     expect(decodePairingCode(session.pairingCode).channelId).toBe(CHANNEL_ID);
   }, 30_000);

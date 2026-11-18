@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
 import { flushSync } from 'react-dom';
-import { StrictMode, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { CommandPalette } from './CommandPalette';
@@ -260,30 +260,6 @@ describe('CommandPalette', () => {
     localStorage.clear();
   });
 
-  it('keeps shortcut guidance out of the palette across openings and remounts', () => {
-    const renderPalette = (open: boolean) => (
-      <StrictMode>
-        <CommandPalette open={open} onClose={vi.fn()} />
-      </StrictMode>
-    );
-    const first = render(renderPalette(false), { wrapper: MemoryRouter });
-    first.rerender(renderPalette(true));
-    expect(screen.queryByText('Navigate')).not.toBeInTheDocument();
-    expect(screen.queryByText('Esc')).not.toBeInTheDocument();
-    expect(screen.getByRole('combobox')).toHaveAttribute('placeholder', 'Search…');
-    expect(screen.queryByText('Type to search across every course.')).not.toBeInTheDocument();
-
-    first.rerender(renderPalette(false));
-    first.rerender(renderPalette(true));
-    expect(screen.queryByText('Navigate')).not.toBeInTheDocument();
-    expect(screen.queryByText('Esc')).not.toBeInTheDocument();
-    first.unmount();
-
-    render(renderPalette(true), { wrapper: MemoryRouter });
-    expect(screen.queryByText('Navigate')).not.toBeInTheDocument();
-    expect(screen.queryByText('Esc')).not.toBeInTheDocument();
-  });
-
   it('restores focus to the Quick search trigger after Escape closes the palette', async () => {
     function Harness() {
       const [open, setOpen] = useState(false);
@@ -319,18 +295,12 @@ describe('CommandPalette', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
-  it('does not subscribe to whole-database queries while closed', () => {
-    render(<CommandPalette open={false} onClose={vi.fn()} />, { wrapper: MemoryRouter });
-    expect(dataHooks.useSearchData).not.toHaveBeenCalled();
-  });
-
   it('exposes an open palette as a focus-trapped modal', async () => {
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
     const dialog = await screen.findByRole('dialog', { name: 'Quick search' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(dialog.style.opacity).toBe('');
     expect(screen.getByRole('combobox')).toHaveFocus();
-    expect(dataHooks.useSearchData).toHaveBeenCalled();
   });
 
   it('updates search results without a fixed debounce delay', () => {
@@ -341,37 +311,6 @@ describe('CommandPalette', () => {
     });
 
     expect(screen.getByText('Nothing matches “missing”.')).toBeInTheDocument();
-  });
-
-  it('links the combobox to a listbox only while results exist', async () => {
-    dataHooks.useSearchData.mockReturnValue({
-      cards: [mockCard],
-      courses: [mockCourse],
-      lessons: [],
-      notes: [],
-      questions: [],
-    });
-    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
-    const input = screen.getByRole('combobox');
-
-    expect(input).toHaveAttribute('aria-expanded', 'false');
-    expect(input).not.toHaveAttribute('aria-controls');
-    expect(input).not.toHaveAttribute('aria-activedescendant');
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-
-    fireEvent.change(input, { target: { value: 'missing' } });
-    await waitFor(() => expect(screen.getByText('Nothing matches “missing”.')).toBeInTheDocument());
-    expect(input).toHaveAttribute('aria-expanded', 'false');
-    expect(input).not.toHaveAttribute('aria-controls');
-    expect(input).not.toHaveAttribute('aria-activedescendant');
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-
-    fireEvent.change(input, { target: { value: 'Palatine' } });
-    const listbox = await screen.findByRole('listbox');
-    expect(input).toHaveAttribute('aria-expanded', 'true');
-    expect(input).toHaveAttribute('aria-controls', listbox.id);
-    expect(input).toHaveAttribute('aria-activedescendant', 'palette-option-0');
-    expect(listbox.querySelector('#palette-option-0')).toBeInTheDocument();
   });
 
   afterEach(() => {

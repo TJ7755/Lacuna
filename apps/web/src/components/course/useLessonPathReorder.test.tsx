@@ -102,7 +102,7 @@ describe('moveLessonIds', () => {
     expect(moveLessonIds(['a', 'b', 'c'], 'b', -4)).toEqual(['b', 'a', 'c']);
     expect(moveLessonIds(['a', 'b', 'c'], 'b', 99)).toEqual(['a', 'c', 'b']);
     const ids = ['a', 'b'];
-    expect(moveLessonIds(ids, 'missing', 0)).toBe(ids);
+    expect(moveLessonIds(ids, 'missing', 0)).toEqual(['a', 'b']);
   });
 });
 

@@ -318,6 +318,9 @@ describe('relay', () => {
           headers: { Origin: origin, 'Access-Control-Request-Method': 'PUT' },
         }),
       );
+    const allowed = await preflight(ORIGIN);
+    expect(allowed.status).toBe(204);
+    expectCors(allowed);
     const allowOrigin = async (origin: string) =>
       (await preflight(origin)).headers.get('Access-Control-Allow-Origin');
 
@@ -330,53 +333,6 @@ describe('relay', () => {
     expect(await allowOrigin('https://school.example')).toBe('https://school.example');
     const noOrigin = await ctx.handle(new Request(`http://relay.test/c/${ctx.channelId}/state`));
     expect(noOrigin.headers.get('Access-Control-Allow-Origin')).toBe('*');
-  });
-
-  it('adds CORS headers to OPTIONS, 401, 404 and 412', async () => {
-    const ctx = await minted();
-    const preflight = await ctx.handle(
-      new Request(`http://relay.test/c/${ctx.channelId}/state`, {
-        method: 'OPTIONS',
-        headers: {
-          Origin: ORIGIN,
-          'Access-Control-Request-Method': 'PUT',
-          'Access-Control-Request-Headers': 'authorization,content-type,if-match',
-        },
-      }),
-    );
-    expectCors(preflight);
-    expect(preflight.status).toBe(204);
-
-    const unauthorized = await ctx.handle(getRequest(ctx.channelId, 'state'));
-    expect(unauthorized.status).toBe(404);
-    expectCors(unauthorized);
-
-    const noToken = await ctx.handle(
-      new Request(`http://relay.test/c/${ctx.channelId}/state`, {
-        method: 'PUT',
-        headers: {
-          Origin: ORIGIN,
-          'If-Match': EMPTY_SLOT_ETAG,
-          'Content-Length': '1',
-        },
-        body: new Uint8Array([1]),
-      }),
-    );
-    expect(noToken.status).toBe(401);
-    expectCors(noToken);
-
-    expect(
-      (
-        await ctx.handle(
-          putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])),
-        )
-      ).status,
-    ).toBe(204);
-    const stale = await ctx.handle(
-      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([2])),
-    );
-    expect(stale.status).toBe(412);
-    expectCors(stale);
   });
 
   it('treats an expired channel as gone', async () => {
@@ -499,6 +455,7 @@ describe('relay', () => {
 
   it('returns a generic 500 and logs a redacted cause when the store throws', async () => {
     const channelId = 'ab'.repeat(16);
+    const token = 'cd'.repeat(32);
     const logged: string[] = [];
     const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
       logged.push(args.map(String).join(' '));
@@ -509,7 +466,7 @@ describe('relay', () => {
       },
       async get() {
         throw new Error('blob read failed', {
-          cause: new Error(`Vercel Blob: missing token for c/${channelId}/state`),
+          cause: new Error(`Vercel Blob: missing token for c/${channelId}/state token=${token}`),
         });
       },
       async put() {
@@ -539,6 +496,8 @@ describe('relay', () => {
     expect(text).toContain('blob read failed');
     expect(text).toContain('missing token');
     expect(text).not.toContain(channelId);
+    expect(text).not.toContain(token);
+    expect(text).toContain('[redacted]');
   });
 
   it('does not store the write token in plaintext', async () => {

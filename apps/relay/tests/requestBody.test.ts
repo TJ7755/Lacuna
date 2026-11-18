@@ -9,7 +9,10 @@ describe('request body guards', () => {
       const store = new MemoryStore();
       const handle = createHandler(store);
       const minted = await handle(new Request('https://relay.test/channel', { method: 'POST' }));
-      const { channelId } = (await minted.json()) as { channelId: string };
+      const { channelId, writeToken } = (await minted.json()) as {
+        channelId: string;
+        writeToken: string;
+      };
       let reads = 0;
       const body = new ReadableStream(
         {
@@ -22,6 +25,7 @@ describe('request body guards', () => {
       );
       const headers = new Headers({ 'If-Match': '"0"' });
       if (scenario === 'unauthorised') headers.set('Content-Length', '1');
+      else headers.set('Authorization', `Bearer ${writeToken}`);
       const request = new Request(`https://relay.test/c/${channelId}/state`, {
         method: 'PUT',
         headers,

@@ -132,7 +132,6 @@ describe('course share payload content', () => {
 
     const imported = (await db.cards.toArray())[0];
     expect(imported.payload).toEqual(itemPayload);
-    expect(JSON.stringify(imported.payload)).toBe(JSON.stringify(itemPayload));
   });
 
   it('leaves payload-less card encoding unchanged', async () => {
@@ -152,7 +151,6 @@ describe('course share payload content', () => {
       g: ['number'],
       co: card.conceptId,
     });
-    expect(JSON.stringify(payload.lessons[0].cards[0])).not.toContain('"p"');
   });
 
   it('preserves unknown payload versions and kinds for the read-only fallback', async () => {

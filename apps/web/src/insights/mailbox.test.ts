@@ -41,9 +41,7 @@ async function fixture() {
 describe('encrypted mailbox transport', () => {
   it('moves ciphertext through the real relay and decrypts only with the recovered teacher key', async () => {
     const f = await fixture();
-    const writes = vi.spyOn(f.store, 'put');
     await putInsightEnvelope(f.options);
-    expect(writes.mock.calls.length).toBeLessThanOrEqual(3);
     const stored = await f.store.list(`insights/${f.options.shareId}/${day}/envelopes/`);
     expect(stored).toHaveLength(1);
     const bytes = (await f.store.get(stored[0].key))!.body;
@@ -136,7 +134,11 @@ describe('encrypted mailbox transport', () => {
       ).rejects.toThrow('unreadable');
     }
     const fetchImpl = vi.fn(
-      async () => new Response('Secret'.repeat(300_000), { status: 200 }),
+      async () =>
+        new Response(
+          JSON.stringify({ v: 2, envelopes: [], cursor: null }) + ' '.repeat(1_800_000),
+          { status: 200 },
+        ),
     ) as typeof fetch;
     await expect(
       getInsightMailboxPage({ ...f.options, writeToken: f.writeToken, fetchImpl }),

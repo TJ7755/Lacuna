@@ -187,7 +187,6 @@ describe('ItemStagingReview', () => {
     ).toBeInTheDocument();
 
     fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
-    expect(within(row).queryByText('Item JSON')).not.toBeInTheDocument();
     fireEvent.change(within(row).getByRole('spinbutton', { name: 'Expected marks' }), {
       target: { value: '1' },
     });

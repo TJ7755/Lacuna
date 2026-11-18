@@ -30,8 +30,8 @@ it('preserves uncompressed bytes through the threshold for older clients', async
     new TextEncoder().encode('{"format":"lacuna-course"}'),
     new Uint8Array(SHARE_PAYLOAD_MAX_BYTES),
   ]) {
-    expect(await encodeSharePayload(original)).toBe(original);
-    expect(await decodeSharePayload(original)).toBe(original);
+    expect(await encodeSharePayload(original)).toEqual(original);
+    expect(await decodeSharePayload(original)).toEqual(original);
   }
 });
 

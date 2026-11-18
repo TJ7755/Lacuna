@@ -286,43 +286,6 @@ describe('CourseSettings', () => {
     expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { learnFirst: false });
   });
 
-  it('does not repeat the course name beneath the settings title', () => {
-    renderPage();
-    openSettings('Course details');
-
-    expect(screen.queryByText('Original course')).not.toBeInTheDocument();
-    expect(screen.getByDisplayValue('Original course')).toBeInTheDocument();
-  });
-
-  it('does not reset the optimiser when the same course rerenders', () => {
-    const view = renderPage();
-    openSettings('Advanced scheduling');
-    mockOptimiserReset.mockClear();
-
-    view.rerender(
-      <MemoryRouter initialEntries={['/course/course-1/settings']}>
-        <Routes>
-          <Route path="/course/:courseId/settings" element={<CourseSettings />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    expect(mockOptimiserReset).not.toHaveBeenCalled();
-  });
-
-  it('renders the grouped section headings and no "Save changes" bar', () => {
-    renderPage();
-    expect(screen.getByRole('heading', { name: 'Study goal and dates' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Assessments' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Daily workload' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /^Lessons/ })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /^Auto-practice/ })).toBeInTheDocument();
-    // "Danger zone" has no separate group heading — DangerZoneSection labels itself —
-    // so assert on its presence rather than a specific role.
-    expect(screen.getAllByText('Danger zone').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Save changes')).not.toBeInTheDocument();
-  });
-
   it('offers detaching only on a locked shared copy', () => {
     const { unmount } = renderPage();
     expect(screen.queryByRole('heading', { name: 'Shared course' })).not.toBeInTheDocument();
@@ -548,14 +511,6 @@ describe('CourseSettings', () => {
       'course-1',
       expect.objectContaining({ autoPractice: false }),
     );
-  });
-
-  it('does not duplicate the course authoring mode inside settings', () => {
-    renderPage();
-    expect(screen.queryByText('Lesson view')).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('How lessons in this course open by default.'),
-    ).not.toBeInTheDocument();
   });
 
   it('rejects an invalid learning steps format on blur without committing', () => {

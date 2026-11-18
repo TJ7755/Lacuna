@@ -1,8 +1,8 @@
 import { expect, type Page } from '@playwright/test';
 import { importWelcomeCourse, skipOnboarding } from './lacunaApp';
 
-export const YOUTUBE_EMBED_URL = 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ';
-export const VIMEO_EMBED_URL = 'https://player.vimeo.com/video/123456789';
+const YOUTUBE_EMBED_URL = 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ';
+const VIMEO_EMBED_URL = 'https://player.vimeo.com/video/123456789';
 
 const VIDEO_NOTE_MARKDOWN = [
   'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
@@ -23,18 +23,11 @@ const fixtureDocuments = [
   },
 ] as const;
 
-export interface VideoEmbedFixtures {
-  requests: string[];
-}
-
 /** Route the two exact provider documents to hermetic HTML without broadening the host allowlist. */
-export async function installVideoEmbedFixtures(page: Page): Promise<VideoEmbedFixtures> {
-  const requests: string[] = [];
-
+export async function installVideoEmbedFixtures(page: Page): Promise<void> {
   await Promise.all(
     fixtureDocuments.map(({ url, provider, marker }) =>
       page.route(url, async (route) => {
-        requests.push(route.request().url());
         await route.fulfill({
           status: 200,
           contentType: 'text/html',
@@ -47,8 +40,6 @@ export async function installVideoEmbedFixtures(page: Page): Promise<VideoEmbedF
       }),
     ),
   );
-
-  return { requests };
 }
 
 export async function authorVideoEmbedNote(page: Page, navigateToApp = true): Promise<void> {

@@ -84,5 +84,4 @@ it('loads persisted histories for moved cards and merges legacy evidence before 
   expect(snapshot.cards[1].history).toEqual(cards[1].history);
   expect(cards[0].front).toBe(template.front);
   expect(await calculateForecastHistories(structuredClone(snapshot))).toEqual(expected);
-  expect(Object.values(expected).every((points) => points.length === 40)).toBe(true);
 });

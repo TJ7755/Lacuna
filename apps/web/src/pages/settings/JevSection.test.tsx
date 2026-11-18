@@ -80,9 +80,6 @@ describe('JevSection', () => {
     expect(
       screen.getByText('Nothing is sent until you accept the consent warning.'),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/100 Jev requests/)).not.toBeVisible();
-    expect(screen.queryByText(/still being evaluated/)).not.toBeVisible();
-
     state.settings = { enabled: true, acceptedConsentVersion: JEV_CONSENT_VERSION };
     rerender(<JevSection />);
     expect(
@@ -96,7 +93,7 @@ describe('JevSection', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps the removed detail reachable in the How it works disclosure', () => {
+  it('keeps marking detail reachable in the How it works disclosure', () => {
     render(<JevSection />);
     const disclosure = screen.getByRole('button', { name: 'How it works' });
     expect(disclosure).toHaveAttribute('aria-expanded', 'false');
@@ -125,15 +122,6 @@ describe('JevSection', () => {
     expect(state.disable).toHaveBeenCalled();
   });
 
-  it('offers public beta marking without an invitation code', () => {
-    state.settings = { enabled: true, acceptedConsentVersion: JEV_CONSENT_VERSION };
-    state.status = { state: 'ready', lastUsedAt: null };
-    render(<JevSection />);
-    expect(toggle()).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('status')).toHaveTextContent('Ready.');
-    expect(screen.queryByLabelText(/Access code/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Connect' })).not.toBeInTheDocument();
-  });
   it('copies the public quota ID for a higher beta allowance', async () => {
     state.settings = { enabled: true, acceptedConsentVersion: JEV_CONSENT_VERSION };
     const id = 'ab'.repeat(32);

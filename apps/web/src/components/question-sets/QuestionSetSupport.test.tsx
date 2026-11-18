@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import type { QuestionSetAttemptReflection } from '@lacuna/core/questions/questionSetAttempts';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { QuestionSetRelatedKnowledge } from './QuestionSetRelatedKnowledge';
@@ -35,7 +37,6 @@ it('does not reveal related knowledge until recording assistance succeeds', asyn
     />,
   );
   const trigger = screen.getByRole('button', { name: 'Use related cards' });
-  expect(screen.queryByText(/Opening these cards/)).not.toBeInTheDocument();
   fireEvent.click(trigger);
   await act(async () => {});
   expect(beforeReveal).toHaveBeenCalledOnce();
@@ -49,24 +50,30 @@ it('does not reveal related knowledge until recording assistance succeeds', asyn
   const dialog = await screen.findByRole('dialog', { name: 'Related cards' });
   expect(within(dialog).getByText('What is osmosis?')).toBeInTheDocument();
   expect(screen.queryByText('Movement of water.')).not.toBeInTheDocument();
-  expect(dialog).not.toHaveTextContent('This answer is recorded as assisted.');
   expect(
     within(dialog).queryByRole('button', { name: 'Return to answer' }),
   ).not.toBeInTheDocument();
   fireEvent.click(within(dialog).getByRole('button', { name: 'Show answer' }));
   expect(within(dialog).getByText('Movement of water.')).toBeInTheDocument();
 });
-it('keeps reflection optional and saves it separately from answer evidence', () => {
+it('retains selected reflection reasons when saving a note', () => {
   const onChange = vi.fn();
   const onDirty = vi.fn();
-  render(
-    <QuestionSetReflection
-      value={{ reasons: [], note: '' }}
-      busy={false}
-      onChange={onChange}
-      onDirty={onDirty}
-    />,
-  );
+  function Reflection() {
+    const [value, setValue] = useState<QuestionSetAttemptReflection>({ reasons: [], note: '' });
+    return (
+      <QuestionSetReflection
+        value={value}
+        busy={false}
+        onChange={(next) => {
+          setValue(next);
+          onChange(next);
+        }}
+        onDirty={onDirty}
+      />
+    );
+  }
+  render(<Reflection />);
   fireEvent.click(screen.getByRole('button', { name: 'Reflection' }));
   fireEvent.click(screen.getByLabelText('Misread the question'));
   expect(onChange).toHaveBeenLastCalledWith({ reasons: ['misread-question'], note: '' });
@@ -75,7 +82,10 @@ it('keeps reflection optional and saves it separately from answer evidence', () 
   });
   expect(onDirty).toHaveBeenLastCalledWith(true);
   fireEvent.click(screen.getByRole('button', { name: 'Save reflection' }));
-  expect(onChange).toHaveBeenLastCalledWith({ reasons: [], note: 'Check the command word.' });
+  expect(onChange).toHaveBeenLastCalledWith({
+    reasons: ['misread-question'],
+    note: 'Check the command word.',
+  });
   expect(onDirty).toHaveBeenLastCalledWith(false);
 });
 
@@ -191,41 +201,6 @@ it('shows one related card at a time and resets answer reveal when moving betwee
   fireEvent.click(help.getByRole('button', { name: 'Next card' }));
   expect(help.getByRole('status')).toHaveTextContent('Card 3 of 3');
   expect(help.getByRole('button', { name: 'Next card' })).toBeDisabled();
-});
-
-it('resets consultation when the active question part changes', async () => {
-  const { rerender } = render(
-    <QuestionSetRelatedKnowledge
-      key="part-a"
-      courseId="course"
-      conceptIds={['concept']}
-      submitted
-      beforeReveal={vi.fn()}
-    />,
-  );
-  fireEvent.click(screen.getByRole('button', { name: 'Related cards' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Show answer' }));
-  relatedCards.current = [
-    { id: 'different-card', type: 'front_back', front: 'Next part help', back: 'Next part answer' },
-  ];
-  rerender(
-    <QuestionSetRelatedKnowledge
-      key="part-b"
-      courseId="course"
-      conceptIds={['other']}
-      submitted
-      beforeReveal={vi.fn()}
-    />,
-  );
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Related cards' })).toHaveAttribute(
-    'aria-expanded',
-    'false',
-  );
-  fireEvent.click(screen.getByRole('button', { name: 'Related cards' }));
-  expect(await screen.findByText('Next part help')).toBeInTheDocument();
-  expect(screen.queryByText('Movement of water.')).not.toBeInTheDocument();
-  expect(screen.queryByText('Next part answer')).not.toBeInTheDocument();
 });
 
 it('offers no help control when there are no related cards', () => {

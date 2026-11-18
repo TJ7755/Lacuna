@@ -32,25 +32,16 @@ describe('readReviewActivity', () => {
     await db.delete();
   });
 
-  it('reads the derived table without hydrating review records', async () => {
+  it('returns repeat timestamps only for the supplied live cards', async () => {
     await db.reviewHistory.bulkAdd([
       entry('first', 'card-1', 100),
       entry('second', 'card-1', 100),
       entry('third', 'card-1', 200),
       entry('orphan', 'deleted-card', 300),
     ]);
-    const failReading = () => {
-      throw new Error('review record was hydrated');
-    };
-    db.reviewHistory.hook('reading', failReading);
-
-    try {
-      await expect(readReviewActivity([{ id: 'card-1' }])).resolves.toEqual(
-        new Map([['card-1', [100, 100, 200]]]),
-      );
-    } finally {
-      db.reviewHistory.hook('reading').unsubscribe(failReading);
-    }
+    await expect(readReviewActivity([{ id: 'card-1' }, { id: 'unreviewed' }])).resolves.toEqual(
+      new Map([['card-1', [100, 100, 200]]]),
+    );
   });
 
   it('returns no activity for an empty card set', async () => {

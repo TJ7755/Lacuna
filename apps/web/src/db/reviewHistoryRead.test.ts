@@ -11,10 +11,7 @@ import {
   listReviewHistoryForCards,
   listReviewHistoryForCourse,
 } from './reviewHistoryRead';
-import {
-  reviewHistoryEntryIdForEvent,
-  resolveReviewHistoryCollisions,
-} from '@lacuna/core/db/reviewHistory';
+import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
 import type { ReviewLog } from '@lacuna/core/db/types';
 
 function review(timestamp: number, eventId?: string): ReviewLog {
@@ -263,10 +260,17 @@ describe('review-history read adapter', () => {
       { ...second, history: [review(999, 'shared-event')] },
     ]);
 
-    expect(await listAllReviewHistory()).toEqual(resolveReviewHistoryCollisions(canonical));
-    expect(await listReviewHistoryForCourse(course.id)).toEqual(
-      resolveReviewHistoryCollisions(canonical),
-    );
+    for (const entries of [
+      await listAllReviewHistory(),
+      await listReviewHistoryForCourse(course.id),
+    ]) {
+      expect(entries.map((entry) => [entry.cardId, entry.timestamp])).toEqual([
+        [first.id, 100],
+        [second.id, 200],
+      ]);
+      expect(new Set(entries.map((entry) => entry.id)).size).toBe(2);
+      expect(entries.map((entry) => entry.eventId)).toEqual(['shared-event', 'shared-event']);
+    }
   });
 
   it('retains legacy duplicate occurrences alongside canonical events after filtering projections', async () => {

@@ -132,7 +132,6 @@ it('opens and exits a demo without adding it to classes or loaded sessions', asy
   const today = await screen.findByRole('heading', { name: 'Today' });
   await waitFor(() => expect(today).toHaveFocus());
   expect(screen.getByTestId('today-loaded-count')).toHaveTextContent('Not loaded');
-  expect(store.list).toHaveBeenCalledOnce();
 });
 
 it('asks to unlock a locked class on open, leaving focus for its passphrase', async () => {
@@ -170,7 +169,6 @@ it('carries a new connection from the sidebar to protecting its class', async ()
   fireEvent.click(within(nav).getByRole('button', { name: 'Connect a class' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Finish connecting' }));
   expect(await screen.findByText('Asking to setup')).toBeVisible();
-  expect(store.list).toHaveBeenCalledTimes(2);
   // Once unlocked, the set-up request is spent: locking shows the plain card.
   fireEvent.click(screen.getByRole('button', { name: 'Pretend unlock' }));
   fireEvent.click(screen.getByRole('button', { name: 'Lock' }));

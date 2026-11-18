@@ -16,7 +16,7 @@ describe('backupStatus', () => {
   });
 
   it('stays fresh within three days', () => {
-    const status = backupStatus(NOW - 2 * 60 * 60 * 1000, NOW);
+    const status = backupStatus(NOW - 3 * 24 * 60 * 60 * 1000 + 1, NOW);
     expect(status.tone).toBe('fresh');
     expect(status.label).toMatch(/^Restore point saved /);
   });

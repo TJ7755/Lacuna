@@ -42,8 +42,5 @@ describe('defaultFsrsParameters', () => {
     expect(second.w[0]).not.toBe(999);
     expect(second.learning_steps).not.toContain('1d');
     expect(second.relearning_steps).not.toContain('2d');
-    expect(first.w).not.toBe(second.w);
-    expect(first.learning_steps).not.toBe(second.learning_steps);
-    expect(first.relearning_steps).not.toBe(second.relearning_steps);
   });
 });

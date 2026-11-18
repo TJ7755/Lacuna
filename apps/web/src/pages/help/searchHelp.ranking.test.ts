@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { HelpTopic } from './helpTopics';
-import { helpTopics } from './helpTopics';
 import { searchHelp } from './searchHelp';
 
 vi.mock('./helpTopics', () => ({
@@ -75,7 +74,11 @@ describe('searchHelp ranking with controlled topics', () => {
   });
 
   it('ignores case and normalises whitespace within a multi-word query', () => {
-    expect(searchHelp('  SPACED \t REPETITION\n ')).toEqual(searchHelp('spaced repetition'));
+    expect(searchHelp('  SPACED \t REPETITION\n ').map((topic) => topic.id)).toEqual([
+      'phrase',
+      'z-tie',
+      'a-tie',
+    ]);
   });
 
   it('finds every word across fields and excludes topics missing any word', () => {
@@ -84,6 +87,14 @@ describe('searchHelp ranking with controlled topics', () => {
   });
 
   it('returns all topics in source order for a whitespace-only query', () => {
-    expect(searchHelp(' \t\n ')).toEqual(helpTopics);
+    expect(searchHelp(' \t\n ').map((topic) => topic.id)).toEqual([
+      'answer',
+      'keyword',
+      'question',
+      'z-tie',
+      'a-tie',
+      'phrase',
+      'split-fields',
+    ]);
   });
 });

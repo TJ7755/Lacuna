@@ -27,7 +27,6 @@ test('shows a clear completed Simple Learn report on desktop and mobile', async 
     .click();
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Goal reached.' })).toBeVisible();
-  await expect(page.getByText('Goal reached', { exact: true })).toHaveCount(0);
   // The details stay mounted but folded to zero height, inert and hidden from assistive technology.
   const details = page.getByRole('button', { name: 'Session details' });
   const panel = page.locator(`[id="${await details.getAttribute('aria-controls')}"]`);

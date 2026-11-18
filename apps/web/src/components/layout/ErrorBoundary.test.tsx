@@ -18,7 +18,6 @@ describe('ErrorBoundary', () => {
 
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
     expect(screen.getByText(/Unsaved edits may be lost/)).toBeInTheDocument();
-    expect(screen.queryByText(/Your data is saved locally and is safe/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 

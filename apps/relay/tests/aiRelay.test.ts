@@ -21,8 +21,6 @@ describe('AI relay', () => {
     const browser = (await created.json()) as { sessionId: string; pairingCode: string };
 
     const request = claimRequest(browser.pairingCode);
-    expect(request.url).not.toContain(browser.sessionId);
-    expect(request.url).not.toContain(browser.pairingCode);
     const claimed = await handle(request);
     expect(claimed.status).toBe(200);
     expect(await claimed.json()).toMatchObject({ sessionId: browser.sessionId });

@@ -231,16 +231,6 @@ describe('SharedCourseImport with course codes and files', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('shows import section with textarea', () => {
-    render(<SharedCourseImport />);
-    expect(screen.getByText('Import a shared course')).toBeInTheDocument();
-    expect(screen.queryByText(/share-code encodings/)).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Share link or code to import')).toBeInTheDocument();
-    expect(
-      screen.getByRole('textbox', { name: 'Share link or code to import' }),
-    ).toBeInTheDocument();
-  });
-
   describe('decode-time merge routing (Arc 7 §7.5)', () => {
     async function inspectCode() {
       render(<SharedCourseImport />);

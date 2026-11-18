@@ -23,19 +23,6 @@ describe('UnlockModeSection', () => {
     expect(screen.queryByText(/device clock/)).not.toBeInTheDocument();
   });
 
-  it('shows cadence fields under linear mode', () => {
-    render(
-      <UnlockModeSection
-        unlockMode="linear"
-        onUnlockModeChange={vi.fn()}
-        linearCadence={{ anchorDate: Date.now(), intervalDays: 7 }}
-        onAnchorDateChange={vi.fn()}
-        onIntervalDaysCommit={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('Days between lessons')).toBeInTheDocument();
-  });
-
   it('does not turn a cleared interval into 1 before it is retyped', () => {
     const onIntervalDaysCommit = vi.fn();
     render(

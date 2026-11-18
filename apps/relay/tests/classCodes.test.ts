@@ -80,21 +80,22 @@ it('requires owner authentication and a live teacher slot, and returns one stabl
   expect((await f.create()).status).toBe(409);
 });
 
-it('retries an exclusive mapping collision and stops after five collisions', async () => {
+it('retries mapping collisions and fails closed when no unique mapping can be stored', async () => {
   const f = await fixture();
   const put = f.store.put.bind(f.store);
   let collisions = 1;
-  const spy = vi.spyOn(f.store, 'put').mockImplementation((key, body, options) => {
+  vi.spyOn(f.store, 'put').mockImplementation((key, body, options) => {
     if (key.startsWith('class-codes/') && collisions-- > 0)
       return Promise.resolve({ ok: false, reason: 'precondition' });
     return put(key, body, options);
   });
-  await f.allocate();
-  expect(spy.mock.calls.filter(([key]) => key.startsWith('class-codes/'))).toHaveLength(2);
+  const code = await f.allocate();
+  expect((await f.lookup(code)).status).toBe(200);
+  const mappings = await f.store.list('class-codes/');
   await f.store.del([`shares/${f.shareId}/class-code`]);
-  collisions = 5;
+  collisions = Infinity;
   expect((await f.create()).status).toBe(500);
-  expect(collisions).toBe(0);
+  expect(await f.store.list('class-codes/')).toEqual(mappings);
 });
 
 it('concurrent owner requests return the same code and leave only one mapping', async () => {
@@ -114,6 +115,19 @@ it.each(['k7qm4xtp', 'K7QM-4XTP', 'K7QM4XTU', '1234567', '123456789'])(
     expect(await f.store.list('ai-rate/class-code/')).toHaveLength(0);
   },
 );
+
+it('fails lookup closed when competing writes prevent rate-limit admission', async () => {
+  const f = await fixture();
+  const code = await f.allocate();
+  const put = f.store.put.bind(f.store);
+  vi.spyOn(f.store, 'put').mockImplementation((key, body, options) =>
+    key.startsWith('ai-rate/')
+      ? Promise.resolve({ ok: false, reason: 'precondition' })
+      : put(key, body, options),
+  );
+  expect((await f.lookup(code)).status).toBe(503);
+  expect(await f.store.list('ai-rate/class-code/')).toEqual([]);
+});
 
 it('admits 35 simultaneous valid lookups from one classroom address', async () => {
   const f = await fixture();

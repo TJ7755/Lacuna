@@ -1,6 +1,5 @@
 import {
   mockNavigate,
-  mockCreateLesson,
   mockUpdateCourse,
   live,
   mockOpenStudySheet,
@@ -167,8 +166,6 @@ describe('CoursePath View mode', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit mode' }));
 
     expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' });
-    expect(screen.queryByRole('button', { name: 'Read' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
   });
 
   it('keeps course figures in one compact card under the lessons, not under the title', () => {
@@ -282,13 +279,6 @@ describe('CoursePath View mode', () => {
     },
   );
 
-  it('hides start, end and mid-path Manual practice', () => {
-    renderPage();
-    expect(
-      screen.queryByRole('button', { name: 'Add manual practice here' }),
-    ).not.toBeInTheDocument();
-  });
-
   it('hides the practice-node pencil on a visible practice node', () => {
     showCompletedPractice();
     renderPage();
@@ -304,32 +294,14 @@ describe('CoursePath View mode', () => {
     ).toBeInTheDocument();
   });
 
-  it('hides Add lesson on an empty path', () => {
-    pathState.mockLessons = [];
+  it.each([0, 2])('keeps authoring actions out of View mode with %i lessons', (count) => {
+    pathState.mockLessons = [lesson1, lesson2].slice(0, count);
     renderPage();
-    expect(screen.getByText('This course has no lessons yet.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
-    expect(mockCreateLesson).not.toHaveBeenCalled();
-  });
-
-  it('hides Add lesson on a populated path', () => {
-    renderPage();
-    expect(screen.getByRole('button', { name: 'Kinematics' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
-    expect(mockCreateLesson).not.toHaveBeenCalled();
-  });
-
-  it('hides the course rename control', () => {
-    renderPage();
-    expect(screen.getByRole('heading', { name: 'Mechanics' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
-    expect(mockUpdateCourse).not.toHaveBeenCalled();
-  });
-
-  it('hides path-authoring actions', () => {
-    renderPage();
-
+    if (count === 0) expect(screen.getByText('This course has no lessons yet.')).toBeVisible();
+    else expect(screen.getByRole('button', { name: 'Kinematics' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add first lesson' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
   });
 
   it('keeps published content read-only while offering personal checkpoints', () => {

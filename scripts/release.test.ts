@@ -3,7 +3,8 @@ import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from '
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
-import { digest, releaseAssets, verifyAssets } from './release-assets.mjs';
+import { createHash } from 'node:crypto';
+import { releaseAssets, verifyAssets } from './release-assets.mjs';
 import { main, publicationAssets, releaseIdentity, workflowState } from './release.mjs';
 
 const directories: string[] = [];
@@ -11,11 +12,37 @@ afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true });
 });
 
+const digest = (bytes: Buffer, algorithm: string, encoding: 'hex' | 'base64' = 'hex') =>
+  createHash(algorithm).update(bytes).digest(encoding);
+
+// This is the publication contract, independent of the selector under test.
+function expectedAssets(version: string, macos = false) {
+  return [
+    `Lacuna-Setup-${version}.exe`,
+    `Lacuna-Setup-${version}.exe.blockmap`,
+    `Lacuna-Portable-${version}.exe`,
+    'latest.yml',
+    `Lacuna-${version}.AppImage`,
+    `lacuna_${version}_amd64.deb`,
+    'latest-linux.yml',
+    ...(macos
+      ? [
+          `Lacuna-${version}-arm64-mac.zip`,
+          `Lacuna-${version}-arm64-mac.zip.blockmap`,
+          `Lacuna-${version}-arm64.dmg`,
+          `Lacuna-${version}-arm64.dmg.blockmap`,
+          'latest-mac.yml',
+        ]
+      : []),
+    'SHA256SUMS-github.txt',
+  ];
+}
+
 function fixture(macos = false) {
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-release-test-'));
   directories.push(directory);
   const version = '0.2.11';
-  const names = releaseAssets(version, { macos });
+  const names = expectedAssets(version, macos);
   const write = (name: string, data: string | Buffer) => writeFileSync(join(directory, name), data);
   // Small deterministic bytes exercise integrity checks; these are not application packages.
   for (const name of names) write(name, `test bytes for ${name}`);
@@ -144,7 +171,7 @@ describe('release orchestration gates', () => {
     expect(state([{ ...run, conclusion: 'cancelled' }])).toBe('failed');
   });
   it('requires exactly the Windows/Linux assets for explicit publication', () => {
-    const assets = releaseAssets('0.2.11').map((name: string) => ({ name }));
+    const assets = expectedAssets('0.2.11').map((name) => ({ name }));
     expect(() => publicationAssets(assets, '0.2.11')).not.toThrow();
     expect(() => publicationAssets(assets.slice(1), '0.2.11')).toThrow();
     expect(() => publicationAssets([...assets, { name: 'mac.dmg' }], '0.2.11')).toThrow();
@@ -152,7 +179,7 @@ describe('release orchestration gates', () => {
   it('requires the complete macOS set for all-platform publication', () => {
     const version = '0.2.11';
     const options = { macos: true };
-    const assets = releaseAssets(version, options).map((name: string) => ({ name }));
+    const assets = expectedAssets(version, true).map((name) => ({ name }));
     expect(() => publicationAssets(assets, version, options)).not.toThrow();
     expect(() =>
       publicationAssets(

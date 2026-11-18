@@ -287,12 +287,7 @@ describe('Paper question set authoring', () => {
     expect(await screen.findByText(/This course is read-only/)).toBeVisible();
     expect(screen.queryByLabelText('Q1 question')).not.toBeInTheDocument();
   });
-  it('does not repeat the course name above Questions', async () => {
-    const course = await setup();
-    open(course.id, 'questions');
-    await screen.findByRole('heading', { name: 'Questions' });
-    expect(screen.queryByText('Biology')).not.toBeInTheDocument();
-  });
+
   it('shows migrated individual content in the shared set library', async () => {
     const course = await setup();
     const concept = await createConcept(course.id, 'Cell size');

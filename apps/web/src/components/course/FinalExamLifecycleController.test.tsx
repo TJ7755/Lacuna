@@ -101,11 +101,16 @@ describe('FinalExamLifecycleController', () => {
     expect(navigate).toHaveBeenCalledWith('/course/course-1/settings?editFinalExam=1');
   });
 
-  it('does nothing under Keep revising and ignores future final exams', () => {
-    afterFinalExam = 'keep-revising';
-    courses = [{ ...passed, examDate: Date.now() + 10_000 }];
-    render(<FinalExamLifecycleController />);
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(updateCourse).not.toHaveBeenCalled();
-  });
+  it.each(['keep-revising', 'ask', 'archive'] as const)(
+    'leaves the course active under %s when its exam does not require action',
+    (policy) => {
+      afterFinalExam = policy;
+      courses = [
+        { ...passed, examDate: policy === 'keep-revising' ? passed.examDate : Date.now() + 10_000 },
+      ];
+      render(<FinalExamLifecycleController />);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(updateCourse).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -109,7 +109,10 @@ describe('Sidebar', () => {
           <Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />
         </MemoryRouter>,
       );
-      expect(document.querySelector('[data-layout-id]')).toBeNull();
+      expect(screen.getByRole('link', { name: 'Active course' })).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
     },
   );
 
@@ -217,7 +220,6 @@ it.each([false, true])(
       within(section).getByRole('link', { name: 'Class biology' }),
       '/gaps/joined',
     );
-    expect(createEnrolmentSetting('joined').read()?.consentedAt).toBeNull();
     view.unmount();
     render(<Sidebar collapsed={collapsed} onToggleCollapsed={vi.fn()} drawer />, {
       wrapper: MemoryRouter,

@@ -25,5 +25,6 @@ it('retains the stored scale and writes changes under the existing key', () => {
   expect(Number.parseFloat(document.documentElement.style.fontSize)).toBeCloseTo(115);
   fireEvent.click(screen.getByRole('button', { name: 'Larger' }));
   expect(localStorage.getItem('lacuna-font-scale')).toBe('1.3');
-  expect(localStorage.getItem('lacuna-font-scale-user-set')).toBeNull();
+  expect(screen.getByText('1.3')).toBeInTheDocument();
+  expect(Number.parseFloat(document.documentElement.style.fontSize)).toBeCloseTo(130);
 });

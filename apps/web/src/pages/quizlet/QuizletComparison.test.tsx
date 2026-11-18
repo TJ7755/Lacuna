@@ -26,14 +26,10 @@ it('previews pasted cards and leaves arrow keys available in the input', () => {
   });
   expect(screen.getByText('2 cards ready to preview')).toBeInTheDocument();
   expect(screen.getByText('Cell division')).toBeInTheDocument();
-  const heading = screen.getByRole('heading', { level: 1 });
-  const title = heading.textContent;
   input.focus();
   fireEvent.keyDown(input, { key: 'ArrowRight' });
   expect(input).toHaveFocus();
   expect(input).toHaveValue('Mitosis\tCell division\nOsmosis\tMovement of water');
-  expect(screen.getByRole('heading', { level: 1 })).toBe(heading);
-  expect(heading.textContent).toBe(title);
   fireEvent.change(input, { target: { value: '' } });
   expect(screen.getByText('Add a term and definition to see the preview.')).toBeInTheDocument();
 });
@@ -91,8 +87,7 @@ it('switches the teacher sharing example and restores the first share in A', asy
   const firstShare = within(teachers).getByRole('button', { name: 'First share' });
   const courseUpdates = within(teachers).getByRole('button', { name: 'Course updates' });
   expect(panel).toBeVisible();
-  const initialContent = panel.textContent!.trim();
-  expect(initialContent).toMatch(/\S/);
+  expect(panel).toHaveTextContent('One course, ready for everyone');
   expect(firstShare).toHaveAttribute('aria-pressed', 'true');
   expect(courseUpdates).toHaveAttribute('aria-pressed', 'false');
 
@@ -101,10 +96,7 @@ it('switches the teacher sharing example and restores the first share in A', asy
   expect(courseUpdates).toHaveAttribute('aria-pressed', 'true');
   await waitFor(() => {
     expect(panel).toBeVisible();
-    expect(panel).toHaveTextContent(/\S/);
-    expect(panel.textContent!.trim(), 'updates must change the announced example').not.toBe(
-      initialContent,
-    );
+    expect(panel).toHaveTextContent('Republish to the same link');
   });
 
   fireEvent.click(firstShare);
@@ -112,7 +104,7 @@ it('switches the teacher sharing example and restores the first share in A', asy
   expect(courseUpdates).toHaveAttribute('aria-pressed', 'false');
   await waitFor(() => {
     expect(panel).toBeVisible();
-    expect(panel.textContent!.trim()).toBe(initialContent);
+    expect(panel).toHaveTextContent('One course, ready for everyone');
   });
   expect(within(teachers).getByRole('link', { name: 'Open course sharing' })).toHaveAttribute(
     'href',
@@ -120,15 +112,11 @@ it('switches the teacher sharing example and restores the first share in A', asy
   );
 });
 
-it('links to the app, pauses animation and has no prototype navigation', () => {
+it('links to the app and toggles animation playback', () => {
   open();
-  expect(screen.queryByRole('navigation', { name: 'Prototype variants' })).not.toBeInTheDocument();
   expect(screen.getAllByRole('link', { name: 'Open Lacuna' })[0]).toHaveAttribute('href', '/#/');
   fireEvent.click(screen.getByRole('button', { name: 'Pause animation' }));
   expect(document.querySelector('.qc-page')).toHaveClass('qc-paused');
-  const heading = screen.getByRole('heading', { level: 1 });
-  const title = heading.textContent;
-  fireEvent.keyDown(window, { key: 'ArrowRight' });
-  expect(screen.getByRole('heading', { level: 1 })).toBe(heading);
-  expect(heading.textContent).toBe(title);
+  fireEvent.click(screen.getByRole('button', { name: 'Play animation' }));
+  expect(document.querySelector('.qc-page')).not.toHaveClass('qc-paused');
 });

@@ -128,7 +128,6 @@ describe('StagedItemEditor', () => {
     expect(fixtures).toEqual([
       expect.objectContaining({ studentAnswer: ['x = 2'], expectedMarks: 0, note: 'Partial' }),
     ]);
-    expect(fixtures[0].id).toMatch(/^fixture-1-/);
 
     onApply.mockClear();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));

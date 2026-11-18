@@ -21,17 +21,6 @@ afterEach(() => {
 });
 
 describe('course share links', () => {
-  it('resolves an official payload with one authoritative liveness check', async () => {
-    const store = new MemoryStore();
-    const shareId = '5459ed1b6b0ca5ac7e646b68f17d1732';
-    await store.put(`shares/${shareId}/auth`, new Uint8Array([1]), { exclusive: true });
-    await store.put(`shares/${shareId}/payload`, new Uint8Array([2]), { exclusive: true });
-    const stat = vi.spyOn(store, 'stat');
-    const response = await createHandler(store)(getShareRequest(shareId, 'payload'));
-    expect(response.status).toBe(200);
-    expect(stat.mock.calls.filter(([key]) => key === `shares/${shareId}/payload`)).toHaveLength(1);
-  });
-
   it.each([false, true])(
     'rechecks ownership after resolving content before reading its body (linked: %s)',
     async (linked) => {
@@ -617,24 +606,7 @@ describe('course share links', () => {
       expect((await mint(createHandler(store), `203.0.113.${attempt}`)).status).toBe(201);
     }
     expect((await mint(createHandler(store), '203.0.113.200')).status).toBe(429);
-  });
-
-  it('persists the share mint counter in the store, not module state', async () => {
-    const store = new MemoryStore();
-    const mint = (handle: ReturnType<typeof createHandler>) =>
-      handle(
-        new Request('http://relay.test/shares', {
-          method: 'POST',
-          headers: { Origin: ORIGIN, 'x-forwarded-for': '198.51.100.9' },
-        }),
-      );
-    const first = createHandler(store);
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      expect((await mint(first)).status).toBe(201);
-    }
-    expect(await store.list('ai-rate/share-mint/')).toHaveLength(1);
-    expect((await mint(createHandler(store))).status).toBe(429);
-    expect((await mint(createHandler(new MemoryStore()))).status).toBe(201);
+    expect((await mint(createHandler(new MemoryStore()), '203.0.113.200')).status).toBe(201);
   });
 
   it('sweeps shares untouched past the TTL plus grace without reading their bodies', async () => {

@@ -55,8 +55,8 @@ it('keeps product visuals decorative and outside the tab order', () => {
   }
 });
 
-it('shows local product screenshots without video playback controls', () => {
-  const { container } = render(
+it('shows local product screenshots and links to Gaps', () => {
+  render(
     <MemoryRouter>
       <Landing />
     </MemoryRouter>,
@@ -69,8 +69,6 @@ it('shows local product screenshots without video playback controls', () => {
     'src',
     '/landing/films/gaps.webp',
   );
-  expect(container.querySelector('video')).toBeNull();
-  expect(screen.queryByRole('button', { name: /Watch/ })).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Open Gaps' })).toHaveAttribute(
     'href',
     'https://gaps.getlacuna.app',

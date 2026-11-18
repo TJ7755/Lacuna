@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { LACUNA_AI_PROTOCOL_VERSION, type AiBridgeRequest } from '@lacuna/protocol/ai/protocol';
-import type { AiToolSession } from '../toolSession';
+import { AiToolSession } from '../toolSession';
 import { buildAiInstructionBundle } from '../instructions';
 import { createLocalAiSession } from './local';
 import { requestSource } from './local.testHarness';
@@ -8,22 +8,8 @@ import { requestSource } from './local.testHarness';
 describe('local AI session', () => {
   it('enforces Stop before late tool calls and replies, then restores the queued follow-up draft', async () => {
     const transport = requestSource();
-    const invoke = vi.fn(async ({ runId, runStatus }: { runId: string; runStatus: string }) => ({
-      response: {
-        ok: false as const,
-        error: {
-          kind: 'stopped' as const,
-          runId,
-          message: `Run is ${runStatus}.`,
-        },
-      },
-      effects: {},
-    }));
-    const toolSession = {
-      invoke,
-      decide: vi.fn(),
-      clear: vi.fn(),
-    } as never;
+    const executeToolCall = vi.fn();
+    const toolSession = new AiToolSession({ executeToolCall });
     const session = createLocalAiSession({
       source: transport.source,
       toolSession,
@@ -55,7 +41,7 @@ describe('local AI session', () => {
         call: { name: 'lacuna.list_courses', input: {} },
       }),
     ).resolves.toMatchObject({ ok: false, error: { kind: 'stopped', runId: 'run-1' } });
-    expect(invoke).toHaveBeenCalledWith(expect.objectContaining({ runStatus: 'stop_requested' }));
+    expect(executeToolCall).not.toHaveBeenCalled();
     await expect(
       transport.request('channel-1', {
         type: 'reply',

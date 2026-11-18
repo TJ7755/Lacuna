@@ -113,7 +113,7 @@ it('expands the connection form from its button once classes exist', async () =>
   await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
 });
 
-it('makes the first locked class the default next step and summarises unlocked ones', () => {
+it('summarises unlocked class results and opens the selected locked class', () => {
   const onOpen = vi.fn();
   const session = {
     days: new Map([
@@ -170,10 +170,6 @@ it('makes the first locked class the default next step and summarises unlocked o
   expect(screen.getByRole('heading', { name: 'Today’s loaded results' })).toBeVisible();
   expect(screen.queryByRole('heading', { name: 'Yesterday' })).not.toBeInTheDocument();
   const unlock = screen.getByRole('button', { name: 'Unlock GCSE Chemistry' });
-  expect(unlock.className).toContain('bg-accent');
-  expect(screen.getByRole('button', { name: 'Open GCSE Biology' }).className).not.toContain(
-    'bg-accent ',
-  );
   fireEvent.click(unlock);
   expect(onOpen).toHaveBeenCalledWith(chemistry);
 });

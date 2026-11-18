@@ -56,7 +56,7 @@ describe('AnimatedDisclosure', () => {
     }
   });
 
-  it('caches retained height between toggles and updates it when closed content resizes', async () => {
+  it('restores retained height between toggles and updates it when closed content resizes', async () => {
     let measuredHeight = 120;
     let resize = () => {};
     const measure = vi
@@ -85,12 +85,10 @@ describe('AnimatedDisclosure', () => {
       const { rerender, unmount } = render(view(true));
       const panel = screen.getByText('Measured body').parentElement!.parentElement!;
       await waitFor(() => expect(panel.style.height).toBe('120px'));
-      measure.mockClear();
       rerender(view(false));
       await waitFor(() => expect(panel.style.height).toBe('0px'));
       rerender(view(true));
       await waitFor(() => expect(panel.style.height).toBe('120px'));
-      expect(measure).not.toHaveBeenCalled();
       rerender(view(false));
       measuredHeight = 240;
       act(() => resize());

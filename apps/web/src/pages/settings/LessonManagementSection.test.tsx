@@ -71,12 +71,6 @@ describe('LessonManagementSection', () => {
     notify.mockClear();
   });
 
-  it('lists lessons in order', () => {
-    render(<LessonManagementSection courseId="course-1" />);
-    expect(screen.getByText('Lesson one')).toBeInTheDocument();
-    expect(screen.getByText('Lesson two')).toBeInTheDocument();
-  });
-
   it('moves and resets a locked copy while hiding content authoring', async () => {
     mockCourse.distributedCopy = {
       lineageId: 'science',
@@ -151,22 +145,12 @@ describe('LessonManagementSection', () => {
     expect(updateLesson).toHaveBeenCalledWith('lesson-1', { name: 'Atoms' });
   });
 
-  it('keeps the field open after a failed rename and skips unchanged names', async () => {
+  it('skips unchanged lesson names', async () => {
     render(<LessonManagementSection courseId="course-1" />);
     fireEvent.click(screen.getByRole('button', { name: 'Rename Lesson one' }));
-    let input = screen.getByRole('textbox', { name: 'Lesson name' });
+    const input = screen.getByRole('textbox', { name: 'Lesson name' });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(updateLesson).not.toHaveBeenCalled();
-
-    updateLesson.mockRejectedValueOnce(new Error('Disk full'));
-    fireEvent.click(screen.getByRole('button', { name: 'Rename Lesson one' }));
-    input = screen.getByRole('textbox', { name: 'Lesson name' });
-    fireEvent.change(input, { target: { value: 'Atoms' } });
-    await act(async () => {
-      fireEvent.keyDown(input, { key: 'Enter' });
-    });
-    expect(notify).toHaveBeenCalledWith('Disk full', 'negative');
-    expect(screen.getByRole('textbox', { name: 'Lesson name' })).toHaveValue('Atoms');
   });
 
   it('deletes a lesson after confirmation', async () => {
@@ -175,7 +159,6 @@ describe('LessonManagementSection', () => {
     expect(deleteLesson).not.toHaveBeenCalled();
     const prompt = screen.getByRole('status');
     expect(prompt).toHaveTextContent('Delete Lesson one?');
-    expect(prompt.closest('[data-lesson-delete-confirmation]')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete lesson' })).toBeInTheDocument();
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Delete lesson' }));

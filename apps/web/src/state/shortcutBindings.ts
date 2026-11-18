@@ -135,11 +135,7 @@ export function loadBindings(): ShortcutBindings {
   return { ...DEFAULT_BINDINGS, ...stored };
 }
 
-export function saveBindings(bindings: ShortcutBindings) {
-  saveStoredBindings(bindings);
-}
-
-export function resetBindings() {
+function resetBindings() {
   saveStoredBindings(DEFAULT_BINDINGS);
   return { ...DEFAULT_BINDINGS };
 }
@@ -177,7 +173,7 @@ export function useShortcutBindings() {
     const current = bindingsRef.current;
     if (bindingError(action, key, current)) return;
     const next = { ...current, [action]: key };
-    saveBindings(next);
+    saveStoredBindings(next);
     bindingsRef.current = next;
     setBindingsState(next);
   }, []);

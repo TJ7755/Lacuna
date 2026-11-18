@@ -46,12 +46,11 @@ describe('mergeImport: merge apply', () => {
   it("preserves the learner's introduction preference when the teacher publishes an update", async () => {
     await db.courses.update(courseId, { learnFirst: false });
     const payload = coursePayload({ rv: 2, lessons: [lessonOne()] });
-    expect(payload.course.lf).toBeUndefined();
     await mergeLineageUpdate(courseId, payload);
     expect((await db.courses.get(courseId))?.learnFirst).toBe(false);
   });
 
-  it('creates new lessons/notes/cards immediately, unconditionally', async () => {
+  it('creates a new lesson immediately while manual review is enabled', async () => {
     const payload = coursePayload({
       rv: 2,
       lessons: [lessonOne(), lessonOne({ i: 'lesson-2', n: 'Genetics', notes: [], cards: [] })],
@@ -101,24 +100,6 @@ describe('mergeImport: merge apply', () => {
 
     const review = await db.pendingMergeReviews.where('courseId').equals(courseId).first();
     expect(review?.diff.updates.lessons).toEqual([{ id: 'lesson-1', name: 'Cells (revised)' }]);
-  });
-
-  it('applies a teacher update silently when autoAcceptUpdates is true', async () => {
-    await db.courses.update(courseId, {
-      distributedCopy: {
-        lineageId: 'lineage-1',
-        revision: 1,
-        locked: true,
-        autoAcceptUpdates: true,
-      },
-    });
-    const payload = coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells (revised)' })] });
-    const result = await mergeLineageUpdate(courseId, payload);
-    expect(result.appliedUpdates).toBe(1);
-    expect(result.queuedForReview).toBe(false);
-
-    const lesson = await db.lessons.get('lesson-1');
-    expect(lesson?.name).toBe('Cells (revised)');
   });
 
   it('applies and snapshots a payload-only teacher update', async () => {
@@ -296,14 +277,8 @@ describe('mergeImport: merge apply', () => {
     await db.schedulingUnits.update(card.schedulingUnitId, {
       lastInteractedAt: newerBackingInteraction,
     });
-    await db.schedulingUnits.update(card.schedulingUnitId!, {
-      lastInteractedAt: newerBackingInteraction,
-    });
     await db.courses.update(courseId, { lastInteractedAt: newerCourseInteraction });
     expect((await db.schedulingUnits.get(card.schedulingUnitId))?.lastInteractedAt).toBe(
-      newerBackingInteraction,
-    );
-    expect((await db.schedulingUnits.get(card.schedulingUnitId!))?.lastInteractedAt).toBe(
       newerBackingInteraction,
     );
     expect((await db.courses.get(courseId))?.lastInteractedAt).toBe(newerCourseInteraction);
@@ -442,7 +417,7 @@ describe('mergeImport: merge apply', () => {
     });
   });
 
-  it('hands sequence-shaped payload items to the existing diffRegeneration path via updateSequence', async () => {
+  it('adds and revises a sequence without duplicating its generated cards', async () => {
     const seqPayload = coursePayload({
       rv: 2,
       lessons: [lessonOne()],
@@ -495,7 +470,7 @@ describe('mergeImport: merge apply', () => {
     expect(regenerated[0].back).toBe('Brackets and powers');
   });
 
-  it('hands occlusion-shaped payload items to updateOcclusion on a merge update', async () => {
+  it('updates occlusion geometry while retaining the generated card and its schedule', async () => {
     const occlusionPayload = (revision: number, y: number) =>
       coursePayload({
         rv: revision,

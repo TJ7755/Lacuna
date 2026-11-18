@@ -32,19 +32,6 @@ it('keeps correct-answer selections independent across multiple questions', () =
       <Answer id="second" />
     </>,
   );
-  expect(
-    (
-      within(screen.getByRole('region', { name: 'first' })).getByLabelText(
-        'Option 1 is correct',
-      ) as HTMLInputElement
-    ).name,
-  ).not.toBe(
-    (
-      within(screen.getByRole('region', { name: 'second' })).getByLabelText(
-        'Option 1 is correct',
-      ) as HTMLInputElement
-    ).name,
-  );
   fireEvent.click(
     within(screen.getByRole('region', { name: 'second' })).getByLabelText('Option 2 is correct'),
   );

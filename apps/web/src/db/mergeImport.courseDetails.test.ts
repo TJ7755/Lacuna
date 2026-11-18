@@ -40,25 +40,6 @@ describe('mergeImport: course details', () => {
     });
   });
 
-  it("keeps the learner's own rename while still taking other teacher changes", async () => {
-    const imported = await importLineageFirstTime(
-      coursePayload({ course: course(), lessons: [lessonOne()] }),
-    );
-    await db.courses.update(imported.course.id, { name: 'My biology' });
-    await mergeLineageUpdate(
-      imported.course.id,
-      coursePayload({
-        rv: 2,
-        course: course({ n: 'Biology A', d: 'Revised' }),
-        lessons: [lessonOne()],
-      }),
-    );
-    expect(await db.courses.get(imported.course.id)).toMatchObject({
-      name: 'My biology',
-      description: 'Revised',
-    });
-  });
-
   it('advances the teacher snapshot while retaining learner details across successive updates', async () => {
     const { course: imported } = await importLineageFirstTime(
       coursePayload({ course: course(), lessons: [lessonOne()] }),
@@ -73,6 +54,10 @@ describe('mergeImport: course details', () => {
         course: course({ n: 'Biology A', d: 'Revised' }),
       }),
     );
+    expect(await db.courses.get(imported.id)).toMatchObject({
+      name: 'My biology',
+      description: 'Revised',
+    });
     expect((await db.courses.get(imported.id))?.distributedCopy?.source).toMatchObject({
       name: 'Biology A',
       description: 'Revised',

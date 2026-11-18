@@ -288,9 +288,9 @@ describe('AiToolSession', () => {
       ...pending,
       approval: { ...pending.approval, status: 'expired', expiredAt: 101 },
     };
-    session.restoreState(state);
+    const restored = new AiToolSession({ executeToolCall, digest: (input) => input }, state);
 
-    const retry = await invoke(session, request);
+    const retry = await invoke(restored, request);
 
     expect(retry.response).toMatchObject({
       ok: false,
@@ -343,7 +343,7 @@ describe('AiToolSession', () => {
     expect(restored.executeToolCall).toHaveBeenCalledTimes(1);
   });
 
-  it('creates a real course receipt from the returned course identity', async () => {
+  it('builds a selectable course receipt from the executor result', async () => {
     const { session } = makeSession();
     const pending = await invoke(session, {
       toolName: 'lacuna.create_course',

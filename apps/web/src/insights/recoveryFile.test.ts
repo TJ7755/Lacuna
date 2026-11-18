@@ -45,8 +45,8 @@ describe('teacher recovery files', () => {
       ])
         expect(() => parseInsightsRecoveryFile(JSON.stringify(raw))).toThrow('supported Gaps');
       expect(() => parseInsightsRecoveryFile('not json')).toThrow('supported Gaps');
-      expect(() => parseInsightsRecoveryFile(' '.repeat(16_385))).toThrow('supported Gaps');
-      expect(() => parseInsightsRecoveryFile('é'.repeat(9000))).toThrow('supported Gaps');
+      const oversized = JSON.stringify(valid) + ' '.repeat(16_384);
+      expect(() => parseInsightsRecoveryFile(oversized)).toThrow('supported Gaps');
       expect(derive).not.toHaveBeenCalled();
     } finally {
       derive.mockRestore();

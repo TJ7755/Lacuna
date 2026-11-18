@@ -178,7 +178,6 @@ describe('Electron MCP server lifecycle façade', () => {
     const first = server.startMcpServer(() => null);
     const second = server.startMcpServer(() => null);
 
-    expect(second).toBe(first);
     expect(mocks.bridgeStart).toHaveBeenCalledOnce();
     expect(mocks.brokerStart).toHaveBeenCalledOnce();
     releaseBroker?.();

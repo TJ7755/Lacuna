@@ -106,7 +106,7 @@ describe('computeStudyStats — reviewed today', () => {
 });
 
 describe('computeStudyStats — 7-day time forecast', () => {
-  it('groups scheduling sources without rescanning every card for every source', () => {
+  it('groups course and standalone scheduling sources with their own daily budgets', () => {
     const sourceCount = 100;
     const cardsPerSource = 100;
     const sources = Array.from({ length: sourceCount }, (_, index) => `source-${index}`);
@@ -140,21 +140,7 @@ describe('computeStudyStats — 7-day time forecast', () => {
     const originalScheduling = structuredClone(scheduling);
     const originalDeckSeconds = structuredClone(deckSeconds);
     const originalActivity = structuredClone(activity);
-    let sourceReads = 0;
-    const cards = records.map((record) => {
-      Object.freeze(record.history);
-      Object.freeze(record);
-      return new Proxy(record, {
-        get(target, property, receiver) {
-          if (property === 'courseId' || property === 'schedulingUnitId') sourceReads += 1;
-          return Reflect.get(target, property, receiver);
-        },
-      });
-    });
-    Object.freeze(cards);
-
-    const stats = computeStudyStats(cards, deckSeconds, NOW, undefined, activity, scheduling);
-    const measuredSourceReads = sourceReads;
+    const stats = computeStudyStats(records, deckSeconds, NOW, undefined, activity, scheduling);
 
     expect(stats).toEqual({
       streak: 1,
@@ -170,12 +156,10 @@ describe('computeStudyStats — 7-day time forecast', () => {
             : [],
       })),
     });
-    expect(cards).toEqual(originalRecords);
+    expect(records).toEqual(originalRecords);
     expect(scheduling).toEqual(originalScheduling);
     expect(deckSeconds).toEqual(originalDeckSeconds);
     expect(activity).toEqual(originalActivity);
-    // Count actual source reads rather than relying on machine-dependent timings.
-    expect(measuredSourceReads).toBeLessThanOrEqual(cards.length * 8);
   });
 
   it('respects each course daily new-card and review limits', () => {

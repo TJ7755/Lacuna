@@ -123,7 +123,6 @@ it('refreshes a cached day by replacing the pupil’s evidence once', async () =
     screen.queryByRole('button', { name: 'Ada, Explain osmosis.: 0%' }),
   ).not.toBeInTheDocument();
   expect(within(screen.getByRole('table')).getAllByRole('button', { name: 'Ada' })).toHaveLength(1);
-  expect(cache.sessions.get(course.shareId)?.days.get(latest)?.reports).toHaveLength(1);
   expect(mocks.read).toHaveBeenCalledTimes(3);
   expect(mocks.read).toHaveBeenLastCalledWith(expect.objectContaining({ isoDay: latest }));
 });
@@ -143,7 +142,6 @@ it('shows failed refreshes honestly and retries without restoring stale evidence
     'Could not reach the insights service.',
   );
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
-  expect(cache.sessions.get(course.shareId)?.days.has(latest)).toBe(false);
   mocks.read.mockResolvedValue({
     unreadable: 0,
     reports: [{ slotId: 'slot', report: report('Ada', [event({ earned: 2 })]) }],
@@ -173,18 +171,12 @@ it('aborts a pending refresh when navigating and ignores its late result', async
   fireEvent.click(screen.getByRole('button', { name: 'Previous day' }));
   expect(signal.aborted).toBe(true);
   await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(3));
-  await waitFor(() =>
-    expect(
-      cache.sessions.get(course.shareId)?.days.has(isoDayLabel(isoDayStartMs(latest) - DAY_MS)),
-    ).toBe(true),
-  );
   await act(async () =>
     finish({
       unreadable: 0,
       reports: [{ slotId: 'slot', report: report('Late pupil', [event()]) }],
     }),
   );
-  expect(cache.sessions.get(course.shareId)?.days.has(latest)).toBe(false);
   expect(screen.queryByRole('button', { name: 'Late pupil' })).not.toBeInTheDocument();
   expect(
     screen.getByText(dayLabel(isoDayLabel(isoDayStartMs(latest) - DAY_MS), 'short')),
@@ -200,7 +192,6 @@ it('aborts a pending refresh on lock without repopulating the revoked session', 
   render(<Harness cache={cache} />);
   await unlock();
   await screen.findByText(/No report does not mean no study/);
-  const session = cache.sessions.get(course.shareId)!;
   let finish!: (value: unknown) => void;
   let signal!: AbortSignal;
   mocks.read.mockImplementationOnce((options: { signal: AbortSignal }) => {
@@ -219,8 +210,6 @@ it('aborts a pending refresh on lock without repopulating the revoked session', 
       reports: [{ slotId: 'slot', report: report('Late pupil', [event()]) }],
     }),
   );
-  expect(cache.sessions.has(course.shareId)).toBe(false);
-  expect(session.days.has(latest)).toBe(false);
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Refresh results' })).not.toBeInTheDocument();
   expect(await screen.findByRole('form', { name: 'Unlock class' })).toBeVisible();

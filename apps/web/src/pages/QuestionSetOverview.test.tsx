@@ -99,8 +99,6 @@ describe('QuestionSetOverview', () => {
     expect(within(questions).getByText('4 marks')).toBeVisible();
     expect(within(questions).getAllByText('2 marks')).toHaveLength(2);
     expect(screen.queryByRole('region', { name: 'Attempts' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Browse questions')).not.toBeInTheDocument();
-    expect(screen.queryByText('Practice evidence')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Edit' })).toBeVisible();
   });
 

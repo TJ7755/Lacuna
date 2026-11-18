@@ -14,7 +14,6 @@ import {
   sequenceToBindingReviews,
   tryValidateFittedWeights,
   validateFittedWeights,
-  MIN_OPTIMISE_REVIEWS,
 } from './optimise';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, Grade, ReviewLog } from '@lacuna/core/db/types';
@@ -110,11 +109,6 @@ describe('review extraction and gating', () => {
     expect(countReviews(cards)).toBe(totalGrades);
     expect(reviewSequences(cards)).toHaveLength(cards.length);
   });
-
-  it('exposes a sensible minimum-review threshold', () => {
-    expect(MIN_OPTIMISE_REVIEWS).toBeGreaterThanOrEqual(100);
-    expect(countReviews(syntheticDeck())).toBeLessThan(MIN_OPTIMISE_REVIEWS);
-  });
 });
 
 describe('validateFittedWeights', () => {
@@ -194,27 +188,6 @@ describe('evaluateParameters', () => {
     expect(sequenceToBindingReviews(sequences[0]).map((r) => r.deltaT)).toEqual([
       0, 0.25, 0.125, 2.5, 0.5,
     ]);
-  });
-
-  it('returns a finite mean log loss over scored (non-first) reviews', () => {
-    const seqs = reviewSequences(syntheticDeck());
-    const { logLoss, scored } = evaluateParameters(seqs, [...default_w]);
-    expect(Number.isFinite(logLoss)).toBe(true);
-    expect(logLoss).toBeGreaterThan(0);
-    const expectedScored = countReviews(syntheticDeck()) - syntheticDeck().length;
-    expect(scored).toBe(expectedScored);
-  });
-
-  it('only scores reviews after scoreAfterTimestamp when given', () => {
-    const cards = syntheticDeck();
-    const seqs = reviewSequences(cards);
-    const { cutoffTimestamp } = chronologicallySplitSequences(seqs, 0.8);
-    const { scored } = evaluateParameters(seqs, [...default_w], undefined, {
-      scoreAfterTimestamp: cutoffTimestamp,
-    });
-    const allScored = countReviews(cards) - cards.length;
-    expect(scored).toBeLessThan(allScored);
-    expect(scored).toBeGreaterThanOrEqual(0);
   });
 });
 

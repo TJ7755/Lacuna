@@ -218,14 +218,6 @@ describe('StudySheet', () => {
     expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study?assessmentId=exam%2F1');
   });
 
-  it('keeps an explicit close control above the session contents', () => {
-    const onClose = vi.fn();
-    renderSheet('chem', { onClose });
-    fireEvent.click(screen.getByRole('button', { name: 'Close session preview' }));
-    expect(onClose).toHaveBeenCalledTimes(1);
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
-
   it('focuses without scrolling the clipped expansion to reveal its heading', () => {
     const focus = vi.spyOn(HTMLElement.prototype, 'focus');
     renderSheet('chem');
@@ -279,13 +271,9 @@ describe('StudySheet', () => {
     expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study');
   });
 
-  it('keeps optional practice out of the session preview', () => {
-    renderSheet('chem');
-    expect(screen.queryByText('Practise until all correct')).not.toBeInTheDocument();
-  });
-
   it('offers whole-course and lesson practice inside Other ways', async () => {
     renderSheet('chem');
+    expect(screen.queryByText('Practise until all correct')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^Other ways$/ }));
     const details = screen.getByText('Practise until all correct').closest('details')!;
     details.open = true;

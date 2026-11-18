@@ -1,16 +1,21 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import {
-  loadBindings,
-  saveBindings,
-  resetBindings,
-  keyMatches,
-  formatBinding,
-  DEFAULT_BINDINGS,
-  useShortcutBindings,
-} from './shortcutBindings';
+import { loadBindings, keyMatches, formatBinding, useShortcutBindings } from './shortcutBindings';
 
 const STORAGE_KEY = 'lacuna-shortcut-bindings';
+const expectedDefaults = {
+  reveal: 'Space',
+  yes: 'y',
+  no: 'n',
+  again: '1',
+  hard: '2',
+  good: '3',
+  easy: '4',
+  edit: 'e',
+  undo: 'u',
+  focus: 'f',
+  help: '?',
+};
 
 beforeEach(() => {
   localStorage.clear();
@@ -18,7 +23,7 @@ beforeEach(() => {
 
 describe('useShortcutBindings', () => {
   it.each(['change', 'reset'] as const)('persists a %s before immediate unmount', (operation) => {
-    saveBindings({ ...DEFAULT_BINDINGS, reveal: 'Enter' });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ reveal: 'Enter' }));
     const { result, unmount } = renderHook(() => useShortcutBindings());
 
     act(() => {
@@ -29,8 +34,8 @@ describe('useShortcutBindings', () => {
 
     const reopened = renderHook(() => useShortcutBindings());
     expect(reopened.result.current.bindings).toEqual({
-      ...DEFAULT_BINDINGS,
-      reveal: operation === 'change' ? 'q' : DEFAULT_BINDINGS.reveal,
+      ...expectedDefaults,
+      reveal: operation === 'change' ? 'q' : expectedDefaults.reveal,
     });
     reopened.unmount();
   });
@@ -39,40 +44,20 @@ describe('useShortcutBindings', () => {
 describe('loadBindings', () => {
   it('returns defaults when nothing is stored', () => {
     const bindings = loadBindings();
-    expect(bindings).toEqual(DEFAULT_BINDINGS);
+    expect(bindings).toEqual(expectedDefaults);
   });
 
   it('merges stored overrides with defaults', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ reveal: 'Enter' }));
     const bindings = loadBindings();
     expect(bindings.reveal).toBe('Enter');
-    expect(bindings.yes).toBe(DEFAULT_BINDINGS.yes);
+    expect(bindings.yes).toBe(expectedDefaults.yes);
   });
 
   it('ignores invalid stored JSON', () => {
     localStorage.setItem(STORAGE_KEY, 'not-json');
     const bindings = loadBindings();
-    expect(bindings).toEqual(DEFAULT_BINDINGS);
-  });
-});
-
-describe('saveBindings', () => {
-  it('persists bindings to localStorage', () => {
-    saveBindings({ ...DEFAULT_BINDINGS, again: 'a' });
-    const raw = localStorage.getItem(STORAGE_KEY);
-    expect(raw).toBeTruthy();
-    const parsed = JSON.parse(raw!);
-    expect(parsed.again).toBe('a');
-  });
-});
-
-describe('resetBindings', () => {
-  it('resets to defaults and clears storage', () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ reveal: 'Enter' }));
-    const bindings = resetBindings();
-    expect(bindings).toEqual(DEFAULT_BINDINGS);
-    const raw = localStorage.getItem(STORAGE_KEY);
-    expect(JSON.parse(raw!)).toEqual(DEFAULT_BINDINGS);
+    expect(bindings).toEqual(expectedDefaults);
   });
 });
 
@@ -115,16 +100,13 @@ it.each([null, false, 42, [], {}, ''])(
   'ignores malformed saved binding %j while retaining valid overrides',
   (reveal) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ reveal, yes: 'j', unknown: 'x' }));
-    expect(loadBindings()).toEqual({ ...DEFAULT_BINDINGS, yes: 'j' });
-    expect(() =>
-      keyMatches(new KeyboardEvent('keydown', { key: 'j' }), loadBindings().reveal),
-    ).not.toThrow();
+    expect(loadBindings()).toEqual({ ...expectedDefaults, yes: 'j' });
   },
 );
 
 it.each([null, ['Enter'], 'Enter', 42])('ignores a non-object bindings record %j', (value) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-  expect(loadBindings()).toEqual(DEFAULT_BINDINGS);
+  expect(loadBindings()).toEqual(expectedDefaults);
 });
 
 it.each([
@@ -144,7 +126,7 @@ it.each([
   'Unidentified',
 ])('ignores reserved or unsupported saved keys without discarding valid overrides: %s', (key) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ yes: key, again: 'a' }));
-  expect(loadBindings()).toEqual({ ...DEFAULT_BINDINGS, again: 'a' });
+  expect(loadBindings()).toEqual({ ...expectedDefaults, again: 'a' });
 });
 
 it('retains fixed aliases assigned to their own actions', () => {
@@ -153,7 +135,7 @@ it('retains fixed aliases assigned to their own actions', () => {
     JSON.stringify({ reveal: 'ArrowUp', yes: 'ArrowRight', no: 'ArrowLeft' }),
   );
   expect(loadBindings()).toEqual({
-    ...DEFAULT_BINDINGS,
+    ...expectedDefaults,
     reveal: 'ArrowUp',
     yes: 'ArrowRight',
     no: 'ArrowLeft',

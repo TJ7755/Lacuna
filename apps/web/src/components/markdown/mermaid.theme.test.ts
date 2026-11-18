@@ -5,7 +5,7 @@ let renderMermaidDiagrams: typeof MermaidModule.renderMermaidDiagrams;
 let updateMermaidTheme: typeof MermaidModule.updateMermaidTheme;
 
 const renderer = vi.hoisted(() => ({
-  theme: 'light',
+  theme: '',
   initialize: vi.fn(),
   render: vi.fn(),
 }));
@@ -43,8 +43,8 @@ beforeEach(async () => {
         },
       }) as CSSStyleDeclaration,
   );
-  renderer.initialize.mockImplementation(() => {
-    renderer.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  renderer.initialize.mockImplementation((config: { themeVariables: { background: string } }) => {
+    renderer.theme = config.themeVariables.background;
   });
   renderer.render.mockImplementation(async () => ({
     svg: `<svg data-palette="${renderer.theme}"><text>Diagram</text></svg>`,
@@ -113,16 +113,16 @@ describe('Mermaid theme updates', () => {
     document.documentElement.classList.add('dark');
     await updateMermaidTheme(first);
     await updateMermaidTheme(second);
-    expect(renderedTheme(first)).toBe('dark');
-    expect(renderedTheme(second)).toBe('dark');
+    expect(renderedTheme(first)).toBe('hsl(90, 22%, 12%)');
+    expect(renderedTheme(second)).toBe('hsl(90, 22%, 12%)');
     const calls = renderer.render.mock.calls.length;
     await updateMermaidTheme(second);
     expect(renderer.render).toHaveBeenCalledTimes(calls);
     document.documentElement.classList.remove('dark');
     await updateMermaidTheme(second);
     await updateMermaidTheme(first);
-    expect(renderedTheme(first)).toBe('light');
-    expect(renderedTheme(second)).toBe('light');
+    expect(renderedTheme(first)).toBe('hsl(75, 45%, 99%)');
+    expect(renderedTheme(second)).toBe('hsl(75, 45%, 99%)');
   });
 
   it('updates an existing view after a new view mounts in the new theme', async () => {
@@ -132,8 +132,8 @@ describe('Mermaid theme updates', () => {
     const newlyMounted = diagram();
     await renderMermaidDiagrams(newlyMounted);
     await updateMermaidTheme(existing);
-    expect(renderedTheme(existing)).toBe('dark');
-    expect(renderedTheme(newlyMounted)).toBe('dark');
+    expect(renderedTheme(existing)).toBe('hsl(90, 22%, 12%)');
+    expect(renderedTheme(newlyMounted)).toBe('hsl(90, 22%, 12%)');
   });
 
   it('retries a failed theme update while preserving the previous diagram', async () => {
@@ -142,8 +142,8 @@ describe('Mermaid theme updates', () => {
     document.documentElement.classList.add('dark');
     renderer.render.mockRejectedValueOnce(new Error('Invalid diagram'));
     await updateMermaidTheme(container);
-    expect(renderedTheme(container)).toBe('light');
+    expect(renderedTheme(container)).toBe('hsl(75, 45%, 99%)');
     await updateMermaidTheme(container);
-    expect(renderedTheme(container)).toBe('dark');
+    expect(renderedTheme(container)).toBe('hsl(90, 22%, 12%)');
   });
 });

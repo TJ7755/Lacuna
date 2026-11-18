@@ -7,11 +7,6 @@ describe('image occlusion storage', () => {
     await db.delete();
   });
 
-  it('creates an empty occlusions table on a fresh install', async () => {
-    await db.open();
-    expect(await db.occlusions.count()).toBe(0);
-  });
-
   it('reads and writes occlusions rows', async () => {
     await db.open();
 

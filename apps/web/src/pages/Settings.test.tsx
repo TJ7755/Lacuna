@@ -286,25 +286,6 @@ describe('Settings', () => {
     });
   });
 
-  it('keeps every web settings section exactly once', () => {
-    render(<Settings />);
-    const ids = Array.from(document.querySelectorAll('section[id^="settings-"]')).map(
-      (section) => section.id,
-    );
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-
-  it('retains the same controls when a group closes', () => {
-    render(<Settings />);
-    const toggle = screen.getByRole('button', { name: /^Your data/ });
-    fireEvent.click(toggle);
-    const sync = document.getElementById('settings-sync');
-    fireEvent.click(toggle);
-    expect(document.getElementById('settings-sync')).toBe(sync);
-    expect(document.getElementById(toggle.getAttribute('aria-controls')!)).toHaveAttribute('inert');
-    expect(document.querySelectorAll('#settings-sync')).toHaveLength(1);
-  });
-
   it('defers backup reads until Your data is opened and retains them on closing', () => {
     render(<Settings />);
     expect(backupFolderName).not.toHaveBeenCalled();
@@ -349,6 +330,7 @@ describe('Settings', () => {
     const draft = screen.getByRole('textbox', { name: 'Draft' });
     fireEvent.change(draft, { target: { value: 'unfinished' } });
     fireEvent.click(toggle);
+    expect(document.getElementById(toggle.getAttribute('aria-controls')!)).toHaveAttribute('inert');
     expect(screen.queryByRole('textbox', { name: 'Draft' })).not.toBeInTheDocument();
     fireEvent.click(toggle);
     expect(screen.getByRole('textbox', { name: 'Draft' })).toBe(draft);

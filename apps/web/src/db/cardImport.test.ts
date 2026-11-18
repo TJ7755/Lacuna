@@ -119,11 +119,13 @@ describe('published-course import lock', () => {
         );
         await importCardsToDestination({ kind: 'existing', schedulingUnitId: course.id }, content);
         const cards = await db.cards.toArray();
-        expect(cards).toHaveLength(imported.count * 3);
+        const count = content.kind === 'text' ? 2 : 1;
+        expect(imported.count).toBe(count);
+        expect(cards).toHaveLength(count * 3);
         expect(cards.filter((card) => card.primaryLessonId === imported.lesson!.id)).toHaveLength(
-          imported.count * 2,
+          count * 2,
         );
-        expect(cards.filter((card) => !card.primaryLessonId)).toHaveLength(imported.count);
+        expect(cards.filter((card) => !card.primaryLessonId)).toHaveLength(count);
       },
     );
   }
@@ -287,14 +289,14 @@ describe('premature commit avoidance', () => {
   });
 
   it.each(['bulk', 'import'] as const)(
-    'rejects an invalid later draft even when a legacy %s caller requests a bypass',
+    'rejects an invalid later draft without partially writing a %s batch',
     async (entry) => {
       const course = await createCourse('Validation', { schedulingMode: 'steady' });
       const cards = [drafts[0], { ...drafts[0], payload: { kind: 'invalid' } as never }];
       await expect(
         entry === 'bulk'
-          ? Reflect.apply(createCards, undefined, [course.id, cards, { skipValidation: true }])
-          : Reflect.apply(createImportedCards, undefined, [course.id, cards, true, true]),
+          ? createCards(course.id, cards)
+          : createImportedCards(course.id, cards, true),
       ).rejects.toThrow('Invalid structured item payload.');
       expect(await db.cards.count()).toBe(0);
       expect(await db.concepts.count()).toBe(0);

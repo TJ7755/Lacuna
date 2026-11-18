@@ -341,13 +341,12 @@ it('does not rebuild a committed step after reviews, and refreshes before contin
     { initialProps: { refreshKey: 0, enabled: true } },
   );
   await waitFor(() => expect(result.current?.course.name).toBe('Biology'));
-  const committed = result.current;
   rerender({ refreshKey: 0, enabled: false });
   await act(async () => {
     await db.courses.update(course.id, { name: 'Cells' });
     await new Promise((resolve) => setTimeout(resolve, 50));
   });
-  expect(result.current).toBe(committed);
+  expect(result.current?.course.name).toBe('Biology');
 
   rerender({ refreshKey: 1, enabled: true });
   expect(result.current?.generation).toBe(0);
@@ -359,12 +358,11 @@ it('loads a URL-seeded step once even when planning starts paused', async () => 
   const course = await createCourse('Biology');
   const { result } = renderHook(() => useCourseStudyFlow(course.id, 0, false));
   await waitFor(() => expect(result.current?.course.name).toBe('Biology'));
-  const committed = result.current;
   await act(async () => {
     await db.courses.update(course.id, { name: 'Cells' });
     await new Promise((resolve) => setTimeout(resolve, 50));
   });
-  expect(result.current).toBe(committed);
+  expect(result.current?.course.name).toBe('Biology');
 });
 
 it('does not reuse a paused snapshot from another course', async () => {

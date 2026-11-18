@@ -29,7 +29,7 @@ export async function expectStampAdvanced(
   expect(await read()).toBeGreaterThan(before!);
 }
 
-export function tombstoneKey(table: string, recordId: string): string {
+function tombstoneKey(table: string, recordId: string): string {
   return `${table}\0${recordId}`;
 }
 

@@ -305,12 +305,6 @@ it('reads a text file before configuring a new course with an exam target', asyn
   );
 });
 
-it('keeps the import chooser free of redundant course navigation', () => {
-  open();
-  expect(screen.queryByRole('link', { name: 'All courses' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Back to import sources' })).not.toBeInTheDocument();
-});
-
 it.each(['Lacuna course', 'Anki deck', 'Text or spreadsheet'])(
   'returns from %s to the import chooser with Back without writing',
   async (source) => {

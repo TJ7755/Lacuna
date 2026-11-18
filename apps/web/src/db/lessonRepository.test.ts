@@ -18,12 +18,6 @@ import { reset } from './courseRepository.testFixtures';
 describe('createLesson orderIndex', () => {
   beforeEach(reset);
 
-  it('first lesson gets orderIndex 0', async () => {
-    const course = await createCourse('History');
-    const lesson = await createLesson(course.id, 'Week 1');
-    expect(lesson.orderIndex).toBe(0);
-  });
-
   it('subsequent lessons increment orderIndex', async () => {
     const course = await createCourse('History');
     const l1 = await createLesson(course.id, 'Week 1');
@@ -210,23 +204,13 @@ describe('ratchetLessonUnlock', () => {
     await Promise.all([db.courses.clear(), db.lessons.clear()]);
   });
 
-  it('sets unlockedAt the first time it is called', async () => {
-    const course = await createCourse('Test course');
-    const lesson = await createLesson(course.id, 'Lesson 1');
-    expect((await db.lessons.get(lesson.id))?.unlockedAt).toBeUndefined();
-
-    const now = Date.now();
-    await ratchetLessonUnlock(lesson.id, now);
-
-    expect((await db.lessons.get(lesson.id))?.unlockedAt).toBe(now);
-  });
-
-  it('never re-sets or clears an already-ratcheted lesson (one-way)', async () => {
+  it('sets the first unlock time and preserves it on later requests', async () => {
     const course = await createCourse('Test course');
     const lesson = await createLesson(course.id, 'Lesson 1');
 
     const first = Date.now();
     await ratchetLessonUnlock(lesson.id, first);
+    expect((await db.lessons.get(lesson.id))?.unlockedAt).toBe(first);
     await ratchetLessonUnlock(lesson.id, first + 10_000);
 
     expect((await db.lessons.get(lesson.id))?.unlockedAt).toBe(first);

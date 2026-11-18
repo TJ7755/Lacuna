@@ -30,11 +30,10 @@ describe('DesktopUpdatePanel', () => {
     });
   });
 
-  it('lets the user check manually without repeating the installed version', async () => {
+  it('lets the user check for updates manually', async () => {
     render(<DesktopUpdatePanel />);
 
     const checkButton = await screen.findByRole('button', { name: 'Check for updates' });
-    expect(screen.queryByText('Version 0.2.3')).not.toBeInTheDocument();
     fireEvent.click(checkButton);
 
     expect(checkForUpdates).toHaveBeenCalledOnce();
@@ -73,7 +72,9 @@ describe('DesktopUpdatePanel', () => {
 
     render(<DesktopUpdatePanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Restart and install' }));
+    const install = await screen.findByRole('button', { name: 'Restart and install' });
+    expect(restartAndInstall).not.toHaveBeenCalled();
+    fireEvent.click(install);
     expect(restartAndInstall).toHaveBeenCalledOnce();
   });
 

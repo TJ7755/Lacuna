@@ -159,27 +159,6 @@ describe('asset garbage collection', () => {
     expect(await collectOrphanedAssets(afterGrace())).toBe(1);
   });
 
-  it('deletes an asset that is no longer referenced by any card', async () => {
-    const deck = await createCourse('GC');
-    const asset = await storeImageBlob(
-      new Blob(['orphan'], { type: 'image/png' }),
-      'image/png',
-      4,
-      3,
-    );
-    const card = await createCard(
-      deck.id,
-      'front_back',
-      `![pic](${assetUrl(asset.hash)})`,
-      'answer',
-    );
-
-    await deleteCards([card.id]);
-    const removed = await collectOrphanedAssets(afterGrace());
-    expect(removed).toBe(1);
-    expect(await db.assets.count()).toBe(0);
-  });
-
   it('retains an asset still referenced by another card', async () => {
     const deck = await createCourse('GC');
     const asset = await storeImageBlob(

@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db/schema';
 import {
   createCourse,
@@ -7,6 +7,7 @@ import {
   createLesson,
   createLessonCard,
   upsertLessonCardExposure,
+  recordReview,
 } from '../../db/repository';
 import { createOrResumeRevisionPlan } from '../../db/revisionPlanRepository';
 import type { RevisionProjection } from '@lacuna/core/db/types';
@@ -23,9 +24,12 @@ beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
 });
 
+afterEach(() => vi.restoreAllMocks());
+
 describe('persistSessionCompletion', () => {
   it('preserves an unreached goal when a revision window ends with partial coverage', async () => {
     const now = Date.parse('2026-07-17T08:00:00Z');
+    vi.spyOn(Date, 'now').mockReturnValue(now + 2_000);
     const course = await createCourse('Biology');
     const lesson = await createLesson(course.id, 'Cells');
     const firstCard = await createLessonCard(course.id, lesson.id, 'front_back', 'Q1', 'A1');
@@ -40,6 +44,22 @@ describe('persistSessionCompletion', () => {
     );
     const plan = await createOrResumeRevisionPlan(assessment.id, 20, fallback, now);
     const windowId = plan.windows[0].id;
+    const eventId = 'event-1';
+    const review = await recordReview({
+      card: firstCard,
+      deck: course,
+      kind: 'course',
+      eventId,
+      sessionId: 'session-1',
+      sessionKind: 'practice',
+      revisionPlanId: plan.id,
+      revisionWindowId: windowId,
+      grade: 3,
+      correct: true,
+      responseTimeSec: 2,
+      distracted: false,
+      now: now + 1_000,
+    });
 
     // The window budget ran out after one of two eligible cards: the caller
     // proposes reachedGoal false and the delivery must not claim otherwise.
@@ -61,9 +81,9 @@ describe('persistSessionCompletion', () => {
       covered: new Set([firstCard.id]),
       improved: new Set([firstCard.id]),
       parked: new Set<string>(),
-      reviewEventIds: ['event-1'],
+      reviewEventIds: [eventId],
       context: null,
-      cards: [],
+      cards: [review.card, secondCard],
       practice: null,
       ratchetCourseId: null,
       ratchetLessonId: null,

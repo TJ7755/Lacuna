@@ -7,10 +7,7 @@ import { executeToolCall } from './executor';
 import type { McpGrant } from './types';
 import { CREATE_COURSE_SCOPE_KEY } from './bridge/scopeResolver';
 
-const admitWrite = vi.spyOn(replacementLifecycle, 'admitWrite');
-
 beforeEach(async () => {
-  admitWrite.mockClear();
   await db.delete();
   await db.open();
 });
@@ -103,24 +100,27 @@ describe('executeToolCall', () => {
         completedAt: 123,
       },
     });
-    expect(admitWrite).not.toHaveBeenCalled();
   });
 
-  it('admits the complete live write sequence through the replacement lifecycle', async () => {
-    const outcome = await executeToolCall(
-      request(
-        'lacuna.create_course',
-        { name: 'Biology' },
-        {
-          courseId: CREATE_COURSE_SCOPE_KEY,
-          scope: 'write',
-          grantedAt: 1,
-        },
+  it('refuses a tool write during manual replacement without creating a course', async () => {
+    const outcome = await replacementLifecycle.replace('manual', () =>
+      executeToolCall(
+        request(
+          'lacuna.create_course',
+          { name: 'Biology' },
+          { courseId: CREATE_COURSE_SCOPE_KEY, scope: 'write', grantedAt: 1 },
+        ),
       ),
     );
 
-    expect(outcome).toMatchObject({ ok: true, result: { name: 'Biology' } });
-    expect(admitWrite).toHaveBeenCalledOnce();
+    expect(outcome).toMatchObject({
+      ok: false,
+      error: {
+        kind: 'internal',
+        message: 'A manual database replacement has invalidated this write.',
+      },
+    });
+    expect(await db.courses.count()).toBe(0);
   });
 
   it('uses the dedicated create-course scope rather than the global database scope', async () => {
@@ -137,6 +137,7 @@ describe('executeToolCall', () => {
       { now: () => 123 },
     );
 
+    expect(await db.courses.toArray()).toEqual([expect.objectContaining({ name: 'Biology' })]);
     expect(outcome).toMatchObject({
       ok: true,
       result: { name: 'Biology' },

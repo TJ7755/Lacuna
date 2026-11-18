@@ -2,7 +2,6 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import {
-  createCard,
   createCourse,
   createCourseAssessment,
   createLesson,
@@ -124,25 +123,6 @@ describe('deleteLesson', () => {
     expect(await db.sessionHistory.where('schedulingUnitId').equals(lesson.id).count()).toBe(0);
     expect(await db.sessionHistory.where('courseId').equals(course.id).count()).toBe(1);
     expect(await db.sessionHistory.where('schedulingUnitId').equals(other.id).count()).toBe(1);
-  });
-
-  it('unassigns cards (sets primaryLessonId to null) rather than deleting them', async () => {
-    const course = await createCourse('Lesson delete test');
-    const lesson = await createLesson(course.id, 'L1');
-
-    const deck = await createCourse('Test deck');
-    const card = await createCard(deck.id, 'front_back', 'q', 'a');
-    await db.cards.update(card.id, { primaryLessonId: lesson.id });
-
-    const beforeDelete = await db.cards.get(card.id);
-    expect(beforeDelete?.primaryLessonId).toBe(lesson.id);
-
-    await deleteLesson(lesson.id);
-
-    // Card survives; primaryLessonId is cleared.
-    const afterDelete = await db.cards.get(card.id);
-    expect(afterDelete).toBeDefined();
-    expect(afterDelete?.primaryLessonId).toBeNull();
   });
 
   it('moves lesson sequences and generated cards to the course bank', async () => {

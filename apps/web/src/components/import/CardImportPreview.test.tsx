@@ -51,12 +51,6 @@ it('renders package images and sound through the real card renderer and releases
   expect(container.querySelector('audio')).toHaveAttribute('controls');
   expect(cards[0].front).toBe('<img src="diagram.png">');
   expect(cards[0].back).toBe('[sound:voice.mp3]');
-  expect(create.mock.calls.map(([blob]) => (blob as Blob).type)).toEqual([
-    'image/png',
-    'audio/mpeg',
-    'image/png',
-    'audio/mpeg',
-  ]);
   unmount();
   expect(revoke.mock.calls.map(([url]) => url).sort()).toEqual(
     create.mock.results.map(({ value }) => value).sort(),

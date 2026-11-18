@@ -236,25 +236,14 @@ describe('McpSection', () => {
     );
   });
 
-  it('polls status at a low cadence instead of every two seconds', async () => {
+  it('refreshes the displayed server state while the panel stays open', async () => {
     vi.useFakeTimers();
     render(<McpSection />);
-    await act(async () => {
-      await Promise.resolve();
-    });
-    getStatus.mockClear();
-
-    await act(async () => {
-      vi.advanceTimersByTime(9_999);
-      await Promise.resolve();
-    });
-    expect(getStatus).not.toHaveBeenCalled();
-
-    await act(async () => {
-      vi.advanceTimersByTime(1);
-      await Promise.resolve();
-    });
-    expect(getStatus).toHaveBeenCalledOnce();
+    await act(async () => {});
+    expect(screen.getByRole('status')).toHaveTextContent('Running');
+    getStatus.mockResolvedValue({ running: false, toolCount: 33, toolSurfaceVersion: 1 });
+    await act(async () => vi.advanceTimersByTime(10_000));
+    expect(screen.getByRole('status')).toHaveTextContent('Stopped');
   });
 
   it('keeps the configuration selectable when automatic copying fails', async () => {

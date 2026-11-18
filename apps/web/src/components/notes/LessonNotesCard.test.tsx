@@ -1,14 +1,20 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import type * as MotionReact from 'motion/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { domAnimation, LazyMotion } from 'motion/react';
 import type { Note } from '@lacuna/core/db/types';
 import { LessonNotesCard } from './LessonNotesCard';
 
-const presence = vi.hoisted(() => ({ current: true }));
-vi.mock('motion/react', async () => ({
-  ...(await vi.importActual<typeof MotionReact>('motion/react')),
-  useIsPresent: () => presence.current,
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['normal'],
+  speedMultiplier: () => 1,
 }));
+
+// Exercise Motion's JS fallback: Happy DOM rejects cancelled native animations.
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => Reflect.deleteProperty(Element.prototype, 'animate'));
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
+});
 
 vi.mock('./AnnotatedNoteContent', () => ({
   AnnotatedNoteContent: ({ note }: { note: Note }) => <p>{note.content}</p>,
@@ -26,12 +32,22 @@ const note = (id: string, name: string) =>
   }) as Note;
 
 describe('LessonNotesCard', () => {
-  it('takes departing note actions out of the keyboard and accessibility tree', () => {
-    presence.current = false;
-    render(<LessonNotesCard lessonId="l1" notes={[note('n1', 'Why')]} editable />);
-    expect(screen.queryByRole('button', { name: 'Add note' })).not.toBeInTheDocument();
-    expect(screen.getByText('Add note').closest('[inert]')).not.toBeNull();
-    presence.current = true;
+  it('retires note actions while the add form replaces them and restores them on cancellation', async () => {
+    render(
+      <LazyMotion features={domAnimation}>
+        <LessonNotesCard lessonId="l1" notes={[note('n1', 'Why')]} editable />
+      </LazyMotion>,
+    );
+    const add = screen.getByRole('button', { name: 'Add note' });
+    fireEvent.click(add);
+    expect(add).toBeInTheDocument();
+    expect(add.closest('[inert]')).not.toBeNull();
+    expect(add.closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Add note' })).toBe(add);
+    expect(add.closest('[inert]')).toBeNull();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
   });
 
   it('names an empty notes card beside its Add note action', () => {

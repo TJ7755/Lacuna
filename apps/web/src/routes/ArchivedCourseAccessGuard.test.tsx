@@ -130,7 +130,7 @@ describe('ArchivedCourseAccessGuard', () => {
   ])('allows archived inspection at %s', (path) => {
     renderGuardedRoute(path);
 
-    expect(screen.getByTestId('location')).toHaveTextContent(path);
+    expect(screen.getByTestId('location').textContent).toBe(path);
     expect(screen.getByText('Guarded content')).toBeInTheDocument();
   });
 
@@ -160,7 +160,7 @@ describe('ArchivedCourseAccessGuard', () => {
     renderGuardedRoute(path);
 
     await waitFor(() => {
-      expect(screen.getByTestId('location')).toHaveTextContent('/course/course-1');
+      expect(screen.getByTestId('location').textContent).toBe('/course/course-1');
     });
   });
 
@@ -170,7 +170,7 @@ describe('ArchivedCourseAccessGuard', () => {
 
     renderGuardedRoute(path);
 
-    expect(screen.getByTestId('location')).toHaveTextContent(path);
+    expect(screen.getByTestId('location').textContent).toBe(path);
     expect(screen.getByText('Guarded content')).toBeInTheDocument();
   });
 });

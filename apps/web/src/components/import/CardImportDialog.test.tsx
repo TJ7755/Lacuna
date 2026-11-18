@@ -1,8 +1,10 @@
+import 'fake-indexeddb/auto';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CardImportDialog } from './CardImportDialog';
 import { ImportDestination, useImportDestination } from './ImportDestination';
 import type { ApkgImportResult } from '../../db/apkgImport';
+import { createCourse, createCourseCard } from '../../db/repository';
 import type * as CardRepository from '../../db/cardRepository';
 
 const mocks = vi.hoisted(() => ({ parseApkg: vi.fn(), duplicates: vi.fn() }));
@@ -73,25 +75,28 @@ describe('CardImportDialog', () => {
       ),
     );
   });
-  it('excludes cloze cards and checks generated reverses for duplicates', async () => {
-    render(
-      <CardImportDialog
-        targetName="French"
-        schedulingUnitId="unit"
-        onCancel={vi.fn()}
-        onImport={vi.fn()}
-      />,
-    );
-    paste();
-    await review();
-    fireEvent.click(screen.getByRole('switch'));
-    expect(screen.getByRole('button', { name: 'Import 3 cards' })).toBeEnabled();
-    await waitFor(() =>
-      expect(mocks.duplicates).toHaveBeenLastCalledWith(
-        'unit',
-        expect.arrayContaining([expect.objectContaining({ front: 'hello', back: 'bonjour' })]),
-      ),
-    );
+  it('excludes cloze reverses and warns when a generated reverse already exists', async () => {
+    const course = await createCourse('French');
+    await createCourseCard(course.id, 'front_back', 'hello', 'bonjour');
+    const { checkDuplicatesBatch } =
+      await vi.importActual<typeof CardRepository>('../../db/cardRepository');
+    await mocks.duplicates.withImplementation(checkDuplicatesBatch, async () => {
+      render(
+        <CardImportDialog
+          targetName="French"
+          schedulingUnitId={course.id}
+          onCancel={vi.fn()}
+          onImport={vi.fn()}
+        />,
+      );
+      paste();
+      await review();
+      fireEvent.click(screen.getByRole('switch'));
+      expect(screen.getByRole('button', { name: 'Import 3 cards' })).toBeEnabled();
+      expect(await screen.findByText('1 already exist. Importing will add copies.')).toBeVisible();
+      fireEvent.click(screen.getByRole('switch'));
+      await waitFor(() => expect(screen.queryByText(/already exist/)).not.toBeInTheDocument());
+    });
   });
   it('blocks generated totals above the import limit', async () => {
     render(<CardImportDialog targetName="French" onCancel={vi.fn()} onImport={vi.fn()} />);

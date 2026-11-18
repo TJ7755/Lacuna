@@ -190,7 +190,6 @@ it('keeps failed Forget visible and retryable until cancelled or retried', async
   const alert = await screen.findByRole('alert');
   expect(trigger.closest('header')).toContainElement(screen.getByRole('button', { name: 'Close' }));
   expect(alert).toHaveTextContent('Could not forget this class. Try again.');
-  expect(alert).toHaveClass('text-negative', 'text-sm');
   expect(alert.closest('[role="group"]')).toContainElement(
     screen.getByRole('button', { name: /^Forget$/ }),
   );

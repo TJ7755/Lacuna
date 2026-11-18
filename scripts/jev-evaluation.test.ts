@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -288,7 +288,11 @@ test('blind CLI export is reproducible, unmarked and refuses overwrites; incompl
     spawnSync(
       'bun',
       [...(preload ? ['--preload', preload] : []), 'scripts/jev-evaluation.ts', ...args],
-      { encoding: 'utf8', timeout: 10_000 },
+      {
+        encoding: 'utf8',
+        timeout: 10_000,
+        env: { ...process.env, TYPESAFE_API_KEY: 'synthetic-test-value' },
+      },
     );
   for (const name of ['one', 'two'])
     expect(cli(['export', '--out', join(directory, name)]).status).toBe(0);
@@ -319,8 +323,12 @@ test('blind CLI export is reproducible, unmarked and refuses overwrites; incompl
     preload,
     'globalThis.fetch = () => { console.error("UNEXPECTED_NETWORK"); throw new Error("forbidden"); };',
   );
-  const absent = cli(['live', '--allow-paid', '--out', join(directory, 'absent')], preload);
-  expect(absent.status).not.toBe(0);
+  const absent = cli(
+    ['live', '--allow-paid', '--cap-usd', '1', '--out', join(directory, 'absent')],
+    preload,
+  );
+  expect(absent.status).toBe(1);
+  expect(existsSync(join(directory, 'absent'))).toBe(false);
   expect(absent.stderr).not.toContain('UNEXPECTED_NETWORK');
   const invalid = cli(
     [
@@ -328,12 +336,15 @@ test('blind CLI export is reproducible, unmarked and refuses overwrites; incompl
       '--labels',
       join(directory, 'labels.json'),
       '--allow-paid',
+      '--cap-usd',
+      '1',
       '--out',
       join(directory, 'invalid'),
     ],
     preload,
   );
-  expect(invalid.status).not.toBe(0);
+  expect(invalid.status).toBe(1);
+  expect(existsSync(join(directory, 'invalid'))).toBe(false);
   expect(invalid.stderr).not.toContain('UNEXPECTED_NETWORK');
 });
 

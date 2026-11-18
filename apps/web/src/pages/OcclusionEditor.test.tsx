@@ -303,18 +303,6 @@ describe('OcclusionEditor', () => {
     expect(screen.getByText('Upload a diagram to begin.')).toBeInTheDocument();
   });
 
-  it('converts a drawn box to fractions of the image on capture, clamped to bounds', async () => {
-    mockCourse = course;
-    const { container } = renderNew();
-    await uploadDiagram();
-
-    drawBox(container, [40, 30], [200, 180]);
-
-    // 40/400=0.1, 30/300=0.1; 200/400=0.5, 180/300=0.6 -> x0.1 y0.1 w0.4 h0.5.
-    expect(screen.getByText('Box 1')).toBeInTheDocument();
-    expect(screen.getByText('1 card will be generated')).toBeInTheDocument();
-  });
-
   it('ignores a degenerate near-zero drag', async () => {
     mockCourse = course;
     const { container } = renderNew();

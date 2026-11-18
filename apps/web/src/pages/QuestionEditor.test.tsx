@@ -5,13 +5,6 @@ import { chooseConcept, mocks, renderEditor } from './QuestionEditor.testSupport
 import { questionDraftKey } from './questionDraft';
 
 describe('QuestionEditor', () => {
-  it('uses the task title without repeating it in a decorative eyebrow', async () => {
-    renderEditor();
-
-    expect(await screen.findByRole('heading', { name: 'Create a Question' })).toBeInTheDocument();
-    expect(screen.queryByText('New definition')).not.toBeInTheDocument();
-  });
-
   it.each(['fixed', 'generated'] as const)(
     'requires a deliberate Concept choice for a new %s Question',
     async (kind) => {

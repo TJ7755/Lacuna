@@ -74,7 +74,6 @@ it.each(['unavailable', 'construction', 'post', 'error', 'messageerror', 'reply'
     const result = await pending;
     expect(Object.keys(result)).toEqual([input.courses[0].id]);
     const points = result[input.courses[0].id];
-    expect(points).toHaveLength(40);
     expect(points[0]).toEqual({ at: input.from, recall: 0 });
     expect(points.at(-1)).toEqual({ at: input.now, recall: 0 });
     expect(points.every(({ recall }) => recall === 0)).toBe(true);

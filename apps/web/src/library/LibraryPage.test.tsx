@@ -93,18 +93,6 @@ describe('LibraryPage', () => {
     expect(sheet).not.toHaveTextContent(code === '0972' ? '0625' : '0972');
   });
 
-  it.each(['8464', '1SC0', 'J250'])(
-    'does not list withdrawn Combined Science course %s',
-    (code) => {
-      renderLibrary(libraryCourses);
-      fireEvent.change(screen.getByRole('searchbox', { name: 'Search courses' }), {
-        target: { value: code },
-      });
-      expect(screen.queryByRole('button', { name: /Combined Science/ })).not.toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: /Open in Lacuna/ })).not.toBeInTheDocument();
-    },
-  );
-
   it('finds Religious Studies by code and shows its published scope, counts and link', async () => {
     renderLibrary(libraryCourses);
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search courses' }), {
@@ -159,13 +147,6 @@ describe('LibraryPage', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(physics).toHaveAttribute('aria-expanded', 'false');
     expect(physics).toHaveFocus();
-  });
-
-  it('shows no review or progress status', async () => {
-    renderLibrary();
-    fireEvent.click(cover('Biology'));
-    await screen.findByRole('dialog', { name: 'Biology' });
-    expect(screen.queryByText(/review|progress/i)).not.toBeInTheDocument();
   });
 
   it('shows provenance and reports only course identity and a chosen item reference', async () => {

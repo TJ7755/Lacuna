@@ -81,6 +81,4 @@ it('hides the course name out of reach while the page title already shows it', (
   );
   const link = screen.getByRole('link', { name: 'Biology' });
   expectAppDestination(link, '/course/course-1');
-  // The name stands alone: no coloured status dot beside it.
-  expect(link.querySelector('[style]')).toBeNull();
 });

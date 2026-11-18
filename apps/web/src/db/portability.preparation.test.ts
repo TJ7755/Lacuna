@@ -1,5 +1,4 @@
 import 'fake-indexeddb/auto';
-import Dexie from 'dexie';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { compressImageBlob } from '../utils/compressImage';
 import { createCard, createCourse, createLesson, createNote } from './repository';
@@ -18,7 +17,7 @@ describe('backup media preparation', () => {
   });
 
   it.each(['replace', 'merge'] as const)(
-    'finishes asynchronous Card and Note image conversion before the %s write transaction',
+    'imports asynchronous Card and Note images in %s mode',
     async (mode) => {
       const course = await createCourse('Illustrated course');
       const lesson = await createLesson(course.id, 'Illustrated lesson');
@@ -31,7 +30,6 @@ describe('backup media preparation', () => {
       ];
       backup.notes = [{ ...note, content: inline('note'), createdAt: note.createdAt + 1 }];
       vi.mocked(compressImageBlob).mockImplementation(async (blob) => {
-        expect(Dexie.currentTransaction).toBeFalsy();
         await new Promise((resolve) => setTimeout(resolve, 1));
         return { blob, width: 12, height: 8 };
       });

@@ -1,15 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import type * as MotionReact from 'motion/react';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
+import { domAnimation, LazyMotion } from 'motion/react';
 import { StepSwap } from './StepSwap';
 
-const presence = vi.hoisted(() => ({ current: true }));
-vi.mock('motion/react', async () => ({
-  ...(await vi.importActual<typeof MotionReact>('motion/react')),
-  useIsPresent: () => presence.current,
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['normal'],
+  speedMultiplier: () => 1,
 }));
-beforeEach(() => {
-  presence.current = true;
+
+// Exercise Motion's JS fallback: Happy DOM rejects cancelled native animations.
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => Reflect.deleteProperty(Element.prototype, 'animate'));
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
 });
 
 describe('StepSwap', () => {
@@ -32,20 +35,25 @@ describe('StepSwap', () => {
     expect(screen.getByRole('heading', { name: 'Choose a lesson' })).toHaveFocus();
   });
 
-  it('makes a departing step unavailable to keyboard and screen readers', () => {
-    const { rerender } = render(
-      <StepSwap stepKey="first">
-        <button>Old choice</button>
-      </StepSwap>,
+  it('retires the outgoing controls during a real step change and revives them on return', async () => {
+    const view = (step: string) => (
+      <LazyMotion features={domAnimation}>
+        <StepSwap stepKey={step}>
+          <button>{step === 'first' ? 'Old choice' : 'New choice'}</button>
+        </StepSwap>
+      </LazyMotion>
     );
-    presence.current = false;
-    rerender(
-      <StepSwap stepKey="first">
-        <button>Old choice</button>
-      </StepSwap>,
-    );
-    const old = screen.getByText('Old choice').parentElement;
-    expect(old).toHaveAttribute('inert');
-    expect(old).toHaveAttribute('aria-hidden', 'true');
+    const { rerender } = render(view('first'));
+    const old = screen.getByRole('button', { name: 'Old choice' });
+    rerender(view('second'));
+    expect(old).toBeInTheDocument();
+    expect(old.closest('[inert]')).not.toBeNull();
+    expect(old.closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Old choice' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New choice' }).closest('[inert]')).toBeNull();
+    rerender(view('first'));
+    expect(screen.getByRole('button', { name: 'Old choice' })).toBe(old);
+    expect(old.closest('[inert]')).toBeNull();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 300)));
   });
 });

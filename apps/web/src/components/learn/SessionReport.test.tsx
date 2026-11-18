@@ -53,7 +53,12 @@ describe('SessionReport', () => {
   it('reports progress changes in percentage points with a named progress bar', () => {
     render(<SessionReport summary={mockSummary} onReturn={vi.fn()} />);
     expect(screen.getByText('+15 percentage points')).toBeInTheDocument();
-    expect(screen.getByRole('progressbar', { name: 'Expected marks' })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Expected marks' })).toHaveAttribute(
+      'aria-valuenow',
+      '55',
+    );
+    expect(screen.getByText('40% →')).toBeInTheDocument();
+    expect(screen.getByText('55%')).toBeInTheDocument();
   });
 
   it('omits unavailable recall and its percentage-point comparison', () => {
@@ -119,13 +124,6 @@ describe('SessionReport', () => {
     expect(screen.getByText('Mean time').nextElementSibling).toHaveTextContent('3.0s');
   });
 
-  it('shows the progress bar section', () => {
-    render(<SessionReport summary={mockSummary} onReturn={vi.fn()} />);
-    expect(screen.getByText('Expected marks')).toBeInTheDocument();
-    expect(screen.getByText('40% →')).toBeInTheDocument();
-    expect(screen.getByText('55%')).toBeInTheDocument();
-  });
-
   it('calls onReturn when Done is clicked', () => {
     const onReturn = vi.fn();
     render(<SessionReport summary={mockSummary} onReturn={onReturn} />);
@@ -165,7 +163,6 @@ describe('minimal completion report', () => {
   it('leads with the goal and keeps secondary results collapsed', () => {
     render(<SessionReport summary={mockSummary} onReturn={vi.fn()} />);
     expect(screen.getByRole('heading', { name: 'Goal reached.' })).toBeVisible();
-    expect(screen.queryByText('Session complete')).not.toBeInTheDocument();
     const trigger = screen.getByRole('button', { name: 'Session details' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByText('Mean time')).toBeInTheDocument();

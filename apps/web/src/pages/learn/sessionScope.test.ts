@@ -15,23 +15,6 @@ const base = {
 };
 
 describe('resolveLearnSessionScope', () => {
-  it('keeps equivalent rebuilt filter and lesson arrays on the same load identity', () => {
-    const first = resolveLearnSessionScope({
-      ...base,
-      courseId: 'course-1',
-      filterParams: ['due', 'flagged'],
-      requestScopeLessonIds: ['lesson-1', 'lesson-2'],
-    });
-    const rebuilt = resolveLearnSessionScope({
-      ...base,
-      courseId: 'course-1',
-      filterParams: ['due', 'flagged'],
-      requestScopeLessonIds: ['lesson-1', 'lesson-2'],
-    });
-    expect(rebuilt.requestScopeLessonIdsKey).toBe(first.requestScopeLessonIdsKey);
-    expect(rebuilt.filterParamsKey).toBe(first.filterParamsKey);
-  });
-
   it('gives each assessment revision window its own resumable practice scope', () => {
     expect(
       resolveLearnSessionScope({

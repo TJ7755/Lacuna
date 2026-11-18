@@ -58,8 +58,8 @@ describe('review-history entry projection', () => {
     const entries = reviewHistoryEntriesForCard(card([first, second]));
 
     expect(entries.map((entry) => entry.id)).toEqual([
-      reviewHistoryEntryIdForEvent('event-1'),
-      `${reviewHistoryEntryIdForEvent('event-1')}:1`,
+      'review:event:event-1',
+      'review:event:event-1:1',
     ]);
     expect(entries[0]).toMatchObject({
       cardId: 'card-1',
@@ -112,10 +112,9 @@ describe('canonical review history storage', () => {
     const source = card([review(100), review(100)]);
     const entries = reviewHistoryEntriesForCard(source);
     await db.reviewHistory.bulkPut(entries);
-    await db.reviewHistory.bulkPut(entries);
+    await db.reviewHistory.bulkPut(reviewHistoryEntriesForCard(source));
 
     expect(await db.reviewHistory.where('cardId').equals(source.id).count()).toBe(2);
-    expect(reviewHistoryEntriesForCard(source)).toEqual(entries);
     expect(source.history).toHaveLength(2);
   });
 

@@ -48,45 +48,35 @@ describe('CourseInsightsSection', () => {
     expect(screen.queryByText('Nothing has been sent yet.')).not.toBeInTheDocument();
     expect(screen.queryByText(/Last daily report/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Last successful publication/)).not.toBeInTheDocument();
-    // The full consent detail stays reachable behind the disclosure.
-    const trigger = screen.getByRole('button', { name: 'How sharing works' });
-    const disclosure = document.getElementById(trigger.getAttribute('aria-controls')!);
-    expect(disclosure).toContainElement(screen.getByText(/criterion results/));
-    expect(disclosure).toContainElement(screen.getByText(/may be able to recognise you/));
-    expect(disclosure).toContainElement(
-      screen.getByText(/activity already recorded today and yesterday/),
-    );
   });
 
   it('records the student\u2019s choice per course, per device, after entering an identifier and consenting', () => {
     joinClass();
-    const { rerender } = renderSection();
+    const { unmount } = renderSection();
     fireEvent.change(screen.getByLabelText(/^Name or class identifier/), {
       target: { value: 'Pupil A' },
     });
     fireEvent.click(screen.getByRole('switch', { name: 'Share insights with your teacher' }));
     expect(localStorage.getItem(`lacuna.insights.optIn.${COURSE_ID}`)).toBe('on');
 
-    // Re-mounting reads the recorded choice back rather than resetting it.
-    rerender(<CourseInsightsSection courseId={COURSE_ID} />);
+    unmount();
+    const restored = renderSection();
     expect(
       screen.getByRole('switch', { name: 'Share insights with your teacher' }),
     ).toHaveAttribute('aria-checked', 'true');
 
+    restored.unmount();
+    enrolInClass('other-course', {
+      shareId: 'c'.repeat(32),
+      lineageId: 'other-lineage',
+      recipient: { keyId: 'd'.repeat(64), publicKey: 'otherpublic' },
+    });
+    const other = render(<CourseInsightsSection courseId="other-course" />);
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
+    other.unmount();
+    renderSection();
     fireEvent.click(screen.getByRole('switch', { name: 'Share insights with your teacher' }));
     expect(localStorage.getItem(`lacuna.insights.optIn.${COURSE_ID}`)).toBe('off');
-  });
-
-  it('does not leak newly stored choices into another course', () => {
-    joinClass();
-    render(<CourseInsightsSection courseId={COURSE_ID} />);
-    fireEvent.change(screen.getByLabelText(/^Name or class identifier/), {
-      target: { value: 'Pupil A' },
-    });
-    fireEvent.click(screen.getByRole('switch', { name: 'Share insights with your teacher' }));
-
-    expect(localStorage.getItem(`lacuna.insights.optIn.${COURSE_ID}`)).toBe('on');
-    expect(localStorage.getItem('lacuna.insights.optIn.other-course')).toBeNull();
   });
 
   it('keeps the full consent detail inside How sharing works', () => {
@@ -127,11 +117,7 @@ describe('CourseInsightsSection', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText('Nothing has been sent yet.')).toBeVisible();
     const trigger = screen.getByRole('button', { name: 'How sharing works' });
-    const disclosure = document.getElementById(trigger.getAttribute('aria-controls')!);
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
-    expect(disclosure).toContainElement(
-      screen.getByText(/activity already recorded today and yesterday/),
-    );
   });
 
   it('shows the recorded day once a completed send exists', () => {
@@ -150,7 +136,6 @@ describe('CourseInsightsSection', () => {
     );
     renderSection();
     expect(screen.getByText('Connected course: Biology.')).toBeVisible();
-    expect(screen.queryByText(/Class reference/)).not.toBeInTheDocument();
     expect(screen.getByText('Last successful publication: 19/10/2026, 20:34:00.')).toBeVisible();
   });
 

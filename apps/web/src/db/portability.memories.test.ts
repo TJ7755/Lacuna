@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import { exportDatabase, importBackup, validateBackup } from './portability';
 import type { AgentMemory } from '@lacuna/core/db/types';
@@ -8,8 +8,13 @@ import { agentMemoryRepository } from './agentMemoryRepository';
 
 import { reset } from './portability.testFixtures';
 
+afterEach(() => vi.restoreAllMocks());
+
 describe('backup memories', () => {
-  beforeEach(reset);
+  beforeEach(async () => {
+    await reset();
+    vi.spyOn(Date, 'now').mockReturnValue(10);
+  });
 
   it('exports and replace-restores durable teaching memories', async () => {
     const course = await createCourse('Maths');
@@ -54,15 +59,12 @@ describe('backup memories', () => {
   });
 
   it('recovery merge takes newer memory evidence and a canonical equal-time tie', async () => {
-    const local = await agentMemoryRepository.create(
-      {
-        courseId: null,
-        tags: ['context'],
-        content: 'alpha',
-        basis: 'learner-stated',
-      },
-      10,
-    );
+    const local = await agentMemoryRepository.create({
+      courseId: null,
+      tags: ['context'],
+      content: 'alpha',
+      basis: 'learner-stated',
+    });
     const backup = await exportDatabase();
     await importBackup(
       {
@@ -78,15 +80,12 @@ describe('backup memories', () => {
   });
 
   it('rejects a recovery merge that moves an existing memory to another scope', async () => {
-    const local = await agentMemoryRepository.create(
-      {
-        courseId: null,
-        tags: ['context'],
-        content: 'Global context.',
-        basis: 'learner-stated',
-      },
-      10,
-    );
+    const local = await agentMemoryRepository.create({
+      courseId: null,
+      tags: ['context'],
+      content: 'Global context.',
+      basis: 'learner-stated',
+    });
     const course = await createCourse('Scoped target');
     const backup = await exportDatabase();
 
@@ -103,15 +102,12 @@ describe('backup memories', () => {
   });
 
   it('selects the newest duplicate incoming memory before persistence', async () => {
-    const local = await agentMemoryRepository.create(
-      {
-        courseId: null,
-        tags: ['context'],
-        content: 'Local context.',
-        basis: 'learner-stated',
-      },
-      10,
-    );
+    const local = await agentMemoryRepository.create({
+      courseId: null,
+      tags: ['context'],
+      content: 'Local context.',
+      basis: 'learner-stated',
+    });
     const backup = await exportDatabase();
 
     await importBackup(

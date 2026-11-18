@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import { cardsForSequence, createCourse, createSequence, listSequences } from './repository';
+import { cardsForSequence, createCourse, createSequence } from './repository';
 import { linesModeSequencesByCard } from './linesModeCards';
 import type { SequenceItem } from '@lacuna/core/db/types';
 
@@ -32,7 +32,7 @@ describe('linesModeSequencesByCard', () => {
 
     const result = await linesModeSequencesByCard(cards);
 
-    expect(result.size).toBe(cards.length);
+    expect(result.size).toBe(1);
     for (const card of cards) {
       expect(result.get(card.id)?.id).toBe(sequence.id);
     }
@@ -83,8 +83,5 @@ describe('linesModeSequencesByCard', () => {
     const result = await linesModeSequencesByCard([card!]);
 
     expect(result.size).toBe(0);
-    // listSequences should not even be called for a card with no sequenceItemId — the
-    // filter short-circuits before any query. Sanity-check it stays empty too.
-    expect(await listSequences(course.id)).toEqual([]);
   });
 });

@@ -41,13 +41,6 @@ describe('CardList selection and reversible actions', () => {
     for (const name of actions) expect(toolbar.getByRole('button', { name })).toBeEnabled();
   });
 
-  it('toggles card selection in select mode', () => {
-    render(<CardList cards={[mockCard, mockCard2]} context={mockContext} onEditCard={vi.fn()} />);
-    fireEvent.click(screen.getByText('Select'));
-    fireEvent.click(screen.getByText('Select all'));
-    expect(screen.getByText('2 selected')).toBeInTheDocument();
-  });
-
   it.each([
     ['Tag…', 'Add'],
     ['Reschedule…', 'Reschedule'],

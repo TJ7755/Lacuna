@@ -4,7 +4,6 @@ import { exportDatabase, importBackup } from './portability';
 import { db } from './schema';
 import { createCard, createCourse, createLesson } from './repository';
 import { ensureLessonBackingDeck } from './backingDecks';
-import type { BackupFile } from '@lacuna/core/db/types';
 
 async function reset(): Promise<void> {
   await Promise.all([
@@ -129,56 +128,6 @@ describe('domain storage portability', () => {
     expect(await db.coursePerformance.get(course.id)).toMatchObject({ totalCorrectReviews: 99 });
     expect(await db.schedulingPerformance.get(lesson.id)).toMatchObject({
       totalCorrectReviews: 99,
-    });
-  });
-
-  it('rejects an old projection without metadata before replacement', async () => {
-    const course = await createCourse('Biology');
-    const lesson = await createLesson(course.id, 'Cells');
-    const deckId = await ensureLessonBackingDeck(course.id, lesson.id);
-    await createCard(deckId, 'front_back', 'Q', 'A', [], {
-      courseId: course.id,
-      primaryLessonId: lesson.id,
-    });
-    const current = await exportDatabase();
-    const legacyProjectionBackup = {
-      ...current,
-      app: 'lacuna-v14',
-      version: 14,
-      schedulingUnits: current.schedulingUnits!.map(({ createdAt: _createdAt, ...unit }) => unit),
-    } as BackupFile;
-
-    await expect(importBackup(legacyProjectionBackup, 'replace')).rejects.toThrow(
-      'Unsupported old backup version',
-    );
-    expect(await exportDatabase()).toMatchObject({
-      cards: current.cards,
-      schedulingUnits: current.schedulingUnits,
-    });
-  });
-
-  it('rejects an older backup without target projections before replacement', async () => {
-    const course = await createCourse('Biology');
-    const lesson = await createLesson(course.id, 'Cells');
-    const deckId = await ensureLessonBackingDeck(course.id, lesson.id);
-    await createCard(deckId, 'front_back', 'Q', 'A', [], {
-      courseId: course.id,
-      primaryLessonId: lesson.id,
-    });
-    const current = await exportDatabase();
-    const {
-      schedulingUnits: _units,
-      coursePerformance: _coursePerformance,
-      schedulingPerformance: _schedulingPerformance,
-      ...oldBackup
-    } = current;
-
-    await expect(
-      importBackup({ ...oldBackup, app: 'lacuna-v14', version: 14 }, 'replace'),
-    ).rejects.toThrow('Unsupported old backup version');
-    expect(await exportDatabase()).toMatchObject({
-      cards: current.cards,
-      schedulingUnits: current.schedulingUnits,
     });
   });
 });

@@ -11,7 +11,6 @@ it('uses a named image chooser and only asks for a description after selection',
       nodeId="q1"
     />,
   );
-  expect(container.querySelector('details')).toBeNull();
   expect(screen.getByRole('button', { name: 'Choose image' })).toBeInTheDocument();
   expect(screen.queryByLabelText('Image description')).not.toBeInTheDocument();
   const input = container.querySelector('input[type="file"]') as HTMLInputElement;

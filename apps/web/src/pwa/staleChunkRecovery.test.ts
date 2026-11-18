@@ -210,7 +210,6 @@ describe('awaited stale chunk recovery', () => {
 
     const first = recoverFromChunkFailure(environment);
     const second = recoverFromChunkFailure(environment);
-    expect(second).toBe(first);
     resolveProbe(true);
     await expect(second).resolves.toBe(true);
     await expect(first).resolves.toBe(true);

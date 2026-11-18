@@ -92,7 +92,6 @@ describe('LearnMode resume', () => {
 
     await continueFromNotes();
     await findStudyFaceText(/cause$/);
-    expect(screen.queryByText('Loop until every card is correct')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Industrial change' })).toBeInTheDocument();
     const firstServedId = document
       .querySelector('[data-study-card-id]')

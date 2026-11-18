@@ -11,8 +11,6 @@ import {
   updateCourse,
   updateCourseAssessment,
 } from './repository';
-import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
-import { FSRS_VERSION } from '@lacuna/core/fsrs/params';
 import { listLessons, listCardsForCourse } from './read';
 import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 import { reset } from './courseRepository.testFixtures';
@@ -27,9 +25,11 @@ describe('createCourse', () => {
 
     expect(course.name).toBe('Biology');
     expect(course.description).toBe('');
+    expect(course.distributedCopy).toBeUndefined();
+    expect(course.distribution).toBeUndefined();
     expect(course.createdAt).toBeGreaterThanOrEqual(before);
     expect(course.createdAt).toBeLessThanOrEqual(after);
-    expect(course.fsrsVersion).toBe(FSRS_VERSION);
+    expect(course.fsrsVersion).toBe(7);
     expect(course.fsrsParameters).toBeDefined();
     expect(course.examObjective).toBe('expectedMarks');
     expect(course.unlockMode).toBe('open');
@@ -173,9 +173,7 @@ describe('createCourse', () => {
     });
     const parameters = { ...course.fsrsParameters, requestRetention: 0.97 };
     await updateCourse(course.id, { fsrsParameters: parameters });
-    const expected = applyReview(makeEngine(parameters), fresh, 4, 1000).memory;
     const saved = (await db.cards.get(fresh.id))!;
-    expect(saved.due).toBe(expected.due);
     expect(saved.due).toBeLessThan(reviewed.card.due!);
     expect(saved.reps).toBe(1);
     expect(await db.reviewHistory.count()).toBe(1);

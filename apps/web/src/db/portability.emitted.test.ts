@@ -1,4 +1,3 @@
-import { migrateFsrs7Configuration } from './fsrs7Migration';
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, it } from 'vitest';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
@@ -109,67 +108,56 @@ beforeEach(async () => {
   await db.open();
 });
 
-// Both refs use src/db/backupSnapshot.ts and src/db/portability.ts: the v15
-// exporter copies these collections verbatim, with no assessment or scheduling conversion.
-it.each(['ba3e2c84ad5caa8a41f94b5f4129c5e1df392273', 'v0.2.17'])(
-  'preserves representative emitted rows from %s',
-  async () => {
-    await createCourse('Seed');
-    const fixture = await exportDatabase();
-    fixture.courses = [COURSE];
-    fixture.courseAssessments = [FINAL_ASSESSMENT];
-    fixture.questions = [question()];
-    fixture.concepts = [CONCEPT];
-    fixture.questionConcepts = [LINKS];
-    fixture.schedulingUnits = fixture.schedulingUnits!.map((unit) => ({
-      ...unit,
-      id: COURSE.id,
-      courseId: COURSE.id,
-    }));
-    const performance = {
-      runningMeanResponseTime: 123,
-      runningStdDevResponseTime: 7,
-      m2: 49,
-      totalCorrectReviews: 3,
-      updatedAt: 10,
-    };
-    fixture.coursePerformance = [{ ...performance, courseId: COURSE.id }];
-    fixture.schedulingPerformance = [
-      { ...performance, schedulingUnitId: COURSE.id, courseId: COURSE.id },
-    ];
-    const parsed = await readBackupFile(new File([JSON.stringify(fixture)], 'backup.json'));
-    await importBackup(parsed, 'replace');
-    const restored = await exportDatabase();
-    for (const key of [
-      'courses',
-      'courseAssessments',
-      'questions',
-      'schedulingUnits',
-      'coursePerformance',
-      'schedulingPerformance',
-    ] as const) {
-      const actual =
-        key === 'questions'
-          ? restored.questions?.map(({ migratedToSetId: _migration, ...question }) => question)
-          : restored[key];
-      expect(actual).toEqual(
-        key === 'courses' || key === 'schedulingUnits'
-          ? fixture[key]?.map(migrateFsrs7Configuration)
-          : fixture[key],
-      );
-      expect(fixture[key]!.length).toBeGreaterThan(0);
-    }
-    for (const mode of ['replace', 'merge'] as const) {
-      const old = { ...fixture, app: 'lacuna' as const, version: 9 };
-      await expect(importBackup(old, mode)).rejects.toThrow('Unsupported old backup');
-      await expect(readBackupFile(new File([JSON.stringify(old)], 'old.json'))).rejects.toThrow(
-        'Unsupported old backup',
-      );
-      const after = await exportDatabase();
-      expect({ ...after, exportedAt: 0 }).toEqual({ ...restored, exportedAt: 0 });
-    }
-  },
-);
+it('preserves imported rows while upgrading their scheduling configuration', async () => {
+  await createCourse('Seed');
+  const fixture = await exportDatabase();
+  fixture.courses = [COURSE];
+  fixture.courseAssessments = [FINAL_ASSESSMENT];
+  fixture.questions = [question()];
+  fixture.concepts = [CONCEPT];
+  fixture.questionConcepts = [LINKS];
+  fixture.schedulingUnits = fixture.schedulingUnits!.map((unit) => ({
+    ...unit,
+    id: COURSE.id,
+    courseId: COURSE.id,
+  }));
+  const performance = {
+    runningMeanResponseTime: 123,
+    runningStdDevResponseTime: 7,
+    m2: 49,
+    totalCorrectReviews: 3,
+    updatedAt: 10,
+  };
+  fixture.coursePerformance = [{ ...performance, courseId: COURSE.id }];
+  fixture.schedulingPerformance = [
+    { ...performance, schedulingUnitId: COURSE.id, courseId: COURSE.id },
+  ];
+  const parsed = await readBackupFile(new File([JSON.stringify(fixture)], 'backup.json'));
+  await importBackup(parsed, 'replace');
+  const restored = await exportDatabase();
+  for (const key of [
+    'courses',
+    'courseAssessments',
+    'questions',
+    'schedulingUnits',
+    'coursePerformance',
+    'schedulingPerformance',
+  ] as const) {
+    const actual =
+      key === 'questions'
+        ? restored.questions?.map(({ migratedToSetId: _migration, ...question }) => question)
+        : restored[key];
+    expect(actual).toEqual(
+      key === 'courses' || key === 'schedulingUnits'
+        ? fixture[key]?.map((row) => ({
+            ...row,
+            fsrsVersion: 7,
+            fsrsParameters: { ...row.fsrsParameters, w: defaultFsrsParameters().w },
+          }))
+        : fixture[key],
+    );
+  }
+});
 
 it.each(['schedulingUnits', 'coursePerformance', 'schedulingPerformance'] as const)(
   'rejects current backups missing %s without changing stored data',
