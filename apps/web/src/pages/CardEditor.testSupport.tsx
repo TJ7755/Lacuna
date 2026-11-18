@@ -138,6 +138,7 @@ export const generatedCard: Card = {
   front: '**A sequence**\n\nFirst item?',
   back: 'Sodium',
   stability: null,
+  stabilityFast: null,
   difficulty: null,
   lastReviewed: null,
   reps: 0,

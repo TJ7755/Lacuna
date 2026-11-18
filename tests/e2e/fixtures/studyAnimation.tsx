@@ -32,6 +32,7 @@ const card: Card = {
   front: 'Question',
   back: 'Answer',
   stability: null,
+  stabilityFast: null,
   difficulty: null,
   lastReviewed: null,
   reps: 0,

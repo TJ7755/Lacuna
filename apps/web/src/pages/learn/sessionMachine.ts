@@ -17,10 +17,7 @@ import {
 import { applyCooldown, decrementCooldowns, type CooldownMap } from '@lacuna/core/fsrs/cooldown';
 import { selectNext, sessionComplete, type SessionContext } from '@lacuna/core/fsrs/session';
 import { allocateCramReview } from '@lacuna/core/fsrs/cramAllocator';
-import {
-  CRAM_SUCCESS_GRADES,
-  createHalfLifeLogisticModel,
-} from '@lacuna/core/fsrs/halfLifeLogisticModel';
+import { CRAM_SUCCESS_GRADES, createFsrs7CramModel } from '@lacuna/core/fsrs/fsrs7CramModel';
 import type { RevisionPlan, UserPerformance } from '@lacuna/core/db/types';
 import { answerGrade, sessionStopAfterAnswer, type SessionStop } from './answerPolicy';
 
@@ -469,7 +466,7 @@ function selectSessionCard(state: SessionState, input: Selection): SessionTransi
     const uncooledCardIds = eligibleCardIds.filter((id) => (state.cooldowns.get(id) ?? 0) <= 0);
     const objectiveContext = context.decks.values().next().value?.oc;
     if (!objectiveContext) return { state, effects: [] };
-    const model = createHalfLifeLogisticModel(objectiveContext.ctx.decay);
+    const model = createFsrs7CramModel(objectiveContext.deck.fsrsParameters);
     const allocateCard = (cardIds: string[]): Card | undefined => {
       const allocation = allocateCramReview({
         cards: state.cards,

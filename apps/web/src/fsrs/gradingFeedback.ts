@@ -59,8 +59,8 @@ export function reviewRetentionMessage(
     ? resolveCardExamDate(card, examDateContext, now)
     : deck.examDate;
   if (resolved === undefined || resolved < now) return null;
-  const percent = Math.round(
-    predictedRetrievabilityAtHorizon(card, deck, now, examDateContext) * 100,
-  );
+  const recall = predictedRetrievabilityAtHorizon(card, deck, now, examDateContext);
+  if (recall === null) return null;
+  const percent = Math.round(recall * 100);
   return `${GRADE_LABELS[grade]}, ${percent}% recall at exam`;
 }

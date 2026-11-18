@@ -146,7 +146,7 @@ it('uses the suggested date for a code when the learner selects an exam', async 
   fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
   const add = await screen.findByRole('button', { name: 'Add to my courses' });
   fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
-  expect(screen.getByLabelText('Exam instant')).toHaveValue(String(teacherDate));
+  expect(await screen.findByLabelText('Exam instant')).toHaveValue(String(teacherDate));
   fireEvent.click(add);
   await waitFor(async () => expect(await db.courses.count()).toBe(1));
   expect((await db.courseAssessments.toArray())[0].examDate).toBe(teacherDate);
@@ -159,7 +159,7 @@ it('changes a file suggestion, refuses invalid input, and retains the choice on 
   });
   const add = await screen.findByRole('button', { name: 'Add to my courses' });
   fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
-  const date = screen.getByLabelText('Exam instant');
+  const date = await screen.findByLabelText('Exam instant');
   fireEvent.change(date, { target: { value: 'invalid' } });
   expect(add).toBeDisabled();
   fireEvent.keyDown(date, { key: 'Enter', metaKey: true });

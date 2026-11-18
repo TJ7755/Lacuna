@@ -1,3 +1,4 @@
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { describe, expect, it, vi } from 'vitest';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { makeObjectiveContext, scoreCard } from '@lacuna/core/fsrs/objective';
@@ -11,6 +12,7 @@ describe('multi-deck session normalisation', () => {
     const cards = [
       card('near-strong', near.id, {
         stability: 100,
+        stabilityFast: 2,
         difficulty: 5,
         state: 2,
         reps: 3,
@@ -50,6 +52,7 @@ describe('multi-deck session normalisation', () => {
     const far = deck('far', 30);
     const reviewed = card('near-reviewed', near.id, {
       stability: 1,
+      stabilityFast: 2,
       difficulty: 5,
       lastReviewed: NOW - 10 * MS_PER_DAY,
       reps: 3,
@@ -103,6 +106,7 @@ describe('random session tie-breaking', () => {
       card('new', unit.id),
       card('review', unit.id, {
         stability: 1,
+        stabilityFast: 2,
         difficulty: 5,
         lastReviewed: NOW - 10 * MS_PER_DAY,
         reps: 3,
@@ -139,7 +143,7 @@ it.each(['objective', 'due', 'cram'] as const)(
         state: 2,
         reps: 1,
         due: NOW - 1,
-        stability: 1,
+        ...modelOf(unit.fsrsParameters).step({ memoryState: null, rating: 3, elapsedDays: 0 }),
         lastReviewed: NOW - MS_PER_DAY,
       }),
     );

@@ -17,6 +17,7 @@ function card(overrides: Partial<Card> = {}): Card {
     front: 'What is **ATP**?',
     back: 'Energy',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

@@ -25,14 +25,14 @@ import { nearestExamDate, examIsUrgent } from './path';
 export interface CourseHeaderStats {
   nearestExam?: number;
   examUrgent: boolean;
-  mastery: number;
+  mastery: number | null;
 }
 
 /** Bundles the exam and mastery stats every course/lesson header renders. */
 export function courseHeaderStats(
   course: Course,
   assessments: CourseAssessment[],
-  mastery: number,
+  mastery: number | null,
   now: number = Date.now(),
 ): CourseHeaderStats {
   const nearestExam = nearestExamDate(course, assessments, now);

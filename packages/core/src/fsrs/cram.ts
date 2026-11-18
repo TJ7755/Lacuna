@@ -42,7 +42,10 @@ export function examEveAvailable(deck: SchedulerConfig, now: number = Date.now()
  */
 export function cramScore(card: Card, oc: ObjectiveContext, now: number = Date.now()): number {
   const horizon = cardSchedulingHorizon(card, oc.deck, oc.examDateContext, now);
-  const rNo = rAtExam(card, horizon, now, oc.ctx.decay);
+  const rNo = rAtExam(card, horizon, now, oc.ctx.model);
+
+  // Opaque legacy memory needs a real answer before recall can be projected.
+  if (rNo === null) return 1;
 
   const finished = oc.objective === 'securedTopics' ? rNo >= MASTERY_R : rNo >= 0.999;
   // Weakest first: 1 - rNo rises as the card gets weaker. Finished cards are

@@ -108,11 +108,15 @@ export function ForecastChart({
   const [expanded, setExpanded] = useState(false);
   const spotlit = inputLines.length <= SPOTLIGHT_LIMIT ? inputLines.length : SPOTLIGHT;
   const lines = useMemo(() => {
-    const ranked = [...inputLines]
+    const availableLines = inputLines.filter(
+      (line): line is typeof line & { forecast: typeof line.forecast & { ifStopped: number } } =>
+        line.forecast.ifStopped !== null,
+    );
+    const ranked = [...availableLines]
       .sort((a, b) => b.forecast.ifStopped - a.forecast.ifStopped)
       .slice(0, spotlit);
     const ids = new Set(ranked.map((line) => line.id));
-    return [...ranked, ...inputLines.filter((line) => !ids.has(line.id))];
+    return [...ranked, ...availableLines.filter((line) => !ids.has(line.id))];
   }, [inputLines, spotlit]);
   const hidden = lines.length - spotlit;
   const colour = (index: number) => colours.get(lines[index].id);
@@ -124,7 +128,9 @@ export function ForecastChart({
     const stop = now + future * DAY;
     const ticks = recallTicks([
       target,
-      ...lines.flatMap((line) => line.history.map((point) => point.recall)),
+      ...lines.flatMap((line) =>
+        line.history.flatMap((point) => (point.recall === null ? [] : [point.recall])),
+      ),
     ]);
     const top = ticks[0];
     const bottom = ticks[ticks.length - 1];
@@ -368,9 +374,14 @@ export function ForecastChart({
           const context = index >= spotlit;
           const focused = focus === line.id;
           const stroke = colour(index);
-          const eased = easeSeries(line.history.map((point) => point.recall));
-          const points = line.history.map((point, i) => ({ x: x(point.at), y: y(eased[i]) }));
+          const eased = easeSeries(
+            line.history.flatMap((point) => (point.recall === null ? [] : [point.recall])),
+          );
+          const points = line.history
+            .filter((point) => point.recall !== null)
+            .map((point, i) => ({ x: x(point.at), y: y(eased[i]) }));
           const last = points[points.length - 1];
+          if (!last) return null;
           const dimmed = focus !== null && !focused;
           const delay = 0.15 + Math.min(index, spotlit) * 0.12;
           return (

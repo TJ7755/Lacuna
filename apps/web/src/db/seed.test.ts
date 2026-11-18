@@ -42,6 +42,7 @@ async function existingWelcomeCourse(back: string): Promise<Card> {
     front: 'What does the forgetting curve show?',
     back,
     stability: 4,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: 1_000,
     reps: 3,

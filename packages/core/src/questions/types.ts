@@ -7,7 +7,7 @@ import type {
 } from '@lacuna/core/db/types';
 import type { QuestionPayload } from '@lacuna/core/items/types';
 
-export const QUESTION_SCHEDULER_VERSION = 'fsrs-6-question-v1' as const;
+export const QUESTION_SCHEDULER_VERSION = 'fsrs-7-question-v1' as const;
 export const QUESTION_GRADE_MAPPING_VERSION = 'full-good-otherwise-again-v1' as const;
 
 export type { QuestionPayload } from '@lacuna/core/items/types';
@@ -59,6 +59,7 @@ export interface QuestionConceptSet {
 
 export interface QuestionScheduleState {
   stability: number | null;
+  stabilityFast: number | null;
   difficulty: number | null;
   lastReviewed: number | null;
   reps: number;
@@ -92,6 +93,10 @@ export interface QuestionScheduleEpoch {
   startedAt: number;
   reason: 'created' | 'semantic-edit' | 'legacy-card-migration';
   baseline: QuestionScheduleBaseline;
+  /** Retained schedule when FSRS7 cannot reconstruct a missing answer prefix. */
+  memoryOrigin?: QuestionScheduleState;
+  /** Schedule preserved at model migration; identities let undo invalidate included evidence. */
+  migrationCheckpoint?: { state: QuestionScheduleState; attemptIds: string[] };
 }
 
 interface QuestionDefinitionBase extends QuestionScheduleState {
@@ -184,7 +189,7 @@ export interface QuestionAttempt {
 
   scheduleEffect:
     { kind: 'replay'; grade: Grade } | { kind: 'included-in-opaque-baseline' } | { kind: 'none' };
-  schedulerVersion?: typeof QUESTION_SCHEDULER_VERSION;
+  schedulerVersion?: 'fsrs-6-question-v1' | 'fsrs-7-question-v1';
   gradeMappingVersion?: typeof QUESTION_GRADE_MAPPING_VERSION;
   schedulerConfigFingerprint?: string;
   /** Stored on the first attempt and whenever configuration changes. */

@@ -31,6 +31,7 @@ function question(
       baseline: { kind: 'new' as const },
     },
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

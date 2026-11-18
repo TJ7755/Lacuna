@@ -243,7 +243,10 @@ export function CoursePath() {
     return {
       cardCount: cards.length,
       dueCount: cards.filter((card) => dueReviewCardIds.has(card.id)).length,
-      masteryPct: Math.round(progressValue(cards, course, now, examDateContext) * 100),
+      masteryPct: (() => {
+        const value = progressValue(cards, course, now, examDateContext);
+        return value === null ? null : Math.round(value * 100);
+      })(),
     };
   };
   const hasStudyContent =
@@ -253,7 +256,8 @@ export function CoursePath() {
   const cardTotal = courseCards.length;
   const lessonTotal = lessons.filter((lesson) => !lesson.isExtension).length;
   const status = forecast ? forecastStatus(forecast) : undefined;
-  const forecastPct = Math.round((forecast?.ifStopped ?? mastery) * 100);
+  const recall = forecast ? forecast.ifStopped : mastery;
+  const forecastPct = recall === null ? null : Math.round(recall * 100);
   return (
     <div key={course.id} className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
       {orderNotice}

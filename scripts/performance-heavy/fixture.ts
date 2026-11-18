@@ -99,6 +99,7 @@ export async function seed(smoke = false) {
             front: `Recall item ${c}-${l}-${i}: explain the relationship between energy and motion.`,
             back: `Answer ${c}-${l}-${i}: **Energy** is conserved. The kinetic energy is $E_k = \\frac{1}{2}mv^2$.\n\nDoubling speed quadruples kinetic energy at a fixed mass.`,
             stability: 10,
+            stabilityFast: null,
             difficulty: 5,
             lastReviewed: now - 10 * day,
             reps: 20,

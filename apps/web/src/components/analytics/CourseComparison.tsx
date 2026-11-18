@@ -69,20 +69,28 @@ function computeMetrics(
 
   return [
     { label: 'Cards', courseA: cardsA.length, courseB: cardsB.length, higherIsBetter: true },
-    {
-      label: 'Predicted recall',
-      courseA: Math.round(avgRetA * 100),
-      courseB: Math.round(avgRetB * 100),
-      unit: '%',
-      higherIsBetter: true,
-    },
-    {
-      label: advancedDetails ? 'Mastery fraction' : 'Cards at 90% predicted recall',
-      courseA: Math.round(masteryA * 100),
-      courseB: Math.round(masteryB * 100),
-      unit: '%',
-      higherIsBetter: true,
-    },
+    ...(avgRetA === null || avgRetB === null
+      ? []
+      : [
+          {
+            label: 'Predicted recall',
+            courseA: Math.round(avgRetA * 100),
+            courseB: Math.round(avgRetB * 100),
+            unit: '%',
+            higherIsBetter: true,
+          },
+        ]),
+    ...(masteryA === null || masteryB === null
+      ? []
+      : [
+          {
+            label: advancedDetails ? 'Mastery fraction' : 'Cards at 90% predicted recall',
+            courseA: Math.round(masteryA * 100),
+            courseB: Math.round(masteryB * 100),
+            unit: '%',
+            higherIsBetter: true,
+          },
+        ]),
     { label: 'Cards reviewed', courseA: reviewedA, courseB: reviewedB, higherIsBetter: true },
     {
       label: 'Total reviews',

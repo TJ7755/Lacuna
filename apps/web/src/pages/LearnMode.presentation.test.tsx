@@ -89,6 +89,7 @@ describe('LearnMode presentation', () => {
       const card = await createCard(deck.id, 'front_back', question, 'Answer');
       await db.cards.update(card.id, {
         stability: 2,
+        stabilityFast: 1.6,
         difficulty: 5,
         lastReviewed: now - 24 * 60 * 60 * 1000,
         reps: 1,

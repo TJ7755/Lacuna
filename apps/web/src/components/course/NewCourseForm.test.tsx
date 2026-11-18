@@ -179,7 +179,7 @@ describe('NewCourseForm', () => {
     expect(input).not.toHaveAttribute('placeholder');
   });
 
-  it('defaults to steady retention and shows the exam date only once chosen', () => {
+  it('defaults to steady retention and shows the exam date only once chosen', async () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
     expect(screen.getByRole('dialog', { name: 'New course' }).parentElement?.parentElement).toBe(
@@ -191,7 +191,7 @@ describe('NewCourseForm', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
 
-    const picker = screen.getByRole('button', { name: 'Exam date and time' });
+    const picker = await screen.findByRole('button', { name: 'Exam date and time' });
     const expected = defaultExamDate(Date.parse('2026-08-11T12:00:00Z'));
     const expectedDate = new Date(expected).toLocaleDateString('en-GB', {
       day: '2-digit',

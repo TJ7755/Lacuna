@@ -1,3 +1,6 @@
+import { canonicalJson } from './snapshotIdentity';
+export { canonicalJson, sortById, sortBy } from './snapshotIdentity';
+import { migrateFsrs7Configuration } from '../db/fsrs7Migration';
 import type {
   BackupAsset,
   BackupFile,
@@ -74,7 +77,12 @@ export function normaliseSnapshot(input: BackupFile): NormalisedSnapshot {
     ),
     reviewHistory: normalised.reviewHistory ?? [],
     schedulingUnits: (normalised.schedulingUnits ?? []).map((row) =>
-      withUpdatedAt(row, Math.max(numberOrZero(row.createdAt), numberOrZero(row.lastInteractedAt))),
+      migrateFsrs7Configuration(
+        withUpdatedAt(
+          row,
+          Math.max(numberOrZero(row.createdAt), numberOrZero(row.lastInteractedAt)),
+        ),
+      ),
     ),
     coursePerformance: (normalised.coursePerformance ?? []).map((row) => withUpdatedAt(row, 0)),
     schedulingPerformance: (normalised.schedulingPerformance ?? []).map((row) =>
@@ -83,7 +91,7 @@ export function normaliseSnapshot(input: BackupFile): NormalisedSnapshot {
     assets: normalised.assets,
     sessionHistory: normalised.sessionHistory,
     courses: (normalised.courses ?? []).map((row) =>
-      withUpdatedAt(row, numberOrZero(row.createdAt)),
+      migrateFsrs7Configuration(withUpdatedAt(row, numberOrZero(row.createdAt))),
     ),
     lessons: (normalised.lessons ?? []).map((row) =>
       withUpdatedAt(row, numberOrZero(row.createdAt)),
@@ -357,30 +365,6 @@ export function mergeQuestionSetAttempts(
     merged.set(incoming.id, mergeQuestionSetAttemptPair(existing, incoming));
   }
   return [...merged.values()].sort((a, b) => a.id.localeCompare(b.id));
-}
-
-export function canonicalJson(value: unknown): string {
-  return JSON.stringify(sortKeys(value));
-}
-
-function sortKeys(value: unknown): unknown {
-  if (value === null || typeof value !== 'object') return value;
-  if (Array.isArray(value)) return value.map(sortKeys);
-  const record = value as Record<string, unknown>;
-  const sorted: Record<string, unknown> = {};
-  for (const key of Object.keys(record).sort()) {
-    const entry = record[key];
-    if (entry !== undefined) sorted[key] = sortKeys(entry);
-  }
-  return sorted;
-}
-
-export function sortById<T extends { id: string }>(rows: T[]): T[] {
-  return sortBy(rows, (row) => row.id);
-}
-
-export function sortBy<T>(rows: T[], keyOf: (row: T) => string): T[] {
-  return [...rows].sort((a, b) => keyOf(a).localeCompare(keyOf(b)));
 }
 
 export function compareTombstones(a: Tombstone, b: Tombstone): number {

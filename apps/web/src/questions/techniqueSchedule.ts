@@ -4,7 +4,7 @@ import { exposedQuestions } from './questionExposure';
 import type { FsrsParameters } from '@lacuna/core/db/types';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { forgettingCurve } from '@lacuna/core/fsrs/forwardSim';
-import { decayOf } from '@lacuna/core/fsrs/fsrs';
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import type { QuestionSetAttemptRecord } from '@lacuna/core/questions/questionSetAttempts';
 import type { QuestionSetQuestion } from '@lacuna/core/questions/questionSets';
 import { activeTechniqueIds, type TechniqueId } from '@lacuna/core/questions/techniqueTags';
@@ -143,8 +143,8 @@ export function techniquePracticeStatus(
     schedule.stability !== null && schedule.lastReviewed !== null
       ? forgettingCurve(
           ((target ?? now) - schedule.lastReviewed) / MS_PER_DAY,
-          schedule.stability,
-          decayOf(params),
+          schedule,
+          modelOf(params),
         )
       : null;
   const dueAt = schedule.due;

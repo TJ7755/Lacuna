@@ -46,6 +46,7 @@ function card(id: string, lessonId: string, front: string): Card {
     updatedAt: 1,
     state: 0,
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     due: 0,
     scheduledDays: 0,

@@ -185,6 +185,7 @@ export async function importApkgResult(
         return {
           ...card,
           stability: draft.stability,
+          stabilityFast: null,
           difficulty: draft.difficulty,
           lastReviewed: draft.lastReviewed,
           reps: draft.reps,

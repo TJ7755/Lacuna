@@ -16,6 +16,7 @@ function card(payload: ItemPayload): Card {
     back: '',
     payload,
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

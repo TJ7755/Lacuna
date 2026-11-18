@@ -1,9 +1,14 @@
+import { FSRS6_DEFAULT_WEIGHTS } from 'ts-fsrs/models/fsrs-6';
+import { mergeQuestionCollections } from './merge';
+import { course, concept, links } from '../sync/mergeSnapshots.questions.testFixtures';
+import { migrateFsrs7Questions } from './fsrs7Migration';
 import { describe, expect, it } from 'vitest';
 import type { FsrsParameters, Grade } from '@lacuna/core/db/types';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import type {
   FixedQuestionDefinition,
   QuestionAttempt,
+  QuestionDefinition,
   QuestionScheduleState,
 } from '@lacuna/core/questions/types';
 import {
@@ -17,6 +22,7 @@ const NOW = Date.UTC(2026, 7, 24, 12);
 function newSchedule(): QuestionScheduleState {
   return {
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,
@@ -94,6 +100,35 @@ function answeredAttempt(
 }
 
 describe('Question scheduler', () => {
+  it('replays immutable historical configs with FSRS-7 defaults and the recorded scheduling policy', () => {
+    const parameters = {
+      ...defaultFsrsParameters(),
+      w: [...FSRS6_DEFAULT_WEIGHTS],
+      requestRetention: 0.94,
+      learning_steps: ['2m'],
+      enable_fuzz: false,
+    };
+    const receipt = structuredClone(parameters);
+    const result = scheduleQuestionReview(newSchedule(), 3, parameters, NOW);
+    expect(result.schedulerConfig.w).toHaveLength(34);
+    expect(result.schedulerConfig).toMatchObject({
+      requestRetention: 0.94,
+      learning_steps: ['2m'],
+    });
+    expect(result.schedule.stabilityFast).toBeGreaterThan(0);
+    expect(parameters).toEqual(receipt);
+    // Frozen FSRS-6 receipt fingerprint remains valid while replay uses FSRS-7.
+    expect(questionSchedulerConfigFingerprint(parameters)).toBe('qfsrs1:a8b085f5');
+    const attempt = answeredAttempt('legacy-config', NOW, 3, {
+      schedulerVersion: 'fsrs-6-question-v1',
+      schedulerConfig: parameters,
+      schedulerConfigFingerprint: 'qfsrs1:a8b085f5',
+    });
+    expect(replayQuestionSchedule(question(), [attempt], defaultFsrsParameters())).toEqual(
+      result.schedule,
+    );
+  });
+
   it('applies FSRS with fuzz disabled and leaves the input state and parameters untouched', () => {
     const state = newSchedule();
     const parameters = defaultFsrsParameters();
@@ -191,5 +226,227 @@ describe('Question scheduler', () => {
         parameters,
       ),
     ).toEqual(expected);
+  });
+});
+
+describe('Question FSRS-7 migration', () => {
+  it('rebuilds both traces from complete answer receipts without moving the schedule or changing evidence', () => {
+    const lastReviewed = NOW + 0.25 * 86_400_000;
+    const legacy = {
+      ...question(),
+      stability: 99,
+      difficulty: 9,
+      reps: 2,
+      lapses: 1,
+      lastReviewed,
+      due: NOW + 10 * 86_400_000,
+      state: 2 as const,
+      scheduledDays: 10,
+      learningSteps: 1,
+    };
+    const attempts = [answeredAttempt('a', NOW, 3), answeredAttempt('b', lastReviewed, 1)];
+    const originalEvidence = structuredClone(attempts);
+    const [migrated] = migrateFsrs7Questions([legacy], attempts, []);
+    expect(migrated.stability).toBeCloseTo(1.1705386638641357, 5);
+    expect(migrated.stabilityFast).toBeCloseTo(0.2061578780412674, 5);
+    expect(migrated).toMatchObject({
+      due: legacy.due,
+      state: 2,
+      scheduledDays: 10,
+      learningSteps: 1,
+      reps: 2,
+      lapses: 1,
+      lastReviewed,
+    });
+    expect(attempts).toEqual(originalEvidence);
+    expect(legacy.stabilityFast).toBeNull();
+  });
+
+  it('keeps opaque memory and its schedule until a real answer initialises both traces', () => {
+    const state = {
+      ...newSchedule(),
+      stability: 18,
+      difficulty: 4,
+      reps: 19,
+      lapses: 2,
+      lastReviewed: NOW,
+      due: NOW + 86_400_000,
+      state: 1 as const,
+      learningSteps: 1,
+    };
+    const legacy = {
+      ...question({ kind: 'legacy-opaque', sourceCardId: 'old', state, reason: 'missing-history' }),
+      ...state,
+    };
+    const [migrated] = migrateFsrs7Questions([legacy], [], []);
+    expect(migrated).toEqual(legacy);
+    expect(replayQuestionSchedule(migrated, [], defaultFsrsParameters())).toEqual(state);
+    const next = scheduleQuestionReview(migrated, 3, defaultFsrsParameters(), NOW + 60_000);
+    expect(next.retrievabilityAtAttempt).toBeNull();
+    expect(next.schedule.stabilityFast).toBeGreaterThan(0);
+    expect(next.schedule.reps).toBe(20);
+    expect(next.schedule.lapses).toBe(2);
+    const withAnswer = { ...migrated, ...next.schedule, stabilityFast: null, due: migrated.due };
+    const [replayed] = migrateFsrs7Questions(
+      [withAnswer],
+      [answeredAttempt('after-baseline', NOW + 60_000, 3)],
+      [],
+    );
+    expect(replayed.stabilityFast).toBeCloseTo(3.13768, 5);
+    expect(replayed.due).toBe(migrated.due);
+    expect(replayed.reps).toBe(20);
+  });
+});
+
+describe('Migrated Question import and sync', () => {
+  function imported(row: QuestionDefinition, attempts: QuestionAttempt[]) {
+    return {
+      concepts: [concept()],
+      questions: [row],
+      questionConcepts: [links()],
+      questionAttempts: attempts,
+    };
+  }
+  const empty = { concepts: [], questions: [], questionConcepts: [], questionAttempts: [] };
+  it('keeps a migrated due date and learning progress when receipts are unchanged', () => {
+    const legacy = {
+      ...question(),
+      stability: 10,
+      difficulty: 4,
+      reps: 1,
+      lastReviewed: NOW,
+      due: NOW + 10 * 86400000,
+      scheduledDays: 10,
+      state: 2 as const,
+      learningSteps: 1,
+    };
+    const receipts = [answeredAttempt('first', NOW, 3)];
+    const result = mergeQuestionCollections(empty, imported(legacy, receipts), [course()], []);
+    expect(result.questions[0]).toMatchObject({
+      due: legacy.due,
+      scheduledDays: 10,
+      state: 2,
+      learningSteps: 1,
+      reps: 1,
+    });
+    expect(result.questionAttempts).toEqual(receipts);
+    expect(mergeQuestionCollections(result, result, [course()], [])).toEqual(result);
+  });
+  function migratedLegacy() {
+    const legacy = {
+      ...question(),
+      stability: 7.8,
+      difficulty: 3,
+      reps: 1,
+      lastReviewed: NOW,
+      due: NOW + 8 * 86400000,
+      scheduledDays: 8,
+      state: 2 as const,
+    };
+    const receipts = [
+      answeredAttempt('legacy', NOW, 4, {
+        schedulerConfig: { ...defaultFsrsParameters(), w: [...FSRS6_DEFAULT_WEIGHTS] },
+      }),
+    ];
+    const [migrated] = migrateFsrs7Questions([legacy], receipts, [course()]);
+    return { migrated, receipts };
+  }
+
+  it('does not move a migrated due date when a peer only opens an attempt', () => {
+    const { migrated, receipts } = migratedLegacy();
+    const shown = answeredAttempt('shown', NOW + 1000, 3, {
+      status: 'shown',
+      answeredAt: undefined,
+      scheduleEffect: { kind: 'none' },
+    });
+    const result = mergeQuestionCollections(
+      imported(migrated, receipts),
+      imported(question(), [shown]),
+      [course()],
+      [],
+    );
+    expect(result.questions[0].due).toBe(migrated.due);
+    expect(result.questionAttempts).toHaveLength(2);
+  });
+
+  it('restores the migrated schedule after undoing its first FSRS7 answer', () => {
+    const { migrated, receipts } = migratedLegacy();
+    const answer = answeredAttempt('new', NOW + 1000, 3);
+    const reviewed = {
+      ...migrated,
+      ...scheduleQuestionReview(migrated, 3, defaultFsrsParameters(), NOW + 1000).schedule,
+    };
+    expect(
+      replayQuestionSchedule(
+        reviewed,
+        [...receipts, { ...answer, undoneAt: NOW + 2000 }],
+        defaultFsrsParameters(),
+      ),
+    ).toMatchObject({
+      due: migrated.due,
+      scheduledDays: migrated.scheduledDays,
+      reps: migrated.reps,
+      state: migrated.state,
+      stabilityFast: migrated.stabilityFast,
+    });
+    expect(
+      replayQuestionSchedule(
+        migrated,
+        [{ ...receipts[0], undoneAt: NOW + 2000 }],
+        defaultFsrsParameters(),
+      ),
+    ).toEqual(newSchedule());
+  });
+
+  it('retains an incomplete prefix through import and replays two subsequent answers after it', () => {
+    const legacy = {
+      ...question(),
+      stability: 10,
+      difficulty: 4,
+      reps: 12,
+      lastReviewed: NOW,
+      due: NOW + 86400000,
+      state: 1 as const,
+      learningSteps: 1,
+    };
+    const importedState = mergeQuestionCollections(empty, imported(legacy, []), [course()], []);
+    const migrated = importedState.questions[0];
+    expect(migrated).toMatchObject({
+      reps: 12,
+      due: legacy.due,
+      state: 1,
+      learningSteps: 1,
+      stabilityFast: null,
+    });
+    const first = scheduleQuestionReview(
+      migrated,
+      3,
+      defaultFsrsParameters(),
+      NOW + 60000,
+    ).schedule;
+    const second = scheduleQuestionReview(
+      migrated,
+      1,
+      defaultFsrsParameters(),
+      NOW + 120000,
+    ).schedule;
+    const left = {
+      ...importedState,
+      questions: [{ ...migrated, ...first }],
+      questionAttempts: [answeredAttempt('left', NOW + 60000, 3)],
+    };
+    const right = {
+      ...importedState,
+      questions: [{ ...migrated, ...second }],
+      questionAttempts: [answeredAttempt('right', NOW + 120000, 1)],
+    };
+    const merged = mergeQuestionCollections(left, right, [course()], []);
+    expect(merged.questions[0]).toMatchObject({
+      reps: 14,
+      lastReviewed: NOW + 120000,
+      stabilityFast: expect.any(Number),
+    });
+    expect(mergeQuestionCollections(right, left, [course()], [])).toEqual(merged);
+    expect(mergeQuestionCollections(merged, merged, [course()], [])).toEqual(merged);
   });
 });

@@ -91,11 +91,11 @@ const firstMarkingSnapshot = z
     recordedAt: z.number().int().nonnegative(),
     source: z.literal('self-mark'),
     gradeMappingVersion: z.enum(['full-good-otherwise-again-v1', 'fractional-hard-v2']),
-    schedulerVersion: z.literal('fsrs-6-question-v1'),
+    schedulerVersion: z.enum(['fsrs-6-question-v1', 'fsrs-7-question-v1']),
     schedulerConfigFingerprint: z.string().min(1),
     schedulerConfig: z
       .object({
-        w: z.array(z.number().finite()).length(21),
+        w: z.array(z.number().finite()).refine((w) => w.length === 21 || w.length === 34),
         requestRetention: z.number().gt(0).lt(1),
         enable_fuzz: z.literal(false),
         maximum_interval: z.number().positive(),

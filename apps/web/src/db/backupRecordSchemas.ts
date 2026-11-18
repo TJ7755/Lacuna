@@ -64,6 +64,7 @@ export const dispute = object({
 export const grade = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
 export const schedule = {
   stability: number.nullable(),
+  stabilityFast: number.positive().nullable().optional(),
   difficulty: number.nullable(),
   lastReviewed: number.nullable(),
   reps: number,
@@ -73,6 +74,12 @@ export const schedule = {
   scheduledDays: number,
   learningSteps: number,
 };
+const scheduleEdits = z.array(
+  z.union([
+    object({ at: number, kind: z.literal('reset') }),
+    object({ at: number, kind: z.literal('due'), due: number }),
+  ]),
+);
 const review = object({
   input: z.enum(['typed', 'reveal']).optional(),
   markedBy: jevMarkProvenanceSchema.optional(),
@@ -90,6 +97,9 @@ const review = object({
   distracted: flag,
   hintUsed: flag.optional(),
   primed: flag.optional(),
+  memoryOrigin: object({ ...schedule, scheduleEdits: scheduleEdits.optional() }).optional(),
+  stabilityFastBefore: number.positive().nullable().optional(),
+  stabilityFastAfter: number.positive().optional(),
   stabilityBefore: number.nullable(),
   stabilityAfter: number,
   difficultyBefore: number.nullable(),
@@ -133,14 +143,7 @@ export const card = cardContent
     reverseCardId: id.nullable().optional(),
     sequenceItemId: id.optional(),
     occlusionRegionId: id.optional(),
-    scheduleEdits: z
-      .array(
-        z.union([
-          object({ at: number, kind: z.literal('reset') }),
-          object({ at: number, kind: z.literal('due'), due: number }),
-        ]),
-      )
-      .optional(),
+    scheduleEdits: scheduleEdits.optional(),
   })
   .refine(
     (row) => row.payload === undefined || row.type === 'front_back',

@@ -14,10 +14,12 @@ import {
 import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { applyScheduleEdit, mergeScheduleEdits } from '../db/scheduleEdits';
-import { canonicalJson, sortById, type NormalisedSnapshot } from './snapshotRecords';
+import type { NormalisedSnapshot } from './snapshotRecords';
+import { canonicalJson, sortById } from './snapshotIdentity';
 
 const NEVER_REVIEWED = {
   stability: null,
+  stabilityFast: null,
   difficulty: null,
   lastReviewed: null,
   reps: 0,
@@ -52,11 +54,56 @@ function sortReviews(entries: ReviewHistoryEntry[]): ReviewHistoryEntry[] {
   });
 }
 
+function hasCompleteReviewPrefix(card: Card, events: readonly ReviewHistoryEntry[]): boolean {
+  return (
+    events[0]?.stabilityBefore === null &&
+    (events[0]?.memoryOrigin?.reps ?? 0) === 0 &&
+    events.length >= card.reps &&
+    (events.at(-1)?.timestamp ?? -Infinity) >= (card.lastReviewed ?? -Infinity)
+  );
+}
+
+/** A reset supplies a new memory origin even when the earlier history was lost. */
+export function hasCompleteMemoryHistory(
+  card: Card,
+  events: readonly ReviewHistoryEntry[],
+): boolean {
+  if (card.lastReviewed === null) return card.state === 0;
+  // Complete pre-reset evidence still replays: offline answers can legitimately
+  // carry the memory from before a reset they had not yet received.
+  const chronological = [...events].sort((a, b) => a.timestamp - b.timestamp);
+  if (hasCompleteReviewPrefix(card, chronological)) return true;
+  const originIndex = chronological.findIndex((event) => event.memoryOrigin);
+  if (originIndex >= 0) {
+    const origin = chronological[originIndex].memoryOrigin!;
+    return (
+      origin.reps + chronological.length - originIndex >= card.reps &&
+      (chronological.at(-1)?.timestamp ?? -Infinity) >= card.lastReviewed
+    );
+  }
+  const reset = card.scheduleEdits?.filter((edit) => edit.kind === 'reset').at(-1);
+  const ordered = chronological.filter((event) => !reset || event.timestamp > reset.at);
+  if (
+    ordered[0]?.stabilityBefore !== null ||
+    (ordered.at(-1)?.timestamp ?? -Infinity) < card.lastReviewed
+  )
+    return false;
+  // Resets retain lifetime counters, so a missing prefix or tail is still incomplete.
+  if (events.length < card.reps) return false;
+  return (
+    !reset ||
+    ordered.every(
+      (event, index) => index === 0 || event.stabilityBefore === ordered[index - 1].stabilityAfter,
+    )
+  );
+}
+
 export function replayCards(
   cards: Card[],
   reviewHistory: ReviewHistoryEntry[],
   units: SchedulingUnitRecord[],
   courses: CourseRecord[],
+  options: { preserveSchedule?: boolean } = {},
 ): Card[] {
   const byCard = new Map<string, ReviewHistoryEntry[]>();
   for (const entry of reviewHistory) {
@@ -73,25 +120,118 @@ export function replayCards(
         if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
         return reviewEventKey(a).localeCompare(reviewEventKey(b));
       });
-    let current: Card = { ...card, ...NEVER_REVIEWED };
-    const edits = card.scheduleEdits ?? [];
+    // Complete evidence includes offline reviews absent from a later reset origin.
+    // Only fall back to an origin when the lifetime prefix cannot be reconstructed.
+    const originIndex = hasCompleteReviewPrefix(card, events)
+      ? -1
+      : events.findIndex((event) => event.memoryOrigin);
+    const origin = originIndex >= 0 ? events[originIndex].memoryOrigin : undefined;
+    if (originIndex > 0) events.splice(0, originIndex);
+    let current: Card = {
+      ...card,
+      ...NEVER_REVIEWED,
+      ...origin,
+      scheduleEdits: card.scheduleEdits,
+    };
+    // Only edits explicitly captured by the origin are already represented. An
+    // offline device can contribute an older reset that the answering device never saw.
+    const representedEdits = new Set((origin?.scheduleEdits ?? []).map(canonicalJson));
+    // The card log compacts older resets; immutable origins retain the edits
+    // needed to replay earlier answers without inventing lifetime lapses.
+    const recordedEdits = [
+      ...(card.scheduleEdits ?? []),
+      ...events.flatMap((event) => event.memoryOrigin?.scheduleEdits ?? []),
+    ];
+    const edits = [...new Map(recordedEdits.map((edit) => [canonicalJson(edit), edit])).values()]
+      .filter((edit) => !origin || !representedEdits.has(canonicalJson(edit)))
+      .sort((a, b) => a.at - b.at || canonicalJson(a).localeCompare(canonicalJson(b)));
+    const complete = hasCompleteMemoryHistory(card, events);
+    // A learnt import without its event prefix is opaque, never a new card.
+    if (!complete) {
+      current = { ...card, stabilityFast: card.stabilityFast ?? null };
+      const engine = makeEngine(parametersForCard(card, unitById, courseById));
+      for (const event of events) {
+        if (event.timestamp > (card.lastReviewed ?? -Infinity)) {
+          current = {
+            ...current,
+            ...applyReview(engine, current, event.grade, event.timestamp).memory,
+          };
+        }
+      }
+      for (const edit of edits) {
+        if (edit.at >= (card.lastReviewed ?? -Infinity)) current = applyScheduleEdit(current, edit);
+      }
+      return current;
+    }
     if (events.length === 0 && edits.length === 0) return current;
     const params = parametersForCard(card, unitById, courseById);
     // Use the live parameters, fuzz included: ts-fsrs seeds fuzz from the review time
     // and memory state, so replay stays deterministic and matches the live schedule.
     const engine = makeEngine(params);
-    // Manual reschedules and resets apply in time order between reviews; one made in
-    // the same millisecond as a review came after it.
+    // Timestamp ties place edits after an answer unless its immutable origin
+    // explicitly records that the edit had already happened.
+    const pendingEdits = [...edits];
     let nextEdit = 0;
     for (const event of events) {
-      while (nextEdit < edits.length && edits[nextEdit].at < event.timestamp) {
-        current = applyScheduleEdit(current, edits[nextEdit++]);
+      while (nextEdit < pendingEdits.length && pendingEdits[nextEdit].at < event.timestamp) {
+        current = applyScheduleEdit(current, pendingEdits[nextEdit++]);
+      }
+      if (event.memoryOrigin?.scheduleEdits?.length) {
+        let end = nextEdit;
+        while (end < pendingEdits.length && pendingEdits[end].at === event.timestamp) end += 1;
+        const witnessed = new Set(event.memoryOrigin.scheduleEdits.map(canonicalJson));
+        const deferred = [];
+        for (const edit of pendingEdits.splice(nextEdit, end - nextEdit)) {
+          if (witnessed.has(canonicalJson(edit))) current = applyScheduleEdit(current, edit);
+          else deferred.push(edit);
+        }
+        pendingEdits.splice(nextEdit, 0, ...deferred);
       }
       const { memory } = applyReview(engine, current, event.grade, event.timestamp);
       current = { ...current, ...memory };
     }
-    while (nextEdit < edits.length) current = applyScheduleEdit(current, edits[nextEdit++]);
-    return current;
+    while (nextEdit < pendingEdits.length) {
+      current = applyScheduleEdit(current, pendingEdits[nextEdit++]);
+    }
+    // The first answer after a reset has no prior stability when it saw the reset.
+    // A non-null receipt proves an offline answer needs the newly merged reset applied.
+    const unseenReset = edits.some((edit) => {
+      if (edit.kind !== 'reset') return false;
+      const answer = events.find((event) => event.timestamp > edit.at);
+      return answer !== undefined && answer.stabilityBefore !== null;
+    });
+    const changedSchedule =
+      unseenReset ||
+      (origin
+        ? edits.length > 0
+        : edits.some(
+            (edit) =>
+              edit.at >= (card.lastReviewed ?? -Infinity) &&
+              (edit.kind === 'reset' || edit.due !== card.due),
+          ));
+    if (
+      options.preserveSchedule !== false &&
+      !changedSchedule &&
+      card.state === current.state &&
+      card.learningSteps === current.learningSteps &&
+      card.lastReviewed === current.lastReviewed &&
+      current.reps <= card.reps
+    ) {
+      return {
+        ...current,
+        due: card.due,
+        scheduledDays: card.scheduledDays,
+        learningSteps: card.learningSteps,
+        state: card.state,
+        reps: card.reps,
+        lapses: card.lapses,
+      };
+    }
+    return {
+      ...current,
+      reps: Math.max(card.reps, current.reps),
+      lapses: Math.max(card.lapses, current.lapses),
+    };
   });
   return cardsWithReviewHistory(reset, reviewHistory);
 }

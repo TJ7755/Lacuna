@@ -1,7 +1,7 @@
 import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '@lacuna/core/db/types';
 import { isAvailable } from '@lacuna/core/fsrs/eligibility';
 import { rAtExam } from '@lacuna/core/fsrs/forwardSim';
-import { decayOf } from '@lacuna/core/fsrs/fsrs';
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { progressValue } from '@lacuna/core/fsrs/objective';
 import { progressHeading } from '../fsrs/progressHeading';
 import { MASTERY_R } from '@lacuna/core/fsrs/params';
@@ -80,11 +80,11 @@ export function buildStudyProgress(input: StudyProgressInput): StudyProgress {
       !extensionIds.has(card.primaryLessonId ?? '') &&
       isAvailable(card, now),
   );
-  const reviewed = cards.filter((card) => card.state !== 0 && card.lastReviewed !== null);
+  const reviewed = cards.filter((card) => card.state !== 0);
   const stability = reviewed.flatMap((card) =>
     card.stability !== null && Number.isFinite(card.stability) ? [card.stability] : [],
   );
-  const decay = decayOf(course.fsrsParameters);
+  const model = modelOf(course.fsrsParameters);
   const fsrs: StudyProgress['fsrs'] = {
     newCards: cards.filter((card) => card.state === 0).length,
     learningCards: cards.filter((card) => card.state === 1 || card.state === 3).length,
@@ -94,9 +94,17 @@ export function buildStudyProgress(input: StudyProgressInput): StudyProgress {
     meanStability: stability.length
       ? stability.reduce((sum, value) => sum + value, 0) / stability.length
       : null,
-    recallNow: reviewed.length
-      ? reviewed.reduce((sum, card) => sum + rAtExam(card, now, now, decay), 0) / reviewed.length
-      : null,
+    recallNow: reviewed.some(
+      (card) =>
+        card.stabilityFast === null ||
+        card.stabilityFast === undefined ||
+        card.lastReviewed === null,
+    )
+      ? null
+      : reviewed.length
+        ? reviewed.reduce((sum, card) => sum + (rAtExam(card, now, now, model) ?? 0), 0) /
+          reviewed.length
+        : null,
   };
   const upcoming = input.assessments
     .filter(
@@ -145,7 +153,8 @@ export function buildStudyProgress(input: StudyProgressInput): StudyProgress {
       daysRemaining: calendarDaysUntil(date, now, timeZone),
       value: scope.length ? progressValue(scope, target, now) : null,
       label: progressHeading(course),
-      securedCards: scope.filter((card) => rAtExam(card, date, now, decay) >= MASTERY_R).length,
+      securedCards: scope.filter((card) => (rAtExam(card, date, now, model) ?? 0) >= MASTERY_R)
+        .length,
       totalCards: scope.length,
     };
   }
@@ -157,8 +166,7 @@ export function buildStudyProgress(input: StudyProgressInput): StudyProgress {
   );
   const opportunityCards = cards.filter(
     (card) =>
-      accessibleIds.has(card.id) ||
-      (card.state !== 0 && card.lastReviewed !== null && input.dueReviewCardIds.has(card.id)),
+      accessibleIds.has(card.id) || (card.state !== 0 && input.dueReviewCardIds.has(card.id)),
   );
   const questionScope = new Set(input.questionScopeConceptIds);
   const questions = new Map(input.questionPractice.map((item) => [item.conceptId, item]));

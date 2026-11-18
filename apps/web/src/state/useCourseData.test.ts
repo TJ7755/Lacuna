@@ -47,6 +47,7 @@ function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card 
     front: '',
     back: '',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,
@@ -167,6 +168,7 @@ describe('computeCourseSummaries', () => {
         courseId: 'c1',
         primaryLessonId: 'near',
         stability: 10,
+        stabilityFast: 2,
         difficulty: 5,
         lastReviewed: 0,
         reps: 1,
@@ -180,6 +182,7 @@ describe('computeCourseSummaries', () => {
         courseId: 'c1',
         primaryLessonId: 'far',
         stability: 10,
+        stabilityFast: 2,
         difficulty: 5,
         lastReviewed: 0,
         reps: 1,
@@ -212,8 +215,8 @@ describe('computeCourseSummaries', () => {
       now,
     )['c1'];
 
-    expect(summary.mastery).toBeCloseTo(progressValue(cards, course, now, context), 12);
-    expect(summary.mastery).not.toBeCloseTo(progressValue(cards, course, now), 6);
+    expect(summary.mastery).toBeCloseTo(progressValue(cards, course, now, context)!, 12);
+    expect(summary.mastery).not.toBeCloseTo(progressValue(cards, course, now)!, 6);
   });
 
   it('preserves the course-wide horizon when there are no exam-date overrides', () => {
@@ -227,6 +230,7 @@ describe('computeCourseSummaries', () => {
       courseId: 'c1',
       primaryLessonId: 'l1',
       stability: 10,
+      stabilityFast: null,
       difficulty: 5,
       lastReviewed: 0,
       reps: 1,
@@ -236,7 +240,7 @@ describe('computeCourseSummaries', () => {
 
     const summary = computeCourseSummaries([course], [lesson], [card], [], now)['c1'];
 
-    expect(summary.mastery).toBeCloseTo(progressValue([card], course, now), 12);
+    expect(summary.mastery).toBeCloseTo(progressValue([card], course, now)!, 12);
   });
 
   it('counts only scheduled reviews as due, excluding new and future cards', () => {

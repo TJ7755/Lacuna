@@ -30,6 +30,7 @@ describe('authored answer modes', () => {
       answerMode: 'reveal',
       reps: 0,
       stability: null,
+      stabilityFast: null,
     });
     await setAuthoredAnswerMode(course.id, { cardIds: [card.id] }, undefined);
     expect((await db.cards.get(card.id))?.answerMode).toBeUndefined();

@@ -1,4 +1,3 @@
-import { decayOf } from '@lacuna/core/fsrs/fsrs';
 import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
 import { earlierCourseLessonIds } from '../course/courseEntry';
 import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
@@ -104,7 +103,7 @@ async function resolveCurrentRevisionInput(
         projection.projectionMode === 'memory-model'
           ? {
               ...projection,
-              memoryModelVersion: `${projection.memoryModelVersion.replace(/:decay:[^:]+$/, '')}:decay:${decayOf(course.fsrsParameters)}`,
+              memoryModelVersion: `fsrs-7:${JSON.stringify(course.fsrsParameters)}`,
             }
           : projection,
       now,

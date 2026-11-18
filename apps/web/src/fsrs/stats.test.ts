@@ -32,6 +32,7 @@ function card(over: Partial<Card> = {}): Card {
     front: 'q',
     back: 'a',
     stability: 1,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: NOW,
     reps: 1,

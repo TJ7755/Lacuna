@@ -20,6 +20,7 @@ describe('due review sessions', () => {
         card(unit.id, unit.id, {
           state: 2,
           stability: 0.1,
+          stabilityFast: 2,
           difficulty: 5,
           reps: 5,
           lastReviewed: NOW - 10_000,

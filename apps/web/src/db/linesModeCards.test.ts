@@ -64,6 +64,7 @@ describe('linesModeSequencesByCard', () => {
       front: 'Q',
       back: 'A',
       stability: null,
+      stabilityFast: null,
       difficulty: null,
       lastReviewed: null,
       reps: 0,

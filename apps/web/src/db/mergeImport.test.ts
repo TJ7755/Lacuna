@@ -404,6 +404,7 @@ describe('mergeImport: merge apply', () => {
     await db.cards.update('card-1', {
       state: 2,
       stability: 4.2,
+      stabilityFast: null,
       difficulty: 6.1,
       reps: 3,
       lastReviewed: 5000,
@@ -433,6 +434,7 @@ describe('mergeImport: merge apply', () => {
     expect(card).toMatchObject({
       state: 2,
       stability: 4.2,
+      stabilityFast: null,
       difficulty: 6.1,
       reps: 3,
       lastReviewed: 5000,

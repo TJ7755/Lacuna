@@ -38,6 +38,7 @@ function card(id: string, front: string, back: string, primaryLessonId: string |
     front,
     back,
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

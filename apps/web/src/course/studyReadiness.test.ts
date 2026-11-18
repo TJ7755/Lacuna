@@ -52,6 +52,7 @@ function card(id: string, overrides: Partial<Card> = {}): Card {
     front: id,
     back: id,
     stability: 1000,
+    stabilityFast: 800,
     difficulty: 5,
     lastReviewed: NOW - MS_PER_DAY,
     reps: 1,
@@ -92,7 +93,7 @@ function readiness(
 
 describe('buildStudyReadiness', () => {
   it('counts future-due cards below their exam target without assuming another review', () => {
-    expect(readiness([card('weak', { stability: 2 })])).toEqual({
+    expect(readiness([card('weak', { stability: 2, stabilityFast: 1.6 })])).toEqual({
       totalCount: 1,
       belowTargetCount: 1,
       unintroducedCount: 0,
@@ -102,7 +103,13 @@ describe('buildStudyReadiness', () => {
 
   it('includes unstudied earlier and unreleased core material regardless of the new-card cap', () => {
     const target = course({ studyStartLessonId: 'current', newCardsPerDay: 1 });
-    const unseen = { state: 0 as const, stability: null, lastReviewed: null, due: null };
+    const unseen = {
+      state: 0 as const,
+      stability: null,
+      stabilityFast: null,
+      lastReviewed: null,
+      due: null,
+    };
     expect(
       readiness([card('old', { ...unseen, primaryLessonId: 'old' }), card('later', unseen)], {
         course: target,
@@ -124,8 +131,8 @@ describe('buildStudyReadiness', () => {
     expect(
       readiness([
         card('secure'),
-        card('buried', { stability: 1, buriedUntil: NOW + MS_PER_DAY }),
-        card('suspended', { stability: 1, suspended: true }),
+        card('buried', { stability: 1, stabilityFast: 0.8, buriedUntil: NOW + MS_PER_DAY }),
+        card('suspended', { stability: 1, stabilityFast: 0.8, suspended: true }),
       ]),
     ).toEqual({ totalCount: 3, belowTargetCount: 2, unintroducedCount: 0, ready: false });
   });
@@ -147,7 +154,7 @@ describe('buildStudyReadiness', () => {
       readiness(
         [
           card('core'),
-          card('optional', { primaryLessonId: 'extension', stability: 1 }),
+          card('optional', { primaryLessonId: 'extension', stability: 1, stabilityFast: 0.8 }),
           card('shared', { primaryLessonId: 'extension' }),
         ],
         { lessons: [lesson('core'), lesson('extension', { isExtension: true })], links },
@@ -173,7 +180,9 @@ describe('buildStudyReadiness', () => {
       lessons: [lesson('core'), lesson('extension', { isExtension: true })],
       assessments: [assessment],
     };
-    const cards = [card('optional', { primaryLessonId: 'extension', stability: 1 })];
+    const cards = [
+      card('optional', { primaryLessonId: 'extension', stability: 1, stabilityFast: 0.8 }),
+    ];
     expect(readiness(cards, options)).toMatchObject({ totalCount: 1, belowTargetCount: 1 });
     expect(
       readiness(cards, {
@@ -187,7 +196,7 @@ describe('buildStudyReadiness', () => {
   });
 
   it('uses the card horizon including lesson overrides and maintenance after the exam', () => {
-    const cards = [card('short-lived', { stability: 10 })];
+    const cards = [card('short-lived', { stability: 10, stabilityFast: 8 })];
     expect(readiness(cards)).toMatchObject({ belowTargetCount: 1, ready: false });
     expect(
       readiness(cards, { lessons: [lesson('core', { examDate: NOW + 2 * MS_PER_DAY })] }),
@@ -200,7 +209,10 @@ describe('buildStudyReadiness', () => {
 
   it('ignores cards owned by another course', () => {
     expect(
-      readiness([card('ours'), card('theirs', { courseId: 'elsewhere', stability: 1 })]),
+      readiness([
+        card('ours'),
+        card('theirs', { courseId: 'elsewhere', stability: 1, stabilityFast: 0.8 }),
+      ]),
     ).toEqual({
       totalCount: 1,
       belowTargetCount: 0,

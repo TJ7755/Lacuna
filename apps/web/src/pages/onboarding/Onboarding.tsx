@@ -38,6 +38,7 @@ const FIRST_CARD: Card = {
   front: 'How long does sunlight take to reach Earth?',
   back: 'About **8 minutes**.\n\nLight crosses the 150 million km in a little over 8 minutes, so the Sun you see is 8 minutes old.',
   stability: null,
+  stabilityFast: null,
   difficulty: null,
   lastReviewed: null,
   reps: 0,

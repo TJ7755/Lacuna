@@ -1,3 +1,4 @@
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import 'fake-indexeddb/auto';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,6 +28,13 @@ async function startSession(
     examObjective: objective,
   });
   const lesson = await createLesson(course.id, 'Lesson');
+  // A failed answer yesterday gives complete, weak FSRS-7 memory. Even an Easy
+  // answer today leaves recall below the target at this thirty-day assessment.
+  const memory = modelOf(course.fsrsParameters).step({
+    memoryState: null,
+    rating: 1,
+    elapsedDays: 0,
+  });
   for (let index = 0; index < count; index += 1) {
     const card = await createLessonCard(
       course.id,
@@ -37,11 +45,10 @@ async function startSession(
     );
     await db.cards.update(card.id, {
       state: 2,
-      stability: 0.1 + index * 0.1,
-      difficulty: 5,
+      ...memory,
       lastReviewed: NOW - DAY,
       due: NOW - 1,
-      reps: 5,
+      reps: 1,
     });
   }
   const params: UseLearnSessionParams = {

@@ -25,6 +25,9 @@ function card(id: string, lessonId: string | null, reviewedDaysAgo?: number, sta
           state: 2 as const,
           lastReviewed: NOW - reviewedDaysAgo * MS_PER_DAY,
           stability,
+          stabilityFast: stability * 0.8,
+          difficulty: 5,
+          reps: 1,
           due: NOW - reviewedDaysAgo * MS_PER_DAY + stability * MS_PER_DAY,
         }),
   });
@@ -98,7 +101,7 @@ it('counts the same whole-course pool and per-paper forecast as the course summa
   expect(report.dueCards).toBe(1);
   expect(report.forecast).toMatchObject({ kind: 'applicable', undatedCards: 0 });
   expect(report.forecast.kind === 'applicable' && report.forecast.value).toBeCloseTo(
-    summary.mastery,
+    summary.mastery!,
     12,
   );
   expect(report.lessons.map((lesson) => [lesson.lessonId, lesson.cardCount])).toEqual([
@@ -121,7 +124,7 @@ it('measures cards for an earlier paper at that paper rather than at the final d
   expect(finalOnly.kind).toBe('applicable');
   if (perPaper.kind !== 'applicable' || finalOnly.kind !== 'applicable') return;
   // Lesson a's cards are tested in three days, so they are predicted to be recalled better.
-  expect(perPaper.value).toBeGreaterThan(finalOnly.value);
+  expect(perPaper.value).toBeGreaterThan(finalOnly.value!);
   // Only a single shared date can be drawn as one exam-day line.
   expect(perPaper.sharedDate).toBeUndefined();
   expect(finalOnly.sharedDate).toBe(input.course.examDate);
@@ -132,8 +135,8 @@ it('measures cards for an earlier paper at that paper rather than at the final d
     [input.course.examDate, [{ id: 'final', name: 'Final paper' }], 2],
   ]);
   const weighted =
-    perPaper.papers.reduce((sum, paper) => sum + paper.value * paper.cardCount, 0) / 5;
-  expect(weighted).toBeCloseTo(perPaper.value, 12);
+    perPaper.papers.reduce((sum, paper) => sum + paper.value! * paper.cardCount, 0) / 5;
+  expect(weighted).toBeCloseTo(perPaper.value!, 12);
 });
 
 it('scopes the pool, lessons and forecast to one selected assessment', () => {
@@ -218,7 +221,7 @@ it('gives cards without a listed lesson their own row so the rows add up to the 
   const weighted =
     report.lessons.reduce((sum, lesson) => sum + (lesson.value ?? 0) * lesson.cardCount, 0) /
     report.cardCount;
-  expect(weighted).toBeCloseTo(report.forecast.value, 12);
+  expect(weighted).toBeCloseTo(report.forecast.value!, 12);
 });
 
 it('keeps questions linked to a covered lesson when an assessment is selected', () => {

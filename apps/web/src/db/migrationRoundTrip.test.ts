@@ -132,6 +132,7 @@ it.each([27, 28, 29, 30, 31])(
       front,
       back: 'Tokyo',
       stability: 2,
+      stabilityFast: null,
       difficulty: 5,
       lastReviewed: 100,
       history: [],
@@ -180,8 +181,9 @@ it.each([27, 28, 29, 30, 31])(
       id: 'old-card',
       front,
       back: 'Tokyo',
-      stability: 2,
-      difficulty: 5,
+      stability: expect.any(Number),
+      stabilityFast: expect.any(Number),
+      difficulty: expect.any(Number),
       lastReviewed: 100,
       reps: 1,
     });
@@ -224,7 +226,7 @@ it('refuses a below-floor database on a direct auto-open query', async () => {
 
 it('creates the complete current schema directly on a fresh install', async () => {
   await db.open();
-  expect(db.verno).toBe(32);
+  expect(db.verno).toBe(33);
   expect(db.tables.map((table) => table.name).sort()).toEqual(
     [...Object.keys(schemaV27), 'questionSets', 'questionSetAttempts'].sort(),
   );
@@ -271,11 +273,14 @@ it.each(['database', 'backup'])(
     }
     db.close();
     await db.open();
-    expect(db.verno).toBe(32);
+    expect(db.verno).toBe(33);
     expect(await db.cards.get('old-card')).toMatchObject({
       front: backup.cards[0].front,
       reps: 1,
-      stability: 2,
+      due: backup.cards[0].due,
+      lastReviewed: backup.cards[0].lastReviewed,
+      stability: expect.any(Number),
+      stabilityFast: expect.any(Number),
     });
     expect(await db.reviewHistory.orderBy('timestamp').toArray()).toMatchObject([
       { id: 'review-1', grade: 3, responseTimeSec: 2, distracted: false },

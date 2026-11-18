@@ -84,17 +84,28 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
             heights.some((height) => height > originalHeight + 2 && height < originalHeight + 78),
           ).toBe(true);
       }
-      const [closingWidths] = await Promise.all([
-        panel.evaluate(async (element) => {
-          const widths: number[] = [];
-          for (let frame = 0; frame < 45 && element.isConnected; frame++) {
-            await new Promise(requestAnimationFrame);
-            if (element.isConnected) widths.push(element.getBoundingClientRect().width);
-          }
-          return widths;
+      // Arm the sampler before Escape hides the panel from accessible role lookup.
+      const closing = await panel.evaluateHandle((element) => ({
+        finished: new Promise<number[]>((resolve) => {
+          window.addEventListener(
+            'keydown',
+            () => {
+              const widths: number[] = [];
+              let frame = 0;
+              const sample = () => {
+                if (element.isConnected) widths.push(element.getBoundingClientRect().width);
+                if (++frame < 45 && element.isConnected) requestAnimationFrame(sample);
+                else resolve(widths);
+              };
+              requestAnimationFrame(sample);
+            },
+            { capture: true, once: true },
+          );
         }),
-        page.keyboard.press('Escape'),
-      ]);
+      }));
+      await page.keyboard.press('Escape');
+      const closingWidths = await closing.evaluate(({ finished }) => finished);
+      await closing.dispose();
       if (reducedMotion === 'no-preference')
         expect(
           closingWidths.some(

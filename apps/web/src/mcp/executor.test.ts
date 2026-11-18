@@ -1,16 +1,13 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../db/schema';
+import { replacementLifecycle } from '../db/replacementLifecycle';
 import { createCourse, createLesson } from '../db/repository';
 import { executeToolCall } from './executor';
 import type { McpGrant } from './types';
 import { CREATE_COURSE_SCOPE_KEY } from './bridge/scopeResolver';
 
-const admitWrite = vi.hoisted(() => vi.fn((operation: () => Promise<unknown>) => operation()));
-
-vi.mock('../db/replacementLifecycle', () => ({
-  replacementLifecycle: { admitWrite },
-}));
+const admitWrite = vi.spyOn(replacementLifecycle, 'admitWrite');
 
 beforeEach(async () => {
   admitWrite.mockClear();

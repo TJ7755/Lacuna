@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import {
   createCourse,
+  recordReview,
   createLesson,
   createCourseCard,
   linkCardToLesson,
@@ -10,6 +11,7 @@ import {
   updateCourse,
   updateCourseAssessment,
 } from './repository';
+import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
 import { FSRS_VERSION } from '@lacuna/core/fsrs/params';
 import { listLessons, listCardsForCourse } from './read';
 import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
@@ -151,6 +153,32 @@ describe('createCourse', () => {
       examDate: movedDate,
       timeZone: 'Europe/Paris',
     });
+  });
+
+  it('recomputes due dates when target recall changes without adding a review', async () => {
+    const course = await createCourse('Recall target');
+    const fresh = await createCourseCard(course.id, 'front_back', 'q', 'a');
+    const reviewed = await recordReview({
+      card: fresh,
+      deck: course,
+      kind: 'course',
+      sessionId: 'target',
+      eventId: 'target-answer',
+      sessionKind: 'deck',
+      grade: 4,
+      correct: true,
+      responseTimeSec: 1,
+      distracted: false,
+      now: 1000,
+    });
+    const parameters = { ...course.fsrsParameters, requestRetention: 0.97 };
+    await updateCourse(course.id, { fsrsParameters: parameters });
+    const expected = applyReview(makeEngine(parameters), fresh, 4, 1000).memory;
+    const saved = (await db.cards.get(fresh.id))!;
+    expect(saved.due).toBe(expected.due);
+    expect(saved.due).toBeLessThan(reviewed.card.due!);
+    expect(saved.reps).toBe(1);
+    expect(await db.reviewHistory.count()).toBe(1);
   });
 
   it('rejects compatibility date fields at the course repository boundary', async () => {

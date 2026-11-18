@@ -69,6 +69,81 @@ describe('review trajectory sampling', () => {
     expect(await db.sessionHistory.count()).toBe(1);
   });
 
+  it('avoids rescanning unavailable memory until the final legacy card is reviewed', async () => {
+    const deck = await createCourse('Legacy trajectory');
+    const cards = await Promise.all(
+      ['first', 'second', 'last'].map((front) =>
+        createCard(deck.id, 'front_back', front, 'answer'),
+      ),
+    );
+    const now = Date.now();
+    await db.cards.bulkUpdate(
+      cards.map((card) => ({
+        key: card.id,
+        changes: {
+          lastReviewed: now - 86_400_000,
+          state: 2,
+          reps: 1,
+          stability: 10,
+          stabilityFast: null,
+        },
+      })),
+    );
+    const frames: FrameRequestCallback[] = [];
+    const requestFrame = vi
+      .spyOn(globalThis, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        frames.push(callback);
+        return frames.length;
+      });
+    const realSetTimeout = globalThis.setTimeout;
+    const fallbackTimer = vi
+      .spyOn(globalThis, 'setTimeout')
+      .mockImplementation(((...args: Parameters<typeof setTimeout>) =>
+        args[1] === 250
+          ? realSetTimeout(() => {}, 0)
+          : realSetTimeout(...args)) as typeof setTimeout);
+    const cardsWhere = vi.spyOn(db.cards, 'where');
+    try {
+      // Explicitly await the sampler while its deferred job remains coalesced.
+      for (const [index, card] of [cards[0], cards[0], cards[1], cards[2]].entries()) {
+        const eventId = `legacy-trajectory-${index}`;
+        const result = await recordReview({
+          card,
+          deck,
+          eventId,
+          sessionId: 'legacy-trajectory',
+          sessionKind: 'deck',
+          grade: 3,
+          responseTimeSec: 2,
+          distracted: false,
+          correct: true,
+          now: now + index,
+        });
+        expect(result.recorded).toBe(true);
+        const sampled = await sampleReviewTrajectory({
+          eventId,
+          sessionId: 'legacy-trajectory',
+          timestamp: now + index,
+          deck,
+          kind: 'scheduling-unit',
+          cardId: card.id,
+        });
+        expect(sampled).toBe(index === 3 ? 'sampled' : 'unavailable-memory');
+        expect(cardsWhere).toHaveBeenCalledTimes(index === 3 ? 2 : 1);
+        expect(await db.sessionHistory.count()).toBe(index === 3 ? 1 : 0);
+      }
+      const sample = await db.sessionHistory.toCollection().first();
+      expect(sample?.averagePredictedRetrievability).toBeGreaterThan(0);
+      frames[0](performance.now());
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    } finally {
+      cardsWhere.mockRestore();
+      requestFrame.mockRestore();
+      fallbackTimer.mockRestore();
+    }
+  });
+
   it('defers and coalesces the daily trajectory scan until after the next frame', async () => {
     const deck = await createCourse('Deferred trajectory');
     const first = await createCard(deck.id, 'front_back', 'first', 'answer');

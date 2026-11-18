@@ -42,6 +42,7 @@ function reviewed(id: string, at: number, lessonId = 'earlier'): Card {
     state: 2,
     reps: 2,
     stability: 2,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: at,
     due: NOW + MS_PER_DAY,
@@ -116,6 +117,7 @@ describe('adaptive catch-up introductions', () => {
             reps: 0,
             lastReviewed: null,
             stability: null,
+            stabilityFast: null,
             due: null,
           });
         }
@@ -236,6 +238,7 @@ describe('adaptive catch-up introductions', () => {
       state: 0 as const,
       lastReviewed: null,
       stability: null,
+      stabilityFast: null,
       due: null,
     };
     expect(pool([...introduced, due, reset, ...unseen(5)]).map((c) => c.id)).toEqual([

@@ -1,23 +1,18 @@
-// FSRS-6 defaults and shared constants.
-//
-// The maths itself lives in the official `ts-fsrs` package (FSRS-6, 21 trainable
-// parameters including the decay w20). This module only re-exports the default
-// parameter set and the handful of app-level constants used across the codebase.
+// FSRS-7 defaults; the official model owns the 34 trainable weights.
 
 import {
-  default_w,
-  default_request_retention,
-  default_maximum_interval,
+  DEFAULT_MAXIMUM_INTERVAL,
   defaultLearningSteps,
   defaultRelearningSteps,
-} from 'ts-fsrs';
+} from 'ts-fsrs/middlewares';
+import { FSRS7_DEFAULT_WEIGHTS } from 'ts-fsrs/models/fsrs-7';
 import type { FsrsParameters } from '@lacuna/core/db/types';
 
 /** FSRS algorithm version persisted alongside each deck's parameters. */
-export const FSRS_VERSION = 6;
+export const FSRS_VERSION = 7;
 
 /** Default target retention used by ts-fsrs when scheduling. */
-export const DEFAULT_REQUEST_RETENTION = default_request_retention;
+export const DEFAULT_REQUEST_RETENTION = 0.9;
 
 /** Bounds for the user-facing target-retention control. */
 export const MIN_REQUEST_RETENTION = 0.8;
@@ -29,13 +24,13 @@ export function clampRequestRetention(value: number): number {
   return Math.min(MAX_REQUEST_RETENTION, Math.max(MIN_REQUEST_RETENTION, value));
 }
 
-/** A fresh copy of the default FSRS-6 parameter set for a new (or migrated) deck. */
+/** A fresh copy of the default FSRS-7 parameter set for a new (or migrated) deck. */
 export function defaultFsrsParameters(): FsrsParameters {
   return {
-    w: [...default_w],
-    requestRetention: default_request_retention,
+    w: [...FSRS7_DEFAULT_WEIGHTS],
+    requestRetention: DEFAULT_REQUEST_RETENTION,
     enable_fuzz: true,
-    maximum_interval: default_maximum_interval,
+    maximum_interval: DEFAULT_MAXIMUM_INTERVAL,
     learning_steps: [...defaultLearningSteps],
     relearning_steps: [...defaultRelearningSteps],
   };

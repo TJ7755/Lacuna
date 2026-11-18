@@ -132,6 +132,7 @@ it('exam timing preserves ordinary due even when it falls after the assessment',
       due: exam + 86_400_000,
       lastReviewed: now,
       stability: days,
+      stabilityFast: null,
     };
     const first = techniquePracticeStatus(schedule, defaultFsrsParameters(), now, exam);
     const later = techniquePracticeStatus(schedule, defaultFsrsParameters(), now + 1, exam);

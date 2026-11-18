@@ -56,6 +56,8 @@ function fixture() {
         primaryLessonId: 'school',
         lastReviewed: now - MS_PER_DAY,
         stability: 30,
+        stabilityFast: 24,
+        difficulty: 5,
         state: 2,
         reps: 1,
       }),
@@ -134,7 +136,7 @@ it('deduplicates overlapping parent content and keeps taught, reviewed and exclu
   expect(root.study).toEqual({ reviewed: 1, taughtNotReviewed: 1, notStarted: 1 });
   const forecast = buildCourseProgress(input).forecast;
   if (forecast.kind !== 'applicable') throw new Error('Expected forecast');
-  expect(root.forecast).toBeCloseTo(forecast.value, 12);
+  expect(root.forecast).toBeCloseTo(forecast.value!, 12);
   expect(point(result.roots, '3').concepts).toEqual([]);
   expect(point(result.roots, '3').forecast).toBeNull();
   expect(result.unmappedConcepts.map((row) => row.id)).toEqual(['unmapped']);
@@ -176,7 +178,7 @@ it('intersects a selected paper and measures its exact date instead of the neare
   expect(result.roots[0].children.map((row) => row.ref)).toEqual(['1', '3']);
   const forecast = buildCourseProgress(selected).forecast;
   if (forecast.kind !== 'assessment') throw new Error('Expected assessment horizon');
-  expect(point(result.roots, '1').forecast).toBeCloseTo(forecast.value, 12);
+  expect(point(result.roots, '1').forecast).toBeCloseTo(forecast.value!, 12);
   const later = ready({
     ...selected,
     assessments: input.assessments.map((row) =>
@@ -206,6 +208,7 @@ it('keeps independent diagnostic counts separate from recall and supports Questi
       due: true,
       schedule: {
         stability: null,
+        stabilityFast: null,
         difficulty: null,
         lastReviewed: null,
         reps: 0,

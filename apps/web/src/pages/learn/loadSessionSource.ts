@@ -20,7 +20,7 @@ import {
   isLessonUnlockedWithInitialLessons,
   lessonEffectiveReleaseDates,
 } from '../../course/pathRules';
-import { revisionProjection } from '@lacuna/core/fsrs/halfLifeLogisticModel';
+import { projectionForFsrs7 } from '@lacuna/core/fsrs/fsrs7CramModel';
 import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { studyPool } from '@lacuna/core/fsrs/eligibility';
 import type { SessionUnit } from '@lacuna/core/fsrs/session';
@@ -222,7 +222,10 @@ export async function loadSessionSource(
     }
     let activeRevisionPlan: RevisionPlan | null = null;
     if (plannedRevision && requestPlanId && requestWindowId && selectedAssessment) {
-      const refreshed = await refreshRevisionPlan(requestPlanId, revisionProjection);
+      const refreshed = await refreshRevisionPlan(
+        requestPlanId,
+        projectionForFsrs7(course.fsrsParameters),
+      );
       if (
         refreshed.assessmentId !== selectedAssessment.id ||
         refreshed.courseId !== course.id ||

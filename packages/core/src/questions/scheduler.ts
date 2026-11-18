@@ -1,6 +1,6 @@
-import { createEmptyCard, type Card as TsCard, type Grade as TsGrade, type State } from 'ts-fsrs';
+import { FSRS7_DEFAULT_WEIGHTS } from 'ts-fsrs/models/fsrs-7';
 import type { FsrsParameters, Grade } from '@lacuna/core/db/types';
-import { makeEngine } from '@lacuna/core/fsrs/fsrs';
+import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
 import {
   QUESTION_SCHEDULER_VERSION,
   type QuestionAttempt,
@@ -41,7 +41,7 @@ function hash(value: string): string {
 export function questionSchedulerConfigFingerprint(params: FsrsParameters): string {
   const config = normaliseQuestionSchedulerConfig(params);
   const serialised = JSON.stringify([
-    QUESTION_SCHEDULER_VERSION,
+    config.w.length === 21 ? 'fsrs-6-question-v1' : QUESTION_SCHEDULER_VERSION,
     config.w,
     config.requestRetention,
     config.enable_fuzz,
@@ -55,6 +55,7 @@ export function questionSchedulerConfigFingerprint(params: FsrsParameters): stri
 export function emptyQuestionSchedule(): QuestionScheduleState {
   return {
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,
@@ -66,36 +67,6 @@ export function emptyQuestionSchedule(): QuestionScheduleState {
   };
 }
 
-function toTsCard(schedule: QuestionScheduleState, now: number): TsCard {
-  if (schedule.lastReviewed === null) return createEmptyCard(new Date(now));
-
-  return {
-    due: new Date(schedule.due ?? schedule.lastReviewed),
-    stability: schedule.stability ?? 0.1,
-    difficulty: schedule.difficulty ?? 5,
-    scheduled_days: schedule.scheduledDays,
-    learning_steps: schedule.learningSteps,
-    reps: schedule.reps,
-    lapses: schedule.lapses,
-    state: schedule.state as State,
-    last_review: new Date(schedule.lastReviewed),
-  };
-}
-
-function fromTsCard(card: TsCard, now: number): QuestionScheduleState {
-  return {
-    stability: card.stability,
-    difficulty: card.difficulty,
-    lastReviewed: card.last_review?.getTime() ?? now,
-    reps: card.reps,
-    lapses: card.lapses,
-    state: card.state as QuestionScheduleState['state'],
-    due: card.due.getTime(),
-    scheduledDays: card.scheduled_days,
-    learningSteps: card.learning_steps,
-  };
-}
-
 /** Apply one Question grade without reading or writing Card state. */
 export function scheduleQuestionReview(
   schedule: QuestionScheduleState,
@@ -104,17 +75,14 @@ export function scheduleQuestionReview(
   now: number,
 ): QuestionReviewResult {
   const schedulerConfig = normaliseQuestionSchedulerConfig(params);
+  // Historical receipts remain immutable; their single-trace weights cannot seed FSRS-7.
+  if (schedulerConfig.w.length === 21) schedulerConfig.w = [...FSRS7_DEFAULT_WEIGHTS];
   const engine = makeEngine(schedulerConfig);
-  const before = toTsCard(schedule, now);
-  const retrievabilityAtAttempt =
-    schedule.lastReviewed === null || schedule.state === 0
-      ? null
-      : engine.retrievability(before, now);
-  const result = engine.next(before, new Date(now), grade as TsGrade);
+  const result = applyReview(engine, schedule, grade, now);
 
   return {
-    schedule: fromTsCard(result.card, now),
-    retrievabilityAtAttempt,
+    schedule: result.memory,
+    retrievabilityAtAttempt: result.retrievabilityAtReview,
     schedulerVersion: QUESTION_SCHEDULER_VERSION,
     schedulerConfigFingerprint: questionSchedulerConfigFingerprint(schedulerConfig),
     schedulerConfig,
@@ -124,6 +92,7 @@ export function scheduleQuestionReview(
 function baselineSchedule(
   question: Pick<QuestionDefinition, 'scheduleEpoch'>,
 ): QuestionScheduleState {
+  if (question.scheduleEpoch.memoryOrigin) return { ...question.scheduleEpoch.memoryOrigin };
   const baseline = question.scheduleEpoch.baseline;
   return baseline.kind === 'legacy-opaque'
     ? {
@@ -145,20 +114,37 @@ export function replayQuestionSchedule(
 ): QuestionScheduleState {
   let schedule = baselineSchedule(question);
   let activeConfig = normaliseQuestionSchedulerConfig(fallbackParams);
-  const replayable = attempts
+  let replayable = attempts
     .filter(
       (attempt) =>
         attempt.scheduleEpochId === question.scheduleEpoch.id &&
         attempt.status === 'answered' &&
         attempt.answeredAt !== undefined &&
         attempt.undoneAt === undefined &&
-        attempt.scheduleEffect.kind === 'replay',
+        attempt.scheduleEffect.kind === 'replay' &&
+        (question.scheduleEpoch.memoryOrigin === undefined ||
+          (attempt.answeredAt as number) >
+            (question.scheduleEpoch.memoryOrigin.lastReviewed ?? -Infinity)),
     )
     .sort(
       (left, right) =>
         (left.answeredAt as number) - (right.answeredAt as number) ||
         left.id.localeCompare(right.id),
     );
+
+  const checkpoint = question.scheduleEpoch.migrationCheckpoint;
+  if (checkpoint) {
+    const included = new Set(checkpoint.attemptIds);
+    const active = new Set(replayable.map((attempt) => attempt.id));
+    const tail = replayable.filter((attempt) => !included.has(attempt.id));
+    if (
+      checkpoint.attemptIds.every((id) => active.has(id)) &&
+      tail.every((attempt) => attempt.answeredAt! > (checkpoint.state.lastReviewed ?? -Infinity))
+    ) {
+      schedule = { ...checkpoint.state };
+      replayable = tail;
+    }
+  }
 
   for (const attempt of replayable) {
     const answeredAt = attempt.answeredAt;

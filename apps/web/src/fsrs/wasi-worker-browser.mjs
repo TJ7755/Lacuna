@@ -1,4 +1,4 @@
-// Vendored from @open-spaced-repetition/binding-wasm32-wasi@0.6.0 so production
+// Vendored from @open-spaced-repetition/binding@0.6.1/dist/wasi-worker-browser.mjs so production
 // builds can silence WASM stdout. Keep this and
 // ../assets/fsrs-binding.wasm32-wasi.wasm in sync when updating the binding.
 

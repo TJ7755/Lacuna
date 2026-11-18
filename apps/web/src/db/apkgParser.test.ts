@@ -58,6 +58,7 @@ describe('Anki SQLite parsing', () => {
       front: '**Cell**',
       back: 'Life &quot; &#39; " \' & < >',
       stability: 12,
+      stabilityFast: null,
       tags: ['biology'],
       history: [
         expect.objectContaining({ timestamp: 1700000000000, grade: 3, responseTimeSec: 4 }),

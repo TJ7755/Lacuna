@@ -200,6 +200,7 @@ describe('LearnMode recitation', () => {
       await db.cards.update(card.id, {
         state: 2,
         stability: 2,
+        stabilityFast: null,
         difficulty: 5,
         reps: 1,
         lastReviewed: now - 24 * 60 * 60 * 1000,

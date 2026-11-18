@@ -56,6 +56,36 @@ describe('SessionReport', () => {
     expect(screen.getByRole('progressbar', { name: 'Expected marks' })).toBeInTheDocument();
   });
 
+  it('omits unavailable recall and its percentage-point comparison', () => {
+    render(
+      <SessionReport
+        summary={{ ...mockSummary, masteryBefore: null, masteryAfter: null }}
+        onReturn={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole('progressbar', { name: 'Expected marks' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/percentage points/)).not.toBeInTheDocument();
+    expect(screen.queryByText('0%')).not.toBeInTheDocument();
+  });
+
+  it('keeps an empty-session reason visible when its recall forecast is unavailable', () => {
+    render(
+      <SessionReport
+        summary={{
+          ...mockSummary,
+          events: [],
+          reachedGoal: false,
+          objectiveLabel: 'No cards are currently eligible to study',
+          masteryBefore: null,
+          masteryAfter: null,
+        }}
+        onReturn={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('No cards are currently eligible to study')).toBeVisible();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+  });
+
   it('counts a retried card once in Cards reviewed', () => {
     render(
       <SessionReport

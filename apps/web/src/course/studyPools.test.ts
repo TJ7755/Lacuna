@@ -38,6 +38,7 @@ function makeCard(id: string, primaryLessonId: string | null, overrides: Partial
     front: id,
     back: '',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,
@@ -102,7 +103,14 @@ const exposure = (lessonId: string, cardId: string): LessonCardExposure => ({
 
 it('uses scheduled dates instead of a maintenance mastery target without an exam', () => {
   const course = { ...makeCourse(), examDate: undefined };
-  const due = makeCard('due', null, { state: 2, due: NOW, stability: 1e8, lastReviewed: NOW });
+  const due = makeCard('due', null, {
+    state: 2,
+    due: NOW,
+    stability: 1000,
+    stabilityFast: 800,
+    difficulty: 5,
+    lastReviewed: NOW,
+  });
   const future = { ...due, id: 'future', due: NOW + MS_PER_DAY, stability: 0.1 };
   const context = makeExamDateContext(course, [], []);
   expect(eligiblePracticePool([due, future], course, context, NOW)).toEqual([due]);
@@ -116,11 +124,13 @@ it('offers early practice only for an applicable future exam, respecting availab
     state: 2,
     due: NOW + MS_PER_DAY,
     stability: 0.1,
+    stabilityFast: 0.08,
+    difficulty: 5,
     lastReviewed: NOW - MS_PER_DAY,
   });
   const cards = [
     weak,
-    { ...weak, id: 'secure', stability: 1e8 },
+    { ...weak, id: 'secure', stability: 1000, stabilityFast: 800 },
     { ...weak, id: 'past', primaryLessonId: 'l2' },
     { ...weak, id: 'no-exam', primaryLessonId: null },
     { ...weak, id: 'suspended', suspended: true },
@@ -298,7 +308,13 @@ describe('practice pools', () => {
     const course = makeCourse();
     const near = makeLesson('l1', NOW + MS_PER_DAY);
     const far = makeLesson('l2', NOW + 100 * MS_PER_DAY);
-    const reviewed = { stability: 30, lastReviewed: NOW, state: 2 as const };
+    const reviewed = {
+      stability: 30,
+      stabilityFast: 24,
+      difficulty: 5,
+      lastReviewed: NOW,
+      state: 2 as const,
+    };
     const nearCard = makeCard('near', 'l1', reviewed);
     const farCard = makeCard('far', 'l2', reviewed);
     const suspended = makeCard('suspended', 'l1', { suspended: true });
@@ -314,6 +330,8 @@ describe('practice pools', () => {
     const course = makeCourse();
     const linkedIntoNearLesson = makeCard('linked', 'l2', {
       stability: 30,
+      stabilityFast: 24,
+      difficulty: 5,
       lastReviewed: NOW,
       state: 2,
     });
@@ -337,6 +355,8 @@ describe('practice pools', () => {
     const lesson = makeLesson('l1', NOW + MS_PER_DAY);
     const securedSuspended = makeCard('secured', 'l1', {
       stability: 30,
+      stabilityFast: 24,
+      difficulty: 5,
       lastReviewed: NOW,
       state: 2,
       suspended: true,

@@ -287,7 +287,7 @@ it('reads a text file before configuring a new course with an exam target', asyn
     target: { value: 'French exam' },
   });
   fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
-  expect(screen.getByRole('button', { name: 'Exam date and time' })).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: 'Exam date and time' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
   await waitFor(() =>
     expect(mocks.importCards).toHaveBeenCalledWith(

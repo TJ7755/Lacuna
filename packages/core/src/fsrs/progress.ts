@@ -3,17 +3,11 @@
 // always agree with the scheduler (see src/fsrs/objective.ts).
 
 import { rAtExam } from '@lacuna/core/fsrs/forwardSim';
-import { decayOf } from '@lacuna/core/fsrs/fsrs';
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { cardSchedulingHorizon } from '@lacuna/core/fsrs/horizon';
 import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import type { ExamDateContext } from '@lacuna/core/fsrs/examDate';
 import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
-
-/** The deck's forgetting-curve decay exponent (= -w20).
- *  Accepts any SchedulerConfig (a Deck or a Course). */
-function deckDecay(deck: SchedulerConfig): number {
-  return decayOf(deck.fsrsParameters);
-}
 
 /** Predicted retrievability for one card at its applicable scheduling horizon. */
 export function predictedRetrievabilityAtHorizon(
@@ -21,12 +15,12 @@ export function predictedRetrievabilityAtHorizon(
   deck: SchedulerConfig,
   now: number = Date.now(),
   examDateContext?: ExamDateContext,
-): number {
+): number | null {
   return rAtExam(
     card,
     cardSchedulingHorizon(card, deck, examDateContext, now),
     now,
-    deckDecay(deck),
+    modelOf(deck.fsrsParameters),
   );
 }
 
@@ -36,12 +30,13 @@ export function masteryFraction(
   deck: SchedulerConfig,
   now: number = Date.now(),
   examDateContext?: ExamDateContext,
-): number {
+): number | null {
   if (cards.length === 0) return 1;
-  const mastered = cards.filter(
-    (card) => predictedRetrievabilityAtHorizon(card, deck, now, examDateContext) >= MASTERY_R,
-  ).length;
-  return mastered / cards.length;
+  const predictions = cards.map((card) =>
+    predictedRetrievabilityAtHorizon(card, deck, now, examDateContext),
+  );
+  if (predictions.some((value) => value === null)) return null;
+  return predictions.filter((value) => value !== null && value >= MASTERY_R).length / cards.length;
 }
 
 /** Average predicted exam-day retrievability across a deck (0..1). */
@@ -50,11 +45,12 @@ export function averagePredictedRetrievability(
   deck: SchedulerConfig,
   now: number = Date.now(),
   examDateContext?: ExamDateContext,
-): number {
+): number | null {
   if (cards.length === 0) return 1;
-  const total = cards.reduce(
-    (sum, card) => sum + predictedRetrievabilityAtHorizon(card, deck, now, examDateContext),
-    0,
+  const predictions = cards.map((card) =>
+    predictedRetrievabilityAtHorizon(card, deck, now, examDateContext),
   );
+  if (predictions.some((value) => value === null)) return null;
+  const total = predictions.reduce<number>((sum, value) => sum + (value ?? 0), 0);
   return total / cards.length;
 }

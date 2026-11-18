@@ -4,28 +4,21 @@
 // (`@open-spaced-repetition/binding`, fsrs-rs via WASM in the browser worker).
 // Review histories are converted to the binding's item format, fitted with
 // `computeParameters()`, and validated against FSRS valid ranges before they can
-// ever be applied. Log-loss evaluation for before/after summaries reuses ts-fsrs
-// replay (see `evaluateParameters`).
+// ever be applied. Log-loss evaluation for before/after summaries uses the core FSRS-7
+// runtime (see `evaluateParameters`).
 //
 // This runs off the main thread in a Web Worker (see src/workers/optimise.worker.ts)
 // because training on long histories is CPU-heavy.
 
 import type { FSRSBindingItem } from '@open-spaced-repetition/binding';
+import { defaultRelearningSteps } from 'ts-fsrs/middlewares';
+import { FSRS7_DEFAULT_WEIGHTS, checkFSRS7Parameters } from 'ts-fsrs/models/fsrs-7';
 import {
-  fsrs,
-  generatorParameters,
-  createEmptyCard,
-  checkParameters,
-  CLAMP_PARAMETERS,
-  W17_W18_Ceiling,
-  clamp,
-  default_w,
-  defaultRelearningSteps,
-  type Card as TsCard,
-  type Grade as TsGrade,
-} from 'ts-fsrs';
-import { clipFSRS6Parameters } from 'ts-fsrs/models/fsrs-6';
-import { DEFAULT_REQUEST_RETENTION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
+  DEFAULT_REQUEST_RETENTION,
+  MS_PER_DAY,
+  defaultFsrsParameters,
+} from '@lacuna/core/fsrs/params';
+import { makeEngine, applyReview } from '@lacuna/core/fsrs/fsrs';
 import type { Card, Grade } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 export { MIN_OPTIMISE_REVIEWS } from './optimiseConfig';
@@ -90,36 +83,12 @@ export function countReviews(cards: Card[], reviewHistory?: readonly ReviewHisto
   );
 }
 
-/** Per-weight min/max bounds used by `clipFSRS6Parameters` (FSRS valid ranges). */
-function fsrsWeightBounds(
-  numRelearningSteps: number = NUM_RELEARNING_STEPS,
-): Array<[number, number]> {
-  let w17w18Ceiling = W17_W18_Ceiling;
-  if (Math.max(0, numRelearningSteps) > 1) {
-    const value =
-      -(Math.log(default_w[11]) + Math.log(Math.pow(2, default_w[13]) - 1) + default_w[14] * 0.3) /
-      numRelearningSteps;
-    w17w18Ceiling = clamp(+value.toFixed(8), 0.01, 2);
-  }
-  return CLAMP_PARAMETERS(w17w18Ceiling, true).slice(0, 21) as Array<[number, number]>;
-}
-
-/**
- * Reject weight sets the trainer returns if they fall outside FSRS valid ranges.
- * Throws with a readable message when invalid.
- */
+/** Reject malformed or out-of-range FSRS-7 weights, including cross-weight constraints. */
 export function validateFittedWeights(w: number[]): void {
-  if (w.length !== 21) {
-    throw new Error(`Trainer returned ${w.length} weights; expected 21.`);
+  if (w.length !== 34) {
+    throw new Error(`Trainer returned ${w.length} weights; expected 34.`);
   }
-  checkParameters(w);
-  const bounds = fsrsWeightBounds();
-  for (let i = 0; i < w.length; i += 1) {
-    const [min, max] = bounds[i];
-    if (w[i] < min || w[i] > max) {
-      throw new Error(`Weight w${i} (${w[i]}) is outside the FSRS valid range [${min}, ${max}].`);
-    }
-  }
+  checkFSRS7Parameters(w);
 }
 
 /** Non-throwing variant for callers that need to report failure in UI copy. */
@@ -208,45 +177,61 @@ export function evaluateParameters(
   requestRetention: number = DEFAULT_REQUEST_RETENTION,
   options?: EvaluateOptions,
 ): { logLoss: number; scored: number } {
-  const engine = fsrs(
-    generatorParameters({
-      w,
-      request_retention: requestRetention,
-      enable_fuzz: false,
-      maximum_interval: 36500,
-      learning_steps: ['1m', '10m'],
-      relearning_steps: ['10m'],
-    }),
-  );
+  validateFittedWeights(w);
+  const engine = makeEngine({
+    ...defaultFsrsParameters(),
+    w: [...w],
+    requestRetention,
+    enable_fuzz: false,
+  });
 
   let loss = 0;
   let scored = 0;
   for (const seq of sequences) {
-    let card: TsCard = createEmptyCard(new Date(seq.timestamps[0]));
-    let hasPrior = false;
+    let card: Card = {
+      id: 'optimisation-replay',
+      conceptId: 'optimisation-replay',
+      deckId: 'optimisation-replay',
+      schedulingUnitId: 'optimisation-replay',
+      type: 'front_back',
+      front: '',
+      back: '',
+      stability: null,
+      stabilityFast: null,
+      difficulty: null,
+      lastReviewed: null,
+      reps: 0,
+      lapses: 0,
+      state: 0,
+      due: null,
+      scheduledDays: 0,
+      learningSteps: 0,
+      history: [],
+      createdAt: seq.timestamps[0],
+      updatedAt: seq.timestamps[0],
+    };
     for (let i = 0; i < seq.grades.length; i += 1) {
-      const when = new Date(seq.timestamps[i]);
+      const result = applyReview(engine, card, seq.grades[i], seq.timestamps[i]);
       if (
-        hasPrior &&
+        result.retrievabilityAtReview !== null &&
         (options?.scoreAfterTimestamp === undefined ||
           seq.timestamps[i] > options.scoreAfterTimestamp)
       ) {
-        const r = engine.retrievability(card, when);
+        const r = result.retrievabilityAtReview;
         const p = Math.min(1 - EPS, Math.max(EPS, r));
         const y = seq.grades[i] > 1 ? 1 : 0;
         loss += -(y * Math.log(p) + (1 - y) * Math.log(1 - p));
         scored += 1;
       }
-      card = engine.next(card, when, seq.grades[i] as TsGrade).card;
-      hasPrior = true;
+      card = { ...card, ...result.memory };
     }
   }
   return { logLoss: scored > 0 ? loss / scored : NaN, scored };
 }
 
 interface ComputeParametersOptions {
-  /** Binding 0.6+ defaults to FSRS-7 (34 weights); Lacuna schedules with FSRS-6. */
-  modelVersion: 'FSRS-6';
+  /** Explicitly select the same dual-trace model as the scheduler. */
+  modelVersion: 'FSRS-7';
   enableShortTerm: boolean;
   numRelearningSteps: number;
   progress?: (current: number, total: number) => boolean | void | undefined;
@@ -262,7 +247,7 @@ export interface OptimiseOptions {
   requestRetention?: number;
   /** Canonical event-store rows. Omit only for legacy callers using Card.history. */
   reviewHistory?: readonly ReviewHistoryEntry[];
-  /** Weight set to score the "before" metric (defaults to FSRS-6 defaults). */
+  /** Weight set to score the "before" metric (defaults to FSRS-7 defaults). */
   initialW?: number[];
   onProgress?: (fraction: number) => void;
   computeParameters: ComputeParametersFn;
@@ -280,7 +265,7 @@ export interface OptimiseResult {
 
 /**
  * Fit FSRS weights to the deck's review history via the official binding trainer.
- * Weights are clipped and validated before being returned.
+ * Weights are validated before being returned.
  */
 export async function optimiseParameters(
   cards: Card[],
@@ -288,7 +273,8 @@ export async function optimiseParameters(
 ): Promise<OptimiseResult> {
   const allSequences = reviewSequences(cards, options.reviewHistory);
   const requestRetention = options.requestRetention ?? DEFAULT_REQUEST_RETENTION;
-  const initialW = clip(options.initialW ? [...options.initialW] : [...default_w]);
+  const initialW = options.initialW ? [...options.initialW] : [...FSRS7_DEFAULT_WEIGHTS];
+  validateFittedWeights(initialW);
 
   // Split chronologically: train on earlier reviews, validate on later ones.
   const { trainSequences, cutoffTimestamp } = chronologicallySplitSequences(allSequences);
@@ -307,7 +293,7 @@ export async function optimiseParameters(
   }).logLoss;
 
   const rawW = await options.computeParameters(trainSet, {
-    modelVersion: 'FSRS-6',
+    modelVersion: 'FSRS-7',
     enableShortTerm: true,
     numRelearningSteps: NUM_RELEARNING_STEPS,
     progress: (current, total) => {
@@ -320,8 +306,7 @@ export async function optimiseParameters(
     throw new Error(`Trainer returned weights outside FSRS valid ranges: ${validation.message}`);
   }
 
-  const w = clip([...rawW]);
-  validateFittedWeights(w);
+  const w = [...rawW];
 
   const final = evaluateParameters(allSequences, w, requestRetention, {
     scoreAfterTimestamp: cutoffTimestamp,
@@ -336,9 +321,4 @@ export async function optimiseParameters(
     scored: final.scored,
     isOutOfSampleWin,
   };
-}
-
-/** Clip a weight set to the FSRS valid ranges (always returns a fresh 21-length array). */
-function clip(w: number[]): number[] {
-  return clipFSRS6Parameters(w, NUM_RELEARNING_STEPS);
 }

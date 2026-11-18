@@ -2,7 +2,8 @@ import type { Course, CourseAssessment, Lesson } from '@lacuna/core/db/types';
 import type { Concept } from '@lacuna/core/questions/types';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { db } from '../db/schema';
-import { makeEngine, decayOf } from '@lacuna/core/fsrs/fsrs';
+import type { SimContext } from '@lacuna/core/fsrs/forwardSim';
+import { makeEngine, modelOf } from '@lacuna/core/fsrs/fsrs';
 import { practiceContext } from './questionPracticeSelection';
 import { deriveTechniqueSchedules } from './techniqueSchedule';
 import { latestQuestionPracticeExposure } from './questionPracticeExposure';
@@ -26,6 +27,7 @@ export async function loadQuestionPracticeSnapshot(
     loaded ? loaded.lessons : db.lessons.where('courseId').equals(courseId).toArray(),
   ]);
   const params = course?.fsrsParameters ?? defaultFsrsParameters();
+  const sim: SimContext = { fsrs: makeEngine(params), model: modelOf(params), expectedGrade: 3 };
   return {
     ...data,
     course,
@@ -33,7 +35,7 @@ export async function loadQuestionPracticeSnapshot(
     lessons,
     techniqueSchedules: deriveTechniqueSchedules(data.attempts),
     exposure: latestQuestionPracticeExposure(data.attempts),
-    sim: { fsrs: makeEngine(params), decay: decayOf(params), expectedGrade: 3 as const },
+    sim,
   };
 }
 

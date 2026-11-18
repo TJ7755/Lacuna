@@ -44,6 +44,7 @@ function card(
     schedulingUnitId: 'deck-1',
     type: 'front_back',
     stability: 5,
+    stabilityFast: null,
     difficulty: 3,
     lastReviewed: 1000,
     reps: 2,

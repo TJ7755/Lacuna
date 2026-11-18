@@ -5,17 +5,19 @@ import {
   makeObjectiveContext,
   isObjectiveComplete,
 } from '@lacuna/core/fsrs/objective';
-import { forgettingCurve } from '@lacuna/core/fsrs/forwardSim';
-import { defaultFsrsParameters, MASTERY_R, MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
+import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, LegacyDeckRecord, ExamObjective } from '@lacuna/core/db/types';
 
-const DECAY = -defaultFsrsParameters().w[20];
+const NOW = Date.UTC(2026, 6, 1, 12);
+const model = modelOf(defaultFsrsParameters());
+const initialMemory = model.step({ memoryState: null, rating: 3, elapsedDays: 0 });
 
 function makeDeck(objective: ExamObjective): LegacyDeckRecord {
   return {
     id: 'd1',
     name: 'LegacyDeckRecord',
-    examDate: 7 * MS_PER_DAY,
+    examDate: NOW + 7 * MS_PER_DAY,
     createdAt: 0,
     fsrsVersion: 6,
     fsrsParameters: defaultFsrsParameters(),
@@ -23,7 +25,7 @@ function makeDeck(objective: ExamObjective): LegacyDeckRecord {
   };
 }
 
-function reviewedCard(id: string, stability: number, overrides: Partial<Card> = {}): Card {
+function reviewedCard(id: string, reviewGapDays: number, overrides: Partial<Card> = {}): Card {
   return {
     id,
     conceptId: `concept-${id}`,
@@ -32,13 +34,18 @@ function reviewedCard(id: string, stability: number, overrides: Partial<Card> = 
     type: 'front_back',
     front: '',
     back: '',
-    stability,
-    difficulty: 5,
-    lastReviewed: 0,
+    ...(reviewGapDays === 0
+      ? initialMemory
+      : model.step({
+          memoryState: initialMemory,
+          rating: 3,
+          elapsedDays: reviewGapDays,
+        })),
+    lastReviewed: NOW,
     reps: 1,
     lapses: 0,
     state: 2,
-    due: 0,
+    due: NOW,
     scheduledDays: 0,
     learningSteps: 0,
     history: [],
@@ -58,6 +65,7 @@ function newCard(id: string): Card {
     front: '',
     back: '',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,
@@ -72,55 +80,40 @@ function newCard(id: string): Card {
   };
 }
 
-// A deck with a deliberate mix: two cards predicted >= 0.90 on exam day, two below.
+// States after an initial Good answer, then (where non-zero) another Good
+// answer after the named gap. Two are above 90% at seven days; two are below.
 const cards: Card[] = [
-  reviewedCard('a', 3), // ~0.83  -> below
-  reviewedCard('b', 10), // ~0.92 -> at/above
-  reviewedCard('c', 100), // ~0.99 -> above
-  newCard('d'), // 0 -> below
+  reviewedCard('a', 0),
+  reviewedCard('b', 1),
+  reviewedCard('c', 10),
+  newCard('d'),
 ];
 
 describe('objective consistency: the bar matches the objective', () => {
   it('expectedMarks: progress equals the mean predicted exam-day R across the deck', () => {
     const deck = makeDeck('expectedMarks');
-    const examDays = deck.examDate / MS_PER_DAY;
-    // Independent computation of the mean predicted retrievability.
-    const expectedMean =
-      (forgettingCurve(examDays, 3, DECAY) +
-        forgettingCurve(examDays, 10, DECAY) +
-        forgettingCurve(examDays, 100, DECAY) +
-        0) /
-      4;
-    // now = 0 keeps the epoch-based exam date in the future (the scheduling
-    // horizon is time-aware: a past exam falls back to a rolling horizon).
-    expect(progressValue(cards, deck, 0)).toBeCloseTo(expectedMean, 12);
+    // Upstream FSRS-7 reference recalls at seven days for the above histories.
+    const expectedMean = (0.8854090932694928 + 0.9358705501763661 + 0.9544275889980759) / 4;
+    expect(progressValue(cards, deck, NOW)).toBeCloseTo(expectedMean, 12);
   });
 
   it('securedTopics: progress equals the fraction of cards at or above 0.90', () => {
     const deck = makeDeck('securedTopics');
-    const examDays = deck.examDate / MS_PER_DAY;
-    const rValues = [
-      forgettingCurve(examDays, 3, DECAY),
-      forgettingCurve(examDays, 10, DECAY),
-      forgettingCurve(examDays, 100, DECAY),
-      0,
-    ];
-    const fraction = rValues.filter((r) => r >= MASTERY_R).length / rValues.length;
-    expect(progressValue(cards, deck, 0)).toBeCloseTo(fraction, 12);
+    expect(progressValue(cards, deck, NOW)).toBe(2 / 4);
   });
 
   it('the two objectives generally disagree, which is exactly why they must be pinned together', () => {
-    const meanR = progressValue(cards, makeDeck('expectedMarks'), 0);
-    const secured = progressValue(cards, makeDeck('securedTopics'), 0);
-    expect(meanR).not.toBeCloseTo(secured, 2);
+    const meanR = progressValue(cards, makeDeck('expectedMarks'), NOW);
+    const secured = progressValue(cards, makeDeck('securedTopics'), NOW);
+    expect(meanR).not.toBeCloseTo(secured!, 2);
   });
 
   it("uses each card's resolved exam horizon when course context is provided", () => {
     const deck = makeDeck('expectedMarks');
-    const nearDate = 2 * MS_PER_DAY;
-    const farDate = 30 * MS_PER_DAY;
-    const near = reviewedCard('near', 10, { primaryLessonId: 'nearLesson' });
-    const far = reviewedCard('far', 10, { primaryLessonId: 'farLesson' });
+    const nearDate = NOW + 2 * MS_PER_DAY;
+    const farDate = NOW + 30 * MS_PER_DAY;
+    const near = reviewedCard('near', 1, { primaryLessonId: 'nearLesson' });
+    const far = reviewedCard('far', 1, { primaryLessonId: 'farLesson' });
     const examDateContext = {
       courseExamDate: deck.examDate,
       lessonsById: new Map([
@@ -153,24 +146,22 @@ describe('objective consistency: the bar matches the objective', () => {
       ]),
       courseAssessments: [],
     };
-    const expected =
-      (forgettingCurve(nearDate / MS_PER_DAY, 10, DECAY) +
-        forgettingCurve(farDate / MS_PER_DAY, 10, DECAY)) /
-      2;
+    // Upstream reference recalls for a second Good answer after a one-day gap.
+    const expected = (0.9630101239001205 + 0.875106246808392) / 2;
 
-    expect(progressValue([near, far], deck, 0, examDateContext)).toBeCloseTo(expected, 12);
+    expect(progressValue([near, far], deck, NOW, examDateContext)).toBeCloseTo(expected, 12);
   });
 });
 
 describe('scheduler scoring follows the objective', () => {
   it('securedTopics ranks an already-secured card lowest and a securable card highest', () => {
     // Cards last reviewed 20 days ago (so they have decayed), exam 3 days out.
-    const now = 20 * MS_PER_DAY;
+    const now = NOW + 20 * MS_PER_DAY;
     const deck: LegacyDeckRecord = { ...makeDeck('securedTopics'), examDate: now + 3 * MS_PER_DAY };
     const oc = makeObjectiveContext(deck);
 
-    const alreadySecured = reviewedCard('hi', 100); // still ~0.97 on exam day
-    const securable = reviewedCard('lo', 10); // ~0.83 now, but a review pushes it over 0.90
+    const alreadySecured = reviewedCard('hi', 100); // spaced success: still above 0.90 on exam day
+    const securable = reviewedCard('lo', 0); // one answer: a spaced review can secure it
 
     const secScore = scoreCard(alreadySecured, oc, now);
     const lowScore = scoreCard(securable, oc, now);
@@ -182,7 +173,7 @@ describe('scheduler scoring follows the objective', () => {
 
   it('uses resolved card horizons to determine securedTopics completion', () => {
     const deck = makeDeck('securedTopics');
-    const card = reviewedCard('card', 10, { primaryLessonId: 'lesson1' });
+    const card = reviewedCard('card', 1, { primaryLessonId: 'lesson1' });
     const examDateContext = {
       courseExamDate: deck.examDate,
       lessonsById: new Map([
@@ -196,14 +187,16 @@ describe('scheduler scoring follows the objective', () => {
             createdAt: 0,
             updatedAt: 0,
             isExtension: false,
-            examDate: 30 * MS_PER_DAY,
+            examDate: NOW + 30 * MS_PER_DAY,
           },
         ],
       ]),
       courseAssessments: [],
     };
 
-    expect(isObjectiveComplete([card], makeObjectiveContext(deck), 0)).toBe(true);
-    expect(isObjectiveComplete([card], makeObjectiveContext(deck, examDateContext), 0)).toBe(false);
+    expect(isObjectiveComplete([card], makeObjectiveContext(deck), NOW)).toBe(true);
+    expect(isObjectiveComplete([card], makeObjectiveContext(deck, examDateContext), NOW)).toBe(
+      false,
+    );
   });
 });

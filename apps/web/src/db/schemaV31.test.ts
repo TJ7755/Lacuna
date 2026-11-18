@@ -76,7 +76,7 @@ it('migrates activity and last-imported selection together without changing auth
   });
   await db.open();
   const { questionSetId: _legacy, ...rest } = node;
-  expect(db.verno).toBe(32);
+  expect(db.verno).toBe(33);
   expect(await db.practiceNodes.get(node.id)).toEqual({ ...rest, questionSetIds: ['set'] });
   expect((await db.lineageIdMappings.get(mapping.id))?.questionSetPracticeNodeSnapshots).toEqual({
     activity: { questionSetIds: ['set'], afterLessonId: 'lesson', name: 'Questions' },
@@ -85,7 +85,7 @@ it('migrates activity and last-imported selection together without changing auth
   expect(await db.questionSets.get(set.id)).toEqual(set);
   expect(await db.practiceNodes.get(cardPractice.id)).toEqual(cardPractice);
   expect(await db.lineageIdMappings.get(unrelatedMapping.id)).toEqual(unrelatedMapping);
-  expect(await readAllDataFromVersion('lacuna', 32)).toMatchObject({
+  expect(await readAllDataFromVersion('lacuna', 33)).toMatchObject({
     app: 'lacuna-v16',
     version: 16,
   });

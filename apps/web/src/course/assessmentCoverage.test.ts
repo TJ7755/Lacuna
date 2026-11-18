@@ -40,6 +40,7 @@ function card(id: string, primaryLessonId: string | null): Card {
     front: id,
     back: id,
     stability: 1,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: null,
     reps: 0,

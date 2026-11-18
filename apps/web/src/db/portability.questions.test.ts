@@ -70,6 +70,8 @@ function question(prompt = 'Calculate 1 + 1'): FixedQuestionDefinition {
     scheduleEpoch: { id: 'epoch-1', startedAt: 10, reason: 'created', baseline: { kind: 'new' } },
     scheduleUpdatedAt: 10,
     stability: null,
+    stabilityFast: null,
+
     difficulty: null,
     lastReviewed: null,
     reps: 0,
@@ -355,6 +357,7 @@ describe('Question backup portability', () => {
           answer: { kind: 'exact', value: '2' },
         },
         stability: null,
+        stabilityFast: null,
         difficulty: null,
         lastReviewed: null,
         reps: 0,

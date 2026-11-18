@@ -15,6 +15,8 @@ export default defineConfig({
     include: [
       'apps/web/src/sync/manualMerge.failure-sequences.test.ts',
       'apps/web/src/db/persistence.test.ts',
+      'apps/web/src/db/fsrs7Migration.test.ts',
+      'apps/web/src/db/schemaV33.test.ts',
       'apps/web/src/sync/manualMerge.test.ts',
       'apps/web/src/sync/manualMerge.restorePoint.test.ts',
       'apps/web/src/sync/manualMerge.review-convergence.test.ts',

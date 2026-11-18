@@ -23,24 +23,11 @@ type FileRecord = {
 
 const LOCALE = /(?:^|[\\/])locales[\\/][^\\/]+\.pak$/i;
 const WINDOWS_PACKAGE_BUDGET = {
-  // Binding 0.6's vendored trainer adds 820,431 bytes over 0.5's WASM.
-  // The additive individual-question migration brings the measured Windows archive
-  // to 18,056,145 bytes. Keep payload and file-count limits unchanged.
-  archiveBytes: 18_100_000,
-  payloadBytes: 18_000_000,
-  // Includes the optional maths and highlighting renderer chunks, and the forecast maths
-  // chunk that keeps the chart's recovery entry independent of the first attempt, and the
-  // exam-technique catalogue, form and authoring chunks shared by the question-set editor
-  // and course settings, plus the leave guard shared by the sequence and occlusion
-  // editors and shared Flow expansion controls. Archive and payload byte limits still apply.
-  // The complete lesson-card document and its shared bulk controls add seven
-  // renderer/CSS files over the 723-file baseline. Byte limits remain unchanged.
-  // Shared generated authoring adds NumericAnswerEditor, questionValidation and
-  // repository.authoring renderer chunks. Byte limits remain unchanged.
-  // Shared card construction adds one concept/snapshot renderer chunk (1,546 bytes).
-  // Separating core calendar calculations and web progress headings adds two renderer chunks.
-  // The measured Windows payload has 736 files; byte limits remain unchanged.
-  payloadFileCount: 736,
+  // FSRS 7's migration and shared scheduling chunks bring the measured Windows
+  // archive to 18,210,073 bytes and its payload to 18,011,945 bytes in 743 files.
+  archiveBytes: 18_300_000,
+  payloadBytes: 18_100_000,
+  payloadFileCount: 743,
   sourceMapBytes: 0,
   buildOnlyAssetBytes: 10_000,
   localeBytes: 1_300_000,

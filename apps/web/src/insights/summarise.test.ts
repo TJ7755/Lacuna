@@ -33,6 +33,8 @@ function question(overrides: Partial<FixedQuestionDefinition> = {}): FixedQuesti
     createdAt: NOW,
     updatedAt: NOW,
     stability: null,
+    stabilityFast: null,
+
     difficulty: null,
     lastReviewed: null,
     reps: 0,

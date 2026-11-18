@@ -11,6 +11,6 @@ export const STATUS_LABEL: Partial<Record<ForecastStatus, string>> = {
 };
 
 export function forecastStatus(forecast: CourseForecast): ForecastStatus {
-  if (!forecast.hasExam) return 'steady';
+  if (!forecast.hasExam || forecast.ifStopped === null) return 'steady';
   return forecast.ifStopped + 0.005 >= forecast.target ? 'ahead' : 'behind';
 }

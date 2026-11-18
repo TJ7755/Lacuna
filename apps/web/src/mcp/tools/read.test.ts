@@ -299,6 +299,7 @@ describe('mcp read tools', () => {
           due: now - 1000,
           state: 2,
           stability: 1e8,
+          stabilityFast: null,
           lastReviewed: now - 86_400_000,
         });
         await createLessonCard(course.id, lesson.id, 'front_back', 'new', 'a');

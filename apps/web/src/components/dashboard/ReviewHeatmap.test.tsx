@@ -17,6 +17,7 @@ function makeCard(): Card {
     front: 'Front',
     back: 'Back',
     stability: 1,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: reviewTimestamp,
     reps: 1,

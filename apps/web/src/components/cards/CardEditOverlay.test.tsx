@@ -73,6 +73,7 @@ const card: Card = {
   front: 'Front',
   back: 'Back',
   stability: null,
+  stabilityFast: null,
   difficulty: null,
   lastReviewed: null,
   reps: 0,

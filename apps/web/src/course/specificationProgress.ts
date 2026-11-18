@@ -185,7 +185,7 @@ export function buildSpecificationProgress(
         notStarted: counted.length - reviewed - taughtNotReviewed,
       },
       forecast:
-        forecastable && counted.length
+        forecastable && counted.length && counted.every((card) => cardValues.get(card.id) !== null)
           ? counted.reduce((sum, card) => sum + cardValues.get(card.id)!, 0) / counted.length
           : null,
       evidence: buildQuestionEvidence(practice, [...ids]),

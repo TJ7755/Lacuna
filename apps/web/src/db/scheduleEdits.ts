@@ -4,6 +4,7 @@ import type { Card, ScheduleEdit } from '@lacuna/core/db/types';
 const RESET = {
   state: 0 as const,
   stability: null,
+  stabilityFast: null,
   difficulty: null,
   due: null,
   scheduledDays: 0,

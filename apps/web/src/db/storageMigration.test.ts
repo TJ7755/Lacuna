@@ -80,6 +80,7 @@ function card(
     front: id,
     back: id,
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

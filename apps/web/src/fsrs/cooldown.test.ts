@@ -26,6 +26,7 @@ function card(id: string, stability: number): Card {
     front: id,
     back: 'answer',
     stability,
+    stabilityFast: 0.02,
     difficulty: 5,
     lastReviewed: NOW,
     reps: 1,
@@ -68,7 +69,7 @@ describe('selectNextCard', () => {
   it('skips a higher-priority card while its cooldown is active', () => {
     const next = selectNextCard([strongest, middle, weakest], oc, new Map([[weakest.id, 2]]), NOW);
 
-    expect(next?.id).toBe(strongest.id);
+    expect(next?.id).toBe(middle.id);
   });
 
   it('serves the card with the shortest cooldown when every card is cooling', () => {

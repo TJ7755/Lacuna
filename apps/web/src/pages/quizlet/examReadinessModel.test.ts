@@ -5,14 +5,15 @@ it('shows decay between reviews and a jump only when a review occurs', () => {
   const { history, reviewed, unreviewed } = forecastExample(exampleHistories[0], 21);
   const jumps = history.slice(1).filter((point, i) => point.at === history[i].at);
   expect(jumps).toHaveLength(2);
-  for (const jump of jumps) expect(jump.recall).toBeCloseTo(1);
+  for (const jump of jumps) expect(jump.recall).toBeCloseTo(0.99999, 12);
   for (let i = 1; i < history.length; i++) {
     if (history[i].at > history[i - 1].at) {
       expect(history[i].recall).toBeLessThanOrEqual(history[i - 1].recall);
     }
   }
   expect(reviewed[0]).toEqual(history.at(-1));
-  expect(reviewed[1]).toEqual({ at: EXAMPLE_NOW, recall: 1 });
+  expect(reviewed[1].at).toBe(EXAMPLE_NOW);
+  expect(reviewed[1].recall).toBeCloseTo(0.99999, 12);
   expect(unreviewed[0]).toEqual(history.at(-1));
   expect(reviewed.at(-1)!.recall).toBeGreaterThan(unreviewed.at(-1)!.recall);
 });

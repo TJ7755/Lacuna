@@ -61,7 +61,11 @@ export function SessionReport({
   const gradeColour = (g: number) =>
     g === 1 ? c.inkFaint : g === 2 ? c.inkSoft : g === 3 ? c.accent : c.positive;
 
-  const delta = Math.round((summary.masteryAfter - summary.masteryBefore) * 100);
+  const { masteryBefore, masteryAfter } = summary;
+  const delta =
+    masteryBefore === null || masteryAfter === null
+      ? null
+      : Math.round((masteryAfter - masteryBefore) * 100);
 
   return (
     <main
@@ -88,6 +92,10 @@ export function SessionReport({
         <p className="session-report-notice">You can continue studying or take a break.</p>
       )}
 
+      {total === 0 && masteryBefore === null && masteryAfter === null && (
+        <p className="session-report-notice">{summary.objectiveLabel}</p>
+      )}
+
       <dl className="session-report-facts">
         <div>
           <dt>{cardCount === 1 ? 'Card reviewed' : 'Cards reviewed'}</dt>
@@ -104,29 +112,37 @@ export function SessionReport({
         </div>
       </dl>
 
-      <div className="session-report-progress">
-        <div className="session-report-progress-label">
-          <span>{summary.objectiveLabel}</span>
-          <span className="tabular-nums">
-            {Math.round(summary.masteryBefore * 100)}% →{' '}
-            <strong>
-              <CountUp
-                value={Math.round(summary.masteryAfter * 100)}
-                from={Math.round(summary.masteryBefore * 100)}
-                multiplier={m}
-                duration={1.4}
-                suffix="%"
-              />
-            </strong>
-          </span>
+      {(masteryBefore !== null || masteryAfter !== null) && (
+        <div className="session-report-progress">
+          <div className="session-report-progress-label">
+            <span>{summary.objectiveLabel}</span>
+            <span className="tabular-nums">
+              {masteryBefore === null ? '—' : `${Math.round(masteryBefore * 100)}%`} →{' '}
+              <strong>
+                {masteryAfter === null ? (
+                  '—'
+                ) : (
+                  <CountUp
+                    value={Math.round(masteryAfter * 100)}
+                    from={Math.round((masteryBefore ?? masteryAfter) * 100)}
+                    multiplier={m}
+                    duration={1.4}
+                    suffix="%"
+                  />
+                )}
+              </strong>
+            </span>
+          </div>
+          {masteryAfter !== null && (
+            <ProgressBar
+              value={masteryAfter}
+              height={3}
+              label={summary.objectiveLabel}
+              variant={summary.reachedGoal ? 'positive' : 'accent'}
+            />
+          )}
         </div>
-        <ProgressBar
-          value={summary.masteryAfter}
-          height={3}
-          label={summary.objectiveLabel}
-          variant={summary.reachedGoal ? 'positive' : 'accent'}
-        />
-      </div>
+      )}
 
       <div className="session-report-details">
         <button
@@ -152,13 +168,15 @@ export function SessionReport({
                 <dt>Focus</dt>
                 <dd>{Math.round(summary.focusFraction * 100)}%</dd>
               </div>
-              <div>
-                <dt>Progress this session</dt>
-                <dd>
-                  {delta >= 0 ? '+' : ''}
-                  {delta} percentage points
-                </dd>
-              </div>
+              {delta !== null && (
+                <div>
+                  <dt>Progress this session</dt>
+                  <dd>
+                    {delta >= 0 ? '+' : ''}
+                    {delta} percentage points
+                  </dd>
+                </div>
+              )}
             </dl>
             {/* Keep the first-pass report focused on correct and remaining cards. */}
             {!summary.simpleMode && (

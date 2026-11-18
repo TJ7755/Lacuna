@@ -81,8 +81,10 @@ export interface Card {
    * see `ItemPayload`'s doc comment.
    */
   payload?: ItemPayload;
-  /** FSRS stability in days (interval at which R = 0.90). Null until first review. */
+  /** FSRS7 slow stability component in days. Legacy values remain opaque until migrated. */
   stability: number | null;
+  /** FSRS7 fast stability in days. Null until memory is initialised by FSRS7. */
+  stabilityFast: number | null;
   /** FSRS difficulty in [1, 10]. Null until first review. */
   difficulty: number | null;
   /** Epoch ms of the last review (= ts-fsrs `last_review`). Null until first review. */

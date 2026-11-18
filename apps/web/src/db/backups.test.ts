@@ -7,15 +7,20 @@ import * as restorePoints from './backupRestorePoint';
 import { deleteBackup, mirrorToFolder, restoreBackup, createAutoBackups } from './backups';
 import { createCard, createCourse, createLesson } from './repository';
 import { assetUrl, storeImageBlob } from './assets';
+import type * as ReplacementLifecycleExports from './replacementLifecycle';
 import type { BackupFile, ItemPayload } from '@lacuna/core/db/types';
 
 const replace = vi.hoisted(() =>
   vi.fn((_kind: string, operation: () => Promise<unknown>) => operation()),
 );
 
-vi.mock('./replacementLifecycle', () => ({
-  replacementLifecycle: { replace },
-}));
+vi.mock('./replacementLifecycle', async (importOriginal) => {
+  const actual = await importOriginal<typeof ReplacementLifecycleExports>();
+  return {
+    ...actual,
+    replacementLifecycle: Object.assign(new actual.ReplacementLifecycle(), { replace }),
+  };
+});
 
 let takeAutoBackup: ReturnType<typeof createAutoBackups>['takeAutoBackup'];
 let autoBackupIfStale: ReturnType<typeof createAutoBackups>['autoBackupIfStale'];

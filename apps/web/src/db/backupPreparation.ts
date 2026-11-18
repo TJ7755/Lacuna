@@ -1,3 +1,5 @@
+import { migrateFsrs7Questions } from '../questions/fsrs7Migration';
+import { migrateFsrs7Configuration, migrateFsrs7Cards } from './fsrs7Migration';
 import { migrateCardRecord, type LegacyCard } from './migrations';
 import type { BackupFile, MediaAsset } from '@lacuna/core/db/types';
 import {
@@ -31,7 +33,11 @@ export async function prepareBackup(backup: BackupFile, mode: ImportMode) {
   backup = normaliseQuestionBackup(backup);
   let incomingQuestions = {
     concepts: backup.concepts ?? [],
-    questions: backup.questions ?? [],
+    questions: migrateFsrs7Questions(
+      backup.questions ?? [],
+      backup.questionAttempts ?? [],
+      backup.courses ?? [],
+    ),
     questionConcepts: backup.questionConcepts ?? [],
     questionAttempts: backup.questionAttempts ?? [],
   };
@@ -89,7 +95,16 @@ export async function prepareBackup(backup: BackupFile, mode: ImportMode) {
     courseAssessments: backup.courseAssessments ?? [],
     cards: migratedCards,
   });
-  const { cards, courses, courseAssessments, ...storageProjection } = adaptation;
+  const courses = adaptation.courses.map(migrateFsrs7Configuration);
+  adaptation.schedulingUnits = adaptation.schedulingUnits.map(migrateFsrs7Configuration);
+  const events = mergeReviewHistoryEntries(backup.reviewHistory ?? [], adaptation.cards);
+  adaptation.cards = migrateFsrs7Cards(
+    adaptation.cards,
+    events,
+    adaptation.schedulingUnits,
+    courses,
+  );
+  const { cards, courseAssessments, ...storageProjection } = adaptation;
   for (const card of cards) {
     Object.assign(card, withUpdatedAt(card, Math.max(card.createdAt ?? 0, card.lastReviewed ?? 0)));
   }

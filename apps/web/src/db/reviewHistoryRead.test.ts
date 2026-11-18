@@ -54,10 +54,11 @@ describe('review-history read adapter', () => {
     for (const [i, card] of cards.entries()) {
       Object.assign(card, {
         stability: 2 + i,
+        stabilityFast: 1 + i,
         difficulty: 5,
         reps: 3,
         state: 2,
-        lastReviewed: now - 10 * 86_400_000,
+        lastReviewed: now - 2 * 86_400_000,
         due: now - 86_400_000,
       });
     }
@@ -65,6 +66,8 @@ describe('review-history read adapter', () => {
       cards.flatMap((card, i) =>
         Array.from({ length: 3 }, (_, r) => ({
           ...review(now - (4 - r) * 86_400_000, `${card.id}-${r}`),
+          stabilityAfter: card.stability as number,
+          stabilityFastAfter: card.stabilityFast as number,
           id: `${card.id}-${r}`,
           cardId: card.id,
           // Historical ownership can differ after a card moves; cardId is authoritative.

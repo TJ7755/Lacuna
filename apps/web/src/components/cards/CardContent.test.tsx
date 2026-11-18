@@ -13,6 +13,7 @@ function makeCard(overrides: Partial<Card>): Card {
     front: 'Front text',
     back: 'Back text',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

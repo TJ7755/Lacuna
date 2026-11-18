@@ -222,7 +222,9 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
           const units = await db.schedulingUnits.where('courseId').equals(id).toArray();
           const course = await db.courses.get(id);
           if (course) {
-            const replayed = replay!.replayCards(cards, history, units, [course]);
+            const replayed = replay!.replayCards(cards, history, units, [course], {
+              preserveSchedule: false,
+            });
             await db.cards.bulkPut(
               replayed.map((card, index) =>
                 stampUpdatedAt({ ...card, history: cards[index].history }),

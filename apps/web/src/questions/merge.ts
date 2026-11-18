@@ -1,4 +1,5 @@
 import type { CourseRecord, Tombstone } from '@lacuna/core/db/types';
+import { migrateFsrs7Questions } from './fsrs7Migration';
 import { replayQuestionSchedule } from '@lacuna/core/questions/scheduler';
 import type {
   Concept,
@@ -22,6 +23,7 @@ interface AuthoredBundle {
 const SCHEDULE_KEYS = new Set([
   'migratedToSetId',
   'stability',
+  'stabilityFast',
   'difficulty',
   'lastReviewed',
   'reps',
@@ -50,7 +52,16 @@ function sortKeys(value: unknown): unknown {
 }
 
 function authoredQuestion(question: QuestionDefinition): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(question).filter(([key]) => !SCHEDULE_KEYS.has(key)));
+  return Object.fromEntries(
+    Object.entries({
+      ...question,
+      scheduleEpoch: Object.fromEntries(
+        Object.entries(question.scheduleEpoch).filter(
+          ([key]) => key !== 'memoryOrigin' && key !== 'migrationCheckpoint',
+        ),
+      ),
+    }).filter(([key]) => !SCHEDULE_KEYS.has(key)),
+  );
 }
 
 function bundleIdentity(bundle: AuthoredBundle): string {
@@ -258,6 +269,14 @@ export function mergeQuestionCollections(
   courses: readonly CourseRecord[],
   tombstones: readonly Tombstone[],
 ): QuestionMergeCollections {
+  left = {
+    ...left,
+    questions: migrateFsrs7Questions(left.questions, left.questionAttempts, courses),
+  };
+  right = {
+    ...right,
+    questions: migrateFsrs7Questions(right.questions, right.questionAttempts, courses),
+  };
   const tombstoneByKey = tombstoneMap(tombstones);
   const liveCourseIds = new Set(courses.map((course) => course.id));
   const concepts = newestById(left.concepts, right.concepts)
@@ -307,11 +326,95 @@ export function mergeQuestionCollections(
     const course = courseById.get(question.courseId);
     if (!course) throw new Error(`Question ${question.id} belongs to a missing Course.`);
     const attempts = questionAttempts.filter((attempt) => attempt.questionId === question.id);
-    const schedule = replayQuestionSchedule(question, attempts, course.fsrsParameters);
-    const scheduleUpdatedAt = scheduleTimestamp(question, attempts);
+    // An unchanged receipt set is an import, not another review. Keep the schedule
+    // that migration preserved, including opaque progress and existing due dates.
+    const source = [left, right]
+      .flatMap((collections) =>
+        collections.questions
+          .filter(
+            (row) => row.id === question.id && row.scheduleEpoch.id === question.scheduleEpoch.id,
+          )
+          .filter(
+            () =>
+              canonicalJson(
+                collections.questionAttempts
+                  .filter(
+                    (row) =>
+                      row.questionId === question.id &&
+                      row.scheduleEpochId === question.scheduleEpoch.id &&
+                      row.status === 'answered' &&
+                      row.undoneAt === undefined &&
+                      row.scheduleEffect.kind === 'replay',
+                  )
+                  .sort((a, b) => a.id.localeCompare(b.id)),
+              ) ===
+              canonicalJson(
+                attempts.filter(
+                  (row) =>
+                    row.scheduleEpochId === question.scheduleEpoch.id &&
+                    row.status === 'answered' &&
+                    row.undoneAt === undefined &&
+                    row.scheduleEffect.kind === 'replay',
+                ),
+              ),
+          ),
+      )
+      .sort(
+        (a, b) =>
+          b.scheduleUpdatedAt - a.scheduleUpdatedAt ||
+          canonicalJson(b).localeCompare(canonicalJson(a)),
+      )[0];
+    const migrated = source ?? question;
+    const active = attempts.filter(
+      (attempt) =>
+        attempt.scheduleEpochId === question.scheduleEpoch.id &&
+        attempt.status === 'answered' &&
+        attempt.undoneAt === undefined &&
+        attempt.scheduleEffect.kind === 'replay' &&
+        attempt.answeredAt !== undefined,
+    );
+    const lastAnswer = active.length
+      ? Math.max(...active.map((attempt) => attempt.answeredAt!))
+      : null;
+    const preserveSchedule =
+      source &&
+      (source.lastReviewed === lastAnswer ||
+        source.scheduleEpoch.memoryOrigin?.lastReviewed === source.lastReviewed ||
+        (active.length === 0 && source.scheduleEpoch.baseline.kind === 'legacy-opaque'));
+
+    const {
+      stability,
+      stabilityFast,
+      difficulty,
+      lastReviewed,
+      reps,
+      lapses,
+      state,
+      due,
+      scheduledDays,
+      learningSteps,
+    } = migrated;
+    const schedule = preserveSchedule
+      ? {
+          stability,
+          stabilityFast,
+          difficulty,
+          lastReviewed,
+          reps,
+          lapses,
+          state,
+          due,
+          scheduledDays,
+          learningSteps,
+        }
+      : replayQuestionSchedule(migrated, attempts, course.fsrsParameters);
+    const scheduleUpdatedAt = preserveSchedule
+      ? source.scheduleUpdatedAt
+      : scheduleTimestamp(migrated, attempts);
     return {
       ...question,
       ...schedule,
+      scheduleEpoch: migrated.scheduleEpoch,
       scheduleUpdatedAt,
       updatedAt: Math.max(question.authoringUpdatedAt, scheduleUpdatedAt),
     };

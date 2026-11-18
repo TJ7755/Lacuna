@@ -28,6 +28,7 @@ const apkg: ApkgImportResult = {
       front: 'Q',
       back: 'A',
       stability: 5,
+      stabilityFast: null,
       difficulty: 3,
       state: 2,
       reps: 4,

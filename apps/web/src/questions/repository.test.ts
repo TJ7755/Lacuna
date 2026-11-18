@@ -123,7 +123,7 @@ describe('Question repository', () => {
       status: 'answered',
       grade: 3,
       scheduleEffect: { kind: 'replay', grade: 3 },
-      schedulerVersion: 'fsrs-6-question-v1',
+      schedulerVersion: 'fsrs-7-question-v1',
       gradeMappingVersion: 'full-good-otherwise-again-v1',
     });
     expect(answered.question.reps).toBe(1);

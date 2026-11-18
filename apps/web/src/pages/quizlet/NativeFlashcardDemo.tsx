@@ -22,6 +22,7 @@ function card(id: string, front: string, back: string, extra: Partial<Card> = {}
     front,
     back,
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

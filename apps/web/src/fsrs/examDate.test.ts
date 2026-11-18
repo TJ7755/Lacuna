@@ -61,6 +61,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
     front: 'q',
     back: 'a',
     stability: 2,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: NOW,
     reps: 1,

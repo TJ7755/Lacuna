@@ -1,15 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import {
-  curveFactor,
   forgettingCurve,
   rAtExam,
   rAtExamIfReviewedNow,
   deltaR,
   simContext,
 } from '@lacuna/core/fsrs/forwardSim';
-import { makeEngine } from '@lacuna/core/fsrs/fsrs';
+import { makeEngine, modelOf } from '@lacuna/core/fsrs/fsrs';
 import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
+
+const NOW = Date.UTC(2026, 6, 1, 12);
 
 function makeDeck(partial: Partial<LegacyDeckRecord> = {}): LegacyDeckRecord {
   return {
@@ -34,6 +35,7 @@ function makeCard(partial: Partial<Card> = {}): Card {
     front: '',
     back: '',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,
@@ -49,99 +51,67 @@ function makeCard(partial: Partial<Card> = {}): Card {
   };
 }
 
-describe('forgettingCurve', () => {
-  it('rejects non-negative decay rather than predicting increasing recall', () => {
-    expect(forgettingCurve(1, 10, 0)).toBe(0);
-    expect(forgettingCurve(1, 10, 0.5)).toBe(0);
+describe('FSRS-7 predictions', () => {
+  const model = makeEngine(defaultFsrsParameters()).model;
+  it('uses the upstream dual-trace reference values, including fractional days', () => {
+    const state = { stability: 3.9221, stabilityFast: 3.13768, difficulty: 3.53072398 };
+    expect(forgettingCurve(0.05, state, model)).toBeCloseTo(0.9611346211630858, 12);
+    expect(forgettingCurve(7, state, model)).toBeCloseTo(0.8854090932694928, 12);
+    expect(forgettingCurve(-1, state, model)).toBeCloseTo(0.99999, 12);
   });
-
-  it('returns R = 0.90 exactly when t = S, for several decay values', () => {
-    for (const decay of [-0.5, -0.1542, -0.2, -0.7, -0.1]) {
-      for (const S of [1, 3.7, 10, 250]) {
-        expect(forgettingCurve(S, S, decay)).toBeCloseTo(0.9, 12);
-      }
-    }
-  });
-
-  it('is 1 at t = 0 and decreases monotonically with elapsed time', () => {
-    const decay = -0.1542;
-    expect(forgettingCurve(0, 10, decay)).toBeCloseTo(1, 12);
-    let prev = 1;
-    for (const t of [1, 5, 10, 50, 200]) {
-      const r = forgettingCurve(t, 10, decay);
-      expect(r).toBeLessThan(prev);
-      prev = r;
-    }
-  });
-
-  it('returns 0 for a non-positive stability (avoids divide-by-zero)', () => {
-    expect(forgettingCurve(5, 0, -0.1542)).toBe(0);
-    expect(forgettingCurve(5, -1, -0.1542)).toBe(0);
-  });
-});
-
-describe('FSRS-6 reduces to FSRS-4.5', () => {
-  it('curveFactor === 19/81 when w20 = 0.5 (decay = -0.5)', () => {
-    // FSRS-4.5 used a fixed decay of -0.5; in FSRS-6 that is w20 = 0.5.
-    expect(curveFactor(-0.5)).toBeCloseTo(19 / 81, 12);
-  });
-});
-
-describe('rAtExam', () => {
-  it('is 0 for a never-reviewed card', () => {
-    const deck = makeDeck({ examDate: 10 * MS_PER_DAY });
-    expect(rAtExam(makeCard(), deck.examDate, 0, -0.1542)).toBe(0);
-  });
-
-  it('equals 0.90 when the exam is exactly one stability-length away', () => {
-    const decay = -0.1542;
-    const S = 7;
-    const card = makeCard({ stability: S, difficulty: 5, lastReviewed: 0 });
-    const examDate = S * MS_PER_DAY;
-    expect(rAtExam(card, examDate, 0, decay)).toBeCloseTo(0.9, 12);
+  it('does not claim recall for opaque old-model memory', () => {
+    const opaque = makeCard({ stability: 7, difficulty: 5, state: 2, lastReviewed: NOW });
+    expect(rAtExam(opaque, NOW + MS_PER_DAY, NOW, model)).toBeNull();
+    expect(rAtExam(makeCard(), NOW + MS_PER_DAY, NOW, model)).toBe(0);
   });
 });
 
 describe('deltaR', () => {
-  it('new card: deltaR equals rAtExamIfReviewedNow (rAtExam = 0)', () => {
-    const deck = makeDeck({ examDate: 7 * MS_PER_DAY });
+  it('new-card gain is its initial Good recall at the exam', () => {
+    const deck = makeDeck({ examDate: NOW + 7 * MS_PER_DAY });
     const ctx = simContext(deck, makeEngine(deck.fsrsParameters));
     const card = makeCard();
-    const now = 0;
-    const withReview = rAtExamIfReviewedNow(card, ctx.expectedGrade, deck.examDate, now, ctx);
-    expect(rAtExam(card, deck.examDate, now, ctx.decay)).toBe(0);
-    expect(deltaR(card, deck.examDate, now, ctx)).toBeCloseTo(withReview, 12);
+    const now = NOW;
+    expect(rAtExam(card, deck.examDate, now, ctx.model)).toBe(0);
+    expect(deltaR(card, deck.examDate, now, ctx)).toBeCloseTo(0.8854090932694928, 12);
   });
 
-  it('collapses toward 0 as the card’s current exam-day R approaches 1', () => {
-    // Cards last reviewed 30 days ago (so they have genuinely decayed), with the
-    // exam 7 days out. Increasing stability => higher current exam-day R => less
-    // to gain from another review.
-    const now = 30 * MS_PER_DAY;
+  it('projects less marginal gain after stronger spaced-success histories', () => {
+    const now = NOW + 30 * MS_PER_DAY;
     const deck = makeDeck({ examDate: now + 7 * MS_PER_DAY });
     const ctx = simContext(deck, makeEngine(deck.fsrsParameters));
-    const stabilities = [1, 3, 10, 50, 200, 1000, 100_000];
-    const deltas = stabilities.map((stability) =>
-      deltaR(
-        makeCard({ stability, difficulty: 5, lastReviewed: 0, state: 2, reps: 1 }),
-        deck.examDate,
-        now,
-        ctx,
-      ),
-    );
-    for (let i = 1; i < deltas.length; i++) {
-      expect(deltas[i]).toBeLessThanOrEqual(deltas[i - 1] + 1e-9);
+    const model = modelOf(deck.fsrsParameters);
+    const initial = model.step({ memoryState: null, rating: 3, elapsedDays: 0 });
+    // Upstream model reference gains: Good now after 30 days, exam seven days later.
+    const cases = [
+      [0, 0.16239185445021476],
+      [1, 0.1105003337316931],
+      [10, 0.08459023947069833],
+      [100, 0.05750853299116809],
+    ];
+    for (const [gap, expectedGain] of cases) {
+      const memory =
+        gap === 0
+          ? initial
+          : model.step({
+              memoryState: initial,
+              rating: 3,
+              elapsedDays: gap,
+            });
+      const card = makeCard({ ...memory, lastReviewed: NOW, state: 2, reps: gap === 0 ? 1 : 2 });
+      expect(deltaR(card, deck.examDate, now, ctx)).toBeCloseTo(expectedGain, 12);
     }
-    // The most stable card is essentially already secured: negligible gain.
-    expect(deltas[deltas.length - 1]).toBeLessThan(1e-3);
-    expect(deltas[deltas.length - 1]).toBeGreaterThanOrEqual(0);
   });
 
-  it('on exam day a review leaves the card at R = 1.0', () => {
-    const deck = makeDeck({ examDate: 5 * MS_PER_DAY });
+  it('on exam day a review reaches the upstream recall ceiling', () => {
+    const deck = makeDeck({ examDate: NOW + 5 * MS_PER_DAY });
     const ctx = simContext(deck, makeEngine(deck.fsrsParameters));
     const now = deck.examDate; // no time remaining
-    const card = makeCard({ stability: 2, difficulty: 5, lastReviewed: 0 });
-    expect(rAtExamIfReviewedNow(card, ctx.expectedGrade, deck.examDate, now, ctx)).toBe(1.0);
+    const memory = ctx.model.step({ memoryState: null, rating: 3, elapsedDays: 0 });
+    const card = makeCard({ ...memory, lastReviewed: NOW, state: 2 });
+    expect(rAtExamIfReviewedNow(card, ctx.expectedGrade, deck.examDate, now, ctx)).toBeCloseTo(
+      0.99999,
+      12,
+    );
   });
 });

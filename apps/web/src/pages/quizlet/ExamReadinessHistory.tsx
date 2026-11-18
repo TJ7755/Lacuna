@@ -143,7 +143,7 @@ export function ExamReadinessHistory() {
         <summary>How these example predictions work</summary>
         <p>
           Example reviews took place 14, 13 and 7 days ago. The solid history and future curves use
-          Lacuna’s FSRS-6 model: recall falls between reviews, and each review updates memory
+          Lacuna’s FSRS-7 model: recall falls between reviews, and each review updates memory
           stability. The shaded region is a projection, assuming no reviews after today. The
           increase is predicted exam-day recall after a successful review today. In the default exam
           mode, eligible cards with the greatest predicted gain take priority. Your answers update

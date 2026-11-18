@@ -31,6 +31,7 @@ function example(name: string, grades: Grade[]): ReviewExample {
     front: name,
     back: '',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,
@@ -61,7 +62,7 @@ function segment(card: Card, start: number, end: number): RecallPoint[] {
   // Extra samples near the review preserve FSRS's steep initial decay at long horizons.
   return Array.from({ length: 65 }, (_, i) => {
     const at = start + (end - start) * (i / 64) ** 2;
-    return { at, recall: rAtExam(card, at, EXAMPLE_NOW, context.decay) };
+    return { at, recall: rAtExam(card, at, EXAMPLE_NOW, context.model) ?? 0 };
   });
 }
 

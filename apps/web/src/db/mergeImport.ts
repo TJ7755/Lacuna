@@ -257,6 +257,7 @@ export async function importLineageFirstTime(
           primaryLessonId: lessonId,
           schedulingUnitId: deckId,
           stability: null,
+          stabilityFast: null,
           difficulty: null,
           lastReviewed: null,
           reps: 0,

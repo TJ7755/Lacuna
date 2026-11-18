@@ -177,6 +177,7 @@ describe('updateSequence', () => {
     await db.cards.update(first.id, {
       state: 2,
       stability: 12.5,
+      stabilityFast: null,
       difficulty: 4.2,
       reps: 3,
       lapses: 1,
@@ -228,6 +229,7 @@ describe('updateSequence', () => {
       'item-0': {
         state: 2,
         stability: 12.5,
+
         difficulty: 4.2,
         reps: 3,
         lapses: 1,
@@ -237,6 +239,7 @@ describe('updateSequence', () => {
       'item-1': {
         state: 3,
         stability: 30.1,
+
         difficulty: 6.7,
         reps: 5,
         lapses: 2,
@@ -246,6 +249,7 @@ describe('updateSequence', () => {
       'item-2': {
         state: 1,
         stability: 1.9,
+
         difficulty: 3.3,
         reps: 1,
         lapses: 0,

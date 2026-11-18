@@ -269,8 +269,8 @@ it('does not shortcut an empty title or an invalid exam date', async () => {
   expect(onImport).not.toHaveBeenCalled();
   fireEvent.change(title, { target: { value: 'French' } });
   fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
-  fireEvent.click(screen.getByRole('button', { name: 'Exam date and time' }));
-  fireEvent.change(screen.getByLabelText('Hour'), { target: { value: '99' } });
+  fireEvent.click(await screen.findByRole('button', { name: 'Exam date and time' }));
+  fireEvent.change(await screen.findByLabelText('Hour'), { target: { value: '99' } });
   expect(screen.getByRole('button', { name: 'Import 1 card' })).toBeDisabled();
   title.focus();
   expect(fireEvent.keyDown(title, { key: 'Tab' })).toBe(true);
