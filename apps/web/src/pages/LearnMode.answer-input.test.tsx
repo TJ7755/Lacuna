@@ -110,9 +110,11 @@ it.each(['standard', 'exact'] as const)(
     await screen.findByText(/^show answer$/i, { selector: 'button' });
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     await screen.findByRole('button', { name: 'Yes' });
-    expect(
-      container.querySelector('[data-study-face="back"] [aria-label="Submitted response"]'),
-    ).toHaveTextContent('A different capital');
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-study-face="back"] [aria-label="Submitted response"]'),
+      ).toHaveTextContent('A different capital'),
+    );
     expect(await db.reviewHistory.count()).toBe(0);
     expect(marker).toHaveBeenCalledOnce();
     fireEvent.keyDown(window, { key: 'ArrowDown', code: 'ArrowDown' });
@@ -153,8 +155,10 @@ it('restores typed answer feedback on Undo after the preference changes to revea
   await screen.findByText(/^show answer$/i, { selector: 'button' });
   fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
   await screen.findByRole('button', { name: 'Yes' });
-  expect(
-    container.querySelector('[data-study-face="back"] [aria-label="Submitted response"]'),
-  ).toHaveTextContent('A different capital');
+  await waitFor(() =>
+    expect(
+      container.querySelector('[data-study-face="back"] [aria-label="Submitted response"]'),
+    ).toHaveTextContent('A different capital'),
+  );
   expect(await db.reviewHistory.count()).toBe(0);
 });
