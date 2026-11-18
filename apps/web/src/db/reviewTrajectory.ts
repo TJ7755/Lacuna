@@ -3,6 +3,7 @@ import { predictedRetrievabilityAtHorizon } from '@lacuna/core/fsrs/progress';
 import { startOfDay } from '@lacuna/core/utils/datetime';
 import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
 import { db } from './schema';
+import { replacementLifecycle } from './replacementLifecycle';
 import type { SchedulerConfig, SessionHistoryEntry } from '@lacuna/core/db/types';
 
 /** Which target table owns the reviewed unit. */
@@ -18,6 +19,43 @@ export interface ReviewTrajectorySampleArgs {
   kind: ReviewUnitKind;
   cardId: string;
 }
+
+interface UnavailableTrajectorySession {
+  sessionId: string;
+  day: number;
+  units: Map<string, Set<string>>;
+}
+
+let unavailableTrajectorySession: UnavailableTrajectorySession | undefined;
+
+// Keep only the active session's blockers, never an accumulating history of attempts.
+function trajectoryBlockers(args: ReviewTrajectorySampleArgs) {
+  const day = startOfDay(args.timestamp);
+  if (
+    unavailableTrajectorySession?.sessionId !== args.sessionId ||
+    unavailableTrajectorySession.day !== day
+  ) {
+    unavailableTrajectorySession = { sessionId: args.sessionId, day, units: new Map() };
+  }
+  const key = JSON.stringify([
+    args.kind,
+    args.deck.id,
+    args.deck.examDate,
+    args.deck.fsrsParameters,
+  ]);
+  return { session: unavailableTrajectorySession, key };
+}
+
+function clearUnavailableTrajectory(): void {
+  unavailableTrajectorySession = undefined;
+}
+
+db.on('close', clearUnavailableTrajectory);
+replacementLifecycle.register({
+  invalidate: clearUnavailableTrajectory,
+  quiesce() {},
+  clear: clearUnavailableTrajectory,
+});
 
 const TRAJECTORY_BATCH_SIZE = 64;
 const TRAJECTORY_BATCH_BUDGET_MS = 8;
@@ -65,16 +103,32 @@ export async function sampleReviewTrajectory(
   const candidate = await db.reviewHistory.get(reviewHistoryEntryIdForEvent(args.eventId));
   if (!candidate || candidate.cardId !== args.cardId) return 'missing-event';
 
+  const { session, key } = trajectoryBlockers(args);
+  const blockers = session.units.get(key);
+  if (blockers) {
+    if (blockers.has(args.cardId)) {
+      const reviewed = await db.cards.get(args.cardId);
+      if (
+        !reviewed ||
+        predictedRetrievabilityAtHorizon(reviewed, args.deck, args.timestamp) !== null
+      ) {
+        blockers.delete(args.cardId);
+      }
+    }
+    if (blockers.size > 0) return 'unavailable-memory';
+  }
+
   const cards =
     args.kind === 'course'
       ? await db.cards.where('courseId').equals(args.deck.id).toArray()
       : await db.cards.where('schedulingUnitId').equals(args.deck.id).toArray();
+  const unavailable = new Set<string>();
   let total = 0;
   let batchStartedAt = performance.now();
   for (let index = 0; index < cards.length; index += 1) {
     const recall = predictedRetrievabilityAtHorizon(cards[index], args.deck, args.timestamp);
-    if (recall === null) return 'unavailable-memory';
-    total += recall;
+    if (recall === null) unavailable.add(cards[index].id);
+    else total += recall;
     const batchFull = (index + 1) % TRAJECTORY_BATCH_SIZE === 0;
     const budgetSpent = performance.now() - batchStartedAt >= TRAJECTORY_BATCH_BUDGET_MS;
     if (index + 1 < cards.length && (batchFull || budgetSpent)) {
@@ -82,6 +136,13 @@ export async function sampleReviewTrajectory(
       batchStartedAt = performance.now();
     }
   }
+  if (unavailable.size > 0) {
+    // Unknown recall remains absent from analytics. Retry only when its known
+    // blockers recover, or when a new session/day/configuration starts.
+    if (unavailableTrajectorySession === session) session.units.set(key, unavailable);
+    return 'unavailable-memory';
+  }
+  session.units.delete(key);
   const averagePredictedRetrievability = cards.length > 0 ? total / cards.length : 1;
 
   // Re-check inside the write transaction so concurrent reviews cannot create
@@ -155,6 +216,8 @@ export function scheduleReviewTrajectorySample(args: ReviewTrajectorySampleArgs)
           let foundCanonicalEvent = false;
           for (let index = candidates.length - 1; index >= 0; index -= 1) {
             const result = await sampleReviewTrajectory(candidates[index]);
+            // Reviews committed while the scan yielded may have recovered more blockers.
+            if (result === 'unavailable-memory') continue;
             if (result !== 'missing-event') {
               foundCanonicalEvent = true;
               break;

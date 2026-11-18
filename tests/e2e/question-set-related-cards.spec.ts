@@ -256,27 +256,36 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await dialog.getByRole('button', { name: 'Previous card', exact: true }).click();
     await expect(dialog).toContainText('Related prompt a1');
     await expect(dialog).not.toContainText('Related answer a1');
-    const closing = dialog.evaluate(
-      (surface) =>
-        new Promise<Array<{ opacity: number; width: number }>>((resolve) => {
-          const heading = surface.querySelector('header')!;
-          const samples: Array<{ opacity: number; width: number }> = [];
-          const end = performance.now() + 500;
-          const sample = () => {
-            if (surface.isConnected) {
-              samples.push({
-                opacity: Number(getComputedStyle(heading).opacity),
-                width: surface.getBoundingClientRect().width,
-              });
-            }
-            if (performance.now() < end) requestAnimationFrame(sample);
-            else resolve(samples);
-          };
-          sample();
-        }),
-    );
+    // Click actionability can wait for the preceding card resize to settle.
+    // Start the observation window at the click, not at the locator request.
+    const closing = await dialog.evaluateHandle((surface) => ({
+      finished: new Promise<Array<{ opacity: number; width: number }>>((resolve) => {
+        const heading = surface.querySelector('header')!;
+        const close = surface.querySelector('[data-dialog-close]')!;
+        close.addEventListener(
+          'click',
+          () => {
+            const samples: Array<{ opacity: number; width: number }> = [];
+            const end = performance.now() + 500;
+            const sample = () => {
+              if (surface.isConnected) {
+                samples.push({
+                  opacity: Number(getComputedStyle(heading).opacity),
+                  width: surface.getBoundingClientRect().width,
+                });
+              }
+              if (performance.now() < end) requestAnimationFrame(sample);
+              else resolve(samples);
+            };
+            sample();
+          },
+          { capture: true, once: true },
+        );
+      }),
+    }));
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
-    const closingSamples = await closing;
+    const closingSamples = await closing.evaluate(({ finished }) => finished);
+    await closing.dispose();
     await testInfo.attach('Related cards closing frames', {
       body: JSON.stringify(closingSamples),
       contentType: 'application/json',

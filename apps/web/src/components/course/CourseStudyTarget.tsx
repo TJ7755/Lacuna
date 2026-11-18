@@ -1,15 +1,97 @@
-import { fieldLabelClassName } from '../ui/Field';
-import { lazy, type Ref } from 'react';
+import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
+import { lazy, Suspense, useLayoutEffect, useRef, type ComponentProps, type Ref } from 'react';
 import type { CourseSchedulingMode } from '@lacuna/core/db/types';
-import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 
 import { cn } from '../ui/cn';
+import { getComponentsInZone } from '../../utils/datetime';
+import { MONTHS, pad } from '../ui/dateTimeCalendar';
 import { CalendarIcon, CheckIcon, InfinityIcon } from '../ui/icons';
 
 // The default steady target needs no calendar UI.
 const DateTimePicker = lazy(() =>
   import('../ui/DateTimePicker').then(({ DateTimePicker }) => ({ default: DateTimePicker })),
 );
+
+type PickerProps = ComponentProps<typeof DateTimePicker>;
+type PendingPickerFocus = { current: boolean };
+
+function PendingDateField({
+  value,
+  timeZone,
+  label,
+  focus,
+  open,
+}: PickerProps & {
+  focus: PendingPickerFocus;
+  open: PendingPickerFocus;
+}) {
+  const button = useRef<HTMLButtonElement>(null);
+  const selected = getComponentsInZone(value, timeZone);
+  useLayoutEffect(
+    () => () => {
+      if (document.activeElement === button.current) focus.current = true;
+    },
+    [focus],
+  );
+  return (
+    <div>
+      <span className={`mb-2 ${fieldLabelClassName}`}>{label}</span>
+      <button
+        ref={button}
+        type="button"
+        aria-label={label}
+        aria-haspopup="dialog"
+        aria-expanded={false}
+        className={`${inputFrameClassName} flex w-full items-center gap-3 text-left`}
+        onFocus={() => {
+          focus.current = true;
+        }}
+        onBlur={() => {
+          focus.current = false;
+          open.current = false;
+        }}
+        onClick={() => {
+          open.current = true;
+        }}
+      >
+        <CalendarIcon width={16} height={16} />
+        <span className="tabular">{`${pad(selected.day)} ${MONTHS[selected.month].slice(0, 3)} ${selected.year} at ${pad(selected.hours)}:${pad(selected.minutes)}`}</span>
+      </button>
+    </div>
+  );
+}
+
+function ReadyDateField({
+  focus,
+  open,
+  ...props
+}: PickerProps & {
+  focus: PendingPickerFocus;
+  open: PendingPickerFocus;
+}) {
+  const container = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const button = container.current?.querySelector('button');
+    if (focus.current) button?.focus();
+    if (open.current) button?.click();
+  }, [focus, open]);
+  return (
+    <div ref={container}>
+      <DateTimePicker {...props} />
+    </div>
+  );
+}
+
+/** Keep a real date field in the Tab order while the calendar code loads. */
+function DeferredDateField(props: PickerProps) {
+  const focus = useRef(false);
+  const open = useRef(false);
+  return (
+    <Suspense fallback={<PendingDateField {...props} focus={focus} open={open} />}>
+      <ReadyDateField {...props} focus={focus} open={open} />
+    </Suspense>
+  );
+}
 
 const TARGETS = [
   { value: 'exam', label: 'Exam date', detail: 'Work towards a deadline', Icon: CalendarIcon },
@@ -116,15 +198,13 @@ export function CourseStudyTarget({
 
       {schedulingMode === 'exam' && (
         <div ref={datePickerRef}>
-          <PageLoadingBoundary animateArrival={false}>
-            <DateTimePicker
-              value={examDate}
-              onChange={setExamDate}
-              onValidityChange={setExamDateValid}
-              timeZone={timeZone}
-              label="Exam date and time"
-            />
-          </PageLoadingBoundary>
+          <DeferredDateField
+            value={examDate}
+            onChange={setExamDate}
+            onValidityChange={setExamDateValid}
+            timeZone={timeZone}
+            label="Exam date and time"
+          />
         </div>
       )}
     </>
