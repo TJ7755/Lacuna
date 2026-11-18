@@ -45,6 +45,7 @@ describe('dashboardForecasts', () => {
       courseId: 'bio',
       primaryLessonId: null,
       stability,
+      stabilityFast: 1,
       difficulty: 5,
       lastReviewed: NOW - DAY,
       reps: 2,
@@ -57,9 +58,10 @@ describe('dashboardForecasts', () => {
   it('refreshes the forecast when review stability improves', () => {
     const cards = [card('a', 4), card('b', 9)];
     const first = dashboardForecasts([course], [], cards, NOW).bio;
+    expect(first.ifStopped).not.toBeNull();
     const reviewed = [card('a', 12), card('b', 9)];
     expect(dashboardForecasts([course], [], reviewed, NOW + 60_000).bio.ifStopped).toBeGreaterThan(
-      first.ifStopped,
+      first.ifStopped!,
     );
   });
 
