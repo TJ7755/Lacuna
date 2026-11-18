@@ -1,3 +1,4 @@
+import { db } from './schema';
 import { updateSequence } from './repository';
 import { updateOcclusion } from './occlusionRepository';
 import type { LineagePayload } from './lineageImportModel';
@@ -18,8 +19,14 @@ export async function applySequences(
   lessonIdByIndex: (index: number) => string | null,
   mapping: LineageIdMapping,
 ): Promise<void> {
+  const existing = await db.sequences.bulkGet(
+    (payload.sequences ?? []).map((shareSeq) => shareSeq.id),
+  );
+  const existingById = new Map(
+    existing.flatMap((sequence) => (sequence ? [[sequence.id, sequence] as const] : [])),
+  );
   for (const shareSeq of payload.sequences ?? []) {
-    const createdAt = Date.now();
+    const createdAt = existingById.get(shareSeq.id)?.createdAt ?? Date.now();
     const sequence: Sequence = {
       id: shareSeq.id,
       courseId,
@@ -64,8 +71,14 @@ export async function applyOcclusions(
   lessonIdByIndex: (index: number) => string | null,
   mapping: LineageIdMapping,
 ): Promise<void> {
+  const existing = await db.occlusions.bulkGet(
+    (payload.occlusions ?? []).map((shareOcc) => shareOcc.id),
+  );
+  const existingById = new Map(
+    existing.flatMap((occlusion) => (occlusion ? [[occlusion.id, occlusion] as const] : [])),
+  );
   for (const shareOcc of payload.occlusions ?? []) {
-    const createdAt = Date.now();
+    const createdAt = existingById.get(shareOcc.id)?.createdAt ?? Date.now();
     const occlusion: Occlusion = {
       id: shareOcc.id,
       courseId,

@@ -249,6 +249,17 @@ function shareCardKindToType(k: 0 | 1 | 2 | 3): CardType {
   return 'front_back';
 }
 
+/**
+ * The reverse-pair id for a `k: 2` (reversible) share card's mirror row: the
+ * first import writes two independent `front_back` cards (never
+ * `basic_reversed`, an unrelated explicitly-linked pair feature), so a later
+ * re-import must recognise the same mirror row rather than flagging it as a
+ * teacher deletion. Deterministic and stable across merges.
+ */
+export function reverseCardId(primaryId: string): string {
+  return `${primaryId}::rev`;
+}
+
 function arraysEqual<T>(a: T[] | undefined, b: T[] | undefined): boolean {
   const x = a ?? [];
   const y = b ?? [];
@@ -390,7 +401,9 @@ function diffCard(
     update.back = incomingBack;
     changed = true;
   }
-  if (!arraysEqual(existing.tags, incoming.g)) {
+  // Tags are a set for search and filtering; order alone is not an update
+  // (mirroring the order-insensitive prerequisite comparison in diffLesson).
+  if (!arraysEqual([...(existing.tags ?? [])].sort(), [...(incoming.g ?? [])].sort())) {
     update.tags = incoming.g;
     changed = true;
   }
@@ -451,6 +464,9 @@ export function diffLineage(input: LineageDiffInput): LineageDiffResult {
 
   const diffIncomingCard = (incomingCard: ShareCardInput, lessonId: string | null) => {
     seenCardIds.add(incomingCard.i);
+    // A reversible card is stored as two rows (primary plus its mirror), so the
+    // mirror is accounted for by the same incoming card — never a removal.
+    if (incomingCard.k === 2) seenCardIds.add(reverseCardId(incomingCard.i));
     const isKnownCard = cardIdSet.has(incomingCard.i);
     const existingCard = existingCardsById.get(incomingCard.i);
 

@@ -185,7 +185,8 @@ export function checkNumeric(value: Expression, spec: NumericAnswerSpec): boolea
 
 /**
  * Mark student working against outstanding scheme lines. Both student and scheme
- * order are tolerated; a scheme line can earn marks at most once.
+ * order are tolerated — the assignment maximises total marks rather than taking the
+ * first match per line — and a scheme line can earn marks at most once.
  *
  * A line that matches nothing is only a miss when every comparison reached a verdict.
  * If any comparison came back undetermined the line is recorded as such: it earns no
@@ -197,30 +198,42 @@ export function verifyWorkingLines(
   scheme: MarkSchemeLine[],
   seed: string,
 ): WorkingVerificationResult {
-  const unmatched = new Set(scheme.map((_, index) => index));
+  // The outcome matrix is deterministic: each pair is compared once under its own
+  // seed, so the assignment below cannot depend on input order.
+  const outcomes: SchemeLineOutcome[][] = studentLines.map((studentLine, studentIndex) =>
+    scheme.map((line, schemeIndex) =>
+      matchesSchemeLine(studentLine, line, `${seed}:${studentIndex}:${schemeIndex}`),
+    ),
+  );
+  const studentSeeds = (studentIndex: number, compared: (schemeIndex: number) => boolean) =>
+    scheme.flatMap((line, schemeIndex) =>
+      compared(schemeIndex) && usesRandomEvaluation(line)
+        ? [`${seed}:${studentIndex}:${schemeIndex}`]
+        : [],
+    );
+  const assignment =
+    scheme.length <= EXACT_MATCH_SCHEME_LIMIT
+      ? assignMaxMarks(outcomes, scheme)
+      : assignGreedy(outcomes);
+
   const lineVerdicts: LineVerdict[] = [];
   let marksEarned = 0;
   let undeterminedLines = 0;
-
   studentLines.forEach((studentLine, studentIndex) => {
-    let matchedLineIndex: number | null = null;
-    let sawUndetermined = false;
-    const checkerSeeds: string[] = [];
-    for (const schemeIndex of unmatched) {
-      const checkerSeed = `${seed}:${studentIndex}:${schemeIndex}`;
-      if (usesRandomEvaluation(scheme[schemeIndex])) checkerSeeds.push(checkerSeed);
-      const outcome = matchesSchemeLine(studentLine, scheme[schemeIndex], checkerSeed);
-      if (outcome === 'undetermined') sawUndetermined = true;
-      if (outcome === 'matched') {
-        matchedLineIndex = schemeIndex;
-        unmatched.delete(schemeIndex);
-        break;
-      }
-    }
+    const matchedLineIndex = assignment.matched[studentIndex];
+    const row = outcomes[studentIndex];
+    const undetermined =
+      matchedLineIndex === null &&
+      row.some(
+        (outcome, schemeIndex) =>
+          assignment.compared(studentIndex, schemeIndex) && outcome === 'undetermined',
+      );
+    const checkerSeeds = studentSeeds(studentIndex, (schemeIndex) =>
+      assignment.compared(studentIndex, schemeIndex),
+    );
 
     const marks = matchedLineIndex === null ? 0 : validMarks(scheme[matchedLineIndex].marks);
     marksEarned += marks;
-    const undetermined = matchedLineIndex === null && sawUndetermined;
     if (undetermined) undeterminedLines += 1;
     lineVerdicts.push({
       studentLine,
@@ -237,6 +250,88 @@ export function verifyWorkingLines(
     lineVerdicts,
     undeterminedLines,
   };
+}
+
+/**
+ * Schemes above this size keep the historical greedy pass: an exact maximum-marks
+ * assignment is exponential in the scheme size, and large schemes are rare. The
+ * greedy result is today's behaviour, so nothing regresses past the limit.
+ */
+const EXACT_MATCH_SCHEME_LIMIT = 12;
+
+interface LineAssignment {
+  /** The scheme line each student line earned, or null when it earned nothing. */
+  matched: (number | null)[];
+  /** Whether the pair was compared: the exact pass compares everything, the greedy pass stops at the first match. */
+  compared: (studentIndex: number, schemeIndex: number) => boolean;
+}
+
+/** First match in scheme order per student line, skipping already-earned lines. */
+function assignGreedy(outcomes: SchemeLineOutcome[][]): LineAssignment {
+  const used = new Array<boolean>(outcomes[0]?.length ?? 0).fill(false);
+  const matched: (number | null)[] = outcomes.map(() => null);
+  const comparedRows: boolean[][] = outcomes.map(() => []);
+  outcomes.forEach((row, studentIndex) => {
+    row.forEach((outcome, schemeIndex) => {
+      if (matched[studentIndex] !== null || used[schemeIndex]) return;
+      comparedRows[studentIndex][schemeIndex] = true;
+      if (outcome === 'matched') {
+        matched[studentIndex] = schemeIndex;
+        used[schemeIndex] = true;
+      }
+    });
+  });
+  return {
+    matched,
+    compared: (studentIndex, schemeIndex) => comparedRows[studentIndex][schemeIndex] === true,
+  };
+}
+
+/**
+ * The mark-maximising assignment: each student line earns at most one scheme line
+ * and each scheme line is earned at most once. Uses the next row of scores for each used-set;
+ * exact for small schemes (see {@link EXACT_MATCH_SCHEME_LIMIT}).
+ */
+function assignMaxMarks(outcomes: SchemeLineOutcome[][], scheme: MarkSchemeLine[]): LineAssignment {
+  const maskCount = 1 << scheme.length;
+  const marks = scheme.map((line) => validMarks(line.marks));
+  let nextScores = new Float64Array(maskCount);
+  let scores = new Float64Array(maskCount);
+  const choices: (Int8Array | undefined)[] = Array.from({ length: outcomes.length });
+  for (let studentIndex = outcomes.length - 1; studentIndex >= 0; studentIndex -= 1) {
+    const candidates = outcomes[studentIndex].flatMap((outcome, index) =>
+      outcome === 'matched' ? [index] : [],
+    );
+    if (!candidates.length) continue;
+    const picks = new Int8Array(maskCount);
+    choices[studentIndex] = picks;
+    for (let usedMask = 0; usedMask < maskCount; usedMask += 1) {
+      let value = nextScores[usedMask];
+      let pick = -1;
+      for (const schemeIndex of candidates) {
+        const bit = 1 << schemeIndex;
+        if (usedMask & bit) continue;
+        const candidate = marks[schemeIndex] + nextScores[usedMask | bit];
+        // Prefer a match over skipping, then the first scheme line on a tie.
+        if (candidate > value || (candidate === value && pick === -1)) {
+          value = candidate;
+          pick = schemeIndex;
+        }
+      }
+      scores[usedMask] = value;
+      picks[usedMask] = pick;
+    }
+    [nextScores, scores] = [scores, nextScores];
+  }
+
+  let usedMask = 0;
+  const matched = choices.map((picks) => {
+    const pick = picks?.[usedMask] ?? -1;
+    if (pick < 0) return null;
+    usedMask |= 1 << pick;
+    return pick;
+  });
+  return { matched, compared: () => true };
 }
 
 function usesRandomEvaluation(line: MarkSchemeLine): boolean {

@@ -371,6 +371,30 @@ describe('SearchPage', () => {
     expect(input).not.toHaveAttribute('aria-activedescendant');
   }, 15_000);
 
+  it('opens the keyboard selection past the first window once it grows', () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: Array.from({ length: 100 }, (_, i) => ({
+        ...mockCard,
+        id: `card-${i}`,
+        front: `Palatine ${i}`,
+      })),
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    const router = createMemoryRouter([{ path: '*', element: <SearchPage /> }], {
+      initialEntries: ['/search?q=Palatine'],
+    });
+    render(<RouterProvider router={router} />);
+    const input = screen.getByRole('combobox', { name: 'Search content' });
+    expect(screen.getAllByRole('option')).toHaveLength(80);
+    for (let i = 0; i < 80; i++) fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(screen.getAllByRole('option')).toHaveLength(100);
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(router.state.location.pathname).toBe('/course/course-1/cards/card-80/edit');
+  });
+
   it('shows a diacritic-insensitive match beyond the beginning of a long answer', () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [{ ...mockCard, back: `${'Long explanation. '.repeat(30)}Résumé conclusion.` }],

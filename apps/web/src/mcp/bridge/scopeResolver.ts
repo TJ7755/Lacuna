@@ -2,9 +2,14 @@ import { db } from '../../db/schema';
 import { GLOBAL_SCOPE_KEY } from '@lacuna/mcp-runtime/grants';
 import { agentMemoryRepository } from '../../db/agentMemoryRepository';
 import type { McpScopeTarget, McpToolError } from '@lacuna/protocol/mcp/bridge';
+import { MCP_GRANT_LABEL_MAX_LENGTH } from '@lacuna/protocol/mcp/limits';
 import { courseChoiceMessage, findCourseMatches } from '../courseLookup';
 
 type Resolution = { ok: true; targets: McpScopeTarget[] } | { ok: false; error: McpToolError };
+
+function scopeTarget(courseId: string, label?: string): McpScopeTarget {
+  return { courseId, label: label?.slice(0, MCP_GRANT_LABEL_MAX_LENGTH) };
+}
 
 export const CREATE_COURSE_SCOPE_KEY = '__create_course__';
 
@@ -14,13 +19,12 @@ export async function resolveToolScopes(input: unknown, toolName?: string): Prom
     return {
       ok: true,
       targets: [
-        {
-          courseId: CREATE_COURSE_SCOPE_KEY,
-          label:
-            typeof value.name === 'string' && value.name.trim() !== ''
-              ? `New course: ${value.name}`
-              : 'New course',
-        },
+        scopeTarget(
+          CREATE_COURSE_SCOPE_KEY,
+          typeof value.name === 'string' && value.name.trim() !== ''
+            ? `New course: ${value.name}`
+            : 'New course',
+        ),
       ],
     };
   }
@@ -41,7 +45,7 @@ export async function resolveToolScopes(input: unknown, toolName?: string): Prom
         },
       };
     }
-    return { ok: true, targets: [{ courseId: matches[0].id, label: matches[0].name }] };
+    return { ok: true, targets: [scopeTarget(matches[0].id, matches[0].name)] };
   }
   if (toolName === 'lacuna.search_memories' || toolName === 'lacuna.create_memory') {
     const scope = value.scope;
@@ -81,7 +85,7 @@ export async function resolveToolScopes(input: unknown, toolName?: string): Prom
         error: { kind: 'not_found', message: `Course "${memoryScope.courseId}" was not found.` },
       };
     }
-    return { ok: true, targets: [{ courseId: course.id, label: course.name }] };
+    return { ok: true, targets: [scopeTarget(course.id, course.name)] };
   }
   if (toolName === 'lacuna.update_memory' || toolName === 'lacuna.delete_memory') {
     if (typeof value.memoryId !== 'string' || value.memoryId.trim() === '') {
@@ -110,7 +114,7 @@ export async function resolveToolScopes(input: unknown, toolName?: string): Prom
         error: { kind: 'not_found', message: `Course "${memory.courseId}" was not found.` },
       };
     }
-    return { ok: true, targets: [{ courseId: course.id, label: course.name }] };
+    return { ok: true, targets: [scopeTarget(course.id, course.name)] };
   }
   const courseIds = new Set<string>();
   const hasExplicitCourseId = Object.prototype.hasOwnProperty.call(value, 'courseId');
@@ -213,11 +217,12 @@ export async function resolveToolScopes(input: unknown, toolName?: string): Prom
     };
   }
   const targets = await Promise.all(
-    [...courseIds].map(async (courseId) => ({
-      courseId,
-      label:
+    [...courseIds].map(async (courseId) =>
+      scopeTarget(
+        courseId,
         courseId === GLOBAL_SCOPE_KEY ? 'All Lacuna data' : (await db.courses.get(courseId))?.name,
-    })),
+      ),
+    ),
   );
   return { ok: true, targets };
 }

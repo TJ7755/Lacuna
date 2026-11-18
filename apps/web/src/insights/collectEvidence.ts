@@ -108,7 +108,14 @@ export async function collectDailyEvidence(options: Collection): Promise<Uint8Ar
     ),
   );
   for (const paper of snapshot.papers) {
-    const nodes = paperNodes(paper);
+    let nodes: DailyEvidenceEvent[];
+    try {
+      nodes = paperNodes(paper);
+    } catch {
+      // One corrupt paper receipt must not suppress the whole day's evidence.
+      omitted += 1;
+      continue;
+    }
     omitted += Math.max(0, nodes.length - 200);
     rows.push(...nodes.slice(0, 200));
   }
@@ -125,13 +132,15 @@ export async function collectDailyEvidence(options: Collection): Promise<Uint8Ar
       continue;
     }
     try {
+      // Probe with the final accounting: the trial must look exactly like the
+      // event would in the finished report, or fittable events are dropped.
       encodeDailyEvidence({
         shareId: options.shareId,
         day: options.day,
         window: options.window,
         pupil: options.pupil,
         events: [...events, row],
-        omitted: omitted + rows.length,
+        omitted,
       });
     } catch (error) {
       if (error instanceof DailyEvidenceTooLargeError) {
@@ -142,14 +151,25 @@ export async function collectDailyEvidence(options: Collection): Promise<Uint8Ar
     }
     events.push(row);
   }
-  return encodeDailyEvidence({
-    shareId: options.shareId,
-    day: options.day,
-    window: options.window,
-    pupil: options.pupil,
-    events,
-    omitted,
-  });
+  // The probe accounts with the omitted count at probe time, while later drops
+  // only grow it, so the finished report can exceed the limit by a few bytes.
+  // Shed oldest-first until it fits rather than failing the whole day.
+  while (true) {
+    try {
+      return encodeDailyEvidence({
+        shareId: options.shareId,
+        day: options.day,
+        window: options.window,
+        pupil: options.pupil,
+        events,
+        omitted,
+      });
+    } catch (error) {
+      if (!(error instanceof DailyEvidenceTooLargeError) || events.length === 0) throw error;
+      events.pop();
+      omitted += 1;
+    }
+  }
 }
 
 function base(

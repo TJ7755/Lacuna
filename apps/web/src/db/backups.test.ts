@@ -3,6 +3,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
+import * as restorePoints from './backupRestorePoint';
 import { deleteBackup, mirrorToFolder, restoreBackup, createAutoBackups } from './backups';
 import { createCard, createCourse, createLesson } from './repository';
 import { assetUrl, storeImageBlob } from './assets';
@@ -212,14 +213,13 @@ describe('backups', () => {
     },
   );
 
-  it('retains the successful throttle if worker maintenance fails after storing', async () => {
+  it('releases the throttle if worker maintenance fails before the store is confirmed', async () => {
     const worker = dailyWorker();
     const backup = autoBackupIfStale();
     const rejected = expect(backup).rejects.toThrow('Pruning failed');
-    worker.onmessage!({ data: { type: 'stored' } } as MessageEvent);
     worker.onmessage!({ data: { type: 'error', message: 'Pruning failed' } } as MessageEvent);
     await rejected;
-    expect(await takeAutoBackup()).toBeUndefined();
+    expect(await takeAutoBackup()).toBeDefined();
   });
 
   it('keeps the backup when mirroring fails and warns in development', async () => {
@@ -357,12 +357,12 @@ describe('backups', () => {
     const firstStarted = new Promise<void>((resolve) => {
       signalFirst = resolve;
     });
-    vi.spyOn(db.backups, 'add').mockImplementationOnce(
+    vi.spyOn(restorePoints, 'createRestorePoint').mockImplementationOnce(
       () =>
         new Promise((_resolve, reject) => {
           rejectFirst = reject;
           signalFirst();
-        }) as ReturnType<typeof db.backups.add>,
+        }),
     );
     const firstFailure = expect(takeAutoBackup()).rejects.toThrow('storage unavailable');
     await firstStarted;
@@ -393,21 +393,21 @@ describe('backups', () => {
       const forcedStarted = new Promise<void>((resolve) => {
         signalForced = resolve;
       });
-      const add = vi
-        .spyOn(db.backups, 'add')
+      const store = vi
+        .spyOn(restorePoints, 'createRestorePoint')
         .mockImplementationOnce(
           () =>
             new Promise((_resolve, reject) => {
               rejectOrdinary = reject;
               signalOrdinary();
-            }) as ReturnType<typeof db.backups.add>,
+            }),
         )
         .mockImplementationOnce(
           () =>
             new Promise((_resolve, reject) => {
               rejectForced = reject;
               signalForced();
-            }) as ReturnType<typeof db.backups.add>,
+            }),
         );
       const ordinaryFailure = expect(takeAutoBackup()).rejects.toThrow(
         'ordinary storage unavailable',
@@ -424,7 +424,7 @@ describe('backups', () => {
       await forcedFailure;
 
       expect(await takeAutoBackup()).toBeDefined();
-      expect(add).toHaveBeenCalledTimes(3);
+      expect(store).toHaveBeenCalledTimes(3);
       expect(await db.backups.count()).toBe(priorBackup ? 2 : 1);
     },
   );
@@ -445,20 +445,20 @@ describe('backups', () => {
     const secondStarted = new Promise<void>((resolve) => {
       signalSecond = resolve;
     });
-    vi.spyOn(db.backups, 'add')
+    vi.spyOn(restorePoints, 'createRestorePoint')
       .mockImplementationOnce(
         () =>
           new Promise((_resolve, reject) => {
             rejectFirst = reject;
             signalFirst();
-          }) as ReturnType<typeof db.backups.add>,
+          }),
       )
       .mockImplementationOnce(
         () =>
           new Promise((_resolve, reject) => {
             rejectSecond = reject;
             signalSecond();
-          }) as ReturnType<typeof db.backups.add>,
+          }),
       );
     const firstFailure = expect(takeAutoBackup(true)).rejects.toThrow('first storage unavailable');
     await firstStarted;
@@ -514,6 +514,44 @@ describe('backups', () => {
     await takeAutoBackup(true);
 
     expect(await db.backups.count()).toBe(2);
+  });
+
+  it('exports surviving legacy calibration rows so replace restores them', async () => {
+    const course = await createCourse('Legacy calibration');
+    const row = {
+      deckId: course.id,
+      runningMeanResponseTime: 10,
+      runningStdDevResponseTime: 1,
+      m2: 2,
+      totalCorrectReviews: 3,
+    };
+    await db.userPerformance.put(row);
+    const payload = await takeAutoBackup(true);
+
+    expect(payload?.userPerformance).toEqual([row]);
+
+    await db.userPerformance.clear();
+    await restoreBackup((await db.backups.toArray())[0].id!);
+
+    expect(await db.userPerformance.get(course.id)).toEqual(row);
+  });
+
+  it('releases the throttle when pruning to the cap fails', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    // Fill the cap so the next backup attempts a prune.
+    await db.backups.bulkAdd(
+      Array.from({ length: 10 }, (_, index) => ({
+        createdAt: index,
+        deckCount: 0,
+        cardCount: 0,
+        payload: { app: 'lacuna-v16', version: 16, exportedAt: index } as never,
+      })),
+    );
+    vi.spyOn(db.backups, 'bulkDelete').mockRejectedValueOnce(new Error('pruning failed'));
+
+    await expect(takeAutoBackup()).rejects.toThrow('pruning failed');
+    expect(await db.backups.count()).toBe(10);
+    expect(await takeAutoBackup()).toBeDefined();
   });
 
   it('prunes only old Lacuna backup files from the folder mirror', async () => {

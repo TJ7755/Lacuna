@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { card, course, NOW } from '../../fsrs/session.testFixtures';
 import { makeSessionContext } from '@lacuna/core/fsrs/session';
+import { createHalfLifeLogisticModel } from '@lacuna/core/fsrs/halfLifeLogisticModel';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import type { Card, RevisionPlan } from '@lacuna/core/db/types';
 import { createRevisionSessionState } from '../../course/revisionSession';
 import type { SessionSummary } from '../../course/sessionSummary';
 import {
@@ -31,6 +34,7 @@ function initial(size: number): SessionState {
     outcomes,
     events: [],
     cooldowns: new Map(),
+    recordedEventIds: new Set(),
     revision: createRevisionSessionState(),
     simple: { queue: cards, mastered: new Set(), wrong: new Set(), outcomes },
   };
@@ -403,5 +407,190 @@ describe('session machine operation sequences', () => {
         selection: { ...selection, simple: false, context },
       }).effects,
     ).toContainEqual({ type: 'finish', stop: [true, false, false], blockComplete: false });
+  });
+
+  it('ignores a retried submission the database already committed', () => {
+    const state = initial(1);
+    const recorded = {
+      type: 'scheduled-recorded' as const,
+      card: state.cards[0],
+      event: {
+        cardId: state.cards[0].id,
+        correct: true,
+        grade: 3 as const,
+        responseTimeSec: 1,
+        distracted: false,
+      },
+      eventId: 'review',
+      recorded: true,
+      deckId: 'unit',
+      global: false,
+      now: NOW,
+      hasRevisionPlan: false,
+    };
+    const once = transitionSession(state, recorded).state;
+    expect(once.events).toHaveLength(1);
+    expect(once.outcomes.size).toBe(1);
+    // A true redelivery of the same event (not a lost acknowledgement: the first
+    // acknowledgement already counted it) changes nothing.
+    const twice = transitionSession(once, { ...recorded, recorded: false }).state;
+    expect(twice.events).toHaveLength(1);
+    expect(twice.outcomes.size).toBe(1);
+    expect(twice).toEqual(once);
+  });
+
+  it('records a lost acknowledgement once when its retry finally lands', () => {
+    const state = initial(1);
+    const retry = {
+      type: 'scheduled-recorded' as const,
+      card: state.cards[0],
+      event: {
+        cardId: state.cards[0].id,
+        correct: true,
+        grade: 3 as const,
+        responseTimeSec: 1,
+        distracted: false,
+      },
+      // The database already holds this review (recorded: false) but the session
+      // never counted it: the first acknowledgement was lost in flight.
+      eventId: 'review',
+      recorded: false,
+      deckId: 'unit',
+      global: false,
+      now: NOW,
+      hasRevisionPlan: false,
+    };
+    const once = transitionSession(state, retry).state;
+    expect(once.events).toHaveLength(1);
+    expect(once.outcomes.size).toBe(1);
+  });
+
+  it('cools down a failed card inside a revision window instead of re-serving it', () => {
+    const state = initial(2);
+    const failed = transitionSession(state, {
+      type: 'scheduled-recorded',
+      card: state.cards[0],
+      event: {
+        cardId: state.cards[0].id,
+        correct: false,
+        grade: 1 as const,
+        responseTimeSec: 1,
+        distracted: false,
+      },
+      eventId: 'review',
+      recorded: true,
+      deckId: 'unit',
+      global: false,
+      now: NOW,
+      hasRevisionPlan: true,
+      revisionWindowEndsAt: NOW + 120_000,
+    }).state;
+    expect(failed.cooldowns.get(state.cards[0].id)).toBeGreaterThan(0);
+  });
+
+  it('offers a cooled retry if the uncooled card cannot fit in the revision window', () => {
+    const reviewedAt = NOW - MS_PER_DAY;
+    const reviewed: Partial<Card> = {
+      due: NOW,
+      reps: 1,
+      state: 2,
+      stability: 3,
+      difficulty: 5,
+      lastReviewed: reviewedAt,
+      history: [
+        {
+          timestamp: reviewedAt,
+          grade: 3,
+          responseTimeSec: 4,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 3,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+      ],
+    };
+    const retry = card('retry', 'fast', reviewed);
+    const other = card('other', 'slow', reviewed);
+    const cards = [retry, other];
+    const cardIds = cards.map(({ id }) => id);
+    const state = { ...initial(0), cards, cardIds, cooldowns: new Map([[retry.id, 1]]) };
+    const context = makeSessionContext(
+      ['fast', 'slow'].map((id) => ({
+        config: course(id, 2),
+        scope: { kind: 'scheduling-unit', schedulingUnitId: id },
+      })),
+      'due',
+      cards,
+    );
+    const model = createHalfLifeLogisticModel(context.decks.get('fast')!.oc.ctx.decay);
+    const revisionPlan: RevisionPlan = {
+      id: 'plan',
+      courseId: 'course',
+      assessmentId: 'assessment',
+      status: 'active',
+      revision: 1,
+      input: {
+        deadlineAt: NOW + 2 * MS_PER_DAY,
+        projection: { projectionMode: 'memory-model', memoryModelVersion: model!.version },
+        reachedLessonIds: [],
+        coverageVersion: '',
+        exposureVersion: '',
+        availabilityVersion: '',
+        reviewEvidenceVersion: '',
+      },
+      scope: {
+        coveredLessonIds: [],
+        excludedCardIds: [],
+        eligibleCardIds: cardIds,
+        unavailableCardIds: [],
+        unreachedLessonIds: [],
+        untaughtLessonIds: [],
+      },
+      cardStates: cardIds.map((cardId) => ({ cardId, status: 'eligible' })),
+      windows: [
+        { id: 'today', day: '2026-06-04', budgetMinutes: 1, status: 'active', planRevision: 1 },
+      ],
+      completedSessions: [],
+      replans: [],
+      createdAt: NOW,
+      updatedAt: NOW,
+    };
+    const reviewSelection = {
+      ...selection,
+      simple: false,
+      context,
+      revisionPlan,
+      windowId: 'today',
+      performance: new Map([
+        [
+          'slow',
+          {
+            deckId: 'slow',
+            runningMeanResponseTime: 45,
+            runningStdDevResponseTime: 1,
+            m2: 99,
+            totalCorrectReviews: 100,
+          },
+        ],
+      ]),
+    };
+
+    const nextCard = (secondsLeft: number) =>
+      transitionSession(state, {
+        type: 'next',
+        selection: { ...reviewSelection, windowStartedAt: NOW - (60 - secondsLeft) * 1_000 },
+      }).effects;
+    expect(nextCard(60)).toContainEqual({
+      type: 'present-card',
+      card: other,
+      invalidateProgress: true,
+    });
+    expect(nextCard(20)).toContainEqual({
+      type: 'present-card',
+      card: retry,
+      invalidateProgress: true,
+    });
   });
 });

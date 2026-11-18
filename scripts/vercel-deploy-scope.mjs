@@ -19,7 +19,10 @@ export function affectedProjects(paths) {
   );
 }
 
-if (process.argv[1]?.endsWith('/vercel-deploy-scope.mjs')) {
+if (
+  process.argv[1]?.endsWith('/vercel-deploy-scope.mjs') ||
+  process.argv[1]?.endsWith('\\vercel-deploy-scope.mjs')
+) {
   let input = '';
   for await (const chunk of process.stdin) input += chunk;
   const selected = process.env.DEPLOY_PROJECT;

@@ -35,6 +35,18 @@ describe('answerGrade', () => {
     const machineMarked = { correct: false, marksEarned: 0, marksAvailable: 2 };
     expect(answerGrade({ ...base, machineMarked, manualGrade: 4, responseTimeSec: 2 })).toBe(1);
   });
+
+  it('grades a repaired partial response Hard instead of Again', () => {
+    const machineMarked = { correct: false, marksEarned: 3, marksAvailable: 4 };
+    expect(answerGrade({ ...base, machineMarked, responseTimeSec: 2 })).toBe(1);
+    expect(
+      answerGrade({
+        ...base,
+        machineMarked: { ...machineMarked, selfCorrected: true },
+        responseTimeSec: 2,
+      }),
+    ).toBe(2);
+  });
 });
 
 describe('sessionStopAfterAnswer', () => {

@@ -10,13 +10,13 @@ const revoke = vi.fn();
 const writeText = vi.fn();
 
 vi.mock('../../components/ui/Toast', () => ({ useToast: () => ({ notify }) }));
-vi.mock('../../state/useCourseData', () => ({
-  useCourses: () => [{ id: 'course-1', name: 'Biology' }],
-}));
+const useCourses = vi.hoisted(() => vi.fn());
+vi.mock('../../state/useCourseData', () => ({ useCourses }));
 
 describe('McpSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useCourses.mockReturnValue([{ id: 'course-1', name: 'Biology' }]);
     getStatus.mockResolvedValue({ running: true, toolCount: 33, toolSurfaceVersion: 1 });
     getGrants.mockResolvedValue([
       { courseId: 'course-1', scope: 'write', grantedAt: 1, label: 'Biology' },
@@ -178,6 +178,20 @@ describe('McpSection', () => {
     const biologyRow = screen.getByText('Biology').closest('div.flex.flex-wrap')!;
     fireEvent.click(withinRow(biologyRow, 'Limit to edit'));
     await waitFor(() => expect(grant).toHaveBeenCalledWith('course-1', 'write', 'Biology'));
+  });
+
+  it('sends a bounded label and preserves the imported course ID when reducing a grant', async () => {
+    const courseId = 'imported-course-'.repeat(20);
+    const name = 'Long course '.repeat(50).trim();
+    useCourses.mockReturnValue([{ id: courseId, name }]);
+    getGrants.mockResolvedValue([{ courseId, scope: 'destructive', grantedAt: 1 }]);
+    render(<McpSection />);
+    await screen.findByText('Delete access');
+    const courseRow = screen.getByText(name).closest('div.flex.flex-wrap')!;
+    fireEvent.click(withinRow(courseRow, 'Limit to edit'));
+    await waitFor(() => expect(grant).toHaveBeenCalledWith(courseId, 'write', name.slice(0, 500)));
+    fireEvent.click(withinRow(courseRow, 'Revoke'));
+    await waitFor(() => expect(revoke).toHaveBeenCalledWith(courseId));
   });
 
   it('does not report a successful permission update as failed when its status refresh rejects', async () => {

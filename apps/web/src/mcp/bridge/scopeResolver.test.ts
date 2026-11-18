@@ -49,6 +49,16 @@ describe('resolveToolScopes', () => {
     }
   });
 
+  it('keeps long course names within the desktop grant label limit', async () => {
+    const name = 'Long course '.repeat(50).trim();
+    const course = await createCourse(name);
+    expect(await resolveToolScopes({ courseId: course.id })).toEqual({
+      ok: true,
+      targets: [{ courseId: course.id, label: name.slice(0, 500) }],
+    });
+    expect((await db.courses.get(course.id))?.name).toBe(name);
+  });
+
   it('rejects a cross-course bulk card action rather than collapsing it into one grant', async () => {
     const first = await createCourse('First');
     const second = await createCourse('Second');

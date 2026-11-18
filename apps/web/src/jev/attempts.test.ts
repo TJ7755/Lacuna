@@ -796,3 +796,26 @@ it.each([1, null])(
     }
   },
 );
+
+it('keeps already-fetched sibling verdicts when one allocation fails to save', async () => {
+  const { attempt } = await fixture();
+  const { engine } = engineWith(async () => result(1));
+  const repository = await import('../questions/questionSetAttemptRepository');
+  const apply = vi.spyOn(repository, 'applyJevAllocationDecision');
+  // The first application (a1) throws; a2 must still land in the same run,
+  // and a1 must retry on the next run instead of being silently dropped.
+  apply.mockRejectedValueOnce(new Error('Storage write failed'));
+  try {
+    await markJevAttempt(attempt.id, engine);
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([
+      expect.objectContaining({ allocationId: 'a2', status: 'awarded', marks: 1 }),
+    ]);
+    await markJevAttempt(attempt.id, engine);
+    const allocationIds = (await getQuestionSetAttempt(attempt.id))!.decisions
+      .map((row) => row.allocationId)
+      .sort();
+    expect(allocationIds).toEqual(['a1', 'a2']);
+  } finally {
+    apply.mockRestore();
+  }
+});

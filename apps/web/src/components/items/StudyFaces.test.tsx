@@ -66,4 +66,58 @@ describe('machine-marked study faces', () => {
     expect(screen.queryByLabelText('Checker result')).not.toBeInTheDocument();
     expect(onAnswer).not.toHaveBeenCalled();
   });
+
+  it.each([false, true])(
+    'marks a partial answer as self-corrected only when improved (%s)',
+    (improved) => {
+      const workingCard = card({
+        v: 1,
+        kind: 'working',
+        scheme: [
+          { marks: 1, kind: 'predicate', predicate: 'equals', args: ['4'] },
+          { marks: 1, kind: 'predicate', predicate: 'equals', args: ['8'] },
+          { marks: 1, kind: 'predicate', predicate: 'equals', args: ['16'] },
+        ],
+      }) as Card & { payload: Extract<ItemPayload, { kind: 'working' }> };
+      const onAnswer = vi.fn();
+
+      render(<WorkingStudyFace card={workingCard} onAnswer={onAnswer} />);
+      fireEvent.change(screen.getByLabelText('Your working'), { target: { value: '4' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Edit answer' }));
+      if (improved) {
+        fireEvent.change(screen.getByLabelText('Your working'), { target: { value: '4\n8' } });
+      }
+      fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+      expect(onAnswer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          correct: false,
+          marksEarned: improved ? 2 : 1,
+          marksAvailable: 3,
+        }),
+      );
+      expect(onAnswer.mock.calls[0][0].selfCorrected).toBe(improved ? true : undefined);
+    },
+  );
+
+  it('leaves a first-attempt answer without the self-correction flag', () => {
+    const workingCard = card({
+      v: 1,
+      kind: 'working',
+      scheme: [{ marks: 1, kind: 'predicate', predicate: 'equals', args: ['4'] }],
+    }) as Card & { payload: Extract<ItemPayload, { kind: 'working' }> };
+    const onAnswer = vi.fn();
+
+    render(<WorkingStudyFace card={workingCard} onAnswer={onAnswer} />);
+    fireEvent.change(screen.getByLabelText('Your working'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(onAnswer).toHaveBeenCalledWith(
+      expect.objectContaining({ correct: true, marksEarned: 1, marksAvailable: 1 }),
+    );
+    expect(onAnswer.mock.calls[0][0]).not.toHaveProperty('selfCorrected');
+  });
 });
