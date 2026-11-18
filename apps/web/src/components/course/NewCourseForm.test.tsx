@@ -248,7 +248,7 @@ describe('NewCourseForm', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Exam date and time' }));
-    fireEvent.click(screen.getByRole('button', { name: '20 August 2026' }));
+    fireEvent.click(await screen.findByRole('button', { name: '20 August 2026' }));
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
@@ -261,7 +261,7 @@ describe('NewCourseForm', () => {
     );
   });
 
-  it('does not create a course from a nonexistent local time', () => {
+  it('does not create a course from a nonexistent local time', async () => {
     vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({
       locale: 'en-GB',
       calendar: 'gregory',
@@ -276,7 +276,7 @@ describe('NewCourseForm', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Exam date and time' }));
-    const hour = screen.getByRole('textbox', { name: 'Hour' });
+    const hour = await screen.findByRole('textbox', { name: 'Hour' });
     const minute = screen.getByRole('textbox', { name: 'Minute' });
     fireEvent.change(hour, { target: { value: '2' } });
     fireEvent.change(minute, { target: { value: '30' } });
@@ -289,7 +289,7 @@ describe('NewCourseForm', () => {
     expect(hour).toHaveFocus();
   });
 
-  it('does not submit while the date picker is handling keyboard input', () => {
+  it('does not submit while the date picker is handling keyboard input', async () => {
     render(<NewCourseForm onClose={vi.fn()} />);
     fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Biology' },
@@ -301,7 +301,7 @@ describe('NewCourseForm', () => {
     expect(mocks.createCourse).not.toHaveBeenCalled();
 
     fireEvent.click(trigger);
-    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Hour' }), { key: 'Enter' });
+    fireEvent.keyDown(await screen.findByRole('textbox', { name: 'Hour' }), { key: 'Enter' });
     expect(mocks.createCourse).not.toHaveBeenCalled();
   });
 
