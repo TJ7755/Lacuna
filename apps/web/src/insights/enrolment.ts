@@ -94,18 +94,18 @@ export function setReportingConsent(courseId: string, enabled: boolean, label = 
 export async function disconnectFromClass(courseId: string): Promise<void> {
   const setting = createEnrolmentSetting(courseId);
   const enrolment = setting.read();
-  // Revoke consent first so an interrupted disconnect still leaves reporting off.
-  setReportingConsent(courseId, false);
-  if (enrolment) {
-    const outbox = createInsightsOutbox();
-    try {
-      await outbox.discard(enrolment.shareId);
-    } finally {
-      outbox.close();
-    }
+  const outbox = enrolment ? createInsightsOutbox() : null;
+  try {
+    // A pending deletion blocks sending even if a later consent write fails.
+    // If the marker cannot be saved, leave the enrolment and consent intact.
+    if (enrolment && outbox) outbox.markDiscardPending(enrolment.shareId, enrolment.pupilId);
+    setReportingConsent(courseId, false);
+    createInsightsLastSentDaySetting(courseId).write(null);
+    createInsightsLastPublishedAtSetting(courseId).write(null);
+    storedString(`lacuna.insights.attempt.${courseId}`).remove();
+    setting.write(null);
+    if (enrolment && outbox) await outbox.finishPendingDiscard(enrolment.shareId);
+  } finally {
+    outbox?.close();
   }
-  createInsightsLastSentDaySetting(courseId).write(null);
-  createInsightsLastPublishedAtSetting(courseId).write(null);
-  storedString(`lacuna.insights.attempt.${courseId}`).remove();
-  setting.write(null);
 }

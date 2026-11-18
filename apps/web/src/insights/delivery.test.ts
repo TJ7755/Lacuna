@@ -16,7 +16,8 @@ import {
   enrolInClass,
   setReportingConsent,
 } from './enrolment';
-import { deliverCourseInsights, publishCourseInsights } from './delivery';
+import { deliverCourseInsights, installInsightsDelivery, publishCourseInsights } from './delivery';
+import { DAY_MS, INSIGHT_RETENTION_DAYS } from '@lacuna/protocol/insights/index';
 import { parseDailyEvidence } from './evidence';
 
 const shareId = 'a'.repeat(32),
@@ -150,6 +151,119 @@ it.each([
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   },
 );
+it('leaves the enrolment intact if the disconnect marker cannot be stored', async () => {
+  setReportingConsent(courseId, true, 'Old identifier');
+  const enrolment = createEnrolmentSetting(courseId);
+  const before = enrolment.read();
+  const write = localStorage.setItem.bind(localStorage);
+  const storage = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+    if (key.endsWith('.discard.' + shareId))
+      throw new DOMException('Storage full', 'QuotaExceededError');
+    write(key, value);
+  });
+
+  await expect(disconnectFromClass(courseId)).rejects.toThrow('Storage full');
+  expect(enrolment.read()).toEqual(before);
+  expect(createInsightsOptInSetting(courseId).read()).toBe(true);
+
+  storage.mockRestore();
+  await disconnectFromClass(courseId);
+  expect(enrolment.read()).toBeNull();
+  expect(createInsightsOptInSetting(courseId).read()).toBe(false);
+});
+
+it('blocks reporting until disconnect completes when the opt-out write fails', async () => {
+  setReportingConsent(courseId, true, 'Old identifier');
+  const setting = createEnrolmentSetting(courseId);
+  const optIn = createInsightsOptInSetting(courseId);
+  const oldPupilId = setting.read()!.pupilId;
+  const write = localStorage.setItem.bind(localStorage);
+  const storage = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+    if (key === optIn.key) throw new DOMException('Storage full', 'QuotaExceededError');
+    write(key, value);
+  });
+
+  await expect(disconnectFromClass(courseId)).rejects.toThrow('Storage full');
+  storage.mockRestore();
+  expect(optIn.read()).toBe(true);
+  const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+  const send = () => deliverCourseInsights(courseId, { now, fetchImpl, retry: true });
+  await send();
+  expect(fetchImpl).not.toHaveBeenCalled();
+
+  await disconnectFromClass(courseId);
+  enrolInClass(courseId, { shareId, lineageId: 'lineage', recipient: owner.recipient });
+  setReportingConsent(courseId, true, 'Fresh identifier');
+  expect(setting.read()?.pupilId).not.toBe(oldPupilId);
+  await send();
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
+});
+
+it('does not send the old pupil’s report after a failed disconnect and same-day rejoin', async () => {
+  setReportingConsent(courseId, true, 'Old identifier');
+  const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+  const send = () => deliverCourseInsights(courseId, { now, fetchImpl, retry: true });
+  await expect(send()).rejects.toThrow();
+
+  const transaction = vi.spyOn(Dexie.prototype, 'transaction');
+  transaction.mockRejectedValueOnce(new Error('Outbox unavailable'));
+  await expect(disconnectFromClass(courseId)).rejects.toThrow('Outbox unavailable');
+  expect(createEnrolmentSetting(courseId).read()).toBeNull();
+
+  enrolInClass(courseId, { shareId, lineageId: 'lineage', recipient: owner.recipient });
+  setReportingConsent(courseId, true, 'Fresh identifier');
+  const newPupilId = createEnrolmentSetting(courseId).read()!.pupilId;
+  transaction.mockRejectedValueOnce(new Error('Outbox still unavailable'));
+  await expect(send()).rejects.toThrow('Outbox still unavailable');
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
+
+  fetchImpl.mockResolvedValue(new Response(null, { status: 204 }));
+  await send();
+  expect(fetchImpl).toHaveBeenCalledTimes(2);
+  const body = JSON.parse(String(fetchImpl.mock.calls[1][1]?.body));
+  const report = parseDailyEvidence(
+    await openInsightEnvelope(owner, body, { shareId, isoDay: day }),
+    {
+      shareId,
+      day,
+    },
+  );
+  expect(report.pupil).toEqual({ id: newPupilId, label: 'Fresh identifier' });
+});
+it.each(['opt out', 'failed disconnect'])(
+  'cleans up a queued report on the offline scheduler after %s',
+  async (action) => {
+    setReportingConsent(courseId, true, 'Old identifier');
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+    await expect(deliverCourseInsights(courseId, { now, fetchImpl })).rejects.toThrow();
+    if (action === 'opt out') {
+      setReportingConsent(courseId, false);
+      vi.spyOn(Date, 'now').mockReturnValue(now() + (INSIGHT_RETENTION_DAYS + 2) * DAY_MS);
+    } else {
+      vi.spyOn(Dexie.prototype, 'transaction').mockRejectedValueOnce(
+        new Error('Outbox unavailable'),
+      );
+      await expect(disconnectFromClass(courseId)).rejects.toThrow('Outbox unavailable');
+      vi.spyOn(Date, 'now').mockImplementation(now);
+    }
+
+    const database = new Dexie('lacuna.insights.outbox');
+    await database.open();
+    const packets = database.table('packets');
+    expect(await packets.count()).toBe(1);
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    const stop = installInsightsDelivery();
+    try {
+      await vi.waitFor(async () => expect(await packets.count()).toBe(0));
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    } finally {
+      stop();
+      database.close();
+    }
+  },
+);
+
 it('backs off failed automatic attempts for an hour but permits an explicit retry', async () => {
   setReportingConsent(courseId, true, 'Pupil A');
   const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));

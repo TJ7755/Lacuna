@@ -23,8 +23,14 @@ export const DOWNLOADS = {
   release: RELEASE_PAGE,
 } as const;
 
-export function detectDesktopPlatform(userAgent: string): DesktopPlatform | null {
+export function detectDesktopPlatform(
+  userAgent: string,
+  desktopModeTablet = false,
+): DesktopPlatform | null {
   if (/android|iphone|ipad|ipod|mobile/i.test(userAgent)) return null;
+  // iPadOS reports itself as desktop macOS; touch points are the only signal.
+  // Callers pass navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1.
+  if (desktopModeTablet) return null;
   if (/windows/i.test(userAgent)) return 'windows';
   if (/macintosh|mac os x/i.test(userAgent)) return 'macos';
   if (/linux/i.test(userAgent)) return 'linux';
@@ -152,7 +158,10 @@ const platformDownloads: Record<DesktopPlatform, () => ReactNode> = {
 };
 
 export function Download() {
-  const detected = detectDesktopPlatform(navigator.userAgent);
+  const detected = detectDesktopPlatform(
+    navigator.userAgent,
+    navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1,
+  );
   const [selected, setSelected] = useState<DesktopPlatform | null>(detected);
   const [helpOpen, setHelpOpen] = useState(false);
   const SelectedDownload = selected ? platformDownloads[selected] : null;

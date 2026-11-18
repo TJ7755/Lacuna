@@ -1,7 +1,13 @@
 import 'fake-indexeddb/auto';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createCourse, createLesson, createLessonCard, createNote } from '../../db/repository';
+import {
+  createCourse,
+  createLesson,
+  createLessonCard,
+  createNote,
+  linkCardToLesson,
+} from '../../db/repository';
 import { db } from '../../db/schema';
 import { useLearnSession } from './useLearnSession';
 import { sessionParams } from './useLearnSession.testFixtures';
@@ -132,6 +138,57 @@ it.each([false, true])(
       expect(hook.result.current.summary?.reachedGoal).toBe(true);
       if (hasCard) expect(await db.lessonCompletions.get(lesson.id)).toBeUndefined();
       else expect(await db.lessonCompletions.get(lesson.id)).toMatchObject({ lessonId: lesson.id });
+      expect(await db.reviewHistory.count()).toBe(0);
+    } finally {
+      hook.unmount();
+    }
+  },
+);
+
+it.each(['current lesson', 'locked successor'] as const)(
+  'continues from notes when the only card is suspended and owned by the %s',
+  async (owner) => {
+    const course = await createCourse('Science', {
+      learnFirst: false,
+      unlockMode: 'semi-linear',
+      autoPractice: false,
+    });
+    const lesson = await createLesson(course.id, 'First');
+    const next = await createLesson(course.id, 'Next');
+    const belongsToLockedSuccessor = owner === 'locked successor';
+    const card = await createLessonCard(
+      course.id,
+      belongsToLockedSuccessor ? next.id : lesson.id,
+      'front_back',
+      'Question',
+      'Answer',
+    );
+    if (belongsToLockedSuccessor) await linkCardToLesson(lesson.id, card.id);
+    await db.cards.update(card.id, { suspended: true });
+    const onStepFinished = vi.fn();
+    const params = sessionParams({
+      lessonId: lesson.id,
+      reviewSessionKind: 'lesson',
+      onStepFinished,
+    });
+    const hook = renderHook(() => useLearnSession(params));
+    try {
+      await waitFor(() => expect(hook.result.current.phase).toBe('notes'));
+      expect(await db.lessonCompletions.get(lesson.id)).toBeUndefined();
+      expect((await db.lessons.get(next.id))?.unlockedAt).toBeUndefined();
+      await act(async () => {
+        await hook.result.current.continueFromNotes();
+      });
+      await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
+      const receipt = await db.lessonCompletions.get(lesson.id);
+      const unlockedAt = (await db.lessons.get(next.id))?.unlockedAt;
+      if (belongsToLockedSuccessor) {
+        expect(receipt).toMatchObject({ lessonId: lesson.id });
+        expect(unlockedAt).toEqual(expect.any(Number));
+      } else {
+        expect(receipt).toBeUndefined();
+        expect(unlockedAt).toBeUndefined();
+      }
       expect(await db.reviewHistory.count()).toBe(0);
     } finally {
       hook.unmount();

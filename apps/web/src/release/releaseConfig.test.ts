@@ -513,7 +513,9 @@ describe('release configuration', () => {
     expect(securityWorkflow).toMatch(/^permissions:\n {2}contents: read/m);
 
     expect(securityWorkflow.match(/bun install --frozen-lockfile/g)).toHaveLength(3);
-    expect(securityWorkflow.match(/bun audit --audit-level=high/g)).toHaveLength(3);
+    expect(
+      securityWorkflow.match(/bun "\$GITHUB_WORKSPACE\/scripts\/security-audit\.mjs"/g),
+    ).toHaveLength(3);
     expect(securityWorkflow).toContain('working-directory: apps/relay');
     expect(securityWorkflow).toContain('working-directory: tooling/handwriting-maths');
     expect(securityWorkflow).not.toContain('continue-on-error: true');

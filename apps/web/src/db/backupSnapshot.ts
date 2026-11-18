@@ -18,6 +18,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     [
       db.cards,
       db.sessionHistory,
+      db.userPerformance,
       db.courses,
       db.lessons,
       db.notes,
@@ -50,6 +51,7 @@ export async function exportDatabase(): Promise<BackupFile> {
       const [
         cards,
         sessionHistory,
+        userPerformance,
         courses,
         lessons,
         notes,
@@ -79,6 +81,7 @@ export async function exportDatabase(): Promise<BackupFile> {
       ] = await Promise.all([
         db.cards.toArray(),
         db.sessionHistory.toArray(),
+        db.userPerformance.toArray(),
         db.courses.toArray(),
         db.lessons.toArray(),
         db.notes.toArray(),
@@ -134,7 +137,7 @@ export async function exportDatabase(): Promise<BackupFile> {
         cards: projectedCards,
         mediaAssets,
         sessionHistory,
-        userPerformance: [],
+        userPerformance,
         courses,
         lessons,
         notes,

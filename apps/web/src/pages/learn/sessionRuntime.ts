@@ -57,6 +57,7 @@ export function emptySessionState(): SessionState {
     events: [],
     outcomes,
     cooldowns: new Map(),
+    recordedEventIds: new Set(),
     revision: createRevisionSessionState(),
     simple: { queue: [], mastered: new Set(), wrong: new Set(), outcomes },
   };
@@ -144,7 +145,7 @@ export class SessionRuntime {
     this.linesModeMap = new Map();
     this.occlusionMap = new Map();
     this.lessonExposureId = null;
-    this.lessonHasMembers = false;
+    this.lessonHasCompletionMembers = false;
     this.practiceSession = null;
     this.revisionPlan = null;
     this.revisionInitialRevision = 0;
@@ -181,7 +182,7 @@ export class SessionRuntime {
         },
         source: (source) => {
           this.resolvedCourseId = source.resolvedCourseId;
-          this.lessonHasMembers = source.lessonHasMembers;
+          this.lessonHasCompletionMembers = source.lessonHasCompletionMembers;
           this.reviewKind = source.reviewKind;
           this.ratchetCourseId = source.ratchetCourseId;
           this.ratchetLessonId = source.ratchetLessonId;
@@ -475,7 +476,7 @@ export class SessionRuntime {
 
   private lessonExposureId: string | null = null;
 
-  private lessonHasMembers = false;
+  private lessonHasCompletionMembers = false;
 
   private practiceSession: PracticeSession | null = null;
 
@@ -791,7 +792,7 @@ export class SessionRuntime {
 
   private continueFromNotes = async (): Promise<void> => {
     const generation = this.generation;
-    if (this.options.lessonId && this.cards.length === 0 && !this.lessonHasMembers) {
+    if (this.options.lessonId && this.cards.length === 0 && !this.lessonHasCompletionMembers) {
       await markLessonComplete(this.options.lessonId);
       if (!this.mounted || generation !== this.generation) return;
       this.lessonNotesScreen = null;

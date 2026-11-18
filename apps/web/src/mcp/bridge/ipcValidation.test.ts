@@ -39,4 +39,35 @@ describe('MCP IPC response validation', () => {
       false,
     );
   });
+
+  it('bounds scope targets so a compromised renderer cannot flood main', () => {
+    expect(
+      isMcpScopeResolutionResponse({
+        id: 'one',
+        ok: true,
+        targets: [{ courseId: 'imported-course-'.repeat(20) }],
+      }),
+    ).toBe(true);
+    expect(
+      isMcpScopeResolutionResponse({
+        id: 'one',
+        ok: true,
+        targets: [{ courseId: 'course-1', label: 'l'.repeat(500) }],
+      }),
+    ).toBe(true);
+    expect(
+      isMcpScopeResolutionResponse({
+        id: 'one',
+        ok: true,
+        targets: [{ courseId: 'course-1', label: 'l'.repeat(501) }],
+      }),
+    ).toBe(false);
+    expect(
+      isMcpScopeResolutionResponse({
+        id: 'one',
+        ok: true,
+        targets: Array.from({ length: 17 }, (_, index) => ({ courseId: `course-${index}` })),
+      }),
+    ).toBe(false);
+  });
 });

@@ -23,6 +23,7 @@ export function WorkingStudyFace({
     (WorkingVerificationResult & { studentLines: string[] }) | null
   >(null);
   const [disputedLines, setDisputedLines] = useState<Set<number>>(new Set());
+  const [previousMarks, setPreviousMarks] = useState<number | null>(null);
   const studentLines = useMemo(() => answerLines(answer), [answer]);
 
   const submit = () => {
@@ -31,15 +32,25 @@ export function WorkingStudyFace({
     setResult({ ...verification, studentLines });
   };
 
+  const editAnswer = () => {
+    if (result) setPreviousMarks(result.marksEarned);
+    setResult(null);
+    setDisputedLines(new Set());
+  };
+
   const continueStudy = () => {
     if (!result) return;
     setAnswer('');
     setResult(null);
     setDisputedLines(new Set());
+    setPreviousMarks(null);
     onAnswer({
       correct: result.marksEarned === result.marksAvailable,
       marksEarned: result.marksEarned,
       marksAvailable: result.marksAvailable,
+      ...(previousMarks !== null && result.marksEarned > previousMarks
+        ? { selfCorrected: true as const }
+        : {}),
       lineVerdicts: result.lineVerdicts,
       checkerDisputes:
         disputedLines.size > 0
@@ -145,10 +156,7 @@ export function WorkingStudyFace({
                   variant="secondary"
                   size="lg"
                   className="w-full"
-                  onClick={() => {
-                    setResult(null);
-                    setDisputedLines(new Set());
-                  }}
+                  onClick={editAnswer}
                 >
                   Edit answer
                 </Button>

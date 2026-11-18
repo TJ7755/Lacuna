@@ -213,6 +213,9 @@ export function markJevAttempt(
               result.diagnosis,
             );
           });
+        } catch {
+          // A storage failure must not abandon already-fetched sibling verdicts;
+          // the finally below releases this line for retry and the loop continues.
         } finally {
           // A verdict that failed to save may retry on entry.
           if (!applied && stillEnabled()) {

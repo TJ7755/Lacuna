@@ -127,4 +127,20 @@ describe('course technique tags', () => {
     expect(diagnosticRequestForTags(jev([custom], ['substitution']))).toBeUndefined();
     expect(diagnosticRequestForTags(undefined)).toBeUndefined();
   });
+
+  it('treats legacy Jev suggestions like course suggestions for diagnosis', () => {
+    const legacyJev: TechniqueTags = {
+      taxonomyId: 'science-techniques',
+      taxonomyVersion: 1,
+      techniqueIds: ['substitution'],
+      provenance: { source: 'jev', model: 'old' },
+    };
+    // A mere suggestion never drives diagnosis, on either taxonomy path.
+    expect(diagnosticRequestForTags(legacyJev)).toBeUndefined();
+    expect(diagnosticRequestForTags({ ...legacyJev, provenance: { source: 'author' } })).toEqual({
+      taxonomyId: 'science-techniques',
+      taxonomyVersion: 1,
+      techniqueIds: ['substitution'],
+    });
+  });
 });

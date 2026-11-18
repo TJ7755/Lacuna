@@ -15,6 +15,11 @@ import {
   practiceCardScope,
   practiceScopeVersion,
 } from '../../course/studyPools';
+import {
+  initiallyUnlockedLessonIds,
+  isLessonUnlockedWithInitialLessons,
+  lessonEffectiveReleaseDates,
+} from '../../course/pathRules';
 import { revisionProjection } from '@lacuna/core/fsrs/halfLifeLogisticModel';
 import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { studyPool } from '@lacuna/core/fsrs/eligibility';
@@ -22,6 +27,7 @@ import type { SessionUnit } from '@lacuna/core/fsrs/session';
 import type { StudyUnit } from './types';
 import type { PracticeSession } from './sessionCompletionPersistence';
 import {
+  countsForDirectLessonCompletion,
   loadLessonSessionSource,
   loadCourseSessionSource,
   loadGlobalSessionSource,
@@ -50,7 +56,7 @@ export interface LoadedSessionSource {
   sessionUnits: Array<SchedulingUnitRecord | SessionUnit>;
   cards: Card[];
   resolvedCourseId: string | null;
-  lessonHasMembers: boolean;
+  lessonHasCompletionMembers: boolean;
   lessonMembers?: Card[];
   reviewKind: 'scheduling-unit' | 'course';
   ratchetCourseId: string | null;
@@ -90,7 +96,7 @@ export async function loadSessionSource(
   } = request;
   const result: Omit<LoadedSessionSource, 'units' | 'sessionUnits' | 'cards'> = {
     resolvedCourseId: null,
-    lessonHasMembers: false,
+    lessonHasCompletionMembers: false,
     reviewKind: 'scheduling-unit',
     ratchetCourseId: null,
     ratchetLessonId: null,
@@ -130,7 +136,6 @@ export async function loadSessionSource(
       linkedCardIds,
       membership,
     } = await loadLessonSessionSource(course.id, lessonId);
-    result.lessonHasMembers = membership.length > 0;
     result.lessonMembers = membership;
     const examDateContext = makeExamDateContext(
       course,
@@ -147,6 +152,35 @@ export async function loadSessionSource(
       : course.learnFirst === false
         ? directLessonStudyPool(lessonId, allCourseCards, links, schedulingUnit)
         : lessonStudyPool(lessonId, allCourseCards, links, lessonExposures);
+    result.lessonHasCompletionMembers = membership.length > 0;
+    // A tag or search filter can hide reviewable cards without making the lesson empty.
+    if (
+      result.lessonHasCompletionMembers &&
+      cards.length === 0 &&
+      !standaloneSimple &&
+      course.learnFirst === false &&
+      course.unlockMode === 'semi-linear'
+    ) {
+      const initialLessonIds = initiallyUnlockedLessonIds(course, courseLessons);
+      const releaseDates = lessonEffectiveReleaseDates(course, courseLessons);
+      const now = Date.now();
+      const unlockedLessonIds = new Set(
+        courseLessons
+          .filter((candidate) =>
+            isLessonUnlockedWithInitialLessons(
+              course,
+              candidate,
+              releaseDates,
+              initialLessonIds,
+              now,
+            ),
+          )
+          .map(({ id }) => id),
+      );
+      result.lessonHasCompletionMembers = membership.some((card) =>
+        countsForDirectLessonCompletion(card, lessonId, unlockedLessonIds),
+      );
+    }
     units = [course];
     sessionUnits = [
       {

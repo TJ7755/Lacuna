@@ -19,6 +19,11 @@ export interface MachineMarkedAnswer {
   marksAvailable: number;
   lineVerdicts?: LineVerdict[];
   checkerDisputes?: CheckerDisputeReport[];
+  /**
+   * The learner saw a non-perfect automatic check, then edited and resubmitted.
+   * A repaired partial response grades Hard rather than Again.
+   */
+  selfCorrected?: boolean;
 }
 
 export type { LearnModeType } from '../../course/learnSessionRequest';

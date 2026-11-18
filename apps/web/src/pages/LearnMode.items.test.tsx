@@ -159,7 +159,7 @@ describe('LearnMode items', () => {
               question: 'Solve 2x = 8.',
               studentLine: '2x = 8',
               verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
-              checkerSeeds: [`${card.id}:0:0`],
+              checkerSeeds: [`${card.id}:0:0`, `${card.id}:0:1`],
             },
           ],
         });

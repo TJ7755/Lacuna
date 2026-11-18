@@ -17,13 +17,12 @@ export interface McpStatus {
   toolSurfaceVersion: number;
   clients: McpClientConnection[];
   companion: { command: string; args: string[]; env?: Record<string, string> };
-  aiCompanion: { command: string; args: string[]; env?: Record<string, string> };
   aiRenderer: { status: 'ready' | 'waiting' | 'unavailable' };
 }
 
 let dataBridge: DataBridge | null = null;
 let companionBroker: CompanionBroker | null = null;
-let companionLaunchCommands: Pick<McpStatus, 'companion' | 'aiCompanion'> | null = null;
+let companionLaunchCommands: Pick<McpStatus, 'companion'> | null = null;
 let started = false;
 let startPromise: Promise<void> | null = null;
 
@@ -56,6 +55,9 @@ export function getMcpStatus(): McpStatus {
     portableExecutableFile: process.env.PORTABLE_EXECUTABLE_FILE,
     appImageFile: process.env.APPIMAGE,
   };
+  // Only the data companion command is exposed: the Settings copy-configuration
+  // flow pastes it into MCP clients, while nothing consumes the AI companion
+  // command through this channel, so its host paths stay out of the renderer.
   companionLaunchCommands ??= {
     companion: companionLaunchCommand(
       {
@@ -63,13 +65,6 @@ export function getMcpStatus(): McpStatus {
         companionUserDataPath: companionProcessUserDataPath(),
       },
       '--mcp-companion',
-    ),
-    aiCompanion: companionLaunchCommand(
-      {
-        ...environment,
-        companionUserDataPath: companionProcessUserDataPath(),
-      },
-      '--ai-companion',
     ),
   };
   const brokerStatus = companionBroker?.status() ?? {

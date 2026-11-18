@@ -1,5 +1,5 @@
 import { buttonClassName } from '../components/ui/buttonStyles';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
@@ -41,6 +41,12 @@ export function SharePage() {
   const summaries = useSidebarData()?.summaries;
   const [searchParams] = useSearchParams();
   const [chosenId, setChosenId] = useState<string | null>(() => searchParams.get('courseId'));
+  const requestedId = searchParams.get('courseId');
+  // A later ?courseId= navigation overrides a manual pick: deep links and
+  // bookmarks must show the requested course after in-app navigation.
+  useEffect(() => {
+    setChosenId(requestedId);
+  }, [requestedId]);
   const course = courses ? defaultShareCourse(courses, chosenId) : undefined;
 
   return (

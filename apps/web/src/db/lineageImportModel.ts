@@ -1,4 +1,4 @@
-import { jsonValuesEqual } from '@lacuna/core/db/lineageDiff';
+import { jsonValuesEqual, reverseCardId } from '@lacuna/core/db/lineageDiff';
 import type {
   ExistingCard,
   ExistingLesson,
@@ -51,10 +51,11 @@ export function shareCardKindToType(k: 0 | 1 | 2 | 3): CardType {
  * `'basic_reversed'`, which is an unrelated, explicitly-linked pair feature — see
  * `repository.ts:285-302`). Handled defensively here so a future producer of `k: 2`
  * course-lesson payloads is not silently mishandled by the merge path.
+ *
+ * Defined in `@lacuna/core/db/lineageDiff` and re-exported here so the diff engine
+ * and the merge path share one convention.
  */
-export function reverseCardId(primaryId: string): string {
-  return `${primaryId}::rev`;
-}
+export { reverseCardId };
 
 /**
  * Concept identity follows the originating Card, not the locally generated Course id.

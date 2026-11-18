@@ -26,6 +26,10 @@ import {
   type CompanionResponse,
 } from '@lacuna/protocol/mcp/companion';
 import { getToolContract, unknownToolMessage } from '@lacuna/protocol/mcp/contracts';
+import {
+  MCP_CONNECTION_IDENTIFIER_MAX_LENGTH,
+  MCP_GRANT_LABEL_MAX_LENGTH,
+} from '@lacuna/protocol/mcp/limits';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import {
   removeCompanionConnectionFile,
@@ -384,10 +388,12 @@ export class CompanionBroker {
     if (
       typeof connectionId !== 'string' ||
       connectionId.length === 0 ||
+      connectionId.length > MCP_CONNECTION_IDENTIFIER_MAX_LENGTH ||
       typeof courseId !== 'string' ||
       courseId.length === 0 ||
       (scope !== 'read' && scope !== 'write' && scope !== 'destructive') ||
-      (label !== undefined && typeof label !== 'string')
+      (label !== undefined &&
+        (typeof label !== 'string' || label.length > MCP_GRANT_LABEL_MAX_LENGTH))
     ) {
       throw new Error('Invalid MCP connection grant request.');
     }
@@ -403,6 +409,7 @@ export class CompanionBroker {
     if (
       typeof connectionId !== 'string' ||
       connectionId.length === 0 ||
+      connectionId.length > MCP_CONNECTION_IDENTIFIER_MAX_LENGTH ||
       typeof courseId !== 'string' ||
       courseId.length === 0
     ) {

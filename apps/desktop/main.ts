@@ -34,7 +34,16 @@ const __dirname = path.dirname(__filename);
 interface McpServerModule {
   startMcpServer: (getWindow: () => BrowserWindow | null) => Promise<void>;
   stopMcpServer: () => Promise<void>;
-  getMcpStatus: () => { running: boolean; toolCount: number; toolSurfaceVersion: number };
+  // Mirrors McpStatus in electron/mcp/server.ts (minus the AI companion launch
+  // command, which never crosses into the renderer).
+  getMcpStatus: () => {
+    running: boolean;
+    toolCount: number;
+    toolSurfaceVersion: number;
+    clients: unknown[];
+    companion: { command: string; args: string[]; env?: Record<string, string> };
+    aiRenderer: { status: 'ready' | 'waiting' | 'unavailable' };
+  };
 }
 
 interface McpCompanionModule {
@@ -241,7 +250,9 @@ function registerAppProtocol(): void {
           'Content-Type': type,
           'Cross-Origin-Opener-Policy': 'same-origin',
           'Cross-Origin-Embedder-Policy': 'credentialless',
-          'Access-Control-Allow-Origin': '*',
+          // Same-origin app reads need no CORS; only the app origin may read
+          // cross-origin, never embedded remote frames.
+          'Access-Control-Allow-Origin': 'app://.',
         },
       });
     } catch {

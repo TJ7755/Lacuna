@@ -137,6 +137,23 @@ describe('SharePage', () => {
     );
   });
 
+  it('follows a later courseId query after a manual pick', () => {
+    const other = { ...mockCourse, id: 'course-2', name: 'Other Course' };
+    given(mockCourse, other);
+    const view = render(<SharePage />);
+    // A manual pick sticks while the query is unchanged.
+    chooseCourse('Other Course');
+    expect(screen.getByRole('button', { name: 'Course to share' })).toHaveTextContent(
+      'Other Course',
+    );
+    // A later ?courseId= navigation overrides the manual pick.
+    sharePageState.mockSearchParams = new URLSearchParams('courseId=course-1');
+    view.rerender(<SharePage />);
+    expect(screen.getByRole('button', { name: 'Course to share' })).toHaveTextContent(
+      'Test Course',
+    );
+  });
+
   it('renders nothing but the frame while courses load', () => {
     render(<SharePage />);
     expect(screen.getByRole('heading', { name: 'Share' })).toBeInTheDocument();

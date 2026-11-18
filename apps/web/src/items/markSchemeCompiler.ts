@@ -259,17 +259,20 @@ function compilePredicate(
     if (remainingParts.length !== 1) {
       return predicateUsageError(source, lineNumber, bodyColumn, 'equals :: expression');
     }
-    const parsed = parseExpression(remainingParts[0]);
-    if (!parsed.ok) {
-      return argumentParseError(parsed.error.message, source, lineNumber, remainingParts[0]);
-    }
+    const invalid = validateConstantArgument(
+      remainingParts[0],
+      source,
+      lineNumber,
+      source.lastIndexOf(remainingParts[0]) + 1,
+    );
+    if (invalid) return invalid;
   } else if (predicate === 'matches-one-of') {
     for (const value of remainingParts) {
       const invalid = validateConstantArgument(
         value,
         source,
         lineNumber,
-        source.indexOf(value) + 1,
+        source.lastIndexOf(value) + 1,
       );
       if (invalid) return invalid;
     }

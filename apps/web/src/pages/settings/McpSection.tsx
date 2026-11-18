@@ -13,6 +13,7 @@ import { useToast } from '../../components/ui/Toast';
 import { GLOBAL_SCOPE_KEY } from '@lacuna/mcp-runtime/grants';
 import type { McpGrant } from '../../mcp/types';
 import type { McpClientConnection } from '@lacuna/protocol/mcp/types';
+import { MCP_GRANT_LABEL_MAX_LENGTH } from '@lacuna/protocol/mcp/limits';
 import { useCourses } from '../../state/useCourseData';
 import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 import { SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
@@ -127,9 +128,10 @@ export function McpSection() {
   ) {
     setGrantBusy(true);
     try {
+      const displayLabel = label.slice(0, MCP_GRANT_LABEL_MAX_LENGTH);
       if (connectionId === '__embedded__' || !mcp!.grantConnection)
-        await mcp!.grant(courseId, scope, label);
-      else await mcp!.grantConnection(connectionId, courseId, scope, label);
+        await mcp!.grant(courseId, scope, displayLabel);
+      else await mcp!.grantConnection(connectionId, courseId, scope, displayLabel);
       await readStatus();
     } catch {
       notify('Could not update MCP access.', 'negative');

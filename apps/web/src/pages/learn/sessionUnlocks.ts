@@ -19,6 +19,7 @@ import { currentAssessmentPracticeContext } from '../../course/assessmentPractic
 import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { availableCards, dueCards } from '@lacuna/core/fsrs/eligibility';
 import { buildDeckSecondsMap } from '@lacuna/core/fsrs/stats';
+import { countsForDirectLessonCompletion } from './sessionPool';
 
 /**
  * Re-evaluate semi-linear lesson unlocks from current course evidence.
@@ -106,12 +107,23 @@ export async function ratchetSessionUnlocks(
     practiceMilestones: milestones,
     now,
   });
+  const unlockedLessonIds = new Set(
+    nodes
+      .filter((node) => node.nodeType === 'lesson' && node.status !== 'locked')
+      .map(({ id }) => id),
+  );
   for (let i = 0; i < coreLessons.length - 1; i++) {
     const lessonN = coreLessons[i];
     const lessonN1 = coreLessons[i + 1];
     if (lessonN1.unlockedAt !== undefined) continue;
     if (lId && lessonN.id !== lId) continue;
-    const lessonNCards = lessonCardMembership(lessonN.id, courseCards, links);
+    const members = lessonCardsById.get(lessonN.id) ?? [];
+    const lessonNCards =
+      course.learnFirst === false
+        ? members.filter((card) =>
+            countsForDirectLessonCompletion(card, lessonN.id, unlockedLessonIds),
+          )
+        : members;
     const currentPracticeGoalReached = manualPracticeGateOutcomeAfterLesson(
       coreLessons,
       practiceNodes,
@@ -131,16 +143,8 @@ export async function ratchetSessionUnlocks(
         ? false
         : currentPracticeGoalReached;
     const lessonComplete =
-      course.learnFirst === false
-        ? lessonNCards.length === 0
-          ? nextLessonUnlockCondition(
-              lessonN.id,
-              lessonNCards,
-              exposures,
-              completions,
-              practiceGoalReached,
-            )
-          : lessonNCards.every((card) => card.state !== 0) && practiceGoalReached !== false
+      course.learnFirst === false && lessonNCards.length > 0
+        ? lessonNCards.every((card) => card.state !== 0) && practiceGoalReached !== false
         : nextLessonUnlockCondition(
             lessonN.id,
             lessonNCards,
@@ -150,6 +154,7 @@ export async function ratchetSessionUnlocks(
           );
     if (lessonComplete) {
       await ratchetLessonUnlock(lessonN1.id, now);
+      unlockedLessonIds.add(lessonN1.id);
     }
   }
 }
