@@ -19,6 +19,7 @@ import { currentAssessmentPracticeContext } from '../../course/assessmentPractic
 import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { availableCards, dueCards } from '@lacuna/core/fsrs/eligibility';
 import { buildDeckSecondsMap } from '@lacuna/core/fsrs/stats';
+import { countsForDirectLessonCompletion } from './sessionPool';
 
 /**
  * Re-evaluate semi-linear lesson unlocks from current course evidence.
@@ -119,15 +120,8 @@ export async function ratchetSessionUnlocks(
     const members = lessonCardsById.get(lessonN.id) ?? [];
     const lessonNCards =
       course.learnFirst === false
-        ? members.filter(
-            (card) =>
-              // A new card from a locked lesson cannot hold this unlock hostage.
-              // A review through the linked lesson still counts once recorded.
-              card.state !== 0 ||
-              card.primaryLessonId === null ||
-              card.primaryLessonId === undefined ||
-              card.primaryLessonId === lessonN.id ||
-              unlockedLessonIds.has(card.primaryLessonId),
+        ? members.filter((card) =>
+            countsForDirectLessonCompletion(card, lessonN.id, unlockedLessonIds),
           )
         : members;
     const currentPracticeGoalReached = manualPracticeGateOutcomeAfterLesson(
