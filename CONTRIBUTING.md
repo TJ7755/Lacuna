@@ -163,8 +163,10 @@ run does not replace them.
 certificate checks and the separate machine, deployment and desktop rollout steps.
 
 [Security automation](.github/workflows/security.yml) owns audit workspaces and configuration.
-High/critical findings fail the gate; moderate findings remain visible rather than being hidden
-by blanket ignores. Review scheduled output and current advisory evidence before beta releases.
+High and critical findings fail the gate. A maintainer may approve a temporary exception for an
+exact advisory and locked tooling version after checking the production dependency audit and
+release artefacts. Keep the original audit output visible and give the exception an owner and
+an expiry enforced by CI. Review scheduled output and current advisory evidence before beta releases.
 Static analysis, provenance and checksums do not replace native behaviour or signing evidence.
 Inspect GitHub enforcement through [governance](docs/maintenance/governance.md).
 
