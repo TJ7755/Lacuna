@@ -74,7 +74,7 @@ export type ParseExpressionResult =
  * Callers must not treat it as `different`: doing so marks a student wrong for writing
  * something the checker cannot check.
  */
-export type EquivalenceOutcome = 'equivalent' | 'different' | 'undetermined';
+type EquivalenceOutcome = 'equivalent' | 'different' | 'undetermined';
 
 export interface WorkingVerificationResult {
   marksEarned: number;
