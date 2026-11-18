@@ -93,22 +93,23 @@ export function setReportingConsent(courseId: string, enabled: boolean, label = 
 
 export async function disconnectFromClass(courseId: string): Promise<void> {
   const setting = createEnrolmentSetting(courseId);
-  const enrolment = setting.read();
-  // Revoke consent first so an interrupted disconnect still leaves reporting off.
-  setReportingConsent(courseId, false);
+  const shareId = setting.read()?.shareId;
+  const outbox = shareId ? createInsightsOutbox() : null;
   let discardError: unknown;
-  if (enrolment) {
-    const outbox = createInsightsOutbox();
-    // Persist the deletion request before clearing the enrolment. If this write
-    // fails, keep the revoked enrolment so disconnect can be retried.
-    outbox.markDiscardPending(enrolment.shareId);
-    try {
-      await outbox.finishPendingDiscard(enrolment.shareId);
-    } catch (error) {
-      discardError = error;
-    } finally {
-      outbox.close();
+  try {
+    // A pending deletion blocks sending even if a later consent write fails.
+    // If the marker cannot be saved, leave the enrolment and consent intact.
+    if (shareId && outbox) outbox.markDiscardPending(shareId);
+    setReportingConsent(courseId, false);
+    if (shareId && outbox) {
+      try {
+        await outbox.finishPendingDiscard(shareId);
+      } catch (error) {
+        discardError = error;
+      }
     }
+  } finally {
+    outbox?.close();
   }
   createInsightsLastSentDaySetting(courseId).write(null);
   createInsightsLastPublishedAtSetting(courseId).write(null);

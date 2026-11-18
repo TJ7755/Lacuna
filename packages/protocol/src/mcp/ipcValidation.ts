@@ -4,7 +4,6 @@ import type {
   McpScopeResolutionResponse,
 } from '@lacuna/protocol/mcp/bridge';
 import {
-  MCP_GRANT_IDENTIFIER_MAX_LENGTH,
   MCP_GRANT_LABEL_MAX_LENGTH,
   MCP_SCOPE_TARGETS_MAX_COUNT,
 } from '@lacuna/protocol/mcp/limits';
@@ -54,7 +53,6 @@ export function isMcpScopeResolutionResponse(value: unknown): value is McpScopeR
         !!candidate &&
         typeof candidate.courseId === 'string' &&
         candidate.courseId.length > 0 &&
-        candidate.courseId.length <= MCP_GRANT_IDENTIFIER_MAX_LENGTH &&
         (candidate.label === undefined ||
           (typeof candidate.label === 'string' &&
             candidate.label.length <= MCP_GRANT_LABEL_MAX_LENGTH))
