@@ -149,7 +149,7 @@ export function LearnHeader({
   singleDeck: StudyUnit | null;
   unitDisplayName: string | null;
   sessionProgress: number;
-  predictedRecall: number;
+  predictedRecall: number | null;
   sessionCardIds: string[];
   sessionCardOutcomes: Map<string, SessionCardOutcome>;
   filterParams: CardFilter[];
@@ -236,7 +236,7 @@ export function LearnHeader({
         } of ${sessionTotal}`
       : null;
   const forecast =
-    mode !== 'simple' && !plannedRevision
+    mode !== 'simple' && !plannedRevision && predictedRecall !== null
       ? `${Math.round(predictedRecall * 100)}% ${forecastLabel(singleDeck)}`
       : undefined;
   const progressName = plannedRevision ? 'Revision time used' : 'Session progress';

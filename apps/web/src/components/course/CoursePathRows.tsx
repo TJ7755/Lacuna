@@ -166,13 +166,13 @@ export function renderCoursePathRows(
         : undefined;
     if (lesson) lessonNumber += 1;
     const name = lesson ? lesson.lesson.name : (practice?.practiceNode?.name ?? 'Card practice');
-    const pct = lesson ? (detail?.masteryPct ?? 0) : Math.round((progress?.fraction ?? 0) * 100);
+    const pct = lesson ? (detail?.masteryPct ?? null) : Math.round((progress?.fraction ?? 0) * 100);
     const done = status === 'completed';
     const locked = status === 'locked';
     const state = lesson
       ? locked
         ? (props.lockHint(lesson.lesson.id) ?? 'Locked')
-        : done && pct >= SECURE
+        : done && pct !== null && pct >= SECURE
           ? 'Secure'
           : `${countOf(detail?.cardCount ?? 0, 'card')}${detail?.dueCount ? ` (${detail.dueCount} due)` : ''}${lesson.lesson.isExtension ? ', extension' : ''}`
       : `${pct}% secured`;
@@ -260,7 +260,7 @@ export function renderCoursePathRows(
           >
             {practice ? (
               <CardsIcon width={16} height={16} />
-            ) : done && pct >= SECURE ? (
+            ) : done && pct !== null && pct >= SECURE ? (
               <CheckIcon width={16} height={16} />
             ) : (
               lessonNumber
@@ -269,7 +269,7 @@ export function renderCoursePathRows(
           <span className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span className={cn('break-words font-bold', locked && 'text-ink-soft')}>{name}</span>
             <span className="text-sm text-ink-faint">{state}</span>
-            {!locked && (
+            {!locked && pct !== null && (
               <span aria-hidden="true" className="block h-1 overflow-hidden rounded-full bg-line">
                 <motion.span
                   className={cn(

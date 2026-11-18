@@ -11,6 +11,23 @@ import {
 import { NOW, deck, card } from './session.testFixtures';
 
 describe('single and multi-unit completion paths', () => {
+  it('keeps unavailable recall absent from single- and multi-unit session forecasts', () => {
+    const first = deck('first', 10);
+    const second = deck('second', 10);
+    const opaque = card('opaque', first.id, {
+      state: 2,
+      reps: 5,
+      lastReviewed: null,
+      stability: 10,
+      stabilityFast: null,
+      difficulty: 4,
+    });
+    expect(sessionProgress([opaque], makeSessionContext([first]), NOW)).toBeNull();
+    expect(
+      sessionProgress([opaque, card('new', second.id)], makeSessionContext([first, second]), NOW),
+    ).toBeNull();
+  });
+
   it('treats an empty single-unit session as incomplete with full progress', () => {
     const ctx = makeSessionContext([deck('empty', 10)]);
 

@@ -84,7 +84,7 @@ describe('LearnMode progress', () => {
     });
     const configuredCard = (await db.cards.get(card.id))!;
     const expected = Math.round(
-      sessionProgress([configuredCard], makeSessionContext([configuredDeck]), now) * 100,
+      sessionProgress([configuredCard], makeSessionContext([configuredDeck]), now)! * 100,
     );
     expect(expected).toBeGreaterThan(0);
     expect(expected).toBeLessThan(100);

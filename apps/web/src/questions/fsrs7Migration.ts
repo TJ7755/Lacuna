@@ -95,11 +95,28 @@ export function migrateFsrs7Questions(
       evidence,
       parameters.get(question.courseId) ?? defaultFsrsParameters(),
     );
-    return {
-      ...normalised,
+    const state = {
       stability: replayed.stability,
       stabilityFast: replayed.stabilityFast,
       difficulty: replayed.difficulty,
+      lastReviewed: question.lastReviewed,
+      reps: question.reps,
+      lapses: question.lapses,
+      state: question.state,
+      due: question.due,
+      scheduledDays: question.scheduledDays,
+      learningSteps: question.learningSteps,
+    };
+    return {
+      ...normalised,
+      ...state,
+      scheduleEpoch: {
+        ...normalised.scheduleEpoch,
+        migrationCheckpoint: normalised.scheduleEpoch.migrationCheckpoint ?? {
+          state,
+          attemptIds: evidence.map((attempt) => attempt.id).sort(),
+        },
+      },
     };
   });
 }

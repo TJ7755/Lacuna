@@ -95,6 +95,8 @@ export interface QuestionScheduleEpoch {
   baseline: QuestionScheduleBaseline;
   /** Retained schedule when FSRS7 cannot reconstruct a missing answer prefix. */
   memoryOrigin?: QuestionScheduleState;
+  /** Schedule preserved at model migration; identities let undo invalidate included evidence. */
+  migrationCheckpoint?: { state: QuestionScheduleState; attemptIds: string[] };
 }
 
 interface QuestionDefinitionBase extends QuestionScheduleState {

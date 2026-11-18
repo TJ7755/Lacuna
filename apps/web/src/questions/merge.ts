@@ -56,7 +56,9 @@ function authoredQuestion(question: QuestionDefinition): Record<string, unknown>
     Object.entries({
       ...question,
       scheduleEpoch: Object.fromEntries(
-        Object.entries(question.scheduleEpoch).filter(([key]) => key !== 'memoryOrigin'),
+        Object.entries(question.scheduleEpoch).filter(
+          ([key]) => key !== 'memoryOrigin' && key !== 'migrationCheckpoint',
+        ),
       ),
     }).filter(([key]) => !SCHEDULE_KEYS.has(key)),
   );
@@ -336,9 +338,25 @@ export function mergeQuestionCollections(
             () =>
               canonicalJson(
                 collections.questionAttempts
-                  .filter((row) => row.questionId === question.id)
+                  .filter(
+                    (row) =>
+                      row.questionId === question.id &&
+                      row.scheduleEpochId === question.scheduleEpoch.id &&
+                      row.status === 'answered' &&
+                      row.undoneAt === undefined &&
+                      row.scheduleEffect.kind === 'replay',
+                  )
                   .sort((a, b) => a.id.localeCompare(b.id)),
-              ) === canonicalJson(attempts),
+              ) ===
+              canonicalJson(
+                attempts.filter(
+                  (row) =>
+                    row.scheduleEpochId === question.scheduleEpoch.id &&
+                    row.status === 'answered' &&
+                    row.undoneAt === undefined &&
+                    row.scheduleEffect.kind === 'replay',
+                ),
+              ),
           ),
       )
       .sort(

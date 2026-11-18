@@ -38,7 +38,8 @@ export function rAtExam(
   _now: number,
   model: FSRS7ModelCore,
 ): number | null {
-  if (card.lastReviewed === null || card.state === 0) return 0;
+  if (card.state === 0) return 0;
+  if (card.lastReviewed === null) return null;
   return forgettingCurve((examDate - card.lastReviewed) / MS_PER_DAY, card, model);
 }
 

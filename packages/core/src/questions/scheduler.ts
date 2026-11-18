@@ -114,7 +114,7 @@ export function replayQuestionSchedule(
 ): QuestionScheduleState {
   let schedule = baselineSchedule(question);
   let activeConfig = normaliseQuestionSchedulerConfig(fallbackParams);
-  const replayable = attempts
+  let replayable = attempts
     .filter(
       (attempt) =>
         attempt.scheduleEpochId === question.scheduleEpoch.id &&
@@ -131,6 +131,20 @@ export function replayQuestionSchedule(
         (left.answeredAt as number) - (right.answeredAt as number) ||
         left.id.localeCompare(right.id),
     );
+
+  const checkpoint = question.scheduleEpoch.migrationCheckpoint;
+  if (checkpoint) {
+    const included = new Set(checkpoint.attemptIds);
+    const active = new Set(replayable.map((attempt) => attempt.id));
+    const tail = replayable.filter((attempt) => !included.has(attempt.id));
+    if (
+      checkpoint.attemptIds.every((id) => active.has(id)) &&
+      tail.every((attempt) => attempt.answeredAt! > (checkpoint.state.lastReviewed ?? -Infinity))
+    ) {
+      schedule = { ...checkpoint.state };
+      replayable = tail;
+    }
+  }
 
   for (const attempt of replayable) {
     const answeredAt = attempt.answeredAt;

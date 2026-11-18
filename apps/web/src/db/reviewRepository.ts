@@ -197,7 +197,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           marksAvailable,
           lineVerdicts,
           checkerDisputes,
-          ...(cardBefore.lastReviewed !== null &&
+          ...((cardBefore.state !== 0 || cardBefore.reps > 0) &&
           (cardBefore.stabilityFast === null || cardBefore.stabilityFast === undefined)
             ? {
                 memoryOrigin: {

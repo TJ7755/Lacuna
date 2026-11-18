@@ -215,8 +215,8 @@ describe('computeCourseSummaries', () => {
       now,
     )['c1'];
 
-    expect(summary.mastery).toBeCloseTo(progressValue(cards, course, now, context), 12);
-    expect(summary.mastery).not.toBeCloseTo(progressValue(cards, course, now), 6);
+    expect(summary.mastery).toBeCloseTo(progressValue(cards, course, now, context)!, 12);
+    expect(summary.mastery).not.toBeCloseTo(progressValue(cards, course, now)!, 6);
   });
 
   it('preserves the course-wide horizon when there are no exam-date overrides', () => {
@@ -240,7 +240,7 @@ describe('computeCourseSummaries', () => {
 
     const summary = computeCourseSummaries([course], [lesson], [card], [], now)['c1'];
 
-    expect(summary.mastery).toBeCloseTo(progressValue([card], course, now), 12);
+    expect(summary.mastery).toBeCloseTo(progressValue([card], course, now)!, 12);
   });
 
   it('counts only scheduled reviews as due, excluding new and future cards', () => {

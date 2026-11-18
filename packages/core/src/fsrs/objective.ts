@@ -67,11 +67,11 @@ export function progressValue(
   deck: SchedulerConfig,
   now: number = Date.now(),
   examDateContext?: ExamDateContext,
-): number {
+): number | null {
   const available = availableCards(cards, now);
   return deck.examObjective === 'securedTopics'
     ? masteryFraction(available, deck, now, examDateContext)
-    : (averagePredictedRetrievability(available, deck, now, examDateContext) ?? 0);
+    : averagePredictedRetrievability(available, deck, now, examDateContext);
 }
 
 /**
@@ -130,7 +130,7 @@ export function isObjectiveComplete(
 ): boolean {
   if (cards.length === 0) return true;
   if (oc.objective === 'securedTopics') {
-    return masteryFraction(cards, oc.deck, now, oc.examDateContext) >= 1;
+    return (masteryFraction(cards, oc.deck, now, oc.examDateContext) ?? 0) >= 1;
   }
   const bestGain = cards.reduce(
     (best, card) =>

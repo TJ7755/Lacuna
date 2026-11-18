@@ -24,8 +24,8 @@ export interface SessionEvent {
 export interface SessionSummary {
   events: SessionEvent[];
   /** Objective-aware progress (0..1) before and after the session. */
-  masteryBefore: number;
-  masteryAfter: number;
+  masteryBefore: number | null;
+  masteryAfter: number | null;
   /** Heading describing what the progress figures mean for this deck's objective. */
   objectiveLabel: string;
   focusFraction: number;

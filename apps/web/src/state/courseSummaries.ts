@@ -25,7 +25,7 @@ export interface CourseSummary {
   /** Count of core cards (extension-lesson cards excluded). */
   cardCount: number;
   /** Objective-aware progress (0..1): mean predicted R, or fraction secured. */
-  mastery: number;
+  mastery: number | null;
   /** Number of core cards that have never been reviewed. */
   unreviewed: number;
   /** Available scheduled reviews due now across the whole course. */

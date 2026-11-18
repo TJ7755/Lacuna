@@ -1,6 +1,11 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
+import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
+import { rescheduleCards } from './cardBulkActions';
+import { applyScheduleEdit } from './scheduleEdits';
+import { mergeSnapshots } from '../sync/mergeSnapshots';
+import { backup } from '../sync/mergeSnapshots.testFixtures';
 import { reviewHistoryEntryIdForEvent } from '@lacuna/core/db/reviewHistory';
 import { fsrsWeightsFingerprint } from '@lacuna/core/fsrs/weightProvenance';
 import { performanceForReviewUnit } from './backingDecks';
@@ -69,6 +74,244 @@ describe('recordReview', () => {
       db.schedulingUnits.clear(),
       db.schedulingPerformance.clear(),
     ]);
+  });
+
+  it.each(
+    (['answers', 'reset-before', 'reset-between', 'shared-reset'] as const).flatMap((mode) =>
+      [1, 5].map((priorReviews) => ({ mode, priorReviews })),
+    ),
+  )(
+    'reconciles timestamp-free imports after $priorReviews reviews and peer changes: $mode',
+    async ({ mode, priorReviews }) => {
+      const deck = await createCourse('Imported learning');
+      const created = await createCard(deck.id, 'front_back', 'q', 'a');
+      const imported = {
+        ...created,
+        state: 2 as const,
+        stability: 10,
+        stabilityFast: null,
+        difficulty: 4,
+        lastReviewed: null,
+        reps: priorReviews,
+        lapses: 1,
+        due: 900000,
+        scheduledDays: 10,
+        updatedAt: 1,
+      };
+      const reset = { at: mode === 'reset-between' ? 2500 : 1500, kind: 'reset' as const };
+      const resetCard = {
+        ...applyScheduleEdit(imported, reset),
+        scheduleEdits: [reset],
+        updatedAt: reset.at,
+      };
+      const start = mode === 'shared-reset' ? resetCard : imported;
+      await db.cards.put(start);
+      const args = {
+        card: start,
+        deck,
+        sessionId: 'peer',
+        sessionKind: 'deck' as const,
+        grade: 3 as const,
+        responseTimeSec: 1,
+        distracted: false,
+        correct: true,
+      };
+      const first = await recordReview({ ...args, eventId: 'import-first', now: 2000 });
+      const firstEvent = (await db.reviewHistory.get(
+        reviewHistoryEntryIdForEvent('import-first'),
+      ))!;
+      if (mode !== 'reset-between') {
+        await db.cards.put(start);
+        await db.reviewHistory.clear();
+      }
+      const second = await recordReview({ ...args, eventId: 'import-second', now: 3000 });
+      const secondEvent = (await db.reviewHistory.get(
+        reviewHistoryEntryIdForEvent('import-second'),
+      ))!;
+      const resetPeer = mode === 'reset-before' || mode === 'reset-between';
+      const left = backup({
+        courses: [deck],
+        cards: [resetPeer ? resetCard : first.card],
+        reviewHistory: resetPeer ? [] : [firstEvent],
+      });
+      const right = backup({
+        courses: [deck],
+        cards: [second.card],
+        reviewHistory: mode === 'reset-between' ? [firstEvent, secondEvent] : [secondEvent],
+      });
+      const merged = mergeSnapshots(left, right);
+      const beforeLast =
+        mode === 'reset-between'
+          ? applyScheduleEdit(first.card, reset)
+          : mode === 'reset-before'
+            ? resetCard
+            : first.card;
+      const expected = applyReview(makeEngine(deck.fsrsParameters), beforeLast, 3, 3000).memory;
+      expect(merged.cards[0]).toMatchObject(expected);
+      expect(merged.cards[0].reps).toBe(
+        mode === 'reset-before' ? priorReviews + 1 : priorReviews + 2,
+      );
+      expect(merged.reviewHistory).toHaveLength(mode === 'reset-before' ? 1 : 2);
+      expect(mergeSnapshots(right, left)).toEqual(merged);
+      expect(mergeSnapshots(merged, right)).toEqual(merged);
+    },
+  );
+
+  it.each([
+    { twoResets: false, answerAt: 2000 },
+    { twoResets: true, answerAt: 2000 },
+    { twoResets: true, answerAt: 1500 },
+  ])(
+    'keeps lifetime counters with two resets=$twoResets and first answer at $answerAt',
+    async ({ twoResets, answerAt }) => {
+      const deck = await createCourse('Complete reset history');
+      const fresh = await createCard(deck.id, 'front_back', 'q', 'a');
+      const args = {
+        card: fresh,
+        deck,
+        sessionId: 'complete-reset',
+        sessionKind: 'deck' as const,
+        responseTimeSec: 1,
+        distracted: false,
+        correct: true,
+      };
+      const shared = await recordReview({ ...args, eventId: 'shared', grade: 4, now: 1000 });
+      const sharedEvent = (await db.reviewHistory.get(reviewHistoryEntryIdForEvent('shared')))!;
+      const offline = await recordReview({
+        ...args,
+        card: shared.card,
+        eventId: 'offline-answer',
+        grade: twoResets ? 4 : 1,
+        now: twoResets ? 2200 : 2000,
+      });
+      const b = backup({
+        courses: [deck],
+        cards: [offline.card],
+        reviewHistory: await db.reviewHistory.toArray(),
+      });
+      await db.cards.put(shared.card);
+      await db.reviewHistory.clear();
+      await db.reviewHistory.put(sharedEvent);
+      if (twoResets) {
+        const earlierClock = vi.spyOn(Date, 'now').mockReturnValue(1500);
+        try {
+          await rescheduleCards([fresh.id], { reset: true });
+        } finally {
+          earlierClock.mockRestore();
+        }
+        const afterFirstReset = await recordReview({
+          ...args,
+          card: (await db.cards.get(fresh.id))!,
+          eventId: 'after-first-reset',
+          grade: 1,
+          now: answerAt,
+        });
+        const intermediate = backup({
+          courses: [deck],
+          cards: [afterFirstReset.card],
+          reviewHistory: await db.reviewHistory.toArray(),
+        });
+        expect(mergeSnapshots(intermediate, intermediate).cards[0]).toMatchObject({
+          state: afterFirstReset.card.state,
+          due: afterFirstReset.card.due,
+          reps: afterFirstReset.card.reps,
+          lapses: afterFirstReset.card.lapses,
+        });
+      }
+      const clock = vi.spyOn(Date, 'now').mockReturnValue(2500);
+      try {
+        await rescheduleCards([fresh.id], { reset: true });
+      } finally {
+        clock.mockRestore();
+      }
+      const resetCard = (await db.cards.get(fresh.id))!;
+      const afterReset = await recordReview({
+        ...args,
+        card: resetCard,
+        eventId: 'after-reset',
+        grade: 4,
+        now: 3000,
+      });
+      const a = backup({
+        courses: [deck],
+        cards: [afterReset.card],
+        reviewHistory: await db.reviewHistory.toArray(),
+      });
+      const merged = mergeSnapshots(a, b);
+      expect(merged.reviewHistory).toHaveLength(twoResets ? 4 : 3);
+      expect(merged.cards[0]).toMatchObject(
+        twoResets ? { reps: 4, lapses: 0 } : { reps: 3, lapses: 1 },
+      );
+      if (!twoResets) {
+        const reset = resetCard.scheduleEdits!.at(-1)!;
+        const expected = applyReview(
+          makeEngine(deck.fsrsParameters),
+          applyScheduleEdit(offline.card, reset),
+          4,
+          3000,
+        ).memory;
+        expect(merged.cards[0]).toMatchObject(expected);
+      }
+      expect(mergeSnapshots(b, a)).toEqual(merged);
+      expect(mergeSnapshots(merged, a)).toEqual(merged);
+    },
+  );
+
+  it('applies a witnessed reset before an equal-time answer despite an unwitnessed due edit', async () => {
+    const deck = await createCourse('Concurrent equal-time edits');
+    const fresh = await createCard(deck.id, 'front_back', 'q', 'a');
+    const answer = async (eventId: string, grade: 1 | 4, now: number) =>
+      recordReview({
+        card: (await db.cards.get(fresh.id))!,
+        deck,
+        eventId,
+        grade,
+        now,
+        sessionId: 'equal-time-edits',
+        sessionKind: 'deck',
+        responseTimeSec: 1,
+        distracted: false,
+        correct: grade === 4,
+      });
+    const edit = async (at: number, options: Parameters<typeof rescheduleCards>[1]) => {
+      const clock = vi.spyOn(Date, 'now').mockReturnValue(at);
+      try {
+        await rescheduleCards([fresh.id], options);
+      } finally {
+        clock.mockRestore();
+      }
+    };
+    const shared = await answer('shared', 4, 1000);
+    const sharedEvent = (await db.reviewHistory.get(reviewHistoryEntryIdForEvent('shared')))!;
+    await edit(1500, { reset: true });
+    const first = await answer('after-reset', 1, 1500);
+    const a = backup({
+      courses: [deck],
+      cards: [first.card],
+      reviewHistory: await db.reviewHistory.toArray(),
+    });
+    await db.cards.put(shared.card);
+    await db.reviewHistory.clear();
+    await db.reviewHistory.put(sharedEvent);
+    await edit(1250, { reset: true });
+    await edit(1500, { due: 900000 });
+    const second = await answer('offline-easy', 4, 2200);
+    const b = backup({
+      courses: [deck],
+      cards: [second.card],
+      reviewHistory: await db.reviewHistory.toArray(),
+    });
+    const merged = mergeSnapshots(a, b);
+    const expected = applyReview(
+      makeEngine(deck.fsrsParameters),
+      { ...first.card, due: 900000 },
+      4,
+      2200,
+    ).memory;
+    expect(merged.cards[0]).toMatchObject(expected);
+    expect(merged.cards[0]).toMatchObject({ reps: 3, lapses: 0 });
+    expect(mergeSnapshots(b, a)).toEqual(merged);
+    expect(mergeSnapshots(merged, b)).toEqual(merged);
   });
 
   it('records hintUsed on the review log, defaulting to false when omitted', async () => {

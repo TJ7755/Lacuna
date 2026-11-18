@@ -409,7 +409,7 @@ export class SessionRuntime {
     return this.current !== null && this.linesModeMap.has(this.current!.id);
   }
 
-  private progressCache: { dirty: boolean; value: number } = { dirty: true, value: 0 };
+  private progressCache: { dirty: boolean; value: number | null } = { dirty: true, value: 0 };
 
   private summary: SessionSummary | null = null;
 
@@ -508,7 +508,7 @@ export class SessionRuntime {
     return this.machineState.events;
   }
 
-  private progressBefore = 0;
+  private progressBefore: number | null = 0;
 
   private limitOverride: boolean = false;
 
@@ -559,7 +559,7 @@ export class SessionRuntime {
     return 'Predicted readiness across all courses';
   };
 
-  private cachedSessionProgress = (cards: Card[], ctx: SessionContext): number => {
+  private cachedSessionProgress = (cards: Card[], ctx: SessionContext): number | null => {
     if (!this.progressCache.dirty) {
       return this.progressCache.value;
     }

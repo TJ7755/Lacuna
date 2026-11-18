@@ -41,11 +41,17 @@ export interface CourseProgressInput {
 
 type ProgressForecast =
   /** One assessment, measured at its own date. */
-  | { kind: 'assessment'; date: number; daysRemaining: number; value: number; securedCards: number }
+  | {
+      kind: 'assessment';
+      date: number;
+      daysRemaining: number;
+      value: number | null;
+      securedCards: number;
+    }
   /** The whole course: each card at its next applicable test or paper. */
   | {
       kind: 'applicable';
-      value: number;
+      value: number | null;
       securedCards: number;
       undatedCards: number;
       /** Set when every counted card targets this one future date. */
@@ -69,7 +75,7 @@ export interface PaperForecast {
   /** Assessments on this date, so a row can select one. */
   assessments: { id: string; name: string }[];
   cardCount: number;
-  value: number;
+  value: number | null;
 }
 
 export interface LessonProgress {

@@ -105,7 +105,7 @@ describe('objective consistency: the bar matches the objective', () => {
   it('the two objectives generally disagree, which is exactly why they must be pinned together', () => {
     const meanR = progressValue(cards, makeDeck('expectedMarks'), NOW);
     const secured = progressValue(cards, makeDeck('securedTopics'), NOW);
-    expect(meanR).not.toBeCloseTo(secured, 2);
+    expect(meanR).not.toBeCloseTo(secured!, 2);
   });
 
   it("uses each card's resolved exam horizon when course context is provided", () => {

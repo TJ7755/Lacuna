@@ -80,7 +80,7 @@ export function buildStudyProgress(input: StudyProgressInput): StudyProgress {
       !extensionIds.has(card.primaryLessonId ?? '') &&
       isAvailable(card, now),
   );
-  const reviewed = cards.filter((card) => card.state !== 0 && card.lastReviewed !== null);
+  const reviewed = cards.filter((card) => card.state !== 0);
   const stability = reviewed.flatMap((card) =>
     card.stability !== null && Number.isFinite(card.stability) ? [card.stability] : [],
   );
@@ -94,7 +94,12 @@ export function buildStudyProgress(input: StudyProgressInput): StudyProgress {
     meanStability: stability.length
       ? stability.reduce((sum, value) => sum + value, 0) / stability.length
       : null,
-    recallNow: reviewed.some((card) => card.stabilityFast === null)
+    recallNow: reviewed.some(
+      (card) =>
+        card.stabilityFast === null ||
+        card.stabilityFast === undefined ||
+        card.lastReviewed === null,
+    )
       ? null
       : reviewed.length
         ? reviewed.reduce((sum, card) => sum + (rAtExam(card, now, now, model) ?? 0), 0) /
@@ -161,8 +166,7 @@ export function buildStudyProgress(input: StudyProgressInput): StudyProgress {
   );
   const opportunityCards = cards.filter(
     (card) =>
-      accessibleIds.has(card.id) ||
-      (card.state !== 0 && card.lastReviewed !== null && input.dueReviewCardIds.has(card.id)),
+      accessibleIds.has(card.id) || (card.state !== 0 && input.dueReviewCardIds.has(card.id)),
   );
   const questionScope = new Set(input.questionScopeConceptIds);
   const questions = new Map(input.questionPractice.map((item) => [item.conceptId, item]));

@@ -5,7 +5,7 @@ import { MAINTENANCE_HORIZON_DAYS } from '@lacuna/core/fsrs/horizon';
 import { Button } from '../ui/Button';
 import { SectionCard } from '../ui/SectionCard';
 
-const percent = (value: number) => `${Math.round(value * 100)}%`;
+const percent = (value: number | null) => (value === null ? '—' : `${Math.round(value * 100)}%`);
 
 /**
  * The whole course's forecast when its cards target different dates. One exam-day line

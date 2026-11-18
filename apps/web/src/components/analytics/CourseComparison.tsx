@@ -80,13 +80,17 @@ function computeMetrics(
             higherIsBetter: true,
           },
         ]),
-    {
-      label: advancedDetails ? 'Mastery fraction' : 'Cards at 90% predicted recall',
-      courseA: Math.round(masteryA * 100),
-      courseB: Math.round(masteryB * 100),
-      unit: '%',
-      higherIsBetter: true,
-    },
+    ...(masteryA === null || masteryB === null
+      ? []
+      : [
+          {
+            label: advancedDetails ? 'Mastery fraction' : 'Cards at 90% predicted recall',
+            courseA: Math.round(masteryA * 100),
+            courseB: Math.round(masteryB * 100),
+            unit: '%',
+            higherIsBetter: true,
+          },
+        ]),
     { label: 'Cards reviewed', courseA: reviewedA, courseB: reviewedB, higherIsBetter: true },
     {
       label: 'Total reviews',

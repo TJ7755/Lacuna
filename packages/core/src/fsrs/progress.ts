@@ -30,13 +30,13 @@ export function masteryFraction(
   deck: SchedulerConfig,
   now: number = Date.now(),
   examDateContext?: ExamDateContext,
-): number {
+): number | null {
   if (cards.length === 0) return 1;
-  const mastered = cards.filter(
-    (card) =>
-      (predictedRetrievabilityAtHorizon(card, deck, now, examDateContext) ?? 0) >= MASTERY_R,
-  ).length;
-  return mastered / cards.length;
+  const predictions = cards.map((card) =>
+    predictedRetrievabilityAtHorizon(card, deck, now, examDateContext),
+  );
+  if (predictions.some((value) => value === null)) return null;
+  return predictions.filter((value) => value !== null && value >= MASTERY_R).length / cards.length;
 }
 
 /** Average predicted exam-day retrievability across a deck (0..1). */

@@ -88,14 +88,15 @@ export function memoryState(
 }
 
 export function toTsCard(card: SchedulingMemory, now: number): FsrsCard {
-  const fresh = card.lastReviewed === null || card.state === State.New;
+  const fresh = card.state === State.New;
   const opaque = !fresh && (card.stabilityFast === null || card.stabilityFast === undefined);
   // Zero model memory initialises from the next answer without resetting schedule progress.
   return definition.schema.card.parse({
     cardId: card.id ?? 'projection',
     ...(fresh || opaque ? { stability: 0, stabilityFast: 0, difficulty: 0 } : memoryState(card)),
     dueAt: new Date(card.due ?? card.lastReviewed ?? now),
-    lastReviewAt: fresh ? null : new Date(card.lastReviewed as number),
+    // With no timestamp or model memory, the next real answer starts at elapsed zero.
+    lastReviewAt: fresh ? null : new Date(card.lastReviewed ?? now),
     scheduledDays: card.scheduledDays,
     learningStep: card.learningSteps,
     reps: card.reps,

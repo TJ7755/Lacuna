@@ -130,6 +130,8 @@ it.each([false, true])(
       rerender(<LearnHeader {...props} singleDeck={{ ...course, examDate }} menuOpen />);
       expect(screen.getByText(`75% forecast recall ${horizon}`)).toBeVisible();
     }
+    rerender(<LearnHeader {...props} predictedRecall={null} menuOpen />);
+    expect(screen.queryByText(/forecast recall/)).not.toBeInTheDocument();
     for (const [name, description] of [
       ['Flag card', 'Find it later; its schedule is unchanged.'],
       ['Bury until tomorrow', 'Back tomorrow.'],

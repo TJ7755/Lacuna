@@ -480,7 +480,7 @@ export function sessionProgress(
   cards: Card[],
   ctx: SessionContext,
   now: number = Date.now(),
-): number {
+): number | null {
   if (ctx.decks.size === 1) {
     const unit = ctx.decks.values().next().value as SessionDeckContext;
     const available = availableCards(cardsForUnit(cards, unit), now);
@@ -494,7 +494,9 @@ export function sessionProgress(
   for (const { deck, scope, oc } of ctx.decks.values()) {
     const available = availableCards(index.byUnit.get(unitKey(scope)) ?? [], now);
     if (available.length === 0) continue;
-    acc += progressValue(available, deck, now, oc.examDateContext) * available.length;
+    const value = progressValue(available, deck, now, oc.examDateContext);
+    if (value === null) return null;
+    acc += value * available.length;
     total += available.length;
   }
   return total ? acc / total : 1;

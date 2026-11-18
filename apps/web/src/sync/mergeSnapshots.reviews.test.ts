@@ -4,6 +4,9 @@ import {
   reviewHistoryEntryId,
   type ReviewHistoryEntry,
 } from '@lacuna/core/db/reviewHistory';
+import { applyScheduleEdit } from '../db/scheduleEdits';
+import { rAtExam } from '@lacuna/core/fsrs/forwardSim';
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
 
 import {
@@ -75,6 +78,75 @@ describe('peer review replay and schedule edits', () => {
     const merged = expectPeerProperties(snapshot, snapshot);
     expect(merged.cards[0].due).toBe(live.due);
     expect(merged.cards[0].scheduledDays).toBe(live.scheduledDays);
+  });
+
+  it.each([3, 4] as const)(
+    'applies an offline reset before a concurrent grade %s recorded against pre-reset memory',
+    (grade) => {
+      const engine = makeEngine(PARAMS);
+      const fresh = card('c1');
+      const firstMemory = applyReview(engine, fresh, 4, 1_000).memory;
+      const first = historyEntry(
+        'c1',
+        review({
+          eventId: 'first',
+          timestamp: 1_000,
+          grade: 4,
+          stabilityAfter: firstMemory.stability,
+          difficultyAfter: firstMemory.difficulty,
+        }),
+      );
+      const learnt = { ...fresh, ...firstMemory, updatedAt: 1_000 };
+      const reset = { at: 2_000, kind: 'reset' as const };
+      const resetCard = {
+        ...applyScheduleEdit(learnt, reset),
+        updatedAt: 2_000,
+        scheduleEdits: [reset],
+      };
+      const offlineMemory = applyReview(engine, learnt, grade, 3_000).memory;
+      const answer = historyEntry(
+        'c1',
+        review({
+          eventId: 'offline',
+          timestamp: 3_000,
+          grade,
+          stabilityBefore: learnt.stability,
+          stabilityAfter: offlineMemory.stability,
+          difficultyBefore: learnt.difficulty,
+          difficultyAfter: offlineMemory.difficulty,
+        }),
+      );
+      const merged = expectPeerProperties(
+        backup({ courses: [course('course-1')], cards: [resetCard], reviewHistory: [first] }),
+        backup({
+          courses: [course('course-1')],
+          cards: [{ ...learnt, ...offlineMemory, updatedAt: 3_000 }],
+          reviewHistory: [first, answer],
+        }),
+      );
+      expect(merged.cards[0]).toMatchObject(applyReview(engine, resetCard, grade, 3_000).memory);
+    },
+  );
+
+  it('retains a learnt import without review timestamps as opaque through sync', () => {
+    const imported = card('c1', {
+      state: 2,
+      reps: 5,
+      lapses: 1,
+      due: 900_000,
+      stability: 10,
+      difficulty: 4,
+      scheduledDays: 10,
+      lastReviewed: null,
+    });
+    const merged = expectPeerProperties(
+      backup({ courses: [course('course-1')], cards: [imported] }),
+      backup(),
+    );
+    const { conceptId: _conceptId, ...retained } = imported;
+    expect(merged.cards[0]).toMatchObject(retained);
+    expect(rAtExam(imported, 1_000_000, 1_000, modelOf(PARAMS))).toBeNull();
+    expect(applyReview(makeEngine(PARAMS), imported, 3, 1_000).memory.reps).toBe(6);
   });
 
   it('keeps a manual reset over earlier reviews from either device', () => {

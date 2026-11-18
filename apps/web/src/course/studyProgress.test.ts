@@ -500,3 +500,34 @@ it.each([
     }).exam,
   ).toMatchObject({ date: Date.parse(date), timeZone, daysRemaining });
 });
+
+it.each(['expectedMarks', 'securedTopics'] as const)(
+  'leaves %s exam recall unavailable when a learnt card has opaque memory',
+  (examObjective) => {
+    const input = fixture();
+    input.course = { ...input.course, examDate: NOW + MS_PER_DAY, examObjective };
+    input.cards = [
+      {
+        ...card('known'),
+        state: 2,
+        reps: 1,
+        lastReviewed: NOW,
+        stability: 10,
+        stabilityFast: 2,
+        difficulty: 4,
+      },
+      {
+        ...card('opaque'),
+        state: 2,
+        reps: 5,
+        lastReviewed: null,
+        stability: 10,
+        stabilityFast: null,
+        difficulty: 4,
+      },
+    ];
+    const report = buildStudyProgress(input);
+    expect(report.exam?.value).toBeNull();
+    expect(report.fsrs.recallNow).toBeNull();
+  },
+);

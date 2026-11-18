@@ -8,7 +8,7 @@ import type { CourseAddKind } from './AddCourseControl';
 interface LessonNodeDetail {
   cardCount: number;
   dueCount: number;
-  masteryPct: number;
+  masteryPct: number | null;
 }
 
 export interface CourseOverviewProps {
