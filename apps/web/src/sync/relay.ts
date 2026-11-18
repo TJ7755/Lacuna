@@ -73,33 +73,6 @@ export class RelayHttpError extends RelayError {
   }
 }
 
-/**
- * A transport supplied by the existing manual file flow. The callbacks are
- * deliberately the same shape as RelayProvider so a future picker can hand
- * files to the cycle without making the cycle know about the DOM.
- */
-export type ManualRelayAdapter = RelayProvider;
-
-export class ManualRelayProvider implements RelayProvider {
-  private readonly adapter: ManualRelayAdapter;
-
-  constructor(adapter: ManualRelayAdapter) {
-    this.adapter = adapter;
-  }
-
-  pull(slot: RelaySlot): Promise<RelayBlob | null> {
-    return this.adapter.pull(slot);
-  }
-
-  push(slot: RelaySlot, bytes: Uint8Array, ifMatch: string): Promise<RelayPushResult> {
-    return this.adapter.push(slot, bytes, ifMatch);
-  }
-
-  purge(): Promise<void> {
-    return this.adapter.purge();
-  }
-}
-
 export interface HttpRelayProviderOptions {
   relayUrl: string;
   channelId: string;

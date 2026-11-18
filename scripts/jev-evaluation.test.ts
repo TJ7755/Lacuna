@@ -485,6 +485,11 @@ test.each(['secondary-development', 'secondary-held-out'])(
     expect(new Set(material.map((item) => item.subject)).size).toBe(4);
     expect(new Set(material.map((item) => item.request.maxMarks))).toEqual(new Set([1, 3, 6, 8]));
     expect(material.every((item) => item.request.diagnostic === undefined)).toBe(true);
+    const blind = JSON.parse(readFileSync(join(output, 'blind.json'), 'utf8'));
+    expect(blind.cases).toEqual(material.map(({ id, request }) => ({ id, ...request })));
+    const manifest = JSON.parse(readFileSync(join(output, 'manifest.json'), 'utf8'));
+    expect(blind.identity).toBe(manifest.identity);
+    expect(manifest.policy.partition).toBe(pack.endsWith('held-out') ? 'held-out' : 'development');
   },
 );
 

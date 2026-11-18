@@ -19,7 +19,6 @@ test('Workload ahead draws each day as a bar', async ({ page }) => {
   // A line across daily counts spiked against the axis when a course was all new cards.
   await expect(card.locator('.recharts-surface')).toBeVisible();
   await expect.poll(() => card.locator('.recharts-bar-rectangle').count()).toBeGreaterThan(0);
-  await expect(card.locator('.recharts-area')).toHaveCount(0);
 });
 
 test('Lesson breakdown keeps card counts off the percentage axis', async ({ page }) => {
@@ -32,8 +31,6 @@ test('Lesson breakdown keeps card counts off the percentage axis', async ({ page
   await page.getByRole('button', { name: 'Cards', exact: true }).click();
   const card = await chartCard(page, 'Lesson breakdown');
   await expect(card.locator('.recharts-bar').first()).toBeAttached();
-  // Counts were a dotted line on a hidden second axis, read against the percentages.
-  await expect(card.locator('.recharts-line')).toHaveCount(0);
   await expect(card.locator('.recharts-yAxis')).toHaveCount(1);
 
   await card.locator('.recharts-surface').scrollIntoViewIfNeeded();

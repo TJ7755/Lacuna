@@ -26,6 +26,9 @@ it.each([
 );
 
 it('refuses admission when authoritative Redis state is unavailable or malformed', async () => {
+  expect(() => createJevUsageStore('http://redis.example', 'key')).toThrow(
+    'A secure quota store is required.',
+  );
   for (const result of [null, 1, [1], ['1', 0], [-99, 0], [1, -1]]) {
     const store = createJevUsageStore(
       'https://redis.example',

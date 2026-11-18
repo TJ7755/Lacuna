@@ -4,7 +4,6 @@ import { act, render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SequenceEditor } from './SequenceEditor';
 import type { Course, Sequence } from '@lacuna/core/db/types';
-import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 
 let mockCourse: Course | null | undefined;
 let mockLesson: null | undefined;
@@ -217,16 +216,15 @@ describe('SequenceEditor', () => {
   });
 
   it.each(['course', 'lesson', 'sequence'] as const)(
-    'keeps the missing-%s state aligned and its Back target full-size',
+    'offers recovery from a missing %s',
     (missing) => {
       mockCourse = missing === 'course' ? null : course;
       mockLesson = missing === 'lesson' ? null : undefined;
       mockSequence = missing === 'sequence' ? null : undefined;
-      const { container } = missing === 'sequence' ? renderEdit() : renderNew(missing === 'lesson');
+      if (missing === 'sequence') renderEdit();
+      else renderNew(missing === 'lesson');
       expect(screen.getByText(`This ${missing} could not be found.`)).toBeInTheDocument();
-      expect(container.firstElementChild).toHaveClass(...COURSE_PAGE_FRAME.split(' '));
       const back = screen.getByRole('link');
-      expect(back).toHaveClass('min-h-11');
       expectAppDestination(
         back,
         missing === 'course'
@@ -237,13 +235,11 @@ describe('SequenceEditor', () => {
       );
     },
   );
-  it('aligns with course pages and offers one full-size destination-aware Back link', () => {
+  it('offers one destination-aware Back link', () => {
     mockCourse = course;
-    const { container } = renderNew();
-    expect(container.firstElementChild).toHaveClass(...COURSE_PAGE_FRAME.split(' '));
+    renderNew();
     const back = screen.getByRole('link', { name: 'Back to Cards' });
     expectAppDestination(back, '/course/course-1/cards');
-    expect(back).toHaveClass('min-h-11');
     expect(screen.getAllByRole('link')).toHaveLength(1);
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });

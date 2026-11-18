@@ -14,7 +14,7 @@ const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.2
 const RELEASE_BASE = `https://github.com/TJ7755/Lacuna/releases/download/v${APP_VERSION}`;
 const RELEASE_PAGE = `https://github.com/TJ7755/Lacuna/releases/tag/v${APP_VERSION}`;
 
-export const DOWNLOADS = {
+const DOWNLOADS = {
   windowsPortable: `${RELEASE_BASE}/Lacuna-Portable-${APP_VERSION}.exe`,
   windowsInstaller: `${RELEASE_BASE}/Lacuna-Setup-${APP_VERSION}.exe`,
   macDmg: `${RELEASE_BASE}/Lacuna-${APP_VERSION}-arm64.dmg`,
@@ -23,7 +23,7 @@ export const DOWNLOADS = {
   release: RELEASE_PAGE,
 } as const;
 
-export function detectDesktopPlatform(
+function detectDesktopPlatform(
   userAgent: string,
   desktopModeTablet = false,
 ): DesktopPlatform | null {

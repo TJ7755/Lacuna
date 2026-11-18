@@ -41,7 +41,6 @@ describe('ErrorBoundary', () => {
       'false',
     );
     fireEvent.click(screen.getByText('Technical details'));
-    expect(screen.getByText('lazy chunk unavailable')).toHaveClass('select-text');
     fireEvent.click(screen.getByRole('button', { name: 'Copy diagnostic details' }));
     expect(
       await screen.findByText('Could not copy. Download the bundle instead.'),

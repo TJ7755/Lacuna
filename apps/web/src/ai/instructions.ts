@@ -4,7 +4,7 @@ import {
   type AiInstructionBundle,
 } from '@lacuna/protocol/ai/protocol';
 
-export const AI_TEACHING_INSTRUCTION_VERSION = 'teaching-v1' as const;
+const AI_TEACHING_INSTRUCTION_VERSION = 'teaching-v1' as const;
 
 export interface BuildAiInstructionBundleOptions {
   misconceptionFirstEnabled: boolean;

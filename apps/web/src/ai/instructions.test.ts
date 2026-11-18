@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { aiInstructionBundleSchema } from '@lacuna/protocol/ai/protocol';
-import { AI_TEACHING_INSTRUCTION_VERSION, buildAiInstructionBundle } from './instructions';
+import { buildAiInstructionBundle } from './instructions';
 
 describe('buildAiInstructionBundle', () => {
   it('builds a strict, versioned bundle with unconditional trust rules', () => {
     const bundle = buildAiInstructionBundle({ misconceptionFirstEnabled: false });
 
     expect(aiInstructionBundleSchema.parse(bundle)).toEqual(bundle);
-    expect(bundle.instructionVersion).toBe(AI_TEACHING_INSTRUCTION_VERSION);
+    expect(bundle.instructionVersion).toBe('teaching-v1');
     expect(bundle.content).toContain('Grounding and evidence');
     expect(bundle.content).toContain('Permissions and tool calls');
     expect(bundle.content).toContain('Stop');

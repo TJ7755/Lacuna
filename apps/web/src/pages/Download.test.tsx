@@ -1,7 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { detectDesktopPlatform, DOWNLOADS, Download } from './Download';
+import { Download } from './Download';
+
+const { releaseVersion } = vi.hoisted(() => {
+  const releaseVersion = '9.8.7';
+  vi.stubGlobal('__APP_VERSION__', releaseVersion);
+  return { releaseVersion };
+});
+const releaseBase = `https://github.com/TJ7755/Lacuna/releases/download/v${releaseVersion}`;
 
 vi.mock('../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal'],
@@ -18,7 +25,7 @@ describe('desktop download selection', () => {
 
     expect(screen.getByRole('link', { name: 'View checksums and release files' })).toHaveAttribute(
       'href',
-      DOWNLOADS.release,
+      `https://github.com/TJ7755/Lacuna/releases/tag/v${releaseVersion}`,
     );
   });
 
@@ -33,7 +40,7 @@ describe('desktop download selection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Other Windows download' }));
     expect(
       screen.getByRole('link', { name: 'Download the Windows portable build' }),
-    ).toHaveAttribute('href', DOWNLOADS.windowsPortable);
+    ).toHaveAttribute('href', `${releaseBase}/Lacuna-Portable-${releaseVersion}.exe`);
     fireEvent.click(screen.getByRole('button', { name: 'Linux' }));
     expect(
       screen.queryByRole('link', { name: 'Download the DEB package' }),
@@ -42,32 +49,34 @@ describe('desktop download selection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Other Linux download' }));
     expect(screen.getByRole('link', { name: 'Download the DEB package' })).toHaveAttribute(
       'href',
-      DOWNLOADS.linuxDeb,
+      `${releaseBase}/lacuna_${releaseVersion}_amd64.deb`,
     );
   });
 
-  it('detects supported desktop platforms without mistaking Android for Linux', () => {
-    expect(detectDesktopPlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe('windows');
-    expect(detectDesktopPlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')).toBe('macos');
-    expect(detectDesktopPlatform('Mozilla/5.0 (X11; Linux x86_64)')).toBe('linux');
-    expect(detectDesktopPlatform('Mozilla/5.0 (Linux; Android 15)')).toBeNull();
-    expect(
-      detectDesktopPlatform('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile'),
-    ).toBeNull();
-    // Desktop-mode iPad reports a Mac user agent; touch points distinguish it.
-    expect(
-      detectDesktopPlatform(
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
-        true,
-      ),
-    ).toBeNull();
-    expect(
-      detectDesktopPlatform(
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
-        false,
-      ),
-    ).toBe('macos');
-  });
+  it.each([
+    ['Windows NT 10.0; Win64; x64', '', 0, 'Windows'],
+    ['Macintosh; Intel Mac OS X 10_15_7', 'MacIntel', 0, 'macOS'],
+    ['X11; Linux x86_64', '', 0, 'Linux'],
+    ['Linux; Android 15', '', 0, null],
+    ['iPhone; CPU iPhone OS 18_0 like Mac OS X Mobile', '', 0, null],
+    ['Macintosh; Intel Mac OS X 10_15_7', 'MacIntel', 5, null],
+  ])(
+    'offers the appropriate download for %s on %s with %i touch points',
+    (userAgent, platform, maxTouchPoints, selected) => {
+      vi.stubGlobal('navigator', { userAgent, platform, maxTouchPoints });
+      render(<Download />, { wrapper: MemoryRouter });
+      if (selected) {
+        expect(screen.getByRole('button', { name: selected })).toHaveAttribute(
+          'aria-pressed',
+          'true',
+        );
+        expect(screen.getByRole('link', { name: `Download for ${selected}` })).toBeVisible();
+      } else {
+        expect(screen.getByText('Choose your computer.')).toBeVisible();
+        expect(screen.queryByRole('link', { name: /^Download for/ })).not.toBeInTheDocument();
+      }
+    },
+  );
 
   it('does not silently recommend a Windows executable to mobile visitors', () => {
     vi.stubGlobal('navigator', {
@@ -100,12 +109,12 @@ describe('desktop download selection', () => {
     expect(screen.getByText(/browser data is not copied/i)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Download for Windows' })).toHaveAttribute(
       'href',
-      DOWNLOADS.windowsInstaller,
+      `${releaseBase}/Lacuna-Setup-${releaseVersion}.exe`,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Other Windows download' }));
     expect(
       screen.getByRole('link', { name: 'Download the Windows portable build' }),
-    ).toHaveAttribute('href', DOWNLOADS.windowsPortable);
+    ).toHaveAttribute('href', `${releaseBase}/Lacuna-Portable-${releaseVersion}.exe`);
     expect(screen.getByText(/no installer or administrator account/i)).toBeVisible();
     expect(screen.getByText(/It uses manual updates/)).toBeVisible();
     expect(
@@ -126,7 +135,7 @@ describe('desktop download selection', () => {
     expect(screen.getByText(/Apple Silicon Macs only and uses manual updates/)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Download for macOS' })).toHaveAttribute(
       'href',
-      DOWNLOADS.macDmg,
+      `${releaseBase}/Lacuna-${releaseVersion}-arm64.dmg`,
     );
     expect(screen.getByText(/Privacy & Security/)).toBeVisible();
     expect(
@@ -143,12 +152,12 @@ describe('desktop download selection', () => {
     expect(screen.getByText(/It uses automatic updates/)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Download for Linux' })).toHaveAttribute(
       'href',
-      DOWNLOADS.linuxAppImage,
+      `${releaseBase}/Lacuna-${releaseVersion}.AppImage`,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Other Linux download' }));
     expect(screen.getByRole('link', { name: 'Download the DEB package' })).toHaveAttribute(
       'href',
-      DOWNLOADS.linuxDeb,
+      `${releaseBase}/lacuna_${releaseVersion}_amd64.deb`,
     );
   });
 });

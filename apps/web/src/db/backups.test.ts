@@ -297,7 +297,7 @@ describe('backups', () => {
 
   it('throttles ordinary backups for five minutes', async () => {
     let now = 1_000_000;
-    ({ takeAutoBackup } = createAutoBackups(() => now));
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
 
     await takeAutoBackup();
     now += 5 * 60 * 1000 - 1;

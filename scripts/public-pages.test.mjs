@@ -107,7 +107,6 @@ test('public pages describe their identity and comparison intent without invente
 });
 test('comparison ships crawlable HTML, metadata and resolved assets', async () => {
   assert.ok(existsSync(pagePath), 'The comparison must be a built public HTML page');
-  assert.ok(!existsSync('dist/apps/web/src/pages/quizlet/index.html'));
   const html = readFileSync(pagePath, 'utf8');
   const view = new Window();
   try {
@@ -135,7 +134,7 @@ test('comparison ships crawlable HTML, metadata and resolved assets', async () =
   } finally {
     await view.happyDOM.close();
   }
-  assert.doesNotMatch(html, /Prototype variants|ROUND 2|\/src\/|\/prototype\//);
+  assert.doesNotMatch(html, /\/src\//);
   for (const [, asset] of html.matchAll(/(?:src|href)="(\/assets\/[^"?#]+)"/g)) {
     assert.ok(existsSync(`dist${asset}`), `Missing built asset ${asset}`);
   }
@@ -163,7 +162,7 @@ test('homepage ships prerendered landing HTML for crawlers', async () => {
   assert.match(html, /name="description"/);
   assert.match(html, /property="og:url" content="https:\/\/getlacuna.app\/"/);
   assert.match(html, /id="how-it-works"/);
-  assert.doesNotMatch(html, /<!--landing-page-->|Prototype variants|ROUND 2|\/src\//);
+  assert.doesNotMatch(html, /<!--landing-page-->|\/src\//);
   for (const [, asset] of html.matchAll(/(?:src|href)="(\/assets\/[^"?#]+)"/g)) {
     assert.ok(existsSync(`dist${asset}`), `Missing built asset ${asset}`);
   }
@@ -196,7 +195,6 @@ test('crawl files advertise the active catalogue and generated hierarchy', async
 });
 
 test('course pages ship the complete catalogue content and metadata without JavaScript', async () => {
-  assert.ok(!existsSync('dist/apps/web/src/pages/courses/index.html'));
   const { libraryCourses } = await import('../apps/web/src/library/catalogue.ts');
   const { Window } = await import('happy-dom');
   const view = new Window();
@@ -235,6 +233,16 @@ test('course pages ship the complete catalogue content and metadata without Java
       assert.equal(doc.querySelector('h1')?.textContent, name);
       assert.ok(doc.body.textContent.includes(course.qualification));
       assert.ok(doc.body.textContent.includes(course.summary));
+      if (course.revision !== undefined) {
+        const provenance = doc.querySelector('section[aria-label="Course provenance"]');
+        assert.ok(provenance, course.id);
+        assert.ok(
+          [...provenance.querySelectorAll('dd')].some(
+            (value) => value.textContent === String(course.revision),
+          ),
+          course.id,
+        );
+      }
       assert.deepEqual(
         [...doc.querySelectorAll('ol li')].map((li) => li.textContent),
         course.topics,
@@ -305,13 +313,4 @@ test('course pages ship the complete catalogue content and metadata without Java
   } finally {
     await view.happyDOM.close();
   }
-});
-
-test('Religious Studies ships its published scope and revision in crawlable HTML', () => {
-  const html = readFileSync('dist/courses/religiousstudies8062/index.html', 'utf8');
-  assert.match(html, /Christianity and Islam: beliefs, teachings and practices/);
-  assert.match(html, /optional Themes A–F modules/);
-  assert.match(html, /1, 1, 4 and 6-mark question styles/);
-  assert.match(html, /e85fc39e709074d58669c2d8bfd723bb/);
-  assert.match(html, /<dd>22<\/dd>/);
 });

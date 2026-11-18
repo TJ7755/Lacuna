@@ -100,7 +100,4 @@ async function openSeededCourse(page: Page): Promise<void> {
   await expect(
     page.getByRole('heading', { level: 1, name: 'Welcome to Lacuna', exact: true }),
   ).toBeVisible();
-  expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(
-    false,
-  );
 }

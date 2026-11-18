@@ -190,9 +190,6 @@ for (const width of [1280, 390]) {
       .filter({ has: page.getByRole('heading', { name: 'GCSE Biology', exact: true }) });
     const forgetTrigger = header.getByRole('button', { name: 'Forget on this device' });
     await expect(forgetTrigger).toBeVisible();
-    await expect(header.getByRole('button', { name: 'Close', exact: true })).toHaveClass(
-      (await forgetTrigger.getAttribute('class')) ?? '',
-    );
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);

@@ -27,14 +27,15 @@ describe('createLocalSetting', () => {
     expect(localStorage.getItem('lacuna.testColour')).toBe('blue');
   });
 
-  it('removes both listeners on unmount', () => {
-    const add = vi.spyOn(window, 'addEventListener');
-    const remove = vi.spyOn(window, 'removeEventListener');
-    const { unmount } = renderHook(() => colour.use());
-    const added = add.mock.calls.map(([type, listener]) => [type, listener]);
-    expect(added.map(([type]) => type)).toEqual(['storage', 'lacuna:test-colour']);
-    unmount();
-    expect(remove.mock.calls.map(([type, listener]) => [type, listener])).toEqual(added);
+  it('stops notifying a subscriber after it unsubscribes', () => {
+    const changed = vi.fn();
+    const unsubscribe = colour.subscribe(changed);
+    colour.write('blue');
+    expect(changed).toHaveBeenCalledOnce();
+    unsubscribe();
+    colour.write('red');
+    window.dispatchEvent(new StorageEvent('storage'));
+    expect(changed).toHaveBeenCalledOnce();
   });
 });
 

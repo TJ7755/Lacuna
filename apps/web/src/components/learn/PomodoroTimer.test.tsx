@@ -35,7 +35,6 @@ describe('PomodoroTimer', () => {
     formattedTime = '24:54';
     render(<PomodoroTimer />);
     const button = screen.getByRole('button', { name: 'Focus 24:54' });
-    expect(button).toHaveClass('rounded-full');
     expect(button).toHaveAttribute('aria-expanded', 'false');
 
     fireEvent.click(button);
@@ -43,7 +42,6 @@ describe('PomodoroTimer', () => {
     expect(button).toHaveAttribute('aria-expanded', 'true');
     const panel = screen.getByRole('dialog', { name: 'Pomodoro timer' });
     expect(panel).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Reset timer' })).toHaveClass('rounded-full');
   });
 });
 

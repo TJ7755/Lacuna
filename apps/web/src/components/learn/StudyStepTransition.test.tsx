@@ -145,7 +145,6 @@ describe('StudyStepTransition', () => {
     expect(
       within(panel).getByRole('progressbar', { name: 'Predicted recall on exam day' }),
     ).toHaveAttribute('aria-valuenow', '64');
-    expect(within(panel).getByText('Cells and transport')).toHaveClass('font-semibold');
     expect(within(panel).getByText('3 due')).toBeInTheDocument();
     expect(panel).not.toHaveTextContent(/cards at 90%|exam skill|Not yet assessed/);
   });
@@ -158,7 +157,6 @@ describe('StudyStepTransition', () => {
       '88',
     );
     expect(panel).toHaveTextContent('3cards due');
-    expect(within(panel).getByText('Cells and transport')).not.toHaveClass('font-semibold');
     expect(panel).not.toHaveTextContent(/days to go/);
   });
 
@@ -371,10 +369,6 @@ describe('StudyStepTransition', () => {
     expect(screen.getByText('Plan updated: the assessment deadline moved.')).toBeInTheDocument();
     expect(screen.getByText('Not reached')).toBeInTheDocument();
     expect(screen.queryByText(/predicted|readiness|mark/i)).not.toBeInTheDocument();
-    // Each figure sits in the tinted well, not an outlined box.
-    const fact = screen.getByText('Not reached').parentElement;
-    expect(fact).toHaveClass('bg-ink/[0.04]');
-    expect(fact).not.toHaveClass('border');
   });
 
   it('shows readiness only when the model supplies prediction uncertainty', () => {

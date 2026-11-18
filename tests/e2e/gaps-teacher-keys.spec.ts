@@ -19,9 +19,9 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
   await openSidebarItem(page, 'Recover a class');
   await expect(page.getByRole('heading', { name: 'Recover a class', level: 1 })).toBeVisible();
   await page.getByLabel('What do you need to do?').selectOption('create');
-  expect(await page.evaluate(() => indexedDB.databases())).toEqual([
-    { name: 'lacuna.gaps.connections', version: 20 },
-  ]);
+  expect(
+    (await page.evaluate(() => indexedDB.databases())).map((database) => database.name),
+  ).toEqual(['lacuna.gaps.connections']);
   await page.getByLabel(/Published course link/).fill(`https://getlacuna.app/#/s/${shareId}`);
   await page.getByLabel(/^Recovery passphrase/).fill(passphrase);
   await page.getByLabel('Repeat recovery passphrase').fill(passphrase);
@@ -69,9 +69,9 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
     await expect(restored.getByRole('alert')).toContainText('Could not open class recovery', {
       timeout: 15_000,
     });
-    expect(await restored.evaluate(() => indexedDB.databases())).toEqual([
-      { name: 'lacuna.gaps.connections', version: 20 },
-    ]);
+    expect(
+      (await restored.evaluate(() => indexedDB.databases())).map((database) => database.name),
+    ).toEqual(['lacuna.gaps.connections']);
     await restored.getByLabel('Recovery passphrase').fill(passphrase);
     await restored.getByRole('button', { name: 'Restore class access' }).click();
     await expect(restored.getByRole('status')).toContainText('Class protected', {

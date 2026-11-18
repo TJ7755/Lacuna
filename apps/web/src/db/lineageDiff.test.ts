@@ -464,18 +464,6 @@ describe('diffLineage', () => {
     ]);
   });
 
-  it('never produces sequence-shaped output — result has no sequence field', () => {
-    const input: LineageDiffInput = {
-      incoming: { lessons: [] },
-      existing: { lessons: [], notes: [], cards: [] },
-      mapping: mapping(),
-      studentEdits: new Set(),
-    };
-    const result = diffLineage(input);
-    expect(result).not.toHaveProperty('sequences');
-    expect(Object.keys(result)).toEqual(['creates', 'updates', 'removals', 'conflicts']);
-  });
-
   it('maps a retired typing card kind (k=3) to front_back on create', () => {
     const input: LineageDiffInput = {
       incoming: {

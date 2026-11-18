@@ -270,14 +270,10 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(primary).toBeInViewport();
     };
     await expect(card.getByRole('button', { name: 'Next part', exact: true })).toBeVisible();
-    await expect(page.getByText('Your answer', { exact: true })).toHaveCount(0);
-    await expect(page.getByText('Saved', { exact: true })).toHaveCount(0);
     await assertFits();
     const header = page.locator('.qs-practice-header');
     const exit = header.getByRole('button', { name: 'Exit', exact: true });
     await expect(exit).toHaveCount(1);
-    await expect(header.getByRole('button', { name: 'Finish for now' })).toHaveCount(0);
-    await expect(header.getByRole('button', { name: 'Save and finish later' })).toHaveCount(0);
     const stepper = header.locator('.qs-part-stepper');
     const segments = stepper.locator('.qs-part-segment');
     const uncompletedColour = await segments

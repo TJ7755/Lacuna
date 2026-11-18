@@ -59,9 +59,6 @@ test('opens quick search from the mobile drawer and restores its navigation trig
 test('replaces the shell when entering study with reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
-  expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(
-    true,
-  );
 
   await createCourse(page, `Reduced motion course ${Date.now()}`);
   // A course needs something to study before Study is offered.

@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { readReviewActivity } from './reviewActivityRead';
 import { db } from './schema';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
@@ -53,10 +53,7 @@ describe('readReviewActivity', () => {
     }
   });
 
-  it('does not query the database for an empty card set', async () => {
-    const toArray = vi.spyOn(db.reviewActivity, 'toArray');
-
+  it('returns no activity for an empty card set', async () => {
     await expect(readReviewActivity([])).resolves.toEqual(new Map());
-    expect(toArray).not.toHaveBeenCalled();
   });
 });

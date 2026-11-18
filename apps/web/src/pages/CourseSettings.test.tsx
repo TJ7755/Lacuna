@@ -294,15 +294,6 @@ describe('CourseSettings', () => {
     expect(screen.getByDisplayValue('Original course')).toBeInTheDocument();
   });
 
-  it('uses cards to group related course settings', () => {
-    renderPage();
-    openSettings('Course details');
-
-    const goal = screen.getByRole('heading', { name: 'Study goal and dates' }).closest('section');
-    expect(goal).toHaveClass('rounded-3xl', 'bg-surface');
-    expect(goal).not.toHaveClass('border');
-  });
-
   it('does not reset the optimiser when the same course rerenders', () => {
     const view = renderPage();
     openSettings('Advanced scheduling');

@@ -72,7 +72,7 @@ describe('QuestionAnalyticsSection', () => {
     expect(screen.queryByText('No question attempts yet.')).not.toBeInTheDocument();
   });
 
-  it('sits on the shared card surface, empty or not, rather than ruled or outlined boxes', () => {
+  it('shows an empty state until attempt evidence is available', () => {
     const empty: QuestionAnalytics = {
       inventory: { total: 0, due: 0, unseen: 0, suspended: 0 },
       fixed: {
@@ -95,22 +95,9 @@ describe('QuestionAnalyticsSection', () => {
       checkerDisputeCount: 0,
       excluded: { shown: 0, abandoned: 0, undone: 0, checkerWithheld: 0, unscored: 0 },
     };
-    const { unmount } = render(<QuestionAnalyticsSection analytics={empty} />);
-    const message = screen.getByText('No question attempts yet.');
-    expect(message).toHaveClass('rounded-3xl', 'bg-surface');
-    expect(message).not.toHaveClass('border-y');
-    unmount();
-
-    render(
-      <QuestionAnalyticsSection
-        analytics={{ ...empty, fixed: { ...empty.fixed, firstPresentation: metric(1, 1, 2, 2) } }}
-      />,
-    );
-    const card = screen
-      .getByRole('table', { name: 'Question performance' })
-      .closest('.rounded-3xl');
-    expect(card).not.toBeNull();
-    expect(card).not.toHaveClass('border');
+    render(<QuestionAnalyticsSection analytics={empty} />);
+    expect(screen.getByText('No question attempts yet.')).toBeVisible();
+    expect(screen.queryByRole('table', { name: 'Question performance' })).toBeNull();
   });
 
   it('renders every evidence cohort, raw marks, exclusions and all versioned criteria', () => {
@@ -142,9 +129,6 @@ describe('QuestionAnalyticsSection', () => {
     expect(screen.getByText('Generated (novel variants)')).toBeInTheDocument();
     expect(screen.getByText('Generated (repeated variants)')).toBeInTheDocument();
     expect(screen.getByText('Recorded marks')).toBeInTheDocument();
-    expect(
-      screen.getByRole('table', { name: 'Question performance' }).parentElement?.parentElement,
-    ).toHaveClass('bg-surface', 'rounded-3xl');
     expect(screen.getByRole('table', { name: 'Question performance' })).toBeInTheDocument();
     const details = screen.getByRole('button', { name: 'Attempt details' });
     const panel = document.getElementById(details.getAttribute('aria-controls')!);

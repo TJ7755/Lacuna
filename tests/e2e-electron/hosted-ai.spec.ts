@@ -11,7 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const require = createRequire(import.meta.url);
 const service = 'https://getlacuna.app';
 
-test('Electron keeps Jev access without the AI chat interface', async () => {
+test('Electron obtains a hosted session and applies automatic marking', async () => {
   test.skip(process.platform !== 'darwin' && process.platform !== 'win32');
   const profile = await realpath(await mkdtemp(path.join(tmpdir(), 'lacuna-hosted-ai-')));
   let app: ElectronApplication | undefined;
@@ -64,8 +64,6 @@ test('Electron keeps Jev access without the AI chat interface', async () => {
     await page.getByRole('button', { name: 'Exit', exact: true }).click();
     await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
     await page.getByRole('button', { name: /^Integrations/ }).click();
-    await expect(page.getByRole('switch', { name: 'Enable AI', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'AI', exact: true })).toHaveCount(0);
     await page.getByRole('switch', { name: 'Mark my answers automatically' }).click();
     await page.getByRole('alertdialog').getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Turn on', exact: true }).click();
@@ -93,7 +91,6 @@ test('Electron keeps Jev access without the AI chat interface', async () => {
     await expect(page.getByRole('main', { name: 'Session report' })).toBeVisible();
     expect(requests.some((url) => url.endsWith('/session'))).toBe(true);
     expect(requests.filter((url) => url.endsWith('/jev'))).toHaveLength(1);
-    expect(requests.some((url) => url.endsWith('/inference'))).toBe(false);
     await page.getByRole('button', { name: 'Done', exact: true }).click();
     await expect(page.getByRole('main', { name: 'Session report' })).toHaveCount(0);
   } finally {

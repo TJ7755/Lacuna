@@ -14,12 +14,6 @@ const savedNav = () => (JSON.parse(localStorage.getItem(key)!) as SidebarSetting
 describe('Sidebar navigation ordering', () => {
   beforeEach(() => localStorage.removeItem(key));
 
-  it('gives each reorder control the shared minimum target size', () => {
-    render(<SidebarSection />);
-    for (const button of screen.getAllByRole('button', { name: /^Move .+ (up|down)$/ }))
-      expect(button).toHaveClass('h-11', 'w-11');
-  });
-
   it('persists ordering and keeps boundary actions disabled', () => {
     render(<SidebarSection />);
     expect(screen.getByRole('button', { name: 'Move Today up' })).toBeDisabled();

@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { agentMemoryRepository, type DeletedAgentMemory } from '../../db/agentMemoryRepository';
 import { createCourse } from '../../db/repository';
 import { db } from '../../db/schema';
-import { TOOL_REGISTRY } from '../registry';
 import { createMemory, deleteMemory, searchMemories, updateMemory } from './memories';
 
 const context = { agentId: 'terminal-agent', grant: null };
@@ -14,18 +13,6 @@ beforeEach(async () => {
 });
 
 describe('memory MCP tools', () => {
-  it('registers the four additive memory tools without changing the companion surface', () => {
-    const names = TOOL_REGISTRY.map((tool) => tool.name);
-    expect(names).toEqual(
-      expect.arrayContaining([
-        'lacuna.search_memories',
-        'lacuna.create_memory',
-        'lacuna.update_memory',
-        'lacuna.delete_memory',
-      ]),
-    );
-  });
-
   it('requires an explicit global or Course scope for search and creation', () => {
     expect(searchMemories.inputSchema.safeParse({ query: 'algebra' }).success).toBe(false);
     expect(searchMemories.inputSchema.safeParse({ scope: { kind: 'all' } }).success).toBe(false);

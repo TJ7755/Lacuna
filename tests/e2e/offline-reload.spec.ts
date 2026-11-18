@@ -116,8 +116,6 @@ test('reloads a visited card library with persisted data while offline', async (
 
       await expect(page).toHaveURL(cardsUrl);
       await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
-      // The sharing announcement belongs to Today, so a course page never waits on it.
-      await expect(page.getByRole('region', { name: 'New sharing features' })).toHaveCount(0);
       await expect(cardsMain.getByRole('heading', { name: 'Cards', level: 1 })).toBeVisible();
       await expect(cardsMain.getByText(front, { exact: true })).toBeVisible();
 

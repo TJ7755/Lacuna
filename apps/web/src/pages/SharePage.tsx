@@ -18,10 +18,7 @@ import { countOf } from '../utils/plural';
  * asked for, else an active course already being shared, else the first active course.
  * Archived courses remain available when requested or when none are active.
  */
-export function defaultShareCourse(
-  courses: Course[],
-  requested: string | null,
-): Course | undefined {
+function defaultShareCourse(courses: Course[], requested: string | null): Course | undefined {
   return (
     courses.find((course) => course.id === requested) ??
     courses.find((course) => !course.archived && course.distribution?.shareId) ??

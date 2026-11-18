@@ -249,8 +249,6 @@ describe('CommandPalette', () => {
     const result = screen.getByRole('option', { name: /Palatine/ });
     // The match highlight sits flush, so a partly matched word does not split apart.
     expect(result.querySelector('mark')!.className).not.toMatch(/\bpx-/);
-    // Rows are inset and rounded, as in the app's other menus.
-    expect(result).toHaveClass('rounded-xl');
     fireEvent.change(input, { target: { value: '' } });
     expect(result).toBeInTheDocument();
     expect(result.closest('[inert]')).not.toBeNull();
@@ -273,10 +271,6 @@ describe('CommandPalette', () => {
     expect(screen.queryByText('Navigate')).not.toBeInTheDocument();
     expect(screen.queryByText('Esc')).not.toBeInTheDocument();
     expect(screen.getByRole('combobox')).toHaveAttribute('placeholder', 'Search…');
-    // The popover uses the shared flat hairline surface.
-    const panel = screen.getByRole('combobox').closest('.rounded-3xl');
-    expect(panel).not.toBeNull();
-    expect(panel).toHaveClass('card-surface');
     expect(screen.queryByText('Type to search across every course.')).not.toBeInTheDocument();
 
     first.rerender(renderPalette(false));

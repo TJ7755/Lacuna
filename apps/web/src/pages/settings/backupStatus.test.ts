@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { backupStatus, STALE_BACKUP_MS } from './backupStatus';
+import { backupStatus } from './backupStatus';
 
 const NOW = Date.UTC(2026, 7, 28, 12);
 
@@ -22,7 +22,7 @@ describe('backupStatus', () => {
   });
 
   it('turns stale from three days on', () => {
-    const status = backupStatus(NOW - STALE_BACKUP_MS, NOW);
+    const status = backupStatus(NOW - 3 * 24 * 60 * 60 * 1000, NOW);
     expect(status.tone).toBe('stale');
     expect(status.label).toMatch(/^Last restore point /);
   });

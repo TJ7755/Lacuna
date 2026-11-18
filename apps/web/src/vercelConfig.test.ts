@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('Vercel configuration', () => {
-  it('canonicalises course routes without an app-shell rewrite', async () => {
+  it('canonicalises public course routes', async () => {
     const config = JSON.parse(await readFile('vercel.json', 'utf8'));
     for (const [source, destination] of [
       ['/courses', '/courses/'],
@@ -14,7 +14,6 @@ describe('Vercel configuration', () => {
     ]) {
       expect(config.redirects).toContainEqual({ source, destination, permanent: true });
     }
-    expect(config.rewrites ?? []).toEqual([]);
   });
 
   it('typechecks the Vite configuration when Vercel supplies the library deployment configuration', async () => {

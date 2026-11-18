@@ -104,12 +104,13 @@ export async function seed() {
       updatedAt: Date.now(),
     })),
   );
+  const reviews = await db.reviewHistory.count();
   db.close();
   return {
     cards: cards.length,
     imageCards: 105,
     occlusionCards: 105,
     imageBytes: bytes,
-    reviews: 6440,
+    reviews,
   };
 }

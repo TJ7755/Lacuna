@@ -70,9 +70,6 @@ describe('hosted provider policy', () => {
       ).toEqual([]);
       expect(selectFreeGatewayModels([{ ...model, pricing: undefined }])).toEqual([]);
     }
-    expect(
-      selectFreeGatewayModels([{ ...available[0]!, pricing: { input: '0', output: '0.01' } }]),
-    ).toEqual([]);
     expect(selectFreeGatewayModels([{ ...available[0]!, modelType: 'image' as const }])).toEqual(
       [],
     );

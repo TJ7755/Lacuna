@@ -33,7 +33,7 @@ export function attachMcpBridge(options: McpBridgeOptions = {}): (() => void) | 
   });
 }
 
-export async function handleInvoke(
+async function handleInvoke(
   request: McpInvokeRequest,
   reply: (response: McpInvokeResponse) => void,
   options: McpBridgeOptions,

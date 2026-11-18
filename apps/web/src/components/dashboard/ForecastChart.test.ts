@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { easeSeries, recallTicks, spreadLabels } from './ForecastChart';
+import { easeSeries, recallTicks, spreadLabels } from './forecastChartMaths';
 
 describe('easeSeries', () => {
   it('keeps the endpoints, smooths the steps and never makes a rising series fall', () => {

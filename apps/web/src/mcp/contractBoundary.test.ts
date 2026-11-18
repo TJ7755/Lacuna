@@ -196,7 +196,7 @@ describe('Electron MCP contract boundary', () => {
         description: contract.description,
         requiredScope: contract.requiredScope,
       });
-      expect(tool.inputSchema).toBe(contract.inputSchema);
+      expect(z.toJSONSchema(tool.inputSchema)).toEqual(z.toJSONSchema(contract.inputSchema));
     }
   });
 

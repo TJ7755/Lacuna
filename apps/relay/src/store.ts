@@ -118,7 +118,7 @@ export class MemoryStore implements BlobStore {
 }
 
 /** A cached pull is a wrong merge base. Required on every read. */
-export const BLOB_GET_OPTIONS = {
+const BLOB_GET_OPTIONS = {
   access: 'private' as const,
   useCache: false,
 };

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BackupFile, CourseRecord } from '@lacuna/core/db/types';
 import type * as DbPortability from '../db/portability';
 import { openState, sealState } from './crypto';
-import { createSyncCycle, SYNC_FRESHNESS_POLICY, type SyncCycleOptions } from './cycle';
+import { createSyncCycle, type SyncCycleOptions } from './cycle';
 import { EMPTY_GENERATION, StaleGenerationError, type RelayProvider } from './relay';
 import {
   decodeSnapshot,
@@ -192,9 +192,6 @@ describe('syncCycle', () => {
       lastSnapshotPlaintextBytes: result.snapshotPlaintextBytes,
       lastError: null,
     });
-    expect(SYNC_FRESHNESS_POLICY).toBe(
-      'authenticated-local-merge-without-relay-rollback-protection',
-    );
   });
 
   it('merges a remote snapshot but avoids a write when the merged state is unchanged', async () => {

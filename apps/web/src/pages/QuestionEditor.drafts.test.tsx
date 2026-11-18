@@ -2,11 +2,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { loadDraft, saveDraft } from '../utils/drafts';
 import { chooseConcept, mocks, renderEditor } from './QuestionEditor.testSupport';
-import {
-  EMPTY_QUESTION_AUTHORING_STATE,
-  questionDraftKey,
-  type QuestionDraftData,
-} from './questionDraft';
+import { newQuestionState, questionDraftKey, type QuestionDraftData } from './questionDraft';
 
 describe('QuestionEditor drafts', () => {
   it('requires explicit discard when a draft cannot be stored and permits retry', async () => {
@@ -128,7 +124,7 @@ describe('QuestionEditor drafts', () => {
     const key = questionDraftKey('course-1');
     saveDraft<QuestionDraftData>(key, {
       state: {
-        ...EMPTY_QUESTION_AUTHORING_STATE,
+        ...newQuestionState(''),
         name: 'Recovered definition',
         targetConceptId: 'concept-2',
       },
@@ -159,7 +155,7 @@ describe('QuestionEditor drafts', () => {
   it('discards a stored draft without making the untouched editor dirty', async () => {
     const key = questionDraftKey('course-1');
     saveDraft<QuestionDraftData>(key, {
-      state: { ...EMPTY_QUESTION_AUTHORING_STATE, name: 'Throw this away' },
+      state: { ...newQuestionState(''), name: 'Throw this away' },
       timestamp: 10,
     });
     const router = renderEditor();

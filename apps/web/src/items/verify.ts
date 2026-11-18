@@ -74,7 +74,7 @@ export type ParseExpressionResult =
  * Callers must not treat it as `different`: doing so marks a student wrong for writing
  * something the checker cannot check.
  */
-export type EquivalenceOutcome = 'equivalent' | 'different' | 'undetermined';
+type EquivalenceOutcome = 'equivalent' | 'different' | 'undetermined';
 
 export interface WorkingVerificationResult {
   marksEarned: number;
@@ -123,7 +123,7 @@ export function expressionToTex(expression: Expression): string {
  * attempts fail, which is what lets a domain-restricted expression such as
  * `sqrt(x - 100)` reach the region where it is defined at all.
  */
-export function compareByRandomEvaluation(
+function compareByRandomEvaluation(
   a: Expression,
   b: Expression,
   seed: string,

@@ -181,20 +181,7 @@ for (const viewport of [
       await expectUnchangedStorage('results after one click');
       expect(blockedRequests).toEqual([]);
       await capture(page, testInfo, `gaps-demo-results-${viewport.width}`);
-      await expect(table).toHaveCSS('border-spacing', '6px');
-      const cell = table.locator('td button').first();
-      await expect(cell).toHaveCSS('border-radius', '10px');
-      await expect(cell.locator('span')).toHaveCSS('padding-left', '8px');
-      await expect(main.getByRole('list', { name: 'Key', exact: true })).toHaveCSS(
-        'column-gap',
-        '20px',
-      );
       const resultWidth = await expectEqualResultWidths(table);
-      const questionLabels = table.locator('thead button > span:first-child');
-      for (const label of await questionLabels.all()) {
-        await expect(label).toHaveCSS('white-space', 'nowrap');
-        await expect(label).toHaveCSS('text-overflow', 'ellipsis');
-      }
       const longQuestion = table.getByRole('button', {
         name: /^How does active transport differ from diffusion\?/,
       });

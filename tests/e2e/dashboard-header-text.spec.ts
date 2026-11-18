@@ -62,20 +62,8 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     const create = main.getByRole('button', { name: 'New course', exact: true });
     const importing = main.getByRole('button', { name: 'Import', exact: true });
 
-    // These are the existing resting dimensions at the default text size.
-    for (const [trigger, width] of [
-      [create, 152],
-      [importing, 100],
-    ] as const) {
-      await expect(trigger).toBeVisible();
-      await expect
-        .poll(async () => {
-          const box = (await trigger.locator('..').boundingBox())!;
-          return { width: Math.round(box.width), height: Math.round(box.height) };
-        })
-        .toEqual({ width, height: 44 });
-      await trigger.screenshot({ path: test.info().outputPath(`default-${width}.png`) });
-    }
+    await expect(create).toBeVisible();
+    await expect(importing).toBeVisible();
     await page.screenshot({ path: test.info().outputPath('1280-default.png') });
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '200%';

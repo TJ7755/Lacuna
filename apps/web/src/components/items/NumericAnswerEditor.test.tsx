@@ -2,7 +2,7 @@ import { createRef, useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { NumericAnswerSpec } from '@lacuna/core/db/types';
-import { NumericAnswerEditor, numericAnswerSpecIsValid } from './NumericAnswerEditor';
+import { NumericAnswerEditor } from './NumericAnswerEditor';
 
 function Harness({ initialValue }: { initialValue: NumericAnswerSpec }) {
   const [value, setValue] = useState(initialValue);
@@ -30,12 +30,6 @@ describe('NumericAnswerEditor', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Remove answer' })[0]);
     expect(screen.getByRole('textbox', { name: 'Accepted answer 1' })).toHaveValue('0.75');
-  });
-
-  it('rejects variables and negative tolerances', () => {
-    expect(numericAnswerSpecIsValid({ kind: 'exact', value: 'x' })).toBe(false);
-    expect(numericAnswerSpecIsValid({ kind: 'within', value: '4', tolerance: -0.1 })).toBe(false);
-    expect(numericAnswerSpecIsValid({ kind: 'exact', value: 'sqrt(16)' })).toBe(true);
   });
 });
 

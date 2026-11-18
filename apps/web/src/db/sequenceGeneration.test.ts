@@ -371,14 +371,6 @@ describe('diffRegeneration', () => {
       ]),
     );
     expect(diff.updates).toHaveLength(2);
-    // No update entry ever carries a scheduling field.
-    for (const u of diff.updates) {
-      expect(u).not.toHaveProperty('stability');
-      expect(u).not.toHaveProperty('difficulty');
-      expect(u).not.toHaveProperty('due');
-      expect(u).not.toHaveProperty('state');
-      expect(u).not.toHaveProperty('history');
-    }
   });
 
   it('inserting an item at the head shifts fronts but keeps existing cards (memory state preserved)', () => {

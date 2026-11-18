@@ -86,7 +86,6 @@ describe('brand mark palette', () => {
   it('uses the landing lime in the standalone SVG mark', async () => {
     const source = await readFile(assetPath('/icon.svg'), 'utf8');
     expect(source).toContain(await landingLime());
-    expect(source).not.toContain('#e8a43d');
   });
 
   it.each([

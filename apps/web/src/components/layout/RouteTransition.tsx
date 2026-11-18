@@ -18,7 +18,7 @@ const EXIT = {
  * them avoids wrapping every ordinary navigation in a second animation, while
  * full-screen study and welcome routes get a boundary that can animate out.
  */
-export function routeTransitionKey(pathname: string): string {
+function routeTransitionKey(pathname: string): string {
   if (pathname === '/welcome') return 'welcome';
   if (pathname === '/download') return 'download';
   if (
@@ -31,7 +31,7 @@ export function routeTransitionKey(pathname: string): string {
   return 'shell';
 }
 
-export function routeTransitionTiming(multiplier: number) {
+function routeTransitionTiming(multiplier: number) {
   return {
     duration: 0.18 * multiplier,
     ease: EASE,

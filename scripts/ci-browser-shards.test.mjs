@@ -95,6 +95,22 @@ test('cost history affects placement but cannot remove discovery entries', () =>
   const tests = inventory(
     report(spec('a', 'a.spec.ts'), spec('b', 'b.spec.ts'), spec('c', 'c.spec.ts')),
   );
+  const history = (slow) => ({
+    files: Object.fromEntries(
+      ['a', 'b', 'c'].map((name) => [
+        `${name}.spec.ts`,
+        { tests: 1, durationMs: name === slow ? 100 : 10 },
+      ]),
+    ),
+  });
+  assert.deepEqual(
+    planShards(tests, history('a'), 2).map((shard) => shard.files),
+    [['a.spec.ts'], ['b.spec.ts', 'c.spec.ts']],
+  );
+  assert.deepEqual(
+    planShards(tests, history('b'), 2).map((shard) => shard.files),
+    [['b.spec.ts'], ['a.spec.ts', 'c.spec.ts']],
+  );
   for (const history of [timings, { files: { stale: { tests: 1, durationMs: 1 } } }]) {
     const shards = planShards(tests, history, 2);
     verifyInventory(

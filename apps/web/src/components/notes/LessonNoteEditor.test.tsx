@@ -16,11 +16,6 @@ describe('LessonNoteEditor', () => {
     const content = screen.getByRole('textbox', { name: 'Content' }) as HTMLTextAreaElement;
     expect(content.labels?.[0]?.textContent).toBe('Content');
   });
-
-  it('names the title field for assistive technology', () => {
-    setup();
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveFocus();
-  });
 });
 
 describe('LessonNoteEditor keyboard', () => {

@@ -105,13 +105,6 @@ describe('Dashboard course actions', () => {
     expect(more).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('keeps the Archive menu action at the shared minimum target size', async () => {
-    setCourseData();
-    render(<Dashboard />);
-    fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
-    expect(await screen.findByRole('menuitem', { name: 'Archive' })).toHaveClass('min-h-11');
-  });
-
   it.each([false, true])('returns focus after archiving (last course: %s)', async (lastCourse) => {
     setCourseData(lastCourse ? [mockCourse] : [mockCourse, course('course-2', 'Second Course')]);
     const { rerender } = render(<Dashboard />);

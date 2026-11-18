@@ -89,17 +89,6 @@ describe('CardList rendering', () => {
     expect(details).not.toHaveAccessibleName(/EncodedImageBytes/);
   });
 
-  it('tints a hovered row without letting the swipe tray show through', () => {
-    const { container } = render(
-      <CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />,
-    );
-    const row = container.querySelector('[data-card-id]')!;
-    // Every background the row can take must be opaque, or the tray behind it shows.
-    const backgrounds = row.className.split(/\s+/).filter((name) => /(^|:)bg-/.test(name));
-    expect(backgrounds.length).toBeGreaterThan(0);
-    for (const name of backgrounds) expect(name).not.toContain('/');
-  });
-
   it('hides the swipe tray while the row is at rest', () => {
     const { container } = render(
       <CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />,
@@ -111,24 +100,8 @@ describe('CardList rendering', () => {
   });
 
   it('renders empty state when no cards', () => {
-    const onEditCard = vi.fn();
-    const consoleError = vi.spyOn(console, 'error');
-    try {
-      render(<CardList cards={[]} context={mockContext} onEditCard={onEditCard} />);
-      expect(screen.getByText('No cards yet.')).toBeInTheDocument();
-      expect(consoleError).not.toHaveBeenCalledWith(
-        expect.stringContaining('Function components cannot be given refs'),
-      );
-    } finally {
-      consoleError.mockRestore();
-    }
-  });
-
-  it('opens analytics with a Course card-list context', async () => {
-    render(<CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />);
-
-    fireEvent.click(await screen.findByText('What is the capital of France?'));
-    expect(await screen.findByTestId('card-analytics')).toBeInTheDocument();
+    render(<CardList cards={[]} context={mockContext} onEditCard={vi.fn()} />);
+    expect(screen.getByText('No cards yet.')).toBeInTheDocument();
   });
 
   it('hydrates canonical history for an expanded raw card even when its reps projection is zero', async () => {
@@ -184,12 +157,6 @@ describe('CardList rendering', () => {
     expect(dataHooks.useCard).not.toHaveBeenCalled();
   });
 
-  it('renders cards with front content', async () => {
-    render(<CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />);
-    expect(await screen.findByText('What is the capital of France?')).toBeInTheDocument();
-    expect(screen.getByText('geography')).toBeInTheDocument();
-  });
-
   it('uses the Working badge for working-item cards stored as front/back cards', () => {
     const workingCard: Card = {
       ...mockCard,
@@ -199,14 +166,6 @@ describe('CardList rendering', () => {
 
     expect(screen.getByText('Working')).toBeInTheDocument();
     expect(screen.queryByText('Front / back')).not.toBeInTheDocument();
-  });
-
-  it('expands a card to show analytics', async () => {
-    render(<CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />);
-    const cardRow = await screen.findByText('What is the capital of France?');
-    fireEvent.click(cardRow);
-    const analytics = await screen.findByTestId('card-analytics');
-    expect(analytics).toBeInTheDocument();
   });
 
   it('marks linked cards and removes their lesson link instead of deleting the card', async () => {

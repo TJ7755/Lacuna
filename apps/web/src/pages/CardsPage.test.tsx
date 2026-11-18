@@ -284,7 +284,7 @@ describe('CardsPage', () => {
     expect(within(emptyPanel!).queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('adds every kind of content through New card, whose editor offers the rarer types', () => {
+  it('opens the card editor from the single New card action', () => {
     mockCourse = course;
     mockLessons = [];
     mockCards = [makeCard({ id: 'c1' })];
@@ -389,38 +389,6 @@ describe('CardsPage', () => {
     renderPage();
     expect(screen.getByRole('heading', { name: /Demand/ })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /Supply/ })).not.toBeInTheDocument();
-  });
-
-  it('passes courseId and assignableLessons through to each CardList group', () => {
-    mockCourse = course;
-    mockLessons = [lesson1, lesson2];
-    mockCards = [
-      makeCard({ id: 'c1', primaryLessonId: 'lesson-1' }),
-      makeCard({ id: 'c2', primaryLessonId: null }),
-    ];
-    renderPage();
-    const courseIds = screen.getAllByTestId('card-list-course');
-    expect(courseIds.every((el) => el.textContent === 'course-1')).toBe(true);
-    const assignable = screen.getAllByTestId('card-list-assignable');
-    expect(assignable[0].textContent).toBe('Demand,Supply');
-    expect(observedContexts.map((context) => context.importTargetName)).toEqual([
-      'Demand',
-      'A-Level Economics',
-    ]);
-    expect(
-      observedContexts.every(
-        (context) => context.hasImport && context.hasApkg && context.hasRestore,
-      ),
-    ).toBe(true);
-  });
-
-  it('navigates to the course-scoped card editor when creating a card from the header', () => {
-    mockCourse = course;
-    mockLessons = [];
-    mockCards = [];
-    renderPage();
-    fireEvent.click(screen.getAllByText('New card')[0]);
-    expect(screen.getByText('Card editor')).toBeInTheDocument();
   });
 
   it('keeps the search input responsive while an embedded-image deck is searched', async () => {

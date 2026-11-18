@@ -88,7 +88,7 @@ for (const width of [1440, 390, 320]) {
         has: page.getByRole('heading', { name: 'Restore points', exact: true }),
       });
       await mkdir(evidence, { recursive: true });
-      const phase = process.env.SETTINGS_DATA_SCREENSHOT_PHASE ?? 'after';
+      const phase = 'after';
       for (const [name, card] of [
         ['sync', sync],
         ['restore-points', restore],
@@ -168,15 +168,13 @@ for (const width of [1440, 390, 320]) {
         expect.soft(cardBounds.height - initialBounds.height).toBeLessThanOrEqual(140);
         expect.soft(await sync.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
         await expect(details).toHaveAttribute('aria-expanded', 'false');
-        if (phase !== 'before') {
-          await expect(cancel).toBeFocused();
-          await cancel.press('Escape');
-          await expect(trigger).toBeFocused();
-          await trigger.press('Enter');
-          await expect(cancel).toBeFocused();
-        }
+        await expect(cancel).toBeFocused();
+        await cancel.press('Escape');
+        await expect(trigger).toBeFocused();
+        await trigger.press('Enter');
+        await expect(cancel).toBeFocused();
         await cancel.click();
-        if (phase !== 'before') await expect(trigger).toBeFocused();
+        await expect(trigger).toBeFocused();
         await expect(sync.getByText('Paired to a sync channel')).toBeVisible();
         expect(await readAll(page, 'appState')).toEqual(initialState);
       }
@@ -184,7 +182,6 @@ for (const width of [1440, 390, 320]) {
         `${removalEvidence}/${phase}-${width}-${theme}.json`,
         JSON.stringify(measurements, null, 2),
       );
-      if (phase === 'before') return;
       await expect(restore.getByRole('button', { name: 'Restore', exact: true })).toHaveCount(3);
       const more = restore.getByRole('button', { name: 'More restore points' });
       await expect(more).toHaveAttribute('aria-expanded', 'false');

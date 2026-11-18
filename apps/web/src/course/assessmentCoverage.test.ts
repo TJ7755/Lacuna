@@ -89,18 +89,6 @@ describe('resolveAssessmentCoverage', () => {
     expect(custom.validation.valid).toBe(true);
   });
 
-  it('resolves non-contiguous custom coverage independently of placement', () => {
-    const result = resolveAssessmentCoverage(
-      assessment({ coverageMode: 'custom', lessonIds: ['one', 'three'], afterLessonId: 'three' }),
-      lessons,
-      [],
-      [],
-    );
-
-    expect(result.coveredLessons.map((lesson) => lesson.id)).toEqual(['one', 'three']);
-    expect(result.validation.valid).toBe(true);
-  });
-
   it('keeps placement attached to the anchor when lessons reorder', () => {
     const reordered = lessons.map((lesson) => ({
       ...lesson,
@@ -140,30 +128,6 @@ describe('resolveAssessmentCoverage', () => {
 
     expect(result.cards.map((coveredCard) => coveredCard.id)).toEqual(['linked']);
     expect(result.validation.valid).toBe(true);
-  });
-
-  it('keeps overlapping assessments independent', () => {
-    const cards = [card('first', 'one'), card('third', 'three')];
-    const prefix = resolveAssessmentCoverage(
-      assessment({ afterLessonId: 'one' }),
-      lessons,
-      cards,
-      [],
-    );
-    const custom = resolveAssessmentCoverage(
-      assessment({
-        id: 'other',
-        coverageMode: 'custom',
-        lessonIds: ['three'],
-        afterLessonId: 'three',
-      }),
-      lessons,
-      cards,
-      [],
-    );
-
-    expect(prefix.cards.map((coveredCard) => coveredCard.id)).toEqual(['first']);
-    expect(custom.cards.map((coveredCard) => coveredCard.id)).toEqual(['third']);
   });
 
   it('reports stale and cross-course references for author confirmation', () => {

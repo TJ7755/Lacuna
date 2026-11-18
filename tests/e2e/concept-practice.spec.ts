@@ -327,7 +327,7 @@ test.describe('Exam-skill practice at 1280px', () => {
     await expect(page.locator('article.qs-paper')).toBeVisible();
   });
 
-  test('handles long written and native choice content, partial marks and immutable corrections', async ({
+  test('handles long written and native choice content, partial marks and saved corrections', async ({
     page,
   }, info) => {
     const library = await openLibrary(page);

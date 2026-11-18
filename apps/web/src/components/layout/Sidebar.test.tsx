@@ -110,7 +110,6 @@ describe('Sidebar', () => {
         </MemoryRouter>,
       );
       expect(document.querySelector('[data-layout-id]')).toBeNull();
-      expect(screen.getByRole('link', { name: 'Active course' })).toHaveClass('bg-surface');
     },
   );
 

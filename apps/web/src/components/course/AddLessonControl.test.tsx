@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/react';
-import { AddLessonControl, defaultLessonName } from './AddLessonControl';
+import { AddLessonControl } from './AddLessonControl';
 import { domAnimation, LazyMotion } from 'motion/react';
 
 const motionPreference = vi.hoisted(() => ({ multiplier: 0 }));
@@ -30,14 +30,6 @@ vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['off'],
   speedMultiplier: () => motionPreference.multiplier,
 }));
-
-describe('defaultLessonName', () => {
-  it('suggests the next lesson number', () => {
-    expect(defaultLessonName(0)).toBe('Lesson 1');
-    expect(defaultLessonName(1)).toBe('Lesson 2');
-    expect(defaultLessonName(5)).toBe('Lesson 6');
-  });
-});
 
 describe('AddLessonControl', () => {
   it('does not create a second lesson when Enter repeats while creation is pending', async () => {

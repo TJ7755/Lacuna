@@ -11,7 +11,7 @@ import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { countOf } from '../../utils/plural';
 
 /** Suggested name for the next lesson in a course (e.g. "Lesson 2"). */
-export function defaultLessonName(lessonCount: number): string {
+function defaultLessonName(lessonCount: number): string {
   return `Lesson ${Math.max(1, lessonCount + 1)}`;
 }
 

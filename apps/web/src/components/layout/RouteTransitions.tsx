@@ -7,14 +7,14 @@ import { matchCourseSection } from '../course/courseSections';
 const COURSE_CHROME_ROUTE = /^\/course\/([^/]+)\/(?:analytics|lesson\/[^/]+(?:\/cards)?)$/;
 
 /** How far a course tab drifts as it fades in: a nudge that says which way, not a full slide. */
-export const TAB_DRIFT_PX = 24;
+const TAB_DRIFT_PX = 24;
 
 /**
  * Ordinary destinations fade in over a page that leaves at once, so two pages never
  * overlap. Adjacent course tabs also drift a little in the direction of travel. Both
  * settle with no transform left behind, so fixed descendants stay viewport-bound.
  */
-export const ROUTE_VARIANTS = {
+const ROUTE_VARIANTS = {
   enter: (direction: number) =>
     direction === 0 ? { opacity: 0 } : { opacity: 0, x: TAB_DRIFT_PX * direction },
   center: { opacity: 1, x: 0 },

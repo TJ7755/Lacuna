@@ -270,13 +270,6 @@ function recitationGroups(cards: Card[], sequenceByCard: ReadonlyMap<string, Seq
   });
 }
 
-export function inRecitationOrder(
-  cards: Card[],
-  sequenceByCard: ReadonlyMap<string, Sequence>,
-): Card[] {
-  return recitationGroups(cards, sequenceByCard).flat();
-}
-
 /** Shuffle whole recitations and individual cards, preserving each recitation's line order. */
 export function shuffledSimpleQueue(
   cards: Card[],

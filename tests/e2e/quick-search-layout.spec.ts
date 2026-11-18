@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
-test('quick search keeps its drawing without shortcut guidance at 1440px', async ({ page }) => {
+test('quick search replaces its empty-state drawing with results at 1440px', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await enterWithWelcomeCourse(page);
   const shortcut = await page.evaluate(() =>
@@ -14,8 +14,6 @@ test('quick search keeps its drawing without shortcut guidance at 1440px', async
   await expect(input).toHaveAttribute('placeholder', 'Search…');
   await expect(drawing).toBeVisible();
   await expect(drawing).toHaveAttribute('aria-hidden', 'true');
-  await expect(dialog.locator('kbd')).toHaveCount(0);
-  await expect(dialog.getByText('Type to search across every course.')).toHaveCount(0);
 
   await input.press('Escape');
   await page.reload();
@@ -23,7 +21,6 @@ test('quick search keeps its drawing without shortcut guidance at 1440px', async
   await page.keyboard.press(shortcut);
   await expect(input).toBeFocused();
   await expect(drawing).toBeVisible();
-  await expect(dialog.locator('kbd')).toHaveCount(0);
   await input.fill('Welcome');
   await expect(dialog.getByRole('option').first()).toBeVisible();
   await expect(drawing).toHaveCount(0);

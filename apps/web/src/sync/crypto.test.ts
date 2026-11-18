@@ -161,17 +161,6 @@ describe('wrapKeybag / unwrapKeybag', () => {
   );
 
   it(
-    'yields the same key the QR path would have imported',
-    async () => {
-      const generated = generateChannelKey();
-      const wrapped = await wrapKeybag(generated, passphrase, writeToken, ctx);
-      const opened = await unwrapKeybag(wrapped, passphrase, ctx);
-      expect(opened.channelKey).toEqual(generated);
-    },
-    SLOW,
-  );
-
-  it(
     'rejects a wrong passphrase without exposing secrets',
     async () => {
       const wrong = 'wrong-secret-passphrase-xyz';

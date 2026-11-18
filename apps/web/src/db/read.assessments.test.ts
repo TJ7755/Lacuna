@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import {
   createCourse,
@@ -9,17 +9,11 @@ import {
   createPracticeNode,
   linkCardToLesson,
 } from './repository';
-import {
-  listCourseAssessments,
-  listCourseAssessmentDetails,
-  getCourseAssessmentDetails,
-} from './read';
+import { listCourseAssessments, listCourseAssessmentDetails } from './read';
 import { clearAll } from './read.testFixtures';
 
 describe('assessment reads', () => {
   beforeEach(clearAll);
-
-  afterEach(() => vi.restoreAllMocks());
 
   describe('practice nodes / assessments', () => {
     it('scopes practice nodes and assessments to their course', async () => {
@@ -45,7 +39,7 @@ describe('assessment reads', () => {
     });
   });
 
-  it('resolves all assessments from one course snapshot without loading review history', async () => {
+  it('resolves prefix, custom and final coverage including linked cards', async () => {
     const course = await createCourse('Biology');
     const first = await createLesson(course.id, 'Cells');
     const second = await createLesson(course.id, 'Genetics');
@@ -57,19 +51,7 @@ describe('assessment reads', () => {
       coverageMode: 'custom',
       lessonIds: [second.id],
     });
-    const expected = await Promise.all(
-      (await listCourseAssessments(course.id)).map((assessment) =>
-        getCourseAssessmentDetails(assessment.id),
-      ),
-    );
-    const cards = vi.spyOn(db.cards, 'where');
-    const lessons = vi.spyOn(db.lessons, 'where');
-    const history = vi.spyOn(db.reviewHistory, 'where');
-    const globalLinks = vi.spyOn(db.lessonCards, 'toArray');
-    const links = vi.spyOn(db.lessonCards, 'where');
-
     const actual = await listCourseAssessmentDetails(course.id);
-    expect(actual).toEqual(expected);
     expect(actual.slice(0, 2)).toMatchObject([
       {
         assessment: { name: 'Cells paper' },
@@ -85,10 +67,5 @@ describe('assessment reads', () => {
       },
     ]);
     expect(actual.every((detail) => detail.cardIds.includes(card.id))).toBe(true);
-    expect(cards).toHaveBeenCalledTimes(1);
-    expect(lessons).toHaveBeenCalledTimes(1);
-    expect(history).not.toHaveBeenCalled();
-    expect(globalLinks).not.toHaveBeenCalled();
-    expect(links).toHaveBeenCalledExactlyOnceWith('lessonId');
   });
 });

@@ -8,7 +8,7 @@ import { compressImageBlob } from '../utils/compressImage';
 import { storeImageBlob } from './assets';
 import type { MediaAsset } from '@lacuna/core/db/types';
 
-export const OCCLUSION_MAX_DIMENSION = 2560;
+const OCCLUSION_MAX_DIMENSION = 2560;
 
 /** Compress an occlusion diagram file and store it as an image asset. */
 export async function storeOcclusionDiagram(file: Blob, mimeType = file.type): Promise<MediaAsset> {

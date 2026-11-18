@@ -6,7 +6,7 @@ import type {
   McpToolError,
 } from '@lacuna/protocol/mcp/bridge';
 
-export const RENDERER_NOT_READY_MESSAGE = 'Lacuna window is not open or still loading.';
+const RENDERER_NOT_READY_MESSAGE = 'Lacuna window is not open or still loading.';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -66,10 +66,5 @@ export class InvokeDispatcher {
     for (const id of [...this.pending.keys()]) {
       this.resolvePending({ id, ok: false, error });
     }
-  }
-
-  /** Number of in-flight dispatches. Exposed for tests and status reporting. */
-  get pendingCount(): number {
-    return this.pending.size;
   }
 }

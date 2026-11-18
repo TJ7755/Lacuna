@@ -32,11 +32,6 @@ function cacheKey(cards: readonly Card[], course: Course, now: number): string {
   ].join('|');
 }
 
-/** Clears the forecast cache; for tests. */
-export function clearForecastCache(): void {
-  cache.clear();
-}
-
 /**
  * Each active course's forecast cards, the same core cards the course summaries use:
  * extension-lesson cards are left out and only available cards count.

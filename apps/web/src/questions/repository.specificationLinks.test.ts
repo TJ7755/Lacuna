@@ -48,7 +48,6 @@ describe('Concept specification links', () => {
     const course = await createCourse('Biology');
     const concept = await concepts.createConcept(course.id, 'Enzymes', { now: 1 });
     const sparse = new Array<string>(1);
-    expect(JSON.stringify(sparse)).toBe('[null]');
     await expect(concepts.setConceptSpecificationPoints(concept.id, sparse, 10)).rejects.toThrow();
     expect(await db.concepts.get(concept.id)).toEqual(concept);
   });

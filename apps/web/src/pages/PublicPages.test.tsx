@@ -27,7 +27,6 @@ describe('public page interactions', () => {
     const trigger = screen.getByRole('button', { name: 'Enlarge your notes screenshot' });
     fireEvent.click(trigger);
     const dialog = screen.getByRole('dialog', { name: 'Your notes' });
-    expect(dialog).toHaveClass('rounded-3xl', 'card-surface');
     expect(container).not.toContainElement(dialog);
     expect(within(dialog).getByRole('img')).toHaveAttribute(
       'alt',

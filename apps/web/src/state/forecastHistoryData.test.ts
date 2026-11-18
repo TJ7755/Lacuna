@@ -28,7 +28,7 @@ beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
 });
 
-it('returns the exact existing traces with moved cards, legacy evidence, resets and excluded cards', async () => {
+it('loads persisted histories for moved cards and merges legacy evidence before calculation', async () => {
   const course = await createCourse('Biology');
   const other = await createCourse('Chemistry');
   const extension = { ...(await createLesson(course.id, 'Extension')), isExtension: true };
@@ -81,7 +81,6 @@ it('returns the exact existing traces with moved cards, legacy evidence, resets 
   );
   const snapshot = forecastHistorySnapshot(input);
   expect(snapshot.cards[0]).toMatchObject({ front: '', back: '' });
-  expect(snapshot.cards[0]).not.toHaveProperty('payload');
   expect(snapshot.cards[1].history).toEqual(cards[1].history);
   expect(cards[0].front).toBe(template.front);
   expect(await calculateForecastHistories(structuredClone(snapshot))).toEqual(expected);

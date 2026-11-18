@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import { beforeEach, expect, it, vi } from 'vitest';
@@ -10,33 +9,6 @@ vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal'],
   speedMultiplier: () => 0,
 }));
-vi.mock('motion/react', async () => {
-  const { createElement } = await import('react');
-  return {
-    AnimatePresence: ({ children }: { children: ReactNode }) => children,
-    m: Object.fromEntries(
-      ['div', 'button', 'span'].map((tag) => [
-        tag,
-        ({
-          animate,
-          style,
-          initial: _initial,
-          exit: _exit,
-          transition: _transition,
-          whileTap: _whileTap,
-          onAnimationComplete: _onAnimationComplete,
-          ...props
-        }: Record<string, unknown>) =>
-          createElement(tag, {
-            ...props,
-            style,
-            ...(style ? { 'data-content-width': (style as { width?: string }).width } : {}),
-            ...(tag === 'div' && animate ? { 'data-animation': JSON.stringify(animate) } : {}),
-          }),
-      ]),
-    ),
-  };
-});
 
 function Panel({ onClose }: { onClose?: () => void }) {
   return (
@@ -60,44 +32,38 @@ function deferred() {
 }
 async function setup(entry = '/') {
   const { ImportControl } = await import('./ImportControl');
+  const { LazyMotion, domAnimation } = await import('motion/react');
   return render(
-    <MemoryRouter initialEntries={[entry]}>
-      <ImportControl />
-      <Navigation />
-    </MemoryRouter>,
+    <LazyMotion features={domAnimation}>
+      <MemoryRouter initialEntries={[entry]}>
+        <ImportControl />
+        <Navigation />
+      </MemoryRouter>
+    </LazyMotion>,
   );
-}
-function surface() {
-  return screen.getByRole('button', { name: /Import|Close|Loading/ }).parentElement!;
 }
 beforeEach(() => {
   vi.resetModules();
   loading.load.mockReset();
 });
 
-it('holds the cold surface at trigger size until content is available, then reopens warm', async () => {
+it('shows pending feedback until content is available, then reopens warm', async () => {
   const request = deferred();
   loading.load.mockReturnValue(request.promise);
   await setup();
   fireEvent.click(screen.getByRole('button', { name: 'Import' }));
-  expect(surface()).toHaveAttribute('data-animation', expect.stringContaining('"width":100'));
-  expect(surface()).toHaveAttribute('data-animation', expect.stringContaining('"height":44'));
   expect(screen.queryByRole('region')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Loading/ })).toHaveAttribute('aria-busy', 'true');
   await act(async () => request.resolve({ default: Panel }));
-  expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible();
+  await waitFor(() => expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible());
   const panel = document.getElementById(
     screen.getByRole('button', { name: 'Import' }).getAttribute('aria-controls')!,
   );
   expect(panel).toContainElement(screen.getByRole('region', { name: 'Import sources' }));
-  expect(surface()).toHaveAttribute(
-    'data-animation',
-    expect.stringContaining('min(448px, calc(100vw - 36px))'),
-  );
   fireEvent.click(screen.getByRole('button', { name: 'Cancel import' }));
   expect(screen.getByRole('button', { name: 'Import' })).toHaveFocus();
   fireEvent.click(screen.getByRole('button', { name: 'Import' }));
-  expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible();
+  await waitFor(() => expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible());
   expect(loading.load).toHaveBeenCalledOnce();
 });
 
@@ -138,7 +104,7 @@ it('uses a prefetch completed after mount without a pending opening', async () =
   const { loadRouteModule } = await import('../../routes/routeModule');
   await loadRouteModule(loading.load);
   fireEvent.click(screen.getByRole('button', { name: 'Import' }));
-  expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible();
+  await waitFor(() => expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible());
   expect(screen.queryByRole('button', { name: /Loading/ })).not.toBeInTheDocument();
   expect(loading.load).toHaveBeenCalledOnce();
 });

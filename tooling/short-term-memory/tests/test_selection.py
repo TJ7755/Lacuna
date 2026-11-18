@@ -64,14 +64,6 @@ def test_selection_requires_both_losses_and_major_bucket_calibration():
     assert result["comparisons"][0]["per_user"] is None
 
 
-def test_per_user_comparison_missing_data_is_none():
-    baseline = report("baseline", (0.5, 0.16, 0.03), 0.02)
-    candidate = report("candidate", (0.45, 0.14, 0.03), 0.029)
-    result = compare_reports(baseline, [candidate])
-
-    assert result["comparisons"][0]["per_user"] is None
-
-
 def test_per_user_comparison_computes_win_rate_and_equal_weighting():
     baseline = report(
         "baseline",

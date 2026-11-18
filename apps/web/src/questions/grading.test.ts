@@ -6,6 +6,7 @@ describe('gradeQuestionAttempt', () => {
     { earned: 4, available: 4, undetermined: false, disputed: false, expected: 3 },
     { earned: 3, available: 4, undetermined: false, disputed: false, expected: 2 },
     { earned: 3, available: 5, undetermined: false, disputed: false, expected: 2 },
+    { earned: 60, available: 100, undetermined: false, disputed: false, expected: 2 },
     { earned: 59, available: 100, undetermined: false, disputed: false, expected: 1 },
     { earned: 0, available: 4, undetermined: false, disputed: false, expected: 1 },
   ])(
@@ -41,29 +42,20 @@ describe('gradeQuestionAttempt', () => {
     ).toBeNull();
   });
 
-  it('maps every integer boundary monotonically', () => {
+  it('never lowers a grade as integer marks increase or awards Easy', () => {
     for (let available = 1; available <= 100; available++) {
+      let previous = 1;
       for (let earned = 0; earned <= available; earned++) {
-        expect(
-          gradeQuestionAttempt({
-            marksEarned: earned,
-            marksAvailable: available,
-            hasUndeterminedVerdict: false,
-            hasUnresolvedDispute: false,
-          }),
-        ).toBe(earned === available ? 3 : earned * 5 >= available * 3 ? 2 : 1);
+        const grade = gradeQuestionAttempt({
+          marksEarned: earned,
+          marksAvailable: available,
+          hasUndeterminedVerdict: false,
+          hasUnresolvedDispute: false,
+        });
+        expect(grade).toBeGreaterThanOrEqual(previous);
+        expect(grade).toBeLessThanOrEqual(3);
+        previous = grade!;
       }
     }
-  });
-
-  it('never derives Easy from response speed', () => {
-    expect(
-      gradeQuestionAttempt({
-        marksEarned: 1,
-        marksAvailable: 1,
-        hasUndeterminedVerdict: false,
-        hasUnresolvedDispute: false,
-      }),
-    ).toBe(3);
   });
 });

@@ -85,9 +85,6 @@ describe('HelpPage', () => {
       screen.queryByRole('button', { name: 'How do I start studying?' }),
     ).not.toBeInTheDocument();
     expect(screen.getByText(/Share → Other ways → Course file/)).toBeVisible();
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Results' }).closest('section'),
-    ).toHaveClass('card-surface');
     fireEvent.change(search, { target: { value: 'picture nonexistent' } });
     expect(screen.getByText('No matching topics.')).toBeInTheDocument();
     fireEvent.change(search, { target: { value: '' } });
@@ -103,7 +100,6 @@ describe('HelpPage', () => {
     for (const name of ['Settings', 'Progress', 'How the scheduler works']) {
       const link = screen.getByRole('link', { name });
       expect(link.querySelector('button')).toBeNull();
-      expect(link).toHaveClass('min-h-11');
     }
   });
 

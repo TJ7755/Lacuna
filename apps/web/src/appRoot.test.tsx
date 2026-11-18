@@ -12,27 +12,14 @@ afterEach(() => {
   document.documentElement.removeAttribute('data-app-starting');
   document.body.replaceChildren();
   vi.restoreAllMocks();
-  vi.unstubAllGlobals();
 });
 
-it('discards the prerender before revealing the root, even before React commits', () => {
+it('reveals an empty root while the first React commit is pending', () => {
   document.documentElement.setAttribute('data-app-starting', '');
   document.body.innerHTML = '<div id="root"><main class="landing-page">Landing</main></div>';
-  const root = document.getElementById('root')!;
-  const replaceChildren = vi.spyOn(root, 'replaceChildren');
-  const removeAttribute = vi.spyOn(document.documentElement, 'removeAttribute');
-  const render = vi.fn();
-  createRoot.mockImplementation((container) => {
-    expect(container).toBe(root);
-    expect(root.childNodes).toHaveLength(0);
-    expect(document.documentElement.hasAttribute('data-app-starting')).toBe(false);
-    return { render };
-  });
-
+  // Hold the first commit so the pre-commit paint is observable.
+  createRoot.mockReturnValue({ render: vi.fn() });
   renderApp();
-
-  expect(replaceChildren.mock.invocationCallOrder[0]).toBeLessThan(
-    removeAttribute.mock.invocationCallOrder[0],
-  );
-  expect(render).toHaveBeenCalledOnce();
+  expect(document.documentElement).not.toHaveAttribute('data-app-starting');
+  expect(document.getElementById('root')).toBeEmptyDOMElement();
 });

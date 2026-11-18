@@ -8,7 +8,6 @@ import {
   sealInsightEnvelope,
 } from './envelope';
 import { getInsightMailboxPage, putInsightEnvelope } from './mailbox';
-import { runDailyInsightsSend } from './optIn';
 
 const now = Date.parse('2026-10-19T00:00:00Z');
 const day = '2026-10-18';
@@ -58,36 +57,17 @@ describe('encrypted mailbox transport', () => {
     expect((await f.store.get(stored[0].key))!.body).toEqual(bytes);
   }, 30_000);
 
-  it('respects opt-out and retries a lost acknowledgement without duplicating or refreshing a report', async () => {
+  it('accepts an exact retransmission without duplicating or refreshing the relay packet', async () => {
     const f = await fixture();
-    let optedIn = false,
-      lastSentDay: string | null = null,
-      loseReply = true;
-    const send = async () => {
-      await putInsightEnvelope(f.options);
-      if (loseReply) {
-        loseReply = false;
-        throw new Error('connection lost after acceptance');
-      }
-    };
-    const deps = {
-      readState: () => ({ optedIn, lastSentDay }),
-      markSent: (value: string) => {
-        lastSentDay = value;
-      },
-      now: () => now,
-      send,
-    };
-    expect(await runDailyInsightsSend(deps)).toBe('idle');
-    expect(await f.store.list(`insights/${f.options.shareId}/`)).toEqual([]);
-    optedIn = true;
-    expect(await runDailyInsightsSend(deps)).toBe('failed');
-    expect(lastSentDay).toBeNull();
+    await putInsightEnvelope(f.options);
     const first = await f.store.list(`insights/${f.options.shareId}/`);
-    expect(await runDailyInsightsSend(deps)).toBe('sent');
-    expect(lastSentDay).toBe(day);
+    const packets = await f.store.list(`insights/${f.options.shareId}/${day}/envelopes/`);
+    const etag = (await f.store.get(packets[0].key))!.etag;
+    await putInsightEnvelope(f.options);
     expect(await f.store.list(`insights/${f.options.shareId}/`)).toEqual(first);
-    expect(await runDailyInsightsSend(deps)).toBe('idle');
+    expect((await f.store.get(packets[0].key))!.etag).toBe(etag);
+    const page = await getInsightMailboxPage({ ...f.options, writeToken: f.writeToken });
+    expect(page.envelopes).toEqual([{ slotId: f.options.slotId, envelope: f.options.envelope }]);
   }, 30_000);
 
   it('rejects unauthorised reads, invalid destinations and plaintext-bearing packets', async () => {

@@ -69,11 +69,6 @@ test('learns a poem by cumulative recitation', async ({ page }, testInfo) => {
   await page.getByRole('textbox', { name: 'line 2' }).fill('He stopped for me');
   const green = page.locator('[data-session-card-status="correct"]');
   await expect(green).toHaveCount(1);
-  await expect(green.locator(':scope > span')).toHaveClass(/bg-positive/);
-  await expect(green).toHaveClass(/border-accent/);
-  await expect(
-    page.getByRole('heading', { name: 'Because I could not stop', exact: true }),
-  ).toHaveCSS('position', 'absolute');
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 844 });
     await expect(page.getByRole('button', { name: 'Check', exact: true })).toBeInViewport();

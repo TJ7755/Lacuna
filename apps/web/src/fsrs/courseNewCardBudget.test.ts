@@ -73,7 +73,6 @@ describe('courseBudgetedStudyPool', () => {
       [shared, ...lessonOne],
       [shared, ...lessonTwo],
     ]);
-    expect(budget.cardsByCourse.get('course-a')).toHaveLength(5);
     expect(ids(courseBudgetedStudyPool([shared, ...lessonTwo], config(2), NOW, budget))).toEqual([
       'shared',
     ]);
@@ -91,7 +90,6 @@ describe('courseBudgetedStudyPool', () => {
     const budget = courseNewCardBudget([lessonOne, lessonTwo]);
     expect(ids(courseBudgetedStudyPool(lessonTwo, config(0), NOW, budget))).toEqual(['n2', 'n4']);
     expect(ids(courseBudgetedStudyPool(lessonTwo, config(), NOW, budget))).toEqual(['n2', 'n4']);
-    expect(budget.admittedNew.size).toBe(0);
   });
 
   it('falls back to the unit budget for cards outside any course', () => {
@@ -100,15 +98,13 @@ describe('courseBudgetedStudyPool', () => {
       makeCard({ id: 'l2', courseId: null, createdAt: 2 }),
     ];
     const budget = courseNewCardBudget([loose]);
-    expect(budget.cardsByCourse.size).toBe(0);
     expect(ids(courseBudgetedStudyPool(loose, config(1), NOW, budget))).toEqual(['l1']);
   });
 
-  it('memoises the admitted set per course and cap', () => {
+  it('honours different caps when lesson units share one budget', () => {
     const budget = courseNewCardBudget([lessonOne, lessonTwo]);
-    courseBudgetedStudyPool(lessonOne, config(1), NOW, budget);
-    courseBudgetedStudyPool(lessonTwo, config(3), NOW, budget);
-    expect([...budget.admittedNew.keys()].sort()).toEqual(['course-a:1', 'course-a:3']);
-    expect([...budget.admittedNew.get('course-a:3')!].sort()).toEqual(['n1', 'n2', 'n3']);
+    expect(ids(courseBudgetedStudyPool(lessonOne, config(1), NOW, budget))).toEqual(['n1']);
+    expect(ids(courseBudgetedStudyPool(lessonTwo, config(3), NOW, budget))).toEqual(['n2']);
+    expect(ids(courseBudgetedStudyPool(lessonOne, config(3), NOW, budget))).toEqual(['n1', 'n3']);
   });
 });

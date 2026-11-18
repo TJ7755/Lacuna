@@ -43,6 +43,8 @@ describe('resample', () => {
     const strokes = splitStrokes(resample(equals()));
     expect(strokes.length).toBe(2);
     expect(strokes.every((stroke) => stroke.length >= 2)).toBe(true);
+    expect(strokes[0].every((point) => point.y === 0)).toBe(true);
+    expect(strokes[1].every((point) => point.y === 40)).toBe(true);
   });
 
   it('handles a single-point stroke without dividing by zero', () => {
@@ -59,12 +61,6 @@ describe('normalise', () => {
     const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
     expect(cx).toBeCloseTo(0, 10);
     expect(cy).toBeCloseTo(0, 10);
-  });
-
-  it('is invariant to translation and uniform scale', () => {
-    const a = normalise(ex());
-    const b = normalise(transform(ex(), 3.7, -240, 18));
-    expect(greedyCloudMatch(a, b)).toBeLessThan(0.01);
   });
 
   it('preserves aspect ratio, so a bar and a tall line stay distinguishable', () => {

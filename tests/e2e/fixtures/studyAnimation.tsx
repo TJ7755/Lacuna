@@ -2,19 +2,14 @@ import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { domAnimation, LazyMotion } from 'motion/react';
-import type { Card } from '@lacuna/core/db/types';
-// The fixture renders browser components from the application's type environment.
-import type {} from '../../../apps/web/src/vite-env';
-import { FlipCard } from '../../../apps/web/src/pages/learn/FlipCard';
 import { StudyGradeButton } from '../../../apps/web/src/pages/learn/StudyGradeButton';
 import {
   StudyCardTransition,
   type StudyCardTransitionHandle,
 } from '../../../apps/web/src/pages/learn/StudyCardTransition';
 import { SessionSegments } from '../../../apps/web/src/pages/learn/SessionSegments';
-import { StepSwap } from '../../../apps/web/src/components/ui/StepSwap';
 
-export type Scene = 'flip' | 'grade' | 'rim' | 'segments' | 'step';
+export type Scene = 'grade' | 'rim' | 'segments';
 interface Model {
   active: boolean;
   index: number;
@@ -23,28 +18,6 @@ interface Model {
 }
 let updateModel: (patch: Partial<Model>) => void;
 let departure: StudyCardTransitionHandle | null;
-const card: Card = {
-  id: 'probe',
-  conceptId: 'probe',
-  deckId: 'probe',
-  schedulingUnitId: 'probe',
-  type: 'front_back',
-  front: 'Question',
-  back: 'Answer',
-  stability: null,
-  stabilityFast: null,
-  difficulty: null,
-  lastReviewed: null,
-  reps: 0,
-  lapses: 0,
-  state: 0,
-  due: null,
-  scheduledDays: 0,
-  learningSteps: 0,
-  history: [],
-  createdAt: 0,
-  updatedAt: 0,
-};
 const cards = Array.from({ length: 322 }, (_, index) => `card-${index}`);
 
 function Harness({
@@ -64,24 +37,6 @@ function Harness({
   });
   updateModel = (patch) => setModel((current) => ({ ...current, ...patch }));
   let body;
-  if (scene === 'flip')
-    body = (
-      <FlipCard
-        card={card}
-        revealed={model.active}
-        phase={model.active ? 'answer' : 'question'}
-        motionSpeed="normal"
-        motionMultiplier={model.m}
-        menuOpen={false}
-        editing={false}
-        hintsOpen={false}
-        onReveal={() => updateModel({ active: true })}
-        onHide={() => updateModel({ active: false })}
-        onAnswer={() => {}}
-        mode="fsrs"
-        answerStrictness="standard"
-      />
-    );
   if (scene === 'grade')
     body = (
       <StudyGradeButton
@@ -115,12 +70,6 @@ function Harness({
         label="Session progress"
         m={model.m}
       />
-    );
-  if (scene === 'step')
-    body = (
-      <StepSwap stepKey={model.active ? 'next' : 'first'}>
-        <div className="fixture-card">{model.active ? 'Next step' : 'First step'}</div>
-      </StepSwap>
     );
   return <LazyMotion features={domAnimation}>{body}</LazyMotion>;
 }

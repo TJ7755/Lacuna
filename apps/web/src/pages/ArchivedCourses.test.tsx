@@ -36,9 +36,6 @@ describe('ArchivedCourses', () => {
     render(<ArchivedCourses />, { wrapper: MemoryRouter });
     expect(screen.getByRole('heading', { name: 'No archived courses' })).toBeInTheDocument();
     expect(screen.getByText(/archive from Today/)).toBeInTheDocument();
-    const empty = screen.getByRole('heading', { name: 'No archived courses' }).parentElement;
-    expect(empty).toHaveClass('rounded-3xl', 'bg-surface');
-    expect(empty).not.toHaveClass('border-t');
     expectAppDestination(screen.getByRole('link', { name: 'Back to Today' }), '/');
   });
 
@@ -64,13 +61,6 @@ describe('ArchivedCourses', () => {
     courses = [];
     rerender(<ArchivedCourses />);
     expect(screen.getByRole('heading', { name: 'Archived' })).toHaveFocus();
-  });
-
-  it('uses an open page header with contained course cards', () => {
-    render(<ArchivedCourses />, { wrapper: MemoryRouter });
-
-    expect(screen.getByRole('banner')).not.toHaveClass('bg-surface');
-    expect(screen.getByRole('listitem')).toHaveClass('bg-surface');
   });
 
   it('lists only archived courses and restores one explicitly', async () => {

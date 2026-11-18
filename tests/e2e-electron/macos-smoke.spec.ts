@@ -1,7 +1,7 @@
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { _electron as electron, expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { resolvePackagedExecutable } from '../../scripts/electron-performance/executable';
 import {
   closePackagedApp,
@@ -35,7 +35,7 @@ async function courseStored(page: Page, courseName: string): Promise<boolean> {
   );
 }
 
-test('macOS packaged Electron launches, stores a course and completes a study step', async ({
+test('macOS packaged Electron stores a course, completes study and loads local previews', async ({
   browserName: _browserName,
 }, testInfo) => {
   test.skip(process.platform !== 'darwin', 'This smoke gate runs on macOS.');
@@ -117,6 +117,20 @@ test('macOS packaged Electron launches, stores a course and completes a study st
       contentType: 'application/json',
     });
 
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.evaluate(() => {
+      window.location.hash = '/landing';
+    });
+    for (const film of Object.values(landingFilms)) {
+      const preview = page.getByRole('img', { name: film.description });
+      await preview.scrollIntoViewIfNeeded();
+      await expect(preview).toBeVisible();
+      await expect
+        .poll(() => preview.evaluate((node) => (node as HTMLImageElement).naturalWidth))
+        .toBeGreaterThan(0);
+    }
+    expect(running.browser.contexts()[0].pages()).toHaveLength(1);
+
     const closing = running;
     running = undefined;
     const exit = await closePackagedApp(closing);
@@ -135,38 +149,5 @@ test('macOS packaged Electron launches, stores a course and completes a study st
     throw error;
   } finally {
     await rm(root, { recursive: true, force: true });
-  }
-});
-
-test('macOS packaged landing previews load as local images', async () => {
-  test.skip(process.platform !== 'darwin', 'This smoke gate runs on macOS.');
-  const executablePath = await resolvePackagedExecutable({
-    appDir: process.env.LACUNA_ELECTRON_APP_DIR,
-  });
-  const profile = await realpath(await mkdtemp(path.join(tmpdir(), 'lacuna-landing-previews-')));
-  const app = await electron.launch({ executablePath, args: [`--user-data-dir=${profile}`] });
-  try {
-    expect(await app.evaluate(({ app }) => app.isPackaged)).toBe(true);
-    const page = await app.firstWindow();
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.waitForLoadState('domcontentloaded');
-    expect(new URL(page.url()).protocol).toBe('app:');
-    await page.evaluate(() => {
-      window.location.hash = '/landing';
-    });
-    for (const film of Object.values(landingFilms)) {
-      const preview = page.getByRole('img', { name: film.description });
-      await preview.scrollIntoViewIfNeeded();
-      await expect(preview).toBeVisible();
-      await expect
-        .poll(() => preview.evaluate((node) => (node as HTMLImageElement).naturalWidth))
-        .toBeGreaterThan(0);
-    }
-    await expect(page.locator('.landing-film video')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Watch/ })).toHaveCount(0);
-    expect(app.windows()).toHaveLength(1);
-  } finally {
-    await app.close();
-    await rm(profile, { recursive: true, force: true });
   }
 });

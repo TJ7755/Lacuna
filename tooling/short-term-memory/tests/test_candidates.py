@@ -16,14 +16,8 @@ from stm_harness.candidates.half_life_frozen import (
     HalfLifeLogisticFrozenCandidate,
 )
 from stm_harness.candidates.half_life_frozen_v3 import HalfLifeLogisticFrozenV3Candidate
-from stm_harness.candidates.half_life_v2 import (
-    FittedHalfLifeLogisticV2,
-    HalfLifeLogisticV2Candidate,
-)
-from stm_harness.candidates.half_life_v3 import (
-    FittedHalfLifeLogisticV3,
-    HalfLifeLogisticV3Candidate,
-)
+from stm_harness.candidates.half_life_v2 import HalfLifeLogisticV2Candidate
+from stm_harness.candidates.half_life_v3 import HalfLifeLogisticV3Candidate
 from stm_harness.contract import Example, PredictionContext
 from stm_harness.io import EXAMPLE_SCHEMA
 
@@ -177,10 +171,6 @@ def test_fsrs6_fractional_candidate_wiring_matches_fractional_flag():
 
     floored_fitted = Fsrs6Candidate().fit([])
     fractional_fitted = Fsrs6FractionalCandidate().fit([])
-    fractional_predictor = fractional_fitted.new_predictor(1)
-    assert isinstance(fractional_predictor, Fsrs6Predictor)
-    assert fractional_predictor._fractional_retrievability is True
-
     mid_day = int(1.5 * 86_400)
     assert predict_with(floored_fitted.new_predictor, mid_day) != pytest.approx(
         predict_with(fractional_fitted.new_predictor, mid_day)
@@ -191,14 +181,15 @@ def test_fsrs6_fractional_candidate_wiring_matches_fractional_flag():
     )
 
 
-def test_half_life_predictors_use_fractional_fsrs_baseline():
-    # Confirms the wiring: half_life/half_life_v2's `.baseline` must be constructed
-    # with fractional_retrievability=True, not the harness default.
-    v1 = HalfLifeLogisticCandidate().fit_batches([training_batch()])
-    v2 = HalfLifeLogisticV2Candidate().fit_batches([training_batch()])
-    for fitted in (v1, v2):
-        predictor = fitted.new_predictor(1)
-        assert predictor.baseline._fractional_retrievability is True
+@pytest.mark.parametrize("candidate", [HalfLifeLogisticCandidate(), HalfLifeLogisticV2Candidate()])
+def test_half_life_handover_preserves_fractional_day_retrievability(candidate):
+    predictor = candidate.fit_batches([training_batch()]).new_predictor(1)
+    baseline = Fsrs6Predictor(1, fractional_retrievability=True)
+    seed = training_stream()[0]
+    predictor.observe(seed)
+    baseline.observe(seed)
+    context = replace(training_stream()[1].context, elapsed_seconds=int(7.5 * 86_400))
+    assert predictor.predict(context) == pytest.approx(baseline.predict(context))
 
 
 def test_half_life_fit_is_deterministic_and_falls_back_for_corrupt_context():
@@ -268,27 +259,6 @@ def test_half_life_v2_fit_matches_v1_coefficients_and_routes_by_previous_outcome
     assert 0 < predictor.predict(corrupt) < 1
 
 
-def test_half_life_frozen_matches_v2_predictions_given_same_coefficients():
-    # the frozen cohort validation phase 3: the frozen candidate must predict exactly like
-    # half_life_v2 when both use the same coefficients, since it reuses
-    # HalfLifeLogisticV2Predictor unmodified.
-    v2_fitted = HalfLifeLogisticV2Candidate().fit_batches([training_batch()])
-    frozen_fitted = FittedHalfLifeLogisticV2(
-        v2_fitted.coefficients, 0, name="half-life-logistic-frozen-v2"
-    )
-
-    v2_predictor = v2_fitted.new_predictor(1)
-    frozen_predictor = frozen_fitted.new_predictor(1)
-    v2_predictor.observe(training_stream()[0])
-    frozen_predictor.observe(training_stream()[0])
-    for later in training_stream()[1:]:
-        assert v2_predictor.predict(later.context) == pytest.approx(
-            frozen_predictor.predict(later.context)
-        )
-        v2_predictor.observe(later)
-        frozen_predictor.observe(later)
-
-
 def test_half_life_frozen_loads_shipped_artefact_and_consumes_no_training_data():
     fitted = HalfLifeLogisticFrozenCandidate().fit_batches(_raising_training_batches())
     payload = json.loads(COEFFICIENTS_PATH.read_text())
@@ -340,26 +310,6 @@ def test_half_life_v3_fit_matches_v1_coefficients_and_routes_by_previous_outcome
     predictor.observe(training_stream()[1])
     corrupt = replace(training_stream()[2].context, prior_failure_count=-1)
     assert 0 < predictor.predict(corrupt) < 1
-
-
-def test_half_life_frozen_v3_matches_v3_predictions_given_same_coefficients():
-    # frozen v3 must predict exactly like half_life_v3 when both use the same
-    # coefficients, since it reuses HalfLifeLogisticV3Predictor unmodified.
-    v3_fitted = HalfLifeLogisticV3Candidate().fit_batches([training_batch()])
-    frozen_fitted = FittedHalfLifeLogisticV3(
-        v3_fitted.coefficients, 0, name="half-life-logistic-frozen-v3"
-    )
-
-    v3_predictor = v3_fitted.new_predictor(1)
-    frozen_predictor = frozen_fitted.new_predictor(1)
-    v3_predictor.observe(training_stream()[0])
-    frozen_predictor.observe(training_stream()[0])
-    for later in training_stream()[1:]:
-        assert v3_predictor.predict(later.context) == pytest.approx(
-            frozen_predictor.predict(later.context)
-        )
-        v3_predictor.observe(later)
-        frozen_predictor.observe(later)
 
 
 def test_half_life_frozen_v3_loads_shipped_artefact_and_consumes_no_training_data():

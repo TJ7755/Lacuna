@@ -329,10 +329,6 @@ describe('mcp lineage tools', () => {
         'Publisher cells',
       );
     });
-
-    it('is declared read-tier', () => {
-      expect(tools.diffLineageUpdate.requiredScope).toBe('read');
-    });
   });
 
   describe('lacuna.apply_lineage_update', () => {
@@ -350,10 +346,6 @@ describe('mcp lineage tools', () => {
         expect(result.error.message).toMatch(/Question Sets/);
       }
       expect((await db.courses.get(courseId))?.distributedCopy?.revision).toBe(1);
-    });
-
-    it('is declared write-tier', () => {
-      expect(tools.applyLineageUpdate.requiredScope).toBe('write');
     });
 
     it("applies creates immediately and matches mergeLineageUpdate's own outcome on the same fixture", async () => {

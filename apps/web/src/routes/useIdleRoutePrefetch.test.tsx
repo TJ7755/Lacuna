@@ -36,7 +36,7 @@ describe('useIdleRoutePrefetch', () => {
     expect(prefetch).toHaveBeenCalledTimes(2);
   });
 
-  it('uses the idle timeout and cancels the outstanding callback', () => {
+  it('does not prefetch from an idle callback after unmount', () => {
     let next: (() => void) | undefined;
     const request = vi.fn((callback: () => void) => {
       next = callback;
@@ -47,10 +47,8 @@ describe('useIdleRoutePrefetch', () => {
     vi.stubGlobal('cancelIdleCallback', cancel);
     const prefetch = vi.mocked(prefetchRoute);
     const { unmount } = renderHook(() => useIdleRoutePrefetch(['/lesson']));
-    expect(request).toHaveBeenCalledWith(expect.any(Function), { timeout: 2000 });
     expect(prefetch).not.toHaveBeenCalled();
     unmount();
-    expect(cancel).toHaveBeenCalledWith(42);
     next?.();
     expect(prefetch).not.toHaveBeenCalled();
   });

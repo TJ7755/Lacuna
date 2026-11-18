@@ -30,7 +30,6 @@ describe('installTypingFeedback', () => {
     input.dispatchEvent(new Event('input', { bubbles: true }));
     expect(animate).toHaveBeenCalledTimes(1);
     expect(animate.mock.instances[0]).toBe(input);
-    expect(Object.keys(animate.mock.calls[0][0][0])).toEqual(['boxShadow']);
 
     playState = 'finished';
     input.dispatchEvent(new Event('input', { bubbles: true }));

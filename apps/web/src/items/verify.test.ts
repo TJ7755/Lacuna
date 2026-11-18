@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MarkSchemeLine, NumericAnswerSpec } from '@lacuna/core/db/types';
-import {
-  checkNumeric,
-  compareByRandomEvaluation,
-  expressionToTex,
-  parseExpression,
-  verifyWorkingLines,
-} from './verify';
+import { checkNumeric, expressionToTex, parseExpression, verifyWorkingLines } from './verify';
 
 function expression(source: string) {
   const result = parseExpression(source);
@@ -43,26 +37,35 @@ describe('parseExpression', () => {
   });
 });
 
-describe('compareByRandomEvaluation', () => {
+function compareWorkingAnswer(left: string, right: string, seed: string) {
+  const result = verifyWorkingLines(
+    [left],
+    [{ marks: 1, label: 'equivalence', kind: 'waypoint', expression: right }],
+    seed,
+  );
+  return result.marksEarned === 1
+    ? 'equivalent'
+    : result.undeterminedLines > 0
+      ? 'undetermined'
+      : 'different';
+}
+
+describe('working-answer equivalence', () => {
   it.each([
     ['8 / 2', '4'],
     ['2 * (x + 3)', '2x + 6'],
     ['x^2 + 2x + 1', '(x + 1)^2'],
     ['2x + 6 = 14', '2x - 8 = 0'],
   ])('accepts equivalent forms %s and %s', (left, right) => {
-    expect(compareByRandomEvaluation(expression(left), expression(right), 'item:attempt')).toBe(
-      'equivalent',
-    );
+    expect(compareWorkingAnswer(left, right, 'item:attempt')).toBe('equivalent');
   });
 
   it('rejects expressions that merely agree at one obvious value', () => {
-    expect(compareByRandomEvaluation(expression('x^2'), expression('x'), 'seed')).toBe('different');
+    expect(compareWorkingAnswer('x^2', 'x', 'seed')).toBe('different');
   });
 
   it('draws across positive and negative values for piecewise expressions', () => {
-    expect(compareByRandomEvaluation(expression('sqrt(x^2)'), expression('x'), 'piecewise')).toBe(
-      'different',
-    );
+    expect(compareWorkingAnswer('sqrt(x^2)', 'x', 'piecewise')).toBe('different');
   });
 
   it.each([
@@ -70,28 +73,20 @@ describe('compareByRandomEvaluation', () => {
     ['abs(x * y)', 'x * y'],
     ['abs(x + y)', 'x + y'],
   ])('samples every sign combination, so %s and %s differ', (left, right) => {
-    expect(compareByRandomEvaluation(expression(left), expression(right), 'signs')).toBe(
-      'different',
-    );
+    expect(compareWorkingAnswer(left, right, 'signs')).toBe('different');
   });
 
   it('separates "cannot check" from "differs" for domain-restricted expressions', () => {
-    expect(
-      compareByRandomEvaluation(expression('sqrt(x - 100)'), expression('sqrt(x - 100)'), 'domain'),
-    ).toBe('equivalent');
-    expect(
-      compareByRandomEvaluation(expression('sqrt(x - 100)'), expression('sqrt(x - 200)'), 'domain'),
-    ).toBe('different');
-    expect(
-      compareByRandomEvaluation(expression('sqrt(0 - x^2 - 1)'), expression('x'), 'empty-domain'),
-    ).toBe('undetermined');
+    expect(compareWorkingAnswer('sqrt(x - 100)', 'sqrt(x - 100)', 'domain')).toBe('equivalent');
+    expect(compareWorkingAnswer('sqrt(x - 100)', 'sqrt(x - 200)', 'domain')).toBe('different');
+    expect(compareWorkingAnswer('sqrt(0 - x^2 - 1)', 'x', 'empty-domain')).toBe('undetermined');
   });
 
   it('is reproducible for the same seed', () => {
-    const left = expression('x^3 - x');
-    const right = expression('x * (x - 1) * (x + 1)');
-    const first = compareByRandomEvaluation(left, right, 'repeatable-seed');
-    const second = compareByRandomEvaluation(left, right, 'repeatable-seed');
+    const left = 'x^3 - x';
+    const right = 'x * (x - 1) * (x + 1)';
+    const first = compareWorkingAnswer(left, right, 'repeatable-seed');
+    const second = compareWorkingAnswer(left, right, 'repeatable-seed');
     expect(second).toBe(first);
     expect(first).toBe('equivalent');
   });

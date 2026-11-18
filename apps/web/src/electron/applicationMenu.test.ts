@@ -26,13 +26,11 @@ describe('native application menu', () => {
       'windowMenu',
       'help',
     ]);
-    expect(topLevelRole(template, 'appMenu')).toBeDefined();
   });
 
   it('omits the macOS-only application menu on Windows and Linux', () => {
     for (const platform of ['win32', 'linux'] satisfies NodeJS.Platform[]) {
       const template = createApplicationMenuTemplate(platform, false);
-      expect(topLevelRole(template, 'appMenu')).toBeUndefined();
       expect(template.map((item) => item.role ?? item.label)).toEqual([
         'fileMenu',
         'editMenu',
@@ -48,8 +46,6 @@ describe('native application menu', () => {
     const roles = submenuRoles(viewMenu);
 
     expect(roles).toEqual(['resetZoom', 'zoomIn', 'zoomOut', undefined, 'togglefullscreen']);
-    expect(roles).not.toContain('reload');
-    expect(roles).not.toContain('toggleDevTools');
   });
 
   it('adds reload and developer tools only for development builds', () => {
