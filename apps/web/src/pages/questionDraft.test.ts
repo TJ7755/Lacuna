@@ -41,10 +41,25 @@ describe('Question draft persistence', () => {
     expect(restored.result.current.dirty).toBe(true);
   });
 
-  it('keys new and existing Questions separately per Course', () => {
-    expect(questionDraftKey('course-1')).not.toBe(questionDraftKey('course-1', 'question-1'));
-    expect(questionDraftKey('course-1', 'question-1')).not.toBe(
-      questionDraftKey('course-2', 'question-1'),
-    );
+  it('isolates saved drafts between courses and new and existing Questions', async () => {
+    vi.useFakeTimers();
+    const saved = renderHook(() => useQuestionDraft(questionDraftKey('course-1', 'question-1')));
+    act(() => saved.result.current.initialise(newQuestionState('')));
+    act(() => saved.result.current.update({ prompt: 'Unsaved question' }));
+    await act(async () => vi.advanceTimersByTime(800));
+    saved.unmount();
+
+    for (const key of [questionDraftKey('course-1'), questionDraftKey('course-2', 'question-1')]) {
+      const other = renderHook(() => useQuestionDraft(key));
+      act(() => other.result.current.initialise(newQuestionState('')));
+      expect(other.result.current.draftPrompt).toBe(false);
+      expect(other.result.current.state.prompt).toBe('');
+      other.unmount();
+    }
+    const original = renderHook(() => useQuestionDraft(questionDraftKey('course-1', 'question-1')));
+    act(() => original.result.current.initialise(newQuestionState('')));
+    expect(original.result.current.draftPrompt).toBe(true);
+    act(() => original.result.current.restoreDraft());
+    expect(original.result.current.state.prompt).toBe('Unsaved question');
   });
 });

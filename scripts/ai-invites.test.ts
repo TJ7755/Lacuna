@@ -3,11 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import {
-  exchangeCredential,
-  loadAccessConfiguration,
-  verifySessionToken,
-} from '../apps/ai/server/ai/access';
+import { createHash } from 'node:crypto';
 
 const directories: string[] = [];
 afterEach(() => {
@@ -26,7 +22,7 @@ function fixture() {
   return { cwd, run };
 }
 
-it('creates private, individually usable codes without printing secrets', () => {
+it('creates private codes with matching credential hashes without printing secrets', () => {
   const { cwd, run } = fixture();
   const result = run();
   expect(result.status, result.stderr).toBe(0);
@@ -34,19 +30,14 @@ it('creates private, individually usable codes without printing secrets', () => 
   const batch = join(root, readdirSync(root)[0]!);
   const csv = readFileSync(join(batch, 'codes.csv'), 'utf8');
   const hashes = readFileSync(join(batch, 'credential-hashes.json'), 'utf8');
-  const configuration = loadAccessConfiguration({
-    AI_ACCESS_CREDENTIAL_HASHES: hashes,
-    AI_SESSION_SIGNING_KEY: 's'.repeat(32),
-  })!;
-  expect(configuration).not.toBeNull();
+  const credentials = JSON.parse(hashes) as Record<string, string>;
   const rows = csv.trim().split('\n').slice(1);
   expect(rows).toHaveLength(20);
   const codes = rows.map((row) => row.split(',')[1]);
   expect(new Set(codes).size).toBe(20);
   for (const row of rows) {
     const [id, code] = row.split(',') as [string, string];
-    const session = exchangeCredential(code, configuration)!;
-    expect(verifySessionToken(session.token, configuration)).toBe(id);
+    expect(credentials[id]).toBe(createHash('sha256').update(code).digest('hex'));
     expect(hashes).not.toContain(code);
     expect(result.stdout + result.stderr).not.toContain(code);
   }

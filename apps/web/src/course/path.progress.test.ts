@@ -1,12 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  lessonStatus,
-  buildPath,
-  pathPosition,
-  nearestExamDate,
-  examIsUrgent,
-  EXAM_URGENT_DAYS,
-} from './path';
+import { lessonStatus, buildPath, pathPosition, nearestExamDate, examIsUrgent } from './path';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { type Card } from '@lacuna/core/db/types';
 import { makeCourse, makeLesson, makeCard, makeExamDate } from './path.testFixtures';
@@ -143,19 +136,14 @@ describe('nearestExamDate', () => {
 });
 
 describe('examIsUrgent', () => {
-  it('is false when the exam is in the past', () => {
-    expect(examIsUrgent(5 * MS_PER_DAY, 8 * MS_PER_DAY)).toBe(false);
-  });
-
-  it('is false when the exam is further away than EXAM_URGENT_DAYS', () => {
-    const now = 0;
-    const nearestExam = now + (EXAM_URGENT_DAYS + 1) * MS_PER_DAY;
-    expect(examIsUrgent(nearestExam, now)).toBe(false);
-  });
-
-  it('is true when the exam is within EXAM_URGENT_DAYS and still upcoming', () => {
-    const now = 0;
-    const nearestExam = now + (EXAM_URGENT_DAYS - 1) * MS_PER_DAY;
-    expect(examIsUrgent(nearestExam, now)).toBe(true);
+  it.each([
+    [undefined, false],
+    [-1, false],
+    [0, false],
+    [1, true],
+    [3 * MS_PER_DAY, true],
+    [3 * MS_PER_DAY + 1, false],
+  ])('flags strictly future exams through three days (%s)', (date, urgent) => {
+    expect(examIsUrgent(date, 0)).toBe(urgent);
   });
 });

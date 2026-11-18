@@ -60,23 +60,6 @@ describe('useTypedAutoMark', () => {
     expect(onMarked).not.toHaveBeenCalled();
   });
 
-  it('shows a submitted answer being judged before marking it', () => {
-    jev.marker = vi.fn();
-    const { result } = setup('Paris');
-    expect(result.current).toEqual({ state: 'checking' });
-    act(() => {
-      vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
-    });
-    act(() => {
-      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS - 1);
-    });
-    expect(result.current).toEqual({ state: 'checking' });
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(result.current).toMatchObject({ state: 'marked', correct: true, provenance: null });
-  });
-
   it.each([undefined, true] as const)(
     'marks a word-for-word match locally with spelling required %s',
     (requireCorrectSpelling) => {
@@ -86,7 +69,11 @@ describe('useTypedAutoMark', () => {
         vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
       });
       act(() => {
-        vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
+        vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS - 1);
+      });
+      expect(result.current).toEqual({ state: 'checking' });
+      act(() => {
+        vi.advanceTimersByTime(1);
       });
       expect(result.current).toMatchObject({ state: 'marked', correct: true, provenance: null });
       act(() => {

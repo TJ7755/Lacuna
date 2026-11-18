@@ -26,13 +26,20 @@ describe('database opening', () => {
   });
 
   it('keeps the database usable when deferred pruning fails', async () => {
-    const where = vi.spyOn(db.tombstones, 'where').mockImplementationOnce(() => {
+    let pruningFailed!: () => void;
+    const failure = new Promise<void>((resolve) => {
+      pruningFailed = resolve;
+    });
+    vi.spyOn(db.tombstones, 'where').mockImplementationOnce(() => {
+      pruningFailed();
       throw new Error('Pruning unavailable');
     });
 
     await expect(openDatabase()).resolves.toEqual({ ok: true });
-    await vi.waitFor(() => expect(where).toHaveBeenCalledWith('deletedAt'));
-    expect(db.isOpen()).toBe(true);
+    await failure;
+    const record = { key: 'after-pruning-failure', value: 'still writable' };
+    await db.appState.put(record);
+    expect(await db.appState.get(record.key)).toEqual(record);
   });
 
   it.each([

@@ -8,7 +8,6 @@ import { DEFAULT_RELAY_URL } from '../sync/pairingConfig';
 import { parseGapsConnectionFile, sealGapsConnection } from './connectionFile';
 import { createGapsConnectionStore } from './connectionStore';
 import {
-  CLASS_RECOVERY_FILE_MAX_BYTES,
   parseClassRecoveryFile,
   serialiseClassRecoveryFile,
   restoreClassRecovery,
@@ -41,7 +40,6 @@ it('round trips sealed halves without exposing the code', async () => {
     recovery,
   });
   expect(text).not.toContain(code);
-  expect(CLASS_RECOVERY_FILE_MAX_BYTES).toBeLessThanOrEqual(24 * 1024);
 });
 it('rejects mismatched bindings, kinds, versions and oversized files', async () => {
   const { connection, recovery } = await fixture();
@@ -54,7 +52,9 @@ it('rejects mismatched bindings, kinds, versions and oversized files', async () 
     { ...raw, connection: { ...connection, shareId: 'c'.repeat(32) } },
   ])
     expect(() => parseClassRecoveryFile(JSON.stringify(invalid))).toThrow();
-  expect(() => parseClassRecoveryFile(' '.repeat(CLASS_RECOVERY_FILE_MAX_BYTES + 1))).toThrow();
+  const oversized =
+    serialiseClassRecoveryFile(shareId, connection, recovery) + ' '.repeat(24 * 1024);
+  expect(() => parseClassRecoveryFile(oversized)).toThrow();
 });
 it('restores both halves on a fresh database and retries a failed relay check', async () => {
   const { connection, recovery } = await fixture();

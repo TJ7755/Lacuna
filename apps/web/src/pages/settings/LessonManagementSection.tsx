@@ -219,7 +219,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                 )}
               </div>
               {canAuthor && confirmDeleteId === lesson.id && (
-                <div data-lesson-delete-confirmation className="border-t border-line px-4 py-3">
+                <div className="border-t border-line px-4 py-3">
                   <ConfirmInline
                     message={`Delete ${lesson.name}? Notes will be removed and cards unassigned.`}
                     confirmLabel="Delete lesson"

@@ -21,13 +21,14 @@ it('drains text entered while the final storage tail is still settling', async (
   const tail = new Promise<void>((resolve) => {
     resolveTail = resolve;
   });
-  vi.spyOn(session, 'flush')
-    .mockImplementationOnce(() => tail)
-    .mockResolvedValue(undefined);
+  const queued = session.run(async (current) => {
+    await tail;
+    return { ...current, revisionId: 'r2' };
+  });
   vi.mocked(saveQuestionSetResponseDraft).mockImplementation(
     async (_id, _revision, _node, draft) => ({
       ...initial,
-      revisionId: 'r2',
+      revisionId: 'r3',
       responses: [{ nodeId: 'q1', draft }],
     }),
   );
@@ -40,16 +41,14 @@ it('drains text entered while the final storage tail is still settling', async (
     result.current.edit('q1', { kind: 'written', text: 'Late answer' });
   });
   await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  });
-  await act(async () => {
     resolveTail();
+    await queued;
     await saving;
   });
   await waitFor(() =>
     expect(saveQuestionSetResponseDraft).toHaveBeenCalledWith(
       'attempt',
-      'r1',
+      'r2',
       'q1',
       { kind: 'written', text: 'Late answer' },
       'q1',

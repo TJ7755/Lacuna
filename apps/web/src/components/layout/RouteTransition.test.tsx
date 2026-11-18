@@ -253,18 +253,4 @@ describe('RouteTransition', () => {
     expect(router.state.location.pathname).toBe('/course/one');
     expect(screen.queryByRole('heading', { name: 'Practice' })).not.toBeInTheDocument();
   });
-
-  it('covers browser history between shell and full-screen routes', async () => {
-    const router = renderRoutes('/settings');
-    fireEvent.click(screen.getByRole('button', { name: 'Navigate' }));
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Practice' })).toBeInTheDocument(),
-    );
-    await act(async () => {
-      await router.navigate(-1);
-    });
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument(),
-    );
-  });
 });

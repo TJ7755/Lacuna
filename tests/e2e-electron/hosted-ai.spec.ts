@@ -67,7 +67,6 @@ test('Electron obtains a hosted session and applies automatic marking', async ()
     await page.getByRole('switch', { name: 'Mark my answers automatically' }).click();
     await page.getByRole('alertdialog').getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Turn on', exact: true }).click();
-    await expect(page.getByLabel('Access code')).toHaveCount(0);
     await expect(page.getByRole('switch', { name: 'Mark my answers automatically' })).toBeChecked();
     expect(requests).toEqual([]);
     await page.evaluate(() => {

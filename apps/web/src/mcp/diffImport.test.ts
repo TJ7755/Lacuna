@@ -81,7 +81,7 @@ describe('diffImport', () => {
     expect(result.toSkip).toHaveLength(0);
   });
 
-  it('is idempotent across two runs for within-batch same-front-different-back conflicts', () => {
+  it('reports a conflicting later answer as an update once the first answer exists', () => {
     const proposed = [item({ front: 'Q1', back: 'A1' }), item({ front: 'Q1', back: 'A2' })];
     const first = diffImport([], proposed);
     expect(first.toCreate).toHaveLength(1);
@@ -121,18 +121,12 @@ describe('diffImport', () => {
     expect(second.toSkip).toHaveLength(2);
   });
 
-  it('handles markdown-formatted content, matching on normalised text only', () => {
-    const result = diffImport(
-      [existing({ front: '**Bold** question', back: '4' })],
-      [item({ front: '**Bold** question', back: '4' })],
-    );
-    expect(result.toSkip).toHaveLength(1);
-  });
-
-  it('preserves the original item in every bucket, unmodified', () => {
+  it('preserves proposed content without mutating it', () => {
     const proposed = item({ tags: ['x'] });
+    const before = structuredClone(proposed);
     const result = diffImport([], [proposed]);
-    expect(result.toCreate[0]).toBe(proposed);
+    expect(result.toCreate).toEqual([before]);
+    expect(proposed).toEqual(before);
   });
 });
 

@@ -5,19 +5,33 @@ import { gradeAudit, runFixtureTool } from './ai-benchmark';
 describe('source-grounded AI benchmark', () => {
   it('passes complete source-supported verdicts and actual corrections', () => {
     const fixture = AUDIT_FIXTURES[0];
-    const quotes = [
-      'Mitosis produces two genetically identical daughter cells.',
-      'Meiosis produces four genetically different haploid cells.',
-      'The nucleus contains the chromosomes.',
-      'Ribosomes are the site of protein synthesis.',
-    ];
     const text = JSON.stringify({
-      cards: fixture.gold.map((gold, index) => ({
-        cardId: gold.cardId,
-        status: gold.status,
-        evidence: quotes[index],
-        correction: gold.correctionIncludes ?? '',
-      })),
+      cards: [
+        {
+          cardId: 'B1',
+          status: 'correct',
+          evidence: 'Mitosis produces two genetically identical daughter cells.',
+          correction: '',
+        },
+        {
+          cardId: 'B2',
+          status: 'error',
+          evidence: 'Meiosis produces four genetically different haploid cells.',
+          correction: 'Meiosis produces four genetically different haploid cells.',
+        },
+        {
+          cardId: 'B3',
+          status: 'correct',
+          evidence: 'The nucleus contains the chromosomes.',
+          correction: '',
+        },
+        {
+          cardId: 'B4',
+          status: 'error',
+          evidence: 'Ribosomes are the site of protein synthesis.',
+          correction: 'Protein synthesis occurs at ribosomes.',
+        },
+      ],
     });
     expect(gradeAudit(fixture, text)).toEqual({
       classifications: 4,

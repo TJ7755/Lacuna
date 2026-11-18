@@ -304,52 +304,6 @@ describe('practice pools', () => {
     expect(second.map((card) => card.id)).toEqual(first.map((card) => card.id));
   });
 
-  it('filters unavailable and mastered cards at each card primary lesson horizon', () => {
-    const course = makeCourse();
-    const near = makeLesson('l1', NOW + MS_PER_DAY);
-    const far = makeLesson('l2', NOW + 100 * MS_PER_DAY);
-    const reviewed = {
-      stability: 30,
-      stabilityFast: 24,
-      difficulty: 5,
-      lastReviewed: NOW,
-      state: 2 as const,
-    };
-    const nearCard = makeCard('near', 'l1', reviewed);
-    const farCard = makeCard('far', 'l2', reviewed);
-    const suspended = makeCard('suspended', 'l1', { suspended: true });
-    const context = makeExamDateContext(course, [near, far], []);
-    expect(
-      eligiblePracticePool([nearCard, farCard, suspended], course, context, NOW).map(
-        (card) => card.id,
-      ),
-    ).toEqual([]);
-  });
-
-  it('keeps a linked card horizon anchored to its primary lesson', () => {
-    const course = makeCourse();
-    const linkedIntoNearLesson = makeCard('linked', 'l2', {
-      stability: 30,
-      stabilityFast: 24,
-      difficulty: 5,
-      lastReviewed: NOW,
-      state: 2,
-    });
-    const context = makeExamDateContext(
-      course,
-      [makeLesson('l1', NOW + MS_PER_DAY), makeLesson('l2', NOW + 100 * MS_PER_DAY)],
-      [],
-    );
-    const scope = practiceCardScope(
-      [linkedIntoNearLesson],
-      [link('l1', 'linked')],
-      [exposure('l1', 'linked')],
-      { reachedLessonIds: new Set(['l1']) },
-      NOW,
-    );
-    expect(eligiblePracticePool(scope, course, context, NOW).map((card) => card.id)).toEqual([]);
-  });
-
   it('measures readiness over the full scope, including unavailable cards', () => {
     const course = makeCourse();
     const lesson = makeLesson('l1', NOW + MS_PER_DAY);

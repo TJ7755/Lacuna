@@ -247,44 +247,22 @@ describe('resolveOcclusionAnswerText', () => {
   });
 });
 
-describe('fraction-coordinate round-trip', () => {
-  // Regions store fractions of the image, not pixels, precisely so a mask holds its
-  // relative position under FlipCard's responsive sizing and at any zoom (§6.2). This
-  // module never converts to pixels itself — that is the renderer's job — but the
-  // invariant it relies on is that applying the same fraction to two differently sized
-  // containers recovers the same relative position in both.
-  it('resolves the same relative position at two different container sizes', () => {
-    const r = region('r1', 'label', { x: 0.25, y: 0.5, w: 0.2, h: 0.1 });
-    const toPixels = (containerW: number, containerH: number) => ({
-      x: r.x * containerW,
-      y: r.y * containerH,
-      w: r.w * containerW,
-      h: r.h * containerH,
-    });
-
-    const small = toPixels(800, 600);
-    const large = toPixels(2560, 1920);
-
-    expect(small.x / 800).toBeCloseTo(large.x / 2560);
-    expect(small.y / 600).toBeCloseTo(large.y / 1920);
-    expect(small.w / 800).toBeCloseTo(large.w / 2560);
-    expect(small.h / 600).toBeCloseTo(large.h / 1920);
-    expect(small.x / 800).toBeCloseTo(r.x);
-  });
-});
-
 describe('diffRegeneration', () => {
   const occ = makeOcclusion(); // l1, l2 (labels), f1 (feature paired to l1)
 
   function existingFromGenerated(overrides: Record<string, Partial<Card>> = {}): Card[] {
-    return generateCards(occ).map((p, i) =>
+    return [
+      ['l1', 'Label 1 of 3 — Plant cell'],
+      ['l2', 'Label 2 of 3 — Plant cell'],
+      ['f1', 'Feature 3 of 3 — Plant cell'],
+    ].map(([id, front], i) =>
       card({
-        id: `card-${p.occlusionRegionId}`,
-        occlusionRegionId: p.occlusionRegionId,
-        front: p.front,
-        back: p.back,
+        id: `card-${id}`,
+        occlusionRegionId: id,
+        front,
+        back: `${front}\n\nRevealed on the diagram.`,
         createdAt: i,
-        ...overrides[p.occlusionRegionId],
+        ...overrides[id],
       }),
     );
   }

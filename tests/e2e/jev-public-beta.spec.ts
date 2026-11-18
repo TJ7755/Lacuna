@@ -36,7 +36,6 @@ test('public beta requires consent, retains opt-out and offers a quota ID withou
   await warning.getByRole('checkbox').check();
   await enable.click();
   await expect(toggle).toBeChecked();
-  await expect(page.getByLabel('Access code', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Copy quota ID' }).click();
   await expect(page.getByLabel('Quota ID', { exact: true })).toHaveText(/^[a-f0-9]{64}$/);
   await page

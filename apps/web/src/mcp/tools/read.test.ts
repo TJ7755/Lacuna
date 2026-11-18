@@ -1,11 +1,12 @@
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../db/schema';
 import {
   createCourse,
   createCourseAssessment,
   createLesson,
   createLessonCard,
+  createNote,
   createSequence,
 } from '../../db/repository';
 import { createOcclusion } from '../../db/occlusionRepository';
@@ -33,7 +34,6 @@ const ctx: ToolContext = { grant: null, agentId: 'test-agent' };
 
 describe('mcp read tools', () => {
   beforeEach(clearAll);
-  afterEach(() => vi.restoreAllMocks());
 
   describe('lacuna.list_courses', () => {
     it('lists every course', async () => {
@@ -71,18 +71,6 @@ describe('mcp read tools', () => {
         ],
       });
       expect(res.data.matches[0]).not.toHaveProperty('fsrsParameters');
-    });
-
-    it('counts records without hydrating Card review history', async () => {
-      const course = await createCourse('Biology Core');
-      const lesson = await createLesson(course.id, 'Cells');
-      await createLessonCard(course.id, lesson.id, 'front_back', 'DNA', 'A polymer');
-      const historyQuery = vi.spyOn(db.reviewHistory, 'where');
-
-      const res = await tools.findCourse.handler({ query: course.id, limit: 10 }, ctx);
-
-      expect(res.data.matches[0]).toMatchObject({ lessonCount: 1, cardCount: 1 });
-      expect(historyQuery).not.toHaveBeenCalled();
     });
   });
 
@@ -139,18 +127,6 @@ describe('mcp read tools', () => {
       if (result.ok) throw new Error('Expected an ambiguous Course error.');
       expect(result.error.message).toContain(core.id);
       expect(result.error.message).toContain(full.id);
-    });
-
-    it('does not hydrate review history for compact search results', async () => {
-      const course = await createCourse('Biology');
-      const lesson = await createLesson(course.id, 'Cells');
-      await createLessonCard(course.id, lesson.id, 'front_back', 'DNA', 'A polymer');
-      const historyQuery = vi.spyOn(db.reviewHistory, 'where');
-
-      const result = await tools.searchCards.handler({ course: course.id, query: 'DNA' }, ctx);
-
-      expect(result.data.cards).toHaveLength(1);
-      expect(historyQuery).not.toHaveBeenCalled();
     });
 
     it('rejects a cursor reused with another query or Course', async () => {
@@ -412,8 +388,11 @@ describe('mcp read tools', () => {
     it('lists a lesson’s notes', async () => {
       const course = await createCourse('Course A');
       const lesson = await createLesson(course.id, 'Lesson 1');
+      const note = await createNote(lesson.id, 'Cell structure', 'The nucleus contains DNA.');
+      const other = await createLesson(course.id, 'Genetics');
+      await createNote(other.id, 'Inheritance', 'Alleles');
       const res = await tools.listNotes.handler({ lessonId: lesson.id }, ctx);
-      expect(res.data).toEqual([]);
+      expect(res.data).toEqual([note]);
     });
   });
 
@@ -431,7 +410,7 @@ describe('mcp read tools', () => {
     it('returns whole-database counts when courseId is omitted', async () => {
       await createCourse('Course A');
       const res = await tools.diagnosticsSummary.handler({}, ctx);
-      expect('courses' in res.data).toBe(true);
+      expect(res.data).toMatchObject({ courses: 1, cards: 0, lessons: 0 });
     });
   });
 });

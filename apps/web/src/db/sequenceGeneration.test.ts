@@ -339,14 +339,18 @@ describe('diffRegeneration', () => {
   const seq = makeSequence(); // a: Helium, b: Neon, c: Argon; cueWindow 2
 
   function existingFromGenerated(overrides: Record<string, Partial<Card>> = {}): Card[] {
-    return generateCards(seq).map((p, i) =>
+    return [
+      ['a', '**Noble gases**\n\nFirst item?', 'Helium'],
+      ['b', '**Noble gases**\n\nHelium', 'Neon'],
+      ['c', '**Noble gases**\n\nHelium\n\nNeon', 'Argon'],
+    ].map(([id, front, back], i) =>
       card({
-        id: `card-${p.sequenceItemId}`,
-        sequenceItemId: p.sequenceItemId,
-        front: p.front,
-        back: p.back,
+        id: `card-${id}`,
+        sequenceItemId: id,
+        front,
+        back,
         createdAt: i,
-        ...overrides[p.sequenceItemId],
+        ...overrides[id],
       }),
     );
   }

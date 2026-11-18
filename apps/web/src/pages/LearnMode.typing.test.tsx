@@ -22,7 +22,7 @@ beforeEach(async () => {
 });
 
 describe('typed study accessibility', () => {
-  it('keeps the answer field accessible without a visible label and submits once on Enter', async () => {
+  it('keeps the answer field accessible without a visible label and reveals manual grading on Enter', async () => {
     const course = await createCourse('Vocabulary');
     const lesson = await createLesson(course.id, 'French', { answerMode: 'type' });
     await createLessonCard(course.id, lesson.id, 'front_back', 'Cat', 'chat');

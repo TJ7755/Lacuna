@@ -14,9 +14,4 @@ describe('searchHelp', () => {
   ])('ranks the direct answer first for %s', (query, ids) => {
     expect(ids).toContain(searchHelp(query)[0]?.id);
   });
-
-  it('requires every word and ignores case and surrounding whitespace', () => {
-    expect(searchHelp(' PICTURE sharing ').map((topic) => topic.id)).toEqual(['share-diagram']);
-    expect(searchHelp('picture nonexistent')).toEqual([]);
-  });
 });

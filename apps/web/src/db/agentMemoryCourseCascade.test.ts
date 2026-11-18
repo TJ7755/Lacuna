@@ -1,11 +1,14 @@
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { agentMemoryRepository } from './agentMemoryRepository';
 import { createCourse, deleteCourse, restoreCourse, snapshotCourse } from './repository';
 import { db } from './schema';
 
+afterEach(() => vi.restoreAllMocks());
+
 describe('Course memory cascade', () => {
   beforeEach(async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(10);
     await Promise.all([db.agentMemories.clear(), db.tombstones.clear(), db.courses.clear()]);
   });
   afterEach(async () => {
@@ -14,15 +17,12 @@ describe('Course memory cascade', () => {
 
   it('captures, tombstones and restores scoped memories newer than their deletion', async () => {
     const course = await createCourse('Maths');
-    const memory = await agentMemoryRepository.create(
-      {
-        courseId: course.id,
-        tags: ['strength'],
-        content: 'Checks algebraic substitutions carefully.',
-        basis: 'observed-performance',
-      },
-      10,
-    );
+    const memory = await agentMemoryRepository.create({
+      courseId: course.id,
+      tags: ['strength'],
+      content: 'Checks algebraic substitutions carefully.',
+      basis: 'observed-performance',
+    });
     const snapshot = await snapshotCourse(course.id);
     expect(snapshot?.agentMemories).toEqual([memory]);
 

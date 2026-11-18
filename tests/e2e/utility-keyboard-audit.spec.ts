@@ -49,7 +49,6 @@ test('Search names its field, provides full-size keyboard filters and keeps Clea
   await page.goto('/#/search');
   const search = page.getByRole('combobox', { name: 'Search content', exact: true });
   await expect(search).toBeFocused();
-  await expect(page.getByRole('heading', { name: 'Search everything' })).toHaveCount(0);
   await search.press('Tab');
   const due = page.getByRole('button', { name: 'Due now', exact: true });
   await expect(due).toBeFocused();

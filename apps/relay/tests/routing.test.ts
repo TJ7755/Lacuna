@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createHandler, describeInternalError, parseRoute } from '../src/relay.js';
+import { createHandler, parseRoute } from '../src/relay.js';
 import { MemoryStore, type PutOptions } from '../src/store.js';
 
 const relayRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -151,22 +151,6 @@ describe('runtime import specifiers', () => {
       }
     }
     expect(missing).toEqual([]);
-  });
-});
-
-describe('describeInternalError', () => {
-  it('keeps the underlying cause and redacts channel ids and tokens', () => {
-    const channelId = 'aabbccddeeff00112233445566778899';
-    const token = 'ab'.repeat(32);
-    const err = new Error('blob write failed', {
-      cause: new Error(`Vercel Blob: no token for c/${channelId}/state token=${token}`),
-    });
-    const text = describeInternalError(err);
-    expect(text).toContain('blob write failed');
-    expect(text).toContain('no token');
-    expect(text).not.toContain(channelId);
-    expect(text).not.toContain(token);
-    expect(text).toContain('[redacted]');
   });
 });
 

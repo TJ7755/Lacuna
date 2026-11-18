@@ -11,13 +11,6 @@ let linkedCardIds = new Set<string>();
 const mockUnlink = vi.fn();
 const mockGetExposure = vi.fn();
 const mockNotify = vi.fn();
-const observedContexts: {
-  importTargetName: string;
-  hasImport: boolean;
-  hasApkg: boolean;
-  hasRestore: boolean;
-}[] = [];
-
 vi.mock('../../db/schema', () => ({
   db: {
     lessonCards: { where: vi.fn() },
@@ -42,36 +35,18 @@ vi.mock('./AnswerModeControl', () => ({
 }));
 vi.mock('./CardList', () => ({
   CardList: ({
-    linkedCardIds,
     onUnlinkCard,
-    context,
     heading,
     beforeCards,
   }: {
     heading?: ReactNode;
     beforeCards?: ReactNode;
-    linkedCardIds?: ReadonlySet<string>;
     onUnlinkCard?: (card: Card) => void;
-    context?: {
-      importTargetName: string;
-      onImport: unknown;
-      onApkgImport: unknown;
-      onRestore: unknown;
-    };
   }) => {
-    if (context) {
-      observedContexts.push({
-        importTargetName: context.importTargetName,
-        hasImport: typeof context.onImport === 'function',
-        hasApkg: typeof context.onApkgImport === 'function',
-        hasRestore: typeof context.onRestore === 'function',
-      });
-    }
     return (
       <div>
         {heading}
         {beforeCards}
-        <span data-testid="linked-ids">{[...(linkedCardIds ?? [])].join(',')}</span>
         <button type="button" onClick={() => onUnlinkCard?.(card)}>
           Remove linked card
         </button>
@@ -131,36 +106,12 @@ beforeEach(() => {
   linkedCardIds = new Set();
   mockUnlink.mockReset();
   mockNotify.mockReset();
-  observedContexts.length = 0;
   mockUnlink.mockResolvedValue(undefined);
   mockGetExposure.mockReset();
   mockGetExposure.mockResolvedValue(undefined);
 });
 
 describe('LessonCardsSection', () => {
-  it('identifies linked membership in a populated lesson', () => {
-    linkedCardIds = new Set([card.id]);
-    render(
-      <LazyMotion features={domAnimation}>
-        <MemoryRouter>
-          <LessonCardsSection
-            courseId="course-1"
-            lessonId="lesson-1"
-            lessonName="Cells"
-            lessonCards={[card]}
-            lessonSchedulingConfig={deck}
-            linkedCardIds={linkedCardIds}
-            renderCards={() => null}
-          />
-        </MemoryRouter>
-      </LazyMotion>,
-    );
-    expect(screen.getByTestId('linked-ids')).toHaveTextContent(card.id);
-    expect(observedContexts).toEqual([
-      { importTargetName: 'Cells', hasImport: true, hasApkg: true, hasRestore: true },
-    ]);
-  });
-
   it('warns before unlinking a card with lesson-specific teaching progress', async () => {
     linkedCardIds = new Set([card.id]);
     mockGetExposure.mockResolvedValue({

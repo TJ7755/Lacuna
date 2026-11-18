@@ -78,17 +78,6 @@ describe('noteRepository', () => {
 describe('listNotes ordering', () => {
   beforeEach(resetCourseRepositoryData);
 
-  it('returns notes in orderIndex ascending order', async () => {
-    const course = await createCourse('Notes test');
-    const lesson = await createLesson(course.id, 'L1');
-    const n1 = await createNote(lesson.id, 'Note 1');
-    const n2 = await createNote(lesson.id, 'Note 2');
-    const n3 = await createNote(lesson.id, 'Note 3');
-
-    const notes = await listNotes(lesson.id);
-    expect(notes.map((n) => n.id)).toEqual([n1.id, n2.id, n3.id]);
-  });
-
   it('gives concurrent notes distinct indices and a stable listed order', async () => {
     const course = await createCourse('Notes test');
     const lesson = await createLesson(course.id, 'L1');

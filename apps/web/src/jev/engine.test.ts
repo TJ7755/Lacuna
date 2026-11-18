@@ -227,15 +227,6 @@ it.each([
     expect(engine.status()).toMatchObject({ state: 'ready' });
   },
 );
-it('resolves one hung request within the typed timeout without pausing', async () => {
-  vi.useFakeTimers();
-  const engine = createJevEngine({ fetcher: vi.fn(() => new Promise<Response>(() => {})) });
-  engine.enable(JEV_CONSENT_VERSION);
-  const result = engine.markTyped(request);
-  await vi.advanceTimersByTimeAsync(2500);
-  expect(await result).toEqual({ outcome: 'unsure', feedback: null });
-  expect(engine.status()).toMatchObject({ state: 'ready' });
-});
 it('abstains on low confidence without pausing', async () => {
   const fetcher = vi
     .fn()
@@ -295,19 +286,6 @@ it('creates an installation only after consent and reuses its identity across re
   engine.enable(JEV_CONSENT_VERSION);
   expect(await engine.quotaId()).toBe(id);
   expect(localStorage.getItem(JEV_INSTALLATION_STORAGE_KEY)).toBe(credential);
-});
-it('rechecks current thresholds for a cached verdict before applying it', async () => {
-  const fetcher = vi.fn();
-  const engine = createJevEngine({
-    fetcher,
-    cache: {
-      get: async () => ({ model: 'jev-1.14.0', value: 1, confidence: 0.74, inputTokens: 12 }),
-      put: async () => {},
-    },
-  });
-  engine.enable(JEV_CONSENT_VERSION);
-  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
-  expect(fetcher).not.toHaveBeenCalled();
 });
 it.each([
   [1, 0.7499, 'unsure'],

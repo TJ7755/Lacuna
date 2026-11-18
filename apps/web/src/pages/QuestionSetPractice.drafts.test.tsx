@@ -75,5 +75,17 @@ describe('QuestionSetPractice drafts', () => {
     expect(screen.getByRole('button', { name: 'Retry save' })).toBeInTheDocument();
     expect(screen.queryByText('Saving…')).not.toBeInTheDocument();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect((await getQuestionSetAttempt(attempt.id))?.responses[0].draft).toEqual({
+      kind: 'written',
+      text: '',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Retry save' }));
+    await waitFor(async () =>
+      expect((await getQuestionSetAttempt(attempt.id))?.responses[0].draft).toEqual({
+        kind: 'written',
+        text: 'Unsaved answer.',
+      }),
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

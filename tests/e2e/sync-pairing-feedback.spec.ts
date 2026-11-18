@@ -19,7 +19,6 @@ for (const theme of ['light', 'dark']) {
     await page.getByRole('button', { name: 'Set up sync', exact: true }).click();
     const phrase = page.getByLabel('Recovery passphrase', { exact: true });
     await expect(phrase).toBeFocused();
-    await expect(page.getByLabel('Relay URL', { exact: true })).toHaveCount(0);
     await phrase.fill(SYNC_PASSPHRASE);
     await page.keyboard.press('Tab');
     const confirmation = page.getByLabel('Confirm recovery passphrase', { exact: true });

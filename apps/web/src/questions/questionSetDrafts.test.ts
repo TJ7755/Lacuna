@@ -29,15 +29,10 @@ describe('Question Set drafts', () => {
   });
 
   it('round-trips an incomplete title-first draft and lists it by Course', async () => {
-    const initial = createEmptyQuestionSetDraft('course-1', 'set-1', {
-      makeId: () => 'initial',
-      now: 1,
-    });
+    const initial = createEmptyQuestionSetDraft('course-1', 'set-1');
     initial.content.title = 'Half written';
     const saved = await saveQuestionSetDraft(initial, {
       expectedDraftRevisionId: null,
-      makeId: () => 'saved',
-      now: 2,
     });
 
     expect(await loadQuestionSetDraft('course-1', 'set-1')).toEqual(saved);
@@ -70,7 +65,6 @@ describe('Question Set drafts', () => {
   it('rolls back a prepared image when draft CAS fails', async () => {
     const current = await saveQuestionSetDraft(createEmptyQuestionSetDraft('course-1', 'set-1'), {
       expectedDraftRevisionId: null,
-      makeId: () => 'current',
     });
     const hash = 'b'.repeat(64);
     const asset = {
@@ -88,25 +82,26 @@ describe('Question Set drafts', () => {
     ).rejects.toBeInstanceOf(QuestionSetDraftConflictError);
 
     expect(await db.assets.get(hash)).toBeUndefined();
-    expect((await loadQuestionSetDraft('course-1', 'set-1'))?.draftRevisionId).toBe('current');
+    expect((await loadQuestionSetDraft('course-1', 'set-1'))?.draftRevisionId).toBe(
+      current.draftRevisionId,
+    );
   });
 
   it('rejects stale writes and guarded deletion without losing the newer draft', async () => {
-    const initial = createEmptyQuestionSetDraft('course', 'set', { makeId: () => 'initial' });
+    const initial = createEmptyQuestionSetDraft('course', 'set');
     const first = await saveQuestionSetDraft(initial, {
       expectedDraftRevisionId: null,
-      makeId: () => 'first',
     });
     const newer = await saveQuestionSetDraft(
       { ...first, content: { ...first.content, title: 'Newer' } },
-      { expectedDraftRevisionId: 'first', makeId: () => 'newer' },
+      { expectedDraftRevisionId: first.draftRevisionId },
     );
 
     await expect(
-      saveQuestionSetDraft(first, { expectedDraftRevisionId: 'first' }),
+      saveQuestionSetDraft(first, { expectedDraftRevisionId: first.draftRevisionId }),
     ).rejects.toBeInstanceOf(QuestionSetDraftConflictError);
     await expect(
-      deleteQuestionSetDraft('course', 'set', { expectedDraftRevisionId: 'first' }),
+      deleteQuestionSetDraft('course', 'set', { expectedDraftRevisionId: first.draftRevisionId }),
     ).rejects.toBeInstanceOf(QuestionSetDraftConflictError);
     expect(await loadQuestionSetDraft('course', 'set')).toEqual(newer);
   });
@@ -170,7 +165,6 @@ describe('Question Set drafts', () => {
     const initial = createEmptyQuestionSetDraft('course', 'set');
     const saved = await saveQuestionSetDraft(initial, {
       expectedDraftRevisionId: null,
-      makeId: () => 'saved',
     });
     await deleteQuestionSetDraft('course', 'set', {
       expectedDraftRevisionId: saved.draftRevisionId,
@@ -208,7 +202,6 @@ describe('Question Set drafts', () => {
     ];
     const saved = await saveQuestionSetDraft(initial, {
       expectedDraftRevisionId: null,
-      makeId: () => 'draft-revision',
     });
 
     const published = await publishQuestionSetDraft(course.id, 'set', saved.draftRevisionId);
@@ -300,7 +293,6 @@ describe('Question Set drafts', () => {
     );
     const saved = await saveQuestionSetDraft(invalid, {
       expectedDraftRevisionId: null,
-      makeId: () => 'invalid-draft',
     });
 
     await expect(publishQuestionSetDraft(course.id, 'set', saved.draftRevisionId)).rejects.toThrow(
@@ -343,7 +335,7 @@ describe('Question Set drafts', () => {
     const published = await createQuestionSet(content);
     const saved = await saveQuestionSetDraft(
       createQuestionSetDraft({ ...content, title: 'Stale draft' }, published.contentRevisionId),
-      { expectedDraftRevisionId: null, makeId: () => 'stale-draft' },
+      { expectedDraftRevisionId: null },
     );
     await updateQuestionSet(
       'set',
@@ -387,7 +379,6 @@ describe('Question Set drafts', () => {
     ];
     const saved = await saveQuestionSetDraft(initial, {
       expectedDraftRevisionId: null,
-      makeId: () => 'draft-revision',
     });
     const remove = vi.spyOn(db.appState, 'delete').mockRejectedValueOnce(new Error('Disk failed'));
 
@@ -403,7 +394,6 @@ describe('Question Set drafts', () => {
     const course = await createCourse('Biology');
     const saved = await saveQuestionSetDraft(createEmptyQuestionSetDraft(course.id, 'set'), {
       expectedDraftRevisionId: null,
-      makeId: () => 'saved',
     });
     const snapshot = await snapshotCourse(course.id);
     expect(snapshot).not.toBeNull();

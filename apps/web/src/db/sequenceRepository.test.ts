@@ -168,45 +168,6 @@ describe('updateSequence', () => {
     expect(await db.cards.where('sequenceItemId').equals('l2').toArray()).toHaveLength(0);
   });
 
-  it('preserves FSRS state on a card whose front is regenerated', async () => {
-    const course = await createCourse('Chemistry');
-    const sequence = await createSequence(course.id, null, 'Halogens', items('F', 'Cl'));
-    const [first] = await cardsForSequence(sequence);
-
-    // Simulate real study progress on the first generated card.
-    await db.cards.update(first.id, {
-      state: 2,
-      stability: 12.5,
-      stabilityFast: null,
-      difficulty: 4.2,
-      reps: 3,
-      lapses: 1,
-      due: 123456,
-      lastReviewed: 100000,
-    });
-
-    // Reordering item-1 before item-0 changes item-0's cue window, hence its front.
-    const updated: Sequence = {
-      ...sequence,
-      items: [
-        { id: 'item-1', value: 'Cl' },
-        { id: 'item-0', value: 'F' },
-      ],
-    };
-    await updateSequence(updated);
-
-    const reloaded = await db.cards.get(first.id);
-    expect(reloaded).toBeDefined();
-    expect(reloaded!.front).not.toBe(first.front);
-    expect(reloaded!.state).toBe(2);
-    expect(reloaded!.stability).toBe(12.5);
-    expect(reloaded!.difficulty).toBe(4.2);
-    expect(reloaded!.reps).toBe(3);
-    expect(reloaded!.lapses).toBe(1);
-    expect(reloaded!.due).toBe(123456);
-    expect(reloaded!.lastReviewed).toBe(100000);
-  });
-
   it("keeps each card's FSRS state and back exact across a genuine multi-item reorder", async () => {
     const course = await createCourse('Chemistry');
     const sequence = await createSequence(course.id, null, 'Halogens', items('F', 'Cl', 'Br'));

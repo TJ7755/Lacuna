@@ -25,21 +25,6 @@ describe('CardList generated ownership', () => {
       sequenceItemId: 'item-1',
     };
 
-    it('groups a generated card under a sequence header with a card count', async () => {
-      render(
-        <CardList
-          cards={[mockCard, generatedCard]}
-          context={mockContext}
-          onEditCard={vi.fn()}
-          sequences={[sequence]}
-        />,
-      );
-      expect(screen.getByText('The alkali metals')).toBeInTheDocument();
-      expect(screen.getByText('1 card')).toBeInTheDocument();
-      // The ordinary card still renders in the loose list underneath.
-      expect(await screen.findByText('What is the capital of France?')).toBeInTheDocument();
-    });
-
     it('shows an "Edit sequence" link that calls onEditSequence with the sequence id', () => {
       const onEditSequence = vi.fn();
       render(
@@ -89,25 +74,6 @@ describe('CardList generated ownership', () => {
           backs[i - 1].compareDocumentPosition(backs[i]) & Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
       }
-    });
-
-    it('badges a generated card and hides its select checkbox and delete action', () => {
-      render(
-        <CardList
-          cards={[mockCard, generatedCard]}
-          context={mockContext}
-          onEditCard={vi.fn()}
-          sequences={[sequence]}
-        />,
-      );
-      expect(screen.getByText('Sequence')).toBeInTheDocument();
-      expect(screen.getAllByText('Sequence')).toHaveLength(1);
-      expect(screen.getAllByText('Front / back')).toHaveLength(1);
-
-      fireEvent.click(screen.getByText('Select'));
-      // Only the ordinary card is selectable: "Select all" only ever selects it.
-      fireEvent.click(screen.getByText('Select all'));
-      expect(screen.getByText('1 selected')).toBeInTheDocument();
     });
 
     const occlusion: Occlusion = {

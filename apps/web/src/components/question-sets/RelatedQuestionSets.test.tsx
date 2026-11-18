@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCourse, createCourseCard, createLesson } from '../../db/repository';
 import { createCourseAssessment } from '../../db/assessmentRepository';
 import { db } from '../../db/schema';
-import { createQuestionSet } from '../../questions/questionSetRepository';
+import { createQuestionSet, deleteQuestionSet } from '../../questions/questionSetRepository';
 import type { QuestionSet } from '@lacuna/core/questions/questionSets';
 import { createConcept } from '../../questions/repository';
 import { RelatedQuestionSets } from './RelatedQuestionSets';
@@ -162,11 +162,13 @@ describe('RelatedQuestionSets', () => {
     expect(await db.cards.get(card.id)).toEqual(cardBeforeNavigation);
   });
 
-  it('renders nothing when the relationship has no sets', async () => {
+  it('removes a related link when its authored set is deleted', async () => {
     const course = await createCourse('Biology');
     const lesson = await createLesson(course.id, 'Cells');
+    const set = await makeSet(course.id, { lessonIds: [lesson.id] });
     const { container } = renderAt(course.id, { lessonId: lesson.id });
+    await screen.findByRole('link', { name: set.title });
+    await deleteQuestionSet(set.id);
     await waitFor(() => expect(container).toBeEmptyDOMElement());
-    expect(screen.queryByRole('heading', { name: 'Practice questions' })).not.toBeInTheDocument();
   });
 });

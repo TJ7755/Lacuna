@@ -2,16 +2,11 @@ import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
 import { defaultFsrsParameters, FSRS_VERSION } from '@lacuna/core/fsrs/params';
-import type { CourseAssessment, Lesson } from '@lacuna/core/db/types';
-import {
-  buildCourseAssessmentMigration,
-  finalAssessmentForCourse,
-  hydrateCourse,
-  type LegacyCourseRecord,
-} from './assessmentMigration';
+import type { CourseAssessment, Course, Lesson } from '@lacuna/core/db/types';
+import { courseToRecord, finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 import { db } from './schema';
 
-function legacyCourse(id: string, examDate: number): LegacyCourseRecord {
+function legacyCourse(id: string, examDate: number): Course {
   return {
     id,
     name: `Course ${id}`,
@@ -49,110 +44,8 @@ describe('course assessment migration', () => {
     await db.delete();
   });
 
-  it('creates one prefix final per course and strips compatibility fields from course rows', () => {
-    const ids = ['final-a', 'final-b'][Symbol.iterator]();
-    const result = buildCourseAssessmentMigration(
-      [legacyCourse('a', 1_000), legacyCourse('b', 2_000)],
-      [lesson('a1', 'a', 0), lesson('a2', 'a', 1)],
-      [],
-      () => ids.next().value!,
-    );
-
-    expect(result.courses).toHaveLength(2);
-    expect(result.courses[0]).not.toHaveProperty('examDate');
-    expect(result.courses[0]).not.toHaveProperty('timeZone');
-    expect(result.assessments).toEqual([
-      expect.objectContaining({
-        id: 'final-a',
-        courseId: 'a',
-        kind: 'final',
-        examDate: 1_000,
-        timeZone: 'Europe/London',
-        afterLessonId: 'a2',
-        coverageMode: 'prefix',
-        excludedCardIds: [],
-      }),
-      expect.objectContaining({
-        id: 'final-b',
-        courseId: 'b',
-        kind: 'final',
-        examDate: 2_000,
-        afterLessonId: null,
-        coverageMode: 'prefix',
-      }),
-    ]);
-  });
-
-  it('separates custom coverage from placement and preserves exclusions', () => {
-    const result = buildCourseAssessmentMigration(
-      [legacyCourse('course', 9_000)],
-      [lesson('first', 'course', 0), lesson('middle', 'course', 1), lesson('last', 'course', 2)],
-      [
-        {
-          id: 'checkpoint',
-          courseId: 'course',
-          name: 'Paper 1',
-          examDate: 5_000,
-          lessonIds: ['first', 'middle'],
-          excludedCardIds: ['card'],
-          createdAt: 200,
-        },
-      ],
-      () => 'final',
-    );
-
-    expect(result.assessments[1]).toEqual({
-      id: 'checkpoint',
-      courseId: 'course',
-      name: 'Paper 1',
-      kind: 'checkpoint',
-      examDate: 5_000,
-      afterLessonId: 'middle',
-      coverageMode: 'custom',
-      lessonIds: ['first', 'middle'],
-      excludedCardIds: ['card'],
-      createdAt: 200,
-      updatedAt: 200,
-    });
-  });
-
-  it.each([undefined, []] as const)(
-    'migrates an unscoped legacy row to explicit prefix coverage (%s)',
-    (lessonIds) => {
-      const result = buildCourseAssessmentMigration(
-        [legacyCourse('course', 9_000)],
-        [lesson('first', 'course', 0), lesson('last', 'course', 1)],
-        [
-          {
-            id: 'checkpoint',
-            courseId: 'course',
-            name: 'Mock',
-            examDate: 5_000,
-            lessonIds: lessonIds === undefined ? undefined : [...lessonIds],
-            createdAt: 200,
-          },
-        ],
-        () => 'final',
-      );
-
-      expect(result.assessments[1]).toEqual(
-        expect.objectContaining({
-          coverageMode: 'prefix',
-          afterLessonId: 'last',
-          excludedCardIds: [],
-        }),
-      );
-      expect(result.assessments[1]).not.toHaveProperty('lessonIds');
-    },
-  );
-
   it('validates final cardinality and hydrates read-only compatibility values', () => {
-    const record = buildCourseAssessmentMigration(
-      [legacyCourse('course', 9_000)],
-      [],
-      [],
-      () => 'final',
-    ).courses[0];
+    const record = courseToRecord(legacyCourse('course', 9_000));
     const final: CourseAssessment = {
       id: 'final',
       courseId: 'course',
@@ -170,7 +63,7 @@ describe('course assessment migration', () => {
     expect(hydrateCourse(record, final)).toEqual(
       expect.objectContaining({ examDate: 9_000, timeZone: 'Europe/London' }),
     );
-    expect(finalAssessmentForCourse('course', [final])).toBe(final);
+    expect(finalAssessmentForCourse('course', [final])).toEqual(final);
     expect(() => finalAssessmentForCourse('course', [])).toThrow('exactly one final assessment');
     expect(() => finalAssessmentForCourse('course', [final, { ...final, id: 'other' }])).toThrow(
       'found 2',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isLeech, DEFAULT_LEECH_LAPSE_THRESHOLD } from '@lacuna/core/fsrs/leech';
+import { isLeech } from '@lacuna/core/fsrs/leech';
 import type { Card } from '@lacuna/core/db/types';
 
 function cardWithLapses(lapses: number): Card {
@@ -29,11 +29,11 @@ function cardWithLapses(lapses: number): Card {
 
 describe('isLeech', () => {
   it('is false below the threshold', () => {
-    expect(isLeech(cardWithLapses(DEFAULT_LEECH_LAPSE_THRESHOLD - 1))).toBe(false);
+    expect(isLeech(cardWithLapses(7))).toBe(false);
   });
 
   it('is true at and above the threshold', () => {
-    expect(isLeech(cardWithLapses(DEFAULT_LEECH_LAPSE_THRESHOLD))).toBe(true);
-    expect(isLeech(cardWithLapses(DEFAULT_LEECH_LAPSE_THRESHOLD + 5))).toBe(true);
+    expect(isLeech(cardWithLapses(8))).toBe(true);
+    expect(isLeech(cardWithLapses(13))).toBe(true);
   });
 });

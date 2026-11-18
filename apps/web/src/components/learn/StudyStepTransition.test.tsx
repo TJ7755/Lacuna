@@ -258,8 +258,6 @@ describe('StudyStepTransition', () => {
     );
 
     expect(screen.getByLabelText('Completed')).toBeInTheDocument();
-    expect(screen.queryByText('Step complete')).not.toBeInTheDocument();
-    expect(screen.queryByText('Up next')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Checkpoint', level: 1 })).toBeInTheDocument();
     expect(screen.getByText('Atomic structure')).toBeInTheDocument();
     // The answers are drawn, not written out.

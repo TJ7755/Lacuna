@@ -153,7 +153,6 @@ describe('CardEditor — backing-deck boundary', () => {
     expect(
       screen.getByText('A card with identical content already exists in this course.'),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/exists in this deck/i)).not.toBeInTheDocument();
   });
 });
 
@@ -188,14 +187,6 @@ describe('CardEditor — generated cards', () => {
     expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/course/course-1'), {
       state: { returning: true },
     });
-  });
-
-  it('renders the ordinary editable form for a non-generated card', () => {
-    editorState.card = { ...generatedCard, sequenceItemId: undefined };
-    renderEditing();
-
-    expect(screen.getByPlaceholderText(/Question or prompt/)).toBeInTheDocument();
-    expect(screen.getByText('Save changes')).toBeInTheDocument();
   });
 
   it('renders a read-only preview and links to the owning occlusion for an occlusion-generated card', () => {

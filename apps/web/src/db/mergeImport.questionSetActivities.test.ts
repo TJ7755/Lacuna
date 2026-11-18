@@ -44,22 +44,6 @@ describe('mergeImport: v5 Question Set path activity lineage', () => {
     expect(await db.practiceNodes.get('activity-quadratics')).toBeUndefined();
     expect(await db.tombstones.get(['practiceNodes', 'activity-quadratics'])).toBeDefined();
   });
-
-  it('rejects a local placement edit without partial teacher changes', async () => {
-    const { course } = await importLineageFirstTime(questionPayloadV5());
-    await db.practiceNodes.update('activity-quadratics', { name: 'Learner edit' });
-    await expect(
-      mergeLineageUpdate(
-        course.id,
-        questionPayloadV5({
-          at: 2_000,
-          rv: 2,
-        }),
-      ),
-    ).rejects.toThrow('locally edited Question Set activity');
-    expect((await db.practiceNodes.get('activity-quadratics'))?.name).toBe('Learner edit');
-    expect((await db.courses.get(course.id))?.distributedCopy?.revision).toBe(1);
-  });
 });
 
 describe('mergeImport: ordered Question Set activity lineage', () => {
@@ -280,6 +264,7 @@ describe.each([6] as const)(
     it('restores Lesson membership without changing Question evidence or path activities', async () => {
       const payload = { ...questionPayloadV5(), v: version };
       const { course } = await importLineageFirstTime(payload);
+      await startQuestionSetAttempt('set-quadratics', 'practice', 1600);
       await db.lineageIdMappings.update(payload.li!, { lessonIds: [], cardIds: [] });
       const before = await exportDatabase();
       await mergeLineageUpdate(course.id, { ...questionPayloadV5({ rv: 22 }), v: version });

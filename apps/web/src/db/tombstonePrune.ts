@@ -4,10 +4,7 @@
 import { db } from './database';
 import { TOMBSTONE_RETENTION_MS } from './mutationStamp';
 
-export async function pruneExpiredTombstones(
-  now = Date.now(),
-  retentionMs = TOMBSTONE_RETENTION_MS,
-): Promise<number> {
-  const cutoff = now - retentionMs;
+export async function pruneExpiredTombstones(): Promise<number> {
+  const cutoff = Date.now() - TOMBSTONE_RETENTION_MS;
   return db.tombstones.where('deletedAt').below(cutoff).delete();
 }

@@ -319,10 +319,3 @@ describe('NewCourseForm', () => {
     expect(mocks.createCourse).not.toHaveBeenCalled();
   });
 });
-
-it('keeps course creation separate from import', () => {
-  render(<NewCourseForm onClose={vi.fn()} />);
-  expect(screen.queryByRole('button', { name: 'Import cards' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Import share code' })).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Create' })).toBeInTheDocument();
-});

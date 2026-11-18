@@ -5,10 +5,8 @@
   "type": "module",
   "dependencies": {
     "@vercel/functions": "^3.11.3",
-    "ai": "^7.0.173",
     "zod": "4.6.7",
     "@ai-sdk/gateway": "^4.0.146",
-    "@ai-sdk/google": "^4.0.121",
-    "@ai-sdk/openai-compatible": "^3.0.92"
+    "@ai-sdk/google": "^4.0.121"
   }
 }

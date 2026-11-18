@@ -222,103 +222,137 @@ describe('course/lesson-scoped sessions', () => {
     expect(pool).toHaveLength(3);
   });
 
-  it('scores a card shared between two lesson units deterministically regardless of unit registration order', () => {
-    const cA = course('course-1', 10);
-    const cB = course('course-1', 30);
-    const lessonA: SessionUnit = {
-      config: cA,
+  it('uses the best linked-unit priority, then honours cooldowns before that priority', () => {
+    const secured: SessionUnit = {
+      config: { ...course('course-1', 1), examObjective: 'securedTopics' },
       scope: {
         kind: 'lesson',
         courseId: 'course-1',
-        lessonId: 'lesson-a',
-        linkedCardIds: new Set(),
-      },
-    };
-    const lessonB: SessionUnit = {
-      config: cB,
-      scope: {
-        kind: 'lesson',
-        courseId: 'course-1',
-        lessonId: 'lesson-b',
+        lessonId: 'secured',
         linkedCardIds: new Set(['shared']),
       },
+    };
+    const marks: SessionUnit = {
+      config: course('course-1', 1),
+      scope: {
+        kind: 'lesson',
+        courseId: 'course-1',
+        lessonId: 'marks',
+        linkedCardIds: new Set(['shared']),
+      },
+    };
+    const other: SessionUnit = {
+      config: course('course-2', 1),
+      scope: { kind: 'course', courseId: 'course-2' },
+    };
+    const reviewed = {
+      stability: 0.1,
+      stabilityFast: 0.02,
+      difficulty: 5,
+      lastReviewed: NOW,
+      reps: 1,
+      state: 2 as const,
     };
     const cards = [
-      card('shared', 'shadow-deck-a', { courseId: 'course-1', primaryLessonId: 'lesson-a' }),
-      card('a2', 'shadow-deck-a', { courseId: 'course-1', primaryLessonId: 'lesson-a' }),
-      card('b1', 'shadow-deck-b', { courseId: 'course-1', primaryLessonId: 'lesson-b' }),
+      card('competitor', 'shadow', { ...reviewed, courseId: 'course-2' }),
+      card('shared', 'shadow', {
+        ...reviewed,
+        courseId: 'course-1',
+        primaryLessonId: 'outside-session',
+      }),
+      card('already-secure', 'shadow', {
+        ...reviewed,
+        courseId: 'course-1',
+        primaryLessonId: 'secured',
+        stability: 10_000,
+      }),
+      card('new', 'shadow', { courseId: 'course-1', primaryLessonId: 'marks' }),
     ];
-
-    const serveOrder = (units: SessionUnit[]) => {
+    // Shared beats the secure card for securedTopics, but loses to the unseen
+    // card for expectedMarks. Its best normalised priority beats the singleton
+    // competitor's midpoint; choosing either the first or last match is wrong.
+    for (const units of [
+      [secured, marks, other],
+      [marks, secured, other],
+    ]) {
       const ctx = makeSessionContext(units);
-      const served: string[] = [];
-      let cd = new Map<string, number>();
-      for (let i = 0; i < 3; i++) {
-        const next = selectNext(cards, ctx, cd, NOW);
-        if (!next) break;
-        served.push(next.id);
-        cd = new Map(cd).set(next.id, 999);
-      }
-      return served;
-    };
-
-    expect(serveOrder([lessonA, lessonB])).toEqual(serveOrder([lessonB, lessonA]));
+      expect(selectNext(cards, ctx, new Map(), NOW)?.id).toBe('shared');
+      expect(
+        selectNext(
+          cards,
+          ctx,
+          new Map([
+            ['shared', 3],
+            ['new', 3],
+            ['already-secure', 3],
+          ]),
+          NOW,
+        )?.id,
+      ).toBe('competitor');
+      expect(
+        selectNext(
+          cards,
+          ctx,
+          new Map([
+            ['shared', 3],
+            ['new', 3],
+            ['already-secure', 3],
+            ['competitor', 1],
+          ]),
+          NOW,
+        )?.id,
+      ).toBe('competitor');
+      expect(selectNext(cards, ctx, new Map(cards.map((entry) => [entry.id, 2])), NOW)?.id).toBe(
+        'shared',
+      );
+    }
   });
-});
 
-describe('shared cards without a lesson owner', () => {
-  const sharedUnits: SessionUnit[] = [
-    {
-      config: course('course-1', 3),
+  it('uses the weakest linked exam forecast in cram, unless the owning lesson is present', () => {
+    const near: SessionUnit = {
+      config: course('course-1', 1),
       scope: {
         kind: 'lesson',
         courseId: 'course-1',
-        lessonId: 'lesson-a',
+        lessonId: 'near',
         linkedCardIds: new Set(['shared']),
       },
-    },
-    {
+    };
+    const far: SessionUnit = {
       config: course('course-1', 30),
       scope: {
         kind: 'lesson',
         courseId: 'course-1',
-        lessonId: 'lesson-b',
+        lessonId: 'far',
         linkedCardIds: new Set(['shared']),
       },
-    },
-  ];
-
-  it('scores a shared linked card by its most urgent unit in cram mode', () => {
-    const shared = card('shared', 'shadow-deck', {
-      courseId: 'course-1',
-      primaryLessonId: 'another-lesson',
-      stability: 1,
-      stabilityFast: 2,
+    };
+    const memory = {
+      stability: 10,
+      stabilityFast: 0.02,
       difficulty: 5,
       lastReviewed: NOW,
       reps: 1,
-      state: 2,
-    });
-
-    expect(selectNext([shared], makeSessionContext(sharedUnits, 'cram'), new Map(), NOW)?.id).toBe(
-      shared.id,
-    );
-  });
-
-  it('chooses the shortest cooldown for a shared card with no owning lesson unit', () => {
-    const shared = card('shared', 'shadow-deck', {
+      state: 2 as const,
       courseId: 'course-1',
-      primaryLessonId: 'another-lesson',
-      stability: 1,
-      stabilityFast: 2,
-      difficulty: 5,
-      lastReviewed: NOW,
-      reps: 1,
-      state: 2,
+    };
+    const competitor = card('competitor', 'shadow', {
+      ...memory,
+      stability: 3,
+      primaryLessonId: 'near',
     });
-
-    expect(
-      selectNext([shared], makeSessionContext(sharedUnits), new Map([[shared.id, 2]]), NOW)?.id,
-    ).toBe(shared.id);
+    for (const units of [
+      [near, far],
+      [far, near],
+    ]) {
+      const ctx = makeSessionContext(units, 'cram');
+      const shared = card('shared', 'shadow', { ...memory, primaryLessonId: 'outside-session' });
+      // The shared card has over 94% recall at the near exam but under 86%
+      // at the far exam. The competitor lies between those forecasts.
+      expect(selectNext([competitor, shared], ctx, new Map(), NOW)?.id).toBe('shared');
+      expect(
+        selectNext([competitor, { ...shared, primaryLessonId: 'near' }], ctx, new Map(), NOW)?.id,
+      ).toBe('competitor');
+    }
   });
 });

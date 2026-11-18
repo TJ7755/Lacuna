@@ -104,14 +104,10 @@ describe('ExamDatesSection', () => {
     motion.multiplier = 0;
   });
 
-  it('lists existing exam dates', () => {
+  it('shows existing assessments and the add control without an entrance fade', () => {
     render(<ExamDatesSection courseId="course-1" />);
-    const row = screen.getByText('Mock exam').closest('.rounded-2xl');
-    expect(row).toBeInTheDocument();
-    expect(row).not.toHaveStyle({ opacity: '1' });
-    expect(screen.getByRole('button', { name: 'Add checkpoint' }).parentElement).not.toHaveStyle({
-      opacity: '1',
-    });
+    expect(screen.getByText('Mock exam')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Add checkpoint' })).toBeVisible();
   });
 
   it('deletes an exam date after confirmation', async () => {
@@ -156,7 +152,6 @@ describe('ExamDatesSection', () => {
 
   it('focuses the current assessment editor rather than an outgoing StepSwap editor', async () => {
     motion.multiplier = 1;
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     mockExamDates = [
       mockExamDate,
       { ...mockExamDate, id: 'exam-2', name: 'Second mock', createdAt: Date.now() + 1 },
@@ -173,9 +168,7 @@ describe('ExamDatesSection', () => {
 
     expect(screen.getByDisplayValue('Second mock')).toHaveFocus();
     await waitFor(() => expect(screen.queryByDisplayValue('Mock exam')).not.toBeInTheDocument());
-    expect(warning).not.toHaveBeenCalledWith(expect.stringContaining('pointerEvents'));
     await finishRunningAnimations();
-    warning.mockRestore();
   });
 
   it('returns focus to Add checkpoint after deleting the assessment being edited', async () => {

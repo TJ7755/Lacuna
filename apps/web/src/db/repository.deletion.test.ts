@@ -36,23 +36,11 @@ import {
   labelRegion,
   expectedCourseTombstoneKeys,
   actualTombstoneKeys,
-  tombstoneKey,
   reset,
 } from './repository.mutation.testFixtures';
 
 describe('repository deletion tombstones', () => {
   beforeEach(reset);
-
-  it('tombstones a deleted card in the same transaction', async () => {
-    const course = await createCourse('Biology');
-    const card = await createCard(course.id, 'front_back', 'Q', 'A');
-    await deleteCards([card.id]);
-    expect(await db.cards.get(card.id)).toBeUndefined();
-    expect(await db.tombstones.get(['cards', card.id])).toMatchObject({
-      table: 'cards',
-      recordId: card.id,
-    });
-  });
 
   it('writes one card tombstone per deleted card', async () => {
     const course = await createCourse('Biology');
@@ -116,7 +104,9 @@ describe('repository deletion tombstones', () => {
     );
     await createOrResumeRevisionPlan(checkpoint.id, 20, revisionFallback, now);
     await createSequence(course.id, first.id, 'Organelles', [{ id: 'seq-1', value: 'Nucleus' }]);
-    await createOcclusion(course.id, null, 'Diagram', 'hash-cascade', [labelRegion('occ-1')]);
+    const occlusion = await createOcclusion(course.id, null, 'Diagram', 'hash-cascade', [
+      labelRegion('occ-1'),
+    ]);
 
     const snapshot = await snapshotCourse(course.id);
     expect(snapshot).not.toBeNull();
@@ -134,59 +124,19 @@ describe('repository deletion tombstones', () => {
     expect(snapshot!.schedulingPerformance.length).toBeGreaterThan(0);
 
     const expected = expectedCourseTombstoneKeys(snapshot!);
-    expect(expected.has(tombstoneKey('lessonCards', snapshot!.lessonCards[0].id))).toBe(true);
-    expect(expected.has(tombstoneKey('practiceNodes', node.id))).toBe(true);
-    expect(expected.has(tombstoneKey('courseAssessments', checkpoint.id))).toBe(true);
-    expect(expected.has(tombstoneKey('revisionPlans', snapshot!.revisionPlans[0].id))).toBe(true);
-    expect(expected.has(tombstoneKey('sequences', snapshot!.sequences[0].id))).toBe(true);
-    expect(expected.has(tombstoneKey('coursePerformance', course.id))).toBe(true);
-    expect(
-      expected.has(
-        tombstoneKey('schedulingPerformance', snapshot!.schedulingPerformance[0].schedulingUnitId),
-      ),
-    ).toBe(true);
-
     await deleteCourse(course.id);
 
     expect(await actualTombstoneKeys()).toEqual(expected);
+    for (const table of new Set((await db.tombstones.toArray()).map((row) => row.table))) {
+      expect(await db.table(table).count(), table).toBe(0);
+    }
     expect((await db.tombstones.toArray()).some((row) => row.table === 'noteAnnotations')).toBe(
       false,
     );
 
     await restoreCourse(snapshot!);
+    expect(await db.occlusions.get(occlusion.id)).toEqual(occlusion);
     expect((await db.courses.get(course.id))?.updatedAt).toBe(snapshot!.course.updatedAt);
-    expect(await db.tombstones.count()).toBe(0);
-  });
-
-  it('tombstones every snapshot-carried row when deleting a course, including occlusions', async () => {
-    const course = await createCourse('Biology');
-    const lesson = await createLesson(course.id, 'Intro');
-    await createNote(lesson.id, 'Notes', 'Body');
-    await createCard(course.id, 'front_back', 'Q', 'A');
-    const occlusion = await createOcclusion(course.id, null, 'Diagram', 'hash', []);
-
-    const snapshot = await snapshotCourse(course.id);
-    expect(snapshot?.occlusions).toHaveLength(1);
-
-    await deleteCourse(course.id);
-
-    const tombstones = await db.tombstones.toArray();
-    const tables = new Set(tombstones.map((row) => row.table));
-    expect(tables.has('courses')).toBe(true);
-    expect(tables.has('lessons')).toBe(true);
-    expect(tables.has('notes')).toBe(true);
-    expect(tables.has('cards')).toBe(true);
-    expect(tables.has('occlusions')).toBe(true);
-    expect(tables.has('schedulingUnits')).toBe(true);
-    expect(tombstones.some((row) => row.table === 'noteAnnotations')).toBe(false);
-    expect(await db.occlusions.get(occlusion.id)).toBeUndefined();
-
-    await restoreCourse(snapshot!);
-    expect(await db.courses.get(course.id)).toMatchObject({
-      name: 'Biology',
-      updatedAt: snapshot!.course.updatedAt,
-    });
-    expect(await db.occlusions.get(occlusion.id)).toMatchObject({ id: occlusion.id });
     expect(await db.tombstones.count()).toBe(0);
   });
 

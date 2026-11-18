@@ -377,6 +377,7 @@ describe('useLearnSession load identity', () => {
     rerender({
       ...params,
       requestScopeLessonIds: [lesson.id],
+      filterParams: [...params.filterParams],
     });
     await act(async () => {
       await Promise.resolve();

@@ -49,7 +49,6 @@ describe('SchedulingFieldsSection', () => {
     expect(disclosure?.firstElementChild).toHaveAttribute('inert');
     expect(disclosure).not.toContainElement(screen.getByLabelText(/New cards per day/));
     expect(disclosure).not.toContainElement(screen.getByLabelText(/Daily review goal/));
-    expect(screen.queryByLabelText('Target retention')).not.toBeInTheDocument();
     expect(disclosure).toContainElement(screen.getByLabelText(/Maximum interval/));
 
     fireEvent.click(trigger);

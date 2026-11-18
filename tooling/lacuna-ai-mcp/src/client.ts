@@ -26,13 +26,13 @@ import {
   type RelayTerminalMailbox,
 } from '@lacuna/protocol/ai/relay';
 
-export const DEFAULT_AI_RELAY_URL = 'https://relay.getlacuna.app';
+const DEFAULT_AI_RELAY_URL = 'https://relay.getlacuna.app';
 const DEFAULT_WAIT_MS = 25_000;
 const POLL_INTERVAL_MS = 500;
 const APPROVAL_RETRY_INTERVAL_MS = 500;
 const CLAIM_LEASE_MS = 5 * 60_000;
 const TOOL_CALL_TIMEOUT_MS = 25_000;
-export const AI_TERMINAL_HEARTBEAT_INTERVAL_MS = 60_000;
+const AI_TERMINAL_HEARTBEAT_INTERVAL_MS = 60_000;
 
 interface ActiveRun {
   messageId: string;

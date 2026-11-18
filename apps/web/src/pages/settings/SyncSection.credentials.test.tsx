@@ -3,6 +3,7 @@ import {
   credentials,
   forgetRememberedCredentialsMock,
   loadSyncPairingMock,
+  notify,
   readRememberedCredentialsMock,
   readSyncStateMock,
   state,
@@ -12,7 +13,7 @@ import {
 } from './SyncSection.testSupport';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SyncSection } from './SyncSection';
 
 describe('SyncSection credentials', () => {
@@ -29,40 +30,27 @@ describe('SyncSection credentials', () => {
     expect(passphrase).toHaveAccessibleDescription('Incorrect recovery passphrase.');
   });
 
-  it('keeps failed action preloads retryable without an unhandled rejection', async () => {
+  it('syncs successfully after an opportunistic action preload fails', async () => {
     readSyncStateMock.mockResolvedValue(state);
-    loadSyncPairingMock
-      .mockRejectedValueOnce(new Error('pairing chunk unavailable'))
-      .mockResolvedValue({ syncWithCredentials: syncWithCredentialsMock });
-    const unhandledRejection = vi.fn();
-    process.on('unhandledRejection', unhandledRejection);
-    try {
-      render(<SyncSection />);
-
-      const button = await screen.findByRole('button', { name: 'Sync now' });
-      fireEvent.pointerEnter(button);
-      fireEvent.pointerEnter(button);
-
-      await waitFor(() => expect(loadSyncPairingMock).toHaveBeenCalledTimes(2));
-      await new Promise((resolve) => setImmediate(resolve));
-      expect(unhandledRejection).not.toHaveBeenCalled();
-    } finally {
-      process.off('unhandledRejection', unhandledRejection);
-    }
+    readRememberedCredentialsMock.mockReturnValue(credentials);
+    loadSyncPairingMock.mockRejectedValueOnce(new Error('pairing chunk unavailable'));
+    render(<SyncSection />);
+    const button = await screen.findByRole('button', { name: 'Sync now' });
+    await act(async () => fireEvent.pointerEnter(button));
+    fireEvent.click(button);
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Sync complete.', 'positive'));
+    expect(syncWithCredentialsMock).toHaveBeenCalledWith(credentials);
   });
 
-  it('retries a failed QR preload without leaving a rejected promise behind', async () => {
+  it('reveals a pairing QR after its opportunistic preload fails', async () => {
     readSyncStateMock.mockResolvedValue(state);
-    loadSyncPairingMock
-      .mockRejectedValueOnce(new Error('pairing chunk unavailable'))
-      .mockResolvedValue({ syncWithCredentials: syncWithCredentialsMock });
+    readRememberedCredentialsMock.mockReturnValue(credentials);
+    loadSyncPairingMock.mockRejectedValueOnce(new Error('pairing chunk unavailable'));
     render(<SyncSection />);
-
     const button = await screen.findByRole('button', { name: 'Show pairing QR' });
-    fireEvent.pointerEnter(button);
-    fireEvent.pointerEnter(button);
-
-    await waitFor(() => expect(loadSyncPairingMock).toHaveBeenCalledTimes(2));
+    await act(async () => fireEvent.pointerEnter(button));
+    fireEvent.click(button);
+    expect(await screen.findByTestId('sync-pairing-qr')).toHaveTextContent('pairing-code');
   });
 
   it('keeps the pairing QR hidden until explicitly requested and unlocks it locally', async () => {

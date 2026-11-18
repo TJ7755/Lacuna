@@ -8,7 +8,7 @@ import { gunzipSync } from 'node:zlib';
 // Parse metadata with the same YAML dependency as the installed updater.
 const require = createRequire(import.meta.url);
 const yaml = createRequire(require.resolve('electron-updater'))('js-yaml');
-export const digest = (bytes, algorithm, encoding = 'hex') =>
+const digest = (bytes, algorithm, encoding = 'hex') =>
   createHash(algorithm).update(bytes).digest(encoding);
 
 export function releaseAssets(version, { macos = false } = {}) {

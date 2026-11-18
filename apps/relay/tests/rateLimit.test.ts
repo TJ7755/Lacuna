@@ -1,12 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { handleAiMaintenanceRoute, AI_CLEANUP_GRACE_MS } from '../src/aiMaintenance.js';
-import {
-  consumeCounterPermit,
-  consumeRatePermit,
-  encodeRateRecord,
-  RATE_KEY_RE,
-  rateLimitForKey,
-} from '../src/rateLimit.js';
+import { encodeRateRecord, RATE_KEY_RE, rateLimitForKey } from '../src/rateLimit.js';
 import { MemoryStore } from '../src/store.js';
 
 const digest = 'a'.repeat(64);
@@ -24,44 +18,6 @@ it('accepts shard suffixes only on class-code keys and preserves legacy limits',
     expect(RATE_KEY_RE.test(`ai-rate/${scope}/${digest}/0`)).toBe(false);
     expect(rateLimitForKey(`ai-rate/${scope}/${digest}`)).toBe(scope === 'insights' ? 100 : 10);
   }
-});
-
-it('tries two other distinct shards when the first shards are full', async () => {
-  const store = new MemoryStore();
-  const get = vi.spyOn(store, 'get');
-  get.mockResolvedValue({
-    body: encodeRateRecord({ version: 1, count: 38, resetAt: 3_600_000 }),
-    etag: '"1"',
-    uploadedAt: 0,
-  });
-  const request = new Request('https://relay.test');
-  expect(await consumeRatePermit(store, request, 0, 'class-code')).toBe('limited');
-  expect(new Set(get.mock.calls.map(([key]) => key)).size).toBe(3);
-  get.mockClear();
-  get
-    .mockResolvedValueOnce({
-      body: encodeRateRecord({ version: 1, count: 38, resetAt: 3_600_000 }),
-      etag: '"1"',
-      uploadedAt: 0,
-    })
-    .mockResolvedValueOnce(null);
-  expect(await consumeRatePermit(store, request, 0, 'class-code')).toBe('allowed');
-  expect(get).toHaveBeenCalledTimes(2);
-});
-
-it.each([
-  ['class-code', 8],
-  ['pairing', 5],
-] as const)('bounds %s CAS retries at %s attempts', async (scope, attempts) => {
-  const store = new MemoryStore();
-  const put = vi.spyOn(store, 'put').mockResolvedValue({ ok: false, reason: 'precondition' });
-  expect(
-    await consumeCounterPermit(store, `ai-rate/${scope}/${digest}/0`, 0, {
-      limit: 38,
-      windowMs: 3_600_000,
-    }),
-  ).toBe('unavailable');
-  expect(put).toHaveBeenCalledTimes(attempts);
 });
 
 it('retains active shards and clears expired shards and legacy counters during maintenance', async () => {

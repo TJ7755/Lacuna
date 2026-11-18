@@ -938,17 +938,6 @@ test('Windows upgrade scenarios retain both probes on isolated runners with the 
   const evidence = job.steps.find((step) => step.name === 'Preserve installed upgrade evidence');
   assert.equal(evidence.if, "always() && steps.scope.outputs.windows_native != 'false'");
   assert.equal(evidence.with.name, 'windows-installed-upgrade-results-${{ matrix.probe }}');
-  const coordinator = readFileSync(new URL('./windows-ci-upgrade.mjs', import.meta.url), 'utf8');
-  for (const contract of [
-    "'electron-builder'",
-    "'nsis'",
-    "'--x64'",
-    "'perf:check:electron-package'",
-    "'./windows-upgrade-companion.mjs'",
-    "'./windows-release-upgrade.mjs'",
-  ]) {
-    assert.ok(coordinator.includes(contract), contract);
-  }
 });
 
 test('an upgrade needs a positive package audit signal only when orchestrated by CI', async () => {

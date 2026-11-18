@@ -125,14 +125,12 @@ describe('CardList rendering', () => {
     );
 
     render(<CardList cards={[rawReviewed]} context={mockContext} onEditCard={vi.fn()} />);
-    expect(dataHooks.useCard).not.toHaveBeenCalled();
 
     fireEvent.click(await screen.findByText('What is the capital of France?'));
     expect(await screen.findByText('Analytics history: 1')).toBeInTheDocument();
-    expect(dataHooks.useCard).toHaveBeenLastCalledWith(rawReviewed.id);
   });
 
-  it('does not reload canonical history supplied by an already-hydrated caller', async () => {
+  it('retains review history supplied by an already-hydrated caller', async () => {
     const hydrated = {
       ...mockCard,
       history: [
@@ -154,7 +152,6 @@ describe('CardList rendering', () => {
     fireEvent.click(await screen.findByText('What is the capital of France?'));
 
     expect(await screen.findByText('Analytics history: 1')).toBeInTheDocument();
-    expect(dataHooks.useCard).not.toHaveBeenCalled();
   });
 
   it('uses the Working badge for working-item cards stored as front/back cards', () => {

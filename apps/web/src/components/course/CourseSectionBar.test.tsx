@@ -48,13 +48,14 @@ describe('CourseSectionBar', () => {
     }
   });
 
-  it('marks no section current on a course page outside every section', () => {
+  it('marks only Progress current on the analytics route', () => {
     render(
       <MemoryRouter initialEntries={['/course/course-1/analytics']}>
         <CourseSectionBar />
       </MemoryRouter>,
     );
 
+    expect(screen.getByRole('link', { name: 'Progress' })).toHaveAttribute('aria-current', 'page');
     for (const name of ['Path', 'Cards', 'Questions', 'Settings']) {
       expect(screen.getByRole('link', { name })).not.toHaveAttribute('aria-current');
     }

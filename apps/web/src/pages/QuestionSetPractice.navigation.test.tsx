@@ -27,11 +27,6 @@ describe('QuestionSetPractice navigation and focus', () => {
     expect(card).toContainElement(screen.getByRole('navigation', { name: 'Answer parts' }));
     const earlySubmit = screen.getByRole('button', { name: 'Submit question' });
     expect(card).toContainElement(earlySubmit);
-    expect(earlySubmit).not.toHaveAttribute('data-attempt-primary');
-    expect(primary).toHaveAttribute('data-attempt-primary');
-    expect(
-      screen.queryByText('Submit all parts of this question before opening its mark scheme.'),
-    ).not.toBeInTheDocument();
     expect(screen.queryByText('Your answer')).not.toBeInTheDocument();
     expect(screen.queryByText('Saving…')).not.toBeInTheDocument();
     expect(screen.queryByText('Saved')).not.toBeInTheDocument();
@@ -41,7 +36,6 @@ describe('QuestionSetPractice navigation and focus', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Q1 (b)' }));
     await screen.findByRole('heading', { name: 'Q1 (b)' });
     const submit = screen.getByRole('button', { name: 'Submit question' });
-    expect(submit).toHaveAttribute('data-attempt-primary');
     expect(submit.closest('article')).not.toBeNull();
     expect(screen.queryByRole('button', { name: 'Next part' })).not.toBeInTheDocument();
   });

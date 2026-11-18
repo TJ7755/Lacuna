@@ -124,19 +124,30 @@ describe('Simple session persistence', () => {
   });
 
   it('separates lesson, course, filtered and embedded-flow scopes', () => {
-    const keys = [
-      simpleSessionStorageKey(scope),
-      simpleSessionStorageKey({ kind: 'course', courseId: 'course-1', filters: ['due'] }),
-      simpleSessionStorageKey({ kind: 'global', filters: ['new'], tag: 'core' }),
-      simpleSessionStorageKey({
+    const scopes: SimpleSessionScope[] = [
+      scope,
+      { kind: 'course', courseId: 'course-1', filters: ['due'] },
+      { kind: 'global', filters: ['new'], tag: 'core' },
+      {
         kind: 'practice',
         courseId: 'course-1',
         sessionId: 'flow-1',
         nodeKey: 'node-1',
         lessonIds: ['lesson-2', 'lesson-1'],
-      }),
+      },
     ];
-
-    expect(new Set(keys).size).toBe(keys.length);
+    for (const [index, entry] of scopes.entries()) {
+      saveSimpleSession(entry, {
+        queueCardIds: [`card-${index}`],
+        masteredCardIds: [],
+        outcomes: [],
+        events: [{ ...events[0], responseTimeSec: index + 1 }],
+      });
+    }
+    for (const [index, entry] of scopes.entries()) {
+      expect(loadSimpleSession(entry, [`card-${index}`])?.events).toEqual([
+        { ...events[0], responseTimeSec: index + 1 },
+      ]);
+    }
   });
 });

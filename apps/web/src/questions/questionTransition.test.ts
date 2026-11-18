@@ -1,10 +1,11 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { buildCourseShareCode, decodeShare } from '../db/share';
 import { db } from '../db/schema';
 import { createCourse } from '../db/courseRepository';
 import { pruneExpiredTombstones } from '../db/tombstonePrune';
+import { TOMBSTONE_RETENTION_MS } from '../db/mutationStamp';
 import { exportDatabase, importBackup } from '../db/portability';
 import {
   createConcept,
@@ -143,7 +144,12 @@ it('does not resurrect deleted migrated sets after deletion receipts expire', as
   const { course } = await fixed();
   const [set] = await listQuestionSets(course.id);
   await deleteQuestionSet(set.id, Date.now());
-  await pruneExpiredTombstones(Date.now() + 1000, 0);
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + TOMBSTONE_RETENTION_MS + 1);
+  try {
+    await pruneExpiredTombstones();
+  } finally {
+    clock.mockRestore();
+  }
   await ensureQuestionTransition(course.id);
   expect(await listQuestionSets(course.id)).toEqual([]);
   const published = await decodeShare(await buildCourseShareCode(course.id));

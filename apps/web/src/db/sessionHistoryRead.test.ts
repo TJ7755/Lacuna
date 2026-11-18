@@ -1,7 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { startOfDay } from '@lacuna/core/utils/datetime';
-import { globalTrajectorySeries } from '../components/analytics/prepare';
 import { db } from './schema';
 import { listGlobalDailySessionHistory } from './sessionHistoryRead';
 import type { SessionHistoryEntry } from '@lacuna/core/db/types';
@@ -34,11 +33,17 @@ describe('session-history read projections', () => {
       sample('course-2', day + 1_500, 0.8),
       sample('course-1', day + 86_400_000 + 1_000, 0.7),
     ];
-    await db.sessionHistory.bulkAdd(all);
+    await db.sessionHistory.bulkAdd([
+      ...all,
+      { ...sample('legacy-deck', day + 3_000, 0.9), courseId: undefined },
+    ]);
 
     const global = await listGlobalDailySessionHistory();
 
-    expect(global).toHaveLength(3);
-    expect(globalTrajectorySeries(global)).toEqual(globalTrajectorySeries(all));
+    expect(global).toEqual([
+      expect.objectContaining(all[2]),
+      expect.objectContaining(all[1]),
+      expect.objectContaining(all[3]),
+    ]);
   });
 });

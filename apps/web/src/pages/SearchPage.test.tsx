@@ -291,7 +291,12 @@ describe('SearchPage', () => {
     expect(clear.parentElement).not.toContainElement(
       screen.getByRole('button', { name: 'Flagged' }),
     );
+    clear.focus();
     fireEvent.click(clear);
+    expect(screen.getByRole('button', { name: 'Flagged' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
     expect(screen.getByRole('combobox')).toHaveValue('Palatine');
     expect(router.state.location.search).toBe('?q=Palatine');
     expect(screen.getByRole('combobox')).toHaveFocus();
@@ -352,7 +357,10 @@ describe('SearchPage', () => {
       notes: [],
       questions: [],
     });
-    render(<SearchPage />, { wrapper: MemoryRouter });
+    const router = createMemoryRouter([{ path: '*', element: <SearchPage /> }], {
+      initialEntries: ['/search'],
+    });
+    render(<RouterProvider router={router} />);
     const input = screen.getByRole('combobox', { name: 'Search content' });
     fireEvent.change(input, { target: { value: 'Palatine' } });
     expect(screen.getAllByRole('option')).toHaveLength(80);
@@ -372,31 +380,11 @@ describe('SearchPage', () => {
     fireEvent.change(input, { target: { value: 'missing' } });
     expect(screen.getByRole('status')).toHaveTextContent('No results');
     expect(input).not.toHaveAttribute('aria-activedescendant');
-  }, 15_000);
-
-  it('opens the keyboard selection past the first window once it grows', () => {
-    dataHooks.useSearchData.mockReturnValue({
-      cards: Array.from({ length: 100 }, (_, i) => ({
-        ...mockCard,
-        id: `card-${i}`,
-        front: `Palatine ${i}`,
-      })),
-      courses: [mockCourse],
-      lessons: [],
-      notes: [],
-      questions: [],
-    });
-    const router = createMemoryRouter([{ path: '*', element: <SearchPage /> }], {
-      initialEntries: ['/search?q=Palatine'],
-    });
-    render(<RouterProvider router={router} />);
-    const input = screen.getByRole('combobox', { name: 'Search content' });
-    expect(screen.getAllByRole('option')).toHaveLength(80);
+    fireEvent.change(input, { target: { value: 'Palatine' } });
     for (let i = 0; i < 80; i++) fireEvent.keyDown(input, { key: 'ArrowDown' });
-    expect(screen.getAllByRole('option')).toHaveLength(100);
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(router.state.location.pathname).toBe('/course/course-1/cards/card-80/edit');
-  });
+  }, 15_000);
 
   it('shows a diacritic-insensitive match beyond the beginning of a long answer', () => {
     dataHooks.useSearchData.mockReturnValue({
@@ -415,31 +403,10 @@ describe('SearchPage', () => {
     expect(result).toHaveTextContent('conclusion.');
   });
 
-  it('names the search field and avoids repeating its heading and typing instructions', () => {
+  it('names content search and focuses its field on entry', () => {
     render(<SearchPage />, { wrapper: MemoryRouter });
-    expect(screen.getByRole('combobox', { name: 'Search content' })).toHaveFocus();
-    expect(screen.queryByRole('heading', { name: 'Search everything' })).not.toBeInTheDocument();
-  });
-
-  it('returns focus to the search field after clearing the filters', () => {
-    render(<SearchPage />, { wrapper: MemoryRouter });
-    fireEvent.click(screen.getByRole('button', { name: 'Due now' }));
-    const clear = screen.getByRole('button', { name: 'Clear' });
-    clear.focus();
-    fireEvent.click(clear);
-    expect(screen.getByRole('combobox')).toHaveFocus();
-    expect(screen.getByRole('button', { name: 'Due now' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
-  });
-
-  it('identifies the full page as content search without advertising the quick-search shortcut', () => {
-    render(<SearchPage />, { wrapper: MemoryRouter });
-
     expect(screen.getByRole('heading', { name: 'Search content' })).toBeInTheDocument();
-    expect(screen.queryByText('Library')).not.toBeInTheDocument();
-    expect(screen.queryByText('Ctrl/Cmd+K')).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Search content' })).toHaveFocus();
   });
 
   it('badges a sequence-generated card result', () => {

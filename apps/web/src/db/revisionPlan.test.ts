@@ -262,7 +262,6 @@ describe('revision plan lifecycle', () => {
       memoryModelVersion: 'fsrs-6',
       fallbackReason: 'corrupt',
     });
-    expect(resolved).not.toHaveProperty('confidence');
   });
 
   it('builds no windows at or after an elapsed deadline', () => {

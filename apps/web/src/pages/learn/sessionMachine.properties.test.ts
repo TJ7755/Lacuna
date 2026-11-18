@@ -97,6 +97,7 @@ describe('session machine operation sequences', () => {
       const trace: string[] = [];
       let answered = 0;
       for (let step = 0; step < 100; step++) {
+        const input = state;
         const before = snapshotSession(state);
         const untouched = structuredClone(state);
         const candidate = state.simple.queue[pick(state.simple.queue.length)];
@@ -134,7 +135,7 @@ describe('session machine operation sequences', () => {
             event,
           }).state;
         // Every transition leaves its input intact, including nested maps and sets.
-        expect(before, message).toEqual(untouched);
+        expect(input, message).toEqual(untouched);
         if (pick(4) === 0) {
           state = transitionSession(state, {
             type: 'restore',

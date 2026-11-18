@@ -112,12 +112,6 @@ describe('SharePage', () => {
     expect(screen.queryByRole('button', { name: 'Create share code' })).not.toBeInTheDocument();
   });
 
-  it('leaves receiving to the Import page', () => {
-    given(mockCourse);
-    render(<SharePage />);
-    expect(screen.queryByText('Import a shared course')).not.toBeInTheDocument();
-  });
-
   it('opens on the requested course from a courseId query', () => {
     const other = { ...mockCourse, id: 'course-2', name: 'Other Course' };
     given(mockCourse, other);

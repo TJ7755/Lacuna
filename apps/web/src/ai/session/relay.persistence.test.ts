@@ -119,7 +119,7 @@ describe('relay AI session persistence', () => {
 
     await runScheduled(connectedPoll, 'Reloaded connection did not resume polling.');
 
-    expect(connectedReload.getSnapshot()).toBe(restoredSnapshot);
+    expect(connectedReload.getSnapshot()).toEqual(restoredSnapshot);
     expect(
       connectedReload.getSnapshot().items.filter((item) => item.kind === 'assistant'),
     ).toHaveLength(1);
@@ -323,14 +323,16 @@ describe('relay AI session persistence', () => {
       },
     };
 
-    expect(() =>
-      createRelayAiSession({
-        relay: source.relay,
-        storage: unavailableStorage,
-        crypto: source.crypto,
-        timers: source.timers,
-      }),
-    ).not.toThrow();
+    const restored = createRelayAiSession({
+      relay: source.relay,
+      storage: unavailableStorage,
+      crypto: source.crypto,
+      timers: source.timers,
+    });
+    expect(restored.getSnapshot()).toMatchObject({
+      connection: { status: 'disconnected' },
+      items: [],
+    });
   });
 
   it('preserves the transcript across reload after resetting the connection', async () => {

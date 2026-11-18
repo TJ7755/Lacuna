@@ -8,7 +8,6 @@ import {
   createPracticeNode,
   upsertLessonCardExposure,
 } from '../../db/repository';
-import { savePracticeMilestoneProgress } from '../../db/practiceNodeRepository';
 import { db } from '../../db/schema';
 import type { Course, Lesson } from '@lacuna/core/db/types';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
@@ -156,25 +155,27 @@ describe('curricular Practice milestone scope (#358)', () => {
     };
     const { result } = renderHook(() => useLearnSession(params));
     await waitFor(() => expect(result.current.phase).toBe('question'));
-    act(() => result.current.reveal());
-    await waitFor(() => expect(result.current.phase).toBe('answer'));
+    const answered = new Set<string>();
+    while (result.current.phase === 'question') {
+      const id = result.current.current!.id;
+      expect(answered.has(id)).toBe(false);
+      answered.add(id);
+      act(() => result.current.reveal());
+      await waitFor(() => expect(result.current.phase).toBe('answer'));
+      await act(async () => {
+        await result.current.answer(4);
+      });
+      await waitFor(() => expect(result.current.phase).not.toBe('answer'));
+    }
+    expect(result.current.phase).toBe('finished');
+    expect(result.current.summary?.reachedGoal).toBe(true);
     await act(async () => {
-      await result.current.answer(true);
+      expect(await result.current.confirmCompletion()).toBe(true);
     });
-
-    // The persisted identity is the one the snapshot checks, not the wider live pool.
     const persisted = await db.practiceMilestones.get(nodeKey);
     expect(persisted?.scopeVersion).toBe(state.scopeVersion);
+    expect(await db.reviewHistory.count()).toBe(answered.size);
 
-    // Complete it under that identity, as finishing the session does.
-    await savePracticeMilestoneProgress(
-      nodeKey,
-      course.id,
-      persisted!.scopeVersion,
-      persisted!.totalCardCount,
-      persisted!.totalCardCount,
-      true,
-    );
     const after = await snapshotOf(course, lessons, pathFor(lessons, practice, afterIndex));
     expect(after.practiceByKey.get(nodeKey)?.completed).toBe(true);
     expect(after.practiceByKey.get(nodeKey)?.active).toBe(false);

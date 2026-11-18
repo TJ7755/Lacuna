@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { importApkgResult, type ApkgCardDraft, type ApkgImportResult } from './apkgImport';
 import { MAX_AUDIO_BYTES } from './assets';
 import { createCourse, createLesson } from './repository';
-import { reviewHistoryEntryId } from '@lacuna/core/db/reviewHistory';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { db } from './schema';
 
@@ -122,7 +121,6 @@ describe('importApkgResult', () => {
     });
     expect(await db.reviewHistory.where('cardId').equals(returned.id).toArray()).toEqual([
       expect.objectContaining({
-        id: reviewHistoryEntryId(returned.id, result.cards[0].history[0]),
         cardId: returned.id,
         deckId: returned.deckId,
         schedulingUnitId: returned.deckId,

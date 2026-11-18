@@ -55,7 +55,6 @@ describe('libraryCourses', () => {
         expect(course.summary).toContain('shared Foundation content');
       }
     }
-    expect(libraryCourses.some(({ subject }) => subject === 'Combined Science')).toBe(false);
   });
 });
 

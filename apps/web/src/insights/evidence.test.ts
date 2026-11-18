@@ -50,5 +50,6 @@ it('bounds report size and rejects unknown fields, invalid marks and unsupported
     expect(() =>
       parseDailyEvidence(new TextEncoder().encode(JSON.stringify({ ...raw, ...changed })), context),
     ).toThrow();
-  expect(() => parseDailyEvidence(new Uint8Array(65537), context)).toThrow();
+  const oversized = new TextEncoder().encode(JSON.stringify(raw) + ' '.repeat(65536));
+  expect(() => parseDailyEvidence(oversized, context)).toThrow();
 });

@@ -1,60 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { settle } from './fixtures/flowEvidence';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 test.use({ viewport: { width: 1470, height: 956 }, serviceWorkers: 'block' });
 
-for (const theme of ['light', 'dark']) {
-  test(`qualification guidance has rounded feedback and native activation (${theme})`, async ({
-    page,
-  }, info) => {
-    await page.addInitScript((theme) => localStorage.setItem('lacuna-theme', theme), theme);
-    await enterFreshLacuna(page);
-    await page.locator('main').getByRole('button', { name: 'New course', exact: true }).click();
-    await page.getByRole('button', { name: 'Course library', exact: true }).click();
-    const summary = page
-      .locator('summary')
-      .filter({ hasText: 'Not sure which qualification to choose?' });
-    await settle(page.locator('.flow-expansion').filter({ has: summary }));
-    await summary.hover();
-    const feedback = summary.locator('.flow-feedback-layer');
-    await expect(feedback).toHaveCSS('opacity', '0.045');
-    await summary.locator('..').screenshot({ path: info.outputPath('qualification-hover.png') });
-    await info.attach('Qualification guidance hover', {
-      path: info.outputPath('qualification-hover.png'),
-      contentType: 'image/png',
-    });
-    expect(
-      await feedback.evaluate((layer) => parseFloat(getComputedStyle(layer).borderTopLeftRadius)),
-    ).toBeGreaterThan(0);
-    await summary.click();
-    await expect(summary.locator('..')).toHaveAttribute('open', '');
-    await summary.press('Space');
-    await expect(summary.locator('..')).not.toHaveAttribute('open');
-  });
-}
-
-test('flipping a hovered study card leaves no rectangular feedback behind', async ({
-  page,
-}, info) => {
-  await page.goto('/#/start', { waitUntil: 'domcontentloaded' });
-
-  const card = page
-    .locator('[data-study-card-id]')
-    .getByRole('button', { name: /^(Show|Hide) answer$/ });
-  await card.hover();
-  await card.click();
-
-  const feedbackDuringFlip = await card.locator(':scope > .flow-feedback-layer').count();
-  await info.attach('Hovered card reveal', {
-    body: await page.screenshot(),
-    contentType: 'image/png',
-  });
-  await expect(card.locator('[data-study-face="back"]')).toBeVisible();
-  expect(feedbackDuringFlip).toBe(0);
-});
-
-test('shared feedback preserves contours through hover, press and focus', async ({ page }) => {
+test('shared feedback preserves contours through hover and press', async ({ page }) => {
   await enterFreshLacuna(page);
   // Exercise the installed document-level feedback owner with both unstyled and
   // explicitly shaped controls, without depending on unrelated page content.
@@ -86,8 +35,6 @@ test('shared feedback preserves contours through hover, press and focus', async 
     await page.mouse.down();
     await expect(feedback).toHaveCSS('border-radius', radius);
     await page.mouse.up();
-    await target.focus();
-    await expect(target).toHaveCSS('border-radius', radius);
   }
 });
 

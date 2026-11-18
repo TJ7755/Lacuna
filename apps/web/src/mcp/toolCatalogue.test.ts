@@ -14,7 +14,7 @@ describe('lacuna.list_tools', () => {
     expect(message).not.toContain(overlongName);
   });
 
-  it('returns searchable schemas and permission levels through the generic AI invoker', async () => {
+  it('returns paginated schemas and permission levels from the catalogue', async () => {
     const tool = getTool('lacuna.list_tools');
     expect(tool).toBeDefined();
 

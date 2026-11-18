@@ -113,6 +113,8 @@ describe('scoped reads', () => {
       const now = Date.now();
       const dueCard = await createLessonCard(course.id, lesson.id, 'front_back', 'due', 'a');
       await db.cards.update(dueCard.id, { due: now - 1000, state: 2 });
+      const secondDue = await createLessonCard(course.id, lesson.id, 'front_back', 'also due', 'a');
+      await db.cards.update(secondDue.id, { due: now - 500, state: 2 });
       const newCard = await createLessonCard(course.id, lesson.id, 'front_back', 'new', 'a');
       const futureCard = await createLessonCard(course.id, lesson.id, 'front_back', 'future', 'a');
       await db.cards.update(futureCard.id, { due: now + 100_000_000, state: 2 });
@@ -128,13 +130,14 @@ describe('scoped reads', () => {
 
       const result = await listDueCards(course.id, undefined, now);
       const ids = result.map((c) => c.id).sort();
-      expect(ids).toEqual([dueCard.id]);
+      expect(ids).toEqual([dueCard.id, secondDue.id].sort());
       expect(ids).not.toContain(newCard.id);
       expect(ids).not.toContain(futureCard.id);
       expect(ids).not.toContain(otherDue.id);
 
       const limited = await listDueCards(course.id, 1, now);
       expect(limited).toHaveLength(1);
+      expect([dueCard.id, secondDue.id]).toContain(limited[0].id);
     });
   });
 

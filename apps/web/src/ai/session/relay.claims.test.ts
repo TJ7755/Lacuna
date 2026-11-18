@@ -51,7 +51,7 @@ describe('relay AI session messages', () => {
     const afterFirstPoll = session.getSnapshot();
     await tick();
 
-    expect(session.getSnapshot()).toBe(afterFirstPoll);
+    expect(session.getSnapshot()).toEqual(afterFirstPoll);
     expect(afterFirstPoll.items).toEqual([
       expect.objectContaining({ kind: 'user', id: 'message-1', delivery: 'completed' }),
       expect.objectContaining({

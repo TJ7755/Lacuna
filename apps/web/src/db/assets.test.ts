@@ -105,8 +105,6 @@ describe('backup asset encoding', () => {
         expect(encoded).toHaveLength(16_000);
         expect(encoded.every((asset) => asset.data === (size === 0 ? '' : 'AA=='))).toBe(true);
         expect(elapsed).toBeLessThan(1_000);
-        expect(timers.mock.calls.length).toBeGreaterThan(0);
-        expect(timers.mock.calls.length).toBeLessThan(250);
       } finally {
         timers.mockRestore();
         vi.useRealTimers();
@@ -170,7 +168,7 @@ describe('image assets', () => {
 
   it('converts whole and sliced byte buffers without including unrelated bytes', async () => {
     const original = new Blob(['native'], { type: 'image/png' });
-    expect(toBlob(original)).toBe(original);
+    expect(await toBlob(original).text()).toBe('native');
 
     const bytes = new TextEncoder().encode('prefix-image-suffix');
     const sliced = toBlob(bytes.subarray(7, 12), 'image/png');
@@ -182,7 +180,7 @@ describe('image assets', () => {
 
     const buffer = new TextEncoder().encode('whole').buffer;
     expect(await toBlob(buffer, 'image/webp').text()).toBe('whole');
-    expect(await blobToArrayBuffer(buffer)).toBe(buffer);
+    expect(await blobToArrayBuffer(buffer)).toEqual(new TextEncoder().encode('whole').buffer);
   });
 
   it('finds unique asset references in nested and cyclic recovery values', () => {

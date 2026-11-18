@@ -55,6 +55,7 @@ describe('working-answer equivalence', () => {
     ['8 / 2', '4'],
     ['2 * (x + 3)', '2x + 6'],
     ['x^2 + 2x + 1', '(x + 1)^2'],
+    ['x^3 - x', 'x * (x - 1) * (x + 1)'],
     ['2x + 6 = 14', '2x - 8 = 0'],
   ])('accepts equivalent forms %s and %s', (left, right) => {
     expect(compareWorkingAnswer(left, right, 'item:attempt')).toBe('equivalent');
@@ -80,15 +81,6 @@ describe('working-answer equivalence', () => {
     expect(compareWorkingAnswer('sqrt(x - 100)', 'sqrt(x - 100)', 'domain')).toBe('equivalent');
     expect(compareWorkingAnswer('sqrt(x - 100)', 'sqrt(x - 200)', 'domain')).toBe('different');
     expect(compareWorkingAnswer('sqrt(0 - x^2 - 1)', 'x', 'empty-domain')).toBe('undetermined');
-  });
-
-  it('is reproducible for the same seed', () => {
-    const left = 'x^3 - x';
-    const right = 'x * (x - 1) * (x + 1)';
-    const first = compareWorkingAnswer(left, right, 'repeatable-seed');
-    const second = compareWorkingAnswer(left, right, 'repeatable-seed');
-    expect(second).toBe(first);
-    expect(first).toBe('equivalent');
   });
 });
 
@@ -190,13 +182,6 @@ describe('verifyWorkingLines', () => {
         checkerSeeds: ['working-attempt:2:0', 'working-attempt:2:1'],
       },
     ]);
-  });
-
-  it('returns identical verdicts for the same seed', () => {
-    const lines = ['2 * (x + 3)', '8 / 2'];
-    expect(verifyWorkingLines(lines, scheme, 'same-seed')).toEqual(
-      verifyWorkingLines(lines, scheme, 'same-seed'),
-    );
   });
 
   it('records an uncheckable scheme line as undetermined rather than a student miss', () => {

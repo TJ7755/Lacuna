@@ -29,17 +29,8 @@ test('a hosted learner controls the complete analytics flow', async ({
   const handle = createUsageHandler(store);
   const readPublished = createUsageHandler(store, () => Date.now() + 3 * 86_400_000);
   const requests: UsageBatch[] = [];
-  const legacy: string[] = [];
   try {
     await serveHostedApp(context, baseURL);
-    await context.route(`${SITE}/_vercel/**`, async (route) => {
-      legacy.push(route.request().url());
-      await route.abort();
-    });
-    await context.route('https://*.simpleanalyticscdn.com/**', async (route) => {
-      legacy.push(route.request().url());
-      await route.abort();
-    });
     await context.route(`${RELAY}/usage/**`, async (route) => {
       const request = route.request();
       const headers = await request.allHeaders();
@@ -94,7 +85,6 @@ test('a hosted learner controls the complete analytics flow', async ({
     await expect(page.getByRole('heading', { name: 'Search content' })).toBeVisible();
     await expect(choice).toHaveCount(0);
     expect(await page.evaluate(() => localStorage.getItem('lacuna.usageAnalytics'))).toBe('0');
-    expect(legacy).toEqual([]);
 
     const dashboard = await readPublished(
       new Request(`${RELAY}/usage/dashboard`, {

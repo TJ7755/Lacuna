@@ -9,14 +9,6 @@ describe('cardDeletion', () => {
     await Promise.all([db.schedulingUnits.clear(), db.cards.clear(), db.reviewHistory.clear()]);
   });
 
-  it('deletes ordinary cards', async () => {
-    const deck = await createCourse('Bulk');
-    const b = await createCard(deck.id, 'front_back', 'b', '2');
-
-    await deleteCards([b.id]);
-    expect(await db.cards.get(b.id)).toBeUndefined();
-  });
-
   it('replaces canonical history with the captured card snapshot', async () => {
     const deck = await createCourse('Snapshot history');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');

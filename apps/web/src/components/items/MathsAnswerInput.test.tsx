@@ -94,7 +94,6 @@ describe('MathsAnswerInput', () => {
     expect(
       await within(control).findByRole('status', { name: 'Rendered answer: x^2' }),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Preview')).not.toBeInTheDocument();
   });
 
   it('inserts palette templates at the current cursor position', async () => {

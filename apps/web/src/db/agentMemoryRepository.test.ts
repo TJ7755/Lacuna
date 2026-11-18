@@ -1,11 +1,14 @@
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { agentMemoryRepository } from './agentMemoryRepository';
 import { createCard, createCourse, createLesson, deleteLesson } from './repository';
 import { db } from './schema';
 
+afterEach(() => vi.restoreAllMocks());
+
 describe('AgentMemoryRepository', () => {
   beforeEach(async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(10);
     await Promise.all([
       db.agentMemories.clear(),
       db.tombstones.clear(),
@@ -23,30 +26,24 @@ describe('AgentMemoryRepository', () => {
   it('validates ownership and hides expired memories from normal search', async () => {
     const course = await createCourse('Maths');
     const lesson = await createLesson(course.id, 'Algebra');
-    const active = await agentMemoryRepository.create(
-      {
-        courseId: course.id,
-        tags: ['misconception'],
-        content: 'Treats division as distributive over addition.',
-        references: [{ kind: 'lesson', id: lesson.id, label: lesson.name }],
-        basis: 'agent-inferred',
-      },
-      100,
-    );
-    await agentMemoryRepository.create(
-      {
-        courseId: null,
-        tags: ['session'],
-        content: 'Temporary session note.',
-        basis: 'learner-stated',
-        expiresAt: 1,
-      },
-      1,
-    );
+    const active = await agentMemoryRepository.create({
+      courseId: course.id,
+      tags: ['misconception'],
+      content: 'Treats division as distributive over addition.',
+      references: [{ kind: 'lesson', id: lesson.id, label: lesson.name }],
+      basis: 'agent-inferred',
+    });
+    await agentMemoryRepository.create({
+      courseId: course.id,
+      tags: ['session'],
+      content: 'Temporary session note.',
+      basis: 'learner-stated',
+      expiresAt: 1,
+    });
 
-    await expect(agentMemoryRepository.search({ scope: { kind: 'all' } })).resolves.toEqual([
-      active,
-    ]);
+    await expect(
+      agentMemoryRepository.search({ scope: { kind: 'course', courseId: course.id } }),
+    ).resolves.toEqual([active]);
     await expect(
       agentMemoryRepository.create({
         courseId: null,
@@ -95,43 +92,35 @@ describe('AgentMemoryRepository', () => {
   });
 
   it('writes a tombstone and restores newer than the deletion', async () => {
-    const memory = await agentMemoryRepository.create(
-      {
-        courseId: null,
-        tags: ['preference'],
-        content: 'Prefer worked examples.',
-        basis: 'learner-stated',
-      },
-      10,
-    );
-    const deleted = await agentMemoryRepository.delete(memory.id, 20);
+    const memory = await agentMemoryRepository.create({
+      courseId: null,
+      tags: ['preference'],
+      content: 'Prefer worked examples.',
+      basis: 'learner-stated',
+    });
+    vi.spyOn(Date, 'now').mockReturnValue(20);
+    const deleted = await agentMemoryRepository.delete(memory.id);
     expect(await db.tombstones.get(['agentMemories', memory.id])).toMatchObject({ deletedAt: 20 });
 
-    const restored = await agentMemoryRepository.restore(deleted, 20);
+    const restored = await agentMemoryRepository.restore(deleted);
     expect(restored.updatedAt).toBe(21);
     expect(await db.tombstones.get(['agentMemories', memory.id])).toBeUndefined();
   });
 
   it('keeps identity, scope and creation time immutable at the runtime boundary', async () => {
-    const memory = await agentMemoryRepository.create(
-      {
-        courseId: null,
-        tags: ['context'],
-        content: 'Original.',
-        basis: 'learner-stated',
-      },
-      10,
-    );
-    const updated = await agentMemoryRepository.update(
-      memory.id,
-      {
-        content: 'Corrected.',
-        id: 'replacement',
-        courseId: 'course-elsewhere',
-        createdAt: 99,
-      } as never,
-      20,
-    );
+    const memory = await agentMemoryRepository.create({
+      courseId: null,
+      tags: ['context'],
+      content: 'Original.',
+      basis: 'learner-stated',
+    });
+    vi.spyOn(Date, 'now').mockReturnValue(20);
+    const updated = await agentMemoryRepository.update(memory.id, {
+      content: 'Corrected.',
+      id: 'replacement',
+      courseId: 'course-elsewhere',
+      createdAt: 99,
+    } as never);
     expect(updated).toMatchObject({ id: memory.id, courseId: null, createdAt: 10 });
   });
 });

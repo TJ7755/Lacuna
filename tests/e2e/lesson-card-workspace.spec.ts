@@ -35,7 +35,6 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     const lessonPath = `/#/course/${seeded.courseId}/lesson/${seeded.lessonId}`;
     await page.goto(lessonPath);
     const all = page.getByRole('link', { name: 'All 9 cards', exact: true });
-    await expect(page.getByRole('heading', { name: /^Manage/ })).toHaveCount(0);
     const spelling = page.getByRole('switch', { name: 'Require correct spelling' });
     const spacing = await spelling.evaluate((button) => {
       const row = button.closest('label')!.parentElement!.getBoundingClientRect();
@@ -51,7 +50,6 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       contentType: 'image/png',
     });
     await practice.click();
-    await expect(page.getByRole('combobox', { name: 'What to practise' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Start practising', exact: true })).toBeVisible();
     await settle(practice.locator('..'));
     await page.screenshot({ path: testInfo.outputPath('lesson-practice.png') });

@@ -160,7 +160,7 @@ describe('relay AI session tool calls', () => {
 
     expect(executeToolCall).toHaveBeenCalledOnce();
     expect(harness.session.getSnapshot().approval).toBeNull();
-    expect(session.getState().approvals[0].approval.status).toBe('consumed');
+    expect(session.exportState().approvals[0].approval.status).toBe('consumed');
     expect(harness.session.getSnapshot().items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -190,7 +190,6 @@ describe('relay AI session tool calls', () => {
     }));
     const session = toolSession(executeToolCall);
     const harness = await activeSession(session);
-    const clear = vi.spyOn(session, 'clear');
     vi.mocked(harness.crypto.open).mockResolvedValue(
       mailbox(2, [
         {
@@ -210,13 +209,12 @@ describe('relay AI session tool calls', () => {
 
     await harness.session.stop('run-1');
 
-    expect(clear).toHaveBeenCalled();
     expect(harness.session.getSnapshot().approval).toBeNull();
     await expect(harness.session.decide(approvalId, true)).resolves.toEqual({
       ok: false,
       error: { kind: 'conflict', message: 'That approval is no longer pending.' },
     });
-    expect(session.getState().grants).toEqual([]);
+    expect(session.exportState().grants).toEqual([]);
     expect(harness.session.getSnapshot().approval).toBeNull();
   });
 
@@ -263,7 +261,7 @@ describe('relay AI session tool calls', () => {
     await expect(harness.session.decide(pending!.approvalId, true)).resolves.toMatchObject({
       ok: false,
     });
-    expect(session.getState().grants).toEqual([]);
+    expect(session.exportState().grants).toEqual([]);
     expect(executeToolCall).not.toHaveBeenCalled();
   });
 
@@ -342,6 +340,6 @@ describe('relay AI session tool calls', () => {
 
     expect(harness.session.getSnapshot().connection.status).toBe('disconnected');
     expect(harness.session.getSnapshot().approval).toBeNull();
-    expect(session.getState()).toEqual({ grants: [], approvals: [], ledger: [] });
+    expect(session.exportState()).toEqual({ grants: [], approvals: [], ledger: [] });
   });
 });

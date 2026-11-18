@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { courseForecast, examDayHistory } from '@lacuna/core/fsrs/courseForecast';
 import { modelOf } from '@lacuna/core/fsrs/fsrs';
-import { rAtExam } from '@lacuna/core/fsrs/forwardSim';
 import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import type { Card, Grade, SchedulerConfig } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
@@ -85,13 +84,21 @@ function entry(
 
 describe('courseForecast', () => {
   it('measures exam-day recall if study stopped now, counting unreviewed cards as 0', () => {
-    const cards = [reviewedCard('a', 5, 2), reviewedCard('b', 12, 6), makeCard({ id: 'new' })];
-    const f = courseForecast(cards, makeCourse({ examDate: NOW + 30 * MS_PER_DAY }), NOW);
-    expect(f.ifStopped).toBeCloseTo(
-      ((rAtExam(cards[0], f.end, NOW, model) ?? 0) + (rAtExam(cards[1], f.end, NOW, model) ?? 0)) /
-        3,
-      12,
+    // Upstream FSRS-7 first-Good memory and its seven-day recall reference.
+    const learnt = makeCard({
+      stability: 3.9221,
+      stabilityFast: 3.13768,
+      difficulty: 3.53072398,
+      state: 2,
+      reps: 1,
+      lastReviewed: NOW,
+    });
+    const f = courseForecast(
+      [learnt, makeCard({ id: 'new' })],
+      makeCourse({ examDate: NOW + 7 * MS_PER_DAY }),
+      NOW,
     );
+    expect(f.ifStopped).toBeCloseTo(0.8854090932694928 / 2, 12);
   });
 
   it('withholds the whole forecast when any learnt card has opaque legacy memory', () => {

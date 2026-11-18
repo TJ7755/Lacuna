@@ -2,9 +2,9 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { assetUrl, storeImageBlob } from './assets';
-import { BACKUP_VERSION, exportDatabase, importBackup, validateBackup } from './portability';
+import { exportDatabase, importBackup, validateBackup } from './portability';
 import { db } from './schema';
-import type { BackupFile, Card, CourseRecord } from '@lacuna/core/db/types';
+import type { CourseRecord } from '@lacuna/core/db/types';
 import type {
   Concept,
   FixedQuestionDefinition,
@@ -242,55 +242,20 @@ describe('Question backup portability', () => {
     expect(await db.assets.count()).toBe(2);
   });
 
-  it('rejects historical v12 files and fails closed on unsupported future versions', () => {
-    expect(
-      validateBackup({
-        app: 'lacuna-v12',
-        version: 12,
-        exportedAt: 1,
-        cards: [],
-        concepts: [],
-        questions: [],
-        questionConcepts: [],
-        questionAttempts: [],
-        questionSets: [],
-        assets: [],
-        sessionHistory: [],
-        userPerformance: [],
-      }),
-    ).toBe(false);
-    expect(
-      validateBackup({
-        app: 'lacuna-v12',
-        version: 13,
-        exportedAt: 1,
-        cards: [],
-        concepts: [],
-        questions: [],
-        questionConcepts: [],
-        questionAttempts: [],
-        questionSets: [],
-        assets: [],
-        sessionHistory: [],
-        userPerformance: [],
-      }),
-    ).toBe(false);
-    expect(
-      validateBackup({
-        app: 'lacuna',
-        version: 27,
-        exportedAt: 1,
-        cards: [],
-        concepts: [],
-        questions: [],
-        questionConcepts: [],
-        questionAttempts: [],
-        assets: [],
-        sessionHistory: [],
-        userPerformance: [],
-      }),
-    ).toBe(false);
-  });
+  it.each([12, 13, 27])(
+    'rejects unsupported version %s from an otherwise valid backup',
+    async (version) => {
+      await db.courses.add(COURSE);
+      await db.courseAssessments.add(FINAL_ASSESSMENT);
+      const backup = await exportDatabase();
+      expect(validateBackup(backup)).toBe(true);
+      const unsupported = { ...backup, version };
+      expect(validateBackup(unsupported)).toBe(false);
+      const before = await Promise.all(db.tables.map((table) => table.toArray()));
+      await expect(importBackup(unsupported, 'replace')).rejects.toThrow();
+      expect(await Promise.all(db.tables.map((table) => table.toArray()))).toEqual(before);
+    },
+  );
 
   it('restores a deleted set newer than its tombstone so the next peer merge retains it', async () => {
     await db.courses.add(COURSE);
@@ -343,55 +308,6 @@ describe('Question backup portability', () => {
     expect(await db.courses.get(COURSE.id)).toBeDefined();
   });
 
-  it.each([10, 23])(
-    'rejects structured Cards in unsupported v%s backups without changing the database',
-    async (version) => {
-      const legacyCard = {
-        id: 'structured-card',
-        type: 'front_back',
-        front: 'Calculate 1 + 1',
-        back: 'One plus one is two.',
-        payload: {
-          v: 1,
-          kind: 'numeric',
-          answer: { kind: 'exact', value: '2' },
-        },
-        stability: null,
-        stabilityFast: null,
-        difficulty: null,
-        lastReviewed: null,
-        reps: 0,
-        lapses: 0,
-        state: 0,
-        schedulingUnitId: COURSE.id,
-        courseId: COURSE.id,
-        due: null,
-        scheduledDays: 0,
-        learningSteps: 0,
-        history: [],
-        createdAt: 10,
-        updatedAt: 10,
-      } as unknown as Card;
-      const oldBackup: BackupFile = {
-        app: 'lacuna',
-        version,
-        exportedAt: 20,
-        cards: [legacyCard],
-        assets: [],
-        sessionHistory: [],
-        userPerformance: [],
-        courses: [COURSE],
-        courseAssessments: [FINAL_ASSESSMENT],
-        reviewHistory: [],
-      };
-
-      const before = await exportDatabase();
-      await expect(importBackup(oldBackup, 'replace')).rejects.toThrow('Unsupported old backup');
-      const after = await exportDatabase();
-      expect({ ...after, exportedAt: 0 }).toEqual({ ...before, exportedAt: 0 });
-    },
-  );
-
   it('recover-merges attempt lifecycle state and replays Question scheduling', async () => {
     await db.courses.add(COURSE);
     await db.courseAssessments.add(FINAL_ASSESSMENT);
@@ -421,17 +337,16 @@ describe('Question backup portability', () => {
     expect(await db.questions.get('question-1')).toMatchObject({ reps: 1, lastReviewed: 30 });
   });
 
-  it('requires all Question collections in a current backup', () => {
-    const incomplete: BackupFile = {
-      app: 'lacuna',
-      version: BACKUP_VERSION,
-      exportedAt: 1,
-      cards: [],
-      assets: [],
-      sessionHistory: [],
-      userPerformance: [],
-    };
-
-    expect(validateBackup(incomplete)).toBe(false);
+  it.each([
+    'concepts',
+    'questions',
+    'questionConcepts',
+    'questionAttempts',
+    'questionSets',
+  ] as const)('requires %s in a current backup', async (key) => {
+    const backup = await exportDatabase();
+    expect(validateBackup(backup)).toBe(true);
+    delete backup[key];
+    expect(validateBackup(backup)).toBe(false);
   });
 });

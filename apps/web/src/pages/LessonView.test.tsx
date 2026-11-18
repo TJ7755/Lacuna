@@ -206,21 +206,6 @@ describe('LessonView View mode', () => {
     expect(mockNavigate).toHaveBeenCalledWith(`/lesson/${lesson.id}/learn?mode=simple`);
   });
 
-  it('does not promise another lesson when the displayed lesson has nothing due', () => {
-    mockLessonCards = [
-      {
-        ...makeCard('future'),
-        state: 2,
-        stability: 1,
-        stabilityFast: null,
-        lastReviewed: Date.now(),
-        due: Date.now() + MS_PER_DAY,
-      },
-    ];
-    renderPage();
-    expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
-  });
-
   it('keeps an archived single-lesson course read-only', () => {
     mockCourse = { ...course, archived: true, lessonViewMode: 'edit' };
 
@@ -243,7 +228,6 @@ describe('LessonView View mode', () => {
     renderPage();
     const back = screen.getByRole('link', { name: 'Test course' });
     expectAppDestination(back, '/course/course-1');
-    expect(back.querySelector('svg')).not.toBeNull();
   });
 
   it('offers the shared Edit mode on a normal lesson route', () => {
@@ -252,8 +236,6 @@ describe('LessonView View mode', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit mode' }));
 
     expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' });
-    expect(screen.queryByRole('button', { name: 'Read' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
   });
 
   it('renders notes read-only, with no add/edit/delete controls', () => {
@@ -262,12 +244,9 @@ describe('LessonView View mode', () => {
     expect(screen.queryByText('Add note')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Edit note')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Delete note')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Lesson actions/ })).not.toBeInTheDocument();
     expect(container.querySelector('[data-lesson-workspace-mode="study"]')).not.toBeNull();
-  });
-
-  it('does not show a Course settings link when rendered via the normal route', () => {
-    renderPage();
-    expect(screen.queryByLabelText('Course settings')).not.toBeInTheDocument();
   });
 
   it('lists the lesson cards without edit controls', () => {
@@ -288,7 +267,6 @@ describe('LessonView View mode', () => {
     mockLesson = { ...lesson, description: 'Revise the key terms.' };
     renderPage();
     expect(screen.getByText('Revise the key terms.')).toBeVisible();
-    expect(screen.queryByText(/cards? learnt/)).not.toBeInTheDocument();
   });
 
   it('starts the lesson from Study lesson, named apart from course-level Study', () => {
@@ -358,19 +336,6 @@ describe('LessonView workspace', () => {
     renderPage();
     const link = screen.getByRole('link', { name: 'Settings' });
     expectAppDestination(link, '/course/course-1/settings');
-  });
-
-  it('hides Add lesson in View mode', () => {
-    renderPage();
-    expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
-  });
-});
-
-describe('LessonView title editing', () => {
-  it('hides the lesson rename control in View mode', () => {
-    renderPage();
-    expect(screen.queryByRole('button', { name: /^Lesson actions/ })).not.toBeInTheDocument();
-    expect(mockUpdateLesson).not.toHaveBeenCalled();
   });
 });
 

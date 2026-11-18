@@ -76,9 +76,39 @@ const pool = (cards: Card[], config = course, allowExtra = false) =>
   );
 
 describe('adaptive catch-up introductions', () => {
-  it.each(['reset', 'day-boundaries', 'repeat-attempts', 'exhausted-cap', 'near-exam'])(
-    'preserves introduction pacing and admission with timestamp activity (%s)',
-    (scenario) => {
+  it.each([
+    {
+      scenario: 'reset',
+      introducedToday: 20,
+      dailyTarget: 20,
+      allowance: 0,
+      ids: ['due', 'reset'],
+    },
+    {
+      scenario: 'day-boundaries',
+      introducedToday: 2,
+      dailyTarget: 20,
+      allowance: 18,
+      ids: Array.from({ length: 18 }, (_, i) => `card-${i}`),
+    },
+    {
+      scenario: 'repeat-attempts',
+      introducedToday: 1,
+      dailyTarget: 20,
+      allowance: 19,
+      ids: Array.from({ length: 19 }, (_, i) => `card-${i}`),
+    },
+    { scenario: 'exhausted-cap', introducedToday: 20, dailyTarget: 20, allowance: 0, ids: ['due'] },
+    {
+      scenario: 'near-exam',
+      introducedToday: 10,
+      dailyTarget: 30,
+      allowance: 20,
+      ids: Array.from({ length: 20 }, (_, i) => `card-${i}`),
+    },
+  ])(
+    'paces canonical timestamp activity independently of card history ($scenario)',
+    ({ scenario, introducedToday, dailyTarget, allowance, ids }) => {
       let cards: Card[];
       const config =
         scenario === 'near-exam' ? { ...course, examDate: NOW + 6 * MS_PER_DAY } : course;
@@ -126,19 +156,9 @@ describe('adaptive catch-up introductions', () => {
         cards.map((item) => [item.id, item.history.map((review) => review.timestamp)]),
       );
       const projected = cards.map((item) => ({ ...item, history: [] }));
-      const expectedPacing = pacing(cards, cards, config);
-      expect(expectedPacing.introducedToday).toBe(
-        scenario === 'day-boundaries'
-          ? 2
-          : scenario === 'repeat-attempts'
-            ? 1
-            : scenario === 'near-exam'
-              ? 10
-              : 20,
-      );
       expect(
         catchUpPracticePacing(projected, projected, config, context(config), NOW, activity),
-      ).toEqual(expectedPacing);
+      ).toMatchObject({ introducedToday, dailyTarget, remainingNewAllowance: allowance });
       const admitted = catchUpPracticePool(
         projected,
         config,
@@ -151,9 +171,7 @@ describe('adaptive catch-up introductions', () => {
         false,
         activity,
       );
-      expect(admitted.map((item) => item.id)).toEqual(pool(cards, config).map((item) => item.id));
-      if (scenario === 'near-exam') expect(expectedPacing.dailyTarget).toBe(30);
-      if (scenario === 'reset') expect(admitted.map((item) => item.id)).toEqual(['due', 'reset']);
+      expect(admitted.map((item) => item.id)).toEqual(ids);
     },
   );
 

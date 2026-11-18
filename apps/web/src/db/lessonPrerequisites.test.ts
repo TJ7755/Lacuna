@@ -335,8 +335,8 @@ describe('advisory Lesson prerequisites and Course creator', () => {
     expect(validateBackup(backup)).toBe(false);
     await expect(importBackup(backup, 'replace')).rejects.toThrow(/prerequisite/i);
     expect(await db.courses.get(course.id)).toBeDefined();
-    expect(validateBackup({ ...backup, courses: [{ ...backup.courses![0], creator: 12 }] })).toBe(
-      false,
-    );
+    const invalidCreator = await exportDatabase();
+    invalidCreator.courses![0] = { ...invalidCreator.courses![0], creator: 12 as never };
+    expect(validateBackup(invalidCreator)).toBe(false);
   });
 });

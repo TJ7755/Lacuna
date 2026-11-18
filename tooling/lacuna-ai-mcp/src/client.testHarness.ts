@@ -8,14 +8,13 @@ import {
   type RelayTerminalMailbox,
 } from '@lacuna/protocol/ai/relay';
 import {
-  DEFAULT_AI_RELAY_URL,
   TerminalRelayReconnectRequiredError,
   type ConnectedTerminalRelay,
   type TerminalRelayTransport,
 } from './client';
 
 export const CONNECTION: ConnectedTerminalRelay = {
-  relayUrl: DEFAULT_AI_RELAY_URL,
+  relayUrl: 'https://relay.getlacuna.app',
   sessionId: 'ABCDEFGHJKMNPQRSTVW',
   expiresAt: 100_000,
 };

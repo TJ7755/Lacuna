@@ -165,24 +165,19 @@ export function parseDraft(
   return structuredClone(draft as QuestionSetDraft);
 }
 
-export function createEmptyQuestionSetDraft(
-  courseId: string,
-  setId: string,
-  options: { makeId?: () => string; now?: number } = {},
-): QuestionSetDraft {
+export function createEmptyQuestionSetDraft(courseId: string, setId: string): QuestionSetDraft {
   return {
     schemaVersion: 1,
     content: { id: setId, courseId, title: '', lessonIds: [], assessmentIds: [], questions: [] },
     baseContentRevisionId: null,
-    draftRevisionId: (options.makeId ?? makeId)(),
-    updatedAt: options.now ?? Date.now(),
+    draftRevisionId: makeId(),
+    updatedAt: Date.now(),
   };
 }
 
 export function createQuestionSetDraft(
   content: QuestionSet,
   baseContentRevisionId: string,
-  options: { makeId?: () => string; now?: number } = {},
 ): QuestionSetDraft {
   return {
     schemaVersion: 1,
@@ -197,8 +192,8 @@ export function createQuestionSetDraft(
       ...(content.legacyQuestionId ? { legacyQuestionId: content.legacyQuestionId } : {}),
     }),
     baseContentRevisionId,
-    draftRevisionId: (options.makeId ?? makeId)(),
-    updatedAt: options.now ?? Date.now(),
+    draftRevisionId: makeId(),
+    updatedAt: Date.now(),
   };
 }
 
@@ -221,7 +216,7 @@ export async function listQuestionSetDrafts(courseId: string): Promise<QuestionS
 
 export async function saveQuestionSetDraft(
   draft: QuestionSetDraft,
-  options: { expectedDraftRevisionId: string | null; makeId?: () => string; now?: number },
+  options: { expectedDraftRevisionId: string | null },
 ): Promise<QuestionSetDraft> {
   const key = questionSetDraftKey(draft.content.courseId, draft.content.id);
   return db.transaction('rw', db.appState, async () => {
@@ -241,8 +236,8 @@ export async function saveQuestionSetDraft(
     const next: QuestionSetDraft = {
       ...structuredClone(draft),
       schemaVersion: 1,
-      draftRevisionId: (options.makeId ?? makeId)(),
-      updatedAt: Math.max(options.now ?? Date.now(), (current?.updatedAt ?? -1) + 1),
+      draftRevisionId: makeId(),
+      updatedAt: Math.max(Date.now(), (current?.updatedAt ?? -1) + 1),
     };
     const parsed = parseDraft(next, key, {
       courseId: draft.content.courseId,

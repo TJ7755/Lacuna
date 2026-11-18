@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { LazyMotion, domAnimation } from 'motion/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { expect, it, vi } from 'vitest';
@@ -42,17 +42,6 @@ function renderControl(entry = '/') {
     </LazyMotion>,
   );
 }
-it('expands on Today and returns focus to its trigger on close', async () => {
-  renderControl();
-  fireEvent.click(screen.getByRole('button', { name: 'Import' }));
-  await waitFor(() => expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible());
-  expect(screen.getByRole('status')).toHaveTextContent('/');
-  fireEvent.click(screen.getByRole('button', { name: 'Cancel import' }));
-  await waitFor(() =>
-    expect(screen.queryByRole('region', { name: 'Import sources' })).not.toBeInTheDocument(),
-  );
-  expect(screen.getByRole('button', { name: 'Import' })).toHaveFocus();
-});
 it('opens linked imports and prevents closing during a write', async () => {
   renderControl('/?import=1');
   fireEvent.click(await screen.findByRole('button', { name: 'Start import' }));

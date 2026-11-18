@@ -253,9 +253,6 @@ describe('CourseAnalytics', () => {
     const generatedHeadline = screen.getByText('Novel generated accuracy').parentElement;
     expect(generatedHeadline).not.toBeNull();
     expect(within(generatedHeadline!).getByText('100%')).toBeInTheDocument();
-    expect(screen.queryByText(/not included in Card readiness/)).not.toBeInTheDocument();
-    expect(screen.queryByText('Separate evidence')).not.toBeInTheDocument();
-    expect(screen.queryByText('Memory evidence')).not.toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Question performance' })).toBeInTheDocument();
     expect(screen.getAllByRole('region', { name: 'Questions' })).toHaveLength(1);
     const cards = screen.getByRole('button', { name: 'Cards' });

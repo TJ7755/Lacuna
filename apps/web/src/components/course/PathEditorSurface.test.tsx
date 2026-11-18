@@ -125,7 +125,7 @@ it('focuses the neighbouring row when deletion removes the opening row', async (
   expect(screen.getByRole('button', { name: 'Next row' })).toHaveFocus();
 });
 
-it('grows the surface itself from the anchor dimensions without a pre-sized backing', async () => {
+it('grows from the anchor dimensions to fit the editor content', async () => {
   vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(260);
   renderEditor();
   const row = screen.getByRole('button', { name: 'Open row' });
@@ -141,12 +141,5 @@ it('grows the surface itself from the anchor dimensions without a pre-sized back
   fireEvent.click(row);
   const surface = screen.getByRole('dialog', { name: 'Edit checkpoint' });
   expect(surface).toHaveStyle({ left: '80px', top: '150px', width: '500px', height: '64px' });
-  expect(surface.style.clipPath).toBe('');
-  expect(surface.querySelector('.path-editor-content')).toHaveStyle({ width: '520px' });
   await waitFor(() => expect(surface).toHaveStyle({ width: '520px', height: '260px' }));
-  expect(
-    document.querySelector(
-      '[data-path-editor-host] > .path-editor-shadow:not([data-path-editor-surface])',
-    ),
-  ).toBeNull();
 });

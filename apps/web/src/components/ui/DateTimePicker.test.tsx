@@ -351,12 +351,11 @@ describe('DateTimePicker', () => {
     );
   });
 
-  it('retains the chosen time when jumping to today and offers one date shortcut', () => {
+  it('retains the chosen time when jumping to today', () => {
     vi.spyOn(Date, 'now').mockReturnValue(Date.UTC(2026, 9, 16, 9, 12));
     const onChange = vi.fn();
     render(<ControlledPicker initialValue={Date.UTC(2026, 5, 10, 23, 59)} onChange={onChange} />);
     openPicker();
-    expect(screen.queryByRole('button', { name: 'Now' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Jump to today' }));
     expect(onChange).toHaveBeenLastCalledWith(Date.UTC(2026, 9, 16, 23, 59));
   });

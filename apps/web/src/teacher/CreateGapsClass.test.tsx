@@ -148,7 +148,7 @@ it('does not remember when unchecked', async () => {
   render(<CreateGapsClass onConnected={vi.fn()} />);
   fireEvent.click(screen.getByRole('checkbox'));
   submit();
-  await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+  await screen.findByRole('heading', { name: 'Class created' });
   expect(mocks.remember).not.toHaveBeenCalled();
 });
 

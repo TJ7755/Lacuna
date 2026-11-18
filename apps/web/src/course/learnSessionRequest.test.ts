@@ -91,8 +91,8 @@ it('keeps curricular scope and milestones when specification practice overrides 
     requestReviewLimit: 10,
     practiceNodeKeyParam: 'node',
   });
-  expect(result.requestScopeLessonIds).toBe(scope);
-  expect(result.requestMilestoneLessonIds).toBe(milestones);
+  expect(result.requestScopeLessonIds).toEqual(['current']);
+  expect(result.requestMilestoneLessonIds).toEqual(['prefix', 'current']);
 });
 
 it.each([

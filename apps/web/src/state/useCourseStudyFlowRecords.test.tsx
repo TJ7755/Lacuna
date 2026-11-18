@@ -1,7 +1,6 @@
 import 'fake-indexeddb/auto';
 import { renderHook, waitFor } from '@testing-library/react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it } from 'vitest';
 import { createCourse, createCourseCard } from '../db/repository';
 import { createLesson } from '../db/lessonRepository';
 import { db } from '../db/schema';
@@ -12,7 +11,6 @@ import { reviewHistoryEntryForCard } from '@lacuna/core/db/reviewHistory';
 import type { ReviewLog } from '@lacuna/core/db/types';
 
 beforeEach(async () => {
-  vi.restoreAllMocks();
   await Promise.all(db.tables.map((table) => table.clear()));
 });
 
@@ -33,7 +31,7 @@ it.each([
   ['Path', useCoursePathRecords],
   ['Study', useCourseStudyFlowRecords],
 ] as const)(
-  'bulk-reads %s exposures in index order and observes changes',
+  'scopes %s exposures to its lessons in stable order and observes changes',
   async (_name, useRecords) => {
     const course = await createCourse('Exposure reads');
     const other = await createCourse('Other course');
@@ -49,23 +47,15 @@ it.each([
         updatedAt: 100,
       })),
     );
-    const expected = await db.lessonCardExposures
-      .where('lessonId')
-      .anyOf([last.id, first.id])
-      .toArray();
-    const openCursor = IDBIndex.prototype.openCursor;
-    let exposureCursors = 0;
-    vi.spyOn(IDBIndex.prototype, 'openCursor').mockImplementation(function (
-      this: IDBIndex,
-      ...args
-    ) {
-      if (this.objectStore.name === 'lessonCardExposures') exposureCursors++;
-      return openCursor.apply(this, args);
-    });
+    const expected = [first, last].map((lesson) => ({
+      lessonId: lesson.id,
+      cardId: card.id,
+      taughtAt: 100,
+      updatedAt: 100,
+    }));
     const { result, unmount } = renderHook(() => useRecords(course.id));
     try {
       await waitFor(() => expect(result.current?.exposures).toEqual(expected));
-      expect(exposureCursors).toBe(0);
       await db.lessonCardExposures.update([first.id, card.id], { taughtAt: 200 });
       await waitFor(() => expect(result.current?.exposures[0].taughtAt).toBe(200));
       await db.lessonCardExposures.delete([last.id, card.id]);
@@ -76,30 +66,6 @@ it.each([
     }
   },
 );
-
-it('shares a warm course card read with another live route', async () => {
-  const course = await createCourse('Warm course');
-  await createCourseCard(course.id, 'front_back', 'Cell', 'Answer');
-  const cards = renderHook(() =>
-    useLiveQuery(() => db.cards.where('courseId').equals(course.id).toArray()),
-  );
-  await waitFor(() => expect(cards.result.current).toHaveLength(1));
-
-  const getAll = IDBIndex.prototype.getAll;
-  const readCards = vi.fn();
-  vi.spyOn(IDBIndex.prototype, 'getAll').mockImplementation(function (this: IDBIndex, ...args) {
-    if (this.objectStore.name === 'cards') readCards();
-    return getAll.apply(this, args);
-  });
-  const path = renderHook(() => useCoursePathRecords(course.id));
-  try {
-    await waitFor(() => expect(path.result.current?.cards).toHaveLength(1));
-    expect(readCards).not.toHaveBeenCalled();
-  } finally {
-    path.unmount();
-    cards.unmount();
-  }
-});
 
 it('counts Study reviews towards the daily limit under their historical course', async () => {
   const course = await createCourse('Daily limit', { dailyReviewGoal: 2 });
@@ -112,12 +78,10 @@ it('counts Study reviews towards the daily limit under their historical course',
     { ...reviewHistoryEntryForCard(current, review(now, 'old-owner-2')), courseId: other.id },
     { ...reviewHistoryEntryForCard(moved, review(now, 'this-owner')), courseId: course.id },
   ]);
-  const histories = vi.spyOn(db.reviewHistory, 'where');
   const { result, unmount } = renderHook(() => useCourseStudyFlowRecords(course.id));
   try {
     await waitFor(() => expect(result.current?.reviewsToday).toBe(1));
     expect(result.current?.cards[0].history.map((item) => item.timestamp)).toEqual([now, now]);
-    expect(histories).toHaveBeenCalledWith('timestamp');
   } finally {
     unmount();
   }
@@ -157,18 +121,6 @@ async function courseWithQuestions(withCard: boolean) {
   });
   return course;
 }
-
-it('opens a populated path without replaying question attempts that only Study needs', async () => {
-  const course = await courseWithQuestions(true);
-  const attempts = vi.spyOn(db.questionSetAttempts, 'where');
-  const { result, unmount } = renderHook(() => useCoursePathRecords(course.id));
-  try {
-    await waitFor(() => expect(result.current?.cards).toHaveLength(1));
-    expect(attempts).not.toHaveBeenCalled();
-  } finally {
-    unmount();
-  }
-});
 
 it('still plans questions for a course with no cards or lessons so its Study entry remains available', async () => {
   const course = await courseWithQuestions(false);

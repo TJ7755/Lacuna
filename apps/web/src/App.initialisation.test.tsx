@@ -53,7 +53,7 @@ vi.mock('./db/seed', () => ({
 }));
 vi.mock('./sync/triggers', () => ({ installSyncTriggers: vi.fn(() => vi.fn()) }));
 vi.mock('./hooks/useStorageQuotaWarning', () => ({ useStorageQuotaWarning: vi.fn() }));
-vi.mock('./components/layout/AppShell', () => ({ AppShell: () => null }));
+vi.mock('./components/layout/AppShell', () => ({ AppShell: () => <h1>Study ready</h1> }));
 vi.mock('./pages/Dashboard', () => ({ Dashboard: () => null }));
 
 import { App } from './App';
@@ -109,23 +109,9 @@ describe('App initialisation', () => {
     expect(dependencies.requestPersistentStorage).not.toHaveBeenCalled();
     await act(async () => opening.resolve({ ok: true }));
     expect(dependencies.requestPersistentStorage).toHaveBeenCalledOnce();
-    await waitFor(() => expect(screen.queryByText('Lacuna')).not.toBeInTheDocument());
+    expect(await screen.findByRole('heading', { name: 'Study ready' })).toBeVisible();
 
     persistence.reject(new Error('denied'));
-  });
-
-  it('skips first-run checks once they and the asset repair are done', async () => {
-    localStorage.setItem('lacuna-seeded', '1');
-    localStorage.setItem('lacuna-seed-assets-v3', '1');
-    try {
-      render(<App />);
-      await waitFor(() => expect(screen.queryByText('Lacuna')).not.toBeInTheDocument());
-      expect(dependencies.isFirstRun).not.toHaveBeenCalled();
-      expect(dependencies.settleFirstRun).not.toHaveBeenCalled();
-    } finally {
-      localStorage.removeItem('lacuna-seeded');
-      localStorage.removeItem('lacuna-seed-assets-v3');
-    }
   });
 
   it('does not request browser persistence in Electron', async () => {

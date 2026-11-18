@@ -10,7 +10,6 @@ test('packaged interactions use the real application with normal motion', async 
   });
 
   const suite = await runPackagedInteractionSuite({ executablePath });
-  expect(suite.launch.executablePath).toBe(executablePath);
   expect(suite.launch.packaged).toBe(true);
   expect(suite.launch.rendererProtocol).toBe('app:');
   expect(suite.launch.viteResourceCount).toBe(0);

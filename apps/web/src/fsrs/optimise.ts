@@ -21,7 +21,6 @@ import {
 import { makeEngine, applyReview } from '@lacuna/core/fsrs/fsrs';
 import type { Card, Grade } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
-export { MIN_OPTIMISE_REVIEWS } from './optimiseConfig';
 
 const EPS = 1e-6;
 const NUM_RELEARNING_STEPS = defaultRelearningSteps.length;

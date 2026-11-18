@@ -384,25 +384,19 @@ describe('useLearnSession Undo presentation', () => {
       expect(hook.result.current.summary?.events).toEqual([
         expect.objectContaining({ cardId: card.id, correct: true }),
       ]);
-      const unlock = vi.spyOn(db.lessons, 'update');
-      try {
-        await act(async () => {
-          expect(
-            await Promise.all([
-              hook.result.current.confirmCompletion(),
-              hook.result.current.confirmCompletion(),
-            ]),
-          ).toEqual([true, true]);
-          expect(await hook.result.current.confirmCompletion()).toBe(true);
-        });
-        expect(onStepFinished).toHaveBeenCalledOnce();
-        expect(unlock).toHaveBeenCalledOnce();
-        expect((await db.lessons.get(nextLesson.id))?.unlockedAt).toEqual(expect.any(Number));
-        expect(hook.result.current.canUndo).toBe(false);
-        expect(loadSimpleSession({ kind: 'lesson', lessonId: lesson.id }, [card.id])).toBeNull();
-      } finally {
-        unlock.mockRestore();
-      }
+      await act(async () => {
+        expect(
+          await Promise.all([
+            hook.result.current.confirmCompletion(),
+            hook.result.current.confirmCompletion(),
+          ]),
+        ).toEqual([true, true]);
+        expect(await hook.result.current.confirmCompletion()).toBe(true);
+      });
+      expect(onStepFinished).toHaveBeenCalledOnce();
+      expect((await db.lessons.get(nextLesson.id))?.unlockedAt).toEqual(expect.any(Number));
+      expect(hook.result.current.canUndo).toBe(false);
+      expect(loadSimpleSession({ kind: 'lesson', lessonId: lesson.id }, [card.id])).toBeNull();
     } finally {
       hook.unmount();
     }

@@ -62,6 +62,10 @@ describe('BatchAuthoringPromptDialog', () => {
     expect(
       screen.getByText('Discard this unsaved Question batch prompt and staging review?'),
     ).toBeInTheDocument();
+    const warning = screen.getByText(
+      'Discard this unsaved Question batch prompt and staging review?',
+    ).parentElement!;
+    expect(within(warning).getByRole('button', { name: 'Cancel' })).toHaveFocus();
     fireEvent.click(screen.getByRole('button', { name: 'Discard batch' }));
     expect(onClose).toHaveBeenCalledOnce();
   });
@@ -81,27 +85,6 @@ describe('BatchAuthoringPromptDialog', () => {
     expect(screen.getByText('Generated Question batch')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Target lesson' })).toBeDisabled();
     expect(screen.getByPlaceholderText(new RegExp(BATCH_OUTPUT_START))).toHaveFocus();
-  });
-
-  it('moves focus safely into the unsaved-close warning', () => {
-    render(
-      <BatchAuthoringPromptDialog
-        courseId="course-1"
-        courseName="Economics"
-        lessons={[]}
-        questions={[]}
-        onClose={vi.fn()}
-      />,
-    );
-    fireEvent.change(screen.getByPlaceholderText('Paste the notes for one lesson or topic…'), {
-      target: { value: 'Unsaved notes' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-
-    const warning = screen.getByText(
-      'Discard this unsaved Question batch prompt and staging review?',
-    ).parentElement!;
-    expect(within(warning).getByRole('button', { name: 'Cancel' })).toHaveFocus();
   });
 
   it('copies a constrained, course-scoped prompt from the form', async () => {
@@ -132,8 +115,6 @@ describe('BatchAuthoringPromptDialog', () => {
     expect(prompt).toContain('Exam board: AQA');
     expect(prompt).toContain('Specification: 7136');
     expect(prompt).toContain('Requested maximum items: 99');
-    expect(prompt).toContain('exactly one primary target Concept');
-    expect(prompt).toContain('List any prerequisite Concepts separately');
     expect(prompt).toContain(BATCH_OUTPUT_START);
     expect(notify).toHaveBeenCalledWith(
       'Question batch prompt copied to the clipboard.',
@@ -155,7 +136,7 @@ describe('BatchAuthoringPromptDialog', () => {
     expect(screen.getByRole('button', { name: 'Copy Question batch prompt' })).toBeDisabled();
   });
 
-  it('lets the model choose the batch size while preserving the one-target invariant', async () => {
+  it('copies the model-selected batch size when constraints are disabled', async () => {
     render(
       <BatchAuthoringPromptDialog
         courseId="course-1"
@@ -176,7 +157,6 @@ describe('BatchAuthoringPromptDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy Question batch prompt' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-    expect(writeText.mock.calls[0][0]).toContain('exactly one primary target Concept');
     expect(writeText.mock.calls[0][0]).toContain('Requested maximum items: model-selected');
   });
 });

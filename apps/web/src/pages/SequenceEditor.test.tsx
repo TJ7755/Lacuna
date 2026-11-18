@@ -243,11 +243,6 @@ describe('SequenceEditor', () => {
     expect(screen.getAllByRole('link')).toHaveLength(1);
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
-  it('keeps the editor header free of a repeated preset description', () => {
-    mockCourse = course;
-    const { container } = renderNew();
-    expect(container.querySelector('header p')).toBeNull();
-  });
   it('waits for the course before rendering its controls', () => {
     renderNew();
     expect(screen.queryByText('New sequence')).not.toBeInTheDocument();

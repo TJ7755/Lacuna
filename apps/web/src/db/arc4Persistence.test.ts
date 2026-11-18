@@ -22,11 +22,6 @@ import {
 const lessonExposures = (lessonId: string) =>
   db.lessonCardExposures.where('lessonId').equals(lessonId).toArray();
 
-async function practiceMilestoneForScope(nodeKey: string, scopeVersion: string) {
-  const milestone = await db.practiceMilestones.get(nodeKey);
-  return milestone?.scopeVersion === scopeVersion ? milestone : undefined;
-}
-
 describe('Arc 4 persistence', () => {
   beforeEach(async () => {
     await db.delete();
@@ -172,13 +167,13 @@ describe('Arc 4 persistence', () => {
     expect(await lessonExposures(linked.id)).toHaveLength(1);
   });
 
-  it('invalidates practice progress when its effective scope version changes', async () => {
+  it('stores replacement practice progress under its new scope version', async () => {
     await savePracticeMilestoneProgress('practice-auto-lesson-1-0', 'course-1', 'scope-a', 2, 5);
-    expect(await practiceMilestoneForScope('practice-auto-lesson-1-0', 'scope-a')).toMatchObject({
+    expect(await db.practiceMilestones.get('practice-auto-lesson-1-0')).toMatchObject({
+      scopeVersion: 'scope-a',
       securedCardCount: 2,
       totalCardCount: 5,
     });
-    expect(await practiceMilestoneForScope('practice-auto-lesson-1-0', 'scope-b')).toBeUndefined();
 
     await savePracticeMilestoneProgress(
       'practice-auto-lesson-1-0',
@@ -189,8 +184,8 @@ describe('Arc 4 persistence', () => {
       true,
       500,
     );
-    expect(await practiceMilestoneForScope('practice-auto-lesson-1-0', 'scope-a')).toBeUndefined();
-    expect(await practiceMilestoneForScope('practice-auto-lesson-1-0', 'scope-b')).toMatchObject({
+    expect(await db.practiceMilestones.get('practice-auto-lesson-1-0')).toMatchObject({
+      scopeVersion: 'scope-b',
       completedAt: 500,
       securedCardCount: 1,
       totalCardCount: 6,

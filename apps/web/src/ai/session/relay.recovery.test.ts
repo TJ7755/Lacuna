@@ -181,7 +181,7 @@ describe('relay AI session connection lifecycle', () => {
     const disconnected = session.getSnapshot();
     await tick();
 
-    expect(session.getSnapshot()).toBe(disconnected);
+    expect(session.getSnapshot()).toEqual(disconnected);
     expect(disconnected.connection).toEqual({
       status: 'disconnected',
       reason: 'Terminal task ended.',

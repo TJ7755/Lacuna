@@ -345,7 +345,7 @@ describe('syncCycle', () => {
     expect(result).toMatchObject({ attempts: 2, generation: '"generation-3"', pushed: true });
   });
 
-  it('shares one in-flight promise between overlapping callers', async () => {
+  it('performs one sync for overlapping callers', async () => {
     let releasePull: ((value: null) => void) | undefined;
     const relay = provider({
       pull: vi.fn().mockImplementation(
@@ -358,11 +358,14 @@ describe('syncCycle', () => {
 
     const first = syncCycle(options(relay));
     const second = syncCycle(options(relay));
-    expect(second).toBe(first);
     await vi.waitFor(() => expect(relay.pull).toHaveBeenCalledTimes(1));
 
     releasePull?.(null);
-    await expect(first).resolves.toMatchObject({ pushed: true });
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      expect.objectContaining({ pushed: true }),
+      expect.objectContaining({ pushed: true }),
+    ]);
+    expect(relay.push).toHaveBeenCalledOnce();
   });
 
   it('rejects an overlapping caller that asks for a different channel', async () => {
@@ -385,7 +388,7 @@ describe('syncCycle', () => {
     await expect(first).resolves.toMatchObject({ pushed: true });
   });
 
-  it('rejects an oversized merged snapshot before applying or pushing it', async () => {
+  it('surfaces the merge size error and does not push after rejection', async () => {
     const remoteSnapshot = backup({ exportedAt: 20 });
     const relay = provider({ pull: vi.fn().mockResolvedValue(await remoteBlob(remoteSnapshot)) });
 

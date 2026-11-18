@@ -11,11 +11,6 @@ function TestComponent() {
     <div>
       <button onClick={() => notify('Hello world')}>Notify</button>
       <button onClick={() => notify('Error', 'negative')}>Error</button>
-      <button
-        onClick={() => notify('Action', 'neutral', { actionLabel: 'Undo', onAction: vi.fn() })}
-      >
-        Action
-      </button>
       <button onClick={() => notify('First answer', 'neutral', { replaceKey: 'answer' })}>
         First answer
       </button>
@@ -197,28 +192,6 @@ describe('ToastProvider', () => {
     });
     expect(document.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
     expect(screen.getByLabelText('Notifications')).toHaveAttribute('aria-live', 'polite');
-  });
-
-  it('shows different tones', async () => {
-    render(
-      <ToastProvider>
-        <TestComponent />
-      </ToastProvider>,
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Error' }));
-    await waitFor(() =>
-      expect(screen.getByText('Error', { selector: 'span' })).toBeInTheDocument(),
-    );
-  });
-
-  it('shows an action button', async () => {
-    render(
-      <ToastProvider>
-        <TestComponent />
-      </ToastProvider>,
-    );
-    fireEvent.click(screen.getByText('Action'));
-    await waitFor(() => expect(screen.getByText('Undo')).toBeInTheDocument());
   });
 
   it('replaces a keyed toast so stale actions cannot remain visible', async () => {

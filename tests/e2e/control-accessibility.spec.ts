@@ -18,24 +18,3 @@ test('appearance choices persist after reload', async ({ page }, testInfo) => {
   await page.reload();
   await expect(motion.getByRole('radio', { name: 'Slow', exact: true })).toBeChecked();
 });
-
-test('Help search results collapse and reopen', async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await enterFreshLacuna(page);
-  await page.goto('/#/help');
-  await page.getByRole('searchbox', { name: 'Search help' }).fill('PICTURE sharing');
-  const topic = page.getByRole('button', { name: 'How do I share a diagram with its image?' });
-  await topic.click();
-  await expect(topic).toHaveAttribute('aria-expanded', 'false');
-  await page.screenshot({
-    path: testInfo.outputPath('help-search-collapsed.png'),
-    animations: 'disabled',
-  });
-  await topic.click();
-  await expect(topic).toHaveAttribute('aria-expanded', 'true');
-  await page.screenshot({
-    path: testInfo.outputPath('help-search-open.png'),
-    animations: 'disabled',
-  });
-});

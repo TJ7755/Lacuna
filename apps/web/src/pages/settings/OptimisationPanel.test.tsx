@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as FsrsOptimise from '../../fsrs/optimise';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
-import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimise';
+import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
 import { OptimisationPanel } from './OptimisationPanel';
 
 const optimiser = vi.hoisted(() => ({
@@ -76,8 +76,6 @@ describe('OptimisationPanel', () => {
     const summary = screen.getByLabelText('Scheduling optimisation');
 
     expect(summary).toHaveAttribute('aria-expanded', 'false');
-    // No eyebrow label sits above the heading (visual design, typography).
-    expect(screen.queryByText('Advanced scheduling')).not.toBeInTheDocument();
     expect(
       screen.getByRole('heading', { level: 3, name: 'Scheduling optimisation' }),
     ).toBeInTheDocument();

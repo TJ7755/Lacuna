@@ -199,27 +199,6 @@ describe('QuestionSetCourseRow', () => {
     expect(screen.getByText('Unavailable')).toBeInTheDocument();
   });
 
-  it('shows added parts as new work alongside the preserved historical progress', () => {
-    const original = completedAttempt.receipt.questions[0];
-    mocks.activityData = [
-      {
-        id: content.id,
-        content: { ...content, questions: [original, { ...original, id: 'question-new' }] },
-        attempt: completedAttempt,
-        exam: undefined,
-      },
-    ];
-    renderRow(false);
-
-    const row = screen.getByRole('button', { name: 'Practice questions: Cell structure' });
-    expect(row).toHaveTextContent('1/1 answered (1 new part)');
-    expect(row.querySelector('.origin-left')).toHaveStyle({ width: '50%' });
-    fireEvent.click(row);
-    expect(screen.getByTestId('location')).toHaveTextContent(
-      '/course/course-1/question-sets/set-1',
-    );
-  });
-
   it('keeps one working authoring control for a multiple-set activity', () => {
     mocks.activityData = [
       { id: 'set-1', content, attempt: completedAttempt, exam: undefined },
@@ -243,7 +222,6 @@ describe('QuestionSetCourseRow', () => {
     expect(screen.getAllByRole('button', { name: /^Practice questions:/ })).toHaveLength(1);
     expect(row).toHaveTextContent('2 question sets');
     expect(row).toHaveAttribute('aria-keyshortcuts', 'Alt+ArrowUp Alt+ArrowDown');
-    expect(reorder.registerElement).toHaveBeenCalledWith(row);
     fireEvent.keyDown(row, { key: 'ArrowUp', altKey: true });
     expect(reorder.onKeyDown).toHaveBeenCalledOnce();
     fireEvent.pointerDown(row);

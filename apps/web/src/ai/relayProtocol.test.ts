@@ -59,14 +59,16 @@ describe('AI relay protocol', () => {
   });
 
   it('defines both sides of terminal pairing without private keys', () => {
-    expect(
-      relayClaimResponseSchema.parse({
-        sessionId: 'A'.repeat(20),
-        browserPublicKey: PUBLIC_KEY,
-        terminalToken: 'ab'.repeat(32),
-        expiresAt: 10,
-      }),
-    ).not.toHaveProperty('privateKey');
+    const claim = {
+      sessionId: 'A'.repeat(20),
+      browserPublicKey: PUBLIC_KEY,
+      terminalToken: 'ab'.repeat(32),
+      expiresAt: 10,
+    };
+    expect(relayClaimResponseSchema.parse(claim)).toEqual(claim);
+    expect(relayClaimResponseSchema.safeParse({ ...claim, privateKey: 'secret' }).success).toBe(
+      false,
+    );
     expect(
       relayPeerResponseSchema.parse({
         terminalPublicKey: PUBLIC_KEY,

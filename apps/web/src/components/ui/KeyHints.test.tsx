@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KeyHints } from './KeyHints';
-import { loadBindings, saveBindings, DEFAULT_BINDINGS } from '../../state/shortcutBindings';
+import { loadBindings, DEFAULT_BINDINGS } from '../../state/shortcutBindings';
 
 // Happy DOM rejects cancelled native-animation promises; exercise Motion's real JS fallback.
 const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
@@ -57,7 +57,7 @@ describe('KeyHints', () => {
 it('refreshes displayed bindings when reopened and closes with the configured help key', () => {
   const onClose = vi.fn();
   const { rerender } = render(<KeyHints open={false} onClose={onClose} />);
-  saveBindings({ ...DEFAULT_BINDINGS, help: 'b', yes: 'j' });
+  localStorage.setItem('lacuna-shortcut-bindings', JSON.stringify({ help: 'b', yes: 'j' }));
   rerender(<KeyHints open onClose={onClose} />);
   expect(screen.getByText('b')).toBeInTheDocument();
   expect(screen.getByText('j')).toBeInTheDocument();
@@ -70,7 +70,7 @@ it('does not overwrite newer bindings from a closed help view', async () => {
   try {
     const { unmount } = render(<KeyHints open={false} onClose={vi.fn()} />);
     const updated = { ...DEFAULT_BINDINGS, help: 'b', yes: 'j' };
-    saveBindings(updated);
+    localStorage.setItem('lacuna-shortcut-bindings', JSON.stringify(updated));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(350);
     });

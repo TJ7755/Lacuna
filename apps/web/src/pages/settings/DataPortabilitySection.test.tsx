@@ -137,8 +137,6 @@ describe('DataPortabilitySection', () => {
     expect(
       await screen.findByText(/Combine with the 12 August 2026 backup \(4 cards, 0 Questions\)\?/),
     ).toHaveTextContent('Deletions from either device apply.');
-    expect(screen.queryByText(/Data from both devices is combined/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Merge' })).not.toBeInTheDocument();
     expect(manualMerge).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Combine' }));

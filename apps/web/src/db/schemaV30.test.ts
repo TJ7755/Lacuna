@@ -64,10 +64,6 @@ describe('schema v30 specification links', () => {
     expect(await db.courses.get(course.id)).toEqual(course);
     expect(await db.concepts.bulkGet(concepts.map((concept) => concept.id))).toEqual(concepts);
     expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
-    const pointIndex = db.concepts.schema.indexes.find(
-      (index) => index.name === 'specificationPointIds',
-    );
-    expect(pointIndex?.multi).toBe(true);
     await db.concepts.update('concept-1', {
       specificationPointIds: ['example-board-fixture:point.1', 'another-specification:point-2'],
     });
@@ -75,6 +71,12 @@ describe('schema v30 specification links', () => {
       await db.concepts
         .where('specificationPointIds')
         .equals('example-board-fixture:point.1')
+        .primaryKeys(),
+    ).toEqual(['concept-1']);
+    expect(
+      await db.concepts
+        .where('specificationPointIds')
+        .equals('another-specification:point-2')
         .primaryKeys(),
     ).toEqual(['concept-1']);
   });

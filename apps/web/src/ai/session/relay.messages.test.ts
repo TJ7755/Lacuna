@@ -4,7 +4,7 @@ import { CREATED, relaySessionHarness } from './relay.testHarness';
 import { buildAiInstructionBundle } from '../instructions';
 
 describe('relay AI session messages', () => {
-  it('encrypts and persists a queued browser mailbox message', async () => {
+  it('seals and uploads a queued browser mailbox message', async () => {
     const { session, relay, crypto, tick } = relaySessionHarness();
     vi.mocked(relay.peer).mockResolvedValue({
       terminalPublicKey: 'terminal-public',
