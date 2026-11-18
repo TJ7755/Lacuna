@@ -63,6 +63,7 @@ describe('cardBulkActions', () => {
     await db.cards.update(a.id, {
       state: 2,
       stability: 5,
+      stabilityFast: null,
       difficulty: 4,
       due: Date.now() + 86400000,
       scheduledDays: 5,

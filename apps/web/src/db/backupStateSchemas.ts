@@ -73,13 +73,14 @@ const baseline = z.discriminatedUnion('kind', [
   object({
     kind: z.literal('legacy-opaque'),
     sourceCardId: id,
-    state: object(schedule),
+    state: object({ ...schedule, stabilityFast: number.positive().nullable().default(null) }),
     reason: z.enum(['missing-history', 'inconsistent-history']),
   }),
 ]);
 const questionBase = object({
   migratedToSetId: id.optional(),
   ...schedule,
+  stabilityFast: number.positive().nullable().default(null),
   ...timestamps,
   id,
   courseId: id,
@@ -265,7 +266,7 @@ export const stateSchemas = {
       object({ kind: z.literal('included-in-opaque-baseline') }),
       object({ kind: z.literal('none') }),
     ]),
-    schedulerVersion: z.literal('fsrs-6-question-v1').optional(),
+    schedulerVersion: z.enum(['fsrs-6-question-v1', 'fsrs-7-question-v1']).optional(),
     gradeMappingVersion: z.literal('full-good-otherwise-again-v1').optional(),
     schedulerConfigFingerprint: text.optional(),
     schedulerConfig: parameters.optional(),

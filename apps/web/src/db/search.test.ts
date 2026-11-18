@@ -25,6 +25,7 @@ function card(id: string, over: Partial<Card> = {}): Card {
     front: `front ${id}`,
     back: `back ${id}`,
     stability: 1,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: NOW - 1000,
     reps: 1,
@@ -104,6 +105,8 @@ function question(over: Partial<FixedQuestionDefinition> = {}): FixedQuestionDef
     authoringRevisionId: 'authoring-revision-1',
     authoringUpdatedAt: NOW,
     stability: null,
+    stabilityFast: null,
+
     difficulty: null,
     lastReviewed: null,
     reps: 0,

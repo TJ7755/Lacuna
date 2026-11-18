@@ -12,6 +12,7 @@ function cardWithLapses(lapses: number): Card {
     front: 'q',
     back: 'a',
     stability: 1,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: Date.now(),
     reps: lapses,

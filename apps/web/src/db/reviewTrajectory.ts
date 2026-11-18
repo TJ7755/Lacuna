@@ -53,7 +53,8 @@ async function hasTrajectorySampleForToday(
 }
 
 /** Write one historical trajectory sample after a review has committed. */
-type TrajectorySampleResult = 'sampled' | 'already-sampled' | 'missing-event';
+type TrajectorySampleResult =
+  'sampled' | 'already-sampled' | 'missing-event' | 'unavailable-memory';
 
 export async function sampleReviewTrajectory(
   args: ReviewTrajectorySampleArgs,
@@ -71,7 +72,9 @@ export async function sampleReviewTrajectory(
   let total = 0;
   let batchStartedAt = performance.now();
   for (let index = 0; index < cards.length; index += 1) {
-    total += predictedRetrievabilityAtHorizon(cards[index], args.deck, args.timestamp);
+    const recall = predictedRetrievabilityAtHorizon(cards[index], args.deck, args.timestamp);
+    if (recall === null) return 'unavailable-memory';
+    total += recall;
     const batchFull = (index + 1) % TRAJECTORY_BATCH_SIZE === 0;
     const budgetSpent = performance.now() - batchStartedAt >= TRAJECTORY_BATCH_BUDGET_MS;
     if (index + 1 < cards.length && (batchFull || budgetSpent)) {

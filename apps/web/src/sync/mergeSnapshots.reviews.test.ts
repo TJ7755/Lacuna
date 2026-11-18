@@ -102,6 +102,7 @@ describe('peer review replay and schedule edits', () => {
       front: 'edited later',
       state: 0,
       stability: null,
+      stabilityFast: null,
       due: null,
       lastReviewed: null,
       reps: 2,

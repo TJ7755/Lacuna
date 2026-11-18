@@ -14,10 +14,12 @@ import {
 import { applyReview, makeEngine } from '@lacuna/core/fsrs/fsrs';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import { applyScheduleEdit, mergeScheduleEdits } from '../db/scheduleEdits';
-import { canonicalJson, sortById, type NormalisedSnapshot } from './snapshotRecords';
+import type { NormalisedSnapshot } from './snapshotRecords';
+import { canonicalJson, sortById } from './snapshotIdentity';
 
 const NEVER_REVIEWED = {
   stability: null,
+  stabilityFast: null,
   difficulty: null,
   lastReviewed: null,
   reps: 0,
@@ -52,6 +54,41 @@ function sortReviews(entries: ReviewHistoryEntry[]): ReviewHistoryEntry[] {
   });
 }
 
+/** A reset supplies a new memory origin even when the earlier history was lost. */
+export function hasCompleteMemoryHistory(
+  card: Card,
+  events: readonly ReviewHistoryEntry[],
+): boolean {
+  if (card.lastReviewed === null) return true;
+  const reset = card.scheduleEdits?.filter((edit) => edit.kind === 'reset').at(-1);
+  const ordered = [...events]
+    .filter((event) => !reset || event.timestamp > reset.at)
+    .sort(
+      (a, b) => a.timestamp - b.timestamp || reviewEventKey(a).localeCompare(reviewEventKey(b)),
+    );
+  const originIndex = ordered.findIndex((event) => event.memoryOrigin);
+  if (originIndex >= 0) {
+    const origin = ordered[originIndex].memoryOrigin!;
+    return (
+      origin.reps + ordered.length - originIndex >= card.reps &&
+      (ordered.at(-1)?.timestamp ?? -Infinity) >= card.lastReviewed
+    );
+  }
+  if (
+    ordered[0]?.stabilityBefore !== null ||
+    (ordered.at(-1)?.timestamp ?? -Infinity) < card.lastReviewed
+  )
+    return false;
+  // Resets retain lifetime counters, so a missing prefix or tail is still incomplete.
+  if (events.length < card.reps) return false;
+  return (
+    !reset ||
+    ordered.every(
+      (event, index) => index === 0 || event.stabilityBefore === ordered[index - 1].stabilityAfter,
+    )
+  );
+}
+
 export function replayCards(
   cards: Card[],
   reviewHistory: ReviewHistoryEntry[],
@@ -73,8 +110,33 @@ export function replayCards(
         if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
         return reviewEventKey(a).localeCompare(reviewEventKey(b));
       });
-    let current: Card = { ...card, ...NEVER_REVIEWED };
-    const edits = card.scheduleEdits ?? [];
+    const originIndex = events.findIndex((event) => event.memoryOrigin);
+    const origin = originIndex >= 0 ? events[originIndex].memoryOrigin : undefined;
+    if (originIndex > 0) events.splice(0, originIndex);
+    let current: Card = { ...card, ...NEVER_REVIEWED, ...origin };
+    // The baseline already includes older edits. Same-millisecond edits follow
+    // the review, matching the normal replay ordering below.
+    const edits = (card.scheduleEdits ?? []).filter(
+      (edit) => !origin || edit.at >= events[0].timestamp,
+    );
+    const complete = hasCompleteMemoryHistory(card, events);
+    // A learnt import without its event prefix is opaque, never a new card.
+    if (!complete) {
+      current = { ...card, stabilityFast: card.stabilityFast ?? null };
+      const engine = makeEngine(parametersForCard(card, unitById, courseById));
+      for (const event of events) {
+        if (event.timestamp > (card.lastReviewed ?? -Infinity)) {
+          current = {
+            ...current,
+            ...applyReview(engine, current, event.grade, event.timestamp).memory,
+          };
+        }
+      }
+      for (const edit of edits) {
+        if (edit.at >= (card.lastReviewed ?? -Infinity)) current = applyScheduleEdit(current, edit);
+      }
+      return current;
+    }
     if (events.length === 0 && edits.length === 0) return current;
     const params = parametersForCard(card, unitById, courseById);
     // Use the live parameters, fuzz included: ts-fsrs seeds fuzz from the review time
@@ -91,7 +153,22 @@ export function replayCards(
       current = { ...current, ...memory };
     }
     while (nextEdit < edits.length) current = applyScheduleEdit(current, edits[nextEdit++]);
-    return current;
+    if (card.lastReviewed === current.lastReviewed && current.reps <= card.reps) {
+      return {
+        ...current,
+        due: card.due,
+        scheduledDays: card.scheduledDays,
+        learningSteps: card.learningSteps,
+        state: card.state,
+        reps: card.reps,
+        lapses: card.lapses,
+      };
+    }
+    return {
+      ...current,
+      reps: Math.max(card.reps, current.reps),
+      lapses: Math.max(card.lapses, current.lapses),
+    };
   });
   return cardsWithReviewHistory(reset, reviewHistory);
 }

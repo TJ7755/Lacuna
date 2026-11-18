@@ -1,3 +1,4 @@
+import { migrateFsrs7Configuration } from './fsrs7Migration';
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, it } from 'vitest';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
@@ -66,6 +67,8 @@ function question(prompt = 'Calculate 1 + 1'): FixedQuestionDefinition {
     scheduleEpoch: { id: 'epoch-1', startedAt: 10, reason: 'created', baseline: { kind: 'new' } },
     scheduleUpdatedAt: 10,
     stability: null,
+    stabilityFast: null,
+
     difficulty: null,
     lastReviewed: null,
     reps: 0,
@@ -149,7 +152,11 @@ it.each(['ba3e2c84ad5caa8a41f94b5f4129c5e1df392273', 'v0.2.17'])(
         key === 'questions'
           ? restored.questions?.map(({ migratedToSetId: _migration, ...question }) => question)
           : restored[key];
-      expect(actual).toEqual(fixture[key]);
+      expect(actual).toEqual(
+        key === 'courses' || key === 'schedulingUnits'
+          ? fixture[key]?.map(migrateFsrs7Configuration)
+          : fixture[key],
+      );
       expect(fixture[key]!.length).toBeGreaterThan(0);
     }
     for (const mode of ['replace', 'merge'] as const) {

@@ -34,8 +34,12 @@ export function assessmentTiming(
   const predictedRecall =
     reviewAt !== undefined && reviewAt < examDate
       ? rAtExamIfReviewedNow(card, ctx.expectedGrade, examDate, reviewAt, ctx)
-      : rAtExam(card, examDate, now, ctx.decay);
-  return { due, predictedRecall, feasible: predictedRecall >= ASSESSMENT_TARGET_RECALL };
+      : rAtExam(card, examDate, now, ctx.model);
+  return {
+    due,
+    predictedRecall,
+    feasible: predictedRecall === null ? null : predictedRecall >= ASSESSMENT_TARGET_RECALL,
+  };
 }
 
 /** Current memory only: do not assume a future scheduled review has happened. */
@@ -45,7 +49,9 @@ function assessmentRecallBelowTarget(
   now: number,
   ctx: SimContext,
 ): boolean {
-  return isUpcomingExamDate(examDate, now) && rAtExam(card, examDate, now, ctx.decay) < MASTERY_R;
+  return (
+    isUpcomingExamDate(examDate, now) && (rAtExam(card, examDate, now, ctx.model) ?? 0) < MASTERY_R
+  );
 }
 
 export function assessmentReviewGain(
@@ -56,7 +62,7 @@ export function assessmentReviewGain(
 ): number {
   return (
     rAtExamIfReviewedNow(card, ctx.expectedGrade, examDate, now, ctx) -
-    rAtExam(card, examDate, now, ctx.decay)
+    (rAtExam(card, examDate, now, ctx.model) ?? 0)
   );
 }
 

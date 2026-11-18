@@ -1,16 +1,17 @@
 import { expect, it } from 'vitest';
 import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import { makeEngine, decayOf } from '@lacuna/core/fsrs/fsrs';
+import { makeEngine, modelOf } from '@lacuna/core/fsrs/fsrs';
 import { emptyQuestionSchedule } from '@lacuna/core/questions/scheduler';
 import { questionStudyEligible } from '@lacuna/core/questions/questionStudyEligibility';
 
 const params = defaultFsrsParameters();
 const now = 1_800_000_000_000;
-const ctx = { fsrs: makeEngine(params), decay: decayOf(params), expectedGrade: 3 as const };
+const ctx = { fsrs: makeEngine(params), model: modelOf(params), expectedGrade: 3 as const };
 const memory = {
   ...emptyQuestionSchedule(),
   state: 2 as const,
   stability: 1,
+  stabilityFast: 0.8,
   difficulty: 5,
   lastReviewed: now - MS_PER_DAY,
   due: now + 20 * MS_PER_DAY,

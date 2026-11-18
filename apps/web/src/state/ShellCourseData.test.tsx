@@ -37,6 +37,7 @@ it('uses per-Card recall instead of a final-only forecast before and after its p
     const card = await createCourseCard(course.id, 'front_back', 'Cells', 'A unit of life');
     await db.cards.update(card.id, {
       stability: 10,
+      stabilityFast: 2,
       difficulty: 5,
       lastReviewed: now,
       state: 2,
@@ -63,7 +64,10 @@ it('uses per-Card recall instead of a final-only forecast before and after its p
     );
     try {
       await waitFor(() =>
-        expect(result.current.sidebar?.summaries[course.id].mastery).toBeCloseTo(0.9, 5),
+        expect(result.current.sidebar?.summaries[course.id].mastery).toBeCloseTo(
+          0.9072670542778423,
+          12,
+        ),
       );
       expect(result.current.sidebar?.forecasts[course.id]).toBeUndefined();
       expect(result.current.dashboard?.forecasts[course.id]).toBeUndefined();
@@ -164,6 +168,8 @@ it('refreshes due counts on Today re-entry without rereading shared Cards', asyn
       state: 2,
       lastReviewed: now - 86_400_000,
       stability: 10,
+      stabilityFast: 2,
+      difficulty: 5,
       due: now + 1000,
     });
     const { rerender, unmount } = render(view(true));

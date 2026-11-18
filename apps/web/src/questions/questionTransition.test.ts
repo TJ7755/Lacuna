@@ -116,6 +116,7 @@ it('upgrades v31 without rewriting schedules, submitted evidence, corrections or
     {
       due: source.due,
       stability: source.stability,
+      stabilityFast: source.stabilityFast,
       difficulty: source.difficulty,
       reps: 1,
     },

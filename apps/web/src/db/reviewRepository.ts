@@ -197,6 +197,25 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           marksAvailable,
           lineVerdicts,
           checkerDisputes,
+          ...(cardBefore.lastReviewed !== null &&
+          (cardBefore.stabilityFast === null || cardBefore.stabilityFast === undefined)
+            ? {
+                memoryOrigin: {
+                  stability: cardBefore.stability,
+                  stabilityFast: null,
+                  difficulty: cardBefore.difficulty,
+                  lastReviewed: cardBefore.lastReviewed,
+                  reps: cardBefore.reps,
+                  lapses: cardBefore.lapses,
+                  state: cardBefore.state,
+                  due: cardBefore.due,
+                  scheduledDays: cardBefore.scheduledDays,
+                  learningSteps: cardBefore.learningSteps,
+                },
+              }
+            : {}),
+          stabilityFastBefore: cardBefore.stabilityFast ?? null,
+          stabilityFastAfter: memory.stabilityFast,
           stabilityBefore: cardBefore.stability,
           stabilityAfter: memory.stability,
           difficultyBefore: cardBefore.difficulty,
@@ -207,6 +226,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
         const updatedCard: Card = {
           ...cardBefore,
           stability: memory.stability,
+          stabilityFast: memory.stabilityFast,
           difficulty: memory.difficulty,
           lastReviewed: memory.lastReviewed,
           due: memory.due,

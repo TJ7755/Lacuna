@@ -20,7 +20,7 @@ import {
   estimateResponseTime,
   type ResponseTimeCoefficients,
 } from '@lacuna/core/fsrs/responseTimeCost';
-import { CRAM_SUCCESS_GRADES } from '@lacuna/core/fsrs/halfLifeLogisticModel';
+import { CRAM_SUCCESS_GRADES } from '@lacuna/core/fsrs/fsrs7CramModel';
 
 const NOW = 30 * MS_PER_DAY;
 const ASSESSMENT = NOW + 2 * MS_PER_DAY;
@@ -60,6 +60,7 @@ function card(id: string, partial: Partial<Card> = {}): Card {
     front: id,
     back: id,
     stability: 3,
+    stabilityFast: 0.02,
     difficulty: 5,
     lastReviewed: NOW - MS_PER_DAY,
     reps: 1,

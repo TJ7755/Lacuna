@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { examEveAvailable, EXAM_EVE_WINDOW_HOURS } from '@lacuna/core/fsrs/cram';
+import { examEveAvailable, EXAM_EVE_WINDOW_HOURS, cramScore } from '@lacuna/core/fsrs/cram';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import { makeObjectiveContext } from '@lacuna/core/fsrs/objective';
+import { card } from './session.testFixtures';
 import type { LegacyDeckRecord, ExamObjective } from '@lacuna/core/db/types';
 
 const HOUR = 60 * 60 * 1000;
@@ -40,4 +42,17 @@ describe('examEveAvailable', () => {
       false,
     );
   });
+});
+
+it('keeps opaque learnt memory available for cram without claiming it is secured', () => {
+  const now = 10 * MS_PER_DAY;
+  const deck = makeDeck('securedTopics', now + HOUR);
+  const legacy = card('legacy', deck.id, {
+    lastReviewed: now - MS_PER_DAY,
+    state: 2,
+    stability: 100,
+    stabilityFast: null,
+    difficulty: 5,
+  });
+  expect(cramScore(legacy, makeObjectiveContext(deck), now)).toBe(1);
 });

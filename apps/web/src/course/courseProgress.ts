@@ -175,9 +175,10 @@ export function buildCourseProgress(input: CourseProgressInput): CourseProgressR
   const secured = (cards: Card[]) =>
     cards.filter(
       (card) =>
-        (target
+        ((target
           ? predictedRetrievabilityAtHorizon(card, target, now)
-          : predictedRetrievabilityAtHorizon(card, course, now, examDateContext)) >= MASTERY_R,
+          : predictedRetrievabilityAtHorizon(card, course, now, examDateContext)) ?? 0) >=
+        MASTERY_R,
     ).length;
 
   let forecast: ProgressForecast;

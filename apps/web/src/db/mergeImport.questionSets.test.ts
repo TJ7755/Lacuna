@@ -247,6 +247,7 @@ describe('mergeImport: v4 Question Set lineage', () => {
     expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
     expect(await db.cards.get('card-quadratic-example')).toMatchObject({
       stability: 14,
+      stabilityFast: null,
       reps: 3,
       due: 9_000,
     });

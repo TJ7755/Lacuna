@@ -103,6 +103,7 @@ export async function applyCreates(
       front: c.front,
       back: c.back,
       stability: null,
+      stabilityFast: null,
       difficulty: null,
       lastReviewed: null,
       reps: 0,

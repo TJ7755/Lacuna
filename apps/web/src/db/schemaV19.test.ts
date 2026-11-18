@@ -49,6 +49,7 @@ describe('image occlusion storage', () => {
       back: '',
       occlusionRegionId: 'region-1',
       stability: null,
+      stabilityFast: null,
       difficulty: null,
       lastReviewed: null,
       reps: 0,

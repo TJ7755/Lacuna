@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import { useChartColours } from '../analytics/useChartColours';
 import { forgettingCurve } from '@lacuna/core/fsrs/forwardSim';
-import { decayOf } from '@lacuna/core/fsrs/fsrs';
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { schedulingHorizon } from '@lacuna/core/fsrs/horizon';
 import { useAdvancedDetails } from '../../state/advancedDetails';
@@ -32,26 +32,27 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
   const now = Date.now();
   const hasActiveExam = schedulingConfig.examDate !== undefined && schedulingConfig.examDate >= now;
   const targetDate = schedulingHorizon(schedulingConfig, now);
-  const decay = decayOf(schedulingConfig.fsrsParameters);
+  const model = modelOf(schedulingConfig.fsrsParameters);
 
   const curveData = useMemo(() => {
-    if (card.stability === null || card.lastReviewed === null) return [];
+    if (card.stability === null || card.stabilityFast === null || card.lastReviewed === null)
+      return [];
     const start = card.lastReviewed;
     const end = targetDate + 14 * MS_PER_DAY;
     const points: { t: number; r: number }[] = [];
     for (let t = start; t <= end; t += MS_PER_DAY) {
       const days = (t - card.lastReviewed) / MS_PER_DAY;
-      const r = forgettingCurve(days, card.stability, decay);
-      points.push({ t, r: Math.round(r * 100) });
+      const r = forgettingCurve(days, card, model);
+      points.push({ t, r: Math.round((r ?? 0) * 100) });
     }
     return points;
-  }, [card, decay, targetDate]);
+  }, [card, model, targetDate]);
 
   const reviewDots = useMemo(() => {
     const dots: { x: number; y: number; grade: Grade }[] = [];
     for (const log of card.history) {
       const r = log.retrievabilityAtReview ?? 0;
-      dots.push({ x: log.timestamp, y: Math.round(r * 100), grade: log.grade });
+      dots.push({ x: log.timestamp, y: Math.round((r ?? 0) * 100), grade: log.grade });
     }
     return dots;
   }, [card.history]);
@@ -72,17 +73,17 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
     if (advancedDetails && card.difficulty !== null) {
       stats.push({ label: 'Difficulty', value: card.difficulty.toFixed(1) });
     }
-    if (card.stability !== null && card.lastReviewed !== null) {
+    if (card.stability !== null && card.stabilityFast !== null && card.lastReviewed !== null) {
       const days = (now - card.lastReviewed) / MS_PER_DAY;
-      const r = forgettingCurve(days, card.stability, decay);
+      const r = forgettingCurve(days, card, model);
       stats.push({
         label: advancedDetails ? 'Current R' : 'Predicted recall now',
-        value: `${(r * 100).toFixed(0)}%`,
+        value: `${((r ?? 0) * 100).toFixed(0)}%`,
       });
     }
-    if (card.stability !== null && card.lastReviewed !== null) {
+    if (card.stability !== null && card.stabilityFast !== null && card.lastReviewed !== null) {
       const days = Math.max(targetDate - card.lastReviewed, 0) / MS_PER_DAY;
-      const r = forgettingCurve(days, card.stability, decay);
+      const r = forgettingCurve(days, card, model);
       stats.push({
         label: advancedDetails
           ? hasActiveExam
@@ -91,7 +92,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
           : hasActiveExam
             ? 'Predicted exam-day recall'
             : 'Predicted target-day recall',
-        value: `${(r * 100).toFixed(0)}%`,
+        value: `${((r ?? 0) * 100).toFixed(0)}%`,
       });
     }
     stats.push({ label: 'Total reviews', value: String(card.reps) });

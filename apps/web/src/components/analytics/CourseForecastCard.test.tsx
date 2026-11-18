@@ -35,6 +35,7 @@ function reviewedCard(): Card {
     front: 'Q',
     back: 'A',
     stability: 12,
+    stabilityFast: 2,
     difficulty: 5,
     lastReviewed: Date.now() - DAY,
     reps: 3,
@@ -69,6 +70,7 @@ describe('CourseForecastCard', () => {
     const unstudied = {
       ...reviewedCard(),
       stability: null,
+      stabilityFast: 2,
       difficulty: null,
       lastReviewed: null,
       reps: 0,

@@ -138,6 +138,7 @@ function knownQuestionPayload(payload: unknown): payload is QuestionPayload {
 function scheduleOf(card: LegacyQuestionModeCard): QuestionScheduleState {
   return {
     stability: card.stability,
+    stabilityFast: card.stabilityFast ?? null,
     difficulty: card.difficulty,
     lastReviewed: card.lastReviewed,
     reps: card.reps,

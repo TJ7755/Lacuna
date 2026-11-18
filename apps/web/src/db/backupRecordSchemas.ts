@@ -64,6 +64,7 @@ export const dispute = object({
 export const grade = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
 export const schedule = {
   stability: number.nullable(),
+  stabilityFast: number.positive().nullable().optional(),
   difficulty: number.nullable(),
   lastReviewed: number.nullable(),
   reps: number,
@@ -90,6 +91,9 @@ const review = object({
   distracted: flag,
   hintUsed: flag.optional(),
   primed: flag.optional(),
+  memoryOrigin: object(schedule).optional(),
+  stabilityFastBefore: number.positive().nullable().optional(),
+  stabilityFastAfter: number.positive().optional(),
   stabilityBefore: number.nullable(),
   stabilityAfter: number,
   difficultyBefore: number.nullable(),

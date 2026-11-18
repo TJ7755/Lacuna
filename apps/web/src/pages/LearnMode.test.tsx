@@ -73,6 +73,7 @@ describe('LearnMode scope', () => {
         await db.cards.update(card.id, {
           state: 2,
           stability: 0.1,
+          stabilityFast: null,
           difficulty: 5,
           reps: 5,
           lastReviewed: now - 10_000,

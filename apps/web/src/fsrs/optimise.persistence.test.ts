@@ -35,6 +35,7 @@ function cardWithHistory(deckId: string, grades: Grade[]): Card {
     front: 'q',
     back: 'a',
     stability: 1,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: history[history.length - 1]?.timestamp ?? null,
     reps: grades.length,
@@ -93,9 +94,16 @@ describe('optimised weights persistence', () => {
 
   it('applied weights persist on the deck and feed the scheduler', async () => {
     const deck = await createCourse('Trainer deck');
-    const card = cardWithHistory(deck.id, [3, 3, 4, 3, 2, 3, 4, 3]);
+    const card = {
+      ...cardWithHistory(deck.id, [3, 3, 4, 3, 2, 3, 4, 3]),
+      courseId: deck.id,
+    };
+    const reviewHistory = reviewHistoryEntriesForCard(card);
+    await db.cards.put(card);
+    await db.reviewHistory.bulkPut(reviewHistory);
 
     const result = await optimiseParameters([card], {
+      reviewHistory,
       computeParameters,
       createItem: (reviews) =>
         new FSRSBindingItem(reviews.map((r) => new FSRSBindingReview(r.rating, r.deltaT))),
@@ -109,10 +117,12 @@ describe('optimised weights persistence', () => {
 
     const loaded = (await db.schedulingUnits.get(deck.id))!;
     expect(loaded.fsrsParameters.w).toEqual(result.w);
-    expect(loaded.fsrsParameters.w).toHaveLength(21);
+    expect(loaded.fsrsParameters.w).toHaveLength(34);
 
     const engine = makeEngine(loaded.fsrsParameters);
-    const reviewed = applyReview(engine, card, 3, Date.now());
+    const replayed = (await db.cards.get(card.id))!;
+    expect(replayed.stabilityFast).toBeGreaterThan(0);
+    const reviewed = applyReview(engine, replayed, 3, Date.now());
     expect(reviewed.memory.stability).toBeGreaterThan(0);
   });
 });

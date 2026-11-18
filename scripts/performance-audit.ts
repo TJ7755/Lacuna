@@ -119,6 +119,7 @@ function makeBenchmarkCard(index: number, deckId: string): Card {
     front: `Question ${index}`,
     back: 'Answer',
     stability: 10,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: NOW - 2 * 24 * 60 * 60 * 1000,
     reps: 2,

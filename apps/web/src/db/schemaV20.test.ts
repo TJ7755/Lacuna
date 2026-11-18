@@ -36,6 +36,7 @@ function card(history: ReviewLog[]): Card {
     front: 'Question',
     back: 'Answer',
     stability: 2,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: history[history.length - 1]?.timestamp ?? null,
     reps: history.length,

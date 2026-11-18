@@ -13,6 +13,7 @@ function cardWith(timestamps: number[]): Card {
     front: '',
     back: '',
     stability: 1,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: timestamps[timestamps.length - 1] ?? null,
     reps: timestamps.length,

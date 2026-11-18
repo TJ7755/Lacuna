@@ -237,6 +237,7 @@ export function makeCard(id: string, lessonId: string): Card {
     front: 'front',
     back: 'back',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

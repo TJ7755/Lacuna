@@ -48,6 +48,7 @@ async function dueCourse() {
   await db.cards.update(card.id, {
     state: 2,
     stability: 0.1,
+    stabilityFast: null,
     difficulty: 5,
     reps: 5,
     lastReviewed: Date.now() - 86_400_000,

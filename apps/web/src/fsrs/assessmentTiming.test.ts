@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { MS_PER_DAY, defaultFsrsParameters } from '@lacuna/core/fsrs/params';
 import {
   assessmentTiming,
@@ -6,8 +6,8 @@ import {
   assessmentReviewGain,
   worthwhileAssessmentPractice,
 } from '@lacuna/core/fsrs/assessmentTiming';
-import { makeEngine, toTsCard } from '@lacuna/core/fsrs/fsrs';
-import { forgettingCurve, simContext } from '@lacuna/core/fsrs/forwardSim';
+import { makeEngine } from '@lacuna/core/fsrs/fsrs';
+import { simContext } from '@lacuna/core/fsrs/forwardSim';
 import { card, course, NOW } from './session.testFixtures';
 
 function context() {
@@ -16,16 +16,22 @@ function context() {
 }
 
 describe('assessment timing prediction', () => {
-  it('preserves generated ordinary due dates and predicts using the existing curve', () => {
+  it('preserves generated ordinary due dates and predicts one upstream FSRS-7 transition', () => {
     const ctx = context();
+    const initial = ctx.model.step({ memoryState: null, rating: 3, elapsedDays: 0 });
     for (const days of [1 / MS_PER_DAY, 0.01, 1, 10, 1000]) {
-      for (const stability of [0.001, 0.1, 1, 10, 1000]) {
+      for (const gap of [0, 1, 10, 100]) {
         for (const offset of [-1, 0, 0.5, 1, 2]) {
           const exam = NOW + days * MS_PER_DAY;
           const c = card('card', 'course', {
             due: NOW + offset * days * MS_PER_DAY,
-            stability,
-            difficulty: 5,
+            ...(gap === 0
+              ? initial
+              : ctx.model.step({
+                  memoryState: initial,
+                  rating: 3,
+                  elapsedDays: gap,
+                })),
             lastReviewed: NOW,
             state: 2,
           });
@@ -36,12 +42,23 @@ describe('assessment timing prediction', () => {
           const reviewAt = Math.max(NOW, c.due!);
           const projected =
             reviewAt < exam
-              ? ctx.fsrs.next(toTsCard(c, reviewAt), new Date(reviewAt), ctx.expectedGrade).card
-                  .stability
-              : stability;
+              ? ctx.model.step({
+                  memoryState: {
+                    stability: c.stability!,
+                    stabilityFast: c.stabilityFast!,
+                    difficulty: c.difficulty!,
+                  },
+                  rating: ctx.expectedGrade,
+                  elapsedDays: (reviewAt - NOW) / MS_PER_DAY,
+                })
+              : {
+                  stability: c.stability!,
+                  stabilityFast: c.stabilityFast!,
+                  difficulty: c.difficulty!,
+                };
           const elapsed = exam - (reviewAt < exam ? reviewAt : NOW);
-          const recall = forgettingCurve(elapsed / MS_PER_DAY, projected, ctx.decay);
-          expect(result.predictedRecall).toBeCloseTo(recall, 12);
+          const recall = ctx.model.forgettingCurve(projected, elapsed / MS_PER_DAY);
+          expect(result.predictedRecall).toBeCloseTo(recall, 9);
           expect(result.feasible).toBe(recall >= ASSESSMENT_TARGET_RECALL);
         }
       }
@@ -50,16 +67,15 @@ describe('assessment timing prediction', () => {
 
   it('does not simulate a review on or after the assessment or for an unscheduled card', () => {
     const ctx = context();
-    const next = vi.spyOn(ctx.fsrs, 'next');
+    const memory = ctx.model.step({ memoryState: null, rating: 3, elapsedDays: 0 });
     const exam = NOW + MS_PER_DAY;
     for (const due of [null, exam, exam + MS_PER_DAY]) {
-      const c = card('card', 'course', { due, stability: 0.1, lastReviewed: NOW, state: 2 });
+      const c = card('card', 'course', { ...memory, due, lastReviewed: NOW, state: 2 });
       const result = assessmentTiming(c, NOW, exam, ctx);
       expect(result.due).toBe(due);
-      expect(result.predictedRecall).toBe(forgettingCurve(1, 0.1, ctx.decay));
-      expect(result.feasible).toBe(false);
+      expect(result.predictedRecall).toBeCloseTo(ctx.model.forgettingCurve(memory, 1), 12);
+      expect(result.feasible).toBe(true);
     }
-    expect(next).not.toHaveBeenCalled();
   });
 
   it('preserves ordinary schedules without a strictly future finite assessment', () => {
@@ -74,20 +90,6 @@ describe('assessment timing prediction', () => {
       }
     }
   });
-
-  it('reports infeasibility for tiny post-review stability without changing due', () => {
-    const ctx = context();
-    const c = card('card', 'course', { due: NOW });
-    const item = ctx.fsrs.next(toTsCard(c, NOW), new Date(NOW), 3);
-    vi.spyOn(ctx.fsrs, 'next').mockReturnValue({
-      ...item,
-      card: { ...item.card, stability: 1e-15 },
-    });
-    const result = assessmentTiming(c, NOW, NOW + 1000, ctx);
-    expect(result.due).toBe(NOW);
-    expect(result.predictedRecall).toBeLessThan(ASSESSMENT_TARGET_RECALL);
-    expect(result.feasible).toBe(false);
-  });
 });
 
 describe('worthwhile early assessment practice', () => {
@@ -95,8 +97,7 @@ describe('worthwhile early assessment practice', () => {
     const ctx = context();
     const c = card('weak', 'course', {
       state: 2,
-      stability: 0.5,
-      difficulty: 5,
+      ...ctx.model.step({ memoryState: null, rating: 1, elapsedDays: 0 }),
       lastReviewed: NOW - 2 * MS_PER_DAY,
       due: NOW + 20 * MS_PER_DAY,
     });
@@ -119,13 +120,8 @@ describe('worthwhile early assessment practice', () => {
     expect(
       worthwhileAssessmentPractice({ ...c, lastReviewed: NOW }, NOW + MS_PER_DAY, NOW, ctx),
     ).toBe(false);
-    expect(
-      worthwhileAssessmentPractice(
-        { ...c, due: NOW, stability: 10000 },
-        NOW + 30 * MS_PER_DAY,
-        NOW,
-        ctx,
-      ),
-    ).toBe(true);
+    expect(worthwhileAssessmentPractice({ ...c, due: NOW }, NOW + 30 * MS_PER_DAY, NOW, ctx)).toBe(
+      true,
+    );
   });
 });

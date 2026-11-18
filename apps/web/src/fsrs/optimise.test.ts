@@ -4,7 +4,7 @@ import {
   FSRSBindingItem,
   FSRSBindingReview,
 } from '@open-spaced-repetition/binding';
-import { checkParameters, default_w } from 'ts-fsrs';
+import { checkFSRS7Parameters, FSRS7_DEFAULT_WEIGHTS as default_w } from 'ts-fsrs/models/fsrs-7';
 import {
   chronologicallySplitSequences,
   countReviews,
@@ -42,6 +42,7 @@ function cardWith(grades: Grade[], startMs: number, gapDays = 2): Card {
     front: '',
     back: '',
     stability: 1,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: history[history.length - 1]?.timestamp ?? null,
     reps: grades.length,
@@ -122,15 +123,16 @@ describe('validateFittedWeights', () => {
     expect(tryValidateFittedWeights([...default_w]).ok).toBe(true);
   });
 
-  it('rejects weights outside FSRS valid ranges', () => {
-    const bad = [...default_w];
-    bad[0] = 999;
-    expect(tryValidateFittedWeights(bad).ok).toBe(false);
-    expect(() => validateFittedWeights(bad)).toThrow();
-  });
-
-  it('rejects the wrong number of weights', () => {
-    expect(tryValidateFittedWeights([1, 2, 3]).ok).toBe(false);
+  it.each([
+    ['legacy FSRS-6 layout', [...default_w].slice(0, 21)],
+    ['non-finite weight', [...default_w].map((w, i) => (i === 20 ? NaN : w))],
+    ['initial stability outside bounds', [...default_w].map((w, i) => (i === 0 ? 999 : w))],
+    ['fast-trace weight outside bounds', [...default_w].map((w, i) => (i === 33 ? 1 : w))],
+    ['unordered initial stabilities', [...default_w].map((w, i) => (i === 0 ? 4 : w))],
+    ['fast-trace cross-weight constraint', [...default_w].map((w, i) => (i === 25 ? 0.98 : w))],
+  ])('rejects %s', (_name, weights) => {
+    expect(tryValidateFittedWeights(weights).ok).toBe(false);
+    expect(() => validateFittedWeights(weights)).toThrow();
   });
 });
 
@@ -171,6 +173,29 @@ describe('chronological train/validation split', () => {
 });
 
 describe('evaluateParameters', () => {
+  it('scores fractional-day lapses with the FSRS-7 dual-trace replay, including training context', () => {
+    const start = Date.UTC(2026, 0, 1);
+    const sequences = [
+      {
+        timestamps: [0, 0.25, 0.375, 2.875, 3.375].map((days) => start + days * MS_PER_DAY),
+        grades: [3, 1, 3, 4, 2] as Grade[],
+      },
+    ];
+    // Frozen using binding 0.6.1's Rust nextStates and the dual-trace curve.
+    // Float32 native states account for the tolerance against the JS runtime.
+    const all = evaluateParameters(sequences, [...default_w]);
+    expect(all.scored).toBe(4);
+    expect(all.logLoss).toBeCloseTo(0.8789291705688029, 6);
+    const heldOut = evaluateParameters(sequences, [...default_w], undefined, {
+      scoreAfterTimestamp: start + 0.25 * MS_PER_DAY,
+    });
+    expect(heldOut.scored).toBe(3);
+    expect(heldOut.logLoss).toBeCloseTo(0.16551080683706929, 6);
+    expect(sequenceToBindingReviews(sequences[0]).map((r) => r.deltaT)).toEqual([
+      0, 0.25, 0.125, 2.5, 0.5,
+    ]);
+  });
+
   it('returns a finite mean log loss over scored (non-first) reviews', () => {
     const seqs = reviewSequences(syntheticDeck());
     const { logLoss, scored } = evaluateParameters(seqs, [...default_w]);
@@ -194,12 +219,12 @@ describe('evaluateParameters', () => {
 });
 
 describe('optimiseParameters', () => {
-  it('produces a valid 21-weight array via the official trainer', async () => {
+  it('produces a valid 34-weight array via the official trainer', async () => {
     const cards = syntheticDeck();
     const result = await optimiseParameters(cards, bindingDeps);
 
-    expect(result.w).toHaveLength(21);
-    expect(() => checkParameters(result.w)).not.toThrow();
+    expect(result.w).toHaveLength(34);
+    expect(() => checkFSRS7Parameters(result.w)).not.toThrow();
     expect(Number.isFinite(result.before)).toBe(true);
     expect(Number.isFinite(result.after)).toBe(true);
     expect(result.scored).toBeGreaterThanOrEqual(0);
@@ -226,7 +251,7 @@ describe('optimiseParameters', () => {
     const sequences = reviewSequences(cards);
     const { cutoffTimestamp } = chronologicallySplitSequences(sequences);
     const overconfident = [...default_w];
-    overconfident.splice(0, 4, 100, 100, 100, 100);
+    overconfident.splice(0, 4, 50, 100, 100, 100);
     const heldOutLoss = (w: number[]) =>
       evaluateParameters(sequences, w, 0.9, { scoreAfterTimestamp: cutoffTimestamp }).logLoss;
     const [better, worse] = [[...default_w], overconfident].sort(

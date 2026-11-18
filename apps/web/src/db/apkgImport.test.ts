@@ -17,6 +17,7 @@ function makeCard(overrides: Partial<ApkgCardDraft> = {}): ApkgCardDraft {
     front: 'Question',
     back: 'Answer',
     stability: 12,
+    stabilityFast: null,
     difficulty: 4.2,
     lastReviewed: 1_700_000_000_000,
     reps: 7,
@@ -91,6 +92,7 @@ describe('importApkgResult', () => {
 
     expect(returned).toMatchObject({
       stability: 12,
+      stabilityFast: null,
       difficulty: 4.2,
       lastReviewed: 1_700_000_000_000,
       reps: 7,

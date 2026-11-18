@@ -1,3 +1,4 @@
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import 'fake-indexeddb/auto';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -53,20 +54,27 @@ it.each(['steady', 'exam'] as const)(
       schedulingMode,
       examDate: schedulingMode === 'exam' ? NOW + DAY : undefined,
     });
+    const model = modelOf(course.fsrsParameters);
+    const weakMemory = model.step({ memoryState: null, rating: 1, elapsedDays: 0 });
+    const secureMemory = model.step({
+      memoryState: model.step({ memoryState: null, rating: 3, elapsedDays: 0 }),
+      rating: 3,
+      elapsedDays: 100,
+    });
     const due = await createCourseCard(course.id, 'front_back', 'Due', 'Answer');
     const future = await createCourseCard(course.id, 'front_back', 'Future', 'Answer');
     await createCourseCard(course.id, 'front_back', 'New', 'Answer');
     await db.cards.update(due.id, {
       state: 2,
       due: NOW - 1,
-      stability: 1e8,
+      ...secureMemory,
       lastReviewed: NOW - DAY,
       reps: 3,
     });
     await db.cards.update(future.id, {
       state: 2,
       due: NOW + DAY,
-      stability: 0.5,
+      ...weakMemory,
       lastReviewed: NOW - DAY,
       reps: 3,
     });
@@ -107,16 +115,23 @@ it.each(['steady', 'exam'] as const)(
       schedulingMode,
       examDate: schedulingMode === 'exam' ? NOW + 7 * DAY : undefined,
     });
+    const model = modelOf(course.fsrsParameters);
+    const weakMemory = model.step({ memoryState: null, rating: 1, elapsedDays: 0 });
+    const secureMemory = model.step({
+      memoryState: model.step({ memoryState: null, rating: 3, elapsedDays: 0 }),
+      rating: 3,
+      elapsedDays: 100,
+    });
     const weak = await createCourseCard(course.id, 'front_back', 'Weak', 'Answer');
     const secure = await createCourseCard(course.id, 'front_back', 'Secure', 'Answer');
-    for (const [card, stability] of [
-      [weak, 0.5],
-      [secure, 1e8],
+    for (const [card, memory] of [
+      [weak, weakMemory],
+      [secure, secureMemory],
     ] as const) {
       await db.cards.update(card.id, {
         state: 2,
         due: NOW + DAY,
-        stability,
+        ...memory,
         lastReviewed: NOW - DAY,
         reps: 3,
       });

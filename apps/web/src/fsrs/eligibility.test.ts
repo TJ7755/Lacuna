@@ -14,6 +14,7 @@ function makeCard(over: Partial<Card> & Pick<Card, 'id'>): Card {
     front: 'q',
     back: 'a',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

@@ -56,6 +56,8 @@ function fixture() {
         primaryLessonId: 'school',
         lastReviewed: now - MS_PER_DAY,
         stability: 30,
+        stabilityFast: 24,
+        difficulty: 5,
         state: 2,
         reps: 1,
       }),
@@ -206,6 +208,7 @@ it('keeps independent diagnostic counts separate from recall and supports Questi
       due: true,
       schedule: {
         stability: null,
+        stabilityFast: null,
         difficulty: null,
         lastReviewed: null,
         reps: 0,

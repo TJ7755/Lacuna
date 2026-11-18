@@ -22,6 +22,7 @@ interface AuthoredBundle {
 const SCHEDULE_KEYS = new Set([
   'migratedToSetId',
   'stability',
+  'stabilityFast',
   'difficulty',
   'lastReviewed',
   'reps',

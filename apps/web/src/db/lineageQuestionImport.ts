@@ -102,6 +102,8 @@ function questionSemanticChanged(
 function questionSchedule(question: QuestionDefinition): QuestionScheduleState {
   return {
     stability: question.stability,
+    stabilityFast: question.stabilityFast ?? null,
+
     difficulty: question.difficulty,
     lastReviewed: question.lastReviewed,
     reps: question.reps,

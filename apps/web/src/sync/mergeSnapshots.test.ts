@@ -59,13 +59,14 @@ describe('peer record and deletion reconciliation', () => {
     expect(merged.userPerformance).toEqual([]);
   });
 
-  it('takes newest-wins content and ignores the newer card scheduler fields', () => {
+  it('takes newest-wins content and preserves opaque learnt schedules without history', () => {
     const a = backup({
       cards: [
         card('c1', {
           front: 'old',
           updatedAt: 10,
           stability: 99,
+          stabilityFast: null,
           difficulty: 9,
           state: 2,
           due: 500,
@@ -80,6 +81,7 @@ describe('peer record and deletion reconciliation', () => {
           front: 'new',
           updatedAt: 20,
           stability: 12,
+          stabilityFast: null,
           difficulty: 3,
           state: 2,
           due: 800,
@@ -92,9 +94,9 @@ describe('peer record and deletion reconciliation', () => {
     expect(merged.cards).toHaveLength(1);
     expect(merged.cards[0].front).toBe('new');
     expect(merged.cards[0].updatedAt).toBe(20);
-    expect(merged.cards[0].stability).toBeNull();
-    expect(merged.cards[0].due).toBeNull();
-    expect(merged.cards[0].reps).toBe(0);
+    expect(merged.cards[0].stability).toBe(12);
+    expect(merged.cards[0].due).toBe(800);
+    expect(merged.cards[0].reps).toBe(3);
     expect(merged.cards[0].history).toEqual([]);
   });
 

@@ -82,6 +82,7 @@ const mockCard = {
   updatedAt: 1,
   state: 0,
   stability: null,
+  stabilityFast: null,
   difficulty: null,
   due: null,
   scheduledDays: 0,

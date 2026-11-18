@@ -40,6 +40,7 @@ describe('cram sessions', () => {
         ...initialCards[0],
         state: 2 as const,
         stability: 100,
+        stabilityFast: 0.02,
         difficulty: 5,
         lastReviewed: NOW,
         reps: 1,
@@ -84,6 +85,7 @@ describe('cram sessions', () => {
     const second = deck('second', 1);
     const strong = card('strong', first.id, {
       stability: 100,
+      stabilityFast: 0.02,
       difficulty: 5,
       lastReviewed: NOW,
       reps: 1,
@@ -91,6 +93,7 @@ describe('cram sessions', () => {
     });
     const weak = card('weak', second.id, {
       stability: 0.5,
+      stabilityFast: 0.02,
       difficulty: 5,
       lastReviewed: NOW,
       reps: 1,
@@ -106,6 +109,7 @@ describe('cram sessions', () => {
     const d = deck('deck', 1);
     const weak = card('weak', d.id, {
       stability: 0.5,
+      stabilityFast: 0.02,
       difficulty: 5,
       lastReviewed: NOW,
       reps: 1,
@@ -113,6 +117,7 @@ describe('cram sessions', () => {
     });
     const strong = card('strong', d.id, {
       stability: 100,
+      stabilityFast: 0.02,
       difficulty: 5,
       lastReviewed: NOW,
       reps: 1,
@@ -151,6 +156,7 @@ describe('cram sessions', () => {
     const d = deck('deck', 1);
     const weak = card('weak', d.id, {
       stability: 0.5,
+      stabilityFast: 0.02,
       difficulty: 5,
       lastReviewed: NOW,
       reps: 1,
@@ -158,6 +164,7 @@ describe('cram sessions', () => {
     });
     const strong = card('strong', d.id, {
       stability: 100,
+      stabilityFast: 0.02,
       difficulty: 5,
       lastReviewed: NOW,
       reps: 1,

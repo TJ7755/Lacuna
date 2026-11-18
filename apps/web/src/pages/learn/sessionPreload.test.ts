@@ -1,3 +1,4 @@
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { rememberAssetImageSize, resolveAssetUrl } from '../../db/assetCache';
 import { assetUrl } from '../../db/assets';
@@ -22,7 +23,9 @@ afterEach(() => {
 });
 
 const now = new Date('2026-10-17T12:00:00Z').getTime();
-function card(id: string, stability = 2): Card {
+const model = modelOf(defaultFsrsParameters());
+const initialMemory = model.step({ memoryState: null, rating: 3, elapsedDays: 0 });
+function card(id: string, reviewGapDays = 2): Card {
   return {
     id,
     conceptId: id,
@@ -31,8 +34,7 @@ function card(id: string, stability = 2): Card {
     type: 'front_back',
     front: `![Cell](${assetUrl(id.padStart(64, '0'))})`,
     back: 'Mitochondrion',
-    stability,
-    difficulty: 5,
+    ...model.step({ memoryState: initialMemory, rating: 3, elapsedDays: reviewGapDays }),
     lastReviewed: now - 10 * 86_400_000,
     reps: 3,
     lapses: 0,

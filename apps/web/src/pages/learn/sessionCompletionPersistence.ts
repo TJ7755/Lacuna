@@ -4,10 +4,7 @@ import { savePracticeMilestoneProgress } from '../../db/practiceNodeRepository';
 import type { Card, Course, RevisionPlan } from '@lacuna/core/db/types';
 import type { ExamDateContext } from '@lacuna/core/fsrs/examDate';
 import type { SessionContext } from '@lacuna/core/fsrs/session';
-import {
-  createHalfLifeLogisticModel,
-  readinessFromPredictions,
-} from '@lacuna/core/fsrs/halfLifeLogisticModel';
+import { createFsrs7CramModel, readinessFromPredictions } from '@lacuna/core/fsrs/fsrs7CramModel';
 import { practiceReadiness } from '../../course/studyPools';
 import type { SessionSummary } from '../../components/learn/types';
 import { ratchetSessionUnlocks } from './sessionUnlocks';
@@ -120,7 +117,7 @@ export async function persistSessionCompletion(
             : undefined;
         const objectiveContext = completed.context?.decks.values().next().value?.oc;
         const model = objectiveContext
-          ? createHalfLifeLogisticModel(objectiveContext.ctx.decay)
+          ? createFsrs7CramModel(objectiveContext.deck.fsrsParameters)
           : undefined;
         const readinessCards = completed.cards.filter((card) =>
           updatedPlan.scope.eligibleCardIds.includes(card.id),

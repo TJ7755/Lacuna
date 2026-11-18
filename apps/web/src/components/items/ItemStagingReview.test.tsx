@@ -49,6 +49,8 @@ function existingQuestion(prompt: string): FixedQuestionDefinition {
     authoringRevisionId: 'authoring-revision-1',
     authoringUpdatedAt: 1,
     stability: null,
+    stabilityFast: null,
+
     difficulty: null,
     lastReviewed: null,
     reps: 0,

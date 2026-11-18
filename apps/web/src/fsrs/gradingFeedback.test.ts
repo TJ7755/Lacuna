@@ -1,3 +1,4 @@
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { describe, expect, it } from 'vitest';
 import { reviewFeedbackMessage, reviewRetentionMessage } from './gradingFeedback';
 import { predictedRetrievabilityAtHorizon } from '@lacuna/core/fsrs/progress';
@@ -20,6 +21,12 @@ function makeDeck(overrides: Partial<LegacyDeckRecord> = {}): LegacyDeckRecord {
   };
 }
 
+const initialMemory = modelOf(defaultFsrsParameters()).step({
+  memoryState: null,
+  rating: 3,
+  elapsedDays: 0,
+});
+
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
     id: 'c1',
@@ -29,8 +36,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
     type: 'front_back',
     front: 'q',
     back: 'a',
-    stability: 10,
-    difficulty: 5,
+    ...initialMemory,
     lastReviewed: NOW,
     reps: 1,
     lapses: 0,
@@ -64,7 +70,7 @@ describe('reviewRetentionMessage', () => {
   it('projects post-review retention at a future deck exam', () => {
     const card = makeCard();
     const deck = makeDeck();
-    const expected = Math.round(predictedRetrievabilityAtHorizon(card, deck, NOW) * 100);
+    const expected = Math.round(predictedRetrievabilityAtHorizon(card, deck, NOW)! * 100);
     expect(reviewRetentionMessage(3, card, deck, undefined, NOW)).toBe(
       `Good, ${expected}% recall at exam`,
     );

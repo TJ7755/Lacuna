@@ -1,6 +1,8 @@
 Use British English and no emojis. Keep changes scoped; inspect current code and callers, and extend existing systems.
 Operational procedures: docs/README.md. Contribution and validation policy: CONTRIBUTING.md.
 
+When running in T3 Code, ALWAYS use the T3 orchestrator for subagents, delegation and parallel agent work. NEVER use another orchestrator or native subagent tools in T3 Code unless the maintainer explicitly asks. If T3 orchestration is unavailable in a T3 Code session, report the blocker; do not fall back. In other harnesses, including Claude Code, use the harness's available orchestration.
+
 NEVER add or retain text, controls or any other page element unless it serves an aesthetic function or is essential to the page's function. Preserve generous spacing. Put non-essential explanations in Help or documentation. Avoid duplicate visible controls. Lacuna is keyboard-first. Support keyboard shortcuts and omit visible shortcut labels across the product UI. Put shortcut reference in Help or documentation.
 Do not use harness memory features or read, create or update MEMORIES.md.
 NEVER use computer use without explicit permission from the user. Using the preview browser and Playwright to capture images is permitted without additional permission.

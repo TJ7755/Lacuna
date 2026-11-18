@@ -97,6 +97,7 @@ function generatedQuestion(): QuestionDefinition {
     authoringUpdatedAt: 1,
     scheduleEpoch: { id: 'epoch-1', startedAt: 1, reason: 'created', baseline: { kind: 'new' } },
     stability: 1,
+    stabilityFast: 2,
     difficulty: 5,
     lastReviewed: 1,
     reps: 1,
@@ -155,6 +156,8 @@ function records(course: Course) {
             state: 2 as const,
             lastReviewed: now - MS_PER_DAY,
             stability: 20,
+            stabilityFast: 2,
+            difficulty: 5,
             due: now + 19 * MS_PER_DAY,
           }
         : {}),

@@ -13,7 +13,7 @@ import type {
 } from '@lacuna/core/db/types';
 import type { ExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { rAtExam } from '@lacuna/core/fsrs/forwardSim';
-import { decayOf } from '@lacuna/core/fsrs/fsrs';
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { cardSchedulingHorizon } from '@lacuna/core/fsrs/horizon';
 import { studyPool } from '@lacuna/core/fsrs/eligibility';
 import type { ReviewActivity } from '@lacuna/core/fsrs/heatmap';
@@ -175,10 +175,10 @@ export function practiceReadiness(
   examDateContext: ExamDateContext,
   now: number = Date.now(),
 ): PracticeReadiness {
-  const decay = decayOf(course.fsrsParameters);
+  const model = modelOf(course.fsrsParameters);
   const securedCardCount = scope.reduce((count, card) => {
     const horizon = cardSchedulingHorizon(card, course, examDateContext, now);
-    return count + (rAtExam(card, horizon, now, decay) >= MASTERY_R ? 1 : 0);
+    return count + ((rAtExam(card, horizon, now, model) ?? 0) >= MASTERY_R ? 1 : 0);
   }, 0);
   return {
     securedCardCount,

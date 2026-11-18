@@ -192,6 +192,7 @@ export function buildLacunaCard(
     front: mapping.front,
     back: mapping.back,
     stability,
+    stabilityFast: null,
     difficulty,
     lastReviewed: history.length > 0 ? history[history.length - 1].timestamp : null,
     reps: ankiCard.reps,

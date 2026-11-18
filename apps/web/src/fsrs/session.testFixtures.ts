@@ -35,6 +35,7 @@ export function card(id: string, deckId: string, extra?: Partial<Card>): Card {
     front: id,
     back: 'answer',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

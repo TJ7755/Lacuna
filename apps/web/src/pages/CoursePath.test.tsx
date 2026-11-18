@@ -262,6 +262,7 @@ describe('CoursePath View mode', () => {
         ...makeCard(`card-${lesson.id}`, lesson.id),
         state: 2,
         stability: 10,
+        stabilityFast: null,
         lastReviewed: Date.now(),
         due: Date.now() + MS_PER_DAY,
       }));

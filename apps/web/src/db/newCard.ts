@@ -27,6 +27,7 @@ export function newCard(fields: NewCardFields): Card {
     {
       ...fields,
       stability: null,
+      stabilityFast: null,
       difficulty: null,
       lastReviewed: null,
       reps: 0,

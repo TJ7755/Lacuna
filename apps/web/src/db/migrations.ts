@@ -8,6 +8,7 @@ import type { Card, CardType, LessonCardExposure } from '@lacuna/core/db/types';
  */
 export type LegacyCard = Omit<
   Card,
+  | 'stabilityFast'
   | 'conceptId'
   | 'reps'
   | 'lapses'
@@ -22,6 +23,7 @@ export type LegacyCard = Omit<
   Partial<
     Pick<
       Card,
+      | 'stabilityFast'
       | 'conceptId'
       | 'reps'
       | 'lapses'
@@ -50,6 +52,7 @@ export function migrateCardRecord(card: LegacyCard): Card {
   const type: CardType = card.type === 'typing' ? 'front_back' : (card.type as CardType);
   return {
     ...card,
+    stabilityFast: card.stabilityFast ?? null,
     // This is only a temporary shape used by pre-v24 upgrade steps. Schema v24
     // replaces it with the stable, scope-aware Concept identity.
     conceptId: card.conceptId ?? `concept:pre-v24:${encodeURIComponent(card.id)}`,

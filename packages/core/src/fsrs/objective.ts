@@ -34,7 +34,7 @@ import type { Card, SchedulerConfig, ExamObjective } from '@lacuna/core/db/types
  */
 const EXPECTED_MARKS_EPSILON = 5e-3;
 
-/** Pre-built scoring context for a deck (engine + decay + objective). */
+/** Pre-built scoring context for a deck (engine + model + objective). */
 export interface ObjectiveContext {
   objective: ExamObjective;
   // Any SchedulerConfig (a Deck or a Course).
@@ -71,7 +71,7 @@ export function progressValue(
   const available = availableCards(cards, now);
   return deck.examObjective === 'securedTopics'
     ? masteryFraction(available, deck, now, examDateContext)
-    : averagePredictedRetrievability(available, deck, now, examDateContext);
+    : (averagePredictedRetrievability(available, deck, now, examDateContext) ?? 0);
 }
 
 /**
@@ -88,7 +88,7 @@ export function scoreCard(card: Card, oc: ObjectiveContext, now: number = Date.n
 
   // securedTopics: rank cards by whether reviewing now secures them (>= 0.90),
   // cheapest to secure first.
-  const rNo = rAtExam(card, horizon, now, ctx.decay);
+  const rNo = rAtExam(card, horizon, now, ctx.model) ?? 0;
   if (rNo >= MASTERY_R) return -1; // already secured: nothing to gain, lowest priority
   const rYes = rAtExamIfReviewedNow(card, ctx.expectedGrade, horizon, now, ctx);
   if (rYes >= MASTERY_R) {

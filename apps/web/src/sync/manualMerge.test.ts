@@ -112,6 +112,7 @@ function card(id: string, overrides: Partial<Card> = {}): Card {
     front: 'Q',
     back: 'A',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

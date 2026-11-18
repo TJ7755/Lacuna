@@ -24,6 +24,7 @@ describe('single and multi-unit completion paths', () => {
     const cards = [
       card('first-card', first.id, {
         stability: 10_000,
+        stabilityFast: 2,
         difficulty: 5,
         lastReviewed: NOW,
         reps: 1,
@@ -31,6 +32,7 @@ describe('single and multi-unit completion paths', () => {
       }),
       card('second-card', second.id, {
         stability: 10_000,
+        stabilityFast: 2,
         difficulty: 5,
         lastReviewed: NOW,
         reps: 1,
@@ -56,6 +58,7 @@ describe('session completion progress', () => {
     card(id, unit.id, {
       state: 2,
       stability: 3,
+      stabilityFast: 2,
       difficulty: 5,
       reps: 4,
       lastReviewed: NOW - 4 * MS_PER_DAY,

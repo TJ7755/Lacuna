@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { courseForecast, examDayHistory } from '@lacuna/core/fsrs/courseForecast';
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { rAtExam } from '@lacuna/core/fsrs/forwardSim';
 import { defaultFsrsParameters, MS_PER_DAY } from '@lacuna/core/fsrs/params';
-import type { Card, SchedulerConfig } from '@lacuna/core/db/types';
+import type { Card, Grade, SchedulerConfig } from '@lacuna/core/db/types';
 import type { ReviewHistoryEntry } from '@lacuna/core/db/reviewHistory';
 
 const NOW = 1_800_000_000_000;
@@ -28,6 +29,7 @@ function makeCard(partial: Partial<Card> = {}): Card {
     front: '',
     back: '',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,
@@ -43,34 +45,40 @@ function makeCard(partial: Partial<Card> = {}): Card {
   };
 }
 
-function reviewedCard(id: string, stability: number, daysAgo: number): Card {
+const model = modelOf(defaultFsrsParameters());
+const initialMemory = model.step({ memoryState: null, rating: 3, elapsedDays: 0 });
+function reviewedCard(id: string, gapDays: number, daysAgo: number): Card {
   const lastReviewed = NOW - daysAgo * MS_PER_DAY;
   return makeCard({
     id,
-    stability,
-    difficulty: 5,
+    ...model.step({ memoryState: initialMemory, rating: 3, elapsedDays: gapDays }),
     lastReviewed,
     reps: 3,
     state: 2,
-    due: lastReviewed + stability * MS_PER_DAY,
-    scheduledDays: Math.round(stability),
+    due: lastReviewed + gapDays * MS_PER_DAY,
+    scheduledDays: Math.round(gapDays),
   });
 }
 
-const decay = -defaultFsrsParameters().w[20];
-
-function entry(cardId: string, daysAgo: number, stabilityAfter: number): ReviewHistoryEntry {
+function entry(
+  cardId: string,
+  daysAgo: number,
+  gapDays: number,
+  grade: Grade = 3,
+): ReviewHistoryEntry {
+  const memory = model.step({ memoryState: initialMemory, rating: grade, elapsedDays: gapDays });
   return {
     id: `${cardId}-${daysAgo}`,
     cardId,
     timestamp: NOW - daysAgo * MS_PER_DAY,
-    grade: 3,
+    grade,
     responseTimeSec: 4,
     distracted: false,
     stabilityBefore: null,
-    stabilityAfter,
+    stabilityAfter: memory.stability,
+    stabilityFastAfter: memory.stabilityFast,
     difficultyBefore: null,
-    difficultyAfter: 5,
+    difficultyAfter: memory.difficulty,
     retrievabilityAtReview: null,
   };
 }
@@ -80,9 +88,21 @@ describe('courseForecast', () => {
     const cards = [reviewedCard('a', 5, 2), reviewedCard('b', 12, 6), makeCard({ id: 'new' })];
     const f = courseForecast(cards, makeCourse({ examDate: NOW + 30 * MS_PER_DAY }), NOW);
     expect(f.ifStopped).toBeCloseTo(
-      (rAtExam(cards[0], f.end, NOW, decay) + rAtExam(cards[1], f.end, NOW, decay)) / 3,
+      ((rAtExam(cards[0], f.end, NOW, model) ?? 0) + (rAtExam(cards[1], f.end, NOW, model) ?? 0)) /
+        3,
       12,
     );
+  });
+
+  it('withholds the whole forecast when any learnt card has opaque legacy memory', () => {
+    const opaque = reviewedCard('legacy', 5, 2);
+    opaque.stabilityFast = null;
+    const forecast = courseForecast(
+      [reviewedCard('known', 12, 1), opaque, makeCard({ id: 'new' })],
+      makeCourse({ examDate: NOW + 7 * MS_PER_DAY }),
+      NOW,
+    );
+    expect(forecast.ifStopped).toBeNull();
   });
 
   it('reads 0 for a course that has not been studied', () => {
@@ -112,7 +132,7 @@ describe('examDayHistory', () => {
     expect(points[0].at).toBe(from);
     expect(points[9].at).toBe(NOW);
     expect(points[9].recall).toBeCloseTo(
-      courseForecast([card, makeCard({ id: 'new' })], course, NOW).ifStopped,
+      courseForecast([card, makeCard({ id: 'new' })], course, NOW).ifStopped as number,
       12,
     );
   });
@@ -126,22 +146,61 @@ describe('examDayHistory', () => {
       (point) => point.at >= NOW - 10 * MS_PER_DAY && point.at < NOW - 2 * MS_PER_DAY,
     );
     expect(before.every((point) => point.recall === 0)).toBe(true);
-    expect(after.every((point) => point.recall > 0)).toBe(true);
+    expect(after.every((point) => (point.recall ?? 0) > 0)).toBe(true);
   });
 
-  it('uses the stability each past review recorded, so a lapse lowers the figure', () => {
+  it('leaves old history without a fast trace unavailable until complete recorded memory resumes', () => {
+    const card = reviewedCard('a', 5, 2);
+    const legacy = entry('a', 10, 2);
+    delete legacy.stabilityFastAfter;
+    const points = examDayHistory(
+      [card],
+      [entry('a', 14, 1), legacy, entry('a', 6, 6)],
+      course,
+      end,
+      from,
+      NOW,
+      19,
+    );
+    // An earlier complete state must not be carried forward or replayed through
+    // a legacy review; the card's current fast trace cannot fill this gap either.
+    expect(
+      points.filter((point) => point.at < NOW - 14 * MS_PER_DAY).map((point) => point.recall),
+    ).toEqual([0, 0, 0, 0]);
+    expect(
+      points
+        .filter((point) => point.at >= NOW - 14 * MS_PER_DAY && point.at < NOW - 10 * MS_PER_DAY)
+        .every((point) => point.recall !== null && point.recall > 0),
+    ).toBe(true);
+    expect(
+      points
+        .filter((point) => point.at >= NOW - 10 * MS_PER_DAY && point.at < NOW - 6 * MS_PER_DAY)
+        .map((point) => point.recall),
+    ).toEqual([null, null, null, null]);
+    expect(
+      points
+        .filter((point) => point.at >= NOW - 6 * MS_PER_DAY)
+        .every((point) => point.recall !== null && point.recall > 0),
+    ).toBe(true);
+  });
+
+  it('uses both traces each past review recorded, so a lapse lowers the figure', () => {
     const card = reviewedCard('a', 5, 1);
-    const at = (stability: number) =>
+    const at = (grade: Grade) =>
       examDayHistory(
         [card],
-        [entry('a', 12, 4), entry('a', 6, stability)],
+        [entry('a', 12, 4), entry('a', 6, 6, grade)],
         course,
         end,
         from,
         NOW,
         19,
       ).find((point) => point.at >= NOW - 6 * MS_PER_DAY)!.recall;
-    expect(at(0.5)).toBeLessThan(at(12));
+    const afterLapse = at(1);
+    const afterSuccess = at(3);
+    expect(afterLapse).not.toBeNull();
+    expect(afterSuccess).not.toBeNull();
+    expect(afterLapse!).toBeLessThan(afterSuccess!);
   });
 
   it('traces 5,000 cards with ten reviews each quickly', () => {

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Card, LegacyDeckRecord } from '@lacuna/core/db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '@lacuna/core/fsrs/params';
 import { forgettingCurve } from '@lacuna/core/fsrs/forwardSim';
-import { decayOf } from '@lacuna/core/fsrs/fsrs';
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { CardAnalytics } from './CardAnalytics';
 
 vi.mock('../analytics/useChartColours', () => ({
@@ -41,6 +41,7 @@ function makeCard(): Card {
     front: 'Question',
     back: 'Answer',
     stability: 4,
+    stabilityFast: 2,
     difficulty: 5,
     lastReviewed: NOW - MS_PER_DAY,
     reps: 1,
@@ -74,6 +75,20 @@ afterEach(() => {
 });
 
 describe('CardAnalytics', () => {
+  it('omits recall predictions for opaque memory while retaining review evidence', () => {
+    const card = { ...makeCard(), stabilityFast: null };
+    render(
+      <CardAnalytics
+        card={card}
+        schedulingConfig={makeSchedulingConfig(NOW + MS_PER_DAY)}
+        motionMultiplier={0}
+      />,
+    );
+    expect(screen.queryByText('Predicted recall now')).not.toBeInTheDocument();
+    expect(screen.queryByText('Predicted exam-day recall')).not.toBeInTheDocument();
+    expect(screen.getByText('Total reviews').parentElement).toHaveTextContent('1');
+  });
+
   it('keeps recall and review evidence readable without exposing scheduler internals', () => {
     vi.spyOn(Date, 'now').mockReturnValue(NOW);
     localStorage.setItem('lacuna.advancedDetails', 'false');
@@ -90,7 +105,7 @@ describe('CardAnalytics', () => {
     expect(screen.queryByText('Difficulty')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Predicted recall over time' })).toBeInTheDocument();
     const recallNow = screen.getByText('Predicted recall now').parentElement!;
-    expect(recallNow).toHaveTextContent('97%');
+    expect(recallNow).toHaveTextContent('92%');
     expect(screen.getByText('Predicted exam-day recall')).toBeInTheDocument();
     expect(screen.getByText('Total reviews').parentElement).toHaveTextContent('1');
     expect(screen.getByText('Times forgotten in review').parentElement).toHaveTextContent('0');
@@ -100,7 +115,7 @@ describe('CardAnalytics', () => {
     fireEvent(window, new StorageEvent('storage', { key: 'lacuna.advancedDetails' }));
     expect(screen.getByText('Stability').parentElement).toHaveTextContent('4.0d');
     expect(screen.getByText('Difficulty').parentElement).toHaveTextContent('5.0');
-    expect(screen.getByText('Current R').parentElement).toHaveTextContent('97%');
+    expect(screen.getByText('Current R').parentElement).toHaveTextContent('92%');
     expect(screen.getByRole('heading', { name: 'Forgetting curve' })).toBeInTheDocument();
     expect(container).not.toHaveTextContent('Predicted recall now');
   });
@@ -200,7 +215,7 @@ describe('forgetting curve hover', () => {
           expect(tooltip).toHaveTextContent(expectedDate);
           expect(tooltip).toHaveTextContent('Predicted recall');
           const recall = Math.round(
-            forgettingCurve(days, card.stability!, decayOf(defaultFsrsParameters())) * 100,
+            (forgettingCurve(days, card, modelOf(defaultFsrsParameters())) ?? 0) * 100,
           );
           expect(tooltip).toHaveTextContent(`${recall}%`);
           const dot = container.querySelector('.recharts-active-dot circle')!;

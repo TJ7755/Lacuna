@@ -242,6 +242,7 @@ it.each([true, false])(
       due: reviewedCard.due,
       reps: reviewedCard.reps,
       stability: reviewedCard.stability,
+      stabilityFast: reviewedCard.stabilityFast,
       difficulty: reviewedCard.difficulty,
       lastReviewed: reviewedCard.lastReviewed,
     });

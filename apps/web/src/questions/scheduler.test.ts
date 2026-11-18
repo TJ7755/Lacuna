@@ -1,3 +1,5 @@
+import { FSRS6_DEFAULT_WEIGHTS } from 'ts-fsrs/models/fsrs-6';
+import { migrateFsrs7Questions } from './fsrs7Migration';
 import { describe, expect, it } from 'vitest';
 import type { FsrsParameters, Grade } from '@lacuna/core/db/types';
 import { defaultFsrsParameters } from '@lacuna/core/fsrs/params';
@@ -17,6 +19,7 @@ const NOW = Date.UTC(2026, 7, 24, 12);
 function newSchedule(): QuestionScheduleState {
   return {
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,
@@ -94,6 +97,35 @@ function answeredAttempt(
 }
 
 describe('Question scheduler', () => {
+  it('replays immutable historical configs with FSRS-7 defaults and the recorded scheduling policy', () => {
+    const parameters = {
+      ...defaultFsrsParameters(),
+      w: [...FSRS6_DEFAULT_WEIGHTS],
+      requestRetention: 0.94,
+      learning_steps: ['2m'],
+      enable_fuzz: false,
+    };
+    const receipt = structuredClone(parameters);
+    const result = scheduleQuestionReview(newSchedule(), 3, parameters, NOW);
+    expect(result.schedulerConfig.w).toHaveLength(34);
+    expect(result.schedulerConfig).toMatchObject({
+      requestRetention: 0.94,
+      learning_steps: ['2m'],
+    });
+    expect(result.schedule.stabilityFast).toBeGreaterThan(0);
+    expect(parameters).toEqual(receipt);
+    // Frozen FSRS-6 receipt fingerprint remains valid while replay uses FSRS-7.
+    expect(questionSchedulerConfigFingerprint(parameters)).toBe('qfsrs1:a8b085f5');
+    const attempt = answeredAttempt('legacy-config', NOW, 3, {
+      schedulerVersion: 'fsrs-6-question-v1',
+      schedulerConfig: parameters,
+      schedulerConfigFingerprint: 'qfsrs1:a8b085f5',
+    });
+    expect(replayQuestionSchedule(question(), [attempt], defaultFsrsParameters())).toEqual(
+      result.schedule,
+    );
+  });
+
   it('applies FSRS with fuzz disabled and leaves the input state and parameters untouched', () => {
     const state = newSchedule();
     const parameters = defaultFsrsParameters();
@@ -191,5 +223,74 @@ describe('Question scheduler', () => {
         parameters,
       ),
     ).toEqual(expected);
+  });
+});
+
+describe('Question FSRS-7 migration', () => {
+  it('rebuilds both traces from complete answer receipts without moving the schedule or changing evidence', () => {
+    const lastReviewed = NOW + 0.25 * 86_400_000;
+    const legacy = {
+      ...question(),
+      stability: 99,
+      difficulty: 9,
+      reps: 2,
+      lapses: 1,
+      lastReviewed,
+      due: NOW + 10 * 86_400_000,
+      state: 2 as const,
+      scheduledDays: 10,
+      learningSteps: 1,
+    };
+    const attempts = [answeredAttempt('a', NOW, 3), answeredAttempt('b', lastReviewed, 1)];
+    const originalEvidence = structuredClone(attempts);
+    const [migrated] = migrateFsrs7Questions([legacy], attempts, []);
+    expect(migrated.stability).toBeCloseTo(1.1705386638641357, 5);
+    expect(migrated.stabilityFast).toBeCloseTo(0.2061578780412674, 5);
+    expect(migrated).toMatchObject({
+      due: legacy.due,
+      state: 2,
+      scheduledDays: 10,
+      learningSteps: 1,
+      reps: 2,
+      lapses: 1,
+      lastReviewed,
+    });
+    expect(attempts).toEqual(originalEvidence);
+    expect(legacy.stabilityFast).toBeNull();
+  });
+
+  it('keeps opaque memory and its schedule until a real answer initialises both traces', () => {
+    const state = {
+      ...newSchedule(),
+      stability: 18,
+      difficulty: 4,
+      reps: 19,
+      lapses: 2,
+      lastReviewed: NOW,
+      due: NOW + 86_400_000,
+      state: 1 as const,
+      learningSteps: 1,
+    };
+    const legacy = {
+      ...question({ kind: 'legacy-opaque', sourceCardId: 'old', state, reason: 'missing-history' }),
+      ...state,
+    };
+    const [migrated] = migrateFsrs7Questions([legacy], [], []);
+    expect(migrated).toEqual(legacy);
+    expect(replayQuestionSchedule(migrated, [], defaultFsrsParameters())).toEqual(state);
+    const next = scheduleQuestionReview(migrated, 3, defaultFsrsParameters(), NOW + 60_000);
+    expect(next.retrievabilityAtAttempt).toBeNull();
+    expect(next.schedule.stabilityFast).toBeGreaterThan(0);
+    expect(next.schedule.reps).toBe(20);
+    expect(next.schedule.lapses).toBe(2);
+    const withAnswer = { ...migrated, ...next.schedule, stabilityFast: null, due: migrated.due };
+    const [replayed] = migrateFsrs7Questions(
+      [withAnswer],
+      [answeredAttempt('after-baseline', NOW + 60_000, 3)],
+      [],
+    );
+    expect(replayed.stabilityFast).toBeCloseTo(3.13768, 5);
+    expect(replayed.due).toBe(migrated.due);
+    expect(replayed.reps).toBe(20);
   });
 });

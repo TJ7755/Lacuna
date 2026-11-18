@@ -1,3 +1,4 @@
+import type { Card } from './card';
 import type { JevMarkProvenance } from '@lacuna/core/jev/types';
 
 /** FSRS grade: 1 = Again, 2 = Hard, 3 = Good, 4 = Easy. Matches ts-fsrs `Grade`. */
@@ -10,8 +11,8 @@ export type Grade = 1 | 2 | 3 | 4;
 export type FsrsCardState = 0 | 1 | 2 | 3;
 
 /**
- * The trainable FSRS-6 parameter set persisted per deck. `w` holds the 21
- * FSRS-6 weights (w0..w20); w20 is the trainable decay. `requestRetention` is
+ * The trainable FSRS7 parameter set persisted per deck. `w` holds the 34
+ * FSRS7 weights. `requestRetention` is
  * the target retention ts-fsrs uses when scheduling.
  *
  * Additional controls:
@@ -84,6 +85,22 @@ export interface ReviewLog {
    * The review still updates FSRS; only the short-term predictor discounts it.
    */
   primed?: boolean;
+  /** Captures the opaque baseline before the first FSRS7 answer, for concurrent replay. */
+  memoryOrigin?: Pick<
+    Card,
+    | 'stability'
+    | 'stabilityFast'
+    | 'difficulty'
+    | 'lastReviewed'
+    | 'reps'
+    | 'lapses'
+    | 'state'
+    | 'due'
+    | 'scheduledDays'
+    | 'learningSteps'
+  >;
+  stabilityFastBefore?: number | null;
+  stabilityFastAfter?: number;
   stabilityBefore: number | null;
   stabilityAfter: number;
   difficultyBefore: number | null;
@@ -195,9 +212,9 @@ export interface LegacyDeckRecord {
   createdAt: number;
   /** Set true once the user has set or dismissed the exam-date prompt with "don't ask again". */
   examDatePromptDismissed?: boolean;
-  /** FSRS algorithm version this deck's parameters belong to (6 for FSRS-6). */
+  /** FSRS algorithm version this deck's parameters belong to (7 for FSRS7). */
   fsrsVersion: number;
-  /** The FSRS-6 parameter set used for every memory-state update in this deck. */
+  /** The FSRS7 parameter set used for every memory-state update in this deck. */
   fsrsParameters: FsrsParameters;
   /** The optimisation target shared by the scheduler and the progress bar. */
   examObjective: ExamObjective;

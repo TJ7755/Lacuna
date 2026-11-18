@@ -47,6 +47,7 @@ function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card 
     front: '',
     back: '',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

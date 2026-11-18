@@ -2,7 +2,7 @@ import type { Card, Course } from '@lacuna/core/db/types';
 import { MASTERY_R } from '@lacuna/core/fsrs/params';
 import { isUpcomingExamDate, type ExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { rAtExam } from '@lacuna/core/fsrs/forwardSim';
-import { decayOf } from '@lacuna/core/fsrs/fsrs';
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { cardSchedulingHorizon } from '@lacuna/core/fsrs/horizon';
 import { resolveAssessmentCoverage } from '@lacuna/core/course/assessmentCoverage';
 
@@ -64,14 +64,14 @@ export function buildStudyReadiness({
         coreLinkedCardIds.has(card.id) ||
         assessmentCardIds.has(card.id)),
   );
-  const decay = decayOf(course.fsrsParameters);
+  const model = modelOf(course.fsrsParameters);
   let belowTargetCount = 0;
   let unintroducedCount = 0;
   for (const card of scope) {
     const unintroduced = card.state === 0 || card.lastReviewed === null;
     if (unintroduced) unintroducedCount++;
     const horizon = cardSchedulingHorizon(card, course, examDateContext, now);
-    if (unintroduced || rAtExam(card, horizon, now, decay) < MASTERY_R) belowTargetCount++;
+    if (unintroduced || (rAtExam(card, horizon, now, model) ?? 0) < MASTERY_R) belowTargetCount++;
   }
   return {
     totalCount: scope.length,

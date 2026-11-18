@@ -19,7 +19,7 @@ function course(): CourseRecord {
     description: '',
     createdAt: 1,
     updatedAt: 1,
-    fsrsVersion: 6,
+    fsrsVersion: 7,
     fsrsParameters: defaultFsrsParameters(),
     examObjective: 'expectedMarks',
     unlockMode: 'open',

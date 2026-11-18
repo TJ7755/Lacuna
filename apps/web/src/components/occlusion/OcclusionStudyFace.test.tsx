@@ -53,6 +53,7 @@ function makeCard(
     front: 'Label 1 of 3 — Plant cell',
     back: 'Label 1 of 3 — Plant cell\n\nRevealed on the diagram.',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

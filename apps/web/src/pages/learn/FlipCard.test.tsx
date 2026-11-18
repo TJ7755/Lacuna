@@ -33,6 +33,7 @@ const card: Card = {
   front: `Listen\n\n![audio](lacuna-asset://${'a'.repeat(64)})`,
   back: 'Answer',
   stability: null,
+  stabilityFast: null,
   difficulty: null,
   lastReviewed: null,
   reps: 0,

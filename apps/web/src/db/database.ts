@@ -156,6 +156,12 @@ class LacunaDatabase extends Dexie {
     // Version 31: ordered activity membership and matching last-imported snapshots.
     this.version(31).stores({}).upgrade(upgradeQuestionSetActivities);
     this.version(32).stores({}).upgrade(upgradeIndividualQuestions);
+    this.version(33)
+      .stores({})
+      .upgrade(async (tx) => {
+        const { upgradeFsrs7 } = await Dexie.waitFor(import('./fsrs7Migration'));
+        await upgradeFsrs7(tx);
+      });
   }
 }
 

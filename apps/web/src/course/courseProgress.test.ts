@@ -25,6 +25,9 @@ function card(id: string, lessonId: string | null, reviewedDaysAgo?: number, sta
           state: 2 as const,
           lastReviewed: NOW - reviewedDaysAgo * MS_PER_DAY,
           stability,
+          stabilityFast: stability * 0.8,
+          difficulty: 5,
+          reps: 1,
           due: NOW - reviewedDaysAgo * MS_PER_DAY + stability * MS_PER_DAY,
         }),
   });

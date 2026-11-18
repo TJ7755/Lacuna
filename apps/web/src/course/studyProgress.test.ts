@@ -93,7 +93,15 @@ it('uses one selected assessment horizon with exact custom coverage and exclusio
     course: { ...input.course, examDate: later.examDate },
     lessons: [{ ...input.lessons[0], examDate: NOW + MS_PER_DAY }, input.lessons[1]],
     cards: [
-      { ...card('secure'), state: 2 as const, lastReviewed: NOW, stability: 10 },
+      {
+        ...card('secure'),
+        state: 2 as const,
+        lastReviewed: NOW,
+        stability: 10,
+        stabilityFast: 8,
+        difficulty: 5,
+        reps: 1,
+      },
       card('excluded'),
       card('linked', 'b'),
       card('unrelated', 'b'),
@@ -108,13 +116,15 @@ it('uses one selected assessment horizon with exact custom coverage and exclusio
     value: 0,
   });
   const before = structuredClone(source);
-  expect(buildStudyProgress({ ...source, assessmentId: later.id }).exam).toEqual({
+  // FSRS-7 reference: S=10, fast S=8, D=5 after ten days gives R=0.9096256493177797.
+  const selectedExam = buildStudyProgress({ ...source, assessmentId: later.id }).exam;
+  expect(selectedExam).toMatchObject({
     name: 'Later test',
     date: later.examDate,
     daysRemaining: 10,
     totalCards: 2,
     securedCards: 1,
-    value: 0.45,
+    value: expect.closeTo(0.45481282465888984, 12),
     label: 'Predicted recall',
   });
   expect(
@@ -152,11 +162,26 @@ it('keeps specification papers scoped to applicable Concepts instead of the whol
         specificationData: paperSpecification,
         specificationRef: paperSpecificationReference,
       },
-      cards: [{ ...card('cells'), state: 2, lastReviewed: NOW, stability: 10 }, card('enzymes')],
+      cards: [
+        {
+          ...card('cells'),
+          state: 2,
+          lastReviewed: NOW,
+          stability: 10,
+          stabilityFast: 8,
+          difficulty: 5,
+          reps: 1,
+        },
+        card('enzymes'),
+      ],
       concepts: [cells, enzymes],
       assessments: [paper],
     }).exam,
-  ).toMatchObject({ totalCards: 1, securedCards: 1, value: 0.9 });
+  ).toMatchObject({
+    totalCards: 1,
+    securedCards: 1,
+    value: expect.closeTo(0.9096256493177797, 12),
+  });
 });
 
 it('reports current FSRS state after the last exam, excluding unavailable and extension Cards', () => {
@@ -172,9 +197,33 @@ it('reports current FSRS state after the last exam, excluding unavailable and ex
     ],
     cards: [
       card('new'),
-      { ...card('learning'), state: 1, lastReviewed: NOW, stability: 1 },
-      { ...card('relearning'), state: 3, lastReviewed: NOW, stability: 3 },
-      { ...card('review'), state: 2, lastReviewed: NOW, stability: 8 },
+      {
+        ...card('learning'),
+        state: 1,
+        lastReviewed: NOW,
+        stability: 1,
+        stabilityFast: 0.8,
+        difficulty: 5,
+        reps: 1,
+      },
+      {
+        ...card('relearning'),
+        state: 3,
+        lastReviewed: NOW,
+        stability: 3,
+        stabilityFast: 2.4,
+        difficulty: 5,
+        reps: 1,
+      },
+      {
+        ...card('review'),
+        state: 2,
+        lastReviewed: NOW,
+        stability: 8,
+        stabilityFast: 6.4,
+        difficulty: 5,
+        reps: 1,
+      },
       { ...card('suspended'), suspended: true },
       { ...card('buried'), buriedUntil: NOW + 1 },
       card('extension-card', 'extension'),
@@ -190,7 +239,7 @@ it('reports current FSRS state after the last exam, excluding unavailable and ex
     dueCards: 1,
     totalCards: 4,
     meanStability: 4,
-    recallNow: 1,
+    recallNow: expect.closeTo(0.99999, 12),
   });
 });
 
@@ -263,9 +312,25 @@ it('keeps available topic priorities course-wide and separates authored skills f
     ...input,
     cards: [
       card('new'),
-      { ...card('due-loose', null), state: 2, lastReviewed: NOW - MS_PER_DAY, stability: 1 },
+      {
+        ...card('due-loose', null),
+        state: 2,
+        lastReviewed: NOW - MS_PER_DAY,
+        stability: 1,
+        stabilityFast: 0.8,
+        difficulty: 5,
+        reps: 1,
+      },
       card('new-locked', 'b'),
-      { ...card('future-locked', 'b'), state: 2, lastReviewed: NOW, stability: 1 },
+      {
+        ...card('future-locked', 'b'),
+        state: 2,
+        lastReviewed: NOW,
+        stability: 1,
+        stabilityFast: 0.8,
+        difficulty: 5,
+        reps: 1,
+      },
     ],
     concepts: [
       concept('new', 'New topic'),
@@ -343,8 +408,24 @@ it('lists current work rather than every reviewed topic or authored question poo
   const result = buildStudyProgress({
     ...input,
     cards: [
-      { ...card('reviewed'), state: 2, lastReviewed: NOW, stability: 10 },
-      { ...card('due-loose', null), state: 2, lastReviewed: NOW - MS_PER_DAY, stability: 1 },
+      {
+        ...card('reviewed'),
+        state: 2,
+        lastReviewed: NOW,
+        stability: 10,
+        stabilityFast: 8,
+        difficulty: 5,
+        reps: 1,
+      },
+      {
+        ...card('due-loose', null),
+        state: 2,
+        lastReviewed: NOW - MS_PER_DAY,
+        stability: 1,
+        stabilityFast: 0.8,
+        difficulty: 5,
+        reps: 1,
+      },
     ],
     concepts: [
       concept('reviewed'),

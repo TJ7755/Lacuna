@@ -28,6 +28,7 @@ export function transitionScheduleSeeds(
       if (!previous || (source.due ?? 0) < (previous.state.due ?? 0)) {
         const {
           stability,
+          stabilityFast,
           difficulty,
           lastReviewed,
           reps,
@@ -40,6 +41,7 @@ export function transitionScheduleSeeds(
         seeds.set(conceptId, {
           state: {
             stability,
+            stabilityFast: stabilityFast ?? null,
             difficulty,
             lastReviewed,
             reps,

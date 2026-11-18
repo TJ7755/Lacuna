@@ -10,8 +10,8 @@ import {
   UnsupportedSchemaError,
 } from './schemaFloor';
 
-const CURRENT_SCHEMA_VERSION = 32;
-const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([31]);
+const CURRENT_SCHEMA_VERSION = 33;
+const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([31, 33]);
 
 /** Possible outcomes when trying to open the database. */
 export type DbOpenResult =

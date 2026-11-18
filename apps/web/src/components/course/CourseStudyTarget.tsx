@@ -1,9 +1,15 @@
 import { fieldLabelClassName } from '../ui/Field';
-import type { Ref } from 'react';
+import { lazy, type Ref } from 'react';
 import type { CourseSchedulingMode } from '@lacuna/core/db/types';
-import { DateTimePicker } from '../ui/DateTimePicker';
+import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
+
 import { cn } from '../ui/cn';
 import { CalendarIcon, CheckIcon, InfinityIcon } from '../ui/icons';
+
+// The default steady target needs no calendar UI.
+const DateTimePicker = lazy(() =>
+  import('../ui/DateTimePicker').then(({ DateTimePicker }) => ({ default: DateTimePicker })),
+);
 
 const TARGETS = [
   { value: 'exam', label: 'Exam date', detail: 'Work towards a deadline', Icon: CalendarIcon },
@@ -110,13 +116,15 @@ export function CourseStudyTarget({
 
       {schedulingMode === 'exam' && (
         <div ref={datePickerRef}>
-          <DateTimePicker
-            value={examDate}
-            onChange={setExamDate}
-            onValidityChange={setExamDateValid}
-            timeZone={timeZone}
-            label="Exam date and time"
-          />
+          <PageLoadingBoundary animateArrival={false}>
+            <DateTimePicker
+              value={examDate}
+              onChange={setExamDate}
+              onValidityChange={setExamDateValid}
+              timeZone={timeZone}
+              label="Exam date and time"
+            />
+          </PageLoadingBoundary>
         </div>
       )}
     </>

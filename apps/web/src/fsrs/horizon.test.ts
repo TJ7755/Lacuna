@@ -1,3 +1,4 @@
+import { modelOf } from '@lacuna/core/fsrs/fsrs';
 import { describe, it, expect } from 'vitest';
 import {
   cardSchedulingHorizon,
@@ -22,6 +23,12 @@ function makeDeck(overrides: Partial<LegacyDeckRecord> = {}): LegacyDeckRecord {
   };
 }
 
+const initialMemory = modelOf(defaultFsrsParameters()).step({
+  memoryState: null,
+  rating: 3,
+  elapsedDays: 0,
+});
+
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
     id: 'c1',
@@ -31,8 +38,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
     type: 'front_back',
     front: 'q',
     back: 'a',
-    stability: 2,
-    difficulty: 5,
+    ...initialMemory,
     lastReviewed: Date.now(),
     reps: 1,
     lapses: 0,
@@ -69,7 +75,7 @@ describe('schedulingHorizon', () => {
     // A card last reviewed at the exam date, with modest stability, must decay over
     // the rolling horizon rather than reading as fully retained.
     const deck = makeDeck({ examDate: now - 2 * MS_PER_DAY });
-    const card = makeCard({ stability: 2, lastReviewed: now - 2 * MS_PER_DAY });
+    const card = makeCard({ lastReviewed: now - 2 * MS_PER_DAY });
     const value = progressValue([card], deck, now);
     expect(Number.isNaN(value)).toBe(false);
     expect(value).toBeLessThan(1);

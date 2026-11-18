@@ -61,6 +61,7 @@ function makeCard(id: string, overrides: Partial<Card> = {}): Card {
     front: 'Question',
     back: 'Answer',
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,
@@ -140,6 +141,7 @@ describe('courseHeaderStats', () => {
       state: 2,
       due: NOW - 1,
       stability: 2,
+      stabilityFast: null,
       lastReviewed: NOW - MS_PER_DAY,
     });
     expect(dueCount(course, [card], NOW, [lesson])).toBe(1);
@@ -155,6 +157,7 @@ describe('courseHeaderStats', () => {
         state: 2,
         due: NOW - 1,
         stability: 2,
+        stabilityFast: null,
         lastReviewed: NOW - MS_PER_DAY,
       });
       const weak = makeCard('weak', { ...secured, id: 'weak', stability: 0.5 });
@@ -235,6 +238,7 @@ describe('courseHeaderStats', () => {
     const overdue = {
       state: 2 as const,
       stability: 0.5,
+      stabilityFast: null,
       due: NOW - 1,
       lastReviewed: NOW - MS_PER_DAY,
     };

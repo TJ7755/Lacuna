@@ -34,6 +34,7 @@ function card(history: ReviewLog[]): Card {
     front: 'q',
     back: 'a',
     stability: 1,
+    stabilityFast: null,
     difficulty: 5,
     lastReviewed: DAY,
     reps: history.length,

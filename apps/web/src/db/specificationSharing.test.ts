@@ -189,6 +189,7 @@ describe('specification sharing', () => {
       scheduleEpoch: before.scheduleEpoch,
       scheduleUpdatedAt: before.scheduleUpdatedAt,
       stability: before.stability,
+      stabilityFast: before.stabilityFast,
       difficulty: before.difficulty,
       lastReviewed: before.lastReviewed,
       reps: before.reps,

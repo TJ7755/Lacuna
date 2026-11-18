@@ -92,6 +92,7 @@ describe('scoped reads', () => {
         state: 2,
         due: now - 1,
         stability: 2,
+        stabilityFast: null,
         lastReviewed: now - 86_400_000,
       });
       expect((await listDueCards(course.id, undefined, now)).map((card) => card.id)).toEqual([

@@ -108,6 +108,7 @@ const card: Card = {
   front: 'Cell membrane',
   back: 'Controls entry',
   stability: null,
+  stabilityFast: null,
   difficulty: null,
   lastReviewed: null,
   reps: 0,

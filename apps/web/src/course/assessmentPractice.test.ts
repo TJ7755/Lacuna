@@ -55,6 +55,7 @@ function card(id: string, lessonId: string, overrides: Partial<Card> = {}): Card
     front: id,
     back: id,
     stability: null,
+    stabilityFast: null,
     difficulty: null,
     lastReviewed: null,
     reps: 0,

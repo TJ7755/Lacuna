@@ -136,6 +136,7 @@ describe('updateOcclusion', () => {
     const reviewedState = {
       state: 2 as const,
       stability: 12.5,
+      stabilityFast: null,
       difficulty: 4.2,
       reps: 3,
       lapses: 1,

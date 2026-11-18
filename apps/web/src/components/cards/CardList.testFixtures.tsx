@@ -131,6 +131,7 @@ export const mockCard: Card = {
   front: 'What is the capital of France?',
   back: 'Paris',
   stability: null,
+  stabilityFast: null,
   difficulty: null,
   lastReviewed: null,
   reps: 0,
