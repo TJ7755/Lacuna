@@ -42,6 +42,8 @@
       "entry": [
         // The local Node setup composite action invokes this bootstrap.
         "scripts/ci-node-runtime.mjs",
+        // The Security workflow invokes this directly in each audit workspace.
+        "scripts/security-audit.mjs",
         // Playwright launches this server through its webServer command.
         "scripts/ci-electron-preview.mjs",
         // Manually invoked generator preserves the historical production compatibility fixtures.
