@@ -8,6 +8,7 @@ import path from 'node:path';
 import { expect } from '@playwright/test';
 import { launchInstalledElectron } from './installed-electron-probe.mjs';
 import { requireAuditedInstaller } from './windows-ci-upgrade.mjs';
+import { assertUpgradeStudyRecords } from './windows-upgrade-records.mjs';
 import {
   chooseScheduledStudy,
   completeRevealedIntroduction,
@@ -252,11 +253,7 @@ try {
   report.stages.push('installed baseline updater downloaded and silently installed the release');
   page = await open(version);
   const after = await snapshot(page);
-  assert.deepEqual(
-    after,
-    before,
-    'Upgrade changed existing course, lesson, card or review records',
-  );
+  assertUpgradeStudyRecords(before, after);
   const updateState = await page.evaluate(() => window.electronAPI.updater.getState());
   assert.equal(updateState.mode, 'automatic');
   report.stages.push('upgraded installation launched with all study records preserved');
