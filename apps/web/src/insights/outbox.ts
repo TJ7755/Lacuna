@@ -70,18 +70,20 @@ export function createInsightsOutbox(
     });
 
   return {
-    markDiscardPending(shareId: string): void {
-      discardSetting(shareId).write(crypto.randomUUID());
+    markDiscardPending(shareId: string, pupilId: string): void {
+      discardSetting(shareId).write(`${pupilId}:${crypto.randomUUID()}`);
     },
 
     isDiscardPending(shareId: string): boolean {
       return discardSetting(shareId).isPresent();
     },
 
-    async finishPendingDiscard(shareId: string): Promise<void> {
+    async finishPendingDiscard(shareId: string, activePupilId?: string): Promise<void> {
       const setting = discardSetting(shareId);
       const token = setting.read();
-      if (token === null) return;
+      // Delivery must leave the marker in place while the pupil is still enrolled.
+      if (token === null || (activePupilId !== undefined && token.startsWith(`${activePupilId}:`)))
+        return;
       // Serialise with packet writes before allowing reports from a fresh enrolment.
       await database.transaction('rw', [packets, snapshots], async () => {
         if (setting.read() !== token) return;

@@ -89,7 +89,7 @@ async function deliver(
   };
   const unsubscribe = [setting.subscribe(abortIfChanged), optIn.subscribe(abortIfChanged)];
   try {
-    await outbox.finishPendingDiscard(enrolment.shareId);
+    await outbox.finishPendingDiscard(enrolment.shareId, enrolment.pupilId);
     const isCurrent = async () => {
       const course = await db.courses.get(courseId);
       return Boolean(

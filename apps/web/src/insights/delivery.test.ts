@@ -171,6 +171,33 @@ it('leaves the enrolment intact if the disconnect marker cannot be stored', asyn
   expect(createInsightsOptInSetting(courseId).read()).toBe(false);
 });
 
+it('blocks reporting until disconnect completes when the opt-out write fails', async () => {
+  setReportingConsent(courseId, true, 'Old identifier');
+  const setting = createEnrolmentSetting(courseId);
+  const optIn = createInsightsOptInSetting(courseId);
+  const oldPupilId = setting.read()!.pupilId;
+  const write = localStorage.setItem.bind(localStorage);
+  const storage = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+    if (key === optIn.key) throw new DOMException('Storage full', 'QuotaExceededError');
+    write(key, value);
+  });
+
+  await expect(disconnectFromClass(courseId)).rejects.toThrow('Storage full');
+  storage.mockRestore();
+  expect(optIn.read()).toBe(true);
+  const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+  const send = () => deliverCourseInsights(courseId, { now, fetchImpl, retry: true });
+  await send();
+  expect(fetchImpl).not.toHaveBeenCalled();
+
+  await disconnectFromClass(courseId);
+  enrolInClass(courseId, { shareId, lineageId: 'lineage', recipient: owner.recipient });
+  setReportingConsent(courseId, true, 'Fresh identifier');
+  expect(setting.read()?.pupilId).not.toBe(oldPupilId);
+  await send();
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
+});
+
 it('does not send the old pupil’s report after a failed disconnect and same-day rejoin', async () => {
   setReportingConsent(courseId, true, 'Old identifier');
   const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));

@@ -93,27 +93,19 @@ export function setReportingConsent(courseId: string, enabled: boolean, label = 
 
 export async function disconnectFromClass(courseId: string): Promise<void> {
   const setting = createEnrolmentSetting(courseId);
-  const shareId = setting.read()?.shareId;
-  const outbox = shareId ? createInsightsOutbox() : null;
-  let discardError: unknown;
+  const enrolment = setting.read();
+  const outbox = enrolment ? createInsightsOutbox() : null;
   try {
     // A pending deletion blocks sending even if a later consent write fails.
     // If the marker cannot be saved, leave the enrolment and consent intact.
-    if (shareId && outbox) outbox.markDiscardPending(shareId);
+    if (enrolment && outbox) outbox.markDiscardPending(enrolment.shareId, enrolment.pupilId);
     setReportingConsent(courseId, false);
-    if (shareId && outbox) {
-      try {
-        await outbox.finishPendingDiscard(shareId);
-      } catch (error) {
-        discardError = error;
-      }
-    }
+    createInsightsLastSentDaySetting(courseId).write(null);
+    createInsightsLastPublishedAtSetting(courseId).write(null);
+    storedString(`lacuna.insights.attempt.${courseId}`).remove();
+    setting.write(null);
+    if (enrolment && outbox) await outbox.finishPendingDiscard(enrolment.shareId);
   } finally {
     outbox?.close();
   }
-  createInsightsLastSentDaySetting(courseId).write(null);
-  createInsightsLastPublishedAtSetting(courseId).write(null);
-  storedString(`lacuna.insights.attempt.${courseId}`).remove();
-  setting.write(null);
-  if (discardError !== undefined) throw discardError;
 }
