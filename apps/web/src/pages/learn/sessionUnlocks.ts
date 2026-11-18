@@ -106,15 +106,30 @@ export async function ratchetSessionUnlocks(
     practiceMilestones: milestones,
     now,
   });
+  const unlockedLessonIds = new Set(
+    nodes
+      .filter((node) => node.nodeType === 'lesson' && node.status !== 'locked')
+      .map(({ id }) => id),
+  );
   for (let i = 0; i < coreLessons.length - 1; i++) {
     const lessonN = coreLessons[i];
     const lessonN1 = coreLessons[i + 1];
     if (lessonN1.unlockedAt !== undefined) continue;
     if (lId && lessonN.id !== lId) continue;
-    const unlockedLessonIds = new Set(
-      lessons.filter((lesson) => lesson.unlockedAt !== undefined).map((lesson) => lesson.id),
-    );
-    const lessonNCards = lessonCardMembership(lessonN.id, courseCards, links);
+    const members = lessonCardsById.get(lessonN.id) ?? [];
+    const lessonNCards =
+      course.learnFirst === false
+        ? members.filter(
+            (card) =>
+              // A new card from a locked lesson cannot hold this unlock hostage.
+              // A review through the linked lesson still counts once recorded.
+              card.state !== 0 ||
+              card.primaryLessonId === null ||
+              card.primaryLessonId === undefined ||
+              card.primaryLessonId === lessonN.id ||
+              unlockedLessonIds.has(card.primaryLessonId),
+          )
+        : members;
     const currentPracticeGoalReached = manualPracticeGateOutcomeAfterLesson(
       coreLessons,
       practiceNodes,
@@ -134,26 +149,8 @@ export async function ratchetSessionUnlocks(
         ? false
         : currentPracticeGoalReached;
     const lessonComplete =
-      course.learnFirst === false
-        ? lessonNCards.length === 0
-          ? nextLessonUnlockCondition(
-              lessonN.id,
-              lessonNCards,
-              exposures,
-              completions,
-              practiceGoalReached,
-            )
-          : lessonNCards
-              .filter(
-                (card) =>
-                  // Cards primary to a locked later lesson can never be introduced
-                  // yet, so they must not hold the current lesson's unlock hostage.
-                  card.primaryLessonId === null ||
-                  card.primaryLessonId === undefined ||
-                  card.primaryLessonId === lessonN.id ||
-                  unlockedLessonIds.has(card.primaryLessonId),
-              )
-              .every((card) => card.state !== 0) && practiceGoalReached !== false
+      course.learnFirst === false && lessonNCards.length > 0
+        ? lessonNCards.every((card) => card.state !== 0) && practiceGoalReached !== false
         : nextLessonUnlockCondition(
             lessonN.id,
             lessonNCards,
@@ -163,6 +160,7 @@ export async function ratchetSessionUnlocks(
           );
     if (lessonComplete) {
       await ratchetLessonUnlock(lessonN1.id, now);
+      unlockedLessonIds.add(lessonN1.id);
     }
   }
 }

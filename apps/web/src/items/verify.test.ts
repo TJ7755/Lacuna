@@ -226,6 +226,16 @@ describe('verifyWorkingLines', () => {
     expect(result.lineVerdicts[0].undetermined).toBeUndefined();
   });
 
+  it('assigns a mark across long working without exhausting the stack', () => {
+    const result = verifyWorkingLines(
+      [...Array<string>(15_000).fill('working'), 'final answer'],
+      [{ marks: 1, kind: 'predicate', predicate: 'contains', args: ['final answer'] }],
+      'long-working',
+    );
+    expect(result.marksEarned).toBe(1);
+    expect(result.lineVerdicts.at(-1)?.matchedLineIndex).toBe(0);
+  });
+
   it('awards overlapping criteria regardless of student line order', () => {
     const overlapping: MarkSchemeLine[] = [
       { marks: 1, label: 'near', kind: 'predicate', predicate: 'within', args: ['0.1', '4'] },

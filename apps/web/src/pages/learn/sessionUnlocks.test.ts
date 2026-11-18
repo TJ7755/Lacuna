@@ -6,6 +6,8 @@ import {
   createLesson,
   createLessonCard,
   createPracticeNode,
+  linkCardToLesson,
+  markLessonComplete,
   upsertLessonCardExposure,
 } from '../../db/repository';
 import { ratchetSessionUnlocks } from './sessionUnlocks';
@@ -143,6 +145,49 @@ describe('session completion unlocks', () => {
     expect((await db.lessons.get(next.id))?.unlockedAt).toEqual(expect.any(Number));
     expect((await db.lessons.get(extension.id))?.unlockedAt).toBeUndefined();
   });
+
+  it('requires explicit completion if every linked card belongs to locked lessons', async () => {
+    const course = await createCourse('Science', {
+      unlockMode: 'semi-linear',
+      autoPractice: false,
+      learnFirst: false,
+    });
+    const first = await createLesson(course.id, 'First');
+    const next = await createLesson(course.id, 'Next');
+    const future = await createLessonCard(course.id, next.id, 'front_back', 'Later', 'Answer');
+    await linkCardToLesson(first.id, future.id);
+
+    await ratchetSessionUnlocks(true, course.id, () => null);
+    expect((await db.lessons.get(next.id))?.unlockedAt).toBeUndefined();
+    await markLessonComplete(first.id);
+    await ratchetSessionUnlocks(true, course.id, () => null);
+    expect((await db.lessons.get(next.id))?.unlockedAt).toEqual(expect.any(Number));
+  });
+
+  it.each(['extension', 'entry prefix'] as const)(
+    'requires scheduled knowledge for cards owned by an accessible %s lesson',
+    async (ownerKind) => {
+      const course = await createCourse('Science', {
+        unlockMode: 'semi-linear',
+        autoPractice: false,
+        learnFirst: false,
+      });
+      const owner = await createLesson(course.id, 'Owner');
+      const current = await taughtLesson(course.id, 'Current');
+      const next = await createLesson(course.id, 'Next');
+      if (ownerKind === 'extension') await db.lessons.update(owner.id, { isExtension: true });
+      else await db.courses.update(course.id, { studyStartLessonId: current.lesson.id });
+      const linked = await createLessonCard(course.id, owner.id, 'front_back', 'Linked', 'Answer');
+      await linkCardToLesson(current.lesson.id, linked.id);
+      await db.cards.update(current.card.id, { state: 2 });
+
+      await ratchetSessionUnlocks(true, course.id, () => current.lesson.id);
+      expect((await db.lessons.get(next.id))?.unlockedAt).toBeUndefined();
+      await db.cards.update(linked.id, { state: 2 });
+      await ratchetSessionUnlocks(true, course.id, () => current.lesson.id);
+      expect((await db.lessons.get(next.id))?.unlockedAt).toEqual(expect.any(Number));
+    },
+  );
 
   it('does nothing without a reached goal, course or semi-linear unlock mode', async () => {
     const course = await createCourse('Science', { unlockMode: 'open' });

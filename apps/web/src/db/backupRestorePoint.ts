@@ -23,15 +23,17 @@ export async function createRestorePoint(
     cardCount: payload.cards.length,
     payload,
   };
-  await db.backups.add(snapshot);
-  // Keep only the most recent restore points. Pre-migration snapshots are exempt:
-  // they are the safety net for a botched upgrade and must not be pruned away.
-  const all = await db.backups.orderBy('createdAt').toArray();
-  const prunable = all.filter((s) => (s.tag ?? '') !== 'pre-migration');
-  if (prunable.length > MAX_RESTORE_POINTS) {
-    const excess = prunable.slice(0, prunable.length - MAX_RESTORE_POINTS);
-    await db.backups.bulkDelete(excess.map((s) => s.id!));
-  }
+  await db.transaction('rw', db.backups, async () => {
+    await db.backups.add(snapshot);
+    // Keep only the most recent restore points. Pre-migration snapshots are exempt:
+    // they are the safety net for a botched upgrade and must not be pruned away.
+    const all = await db.backups.orderBy('createdAt').toArray();
+    const prunable = all.filter((s) => (s.tag ?? '') !== 'pre-migration');
+    if (prunable.length > MAX_RESTORE_POINTS) {
+      const excess = prunable.slice(0, prunable.length - MAX_RESTORE_POINTS);
+      await db.backups.bulkDelete(excess.map((s) => s.id!));
+    }
+  });
   onStored();
 
   // Best-effort folder mirror; never let it break the backup itself.

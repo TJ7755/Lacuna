@@ -84,16 +84,20 @@ describe('compressImageBlob', () => {
     },
   );
 
-  it('keeps an animated GIF in its original bytes instead of flattening it', async () => {
-    // Minimal two-frame GIF: header, screen descriptor, two image blocks, trailer.
-    const bytes = new Uint8Array([
-      0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x21, 0xf9,
-      0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00,
-      0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x21, 0xf9, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2c,
-      0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3b,
-    ]);
+  it.each([
+    // ImageMagick output, then the same image with the global palette moved into frame one.
+    [
+      'global',
+      'R0lGODlhAQABAPAAAP8AAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQACgAAACwAAAAAAQABAAACAkQBACH5BAAKAAAALAAAAAABAAEAgAAA/wAAAAICRAEAOw==',
+    ],
+    [
+      'local',
+      'R0lGODlhAQABAHAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQACgAAACwAAAAAAQABAID/AAAAAAACAkQBACH5BAAKAAAALAAAAAABAAEAgAAA/wAAAAICRAEAOw==',
+    ],
+  ])('keeps an animated GIF with a %s palette on its first frame', async (_palette, encoded) => {
+    const bytes = Uint8Array.from(atob(encoded), (byte) => byte.charCodeAt(0));
     setSourceDimensions(1, 1);
-    const input = new Blob([bytes.buffer as ArrayBuffer], { type: 'image/gif' });
+    const input = new Blob([bytes], { type: 'image/gif' });
     const result = await compressImageBlob(input);
     expect(result.blob).toBe(input);
     expect(result).toMatchObject({ width: 1, height: 1 });
@@ -112,13 +116,15 @@ describe('compressImageBlob', () => {
   });
 
   it('keeps an animated WebP in its original bytes instead of flattening it', async () => {
-    // RIFF WEBP with a VP8X chunk advertising animation.
-    const bytes = new Uint8Array([
-      0x52, 0x49, 0x46, 0x46, 0x16, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38,
-      0x58, 0x0a, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00,
-    ]);
-    setSourceDimensions(1, 1);
-    const input = new Blob([bytes.buffer as ArrayBuffer], { type: 'image/webp' });
+    // A two-frame image encoded by ImageMagick.
+    const bytes = Uint8Array.from(
+      atob(
+        'UklGRsAAAABXRUJQVlA4WAoAAAACAAAAAQAAAQAAQU5JTQYAAAD/////AABBTk1GSAAAAAAAAAAAAAEAAAEAAGQAAAJWUDggMAAAANABAJ0BKgIAAgACADQloAJ0ugH4AAOwAP7wxAv/ILlhdcjX/yA/5Af8gP/48gAAAEFOTUZEAAAAAAAAAAAAAQAAAQAAZAAAAFZQOCAsAAAAlAEAnQEqAgACAAAANCWgAnS6AAOYAP75k2//kB//kB//kB//ID/iF3sgMAA=',
+      ),
+      (byte) => byte.charCodeAt(0),
+    );
+    setSourceDimensions(2, 2);
+    const input = new Blob([bytes], { type: 'image/webp' });
     const result = await compressImageBlob(input);
     expect(result.blob).toBe(input);
   });

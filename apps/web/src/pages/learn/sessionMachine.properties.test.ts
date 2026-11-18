@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { card, course, NOW } from '../../fsrs/session.testFixtures';
 import { makeSessionContext } from '@lacuna/core/fsrs/session';
+import { createHalfLifeLogisticModel } from '@lacuna/core/fsrs/halfLifeLogisticModel';
+import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
+import type { Card, RevisionPlan } from '@lacuna/core/db/types';
 import { createRevisionSessionState } from '../../course/revisionSession';
 import type { SessionSummary } from '../../course/sessionSummary';
 import {
@@ -483,5 +486,111 @@ describe('session machine operation sequences', () => {
       revisionWindowEndsAt: NOW + 120_000,
     }).state;
     expect(failed.cooldowns.get(state.cards[0].id)).toBeGreaterThan(0);
+  });
+
+  it('offers a cooled retry if the uncooled card cannot fit in the revision window', () => {
+    const reviewedAt = NOW - MS_PER_DAY;
+    const reviewed: Partial<Card> = {
+      due: NOW,
+      reps: 1,
+      state: 2,
+      stability: 3,
+      difficulty: 5,
+      lastReviewed: reviewedAt,
+      history: [
+        {
+          timestamp: reviewedAt,
+          grade: 3,
+          responseTimeSec: 4,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 3,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+      ],
+    };
+    const retry = card('retry', 'fast', reviewed);
+    const other = card('other', 'slow', reviewed);
+    const cards = [retry, other];
+    const cardIds = cards.map(({ id }) => id);
+    const state = { ...initial(0), cards, cardIds, cooldowns: new Map([[retry.id, 1]]) };
+    const context = makeSessionContext(
+      ['fast', 'slow'].map((id) => ({
+        config: course(id, 2),
+        scope: { kind: 'scheduling-unit', schedulingUnitId: id },
+      })),
+      'due',
+      cards,
+    );
+    const model = createHalfLifeLogisticModel(context.decks.get('fast')!.oc.ctx.decay);
+    const revisionPlan: RevisionPlan = {
+      id: 'plan',
+      courseId: 'course',
+      assessmentId: 'assessment',
+      status: 'active',
+      revision: 1,
+      input: {
+        deadlineAt: NOW + 2 * MS_PER_DAY,
+        projection: { projectionMode: 'memory-model', memoryModelVersion: model!.version },
+        reachedLessonIds: [],
+        coverageVersion: '',
+        exposureVersion: '',
+        availabilityVersion: '',
+        reviewEvidenceVersion: '',
+      },
+      scope: {
+        coveredLessonIds: [],
+        excludedCardIds: [],
+        eligibleCardIds: cardIds,
+        unavailableCardIds: [],
+        unreachedLessonIds: [],
+        untaughtLessonIds: [],
+      },
+      cardStates: cardIds.map((cardId) => ({ cardId, status: 'eligible' })),
+      windows: [
+        { id: 'today', day: '2026-06-04', budgetMinutes: 1, status: 'active', planRevision: 1 },
+      ],
+      completedSessions: [],
+      replans: [],
+      createdAt: NOW,
+      updatedAt: NOW,
+    };
+    const reviewSelection = {
+      ...selection,
+      simple: false,
+      context,
+      revisionPlan,
+      windowId: 'today',
+      performance: new Map([
+        [
+          'slow',
+          {
+            deckId: 'slow',
+            runningMeanResponseTime: 45,
+            runningStdDevResponseTime: 1,
+            m2: 99,
+            totalCorrectReviews: 100,
+          },
+        ],
+      ]),
+    };
+
+    const nextCard = (secondsLeft: number) =>
+      transitionSession(state, {
+        type: 'next',
+        selection: { ...reviewSelection, windowStartedAt: NOW - (60 - secondsLeft) * 1_000 },
+      }).effects;
+    expect(nextCard(60)).toContainEqual({
+      type: 'present-card',
+      card: other,
+      invalidateProgress: true,
+    });
+    expect(nextCard(20)).toContainEqual({
+      type: 'present-card',
+      card: retry,
+      invalidateProgress: true,
+    });
   });
 });

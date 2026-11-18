@@ -289,49 +289,48 @@ function assignGreedy(outcomes: SchemeLineOutcome[][]): LineAssignment {
 
 /**
  * The mark-maximising assignment: each student line earns at most one scheme line
- * and each scheme line is earned at most once. Memoised over (student, used-set);
+ * and each scheme line is earned at most once. Uses the next row of scores for each used-set;
  * exact for small schemes (see {@link EXACT_MATCH_SCHEME_LIMIT}).
  */
 function assignMaxMarks(outcomes: SchemeLineOutcome[][], scheme: MarkSchemeLine[]): LineAssignment {
-  const students = outcomes.length;
-  const lines = scheme.length;
-  const memo = new Map<number, number>();
-  const choice = new Map<number, number>();
-  const key = (studentIndex: number, usedMask: number) => studentIndex * (1 << lines) + usedMask;
-  const best = (studentIndex: number, usedMask: number): number => {
-    if (studentIndex === students) return 0;
-    const memoKey = key(studentIndex, usedMask);
-    const hit = memo.get(memoKey);
-    if (hit !== undefined) return hit;
-    let value = best(studentIndex + 1, usedMask);
-    let pick = -1;
-    for (let schemeIndex = 0; schemeIndex < lines; schemeIndex += 1) {
-      if (usedMask & (1 << schemeIndex)) continue;
-      if (outcomes[studentIndex][schemeIndex] !== 'matched') continue;
-      // A match is recorded even when it earns nothing, and the first scheme
-      // line wins ties, so verdicts stay deterministic.
-      const candidate =
-        validMarks(scheme[schemeIndex].marks) +
-        best(studentIndex + 1, usedMask | (1 << schemeIndex));
-      if (candidate > value || (candidate === value && pick === -1)) {
-        value = candidate;
-        pick = schemeIndex;
+  const maskCount = 1 << scheme.length;
+  const marks = scheme.map((line) => validMarks(line.marks));
+  let nextScores = new Float64Array(maskCount);
+  let scores = new Float64Array(maskCount);
+  const choices: (Int8Array | undefined)[] = Array.from({ length: outcomes.length });
+  for (let studentIndex = outcomes.length - 1; studentIndex >= 0; studentIndex -= 1) {
+    const candidates = outcomes[studentIndex].flatMap((outcome, index) =>
+      outcome === 'matched' ? [index] : [],
+    );
+    if (!candidates.length) continue;
+    const picks = new Int8Array(maskCount);
+    choices[studentIndex] = picks;
+    for (let usedMask = 0; usedMask < maskCount; usedMask += 1) {
+      let value = nextScores[usedMask];
+      let pick = -1;
+      for (const schemeIndex of candidates) {
+        const bit = 1 << schemeIndex;
+        if (usedMask & bit) continue;
+        const candidate = marks[schemeIndex] + nextScores[usedMask | bit];
+        // Prefer a match over skipping, then the first scheme line on a tie.
+        if (candidate > value || (candidate === value && pick === -1)) {
+          value = candidate;
+          pick = schemeIndex;
+        }
       }
+      scores[usedMask] = value;
+      picks[usedMask] = pick;
     }
-    memo.set(memoKey, value);
-    choice.set(memoKey, pick);
-    return value;
-  };
-  best(0, 0);
-  const matched: (number | null)[] = outcomes.map(() => null);
-  let usedMask = 0;
-  for (let studentIndex = 0; studentIndex < students; studentIndex += 1) {
-    const pick = choice.get(key(studentIndex, usedMask)) ?? -1;
-    if (pick >= 0) {
-      matched[studentIndex] = pick;
-      usedMask |= 1 << pick;
-    }
+    [nextScores, scores] = [scores, nextScores];
   }
+
+  let usedMask = 0;
+  const matched = choices.map((picks) => {
+    const pick = picks?.[usedMask] ?? -1;
+    if (pick < 0) return null;
+    usedMask |= 1 << pick;
+    return pick;
+  });
   return { matched, compared: () => true };
 }
 

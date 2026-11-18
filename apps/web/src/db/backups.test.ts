@@ -3,6 +3,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
+import * as restorePoints from './backupRestorePoint';
 import { deleteBackup, mirrorToFolder, restoreBackup, createAutoBackups } from './backups';
 import { createCard, createCourse, createLesson } from './repository';
 import { assetUrl, storeImageBlob } from './assets';
@@ -356,12 +357,12 @@ describe('backups', () => {
     const firstStarted = new Promise<void>((resolve) => {
       signalFirst = resolve;
     });
-    vi.spyOn(db.backups, 'add').mockImplementationOnce(
+    vi.spyOn(restorePoints, 'createRestorePoint').mockImplementationOnce(
       () =>
         new Promise((_resolve, reject) => {
           rejectFirst = reject;
           signalFirst();
-        }) as ReturnType<typeof db.backups.add>,
+        }),
     );
     const firstFailure = expect(takeAutoBackup()).rejects.toThrow('storage unavailable');
     await firstStarted;
@@ -392,21 +393,21 @@ describe('backups', () => {
       const forcedStarted = new Promise<void>((resolve) => {
         signalForced = resolve;
       });
-      const add = vi
-        .spyOn(db.backups, 'add')
+      const store = vi
+        .spyOn(restorePoints, 'createRestorePoint')
         .mockImplementationOnce(
           () =>
             new Promise((_resolve, reject) => {
               rejectOrdinary = reject;
               signalOrdinary();
-            }) as ReturnType<typeof db.backups.add>,
+            }),
         )
         .mockImplementationOnce(
           () =>
             new Promise((_resolve, reject) => {
               rejectForced = reject;
               signalForced();
-            }) as ReturnType<typeof db.backups.add>,
+            }),
         );
       const ordinaryFailure = expect(takeAutoBackup()).rejects.toThrow(
         'ordinary storage unavailable',
@@ -423,7 +424,7 @@ describe('backups', () => {
       await forcedFailure;
 
       expect(await takeAutoBackup()).toBeDefined();
-      expect(add).toHaveBeenCalledTimes(3);
+      expect(store).toHaveBeenCalledTimes(3);
       expect(await db.backups.count()).toBe(priorBackup ? 2 : 1);
     },
   );
@@ -444,20 +445,20 @@ describe('backups', () => {
     const secondStarted = new Promise<void>((resolve) => {
       signalSecond = resolve;
     });
-    vi.spyOn(db.backups, 'add')
+    vi.spyOn(restorePoints, 'createRestorePoint')
       .mockImplementationOnce(
         () =>
           new Promise((_resolve, reject) => {
             rejectFirst = reject;
             signalFirst();
-          }) as ReturnType<typeof db.backups.add>,
+          }),
       )
       .mockImplementationOnce(
         () =>
           new Promise((_resolve, reject) => {
             rejectSecond = reject;
             signalSecond();
-          }) as ReturnType<typeof db.backups.add>,
+          }),
       );
     const firstFailure = expect(takeAutoBackup(true)).rejects.toThrow('first storage unavailable');
     await firstStarted;
@@ -549,6 +550,7 @@ describe('backups', () => {
     vi.spyOn(db.backups, 'bulkDelete').mockRejectedValueOnce(new Error('pruning failed'));
 
     await expect(takeAutoBackup()).rejects.toThrow('pruning failed');
+    expect(await db.backups.count()).toBe(10);
     expect(await takeAutoBackup()).toBeDefined();
   });
 

@@ -12,6 +12,7 @@ import {
   type ReportingWindow,
 } from '@lacuna/protocol/insights/index';
 import { normaliseRelayUrl } from '../sync/relay';
+import { storedString } from '../state/localSetting';
 import { sealInsightEnvelope, type InsightsRecipient } from './envelope';
 import { putInsightEnvelope } from './mailbox';
 import { completedReportingDay, localReportingWindow } from './reportingDay';
@@ -58,6 +59,7 @@ export function createInsightsOutbox(
   database.version(2).stores({ snapshots: '[shareId+isoDay], isoDay' });
   const snapshots = database.table<SnapshotPacket, [string, string]>('snapshots');
   const packets = database.table<SavedPacket, [string, string]>('packets');
+  const discardSetting = (shareId: string) => storedString(`${databaseName}.discard.${shareId}`);
   // Retention applies to every table and regardless of opt-in: local ciphertext
   // must not outlive the relay's retention window after opting out.
   const pruneExpired = () =>
@@ -68,9 +70,21 @@ export function createInsightsOutbox(
     });
 
   return {
-    async discard(shareId: string): Promise<void> {
-      // Serialise with packet writes before allowing a fresh enrolment.
+    markDiscardPending(shareId: string): void {
+      discardSetting(shareId).write(crypto.randomUUID());
+    },
+
+    isDiscardPending(shareId: string): boolean {
+      return discardSetting(shareId).isPresent();
+    },
+
+    async finishPendingDiscard(shareId: string): Promise<void> {
+      const setting = discardSetting(shareId);
+      const token = setting.read();
+      if (token === null) return;
+      // Serialise with packet writes before allowing reports from a fresh enrolment.
       await database.transaction('rw', [packets, snapshots], async () => {
+        if (setting.read() !== token) return;
         for (const table of [packets, snapshots]) {
           await table
             .where('[shareId+isoDay]')
@@ -78,6 +92,8 @@ export function createInsightsOutbox(
             .delete();
         }
       });
+      // A newer disconnect may have requested its own cleanup during this transaction.
+      if (setting.read() === token) setting.remove();
     },
 
     async send(options: DailyDelivery): Promise<InsightsPublicationResult> {

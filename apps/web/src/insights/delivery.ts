@@ -37,7 +37,7 @@ export function publishCourseInsights(
 
 const active = new Map<string, { promise: Promise<void>; controller: AbortController }>();
 
-/** One attempt per hour on failure; accepted reports are deduplicated by the durable outbox. */
+/** One upload attempt per hour on failure; the durable outbox deduplicates accepted reports. */
 export function deliverCourseInsights(
   courseId: string,
   options: {
@@ -74,20 +74,22 @@ async function deliver(
     enrolment = setting.read();
   if (!enrolment || enrolment.consentedAt === null || !enrolment.pupilLabel.trim()) return 'idle';
   const optIn = createInsightsOptInSetting(courseId);
-  const allowed = () =>
+  const consentAllows = () =>
     !controller.signal.aborted &&
     reportingEnabled() &&
     dayAt(now()) === day &&
     optIn.read() &&
     JSON.stringify(setting.read()) === JSON.stringify(enrolment) &&
     getCourseIdForShare(enrolment.shareId) === courseId;
-  if (!allowed()) return 'idle';
+  if (!consentAllows()) return 'idle';
+  const outbox = createInsightsOutbox(undefined, now);
+  const allowed = () => consentAllows() && !outbox.isDiscardPending(enrolment.shareId);
   const abortIfChanged = () => {
     if (!allowed()) controller.abort();
   };
   const unsubscribe = [setting.subscribe(abortIfChanged), optIn.subscribe(abortIfChanged)];
-  const outbox = createInsightsOutbox(undefined, now);
   try {
+    await outbox.finishPendingDiscard(enrolment.shareId);
     const isCurrent = async () => {
       const course = await db.courses.get(courseId);
       return Boolean(

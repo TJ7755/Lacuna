@@ -60,7 +60,7 @@ function gifFrameCount(bytes: Uint8Array): number {
   if (bytes[0] !== 0x47 || bytes[1] !== 0x49 || bytes[2] !== 0x46) return 0;
   // Logical Screen Descriptor: width(2) height(2) packed(1) bg(1) aspect(1).
   const packed = bytes[4 + 6];
-  let offset = 13 + (packed & 0x80 ? 3 * 2 ** (packed & 0x07) : 0);
+  let offset = 13 + (packed & 0x80 ? 3 * 2 ** ((packed & 0x07) + 1) : 0);
   let frames = 0;
   const skipSubBlocks = () => {
     while (offset < bytes.length && bytes[offset] !== 0) offset += 1 + bytes[offset];
@@ -76,7 +76,7 @@ function gifFrameCount(bytes: Uint8Array): number {
       frames += 1;
       if (frames > 1) return frames;
       const localPacked = bytes[offset + 9];
-      offset += 10 + (localPacked & 0x80 ? 3 * 2 ** (localPacked & 0x07) : 0);
+      offset += 10 + (localPacked & 0x80 ? 3 * 2 ** ((localPacked & 0x07) + 1) : 0);
       offset += 1;
       skipSubBlocks();
     } else {
@@ -94,6 +94,7 @@ function webpIsAnimated(bytes: Uint8Array): boolean {
   const webp = [0x57, 0x45, 0x42, 0x50];
   if (!riff.every((byte, index) => bytes[index] === byte)) return false;
   if (!webp.every((byte, index) => bytes[8 + index] === byte)) return false;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let offset = 12;
   while (offset + 8 <= bytes.length) {
     const tag = String.fromCharCode(
@@ -102,17 +103,14 @@ function webpIsAnimated(bytes: Uint8Array): boolean {
       bytes[offset + 2],
       bytes[offset + 3],
     );
-    const size =
-      bytes[offset + 4] |
-      (bytes[offset + 5] << 8) |
-      (bytes[offset + 6] << 16) |
-      (bytes[offset + 7] << 24);
+    const size = view.getUint32(offset + 4, true);
+    const nextOffset = offset + 8 + size + (size % 2);
+    if (nextOffset > bytes.length) return false;
     // The VP8X flags advertise animation; ANIM/ANMF chunks carry it, so either
     // signal counts and scanning continues past an unflagged VP8X.
     if (tag === 'ANIM' || tag === 'ANMF') return true;
-    if (tag === 'VP8X' && offset + 8 < bytes.length && (bytes[offset + 8] & 0x02) !== 0)
-      return true;
-    offset += 8 + size + (size % 2);
+    if (tag === 'VP8X' && size > 0 && (bytes[offset + 8] & 0x02) !== 0) return true;
+    offset = nextOffset;
   }
   return false;
 }

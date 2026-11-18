@@ -99,13 +99,12 @@ export async function disconnectFromClass(courseId: string): Promise<void> {
   let discardError: unknown;
   if (enrolment) {
     const outbox = createInsightsOutbox();
+    // Persist the deletion request before clearing the enrolment. If this write
+    // fails, keep the revoked enrolment so disconnect can be retried.
+    outbox.markDiscardPending(enrolment.shareId);
     try {
-      await outbox.discard(enrolment.shareId);
+      await outbox.finishPendingDiscard(enrolment.shareId);
     } catch (error) {
-      // A failed delete must not keep the enrolment: the user asked to leave,
-      // and retaining retryable ciphertext after an explicit disconnect would
-      // resend pre-disconnect evidence on re-consent. Finish the local cleanup
-      // first, then surface the failure.
       discardError = error;
     } finally {
       outbox.close();

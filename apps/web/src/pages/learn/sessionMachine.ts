@@ -460,49 +460,41 @@ function selectSessionCard(state: SessionState, input: Selection): SessionTransi
     });
     if (!window || remainingWindowSeconds <= 0 || now >= revisionPlan.input.deadlineAt)
       return { ...finish(false, true), state: park() };
-    const uncooledCardIds = new Set(
-      revisionPlan.scope.eligibleCardIds.filter(
-        (id) =>
-          !state.revision.completed.has(id) &&
-          !state.revision.parked.has(id) &&
-          (state.revision.retryAt.get(id) ?? 0) <= now &&
-          (state.cooldowns.get(id) ?? 0) <= 0,
-      ),
+    const eligibleCardIds = revisionPlan.scope.eligibleCardIds.filter(
+      (id) =>
+        !state.revision.completed.has(id) &&
+        !state.revision.parked.has(id) &&
+        (state.revision.retryAt.get(id) ?? 0) <= now,
     );
-    // A failed card is not served back-to-back, but the session never stalls:
-    // when every remaining card is cooling down, fall back to the full set.
-    const eligibleCardIds =
-      uncooledCardIds.size > 0
-        ? uncooledCardIds
-        : new Set(
-            revisionPlan.scope.eligibleCardIds.filter(
-              (id) =>
-                !state.revision.completed.has(id) &&
-                !state.revision.parked.has(id) &&
-                (state.revision.retryAt.get(id) ?? 0) <= now,
-            ),
-          );
+    const uncooledCardIds = eligibleCardIds.filter((id) => (state.cooldowns.get(id) ?? 0) <= 0);
     const objectiveContext = context.decks.values().next().value?.oc;
     if (!objectiveContext) return { state, effects: [] };
-    const allocation = allocateCramReview({
-      cards: state.cards,
-      eligibleCardIds,
-      context: objectiveContext,
-      assessmentAt: revisionPlan.input.deadlineAt,
-      now,
-      remainingWindowSeconds,
-      currentWindowId: windowId,
-      futureWindowStarts: [],
-      projection: revisionPlan.input.projection,
-      model: createHalfLifeLogisticModel(objectiveContext.ctx.decay),
-      successGrades: CRAM_SUCCESS_GRADES,
-      performanceByDeck: input.performance,
-    });
-    const card =
-      allocation.mode === 'practice-fallback'
+    const model = createHalfLifeLogisticModel(objectiveContext.ctx.decay);
+    const allocateCard = (cardIds: string[]): Card | undefined => {
+      const allocation = allocateCramReview({
+        cards: state.cards,
+        eligibleCardIds: new Set(cardIds),
+        context: objectiveContext,
+        assessmentAt: revisionPlan.input.deadlineAt,
+        now,
+        remainingWindowSeconds,
+        currentWindowId: windowId,
+        futureWindowStarts: [],
+        projection: revisionPlan.input.projection,
+        model,
+        successGrades: CRAM_SUCCESS_GRADES,
+        performanceByDeck: input.performance,
+      });
+      return allocation.mode === 'practice-fallback'
         ? allocation.cards[0]
         : (allocation.selected?.card ??
-          (allocation.stopReason ? undefined : allocation.fallbackCards[0]));
+            (allocation.stopReason ? undefined : allocation.fallbackCards[0]));
+    };
+    // Prefer uncooled cards, but a cooled retry may be the only review that fits.
+    const preferred = uncooledCardIds.length > 0 ? allocateCard(uncooledCardIds) : undefined;
+    const card =
+      preferred ??
+      (eligibleCardIds.length > uncooledCardIds.length ? allocateCard(eligibleCardIds) : undefined);
     return card
       ? { state, effects: [{ type: 'present-card', card, invalidateProgress: true }] }
       : { ...finish(true), state: park() };

@@ -150,6 +150,37 @@ it.each([
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   },
 );
+it('does not send the old pupil’s report after a failed disconnect and same-day rejoin', async () => {
+  setReportingConsent(courseId, true, 'Old identifier');
+  const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+  const send = () => deliverCourseInsights(courseId, { now, fetchImpl, retry: true });
+  await expect(send()).rejects.toThrow();
+
+  const transaction = vi.spyOn(Dexie.prototype, 'transaction');
+  transaction.mockRejectedValueOnce(new Error('Outbox unavailable'));
+  await expect(disconnectFromClass(courseId)).rejects.toThrow('Outbox unavailable');
+  expect(createEnrolmentSetting(courseId).read()).toBeNull();
+
+  enrolInClass(courseId, { shareId, lineageId: 'lineage', recipient: owner.recipient });
+  setReportingConsent(courseId, true, 'Fresh identifier');
+  const newPupilId = createEnrolmentSetting(courseId).read()!.pupilId;
+  transaction.mockRejectedValueOnce(new Error('Outbox still unavailable'));
+  await expect(send()).rejects.toThrow('Outbox still unavailable');
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
+
+  fetchImpl.mockResolvedValue(new Response(null, { status: 204 }));
+  await send();
+  expect(fetchImpl).toHaveBeenCalledTimes(2);
+  const body = JSON.parse(String(fetchImpl.mock.calls[1][1]?.body));
+  const report = parseDailyEvidence(
+    await openInsightEnvelope(owner, body, { shareId, isoDay: day }),
+    {
+      shareId,
+      day,
+    },
+  );
+  expect(report.pupil).toEqual({ id: newPupilId, label: 'Fresh identifier' });
+});
 it('backs off failed automatic attempts for an hour but permits an explicit retry', async () => {
   setReportingConsent(courseId, true, 'Pupil A');
   const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));

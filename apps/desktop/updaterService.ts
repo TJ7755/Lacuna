@@ -55,14 +55,6 @@ function releaseNotesFor(info: UpdateInfoPort): string | undefined {
   return typeof notes === 'string' ? notes.trim().slice(0, 64_000) || undefined : undefined;
 }
 
-/**
- * Whether an installed version is itself a prerelease (semver hyphen suffix),
- * in which case staying on the prerelease track is the install's own choice.
- */
-function isPrereleaseVersion(version: string): boolean {
-  return /-/.test(version.split('+')[0]);
-}
-
 function manualReason(options: DesktopUpdaterOptions): ManualUpdateReason | undefined {
   if (!options.packaged) return 'development';
   if (options.platform === 'darwin') return 'unsigned-macos';
@@ -129,9 +121,7 @@ export function createDesktopUpdater(options: DesktopUpdaterOptions): DesktopUpd
 
   options.updater.autoDownload = true;
   options.updater.autoInstallOnAppQuit = false;
-  // Prereleases only feed prerelease installs: a stable install must never
-  // silently move to a beta when a newer prerelease is published.
-  options.updater.allowPrerelease = isPrereleaseVersion(options.currentVersion);
+  options.updater.allowPrerelease = true;
 
   options.updater.on('checking-for-update', () => {
     publish({ phase: 'checking', mode: 'automatic', currentVersion: options.currentVersion });

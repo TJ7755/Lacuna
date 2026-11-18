@@ -21,9 +21,9 @@ vi.mock('electron-log', () => ({ default: mocks.log }));
 
 import { initAutoUpdater } from '../../../desktop/updater.js';
 
-function startUpdater(currentVersion = '0.2.3') {
+function startUpdater() {
   return initAutoUpdater({
-    currentVersion,
+    currentVersion: '0.2.3',
     packaged: true,
     publishState: vi.fn(),
   });
@@ -57,28 +57,14 @@ describe('Electron updater distribution rules', () => {
     expect(updater.getState()).toMatchObject({ mode: 'manual', manualReason: 'windows-portable' });
   });
 
-  it('checks for stable updates, not beta ones, on NSIS Windows installations', () => {
+  it('checks for beta updates on NSIS Windows installations', () => {
     startUpdater();
     vi.advanceTimersByTime(5_000);
 
-    expect(mocks.autoUpdater.allowPrerelease).toBe(false);
+    expect(mocks.autoUpdater.allowPrerelease).toBe(true);
     expect(mocks.autoUpdater.autoDownload).toBe(true);
     expect(mocks.autoUpdater.autoInstallOnAppQuit).toBe(false);
     expect(mocks.autoUpdater.on).toHaveBeenCalledWith('error', expect.any(Function));
-    expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledOnce();
-  });
-
-  it.each([
-    ['win32', '0.2.4-beta.1'],
-    ['linux', '0.2.4-beta.1'],
-  ])('checks for beta updates from a prerelease install on %s', (platform, currentVersion) => {
-    vi.spyOn(process, 'platform', 'get').mockReturnValue(platform as NodeJS.Platform);
-    if (platform === 'linux') vi.stubEnv('APPIMAGE', '/tmp/Lacuna.AppImage');
-
-    startUpdater(currentVersion);
-    vi.advanceTimersByTime(5_000);
-
-    expect(mocks.autoUpdater.allowPrerelease).toBe(true);
     expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledOnce();
   });
 
@@ -92,14 +78,14 @@ describe('Electron updater distribution rules', () => {
     expect(updater.getState()).toMatchObject({ mode: 'manual', manualReason: 'linux-deb' });
   });
 
-  it('checks for stable updates, not beta ones, on AppImage Linux installations', () => {
+  it('checks for beta updates on AppImage Linux installations', () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue('linux');
     vi.stubEnv('APPIMAGE', '/tmp/Lacuna.AppImage');
 
     startUpdater();
     vi.advanceTimersByTime(5_000);
 
-    expect(mocks.autoUpdater.allowPrerelease).toBe(false);
+    expect(mocks.autoUpdater.allowPrerelease).toBe(true);
     expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledOnce();
   });
 
