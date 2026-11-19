@@ -29,10 +29,11 @@ test('Today course actions preserve keyboard focus', async ({ page }, testInfo) 
   const queue = page.getByRole('region', { name: 'Today, most urgent first' });
   const forecast = page.getByRole('region', { name: 'Forecast and this week' });
   await expect(forecast).toBeVisible();
+  await expect(forecast.getByRole('img', { name: 'Exam-day forecast' })).toBeVisible();
   const queueBounds = await queue.boundingBox();
   const forecastBounds = await forecast.boundingBox();
-  expect(queueBounds!.y + queueBounds!.height).toBeLessThanOrEqual(forecastBounds!.y);
-  await testInfo.attach('Today study queue before forecast', {
+  expect(forecastBounds!.y + forecastBounds!.height).toBeLessThanOrEqual(queueBounds!.y);
+  await testInfo.attach('Today forecast above course buttons', {
     body: await page.screenshot({ animations: 'disabled' }),
     contentType: 'image/png',
   });

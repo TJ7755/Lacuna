@@ -58,7 +58,9 @@ describe('Dashboard forecasts', () => {
     expect(reviews).toHaveTextContent('2');
   });
 
-  it('leads with what to study, above the forecast', async () => {
+  // Maintainer decision: #685 restored chart-first ordering; #1319 reversed it
+  // without authorisation. Do not invert this contract for generic UX work.
+  it('leads with the forecast, above the course buttons', async () => {
     setCourseData([mockCourse], {
       summaries: { 'course-1': summary(3) },
       reviewActivity: new Map([['card-1', [Date.now()]]]),
@@ -68,7 +70,7 @@ describe('Dashboard forecasts', () => {
 
     const queue = await screen.findByRole('region', { name: 'Today, most urgent first' });
     const forecastPanel = screen.getByRole('region', { name: 'Forecast and this week' });
-    expect(queue.compareDocumentPosition(forecastPanel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.getByLabelText('Today: 3 reviews due, about 1 minute')).toHaveTextContent(
       '3reviews due',
     );
@@ -81,13 +83,14 @@ describe('Dashboard forecasts', () => {
     const { rerender } = render(<Dashboard />);
     expect(screen.getByRole('button', { name: 'Study Test Course' })).toBeEnabled();
     expect(screen.getByRole('status')).toHaveTextContent('Loading forecast');
-    dashboardState.mockReviewHistory = [];
-    rerender(<Dashboard />);
     const queue = screen.getByRole('region', { name: 'Today, most urgent first' });
     const panel = screen.getByRole('region', { name: 'Forecast and this week' });
+    expect(panel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    dashboardState.mockReviewHistory = [];
+    rerender(<Dashboard />);
     expect(
       await within(panel).findByRole('heading', { name: 'Exam-day forecast' }),
     ).toBeInTheDocument();
-    expect(queue.compareDocumentPosition(panel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(panel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });
