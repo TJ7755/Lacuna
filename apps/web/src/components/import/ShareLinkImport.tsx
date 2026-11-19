@@ -200,7 +200,12 @@ export function ShareLinkImport({
       {state.status === 'loading' ? (
         <section role="status" className="rounded-3xl bg-surface card-surface p-6">
           <h2 className="font-display text-xl">
-            {chosen ? 'Loading this course…' : 'Loading this link…'}
+            <span aria-hidden="true" className="invisible">
+              {chosen ? 'Loading this course…' : 'Loading this link…'}
+            </span>
+            <span className="sr-only">
+              {chosen ? 'Loading this course…' : 'Loading this link…'}
+            </span>
           </h2>
         </section>
       ) : state.status === 'unavailable' ? (

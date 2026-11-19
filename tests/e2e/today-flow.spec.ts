@@ -43,7 +43,7 @@ test('cold Study acknowledges input and Escape cancels before the chunk arrives'
     await expect(study).toHaveAttribute('aria-busy', 'true');
     const pending = page.getByRole('status', { name: 'Loading study options' });
     await expect(pending).toBeVisible();
-    expect((await pending.boundingBox())!.height).toBeGreaterThanOrEqual(16);
+    expect((await pending.boundingBox())!.height).toBeLessThanOrEqual(1);
     if (evidence) await page.screenshot({ path: `${evidence}/study-pending.png` });
     await page.keyboard.press('Escape');
     await expect(study).not.toHaveAttribute('aria-busy');
@@ -138,7 +138,7 @@ test('Study fills the viewport through resize and Escape cancels its pending des
 
 test('forecast arrival keeps actionable queue coordinates and failed chunks recover', async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 600 });
   let release = () => {};
   const gate = new Promise<void>((resolve) => {
@@ -156,9 +156,15 @@ test('forecast arrival keeps actionable queue coordinates and failed chunks reco
     const study = page.getByRole('button', { name: 'Study Welcome to Lacuna' });
     await expect(study).toBeEnabled();
     await page.waitForTimeout(750);
+    const loading = page.getByRole('status').filter({ hasText: 'Loading forecast' });
+    await expect(loading).toHaveCSS('opacity', '0');
     const before = await study.boundingBox();
     expect(before!.y + before!.height).toBeLessThanOrEqual(600);
     if (evidence) await page.screenshot({ path: `${evidence}/forecast-pending.png` });
+    await testInfo.attach('Forecast loading quietly', {
+      body: await page.screenshot({ animations: 'disabled' }),
+      contentType: 'image/png',
+    });
     release();
     await expect(
       page.getByRole('alert').filter({ hasText: 'Could not load forecast.' }),

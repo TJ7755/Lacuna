@@ -462,10 +462,11 @@ export function BackupsSection() {
           </Button>
           <Button
             variant="primary"
+            aria-busy={restoring}
             disabled={restoring}
             onClick={() => restoreTarget && void handleRestore(restoreTarget.id)}
           >
-            {restoring ? 'Restoring…' : 'Restore'}
+            Restore
           </Button>
         </div>
       </SettingsModal>

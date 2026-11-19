@@ -152,6 +152,7 @@ export function QuestionSetOverview() {
             variant="primary"
             size="lg"
             hoverScale={false}
+            aria-busy={starting}
             disabled={starting || course.archived}
             onClick={() => {
               if (unfinished && !previousVersion) {
@@ -170,13 +171,7 @@ export function QuestionSetOverview() {
                 });
             }}
           >
-            {starting
-              ? 'Starting…'
-              : previousVersion
-                ? 'Start latest version'
-                : unfinished
-                  ? 'Resume'
-                  : 'Start'}
+            {previousVersion ? 'Start latest version' : unfinished ? 'Resume' : 'Start'}
             <ArrowRightIcon aria-hidden="true" />
           </Button>
         </div>

@@ -197,8 +197,8 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
               </SettingsSubsectionHeading>
             </div>
             {combineBusy ? (
-              <Button variant="secondary" size="sm" disabled>
-                Combining…
+              <Button variant="secondary" size="sm" disabled aria-busy>
+                Combine
               </Button>
             ) : pendingCombine ? (
               <ConfirmInline
@@ -311,12 +311,12 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
                   Cancel
                 </Button>
                 <Button variant="secondary" disabled={busy} onClick={() => runImport('merge')}>
-                  {importMode === 'merge' ? 'Adding…' : 'Add from backup'}
+                  Add from backup
                 </Button>
                 {confirmReplace ? (
                   <ConfirmInline
                     message="Delete current local data, disconnect AI and restore this backup?"
-                    confirmLabel={importMode === 'replace' ? 'Replacing…' : 'Replace local data'}
+                    confirmLabel="Replace local data"
                     disabled={busy}
                     onCancel={() => setConfirmReplace(false)}
                     onConfirm={() => runImport('replace')}

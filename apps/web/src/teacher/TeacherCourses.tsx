@@ -450,10 +450,11 @@ function ConnectionFileForm({
         <button
           type="submit"
           disabled={busy || reading}
+          aria-busy={busy || reading}
           className={`${buttonClassName('primary', 'lg')} gaps-press flex-1`}
         >
           {busy && <Spinner />}
-          {busy ? 'Checking ownership…' : 'Connect'}
+          Connect
         </button>
         {busy && (
           <button

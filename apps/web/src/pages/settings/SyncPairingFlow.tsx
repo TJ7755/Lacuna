@@ -300,8 +300,13 @@ export function SyncPairingFlow({
           {advanced}
           {formError}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="primary" disabled={busy !== null}>
-              {busy === 'setup' ? 'Setting up…' : 'Set up sync'}
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={busy !== null}
+              aria-busy={busy === 'setup'}
+            >
+              Set up sync
             </Button>
             <Button type="button" variant="ghost" onClick={onCancel} disabled={busy !== null}>
               Cancel
@@ -382,8 +387,13 @@ export function SyncPairingFlow({
                   </p>
                   {formError}
                   <div className="flex flex-wrap gap-2">
-                    <Button type="submit" variant="primary" disabled={busy !== null}>
-                      {busy === 'join' ? 'Joining…' : 'Join channel'}
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      disabled={busy !== null}
+                      aria-busy={busy === 'join'}
+                    >
+                      Join channel
                     </Button>
                     <Button
                       type="button"
@@ -425,8 +435,13 @@ export function SyncPairingFlow({
               {advanced}
               {formError}
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" variant="primary" disabled={busy !== null}>
-                  {busy === 'join' ? 'Joining…' : 'Join channel'}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={busy !== null}
+                  aria-busy={busy === 'join'}
+                >
+                  Join channel
                 </Button>
                 <Button type="button" variant="ghost" onClick={onCancel} disabled={busy !== null}>
                   Cancel

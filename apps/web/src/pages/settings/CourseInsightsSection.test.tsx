@@ -168,7 +168,7 @@ describe('CourseInsightsSection', () => {
     renderSection();
     fireEvent.click(screen.getByRole('button', { name: 'Send latest progress' }));
     await waitFor(() => expect(publishCourseInsights).toHaveBeenCalled());
-    expect(screen.getByRole('button', { name: 'Sending…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send latest progress' })).toBeDisabled();
     fail(new Error('Storage full'));
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent(

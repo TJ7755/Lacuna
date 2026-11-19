@@ -98,7 +98,16 @@ export function CourseInsightsSection({
       )}
       {enrolment && (
         <p className="mt-2 text-sm text-ink-soft">
-          Connected course: {course?.name ?? 'Loading course…'}.
+          {course ? (
+            <>Connected course: {course.name}.</>
+          ) : (
+            <>
+              <span className="invisible" aria-hidden="true">
+                Connected course: Loading course….
+              </span>
+              <span className="sr-only">Loading course…</span>
+            </>
+          )}
         </p>
       )}
       {enrolment && (
@@ -153,11 +162,12 @@ export function CourseInsightsSection({
       {enabled && consenting && (
         <button
           type="button"
+          aria-busy={busy}
           disabled={busy || disconnecting}
           className={`${buttonClassName('secondary', 'sm')} mt-3`}
           onClick={() => void publish()}
         >
-          {busy ? 'Sending…' : 'Send latest progress'}
+          Send latest progress
         </button>
       )}
       {message && (

@@ -47,7 +47,7 @@ test('a pending Question save prevents edits and repeat-save restores keyboard e
   await page.evaluate(() => window.QuestionAuthoringFixture.blockWrites());
   try {
     await page.getByRole('button', { name: 'Save & add another' }).click();
-    await expect(page.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Create Question' })).toBeDisabled();
     await expect(prompt).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Generated family' })).toBeDisabled();
     await page.screenshot({ path: testInfo.outputPath('pending-save.png'), fullPage: true });

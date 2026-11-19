@@ -34,7 +34,10 @@ export function QuestionSetSaveStatus({
         </div>
       ) : saving ? (
         <p role="status" className="text-xs text-ink-faint">
-          Saving…
+          <span aria-hidden="true" className="invisible">
+            Saving…
+          </span>
+          <span className="sr-only">Saving…</span>
         </p>
       ) : null}
       <p role="status" aria-live="polite" className="sr-only">

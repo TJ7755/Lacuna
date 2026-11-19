@@ -100,8 +100,8 @@ export function GapsConnectionExport({
           />
         </Field>
         <div className="flex flex-wrap gap-2">
-          <button type="submit" className={buttonClassName('primary')}>
-            {busy ? 'Encrypting connection…' : 'Download connection file'}
+          <button type="submit" aria-busy={busy} className={buttonClassName('primary')}>
+            Download connection file
           </button>
           <button
             type="button"

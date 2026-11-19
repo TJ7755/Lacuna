@@ -261,7 +261,7 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
               disabled={busy}
             >
               <ShareIcon width={18} height={18} />
-              {busy ? 'Creating…' : 'Create share link'}
+              Create share link
             </Button>
           )}
 
@@ -315,11 +315,7 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
                       onClick={() => void publish()}
                       disabled={busy}
                     >
-                      {busy
-                        ? 'Updating…'
-                        : behind
-                          ? `Send revision ${courseRevision}`
-                          : 'Update link'}
+                      {behind ? `Send revision ${courseRevision}` : 'Update link'}
                     </Button>
                     <ConfirmInlineSwap
                       active={confirmingStop}

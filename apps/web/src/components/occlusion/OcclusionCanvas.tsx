@@ -225,7 +225,7 @@ export function OcclusionCanvas({
               onClick={() => fileInputRef.current?.click()}
             >
               <UploadIcon width={14} height={14} />
-              {uploading ? 'Uploading…' : assetUrl ? 'Replace image' : 'Upload diagram'}
+              {assetUrl ? 'Replace image' : 'Upload diagram'}
             </Button>
           </>
         )}

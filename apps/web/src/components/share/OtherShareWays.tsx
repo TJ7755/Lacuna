@@ -256,7 +256,7 @@ export function OtherShareControls({
         onClick={() => void publish()}
         disabled={publishing}
       >
-        {publishing ? 'Publishing…' : course.distribution ? 'Publish update' : 'Publish course'}
+        {course.distribution ? 'Publish update' : 'Publish course'}
       </Button>
     </div>
   );
@@ -282,7 +282,7 @@ export function OtherShareControls({
               />
             ) : (
               <Button variant="primary" onClick={() => void createCode()} disabled={busy}>
-                {busy ? 'Creating…' : 'Create share code'}
+                Create share code
               </Button>
             )}
             {mediaNote}
@@ -306,7 +306,7 @@ export function OtherShareControls({
               </div>
             ) : (
               <Button variant="primary" onClick={() => void createQr()} disabled={busy}>
-                {busy ? 'Creating…' : 'Create QR code'}
+                Create QR code
               </Button>
             )}
             {mediaNote}

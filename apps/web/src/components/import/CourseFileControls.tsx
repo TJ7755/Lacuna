@@ -45,7 +45,7 @@ export function CourseFileExportButton({
   return (
     <Button variant="primary" disabled={!courseId || saving} onClick={() => void save()}>
       <DownloadIcon width={18} height={18} />
-      {saving ? 'Saving…' : 'Save course file'}
+      Save course file
     </Button>
   );
 }
@@ -106,7 +106,7 @@ export function CourseFileImportButton({
         onClick={() => input.current?.click()}
       >
         <UploadIcon width={16} height={16} />
-        {reading ? 'Reading…' : 'Upload'}
+        Upload
       </Button>
     </div>
   );

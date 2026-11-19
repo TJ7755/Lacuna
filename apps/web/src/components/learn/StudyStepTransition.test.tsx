@@ -327,7 +327,7 @@ describe('StudyStepTransition', () => {
 
   it('does not announce an empty course while planning the next step', () => {
     renderTransition({ nextLabel: undefined, planningNextStep: true });
-    expect(screen.getByRole('button', { name: 'Planning next step…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
     expect(screen.queryByText('Nothing else is ready right now')).not.toBeInTheDocument();
   });
 

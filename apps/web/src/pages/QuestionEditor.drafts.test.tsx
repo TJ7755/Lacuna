@@ -177,7 +177,7 @@ describe('QuestionEditor drafts', () => {
     expect(screen.queryByRole('dialog', { name: 'Leave this Question?' })).not.toBeInTheDocument();
   });
 
-  it('crossfades the primary save label while preserving its current accessible name', async () => {
+  it('keeps the primary save action named while saving and disables the editor', async () => {
     let finishSave!: () => void;
     mocks.createFixed.mockReturnValueOnce(
       new Promise<void>((resolve) => {
@@ -197,8 +197,11 @@ describe('QuestionEditor drafts', () => {
     chooseConcept();
     fireEvent.click(screen.getByRole('button', { name: 'Create Question' }));
 
-    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
-    expect(screen.getByText('Saving…')).toHaveStyle({ opacity: '0' });
+    expect(screen.getByRole('button', { name: 'Create Question' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Create Question' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
     expect(screen.getByLabelText('Prompt')).toBeDisabled();
     expect(screen.getByLabelText('Expected answer')).toBeDisabled();
     expect(screen.getByLabelText('Worked explanation')).toBeDisabled();

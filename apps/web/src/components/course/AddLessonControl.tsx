@@ -146,7 +146,7 @@ export function AddLessonControl({
           onClick={() => void save()}
           disabled={saving || !name.trim()}
         >
-          {saving ? 'Creating…' : 'Create lesson'}
+          Create lesson
         </Button>
         <Button
           variant="secondary"

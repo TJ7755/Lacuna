@@ -53,7 +53,7 @@ it('shows pending feedback until content is available, then reopens warm', async
   await setup();
   fireEvent.click(screen.getByRole('button', { name: 'Import' }));
   expect(screen.queryByRole('region')).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /Loading/ })).toHaveAttribute('aria-busy', 'true');
+  expect(screen.getByRole('button', { name: 'Import' })).toHaveAttribute('aria-busy', 'true');
   await act(async () => request.resolve({ default: Panel }));
   await waitFor(() => expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible());
   const panel = document.getElementById(
@@ -72,7 +72,10 @@ it('cancels a cold opening before its request resolves', async () => {
   loading.load.mockReturnValue(request.promise);
   await setup();
   fireEvent.click(screen.getByRole('button', { name: 'Import' }));
-  fireEvent.click(screen.getByRole('button', { name: /Loading/ }));
+  const trigger = screen.getByRole('button', { name: 'Import' });
+  expect(trigger).toBeEnabled();
+  expect(trigger).toHaveAttribute('aria-busy', 'true');
+  fireEvent.click(trigger);
   await act(async () => request.resolve({ default: Panel }));
   expect(screen.queryByRole('region')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Import' })).toHaveAttribute('aria-expanded', 'false');
@@ -105,6 +108,6 @@ it('uses a prefetch completed after mount without a pending opening', async () =
   await loadRouteModule(loading.load);
   fireEvent.click(screen.getByRole('button', { name: 'Import' }));
   await waitFor(() => expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible());
-  expect(screen.queryByRole('button', { name: /Loading/ })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Import' })).not.toHaveAttribute('aria-busy');
   expect(loading.load).toHaveBeenCalledOnce();
 });

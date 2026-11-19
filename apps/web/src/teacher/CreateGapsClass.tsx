@@ -190,8 +190,13 @@ export function CreateGapsClass({
           />
         </Field>
         <RememberClassCheckbox checked={remember} onChange={setRemember} />
-        <button ref={submitButton} type="submit" className={buttonClassName('primary')}>
-          {busy ? 'Creating class…' : 'Create class'}
+        <button
+          ref={submitButton}
+          type="submit"
+          aria-busy={busy}
+          className={buttonClassName('primary')}
+        >
+          Create class
         </button>
       </fieldset>
       {error && (

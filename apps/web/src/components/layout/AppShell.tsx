@@ -516,11 +516,7 @@ function StudyPending({ anchor, onClose }: { anchor: HTMLElement; onClose: () =>
     };
   }, [anchor, onClose]);
   return createPortal(
-    <span
-      role="status"
-      aria-label="Loading study options"
-      className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[inherit] bg-inherit text-sm"
-    >
+    <span role="status" aria-label="Loading study options" className="sr-only">
       Loading…
     </span>,
     anchor,

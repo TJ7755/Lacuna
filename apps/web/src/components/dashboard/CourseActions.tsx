@@ -189,7 +189,7 @@ export function ArchiveCourseDialog({
             onClick={() => void confirmArchive()}
             disabled={busy}
           >
-            {busy ? 'Archiving…' : 'Archive course'}
+            Archive course
           </Button>
         </div>
       </motion.div>

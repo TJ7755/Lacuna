@@ -276,7 +276,10 @@ export function Dashboard() {
                     />
                   ) : (
                     <div className="flex h-full flex-col items-start justify-center gap-3">
-                      <p role={chartFailed ? 'alert' : 'status'} className="text-sm text-ink-soft">
+                      <p
+                        role={chartFailed ? 'alert' : 'status'}
+                        className={`text-sm text-ink-soft ${!chartFailed && !(histories !== undefined && lines.length === 0) ? 'opacity-0' : ''}`}
+                      >
                         {chartFailed
                           ? 'Could not load forecast.'
                           : histories !== undefined && lines.length === 0

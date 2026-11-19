@@ -74,7 +74,7 @@ test('keeps the selected file and actionable error, then retries without choosin
   });
   try {
     await recovery.getByRole('button', { name: 'Add from backup' }).click();
-    await expect(recovery.getByRole('button', { name: 'Adding…' })).toBeDisabled();
+    await expect(recovery.getByRole('button', { name: 'Add from backup' })).toBeDisabled();
     await expect(recovery.getByRole('button', { name: 'Replace local data' })).toBeDisabled();
     await expect(recovery.getByRole('button', { name: 'Choose backup file' })).toBeDisabled();
     await expect(

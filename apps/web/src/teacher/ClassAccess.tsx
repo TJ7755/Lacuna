@@ -266,10 +266,11 @@ function UnlockForm({
       <button
         type="submit"
         disabled={busy}
+        aria-busy={busy}
         className={`${buttonClassName('primary', 'lg')} gaps-press w-full`}
       >
         {busy ? <Spinner /> : <UnlockIcon width={18} height={18} />}
-        {busy ? 'Unlocking…' : 'Unlock class'}
+        Unlock class
       </button>
     </form>
   );

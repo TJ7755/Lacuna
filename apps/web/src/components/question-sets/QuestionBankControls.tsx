@@ -57,7 +57,7 @@ export function QuestionBankControls({
       <div className="flex min-h-12 flex-wrap items-center gap-2">
         <Button variant="ghost" disabled={disabled || busy} onClick={() => input.current?.click()}>
           <UploadIcon width={16} height={16} />
-          {busy ? 'Working…' : 'Import question bank'}
+          Import question bank
         </Button>
         <input
           ref={input}

@@ -516,13 +516,7 @@ export function SharedCourseImport({
                     onClick={handleImport}
                     disabled={importing || !schedulingReady}
                   >
-                    {importing
-                      ? pending.merge
-                        ? 'Updating…'
-                        : 'Importing…'
-                      : pending.merge
-                        ? 'Update course'
-                        : 'Add to my courses'}
+                    {pending.merge ? 'Update course' : 'Add to my courses'}
                   </Button>
                 )}
               </div>

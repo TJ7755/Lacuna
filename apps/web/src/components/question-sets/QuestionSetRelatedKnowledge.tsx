@@ -68,7 +68,7 @@ export function QuestionSetRelatedKnowledge({
         }}
       >
         <CardsIcon width={18} height={18} />
-        {!submitted && (busy ? 'Saving assistance…' : 'Use related cards')}
+        {!submitted && 'Use related cards'}
       </Button>
       {busy && (
         <p className="sr-only" role="status">

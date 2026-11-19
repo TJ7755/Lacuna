@@ -58,7 +58,12 @@ export function QuestionSetLibraryActions({
     >
       <div ref={root}>
         {busy ? (
-          <p role="status">Removing…</p>
+          <p role="status">
+            <span aria-hidden="true" className="invisible">
+              Removing…
+            </span>
+            <span className="sr-only">Removing…</span>
+          </p>
         ) : confirmation ? (
           <ConfirmInline
             message="Remove this set? Saved attempts will remain."

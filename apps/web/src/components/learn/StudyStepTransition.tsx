@@ -175,15 +175,10 @@ export function StudyStepTransition({
                   size="lg"
                   onClick={onContinue}
                   disabled={planningNextStep}
+                  aria-busy={planningNextStep || undefined}
                   className="study-transition-continue"
                 >
-                  {planningNextStep
-                    ? 'Planning next step…'
-                    : breakPending
-                      ? 'Continue without break'
-                      : canResume
-                        ? 'Resume'
-                        : 'Continue'}
+                  {breakPending ? 'Continue without break' : canResume ? 'Resume' : 'Continue'}
                   <span className="study-transition-arrow" aria-hidden="true">
                     <TransitionArrow />
                   </span>

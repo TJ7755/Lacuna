@@ -79,6 +79,7 @@ for (const width of [1280, 375]) {
       await page.screenshot({ path: testInfo.outputPath('course-loading.png') });
     }
     await expect(loading).toBeVisible();
+    await expect(loading.locator('[aria-hidden="true"]')).toBeHidden();
     await expect(back).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Try again' })).toBeHidden();
 

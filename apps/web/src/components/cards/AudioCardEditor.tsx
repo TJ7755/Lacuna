@@ -242,7 +242,7 @@ export function AudioCardEditor({
             onClick={() => (recording ? stopRecording() : void startRecording())}
           >
             {recording && <PauseIcon width={16} height={16} />}
-            {recording ? 'Stop recording' : startingRecording ? 'Starting…' : 'Record'}
+            {recording ? 'Stop recording' : 'Record'}
           </Button>
         </div>
       </div>

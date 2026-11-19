@@ -399,13 +399,11 @@ export function CardImportDialog({
             disabled={!canContinue || busy || (finalStep && !canImport)}
             onClick={() => void confirm()}
           >
-            {busy
-              ? 'Importing…'
-              : step === 'input'
-                ? 'Review'
-                : step === 'review' && separateDestination
-                  ? 'Destination'
-                  : `Import ${countOf(count, 'card')}`}
+            {step === 'input'
+              ? 'Review'
+              : step === 'review' && separateDestination
+                ? 'Destination'
+                : `Import ${countOf(count, 'card')}`}
             <span aria-hidden="true">→</span>
           </Button>
         </div>

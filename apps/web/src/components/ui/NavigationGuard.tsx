@@ -238,7 +238,7 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
               onClick={() => void leave()}
               disabled={confirming}
             >
-              {confirming ? 'Leaving…' : leaveLabel}
+              {leaveLabel}
             </Button>
           </div>
         </>

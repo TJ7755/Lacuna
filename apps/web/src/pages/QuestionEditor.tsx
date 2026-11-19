@@ -348,13 +348,11 @@ function LegacyQuestionEditor({
   }
 
   const tagSuggestions = [...new Set(data.questions.flatMap((question) => question.tags))].sort();
-  const saveLabel = saving
-    ? 'Saving…'
-    : recoverAsCopy
-      ? 'Save as new question'
-      : editing
-        ? 'Save Question'
-        : 'Create Question';
+  const saveLabel = recoverAsCopy
+    ? 'Save as new question'
+    : editing
+      ? 'Save Question'
+      : 'Create Question';
 
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-10 pt-6 md:pt-8`} {...editorKeys}>
@@ -526,6 +524,7 @@ function LegacyQuestionEditor({
               onClick={() => void save()}
               disabled={!editable || saving || draft.draftPrompt}
               aria-label={saveLabel}
+              aria-busy={saving}
             >
               <AnimatePresence initial={false} mode="popLayout">
                 <motion.span

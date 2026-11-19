@@ -216,13 +216,20 @@ export function McpSection() {
                 : 'text-ink-soft'
           }
         >
-          {readState === 'loading'
-            ? 'Reading MCP status…'
-            : readState === 'error'
-              ? 'MCP status unavailable.'
-              : status?.running
-                ? 'Running'
-                : 'Stopped'}
+          {readState === 'loading' ? (
+            <>
+              <span className="invisible" aria-hidden="true">
+                Reading MCP status…
+              </span>
+              <span className="sr-only">Reading MCP status…</span>
+            </>
+          ) : readState === 'error' ? (
+            'MCP status unavailable.'
+          ) : status?.running ? (
+            'Running'
+          ) : (
+            'Stopped'
+          )}
         </span>
         {readState === 'ready' && status && (
           <>

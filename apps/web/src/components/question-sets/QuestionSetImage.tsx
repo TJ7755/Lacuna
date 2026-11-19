@@ -142,7 +142,7 @@ export function QuestionSetImage({
                 }
               }}
             >
-              {busy ? 'Adding image…' : 'Add image'}
+              Add image
             </Button>
           </>
         )}

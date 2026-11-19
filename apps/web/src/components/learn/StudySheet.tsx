@@ -88,7 +88,7 @@ function CoursePicker({ onPick }: { onPick: (courseId: string) => void }) {
     <>
       <PreviewTitle>Which course?</PreviewTitle>
       {active === undefined ? (
-        <p className="py-2 text-sm text-ink-faint">Loading your courses…</p>
+        <p className="py-2 text-sm text-ink-faint opacity-0">Loading your courses…</p>
       ) : active.length === 0 ? (
         <p className="py-2 text-sm text-ink-soft">
           There are no courses to study yet. Create one from Today first.
@@ -165,7 +165,7 @@ function CourseStudyOptions({
         )}
       </div>
       {flow === undefined ? (
-        <p className="py-2 text-sm text-ink-faint">Working out what is next…</p>
+        <p className="py-2 text-sm text-ink-faint opacity-0">Working out what is next…</p>
       ) : plan && plan.steps.length > 0 ? (
         <ol aria-label="Today's session" className="flex list-none flex-col gap-4 py-1">
           {plan.steps.map((step) => (
