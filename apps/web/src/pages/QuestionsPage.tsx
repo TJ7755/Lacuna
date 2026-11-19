@@ -242,9 +242,10 @@ export function QuestionsPage() {
                 type="submit"
                 variant="primary"
                 className="self-end"
+                aria-busy={creating}
                 disabled={creating || !name.trim()}
               >
-                {creating ? 'Creating…' : 'Create'}
+                Create
               </Button>
             </form>
           </ExpandingCreateControl>
@@ -353,6 +354,7 @@ export function QuestionsPage() {
               ) : (
                 <Button
                   variant="secondary"
+                  aria-busy={startingSetId === content.id}
                   disabled={
                     course.archived ||
                     startingSetId !== null ||
@@ -362,7 +364,7 @@ export function QuestionsPage() {
                   }
                   onClick={() => void attempt(content.id)}
                 >
-                  {startingSetId === content.id ? 'Starting…' : 'Attempt'}
+                  Attempt
                 </Button>
               )}
             </div>

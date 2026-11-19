@@ -59,7 +59,7 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
   return (
     <div className="relative">
       <ExpandingCreateControl
-        label={pending ? 'Loading…' : 'Import'}
+        label="Import"
         closedWidth={100}
         showIcon={false}
         open={open}

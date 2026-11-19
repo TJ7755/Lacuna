@@ -286,15 +286,14 @@ export function TeacherKeySetup({
               )}
               <button
                 type="submit"
+                aria-busy={busy || reading}
                 className={`${buttonClassName('primary', 'lg')} gaps-press w-full`}
               >
-                {busy
-                  ? 'Preparing key…'
-                  : mode === 'create'
-                    ? 'Protect class reports'
-                    : mode === 'restore'
-                      ? 'Restore class access'
-                      : 'Open saved recovery file'}
+                {mode === 'create'
+                  ? 'Protect class reports'
+                  : mode === 'restore'
+                    ? 'Restore class access'
+                    : 'Open saved recovery file'}
               </button>
             </fieldset>
           </form>

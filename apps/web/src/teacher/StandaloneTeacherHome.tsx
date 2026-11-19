@@ -185,7 +185,11 @@ export function StandaloneTeacherHome() {
   ) {
     content = (
       <p role="status" className="flex items-center justify-center gap-3 pt-32 text-ink-soft">
-        <Spinner /> Opening Gaps…
+        <Spinner />
+        <span className="invisible" aria-hidden="true">
+          Opening Gaps…
+        </span>
+        <span className="sr-only">Opening Gaps…</span>
       </p>
     );
   } else if (page.kind === 'demo' && Class) {

@@ -294,7 +294,7 @@ describe('DataPortabilitySection', () => {
     await chooseRecoverFile();
     fireEvent.click(screen.getByRole('button', { name: 'Add from backup' }));
 
-    expect(await screen.findByRole('button', { name: 'Adding…' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Add from backup' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Replace local data' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Choose backup file' })).toBeDisabled();
@@ -302,7 +302,7 @@ describe('DataPortabilitySection', () => {
       screen.getByRole('button', { name: 'Choose backup from another device' }),
     ).toBeDisabled();
     await chooseCombineFile();
-    fireEvent.click(screen.getByRole('button', { name: 'Adding…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add from backup' }));
     expect(importBackup).toHaveBeenCalledOnce();
     expect(readBackupFile).toHaveBeenCalledOnce();
     await act(async () => complete());
@@ -356,7 +356,7 @@ describe('DataPortabilitySection', () => {
     await chooseCombineFile();
     fireEvent.click(await screen.findByRole('button', { name: 'Combine' }));
 
-    expect(await screen.findByRole('button', { name: 'Combining…' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Combine' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
 
     await act(async () => {

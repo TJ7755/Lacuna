@@ -48,7 +48,16 @@ export function SyncPairingModal({
         Pair this device
       </h2>
       {mode === 'setup' || mode === 'join' ? (
-        <Suspense fallback={<p className="text-sm text-ink-faint">Preparing sync setup…</p>}>
+        <Suspense
+          fallback={
+            <p role="status" className="text-sm text-ink-faint">
+              <span className="invisible" aria-hidden="true">
+                Preparing sync setup…
+              </span>
+              <span className="sr-only">Preparing sync setup…</span>
+            </p>
+          }
+        >
           <SyncPairingFlow
             mode={mode}
             busy={pairingBusy}

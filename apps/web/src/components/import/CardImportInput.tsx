@@ -102,9 +102,16 @@ export function CardImportInput({
       <div className="card-import-input-tools">
         <div className="card-import-source-meta" role="status">
           <span>
-            {source.reading
-              ? 'Reading…'
-              : countOf(source.apkg?.cards.length ?? source.result.cards.length, 'card')}
+            {source.reading ? (
+              <>
+                <span aria-hidden="true" className="invisible">
+                  Reading…
+                </span>
+                <span className="sr-only">Reading…</span>
+              </>
+            ) : (
+              countOf(source.apkg?.cards.length ?? source.result.cards.length, 'card')
+            )}
           </span>
         </div>
         {!source.apkg && !preferPackage && (

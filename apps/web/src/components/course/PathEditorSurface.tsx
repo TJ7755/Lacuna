@@ -244,7 +244,7 @@ export function PathEditorSurface({
                 Cancel
               </Button>
               <Button variant="primary" disabled={busy || closing} onClick={() => void finish()}>
-                {busy ? 'Saving…' : 'Done'}
+                Done
               </Button>
             </div>
           </footer>

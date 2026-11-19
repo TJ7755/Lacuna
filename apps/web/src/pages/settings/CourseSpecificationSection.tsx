@@ -224,7 +224,12 @@ export function CourseSpecificationSection({ course }: { course: CourseRecord })
         className="flex flex-col gap-2 text-sm"
       >
         {!preview ? (
-          <p>Loading point links and paper coverage…</p>
+          <p>
+            <span className="invisible" aria-hidden="true">
+              Loading point links and paper coverage…
+            </span>
+            <span className="sr-only">Loading point links and paper coverage…</span>
+          </p>
         ) : (
           <>
             {preview.selectionError && <p className="text-negative">{preview.selectionError}</p>}

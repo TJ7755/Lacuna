@@ -189,7 +189,14 @@ export function ExamSkillPracticePanel({
           </Button>
         </div>
       )}
-      {busy && <p role="status">Starting practice…</p>}
+      {busy && (
+        <p role="status">
+          <span aria-hidden="true" className="invisible">
+            Starting practice…
+          </span>
+          <span className="sr-only">Starting practice…</span>
+        </p>
+      )}
       {fallback && (
         <div role="status" className="mt-4">
           <p>No unseen questions left.</p>

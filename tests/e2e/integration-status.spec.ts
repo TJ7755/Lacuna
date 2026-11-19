@@ -92,7 +92,8 @@ test('MCP distinguishes unknown status and confirms the client and capability', 
   });
   await page.goto('/#/settings#settings-mcp');
   const mcp = page.locator('#settings-mcp');
-  await expect(mcp.getByRole('status')).toHaveText('Reading MCP status…');
+  await expect(mcp.getByRole('status')).toContainText('Reading MCP status…');
+  await expect(mcp.getByRole('status').locator('[aria-hidden="true"]')).toBeHidden();
   await expect(mcp.getByText('Stopped', { exact: true })).toHaveCount(0);
   await expect(mcp.getByText('0 tools', { exact: true })).toHaveCount(0);
   await expect(mcp.getByText('No MCP clients connected.')).toHaveCount(0);

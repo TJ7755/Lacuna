@@ -251,7 +251,7 @@ export function NewCourseForm({
           onClick={() => void handleCreate()}
           disabled={!canCreate}
         >
-          {saving ? 'Creating…' : 'Create'}
+          Create
         </Button>
       </footer>
     </>

@@ -237,7 +237,7 @@ describe('AudioCardEditor', () => {
     fireEvent.click(record);
 
     expect(getUserMedia).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('button', { name: 'Starting…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Record' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Choose file' })).toBeDisabled();
 
     grantPermission?.({ getTracks: () => [] } as unknown as MediaStream);

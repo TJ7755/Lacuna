@@ -119,7 +119,11 @@ describe('CardImportDialog', () => {
     paste('Q\tA');
     await review();
     fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Importing…' }));
+    const importButton = screen.getByRole('button', { name: 'Import 1 card' });
+    expect(importButton).toBeDisabled();
+    expect(importButton.closest('[aria-busy]')).toHaveAttribute('aria-busy', 'true');
+    fireEvent.click(importButton);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     expect(onCancel).not.toHaveBeenCalled();
     expect(onImport).toHaveBeenCalledTimes(1);
@@ -246,7 +250,7 @@ it('imports once on plain Enter from the destination title, including repeated k
   fireEvent.keyDown(title, { key: 'Enter' });
   fireEvent.keyDown(title, { key: 'Enter' });
   expect(onImport).toHaveBeenCalledTimes(1);
-  expect(screen.getByRole('button', { name: 'Importing…' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Import 1 card' })).toBeDisabled();
   finish();
   await waitFor(() => expect(screen.getByRole('button', { name: 'Import 1 card' })).toBeEnabled());
 });

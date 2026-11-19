@@ -115,7 +115,7 @@ export const BackupHero = forwardRef<
                 />
               )}
             </span>
-            {phase === 'busy' ? 'Saving…' : phase === 'done' ? 'Saved' : 'Save restore point'}
+            {phase === 'done' ? 'Saved' : 'Save restore point'}
           </Button>
           {bursts > 0 && phase === 'done' && (
             <Burst trigger={bursts} multiplier={multiplier} count={14} spread={70} />

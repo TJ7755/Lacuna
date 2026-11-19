@@ -60,6 +60,11 @@ describe('NavigationGuard', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Go away' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
 
+    const leave = screen.getByRole('button', { name: 'Leave' });
+    expect(leave).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Keep editing' })).toBeDisabled();
+    fireEvent.click(leave);
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('Destination')).not.toBeInTheDocument();
     resolveConfirmation();

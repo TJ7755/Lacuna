@@ -19,13 +19,16 @@ export function DesktopUpdateController() {
 
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const progress =
-    state?.phase === 'checking' || state?.phase === 'available' || state?.phase === 'downloading';
+  const progress = state?.phase === 'available' || state?.phase === 'downloading';
   const error = state?.phase === 'error' && state.error && dismissedError !== state.error;
 
   return (
     <AnimatePresence>
-      {progress ? (
+      {state?.phase === 'checking' ? (
+        <p key="checking" role="status" className="sr-only">
+          Checking for Lacuna updates
+        </p>
+      ) : progress ? (
         <UpdateNotice key="progress" multiplier={m}>
           <UpdateProgressNotice state={state} multiplier={m} />
         </UpdateNotice>
@@ -89,9 +92,7 @@ function UpdateProgressNotice({
   const downloading = state.phase === 'downloading';
   const label = downloading
     ? `Downloading Lacuna ${state.availableVersion ?? 'update'}`
-    : state.phase === 'available'
-      ? `Preparing Lacuna ${state.availableVersion ?? 'update'}`
-      : 'Checking for Lacuna updates';
+    : `Preparing Lacuna ${state.availableVersion ?? 'update'}`;
 
   return (
     <div role="status">

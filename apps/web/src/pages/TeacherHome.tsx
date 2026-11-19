@@ -15,7 +15,10 @@ export function TeacherHome() {
     <TeacherHomeView>
       {published === undefined ? (
         <p role="status" className="text-ink-soft">
-          Loading published courses…
+          <span className="invisible" aria-hidden="true">
+            Loading published courses…
+          </span>
+          <span className="sr-only">Loading published courses…</span>
         </p>
       ) : published.length === 0 ? (
         <TeacherEmptyState />
@@ -60,7 +63,14 @@ function PublishedCourse({ course }: { course: Course }) {
     <SectionCard as="div" className="h-full">
       <h3 className="break-words font-display text-xl">{course.name}</h3>
       {course.archived && <p className="mt-1 text-sm text-ink-soft">Archived</p>}
-      {ownership === 'loading' && <p className="mt-3 text-sm text-ink-soft">Checking ownership…</p>}
+      {ownership === 'loading' && (
+        <p role="status" className="mt-3 text-sm text-ink-soft">
+          <span className="invisible" aria-hidden="true">
+            Checking ownership…
+          </span>
+          <span className="sr-only">Checking ownership…</span>
+        </p>
+      )}
       {ownership === 'owner' && (
         <Link
           to={`/share?courseId=${encodeURIComponent(course.id)}`}

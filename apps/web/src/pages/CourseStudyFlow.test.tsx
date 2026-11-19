@@ -301,7 +301,7 @@ describe('CourseStudyFlow', () => {
     await waitFor(() => expect(planningStates.at(-1)).toBe(false));
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
     expect(planningStates.at(-1)).toBe(true);
-    expect(screen.getByRole('button', { name: 'Planning next step…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
     mockFlows[1] = flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1);
     act(() => mockFlowListeners.forEach((notify) => notify()));
     fireEvent.click(await screen.findByRole('button', { name: /^Continue$/ }));
@@ -563,8 +563,9 @@ describe('CourseStudyFlow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
 
-    const pending = await screen.findByRole('button', { name: 'Planning next step…' });
+    const pending = await screen.findByRole('button', { name: 'Continue' });
     expect(pending).toBeDisabled();
+    expect(pending).toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByLabelText('Loading course study flow')).not.toBeInTheDocument();
 
     mockFlows[1] = flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1);
@@ -621,7 +622,7 @@ describe('CourseStudyFlow', () => {
 
     await waitFor(() => expect(request()).toMatchObject({ kind: 'lesson', lessonId: 'lesson-1' }));
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
-    expect(await screen.findByRole('button', { name: 'Planning next step…' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Continue' })).toBeDisabled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 

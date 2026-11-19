@@ -73,7 +73,7 @@ export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: Lesso
           onClick={() => void handleSave()}
           disabled={!canSave}
         >
-          {busy ? 'Saving…' : note ? 'Save changes' : 'Add note'}
+          {note ? 'Save changes' : 'Add note'}
         </Button>
       </div>
     </div>

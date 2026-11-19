@@ -91,11 +91,12 @@ export function Invite({
             <button
               type="button"
               disabled={busy}
+              aria-busy={busy}
               onClick={() => void publish()}
               className={`${buttonClassName('primary', 'lg')} gaps-press`}
             >
               {busy && <Spinner />}
-              {busy ? 'Preparing class code…' : 'Publish class code'}
+              Publish class code
             </button>
           </div>
         ) : (

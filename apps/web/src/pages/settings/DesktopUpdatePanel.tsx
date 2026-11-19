@@ -17,7 +17,15 @@ const MANUAL_UPDATE_COPY: Record<ManualUpdateReason, string> = {
 export function DesktopUpdatePanel() {
   const { state, checkForUpdates, restartAndInstall } = useDesktopUpdater();
 
-  if (!state) return <p className="text-sm text-ink-soft">Loading update status…</p>;
+  if (!state)
+    return (
+      <p role="status" className="text-sm text-ink-soft">
+        <span className="invisible" aria-hidden="true">
+          Loading update status…
+        </span>
+        <span className="sr-only">Loading update status…</span>
+      </p>
+    );
 
   if (state.mode === 'manual') {
     return (
@@ -52,6 +60,11 @@ export function DesktopUpdatePanel() {
         ) : (
           <Button
             size="sm"
+            aria-busy={
+              state.phase === 'checking' ||
+              state.phase === 'available' ||
+              state.phase === 'downloading'
+            }
             disabled={
               state.phase === 'checking' ||
               state.phase === 'available' ||
@@ -59,13 +72,7 @@ export function DesktopUpdatePanel() {
             }
             onClick={() => void checkForUpdates()}
           >
-            {state.phase === 'checking'
-              ? 'Checking…'
-              : state.phase === 'available'
-                ? 'Preparing…'
-                : state.phase === 'error'
-                  ? 'Try again'
-                  : 'Check for updates'}
+            {state.phase === 'error' ? 'Try again' : 'Check for updates'}
           </Button>
         )}
       </div>
@@ -82,7 +89,11 @@ export function DesktopUpdatePanel() {
       )}
       {state.phase === 'available' && (
         <p className="mt-3 text-sm text-ink-soft">
-          Version {state.availableVersion} is available. Preparing the download…
+          Version {state.availableVersion} is available.{' '}
+          <span className="invisible" aria-hidden="true">
+            Preparing the download…
+          </span>
+          <span className="sr-only">Preparing the download…</span>
         </p>
       )}
       {state.phase === 'downloaded' && (

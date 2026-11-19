@@ -303,7 +303,10 @@ export function SyncSection() {
         </div>
         {readState === 'loading' ? (
           <span role="status" className="text-sm text-ink-faint">
-            Reading sync status…
+            <span className="invisible" aria-hidden="true">
+              Reading sync status…
+            </span>
+            <span className="sr-only">Reading sync status…</span>
           </span>
         ) : readState === 'error' ? (
           <div className="flex items-center gap-2">
@@ -341,6 +344,7 @@ export function SyncSection() {
           <div className="flex flex-wrap items-center gap-2">
             <Button
               id="sync-now"
+              aria-busy={busy === 'sync'}
               variant="primary"
               onClick={() => void handleSync()}
               onPointerEnter={preparePairingActions}
@@ -349,7 +353,7 @@ export function SyncSection() {
               disabled={busy !== null}
             >
               <ClockIcon width={18} height={18} />
-              {busy === 'sync' ? 'Syncing…' : 'Sync now'}
+              Sync now
             </Button>
             <Button
               id="sync-show-qr"
@@ -428,15 +432,7 @@ export function SyncSection() {
                     ? 'Remove sync from this device?'
                     : 'Delete the shared channel everywhere?'
                 }
-                confirmLabel={
-                  confirmUnpair
-                    ? busy === 'unpair'
-                      ? 'Removing…'
-                      : 'Unpair'
-                    : busy === 'delete'
-                      ? 'Deleting…'
-                      : 'Delete channel'
-                }
+                confirmLabel={confirmUnpair ? 'Unpair' : 'Delete channel'}
                 onCancel={() => {
                   setConfirmUnpair(false);
                   setConfirmDelete(false);

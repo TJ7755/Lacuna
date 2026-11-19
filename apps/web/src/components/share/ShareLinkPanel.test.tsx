@@ -45,9 +45,7 @@ describe('ShareLinkPanel exit', () => {
     expect(outgoing).toBeInTheDocument();
     expect(outgoing.closest('[inert]')).not.toBeNull();
     expect(outgoing.closest('[aria-hidden="true"]')).not.toBeNull();
-    expect(
-      screen.queryByRole('button', { name: /Create share link|Creating/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create share link' })).not.toBeInTheDocument();
     await settle();
     const incoming = screen.getByRole('textbox', { name: 'Share link' });
     expect(incoming.closest('[inert]')).toBeNull();
