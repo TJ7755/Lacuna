@@ -27,13 +27,24 @@ test('opens the confirmed shared course with heading focus and Study', async ({
     at: 1000,
     li: 'share-arrival-biology',
     rv: 1,
-    course: { n: 'Shared biology', o: 0, c: 1000, um: 'open', sm: 1 },
-    lessons: ['Cells', 'Enzymes'].map((name, index) => ({
-      i: `arrival-lesson-${index}`,
-      n: name,
-      notes: [],
-      cards: [{ id: `arrival-card-${index}`, k: 0, f: `Question about ${name}`, b: 'Answer' }],
-    })),
+    course: {
+      n: 'Shared biology',
+      d: 'Explore the processes that keep living organisms working.',
+      o: 0,
+      c: 1000,
+      um: 'open',
+      sm: 1,
+    },
+    lessons: ['Cells', 'Enzymes', 'Transport', 'Photosynthesis', 'Respiration'].map(
+      (name, index) => ({
+        i: `arrival-lesson-${index}`,
+        n: name,
+        d: index === 0 ? 'Cell structure and the roles of specialised cells.' : undefined,
+        notes:
+          index === 0 ? [{ n: 'Cell structure', c: 'Nuclei contain genetic information.' }] : [],
+        cards: [{ id: `arrival-card-${index}`, k: 0, f: `Question about ${name}`, b: 'Answer' }],
+      }),
+    ),
   });
   const file = JSON.stringify({ format: 'lacuna-course', version: 1, assets: [], payload });
   const meta = JSON.stringify({
@@ -54,6 +65,18 @@ test('opens the confirmed shared course with heading focus and Study', async ({
   await expect(page.getByRole('heading', { level: 1, name: 'Shared biology' })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Share link or code to import' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Read code', exact: true })).toHaveCount(0);
+  const preview = page.getByRole('region', { name: 'Course preview' });
+  await expect(
+    preview.getByRole('list', { name: 'Lessons', exact: true }).locator(':scope > li'),
+  ).toHaveCount(5);
+  await expect(
+    preview.getByText('Explore the processes that keep living organisms working.'),
+  ).toBeVisible();
+  await expect(
+    preview.getByText('Cell structure and the roles of specialised cells.'),
+  ).toBeVisible();
+  await expect(preview.getByRole('list', { name: 'Content in Cells' })).toHaveText('1 card1 note');
+  await expect(preview.getByRole('button')).toHaveCount(0);
   const add = page.getByRole('button', { name: 'Add to my courses' });
   await expect(add).toBeEnabled();
   for (const width of [1920, 1280]) {
@@ -79,10 +102,9 @@ test('opens the confirmed shared course with heading focus and Study', async ({
   });
   await page.getByRole('radio', { name: /Steady retention/ }).press('Space');
   await expect(page.getByRole('button', { name: 'Exam date and time' })).toHaveCount(0);
-  await page.getByRole('button', { name: /2 lessons/ }).click();
   await page.screenshot({
     animations: 'disabled',
-    path: testInfo.outputPath('share-lessons-1280.png'),
+    path: testInfo.outputPath('share-preview-1280.png'),
   });
   await add.press('Enter');
   await expect

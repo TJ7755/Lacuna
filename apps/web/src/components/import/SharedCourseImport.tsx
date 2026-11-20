@@ -1,4 +1,5 @@
 import { SectionCard } from '../ui/SectionCard';
+import { SharedCoursePreview } from './SharedCoursePreview';
 import { recordUsageAction } from '../../usage/actions';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -452,105 +453,117 @@ export function SharedCourseImport({
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
             className={suppliedCourse ? undefined : 'mt-5'}
           >
-            <div className="rounded-2xl bg-accent-soft/50 p-5">
-              {(!renderHeading || pending.merge) && (
-                <PreviewHeading className="mb-3 break-words font-display text-lg">
-                  {pending.merge ? 'Course update' : chosenCourseName || 'Ready to import'}
-                </PreviewHeading>
+            <div
+              className={
+                resolvedLink && !pending.merge
+                  ? 'grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.65fr)]'
+                  : undefined
+              }
+            >
+              {resolvedLink && !pending.merge && pending.file && (
+                <SharedCoursePreview payload={pending.file.payload} />
               )}
-              {pending.merge ? (
-                <p className="mb-3 text-sm text-ink-soft">
-                  {pending.merge.stale ? (
-                    <>
-                      You already have the latest version of{' '}
-                      <strong className="text-ink">{pending.merge.course.name}</strong> (revision{' '}
-                      {pending.merge.course.distributedCopy?.revision ?? 0}).
-                    </>
-                  ) : (
-                    <>
-                      This updates <strong className="text-ink">{pending.merge.course.name}</strong>{' '}
-                      (revision {pending.merge.course.distributedCopy?.revision ?? 0} →{' '}
-                      {pending.merge.incomingRevision}).
-                    </>
-                  )}
-                </p>
-              ) : pending.summary.kind === 'course' ? (
-                !chosenCourseName && (
-                  <p className="mb-3 text-sm font-semibold text-ink">
-                    {pending.summary.courseName}
-                  </p>
-                )
-              ) : (
-                <p className="mb-3 text-sm text-ink-soft">
-                  {countOf(pending.summary.cardCount, 'card')}
-                </p>
-              )}
-              {!pending.merge && pending.summary.omittedImages && (
-                <p className="mb-4 rounded-2xl bg-ink/[0.06] px-4 py-3 text-sm text-ink-soft">
-                  Images and audio omitted from this code will appear as placeholders.
-                </p>
-              )}
-              {pending.scheduling?.fromOnboarding && (
-                <p className="mb-5 text-sm text-ink-soft">
-                  {pending.scheduling.mode === 'exam'
-                    ? `Exam on ${formatDateTime(pending.scheduling.examDate, pending.scheduling.timeZone)}`
-                    : 'Steady retention'}
-                </p>
-              )}
-              {pending.scheduling && !pending.scheduling.fromOnboarding && (
-                <div className="mb-5 space-y-3">
-                  {pending.scheduling.suggestion && (
-                    <p className="text-sm text-ink-soft">
-                      Teacher suggests {pending.scheduling.suggestion}.
-                    </p>
-                  )}
-                  <CourseStudyTarget
-                    compact={resolvedLink}
-                    schedulingMode={pending.scheduling.mode}
-                    setSchedulingMode={(mode) => updateScheduling({ mode })}
-                    saving={importing}
-                    examDate={pending.scheduling.examDate}
-                    setExamDate={(examDate) => updateScheduling({ examDate })}
-                    setExamDateValid={(valid) => updateScheduling({ valid })}
-                    timeZone={pending.scheduling.timeZone}
-                  />
-                </div>
-              )}
-              <div className="flex flex-wrap justify-end gap-2">
-                {/* A chosen course has nothing to return to here; the panel offers the way back. */}
-                {!suppliedCourse && (
-                  <Button variant="ghost" onClick={() => setPending(null)}>
-                    {pending.merge?.stale ? 'Close' : 'Cancel'}
-                  </Button>
+              <div className="min-w-0 rounded-2xl bg-accent-soft/50 p-5">
+                {(!renderHeading || pending.merge) && (
+                  <PreviewHeading className="mb-3 break-words font-display text-lg">
+                    {pending.merge ? 'Course update' : chosenCourseName || 'Ready to import'}
+                  </PreviewHeading>
                 )}
-                {!pending.merge?.stale && (
-                  <Button
-                    variant="primary"
-                    onClick={handleImport}
-                    disabled={importing || !schedulingReady}
+                {pending.merge ? (
+                  <p className="mb-3 text-sm text-ink-soft">
+                    {pending.merge.stale ? (
+                      <>
+                        You already have the latest version of{' '}
+                        <strong className="text-ink">{pending.merge.course.name}</strong> (revision{' '}
+                        {pending.merge.course.distributedCopy?.revision ?? 0}).
+                      </>
+                    ) : (
+                      <>
+                        This updates{' '}
+                        <strong className="text-ink">{pending.merge.course.name}</strong> (revision{' '}
+                        {pending.merge.course.distributedCopy?.revision ?? 0} →{' '}
+                        {pending.merge.incomingRevision}).
+                      </>
+                    )}
+                  </p>
+                ) : pending.summary.kind === 'course' ? (
+                  !chosenCourseName && (
+                    <p className="mb-3 text-sm font-semibold text-ink">
+                      {pending.summary.courseName}
+                    </p>
+                  )
+                ) : (
+                  <p className="mb-3 text-sm text-ink-soft">
+                    {countOf(pending.summary.cardCount, 'card')}
+                  </p>
+                )}
+                {!pending.merge && pending.summary.omittedImages && (
+                  <p className="mb-4 rounded-2xl bg-ink/[0.06] px-4 py-3 text-sm text-ink-soft">
+                    Images and audio omitted from this code will appear as placeholders.
+                  </p>
+                )}
+                {pending.scheduling?.fromOnboarding && (
+                  <p className="mb-5 text-sm text-ink-soft">
+                    {pending.scheduling.mode === 'exam'
+                      ? `Exam on ${formatDateTime(pending.scheduling.examDate, pending.scheduling.timeZone)}`
+                      : 'Steady retention'}
+                  </p>
+                )}
+                {pending.scheduling && !pending.scheduling.fromOnboarding && (
+                  <div className="mb-5 space-y-3">
+                    {pending.scheduling.suggestion && (
+                      <p className="text-sm text-ink-soft">
+                        Teacher suggests {pending.scheduling.suggestion}.
+                      </p>
+                    )}
+                    <CourseStudyTarget
+                      compact={resolvedLink}
+                      schedulingMode={pending.scheduling.mode}
+                      setSchedulingMode={(mode) => updateScheduling({ mode })}
+                      saving={importing}
+                      examDate={pending.scheduling.examDate}
+                      setExamDate={(examDate) => updateScheduling({ examDate })}
+                      setExamDateValid={(valid) => updateScheduling({ valid })}
+                      timeZone={pending.scheduling.timeZone}
+                    />
+                  </div>
+                )}
+                <div className="flex flex-wrap justify-end gap-2">
+                  {/* A chosen course has nothing to return to here; the panel offers the way back. */}
+                  {!suppliedCourse && (
+                    <Button variant="ghost" onClick={() => setPending(null)}>
+                      {pending.merge?.stale ? 'Close' : 'Cancel'}
+                    </Button>
+                  )}
+                  {!pending.merge?.stale && (
+                    <Button
+                      variant="primary"
+                      onClick={handleImport}
+                      disabled={importing || !schedulingReady}
+                    >
+                      {pending.merge ? 'Update course' : 'Add to my courses'}
+                    </Button>
+                  )}
+                </div>
+                {!resolvedLink && !pending.merge && pending.summary.deckNames.length > 0 && (
+                  <ContentDisclosure
+                    label={countOf(pending.summary.deckNames.length, 'lesson')}
+                    className="mt-4 rounded-2xl border border-line bg-surface [&>button]:w-full [&>button]:justify-between [&>button]:rounded-2xl [&>button]:px-4 [&>button]:text-ink [&>button:focus-visible]:ring-inset [&>button:focus-visible]:ring-offset-0"
                   >
-                    {pending.merge ? 'Update course' : 'Add to my courses'}
-                  </Button>
+                    <ul
+                      aria-label="Lessons"
+                      tabIndex={0}
+                      className="max-h-48 divide-y divide-line overflow-y-auto overscroll-contain rounded-b-2xl border-t border-line text-sm text-ink-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink"
+                    >
+                      {pending.summary.deckNames.map((name, i) => (
+                        <li key={`${name}-${i}`} className="break-words px-4 py-2">
+                          {name}
+                        </li>
+                      ))}
+                    </ul>
+                  </ContentDisclosure>
                 )}
               </div>
-              {!pending.merge && pending.summary.deckNames.length > 0 && (
-                <ContentDisclosure
-                  label={countOf(pending.summary.deckNames.length, 'lesson')}
-                  className="mt-4 rounded-2xl border border-line bg-surface [&>button]:w-full [&>button]:justify-between [&>button]:rounded-2xl [&>button]:px-4 [&>button]:text-ink [&>button:focus-visible]:ring-inset [&>button:focus-visible]:ring-offset-0"
-                >
-                  <ul
-                    aria-label="Lessons"
-                    tabIndex={0}
-                    className="max-h-48 divide-y divide-line overflow-y-auto overscroll-contain rounded-b-2xl border-t border-line text-sm text-ink-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink"
-                  >
-                    {pending.summary.deckNames.map((name, i) => (
-                      <li key={`${name}-${i}`} className="break-words px-4 py-2">
-                        {name}
-                      </li>
-                    ))}
-                  </ul>
-                </ContentDisclosure>
-              )}
             </div>
           </motion.div>
         )}
