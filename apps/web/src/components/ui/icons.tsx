@@ -154,13 +154,24 @@ export const UploadIcon = (p: IconProps) => (
   </Icon>
 );
 
-/** Lacuna's interrupted forgetting-curve brand mark. */
+/** Two fixed brand palettes; the dark variant matches public/icon.svg. */
 export const LacunaIcon = (p: IconProps) => (
-  <Icon {...p} strokeWidth="1.75">
-    <path d="M4.4 5.7c2.2 7.9 3.9 10.4 6.5 11.7" />
-    <path d="M12.7 9.6c1.7 4.8 3.9 7 6.9 8.3" opacity="0.55" />
-    <circle cx="12" cy="6.6" r="1.3" fill="currentColor" stroke="none" />
-  </Icon>
+  <svg
+    width="20"
+    height="20"
+    aria-hidden="true"
+    {...p}
+    viewBox="0 0 512 512"
+    fill="none"
+    stroke="none"
+  >
+    <rect width="512" height="512" rx="96" fill="var(--brand-ground)" />
+    <g stroke="var(--brand-mark)" strokeWidth="37" strokeLinecap="round">
+      <path d="M93 121 C140 289 177 344 233 372" />
+      <path d="M270 205 C307 307 354 354 419 382" opacity="0.55" />
+    </g>
+    <circle cx="256" cy="140" r="28" fill="var(--brand-mark)" />
+  </svg>
 );
 
 export const SearchIcon = (p: IconProps) => (

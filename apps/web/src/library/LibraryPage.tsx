@@ -78,7 +78,7 @@ function Library({ courses }: { courses: readonly LibraryCourse[] }) {
           aria-label="Lacuna home"
           className="flex min-h-11 items-center gap-3 font-brand text-xl font-medium tracking-tight"
         >
-          <LacunaIcon aria-hidden="true" className="h-6 w-6 text-accent-ink" />
+          <LacunaIcon aria-hidden="true" className="h-6 w-6" />
           Lacuna
         </a>
         <nav aria-label="Main navigation" className="flex items-center gap-2">

@@ -72,10 +72,7 @@ export function GapsSidebar({
       )}
     >
       <div className="flex w-[264px] items-center gap-3 px-[18px] py-[clamp(0.75rem,2.4dvh,1.25rem)]">
-        <LacunaIcon
-          aria-hidden="true"
-          className="h-9 w-9 shrink-0 rounded-[18.75%] bg-accent-ink p-[3px] text-accent dark:bg-accent-soft dark:text-accent-ink"
-        />
+        <LacunaIcon aria-hidden="true" className="h-9 w-9 shrink-0" />
         <span className="gaps-sidebar-label font-brand text-xl font-medium leading-none tracking-tight">
           Gaps
         </span>
