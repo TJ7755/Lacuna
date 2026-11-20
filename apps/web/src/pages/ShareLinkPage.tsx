@@ -27,11 +27,13 @@ export function ShareLinkPage() {
 
   return (
     <div className={`${PAGE_FRAME} pb-10`}>
-      <header className={PAGE_HEADER}>
-        <h1 className={PAGE_TITLE}>Shared course</h1>
-      </header>
       <ShareLinkImport
         code={code ?? ''}
+        renderHeading={(courseName) => (
+          <header className={PAGE_HEADER}>
+            <h1 className={PAGE_TITLE}>{courseName || 'Shared course'}</h1>
+          </header>
+        )}
         isCurrent={() => activeImportRoute.current === location.key}
         onOpenCourse={(courseId) => {
           const pathname = `/course/${encodeURIComponent(courseId)}`;

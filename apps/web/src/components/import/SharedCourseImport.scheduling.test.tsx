@@ -216,3 +216,37 @@ it('reports an invalid suggested time zone during inspection without importing',
   expect(screen.queryByRole('button', { name: 'Add to my courses' })).not.toBeInTheDocument();
   expect(await db.courses.count()).toBe(0);
 });
+
+it.each(['exam', 'steady'] as const)(
+  'imports the %s target from a resolved link despite an onboarding exam',
+  async (mode) => {
+    markOnboardingPending();
+    chooseStudyTarget({ mode: 'exam', examDate: learnerDate });
+    render(<SharedCourseImport initialFile={courseFile(payload())} resolvedLink />);
+    const add = await screen.findByRole('button', { name: 'Add to my courses' });
+    const steady = screen.getByRole('radio', { name: 'Steady retention' });
+    const exam = screen.getByRole('radio', { name: 'Exam date' });
+    expect(screen.getByRole('radiogroup', { name: 'Study target' })).toBeVisible();
+    expect(steady).toHaveAttribute('tabindex', '0');
+    expect(steady).toBeChecked();
+    expect(add).toBeEnabled();
+    expect(screen.queryByLabelText('Exam instant')).toBeNull();
+    if (mode === 'exam') {
+      steady.focus();
+      fireEvent.keyDown(steady, { key: 'ArrowLeft' });
+      expect(exam).toHaveFocus();
+      expect(exam).toBeChecked();
+      expect(exam).toHaveAttribute('tabindex', '0');
+      expect(steady).toHaveAttribute('tabindex', '-1');
+      fireEvent.change(await screen.findByLabelText('Exam instant'), {
+        target: { value: String(learnerDate) },
+      });
+    }
+    expect(await db.courses.count()).toBe(0);
+    fireEvent.click(add);
+    await waitFor(async () => expect(await db.courseAssessments.count()).toBe(1));
+    const assessment = (await db.courseAssessments.toArray())[0];
+    expect(assessment.schedulingMode).toBe(mode);
+    expect(assessment.examDate).toBe(mode === 'exam' ? learnerDate : undefined);
+  },
+);

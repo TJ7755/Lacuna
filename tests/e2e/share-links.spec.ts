@@ -12,8 +12,12 @@ import { currentSharePayload } from './fixtures/currentSharePayload';
 
 const RELAY_URL = 'https://relay.getlacuna.app';
 
-test('opens the confirmed shared course with heading focus and Study', async ({ page }) => {
+test('opens the confirmed shared course with heading focus and Study', async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 900 });
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+  await page.addInitScript(() => localStorage.setItem('lacuna-theme', 'light'));
   const store = new MemoryStore();
   const handle = createHandler(store);
   const minted = await handle(new Request(`${RELAY_URL}/shares`, { method: 'POST' }));
@@ -23,13 +27,39 @@ test('opens the confirmed shared course with heading focus and Study', async ({ 
     at: 1000,
     li: 'share-arrival-biology',
     rv: 1,
-    course: { n: 'Shared biology', o: 0, c: 1000, um: 'open', sm: 1 },
-    lessons: ['Cells', 'Enzymes'].map((name, index) => ({
-      i: `arrival-lesson-${index}`,
-      n: name,
-      notes: [],
-      cards: [{ id: `arrival-card-${index}`, k: 0, f: `Question about ${name}`, b: 'Answer' }],
-    })),
+    course: {
+      n: 'Shared biology',
+      d: 'Explore the processes that keep living organisms working.',
+      o: 0,
+      c: 1000,
+      um: 'open',
+      sm: 1,
+    },
+    lessons: ['Cells', 'Enzymes', 'Transport', 'Photosynthesis', 'Respiration'].map(
+      (name, index) => ({
+        i: `arrival-lesson-${index}`,
+        n: name,
+        d: index === 0 ? 'Cell structure and the roles of specialised cells.' : undefined,
+        notes:
+          index === 0
+            ? [
+                {
+                  n: 'Cell structure',
+                  c: 'Nuclei contain genetic information.',
+                  oi: 'arrival-note-0',
+                },
+              ]
+            : [],
+        cards: [
+          {
+            id: `arrival-card-${index}`,
+            k: 0,
+            f: `Question about ${name}`,
+            b: 'Answer',
+          },
+        ],
+      }),
+    ),
   });
   const file = JSON.stringify({ format: 'lacuna-course', version: 1, assets: [], payload });
   const meta = JSON.stringify({
@@ -47,9 +77,49 @@ test('opens the confirmed shared course with heading focus and Study', async ({ 
   await installShareRelay(page, handle);
   await openEmptyDashboard(page);
   await page.goto(`/#/s/${shareId}`);
-  await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Shared biology' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Share link or code to import' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Read code', exact: true })).toHaveCount(0);
+  const preview = page.getByRole('region', { name: 'Course preview' });
+  await expect(
+    preview.getByRole('list', { name: 'Lessons', exact: true }).locator(':scope > li'),
+  ).toHaveCount(5);
+  await expect(
+    preview.getByText('Explore the processes that keep living organisms working.'),
+  ).toHaveCount(0);
+  await expect(
+    preview.getByText('Cell structure and the roles of specialised cells.'),
+  ).toBeVisible();
+  await expect(preview.getByRole('button')).toHaveCount(0);
   const add = page.getByRole('button', { name: 'Add to my courses' });
   await expect(add).toBeEnabled();
+  for (const width of [1920, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath(`share-steady-${width}.png`),
+    });
+  }
+  await page.getByRole('button', { name: /theme/i }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.screenshot({
+    animations: 'disabled',
+    path: testInfo.outputPath('share-dark-1280.png'),
+  });
+  await page.getByRole('button', { name: /theme/i }).click();
+  await page.getByRole('button', { name: /theme/i }).click();
+  await page.getByRole('radio', { name: /Exam date/ }).press('Space');
+  await expect(page.getByRole('button', { name: 'Exam date and time' })).toBeVisible();
+  await page.screenshot({
+    animations: 'disabled',
+    path: testInfo.outputPath('share-exam-1280.png'),
+  });
+  await page.getByRole('radio', { name: /Steady retention/ }).press('Space');
+  await expect(page.getByRole('button', { name: 'Exam date and time' })).toHaveCount(0);
+  await page.screenshot({
+    animations: 'disabled',
+    path: testInfo.outputPath('share-preview-1280.png'),
+  });
   await add.press('Enter');
   await expect
     .poll(() =>
@@ -69,6 +139,10 @@ test('opens the confirmed shared course with heading focus and Study', async ({ 
   await expect(heading).toBeInViewport();
   const study = page.getByRole('button', { name: 'Study', exact: true });
   await expect(study).toBeEnabled();
+  await page.screenshot({
+    animations: 'disabled',
+    path: testInfo.outputPath('share-imported-1280.png'),
+  });
   await study.click();
   await expect(page.getByRole('region', { name: 'Session preview' })).toBeVisible();
 });
@@ -247,8 +321,9 @@ async function followsPublisherUpdates(browser: Browser, linkedClass: boolean) {
   await installShareRelay(student, handle);
   await openEmptyDashboard(student);
   await student.goto(`/#/s/${code}`);
-  await expect(student.getByRole('heading', { name: 'Shared course', exact: true })).toBeVisible();
-  await expect(student.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+  await expect(
+    student.getByRole('heading', { level: 1, name: 'Link biology', exact: true }),
+  ).toBeVisible();
   await expect(student.getByText('Link biology', { exact: true })).toBeVisible();
   await student.getByRole('radio', { name: /Exam date/ }).press('Space');
   await student.getByRole('button', { name: 'Add to my courses' }).click();
@@ -468,7 +543,7 @@ test('updates a synthetic library revision 17 through a Gaps class link at revis
   await installShareRelay(page, handle);
   await openEmptyDashboard(page);
   await page.goto(`/#/s/${source.shareId}`);
-  await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Controlled biology' })).toBeVisible();
   await page.getByRole('radio', { name: /Steady retention/ }).press('Space');
   await page.getByRole('button', { name: 'Add to my courses' }).click();
   await expect.poll(() => readStudentRevision(page)).toBe(17);
