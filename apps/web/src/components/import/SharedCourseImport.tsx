@@ -68,7 +68,11 @@ interface PendingShareImport {
 /** Decode-time lineage check: does this payload's lineage match a
  *  course already tracked locally? If so, route the confirm step to the merge importer
  *  instead of the plain `importSharePayload` path. */
-async function resolvePending(payload: SharePayload, raw: string): Promise<PendingShareImport> {
+async function resolvePending(
+  payload: SharePayload,
+  raw: string,
+  useOnboardingTarget = true,
+): Promise<PendingShareImport> {
   const summary = summariseShare(payload);
   if (isLineagePayload(payload)) {
     const course = await findCourseForLineage(payload.li);
@@ -85,7 +89,7 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
   const suggestedDate = (final ? final.sm !== 1 : payload.course?.sm !== 1)
     ? (final?.e ?? payload.course?.e)
     : undefined;
-  const chosen = chosenStudyTarget();
+  const chosen = useOnboardingTarget ? chosenStudyTarget() : null;
   // Onboarding's date was picked in the learner's own zone, so it is kept in that zone.
   const timeZone = (!chosen && final?.tz) || getLocalTimeZone();
   return {
@@ -93,7 +97,7 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
     raw,
     scheduling: payload.course
       ? {
-          // Onboarding's answer wins. Otherwise use steady retention until the learner selects an exam.
+          // Resolved links start with steady retention; other imports can keep onboarding’s answer.
           mode: chosen?.mode ?? 'steady',
           examDate: chosen?.examDate ?? suggestedDate ?? defaultExamDate(),
           timeZone,
@@ -228,7 +232,7 @@ export function SharedCourseImport({
         if (initialFile.size > MAX_COURSE_FILE_BYTES)
           throw new Error('The course file exceeds the 100 MB limit.');
         const file = await decodeCourseFile(await initialFile.text());
-        const next = await resolvePending(file.payload, '');
+        const next = await resolvePending(file.payload, '', !resolvedLink);
         if (!cancelled && generation === inspectionGeneration.current)
           setPending({ ...next, file });
       } catch (error) {
@@ -239,7 +243,7 @@ export function SharedCourseImport({
     return () => {
       cancelled = true;
     };
-  }, [initialFile]);
+  }, [initialFile, resolvedLink]);
   function beginInspection() {
     setPending(null);
     setError('');
@@ -512,11 +516,12 @@ export function SharedCourseImport({
                 )}
                 {pending.scheduling && !pending.scheduling.fromOnboarding && (
                   <div className="mb-5 space-y-3">
-                    {pending.scheduling.suggestion && (
-                      <p className="text-sm text-ink-soft">
-                        Teacher suggests {pending.scheduling.suggestion}.
-                      </p>
-                    )}
+                    {pending.scheduling.suggestion &&
+                      (!resolvedLink || pending.scheduling.mode === 'exam') && (
+                        <p className="text-sm text-ink-soft">
+                          Teacher suggests {pending.scheduling.suggestion}.
+                        </p>
+                      )}
                     <CourseStudyTarget
                       targetControl={
                         resolvedLink ? (

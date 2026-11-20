@@ -1,16 +1,31 @@
 import type { SharePayload } from '../../db/share';
+import type { ShareCard } from '../../db/sharePayload';
 import { countOf } from '../../utils/plural';
 
 export function SharedCoursePreview({ payload }: { payload: SharePayload }) {
   if (payload.v !== 6) return null;
 
+  const lineage = typeof payload.li === 'string' && typeof payload.rv === 'number';
+  const idsForCard = (card: ShareCard) => cardIdsForPreview(card, lineage);
+  const cardIds = new Set(
+    [...payload.lessons.flatMap((lesson) => lesson.cards), ...(payload.bankCards ?? [])].flatMap(
+      idsForCard,
+    ),
+  );
+  const lessonIds = payload.lessons.map((lesson) => new Set(lesson.cards.flatMap(idsForCard)));
+  const cardCounts = payload.lessons.map((lesson) =>
+    lesson.cards.reduce((total, card) => total + (card.k === 2 ? 2 : 1), 0),
+  );
+  for (const link of payload.links ?? []) {
+    const included = lessonIds[link.l];
+    if (!included || !cardIds.has(link.c) || included.has(link.c)) continue;
+    included.add(link.c);
+    // A link names one card, even when its source also generated a reverse card.
+    cardCounts[link.l] += 1;
+  }
+
   return (
     <section aria-label="Course preview" className="min-w-0">
-      {payload.course.d && (
-        <p className="mb-6 max-w-prose whitespace-pre-line break-words text-sm text-ink-soft">
-          {payload.course.d}
-        </p>
-      )}
       <h2 className="mb-4 font-display text-xl font-semibold">Lessons</h2>
       <ol
         aria-label="Lessons"
@@ -39,12 +54,7 @@ export function SharedCoursePreview({ payload }: { payload: SharePayload }) {
                 aria-label={`Content in ${lesson.n}`}
                 className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft"
               >
-                <li>
-                  {countOf(
-                    lesson.cards.reduce((total, card) => total + (card.k === 2 ? 2 : 1), 0),
-                    'card',
-                  )}
-                </li>
+                <li>{countOf(cardCounts[index], 'card')}</li>
                 {lesson.notes.length > 0 && <li>{countOf(lesson.notes.length, 'note')}</li>}
               </ul>
             </div>
@@ -53,4 +63,9 @@ export function SharedCoursePreview({ payload }: { payload: SharePayload }) {
       </ol>
     </section>
   );
+}
+
+function cardIdsForPreview(card: ShareCard, lineage: boolean): string[] {
+  if (!card.id) return [];
+  return card.k === 2 && lineage ? [card.id, `${card.id}::rev`] : [card.id];
 }
