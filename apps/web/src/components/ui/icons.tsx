@@ -154,7 +154,7 @@ export const UploadIcon = (p: IconProps) => (
   </Icon>
 );
 
-/** Two fixed brand palettes; the dark variant matches public/icon.svg. */
+/** Fixed brand colours match public/icon.svg in every theme. */
 export const LacunaIcon = (p: IconProps) => (
   <svg
     width="20"
@@ -165,12 +165,12 @@ export const LacunaIcon = (p: IconProps) => (
     fill="none"
     stroke="none"
   >
-    <rect width="512" height="512" rx="96" fill="var(--brand-ground)" />
-    <g stroke="var(--brand-mark)" strokeWidth="37" strokeLinecap="round">
+    <rect width="512" height="512" rx="96" fill="#0a0a0b" />
+    <g stroke="#d5ff3d" strokeWidth="37" strokeLinecap="round">
       <path d="M93 121 C140 289 177 344 233 372" />
       <path d="M270 205 C307 307 354 354 419 382" opacity="0.55" />
     </g>
-    <circle cx="256" cy="140" r="28" fill="var(--brand-mark)" />
+    <circle cx="256" cy="140" r="28" fill="#d5ff3d" />
   </svg>
 );
 

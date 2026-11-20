@@ -9,9 +9,6 @@
   /* Native controls (scrollbars, select menus) and SVG images' prefers-color-scheme follow
      the app's theme rather than the system's, which can differ when the theme is chosen. */
   color-scheme: light;
-  /* Brand colours follow the mode only, never the selected accent. */
-  --brand-ground: #d5ff3d;
-  --brand-mark: #0a0a0b;
   --paper: 82 30% 94%;
   --surface: 75 45% 99%;
   --surface-raised: 75 45% 99%;
@@ -41,8 +38,6 @@
 
 .dark {
   color-scheme: dark;
-  --brand-ground: #0a0a0b;
-  --brand-mark: #d5ff3d;
   --paper: 90 10% 4%;
   --surface: 90 22% 12%;
   --surface-raised: 90 20% 16%;
