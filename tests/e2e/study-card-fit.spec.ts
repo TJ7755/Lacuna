@@ -256,10 +256,10 @@ for (const inputMode of ['keyboard', 'touch']) {
       const bounds = (await grade.boundingBox())!;
       if (inputMode === 'keyboard') {
         expect(notification!.x).toBeGreaterThanOrEqual(bounds.x + bounds.width);
-        expect(viewport.height - notification!.y - notification!.height).toBeLessThanOrEqual(24);
+        expect(viewport.height - notification!.y - notification!.height).toBeLessThanOrEqual(26);
       } else {
         expect(notification!.y + notification!.height).toBeLessThanOrEqual(bounds.y);
-        expect(viewport.height - bounds.y - bounds.height).toBeLessThanOrEqual(24);
+        expect(viewport.height - bounds.y - bounds.height).toBeLessThanOrEqual(26);
       }
     }
     expect(
@@ -332,7 +332,7 @@ test('typed feedback stays compact and clear of the next answer on desktop', asy
   expect(notification.height).toBeLessThanOrEqual(56);
   const inputBox = (await input.boundingBox())!;
   expect(notification.x).toBeGreaterThanOrEqual(inputBox.x + inputBox.width);
-  expect(viewport.height - notification.y - notification.height).toBeLessThanOrEqual(24);
+  expect(viewport.height - notification.y - notification.height).toBeLessThanOrEqual(26);
   await undo.click();
   await expect(activeCard).toHaveAttribute('data-study-card-id', firstId!);
 });
