@@ -13,6 +13,8 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { cn } from './cn';
 import { CheckIcon, CloseIcon, InfoIcon } from './icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { Button } from './Button';
+import { motionTransition } from './motion';
 
 type ToastTone = 'neutral' | 'positive' | 'negative';
 
@@ -104,7 +106,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ notify }}>
       {children}
       <div
-        className="toast-stack fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[60] flex flex-col gap-2 will-change-transform"
+        className="toast-stack fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[60] flex flex-col items-end gap-2"
         aria-label="Notifications"
         aria-live="polite"
         aria-atomic="false"
@@ -142,7 +144,6 @@ function ToastBar({
   const remainingRef = useRef<number>(toast.duration === Infinity ? 1 : toast.duration);
   const onDismissRef = useRef(onDismiss);
   const isPersistent = toast.duration === Infinity;
-  const hasControls = isPersistent || Boolean(toast.actionLabel);
 
   // Keep the latest onDismiss without causing re-runs.
   useEffect(() => {
@@ -208,24 +209,11 @@ function ToastBar({
   return (
     <motion.div
       layout={m > 0 ? 'position' : undefined}
-      initial={m > 0 ? { opacity: 0, x: 24, scale: 0.96 } : false}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={
-        m > 0
-          ? {
-              opacity: 0,
-              x: 24,
-              scale: 0.96,
-              transition: { duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] },
-            }
-          : undefined
-      }
-      transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-      className={cn(
-        'relative min-h-11 rounded-xl px-4 text-sm leading-5 bg-surface card-surface max-w-[min(24rem,calc(100vw-2rem))] overflow-hidden',
-        hasControls ? 'py-0.5' : 'py-3',
-        toneClasses[toast.tone],
-      )}
+      initial={m > 0 ? { opacity: 0, x: 12 } : false}
+      animate={{ opacity: 1, x: 0 }}
+      exit={m > 0 ? { opacity: 0, x: 12 } : undefined}
+      transition={motionTransition('feedback', m)}
+      className="relative max-w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-3xl bg-surface px-4 py-0.5 text-sm leading-5 text-ink card-surface"
       onMouseEnter={() => {
         hoveredRef.current = true;
         pause();
@@ -244,9 +232,9 @@ function ToastBar({
         resume();
       }}
     >
-      <div className="flex w-full items-center gap-3">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
-          <span className="mt-0.5 shrink-0" aria-hidden="true">
+      <div className="flex min-h-12 w-full items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3 py-2.5">
+          <span className={cn('mt-0.5 shrink-0', toneClasses[toast.tone])} aria-hidden="true">
             {toast.tone === 'positive' && <CheckIcon width={16} height={16} />}
             {toast.tone === 'negative' && <CloseIcon width={16} height={16} />}
             {toast.tone === 'neutral' && <InfoIcon width={16} height={16} />}
@@ -254,39 +242,40 @@ function ToastBar({
           <span className="min-w-0 flex-1 break-words text-balance">{toast.message}</span>
         </div>
         {isPersistent && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => {
               toast.onDismiss?.();
               onDismiss();
             }}
-            className="flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
+            className="min-h-12 min-w-12 shrink-0"
             aria-label="Dismiss"
           >
             <CloseIcon width={14} height={14} />
-          </button>
+          </Button>
         )}
         {toast.actionLabel && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => {
               toast.onAction?.();
               toast.onDismiss?.();
               onDismiss();
             }}
-            className="flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full px-3 font-semibold text-accent-ink transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+            className="min-h-12 min-w-12 shrink-0"
           >
             {toast.actionLabel}
-          </button>
+          </Button>
         )}
       </div>
       {/* Dismiss timer progress bar — hidden for persistent toasts */}
       {!isPersistent && (
         <div
-          className={cn(
-            'pointer-events-none absolute inset-x-4 overflow-hidden rounded-full bg-ink/10',
-            hasControls ? 'bottom-0.5 h-0.5' : 'bottom-1.5 h-1',
-          )}
+          className="pointer-events-none absolute inset-x-4 bottom-1.5 h-0.5 overflow-hidden rounded-full bg-ink/10"
           aria-hidden="true"
         >
           <div

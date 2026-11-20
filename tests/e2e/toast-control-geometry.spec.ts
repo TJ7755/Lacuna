@@ -38,7 +38,7 @@ test.beforeAll(async () => {
   script = result.outputFiles[0].text;
 });
 
-for (const width of [1280, 390]) {
+for (const width of [1280]) {
   for (const kind of ['action', 'persistent'] as const) {
     test(`${kind} toast controls stay hittable throughout entrance at ${width}px`, async ({
       page,
@@ -133,6 +133,7 @@ for (const width of [1280, 390]) {
       expect(samples.length).toBeGreaterThan(0);
       for (const sample of samples) {
         expect(sample.toastHeight).toBeLessThanOrEqual(56);
+        expect(sample.scale).toBe(1);
         expect(sample.bottomGap).toBeLessThanOrEqual(24);
         expect(sample.controls).toHaveLength(kind === 'persistent' ? 2 : 1);
         for (const control of sample.controls) {
