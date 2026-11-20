@@ -1,6 +1,6 @@
 import { SectionCard } from '../ui/SectionCard';
 import { recordUsageAction } from '../../usage/actions';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { parseShareCode } from '../../shareLinks/client';
 import { formatClassCode, parseClassCode, normaliseShortClassCode } from '../../insights/classCode';
@@ -164,8 +164,13 @@ export function SharedCourseImport({
   onImported,
   onBusyChange,
   chosen = false,
+  resolvedLink = false,
+  renderHeading,
 }: {
   initialFile?: File;
+  /** A resolved link already supplies the course; manual entry is unnecessary. */
+  resolvedLink?: boolean;
+  renderHeading?: (courseName?: string) => ReactNode;
   onImported?: (courseId: string) => void;
   onBusyChange?: (busy: boolean) => void;
   /** The learner already picked this course, so other ways to find one are hidden. */
@@ -174,6 +179,7 @@ export function SharedCourseImport({
   const { notify } = useToast();
   const inputId = useId();
   const [input, setInput] = useState('');
+  const [importedCourseName, setImportedCourseName] = useState<string>();
   const [pending, setPending] = useState<PendingShareImport | null>(null);
   const inspectionGeneration = useRef(0);
   const [importing, setImporting] = useState(false);
@@ -214,6 +220,7 @@ export function SharedCourseImport({
     let cancelled = false;
     const generation = ++inspectionGeneration.current;
     setPending(null);
+    setImportedCourseName(undefined);
     void (async () => {
       try {
         if (initialFile.size > MAX_COURSE_FILE_BYTES)
@@ -234,6 +241,7 @@ export function SharedCourseImport({
   function beginInspection() {
     setPending(null);
     setError('');
+    setImportedCourseName(undefined);
     return ++inspectionGeneration.current;
   }
 
@@ -315,6 +323,7 @@ export function SharedCourseImport({
       }
       recordUsageAction('import-completed');
       notify(message, 'positive');
+      setImportedCourseName(pending.summary.courseName);
       setPending(null);
       setInput('');
       if (importedCourseId) onImported?.(importedCourseId);
@@ -328,10 +337,11 @@ export function SharedCourseImport({
     }
   }
 
-  const PreviewHeading = chosen ? 'h2' : 'h3';
-  const chosenCourseName = chosen ? pending?.summary.courseName : undefined;
+  const suppliedCourse = chosen || resolvedLink;
+  const PreviewHeading = suppliedCourse ? 'h2' : 'h3';
+  const chosenCourseName = suppliedCourse ? pending?.summary.courseName : undefined;
 
-  return (
+  const content = (
     <SectionCard
       className="shared-course-import rounded-3xl bg-surface card-surface p-6"
       onKeyDown={(event) => {
@@ -343,7 +353,7 @@ export function SharedCourseImport({
         else if (input.trim() && !importing) void handleInspect();
       }}
     >
-      {!chosen && (
+      {!suppliedCourse && (
         <>
           <h2 className="sr-only">Import a shared course</h2>
           <div className="mb-2 flex items-center justify-between gap-3">
@@ -440,12 +450,14 @@ export function SharedCourseImport({
             animate={{ opacity: 1 }}
             exit={m > 0 ? { opacity: 0 } : undefined}
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-            className={chosen ? undefined : 'mt-5'}
+            className={suppliedCourse ? undefined : 'mt-5'}
           >
             <div className="rounded-2xl bg-accent-soft/50 p-5">
-              <PreviewHeading className="mb-3 break-words font-display text-lg">
-                {pending.merge ? 'Course update' : chosenCourseName || 'Ready to import'}
-              </PreviewHeading>
+              {(!renderHeading || pending.merge) && (
+                <PreviewHeading className="mb-3 break-words font-display text-lg">
+                  {pending.merge ? 'Course update' : chosenCourseName || 'Ready to import'}
+                </PreviewHeading>
+              )}
               {pending.merge ? (
                 <p className="mb-3 text-sm text-ink-soft">
                   {pending.merge.stale ? (
@@ -493,6 +505,7 @@ export function SharedCourseImport({
                     </p>
                   )}
                   <CourseStudyTarget
+                    compact={resolvedLink}
                     schedulingMode={pending.scheduling.mode}
                     setSchedulingMode={(mode) => updateScheduling({ mode })}
                     saving={importing}
@@ -505,7 +518,7 @@ export function SharedCourseImport({
               )}
               <div className="flex flex-wrap justify-end gap-2">
                 {/* A chosen course has nothing to return to here; the panel offers the way back. */}
-                {!chosen && (
+                {!suppliedCourse && (
                   <Button variant="ghost" onClick={() => setPending(null)}>
                     {pending.merge?.stale ? 'Close' : 'Cancel'}
                   </Button>
@@ -543,5 +556,11 @@ export function SharedCourseImport({
         )}
       </AnimatePresence>
     </SectionCard>
+  );
+  return (
+    <>
+      {renderHeading?.(pending?.summary.courseName ?? importedCourseName)}
+      {content}
+    </>
   );
 }

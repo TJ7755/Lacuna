@@ -369,7 +369,13 @@ it('opens and focuses the imported course after recording its share link', async
   );
   await seedTrackedCourse('biology', LINEAGE_ID);
   open(SHARE_ID);
-  expect(await screen.findByText('Shared biology')).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Shared biology', level: 1 })).toBeVisible();
+  expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+  expect(screen.queryByRole('heading', { name: /Shared course|Ready to import/ })).toBeNull();
+  expect(screen.queryByLabelText('Share link or code to import')).toBeNull();
+  expect(screen.queryByLabelText('Course file to import')).toBeNull();
+  expect(screen.queryByText('Link or code')).toBeNull();
+  expect(screen.queryByRole('button', { name: /Upload|Scan|Read code/ })).toBeNull();
   expect(mocks.importShare).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Add to my courses' }));
   await waitFor(() => expect(mocks.importShare).toHaveBeenCalledWith({ v: 2 }, undefined));
@@ -409,7 +415,7 @@ it('waits for successful confirmation before opening the imported course', async
   open(SHARE_ID);
   fireEvent.click(await screen.findByRole('button', { name: 'Add to my courses' }));
   await waitFor(() => expect(linkStore.confirmShareImport).toHaveBeenCalled());
-  expect(screen.getByRole('heading', { name: 'Shared course' })).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Shared biology', level: 1 })).toBeVisible();
   expect(screen.queryByRole('heading', { name: 'Imported biology course' })).toBeNull();
   await act(async () => confirm(true));
   expect(await screen.findByRole('heading', { name: 'Imported biology course' })).toHaveFocus();
@@ -478,7 +484,7 @@ it('ignores an import callback while its originating route is still exiting', as
   fireEvent.click(await screen.findByRole('button', { name: 'Add to my courses' }));
   await waitFor(() => expect(mocks.importShare).toHaveBeenCalled());
   view.rerender(<ExitingRoute show={false} />);
-  expect(screen.getByRole('heading', { name: 'Shared course' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Shared biology', level: 1 })).toBeInTheDocument();
   const destination = screen.getByText('Chosen destination');
   destination.focus();
   await act(async () => finishImport({ courses: 1, cards: 2, courseIds: ['biology'] }));
@@ -520,7 +526,7 @@ it.each(['confirmation', 'import'])(
     expect(await screen.findByRole('alert')).toHaveTextContent(
       failure === 'confirmation' ? 'Confirmation failed.' : 'Import failed.',
     );
-    expect(screen.getByRole('heading', { name: 'Shared course' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Shared biology', level: 1 })).toBeVisible();
     expect(screen.queryByRole('heading', { name: 'Imported biology course' })).toBeNull();
   },
 );
@@ -535,7 +541,7 @@ it('keeps a newly imported class on the share page with consent off', async () =
   expect(
     await screen.findByRole('switch', { name: 'Share insights with your teacher' }),
   ).toHaveAttribute('aria-checked', 'false');
-  expect(screen.getByRole('heading', { name: 'Shared course' })).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Shared biology', level: 1 })).toBeVisible();
   expect(createEnrolmentSetting('biology').read()).toMatchObject({
     shareId: SHARE_ID,
     recipient,
@@ -563,7 +569,7 @@ it('leaves the link untracked when the imported course came from elsewhere', asy
     'This imported course does not match the class invitation.',
   );
   expect(getCourseIdForShare(SHARE_ID)).toBeNull();
-  expect(screen.getByRole('heading', { name: 'Shared course' })).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Shared biology', level: 1 })).toBeVisible();
   expect(screen.queryByRole('heading', { name: 'Imported biology course' })).toBeNull();
 });
 

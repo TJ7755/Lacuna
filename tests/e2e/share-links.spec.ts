@@ -12,8 +12,12 @@ import { currentSharePayload } from './fixtures/currentSharePayload';
 
 const RELAY_URL = 'https://relay.getlacuna.app';
 
-test('opens the confirmed shared course with heading focus and Study', async ({ page }) => {
+test('opens the confirmed shared course with heading focus and Study', async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 900 });
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+  await page.addInitScript(() => localStorage.setItem('lacuna-theme', 'light'));
   const store = new MemoryStore();
   const handle = createHandler(store);
   const minted = await handle(new Request(`${RELAY_URL}/shares`, { method: 'POST' }));
@@ -47,9 +51,39 @@ test('opens the confirmed shared course with heading focus and Study', async ({ 
   await installShareRelay(page, handle);
   await openEmptyDashboard(page);
   await page.goto(`/#/s/${shareId}`);
-  await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Shared biology' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Share link or code to import' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Read code', exact: true })).toHaveCount(0);
   const add = page.getByRole('button', { name: 'Add to my courses' });
   await expect(add).toBeEnabled();
+  for (const width of [1920, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath(`share-steady-${width}.png`),
+    });
+  }
+  await page.getByRole('button', { name: /theme/i }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.screenshot({
+    animations: 'disabled',
+    path: testInfo.outputPath('share-dark-1280.png'),
+  });
+  await page.getByRole('button', { name: /theme/i }).click();
+  await page.getByRole('button', { name: /theme/i }).click();
+  await page.getByRole('radio', { name: /Exam date/ }).press('Space');
+  await expect(page.getByRole('button', { name: 'Exam date and time' })).toBeVisible();
+  await page.screenshot({
+    animations: 'disabled',
+    path: testInfo.outputPath('share-exam-1280.png'),
+  });
+  await page.getByRole('radio', { name: /Steady retention/ }).press('Space');
+  await expect(page.getByRole('button', { name: 'Exam date and time' })).toHaveCount(0);
+  await page.getByRole('button', { name: /2 lessons/ }).click();
+  await page.screenshot({
+    animations: 'disabled',
+    path: testInfo.outputPath('share-lessons-1280.png'),
+  });
   await add.press('Enter');
   await expect
     .poll(() =>
@@ -69,6 +103,10 @@ test('opens the confirmed shared course with heading focus and Study', async ({ 
   await expect(heading).toBeInViewport();
   const study = page.getByRole('button', { name: 'Study', exact: true });
   await expect(study).toBeEnabled();
+  await page.screenshot({
+    animations: 'disabled',
+    path: testInfo.outputPath('share-imported-1280.png'),
+  });
   await study.click();
   await expect(page.getByRole('region', { name: 'Session preview' })).toBeVisible();
 });
@@ -247,8 +285,9 @@ async function followsPublisherUpdates(browser: Browser, linkedClass: boolean) {
   await installShareRelay(student, handle);
   await openEmptyDashboard(student);
   await student.goto(`/#/s/${code}`);
-  await expect(student.getByRole('heading', { name: 'Shared course', exact: true })).toBeVisible();
-  await expect(student.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+  await expect(
+    student.getByRole('heading', { level: 1, name: 'Link biology', exact: true }),
+  ).toBeVisible();
   await expect(student.getByText('Link biology', { exact: true })).toBeVisible();
   await student.getByRole('radio', { name: /Exam date/ }).press('Space');
   await student.getByRole('button', { name: 'Add to my courses' }).click();
@@ -468,7 +507,7 @@ test('updates a synthetic library revision 17 through a Gaps class link at revis
   await installShareRelay(page, handle);
   await openEmptyDashboard(page);
   await page.goto(`/#/s/${source.shareId}`);
-  await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Controlled biology' })).toBeVisible();
   await page.getByRole('radio', { name: /Steady retention/ }).press('Space');
   await page.getByRole('button', { name: 'Add to my courses' }).click();
   await expect.poll(() => readStudentRevision(page)).toBe(17);

@@ -46,9 +46,12 @@ export function ShareLinkImport({
   onOpenCourse,
   alternative,
   chosen,
+  renderHeading,
   onBusyChange,
 }: {
   code: string;
+  /** The route owns its main heading; embedded importers keep their own heading. */
+  renderHeading?: (courseName?: string) => ReactNode;
   /** False once the learner has moved on, so a late import does not navigate. */
   isCurrent: () => boolean;
   /** Called after a share link import; a class import stays here to show insights. */
@@ -195,7 +198,7 @@ export function ShareLinkImport({
     </section>
   );
 
-  return (
+  const content = (
     <StepSwap stepKey={state.status}>
       {state.status === 'loading' ? (
         <section role="status" className="rounded-3xl bg-surface card-surface p-6">
@@ -220,6 +223,8 @@ export function ShareLinkImport({
           <SharedCourseImport
             initialFile={state.file}
             chosen={chosen}
+            resolvedLink={!chosen}
+            renderHeading={renderHeading}
             onBusyChange={onBusyChange}
             onImported={(courseId) => {
               if (!isCurrent()) return;
@@ -246,6 +251,12 @@ export function ShareLinkImport({
         retry('This link is incomplete', state.message)
       )}
     </StepSwap>
+  );
+  return (
+    <>
+      {state.status !== 'ready' && renderHeading?.()}
+      {content}
+    </>
   );
 }
 
