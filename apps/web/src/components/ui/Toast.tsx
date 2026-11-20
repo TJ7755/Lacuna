@@ -23,11 +23,9 @@ interface ToastOptions {
   actionLabel?: string;
   /** Invoked when the action button is pressed; the toast then dismisses. */
   onAction?: () => void;
-  /** Explicit lifetime in milliseconds; overrides the default persistent error notice. */
+  /** Explicit lifetime in milliseconds. */
   duration?: number;
-  /** Errors stay until dismissed by default; false opts back into the usual timer. */
-  persistent?: boolean;
-  /** Invoked on Escape dismissal, action activation or expiry. */
+  /** Invoked on action activation or expiry. */
   onDismiss?: () => void;
   /** Replaces an existing toast with the same key instead of leaving stale actions stacked. */
   replaceKey?: string;
@@ -55,8 +53,6 @@ interface ToastItem {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const stackRef = useRef<HTMLDivElement>(null);
-  const previousFocus = useRef<HTMLElement | null>(null);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
@@ -64,43 +60,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  useEffect(() => {
-    if (!toasts.length) return;
-    let pendingDismissal: ReturnType<typeof setTimeout>;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.repeat || event.isComposing) return;
-      const overlaySelector = '[role="dialog"], [role="alertdialog"], [role="menu"], dialog[open]';
-      if (document.querySelector(overlaySelector)) return;
-      // A new task runs after every native listener; microtasks can run between listeners.
-      clearTimeout(pendingDismissal);
-      pendingDismissal = setTimeout(() => {
-        if (event.defaultPrevented || document.querySelector(overlaySelector)) return;
-        const latest = toasts.at(-1)!;
-        const surface = stackRef.current?.querySelector(`[data-toast-id="${latest.id}"]`);
-        if (surface?.contains(document.activeElement) && previousFocus.current?.isConnected) {
-          previousFocus.current.focus({ preventScroll: true });
-        }
-        latest.onDismiss?.();
-        dismiss(latest.id);
-      }, 0);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      clearTimeout(pendingDismissal);
-    };
-  }, [toasts, dismiss]);
-
   const MAX_TOASTS = 5;
 
   const notify = useCallback(
     (message: string, tone: ToastTone = 'neutral', options?: ToastOptions) => {
       const id = ++toastIdCounter;
-      const persistent =
-        options?.persistent ?? (tone === 'negative' && options?.duration === undefined);
-      const duration = persistent
-        ? Infinity
-        : (options?.duration ?? (options?.actionLabel ? 6000 : 3500));
+      const duration = options?.duration ?? (options?.actionLabel ? 6000 : 3500);
       setToasts((prev) => {
         const next = [
           ...prev.filter(
@@ -134,13 +99,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ notify }}>
       {children}
       <div
-        ref={stackRef}
-        onFocusCapture={(event) => {
-          const from = event.relatedTarget;
-          if (from instanceof HTMLElement && !event.currentTarget.contains(from)) {
-            previousFocus.current = from;
-          }
-        }}
         className="toast-stack fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[60] flex flex-col items-end gap-2"
         aria-label="Notifications"
         aria-live="polite"
@@ -175,9 +133,8 @@ function ToastBar({
   const startRef = useRef<number>(0);
   const hoveredRef = useRef(false);
   const focusedRef = useRef(false);
-  const remainingRef = useRef<number>(toast.duration === Infinity ? 1 : toast.duration);
+  const remainingRef = useRef<number>(toast.duration);
   const onDismissRef = useRef(onDismiss);
-  const isPersistent = toast.duration === Infinity;
 
   // Keep the latest onDismiss without causing re-runs.
   useEffect(() => {
@@ -187,7 +144,7 @@ function ToastBar({
   const { onDismiss: onDismissProp, duration: toastDuration } = toast;
 
   const resume = useCallback(() => {
-    if (isPersistent || hoveredRef.current || focusedRef.current) return;
+    if (hoveredRef.current || focusedRef.current) return;
     cancelAnimationFrame(rafRef.current);
     startRef.current = performance.now();
 
@@ -203,7 +160,7 @@ function ToastBar({
     }
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [isPersistent, onDismissProp]);
+  }, [onDismissProp]);
 
   const pause = useCallback(() => {
     if (!rafRef.current) return;
@@ -214,13 +171,10 @@ function ToastBar({
   }, []);
 
   useEffect(() => {
-    remainingRef.current = isPersistent ? 1 : toastDuration;
-    if (isPersistent) {
-      return;
-    }
+    remainingRef.current = toastDuration;
     resume();
     return () => cancelAnimationFrame(rafRef.current);
-  }, [resume, isPersistent, toast.id, toastDuration]);
+  }, [resume, toast.id, toastDuration]);
 
   const toneClasses = {
     positive: 'text-positive',
@@ -278,23 +232,6 @@ function ToastBar({
               className="min-h-12 min-w-12 shrink-0"
             >
               <span className="text-accent-ink">{toast.actionLabel}</span>
-            </Button>
-          </div>
-        )}
-        {isPersistent && !toast.actionLabel && (
-          <div className="flex shrink-0 items-center">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label="Dismiss"
-              onClick={() => {
-                toast.onDismiss?.();
-                onDismiss();
-              }}
-              className="min-h-12 min-w-12 shrink-0"
-            >
-              Dismiss
             </Button>
           </div>
         )}

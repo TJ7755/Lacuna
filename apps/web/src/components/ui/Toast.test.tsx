@@ -22,59 +22,27 @@ function TestComponent() {
 }
 
 describe('ToastProvider', () => {
-  it('keeps error notices until explicitly dismissed by default', async () => {
+  it('times out error notices by default', async () => {
     render(
       <ToastProvider>
         <TestComponent />
       </ToastProvider>,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Error' }));
-
     expect(screen.getByText('Error', { selector: 'span' })).toBeInTheDocument();
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Dismiss' })));
-    await waitFor(() =>
-      expect(screen.queryByText('Error', { selector: 'span' })).not.toBeInTheDocument(),
+    await waitFor(
+      () => expect(screen.queryByText('Error', { selector: 'span' })).not.toBeInTheDocument(),
+      { timeout: 4500 },
     );
   });
 
-  it('dismisses only the latest notice without taking focus or consuming an overlay Escape', async () => {
-    render(
-      <ToastProvider>
-        <TestComponent />
-      </ToastProvider>,
-    );
-    const trigger = screen.getByRole('button', { name: 'Error' });
-    trigger.focus();
-    fireEvent.click(screen.getByRole('button', { name: 'Notify' }));
-    fireEvent.click(trigger);
-    const handled = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true });
-    handled.preventDefault();
-    await act(async () => window.dispatchEvent(handled));
-    expect(screen.getByText('Error', { selector: 'span' })).toBeInTheDocument();
-    const overlay = document.createElement('div');
-    overlay.setAttribute('role', 'dialog');
-    document.body.append(overlay);
-    await act(async () => fireEvent.keyDown(window, { key: 'Escape' }));
-    expect(screen.getByText('Error', { selector: 'span' })).toBeInTheDocument();
-    overlay.remove();
-    await act(async () => fireEvent.keyDown(window, { key: 'Escape' }));
-    await waitFor(() =>
-      expect(screen.queryByText('Error', { selector: 'span' })).not.toBeInTheDocument(),
-    );
-    expect(screen.getByText('Hello world')).toBeInTheDocument();
-    expect(trigger).toHaveFocus();
-  });
-
-  it('honours explicit timed error notices and persistent opt-outs', async () => {
+  it('honours explicit timed error notices', async () => {
     function TimedErrors() {
       const { notify } = useToast();
       return (
         <>
           <button onClick={() => notify('Short error', 'negative', { duration: 20 })}>
             Short error
-          </button>
-          <button onClick={() => notify('Default timer', 'negative', { persistent: false })}>
-            Opt out
           </button>
         </>
       );
@@ -88,61 +56,6 @@ describe('ToastProvider', () => {
     await waitFor(() =>
       expect(screen.queryByText('Short error', { selector: 'span' })).not.toBeInTheDocument(),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Opt out' }));
-    expect(screen.getByText('Default timer')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
-  });
-
-  it('keeps persistent toasts untimed with working actions and Escape dismissal', async () => {
-    const onAction = vi.fn();
-    const onDismiss = vi.fn();
-    function PersistentToast() {
-      const { notify } = useToast();
-      return (
-        <button
-          onClick={() =>
-            notify('Keep this change?', 'positive', {
-              persistent: true,
-              duration: 20,
-              actionLabel: 'Undo',
-              onAction,
-              onDismiss,
-            })
-          }
-        >
-          Show persistent toast
-        </button>
-      );
-    }
-    render(
-      <ToastProvider>
-        <PersistentToast />
-      </ToastProvider>,
-    );
-    const show = screen.getByRole('button', { name: 'Show persistent toast' });
-    fireEvent.click(show);
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 80));
-    });
-    expect(screen.getByText('Keep this change?')).toBeInTheDocument();
-    expect(onDismiss).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
-    expect(onAction).toHaveBeenCalledOnce();
-    expect(onDismiss).toHaveBeenCalledOnce();
-    await waitFor(() => expect(screen.queryByText('Keep this change?')).not.toBeInTheDocument());
-
-    fireEvent.click(show);
-    await act(async () => {
-      show.focus();
-      const undo = screen.getByRole('button', { name: 'Undo' });
-      undo.focus();
-      fireEvent.keyDown(undo, { key: 'Escape' });
-    });
-    await waitFor(() => expect(show).toHaveFocus());
-    expect(onAction).toHaveBeenCalledOnce();
-    await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(screen.queryByText('Keep this change?')).not.toBeInTheDocument());
   });
 
   it('keeps a focused, protected action available through a burst of notifications', async () => {

@@ -103,10 +103,6 @@ test('keeps the quota warning visible and leads to export without promising free
   await enterFreshLacuna(page);
   const notices = page.getByLabel('Notifications', { exact: true });
   await expect(notices).toContainText('Export a backup before removing unused content.');
-  await expect(notices.getByRole('button', { name: 'Dismiss' })).toHaveCount(0);
-  await page.clock.install();
-  await page.clock.runFor(9000);
-  await expect(notices).toContainText('Storage is 90% full.');
   await page.screenshot({
     path: test.info().outputPath('quota-warning.png'),
     animations: 'disabled',

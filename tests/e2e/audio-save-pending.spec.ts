@@ -81,8 +81,7 @@ test('cannot save the previous clip while its replacement is being recorded or s
     exact: true,
   });
   await expect(recordingError).toBeVisible();
-  await notifications.getByRole('button', { name: 'Dismiss', exact: true }).click();
-  await expect(recordingError).toBeHidden();
+  await expect(recordingError).toBeHidden({ timeout: 4500 });
   await page.getByRole('button', { name: 'Record', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeDisabled();
   await page.evaluate(() => window.dispatchEvent(new Event('grant-test-mic')));
