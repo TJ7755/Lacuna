@@ -136,7 +136,6 @@ function ToastBar({
   motionMultiplier?: number;
 }) {
   const m = motionMultiplier ?? 1;
-  const barRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
   const startRef = useRef<number>(0);
   const hoveredRef = useRef(false);
@@ -156,15 +155,10 @@ function ToastBar({
     if (isPersistent || hoveredRef.current || focusedRef.current) return;
     cancelAnimationFrame(rafRef.current);
     startRef.current = performance.now();
-    const duration = toastDuration;
 
     function tick(now: number) {
       const elapsed = now - startRef.current;
       const currentRemaining = Math.max(0, remainingRef.current - elapsed);
-      if (barRef.current) {
-        barRef.current.style.transform = `scaleX(${currentRemaining / duration})`;
-      }
-
       if (currentRemaining > 0) {
         rafRef.current = requestAnimationFrame(tick);
       } else {
@@ -174,7 +168,7 @@ function ToastBar({
     }
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [toastDuration, isPersistent, onDismissProp]);
+  }, [isPersistent, onDismissProp]);
 
   const pause = useCallback(() => {
     if (!rafRef.current) return;
@@ -186,7 +180,6 @@ function ToastBar({
 
   useEffect(() => {
     remainingRef.current = isPersistent ? 1 : toastDuration;
-    if (barRef.current) barRef.current.style.transform = 'scaleX(1)';
     if (isPersistent) {
       return;
     }
@@ -198,12 +191,6 @@ function ToastBar({
     positive: 'text-positive',
     negative: 'text-negative',
     neutral: 'text-ink',
-  } as const;
-
-  const progressColour = {
-    positive: 'bg-positive',
-    negative: 'bg-negative',
-    neutral: 'bg-accent',
   } as const;
 
   return (
@@ -276,19 +263,6 @@ function ToastBar({
           </div>
         )}
       </div>
-      {/* Dismiss timer progress bar — hidden for persistent toasts */}
-      {!isPersistent && (
-        <div
-          className="pointer-events-none absolute inset-x-4 bottom-1.5 h-px overflow-hidden rounded-full bg-ink/5"
-          aria-hidden="true"
-        >
-          <div
-            ref={barRef}
-            className={cn('h-full w-full origin-left rounded-full', progressColour[toast.tone])}
-            style={{ transform: 'scaleX(1)', opacity: 0.3 }}
-          />
-        </div>
-      )}
     </motion.div>
   );
 }

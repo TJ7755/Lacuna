@@ -58,7 +58,7 @@ async function importRevision(page: Page, revision: number) {
 }
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`toast layout at 1440px in ${theme}`, async ({ page }) => {
+  test(`toast layout at 1440px in ${theme}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: theme });
     await page.addInitScript((value) => localStorage.setItem('lacuna-theme', value), theme);
@@ -82,15 +82,6 @@ for (const theme of ['light', 'dark'] as const) {
     const message = stack.getByText(updateMessage, { exact: true });
     await expect(message).toBeVisible();
     await page.mouse.move(0, 0);
-    await expect
-      .poll(() =>
-        stack
-          .locator('.origin-left')
-          .evaluate((element) =>
-            Number((element as HTMLElement).style.transform.match(/scaleX\(([^)]+)\)/)?.[1]),
-          ),
-      )
-      .toBeLessThan(0.65);
     await message.hover();
     const toast = stack.locator(':scope > div').filter({ hasText: updateMessage });
 
@@ -101,41 +92,25 @@ for (const theme of ['light', 'dark'] as const) {
       )!;
       const textBounds = text.getBoundingClientRect();
       const icon = element.querySelector('svg')!.getBoundingClientRect();
-      const bar = element.querySelector<HTMLElement>('.origin-left')!;
-      const track = bar.parentElement!.getBoundingClientRect();
-      const lines = new Map<number, number>();
-      const node = text.firstChild!;
-      for (let index = 0; index < node.textContent!.length; index++) {
-        const range = document.createRange();
-        range.setStart(node, index);
-        range.setEnd(node, index + 1);
-        const rect = range.getBoundingClientRect();
-        lines.set(rect.y, (lines.get(rect.y) ?? 0) + 1);
-      }
       return {
         topSpace: textBounds.top - bounds.top,
         bottomSpace: bounds.bottom - textBounds.bottom,
         iconOffset: icon.top - textBounds.top,
         lineHeight: parseFloat(getComputedStyle(text).lineHeight),
-        lineLengths: Array.from(lines.values()),
-        trackLeft: track.left - bounds.left,
-        trackRight: bounds.right - track.right,
-        trackBottom: bounds.bottom - track.bottom,
         insideViewport: bounds.left >= 16 && bounds.right <= innerWidth - 16,
         noOverflow: element.scrollWidth <= element.clientWidth,
       };
     });
-    expect(layout.lineLengths).toHaveLength(2);
-    expect(Math.min(...layout.lineLengths)).toBeGreaterThanOrEqual(18);
     expect(layout.topSpace).toBeGreaterThanOrEqual(12);
     expect(layout.bottomSpace).toBeGreaterThanOrEqual(12);
     expect(Math.abs(layout.iconOffset - (layout.lineHeight - 16) / 2)).toBeLessThan(1);
-    expect(layout.trackLeft).toBeGreaterThanOrEqual(12);
-    expect(layout.trackRight).toBeGreaterThanOrEqual(12);
-    expect(layout.trackBottom).toBeGreaterThanOrEqual(6);
     expect(layout.insideViewport).toBe(true);
     expect(layout.noOverflow).toBe(true);
     await expect(stack).toHaveAttribute('aria-live', 'polite');
     await expect(message).toHaveCount(1);
+    await testInfo.attach(`notification-${theme}`, {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
   });
 }

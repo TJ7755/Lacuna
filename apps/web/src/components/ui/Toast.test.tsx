@@ -31,7 +31,6 @@ describe('ToastProvider', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Error' }));
 
     expect(await screen.findByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Notifications').querySelector('.origin-left')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     await waitFor(() =>
       expect(screen.queryByText('Error', { selector: 'span' })).not.toBeInTheDocument(),
@@ -62,7 +61,7 @@ describe('ToastProvider', () => {
       expect(screen.queryByText('Short error', { selector: 'span' })).not.toBeInTheDocument(),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Opt out' }));
-    expect(screen.getByLabelText('Notifications').querySelector('.origin-left')).not.toBeNull();
+    expect(screen.getByText('Default timer')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
   });
 
@@ -98,7 +97,6 @@ describe('ToastProvider', () => {
       await new Promise((resolve) => setTimeout(resolve, 80));
     });
     expect(screen.getByText('Keep this change?')).toBeInTheDocument();
-    expect(screen.getByLabelText('Notifications').querySelector('.origin-left')).toBeNull();
     expect(onDismiss).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
