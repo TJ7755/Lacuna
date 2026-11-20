@@ -173,6 +173,7 @@ function LearnSession({
     continueFromNotes,
     current,
     introductionPresentation,
+    courseChoiceCards,
     lessonChoiceCards,
     hintStep,
     setHintStep,
@@ -202,21 +203,30 @@ function LearnSession({
   } = session;
 
   const choiceBank = useMemo(
+    () => lessonChoiceCandidates(courseChoiceCards ?? []),
+    [courseChoiceCards],
+  );
+  const lessonChoices = useMemo(
     () => lessonChoiceCandidates(lessonChoiceCards ?? []),
     [lessonChoiceCards],
   );
-  // Rank the lesson content once. Study exclusions still apply to options we show.
-  const rankedChoices = useLessonDistractors(lessonChoiceCards ? lessonId : undefined, choiceBank);
+  // Only distractors broaden; target eligibility and Jev preparation stay lesson-scoped.
+  const rankedChoices = useLessonDistractors(
+    lessonChoiceCards ? lessonId : undefined,
+    lessonChoices,
+  );
   const choiceCandidates = useMemo(() => {
     const availableIds = new Set(
-      filterSimpleLearnCardPool(lessonChoiceCards ?? []).map(({ id }) => id),
+      filterSimpleLearnCardPool(courseChoiceCards ?? []).map(({ id }) => id),
     );
-    return choiceBank.filter(({ id }) => availableIds.has(id));
-  }, [choiceBank, lessonChoiceCards]);
+    // Copies elsewhere in the course must not remove the lesson's existing options.
+    const candidates = new Map([...lessonChoices, ...choiceBank].map((card) => [card.id, card]));
+    return [...candidates.values()].filter(({ id }) => availableIds.has(id));
+  }, [choiceBank, lessonChoices, courseChoiceCards]);
   const familiarising = introductionPresentation.stage === 'familiarise';
   const verifyTypedRecall = introductionPresentation.stage === 'recall';
   const choiceTarget = familiarising
-    ? choiceCandidates.find((candidate) => candidate.id === current?.id)
+    ? lessonChoices.find((candidate) => candidate.id === current?.id)
     : undefined;
   const choiceQuestion =
     choiceTarget && canOfferChoices(choiceTarget, choiceCandidates) ? choiceTarget : undefined;
@@ -239,7 +249,7 @@ function LearnSession({
   // applies to a machine-marked item, nor to one whose payload this client
   // can't render at all — see UnknownItemFace.
   const suppressClassicGrading =
-    familiarising ||
+    Boolean(choiceQuestion) ||
     isMachineMarkedCard ||
     hasUnrenderableItemPayload ||
     recitationSequence !== null;

@@ -5,7 +5,7 @@ import {
   renderMarkdownToHtml,
 } from '../../components/markdown/markdownRenderer';
 import maths from '../../components/markdown/optionalMarkdownMath';
-import { lessonDistractorAnswerKey } from '../../jev/protocol';
+import { JEV_DISTRACTOR_MAX_ANSWER, lessonDistractorAnswerKey } from '../../jev/protocol';
 
 export interface LessonChoiceCard {
   id: string;
@@ -57,7 +57,7 @@ function shuffled<T>(values: readonly T[]): T[] {
   return result;
 }
 
-/** Only compatible, unambiguous cards from the selected lesson can supply choice text. */
+/** Only compatible, unambiguous cards from the course can supply choice text. */
 export function lessonChoiceCandidates(cards: readonly Card[]): LessonChoiceCard[] {
   const entries: LessonChoiceCard[] = [];
   const promptCounts = new Map<string, number>();
@@ -72,7 +72,7 @@ export function lessonChoiceCandidates(cards: readonly Card[]): LessonChoiceCard
     const promptKey = distinctText(renderedChoiceIdentity(rawPrompt));
     promptCounts.set(promptKey, (promptCounts.get(promptKey) ?? 0) + 1);
     if (/[\r\n]/.test(rawPrompt) || rawPrompt.length > 180) continue;
-    const answer = shortChoiceSource(card.back, 80);
+    const answer = shortChoiceSource(card.back, JEV_DISTRACTOR_MAX_ANSWER);
     if (answer) entries.push({ id: card.id, prompt: rawPrompt, answer });
   }
   return entries.filter(

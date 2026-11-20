@@ -216,7 +216,8 @@ export class SessionRuntime {
           if ((this.options.introduceNewCards ?? false) && this.options.lessonId)
             this.lessonChoiceSource = {
               lessonId: this.options.lessonId,
-              cards: data.lessonChoiceCards,
+              cards: data.courseChoiceCards,
+              targets: data.lessonChoiceCards,
             };
           this.schedulingUnits = data.schedulingUnits;
           this.schedulingConfig = data.schedulingConfig;
@@ -326,6 +327,7 @@ export class SessionRuntime {
   private lessonChoiceSource: {
     lessonId: string;
     cards: Card[];
+    targets: Card[];
   } | null = null;
 
   private updateLessonChoiceCard = (updated: Card) => {
@@ -334,6 +336,7 @@ export class SessionRuntime {
       this.lessonChoiceSource = {
         ...source,
         cards: source.cards.map((card) => (card.id === updated.id ? updated : card)),
+        targets: source.targets.map((card) => (card.id === updated.id ? updated : card)),
       };
   };
 
@@ -879,7 +882,6 @@ export class SessionRuntime {
       (!machineMarked && phaseNow !== 'answer') ||
       (machineMarked && phaseNow !== 'question') ||
       !cardNow ||
-      this.introductions.presentation.stage === 'familiarise' ||
       isUnrenderableItemPayload(cardNow)
     ) {
       return { undoAvailable: false };
@@ -890,7 +892,7 @@ export class SessionRuntime {
     // A fallback self-mark is the learner's decision, just as in ordinary review.
     const correct = answerCorrect(input);
     const response: AnswerResponse = {
-      retainUndo: options?.retainUndo ?? verifiedRecall,
+      retainUndo: options?.retainUndo ?? Boolean(this.introductions.presentation.stage),
       input: reviewAnswerInput(
         cardNow,
         this.recitation.sequence !== null,
@@ -1114,10 +1116,15 @@ export class SessionRuntime {
     lessonNotesScreen: this.lessonNotesScreen,
     continueFromNotes: this.continueFromNotes,
     current: this.current,
-    lessonChoiceCards:
+    courseChoiceCards:
       (this.options.introduceNewCards ?? false) &&
       this.lessonChoiceSource?.lessonId === this.options.lessonId
         ? this.lessonChoiceSource?.cards
+        : undefined,
+    lessonChoiceCards:
+      (this.options.introduceNewCards ?? false) &&
+      this.lessonChoiceSource?.lessonId === this.options.lessonId
+        ? this.lessonChoiceSource?.targets
         : undefined,
     introductionPresentation: this.introductions.presentation,
     cardCompletion: this.cardCompletion,

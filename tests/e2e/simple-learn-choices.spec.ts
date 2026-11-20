@@ -25,7 +25,11 @@ test.beforeAll(async () => {
 
 async function seedLesson(
   page: Page,
-  source?: { cards: Record<string, string>; suspendedPrompt?: string },
+  source?: {
+    cards: Record<string, string>;
+    suspendedPrompt?: string;
+    otherLessonCards?: Record<string, string>;
+  },
 ) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -33,12 +37,178 @@ async function seedLesson(
   await page.addScriptTag({ content: fixture });
   return page.evaluate(
     (input) =>
-      window.SimpleLearnChoicesFixture.seed(input?.cards, undefined, input?.suspendedPrompt),
+      window.SimpleLearnChoicesFixture.seed(
+        input?.cards,
+        undefined,
+        input?.suspendedPrompt,
+        input?.otherLessonCards,
+      ),
     source,
   );
 }
 
 const readReviews = (page: Page) => page.evaluate(() => window.SimpleLearnChoicesFixture.reviews());
+
+test('borrows course-wide distractors despite a copied prompt and reviews only the selected lesson', async ({
+  page,
+}, testInfo) => {
+  const prompt = 'What is the French for apple?';
+  const { lessonId } = await seedLesson(page, {
+    cards: { [prompt]: 'pomme' },
+    otherLessonCards: {
+      [prompt]: 'pomme',
+      'What is the French for pear?': 'poire',
+      'What is the French for cherry?': 'cerise',
+      'What is the French for plum?': 'prune',
+      'What is the French for peach?': 'pêche',
+    },
+    suspendedPrompt: 'What is the French for peach?',
+  });
+  await page.goto(`/#/lesson/${lessonId}/learn`);
+  const view = study(page);
+  await expect(view.prompt).toHaveText(prompt);
+  await expect(view.choices).toHaveCount(4);
+  await expect(view.choices.first()).toBeFocused();
+  await expect(view.main.getByRole('radio', { name: 'pêche', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('progressbar', { name: 'Session progress' })).toHaveAttribute(
+    'aria-valuetext',
+    '0 of 1 card complete',
+  );
+  await testInfo.attach('course-wide-choices', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
+  await choose(view, 'pomme');
+  await expect(view.typing).toBeFocused();
+  const cardId = await view.main
+    .locator('[data-study-card-id]:not([inert])')
+    .getAttribute('data-study-card-id');
+  await view.typing.fill('pomme');
+  await page.keyboard.press('Enter');
+  await expect(view.advance).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await readReviews(page)).length).toBe(1);
+  expect(await readReviews(page)).toEqual([expect.objectContaining({ cardId, input: 'typed' })]);
+});
+
+test('keeps both lesson choices when another lesson repeats a distractor', async ({ page }) => {
+  const cards: Record<string, string> = {
+    'What is the French for apple?': 'pomme',
+    'What is the French for pear?': 'poire',
+  };
+  const { lessonId } = await seedLesson(page, {
+    cards,
+    otherLessonCards: { 'What is the French for pear?': 'poire' },
+  });
+  await page.goto(`/#/lesson/${lessonId}/learn`);
+  const view = study(page);
+  for (let index = 0; index < 2; index++) {
+    await expect(view.choices).toHaveCount(2);
+    const prompt = await view.prompt.innerText();
+    if (index === 0) {
+      await choose(view, cards[prompt]);
+      await nextPrompt(view, prompt);
+    }
+  }
+});
+
+test('offers multiple choice for lesson definitions longer than eighty characters', async ({
+  page,
+}, testInfo) => {
+  const { lessonId } = await seedLesson(page, {
+    cards: {
+      'Define decomposition':
+        'Breaking down into smaller problems. This can apply for both problems and solutions.',
+      'Define abstraction':
+        'Removing unnecessary details from a problem so that the important features can be considered.',
+      'Define an algorithm':
+        'A sequence of precise instructions that can be followed step by step to solve a problem.',
+      'Define pattern recognition':
+        'Identifying similarities between problems so that a solution can be reused in another situation.',
+      'Define computational thinking':
+        'Using decomposition, abstraction and algorithms to develop a solution that can be implemented.',
+    },
+  });
+  await page.goto(`/#/lesson/${lessonId}/learn`);
+  const view = study(page);
+  await expect(view.choices).toHaveCount(4);
+  for (const label of await view.choices.locator('..').all())
+    await expect(label).toBeInViewport({ ratio: 1 });
+  await testInfo.attach('definition-choices', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
+  await view.choices.first().press('Space');
+  await view.check.click();
+  await expect(view.revealed).toBeVisible();
+});
+
+for (const verdict of ['No', 'Yes'] as const) {
+  test(`grades a no-distractor fallback normally and slides ${verdict === 'No' ? 'left' : 'right'}`, async ({
+    page,
+  }, testInfo) => {
+    const answer = 'Breaking down into smaller problems.';
+    const { lessonId } = await seedLesson(page, { cards: { 'Define decomposition': answer } });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.goto(`/#/lesson/${lessonId}/learn`);
+    const view = study(page);
+    const revealButton = view.main.locator('button').filter({ hasText: /^Show answer$/ });
+    await expect(revealButton).toBeFocused();
+    await expect(revealButton).toBeInViewport({ ratio: 1 });
+    await page.keyboard.press('Enter');
+    await expect(view.revealed).toHaveText(answer);
+    for (const name of ['No', 'Yes'])
+      await expect(view.main.getByRole('button', { name, exact: true })).toBeInViewport({
+        ratio: 1,
+      });
+    await expect(view.advance).toBeFocused();
+    await expect(view.main.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
+    await testInfo.attach('no-distractors-revealed', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
+    const positions = await view.main
+      .getByRole('button', { name: verdict, exact: true })
+      .evaluate((button) => {
+        const card = document.querySelector<HTMLElement>('[data-study-card-id]:not([inert])')!;
+        const origin = card.getBoundingClientRect().left;
+        const positions: number[] = [];
+        (button as HTMLButtonElement).click();
+        return new Promise<number[]>((resolve) => {
+          const started = performance.now();
+          const sample = () => {
+            if (card.isConnected) positions.push(card.getBoundingClientRect().left - origin);
+            if (performance.now() - started < 500) requestAnimationFrame(sample);
+            else resolve(positions);
+          };
+          requestAnimationFrame(sample);
+        });
+      });
+    expect(positions.some((x) => (verdict === 'No' ? x < -20 : x > 20))).toBe(true);
+    await expect.poll(async () => (await readReviews(page)).length).toBe(1);
+    expect((await readReviews(page))[0]).toMatchObject({
+      input: 'reveal',
+      grade: verdict === 'No' ? 1 : expect.any(Number),
+    });
+    if (verdict === 'No') {
+      await expect(revealButton).toBeFocused();
+      await expect(
+        page.getByRole('button', { name: 'Undo last answer', exact: true }),
+      ).toBeEnabled();
+      await expect(view.typing).toHaveCount(0);
+      await page.reload();
+      await page.addScriptTag({ content: fixture });
+      await expect(revealButton).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(view.advance).toBeVisible();
+      await page.keyboard.press('ArrowRight');
+      await expect.poll(async () => (await readReviews(page)).length).toBe(2);
+    }
+    expect((await readReviews(page)).filter(({ grade }) => grade > 1)).toHaveLength(1);
+    await expect(page.getByRole('main', { name: 'Session report' })).toBeVisible();
+    await expect(view.typing).toHaveCount(0);
+  });
+}
 
 test('offers rendered maths choices after earlier study, before Jev rankings arrive', async ({
   page,
@@ -484,9 +654,14 @@ test('withholds suspended choices and lets a Jev-marked recall be resubmitted af
   const { lessonId } = await seedLesson(page, {
     cards: { [prompt]: 'avion', [suspendedPrompt]: 'ferry' },
     suspendedPrompt,
+    otherLessonCards: { 'What is the French for train?': 'train' },
   });
   let marks = 0;
   await page.route('**/api/ai/jev', async (route) => {
+    if (route.request().postDataJSON().purpose === 'lesson-distractors') {
+      await route.fulfill({ status: 503, body: '' });
+      return;
+    }
     expect(route.request().postDataJSON()).toMatchObject({
       purpose: 'typed-equivalence',
       expected: 'avion',
@@ -506,12 +681,9 @@ test('withholds suspended choices and lets a Jev-marked recall be resubmitted af
   await page.goto(`/#/lesson/${lessonId}/learn`);
   await page.addScriptTag({ content: fixture });
   const view = study(page);
-  const reveal = view.main.getByRole('button', { name: 'Show answer', exact: true });
-  await expect(reveal).toBeFocused();
-  await expect(view.choices).toHaveCount(0);
-  await page.keyboard.press('Enter');
-  await expect(view.advance).toBeFocused();
-  await page.keyboard.press('Enter');
+  await expect(view.choices).toHaveCount(2);
+  await expect(view.main.getByRole('radio', { name: 'ferry', exact: true })).toHaveCount(0);
+  await choose(view, 'avion');
   await expect(view.typing).toBeFocused();
   await view.typing.fill('aéronef');
   await page.keyboard.press('Enter');

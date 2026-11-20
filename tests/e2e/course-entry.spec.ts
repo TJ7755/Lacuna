@@ -150,10 +150,10 @@ for (const width of [1440]) {
     await expect(
       page.locator('[data-study-face="front"]').getByText('Year two recall', { exact: true }),
     ).toBeVisible();
-    await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
     const study = page.getByRole('main', { name: 'Study card' });
     const nextCard = study.getByRole('button', { name: 'Yes', exact: true });
-    await nextCard.click();
+    await study.getByRole('radio', { name: 'Year two answer', exact: true }).press('Space');
+    await study.getByRole('button', { name: 'Check answer', exact: true }).click();
     await page.getByRole('textbox', { name: 'Your answer' }).fill('Year two answer');
     await page.getByRole('button', { name: 'Check answer', exact: true }).click();
     await nextCard.click();

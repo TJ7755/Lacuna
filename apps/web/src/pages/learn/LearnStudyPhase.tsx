@@ -3,7 +3,6 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card, ItemPayload } from '@lacuna/core/db/types';
 import { LessonChoiceControls } from './LessonChoiceControls';
 import type { LessonChoiceCard } from './simpleLearnQuestions';
-import { Button } from '../../components/ui/Button';
 import { CardEditOverlay } from '../../components/cards/CardEditOverlay';
 import { KeyHints } from '../../components/ui/KeyHints';
 import { NumericStudyFace } from '../../components/items/NumericStudyFace';
@@ -160,7 +159,6 @@ export function LearnStudyPhase({
     answerWithUndo,
     gradeFeedback,
   } = feedback;
-  const familiarising = introductionPresentation.stage === 'familiarise';
   const serial = introductionPresentation.serial;
   const promptId = `${useId()}-${serial}`;
   const checkChoice = useCallback(
@@ -366,7 +364,7 @@ export function LearnStudyPhase({
                     hintsOpen={hintsOpen}
                     onReveal={reveal}
                     onHide={hide}
-                    allowGradingGestures={!familiarising}
+                    allowGradingGestures={!choiceQuestion}
                     onAnswer={(input, source, velocity) => answerWithUndo(input, source, velocity)}
                     typedAnswer={typedAnswer}
                     typedJudgement={typedJudgement}
@@ -410,20 +408,6 @@ export function LearnStudyPhase({
                   ? 'Marked correct.'
                   : 'Marked incorrect.'
                 : ''}
-          </div>
-        )}
-        {familiarising && !choiceQuestion && phase === 'answer' && (
-          <div className="mt-5 flex justify-center">
-            <Button
-              variant="primary"
-              size="lg"
-              data-study-continue
-              onClick={() => {
-                if (checkIntroduction(serial, true)) continueIntroduction(serial);
-              }}
-            >
-              Yes
-            </Button>
           </div>
         )}
         {(phase === 'question' || phase === 'answer') && !suppressClassicGrading && (

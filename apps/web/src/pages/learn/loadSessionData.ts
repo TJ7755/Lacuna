@@ -197,6 +197,7 @@ export async function loadSessionData(request: SessionDataRequest) {
     cards,
     serveableCardCount: serveableCards.length,
     introduction,
+    courseChoiceCards: introduction ? (source.courseChoiceCards ?? []) : [],
     lessonChoiceCards: introduction ? (source.lessonMembers ?? []) : [],
     performance,
     schedulingUnits,

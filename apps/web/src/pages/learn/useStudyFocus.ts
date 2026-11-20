@@ -35,9 +35,11 @@ export function useStudyFocus(
     const next =
       availableControl(main, '[data-study-continue]') ??
       availableControl(main, '#study-typed-answer, #working-answer') ??
-      availableControl(main, '[data-study-reveal-only]') ??
+      availableControl(main, '[data-flow-primary] button') ??
       availableControl(main, '[data-study-choices] input[type="radio"]:checked:not(:disabled)') ??
-      availableControl(main, '[data-study-choices] input[type="radio"]:not(:disabled)');
+      availableControl(main, '[data-study-choices] input[type="radio"]:not(:disabled)') ??
+      availableControl(main, '[data-flow-reveal] button:not(:disabled)') ??
+      availableControl(main, '[data-study-reveal-only]');
     (next ?? main).focus({ preventScroll: true });
   }, [cardId, phase, overlayOpen, continueReady]);
   return mainRef;

@@ -1,8 +1,6 @@
 import 'fake-indexeddb/auto';
 import {
   answerYes,
-  familiariseCard,
-  recallCard,
   continueFromNotes,
   findStudyFaceText,
   queryStudyFaceText,
@@ -138,11 +136,10 @@ describe('LearnMode scope', () => {
     )!;
     expect(flipCard).toHaveAttribute('tabindex', '0');
     fireEvent.keyDown(flipCard, { key: 'Enter' });
-    expect(screen.getByRole('button', { name: /^yes$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Yes' })).toBeInTheDocument();
     expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
     expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(0);
     fireEvent.click(await screen.findByRole('button', { name: 'Yes' }));
-    await recallCard('A1');
     await waitFor(async () => {
       expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(1);
       expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(1);
@@ -186,8 +183,7 @@ describe('LearnMode scope', () => {
 
     await screen.findByRole('heading', { name: 'Cells' });
     await continueFromNotes();
-    await familiariseCard();
-    await recallCard('A1');
+    await answerYes();
     const report = await screen.findByRole('main', { name: 'Session report' });
     expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeUndefined();
     fireEvent.click(within(report).getByRole('button', { name: 'Done' }));
@@ -230,8 +226,7 @@ describe('LearnMode scope', () => {
 
     await screen.findByRole('heading', { name: 'Kinematics' });
     await continueFromNotes();
-    await familiariseCard();
-    await recallCard('A1');
+    await answerYes();
     const report = await screen.findByRole('main', { name: 'Session report' });
     fireEvent.click(within(report).getByRole('button', { name: 'Done' }));
     await screen.findByText('Lesson overview');
@@ -341,7 +336,7 @@ describe('LearnMode scope', () => {
       const prompt = card.textContent ?? '';
       seen.add(prompt);
       if (index === 2) break;
-      await familiariseCard();
+      await answerYes();
       await waitFor(() => expect(queryStudyFaceText(prompt)).toBeUndefined());
     }
     expect(seen).toEqual(new Set(['Due Q', 'Not Due Q', 'New Q']));
@@ -383,7 +378,7 @@ describe('LearnMode scope', () => {
       const prompt = card.textContent ?? '';
       seen.add(prompt);
       if (index === 2) break;
-      await familiariseCard();
+      await answerYes();
       await waitFor(() => expect(queryStudyFaceText(prompt)).toBeUndefined());
     }
     expect(seen).toEqual(new Set(['Due Q', 'Not Due Q', 'New Q']));
@@ -463,8 +458,7 @@ describe('LearnMode scope', () => {
 
       await screen.findByRole('heading', { name: 'First' });
       await continueFromNotes();
-      await familiariseCard();
-      await recallCard('A1');
+      await answerYes();
       const report = await screen.findByRole('main', { name: 'Session report' });
       fireEvent.click(within(report).getByRole('button', { name: 'Done' }));
       await screen.findByText('Lesson overview');
