@@ -110,8 +110,8 @@ for (const submitFrom of ['title', 'button']) {
     await text.press('End');
     await text.press('Enter');
     await expect(text).toHaveValue('bonjour\thello\n');
-    await importer.getByRole('button', { name: 'Review cards', exact: true }).click();
-    await importer.getByRole('button', { name: 'Choose destination', exact: true }).click();
+    await importer.getByRole('button', { name: 'Review cards', exact: true }).press('Enter');
+    await importer.getByRole('button', { name: 'Choose destination', exact: true }).press('Enter');
     const title = importer.getByLabel('Course title');
     const action = importer.getByRole('button', { name: 'Import 1 card' });
     await title.press('Enter');
