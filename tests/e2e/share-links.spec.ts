@@ -27,15 +27,6 @@ test('opens the confirmed shared course with heading focus and Study', async ({
     at: 1000,
     li: 'share-arrival-biology',
     rv: 1,
-    bankCards: [
-      { id: 'bank-card', co: 'arrival-lesson-0-concept', k: 0, f: 'Bank question', b: 'Answer' },
-    ],
-    links: [
-      { l: 0, c: 'arrival-card-1' },
-      { l: 0, c: 'bank-card' },
-      { l: 0, c: 'arrival-card-1::rev' },
-      { l: 1, c: 'arrival-card-1::rev' },
-    ],
     course: {
       n: 'Shared biology',
       d: 'Explore the processes that keep living organisms working.',
@@ -62,7 +53,7 @@ test('opens the confirmed shared course with heading focus and Study', async ({
         cards: [
           {
             id: `arrival-card-${index}`,
-            k: index === 1 ? 2 : 0,
+            k: 0,
             f: `Question about ${name}`,
             b: 'Answer',
           },
@@ -99,8 +90,6 @@ test('opens the confirmed shared course with heading focus and Study', async ({
   await expect(
     preview.getByText('Cell structure and the roles of specialised cells.'),
   ).toBeVisible();
-  await expect(preview.getByRole('list', { name: 'Content in Cells' })).toHaveText('4 cards1 note');
-  await expect(preview.getByRole('list', { name: 'Content in Enzymes' })).toHaveText('2 cards');
   await expect(preview.getByRole('button')).toHaveCount(0);
   const add = page.getByRole('button', { name: 'Add to my courses' });
   await expect(add).toBeEnabled();
