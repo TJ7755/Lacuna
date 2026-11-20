@@ -102,7 +102,10 @@ export function CourseHeader({
               onBlur={() => void commitRename()}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') void commitRename();
-                if (event.key === 'Escape') cancelRename();
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  cancelRename();
+                }
               }}
               aria-label={renameLabel === 'course' ? 'Course name' : 'Lesson name'}
               disabled={savingTitle}

@@ -13,6 +13,8 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { cn } from './cn';
 import { CheckIcon, CloseIcon, InfoIcon } from './icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { Button } from './Button';
+import { motionTransition } from './motion';
 
 type ToastTone = 'neutral' | 'positive' | 'negative';
 
@@ -25,8 +27,7 @@ interface ToastOptions {
   duration?: number;
   /** Errors stay until dismissed by default; false opts back into the usual timer. */
   persistent?: boolean;
-  /** Invoked when the toast is dismissed (either by the user clicking the close button,
-   *  or by the action button being pressed, or by the auto-dismiss timer firing). */
+  /** Invoked on Escape dismissal, action activation or expiry. */
   onDismiss?: () => void;
   /** Replaces an existing toast with the same key instead of leaving stale actions stacked. */
   replaceKey?: string;
@@ -54,12 +55,41 @@ interface ToastItem {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const stackRef = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
   const dismiss = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  useEffect(() => {
+    if (!toasts.length) return;
+    let pendingDismissal: ReturnType<typeof setTimeout>;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.repeat || event.isComposing) return;
+      const overlaySelector = '[role="dialog"], [role="alertdialog"], [role="menu"], dialog[open]';
+      if (document.querySelector(overlaySelector)) return;
+      // A new task runs after every native listener; microtasks can run between listeners.
+      clearTimeout(pendingDismissal);
+      pendingDismissal = setTimeout(() => {
+        if (event.defaultPrevented || document.querySelector(overlaySelector)) return;
+        const latest = toasts.at(-1)!;
+        const surface = stackRef.current?.querySelector(`[data-toast-id="${latest.id}"]`);
+        if (surface?.contains(document.activeElement) && previousFocus.current?.isConnected) {
+          previousFocus.current.focus({ preventScroll: true });
+        }
+        latest.onDismiss?.();
+        dismiss(latest.id);
+      }, 0);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      clearTimeout(pendingDismissal);
+    };
+  }, [toasts, dismiss]);
 
   const MAX_TOASTS = 5;
 
@@ -104,7 +134,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ notify }}>
       {children}
       <div
-        className="toast-stack fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[60] flex flex-col gap-2 will-change-transform"
+        ref={stackRef}
+        onFocusCapture={(event) => {
+          const from = event.relatedTarget;
+          if (from instanceof HTMLElement && !event.currentTarget.contains(from)) {
+            previousFocus.current = from;
+          }
+        }}
+        className="toast-stack fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[60] flex flex-col items-end gap-2"
         aria-label="Notifications"
         aria-live="polite"
         aria-atomic="false"
@@ -134,7 +171,6 @@ function ToastBar({
   motionMultiplier?: number;
 }) {
   const m = motionMultiplier ?? 1;
-  const barRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
   const startRef = useRef<number>(0);
   const hoveredRef = useRef(false);
@@ -142,7 +178,6 @@ function ToastBar({
   const remainingRef = useRef<number>(toast.duration === Infinity ? 1 : toast.duration);
   const onDismissRef = useRef(onDismiss);
   const isPersistent = toast.duration === Infinity;
-  const hasControls = isPersistent || Boolean(toast.actionLabel);
 
   // Keep the latest onDismiss without causing re-runs.
   useEffect(() => {
@@ -155,15 +190,10 @@ function ToastBar({
     if (isPersistent || hoveredRef.current || focusedRef.current) return;
     cancelAnimationFrame(rafRef.current);
     startRef.current = performance.now();
-    const duration = toastDuration;
 
     function tick(now: number) {
       const elapsed = now - startRef.current;
       const currentRemaining = Math.max(0, remainingRef.current - elapsed);
-      if (barRef.current) {
-        barRef.current.style.transform = `scaleX(${currentRemaining / duration})`;
-      }
-
       if (currentRemaining > 0) {
         rafRef.current = requestAnimationFrame(tick);
       } else {
@@ -173,7 +203,7 @@ function ToastBar({
     }
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [toastDuration, isPersistent, onDismissProp]);
+  }, [isPersistent, onDismissProp]);
 
   const pause = useCallback(() => {
     if (!rafRef.current) return;
@@ -185,7 +215,6 @@ function ToastBar({
 
   useEffect(() => {
     remainingRef.current = isPersistent ? 1 : toastDuration;
-    if (barRef.current) barRef.current.style.transform = 'scaleX(1)';
     if (isPersistent) {
       return;
     }
@@ -199,33 +228,15 @@ function ToastBar({
     neutral: 'text-ink',
   } as const;
 
-  const progressColour = {
-    positive: 'bg-positive',
-    negative: 'bg-negative',
-    neutral: 'bg-accent',
-  } as const;
-
   return (
     <motion.div
+      data-toast-id={toast.id}
       layout={m > 0 ? 'position' : undefined}
-      initial={m > 0 ? { opacity: 0, x: 24, scale: 0.96 } : false}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={
-        m > 0
-          ? {
-              opacity: 0,
-              x: 24,
-              scale: 0.96,
-              transition: { duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] },
-            }
-          : undefined
-      }
-      transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-      className={cn(
-        'relative min-h-11 rounded-xl px-4 text-sm leading-5 bg-surface card-surface max-w-[min(24rem,calc(100vw-2rem))] overflow-hidden',
-        hasControls ? 'py-0.5' : 'py-3',
-        toneClasses[toast.tone],
-      )}
+      initial={m > 0 ? { opacity: 0, x: 12 } : false}
+      animate={{ opacity: 1, x: 0 }}
+      exit={m > 0 ? { opacity: 0, x: 12 } : undefined}
+      transition={motionTransition('feedback', m)}
+      className="relative w-[26rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-surface px-4 py-0.5 text-sm leading-5 text-ink card-surface"
       onMouseEnter={() => {
         hoveredRef.current = true;
         pause();
@@ -244,58 +255,33 @@ function ToastBar({
         resume();
       }}
     >
-      <div className="flex w-full items-center gap-3">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
-          <span className="mt-0.5 shrink-0" aria-hidden="true">
+      <div className="flex min-h-12 w-full items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3 py-2.5">
+          <span className={cn('mt-0.5 shrink-0', toneClasses[toast.tone])} aria-hidden="true">
             {toast.tone === 'positive' && <CheckIcon width={16} height={16} />}
             {toast.tone === 'negative' && <CloseIcon width={16} height={16} />}
             {toast.tone === 'neutral' && <InfoIcon width={16} height={16} />}
           </span>
-          <span className="min-w-0 flex-1 break-words text-balance">{toast.message}</span>
+          <span className="min-w-0 flex-1 break-words">{toast.message}</span>
         </div>
-        {isPersistent && (
-          <button
-            type="button"
-            onClick={() => {
-              toast.onDismiss?.();
-              onDismiss();
-            }}
-            className="flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
-            aria-label="Dismiss"
-          >
-            <CloseIcon width={14} height={14} />
-          </button>
-        )}
         {toast.actionLabel && (
-          <button
-            type="button"
-            onClick={() => {
-              toast.onAction?.();
-              toast.onDismiss?.();
-              onDismiss();
-            }}
-            className="flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full px-3 font-semibold text-accent-ink transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-          >
-            {toast.actionLabel}
-          </button>
+          <div className="flex shrink-0 items-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                toast.onAction?.();
+                toast.onDismiss?.();
+                onDismiss();
+              }}
+              className="min-h-12 min-w-12 shrink-0"
+            >
+              <span className="text-accent-ink">{toast.actionLabel}</span>
+            </Button>
+          </div>
         )}
       </div>
-      {/* Dismiss timer progress bar — hidden for persistent toasts */}
-      {!isPersistent && (
-        <div
-          className={cn(
-            'pointer-events-none absolute inset-x-4 overflow-hidden rounded-full bg-ink/10',
-            hasControls ? 'bottom-0.5 h-0.5' : 'bottom-1.5 h-1',
-          )}
-          aria-hidden="true"
-        >
-          <div
-            ref={barRef}
-            className={cn('h-full w-full origin-left rounded-full', progressColour[toast.tone])}
-            style={{ transform: 'scaleX(1)', opacity: 0.6 }}
-          />
-        </div>
-      )}
     </motion.div>
   );
 }

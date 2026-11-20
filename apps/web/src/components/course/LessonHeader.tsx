@@ -94,7 +94,10 @@ export function LessonHeader({
               onBlur={() => void commit()}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') void commit();
-                if (event.key === 'Escape') cancel();
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  cancel();
+                }
               }}
               className="min-w-0 flex-1 rounded-xl bg-ink/[0.05] px-3 py-1 font-display text-4xl font-semibold tracking-tight text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent-ink md:text-[44px] md:leading-[1.05]"
             />

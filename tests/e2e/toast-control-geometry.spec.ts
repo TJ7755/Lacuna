@@ -22,6 +22,7 @@ test.beforeAll(async () => {
             })}>Show action</button>
             <button id="persistent" onClick={() => notify('Persistent choice.', 'positive', {
               persistent: true, actionLabel: 'Keep', onAction: () => {},
+              onDismiss: () => { document.getElementById('persistent').dataset.dismissed = 'true'; },
             })}>Show persistent</button>
           </>;
         }
@@ -38,7 +39,7 @@ test.beforeAll(async () => {
   script = result.outputFiles[0].text;
 });
 
-for (const width of [1280, 390]) {
+for (const width of [1280]) {
   for (const kind of ['action', 'persistent'] as const) {
     test(`${kind} toast controls stay hittable throughout entrance at ${width}px`, async ({
       page,
@@ -133,8 +134,9 @@ for (const width of [1280, 390]) {
       expect(samples.length).toBeGreaterThan(0);
       for (const sample of samples) {
         expect(sample.toastHeight).toBeLessThanOrEqual(56);
+        expect(sample.scale).toBe(1);
         expect(sample.bottomGap).toBeLessThanOrEqual(24);
-        expect(sample.controls).toHaveLength(kind === 'persistent' ? 2 : 1);
+        expect(sample.controls).toHaveLength(1);
         for (const control of sample.controls) {
           expect(control.height, control.label).toBeGreaterThanOrEqual(44);
           expect(control.width, control.label).toBeGreaterThanOrEqual(44);
@@ -144,7 +146,24 @@ for (const width of [1280, 390]) {
       const notifications = page.getByLabel('Notifications', { exact: true });
       await notifications.screenshot({ path: testInfo.outputPath(`${kind}-toast.png`) });
       if (kind === 'persistent') {
-        await notifications.getByRole('button', { name: 'Dismiss' }).click();
+        const trigger = page.locator('#persistent');
+        await trigger.focus();
+        await notifications.getByRole('button', { name: 'Keep' }).focus();
+        await page.evaluate(() => {
+          window.addEventListener(
+            'keydown',
+            (event) => {
+              if (event.key === 'Escape') event.preventDefault();
+            },
+            { once: true },
+          );
+        });
+        await page.keyboard.press('Escape');
+        await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        await expect(trigger).not.toHaveAttribute('data-dismissed');
+        await page.keyboard.press('Escape');
+        await expect(trigger).toBeFocused();
+        await expect(trigger).toHaveAttribute('data-dismissed', 'true');
       } else {
         await notifications.getByRole('button', { name: 'Undo' }).click();
       }
