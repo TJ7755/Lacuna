@@ -305,7 +305,7 @@ export function StandaloneTeacherHome() {
             <MenuIcon />
           </button>
           <span className="flex items-center gap-2 font-brand text-lg font-medium leading-none tracking-tight">
-            <LacunaIcon aria-hidden="true" className="h-[18px] w-[18px] text-accent-ink" />
+            <LacunaIcon aria-hidden="true" className="h-[18px] w-[18px]" />
             Gaps
           </span>
         </div>

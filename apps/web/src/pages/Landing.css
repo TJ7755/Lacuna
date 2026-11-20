@@ -95,7 +95,6 @@
 .landing-brand svg {
   width: 26px;
   height: 26px;
-  color: var(--amber);
 }
 .landing-button {
   display: inline-flex;

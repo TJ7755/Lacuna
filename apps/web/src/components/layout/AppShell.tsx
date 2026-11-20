@@ -394,7 +394,7 @@ function AppShellLayout() {
               <LacunaIcon
                 data-testid="mobile-brand-mark"
                 aria-hidden="true"
-                className="h-[18px] w-[18px] shrink-0 text-accent-ink"
+                className="h-[18px] w-[18px] shrink-0"
               />
               <span>Lacuna</span>
             </span>
