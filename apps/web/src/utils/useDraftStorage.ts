@@ -13,7 +13,6 @@ export function useDraftStorage() {
         notify(
           'Could not save your draft. Keep this page open and save your work before leaving.',
           'negative',
-          { persistent: true },
         );
       }
       warned.current = !stored;

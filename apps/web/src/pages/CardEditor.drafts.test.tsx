@@ -257,7 +257,6 @@ describe('CardEditor — draft protection', () => {
       expect(notify).toHaveBeenCalledWith(
         expect.stringContaining('Could not save your draft'),
         'negative',
-        expect.any(Object),
       );
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(mockNavigate).not.toHaveBeenCalled();

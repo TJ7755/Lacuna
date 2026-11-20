@@ -82,7 +82,6 @@ describe('useStorageQuotaWarning', () => {
       'Storage is 86% full. Export a backup before removing unused content.',
       'negative',
       {
-        persistent: true,
         actionLabel: 'Open export',
         onAction: expect.any(Function),
       },

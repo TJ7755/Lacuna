@@ -34,7 +34,6 @@ export function useStorageQuotaWarning() {
             `Storage is ${Math.round((usage / quota) * 100)}% full. Export a backup before removing unused content.`,
             'negative',
             {
-              persistent: true,
               actionLabel: 'Open export',
               onAction: () => {
                 window.location.hash = '#/settings#settings-export';
