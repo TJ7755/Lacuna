@@ -1,5 +1,6 @@
 import { SectionCard } from '../ui/SectionCard';
 import { SharedCoursePreview } from './SharedCoursePreview';
+import { SegmentedPills } from '../ui/SegmentedPills';
 import { recordUsageAction } from '../../usage/actions';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -517,7 +518,20 @@ export function SharedCourseImport({
                       </p>
                     )}
                     <CourseStudyTarget
-                      compact={resolvedLink}
+                      targetControl={
+                        resolvedLink ? (
+                          <SegmentedPills
+                            label="Study target"
+                            value={pending.scheduling.mode}
+                            options={[
+                              { value: 'exam', label: 'Exam date' },
+                              { value: 'steady', label: 'Steady retention' },
+                            ]}
+                            onChange={(mode) => updateScheduling({ mode })}
+                            size="sm"
+                          />
+                        ) : undefined
+                      }
                       schedulingMode={pending.scheduling.mode}
                       setSchedulingMode={(mode) => updateScheduling({ mode })}
                       saving={importing}

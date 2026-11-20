@@ -41,7 +41,15 @@ test('opens the confirmed shared course with heading focus and Study', async ({
         n: name,
         d: index === 0 ? 'Cell structure and the roles of specialised cells.' : undefined,
         notes:
-          index === 0 ? [{ n: 'Cell structure', c: 'Nuclei contain genetic information.' }] : [],
+          index === 0
+            ? [
+                {
+                  n: 'Cell structure',
+                  c: 'Nuclei contain genetic information.',
+                  oi: 'arrival-note-0',
+                },
+              ]
+            : [],
         cards: [{ id: `arrival-card-${index}`, k: 0, f: `Question about ${name}`, b: 'Answer' }],
       }),
     ),

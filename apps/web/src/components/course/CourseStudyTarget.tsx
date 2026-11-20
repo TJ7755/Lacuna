@@ -1,6 +1,13 @@
-import { SegmentedPills } from '../ui/SegmentedPills';
 import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
-import { lazy, Suspense, useLayoutEffect, useRef, type ComponentProps, type Ref } from 'react';
+import {
+  lazy,
+  Suspense,
+  useLayoutEffect,
+  useRef,
+  type ComponentProps,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import type { CourseSchedulingMode } from '@lacuna/core/db/types';
 
 import { cn } from '../ui/cn';
@@ -167,7 +174,7 @@ export function StudyTargetTiles({
 }
 
 export function CourseStudyTarget({
-  compact = false,
+  targetControl,
   schedulingMode,
   setSchedulingMode,
   saving,
@@ -177,7 +184,7 @@ export function CourseStudyTarget({
   setExamDateValid,
   timeZone,
 }: {
-  compact?: boolean;
+  targetControl?: ReactNode;
   schedulingMode: CourseSchedulingMode | null;
   setSchedulingMode: (mode: CourseSchedulingMode) => void;
   saving?: boolean;
@@ -191,15 +198,7 @@ export function CourseStudyTarget({
     <>
       <fieldset disabled={saving}>
         <legend className={`mb-2 ${fieldLabelClassName}`}>Study target</legend>
-        {compact && schedulingMode !== null ? (
-          <SegmentedPills
-            label="Study target"
-            value={schedulingMode}
-            options={TARGETS}
-            onChange={setSchedulingMode}
-            size="sm"
-          />
-        ) : (
+        {targetControl ?? (
           <StudyTargetTiles
             name="course-scheduling-mode"
             value={schedulingMode}
