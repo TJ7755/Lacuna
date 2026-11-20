@@ -22,7 +22,7 @@ describe('CourseHeader', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
     const input = screen.getByRole('textbox', { name: 'Course name' });
     expect(screen.queryByRole('heading', { name: 'Mechanics' })).not.toBeInTheDocument();
-    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(fireEvent.keyDown(input, { key: 'Escape' })).toBe(false);
     expect(input).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Mechanics' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Rename course' })).toHaveFocus();

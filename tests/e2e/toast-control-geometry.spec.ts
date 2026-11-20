@@ -22,6 +22,7 @@ test.beforeAll(async () => {
             })}>Show action</button>
             <button id="persistent" onClick={() => notify('Persistent choice.', 'positive', {
               persistent: true, actionLabel: 'Keep', onAction: () => {},
+              onDismiss: () => { document.getElementById('persistent').dataset.dismissed = 'true'; },
             })}>Show persistent</button>
           </>;
         }
@@ -145,7 +146,24 @@ for (const width of [1280]) {
       const notifications = page.getByLabel('Notifications', { exact: true });
       await notifications.screenshot({ path: testInfo.outputPath(`${kind}-toast.png`) });
       if (kind === 'persistent') {
+        const trigger = page.locator('#persistent');
+        await trigger.focus();
+        await notifications.getByRole('button', { name: 'Keep' }).focus();
+        await page.evaluate(() => {
+          window.addEventListener(
+            'keydown',
+            (event) => {
+              if (event.key === 'Escape') event.preventDefault();
+            },
+            { once: true },
+          );
+        });
         await page.keyboard.press('Escape');
+        await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        await expect(trigger).not.toHaveAttribute('data-dismissed');
+        await page.keyboard.press('Escape');
+        await expect(trigger).toBeFocused();
+        await expect(trigger).toHaveAttribute('data-dismissed', 'true');
       } else {
         await notifications.getByRole('button', { name: 'Undo' }).click();
       }

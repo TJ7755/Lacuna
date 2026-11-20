@@ -55,6 +55,8 @@ interface ToastItem {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const stackRef = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
@@ -64,24 +66,29 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!toasts.length) return;
+    let pendingDismissal: ReturnType<typeof setTimeout>;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.repeat || event.isComposing) return;
-      // Let menus, editors and pending overlays claim Escape before notifications.
-      queueMicrotask(() => {
-        if (
-          event.defaultPrevented ||
-          document.querySelector(
-            '[role="dialog"], [role="alertdialog"], [role="menu"], dialog[open]',
-          )
-        )
-          return;
+      const overlaySelector = '[role="dialog"], [role="alertdialog"], [role="menu"], dialog[open]';
+      if (document.querySelector(overlaySelector)) return;
+      // A new task runs after every native listener; microtasks can run between listeners.
+      clearTimeout(pendingDismissal);
+      pendingDismissal = setTimeout(() => {
+        if (event.defaultPrevented || document.querySelector(overlaySelector)) return;
         const latest = toasts.at(-1)!;
+        const surface = stackRef.current?.querySelector(`[data-toast-id="${latest.id}"]`);
+        if (surface?.contains(document.activeElement) && previousFocus.current?.isConnected) {
+          previousFocus.current.focus({ preventScroll: true });
+        }
         latest.onDismiss?.();
         dismiss(latest.id);
-      });
+      }, 0);
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      clearTimeout(pendingDismissal);
+    };
   }, [toasts, dismiss]);
 
   const MAX_TOASTS = 5;
@@ -127,6 +134,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ notify }}>
       {children}
       <div
+        ref={stackRef}
+        onFocusCapture={(event) => {
+          const from = event.relatedTarget;
+          if (from instanceof HTMLElement && !event.currentTarget.contains(from)) {
+            previousFocus.current = from;
+          }
+        }}
         className="toast-stack fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[60] flex flex-col items-end gap-2"
         aria-label="Notifications"
         aria-live="polite"
@@ -216,6 +230,7 @@ function ToastBar({
 
   return (
     <motion.div
+      data-toast-id={toast.id}
       layout={m > 0 ? 'position' : undefined}
       initial={m > 0 ? { opacity: 0, x: 12 } : false}
       animate={{ opacity: 1, x: 0 }}

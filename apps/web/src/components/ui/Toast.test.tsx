@@ -134,9 +134,15 @@ describe('ToastProvider', () => {
     await waitFor(() => expect(screen.queryByText('Keep this change?')).not.toBeInTheDocument());
 
     fireEvent.click(show);
-    await act(async () => fireEvent.keyDown(window, { key: 'Escape' }));
+    await act(async () => {
+      show.focus();
+      const undo = screen.getByRole('button', { name: 'Undo' });
+      undo.focus();
+      fireEvent.keyDown(undo, { key: 'Escape' });
+    });
+    await waitFor(() => expect(show).toHaveFocus());
     expect(onAction).toHaveBeenCalledOnce();
-    expect(onDismiss).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(screen.queryByText('Keep this change?')).not.toBeInTheDocument());
   });
 

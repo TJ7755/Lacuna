@@ -183,7 +183,9 @@ describe('CardEditor — generated cards', () => {
     editorState.card = { ...generatedCard, sequenceItemId: undefined };
     renderEditing();
 
-    fireEvent.keyDown(screen.getByPlaceholderText(/Question or prompt/), { key: 'Escape' });
+    expect(
+      fireEvent.keyDown(screen.getByPlaceholderText(/Question or prompt/), { key: 'Escape' }),
+    ).toBe(false);
     expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/course/course-1'), {
       state: { returning: true },
     });

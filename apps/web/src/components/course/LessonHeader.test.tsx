@@ -14,7 +14,8 @@ describe('LessonHeader keyboard rename', () => {
     const input = screen.getByRole('textbox', { name: 'Lesson name' });
     expect(input).toHaveFocus();
     fireEvent.change(input, { target: { value: 'Organelles' } });
-    fireEvent.keyDown(input, { key });
+    const unhandled = fireEvent.keyDown(input, { key });
+    if (key === 'Escape') expect(unhandled).toBe(false);
     await waitFor(() => {
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Rename lesson' })).toHaveFocus();
