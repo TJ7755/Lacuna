@@ -47,17 +47,14 @@ test('a keyboard-only learner moves from notes through a finished step without t
   await page.keyboard.press('Enter');
 
   const study = page.getByRole('main', { name: 'Study card' });
-  const continueCard = study.getByRole('button', { name: 'Yes', exact: true });
-  await expect(
-    study.getByRole('button', { name: 'Show answer', exact: true }).last(),
-  ).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(continueCard).toBeFocused();
+  await expect(study.getByRole('radio')).toHaveCount(2);
+  await expect(study.getByRole('radio').first()).toBeFocused();
+  await study.getByRole('radio', { name: 'Xylem', exact: true }).press('Space');
   await page.keyboard.press('Enter');
   await expect(study.getByRole('textbox', { name: 'Your answer' })).toBeFocused();
   await page.keyboard.insertText('Xylem');
   await page.keyboard.press('Enter');
-  await expect(continueCard).toBeFocused();
+  await expect(study.getByRole('button', { name: 'Yes', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
 
   await continueStudyReportByKeyboard(page);

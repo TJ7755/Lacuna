@@ -48,7 +48,7 @@ test('makes the revealed answer readable during the deliberate card flip', async
     if (!front) throw new Error('The front of the study Card is missing.');
     return new Promise<number>((resolve, reject) => {
       const started = performance.now();
-      button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      (button as HTMLButtonElement).click();
       function sample() {
         const content = document.querySelector('[data-study-face] .prose-lacuna');
         let opacity = 1;
@@ -67,13 +67,9 @@ test('makes the revealed answer readable during the deliberate card flip', async
   expect(elapsed).toBeGreaterThan(300);
   expect(elapsed).toBeLessThan(650);
   const study = page.getByRole('main', { name: 'Study card' });
-  const advance = study.getByRole('button', { name: 'Yes', exact: true });
-  await advance.click();
-  await study.getByRole('textbox', { name: 'Your answer' }).fill(backText);
-  await study.getByRole('button', { name: 'Check answer', exact: true }).click();
-  await advance.click();
+  await study.getByRole('button', { name: 'Yes', exact: true }).click();
   await expect(page.locator('[data-study-face="back"]')).toHaveCount(0);
-  // Familiarisation and recall together record one canonical FSRS review.
+  // The reveal fallback records one normal FSRS review.
   await expect
     .poll(() =>
       page.evaluate(

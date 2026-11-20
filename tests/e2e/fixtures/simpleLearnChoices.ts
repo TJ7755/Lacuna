@@ -24,6 +24,7 @@ export async function seed(
   ),
   lessonName = 'Fruit',
   suspendedPrompt?: string,
+  otherLessonCards: Record<string, string> = {},
 ) {
   const course = await createCourse('French vocabulary', {
     schedulingMode: 'steady',
@@ -34,11 +35,17 @@ export async function seed(
     const card = await createCard(lesson.id, 'front_back', prompt, answer);
     if (prompt === suspendedPrompt) await suspendCard(card.id);
   }
+  const otherLesson = await createLesson(course.id, 'Other lesson');
+  for (const [prompt, answer] of Object.entries(otherLessonCards)) {
+    const card = await createCard(otherLesson.id, 'front_back', prompt, answer);
+    if (prompt === suspendedPrompt) await suspendCard(card.id);
+  }
   return { courseId: course.id, lessonId: lesson.id, cards };
 }
 
 export async function reviews() {
-  return (await db.reviewHistory.toArray()).map(({ grade, input, responseTimeSec }) => ({
+  return (await db.reviewHistory.toArray()).map(({ cardId, grade, input, responseTimeSec }) => ({
+    cardId,
     grade,
     input,
     responseTimeSec,

@@ -11,7 +11,6 @@ import { requireAuditedInstaller } from './windows-ci-upgrade.mjs';
 import { assertUpgradeStudyRecords } from './windows-upgrade-records.mjs';
 import {
   chooseScheduledStudy,
-  completeRevealedIntroduction,
   createCourse,
   importWelcomeCourse,
   skipOnboarding,
@@ -192,7 +191,18 @@ try {
     .click();
   await page.getByRole('button', { name: 'Study', exact: true }).last().click();
   await chooseScheduledStudy(page);
-  await completeRevealedIntroduction(page, 'Paris');
+  // The pinned release predates normal fallback grading: finish its original
+  // reveal-then-typed introduction before installing the candidate.
+  const baselineStudy = page.getByRole('main', { name: 'Study card' });
+  await baselineStudy.getByRole('button', { name: 'Show answer', exact: true }).last().click();
+  await baselineStudy.getByRole('button', { name: 'Yes', exact: true }).click();
+  await baselineStudy.getByRole('textbox', { name: 'Your answer' }).fill('Paris');
+  await baselineStudy.getByRole('button', { name: 'Check answer', exact: true }).click();
+  await baselineStudy.getByRole('button', { name: 'Yes', exact: true }).click();
+  await page
+    .getByRole('main', { name: 'Session report' })
+    .getByRole('button', { name: 'Continue', exact: true })
+    .click();
   await page
     .getByRole('main', { name: 'Study progress' })
     .getByRole('button', { name: 'Finish for now' })

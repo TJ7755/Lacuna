@@ -34,22 +34,6 @@ export async function answerYesAndWaitForExposure(lessonId: string) {
     }
   });
 }
-/** Advance a familiarisation card through the reveal fallback. */
-export async function familiariseCard() {
-  fireEvent.keyDown(await screen.findByRole('button', { name: /^Show answer$/i }), {
-    key: 'Enter',
-  });
-  fireEvent.click(await screen.findByRole('button', { name: 'Yes' }));
-}
-
-export async function recallCard(answer: string) {
-  fireEvent.change(await screen.findByRole('textbox', { name: 'Your answer' }), {
-    target: { value: answer },
-  });
-  fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Yes' }));
-}
-
 /** Leaves the notes screen; a lesson without notes opens on its first card instead. */
 export async function continueFromNotes() {
   const next = await screen.findAllByRole('button', { name: /^(continue|show answer|recite)$/i });

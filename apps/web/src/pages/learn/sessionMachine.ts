@@ -281,12 +281,17 @@ export function transitionSession(
         event.event.correct,
       );
       const remaining = simple.queue.some((card) => !simple.mastered.has(card.id));
+      const stage = introductionStage(state.introduction, event.card.id);
       const introduction =
-        state.introduction && introductionStage(state.introduction, event.card.id) === 'recall'
+        state.introduction && stage
           ? recordIntroductionAttempt(
               state.introduction,
               event.card.id,
-              event.event.correct && !event.card.suspended ? 'passed' : 'recall',
+              event.event.correct && !event.card.suspended
+                ? 'passed'
+                : stage === 'recall'
+                  ? 'recall'
+                  : 'retry',
             )
           : state.introduction;
       return {

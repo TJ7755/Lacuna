@@ -41,6 +41,6 @@ describe('study actions during the retained grading pause', () => {
     await act(async () => new Promise((resolve) => setTimeout(resolve, 650)));
     expect(await db.reviewHistory.count()).toBe(0);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    await waitFor(() => expect(screen.getByRole('main', { name: 'Study card' })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Yes' })).toHaveFocus());
   });
 });

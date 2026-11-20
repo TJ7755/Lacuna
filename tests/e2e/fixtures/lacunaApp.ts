@@ -18,17 +18,18 @@ export async function chooseRecallPractice(page: Page, lessonName?: string) {
   await expect(sheet).toBeHidden();
 }
 
-export async function completeRevealedIntroduction(
-  page: Page,
-  answer: string,
-  advanceLabel: 'Yes' | 'Continue' = 'Yes',
-) {
+export async function completeRevealedIntroduction(page: Page, answer: string) {
   const study = page.getByRole('main', { name: 'Study card' });
-  const next = study.getByRole('button', { name: advanceLabel, exact: true });
-  await study.getByRole('button', { name: 'Show answer', exact: true }).last().click();
-  await next.click();
-  await study.getByRole('textbox', { name: 'Your answer' }).fill(answer);
-  await study.getByRole('button', { name: 'Check answer', exact: true }).click();
+  const next = study.getByRole('button', { name: 'Yes', exact: true });
+  await expect(study.locator('[data-study-card-id]:not([inert])')).toBeVisible();
+  if (await study.getByRole('radio').count()) {
+    await study.getByRole('radio', { name: answer, exact: true }).press('Space');
+    await study.getByRole('button', { name: 'Check answer', exact: true }).click();
+    await study.getByRole('textbox', { name: 'Your answer' }).fill(answer);
+    await study.getByRole('button', { name: 'Check answer', exact: true }).click();
+  } else {
+    await study.getByRole('button', { name: 'Show answer', exact: true }).last().click();
+  }
   await next.click();
   await page
     .getByRole('main', { name: 'Session report' })
