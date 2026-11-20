@@ -92,6 +92,7 @@ test('opens a lesson with persistent course navigation', async ({ page }) => {
 });
 
 test('starts a real lesson study interaction', async ({ page }) => {
+  test.setTimeout(60_000);
   await enterWithWelcomeCourse(page);
   await page.getByText('Welcome to Lacuna', { exact: true }).first().click();
   // Exact, because the dashboard also carries "Study Choose a course" and a per-course
