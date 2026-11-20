@@ -264,6 +264,23 @@ function ToastBar({
           </span>
           <span className="min-w-0 flex-1 break-words">{toast.message}</span>
         </div>
+        {isPersistent && toast.actionLabel && (
+          <div className="flex shrink-0 items-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label="Dismiss"
+              onClick={() => {
+                toast.onDismiss?.();
+                onDismiss();
+              }}
+              className="min-h-12 min-w-12 shrink-0"
+            >
+              <CloseIcon width={14} height={14} />
+            </Button>
+          </div>
+        )}
         {toast.actionLabel && (
           <div className="flex shrink-0 items-center">
             <Button
