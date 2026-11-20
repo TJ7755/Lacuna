@@ -31,8 +31,7 @@ describe('ToastProvider', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Error' }));
 
     expect(screen.getByText('Error', { selector: 'span' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
-    await act(async () => fireEvent.keyDown(window, { key: 'Escape' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Dismiss' })));
     await waitFor(() =>
       expect(screen.queryByText('Error', { selector: 'span' })).not.toBeInTheDocument(),
     );
