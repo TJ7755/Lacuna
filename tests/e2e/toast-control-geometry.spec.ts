@@ -135,7 +135,7 @@ for (const width of [1280]) {
         expect(sample.toastHeight).toBeLessThanOrEqual(56);
         expect(sample.scale).toBe(1);
         expect(sample.bottomGap).toBeLessThanOrEqual(24);
-        expect(sample.controls).toHaveLength(kind === 'persistent' ? 2 : 1);
+        expect(sample.controls).toHaveLength(1);
         for (const control of sample.controls) {
           expect(control.height, control.label).toBeGreaterThanOrEqual(44);
           expect(control.width, control.label).toBeGreaterThanOrEqual(44);
@@ -145,7 +145,7 @@ for (const width of [1280]) {
       const notifications = page.getByLabel('Notifications', { exact: true });
       await notifications.screenshot({ path: testInfo.outputPath(`${kind}-toast.png`) });
       if (kind === 'persistent') {
-        await notifications.getByRole('button', { name: 'Dismiss' }).click();
+        await page.keyboard.press('Escape');
       } else {
         await notifications.getByRole('button', { name: 'Undo' }).click();
       }

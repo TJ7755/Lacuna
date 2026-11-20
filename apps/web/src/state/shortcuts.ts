@@ -37,7 +37,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { keys: ['Ctrl/Cmd', 'Enter'], description: 'Save or submit' },
       { keys: ['Enter'], description: 'Submit a single-line form' },
-      { keys: ['Esc'], description: 'Cancel and close' },
+      { keys: ['Esc'], description: 'Cancel, close, or dismiss the latest notification' },
     ],
   },
   {

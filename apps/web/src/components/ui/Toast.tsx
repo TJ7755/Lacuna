@@ -27,8 +27,7 @@ interface ToastOptions {
   duration?: number;
   /** Errors stay until dismissed by default; false opts back into the usual timer. */
   persistent?: boolean;
-  /** Invoked when the toast is dismissed (either by the user clicking the close button,
-   *  or by the action button being pressed, or by the auto-dismiss timer firing). */
+  /** Invoked on Escape dismissal, action activation or expiry. */
   onDismiss?: () => void;
   /** Replaces an existing toast with the same key instead of leaving stale actions stacked. */
   replaceKey?: string;
@@ -62,6 +61,28 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const dismiss = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  useEffect(() => {
+    if (!toasts.length) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.repeat || event.isComposing) return;
+      // Let menus, editors and pending overlays claim Escape before notifications.
+      queueMicrotask(() => {
+        if (
+          event.defaultPrevented ||
+          document.querySelector(
+            '[role="dialog"], [role="alertdialog"], [role="menu"], dialog[open]',
+          )
+        )
+          return;
+        const latest = toasts.at(-1)!;
+        latest.onDismiss?.();
+        dismiss(latest.id);
+      });
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [toasts, dismiss]);
 
   const MAX_TOASTS = 5;
 
@@ -228,38 +249,21 @@ function ToastBar({
           </span>
           <span className="min-w-0 flex-1 break-words">{toast.message}</span>
         </div>
-        {(toast.actionLabel || isPersistent) && (
+        {toast.actionLabel && (
           <div className="flex shrink-0 items-center">
-            {toast.actionLabel && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  toast.onAction?.();
-                  toast.onDismiss?.();
-                  onDismiss();
-                }}
-                className="min-h-12 min-w-12 shrink-0"
-              >
-                <span className="text-accent-ink">{toast.actionLabel}</span>
-              </Button>
-            )}
-            {isPersistent && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  toast.onDismiss?.();
-                  onDismiss();
-                }}
-                className="min-h-12 min-w-12 shrink-0"
-                aria-label="Dismiss"
-              >
-                <CloseIcon width={14} height={14} />
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                toast.onAction?.();
+                toast.onDismiss?.();
+                onDismiss();
+              }}
+              className="min-h-12 min-w-12 shrink-0"
+            >
+              <span className="text-accent-ink">{toast.actionLabel}</span>
+            </Button>
           </div>
         )}
       </div>
