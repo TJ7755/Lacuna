@@ -122,19 +122,25 @@ export function resolveLessonExamDates(
           ctx.preferredLessonIds,
           ctx.specificationContext,
         );
-        // Specification lessons are inferred from cards; exclusions can remove
-        // the last paper card from a lesson without changing its authored links.
-        const membership =
-          assessment.coverageMode === 'specification'
-            ? lessonCardMembershipByLesson(
-                resolved.coveredLessons,
-                resolved.cards,
-                ctx.lessonCardLinks ?? [],
-              )
-            : undefined;
+        // Excluding every card removes a card-bearing lesson's paper priority.
+        // Authored notes-only lessons still belong to the selected lesson scope.
+        const membership = lessonCardMembershipByLesson(
+          resolved.coveredLessons,
+          resolved.cards,
+          ctx.lessonCardLinks ?? [],
+        );
+        const originalMembership = lessonCardMembershipByLesson(
+          resolved.coveredLessons,
+          cards,
+          ctx.lessonCardLinks ?? [],
+        );
         covered = new Set(
           resolved.coveredLessons
-            .filter((row) => !membership || (membership.get(row.id)?.length ?? 0) > 0)
+            .filter(
+              (row) =>
+                (membership.get(row.id)?.length ?? 0) > 0 ||
+                (originalMembership.get(row.id)?.length ?? 0) === 0,
+            )
             .map((row) => row.id),
         );
         coverage.set(assessment, covered);
