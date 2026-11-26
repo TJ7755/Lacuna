@@ -2,7 +2,7 @@
   "name": "lacuna",
   "private": true,
   "version": "0.2.31",
-  "packageManager": "bun@1.4.4",
+  "packageManager": "bun@1.4.5",
   "type": "module",
   "main": "apps/desktop/dist-electron/main.js",
   "description": "Lacuna - a local-only FSRS-6 flashcard revision application.",
