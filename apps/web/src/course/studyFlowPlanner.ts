@@ -68,6 +68,7 @@ export function planNextStudyStep(
 
   let hasCurriculum = false;
   let hasLockedLesson = false;
+  let hasUnavailableLesson = false;
   let step: StudyFlowStep | undefined;
   const startIndex = snapshot.nodes.findIndex(
     (node) =>
@@ -82,7 +83,13 @@ export function planNextStudyStep(
       if (node.lesson.isExtension && index < startIndex) continue;
       hasCurriculum = true;
       if (node.status === 'available') {
-        if (snapshot.reviewLimitReached && snapshot.learnFirst === false) continue;
+        if (
+          snapshot.unavailableLessonIds?.has(node.id) ||
+          (snapshot.reviewLimitReached && snapshot.learnFirst === false)
+        ) {
+          hasUnavailableLesson = true;
+          continue;
+        }
         step = { kind: 'lesson', lessonId: node.id, label: node.lesson.name };
         break;
       }
@@ -168,6 +175,7 @@ export function planNextStudyStep(
     return { kind: 'step', step: CATCH_UP_STEP };
   if (
     repair &&
+    !snapshot.unavailableLessonIds?.has(repair) &&
     !(snapshot.reviewLimitReached && snapshot.learnFirst === false) &&
     !(previousStep?.kind === 'lesson' && previousStep.lessonId === repair)
   ) {
@@ -211,6 +219,7 @@ export function planNextStudyStep(
   if (!snapshot.reviewLimitReached && (snapshot.catchUpEligibleCount ?? 0) > 0)
     return { kind: 'step', step: CATCH_UP_STEP };
   if (hasLockedLesson) return { kind: 'blocked', reason: 'curriculum-locked' };
-  if ((snapshot.readiness?.belowTargetCount ?? 0) > 0) return { kind: 'waiting' };
+  if (hasUnavailableLesson || (snapshot.readiness?.belowTargetCount ?? 0) > 0)
+    return { kind: 'waiting' };
   return hasCurriculum || snapshot.cardCount > 0 ? { kind: 'complete' } : { kind: 'empty' };
 }

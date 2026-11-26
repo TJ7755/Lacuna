@@ -5,6 +5,7 @@ import {
   createCourse,
   createLesson,
   createLessonCard,
+  linkCardToLesson,
   upsertLessonCardExposure,
 } from '../db/repository';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
@@ -557,4 +558,53 @@ it('keeps an equally urgent Concept before its tagged technique but resumes unfi
       label: 'Resume: Link cause and effect',
     },
   });
+});
+
+it('keeps direct-study Notes available when its only card belongs to a locked successor', async () => {
+  const course = await createCourse('Direct study', {
+    learnFirst: false,
+    unlockMode: 'semi-linear',
+    autoPractice: false,
+  });
+  const first = await createLesson(course.id, 'First');
+  const next = await createLesson(course.id, 'Next');
+  const card = await createLessonCard(course.id, next.id, 'front_back', 'Question', 'Answer');
+  await linkCardToLesson(first.id, card.id);
+  await db.cards.update(card.id, { suspended: true });
+  const { result } = renderHook(() => useCourseStudyFlow(course.id));
+  await waitFor(() => expect(result.current?.generation).toBe(0));
+  expect(result.current?.decision).toMatchObject({ kind: 'step', step: { lessonId: first.id } });
+});
+
+it('moves past a suspended lesson to the next available lesson', async () => {
+  const course = await createCourse('Study', { autoPractice: false });
+  const unavailable = await createLesson(course.id, 'Central nervous system');
+  const next = await createLesson(course.id, 'Peripheral nervous system');
+  await db.lessons.update(unavailable.id, { examDate: Date.now() + MS_PER_DAY });
+  const card = await createLessonCard(course.id, unavailable.id, 'front_back', 'CNS', 'Answer');
+  await db.cards.update(card.id, { suspended: true });
+  await createLessonCard(course.id, next.id, 'front_back', 'PNS', 'Answer');
+
+  const { result } = renderHook(() =>
+    useCourseStudyFlow(course.id, 0, true, {
+      kind: 'lesson',
+      lessonId: unavailable.id,
+      label: unavailable.name,
+    }),
+  );
+  await waitFor(() => expect(result.current?.generation).toBe(0));
+  expect(result.current?.decision).toMatchObject({ kind: 'step', step: { lessonId: next.id } });
+  expect(result.current?.snapshot.nodes).toContainEqual(
+    expect.objectContaining({ id: unavailable.id, status: 'available' }),
+  );
+
+  await act(async () => {
+    await db.cards.update(card.id, { suspended: false });
+  });
+  await waitFor(() =>
+    expect(result.current?.decision).toMatchObject({
+      kind: 'step',
+      step: { lessonId: unavailable.id },
+    }),
+  );
 });

@@ -2,7 +2,7 @@ import type { TechniqueId } from '@lacuna/core/questions/techniqueTags';
 import { earlierLessonIds } from './courseEntry';
 import { catchUpPracticePool } from './catchUpPractice';
 import { buildStudyReadiness, type StudyReadiness } from './studyReadiness';
-import { lessonCardMembership } from '@lacuna/core/course/lessonMembership';
+import { lessonCardMembershipByLesson } from '@lacuna/core/course/lessonMembership';
 import type {
   Card,
   Course,
@@ -17,6 +17,7 @@ import {
   type ExamDateContext,
 } from '@lacuna/core/fsrs/examDate';
 import { DEFAULT_REVIEW_SECONDS } from '@lacuna/core/fsrs/stats';
+import { isAvailable } from '@lacuna/core/fsrs/eligibility';
 import type { ConceptPracticeNeeds } from '../questions/techniqueEvidence';
 import type { PathNode, PracticePathNode } from './path';
 import { assessmentPracticeOptions, type AssessmentPracticeOption } from './assessmentPractice';
@@ -62,6 +63,8 @@ export interface CourseStudyFlowSnapshot {
   readiness?: StudyReadiness;
   archived: boolean;
   nodes: PathNode[];
+  /** Lessons with members but no cards that can enter the session right now. */
+  unavailableLessonIds?: ReadonlySet<string>;
   practiceByKey: ReadonlyMap<string, StudyFlowPracticeState>;
   activeManualNodeKeys: ReadonlySet<string>;
   completedManualNodeKeys: ReadonlySet<string>;
@@ -334,10 +337,35 @@ export function buildCourseStudyFlowSnapshot(
   } = input;
   const { assessmentContext, practiceByKey } = buildCoursePracticeStates({ ...input, now });
   const { lessons, priorKnowledgeLessonIds: earlier, reachedLessonIds } = assessmentContext;
+  const membership = lessonCardMembershipByLesson(
+    nodes.filter((node) => node.nodeType === 'lesson'),
+    cards,
+    links,
+  );
   let examPriority: CourseStudyFlowSnapshot['examPriority'];
+  const unavailableLessonIds = new Set<string>();
+  const exposedByLesson = new Map<string, Set<string>>();
+  for (const exposure of exposures) {
+    const ids = exposedByLesson.get(exposure.lessonId) ?? new Set<string>();
+    ids.add(exposure.cardId);
+    exposedByLesson.set(exposure.lessonId, ids);
+  }
   for (const node of nodes) {
-    if (node.nodeType !== 'lesson' || node.status !== 'available') continue;
-    const members = lessonCardMembership(node.id, cards, links);
+    if (node.nodeType !== 'lesson' || node.status === 'locked') continue;
+    const members = membership.get(node.id) ?? [];
+    const exposed = exposedByLesson.get(node.id);
+    if (
+      // Direct study may still need Notes to complete and unlock an empty linked scope.
+      course.learnFirst !== false &&
+      members.length > 0 &&
+      !members.some(
+        (card) => isAvailable(card, now) && (course.learnFirst === false || !exposed?.has(card.id)),
+      )
+    ) {
+      unavailableLessonIds.add(node.id);
+      continue;
+    }
+    if (node.status !== 'available') continue;
     if (earlier.has(node.id) && (members.length === 0 || node.lesson.isExtension)) continue;
     const dates = members.length
       ? resolveCardExamDates(members, examDateContext, now)
@@ -387,9 +415,8 @@ export function buildCourseStudyFlowSnapshot(
             node.id === course.studyStartLessonId &&
             node.status === 'completed',
         ) ||
-        lessonCardMembership(course.studyStartLessonId, cards, links).some(
-          (card) => card.lastReviewed !== null,
-        )),
+        membership.get(course.studyStartLessonId)?.some((card) => card.lastReviewed !== null) ===
+          true),
     reviewLimitReached: [course.dailyReviewGoal, course.maxReviewsPerDay].some((limit) =>
       Boolean(limit && reviewsToday >= limit),
     ),
@@ -419,6 +446,7 @@ export function buildCourseStudyFlowSnapshot(
     readiness: buildStudyReadiness({ course, cards, examDateContext, now }),
     archived: course.archived === true,
     nodes,
+    unavailableLessonIds,
     practiceByKey,
     activeManualNodeKeys,
     completedManualNodeKeys,
