@@ -13,7 +13,7 @@ import type {
 } from '@lacuna/core/db/types';
 import {
   isUpcomingExamDate,
-  resolveCardExamDates,
+  resolveLessonExamDates,
   type ExamDateContext,
 } from '@lacuna/core/fsrs/examDate';
 import { DEFAULT_REVIEW_SECONDS } from '@lacuna/core/fsrs/stats';
@@ -345,6 +345,8 @@ export function buildCourseStudyFlowSnapshot(
     links,
   );
   let examPriority: CourseStudyFlowSnapshot['examPriority'];
+  const dates = resolveLessonExamDates(lessons, cards, examDateContext, now);
+  const lessonDates = new Map(lessons.map((lesson, index) => [lesson.id, dates[index]]));
   const unavailableLessonIds = new Set<string>();
   const exposedByLesson = new Map<string, Set<string>>();
   for (const exposure of exposures) {
@@ -377,12 +379,8 @@ export function buildCourseStudyFlowSnapshot(
     }
     if (node.status !== 'available') continue;
     if (earlier.has(node.id) && (members.length === 0 || node.lesson.isExtension)) continue;
-    const dates = members.length
-      ? resolveCardExamDates(members, examDateContext, now)
-      : [node.lesson.examDate ?? course.examDate];
-    const examDate = dates
-      .filter((date) => isUpcomingExamDate(date, now))
-      .reduce<number>((nearest, date) => Math.min(nearest, date!), Infinity);
+    const date = lessonDates.get(node.id);
+    const examDate = isUpcomingExamDate(date, now) ? date : Infinity;
     if (
       Number.isFinite(examDate) &&
       (examDate < (examPriority?.examDate ?? Infinity) ||

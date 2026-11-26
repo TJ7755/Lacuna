@@ -1,4 +1,5 @@
 import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
+import { lessonCardMembershipByLesson } from '@lacuna/core/course/lessonMembership';
 // Lesson overrides win. Otherwise target the nearest applicable upcoming paper
 // or checkpoint. A specification-scoped final covers only its linked Concepts;
 // prefix finals retain the course-wide fallback used by existing courses.
@@ -97,12 +98,66 @@ function findCardExamDate(
   now: number,
   applies: (assessment: CourseAssessment, card: Card) => boolean,
 ): number | undefined {
+  const lesson = card.primaryLessonId ? ctx.lessonsById.get(card.primaryLessonId) : undefined;
+  return findExamDate(lesson?.examDate, ctx, now, (assessment) => applies(assessment, card));
+}
+
+/** Lesson routing follows authored lesson coverage, independently of shared card deadlines. */
+export function resolveLessonExamDates(
+  lessons: Lesson[],
+  cards: Card[],
+  ctx: ExamDateContext,
+  now: number,
+): (number | undefined)[] {
+  const coverage = new Map<CourseAssessment, Set<string>>();
+  return lessons.map((lesson) =>
+    findExamDate(lesson.examDate, ctx, now, (assessment) => {
+      let covered = coverage.get(assessment);
+      if (!covered) {
+        const resolved = resolveAssessmentCoverage(
+          assessment,
+          [...ctx.lessonsById.values()],
+          cards,
+          ctx.lessonCardLinks ?? [],
+          ctx.preferredLessonIds,
+          ctx.specificationContext,
+        );
+        // Excluding every card removes a card-bearing lesson's paper priority.
+        // Authored notes-only lessons still belong to the selected lesson scope.
+        const membership = lessonCardMembershipByLesson(
+          resolved.coveredLessons,
+          resolved.cards,
+          ctx.lessonCardLinks ?? [],
+        );
+        const originalMembership = lessonCardMembershipByLesson(
+          resolved.coveredLessons,
+          cards,
+          ctx.lessonCardLinks ?? [],
+        );
+        covered = new Set(
+          resolved.coveredLessons
+            .filter(
+              (row) =>
+                (membership.get(row.id)?.length ?? 0) > 0 ||
+                (originalMembership.get(row.id)?.length ?? 0) === 0,
+            )
+            .map((row) => row.id),
+        );
+        coverage.set(assessment, covered);
+      }
+      return covered.has(lesson.id);
+    }),
+  );
+}
+
+function findExamDate(
+  lessonExamDate: number | undefined,
+  ctx: ExamDateContext,
+  now: number,
+  applies: (assessment: CourseAssessment) => boolean,
+): number | undefined {
   // 1. An upcoming lesson override wins.
-  if (card.primaryLessonId !== null && card.primaryLessonId !== undefined) {
-    const lesson = ctx.lessonsById.get(card.primaryLessonId);
-    const examDate = lesson?.examDate;
-    if (isUpcomingExamDate(examDate, now)) return examDate;
-  }
+  if (isUpcomingExamDate(lessonExamDate, now)) return lessonExamDate;
 
   // A scoped final owns its deadline. The hydrated course date mirrors that
   // deadline and must not give unselected lessons the same exam priority.
@@ -118,7 +173,7 @@ function findCardExamDate(
     ) {
       continue;
     }
-    if (!applies(assessment, card)) continue;
+    if (!applies(assessment)) continue;
     if (nearest === undefined || assessment.examDate < nearest) {
       nearest = assessment.examDate;
     }

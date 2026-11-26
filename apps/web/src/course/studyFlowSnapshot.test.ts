@@ -18,27 +18,74 @@ import {
 } from './studyFlowSnapshot';
 import { makeSessionContext, sessionComplete } from '@lacuna/core/fsrs/session';
 import { directLessonStudyPool, practiceScopeVersion } from './studyPools';
+import type { Concept } from '@lacuna/core/questions/types';
+import {
+  paperSpecification,
+  paperSpecificationReference,
+} from '../specifications/paperFixture.testFixtures';
 
 const NOW = 1_000_000;
 
-it('prioritises selected final-exam lessons over unrelated available lessons', () => {
-  const c = course();
+it.each([
+  'separate cards',
+  'notes only',
+  'shared card',
+  'excluded paper card',
+  'excluded checkpoint card',
+])('prioritises covered exam lessons over unrelated available lessons: %s', (scenario) => {
+  const c = course({
+    specificationRef: paperSpecificationReference,
+    specificationData: paperSpecification,
+    ...(scenario === 'excluded checkpoint card' ? { examDate: undefined } : {}),
+  });
   const unrelated = lesson('nervous-hormonal-communication', 0);
   const selected = lesson('pupil-light-response', 1);
   const assessment: CourseAssessment = {
     id: 'test',
     courseId: c.id,
     name: 'Test',
-    kind: 'final',
-    coverageMode: 'custom',
-    lessonIds: [selected.id],
-    afterLessonId: null,
-    examDate: c.examDate,
-    excludedCardIds: [],
+    kind: scenario === 'excluded checkpoint card' ? 'checkpoint' : 'final',
+    ...(scenario === 'excluded checkpoint card'
+      ? ({ coverageMode: 'prefix' } as const)
+      : scenario === 'excluded paper card'
+        ? ({
+            coverageMode: 'specification',
+            specificationPointIds: ['example-science:cells'],
+          } as const)
+        : ({ coverageMode: 'custom', lessonIds: [selected.id] } as const)),
+    afterLessonId: scenario === 'excluded checkpoint card' ? selected.id : null,
+    examDate: NOW + MS_PER_DAY,
+    excludedCardIds: scenario.startsWith('excluded') ? [`${unrelated.id}-card`] : [],
     createdAt: NOW,
     updatedAt: NOW,
   };
   const lessons = [unrelated, selected];
+  const cards =
+    scenario === 'notes only' ? [] : lessons.map((lesson) => card(`${lesson.id}-card`, lesson.id));
+  const links =
+    scenario === 'shared card'
+      ? [
+          {
+            id: 'shared',
+            lessonId: selected.id,
+            cardId: cards[0].id,
+            createdAt: NOW,
+            updatedAt: NOW,
+          },
+        ]
+      : [];
+  if (scenario === 'shared card') cards.pop();
+  const concepts: Concept[] = cards.map((card) => ({
+    id: card.conceptId,
+    scope: 'course',
+    courseId: c.id,
+    scopeKey: `course:${c.id}`,
+    name: card.conceptId,
+    provisional: false,
+    createdAt: NOW,
+    updatedAt: NOW,
+    specificationPointIds: ['example-science:cells'],
+  }));
   const snapshot = buildCourseStudyFlowSnapshot({
     course: c,
     nodes: lessons.map((lesson): PathNode => ({
@@ -47,10 +94,10 @@ it('prioritises selected final-exam lessons over unrelated available lessons', (
       lesson,
       status: 'available',
     })),
-    cards: lessons.map((lesson) => card(`${lesson.id}-card`, lesson.id)),
-    links: [],
+    cards,
+    links,
     exposures: [],
-    examDateContext: makeExamDateContext(c, lessons, [assessment]),
+    examDateContext: makeExamDateContext(c, lessons, [assessment], links, concepts),
     meanReviewSeconds: 30,
     now: NOW,
   });
