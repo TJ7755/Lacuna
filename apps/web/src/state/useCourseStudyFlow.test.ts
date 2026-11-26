@@ -5,6 +5,7 @@ import {
   createCourse,
   createLesson,
   createLessonCard,
+  linkCardToLesson,
   upsertLessonCardExposure,
 } from '../db/repository';
 import { MS_PER_DAY } from '@lacuna/core/fsrs/params';
@@ -557,6 +558,22 @@ it('keeps an equally urgent Concept before its tagged technique but resumes unfi
       label: 'Resume: Link cause and effect',
     },
   });
+});
+
+it('keeps direct-study Notes available when its only card belongs to a locked successor', async () => {
+  const course = await createCourse('Direct study', {
+    learnFirst: false,
+    unlockMode: 'semi-linear',
+    autoPractice: false,
+  });
+  const first = await createLesson(course.id, 'First');
+  const next = await createLesson(course.id, 'Next');
+  const card = await createLessonCard(course.id, next.id, 'front_back', 'Question', 'Answer');
+  await linkCardToLesson(first.id, card.id);
+  await db.cards.update(card.id, { suspended: true });
+  const { result } = renderHook(() => useCourseStudyFlow(course.id));
+  await waitFor(() => expect(result.current?.generation).toBe(0));
+  expect(result.current?.decision).toMatchObject({ kind: 'step', step: { lessonId: first.id } });
 });
 
 it('moves past a suspended lesson to the next available lesson', async () => {

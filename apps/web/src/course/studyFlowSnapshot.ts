@@ -355,6 +355,8 @@ export function buildCourseStudyFlowSnapshot(
     const members = membership.get(node.id) ?? [];
     const exposed = exposedByLesson.get(node.id);
     if (
+      // Direct study may still need Notes to complete and unlock an empty linked scope.
+      course.learnFirst !== false &&
       members.length > 0 &&
       !members.some(
         (card) => isAvailable(card, now) && (course.learnFirst === false || !exposed?.has(card.id)),
