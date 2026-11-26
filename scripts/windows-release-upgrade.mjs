@@ -8,7 +8,6 @@ import path from 'node:path';
 import { expect } from '@playwright/test';
 import { launchInstalledElectron } from './installed-electron-probe.mjs';
 import { requireAuditedInstaller } from './windows-ci-upgrade.mjs';
-import { assertUpgradeStudyRecords } from './windows-upgrade-records.mjs';
 import {
   chooseScheduledStudy,
   createCourse,
@@ -176,7 +175,7 @@ try {
   await pointInstalledUpdaterAtFeed();
   let page = await open(pinned.version);
   await importWelcomeCourse(page);
-  // One authored card gives the baseline a deterministic introduction and typed recall.
+  // One authored card gives the baseline a deterministic reveal-and-grade review.
   const studyCourse = 'Upgrade study records';
   await createCourse(page, studyCourse);
   await page.getByRole('button', { name: 'Edit mode' }).click();
@@ -191,13 +190,9 @@ try {
     .click();
   await page.getByRole('button', { name: 'Study', exact: true }).last().click();
   await chooseScheduledStudy(page);
-  // The pinned release predates normal fallback grading: finish its original
-  // reveal-then-typed introduction before installing the candidate.
+  // The pinned release uses normal fallback grading for an authored card.
   const baselineStudy = page.getByRole('main', { name: 'Study card' });
   await baselineStudy.getByRole('button', { name: 'Show answer', exact: true }).last().click();
-  await baselineStudy.getByRole('button', { name: 'Yes', exact: true }).click();
-  await baselineStudy.getByRole('textbox', { name: 'Your answer' }).fill('Paris');
-  await baselineStudy.getByRole('button', { name: 'Check answer', exact: true }).click();
   await baselineStudy.getByRole('button', { name: 'Yes', exact: true }).click();
   await page
     .getByRole('main', { name: 'Session report' })
@@ -263,7 +258,8 @@ try {
   report.stages.push('installed baseline updater downloaded and silently installed the release');
   page = await open(version);
   const after = await snapshot(page);
-  assertUpgradeStudyRecords(before, after);
+  // Both versions use FSRS 7: this upgrade must preserve every study record exactly.
+  assert.deepEqual(after, before, 'Upgrade changed study records');
   const updateState = await page.evaluate(() => window.electronAPI.updater.getState());
   assert.equal(updateState.mode, 'automatic');
   report.stages.push('upgraded installation launched with all study records preserved');
