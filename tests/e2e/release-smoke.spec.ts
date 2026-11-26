@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   chooseScheduledStudy,
+  createCourse,
   enterFreshLacuna,
   enterWithWelcomeCourse,
   openEmptyDashboard,
@@ -93,17 +94,25 @@ test('opens a lesson with persistent course navigation', async ({ page }) => {
 
 test('starts a real lesson study interaction', async ({ page }) => {
   test.setTimeout(60_000);
-  await enterWithWelcomeCourse(page);
-  await page.getByText('Welcome to Lacuna', { exact: true }).first().click();
+  await enterFreshLacuna(page);
+  const courseUrl = await createCourse(page, 'Study smoke');
+  await page.getByRole('button', { name: 'Edit mode' }).click();
+  // Authored cards give the introduction a known answer and a second card to advance to.
+  for (const [front, back] of [
+    ['Capital of France?', 'Paris'],
+    ['Capital of Italy?', 'Rome'],
+  ]) {
+    await page.getByRole('button', { name: 'New card', exact: true }).first().click();
+    await page.getByRole('textbox', { name: 'Front' }).fill(front);
+    await page.getByRole('textbox', { name: 'Back' }).fill(back);
+    await page.getByRole('button', { name: 'Add card', exact: true }).click();
+    await expect(page).not.toHaveURL(/\/cards\/new$/);
+  }
+  await page.goto(courseUrl);
   // Exact, because the dashboard also carries "Study Choose a course" and a per-course
   // "Study <name>" control. Without it, strict mode matches all three.
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page
-    .getByRole('button', { name: /Show answer/i })
-    .last()
-    .click();
   const card = page.locator('[data-study-card-id]').first();
   const cardId = await card.getAttribute('data-study-card-id');
   expect(cardId).not.toBeNull();
@@ -111,10 +120,8 @@ test('starts a real lesson study interaction', async ({ page }) => {
     const bounds = surface.getBoundingClientRect();
     return bounds.left + bounds.width / 2;
   });
-  await page
-    .getByRole('main', { name: 'Study card' })
-    .getByRole('button', { name: /^(Yes|Continue)$/ })
-    .click();
+  await page.getByRole('radio', { name: 'Paris', exact: true }).press('Space');
+  await page.getByRole('button', { name: 'Check answer', exact: true }).click();
   await expect(page.locator('[data-study-card-id]').first()).not.toHaveAttribute(
     'data-study-card-id',
     cardId ?? '',
