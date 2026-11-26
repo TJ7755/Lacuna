@@ -16,7 +16,8 @@ import {
   courseMeanReviewSeconds,
   practicePrefixLessonIds,
 } from './studyFlowSnapshot';
-import { practiceScopeVersion } from './studyPools';
+import { makeSessionContext, sessionComplete } from '@lacuna/core/fsrs/session';
+import { directLessonStudyPool, practiceScopeVersion } from './studyPools';
 
 const NOW = 1_000_000;
 
@@ -580,3 +581,87 @@ it.each([false, true])(
     ).toEqual({ kind: 'complete' });
   },
 );
+it.each(['expectedMarks', 'securedTopics'] as const)(
+  'routes away from a capped Direct Study lesson under %s',
+  (examObjective) => {
+    const c = course({ learnFirst: false, newCardsPerDay: 1, examObjective });
+    const current = lesson('current', 0);
+    const future: Card = {
+      ...card('secured', current.id),
+      state: 2 as const,
+      due: NOW + 60 * MS_PER_DAY,
+      stability: 2000,
+      stabilityFast: 2000,
+      difficulty: 5,
+      lastReviewed: NOW - 1,
+      reps: 1,
+      history: [
+        {
+          timestamp: NOW - 1,
+          grade: 4,
+          responseTimeSec: 1,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 2000,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+      ],
+    };
+    const pending = card('pending', current.id);
+    const input = {
+      course: c,
+      nodes: [
+        { id: current.id, nodeType: 'lesson', lesson: current, status: 'available' },
+      ] as PathNode[],
+      cards: [future, pending],
+      links: [],
+      exposures: [],
+      examDateContext: makeExamDateContext(c, [current], []),
+      meanReviewSeconds: 30,
+      now: NOW,
+    };
+    const pool = directLessonStudyPool(current.id, input.cards, [], c, NOW);
+    const session = makeSessionContext([
+      {
+        config: c,
+        scope: { kind: 'lesson', courseId: c.id, lessonId: current.id, linkedCardIds: new Set() },
+        examDateContext: input.examDateContext,
+      },
+    ]);
+    expect(pool.map(({ id }) => id)).toEqual([future.id]);
+    expect(sessionComplete(pool, session, NOW)).toBe(true);
+    expect(planNextStudyStep(buildCourseStudyFlowSnapshot(input))).toEqual({ kind: 'waiting' });
+    expect(
+      planNextStudyStep(buildCourseStudyFlowSnapshot({ ...input, now: NOW + MS_PER_DAY })),
+    ).toMatchObject({ kind: 'step', step: { kind: 'lesson', lessonId: current.id } });
+    const due = { ...future, id: 'due', primaryLessonId: null, due: NOW - 1 };
+    expect(
+      planNextStudyStep(buildCourseStudyFlowSnapshot({ ...input, cards: [...input.cards, due] })),
+    ).toMatchObject({ kind: 'step', step: { nodeKey: 'due-review' } });
+  },
+);
+it('keeps Notes available when unavailable linked cards belong to a locked lesson', () => {
+  const c = course({ learnFirst: false, unlockMode: 'semi-linear', newCardsPerDay: 1 });
+  const current = lesson('current', 0);
+  const locked = lesson('locked', 1);
+  const linked = { ...card('linked', locked.id), suspended: true };
+  const snapshot = buildCourseStudyFlowSnapshot({
+    course: c,
+    nodes: [
+      { id: current.id, nodeType: 'lesson', lesson: current, status: 'available' },
+      { id: locked.id, nodeType: 'lesson', lesson: locked, status: 'locked' },
+    ],
+    cards: [linked],
+    links: [{ id: 'link', lessonId: current.id, cardId: linked.id, createdAt: 0, updatedAt: 0 }],
+    exposures: [],
+    examDateContext: makeExamDateContext(c, [current, locked], []),
+    meanReviewSeconds: 30,
+    now: NOW,
+  });
+  expect(planNextStudyStep(snapshot)).toMatchObject({
+    kind: 'step',
+    step: { kind: 'lesson', lessonId: current.id },
+  });
+});

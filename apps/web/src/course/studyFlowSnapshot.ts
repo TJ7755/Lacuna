@@ -17,11 +17,13 @@ import {
   type ExamDateContext,
 } from '@lacuna/core/fsrs/examDate';
 import { DEFAULT_REVIEW_SECONDS } from '@lacuna/core/fsrs/stats';
-import { isAvailable } from '@lacuna/core/fsrs/eligibility';
+import { isAvailable, studyPool } from '@lacuna/core/fsrs/eligibility';
+import { isObjectiveComplete, makeObjectiveContext } from '@lacuna/core/fsrs/objective';
 import type { ConceptPracticeNeeds } from '../questions/techniqueEvidence';
 import type { PathNode, PracticePathNode } from './path';
 import { assessmentPracticeOptions, type AssessmentPracticeOption } from './assessmentPractice';
 import {
+  countsForDirectLessonCompletion,
   dueReviewPool,
   examPracticePool,
   eligiblePracticePool,
@@ -350,20 +352,28 @@ export function buildCourseStudyFlowSnapshot(
     ids.add(exposure.cardId);
     exposedByLesson.set(exposure.lessonId, ids);
   }
+  const objective =
+    course.learnFirst === false ? makeObjectiveContext(course, examDateContext) : null;
   for (const node of nodes) {
     if (node.nodeType !== 'lesson' || node.status === 'locked') continue;
     const members = membership.get(node.id) ?? [];
     const exposed = exposedByLesson.get(node.id);
-    if (
-      // Direct study may still need Notes to complete and unlock an empty linked scope.
-      course.learnFirst !== false &&
-      members.length > 0 &&
-      !members.some(
-        (card) => isAvailable(card, now) && (course.learnFirst === false || !exposed?.has(card.id)),
-      )
-    ) {
-      unavailableLessonIds.add(node.id);
-      continue;
+    if (members.length > 0) {
+      if (objective) {
+        const pool = studyPool(members, course, now, undefined, cards);
+        const notesOnly =
+          pool.length === 0 &&
+          course.unlockMode === 'semi-linear' &&
+          !members.some((card) => countsForDirectLessonCompletion(card, node.id, reachedLessonIds));
+        // A pool containing only secured reviews can finish before serving a card.
+        if (!notesOnly && isObjectiveComplete(pool, objective, now)) {
+          unavailableLessonIds.add(node.id);
+          continue;
+        }
+      } else if (!members.some((card) => isAvailable(card, now) && !exposed?.has(card.id))) {
+        unavailableLessonIds.add(node.id);
+        continue;
+      }
     }
     if (node.status !== 'available') continue;
     if (earlier.has(node.id) && (members.length === 0 || node.lesson.isExtension)) continue;
@@ -387,6 +397,7 @@ export function buildCourseStudyFlowSnapshot(
 
   // Scheduled reviews cannot be gated by lesson membership or exposure.
   const dueReviewCardIds = new Set(dueReviewPool(cards, course, now).map((card) => card.id));
+  const examPractice = examPracticePool(cards, course, examDateContext, now);
   const activeManualNodeKeys = new Set(
     [...practiceByKey.values()]
       .filter((practice) => practice.nodeType === 'practice-manual' && practice.active)
@@ -451,7 +462,10 @@ export function buildCourseStudyFlowSnapshot(
     activeManualNodeKeys,
     completedManualNodeKeys,
     recurringPracticeEligibleCount: dueReviewCardIds.size,
-    examPracticeEligibleCount: examPracticePool(cards, course, examDateContext, now).length,
+    examPracticeEligibleCount:
+      course.learnFirst === false
+        ? studyPool(examPractice, course, now, undefined, cards).length
+        : examPractice.length,
     examPriority,
     cardCount: cards.length,
     dueReviewCardIds,

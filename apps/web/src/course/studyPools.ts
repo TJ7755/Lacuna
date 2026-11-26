@@ -59,6 +59,22 @@ export function directLessonStudyPool(
   return studyPool(members, course, now, activity, cards);
 }
 
+export function countsForDirectLessonCompletion(
+  card: Card,
+  lessonId: string,
+  unlockedLessonIds: ReadonlySet<string>,
+): boolean {
+  // New cards from locked lessons cannot hold the unlock hostage. A review
+  // through the linked lesson still counts once recorded.
+  return (
+    card.state !== 0 ||
+    card.primaryLessonId === null ||
+    card.primaryLessonId === undefined ||
+    card.primaryLessonId === lessonId ||
+    unlockedLessonIds.has(card.primaryLessonId)
+  );
+}
+
 export interface PracticeScopeOptions {
   /** Reached lessons only. An open but untouched lesson must not leak unseen cards. */
   reachedLessonIds: ReadonlySet<string>;

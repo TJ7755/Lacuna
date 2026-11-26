@@ -10,6 +10,7 @@ import type {
   SchedulingUnitRecord,
 } from '@lacuna/core/db/types';
 import {
+  countsForDirectLessonCompletion,
   directLessonStudyPool,
   lessonStudyPool,
   practiceCardScope,
@@ -27,7 +28,6 @@ import type { SessionUnit } from '@lacuna/core/fsrs/session';
 import type { StudyUnit } from './types';
 import type { PracticeSession } from './sessionCompletionPersistence';
 import {
-  countsForDirectLessonCompletion,
   loadLessonSessionSource,
   loadCourseSessionSource,
   loadGlobalSessionSource,

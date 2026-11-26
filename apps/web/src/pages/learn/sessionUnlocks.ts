@@ -14,12 +14,11 @@ import {
   buildCourseStudyFlowSnapshot,
   courseMeanReviewSeconds,
 } from '../../course/studyFlowSnapshot';
-import { lessonCardMembership } from '../../course/studyPools';
+import { countsForDirectLessonCompletion, lessonCardMembership } from '../../course/studyPools';
 import { currentAssessmentPracticeContext } from '../../course/assessmentPractice';
 import { makeExamDateContext } from '@lacuna/core/fsrs/examDate';
 import { availableCards, dueCards } from '@lacuna/core/fsrs/eligibility';
 import { buildDeckSecondsMap } from '@lacuna/core/fsrs/stats';
-import { countsForDirectLessonCompletion } from './sessionPool';
 
 /**
  * Re-evaluate semi-linear lesson unlocks from current course evidence.
