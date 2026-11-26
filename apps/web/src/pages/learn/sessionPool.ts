@@ -94,22 +94,6 @@ export interface CoursePoolRequest {
   catchUpPractice: boolean;
 }
 
-export function countsForDirectLessonCompletion(
-  card: Card,
-  lessonId: string,
-  unlockedLessonIds: ReadonlySet<string>,
-): boolean {
-  // New cards from locked lessons cannot hold the unlock hostage. A review
-  // through the linked lesson still counts once recorded.
-  return (
-    card.state !== 0 ||
-    card.primaryLessonId === null ||
-    card.primaryLessonId === undefined ||
-    card.primaryLessonId === lessonId ||
-    unlockedLessonIds.has(card.primaryLessonId)
-  );
-}
-
 /** Load curricular evidence once; optional passes deliberately skip practice reads. */
 export async function loadCourseSessionSource(courseId: string, standaloneSimple: boolean) {
   const [rawAllCards, courseLessons, examDates, manualNodes, concepts] = await Promise.all([
