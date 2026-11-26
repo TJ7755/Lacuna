@@ -18,13 +18,21 @@ import {
 } from './studyFlowSnapshot';
 import { makeSessionContext, sessionComplete } from '@lacuna/core/fsrs/session';
 import { directLessonStudyPool, practiceScopeVersion } from './studyPools';
+import type { Concept } from '@lacuna/core/questions/types';
+import {
+  paperSpecification,
+  paperSpecificationReference,
+} from '../specifications/paperFixture.testFixtures';
 
 const NOW = 1_000_000;
 
-it.each(['separate cards', 'notes only', 'shared card'])(
+it.each(['separate cards', 'notes only', 'shared card', 'excluded paper card'])(
   'prioritises selected final-exam lessons over unrelated available lessons: %s',
   (scenario) => {
-    const c = course();
+    const c = course({
+      specificationRef: paperSpecificationReference,
+      specificationData: paperSpecification,
+    });
     const unrelated = lesson('nervous-hormonal-communication', 0);
     const selected = lesson('pupil-light-response', 1);
     const assessment: CourseAssessment = {
@@ -32,11 +40,15 @@ it.each(['separate cards', 'notes only', 'shared card'])(
       courseId: c.id,
       name: 'Test',
       kind: 'final',
-      coverageMode: 'custom',
-      lessonIds: [selected.id],
+      ...(scenario === 'excluded paper card'
+        ? ({
+            coverageMode: 'specification',
+            specificationPointIds: ['example-science:cells'],
+          } as const)
+        : ({ coverageMode: 'custom', lessonIds: [selected.id] } as const)),
       afterLessonId: null,
       examDate: c.examDate,
-      excludedCardIds: [],
+      excludedCardIds: scenario === 'excluded paper card' ? [`${unrelated.id}-card`] : [],
       createdAt: NOW,
       updatedAt: NOW,
     };
@@ -58,6 +70,17 @@ it.each(['separate cards', 'notes only', 'shared card'])(
           ]
         : [];
     if (scenario === 'shared card') cards.pop();
+    const concepts: Concept[] = cards.map((card) => ({
+      id: card.conceptId,
+      scope: 'course',
+      courseId: c.id,
+      scopeKey: `course:${c.id}`,
+      name: card.conceptId,
+      provisional: false,
+      createdAt: NOW,
+      updatedAt: NOW,
+      specificationPointIds: ['example-science:cells'],
+    }));
     const snapshot = buildCourseStudyFlowSnapshot({
       course: c,
       nodes: lessons.map((lesson): PathNode => ({
@@ -69,7 +92,7 @@ it.each(['separate cards', 'notes only', 'shared card'])(
       cards,
       links,
       exposures: [],
-      examDateContext: makeExamDateContext(c, lessons, [assessment], links),
+      examDateContext: makeExamDateContext(c, lessons, [assessment], links, concepts),
       meanReviewSeconds: 30,
       now: NOW,
     });

@@ -1,4 +1,5 @@
 import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
+import { lessonCardMembershipByLesson } from '@lacuna/core/course/lessonMembership';
 // Lesson overrides win. Otherwise target the nearest applicable upcoming paper
 // or checkpoint. A specification-scoped final covers only its linked Concepts;
 // prefix finals retain the course-wide fallback used by existing courses.
@@ -113,15 +114,28 @@ export function resolveLessonExamDates(
     findExamDate(lesson.examDate, ctx, now, (assessment) => {
       let covered = coverage.get(assessment);
       if (!covered) {
+        const resolved = resolveAssessmentCoverage(
+          assessment,
+          [...ctx.lessonsById.values()],
+          cards,
+          ctx.lessonCardLinks ?? [],
+          ctx.preferredLessonIds,
+          ctx.specificationContext,
+        );
+        // Specification lessons are inferred from cards; exclusions can remove
+        // the last paper card from a lesson without changing its authored links.
+        const membership =
+          assessment.coverageMode === 'specification'
+            ? lessonCardMembershipByLesson(
+                resolved.coveredLessons,
+                resolved.cards,
+                ctx.lessonCardLinks ?? [],
+              )
+            : undefined;
         covered = new Set(
-          resolveAssessmentCoverage(
-            assessment,
-            [...ctx.lessonsById.values()],
-            cards,
-            ctx.lessonCardLinks ?? [],
-            ctx.preferredLessonIds,
-            ctx.specificationContext,
-          ).coveredLessons.map((row) => row.id),
+          resolved.coveredLessons
+            .filter((row) => !membership || (membership.get(row.id)?.length ?? 0) > 0)
+            .map((row) => row.id),
         );
         coverage.set(assessment, covered);
       }
