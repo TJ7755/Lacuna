@@ -6,7 +6,7 @@
   "dependencies": {
     "@vercel/functions": "^3.11.3",
     "zod": "4.6.7",
-    "@ai-sdk/gateway": "^4.0.146",
-    "@ai-sdk/google": "^4.0.121"
+    "@ai-sdk/gateway": "^4.0.151",
+    "@ai-sdk/google": "^4.0.123"
   }
 }
