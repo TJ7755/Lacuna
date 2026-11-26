@@ -21,6 +21,45 @@ import { directLessonStudyPool, practiceScopeVersion } from './studyPools';
 
 const NOW = 1_000_000;
 
+it('prioritises selected final-exam lessons over unrelated available lessons', () => {
+  const c = course();
+  const unrelated = lesson('nervous-hormonal-communication', 0);
+  const selected = lesson('pupil-light-response', 1);
+  const assessment: CourseAssessment = {
+    id: 'test',
+    courseId: c.id,
+    name: 'Test',
+    kind: 'final',
+    coverageMode: 'custom',
+    lessonIds: [selected.id],
+    afterLessonId: null,
+    examDate: c.examDate,
+    excludedCardIds: [],
+    createdAt: NOW,
+    updatedAt: NOW,
+  };
+  const lessons = [unrelated, selected];
+  const snapshot = buildCourseStudyFlowSnapshot({
+    course: c,
+    nodes: lessons.map((lesson): PathNode => ({
+      id: lesson.id,
+      nodeType: 'lesson',
+      lesson,
+      status: 'available',
+    })),
+    cards: lessons.map((lesson) => card(`${lesson.id}-card`, lesson.id)),
+    links: [],
+    exposures: [],
+    examDateContext: makeExamDateContext(c, lessons, [assessment]),
+    meanReviewSeconds: 30,
+    now: NOW,
+  });
+  expect(planNextStudyStep(snapshot)).toMatchObject({
+    kind: 'step',
+    step: { kind: 'lesson', lessonId: selected.id },
+  });
+});
+
 it('prepares the nearest exam cards before later due reviews or unfinished questions', () => {
   const c = course();
   const near = { ...lesson('near', 1), examDate: NOW + 2 * MS_PER_DAY };
