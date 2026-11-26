@@ -1,4 +1,5 @@
 import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
+import { availableCards } from '@lacuna/core/fsrs/eligibility';
 import { loadSimpleSession, type SimpleSessionScope } from './simpleSessionPersistence';
 import { lessonCardMembership } from '@lacuna/core/course/lessonMembership';
 import { db } from '../../db/schema';
@@ -302,9 +303,7 @@ export async function loadLessonSessionSource(courseId: string, lessonId: string
   };
 }
 
-export function filterSimpleLearnCardPool(cards: Card[], now = Date.now()): Card[] {
-  return cards.filter((card) => !card.suspended && !(card.buriedUntil && card.buriedUntil > now));
-}
+export { availableCards as filterSimpleLearnCardPool };
 
 /** Restore the saved pass without shuffling it again; new passes shuffle exactly once. */
 export function prepareSimpleSessionQueue(

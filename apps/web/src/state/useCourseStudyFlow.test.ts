@@ -558,3 +558,36 @@ it('keeps an equally urgent Concept before its tagged technique but resumes unfi
     },
   });
 });
+
+it('moves past a suspended lesson to the next available lesson', async () => {
+  const course = await createCourse('Study', { autoPractice: false });
+  const unavailable = await createLesson(course.id, 'Central nervous system');
+  const next = await createLesson(course.id, 'Peripheral nervous system');
+  await db.lessons.update(unavailable.id, { examDate: Date.now() + MS_PER_DAY });
+  const card = await createLessonCard(course.id, unavailable.id, 'front_back', 'CNS', 'Answer');
+  await db.cards.update(card.id, { suspended: true });
+  await createLessonCard(course.id, next.id, 'front_back', 'PNS', 'Answer');
+
+  const { result } = renderHook(() =>
+    useCourseStudyFlow(course.id, 0, true, {
+      kind: 'lesson',
+      lessonId: unavailable.id,
+      label: unavailable.name,
+    }),
+  );
+  await waitFor(() => expect(result.current?.generation).toBe(0));
+  expect(result.current?.decision).toMatchObject({ kind: 'step', step: { lessonId: next.id } });
+  expect(result.current?.snapshot.nodes).toContainEqual(
+    expect.objectContaining({ id: unavailable.id, status: 'available' }),
+  );
+
+  await act(async () => {
+    await db.cards.update(card.id, { suspended: false });
+  });
+  await waitFor(() =>
+    expect(result.current?.decision).toMatchObject({
+      kind: 'step',
+      step: { lessonId: unavailable.id },
+    }),
+  );
+});
