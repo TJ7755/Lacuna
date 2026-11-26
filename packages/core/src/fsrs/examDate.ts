@@ -1,7 +1,7 @@
 import { courseLessonOrderPreference } from '@lacuna/core/course/lessonOrder';
 // Lesson overrides win. Otherwise target the nearest applicable upcoming paper
 // or checkpoint. A specification-scoped final covers only its linked Concepts;
-// legacy finals retain the course-wide fallback used by existing courses.
+// prefix finals retain the course-wide fallback used by existing courses.
 
 import {
   resolveAssessmentCoverage,
@@ -104,15 +104,16 @@ function findCardExamDate(
     if (isUpcomingExamDate(examDate, now)) return examDate;
   }
 
-  // A specification-scoped final is one paper, not a course-wide fallback.
-  const specificationFinal = ctx.courseAssessments.some(
-    (assessment) => assessment.kind === 'final' && assessment.coverageMode === 'specification',
+  // A scoped final owns its deadline. The hydrated course date mirrors that
+  // deadline and must not give unselected lessons the same exam priority.
+  const scopedFinal = ctx.courseAssessments.some(
+    (assessment) => assessment.kind === 'final' && assessment.coverageMode !== 'prefix',
   );
   // 2. Nearest applicable future assessment. Legacy finals retain their fallback semantics.
   let nearest: number | undefined;
   for (const assessment of ctx.courseAssessments) {
     if (
-      (assessment.kind !== 'checkpoint' && !specificationFinal) ||
+      (assessment.kind !== 'checkpoint' && !scopedFinal) ||
       !isUpcomingExamDate(assessment.examDate, now)
     ) {
       continue;
@@ -125,7 +126,7 @@ function findCardExamDate(
   if (nearest !== undefined) return nearest;
 
   // 3. Course default.
-  return specificationFinal ? undefined : ctx.courseExamDate;
+  return scopedFinal ? undefined : ctx.courseExamDate;
 }
 
 /** An assessment is upcoming while now is strictly before its deadline; equality is expired. */
